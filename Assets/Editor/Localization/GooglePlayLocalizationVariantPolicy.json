@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "requiredLocales": [
+    "en",
+    "es",
+    "pt-BR",
+    "de",
+    "fr",
+    "ru",
+    "ar",
+    "ja",
+    "ko",
+    "zh-Hans"
+  ],
+  "enabledTableLocales": [
+    "en",
+    "es",
+    "pt-BR",
+    "de",
+    "fr",
+    "ru"
+  ],
+  "replacementRows": [
+    {
+      "key": "heroSelect.subtitle",
+      "owner": "Onboarding",
+      "reason": "The hero picker ships on Google Play, but its Seeker subtitle names SKR.",
+      "values": {
+        "en": "Choose your champion",
+        "es": "Elige a tu campeón",
+        "pt-BR": "Escolha seu campeão",
+        "de": "Wähle deinen Champion",
+        "fr": "Choisissez votre champion",
+        "ru": "Выберите своего героя",
+        "ar": "اختر بطلك",
+        "ja": "チャンピオンを選択",
+        "ko": "영웅을 선택하세요",
+        "zh-Hans": "选择你的英雄"
+      }
+    },
+    {
+      "key": "jewelerFtue.stakeChecking",
+      "owner": "Jeweler",
+      "reason": "The Jeweler is shared with Google Play; its Seeker stake check needs a channel-neutral presentation.",
+      "values": {
+        "en": "Checking eligibility for a bonus.",
+        "es": "Comprobando si cumples los requisitos para una bonificación.",
+        "pt-BR": "Verificando se você tem direito a um bônus.",
+        "de": "Bonusberechtigung wird geprüft.",
+        "fr": "Vérification de votre éligibilité à un bonus.",
+        "ru": "Проверяем право на бонус.",
+        "ar": "جارٍ التحقق من أهليتك للحصول على مكافأة.",
+        "ja": "ボーナスの対象条件を確認しています。",
+        "ko": "보너스 대상 여부를 확인하고 있습니다.",
+        "zh-Hans": "正在检查奖励资格。"
+      }
+    },
+    {
+      "key": "jewelerFtue.stakeVerified",
+      "owner": "Jeweler",
+      "reason": "The shared Jeweler may report the earned benefit on Google Play without naming a Seeker-only rail.",
+      "values": {
+        "en": "Bonus verified: +1 weekly re-roll added.",
+        "es": "Bonificación verificada: se añadió 1 repetición de tirada semanal.",
+        "pt-BR": "Bônus verificado: +1 nova rolagem semanal adicionada.",
+        "de": "Bonus bestätigt: +1 wöchentlicher Neuwurf hinzugefügt.",
+        "fr": "Bonus confirmé : +1 relance hebdomadaire ajoutée.",
+        "ru": "Бонус подтверждён: добавлена 1 еженедельная переброска.",
+        "ar": "تم تأكيد المكافأة: تمت إضافة إعادة رمي أسبوعية واحدة.",
+        "ja": "ボーナス確認済み：毎週のリロールが1回追加されました。",
+        "ko": "보너스 확인 완료: 주간 재굴림 1회가 추가되었습니다.",
+        "zh-Hans": "奖励已确认：每周重掷次数 +1。"
+      }
+    },
+    {
+      "key": "jewelerFtue.stakeVerifiedHighTier",
+      "owner": "Jeweler",
+      "reason": "The shared Jeweler may report the higher benefit on Google Play without naming a Seeker-only threshold.",
+      "values": {
+        "en": "Higher-tier bonus verified: +1 weekly re-roll added. The per-stone roll cap is now 6.",
+        "es": "Bonificación superior verificada: se añadió 1 repetición de tirada semanal. El límite de tiradas por piedra ahora es 6.",
+        "pt-BR": "Bônus de nível superior verificado: +1 nova rolagem semanal adicionada. O limite de rolagens por pedra agora é 6.",
+        "de": "Höherstufiger Bonus bestätigt: +1 wöchentlicher Neuwurf hinzugefügt. Das Wurflimit pro Stein beträgt jetzt 6.",
+        "fr": "Bonus supérieur confirmé : +1 relance hebdomadaire ajoutée. La limite de relances par pierre est maintenant de 6.",
+        "ru": "Бонус высокого уровня подтверждён: добавлена 1 еженедельная переброска. Лимит бросков на камень теперь равен 6.",
+        "ar": "تم تأكيد المكافأة الأعلى: تمت إضافة إعادة رمي أسبوعية واحدة. أصبح حد الرميات لكل حجر 6.",
+        "ja": "上位ボーナス確認済み：毎週のリロールが1回追加されました。石1個あたりのロール上限は6になりました。",
+        "ko": "상위 보너스 확인 완료: 주간 재굴림 1회가 추가되었습니다. 돌 하나당 굴림 한도는 이제 6회입니다.",
+        "zh-Hans": "高级奖励已确认：每周重掷次数 +1。每颗原石的重掷上限现为 6。"
+      }
+    },
+    {
+      "key": "jewelerFtue.stakeNotVerified",
+      "owner": "Jeweler",
+      "reason": "The shared Jeweler needs a truthful Google Play fallback when no weekly benefit is granted.",
+      "values": {
+        "en": "No weekly re-roll bonus was added.",
+        "es": "No se añadió ninguna bonificación semanal de repetición de tirada.",
+        "pt-BR": "Nenhum bônus de nova rolagem semanal foi adicionado.",
+        "de": "Es wurde kein Bonus für einen wöchentlichen Neuwurf hinzugefügt.",
+        "fr": "Aucun bonus de relance hebdomadaire n’a été ajouté.",
+        "ru": "Бонус еженедельной переброски не добавлен.",
+        "ar": "لم تتم إضافة مكافأة إعادة رمي أسبوعية.",
+        "ja": "毎週のリロールボーナスは追加されませんでした。",
+        "ko": "주간 재굴림 보너스가 추가되지 않았습니다.",
+        "zh-Hans": "未添加每周重掷奖励。"
+      }
+    }
+  ],
+  "stripGroups": [
+    {
+      "owner": "Wallet",
+      "reason": "These rows are owned only by DeNelle.Wallet, whose asmdef requires !GOOGLE_PLAY; storeWordmark is deliberately retained for the Play storefront.",
+      "proofPath": "Assets/_Modules/Wallet/DeNelle.Wallet.asmdef",
+      "proofToken": "!GOOGLE_PLAY",
+      "keys": [
+        "storeBuyClosed",
+        "storeBuyRailNotReady",
+        "storeBuyWalletRequired",
+        "storeBuyWalletRequiredCrypto",
+        "storeBuyWalletRequiredCta",
+        "storeBuyComingSoon",
+        "storeShelfClosed",
+        "storePiHeaderNotice",
+        "storePiPriceAtCheckout",
+        "storePiNotOnSale",
+        "storePiRailUnavailable",
+        "storePiWalletGate",
+        "storePiShelfEmpty",
+        "storeBalanceNoWallet",
+        "storeBalanceBoundAddress",
+        "storeBalanceBoundIdentity",
+        "storeBalanceChecking",
+        "storeBalanceUnavailable",
+        "storeBalanceValue",
+        "storeBalanceFiat",
+        "storeWalletlessBrowsingBanner",
+        "storeCommerceReady",
+        "storeCommerceOpeningWallet",
+        "storeCommerceAwaitingApproval",
+        "storeCommerceSubmitted",
+        "storeCommerceVerifying",
+        "storeCommerceDelivering",
+        "storeCommerceFulfilled",
+        "storeCommerceCancelled",
+        "storeCommerceFailed",
+        "storeCommerceDelayed",
+        "storeCommerceNetworkFallback",
+        "storeBandGap",
+        "storeBandGapSub",
+        "storeBandBasket",
+        "storeSpotlightEmpty",
+        "storeLedgerHeading",
+        "storeCardOwned",
+        "storeCardGap"
+      ]
+    },
+    {
+      "owner": "Web3",
+      "reason": "The swap surface is unavailable on Google Play because DeNelle.Web3 requires !GOOGLE_PLAY.",
+      "proofPath": "Assets/_Modules/Web3/DeNelle.Web3.asmdef",
+      "proofToken": "!GOOGLE_PLAY",
+      "keys": [
+        "swap.title",
+        "swap.inputLabel",
+        "swap.outputLabel",
+        "swap.rateLabel",
+        "swap.feeLabel",
+        "swap.networkLabel",
+        "swap.confirm",
+        "swap.poweredBy",
+        "swap.statusEnter",
+        "swap.statusLoading",
+        "swap.statusConnect",
+        "swap.statusSigning",
+        "swap.statusError",
+        "swap.statusFailed"
+      ]
+    },
+    {
+      "owner": "Settings",
+      "reason": "The Settings wallet section and its refresh paths are compiled out of GOOGLE_PLAY.",
+      "proofPath": "Assets/_Modules/Settings/SettingsController.cs",
+      "proofToken": "#if !GOOGLE_PLAY",
+      "keys": [
+        "settings.section.wallet",
+        "settings.wallet.connect",
+        "settings.wallet.disconnect",
+        "settings.wallet.disconnectAddress"
+      ]
+    }
+  ]
+}
