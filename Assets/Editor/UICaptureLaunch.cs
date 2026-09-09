@@ -147,6 +147,7 @@ using DeNelle.Village.Talents; // HeroSkillTreePanelMvvm (tree + hot-swap rail c
 using DeNelle.Village.Crafting; // disclosure/confirmation modal capture
 using DeNelle.Village.Buildings.Progression; // PlacedUpgradeKey - the ONE composer of a placed-structure job key (WO-1422)
 using DeNelle.Village.Monetization; // Daily Chest production modal capture
+using DeNelle.Village.Feedback; // HonestFeedbackPanel proof capture
 
 namespace DeNelle.Editor
 {
@@ -1549,6 +1550,50 @@ namespace DeNelle.Editor
             int count = ForEachTarget("Settings", CaptureSettingsOnce);
             if (count == 3) Debug.Log("SETTINGS_CAPTURE_OK 3/3");
             else Debug.LogError("SETTINGS_CAPTURE_FAIL " + count + "/3");
+        }
+
+        /// <summary>Focused proof for the player-facing honest-feedback panel, including the
+        /// Seeker's exact 2670x1200 landscape surface.</summary>
+        public static void RunHonestFeedbackCaptureHeadless()
+        {
+            Directory.CreateDirectory(OutDir);
+            int count = ForEachTarget("HonestFeedback", CaptureHonestFeedbackOnce);
+            ReportGeometry();
+            ReportTouchOracle();
+            if (count == 3 && _geoFailures.Count == 0 && _touchFailures.Count == 0)
+                Debug.Log("HONEST_FEEDBACK_CAPTURE_OK 3/3; geometry=clean; touch=clean");
+            else
+                Debug.LogError("HONEST_FEEDBACK_CAPTURE_FAIL frames=" + count +
+                    "/3 geometry=" + _geoFailures.Count + " touch=" + _touchFailures.Count);
+        }
+
+        private static int CaptureHonestFeedbackOnce(CaptureTarget target)
+        {
+            GameObject host = null;
+            GameObject canvas = null;
+            try
+            {
+                PanelManager.CloseAll();
+                host = new GameObject("~UICapHonestFeedback");
+                var panel = host.AddComponent<HonestFeedbackPanel>();
+                InvokePrivate(panel, "EnsureBuilt");
+                var modal = GetPrivateFieldValue(panel, "_modal") as ElarionUiKit.ObsidianModal;
+                canvas = modal != null ? modal.canvas : null;
+                if (canvas != null) canvas.SetActive(true);
+                return canvas != null && RenderCanvasToPng(canvas,
+                    OutDir + "HonestFeedback_" + target.Tag + ".png", target.W, target.H) ? 1 : 0;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[UICap-HL] HonestFeedback @" + target.Tag + " threw: " + e);
+                return 0;
+            }
+            finally
+            {
+                if (canvas != null) UnityEngine.Object.DestroyImmediate(canvas);
+                if (host != null) UnityEngine.Object.DestroyImmediate(host);
+                PanelManager.CloseAll();
+            }
         }
 
         /// <summary>Fast visual iteration for the live operator-maintenance status strip.</summary>
@@ -8452,10 +8497,36 @@ namespace DeNelle.Editor
             // single-shaped states, so ordering there stays exactly as it was.
             bool preferLaddered = want == DeNelle.Core.Manage.ManageTileVisualState.Available;
 
-            // ⚠ BUILD and ARMY are ONE level deep: a grid tile's Activate opens that item's Detail.
-            // RESEARCH is TWO (canon 5), and its top-level tiles are SCHOOLS whose Activate opens a
-            // perk grid, not a Detail - so a Locked SCHOOL must NOT be mistaken for the Locked item
-            // this frame is after. That is why Research skips this branch entirely.
+            // BUILD is now TWO levels deep: category, then item. Walk every model-authored category
+            // so action/max proof frames keep finding real item states without hardcoding which
+            // family happens to contain today's fixture candidate.
+            if (tab == DeNelle.Core.Manage.ManageTabId.Build)
+            {
+                var root = ActiveManageTabVm(vm);
+                int categoryCount = root != null && root.Tiles != null ? root.Tiles.Count : 0;
+                for (int c = 0; c < categoryCount; c++)
+                {
+                    vm.EnterTab(DeNelle.Core.Manage.ManageTabId.Build);
+                    var categories = ActiveManageTabVm(vm);
+                    if (categories == null || categories.Tiles == null || c >= categories.Tiles.Count) break;
+                    var category = categories.Tiles[c];
+                    if (category == null || category.Activate == null) continue;
+                    string categoryId = category.Id;
+                    category.Activate.Invoke();
+
+                    var hit = FindManageFlowTile(vm, want, preferLaddered);
+                    if (hit == null) continue;
+                    hit.Activate?.Invoke();
+                    note = "BUILD/" + word + " -> " + (categoryId ?? "?") + " / " +
+                           (hit.Id ?? "<null>") + " state=" + hit.VisualState + " screen=" +
+                           (vm.Nav != null ? vm.Nav.Kind.ToString() : "<null>");
+                    return vm.Nav != null && vm.Nav.Kind == ManageScreenKind.Detail;
+                }
+                return false;
+            }
+
+            // ARMY is one level deep: a grid tile opens that item's Detail. RESEARCH is TWO
+            // (school, then perk), so a Locked SCHOOL must not be mistaken for a locked item.
             if (tab != DeNelle.Core.Manage.ManageTabId.Research)
             {
                 var hit = FindManageFlowTile(vm, want, preferLaddered);

@@ -133,6 +133,13 @@ namespace DeNelle.Village.UI
         public int PendingIndex;
 
         /// <summary>
+        /// Short timeline marker painted at the leading edge of the row ("NOW" for active work,
+        /// otherwise the model-owned queue number). Kept separate from <see cref="StateText"/> so
+        /// the View never has to turn queue state into player-facing copy.
+        /// </summary>
+        public string PositionText;
+
+        /// <summary>
         /// Q12 — a COLLAPSED stack header standing for <see cref="StackCount"/> identical pending
         /// jobs. It has NO JobId, so it can never be the target of a cancel or a paid finish.
         /// </summary>
@@ -912,6 +919,7 @@ namespace DeNelle.Village.UI
                 if (r == null || r.IsStackChild) continue;
                 ordinal++;
                 r.OrdinalText = ordinal.ToString();
+                r.PositionText = r.Queued ? r.OrdinalText : "NOW";
             }
         }
 
@@ -1049,9 +1057,10 @@ namespace DeNelle.Village.UI
                 // The percentage is stated IN WORDS beside the bar (colourblind law: the fill is
                 // never the only signal). WO-898's monetization driver is the player SEEING how
                 // close the wall is when a raid is inbound; a bare countdown does not carry that.
-                StateText = queued
-                    ? "Queued - " + Ordinal(pendingIndex + 1) + " in line (" + FormatTime(rem) + " of work)"
-                    : "Building - " + FormatTime(rem) + " left" + PercentSuffix(svc, channel, job.StructureId),
+                // The leading timeline marker already says NOW or supplies the queue position.
+                // Keep this line to the decision-changing facts so it survives the narrow text
+                // column without ellipsis.
+                StateText = QueueTimingText(svc, channel, job.StructureId, queued, rem),
                 Channel = channel,
                 JobId = job.StructureId,
                 BuildingId = building != null ? buildingId : "",
@@ -3308,6 +3317,19 @@ namespace DeNelle.Village.UI
             return " (" + Mathf.RoundToInt(p * 100f) + "% done)";
         }
 
+        /// <summary>
+        /// Compact, colour-independent timing copy for a queue timeline row. Position is carried
+        /// by <see cref="QueueRowVM.PositionText"/>; this line carries duration and progress only.
+        /// </summary>
+        public static string QueueTimingText(BuildTimerService svc, ChannelId channel, string jobId,
+                                             bool queued, double remainingSeconds)
+        {
+            string time = FormatTime(remainingSeconds);
+            if (queued) return time + " OF WORK";
+            int percent = Mathf.RoundToInt(ProgressOfLive(svc, channel, jobId) * 100f);
+            return time + " LEFT | " + percent + "% DONE";
+        }
+
         internal static string Ordinal(int n)
         {
             if (n <= 0) return "next";
@@ -3661,6 +3683,14 @@ namespace DeNelle.Village.UI
                     GoTo(new ManageNavEntry { Kind = ManageScreenKind.Grid, Tab = ManageTabId.Research });
                     return;
                 default:
+                    if (_nav.Tab == ManageTabId.Build &&
+                        !string.Equals(_activeFilter, BuildFilter.All, StringComparison.OrdinalIgnoreCase))
+                    {
+                        FlowTrace.Step("Navigation", "Manage BACK from BUILD " + _activeFilter +
+                            " -> category grid");
+                        SetFilter(BuildFilter.All);
+                        return;
+                    }
                     FlowTrace.Step("Navigation", "Manage BACK from a root grid -> close");
                     CloseRequested?.Invoke();
                     return;
@@ -3782,6 +3812,13 @@ namespace DeNelle.Village.UI
                                  : 3
                 };
                 if (isActive) FillActiveTab(tab, nav);
+                if (isActive && id == ManageTabId.Build && nav != null &&
+                    nav.Kind == ManageScreenKind.Grid &&
+                    string.Equals(_activeFilter, BuildFilter.All, StringComparison.OrdinalIgnoreCase))
+                {
+                    tab.GridColumns = BuildFilter.Membership.Length;
+                    tab.GridRows = 1;
+                }
                 if (isActive) ApplyPickerCapacity(tab, id, nav);
                 tabs.Add(tab);
             }
@@ -3866,6 +3903,10 @@ namespace DeNelle.Village.UI
                 return "MANAGE" + HeaderJoiner + TabWordOf(nav.Tab) + HeaderJoiner + "DETAIL";
             if (nav.Kind == ManageScreenKind.ResearchPerks)
                 return "MANAGE" + HeaderJoiner + "RESEARCH" + HeaderJoiner + "SCHOOL";
+            if (nav.Kind == ManageScreenKind.Grid && nav.Tab == ManageTabId.Build &&
+                !string.IsNullOrEmpty(nav.Filter) &&
+                !string.Equals(nav.Filter, BuildFilter.All, StringComparison.OrdinalIgnoreCase))
+                return "MANAGE" + HeaderJoiner + nav.Filter;
             return "MANAGE" + HeaderJoiner + TabWordOf(nav.Tab);
         }
 
@@ -4120,9 +4161,17 @@ namespace DeNelle.Village.UI
                     }
                     break;
                 default:
-                    tab.Filters = ComposeFilters();
-                    tab.Tiles = ComposeBuildTiles();
-                    tab.EmptyText = "Nothing in this filter yet.";
+                    // Owner ruling 2026-09-08: BUILD opens on categories, not the full inventory.
+                    // ALL remains the internal root sentinel and is no longer a player-facing chip.
+                    tab.Filters = Array.Empty<ManageFilterVM>();
+                    tab.Tiles = string.Equals(_activeFilter, BuildFilter.All,
+                        StringComparison.OrdinalIgnoreCase)
+                        ? ComposeBuildCategoryTiles()
+                        : ComposeBuildTiles();
+                    tab.EmptyText = string.Equals(_activeFilter, BuildFilter.All,
+                        StringComparison.OrdinalIgnoreCase)
+                        ? "No building categories are authored yet."
+                        : "Nothing in this category yet.";
                     break;
             }
 
@@ -4138,22 +4187,35 @@ namespace DeNelle.Village.UI
             tab.Selection = new ManageSelectionVM { Visible = false, EmptyText = null };
         }
 
-        private List<ManageFilterVM> ComposeFilters()
+        private List<ManageTileVM> ComposeBuildCategoryTiles()
         {
-            var chips = BuildFilter.Chips;   // the ONE ordering authority - never re-listed here
-            var list = new List<ManageFilterVM>(chips.Length);
-            for (int i = 0; i < chips.Length; i++)
+            var categories = BuildFilter.Membership; // the ONE ordering authority - never re-listed
+            var tiles = new List<ManageTileVM>(categories.Length);
+            for (int i = 0; i < categories.Length; i++)
             {
-                string chip = chips[i];
-                list.Add(new ManageFilterVM
+                string category = categories[i];
+                var rows = BuildInventoryModel.Tiles(category);
+                string portraitKey = null;
+                for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
                 {
-                    Id = chip,
-                    Label = chip,
-                    IsActive = string.Equals(chip, _activeFilter, StringComparison.OrdinalIgnoreCase),
-                    Activate = () => SetFilter(chip)
+                    var item = rows[rowIndex] != null ? ComposeBuildItem(rows[rowIndex]) : null;
+                    if (item == null || string.IsNullOrEmpty(item.IconId)) continue;
+                    portraitKey = item.IconId;
+                    break;
+                }
+
+                string captured = category;
+                tiles.Add(new ManageTileVM
+                {
+                    Id = "build-category:" + category,
+                    Title = category,
+                    PortraitKey = portraitKey,
+                    VisualState = ManageTileVisualState.Available,
+                    FrameKey = ManageArt.FrameFor(ManageTileVisualState.Available),
+                    Activate = () => SetFilter(captured)
                 });
             }
-            return list;
+            return tiles;
         }
 
         // ── BUILD ────────────────────────────────────────────────────────────
@@ -4592,8 +4654,10 @@ namespace DeNelle.Village.UI
                 var item = ComposeTroopItem(c);
                 string id = c.Id;
                 // First tile selected by default - see ComposeBuildTiles' note (mockup screen 4).
-                tiles.Add(ProjectAffordanceTile(item, tiles.Count == 0,
-                    () => OpenDetail(ManageTabId.Army, id, null, null)));
+                var tile = ProjectAffordanceTile(item, tiles.Count == 0,
+                    () => OpenDetail(ManageTabId.Army, id, null, null));
+                if (tile != null) tile.ContainPortrait = true;
+                tiles.Add(tile);
             }
             return tiles;
         }

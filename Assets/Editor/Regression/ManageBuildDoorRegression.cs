@@ -147,23 +147,30 @@ namespace DeNelle.Editor
                 vm.PlaceStructureRequested = id => placed.Add(id);
                 vm.OpenTownBuilderRequested = () => rootHits++;
                 vm.EnterTab(ManageTabId.Build);
-                vm.SetFilter(BuildFilter.All);
                 vm.Rebuild();
 
-                var grid = vm.ComposeWorkspace();
-                var buildTab = grid != null ? grid.ActiveTab : null;
-                if (buildTab == null || buildTab.Tiles == null || buildTab.Tiles.Count == 0)
+                // BUILD's first screen is now category navigation. Walk every authored category
+                // and collect its disclosed item ids so this door oracle still measures the full
+                // inventory instead of mistaking category ids for catalog ids.
+                var tileIds = new List<string>();
+                for (int categoryIndex = 0; categoryIndex < BuildFilter.Membership.Length; categoryIndex++)
                 {
-                    failures.Add("[build-grid-offers-nothing] the BUILD tab projected zero tiles under the ALL " +
-                                 "chip, so the door cannot be proven either way");
-                    return;
+                    vm.SetFilter(BuildFilter.Membership[categoryIndex]);
+                    var grid = vm.ComposeWorkspace();
+                    var buildTab = grid != null ? grid.ActiveTab : null;
+                    if (buildTab == null || buildTab.Tiles == null) continue;
+                    for (int i = 0; i < buildTab.Tiles.Count; i++)
+                    {
+                        var tile = buildTab.Tiles[i];
+                        if (tile == null || string.IsNullOrEmpty(tile.Id) || tileIds.Contains(tile.Id)) continue;
+                        tileIds.Add(tile.Id);
+                    }
                 }
-
-                var tileIds = new List<string>(buildTab.Tiles.Count);
-                for (int i = 0; i < buildTab.Tiles.Count; i++)
+                if (tileIds.Count == 0)
                 {
-                    var tile = buildTab.Tiles[i];
-                    if (tile != null && !string.IsNullOrEmpty(tile.Id)) tileIds.Add(tile.Id);
+                    failures.Add("[build-grid-offers-nothing] the BUILD categories disclosed zero item tiles, " +
+                                 "so the door cannot be proven either way");
+                    return;
                 }
 
                 int doorsChecked = 0, nonDefenceDoors = 0;

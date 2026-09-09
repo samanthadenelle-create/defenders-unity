@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using DeNelle.Core.Catalog;
 using DeNelle.Core.Jobs;      // ObsidianQueueState - GameState.ObsidianQueue's type (WO-1516 fixture)
 using DeNelle.Core.Manage;
 using DeNelle.Core.State;
@@ -36,6 +37,7 @@ namespace DeNelle.Editor
             // this editor-only suite cannot stand up headless. Stated rather than dressed up.
             // RED RECIPE: delete the LAYER 7 block from ManageWorkspacePanel.BuildTile.
             string workspacePanel = File.ReadAllText("Assets/_Modules/Core/Manage/ManageWorkspacePanel.cs");
+            string viewContract = File.ReadAllText("Assets/_Modules/Core/Manage/ManageViewContract.cs");
             int tileAt = workspacePanel.IndexOf("private void BuildTile(", StringComparison.Ordinal);
             if (tileAt < 0)
                 failures.Add("[grid-tile-states-its-state] ManageWorkspacePanel.BuildTile is gone - the grid tile " +
@@ -73,6 +75,31 @@ namespace DeNelle.Editor
                                  "TMP GetPreferredValues - a character-advance ratio or any other estimate is a " +
                                  "guess, and CLAUDE.md section 12 forbids shipping one where a measurement exists.");
             }
+
+            // [manage-owner-layout-pass] 2026-09-08 device review. These are explicit contracts,
+            // not tab/id inference in the dumb renderer: Army chooses containment in the VM, the
+            // View clips portrait and frame to one seat, and detail actions use the lower well.
+            if (!viewContract.Contains("public bool ContainPortrait;"))
+                failures.Add("[manage-owner-layout-pass] ManageTileVM no longer carries the explicit portrait " +
+                             "containment fact; Army art would again depend on View-side tab or id inference.");
+            if (!vm.Contains("tile.ContainPortrait = true"))
+                failures.Add("[manage-owner-layout-pass] ComposeArmyTiles no longer marks troop portraits for " +
+                             "containment inside their authored square frames.");
+            if (!workspacePanel.Contains("var portZone = Zone(cell, \"TilePortrait\", portraitMin, portraitMax)") ||
+                !workspacePanel.Contains("new Vector2(frameX0, TilePortY0)"))
+                failures.Add("[manage-owner-layout-pass] Army portrait and frame no longer share one clipped " +
+                             "seat; the device defect was full-card art behind a floating square frame.");
+            if (!workspacePanel.Contains("ElarionUiKit.ApplyRounded(statePlateImage)") ||
+                !workspacePanel.Contains("new Color(0.03f, 0.03f, 0.03f, 0.94f)"))
+                failures.Add("[manage-owner-layout-pass] the compact state pill or stronger tile-name footer " +
+                             "has been removed, restoring the overlapping card hierarchy.");
+            if (!workspacePanel.Contains("frameX0 - 0.015f"))
+                failures.Add("[manage-owner-layout-pass] a contained Army tile no longer ends its state pill " +
+                             "before the portrait frame, restoring the text/art overlap.");
+            if (!workspacePanel.Contains("const float DetailActionBottom = 0.05f") ||
+                !workspacePanel.Contains("cardH * 0.90f"))
+                failures.Add("[manage-owner-layout-pass] detail art/action no longer use the available card " +
+                             "height; the Crystal Mine device frame left its lower third unused.");
 
             if (!vm.Contains("CountPlacedThisTown()") || !vm.Contains("BuildVisibleTabs()"))
                 failures.Add("categories are not derived from authoritative current-town placements");
@@ -330,8 +357,57 @@ namespace DeNelle.Editor
                     return;
                 }
 
-                var authority = BuildInventoryModel.Tiles(model.ActiveFilter);
+                // BUILD now opens on the four authored families. ALL is an internal root sentinel,
+                // not a fifth chip and not the full inventory dumped onto the first screen.
                 int shown = tab.Tiles != null ? tab.Tiles.Count : 0;
+                if (!string.Equals(model.ActiveFilter, BuildFilter.All, StringComparison.OrdinalIgnoreCase))
+                    failures.Add("[build-category-first] EnterTab(Build) opened filter '" +
+                                 model.ActiveFilter + "' instead of the category root.");
+                if (tab.Filters != null && tab.Filters.Count != 0)
+                    failures.Add("[build-category-first] the BUILD root still exposes " + tab.Filters.Count +
+                                 " filter chip(s); the owner replaced ALL + chips with four category cards.");
+                if (tab.GridColumns != BuildFilter.Membership.Length || tab.GridRows != 1)
+                    failures.Add("[build-category-first] the BUILD root is " + tab.GridColumns + "x" +
+                                 tab.GridRows + " instead of one clean row of authored categories.");
+                if (shown != BuildFilter.Membership.Length)
+                    failures.Add("[build-category-first] the BUILD root shows " + shown +
+                                 " category card(s), but BuildFilter.Membership authors " +
+                                 BuildFilter.Membership.Length + ".");
+                int ordered = Mathf.Min(shown, BuildFilter.Membership.Length);
+                for (int i = 0; i < ordered; i++)
+                {
+                    var categoryTile = tab.Tiles[i];
+                    string expected = BuildFilter.Membership[i];
+                    if (categoryTile == null || !string.Equals(categoryTile.Title, expected,
+                        StringComparison.Ordinal))
+                        failures.Add("[build-category-first] category seat " + i + " is '" +
+                                     (categoryTile != null ? categoryTile.Title : "<null>") +
+                                     "', expected BuildFilter.Membership's '" + expected + "'.");
+                    if (categoryTile == null || categoryTile.Activate == null)
+                        failures.Add("[build-category-first] category '" + expected +
+                                     "' has no navigation action.");
+                }
+                if (shown == 0 || tab.Tiles[0] == null || tab.Tiles[0].Activate == null)
+                {
+                    failures.Add("[build-category-first] no live category can be opened, so item disclosure " +
+                                 "and BACK behavior are unmeasured. FAIL, not a skip.");
+                    return;
+                }
+
+                string chosenCategory = BuildFilter.Membership[0];
+                tab.Tiles[0].Activate();
+                workspace = model.ComposeWorkspace();
+                index = Mathf.Clamp(workspace.ActiveTabIndex, 0, workspace.Tabs.Count - 1);
+                tab = workspace.Tabs[index];
+                if (!string.Equals(model.ActiveFilter, chosenCategory, StringComparison.OrdinalIgnoreCase))
+                    failures.Add("[build-category-first] activating '" + chosenCategory +
+                                 "' left ActiveFilter at '" + model.ActiveFilter + "'.");
+                if (tab.GridColumns != 5 || tab.GridRows != 2)
+                    failures.Add("[build-category-first] the disclosed " + chosenCategory + " inventory is " +
+                                 tab.GridColumns + "x" + tab.GridRows + " instead of the item grid's 5x2.");
+
+                var authority = BuildInventoryModel.Tiles(chosenCategory);
+                shown = tab.Tiles != null ? tab.Tiles.Count : 0;
                 if (shown == 0)
                 {
                     failures.Add("[build-grid-is-unlocked-only] the BUILD grid composed ZERO tiles under chip '" +
@@ -346,6 +422,27 @@ namespace DeNelle.Editor
                                  "20:07: \"manage build scren should only show items that are unlocked and " +
                                  "avaliable to them\". A mismatch means a SECOND membership rule has appeared " +
                                  "beside ManageScreenVM.InventoryTiles.");
+
+                model.Back();
+                var categoryWorkspace = model.ComposeWorkspace();
+                int categoryIndex = Mathf.Clamp(categoryWorkspace.ActiveTabIndex, 0,
+                    categoryWorkspace.Tabs.Count - 1);
+                var categoryTab = categoryWorkspace.Tabs[categoryIndex];
+                if (!string.Equals(model.ActiveFilter, BuildFilter.All, StringComparison.OrdinalIgnoreCase) ||
+                    categoryTab.GridColumns != BuildFilter.Membership.Length || categoryTab.GridRows != 1)
+                    failures.Add("[build-category-first] BACK from a category did not return to the BUILD " +
+                                 "category root.");
+
+                // Re-enter the same family so the existing item-state assertions below continue
+                // to measure real building tiles, not the category navigation cards.
+                if (categoryTab.Tiles != null && categoryTab.Tiles.Count > 0 &&
+                    categoryTab.Tiles[0] != null && categoryTab.Tiles[0].Activate != null)
+                {
+                    categoryTab.Tiles[0].Activate();
+                    workspace = model.ComposeWorkspace();
+                    index = Mathf.Clamp(workspace.ActiveTabIndex, 0, workspace.Tabs.Count - 1);
+                    tab = workspace.Tabs[index];
+                }
 
                 for (int i = 0; i < tab.Tiles.Count; i++)
                 {

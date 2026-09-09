@@ -167,10 +167,13 @@ namespace DeNelle.Editor
                 failures.Add("[touch-floor] building CTA line is below 112 reference px");
 
             string placement = Body(panel, "private void ApplyDrawerPlacement()", "private void SyncQueueToggleFace()");
-            // RED: remove Buildings from DrawerInBandMode or remove BuildingNowPrefix from ApplyDrawerPlacement.
-            if (!panel.Contains("ManageTab.Troops || _vm.Tab == ManageTab.Buildings") ||
-                placement == null || !placement.Contains("BuildingNowPrefix"))
-                failures.Add("[drawer-band-covers-buildings] Buildings drawer can cover the selected card");
+            // WO-2019: Queue is a full opaque modal everywhere. The retired short-band shape
+            // clipped ARMY horizontally; safety now means the workspace is not actionable under
+            // the modal and is restored from the same state on close.
+            if (placement == null || !placement.Contains("bool band = false;") ||
+                !placement.Contains("_workspaceHost.gameObject.SetActive(WorkspaceActive && !_queueDrawerOpen)"))
+                failures.Add("[queue-modal-covers-workspace] Queue is not one full modal with the selected " +
+                             "workspace disabled underneath it");
 
             string renderList = Body(panel, "private void RenderList()", "private string FindSummary");
             // RED: leave the former Buildings else-if in RenderList instead of moving this exact footer.

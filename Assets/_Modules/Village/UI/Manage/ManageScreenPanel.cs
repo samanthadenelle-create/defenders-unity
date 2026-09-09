@@ -2925,11 +2925,18 @@ namespace DeNelle.Village.UI
                 new Vector2(0.03f, 1f), new Vector2(0.97f, 1f));
             SeatDrawerTitleOverlay();
 
-            var heading = ElarionUiKit.Label(_drawerHeader, "QUEUE", 0f, 1f,
+            var heading = ElarionUiKit.Label(_drawerHeader, "QUEUE", 0.42f, 0.96f,
                 ElarionUi.Gold, (int)ElarionUi.FontBody, TextAlignmentOptions.Center,
                 0.20f, 0.80f, bold: true);
             ElarionUiKit.FitSingleLine(heading, 28f, 44f);
             _drawerHeading = heading != null ? heading.gameObject : null;
+
+            // The overlay is a work timeline, not a second inventory screen. This quiet eyebrow
+            // gives the large title band a job and explains the NOW / numbered markers below.
+            var timelineCaption = ElarionUiKit.Label(_drawerHeader, "WORK TIMELINE", 0.08f, 0.40f,
+                ElarionUi.ParchmentDim, (int)ElarionUi.FontMicro, TextAlignmentOptions.Center,
+                0.30f, 0.70f);
+            ElarionUiKit.FitSingleLine(timelineCaption, 24f, 30f);
 
             // The tab row's own zone - built once, refilled by RenderQueueDrawer.
             _drawerTabs = MakeZone(drawer, "Drawer_QueueTabs",
@@ -3029,13 +3036,21 @@ namespace DeNelle.Village.UI
         {
             if (_queueDrawer == null) return;
             var drawer = (RectTransform)_queueDrawer.transform;
+            // A modal must be the last-painted child of the operational well. BUILD can rebuild
+            // its category workspace after the drawer is constructed; without reasserting order,
+            // that later sibling masks the drawer's header and right-hand actions in the capture.
+            if (_queueDrawerOpen) drawer.SetAsLastSibling();
             // ⛔ WO-2001 - QUEUE IS AN OVERLAY, so the band shape stands down while the workspace
             // owns the well. The owner's flow puts QUEUE on every screen's header and over the
             // screen it was opened from; a band seated inside the old browse-list rectangle has
             // nowhere to sit once that band is gone. DrawerInBandMode itself is UNTOUCHED (its
             // verbatim text is pinned by ManageBuildingsCardRegression:171) - only this one
             // condition, which is where the two shapes were always chosen between.
-            bool band = _queueDrawerOpen && DrawerInBandMode && !WorkspaceActive;
+            // WO-2019: one queue, one shape. The legacy short-band branch still activated from
+            // ARMY's root capture and squeezed a full three-channel drawer into the old list
+            // width, clipping the RESEARCH segment and every right-hand action. The queue is now
+            // the same full modal from every Manage destination.
+            bool band = false;
             _drawerBandMode = band;
 
             // ⭐ WO-1567 ROUND 25 - THE SHARED CHROME ROW STANDS DOWN UNDER THE FULL OVERLAY.
@@ -3070,6 +3085,9 @@ namespace DeNelle.Village.UI
             // bought the rows their band.
             // ⚠ It is also what the mockup draws: panel 8 has ONE heading, and it is the word QUEUE.
             if (_workspaceTitle != null) _workspaceTitle.gameObject.SetActive(!chromeHidden);
+            // The modal owns its own close X. Leaving the constant Manage exit visible produces
+            // two adjacent X controls with different meanings (close Queue vs leave Manage).
+            if (_manageExit != null) _manageExit.gameObject.SetActive(!chromeHidden);
             if (_workspaceHost != null) _workspaceHost.gameObject.SetActive(WorkspaceActive && !_queueDrawerOpen);
 
             // The TRAINING NOW band (and its extra rows) is the line's MIRROR; the drawer
@@ -6386,12 +6404,11 @@ namespace DeNelle.Village.UI
                 if (t == null) continue;
                 float w = TabsRightStop / tabs.Count;
                 float tx0 = i * w;
-                string face = string.IsNullOrEmpty(t.CountText)
-                    ? (t.Label ?? string.Empty)
-                    : (t.Label ?? string.Empty) + " " + t.CountText;
                 var captured = t;
-                // Full band height so each face is QueueTabsBandPx (120) >= MinTouchPx (112).
-                var btn = ElarionUiKit.BuildObsidianButton(host, face,
+                // The whole segment remains a full-height compliant touch target. Its visible
+                // treatment is deliberately flat: these are a status rail, not three competing
+                // primary CTAs.
+                var btn = ElarionUiKit.BuildObsidianButton(host, t.Label ?? string.Empty,
                     ElarionUiKit.ObsidianButtonStyle.Style1,
                     t.IsActive ? ElarionUiKit.ObsidianButtonColor.Yellow
                                : ElarionUiKit.ObsidianButtonColor.Gray,
@@ -6401,6 +6418,15 @@ namespace DeNelle.Village.UI
                 btn.gameObject.name = "ManageQueueTab_" + t.Channel;
                 MedievalUiSkin.ApplyButton(btn, t.IsActive);
                 ElarionUiKit.ClampMinTouch(btn);
+                var tabImage = btn.GetComponent<Image>();
+                if (tabImage != null)
+                {
+                    tabImage.sprite = null;
+                    tabImage.type = Image.Type.Simple;
+                    tabImage.color = t.IsActive
+                        ? new Color(0.18f, 0.145f, 0.07f, 0.98f)
+                        : new Color(0.075f, 0.068f, 0.055f, 0.96f);
+                }
                 // ⭐ WO-1488 - THE ACTIVE LINE PLATE READS AS ACTIVE, BY FILL AND WEIGHT.
                 // MEASURED on the owner's device (owner-screen-20260907-010356.png and -010257.png):
                 // all three plates render identically, on both the BUILD tab and the RESEARCH tab,
@@ -6422,11 +6448,34 @@ namespace DeNelle.Village.UI
                     tabLabel.color = t.IsActive ? ElarionUi.Gold : ElarionUi.ParchmentDim;
                     if (t.IsActive) tabLabel.fontStyle |= FontStyles.Bold;
                     else tabLabel.fontStyle &= ~FontStyles.Bold;
+                    tabLabel.alignment = TextAlignmentOptions.Left;
+                    var labelRt = tabLabel.rectTransform;
+                    labelRt.anchorMin = new Vector2(0.08f, 0.16f);
+                    labelRt.anchorMax = new Vector2(0.69f, 0.84f);
+                    labelRt.offsetMin = labelRt.offsetMax = Vector2.zero;
+                    ElarionUiKit.FitSingleLine(tabLabel, 26f, 36f);
+                }
+                if (!string.IsNullOrEmpty(t.CountText))
+                {
+                    var countChip = ElarionUiKit.AddImage(btn.transform, "CapacityChip",
+                        new Vector2(0.72f, 0.24f), new Vector2(0.94f, 0.76f),
+                        t.IsActive ? new Color(0.42f, 0.30f, 0.08f, 1f)
+                                   : new Color(0.13f, 0.12f, 0.10f, 1f), rounded: true);
+                    var countChipImage = countChip != null ? countChip.GetComponent<Image>() : null;
+                    if (countChipImage != null) countChipImage.raycastTarget = false;
+                    if (countChip != null)
+                    {
+                        var count = ElarionUiKit.Label(countChip.transform, t.CountText, 0.05f, 0.95f,
+                            t.IsActive ? ElarionUi.Gold : ElarionUi.ParchmentDim,
+                            30, TextAlignmentOptions.Center, 0.04f, 0.96f, bold: true);
+                        count.raycastTarget = false;
+                        ElarionUiKit.FitSingleLine(count, 24f, 30f);
+                    }
                 }
                 if (t.IsActive)
                 {
                     var bar = ElarionUiKit.AddImage(btn.transform, "ActiveLineUnderline",
-                        new Vector2(0.12f, 0.02f), new Vector2(0.88f, 0.08f), ElarionUi.Gold);
+                        new Vector2(0.02f, 0.06f), new Vector2(0.035f, 0.94f), ElarionUi.Gold);
                     var barImg = bar != null ? bar.GetComponent<Image>() : null;
                     if (barImg != null) barImg.raycastTarget = false;
                 }
@@ -6620,13 +6669,33 @@ namespace DeNelle.Village.UI
             // its own children, because expanding a stack changes how many ROWS exist without
             // changing the queue, and a view-side count would disagree with the engine on the spot.
             // A stack CHILD carries no number by design - the header holds the position.
-            if (!string.IsNullOrEmpty(r.OrdinalText))
+            if (!string.IsNullOrEmpty(r.PositionText))
             {
-                var ord = ElarionUiKit.Label(row, r.OrdinalText + ".", QRowNameY0, QRowNameY1,
-                    ElarionUi.Gold, (int)QueueNameFontPx, TextAlignmentOptions.Right,
-                    x0, x0 + 0.035f, bold: true);
-                ElarionUiKit.FitSingleLine(ord, 0f, QueueNameFontPx);
-                x0 += 0.045f;
+                // Treat the queue as a timeline: NOW is the active node, numbered nodes follow.
+                // The words are model-owned; the rail and marker are only their visual treatment.
+                const float markerWidth = 0.058f;
+                var track = ElarionUiKit.AddImage(row, "QueueTimelineTrack",
+                    new Vector2(x0 + markerWidth * 0.48f, 0f),
+                    new Vector2(x0 + markerWidth * 0.52f, 1f),
+                    new Color(ElarionUi.Gold.r, ElarionUi.Gold.g, ElarionUi.Gold.b, 0.38f));
+                var trackImage = track != null ? track.GetComponent<Image>() : null;
+                if (trackImage != null) trackImage.raycastTarget = false;
+
+                var marker = ElarionUiKit.AddImage(row, "QueueTimelineMarker",
+                    new Vector2(x0, 0.28f), new Vector2(x0 + markerWidth, 0.72f),
+                    r.Queued ? new Color(0.12f, 0.11f, 0.09f, 1f)
+                             : new Color(0.34f, 0.24f, 0.06f, 1f), rounded: true);
+                var markerImage = marker != null ? marker.GetComponent<Image>() : null;
+                if (markerImage != null) markerImage.raycastTarget = false;
+                if (marker != null)
+                {
+                    var markerText = ElarionUiKit.Label(marker.transform, r.PositionText, 0.06f, 0.94f,
+                        r.Queued ? ElarionUi.ParchmentDim : ElarionUi.Gold,
+                        28, TextAlignmentOptions.Center, 0.04f, 0.96f, bold: true);
+                    markerText.raycastTarget = false;
+                    ElarionUiKit.FitSingleLine(markerText, 22f, 28f);
+                }
+                x0 += markerWidth + 0.010f;
             }
 
             // ⭐ WO-1488 SECTION 2 — THE ROW THUMBNAIL, the last open item on that ticket.
@@ -6734,6 +6803,7 @@ namespace DeNelle.Village.UI
                     new Vector2(PrimaryX0, ctrlY0), new Vector2(PrimaryX1, ctrlY1),
                     () => _vm?.ToggleStack(key));
                 ElarionUiKit.ClampMinTouch(expand);
+                StyleQueueAction(expand, new Color(0.11f, 0.10f, 0.085f, 1f), ElarionUi.Parchment, false);
                 return;
             }
 
@@ -6768,6 +6838,10 @@ namespace DeNelle.Village.UI
                     new Vector2(PrimaryX0, ctrlY0), new Vector2(PrimaryX1, ctrlY1),
                     () => { _vm?.FinishNow(channel, jobId); FlushNotice(); });
                 ElarionUiKit.ClampMinTouch(fin);
+                StyleQueueAction(fin,
+                    r.CanAffordFinish ? new Color(0.25f, 0.18f, 0.045f, 1f)
+                                      : new Color(0.105f, 0.095f, 0.08f, 1f),
+                    r.CanAffordFinish ? ElarionUi.Gold : ElarionUi.ParchmentDim, true);
             }
 
             // ── THE SECONDARY CLUSTER (WO-1058) ──────────────────────────────────────────
@@ -6813,6 +6887,7 @@ namespace DeNelle.Village.UI
                     slotMin, slotMax,
                     () => { _vm?.WatchAd(channel, jobId); FlushNotice(); });
                 ElarionUiKit.ClampMinTouch(ad);
+                StyleQueueAction(ad, new Color(0.075f, 0.18f, 0.11f, 1f), ElarionUi.Parchment, false);
             }
 
             if (r.CanCancel)
@@ -6830,6 +6905,7 @@ namespace DeNelle.Village.UI
                     slotMin, slotMax,
                     () => { _vm?.Cancel(channel, jobId); FlushNotice(); });
                 ElarionUiKit.ClampMinTouch(cancel);
+                StyleQueueAction(cancel, new Color(0.20f, 0.065f, 0.055f, 1f), ElarionUi.Parchment, false);
 
                 // Third line of the TEXT column (never under the buttons — see the two-column note).
                 //
@@ -6866,7 +6942,36 @@ namespace DeNelle.Village.UI
                     slotMin, slotMax,
                     () => { _vm?.BumpUp(channel, jobId, idx); FlushNotice(); });
                 ElarionUiKit.ClampMinTouch(up);
+                StyleQueueAction(up, new Color(0.11f, 0.10f, 0.085f, 1f), ElarionUi.Parchment, false);
             }
+        }
+
+        /// <summary>
+        /// Queue verbs share the row's full-height touch floor, but they no longer need the visual
+        /// weight of four ornate plates. A flat surface keeps every hit box unchanged and keeps the
+        /// two-line finish price visibly inside the same card as its verb.
+        /// </summary>
+        private static void StyleQueueAction(Button button, Color fill, Color ink, bool primary)
+        {
+            if (button == null) return;
+            var image = button.GetComponent<Image>();
+            if (image != null)
+            {
+                image.sprite = null;
+                image.type = Image.Type.Simple;
+                image.color = fill;
+            }
+            var labels = button.GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < labels.Length; i++)
+            {
+                labels[i].color = ink;
+                if (!primary)
+                {
+                    labels[i].fontSize = 34f;
+                    ElarionUiKit.FitSingleLine(labels[i], 28f, 34f);
+                }
+            }
+            if (primary) ElarionUiKit.GoldPerimeter((RectTransform)button.transform);
         }
 
         // =====================================================================
@@ -7042,9 +7147,8 @@ namespace DeNelle.Village.UI
                 double rem = svc.RemainingSeconds(cell.Channel, cell.JobId);
                 // Ordinal("3rd"), matching the VM's build-time string. The tick used to write a raw
                 // int here, so every row silently lost its ordinal one second after being built.
-                cell.Text.text = cell.Queued
-                    ? "Queued - " + ManageScreenVM.Ordinal(cell.PendingIndex + 1) + " in line (" + ManageScreenVM.FormatTime(rem) + " of work)"
-                    : "Building - " + ManageScreenVM.FormatTime(rem) + " left" + ManageScreenVM.PercentSuffix(svc, cell.Channel, cell.JobId);
+                cell.Text.text = ManageScreenVM.QueueTimingText(
+                    svc, cell.Channel, cell.JobId, cell.Queued, rem);
             }
 
             // WO-1382: the TRAINING NOW band's short countdown ("32s left"), same tick, strings only.

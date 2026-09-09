@@ -240,6 +240,17 @@ namespace DeNelle.Editor.Regression
             if (toggle != null && !toggle.Contains("SyncQueueToggleFace()"))
                 failures.Add("[queue-toggle-closes] ToggleQueueDrawer does not re-sync the QUEUE face");
 
+            // WO-2019: ARMY proved the legacy short-band branch clips a three-channel drawer.
+            if (!panel.Contains("bool band = false;"))
+                failures.Add("[queue-one-shape] Queue can re-enter the legacy short-band mode. It must use " +
+                             "the same full overlay on BUILD, ARMY, and RESEARCH");
+            if (!panel.Contains("_manageExit.gameObject.SetActive(!chromeHidden)"))
+                failures.Add("[queue-one-close] the global Manage X remains visible beside the Queue modal's " +
+                             "own X, creating two adjacent close controls with different destinations");
+            if (!panel.Contains("if (_queueDrawerOpen) drawer.SetAsLastSibling();"))
+                failures.Add("[queue-modal-order] the Queue modal is not reasserted as the last-painted " +
+                             "workspace child; a later BUILD rebuild can mask its header and actions");
+
             // ── 9 [drawer-clear-of-card] — WO-1393 (2026-09-05) ──────────────────────────
             // The drawer used to be a full-body overlay on every tab; on Troops it sat OVER the
             // selected-troop card and the UPGRADE tap hit the drawer. Now, on the Troops tab, the

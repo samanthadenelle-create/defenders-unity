@@ -198,12 +198,12 @@ namespace DeNelle.Core.Manage
         // Was x 0.14-0.86 / y 0.28-0.99, which threw away 28% of the width on every tile.
         private const float TilePortY0 = 0.26f, TilePortY1 = 0.985f;
         private const float TilePortX0 = 0.04f, TilePortX1 = 0.96f;
-        private const float TileMedX0 = 0.63f, TileMedX1 = 0.98f;     // status medallion, top-right
-        private const float TileMedY0 = 0.60f, TileMedY1 = 0.95f;
+        private const float TileMedX0 = 0.80f, TileMedX1 = 0.96f;     // compact medallion, inset top-right
+        private const float TileMedY0 = 0.68f, TileMedY1 = 0.93f;
         // WO-1563: the state WORD, top-LEFT, on the medallion's own band. It ends at TileMedX0 so
         // the word and the glyph can never overprint. 0.35 of the cell = 42px at the
         // MinTileHeightPx(120) floor, clear of MinTextBandPx(28) - it takes no existing text band.
-        private const float TileStateX0 = 0.02f, TileStateX1 = 0.61f;
+        private const float TileStateX0 = 0.03f, TileStateX1 = 0.77f;
         // ⛔ NO TileSelBarX1. The selected tile's cue is a GOLD BORDER around the whole tile
         // (CAPTURE_LOOP_GOAL 3.0b, and the mockup draws it that way on screens 2/4/6), not the
         // left-edge bar this constant used to seat. The constant went with the bar rather than
@@ -1235,9 +1235,20 @@ namespace DeNelle.Core.Manage
             // by MEASURED alpha, never by state name.
             bool hollowFrame = tile.VisualState == ManageTileVisualState.Locked ||
                                tile.VisualState == ManageTileVisualState.Max;
+            float frameX0 = TilePortX0;
+            float frameX1 = TilePortX1;
+            if (tile.ContainPortrait)
+            {
+                // Army cells are wide while their authored frames are square. Resolve one square
+                // seat and give BOTH the frame and portrait that same clipped rect.
+                float seatWidth = Mathf.Min(TilePortX1 - TilePortX0,
+                    ((TilePortY1 - TilePortY0) * cellH) / Mathf.Max(1f, cellW));
+                frameX0 = 0.5f - seatWidth * 0.5f;
+                frameX1 = 0.5f + seatWidth * 0.5f;
+            }
             if (!hollowFrame)
-                PaintSprite(cell, "TileFrame", new Vector2(TilePortX0, TilePortY0),
-                    new Vector2(TilePortX1, TilePortY1), tile.FrameKey);
+                PaintSprite(cell, "TileFrame", new Vector2(frameX0, TilePortY0),
+                    new Vector2(frameX1, TilePortY1), tile.FrameKey);
 
             // LAYER 3 - selection GLOW, also under the portrait (frame-selected's centre is opaque
             // at alpha 253, so on top it blanked the portrait of whichever tile was selected).
@@ -1270,7 +1281,11 @@ namespace DeNelle.Core.Manage
             // bottom quarter for a name strip that already carries its OWN dark plate and is
             // painted LATER (see the name strip below and LAYER 7's state plate) - so it can sit
             // ON the art, which is what mockup panel 2 draws.
-            var portZone = Zone(cell, "TilePortrait", Vector2.zero, Vector2.one);
+            Vector2 portraitMin = tile.ContainPortrait
+                ? new Vector2(frameX0, TilePortY0) : Vector2.zero;
+            Vector2 portraitMax = tile.ContainPortrait
+                ? new Vector2(frameX1, TilePortY1) : Vector2.one;
+            var portZone = Zone(cell, "TilePortrait", portraitMin, portraitMax);
             // Locked tiles are DIMMED - panel 4 draws them darker than the unlocked ones. It is a
             // luminance multiply, never a hue change (the owner is red/green colourblind), and it
             // is never the only cue: the tile still carries the word LOCKED and the padlock.
@@ -1281,15 +1296,17 @@ namespace DeNelle.Core.Manage
             // 246px cell and bottom-anchoring would cut the troops' HEADS, so it falls back to the
             // envelope crop that already reads correctly there. See SquarePortrait.
             SquarePortrait(portZone, tile.PortraitKey,
-                tile.VisualState == ManageTileVisualState.Locked, cellW, cellH);
+                tile.VisualState == ManageTileVisualState.Locked,
+                (portraitMax.x - portraitMin.x) * cellW,
+                (portraitMax.y - portraitMin.y) * cellH);
 
             // LAYER 4a - the HOLLOW state frames, over the art. frame-locked and frame-max are the
             // only two of the four with an alpha-0 centre (measured, see this method's summary), so
             // they are the only two that can ride on top without blanking the portrait. They are
             // the two whose state most needs a silhouette, which is convenient rather than lucky.
             if (hollowFrame)
-                PaintSprite(cell, "TileFrame", new Vector2(TilePortX0, TilePortY0),
-                    new Vector2(TilePortX1, TilePortY1), tile.FrameKey);
+                PaintSprite(cell, "TileFrame", new Vector2(frameX0, TilePortY0),
+                    new Vector2(frameX1, TilePortY1), tile.FrameKey);
 
             // LAYER 5 - SELECTION IS A GOLD BORDER AROUND THE WHOLE TILE.
             // CAPTURE_LOOP_GOAL 3.0b: "Selected tile carries a gold border", and the mockup draws it
@@ -1349,15 +1366,25 @@ namespace DeNelle.Core.Manage
             string tileState = string.IsNullOrEmpty(tile.StateWord) ? tile.StateText : tile.StateWord;
             if (!string.IsNullOrEmpty(tileState))
             {
+                // A contained Army portrait owns the square in the middle of its wide card. Keep
+                // the word pill entirely to its left so MAX / QUEUE FULL / LOCKED never print over
+                // the framed face. BUILD/category cards keep the wider authored pill.
+                float stateX1 = tile.ContainPortrait
+                    ? Mathf.Max(TileStateX0 + 0.28f, frameX0 - 0.015f)
+                    : TileStateX1;
                 var statePlate = ElarionUiKit.AddImage(cell, "TileStatePlate",
-                    new Vector2(TileStateX0, TileMedY0), new Vector2(TileStateX1, TileMedY1),
+                    new Vector2(TileStateX0, TileMedY0), new Vector2(stateX1, TileMedY1),
                     new Color(0.03f, 0.03f, 0.03f, 0.86f));
                 var statePlateImage = statePlate != null ? statePlate.GetComponent<Image>() : null;
-                if (statePlateImage != null) statePlateImage.raycastTarget = false;
+                if (statePlateImage != null)
+                {
+                    statePlateImage.raycastTarget = false;
+                    ElarionUiKit.ApplyRounded(statePlateImage);
+                }
 
                 var stateWord = ElarionUiKit.Label(cell, tileState, TileMedY0, TileMedY1,
                     ElarionUi.Parchment, ElarionUi.FontMicro, TextAlignmentOptions.Center,
-                    TileStateX0 + 0.01f, TileStateX1 - 0.01f, bold: true);
+                    TileStateX0 + 0.01f, stateX1 - 0.01f, bold: true);
                 // ⛔ THE CEILING IS THE GRID'S, NOT THIS TILE'S. stateFontPx was resolved once from
                 // the LONGEST word on this grid (ResolveStateWordFont), so "MAX" and "QUEUE FULL"
                 // paint at the same size and neither ellipsises. Fitting each label independently
@@ -1374,8 +1401,8 @@ namespace DeNelle.Core.Manage
             // THE NAME STRIP - one band, and the only text on the tile. A dark plate behind it so
             // the name reads against whatever the art happens to be, exactly as the mockup draws.
             var namePlate = ElarionUiKit.AddImage(cell, "TileNamePlate",
-                new Vector2(0f, TileTitleY0 - 0.02f), new Vector2(1f, TileTitleY1 + 0.02f),
-                new Color(0.03f, 0.03f, 0.03f, 0.86f));
+                new Vector2(0f, 0f), new Vector2(1f, TileTitleY1 + 0.035f),
+                new Color(0.03f, 0.03f, 0.03f, 0.94f));
             var namePlateImage = namePlate != null ? namePlate.GetComponent<Image>() : null;
             if (namePlateImage != null) namePlateImage.raycastTarget = false;
 
@@ -1529,7 +1556,7 @@ namespace DeNelle.Core.Manage
             // corners are the first thing cut. Cropping is strictly safer here, not riskier.
             // ⛔ AND IT IS WHAT THE MOCKUP DRAWS. Panels 3, 5 and 6 all put a big rectangular block
             // of art down the card's left side, floor to ceiling - not a disc floating in a square.
-            float artFrac = Mathf.Min(0.34f, Mathf.Max(0.24f, (cardH * 0.78f) / Mathf.Max(1f, cardW)));
+            float artFrac = Mathf.Min(0.40f, Mathf.Max(0.28f, (cardH * 0.90f) / Mathf.Max(1f, cardW)));
             var portrait = Zone(band, "SelPortrait",
                 new Vector2(0.015f, 0.02f), new Vector2(0.015f + artFrac, 0.98f));
             // ⛔ NEVER DIMMED HERE, EVEN WHEN LOCKED. Mockup panel 6 (OUTRIDER, locked) draws the
@@ -1558,7 +1585,7 @@ namespace DeNelle.Core.Manage
             if (ctaPx > cardH * 0.42f) ctaPx = cardH * 0.42f;
 
             float cursorY = 0.96f;                               // fraction, top-down
-            float gapF = 12f / cardH;
+            float gapF = 16f / cardH;
 
             // ⛔ THE DOT JOINER IS GONE FROM THIS CARD, AND THAT IS ONE FIX FOR FOUR FRAMES.
             // `Join(a, b)` welds two facts with "  .  ". On the owner's device that produced, in
@@ -1716,9 +1743,13 @@ namespace DeNelle.Core.Manage
                 cursorY -= h + gapF;
             }
 
-            // ONE GOLD CTA, directly under the content rather than at the floor of the card.
+            // ONE GOLD CTA. Prefer the lower anchor to use the full detail card; if the composed
+            // facts extend into that seat, place it directly below those facts instead.
             float ctaH = ctaPx / cardH;
-            float ctaY0 = Mathf.Max(0.02f, cursorY - ctaH);
+            const float DetailActionBottom = 0.05f;
+            float ctaY0 = cursorY >= DetailActionBottom + ctaH
+                ? DetailActionBottom
+                : Mathf.Max(0.02f, cursorY - ctaH);
             var actionBand = Zone(band, "SelActions",
                 new Vector2(rightX0, ctaY0), new Vector2(RightX1, ctaY0 + ctaH));
             BuildActionRow(actionBand, faces);

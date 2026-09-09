@@ -141,12 +141,13 @@ namespace DeNelle.Editor.Regression
                 CaseOneRushPath(vm, failures);
                 CasePriceFromService(vm, failures);
                 CaseRowsNotInline(panel, failures);
+                CaseVisualTimeline(vm, panel, failures);
             }
 
             reason = failures.Count == 0
                 ? "MANAGE_QUEUE_PANEL8_OK the queue overlay carries three channel tabs counted from the " +
                   "live slot state, numbered rows, and a SPEED UP verb that is the EXISTING " +
-                  "TryInstantFinish path priced by InstantFinishPrice - no second crystal sink"
+                  "TryInstantFinish path priced by InstantFinishPrice, presented as a compact work timeline"
                 : "MANAGE_QUEUE_PANEL8_FAIL: " + string.Join("; ", failures);
             return failures.Count == 0;
         }
@@ -225,17 +226,23 @@ namespace DeNelle.Editor.Regression
         // ── 3 [rows-numbered] ────────────────────────────────────────────────────
         private static void CaseRowsNumbered(string vm, string panel, List<string> failures)
         {
-            if (!vm.Contains("OrdinalText"))
+            if (!vm.Contains("OrdinalText") || !vm.Contains("PositionText"))
                 failures.Add("[rows-numbered] QueueRowVM carries no row number. Panel 8 numbers every row " +
                              "1. 2. 3. 4. 5. - that is the queue's reading order and it is the MODEL's to " +
                              "state. The View counting its own children would be a second ordering that " +
                              "disagrees with the engine the moment a stack is expanded (Q12 children are " +
                              "rows too)");
-            else if (!panel.Contains("r.OrdinalText"))
-                failures.Add("[rows-numbered] the model publishes OrdinalText and the drawer never reads it - " +
+            else if (!panel.Contains("r.PositionText") || !panel.Contains("QueueTimelineMarker"))
+                failures.Add("[rows-numbered] the model publishes its queue position but the drawer does not " +
+                             "paint it as a timeline marker - " +
                              "composed-but-unpainted state, which is the exact defect ManageViewContract.cs " +
                              "records twice today (HeaderSubtitle, CountText/CapacityText). Paint it or " +
                              "delete it; do not leave it");
+
+            if (!vm.Contains("r.PositionText = r.Queued ? r.OrdinalText : \"NOW\""))
+                failures.Add("[rows-numbered] the timeline marker is not assigned from model-owned queue " +
+                             "order. Active work must read NOW and pending work must keep the authoritative " +
+                             "number; the View may not recount rendered children");
         }
 
         // ── 4 [speedup-verb] ─────────────────────────────────────────────────────
@@ -352,6 +359,28 @@ namespace DeNelle.Editor.Regression
         /// <summary>Source between <paramref name="from"/> and the next <paramref name="until"/>,
         /// or null when either marker is absent. Deliberately null-on-miss: a scoped assertion
         /// that cannot find its scope must FAIL, not pass silently on an empty string.</summary>
+        // WO-2019: same commands and touch targets, clearer work-timeline hierarchy.
+        private static void CaseVisualTimeline(string vm, string panel, List<string> failures)
+        {
+            if (!vm.Contains("QueueTimingText(") ||
+                !vm.Contains("return time + \" LEFT | \" + percent + \"% DONE\""))
+                failures.Add("[visual-timeline] queue timing copy is no longer compact/model-owned; " +
+                             "the old sentence-length state will ellipsise beside the actions");
+            if (!panel.Contains("\"WORK TIMELINE\"") ||
+                !panel.Contains("QueueTimelineTrack") ||
+                !panel.Contains("QueueTimelineMarker"))
+                failures.Add("[visual-timeline] the overlay no longer paints its NOW/numbered work timeline");
+            if (!panel.Contains("CapacityChip") ||
+                !panel.Contains("tabImage.sprite = null"))
+                failures.Add("[visual-timeline] channel selectors have regressed from the compact segmented " +
+                             "rail to three equally loud ornate CTA plates");
+            if (!panel.Contains("StyleQueueAction(fin") ||
+                !panel.Contains("image.sprite = null") ||
+                !panel.Contains("if (primary) ElarionUiKit.GoldPerimeter"))
+                failures.Add("[visual-timeline] queue actions no longer use the flat contained treatment; " +
+                             "finish cost can again read as detached from its button");
+        }
+
         private static string Body(string src, string from, string until)
         {
             int a = src.IndexOf(from, StringComparison.Ordinal);

@@ -814,6 +814,11 @@ namespace DeNelle.Editor
                 failures.Add("[manage-exit-constant] the exit is no longer asserted ON unconditionally in " +
                              "ApplyScreenVisibility. \"Const\" is a state guarantee: the moment this is " +
                              "gated on a screen the ruling is undone for that screen.");
+            // WO-2019: the Queue modal is the sole exception because it carries its own X. Two
+            // adjacent X controls with different routes are ambiguity, not redundancy.
+            if (!Has(panel, "_manageExit.gameObject.SetActive(!chromeHidden)"))
+                failures.Add("[manage-exit-single-on-queue] the constant Manage exit does not stand down " +
+                             "under the Queue modal's own close control");
             if (Has(panel, "_manageExit.gameObject.SetActive(_hubShowing)"))
                 failures.Add("[manage-exit-constant] the exit is gated on _hubShowing - it has been " +
                              "confused with _chromeClose. The bottom CLOSE is the HUB's alone (WO-1491, " +
@@ -947,9 +952,10 @@ namespace DeNelle.Editor
                              "sat at the top of a full-height viewport with the well dead beneath it. The " +
                              "viewport must be the rows that EXIST, not the rows that FIT.");
 
-            // (c) The tile art shows the WHOLE building. RED RECIPE: put the portrait zone back to
-            // `new Vector2(0f, TilePortY0), new Vector2(1f, 1f)`, or drop the width-fit arm.
-            if (!Has(workspace, "var portZone = Zone(cell, \"TilePortrait\", Vector2.zero, Vector2.one);"))
+            // (c) The tile art shows the WHOLE building. BUILD uses the full cell; Army may use
+            // the explicit contained square seat selected by its tile VM.
+            if (!Has(workspace, "? new Vector2(frameX0, TilePortY0) : Vector2.zero;") ||
+                !Has(workspace, "? new Vector2(frameX1, TilePortY1) : Vector2.one;"))
                 failures.Add("[tile-art-whole-building] the tile's portrait zone is inset from the cell " +
                              "again. On a square 359px BUILD cell a 0.26..1 zone is 359x266, and a square " +
                              "sprite envelope-fitted into it is cropped by 93px split top and bottom - " +
@@ -965,7 +971,8 @@ namespace DeNelle.Editor
                              "safety net: ARMY's cell is 2.3:1, where a width fit would be 566px tall in a " +
                              "246px mask and would cut the troops' heads.");
             if (!Has(workspace, "SquarePortrait(portZone, tile.PortraitKey,") ||
-                !Has(workspace, "tile.VisualState == ManageTileVisualState.Locked, cellW, cellH);"))
+                !Has(workspace, "(portraitMax.x - portraitMin.x) * cellW,") ||
+                !Has(workspace, "(portraitMax.y - portraitMin.y) * cellH);"))
                 failures.Add("[tile-art-whole-building] the tile no longer hands SquarePortrait its cell's " +
                              "px, so the fit mode is back to a guess about the cell's shape. The rect itself " +
                              "is 0 on the frame the tile is built - it cannot be read back.");

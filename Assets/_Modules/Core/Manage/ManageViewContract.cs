@@ -198,6 +198,13 @@ namespace DeNelle.Core.Manage
         /// <summary>Resources key for the item art.</summary>
         public string PortraitKey;
 
+        /// <summary>
+        /// Keep the portrait inside the model-supplied frame seat. Army art uses this because its
+        /// grid cards are wide while the authored troop frames are square. The View binds this
+        /// explicit presentation fact; it never infers it from an id, title, or active tab.
+        /// </summary>
+        public bool ContainPortrait;
+
         public bool IsSelected;
 
         public ManageTileVisualState VisualState = ManageTileVisualState.Available;
