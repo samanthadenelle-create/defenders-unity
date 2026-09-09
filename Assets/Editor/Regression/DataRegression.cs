@@ -1574,6 +1574,7 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "monetization-activation suite", () => { if (!DeNelle.Editor.Regression.MonetizationActivationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[monetization-activation] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "mainnet-canary suite", () => { if (!DeNelle.Editor.Regression.MainnetCanaryRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[mainnet-canary] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "store-commerce-state suite", () => { if (!DeNelle.Editor.Regression.StoreCommerceStateRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[store-commerce-state] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "store-presentation-localization suite", () => { if (!DeNelle.Editor.Regression.StorePresentationLocalizationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[store-presentation-localization] " + r); });
             // --- WO-1323: the owner opened the Night Market signed in as Pi, in real Pi Browser, and
             //     was quoted "1022 SKR / 2555 SKR / BUY - 255 SKR" plus a Solana wallet chip. SKR is
             //     Solana Mobile's token - never minted, never held, and unspendable by a Pi player.

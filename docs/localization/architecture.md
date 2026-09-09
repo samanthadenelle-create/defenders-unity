@@ -1,6 +1,6 @@
 # Localization architecture and supported languages
 
-**Canon status:** Active architecture for WO-1605 through commit `e51c51358` (2026-09-09). This document describes the
+**Canon status:** Active architecture for WO-1605 (2026-09-09). This document describes the
 implemented authority and regional contract. It does not claim that every player-facing surface has
 already migrated.
 
@@ -112,13 +112,14 @@ dedicated canon note are removed from both canon twins. Store has 39 translated 
 and safe presentation cohorts. The seven existing BUY GATE keys are live through `StoreBuyText` /
 `LocalText` and `PurchaseGate`; `storeBuyWalletRequired` carries the named `{Threshold}` argument
 exactly twice in every required locale. The six-key Pi cohort is live through `StorePiText` and `LocalText`.
-The other 26 Store keys remain data staging behind legacy
+The seven safe presentation keys are live through `StorePresentationText` and `LocalText`. The other 19
+Store keys (eight wallet-mirror and 11 commerce-state rows) remain data staging behind legacy
 `StoreStrings`/canon readers, so Store is not fully migrated. Other Store cohorts and many direct
 visible HUD/runtime literals remain migration work. The literal
 inventory is deliberately report-only until its baseline is human-classified; do not describe WO-1605
 as complete or arm the debt ratchet early.
 
-The safe presentation cohort is exactly `storeBandGap`, `storeBandGapSub`, `storeBandBasket`,
+The live safe presentation cohort is exactly `storeBandGap`, `storeBandGapSub`, `storeBandBasket`,
 `storeSpotlightEmpty`, `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`. The remaining
 presentation copy is held where it asserts time-limited offers or patronage, performs value/balance
 comparisons, or uses ambiguous locked-state wording; it needs product and formatting review before staging.
@@ -134,6 +135,8 @@ The BUY GATE runtime checkpoint preserved the 2,496-entry import and passed `BUY
 `GooglePlayPackagingRegression` source gate.
 The subsequent Pi runtime cutover passes `STORE_PI_SKIN_OK` and
 `LOCALIZATION_REGRESSION_OK 8/8 suites`, while separately pinning the untouched legacy SKR copy.
+The safe-presentation cutover passes `LOCALIZATION_REGRESSION_OK 9/9 suites`; its dedicated oracle is also
+registered in the full data gate, where the concurrent tree reports `REGRESSION_OK 467/467 suites`.
 
 ### Google Play localization variant
 

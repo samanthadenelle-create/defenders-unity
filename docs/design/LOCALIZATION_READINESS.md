@@ -1,6 +1,6 @@
 # Localization / i18n Readiness Audit
 
-> **Implementation update - 2026-09-09 (WO-1605, through `e51c51358`):** The runtime gap described by
+> **Implementation update - 2026-09-09 (WO-1605):** The runtime gap described by
 > this June audit is now being closed. `LocalText` is the single Core facade;
 > `DeNelle.Localization.UnityLocalizationProvider` is its sole package-backed adapter;
 > selected and English `GameStrings` tables preload asynchronously; explicit locale
@@ -22,14 +22,16 @@
 > 16 `imageTextCandidate`) remains report-only pending human classification. Store has 39 translated
 > keys: the seven existing BUY GATE keys are live through `StoreBuyText` / `LocalText` and
 > `PurchaseGate`, with named `{Threshold}` used exactly twice in all ten locales; the six Pi-skin keys
-> are live through `StorePiText` / `LocalText`, and 26 other Store keys
-> remain staged on legacy `StoreStrings`/canon readers, so Store is not fully migrated. Importer 2,496,
+> are live through `StorePiText` / `LocalText`; seven safe presentation keys are live through
+> `StorePresentationText` / `LocalText`; and 19 other Store keys remain staged on legacy
+> `StoreStrings`/canon readers, so Store is not fully migrated. Importer 2,496,
 > `BUY_GATE_OK`, `STORE_PI_SKIN_OK`, `LOCALIZATION_REGRESSION_OK 7/7 suites`, and the green
 > `GooglePlayPackagingRegression` source gate passed.
 > Google Play localization now sanitizes all ten locale pairs plus the shared and six enabled tables before
 > Addressables: 57 exact unavailable-feature rows are stripped and five visible rows receive locale-specific
 > Play-neutral replacements. The combined transaction restores all 27 localization assets byte-for-byte;
-> focused localization is 8/8 and the packaging source gate is green. A physical final-AAB scanner proof,
+> focused localization is 9/9 and the packaging source gate is green. The concurrent full-tree gate is
+> 467/467, including the Store presentation oracle. A physical final-AAB scanner proof,
 > not another source rewrite, remains open. Current canon lives in
 > `docs/localization/architecture.md`.
 

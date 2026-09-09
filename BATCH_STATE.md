@@ -891,20 +891,20 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
    EXISTING return-door arbiter that WO-1400 shipped for the deck return; lane D consumes it on CLOSE. No second
    return mechanism. Lane C hands the exact door line to lane D as text if the files are split across people.
 
-### 9. WO-1605 localization goal - checkpoint through `e51c51358` (2026-09-09)
+### 9. WO-1605 localization goal - checkpoint (2026-09-09)
 
-- The foundation began at `20467d539` on `dev`; this checkpoint is through `e51c51358`. The shared tree already contained the owner's uncommitted
+- The foundation began at `20467d539` on `dev`. The shared tree already contained the owner's uncommitted
   Feedback/Jeweler/Manage/build work, which was preserved. No stash/reset/cleanup was used.
 - One authority now exists: Core `LocalText` -> `ILocalTextProvider` -> the asynchronous
   `DeNelle.Localization.UnityLocalizationProvider` -> Unity `GameStrings`.
 - Feature ownership stays separate through domain keys and thin `LocalizedText` /
   `LocalizedText<TArguments>` catalogs; English is not duplicated at call sites.
 - Phase A-B began with authority + Settings + HUD/Raid shims. Village/Canon compatibility readers now
-  forward to the facade. Store has 39 translated keys: its seven-key BUY GATE is live through
-  `StoreBuyText`/`LocalText` and `PurchaseGate`, while 32 Pi/wallet/commerce/presentation keys remain
-  staged behind legacy `StoreStrings`/canon readers. Store is not fully migrated.
+  forward to the facade. Store has 39 translated keys: its seven-key BUY GATE, six-key Pi skin, and
+  seven-key safe presentation cohort are live through typed wrappers and `LocalText`; the eight wallet
+  and 11 commerce keys remain staged behind legacy `StoreStrings`/canon readers. Store is not fully migrated.
 - `storeBuyWalletRequired` uses named `{Threshold}` exactly twice in all ten required locales.
-- The safe Store presentation cohort is exactly `storeBandGap`, `storeBandGapSub`, `storeBandBasket`,
+- The live safe Store presentation cohort is exactly `storeBandGap`, `storeBandGapSub`, `storeBandBasket`,
   `storeSpotlightEmpty`, `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`. Offer/patronage
   assertions, value and balance comparisons, ambiguous locked-state wording, and the four trust-strip
   claims remain held pending product/channel/formatting review; the covenant remains English raster art.
@@ -913,7 +913,8 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
   combat-refusal resolution for both prompt and toast; the old canon-twin chest keys/note are removed.
 - `LocalizationBuilder.BuildAll` now reconciles 416 English keys into 2,496 enabled-table entries.
 - Registered localization gates now cover authority, player-literal leakage, exact locale/table parity,
-  Smart arguments, Settings in-place refresh/selector wiring, glyph coverage, and combat Flee state.
+  Smart arguments, Settings in-place refresh/selector wiring, glyph coverage, combat Flee state,
+  Google Play variant policy, and Store presentation runtime authority.
   Post-Store-cohort focused evidence: `Builds/localization-regression-store-buy-data.log`,
   `LOCALIZATION_REGRESSION_OK 7/7 suites`.
   Full evidence: `Builds/data-regression-localization-final2.log`,
@@ -925,6 +926,8 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
   `LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.
 - BUY GATE evidence is importer 2,496, `BUY_GATE_OK`, `STORE_PI_SKIN_OK`,
   `LOCALIZATION_REGRESSION_OK 7/7 suites`, and a green `GooglePlayPackagingRegression` source gate.
+- Safe-presentation evidence is `LOCALIZATION_REGRESSION_OK 9/9 suites`; the concurrent full-tree run
+  includes `[store-presentation-localization]` and reports `REGRESSION_OK 467/467 suites`.
 - Manifest generation/check is deterministic: 6,034 report rows = 416 `keyedEntry` + 85 `keyedCall`
   + 5,517 `literalCandidate` + 16 `imageTextCandidate`. Literal debt remains report-only/unarmed and
   deliberately unreviewed; domain classification remains required before the new-debt ratchet can be armed.

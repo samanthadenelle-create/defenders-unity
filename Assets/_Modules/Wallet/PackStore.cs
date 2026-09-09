@@ -1726,9 +1726,9 @@ namespace DeNelle.Wallet
             switch (band)
             {
                 case StoreBand.Free:      return StoreStrings.Get(StoreStrings.KeyBandFree);
-                case StoreBand.Gap:       return StoreStrings.Get(StoreStrings.KeyBandGap);
+                case StoreBand.Gap:       return StorePresentationText.BandGap.Resolve();
                 case StoreBand.Patronage: return StoreStrings.Get(StoreStrings.KeyBandPatronage);
-                default:                  return StoreStrings.Get(StoreStrings.KeyBandBasket);
+                default:                  return StorePresentationText.BandBasket.Resolve();
             }
         }
 
@@ -1737,7 +1737,7 @@ namespace DeNelle.Wallet
             switch (band)
             {
                 case StoreBand.Free:      return StoreStrings.Get(StoreStrings.KeyBandFreeSub);
-                case StoreBand.Gap:       return StoreStrings.Get(StoreStrings.KeyBandGapSub);
+                case StoreBand.Gap:       return StorePresentationText.BandGapSub.Resolve();
                 case StoreBand.Patronage: return StoreStrings.Get(StoreStrings.KeyBandPatronageSub);
                 default:                  return StoreStrings.Get(StoreStrings.KeyBandBasketSub);
             }
@@ -2116,7 +2116,7 @@ namespace DeNelle.Wallet
         /// </summary>
         private string CardStateWord(PackDef pack)
         {
-            if (_vm != null && _vm.IsOwned(pack.Sku)) return StoreStrings.Get(StoreStrings.KeyCardOwned);
+            if (_vm != null && _vm.IsOwned(pack.Sku)) return StorePresentationText.CardOwned.Resolve();
             if (pack.AnchorOnly) return StoreStrings.Get(StoreStrings.KeyCardAnchor);
             // ⛔ SALES-NOT-OPEN IS A STATE, NOT A FAULT, so it takes the state pill exactly like
             // "Owned" and "Your gap" do. It ranks BELOW Owned (a pack you already have is not a pack
@@ -2126,7 +2126,7 @@ namespace DeNelle.Wallet
             if (!string.IsNullOrEmpty(CardNotSellableReason(pack))) return CardNotSellableStateWord;
             if (!string.IsNullOrEmpty(_pendingShortfallLabel) && pack.Impulse &&
                 string.Equals(pack.ImpulseResource, _pendingShortfallLabel, StringComparison.OrdinalIgnoreCase))
-                return StoreStrings.Get(StoreStrings.KeyCardGap);
+                return StorePresentationText.CardGap.Resolve();
             return string.Empty;
         }
 
@@ -2333,7 +2333,7 @@ namespace DeNelle.Wallet
 
             if (pack == null)
             {
-                MakeText(_spotlightHost, StoreStrings.Get(StoreStrings.KeySpotlightEmpty), 30,
+                MakeText(_spotlightHost, StorePresentationText.SpotlightEmpty.Resolve(), 30,
                     ElarionUi.ParchmentDim, FontStyles.Italic, TextAlignmentOptions.Center,
                     new Vector2(0.06f, 0.44f), new Vector2(0.94f, 0.60f));
                 // The commerce column is cleared too: a CTA left standing beside an empty spotlight
@@ -2365,7 +2365,7 @@ namespace DeNelle.Wallet
                 TextAlignmentOptions.TopLeft, new Vector2(0.06f, 0.455f), new Vector2(0.94f, 0.605f)), 32);
 
             // ── The bar ledger ───────────────────────────────────────────────
-            MakeText(_spotlightHost, StoreStrings.Get(StoreStrings.KeyLedgerHeading), 30,
+            MakeText(_spotlightHost, StorePresentationText.LedgerHeading.Resolve(), 30,
                 ElarionUi.ParchmentDim, FontStyles.Bold, TextAlignmentOptions.BottomLeft,
                 new Vector2(0.06f, 0.405f), new Vector2(0.94f, 0.445f));
             // 0.058 of a 746-unit column is ~43 px, which holds a 30-unit row without the next row
@@ -2614,7 +2614,7 @@ namespace DeNelle.Wallet
 
             if (_vm.IsOwned(pack.Sku))
             {
-                MakeText(host, StoreStrings.Get(StoreStrings.KeyCardOwned), 38,
+                MakeText(host, StorePresentationText.CardOwned.Resolve(), 38,
                     new Color(0.55f, 0.90f, 0.55f, 1f), FontStyles.Bold,
                     TextAlignmentOptions.Center, ctaMin, ctaMax);
                 return;

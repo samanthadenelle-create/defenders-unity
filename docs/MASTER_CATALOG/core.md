@@ -844,7 +844,7 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   `zh-Hans` remain required for key/argument parity but hidden pending RTL/CJK font and
   layout readiness. See `docs/localization/architecture.md` for the generation, fallback,
   all-region change rule, and verification contract.
-  Through `e51c51358`, every canonical locale source and mirror contains 416 keys, and the six
+  Every canonical locale source and mirror contains 416 keys, and the six
   build-enabled tables contain 2,496 entries. Dungeon chest interaction copy now resolves the live
   `interaction.chest.open` and `interaction.chest.blockedByEnemies` keys through the thin
   `ChestInteractionText` wrapper. `BreakableContainer` uses the localized open prompt and the same
@@ -852,10 +852,10 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   `chestCombatRefusal`, and their dedicated note are absent from both canon twins. Store has 39 translated
   keys in all ten catalogs and all six enabled tables. Its seven existing BUY GATE keys are now live through
   `StoreBuyText` / `LocalText` and `PurchaseGate`, with named `{Threshold}` appearing exactly twice in
-  every required locale. The six Pi-skin keys are live through `StorePiText` / `LocalText`; the other
-  26 Store keys remain staged on legacy `StoreStrings`/canon readers,
-  so Store is not fully migrated. The safe
-  presentation set is `storeBandGap`, `storeBandGapSub`, `storeBandBasket`, `storeSpotlightEmpty`,
+  every required locale. The six Pi-skin keys are live through `StorePiText` / `LocalText`; the seven safe
+  presentation keys are live through `StorePresentationText` / `LocalText`; the other 19 Store keys remain
+  staged on legacy `StoreStrings`/canon readers, so Store is not fully migrated. The live presentation set is
+  `storeBandGap`, `storeBandGapSub`, `storeBandBasket`, `storeSpotlightEmpty`,
   `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`; offer/patronage assertions,
   value/balance comparisons, ambiguous locked-state wording, and all four trust-strip claims remain held
   pending product/channel review. The covenant also requires replacement of its baked-English plaque with

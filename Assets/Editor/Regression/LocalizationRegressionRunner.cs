@@ -21,10 +21,11 @@ namespace DeNelle.Editor.Regression
             Run("glyph-coverage", GlyphCoverageRegression.Run, failures, log, ref passed);
             Run("combat-flee", CombatHudFleeLocalizationRegression.Run, failures, log, ref passed);
             Run("play-variant-policy", GooglePlayLocalizationVariantPolicyRegression.Run, failures, log, ref passed);
+            Run("store-presentation", StorePresentationLocalizationRegression.Run, failures, log, ref passed);
 
             if (failures.Count == 0)
             {
-                log.AppendLine("LOCALIZATION_REGRESSION_OK " + passed + "/8 suites");
+                log.AppendLine("LOCALIZATION_REGRESSION_OK " + passed + "/9 suites");
                 Debug.Log(log.ToString());
                 return;
             }
