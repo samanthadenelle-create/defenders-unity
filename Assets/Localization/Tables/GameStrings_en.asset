@@ -1686,6 +1686,33 @@ MonoBehaviour:
       is required to play.
     m_Metadata:
       m_Items: []
+  - m_Id: 41007455589150720
+    m_Localized: Prices are set in Pi at checkout. Nothing is charged until you confirm
+      in Pi.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288064
+    m_Localized: Priced in Pi at checkout
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288065
+    m_Localized: Not on sale in Pi yet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288066
+    m_Localized: Pi purchases need the Pi Browser. Nothing here is required to play.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288067
+    m_Localized: Connect a wallet before buying in Pi, at any price, so this purchase
+      is yours on every device.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288068
+    m_Localized: Nothing on this shelf is on sale in Pi yet. Everything here is still
+      earned in-game.
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

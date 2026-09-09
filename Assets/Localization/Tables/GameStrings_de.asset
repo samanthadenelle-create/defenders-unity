@@ -1723,6 +1723,34 @@ MonoBehaviour:
       Nichts hier ist zum Spielen erforderlich."
     m_Metadata:
       m_Items: []
+  - m_Id: 41007455589150720
+    m_Localized: "Die Preise werden beim Bezahlen in Pi festgelegt. Es wird nichts
+      berechnet, bevor du in Pi best\xE4tigst."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288064
+    m_Localized: Preis beim Bezahlen in Pi
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288065
+    m_Localized: "Noch nicht in Pi erh\xE4ltlich"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288066
+    m_Localized: "K\xE4ufe mit Pi erfordern den Pi Browser. Nichts hier ist zum Spielen
+      erforderlich."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288067
+    m_Localized: "Verbinde vor jedem Kauf mit Pi eine Wallet, unabh\xE4ngig vom Preis,
+      damit dieser Kauf auf all deinen Ger\xE4ten dir geh\xF6rt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288068
+    m_Localized: "Auf diesem Regal ist noch nichts in Pi erh\xE4ltlich. Alles hier
+      kann weiterhin im Spiel verdient werden."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

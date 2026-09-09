@@ -1731,6 +1731,34 @@ MonoBehaviour:
       version. Rien ici n\u2019est n\xE9cessaire pour jouer."
     m_Metadata:
       m_Items: []
+  - m_Id: 41007455589150720
+    m_Localized: "Les prix sont fix\xE9s en Pi au moment du paiement. Aucun montant
+      n\u2019est d\xE9bit\xE9 avant votre confirmation dans Pi."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288064
+    m_Localized: "Prix fix\xE9 en Pi au paiement"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288065
+    m_Localized: Pas encore en vente en Pi
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288066
+    m_Localized: "Les achats en Pi n\xE9cessitent Pi Browser. Rien ici n\u2019est
+      n\xE9cessaire pour jouer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288067
+    m_Localized: "Connectez un portefeuille avant tout achat en Pi, quel qu\u2019en
+      soit le prix, afin que cet achat reste \xE0 vous sur tous vos appareils."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288068
+    m_Localized: "Aucun article de ce rayon n\u2019est encore en vente en Pi. Tout
+      ce qui se trouve ici peut toujours \xEAtre obtenu en jouant."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

@@ -1543,6 +1543,30 @@ MonoBehaviour:
     m_Key: storeShelfClosed
     m_Metadata:
       m_Items: []
+  - m_Id: 41007455589150720
+    m_Key: storePiHeaderNotice
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288064
+    m_Key: storePiPriceAtCheckout
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288065
+    m_Key: storePiNotOnSale
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288066
+    m_Key: storePiRailUnavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288067
+    m_Key: storePiWalletGate
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288068
+    m_Key: storePiShelfEmpty
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

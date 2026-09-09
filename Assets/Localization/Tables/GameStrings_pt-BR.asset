@@ -1716,6 +1716,34 @@ MonoBehaviour:
       Nada daqui \xE9 necess\xE1rio para jogar."
     m_Metadata:
       m_Items: []
+  - m_Id: 41007455589150720
+    m_Localized: "Os pre\xE7os s\xE3o definidos em Pi na finaliza\xE7\xE3o da compra.
+      Nada ser\xE1 cobrado at\xE9 voc\xEA confirmar no Pi."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288064
+    m_Localized: "Pre\xE7o definido em Pi ao finalizar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288065
+    m_Localized: "Ainda n\xE3o est\xE1 \xE0 venda em Pi"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288066
+    m_Localized: "As compras com Pi exigem o Pi Browser. Nada daqui \xE9 necess\xE1rio
+      para jogar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288067
+    m_Localized: "Conecte uma carteira antes de comprar com Pi, independentemente
+      do pre\xE7o, para que esta compra continue sendo sua em todos os seus dispositivos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288068
+    m_Localized: "Nada desta prateleira est\xE1 \xE0 venda em Pi por enquanto. Tudo
+      o que est\xE1 aqui pode ser obtido dentro do jogo."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

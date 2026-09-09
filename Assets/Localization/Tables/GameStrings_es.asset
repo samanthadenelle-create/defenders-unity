@@ -1714,6 +1714,34 @@ MonoBehaviour:
       No necesitas nada de aqu\xED para jugar."
     m_Metadata:
       m_Items: []
+  - m_Id: 41007455589150720
+    m_Localized: "Los precios se fijan en Pi al finalizar la compra. No se cobrar\xE1
+      nada hasta que confirmes en Pi."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288064
+    m_Localized: Precio fijado en Pi al pagar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288065
+    m_Localized: "A\xFAn no est\xE1 a la venta en Pi"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288066
+    m_Localized: "Las compras con Pi requieren Pi Browser. No necesitas nada de aqu\xED
+      para jugar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288067
+    m_Localized: Conecta una billetera antes de comprar con Pi, sea cual sea el precio,
+      para que esta compra siga siendo tuya en todos tus dispositivos.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41007455635288068
+    m_Localized: "Todav\xEDa no hay nada de este estante a la venta en Pi. Todo lo
+      que hay aqu\xED se puede conseguir jugando."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
