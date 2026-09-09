@@ -14,6 +14,8 @@ namespace DeNelle.Editor.Regression
             "Assets/Editor/Localization/GooglePlayLocalizationVariantPolicy.json";
         private const string EnginePath =
             "Assets/Editor/Localization/GooglePlayLocalizationVariant.cs";
+        private const string AndroidBuildPath = "Assets/Editor/AndroidBuild.cs";
+        private const string ContentExclusionPath = "Assets/Editor/GooglePlayContentExclusion.cs";
         private const string SharedTablePath =
             "Assets/Localization/Tables/GameStrings Shared Data.asset";
 
@@ -161,6 +163,7 @@ namespace DeNelle.Editor.Regression
 
             AssertTableCoverage(dispositions, enabled, failures);
             AssertEngineShape(failures);
+            AssertBuildOrder(failures);
 
             var synthetic = new JObject { ["future.visible"] = "Connect wallet to continue" };
             var syntheticFailures = new List<string>();
@@ -217,6 +220,29 @@ namespace DeNelle.Editor.Regression
             Require(source, "shared.RemoveKey(sharedEntry.Id)", "engine does not strip shared key ids", failures);
             Require(source, "table.RemoveEntry(sharedEntry.Id)", "engine does not strip locale table rows", failures);
             Require(source, "InitializeOnLoadMethod", "engine lacks interrupted-transaction repair", failures);
+        }
+
+        private static void AssertBuildOrder(ICollection<string> failures)
+        {
+            string build = File.Exists(AndroidBuildPath) ? File.ReadAllText(AndroidBuildPath) : string.Empty;
+            string content = File.Exists(ContentExclusionPath) ? File.ReadAllText(ContentExclusionPath) : string.Empty;
+            const string prepareToken = "GooglePlayLocalizationVariant.PrepareForAddressables(options.extraScriptingDefines)";
+            const string addressablesToken = "AddressablesContentBuild.EnsureBuilt";
+            const string restoreToken = "GooglePlayLocalizationVariant.Restore(\"Android build finally\")";
+            int prepareAt = build.IndexOf(prepareToken, StringComparison.Ordinal);
+            int addressablesAt = build.IndexOf(addressablesToken, StringComparison.Ordinal);
+            int restoreAt = build.IndexOf(restoreToken, StringComparison.Ordinal);
+            if (prepareAt < 0 || addressablesAt < 0 || prepareAt > addressablesAt)
+                failures.Add("AndroidBuild does not prepare the Play localization variant before Addressables");
+            if (restoreAt < addressablesAt)
+                failures.Add("AndroidBuild does not restore the Play localization variant after the build transaction");
+            Require(build, "finally", "AndroidBuild localization restoration is not protected by finally", failures);
+            Require(content, "GooglePlayLocalizationVariant.AssertPrepared()",
+                "BuildPlayer content hook does not require the prebuilt localization variant", failures);
+            Require(content, "GooglePlayLocalizationVariant.Restore(\"post-build\")",
+                "post-build content hook does not restore the localization transaction", failures);
+            Require(content, "GooglePlayLocalizationVariant.Restore(\"pre-build sweep\")",
+                "pre-build repair does not restore an interrupted localization transaction", failures);
         }
 
         private static void AssertForbiddenClosure(

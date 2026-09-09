@@ -41,9 +41,10 @@
 //       happen inside a build callback, AND it is blocked on UniTask: the package
 //       VENDORS the "UniTask" assembly that 16 first-party asmdefs (DeNelle.Core and
 //       DeNelle.Village included) reference.
-//   (2) authoring prose + rail-only UI strings inside live canonical JSON
-//       (canon-strings.json, en.json, packs.json, skin.json, skr_staking.json,
-//       stake-rewards.json). Those files must SHIP; only their contents can change.
+//   (2) authoring prose + rail-only UI strings inside live canonical JSON and
+//       Unity GameStrings. The ten locale pairs and tables are transformed by
+//       GooglePlayLocalizationVariant before Addressables; this class retains the
+//       legacy canon/packs and UXML transaction.
 //
 // SEEKER SAFETY — the failure mode that would be WORSE than the one we close.
 // A Seeker/dApp-Store build must still carry the wallet. Four guarantees, copied
@@ -69,6 +70,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DeNelle.Editor.Localization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
@@ -151,7 +153,6 @@ namespace DeNelle.Editor
         private static readonly string[][] PlayNeutralMirrorPairs =
         {
             new[] { "Assets/Resources/Data/Canonical/canon-strings.json", "Assets/StreamingAssets/Data/Canonical/canon-strings.json" },
-            new[] { "Assets/Resources/Data/Canonical/en.json", "Assets/StreamingAssets/Data/Canonical/en.json" },
             new[] { "Assets/Resources/Data/Canonical/packs.json", "Assets/StreamingAssets/Data/Canonical/packs.json" },
             // WO-1363: previously NOT handled at all, and both are compiled into the player via
             // Resources. siege-stakes.json carries an "_comment" naming SKR; ad-placements.json
@@ -165,8 +166,7 @@ namespace DeNelle.Editor
         // =====================================================================
         //  WO-1363 - THE RULE THAT REPLACES THE PER-KEY ALLOWLIST
         // ---------------------------------------------------------------------
-        //  A hardcoded 3-key rewrite ("_nightMarketNote", "storeBuyWalletRequiredCta",
-        //  "swap.poweredBy") is DUPLICATED STATE, and it drifted inside three days:
+        //  A hardcoded per-key rewrite is DUPLICATED STATE, and it drifted inside three days:
         //  canon-strings "_storePiSkinNote" was authored 2026-09-02 carrying "Solana
         //  Mobile's governance token" and shipped straight past it, as did seven
         //  "storeBalance*" values ending in " SKR" and every "packs.N._shelfNote".
@@ -188,7 +188,7 @@ namespace DeNelle.Editor
         /// <summary>
         /// Play-neutral copy for the PLAYER-FACING keys that carry a forbidden token in their
         /// authored (Seeker) value. Keyed by the leaf property name, which is unique across the
-        /// mirrored catalogs (en.json's keys are flat dotted strings, e.g. "swap.title").
+        /// remaining legacy mirrored catalogs.
         /// Every value here is ASCII and preserves the named placeholders of the original.
         /// </summary>
         private static readonly Dictionary<string, string> PlayNeutralStringReplacements =
@@ -206,12 +206,6 @@ namespace DeNelle.Editor
                 { "storeCommerceAwaitingApproval", "[ACTION] Awaiting your approval - approve or cancel in the store prompt" },
                 { "storeBuyWalletRequired",        "Packs over {Threshold} need a signed-in account, so what you buy stays yours if you reinstall or change phones. Sign in to buy this one - anything {Threshold} and under you can buy right now." },
                 { "storeBuyWalletRequiredCta",     "Continue" },
-                // en.json
-                { "heroSelect.subtitle",           "Choose your champion" },
-                { "swap.title",                    "Store service" },
-                { "swap.poweredBy",                "Store service" },
-                { "swap.statusConnect",            "Sign in to continue." },
-                { "swap.statusSigning",            "Sending for approval..." },
             };
 
         private static readonly string[] PlayNeutralUxmlPaths =
@@ -240,6 +234,7 @@ namespace DeNelle.Editor
                 // A Seeker build RE-ASSERTS the whole tree rather than assuming it. If a
                 // previous Play build died, this is the moment that would otherwise ship a
                 // Seeker APK with no wallet.
+                GooglePlayLocalizationVariant.Restore("non-Play Android build");
                 RestoreNeutralRewrites("non-Play Android build");
                 RestoreAll("non-Play Android build");
                 Debug.Log($"{LogTag} PLAY_CONTENT_INCLUDED — defines=[{defineList}]. " +
@@ -248,12 +243,17 @@ namespace DeNelle.Editor
                 return true;
             }
 
+            // AndroidBuild must prepare all ten canonical locales plus the Addressable
+            // GameStrings tables BEFORE its explicit content build. Rewriting only en.json
+            // here is too late: the bundles would already contain the Seeker values.
+            GooglePlayLocalizationVariant.AssertPrepared();
             Quarantine(defineList);
             try { ApplyNeutralRewrites(); }
             catch
             {
                 RestoreNeutralRewrites("aborted neutral rewrite");
                 RestoreAll("aborted neutral rewrite");
+                GooglePlayLocalizationVariant.Restore("aborted Play content exclusion");
                 throw;
             }
             return false;
@@ -283,10 +283,6 @@ namespace DeNelle.Editor
                         {
                             root["_nightMarketNote"] = "Google Play store presentation.";
                             root["storeBuyWalletRequiredCta"] = "Continue";
-                        }
-                        else if (file == "en.json")
-                        {
-                            root["swap.poweredBy"] = "Store service";
                         }
                         else if (file == "packs.json")
                         {
@@ -381,9 +377,8 @@ namespace DeNelle.Editor
             string[] segments = keyPath.Split('.');
             string leaf = segments[segments.Length - 1];
 
-            // The map is consulted on the FULL path first: en.json's keys are FLAT dotted strings
-            // ("heroSelect.subtitle", "swap.title"), so a leaf-only lookup misses every one of them
-            // and would fail the build on copy this file already knows how to neutralise.
+            // The map is consulted on the FULL path first so nested catalogs can disambiguate
+            // duplicate leaf names before the compatibility leaf lookup.
             if (PlayNeutralStringReplacements.TryGetValue(keyPath, out string neutral) ||
                 PlayNeutralStringReplacements.TryGetValue(leaf, out neutral))
             {
@@ -561,6 +556,7 @@ namespace DeNelle.Editor
         /// </summary>
         public static void EnsureTreeIsWhole()
         {
+            GooglePlayLocalizationVariant.Restore("pre-build sweep");
             RestoreNeutralRewrites("pre-build sweep");
             if (!File.Exists(LedgerPath))
                 return;
@@ -755,6 +751,7 @@ namespace DeNelle.Editor
 
             GooglePlayContentExclusion.RestoreNeutralRewrites("post-build");
             GooglePlayContentExclusion.RestoreAll("post-build");
+            GooglePlayLocalizationVariant.Restore("post-build");
         }
     }
 }

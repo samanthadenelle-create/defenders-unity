@@ -245,8 +245,16 @@ namespace DeNelle.Editor
                     "Play-neutral canon-strings rewrite lost its exact note allowlist", failures);
             Require(content, "root[\"storeBuyWalletRequiredCta\"] = \"Continue\"",
                     "Play-neutral wallet CTA rewrite lost its exact field pin", failures);
-            Require(content, "root[\"swap.poweredBy\"] = \"Store service\"",
-                    "Play-neutral localization rewrite lost its exact field pin", failures);
+            string localizationVariant = Read("Assets/Editor/Localization/GooglePlayLocalizationVariant.cs", failures);
+            string localizationPolicy = Read("Assets/Editor/Localization/GooglePlayLocalizationVariantPolicy.json", failures);
+            Require(localizationVariant, "PLAY_LOCALIZATION_VARIANT_OK",
+                    "Play localization variant has no prepared-state marker", failures);
+            Require(localizationVariant, "shared.RemoveKey(sharedEntry.Id)",
+                    "Play localization variant no longer removes stripped shared-table ids", failures);
+            Require(localizationPolicy, "\"heroSelect.subtitle\"",
+                    "Play localization policy lost its visible hero-title replacement", failures);
+            Require(content, "GooglePlayLocalizationVariant.AssertPrepared()",
+                    "BuildPlayer content hook no longer requires the pre-Addressables localization variant", failures);
             Require(content, "pricing?.Property(\"usdc\")?.Remove()",
                     "Play-neutral pack rewrite no longer removes only wallet price rails", failures);
             Require(content, "pricing?.Property(\"sol\")?.Remove()",
@@ -292,6 +300,17 @@ namespace DeNelle.Editor
             if (sweepAt < 0 || contentAt < 0 || sweepAt > contentAt)
                 failures.Add("quarantine sweep does not run before the Addressables content build; a Seeker " +
                              "APK could be baked from a wallet-less tree");
+
+            int localizationAt = build.IndexOf(
+                "GooglePlayLocalizationVariant.PrepareForAddressables(options.extraScriptingDefines)",
+                StringComparison.Ordinal);
+            int localizationRestoreAt = build.IndexOf(
+                "GooglePlayLocalizationVariant.Restore(\"Android build finally\")",
+                StringComparison.Ordinal);
+            if (localizationAt < 0 || localizationAt > contentAt)
+                failures.Add("Play localization variant does not run before Addressables content is built");
+            if (localizationRestoreAt < contentAt)
+                failures.Add("Play localization variant is not restored after the Android build transaction");
 
             string stamp = Read("Assets/_Modules/Core/Payments/ArtifactVariantStamp.cs", failures);
             Require(stamp, "RuntimeInitializeOnLoadMethod",

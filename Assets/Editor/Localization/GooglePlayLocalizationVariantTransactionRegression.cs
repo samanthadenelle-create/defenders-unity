@@ -28,6 +28,12 @@ namespace DeNelle.Editor.Localization
                     new[] { GooglePlayLocalizationVariant.PlayDefine });
                 if (!reused) failures.Add("active transaction was not reused idempotently");
                 GooglePlayLocalizationVariant.AssertPrepared();
+
+                bool walletPayloadIncluded = GooglePlayContentExclusion.ApplyForDefines(
+                    new[] { GooglePlayContentExclusion.PlayDefine });
+                if (walletPayloadIncluded)
+                    failures.Add("Google Play content exclusion left the Wallet payload included");
+                GooglePlayLocalizationVariant.AssertPrepared();
             }
             catch (Exception exception)
             {
@@ -35,6 +41,8 @@ namespace DeNelle.Editor.Localization
             }
             finally
             {
+                GooglePlayContentExclusion.RestoreNeutralRewrites("focused combined transaction regression");
+                GooglePlayContentExclusion.RestoreAll("focused combined transaction regression");
                 try { GooglePlayLocalizationVariant.Restore("focused transaction regression"); }
                 catch (Exception exception)
                 {
@@ -47,6 +55,10 @@ namespace DeNelle.Editor.Localization
                 failures.Add("transaction ledger survived a successful restore");
             if (Directory.Exists(GooglePlayLocalizationVariant.BackupRoot))
                 failures.Add("transaction backup directory survived a successful restore");
+            if (File.Exists(GooglePlayContentExclusion.LedgerPath) ||
+                File.Exists(GooglePlayContentExclusion.RewriteLedgerPath) ||
+                Directory.Exists(GooglePlayContentExclusion.QuarantineRoot))
+                failures.Add("combined Play content transaction survived a successful restore");
 
             try
             {
@@ -61,7 +73,7 @@ namespace DeNelle.Editor.Localization
 
             if (failures.Count == 0)
             {
-                Debug.Log("PLAY_LOCALIZATION_VARIANT_TRANSACTION_OK - 20 canonical locale files and 7 GameStrings assets transformed, asserted, reused, and restored byte-for-byte");
+                Debug.Log("PLAY_LOCALIZATION_VARIANT_TRANSACTION_OK - localization and content exclusion combined; 20 canonical locale files and 7 GameStrings assets transformed, asserted, reused, and restored byte-for-byte");
                 return;
             }
 

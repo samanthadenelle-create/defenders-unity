@@ -25,6 +25,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using DeNelle.Editor.Localization;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -173,51 +174,61 @@ namespace DeNelle.Editor
                 }
             }
 
-            if (!AddressablesContentBuild.EnsureBuilt("AndroidBuild", BuildTarget.Android))
+            bool playLocalizationPrepared =
+                GooglePlayLocalizationVariant.PrepareForAddressables(options.extraScriptingDefines);
+            try
             {
-                Debug.LogError("[AndroidBuild] ABORTED — Addressables content build failed (WO-974/WO-1124).");
-                EditorApplication.Exit(1);
-                return;
-            }
-
-            // WO-1124 §3.2: PROVE the catalog this APK will ask for actually exists, by name, in the
-            // Android folder. ApplyVersionStamp already set bundleVersion, so this is a file-exists
-            // check against a known name — cheap, and it catches every future variant of "content
-            // went somewhere else", not just the target-switch one this ticket found.
-            if (!AssertAndroidCatalogForThisBuild()) return;
-
-            BuildReport report = BuildPipeline.BuildPlayer(options);
-            BuildSummary summary = report.summary;
-
-            if (summary.result == BuildResult.Succeeded)
-            {
-                if (isGooglePlay && !GooglePlayPackagingGate.AssertBuiltArtifact(artifactPath))
+                if (!AddressablesContentBuild.EnsureBuilt("AndroidBuild", BuildTarget.Android))
                 {
-                    Debug.LogError("[AndroidBuild] PLAY_ARTIFACT_REJECTED — the AAB contains a forbidden crypto/wallet surface.");
+                    Debug.LogError("[AndroidBuild] ABORTED — Addressables content build failed (WO-974/WO-1124).");
                     EditorApplication.Exit(1);
                     return;
                 }
 
-                // WO-1486: the marker used to report summary.totalSize, which is the UNCOMPRESSED
-                // total (2367 MB against 463 MiB actually on disk on 2026-09-06). Nobody reading the
-                // log could tell whether the shipped artifact had grown. The FIRST number is now the
-                // artifact's real on-disk length; the report figure is kept as a second LABELLED
-                // number so the old signal is not lost. The literal marker text every caller greps
-                // ('[AndroidBuild] SUCCEEDED') is unchanged, and no caller parses the MB.
-                long onDiskBytes = File.Exists(artifactPath) ? new FileInfo(artifactPath).Length : -1L;
-                string onDisk = onDiskBytes >= 0
-                    ? $"{onDiskBytes / (1024 * 1024)} MB on-disk ({onDiskBytes} bytes)"
-                    : "on-disk size UNKNOWN (artifact not found at the build path)";
+                // WO-1124 §3.2: PROVE the catalog this APK will ask for actually exists, by name, in the
+                // Android folder. ApplyVersionStamp already set bundleVersion, so this is a file-exists
+                // check against a known name — cheap, and it catches every future variant of "content
+                // went somewhere else", not just the target-switch one this ticket found.
+                if (!AssertAndroidCatalogForThisBuild()) return;
 
-                Debug.Log($"[AndroidBuild] SUCCEEDED — {onDisk} in {summary.totalTime}. " +
-                          $"report-uncompressed={summary.totalSize / (1024 * 1024)} MB. " +
-                          $"{(isGooglePlay ? "AAB" : "APK")}: {artifactPath}");
+                BuildReport report = BuildPipeline.BuildPlayer(options);
+                BuildSummary summary = report.summary;
+
+                if (summary.result == BuildResult.Succeeded)
+                {
+                    if (isGooglePlay && !GooglePlayPackagingGate.AssertBuiltArtifact(artifactPath))
+                    {
+                        Debug.LogError("[AndroidBuild] PLAY_ARTIFACT_REJECTED — the AAB contains a forbidden crypto/wallet surface.");
+                        EditorApplication.Exit(1);
+                        return;
+                    }
+
+                    // WO-1486: the marker used to report summary.totalSize, which is the UNCOMPRESSED
+                    // total (2367 MB against 463 MiB actually on disk on 2026-09-06). Nobody reading the
+                    // log could tell whether the shipped artifact had grown. The FIRST number is now the
+                    // artifact's real on-disk length; the report figure is kept as a second LABELLED
+                    // number so the old signal is not lost. The literal marker text every caller greps
+                    // ('[AndroidBuild] SUCCEEDED') is unchanged, and no caller parses the MB.
+                    long onDiskBytes = File.Exists(artifactPath) ? new FileInfo(artifactPath).Length : -1L;
+                    string onDisk = onDiskBytes >= 0
+                        ? $"{onDiskBytes / (1024 * 1024)} MB on-disk ({onDiskBytes} bytes)"
+                        : "on-disk size UNKNOWN (artifact not found at the build path)";
+
+                    Debug.Log($"[AndroidBuild] SUCCEEDED — {onDisk} in {summary.totalTime}. " +
+                              $"report-uncompressed={summary.totalSize / (1024 * 1024)} MB. " +
+                              $"{(isGooglePlay ? "AAB" : "APK")}: {artifactPath}");
+                }
+                else
+                {
+                    Debug.LogError($"[AndroidBuild] FAILED — result={summary.result}, " +
+                                   $"errors={summary.totalErrors}. See log for Gradle output.");
+                    EditorApplication.Exit(1);
+                }
             }
-            else
+            finally
             {
-                Debug.LogError($"[AndroidBuild] FAILED — result={summary.result}, " +
-                               $"errors={summary.totalErrors}. See log for Gradle output.");
-                EditorApplication.Exit(1);
+                if (playLocalizationPrepared)
+                    GooglePlayLocalizationVariant.Restore("Android build finally");
             }
         }
 
