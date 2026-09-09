@@ -1,6 +1,6 @@
 # Localization architecture and supported languages
 
-**Canon status:** Active architecture for WO-1605 through commit `67eac2feb` (2026-09-09). This document describes the
+**Canon status:** Active architecture for WO-1605 through commit `e51c51358` (2026-09-09). This document describes the
 implemented authority and regional contract. It does not claim that every player-facing surface has
 already migrated.
 
@@ -90,7 +90,7 @@ license, atlas, and their Unity metadata are all tracked.
 ## Verification and current boundary
 
 Run `tools/localization/run-localization-overnight.ps1` with Unity closed. It verifies the manifest,
-runs the seven focused localization suites, runs the complete data regression, and captures Settings
+runs the eight focused localization suites, runs the complete data regression, and captures Settings
 top, Settings language controls, and HUD at 2670 x 1200 for every build-enabled locale. The Store
 data cohorts pass 7/7 focused suites, and the 2026-09-09 visual run is 18/18 screenshots with no
 missing keys, English fallback, missing glyphs, or blank frames. The most recent clean full gate is
@@ -131,6 +131,18 @@ The BUY GATE runtime checkpoint preserved the 2,496-entry import and passed `BUY
 `STORE_PI_SKIN_OK`, `LOCALIZATION_REGRESSION_OK 7/7 suites`, and the
 `GooglePlayPackagingRegression` source gate.
 
-Google Play remains release-gated because Unity `GameStrings` Addressables are built before the JSON
-neutral rewrite. Channel-specific localized-table sanitization or variants are still required, and the
-Jeweler FTUE's native SKR strings are another unmapped Play-neutral blocker.
+### Google Play localization variant
+
+Google Play builds prepare a transient localization variant before the explicit Addressables build. The
+authority is `Assets/Editor/Localization/GooglePlayLocalizationVariantPolicy.json`, not token wildcards:
+57 exact rows belonging to unavailable Wallet Store, Web3 swap, Settings-wallet, and Jeweler-stake branches
+are stripped, while five still-visible rows receive locale-specific Play-neutral replacements across all
+ten required locales. `storeWordmark` remains because the Google Play storefront still renders it.
+
+`GooglePlayLocalizationVariant` transacts over both copies of all ten canonical locale files, the shared
+`GameStrings` table, and all six enabled locale tables (27 assets). `AndroidBuild` prepares this state before
+`AddressablesContentBuild.EnsureBuilt`; the later content-exclusion hook asserts it, composes its legacy
+canon/packs/UXML quarantine, and every success or failure path restores source bytes. The focused policy
+gate is now 8/8, and the combined transaction regression proves byte-identical restoration with no surviving
+ledger or quarantine. This closes the source and localized-Addressables ordering defect. It does not replace
+the required forbidden-token scan of the final physical AAB, which remains the artifact-level release gate.

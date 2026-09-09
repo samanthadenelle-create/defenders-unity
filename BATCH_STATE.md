@@ -891,9 +891,9 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
    EXISTING return-door arbiter that WO-1400 shipped for the deck return; lane D consumes it on CLOSE. No second
    return mechanism. Lane C hands the exact door line to lane D as text if the files are split across people.
 
-### 9. WO-1605 localization goal - checkpoint through `67eac2feb` (2026-09-09)
+### 9. WO-1605 localization goal - checkpoint through `e51c51358` (2026-09-09)
 
-- The foundation began at `20467d539` on `dev`; this checkpoint is through `67eac2feb`. The shared tree already contained the owner's uncommitted
+- The foundation began at `20467d539` on `dev`; this checkpoint is through `e51c51358`. The shared tree already contained the owner's uncommitted
   Feedback/Jeweler/Manage/build work, which was preserved. No stash/reset/cleanup was used.
 - One authority now exists: Core `LocalText` -> `ILocalTextProvider` -> the asynchronous
   `DeNelle.Localization.UnityLocalizationProvider` -> Unity `GameStrings`.
@@ -931,8 +931,13 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
 - Future player-facing copy changes must update all ten required locale catalogs and mirrors, rebuild
   all six enabled tables, and pass localization tests. Limited/provisional translations may await human
   review but must still satisfy parity.
-- Google Play is still release-gated because Unity `GameStrings` Addressables are built before the JSON
-  neutral rewrite; channel-specific localized-table sanitization or variants remain required. Native SKR
-  wording in the Jeweler FTUE is another unmapped Play-neutral blocker.
+- Google Play localization is now source/transaction-safe. `GooglePlayLocalizationVariant` transforms
+  20 canonical locale files plus the shared table and six enabled `GameStrings` tables before Addressables,
+  using an exact reviewed policy: 57 unavailable Wallet/Web3/Settings/Jeweler rows are stripped and five
+  visible rows receive localized Play-neutral replacements in all ten required locales. The combined
+  localization/content-exclusion regression restores all 27 assets byte-for-byte and leaves no ledger or
+  quarantine behind. Focused policy evidence is `LOCALIZATION_REGRESSION_OK 8/8 suites`; packaging source
+  evidence is `PLAY_PACKAGING_REGRESSION_OK`. A physical built-AAB scanner proof is still required before
+  calling the Google Play artifact release-ready.
 - CompileGate emitted `COMPILE_GATE_OK`; its outer wrapper remained red only on the known missing
   optional WebGL built-in module (`UnityEngine.WebGLInput` in the Solana package), not project code.

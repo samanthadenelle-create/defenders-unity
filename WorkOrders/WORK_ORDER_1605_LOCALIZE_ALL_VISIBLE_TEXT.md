@@ -1,6 +1,6 @@
 # WO-1605 - Localize every player-readable text surface
 
-**Status:** IN PROGRESS - through `67eac2feb`, the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, the live dungeon-chest interaction, and the seven-key live Store BUY GATE; 32 other Store keys remain staged on legacy `StoreStrings`/canon, so Store and the broader visible-text migration remain incomplete
+**Status:** IN PROGRESS - through `e51c51358`, the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, the live dungeon-chest interaction, the seven-key live Store BUY GATE, and pre-Addressables Google Play localization sanitization; 32 other Store keys remain staged on legacy `StoreStrings`/canon, so Store and the broader visible-text migration remain incomplete
 
 **Owner decision:** Every written or player-readable phrase must be switchable by language. Nothing is
 spoken, so localized voice/audio is explicitly out of scope.
@@ -297,7 +297,7 @@ Every migration pull request or work order should contain one bounded module/sur
 Track progress by manifest rows and surfaces, not by raw key count. A single complex formatted dialogue and
 twenty repeated button labels are not equivalent work.
 
-## 10. Implementation checkpoint - 2026-09-09 (`67eac2feb`)
+## 10. Implementation checkpoint - 2026-09-09 (`e51c51358`)
 
 The first foundation increment is implemented and integrated:
 
@@ -371,9 +371,15 @@ The Store trust strip is held pending provider-specific/legal wording. Its fee/d
 claims are not uniformly accurate across payment channels, and its covenant is still carried by an
 English raster; none of those four legacy rows is counted as localized yet.
 
-Google Play remains release-gated: Unity `GameStrings` Addressables are built before the JSON
-Play-neutral rewrite, so channel-specific localized-table sanitization or variants are still required.
-The Jeweler FTUE's native SKR wording is a second unmapped Play-neutral blocker.
+Google Play localization now uses an explicit transient build variant before Addressables. Its reviewed
+policy strips 57 exact keys owned by unavailable Wallet, Web3 swap, Settings-wallet, and Jeweler-stake
+branches, while applying five localized Play-neutral replacements across all ten required locales. The
+transaction covers both copies of all ten locale JSON files, `GameStrings Shared Data`, and the six enabled
+StringTables (27 assets), composes with the existing content quarantine, and restores source bytes in a
+`finally` path. Policy, build-order, placeholder, forbidden-copy, idempotency, and byte-restoration evidence
+passes `LOCALIZATION_REGRESSION_OK 8/8 suites`, `PLAY_PACKAGING_REGRESSION_OK`, and
+`PLAY_LOCALIZATION_VARIANT_TRANSACTION_OK`. This resolves the localized-source/Addressables blocker; a
+physical scanner pass against the built AAB remains required before claiming artifact-level release proof.
 
 ## 10. Explicit non-goals
 

@@ -844,7 +844,7 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   `zh-Hans` remain required for key/argument parity but hidden pending RTL/CJK font and
   layout readiness. See `docs/localization/architecture.md` for the generation, fallback,
   all-region change rule, and verification contract.
-  Through `67eac2feb`, every canonical locale source and mirror contains 416 keys, and the six
+  Through `e51c51358`, every canonical locale source and mirror contains 416 keys, and the six
   build-enabled tables contain 2,496 entries. Dungeon chest interaction copy now resolves the live
   `interaction.chest.open` and `interaction.chest.blockedByEnemies` keys through the thin
   `ChestInteractionText` wrapper. `BreakableContainer` uses the localized open prompt and the same
@@ -867,9 +867,11 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   `LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.
   BUY GATE evidence is importer 2,496, `BUY_GATE_OK`, `STORE_PI_SKIN_OK`,
   `LOCALIZATION_REGRESSION_OK 7/7 suites`, and a green `GooglePlayPackagingRegression` source gate.
-  Google Play remains release-gated: Unity `GameStrings` Addressables are built before the JSON neutral
-  rewrite, so localized-table sanitization or channel variants remain required; Jeweler FTUE native SKR
-  strings are another unmapped Play-neutral blocker.
+  Google Play now prepares an exact-policy localization variant before Addressables: 57 rows owned by
+  unavailable Wallet/Web3/Settings/Jeweler branches are stripped and five visible rows receive localized
+  Play-neutral replacements in all ten locales. Both canonical roots and the seven `GameStrings` assets
+  are restored byte-for-byte after the combined content transaction. The focused gate is 8/8 and the
+  packaging source gate passes; final built-AAB scanner evidence is still required.
 
 - **Service registry:** `CoreServices` (8 slots, above). Callers null-check; register Awake / unregister OnDestroy.
 - **Panel routing:** panel registers opener on `PanelRouter` (+ optional context / context+mode arities);
