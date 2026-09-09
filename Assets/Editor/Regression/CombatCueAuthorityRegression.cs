@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 // Assembly: DeNelle.EditorRegression.
 //
-// Pins the three 2026-08-16 combat-silo fixes so none of them can silently rot
+// Pins the combat-cue fixes so none of them can silently rot
 // back to the state the owner was playing at wave 5-6:
 //
 //   CASE 1 - EVERY ENEMY RESOLVES A NON-NULL TYPE VFX SET.
@@ -41,6 +41,11 @@
 //     severity. It also lints that WaveManager routes the boss through the
 //     resolver and can still emit FlowTrace.Fail.
 //
+//   CASE 4 - ENEMY OVERHEAD CUES ARE TEXT-ONLY.
+//     The encounter cue used a 78%-opaque Image behind the alert mark and enemy
+//     name, producing a heavy shaded box over every enemy's head. The text remains,
+//     parented directly to the world-space billboard Canvas, with no panel Image.
+//
 // SOURCE-LINT DISCIPLINE: every lint runs on source with comments AND string
 // literals removed, so this suite can never be satisfied (or tripped) by prose or
 // by a name that only appears inside a string.
@@ -66,6 +71,8 @@ namespace DeNelle.Editor.Regression
             "Assets/_Modules/Village/Enemies/Enemy.cs";
         private const string WaveManagerSourcePath =
             "Assets/_Modules/Village/Waves/WaveManager.cs";
+        private const string EncounterSpawnerSourcePath =
+            "Assets/_Modules/Village/Enemies/OverworldEncounterSpawner.cs";
 
         public static void RunAll()
         {
@@ -85,6 +92,8 @@ namespace DeNelle.Editor.Regression
                 () => Case2_OneHeavyAuthorityPerWave(failures, notes));
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "combat-cue case 3",
                 () => Case3_BossSpawnResolvesOrFailsLoudly(failures, notes));
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "combat-cue case 4",
+                () => Case4_EnemyOverheadCueIsTextOnly(failures, notes));
 
             if (failures.Count == 0)
             {
@@ -337,6 +346,55 @@ namespace DeNelle.Editor.Regression
             var p = go.AddComponent<WaveSpawnPoint>();
             p.Configure(id, gateIndex, direction, Vector3.zero);
             return p;
+        }
+
+        // =====================================================================
+        //  CASE 4 - overhead alert + enemy name remain, shaded panel does not
+        // =====================================================================
+        private static void Case4_EnemyOverheadCueIsTextOnly(List<string> failures, List<string> notes)
+        {
+            string src = ReadStripped(EncounterSpawnerSourcePath, out string err);
+            if (src == null)
+            {
+                failures.Add("[case4] could not read " + EncounterSpawnerSourcePath + " (" + err + ")");
+                return;
+            }
+
+            const string startToken = "private void RaiseThreatCue()";
+            const string endToken = "private string FoeName()";
+            int start = src.IndexOf(startToken, StringComparison.Ordinal);
+            int end = start >= 0 ? src.IndexOf(endToken, start, StringComparison.Ordinal) : -1;
+            if (start < 0 || end <= start)
+            {
+                failures.Add("[case4] could not isolate RaiseThreatCue in " + EncounterSpawnerSourcePath +
+                             "; the oracle refuses a hollow pass.");
+                return;
+            }
+
+            string cue = src.Substring(start, end - start);
+            if (cue.Contains("AddCuePanel(") || cue.Contains("AddComponent<Image>("))
+                failures.Add("[case4] RaiseThreatCue builds an Image-backed panel again. Enemy overhead " +
+                             "cues must show the alert/name text with the world visible behind it.");
+
+            int textCalls = CountOccurrences(cue, "AddCueText(");
+            if (textCalls != 2 || !cue.Contains("FoeName()"))
+                failures.Add("[case4] RaiseThreatCue must retain exactly two text elements (the alert mark " +
+                             "and FoeName), but found " + textCalls + " AddCueText call(s), FoeName=" +
+                             cue.Contains("FoeName()") + ".");
+
+            if (!cue.Contains("RenderMode.WorldSpace") || !cue.Contains("AddComponent<DeNelle.Village.UI.Billboard>"))
+                failures.Add("[case4] the text-only cue lost its world-space billboard behavior.");
+
+            if (failures.Count == 0 || !failures.Exists(f => f.StartsWith("[case4]", StringComparison.Ordinal)))
+                notes.Add("case4: enemy overhead cue retains alert + name as a world-space billboard with no Image panel");
+        }
+
+        private static int CountOccurrences(string value, string token)
+        {
+            int count = 0;
+            for (int at = 0; (at = value.IndexOf(token, at, StringComparison.Ordinal)) >= 0; at += token.Length)
+                count++;
+            return count;
         }
 
         // =====================================================================

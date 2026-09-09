@@ -1286,14 +1286,16 @@ namespace DeNelle.Village
                 crt.sizeDelta = new Vector2(260f, 150f);                    // -> ~2.6 x 1.5 world units
                 root.AddComponent<DeNelle.Village.UI.Billboard>();         // keep it facing the camera
 
-                var panel = AddCuePanel(canvas.transform, new Vector2(260f, 150f), new Color(0.08f, 0.02f, 0.02f, 0.78f));
-
-                var bang = AddCueText(panel.transform, "!", 96, new Color(0.95f, 0.25f, 0.20f), TextAnchor.UpperCenter);
+                // Text-only by owner ruling (2026-09-08): the old 78%-opaque CuePanel read as
+                // a shaded box floating over every enemy's head. The Canvas RectTransform is
+                // already the layout surface, so parent both words to it directly and leave the
+                // world visible behind them.
+                var bang = AddCueText(canvas.transform, "!", 96, new Color(0.95f, 0.25f, 0.20f), TextAnchor.UpperCenter);
                 var br = bang.rectTransform;
                 br.anchorMin = new Vector2(0f, 0.35f); br.anchorMax = new Vector2(1f, 1f);
                 br.offsetMin = Vector2.zero; br.offsetMax = Vector2.zero;
 
-                var foeLabel = AddCueText(panel.transform, FoeName(), 34, new Color(0.95f, 0.85f, 0.40f), TextAnchor.LowerCenter);
+                var foeLabel = AddCueText(canvas.transform, FoeName(), 34, new Color(0.95f, 0.85f, 0.40f), TextAnchor.LowerCenter);
                 var nr = foeLabel.rectTransform;
                 nr.anchorMin = new Vector2(0f, 0f); nr.anchorMax = new Vector2(1f, 0.35f);
                 nr.offsetMin = Vector2.zero; nr.offsetMax = Vector2.zero;
@@ -1318,18 +1320,6 @@ namespace DeNelle.Village
             var lead = _family[0] ?? "Foes";
             lead = lead.Replace('-', ' ').Replace('_', ' ').Trim();
             return lead.Length == 0 ? "Foes" : (char.ToUpperInvariant(lead[0]) + (lead.Length > 1 ? lead.Substring(1) : ""));
-        }
-
-        private static Image AddCuePanel(Transform parent, Vector2 size, Color col)
-        {
-            var go = new GameObject("CuePanel");
-            go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>();
-            img.color = col;
-            var rt = img.rectTransform;
-            rt.anchorMin = new Vector2(0.5f, 0.5f); rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f); rt.anchoredPosition = Vector2.zero; rt.sizeDelta = size;
-            return img;
         }
 
         private static Text AddCueText(Transform parent, string s, int size, Color col, TextAnchor anchor)
