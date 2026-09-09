@@ -313,6 +313,8 @@
   "settings.section.language": "اللغة",
   "settings.language.systemDefault": "لغة الجهاز",
   "settings.language.choose": "اختر: {Language}",
+  "settings.language.chooseBeta": "اختر: {Language} · تجريبي",
+  "common.close": "إغلاق",
   "settings.section.wallet": "المحفظة",
   "settings.wallet.connect": "ربط المحفظة",
   "settings.wallet.disconnect": "فصل المحفظة",

@@ -313,6 +313,8 @@
   "settings.section.language": "언어",
   "settings.language.systemDefault": "기기 언어",
   "settings.language.choose": "선택: {Language}",
+  "settings.language.chooseBeta": "선택: {Language} · 베타",
+  "common.close": "닫기",
   "settings.section.wallet": "지갑",
   "settings.wallet.connect": "지갑 연결",
   "settings.wallet.disconnect": "지갑 연결 해제",

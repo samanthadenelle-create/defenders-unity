@@ -1439,6 +1439,14 @@ MonoBehaviour:
     m_Key: promo.redeem.error.unknown
     m_Metadata:
       m_Items: []
+  - m_Id: 40958822273560576
+    m_Key: settings.language.chooseBeta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40960853767925760
+    m_Key: common.close
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

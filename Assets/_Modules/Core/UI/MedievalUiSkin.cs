@@ -101,7 +101,11 @@ namespace DeNelle.Core.UI
             if (button == null) return;
             var image = button.targetGraphic as Image ?? button.GetComponent<Image>();
             var sprite = Resources.Load<Sprite>(Root + "buttons/close-ornate");
-            bool authoredLabel = image != null && sprite != null;
+            // The ornate plate bakes the English word CLOSE into the pixels. It is
+            // valid only for English; every other locale keeps the normal button
+            // background and renders the shared CommonText label through TMP.
+            bool authoredLabel = image != null && sprite != null &&
+                                 string.Equals(LocalText.LanguageCode, "en", System.StringComparison.OrdinalIgnoreCase);
             if (authoredLabel)
             {
                 image.sprite = sprite;
@@ -140,7 +144,7 @@ namespace DeNelle.Core.UI
                     continue;
                 }
                 label.gameObject.SetActive(true);
-                label.text = "CLOSE";
+                label.text = CommonText.Close.Resolve();
                 label.color = ElarionUi.Parchment;
                 label.fontStyle |= FontStyles.Bold;
                 label.characterSpacing = 2f;

@@ -773,14 +773,19 @@ namespace DeNelle.Settings
         private static string ExplicitLanguageLabel()
         {
             string name = LocalText.LanguageCode;
+            bool isBeta = false;
             var locales = LocalText.AvailableLocales;
             for (int i = 0; i < locales.Count; i++)
                 if (string.Equals(locales[i].Code, LocalText.LanguageCode, StringComparison.OrdinalIgnoreCase))
                 {
                     name = locales[i].DisplayName;
+                    isBeta = locales[i].IsBeta;
                     break;
                 }
-            return SettingsText.ChooseLanguage.Resolve(new LanguageArguments(name));
+            var arguments = new LanguageArguments(name);
+            return isBeta
+                ? SettingsText.ChooseBetaLanguage.Resolve(arguments)
+                : SettingsText.ChooseLanguage.Resolve(arguments);
         }
 
         private void OnQualityTierClicked(QualityTier tier)

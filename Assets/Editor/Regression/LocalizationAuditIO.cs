@@ -51,6 +51,12 @@ namespace DeNelle.Editor.Regression
         {
             public string code;
             public bool required;
+            // Policy-owned release state. `required` controls parity enforcement;
+            // `enabledInBuild` records what is actually shipped. A locale may be
+            // validated while deliberately remaining disabled for linguistic QA.
+            public bool enabledInBuild;
+            public string status;
+            public int sortOrder;
         }
 
         internal sealed class AuthorityPolicy
@@ -154,10 +160,21 @@ namespace DeNelle.Editor.Regression
                     failures.Add("every localization collection must include id, source, mirror, unityShared, and unityTablePattern");
 
             var localeCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var localeSortOrders = new HashSet<int>();
             foreach (var locale in policy.supportedLocales ?? new List<LocalePolicy>())
             {
                 if (locale == null || string.IsNullOrWhiteSpace(locale.code)) failures.Add("supported locale code is empty");
-                else if (!localeCodes.Add(locale.code)) failures.Add("duplicate supported locale code: " + locale.code);
+                else
+                {
+                    if (!localeCodes.Add(locale.code)) failures.Add("duplicate supported locale code: " + locale.code);
+                    if (string.IsNullOrWhiteSpace(locale.status)) failures.Add("supported locale status is empty: " + locale.code);
+                    if (locale.sortOrder < 0 || locale.sortOrder > ushort.MaxValue)
+                        failures.Add("supported locale sortOrder must fit UInt16: " + locale.code);
+                    else if (!localeSortOrders.Add(locale.sortOrder))
+                        failures.Add("duplicate supported locale sortOrder: " + locale.sortOrder);
+                    if (locale.enabledInBuild && !locale.required)
+                        failures.Add("build-enabled locale must be required by parity: " + locale.code);
+                }
             }
             if (!string.IsNullOrWhiteSpace(policy.baseLocale) && !localeCodes.Contains(policy.baseLocale))
                 failures.Add("baseLocale must also appear in supportedLocales: " + policy.baseLocale);
@@ -418,6 +435,18 @@ namespace DeNelle.Editor.Regression
         internal static string ReplaceLocale(string pattern, string locale)
         {
             return (pattern ?? string.Empty).Replace("{locale}", locale ?? string.Empty);
+        }
+
+        internal static string DescribeLocaleStates(Policy policy)
+        {
+            if (policy == null || policy.supportedLocales == null) return "validated-required=[]; build-enabled=[]; status=[]";
+            var ordered = policy.supportedLocales.Where(l => l != null && !string.IsNullOrWhiteSpace(l.code))
+                .OrderBy(l => l.sortOrder).ThenBy(l => l.code, StringComparer.Ordinal).ToList();
+            string required = string.Join(",", ordered.Where(l => l.required).Select(l => l.code).ToArray());
+            string enabled = string.Join(",", ordered.Where(l => l.enabledInBuild).Select(l => l.code).ToArray());
+            string statuses = string.Join(",", ordered.Select(l => l.code + ":" +
+                (string.IsNullOrWhiteSpace(l.status) ? "unspecified" : l.status)).ToArray());
+            return "validated-required=[" + required + "]; policy-build-enabled=[" + enabled + "]; status=[" + statuses + "]";
         }
 
         internal static string JoinFailures(IList<string> failures)

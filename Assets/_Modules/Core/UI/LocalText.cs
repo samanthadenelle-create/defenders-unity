@@ -28,14 +28,16 @@ namespace DeNelle.Core.UI
     /// <summary>A locale the player can explicitly select.</summary>
     public readonly struct LocaleOption
     {
-        public LocaleOption(string code, string displayName)
+        public LocaleOption(string code, string displayName, bool isBeta = false)
         {
             Code = code ?? string.Empty;
             DisplayName = displayName ?? code ?? string.Empty;
+            IsBeta = isBeta;
         }
 
         public string Code { get; }
         public string DisplayName { get; }
+        public bool IsBeta { get; }
     }
 
     /// <summary>
@@ -270,15 +272,26 @@ namespace DeNelle.Core.UI
                 case SystemLanguage.French: return "fr";
                 case SystemLanguage.German: return "de";
                 case SystemLanguage.Italian: return "it";
-                case SystemLanguage.Portuguese: return "pt";
+                // The first Portuguese table is Brazilian Portuguese. Unity's
+                // SystemLanguage enum does not distinguish regions, so use the
+                // only supported Portuguese authority instead of falling to English.
+                case SystemLanguage.Portuguese: return "pt-BR";
                 case SystemLanguage.Japanese: return "ja";
                 case SystemLanguage.Korean: return "ko";
                 case SystemLanguage.Russian: return "ru";
                 case SystemLanguage.ChineseSimplified: return "zh-Hans";
                 case SystemLanguage.ChineseTraditional: return "zh-Hant";
+                case SystemLanguage.Arabic: return "ar";
                 default: return "en";
             }
         }
+    }
+
+    /// <summary>Shared interaction copy used by multiple feature surfaces.</summary>
+    public static class CommonText
+    {
+        public const string KeyClose = "common.close";
+        public static readonly LocalizedText Close = new LocalizedText(KeyClose);
     }
 
     public static class HonestFeedbackText

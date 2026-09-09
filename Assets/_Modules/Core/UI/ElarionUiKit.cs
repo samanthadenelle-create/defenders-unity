@@ -992,7 +992,7 @@ namespace DeNelle.Core.UI
             // Sleek obsidian button box (Style1/Gray) — the kit's own labeled button, NOT an X glyph.
             // The click routes through the ONE shared close entry (Common.Close) so the close
             // BEHAVIOR is defined in exactly one place; the panel's own teardown is passed as the hook.
-            var btn = BuildObsidianButton(parent, "Close",
+            var btn = BuildObsidianButton(parent, CommonText.Close.Resolve(),
                 ObsidianButtonStyle.Style1, ObsidianButtonColor.Gray,
                 new Vector2(zn.x, zn.y), new Vector2(zn.z, zn.w),
                 () => Common.Close(onClose));

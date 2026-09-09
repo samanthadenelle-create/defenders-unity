@@ -2,9 +2,11 @@
 // LocaleParityRegression -- exact key/value-shape parity for policy-listed locales.
 // It never treats every JSON file in Canonical as a locale.
 //
-// RED-FIRST RECIPE (revert immediately): policy-list a temporary qps-ploc copy,
-// remove feedback.title, add orphan.probe, and blank feedback.body. The result must
-// name one missing, one extra and one empty entry.
+// RED-FIRST RECIPE (revert immediately): on any required non-base locale, remove
+// feedback.title from the Resources copy, add orphan.probe to StreamingAssets, and
+// blank feedback.body. The result must name mirror drift, one missing/extra key and
+// one empty entry. Adding a probe key to English alone must report it missing from
+// every required locale, which is the forward-change enforcement this gate owns.
 // =============================================================================
 using System;
 using System.Collections.Generic;
@@ -40,7 +42,9 @@ namespace DeNelle.Editor.Regression
                 reason = "LOCALE PARITY FAIL -- " + LocalizationAuditIO.JoinFailures(failures);
                 return false;
             }
-            reason = "LOCALE PARITY OK -- " + policy.supportedLocales.Count + " policy-listed locale(s), exact canonical key parity";
+            reason = "LOCALE PARITY OK -- " + policy.supportedLocales.Count +
+                     " policy-listed locale(s), exact canonical key parity and nonempty values; " +
+                     LocalizationAuditIO.DescribeLocaleStates(policy);
             return true;
         }
 
@@ -53,6 +57,8 @@ namespace DeNelle.Editor.Regression
                 foreach (string failure in ioFailures) failures.Add(failure);
                 return;
             }
+
+            AddEmptyFailures(policy.baseLocale, collection.id, baseTable, failures);
 
             var mirror = new Dictionary<string, string>();
             ioFailures.Clear();
@@ -72,8 +78,21 @@ namespace DeNelle.Editor.Regression
                 if (string.Equals(locale.code, policy.baseLocale, StringComparison.OrdinalIgnoreCase)) continue;
                 string localeSource = sourceDirectory + "/" + locale.code + ".json";
                 string localeMirror = mirrorDirectory + "/" + locale.code + ".json";
-                bool exists = File.Exists(LocalizationAuditIO.FullPath(localeSource));
-                if (!exists && !locale.required) continue;
+                bool sourceExists = File.Exists(LocalizationAuditIO.FullPath(localeSource));
+                bool mirrorExists = File.Exists(LocalizationAuditIO.FullPath(localeMirror));
+                if (!sourceExists || !mirrorExists)
+                {
+                    if (locale.required)
+                    {
+                        if (!sourceExists) failures.Add("required locale source missing: " + localeSource);
+                        if (!mirrorExists) failures.Add("required locale mirror missing: " + localeMirror);
+                    }
+                    // Optional locales are audited once either canonical copy exists:
+                    // a one-sided mirror is still drift and must not silently pass.
+                    else if (sourceExists != mirrorExists)
+                        failures.Add("optional locale has only one canonical copy: " + locale.code);
+                    if (!sourceExists) continue;
+                }
 
                 var translated = new Dictionary<string, string>();
                 ioFailures.Clear();
@@ -84,10 +103,9 @@ namespace DeNelle.Editor.Regression
                 }
                 var missing = baseTable.Keys.Where(k => !translated.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
                 var extra = translated.Keys.Where(k => !baseTable.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
-                var empty = translated.Where(p => string.IsNullOrWhiteSpace(p.Value)).Select(p => p.Key).OrderBy(k => k, StringComparer.Ordinal).ToList();
                 if (missing.Count > 0) failures.Add(locale.code + " missing=" + missing.Count + LocalizationAuditIO.Sample(missing));
                 if (extra.Count > 0) failures.Add(locale.code + " extra=" + extra.Count + LocalizationAuditIO.Sample(extra));
-                if (empty.Count > 0) failures.Add(locale.code + " empty=" + empty.Count + LocalizationAuditIO.Sample(empty));
+                AddEmptyFailures(locale.code, collection.id, translated, failures);
 
                 if (File.Exists(LocalizationAuditIO.FullPath(localeMirror)))
                 {
@@ -102,8 +120,16 @@ namespace DeNelle.Editor.Regression
                             failures.Add(locale.code + " source/mirror mismatch: " + detail);
                     }
                 }
-                else if (locale.required) failures.Add("required locale mirror missing: " + localeMirror);
             }
+        }
+
+        private static void AddEmptyFailures(string localeCode, string collectionId,
+            IDictionary<string, string> table, ICollection<string> failures)
+        {
+            var empty = table.Where(p => string.IsNullOrWhiteSpace(p.Value)).Select(p => p.Key)
+                .OrderBy(k => k, StringComparer.Ordinal).ToList();
+            if (empty.Count > 0)
+                failures.Add(collectionId + "/" + localeCode + " empty=" + empty.Count + LocalizationAuditIO.Sample(empty));
         }
     }
 }

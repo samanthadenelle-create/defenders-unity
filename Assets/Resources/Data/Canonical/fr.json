@@ -313,6 +313,8 @@
   "settings.section.language": "Langue",
   "settings.language.systemDefault": "Langue de l'appareil",
   "settings.language.choose": "Choisir : {Language}",
+  "settings.language.chooseBeta": "Choisir : {Language} · Bêta",
+  "common.close": "Fermer",
   "settings.section.wallet": "Portefeuille",
   "settings.wallet.connect": "Connecter le Portefeuille",
   "settings.wallet.disconnect": "Déconnecter le Portefeuille",

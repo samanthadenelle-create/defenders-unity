@@ -1,0 +1,1637 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: GameStrings_es
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.StringTable
+  m_LocaleId:
+    m_Code: es
+  m_SharedData: {fileID: 11400000, guid: a280628737193b24f9e44f409150a145, type: 2}
+  m_Metadata:
+    m_Items:
+    - rid: 7338888477077143552
+  m_TableData:
+  - m_Id: 40920301974368310
+    m_Localized: "Unas palabras m\xE1s, por favor: al menos {Minimum} caracteres."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40920301978562563
+    m_Localized: "Tu {Resource} est\xE1 ahora {AmountOver} por encima de lo que pueden
+      guardar tus almacenes. Todo es tuyo y sigue si\xE9ndolo; las cosechas y recompensas
+      de {Resource} simplemente se pausan hasta que gastes y bajes del l\xEDmite."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40920301978562573
+    m_Localized: "Sable necesita {Duration} para pulir la piedra. Cuando termine
+      el trabajo, se revelar\xE1 la gema interior."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40920301978562574
+    m_Localized: Empezar pulido - {Duration}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40920301978562579
+    m_Localized: "Sable revela un {Gem}. Se ha a\xF1adido a tu despensa."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491863
+    m_Localized: 'Elegir: {Language}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491867
+    m_Localized: Desconectar {Address}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491874
+    m_Localized: Informes de defensa ({UnreadCount} nuevos)
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491887
+    m_Localized: '{Percent}%'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491889
+    m_Localized: Recolectores {0}/{1} llenos
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491891
+    m_Localized: '{0}% - tocar'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491892
+    m_Localized: '{0} en espera'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491893
+    m_Localized: '{0} inactivos'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491894
+    m_Localized: '{0}/{1} inactivos'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491905
+    m_Localized: Recuperando - asalto disponible en {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491907
+    m_Localized: "Este campamento a\xFAn se recupera de tu \xFAltimo asalto. Puedes
+      atacarlo de nuevo en {0}."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491908
+    m_Localized: "El campamento est\xE1 roto por ahora. Se reagrupa en {0}."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491909
+    m_Localized: '{0}h {1}m'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491910
+    m_Localized: '{0}m'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40945817733345286
+    m_Localized: "C\xF3digo aceptado - se ha a\xF1adido {0} a tu reino."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40945817737539585
+    m_Localized: '{0} cristales'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40945817737539586
+    m_Localized: '{0} de oro'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40945817737539587
+    m_Localized: Paquete {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40920301924036608
+    m_Localized: "Sost\xE9n el Chord. Defiende el Spire."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301970173952
+    m_Localized: "Cuida el Heart. Cont\xE9n la oscuridad."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301970173953
+    m_Localized: "Cuida el Lantern. Cont\xE9n la oscuridad."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1076879361
+    m_Localized: "En un valle antiguo, un \xE1rbol antiguo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1076879362
+    m_Localized: "En la oscuridad m\xE1s all\xE1, una putrefacci\xF3n lenta y fr\xEDa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1076879363
+    m_Localized: "T\xFA eres el Keeper. La canci\xF3n es tuya ahora."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1076879364
+    m_Localized: "Bienvenido a casa, Keeper. El Heart vibra por ti. Camina un rato:
+      la canci\xF3n te dir\xE1 lo que necesita."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1076879365
+    m_Localized: "Esto es Elarion. Toca el estrado. El cristal te recordar\xE1."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1076879366
+    m_Localized: "El Heart da lo que puede ceder. Gu\xE1rdalos: los necesitar\xE1s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1076879367
+    m_Localized: "Los Folk construyeron esto mucho antes que t\xFA. Cada uno cuida
+      el Heart a su manera."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1076879368
+    m_Localized: "Lo que no puedes cultivar aqu\xED, lo traen los errantes. Gasta
+      con sabidur\xEDa. Las monedas cuestan ganar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073664
+    m_Localized: "La oscuridad nos ha notado. Coloca a tus compa\xF1eros en los huecos.
+      Ellos sabr\xE1n qu\xE9 hacer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073665
+    m_Localized: "Un esp\xEDritu en un hueco defiende. Un esp\xEDritu en un edificio
+      cuida. No pueden hacer ambas cosas a la vez."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073666
+    m_Localized: Esta es tu magia, pero es el don del Heart. Usa lo que se te da.
+      Vuelve cuando puede.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073667
+    m_Localized: "Para cuando un carril falla. El fr\xEDo te compra un respiro. Usa
+      bien ese respiro."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073668
+    m_Localized: "Planta luz donde la oscuridad se concentra m\xE1s. Las torres dentro
+      pelear\xE1n con m\xE1s valor."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073669
+    m_Localized: "Esta es la magia profunda. G\xE1stala solo cuando el Heart la pida."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073670
+    m_Localized: "Bienvenido a casa, Keeper. El spire guarda la \xFAltima canci\xF3n
+      del reino. Prot\xE9gela."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073671
+    m_Localized: "Los Hollowed vienen de la oscuridad m\xE1s all\xE1 de los muros.
+      Quieren extinguir la Luz."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073672
+    m_Localized: 'Construye tus defensas con lo que tienes. Ve a la Crystal Mine:
+      toca para recolectar.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073673
+    m_Localized: Bien. Gasta cristales en el Workshop para mejorar tus defensas.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073674
+    m_Localized: "Cuando est\xE9s listo, inicia una oleada. Toca una habilidad para
+      lanzarla: tu magia vuelve cuando el spire lo permite."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073675
+    m_Localized: "Tus Wardens pelean a tu lado. Toca uno para darle una estaci\xF3n."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073676
+    m_Localized: "El spire recuerda tu bondad. Cu\xEDdalo bien, Keeper."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368256
+    m_Localized: "Los muros sostienen un campo de fuerza de la propia luz del Heart:
+      m\xEDralo brillar en las puertas. Repele a los Hollowed mientras brilla. Pero
+      cada golpe lo adelgaza, y un campo adelgazado deja pasar la oscuridad. Mant\xE9n
+      muros y puertas reparados, y la luz conserva su fuerza."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073677
+    m_Localized: "La luz del Heart se abre para quienes conoce. Cruza, Keeper, pero
+      los Hollow Ones empujar\xE1n contra ella. Repara la puerta como reparas los
+      muros."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073678
+    m_Localized: "La puerta ha ca\xEDdo. Entran sin obst\xE1culo. Sost\xE9n el anillo
+      interior y repara el campo antes de la pr\xF3xima oscuridad."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073679
+    m_Localized: La luz te recuerda. La puerta vuelve a sostenerse.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073680
+    m_Localized: "Vienen de los lugares fr\xEDos. Se mover\xE1n despacio, y morder\xE1n
+      fuerte."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073681
+    m_Localized: "Los marcados por la escarcha est\xE1n en las puertas. Mant\xE9n
+      tus fuegos encendidos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073682
+    m_Localized: "Llegan los atados a la brasa, hambrientos de lo verde. Sost\xE9n
+      los carriles del este."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073683
+    m_Localized: "Arden mientras marchan. No dejes que toquen las ra\xEDces del Heart."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073684
+    m_Localized: "Briznas de lo no hecho: r\xE1pidas, a medias aqu\xED. Apunta con
+      certeza."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073685
+    m_Localized: "Las medias almas se deslizan. Sienten el tir\xF3n del Heart. Hazlas
+      retroceder."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073686
+    m_Localized: Una marea de muchas lenguas. Lee los carriles antes de colocar.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073687
+    m_Localized: "Vienen de cada oscuridad. Conf\xEDa en tus Wardens."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073688
+    m_Localized: "Alduin the Mournful camina a la cabeza de esta marea. Fue sanador,
+      una vez. Rec\xEDbelo con acero."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073689
+    m_Localized: "Regresa cuando el Withering encuentra asidero. Devu\xE9lvelo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368257
+    m_Localized: "Syndrath the Devourer rodea el Heart. El cielo mismo se ha vuelto
+      contra nosotros. Mant\xE9n la mirada arriba, Keeper."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368258
+    m_Localized: "Un ala negra cruza el sol. El Devourer caza donde el reino es m\xE1s
+      d\xE9bil: no dejes que encuentre al Heart falto."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073690
+    m_Localized: "La canci\xF3n cambia. La oscuridad est\xE1 en las puertas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073691
+    m_Localized: "Un carril vacila. El Heart lo sinti\xF3 antes que t\xFA."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073692
+    m_Localized: Los muros se adelgazan. El Heart te llama.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073693
+    m_Localized: "La canci\xF3n se quiebra. Defiende, Keeper: defiende ahora."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073694
+    m_Localized: El Heart se aquieta. El pueblo vuelve a respirar.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073695
+    m_Localized: "\xC9l est\xE1 dentro de la puerta. El tiempo se ralentiza. La luz
+      se aten\xFAa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073696
+    m_Localized: "La canci\xF3n se alza. El valle se sostiene."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073697
+    m_Localized: "La luz cambia. La oscuridad est\xE1 en las puertas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073698
+    m_Localized: El spire se agita. La vigilia comienza.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073699
+    m_Localized: "Un carril vacila. El chord lo sinti\xF3 antes que t\xFA."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073700
+    m_Localized: "Algo empuja m\xE1s fuerte que el resto. Ati\xE9ndelo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073701
+    m_Localized: Los muros se adelgazan. Elarion te llama.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073702
+    m_Localized: "Dos carriles a la vez. Mant\xE9n las manos en movimiento."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073703
+    m_Localized: 'El chord se quiebra. Defiende, Keeper: defiende ahora.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073704
+    m_Localized: "El spire tiembla. Sost\xE9n la l\xEDnea a cualquier costo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073705
+    m_Localized: "\xC9l est\xE1 dentro de la puerta. El tiempo se ralentiza. La luz
+      se aten\xFAa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073706
+    m_Localized: "Alduin the Mournful camina por el carril. Rec\xEDbelo con acero."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073707
+    m_Localized: La luz regresa. La aldea vuelve a respirar.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073708
+    m_Localized: "La canci\xF3n se alza. Elarion se sostiene."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073709
+    m_Localized: El cristal parpadea. El Heart ha recibido su primer golpe.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073710
+    m_Localized: "Caen hojas en la estaci\xF3n equivocada. La canci\xF3n se ha adelgazado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073711
+    m_Localized: La corteza se agrieta. Aguanta, Keeper. Aguanta.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073712
+    m_Localized: "La canci\xF3n casi se ha ido. Gasta todo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073713
+    m_Localized: ...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073714
+    m_Localized: La llama parpadea. El Lantern ha recibido su primer golpe.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073715
+    m_Localized: "Caen hojas en la estaci\xF3n equivocada. El calor se ha adelgazado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073716
+    m_Localized: La corteza se parte. Aguanta, Guardian. Aguanta.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073717
+    m_Localized: La luz casi se apaga. Gasta todo.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073718
+    m_Localized: Retroceden. El Heart se estabiliza. Un respiro, y luego lo siguiente.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073719
+    m_Localized: "La oscuridad se retira. Cuida a tus compa\xF1eros. La canci\xF3n
+      a\xFAn no ha terminado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073720
+    m_Localized: Los carriles se sostienen. El pueblo enciende una vela por ti.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073721
+    m_Localized: Alduin se deshace en el umbral del Heart. El Withering se arrastra
+      a casa.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073722
+    m_Localized: "El valle canta. El pueblo llora. Sigues siendo el Keeper. El trabajo
+      vuelve a empezar ma\xF1ana."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073723
+    m_Localized: "Nadie antes de ti sostuvo tanto. Los antiguos Keepers habr\xEDan
+      asentido."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073724
+    m_Localized: "La oscuridad se retira\u2026 por ahora."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073725
+    m_Localized: El chord se sostiene. La vigilia respira.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073726
+    m_Localized: Los Folk encienden una vela por ti.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073727
+    m_Localized: Los carriles vuelven a estar en calma. Cuida a tus Wardens.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073728
+    m_Localized: "Un respiro. Un momento. Vendr\xE1 la pr\xF3xima marea."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073729
+    m_Localized: "El viento se enfr\xEDa. Elarion recuerda tu nombre."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073730
+    m_Localized: "La canci\xF3n se detiene. El pueblo alza la mirada. El viento se
+      siente fr\xEDo por primera vez."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073731
+    m_Localized: "El Heart se quiebra. Pero el v\xEDnculo no. Empieza de nuevo, Keeper:
+      no hay otra respuesta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073732
+    m_Localized: "Elarion volver\xE1 donde se le necesite. T\xFA tambi\xE9n."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073733
+    m_Localized: "La luz se detiene. El pueblo alza la mirada. El viento se siente
+      fr\xEDo por primera vez."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073734
+    m_Localized: "El chord flaquea. Pero el v\xEDnculo no. Empieza de nuevo, Keeper."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073735
+    m_Localized: (un suave zumbido musical)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073736
+    m_Localized: "(un ladrido c\xE1lido, como una campanita)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073737
+    m_Localized: (un aliento bajo y medido)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073738
+    m_Localized: (una nota larga, sorprendida)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073739
+    m_Localized: "El Sprite te observa mientras trabajas. No sabes qu\xE9 ve."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073740
+    m_Localized: Tararea una sola nota, y luego la olvida.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073741
+    m_Localized: "Brilla m\xE1s cuando sonr\xEDes. A\xFAn no lo sab\xEDas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073742
+    m_Localized: "El Pup vuelve a so\xF1ar con fuego. Su cola se crispa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073743
+    m_Localized: "Se acurruc\xF3 en las piedras c\xE1lidas al atardecer. No se ha
+      movido desde entonces."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073744
+    m_Localized: "Ense\xF1\xF3 los dientes a una corriente de aire. La corriente
+      se retir\xF3."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073745
+    m_Localized: "Aldwin volvi\xF3 del huerto con hielo en el hocico. No preguntaste."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073746
+    m_Localized: "Aldwin avanza en silencio. Cuando llegan los Hollowed, ense\xF1a
+      los dientes y no aparta la mirada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073747
+    m_Localized: Su aliento no hace nube. Te preguntas si respira en absoluto.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073748
+    m_Localized: "El Pup vuelve a so\xF1ar con fuego. Su cola se crispa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073749
+    m_Localized: "La Mina est\xE1 llena. Los Folk dejaron una vela junto a la puerta
+      esta ma\xF1ana."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073750
+    m_Localized: "Hay una canci\xF3n en la madera, tenue y antigua. El Heart est\xE1
+      tarareando."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073751
+    m_Localized: "El Sprite me observa mientras trabajo. No s\xE9 qu\xE9 ve."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073752
+    m_Localized: "Los Folk dejan pan en el taller cuando no me ven. Lo encuentro.
+      A\xFAn no les doy las gracias."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073753
+    m_Localized: "Aldwin volvi\xF3 del huerto con un resto de hielo en el hocico.
+      Pregunt\xE9. No dijo nada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073754
+    m_Localized: "La l\xE1mpara de la Torre ha ardido por diez mil ma\xF1anas. Me
+      toca a m\xED mantenerla."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073755
+    m_Localized: "Creo que el Heart me cant\xF3 hasta dormir anoche. Ya no s\xE9
+      d\xF3nde termina su voz y empieza la m\xEDa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073756
+    m_Localized: "El Sprite brilla m\xE1s. Algo que ayer no pod\xEDa, hoy s\xED puede."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073757
+    m_Localized: "Una forma nueva en la canci\xF3n. El Heart te la ense\xF1\xF3 mientras
+      dorm\xEDas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073758
+    m_Localized: "Alduin cae. El pueblo cantar\xE1 sobre esta tarde durante cien
+      a\xF1os."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073759
+    m_Localized: "El errante se inclina. El pueblo conocer\xE1 tu nombre en tres
+      valles."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073760
+    m_Localized: "La campana del Workshop suena m\xE1s fuerte ahora. Los Folk est\xE1n
+      contentos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073761
+    m_Localized: "Siete ma\xF1anas cuidando la canci\xF3n. Los antiguos Keepers ya
+      te habr\xEDan llamado 'uno de los nuestros'."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073762
+    m_Localized: "Elarion mantuvo c\xE1lido tu hogar. Bienvenido de nuevo, Keeper."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368259
+    m_Localized: Defenders of the Realm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368260
+    m_Localized: powered by SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368261
+    m_Localized: Asume la Vigilia
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368262
+    m_Localized: Entrar en la Aldea
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368263
+    m_Localized: "Lanzarse a la Acci\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368264
+    m_Localized: Thrain
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368265
+    m_Localized: Frostweaver
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368266
+    m_Localized: "Un erudito anciano de las vetas de cristal; su bast\xF3n despierta
+      el fr\xEDo con canci\xF3n. Donde camina Thrain, la oscuridad se ralentiza y
+      la escarcha recuerda cada nombre que congela."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368267
+    m_Localized: Grom
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368268
+    m_Localized: Lightbearer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368269
+    m_Localized: Martillo en mano y el emblema del sol en su escudo, Grom lleva acero
+      bendito a la brecha. Donde cae su luz, los Hollowed flaquean y los muros se
+      sostienen.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368270
+    m_Localized: Sylas
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368271
+    m_Localized: Wood Warden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368272
+    m_Localized: Un elfo de los senderos verdes que suelta una flecha limpia al viento
+      mucho antes de que la oscuridad se acerque. Sylas lee el bosque, atrapa a los
+      veloces y vuelve una marea flecha a flecha.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368273
+    m_Localized: Elara
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368274
+    m_Localized: Divine Healer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368275
+    m_Localized: "Un vaso de la propia luz del Heart, Elara sana a los heridos y
+      envuelve a los fieles en un amparo sagrado. La oscuridad no puede superar una
+      gracia que se alza m\xE1s r\xE1pido de lo que puede herir."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368276
+    m_Localized: Elige tu primer Warden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368277
+    m_Localized: "Un esp\xEDritu caminar\xE1 la vigilia a tu lado. \xDAnete a uno:
+      conocer\xE1 tu bondad, y tus batallas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368278
+    m_Localized: Unirme a este Warden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073763
+    m_Localized: Aether. La propia luz del Heart, compartida y vuelta a compartir.
+      Repara lo que la oscuridad ha deshilachado.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073764
+    m_Localized: "Flame. La vieja rebeld\xEDa del hogar. Quema lo que se colar\xEDa
+      en los lugares c\xE1lidos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073765
+    m_Localized: "Ice. El fr\xEDo paciente que detiene la oscuridad hasta que la
+      canci\xF3n la alcanza."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073766
+    m_Localized: "Crystals. El don lento del Heart. Extra\xEDdos donde su desborde
+      se filtra por la piedra."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073768
+    m_Localized: "Coins. Moneda callada, tra\xEDda por los errantes desde valles
+      que a\xFAn se sostienen. G\xE1stalas en lo que aqu\xED no se puede cultivar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073769
+    m_Localized: "Donde la savia-gema del Heart se filtra en la piedra. Las mascotas
+      aqu\xED cuidan la veta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073770
+    m_Localized: "Un hueco antiguo en las ra\xEDces del \xE1rbol del mundo. Los ecos
+      descansan aqu\xED entre batallas; su presencia es un zumbido bajo en las piedras."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073771
+    m_Localized: Construida por los primeros Keepers. Guarda las piedras de amparo
+      que responden a tu llamado.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073772
+    m_Localized: Trigo que crece porque el Heart lo quiere. Las manzanas saben a
+      los veranos antiguos.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073773
+    m_Localized: Martillo y forja. Los Folk hacen lo que el Keeper necesita y no
+      piden nada.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368279
+    m_Localized: "La hoja del aserradero zumba contra la madera que los lugares verdes
+      de Elarion a\xFAn ceden. Sus tablas refuerzan los muros m\xE1s altos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368280
+    m_Localized: "El fuego del armero nunca se enfr\xEDa. Aqu\xED los Folk golpean
+      el hierro crudo hasta hacerlo placa que los Hollowed no muerden con facilidad."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073774
+    m_Localized: Crystals
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073775
+    m_Localized: "El don lento del Heart. Extra\xEDdos donde su desborde se filtra
+      por la piedra."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073778
+    m_Localized: Coins
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073779
+    m_Localized: "Moneda callada, tra\xEDda por los errantes desde valles que a\xFAn
+      se sostienen. G\xE1stala en lo que aqu\xED no se puede cultivar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073780
+    m_Localized: Voidshards
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073781
+    m_Localized: "Astillas del Withering, dejadas donde cay\xF3 un gran Hollow One.
+      Las piedras de amparo las beben y se fortalecen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073782
+    m_Localized: Stone
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073783
+    m_Localized: "Extra\xEDda de los viejos huesos del valle. Los muros recuerdan
+      su forma."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073784
+    m_Localized: Iron
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073785
+    m_Localized: "Metal fr\xEDo de las vetas profundas. Los Folk lo forjan en muros
+      que la oscuridad no atraviesa con facilidad."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073786
+    m_Localized: Wood
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073787
+    m_Localized: "Madera ca\xEDda de los lugares verdes que el Heart a\xFAn guarda.
+      Refuerza los muros m\xE1s altos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073788
+    m_Localized: Los Muros
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073789
+    m_Localized: "Alza el per\xEDmetro que los Folk construyeron alrededor del Heart.
+      Piedra, hierro y madera lo elevan m\xE1s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073790
+    m_Localized: Las Torres
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073791
+    m_Localized: Agujas de piedra alzadas por los primeros Keepers. Sus piedras de
+      amparo responden a tu llamado contra la oscuridad.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073792
+    m_Localized: Construir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073793
+    m_Localized: "Toca un suelo marcado para alzar una aguja, o el muro para repararlo
+      m\xE1s alto. Los Folk hacen el resto."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073794
+    m_Localized: El Libro del Keeper
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073795
+    m_Localized: Escucha de nuevo la historia antigua, guarda una copia de tu vigilia
+      o empieza una nueva.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073796
+    m_Localized: Las Lecciones Antiguas
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073797
+    m_Localized: "C\xF3mo mantener la vigilia: lo que te habr\xEDan dicho los Keepers
+      anteriores."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073798
+    m_Localized: Los Otros Valles
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073799
+    m_Localized: Une tu vigilia a otros Keepers, cuida la lista y intercambia noticias
+      por el reino.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073800
+    m_Localized: "El Buz\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073801
+    m_Localized: "Notas tra\xEDdas por los errantes. Env\xEDa tu propia palabra con
+      tu marca de invitaci\xF3n."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073802
+    m_Localized: Tu Sala
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073803
+    m_Localized: "Todo lo que has reunido: cada esp\xEDritu unido, cada lugar alzado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073804
+    m_Localized: La Oscuridad se Agita
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073805
+    m_Localized: "Una marea se re\xFAne m\xE1s all\xE1 de los muros. Re\xFAne lo
+      que puedas y prepara tus defensas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073806
+    m_Localized: Llamar la Oleada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073807
+    m_Localized: "No esperes a la oscuridad. Enfr\xE9ntala ahora, en tu propia vigilia."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073808
+    m_Localized: Arcane Bolt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073809
+    m_Localized: 'Tu magia, pero es el don del Heart. Usa lo que se te da: vuelve
+      cuando puede.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073810
+    m_Localized: Frost Nova
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073811
+    m_Localized: "Para cuando un carril falla. El fr\xEDo te compra un respiro. Usa
+      bien ese respiro."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073812
+    m_Localized: Healing Beacon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073813
+    m_Localized: "Planta luz donde la oscuridad se concentra m\xE1s. El Heart y todos
+      los que est\xE1n cerca se sanan en ella."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073814
+    m_Localized: Meteor Strike
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073815
+    m_Localized: "Esta es la magia profunda. G\xE1stala solo cuando el Heart la pida."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073816
+    m_Localized: Sword Strike
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073817
+    m_Localized: "Acero sencillo, cercano y seguro. No pide nada al Heart y siempre
+      est\xE1 listo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073818
+    m_Localized: Shield Bash
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073819
+    m_Localized: "Pon tu escudo contra la marea. Los Hollow Ones flaquean, y t\xFA
+      sostienes la l\xEDnea."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073820
+    m_Localized: Banner of Valor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073821
+    m_Localized: "Alza los colores antiguos. Toda una fila de la oscuridad cae donde
+      est\xE1."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073822
+    m_Localized: Vow of Iron
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073823
+    m_Localized: Una promesa cumplida al Heart. Su luz inunda de nuevo la herida.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073824
+    m_Localized: Quick Shot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073825
+    m_Localized: Una flecha limpia lanzada de lejos. No cuesta nada y la cuerda no
+      permanece quieta por mucho tiempo.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073826
+    m_Localized: Snare Arrow
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073827
+    m_Localized: "Clava a un Hollow One al suelo. Esta noche no llegar\xE1 a las
+      ra\xEDces del Heart."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073828
+    m_Localized: Hawk's Eye
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073829
+    m_Localized: Apunta con certeza y lejos. Un disparo lleva el peso de la oscuridad
+      que rechazas.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073830
+    m_Localized: Volley
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073831
+    m_Localized: Suelta todas las flechas al cielo a la vez. Caen como una lluvia
+      dura sobre la marea.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073832
+    m_Localized: Arrastra el joystick en la esquina inferior izquierda para caminar
+      por la aldea.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073833
+    m_Localized: "Toca cualquier punto del suelo y tu h\xE9roe caminar\xE1 hasta
+      all\xED."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073834
+    m_Localized: "Arrastra el joystick para moverte, o toca el suelo para caminar
+      a alg\xFAn sitio."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073835
+    m_Localized: "El reino m\xE1s all\xE1 de Elarion se agita. Visita el Wayshrine
+      \u2014la piedra p\xE1lida en pie\u2014 para partir por el Realm Map."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073836
+    m_Localized: "\xA1Mi se\xF1or: ENEMIGOS! \xA1La tienda puede esperar!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073837
+    m_Localized: "\xA1Mercanc\xEDa despu\xE9s, gloria ahora! \xA1A las armas!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073838
+    m_Localized: "\xBFQuieres comprar? \xBFAHORA?! \xA1Ay\xFAdanos, por favor!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073839
+    m_Localized: "\xA1Las monedas no nos salvar\xE1n de esta gente: tu magia s\xED!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073840
+    m_Localized: "\xA1Mi se\xF1or, la caja est\xE1 atrincherada! \xA1Ve al Heart!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1081073841
+    m_Localized: "\xA1Descuentos despu\xE9s de la oleada, lo juro! \xA1Lucha!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368281
+    m_Localized: Cambiar a SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368282
+    m_Localized: "Env\xEDas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368283
+    m_Localized: Recibes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368284
+    m_Localized: Tipo de cambio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368285
+    m_Localized: "Comisi\xF3n de servicio"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368286
+    m_Localized: "Comisi\xF3n de red"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368287
+    m_Localized: Cambiar ahora
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368288
+    m_Localized: "Con tecnolog\xEDa de Jupiter Aggregator"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368289
+    m_Localized: Introduce una cantidad para ver el tipo.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368290
+    m_Localized: Obteniendo tipo...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368291
+    m_Localized: Conecta tu billetera para cambiar.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368292
+    m_Localized: "Enviando a la billetera para aprobaci\xF3n..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368293
+    m_Localized: "No se pudo obtener el tipo. Revisa la conexi\xF3n."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368294
+    m_Localized: "El cambio fall\xF3. Int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368295
+    m_Localized: Dinos la verdad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368296
+    m_Localized: "Cu\xE9ntanos qu\xE9 funciona, qu\xE9 no, y qu\xE9 falta. Leemos
+      cada respuesta, y el agradecimiento es el mismo digas lo que digas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368297
+    m_Localized: "\xBFQu\xE9 funciona y qu\xE9 no?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368298
+    m_Localized: Enviar y reclamar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368299
+    m_Localized: 'Solo una vez: 1000 madera, 1000 piedra y 1000 hierro, entregados
+      por completo.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368300
+    m_Localized: "Val\xF3ranos en la tienda"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368301
+    m_Localized: 'Es aparte, y no se recompensa: ninguna tienda nos dice si lo hiciste.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368302
+    m_Localized: Comentarios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368303
+    m_Localized: Enviar comentarios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368304
+    m_Localized: Enviando...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368305
+    m_Localized: "No pudimos alcanzar el servicio de comentarios ahora. Int\xE9ntalo
+      m\xE1s tarde."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368306
+    m_Localized: "El enlace de la tienda no est\xE1 configurado en esta build."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368307
+    m_Localized: "Gracias: tus palabras est\xE1n con nosotros. Se han a\xF1adido
+      1000 madera, 1000 piedra y 1000 hierro a tus almacenes, por completo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368308
+    m_Localized: "Gracias: tus palabras est\xE1n con nosotros. El agradecimiento
+      ya se reclam\xF3 en este reino, as\xED que esta vez no se a\xF1adi\xF3 nada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368309
+    m_Localized: "Gracias: tus palabras est\xE1n con nosotros. El agradecimiento
+      no se pudo a\xF1adir ahora; sigue debi\xE9ndotelo y no se ha consumido."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562560
+    m_Localized: "No pudimos verificar tu cuenta, as\xED que no se envi\xF3 nada.
+      Int\xE9ntalo m\xE1s tarde."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562561
+    m_Localized: "El servidor no lo acept\xF3. No se envi\xF3 nada: int\xE9ntalo
+      de nuevo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562562
+    m_Localized: "No pudimos alcanzar el servidor. Tus palabras no se enviaron; int\xE9ntalo
+      de nuevo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562564
+    m_Localized: JOYERO DESBLOQUEADO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562565
+    m_Localized: "Se recuper\xF3 un objeto raro.\nSable puede pulirlo hasta convertirlo
+      en una gema refinada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562566
+    m_Localized: Abrir Joyero
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562567
+    m_Localized: "Ll\xE9vaselo a Sable en el Joyero."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562568
+    m_Localized: Comprobando la billetera conectada por un stake nativo activo de
+      SKR.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562569
+    m_Localized: "Stake nativo de SKR verificado: +1 reintento semanal a\xF1adido."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562570
+    m_Localized: "Stake nativo de SKR verificado: +1 reintento semanal a\xF1adido.
+      Tu stake de 10,000+ SKR tambi\xE9n sube el tope de tiradas por piedra a 6."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562571
+    m_Localized: "Stake nativo de SKR no verificado: no se a\xF1adi\xF3 reintento
+      semanal."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562572
+    m_Localized: PULIR LA PIEDRA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562575
+    m_Localized: "Sable ha empezado a pulir. S\xEDguelo en la Work Queue."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562576
+    m_Localized: La piedra no pudo colocarse en el banco.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562577
+    m_Localized: No hay piedra en bruto en tu despensa.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562578
+    m_Localized: GEMA REVELADA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562580
+    m_Localized: Quedarse con la gema
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158154326016
+    m_Localized: Ajustes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491840
+    m_Localized: Audio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491841
+    m_Localized: General
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491842
+    m_Localized: "M\xFAsica"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491843
+    m_Localized: SFX
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491844
+    m_Localized: Silenciar todo el audio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491845
+    m_Localized: "El mezclador de audio a\xFAn no est\xE1 conectado: los vol\xFAmenes
+      se guardan y se aplican cuando llegue."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491846
+    m_Localized: Juego
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491847
+    m_Localized: "F\xE1cil"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491848
+    m_Localized: Normal
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491849
+    m_Localized: "Dif\xEDcil"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491850
+    m_Localized: "Una ventana de construcci\xF3n larga y calmada: unos 10 minutos
+      entre oleadas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491851
+    m_Localized: "La ventana de construcci\xF3n est\xE1ndar: unos 5 minutos entre
+      oleadas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491852
+    m_Localized: "Una ventana de construcci\xF3n corta y tensa: unos 3 minutos entre
+      oleadas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491853
+    m_Localized: "Gr\xE1ficos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491854
+    m_Localized: Bajo 30 FPS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491855
+    m_Localized: Alto 60 FPS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491856
+    m_Localized: Escritorio 60 FPS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491857
+    m_Localized: Comodidad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491858
+    m_Localized: Temblor de pantalla
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491859
+    m_Localized: Activado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491860
+    m_Localized: Desactivado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491861
+    m_Localized: Idioma
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491862
+    m_Localized: Idioma del dispositivo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40958822273560576
+    m_Localized: "Elegir: {Language} \xB7 Beta"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40931158179491864
+    m_Localized: Billetera
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491865
+    m_Localized: Conectar billetera
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491866
+    m_Localized: Desconectar billetera
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491868
+    m_Localized: Ayuda
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491869
+    m_Localized: "Gu\xEDa del juego"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491870
+    m_Localized: Ayuda
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491871
+    m_Localized: Restablecer valores
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491872
+    m_Localized: Tu ciudad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491873
+    m_Localized: Informes de defensa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491875
+    m_Localized: Legal
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491876
+    m_Localized: "Pol\xEDtica de privacidad"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491877
+    m_Localized: "T\xE9rminos de servicio"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491878
+    m_Localized: Privacidad de anuncios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491879
+    m_Localized: Opciones de privacidad de anuncios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491880
+    m_Localized: 'No vender: ACTIVADO'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491881
+    m_Localized: 'No vender: DESACTIVADO'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491882
+    m_Localized: "Sin conexi\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491883
+    m_Localized: "Listo sin conexi\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491884
+    m_Localized: "Jugar sin conexi\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491885
+    m_Localized: Desarrollador
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491886
+    m_Localized: Panel de desarrollo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491888
+    m_Localized: Cosecha
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491890
+    m_Localized: Recoger
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491895
+    m_Localized: The Night Market
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491896
+    m_Localized: BOLSA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491897
+    m_Localized: HABILIDADES
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491898
+    m_Localized: EQUIPO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491899
+    m_Localized: "Desciende a lugares olvidados. Regresa con lo que sobrevivi\xF3."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491900
+    m_Localized: "Explora las tierras m\xE1s all\xE1 de la luz del Heart."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491901
+    m_Localized: "Enfrenta el desaf\xEDo que ahora moldea el Reino."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491902
+    m_Localized: "El camino est\xE1 cerrado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491903
+    m_Localized: RECUPERANDO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491904
+    m_Localized: LISTO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491906
+    m_Localized: Listo para asaltar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491911
+    m_Localized: menos de un minuto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817708179456
+    m_Localized: "Canjear un c\xF3digo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345280
+    m_Localized: "CANJEAR UN C\xD3DIGO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345281
+    m_Localized: "\xBFTienes un c\xF3digo de un evento, un creador o el equipo? Introd\xFAcelo
+      aqu\xED."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345282
+    m_Localized: "Introduce tu c\xF3digo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345283
+    m_Localized: Canjear
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345284
+    m_Localized: "Los c\xF3digos no distinguen entre may\xFAsculas y min\xFAsculas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345285
+    m_Localized: "Comprobando tu c\xF3digo..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539584
+    m_Localized: "C\xF3digo aceptado, pero no conten\xEDa ninguna recompensa para
+      a\xF1adir."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539588
+    m_Localized: "Introduce primero un c\xF3digo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539589
+    m_Localized: "No reconocemos ese c\xF3digo. Comprueba que est\xE9 bien escrito
+      e int\xE9ntalo de nuevo; no se ha usado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539590
+    m_Localized: "Ya has canjeado este c\xF3digo. Cada jugador solo puede usarlo
+      una vez."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539591
+    m_Localized: "Este c\xF3digo ha caducado y ya no se acepta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539592
+    m_Localized: "Has alcanzado el l\xEDmite de c\xF3digos promocionales de esta
+      cuenta, as\xED que no puedes canjear m\xE1s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539593
+    m_Localized: "No hemos podido conectar con el servidor de recompensas. Tu c\xF3digo
+      NO se ha usado; comprueba la conexi\xF3n e int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539594
+    m_Localized: "No hemos podido verificar tu cuenta, as\xED que el c\xF3digo NO
+      se ha usado. Inicia sesi\xF3n e int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539595
+    m_Localized: "Inicia sesi\xF3n antes de canjear un c\xF3digo; las recompensas
+      est\xE1n vinculadas a tu cuenta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539596
+    m_Localized: "Algo ha fallado por nuestra parte y el c\xF3digo NO se ha usado.
+      Int\xE9ntalo de nuevo dentro de un momento."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40960853767925760
+    m_Localized: Cerrar
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 7338888477077143552
+      type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries: 
+        m_SharedEntries:
+        - id: 40920301974368310
+        - id: 40920301978562563
+        - id: 40920301978562573
+        - id: 40920301978562574
+        - id: 40920301978562579
+        - id: 40931158179491863
+        - id: 40931158179491867
+        - id: 40931158179491874
+        - id: 40931158179491887
+        - id: 40931158179491889
+        - id: 40931158179491891
+        - id: 40931158179491892
+        - id: 40931158179491893
+        - id: 40931158179491894
+        - id: 40931158179491905
+        - id: 40931158179491907
+        - id: 40931158179491908
+        - id: 40931158179491909
+        - id: 40931158179491910
+        - id: 40945817733345286
+        - id: 40945817737539585
+        - id: 40945817737539586
+        - id: 40945817737539587
+        - id: 40958822273560576

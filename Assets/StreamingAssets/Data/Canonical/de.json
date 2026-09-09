@@ -292,6 +292,8 @@
   "settings.section.language": "Sprache",
   "settings.language.systemDefault": "Gerätesprache",
   "settings.language.choose": "Wählen: {Language}",
+  "settings.language.chooseBeta": "Wählen: {Language} · Beta",
+  "common.close": "Schließen",
   "settings.section.wallet": "Wallet",
   "settings.wallet.connect": "Wallet verbinden",
   "settings.wallet.disconnect": "Wallet trennen",

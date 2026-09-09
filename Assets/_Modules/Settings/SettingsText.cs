@@ -37,6 +37,8 @@ namespace DeNelle.Settings
         public static readonly LocalizedText DeviceLanguage = new LocalizedText("settings.language.systemDefault");
         public static readonly LocalizedText<LanguageArguments> ChooseLanguage =
             new LocalizedText<LanguageArguments>("settings.language.choose");
+        public static readonly LocalizedText<LanguageArguments> ChooseBetaLanguage =
+            new LocalizedText<LanguageArguments>("settings.language.chooseBeta");
 
         public static readonly LocalizedText WalletSection = new LocalizedText("settings.section.wallet");
         public static readonly LocalizedText ConnectWallet = new LocalizedText("settings.wallet.connect");

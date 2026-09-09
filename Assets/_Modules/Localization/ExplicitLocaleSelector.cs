@@ -21,9 +21,18 @@ namespace DeNelle.Localization
                 return null;
 
             string code = PlayerPrefs.GetString(PreferenceKey, string.Empty);
-            return string.IsNullOrWhiteSpace(code)
+            Locale locale = string.IsNullOrWhiteSpace(code)
                 ? null
                 : availableLocales.GetLocale(new LocaleIdentifier(code));
+            if (locale != null)
+                return locale;
+
+            // A locale can be withdrawn from a build while a prior install still
+            // carries the explicit preference. Clear it so Settings truthfully
+            // reports device-language mode and startup selectors may continue.
+            PlayerPrefs.DeleteKey(PreferenceKey);
+            PlayerPrefs.Save();
+            return null;
         }
     }
 }

@@ -313,6 +313,8 @@
   "settings.section.language": "语言",
   "settings.language.systemDefault": "设备语言",
   "settings.language.choose": "选择：{Language}",
+  "settings.language.chooseBeta": "选择：{Language} · 测试版",
+  "common.close": "关闭",
   "settings.section.wallet": "钱包",
   "settings.wallet.connect": "连接钱包",
   "settings.wallet.disconnect": "断开钱包",

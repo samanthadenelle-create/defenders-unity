@@ -1570,13 +1570,22 @@ MonoBehaviour:
       try again in a moment.
     m_Metadata:
       m_Items: []
+  - m_Id: 40958822273560576
+    m_Localized: "Choose: {Language} \xB7 Beta"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40960853767925760
+    m_Localized: Close
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
     - rid: 7338888474672496640
       type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
       data:
-        m_Entries:
+        m_Entries: 
         m_SharedEntries:
         - id: 40920301974368310
         - id: 40920301978562563
@@ -1601,3 +1610,4 @@ MonoBehaviour:
         - id: 40945817737539585
         - id: 40945817737539586
         - id: 40945817737539587
+        - id: 40958822273560576

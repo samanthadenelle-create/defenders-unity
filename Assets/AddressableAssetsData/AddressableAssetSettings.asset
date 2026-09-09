@@ -61,10 +61,14 @@ MonoBehaviour:
   m_BuildAddressablesWithPlayerBuild: 1
   m_overridePlayerVersion: '[UnityEditor.PlayerSettings.bundleVersion]'
   m_GroupAssets:
+  - {fileID: 11400000, guid: 9e7abc3c3c5e4834382a8f5695b006b3, type: 2}
   - {fileID: 11400000, guid: ab36e0ba9fb72d84294ef0ae642a0954, type: 2}
   - {fileID: 11400000, guid: 1b500c7e09bb94848a69094c18775495, type: 2}
   - {fileID: 11400000, guid: c27e8f97ae8d96f4e86244f8c6340d7e, type: 2}
+  - {fileID: 11400000, guid: 828d5690056c62d4f92da7e427e8321c, type: 2}
   - {fileID: 11400000, guid: 0ed0bd40b8f37a44d86357727912c636, type: 2}
+  - {fileID: 11400000, guid: 8904e3880a82372478a1020c214795ea, type: 2}
+  - {fileID: 11400000, guid: f19a1584838379e4581cd33a2412d42f, type: 2}
   - {fileID: 11400000, guid: c4cde922c2b75404eb7a530aa34f9a82, type: 2}
   - {fileID: 11400000, guid: 5799cf2c14b32d944b2487955abb8445, type: 2}
   - {fileID: 11400000, guid: 8b907c54137870a4cb3531f7d035792f, type: 2}
@@ -74,6 +78,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 89c939bf33fb37e48aeb0b5893bce1f3, type: 2}
   - {fileID: 11400000, guid: 083114ba3e1835b48a0c873e777d7f10, type: 2}
   - {fileID: 11400000, guid: e98aab869d04a5f47b833601939ccadf, type: 2}
+  - {fileID: 11400000, guid: 742d571c36755d6448d3a07ba9f0daaa, type: 2}
   - {fileID: 11400000, guid: 57ee3eba41e7c2b45a53b649152b7354, type: 2}
   - {fileID: 11400000, guid: bfadfcb5fe86fdb4abd3b7999e8fa2fc, type: 2}
   - {fileID: 11400000, guid: 3f1151c3e16443f4fa33258336172f9f, type: 2}
@@ -123,6 +128,11 @@ MonoBehaviour:
     - enemyfam-shared
     - enemyfam-troll
     - enemyfam-bosses
+    - Locale-es
+    - Locale-pt-BR
+    - Locale-de
+    - Locale-fr
+    - Locale-ru
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: 68a9725f91bb76a4198c31ea0f6c8caa, type: 2}

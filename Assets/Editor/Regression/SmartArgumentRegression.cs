@@ -4,9 +4,9 @@
 // braces, format suffixes and nested Smart String bodies.
 //
 // RED-FIRST RECIPE (revert immediately): in a temporary policy-listed qps-ploc
-// locale change jewelerPolish.body from {0} to {1}, then unbalance a brace in
-// feedback.overCapacity. Expect an argument mismatch and malformed-template red.
-// The in-memory cases below ensure parser coverage even while English is alone.
+// locale change jewelerPolish.body from "{0} / {0}" to "{0}", then unbalance a
+// brace in feedback.overCapacity. Expect an occurrence-count mismatch and a
+// malformed-template red. The in-memory cases below prove duplicate preservation.
 // =============================================================================
 using System;
 using System.Collections.Generic;
@@ -49,7 +49,8 @@ namespace DeNelle.Editor.Regression
                 reason = "SMART ARGUMENT FAIL -- " + LocalizationAuditIO.JoinFailures(failures);
                 return false;
             }
-            reason = "SMART ARGUMENT OK -- parser self-tests green and all policy-listed locale argument sets match English";
+            reason = "SMART ARGUMENT OK -- parser self-tests green and all policy-listed locale argument multisets match English; " +
+                     LocalizationAuditIO.DescribeLocaleStates(policy);
             return true;
         }
 
@@ -63,10 +64,10 @@ namespace DeNelle.Editor.Regression
                 return;
             }
 
-            var englishArguments = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+            var englishArguments = new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
             foreach (var pair in english)
             {
-                HashSet<string> args;
+                Dictionary<string, int> args;
                 string error;
                 if (!TryExtractArguments(pair.Value, out args, out error)) failures.Add("English " + pair.Key + " malformed: " + error);
                 else englishArguments[pair.Key] = args;
@@ -84,18 +85,26 @@ namespace DeNelle.Editor.Regression
                     foreach (string failure in ioFailures) failures.Add(failure);
                     continue;
                 }
+                if (locale.required)
+                {
+                    var missing = englishArguments.Keys.Where(k => !translated.ContainsKey(k))
+                        .OrderBy(k => k, StringComparer.Ordinal).ToList();
+                    if (missing.Count > 0)
+                        failures.Add(locale.code + " argument audit cannot validate missing=" + missing.Count +
+                                     LocalizationAuditIO.Sample(missing));
+                }
                 foreach (var pair in translated.Where(p => englishArguments.ContainsKey(p.Key)))
                 {
-                    HashSet<string> args;
+                    Dictionary<string, int> args;
                     string error;
                     if (!TryExtractArguments(pair.Value, out args, out error))
                     {
                         failures.Add(locale.code + " " + pair.Key + " malformed: " + error);
                         continue;
                     }
-                    if (!args.SetEquals(englishArguments[pair.Key]))
-                        failures.Add(locale.code + " " + pair.Key + " arguments [" + string.Join(",", args.OrderBy(v => v).ToArray()) +
-                                     "] != English [" + string.Join(",", englishArguments[pair.Key].OrderBy(v => v).ToArray()) + "]");
+                    if (!MultisetEquals(args, englishArguments[pair.Key]))
+                        failures.Add(locale.code + " " + pair.Key + " arguments [" + Describe(args) +
+                                     "] != English [" + Describe(englishArguments[pair.Key]) + "]");
                 }
             }
         }
@@ -129,17 +138,19 @@ namespace DeNelle.Editor.Regression
                 string key = entry.Value<string>("key");
                 var declared = entry["arguments"] as JArray;
                 if (string.IsNullOrEmpty(key) || declared == null || !english.ContainsKey(key)) continue;
-                HashSet<string> actual;
+                Dictionary<string, int> actual;
                 string error;
                 if (!TryExtractArguments(english[key], out actual, out error)) continue;
-                var expected = new HashSet<string>(declared.Values<string>(), StringComparer.Ordinal);
-                if (!actual.SetEquals(expected)) failures.Add("manifest arguments for " + key + " do not match English placeholders");
+                var expected = ToMultiset(declared.Values<string>());
+                if (!MultisetEquals(actual, expected))
+                    failures.Add("manifest arguments for " + key + " [" + Describe(expected) +
+                                 "] do not match English placeholders [" + Describe(actual) + "]");
             }
         }
 
-        internal static bool TryExtractArguments(string value, out HashSet<string> arguments, out string error)
+        internal static bool TryExtractArguments(string value, out Dictionary<string, int> arguments, out string error)
         {
-            arguments = new HashSet<string>(StringComparer.Ordinal);
+            arguments = new Dictionary<string, int>(StringComparer.Ordinal);
             error = null;
             if (value == null) return true;
             bool sawNumeric = false, sawNamed = false;
@@ -166,9 +177,33 @@ namespace DeNelle.Editor.Regression
                 {
                     bool numeric = argument.All(char.IsDigit);
                     if (!numeric && !IsIdentifier(argument)) { error = "invalid argument name '" + argument + "'"; return false; }
-                    arguments.Add(argument);
+                    int count;
+                    arguments.TryGetValue(argument, out count);
+                    arguments[argument] = count + 1;
                     sawNumeric |= numeric;
                     sawNamed |= !numeric;
+                }
+                // Smart formats may contain selectors inside their format body,
+                // for example {0:choose(...):{1}|{1}}. Those occurrences are as
+                // contract-bearing as top-level placeholders and must not vanish.
+                if (delimiter >= 0 && delimiter + 1 < body.Length)
+                {
+                    Dictionary<string, int> nested;
+                    string nestedError;
+                    if (!TryExtractArguments(body.Substring(delimiter + 1), out nested, out nestedError))
+                    {
+                        error = "nested format for '" + argument + "': " + nestedError;
+                        return false;
+                    }
+                    foreach (var pair in nested)
+                    {
+                        int count;
+                        arguments.TryGetValue(pair.Key, out count);
+                        arguments[pair.Key] = count + pair.Value;
+                        bool numeric = pair.Key.All(char.IsDigit);
+                        sawNumeric |= numeric;
+                        sawNamed |= !numeric;
+                    }
                 }
                 i = end - 1;
             }
@@ -197,6 +232,10 @@ namespace DeNelle.Editor.Regression
         private static void RunSelfTests(ICollection<string> failures)
         {
             AssertArguments("A {0} B {{literal}}", new[] { "0" }, true, failures, "escaped/positional");
+            AssertArguments("A {0} B {0}", new[] { "0", "0" }, true, failures, "duplicate positional occurrences");
+            AssertArguments("{Gem} then {Gem}", new[] { "Gem", "Gem" }, true, failures, "duplicate named occurrences");
+            AssertArguments("{0:choose(one|two):{1}|{1}}", new[] { "0", "1", "1" }, true, failures,
+                "nested argument occurrences");
             AssertArguments("{count:plural:one item|many items}", new[] { "count" }, true, failures, "named smart suffix");
             AssertArguments("{Minimum} {Duration} {Resource} {AmountOver} {Gem}",
                 new[] { "Minimum", "Duration", "Resource", "AmountOver", "Gem" }, true, failures, "named argument properties");
@@ -208,11 +247,35 @@ namespace DeNelle.Editor.Regression
         private static void AssertArguments(string value, IEnumerable<string> expected, bool expectedSuccess,
             ICollection<string> failures, string label)
         {
-            HashSet<string> actual;
+            Dictionary<string, int> actual;
             string error;
             bool success = TryExtractArguments(value, out actual, out error);
-            if (success != expectedSuccess || (success && !actual.SetEquals(expected)))
-                failures.Add("smart argument parser self-test failed: " + label + " (" + (error ?? "wrong argument set") + ")");
+            if (success != expectedSuccess || (success && !MultisetEquals(actual, ToMultiset(expected))))
+                failures.Add("smart argument parser self-test failed: " + label + " (" + (error ?? "wrong argument multiset") + ")");
+        }
+
+        private static Dictionary<string, int> ToMultiset(IEnumerable<string> values)
+        {
+            var result = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (string value in values ?? Enumerable.Empty<string>())
+            {
+                int count;
+                result.TryGetValue(value ?? string.Empty, out count);
+                result[value ?? string.Empty] = count + 1;
+            }
+            return result;
+        }
+
+        private static bool MultisetEquals(IDictionary<string, int> left, IDictionary<string, int> right)
+        {
+            return left.Count == right.Count && left.All(pair =>
+                right.TryGetValue(pair.Key, out int count) && count == pair.Value);
+        }
+
+        private static string Describe(IDictionary<string, int> values)
+        {
+            return string.Join(",", values.OrderBy(p => p.Key, StringComparer.Ordinal)
+                .Select(p => p.Key + "x" + p.Value).ToArray());
         }
     }
 }

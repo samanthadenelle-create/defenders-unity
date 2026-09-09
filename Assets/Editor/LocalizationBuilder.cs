@@ -32,6 +32,7 @@
 // This script does NOT run itself; the main session triggers it.
 // =============================================================================
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
@@ -40,6 +41,7 @@ using UnityEditor;
 using UnityEditor.Localization;
 using UnityEngine;
 using UnityEngine.Localization;
+using UnityEngine.Localization.Metadata;
 using UnityEngine.Localization.Settings;
 using UnityEngine.Localization.Tables;
 
@@ -56,15 +58,30 @@ namespace DeNelle.Editor
         // ── Project paths ────────────────────────────────────────────────────
         private const string LocalizationDir = "Assets/Localization";
         private const string SettingsPath = LocalizationDir + "/LocalizationSettings.asset";
-        private const string EnglishLocalePath = LocalizationDir + "/en.asset";
+        private const string PolicyPath = "Assets/Editor/Localization/LocalizationPolicy.json";
 
         private const string TableCollectionName = "GameStrings";
         private const string TablesDir = LocalizationDir + "/Tables";
 
-        private const string EnJsonPath = "Assets/StreamingAssets/Data/Canonical/en.json";
-
+        private const string CanonicalLocaleDir = "Assets/StreamingAssets/Data/Canonical";
         // English locale identifier — language code "en".
         private static readonly LocaleIdentifier EnglishId = new LocaleIdentifier("en");
+
+        [Serializable]
+        private sealed class BuildPolicy
+        {
+            public List<LocaleBuildSpec> supportedLocales;
+        }
+
+        [Serializable]
+        private sealed class LocaleBuildSpec
+        {
+            public string code;
+            public bool required;
+            public bool enabledInBuild;
+            public string status;
+            public int sortOrder;
+        }
 
         // =====================================================================
         //  Entry point
@@ -78,29 +95,173 @@ namespace DeNelle.Editor
         [MenuItem("Defenders/Week 1/Build Localization")]
         public static void BuildAll()
         {
+            List<LocaleBuildSpec> allSpecs;
+            List<LocaleBuildSpec> enabledSpecs;
+            Dictionary<string, Dictionary<string, string>> sources;
+            if (!TryLoadPolicy(out allSpecs, out enabledSpecs) ||
+                !TryLoadLocaleSources(enabledSpecs, out sources))
+                return;
+
             EnsureFolder(LocalizationDir);
             EnsureFolder(TablesDir);
 
             // 1. Project LocalizationSettings asset (created + made active).
             var settings = EnsureLocalizationSettings();
 
-            // 2. English Locale, registered with the project.
-            var englishLocale = EnsureEnglishLocale();
+            // 2. Policy-enabled Locales, registered with deterministic native names.
+            var locales = EnsureLocales(enabledSpecs);
+            Locale englishLocale = locales["en"];
 
-            // 3. GameStrings StringTableCollection, populated from en.json.
-            var collection = EnsureStringTableCollection(englishLocale);
-            int imported = PopulateFromJson(collection);
+            // 3. GameStrings tables, one per enabled locale and populated from JSON.
+            var collection = EnsureStringTableCollection(enabledSpecs, locales);
+            RemoveDisabledPolicyLocales(allSpecs, collection);
+            int imported = PopulateFromJson(collection, enabledSpecs, sources);
 
             // 4. Project-default / selected locale = English.
-            ConfigureDefaultLocale(settings, englishLocale);
+            ConfigureLocales(settings, enabledSpecs, locales, englishLocale);
 
             EditorUtility.SetDirty(settings);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             Debug.Log($"[LocalizationBuilder] BuildAll complete — LocalizationSettings active, " +
-                      $"English locale registered, '{TableCollectionName}' collection holds " +
-                      $"{imported} string entries imported from en.json.");
+                      $"{enabledSpecs.Count} policy-enabled locale(s) registered, '{TableCollectionName}' holds " +
+                      $"{imported} localized entries imported from canonical JSON.");
+        }
+
+        private static bool TryLoadPolicy(
+            out List<LocaleBuildSpec> allSpecs,
+            out List<LocaleBuildSpec> enabledSpecs)
+        {
+            allSpecs = new List<LocaleBuildSpec>();
+            enabledSpecs = new List<LocaleBuildSpec>();
+            string fullPath = Path.GetFullPath(PolicyPath);
+            if (!File.Exists(fullPath))
+            {
+                Debug.LogError($"[LocalizationBuilder] Localization policy not found at {PolicyPath}.");
+                return false;
+            }
+
+            BuildPolicy policy;
+            try
+            {
+                policy = JsonConvert.DeserializeObject<BuildPolicy>(File.ReadAllText(fullPath));
+            }
+            catch (JsonException exception)
+            {
+                Debug.LogError($"[LocalizationBuilder] Failed to parse {PolicyPath}: {exception.Message}");
+                return false;
+            }
+
+            if (policy?.supportedLocales == null || policy.supportedLocales.Count == 0)
+            {
+                Debug.LogError("[LocalizationBuilder] Localization policy has no supportedLocales.");
+                return false;
+            }
+
+            var codes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var sortOrders = new HashSet<int>();
+            bool englishEnabled = false;
+            foreach (LocaleBuildSpec spec in policy.supportedLocales)
+            {
+                if (spec == null || string.IsNullOrWhiteSpace(spec.code) ||
+                    string.IsNullOrWhiteSpace(spec.status))
+                {
+                    Debug.LogError("[LocalizationBuilder] Every supported locale needs code, status, enabledInBuild and sortOrder metadata.");
+                    return false;
+                }
+
+                spec.code = spec.code.Trim();
+                if (!codes.Add(spec.code))
+                {
+                    Debug.LogError($"[LocalizationBuilder] Duplicate locale code in policy: {spec.code}.");
+                    return false;
+                }
+                if (spec.sortOrder < 0 || spec.sortOrder > ushort.MaxValue)
+                {
+                    Debug.LogError($"[LocalizationBuilder] Locale sortOrder must be between 0 and {ushort.MaxValue}: {spec.code}={spec.sortOrder}.");
+                    return false;
+                }
+                if (!sortOrders.Add(spec.sortOrder))
+                {
+                    Debug.LogError($"[LocalizationBuilder] Duplicate locale sortOrder in policy: {spec.sortOrder}.");
+                    return false;
+                }
+
+                allSpecs.Add(spec);
+                if (!spec.enabledInBuild) continue;
+                enabledSpecs.Add(spec);
+                if (string.Equals(spec.code, EnglishId.Code, StringComparison.OrdinalIgnoreCase))
+                    englishEnabled = true;
+            }
+
+            if (!englishEnabled)
+            {
+                Debug.LogError("[LocalizationBuilder] English ('en') must remain enabled as the project fallback locale.");
+                return false;
+            }
+
+            enabledSpecs.Sort((left, right) =>
+            {
+                int byOrder = left.sortOrder.CompareTo(right.sortOrder);
+                return byOrder != 0 ? byOrder : string.CompareOrdinal(left.code, right.code);
+            });
+            return true;
+        }
+
+        private static bool TryLoadLocaleSources(
+            IList<LocaleBuildSpec> enabledSpecs,
+            out Dictionary<string, Dictionary<string, string>> sources)
+        {
+            sources = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (LocaleBuildSpec spec in enabledSpecs)
+            {
+                string assetPath = CanonicalLocaleDir + "/" + spec.code + ".json";
+                string fullPath = Path.GetFullPath(assetPath);
+                if (!File.Exists(fullPath))
+                {
+                    Debug.LogError($"[LocalizationBuilder] Enabled locale source not found: {assetPath}.");
+                    return false;
+                }
+
+                JObject root;
+                try
+                {
+                    root = JObject.Parse(File.ReadAllText(fullPath));
+                }
+                catch (JsonException exception)
+                {
+                    Debug.LogError($"[LocalizationBuilder] Failed to parse {assetPath}: {exception.Message}");
+                    return false;
+                }
+
+                var flat = new Dictionary<string, string>(StringComparer.Ordinal);
+                Flatten(root, null, flat);
+                sources.Add(spec.code, flat);
+            }
+
+            Dictionary<string, string> english = sources[EnglishId.Code];
+            foreach (LocaleBuildSpec spec in enabledSpecs)
+            {
+                Dictionary<string, string> localized = sources[spec.code];
+                foreach (string key in english.Keys)
+                {
+                    if (!localized.ContainsKey(key))
+                    {
+                        Debug.LogError($"[LocalizationBuilder] {spec.code}.json is missing English key '{key}'.");
+                        return false;
+                    }
+                }
+                foreach (string key in localized.Keys)
+                {
+                    if (!english.ContainsKey(key))
+                    {
+                        Debug.LogError($"[LocalizationBuilder] {spec.code}.json has non-English key '{key}'.");
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
         // =====================================================================
@@ -138,28 +299,38 @@ namespace DeNelle.Editor
         /// Returns the English <see cref="Locale"/> registered with the project,
         /// creating and registering it if absent.
         /// </summary>
-        private static Locale EnsureEnglishLocale()
+        private static Dictionary<string, Locale> EnsureLocales(IList<LocaleBuildSpec> enabledSpecs)
         {
-            // Already registered with the project?
-            var existing = LocalizationEditorSettings.GetLocale(EnglishId);
-            if (existing != null)
-                return existing;
-
-            // Asset on disk but not yet registered?
-            var onDisk = AssetDatabase.LoadAssetAtPath<Locale>(EnglishLocalePath);
-            if (onDisk != null)
+            var locales = new Dictionary<string, Locale>(StringComparer.OrdinalIgnoreCase);
+            foreach (LocaleBuildSpec spec in enabledSpecs)
             {
-                LocalizationEditorSettings.AddLocale(onDisk);
-                return onDisk;
-            }
+                var identifier = new LocaleIdentifier(spec.code);
+                string localePath = LocalizationDir + "/" + spec.code + ".asset";
+                Locale locale = LocalizationEditorSettings.GetLocale(identifier);
+                bool isRegistered = locale != null && locale.Identifier == identifier;
+                if (!isRegistered)
+                    locale = AssetDatabase.LoadAssetAtPath<Locale>(localePath);
 
-            // Create a fresh English locale asset and register it.
-            var locale = Locale.CreateLocale(EnglishId);
-            locale.name = "English (en)";
-            AssetDatabase.CreateAsset(locale, EnglishLocalePath);
-            LocalizationEditorSettings.AddLocale(locale);
-            Debug.Log($"[LocalizationBuilder] Created + registered English locale at {EnglishLocalePath}.");
-            return locale;
+                if (locale == null)
+                {
+                    locale = Locale.CreateLocale(identifier);
+                    locale.name = spec.code;
+                    AssetDatabase.CreateAsset(locale, localePath);
+                    Debug.Log($"[LocalizationBuilder] Created locale at {localePath}.");
+                }
+
+                if (!isRegistered)
+                    LocalizationEditorSettings.AddLocale(locale);
+
+                locale.name = spec.code;
+                locale.SortOrder = (ushort)spec.sortOrder;
+                locale.LocaleName = identifier.CultureInfo == null
+                    ? spec.code
+                    : identifier.CultureInfo.NativeName;
+                EditorUtility.SetDirty(locale);
+                locales.Add(spec.code, locale);
+            }
+            return locales;
         }
 
         // =====================================================================
@@ -170,55 +341,64 @@ namespace DeNelle.Editor
         /// Returns the <c>GameStrings</c> <see cref="StringTableCollection"/>,
         /// creating it (with an English <see cref="StringTable"/>) if absent.
         /// </summary>
-        private static StringTableCollection EnsureStringTableCollection(Locale englishLocale)
+        private static StringTableCollection EnsureStringTableCollection(
+            IList<LocaleBuildSpec> enabledSpecs,
+            IReadOnlyDictionary<string, Locale> locales)
         {
             var collection = LocalizationEditorSettings.GetStringTableCollection(TableCollectionName);
             if (collection == null)
             {
-                // CreateStringTableCollection seeds an English StringTable for the
-                // single locale we pass in.
+                var selectedLocales = new List<Locale>();
+                foreach (LocaleBuildSpec spec in enabledSpecs)
+                    selectedLocales.Add(locales[spec.code]);
                 collection = LocalizationEditorSettings.CreateStringTableCollection(
-                    TableCollectionName, TablesDir, new List<Locale> { englishLocale });
+                    TableCollectionName, TablesDir, selectedLocales);
                 Debug.Log($"[LocalizationBuilder] Created StringTableCollection '{TableCollectionName}' in {TablesDir}.");
             }
 
             // Guarantee an English StringTable exists in the collection — re-runs
             // and pre-existing collections without one are handled here.
-            if (collection.GetTable(EnglishId) == null)
-                collection.AddNewTable(EnglishId);
+            foreach (LocaleBuildSpec spec in enabledSpecs)
+            {
+                var identifier = new LocaleIdentifier(spec.code);
+                if (collection.GetTable(identifier) == null)
+                    collection.AddNewTable(identifier);
+            }
 
             return collection;
         }
 
-        /// <summary>
-        /// Parses <c>en.json</c>, flattens it into dotted keys, and writes every
-        /// entry into the collection's English <see cref="StringTable"/>. Existing
-        /// keys are updated in place; new keys are added. Returns the number of
-        /// string entries written.
-        /// </summary>
-        private static int PopulateFromJson(StringTableCollection collection)
+        private static void RemoveDisabledPolicyLocales(
+            IList<LocaleBuildSpec> allSpecs,
+            StringTableCollection collection)
         {
-            var jsonFullPath = Path.GetFullPath(EnJsonPath);
-            if (!File.Exists(jsonFullPath))
+            foreach (LocaleBuildSpec spec in allSpecs)
             {
-                Debug.LogError($"[LocalizationBuilder] en.json not found at {EnJsonPath} — no strings imported.");
-                return 0;
-            }
+                if (spec.enabledInBuild) continue;
+                var identifier = new LocaleIdentifier(spec.code);
+                LocalizationTable table = collection.GetTable(identifier);
+                if (table != null)
+                    collection.RemoveTable(table);
 
-            var raw = File.ReadAllText(jsonFullPath);
-            JObject root;
-            try
-            {
-                root = JObject.Parse(raw);
+                string localePath = LocalizationDir + "/" + spec.code + ".asset";
+                Locale locale = AssetDatabase.LoadAssetAtPath<Locale>(localePath);
+                if (locale != null)
+                    LocalizationEditorSettings.RemoveLocale(locale);
             }
-            catch (JsonException e)
-            {
-                Debug.LogError($"[LocalizationBuilder] Failed to parse en.json: {e.Message}");
-                return 0;
-            }
+        }
 
-            var flat = new Dictionary<string, string>();
-            Flatten(root, null, flat);
+        /// <summary>
+        /// Reconciles shared keys from English, then writes every enabled locale
+        /// from the canonical sources that were validated before asset mutation.
+        /// Existing keys are updated in place; new keys are added. Returns the
+        /// number of localized entries written across every enabled table.
+        /// </summary>
+        private static int PopulateFromJson(
+            StringTableCollection collection,
+            IList<LocaleBuildSpec> enabledSpecs,
+            IReadOnlyDictionary<string, Dictionary<string, string>> sources)
+        {
+            Dictionary<string, string> flat = sources[EnglishId.Code];
 
             var englishTable = (StringTable)collection.GetTable(EnglishId);
             if (englishTable == null)
@@ -241,21 +421,27 @@ namespace DeNelle.Editor
             }
 
             int count = 0;
-            foreach (var kv in flat)
+            foreach (LocaleBuildSpec spec in enabledSpecs)
             {
-                // AddEntry(key, value) is "add or update": it reuses the shared
-                // key entry if it already exists (via FindKeyId(key, addIfMissing:true))
-                // and overwrites the localized value. This is what makes re-runs
-                // update in place instead of duplicating keys.
-                var localizedEntry = englishTable.AddEntry(kv.Key, kv.Value);
-                localizedEntry.IsSmart = UsesArguments(kv.Value);
-                count++;
+                var identifier = new LocaleIdentifier(spec.code);
+                var table = (StringTable)collection.GetTable(identifier);
+                if (table == null)
+                {
+                    Debug.LogError($"[LocalizationBuilder] Enabled StringTable missing for {spec.code}.");
+                    continue;
+                }
+                foreach (var kv in sources[spec.code])
+                {
+                    var localizedEntry = table.AddEntry(kv.Key, kv.Value);
+                    localizedEntry.IsSmart = UsesArguments(kv.Value);
+                    count++;
+                }
+                EditorUtility.SetDirty(table);
             }
 
             EditorUtility.SetDirty(sharedData);
-            EditorUtility.SetDirty(englishTable);
             Debug.Log($"[LocalizationBuilder] Reconciled '{TableCollectionName}': " +
-                      $"{count} current entries, {removed} stale entries removed.");
+                      $"{count} localized entries, {removed} stale shared entries removed.");
             return count;
         }
 
@@ -330,8 +516,27 @@ namespace DeNelle.Editor
         /// this points that selector at the English locale identifier so English
         /// is chosen when no command-line / system override applies.
         /// </summary>
-        private static void ConfigureDefaultLocale(LocalizationSettings settings, Locale englishLocale)
+        private static void ConfigureLocales(
+            LocalizationSettings settings,
+            IList<LocaleBuildSpec> enabledSpecs,
+            IReadOnlyDictionary<string, Locale> locales,
+            Locale englishLocale)
         {
+            foreach (LocaleBuildSpec spec in enabledSpecs)
+            {
+                Locale locale = locales[spec.code];
+                locale.SortOrder = (ushort)spec.sortOrder;
+                if (locale.Identifier != EnglishId)
+                {
+                    FallbackLocale fallback = locale.Metadata.GetMetadata<FallbackLocale>();
+                    if (fallback == null)
+                        locale.Metadata.AddMetadata(new FallbackLocale(englishLocale));
+                    else
+                        fallback.Locale = englishLocale;
+                }
+                EditorUtility.SetDirty(locale);
+            }
+
             var selectors = settings.GetStartupLocaleSelectors();
             bool found = false;
             foreach (var selector in selectors)

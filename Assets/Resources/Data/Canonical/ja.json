@@ -313,6 +313,8 @@
   "settings.section.language": "言語",
   "settings.language.systemDefault": "端末の言語",
   "settings.language.choose": "選択：{Language}",
+  "settings.language.chooseBeta": "選択：{Language} · ベータ",
+  "common.close": "閉じる",
   "settings.section.wallet": "ウォレット",
   "settings.wallet.connect": "ウォレットを接続",
   "settings.wallet.disconnect": "ウォレットを切断",

@@ -292,6 +292,8 @@
   "settings.section.language": "Idioma",
   "settings.language.systemDefault": "Idioma do dispositivo",
   "settings.language.choose": "Escolher: {Language}",
+  "settings.language.chooseBeta": "Escolher: {Language} · Beta",
+  "common.close": "Fechar",
   "settings.section.wallet": "Carteira",
   "settings.wallet.connect": "Conectar carteira",
   "settings.wallet.disconnect": "Desconectar carteira",

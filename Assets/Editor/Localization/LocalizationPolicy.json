@@ -18,7 +18,73 @@
   "supportedLocales": [
     {
       "code": "en",
-      "required": true
+      "required": true,
+      "enabledInBuild": true,
+      "status": "source",
+      "sortOrder": 0
+    },
+    {
+      "code": "es",
+      "required": true,
+      "enabledInBuild": true,
+      "status": "ai-first-draft",
+      "sortOrder": 10
+    },
+    {
+      "code": "pt-BR",
+      "required": true,
+      "enabledInBuild": true,
+      "status": "ai-first-draft",
+      "sortOrder": 20
+    },
+    {
+      "code": "de",
+      "required": true,
+      "enabledInBuild": true,
+      "status": "ai-first-draft",
+      "sortOrder": 30
+    },
+    {
+      "code": "fr",
+      "required": true,
+      "enabledInBuild": true,
+      "status": "ai-first-draft",
+      "sortOrder": 40
+    },
+    {
+      "code": "ru",
+      "required": true,
+      "enabledInBuild": true,
+      "status": "ai-first-draft",
+      "sortOrder": 50
+    },
+    {
+      "code": "ar",
+      "required": true,
+      "enabledInBuild": false,
+      "status": "ai-first-draft-internal-limited",
+      "sortOrder": 100
+    },
+    {
+      "code": "ja",
+      "required": true,
+      "enabledInBuild": false,
+      "status": "ai-first-draft-internal-limited",
+      "sortOrder": 110
+    },
+    {
+      "code": "ko",
+      "required": true,
+      "enabledInBuild": false,
+      "status": "ai-first-draft-internal-limited",
+      "sortOrder": 120
+    },
+    {
+      "code": "zh-Hans",
+      "required": true,
+      "enabledInBuild": false,
+      "status": "ai-first-draft-internal-limited",
+      "sortOrder": 130
     }
   ],
   "approvedAuthorities": [

@@ -313,6 +313,8 @@
   "settings.section.language": "Язык",
   "settings.language.systemDefault": "Язык устройства",
   "settings.language.choose": "Выбрать: {Language}",
+  "settings.language.chooseBeta": "Выбрать: {Language} · Бета",
+  "common.close": "Закрыть",
   "settings.section.wallet": "Кошелёк",
   "settings.wallet.connect": "Подключить Кошелёк",
   "settings.wallet.disconnect": "Отключить Кошелёк",

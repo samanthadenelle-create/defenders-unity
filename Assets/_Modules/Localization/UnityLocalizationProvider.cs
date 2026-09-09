@@ -281,7 +281,8 @@ namespace DeNelle.Localization
         private void RebuildLocaleOptions()
         {
             _availableLocales.Clear();
-            List<Locale> locales = LocalizationSettings.AvailableLocales.Locales;
+            var locales = new List<Locale>(LocalizationSettings.AvailableLocales.Locales);
+            locales.Sort();
             for (int i = 0; i < locales.Count; i++)
             {
                 Locale locale = locales[i];
@@ -292,7 +293,10 @@ namespace DeNelle.Localization
                 string displayName = string.IsNullOrWhiteSpace(locale.LocaleName)
                     ? code
                     : locale.LocaleName;
-                _availableLocales.Add(new LocaleOption(code, displayName));
+                _availableLocales.Add(new LocaleOption(
+                    code,
+                    displayName,
+                    !string.Equals(code, EnglishCode, StringComparison.OrdinalIgnoreCase)));
             }
         }
 
