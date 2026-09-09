@@ -52,7 +52,7 @@ their JSON exists; their script, shaping, font, layout, and device gates must pa
 
 - Canonical transitional inputs are mirrored at `Assets/Resources/Data/Canonical/<locale>.json` and
   `Assets/StreamingAssets/Data/Canonical/<locale>.json`.
-- Both copies contain exactly 382 player keys today. `LocaleParityRegression` requires exact keys,
+- Both copies contain exactly 396 player keys today. `LocaleParityRegression` requires exact keys,
   nonempty values, semantically identical mirrors, and format-argument multisets for all 10 required locales.
 - `LocalizationBuilder` reads policy, registers only build-enabled locales, reconciles shared keys,
   generates the six `GameStrings` tables and Addressables groups, preserves Smart metadata, assigns
@@ -88,13 +88,14 @@ license, atlas, and their Unity metadata are all tracked.
 Run `tools/localization/run-localization-overnight.ps1` with Unity closed. It verifies the manifest,
 runs the seven focused localization suites, runs the complete data regression, and captures Settings
 top, Settings language controls, and HUD at 2670 x 1200 for every build-enabled locale. The Store
-buy-gate cohort passes 7/7 focused suites; the latest complete gate is 462/462 and the latest visual
+data cohorts pass 7/7 focused suites; the latest complete gate is 462/462 and the latest visual
 run is 18/18 screenshots with no missing keys, English fallback, missing glyphs, or blank frames.
 
 The architecture, Settings, Feedback/Jeweler slice, shared Close treatment, calm navigation, Heart HUD,
 combat Flee control, and HUD/Raid forwarding shims are in place. Village and Canon compatibility readers now forward to the
-global facade. Store's seven-key purchase-gate cohort is translated across all ten required locales and
-generated into all six enabled tables, but this is data staging only: `StoreStrings` remains a legacy
+global facade. Store's purchase-gate, Pi, and wallet-mirror cohorts (21 keys total) are translated across
+all ten required locales and generated into all six enabled tables, but this is data staging only:
+`StoreStrings` remains a legacy
 reader until its complete semantic migration can cut over atomically. Other Store cohorts and many direct
 visible HUD/runtime literals remain migration work. The literal
 inventory is deliberately report-only until its baseline is human-classified; do not describe WO-1605

@@ -1,6 +1,6 @@
 # WO-1605 - Localize every player-readable text surface
 
-**Status:** IN PROGRESS - current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, and Store buy-gate data staging; Store runtime cutover and remaining visible-text batches are still open
+**Status:** IN PROGRESS - current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, and 21 Store buy/Pi/wallet keys staged; Store runtime cutover and remaining visible-text batches are still open
 
 **Owner decision:** Every written or player-readable phrase must be switchable by language. Nothing is
 spoken, so localized voice/audio is explicitly out of scope.
@@ -306,7 +306,7 @@ The first foundation increment is implemented and integrated:
   acting only as key catalogs;
 - one global selected locale, persisted explicit choice, System Default mode, asynchronous
   table loading, and English fallback;
-- exact reconciliation of six build-enabled Unity tables to 382 canonical keys each, including
+- exact reconciliation of six build-enabled Unity tables to 396 canonical keys each, including
   stale-key removal, Smart String metadata, deterministic ordering, and English fallback metadata;
 - ten required regional catalogs with exact English-key and placeholder parity; English, Spanish,
   Brazilian Portuguese, German, French, and Russian are build-enabled beta locales, while Arabic,
@@ -321,6 +321,9 @@ The first foundation increment is implemented and integrated:
 - Store purchase-gate copy is staged as one seven-key semantic cohort in all ten required locales and
   all six enabled tables. This is not a runtime cutover: `StoreStrings` keeps its legacy reader until all
   Store cohorts are present and can move to `LocalText` atomically;
+- the six-key Pi cohort replaces its stale guest-price threshold with the truthful wallet-at-every-price
+  policy, and the eight-key wallet cohort includes the real walletless banner plus a neutral transient
+  balance-unavailable state; both remain data staging pending that same atomic Store cutover;
 - positional placeholders replaced with typed named arguments (`Minimum`, `Resource`,
   `AmountOver`, `Duration`, and `Gem`);
 - domain conventions established for `hud`, `battle`, `interaction`, `shop`, `lore`,
@@ -328,7 +331,7 @@ The first foundation increment is implemented and integrated:
 - authority, literal-leak, locale-parity, Smart-argument, and Settings regressions registered in
   the full data gate.
 
-Evidence: the latest canonical import reports 2,292 localized entries across six enabled tables;
+Evidence: the latest canonical import reports 2,376 localized entries across six enabled tables;
 the post-cohort focused suite reports `LOCALIZATION_REGRESSION_OK 7/7 suites`. The latest full registered
 suite before this data-only cohort reports `REGRESSION_OK 462/462 suites`. The latest locale smoke harness reports
 `LOCALIZATION_SMOKE_OK locales=6 screenshots=18/18` at the Seeker landscape reference size,
@@ -336,7 +339,7 @@ with Settings top/language-row and HUD proof frames per enabled locale. CompileG
 compile passed; its wrapper remains externally red only because this workstation lacks the
 optional WebGL built-in module required by the Solana package's WebGL input source.
 
-The clean staged-tree manifest contains 5,999 report rows (382 keyed entries, 83 keyed wrapper
+The clean staged-tree manifest contains 6,013 report rows (396 keyed entries, 83 keyed wrapper
 calls, 5,518 candidates, and 16 raster reviews). Its exact 2,994-fingerprint literal-debt
 block is intentionally `reviewed:false`: classification and domain-by-domain burn-down
 remain active goal work, and the ratchet must not be armed before that review.
