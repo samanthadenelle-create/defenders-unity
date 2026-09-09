@@ -88,15 +88,16 @@ namespace DeNelle.Settings
         //   Language  caption 54 + row 120                                          = 174
         //   Wallet    caption 54 + row 132                                          = 186
         //   Help      caption 54 + Game Guide|Help row 120 + Reset Defaults row 120 = 294
+        //   Feedback  caption 54 + Send Feedback row 120                            = 174
         //   Legal     caption 54 + row 120                                          = 174
         //   Ad Privacy caption 54 + row 120                                         = 174
         //   Offline   caption 54 + row 120                                          = 174
         //   bottom pad 24
-        //   = 2240. Conditional sections (Defence Reports, Developer) add ConditionalSectionPx
+        //   = 2414. Conditional sections (Defence Reports, Developer) add ConditionalSectionPx
         //   each in EnsureBuilt when their condition holds.
         // Keep this constant in sync with the EnsureBuilt ladder if rungs change - EnsureBuilt
         // now TRACES an overrun (FlowTrace.Fail) so a stale sum is a logged line, not a cut row.
-        private const float RequiredLadderPx = 2240f;
+        private const float RequiredLadderPx = 2414f;
 
         /// <summary>One caption (54) + one 120 px button row: the size of each CONDITIONAL
         /// section (Defence Reports when reports exist, Developer when DevPanel is registered).</summary>
@@ -363,6 +364,15 @@ namespace DeNelle.Settings
             LocalizedButton(body, () => SettingsText.ResetDefaults.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Red,
                 new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnResetClicked);
+            y -= Frac(120f);
+
+            // Permanent manual door. The automatic offer remains one-time, but dismissing it
+            // must never prevent a player from writing later. Copy comes through LocalText so
+            // adding a language table does not require changing this screen.
+            y = Caption(body, HonestFeedbackText.SettingsSection, y);
+            LocalizedButton(body, () => HonestFeedbackText.SettingsButton.Resolve(),
+                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
+                new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnHonestFeedbackClicked);
             y -= Frac(120f);
 
             // -- Defence reports (WO-1026) -----------------------------------
@@ -816,6 +826,14 @@ namespace DeNelle.Settings
         {
             Close();
             PanelRouter.Open(PanelId.GameGuide);
+        }
+
+        private void OnHonestFeedbackClicked()
+        {
+            FlowTrace.Step("Settings", "Send Feedback tapped -> PanelRouter.Open(PanelId.HonestFeedback)");
+            Close();
+            if (!PanelRouter.Open(PanelId.HonestFeedback))
+                FlowTrace.Fail("Settings", "Honest feedback panel was not registered in this scene.");
         }
 
         /// <summary>WO-1399: the Settings door onto the HELP menu (PanelId.Help, registered by

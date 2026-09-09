@@ -1132,6 +1132,7 @@ namespace DeNelle.Editor
             // --- WO-1432: the honest-feedback thank-you DELIVERS 1000/1000/1000 against a near-cap bank (an EarnedIncome control proves the fixture bites), and a second claim is a traced no-op ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "honest-feedback-grant suite", () => { if (!DeNelle.Editor.HonestFeedbackGrantRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[honest-feedback-grant] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "honest-feedback-once suite", () => { if (!DeNelle.Editor.HonestFeedbackClaimOnceRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[honest-feedback-once] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "honest-feedback-surface suite", () => { if (!DeNelle.Editor.Regression.HonestFeedbackSurfaceRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[honest-feedback-surface] " + r); });
             // --- WO-1429: a refused primary falls through to the FREE melee sweep; the per-class table is gone ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "primary-fallback suite", () => { if (!DeNelle.Editor.Regression.PrimaryFallbackRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[primary-fallback] " + r); });
             // --- WO-2002: the common Manage renderer is DUMB - 16 banned shapes, each with a planted-fixture proof ---

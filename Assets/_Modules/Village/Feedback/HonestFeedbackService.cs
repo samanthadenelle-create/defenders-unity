@@ -453,6 +453,8 @@ namespace DeNelle.Village.Feedback
                 sessionId = SessionIdPrefix + (idHash != null ? idHash.Substring(0, 12) : "anon"),
                 version = Application.version,
                 platform = Application.platform.ToString(),
+                language = DeNelle.Core.UI.LocalText.LanguageCode,
+                systemLanguage = Application.systemLanguage.ToString(),
                 playerId = idHash,
                 traceTail = Array.Empty<string>(),
             });

@@ -68,49 +68,40 @@ namespace DeNelle.Village.Feedback
         //    strings rather than a paraphrase of them. ──────────────────────────
 
         /// <summary>Modal title.</summary>
-        public const string Title = "Tell Us Honestly";
+        public static string Title => HonestFeedbackText.Title.Resolve();
 
         /// <summary>
         /// The ask. Note what it does NOT do: it does not ask whether the player is
         /// enjoying the game before deciding what to show them.
         /// </summary>
-        public const string BodyLine =
-            "You have been holding Elarion for a little while now. If you have a few words for us - " +
-            "what is working, what is not, what is missing - we would genuinely like to read them. " +
-            "Honest is the only kind we want. The thank-you below is the same whatever you write.";
+        public static string BodyLine => HonestFeedbackText.Body.Resolve();
 
         /// <summary>Input placeholder. Neutral on purpose - no leading question.</summary>
-        public const string InputPlaceholder = "What is working, and what is not?";
+        public static string InputPlaceholder => HonestFeedbackText.Placeholder.Resolve();
 
         /// <summary>Primary action.</summary>
-        public const string SendLabel = "Send And Claim";
+        public static string SendLabel => HonestFeedbackText.Send.Resolve();
 
         /// <summary>What the primary action pays, stated before it is pressed.</summary>
-        public const string RewardLine =
-            "One time only: 1000 wood, 1000 stone and 1000 iron, delivered in full.";
+        public static string RewardLine => HonestFeedbackText.Reward.Resolve();
 
         /// <summary>The SECONDARY, UNREWARDED action (WO-1432 section 4).</summary>
-        public const string StoreLabel = "Rate Us On The Store";
+        public static string StoreLabel => HonestFeedbackText.Store.Resolve();
 
         /// <summary>
         /// The caption under the store button. It is deliberately blunt about the two things
         /// that are true: nothing is paid for it, and no store tells us whether you did it.
         /// </summary>
-        public const string StoreCaption =
-            "Separate, and nothing is rewarded for it - no store tells us whether you did.";
+        public static string StoreCaption => HonestFeedbackText.StoreCaption.Resolve();
 
         /// <summary>Shown while the post is in flight.</summary>
-        public const string SendingLine = "Sending...";
+        public static string SendingLine => HonestFeedbackText.Sending.Resolve();
 
         /// <summary>Shown on the happy path, before the per-resource lines.</summary>
-        public const string ThanksLine =
-            "Thank you - your words are with us. 1000 wood, 1000 stone and 1000 iron have been " +
-            "added to your stores, in full.";
+        public static string ThanksLine => HonestFeedbackText.Thanks.Resolve();
 
         /// <summary>Shown when the words landed but the thank-you was already claimed.</summary>
-        public const string AlreadyClaimedLine =
-            "Thank you - your words are with us. The thank-you was already claimed on this realm, " +
-            "so nothing was added this time.";
+        public static string AlreadyClaimedLine => HonestFeedbackText.AlreadyClaimed.Resolve();
 
         private const string SysTag = HonestFeedbackGrant.Sys;
 
@@ -182,26 +173,32 @@ namespace DeNelle.Village.Feedback
             Guard.Try(SysTag, "build the honest-feedback panel", () =>
             {
                 _modal = ElarionUiKit.BuildObsidianModal("HonestFeedbackUI", Title,
-                    ElarionUiKit.ModalArchetype.Standard, () => SetVisible(false),
+                    ElarionUiKit.ModalArchetype.Browse, () => SetVisible(false),
                     frameName: RpgUiCatalog.FrameCore, medallionIcon: "quest");
 
-                var body = _modal.chrome.layout != null && _modal.chrome.layout.body != null
-                    ? (Transform)_modal.chrome.layout.body
-                    : _modal.chrome.content.transform;
+                // Browse's stock body is deliberately shallow. Compose against the full content
+                // while leaving every shared chrome zone active: the title and Close artwork
+                // depend on that hierarchy even though our own copy does not use its body band.
+                var body = _modal.chrome.content.transform;
 
-                // The ask.
-                var ask = ElarionUiKit.Label(body, BodyLine, 0.74f, 0.96f,
-                    ElarionUi.Parchment, ElarionUi.FontBody, TextAlignmentOptions.TopLeft, 0.05f, 0.95f);
+                // WO-2020: two-column landscape composition. The device screenshot showed every
+                // full-width fraction colliding after ClampMinTouch expanded both action bands.
+                // Copy and input own the left; the two actions own the right. No control shares a
+                // vertical lane with prose, so the touch floor cannot grow a button over text.
+                var ask = ElarionUiKit.Label(body, BodyLine, 0.67f, 0.84f,
+                    ElarionUi.Parchment, ElarionUi.FontLabel, TextAlignmentOptions.TopLeft, 0.08f, 0.58f);
                 ask.textWrappingMode = TextWrappingModes.Normal;
 
-                BuildNoteInput(body, new Vector2(0.05f, 0.44f), new Vector2(0.95f, 0.72f));
+                BuildNoteInput(body, new Vector2(0.08f, 0.49f), new Vector2(0.58f, 0.65f));
 
                 // What it pays, stated BEFORE the button is pressed.
-                ElarionUiKit.Label(body, RewardLine, 0.37f, 0.43f,
-                    ElarionUi.Gilt, ElarionUi.FontBody, TextAlignmentOptions.Center, 0.05f, 0.95f);
+                var reward = ElarionUiKit.Label(body, RewardLine, 0.40f, 0.48f,
+                    ElarionUi.Gilt, ElarionUi.FontMicro, TextAlignmentOptions.Left, 0.08f, 0.58f,
+                    bold: true);
+                reward.textWrappingMode = TextWrappingModes.Normal;
 
                 _sendButton = ElarionUiKit.Button(body, SendLabel, ElarionUiKit.ButtonKind.Gold,
-                    new Vector2(0.20f, 0.26f), new Vector2(0.80f, 0.36f), OnSendClicked);
+                    new Vector2(0.63f, 0.60f), new Vector2(0.93f, 0.80f), OnSendClicked);
                 ElarionUiKit.ClampMinTouch(_sendButton);
 
                 // ── the SECONDARY, UNREWARDED action ──────────────────────────
@@ -209,14 +206,15 @@ namespace DeNelle.Village.Feedback
                 // that says plainly that nothing is paid for it. Visually secondary is a
                 // requirement of WO-1432 section 4, not a layout preference.
                 var store = ElarionUiKit.Button(body, StoreLabel, ElarionUiKit.ButtonKind.Quiet,
-                    new Vector2(0.28f, 0.15f), new Vector2(0.72f, 0.24f), OnStoreClicked);
+                    new Vector2(0.63f, 0.33f), new Vector2(0.93f, 0.53f), OnStoreClicked);
                 ElarionUiKit.ClampMinTouch(store);
 
-                ElarionUiKit.Label(body, StoreCaption, 0.10f, 0.145f,
-                    ElarionUi.ParchmentDim, ElarionUi.FontLabel, TextAlignmentOptions.Center, 0.05f, 0.95f);
+                var storeCaption = ElarionUiKit.Label(body, StoreCaption, 0.14f, 0.30f,
+                    ElarionUi.ParchmentDim, ElarionUi.FontMicro, TextAlignmentOptions.Center, 0.63f, 0.93f);
+                storeCaption.textWrappingMode = TextWrappingModes.Normal;
 
-                _status = ElarionUiKit.Label(body, "", 0.005f, 0.095f,
-                    ElarionUi.Parchment, ElarionUi.FontLabel, TextAlignmentOptions.Center, 0.05f, 0.95f);
+                _status = ElarionUiKit.Label(body, "", 0.27f, 0.39f,
+                    ElarionUi.Parchment, ElarionUi.FontMicro, TextAlignmentOptions.Left, 0.08f, 0.58f);
                 _status.textWrappingMode = TextWrappingModes.Normal;
 
                 RefreshSendInteractable();
@@ -283,7 +281,7 @@ namespace DeNelle.Village.Feedback
             var svc = HonestFeedbackService.Instance;
             if (svc == null)
             {
-                SetStatus("We could not reach the feedback service just now. Please try again later.");
+                SetStatus(HonestFeedbackText.ServiceUnavailable.Resolve());
                 FlowTrace.Fail(SysTag, "Send pressed but HonestFeedbackService.Instance is null - nothing " +
                                        "was sent and nothing was granted.");
                 return;
@@ -314,7 +312,7 @@ namespace DeNelle.Village.Feedback
             string url = HonestFeedbackTuning.StoreUrl;
             if (string.IsNullOrWhiteSpace(url))
             {
-                SetStatus("The store link is not configured on this build.");
+                SetStatus(HonestFeedbackText.StoreUnavailable.Resolve());
                 FlowTrace.Warn(SysTag, "store button pressed but HonestFeedbackTuning.StoreUrl is empty - " +
                                        "nothing opened. Author storeLink.url in honest-feedback.json.");
                 return;
@@ -345,17 +343,16 @@ namespace DeNelle.Village.Feedback
                 case FeedbackSubmitResult.StoredAlreadyClaimed:
                     return AlreadyClaimedLine;
                 case FeedbackSubmitResult.StoredGrantUnavailable:
-                    return "Thank you - your words are with us. The thank-you could not be added right " +
-                           "now; it is still owed to you and has not been used up.";
+                    return HonestFeedbackText.GrantUnavailable.Resolve();
                 case FeedbackSubmitResult.TooShort:
-                    return "A few more words, please - at least " + HonestFeedbackTuning.MinCharacters +
-                           " characters.";
+                    return HonestFeedbackText.TooShort.Resolve(
+                        new MinimumCharactersArguments(HonestFeedbackTuning.MinCharacters));
                 case FeedbackSubmitResult.NoIdentity:
-                    return "We could not verify your account, so nothing was sent. Try again later.";
+                    return HonestFeedbackText.NoIdentity.Resolve();
                 case FeedbackSubmitResult.ServerRefused:
-                    return "The server did not accept that. Nothing was sent - please try again.";
+                    return HonestFeedbackText.ServerRefused.Resolve();
                 default:
-                    return "We could not reach the server. Your words were not sent; please try again.";
+                    return HonestFeedbackText.NetworkFailed.Resolve();
             }
         }
 
@@ -392,9 +389,7 @@ namespace DeNelle.Village.Feedback
         public static string OverCapLineFor(BankResource r, int over)
         {
             string word = TownBankCapacity.DisplayName(r);
-            return "Your " + word + " is now " + over + " above what your stores can hold. All of it is " +
-                   "yours and stays yours; harvests and rewards into " + word + " simply pause until you " +
-                   "spend back under.";
+            return HonestFeedbackText.OverCapacity.Resolve(new CapacityOverflowArguments(word, over));
         }
     }
 }

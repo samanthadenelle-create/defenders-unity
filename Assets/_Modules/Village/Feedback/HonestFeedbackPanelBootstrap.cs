@@ -59,14 +59,8 @@ namespace DeNelle.Village.Feedback
                 return;
             }
 
-            // Nothing left to install once the thank-you has been claimed or the offer shown.
-            // Cheap, and it keeps a stood-down save from carrying a panel host it can never open.
-            if (HonestFeedbackGrant.HasClaimed() || HonestFeedbackGrant.HasBeenOffered())
-            {
-                FlowTrace.Step(Sys, "honest-feedback host not installed - already " +
-                    (HonestFeedbackGrant.HasClaimed() ? "claimed" : "offered") + " on this save.");
-                return;
-            }
+            // The Settings door is permanent. Even after the one-time automatic offer stands
+            // down, keep both the panel and submit service alive so players can write again.
 
             // GLOBAL dedupe across ALL loaded scenes - the HelpMenuBootstrap rule.
             var existingPanel = Object.FindFirstObjectByType<HonestFeedbackPanel>(FindObjectsInactive.Include);
