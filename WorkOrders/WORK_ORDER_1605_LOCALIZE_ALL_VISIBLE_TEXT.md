@@ -1,6 +1,6 @@
 # WO-1605 - Localize every player-readable text surface
 
-**Status:** IN PROGRESS - through `50cba5715`, the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, and 39 Store keys staged; Store runtime still uses legacy `StoreStrings`/canon, and the full Store cutover plus remaining visible-text batches are open
+**Status:** IN PROGRESS - through `8fc15e9e8`, the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, the live dungeon-chest interaction, and 39 Store keys staged; Store runtime still uses legacy `StoreStrings`/canon, and the full Store cutover plus remaining visible-text batches are open
 
 **Owner decision:** Every written or player-readable phrase must be switchable by language. Nothing is
 spoken, so localized voice/audio is explicitly out of scope.
@@ -297,7 +297,7 @@ Every migration pull request or work order should contain one bounded module/sur
 Track progress by manifest rows and surfaces, not by raw key count. A single complex formatted dialogue and
 twenty repeated button labels are not equivalent work.
 
-## 10. Implementation checkpoint - 2026-09-09 (`50cba5715`)
+## 10. Implementation checkpoint - 2026-09-09 (`8fc15e9e8`)
 
 The first foundation increment is implemented and integrated:
 
@@ -306,7 +306,7 @@ The first foundation increment is implemented and integrated:
   acting only as key catalogs;
 - one global selected locale, persisted explicit choice, System Default mode, asynchronous
   table loading, and English fallback;
-- exact reconciliation of six build-enabled Unity tables to 414 canonical keys each, including
+- exact reconciliation of six build-enabled Unity tables to 416 canonical keys each, including
   stale-key removal, Smart String metadata, deterministic ordering, and English fallback metadata;
 - ten required regional catalogs with exact English-key and placeholder parity; English, Spanish,
   Brazilian Portuguese, German, French, and Russian are build-enabled beta locales, while Arabic,
@@ -318,6 +318,11 @@ The first foundation increment is implemented and integrated:
   named arguments for troop counts and Heartfire timers;
 - the hostile two-tap Flee control uses separate action/confirmation keys and preserves its armed
   semantic state when the locale changes;
+- the live dungeon chest interaction resolves `interaction.chest.open` and
+  `interaction.chest.blockedByEnemies` through the key-only `ChestInteractionText` wrapper;
+  `BreakableContainer` uses the localized open prompt and reuses the same localized combat refusal
+  for both its prompt and toast. The retired `chestOpenPrompt`, `chestCombatRefusal`, and their
+  dedicated note were removed from both canon twins;
 - Store purchase-gate copy is staged as one seven-key semantic cohort in all ten required locales and
   all six enabled tables. This is not a runtime cutover: `StoreStrings` keeps its legacy reader until all
   Store cohorts are present and can move to `LocalText` atomically;
@@ -337,7 +342,7 @@ The first foundation increment is implemented and integrated:
 - authority, literal-leak, locale-parity, Smart-argument, and Settings regressions registered in
   the full data gate.
 
-Evidence: the latest canonical import reports 2,484 localized entries across six enabled tables;
+Evidence: the latest canonical import reports 2,496 localized entries across six enabled tables;
 the post-cohort focused suite reports `LOCALIZATION_REGRESSION_OK 7/7 suites`. The latest clean full registered
 suite reports `REGRESSION_OK 462/462 suites`; a subsequent mixed-tree run is honestly red at 460/463 on
 three unrelated HUD/source-registration assertions. The 2026-09-09 locale smoke harness reports
@@ -345,9 +350,11 @@ three unrelated HUD/source-registration assertions. The 2026-09-09 locale smoke 
 with Settings top/language-row and HUD proof frames per enabled locale. CompileGate's project
 compile passed; its wrapper remains externally red only because this workstation lacks the
 optional WebGL built-in module required by the Solana package's WebGL input source.
+The chest checkpoint additionally passed compile/import at 2,496 entries, `CHEST_OK`,
+`LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.
 
-The clean staged-tree manifest contains 6,031 report rows (414 `keyedEntry`, 83 `keyedCall`,
-5,518 `literalCandidate`, and 16 `imageTextCandidate`). Its exact 2,994-fingerprint literal-debt
+The clean staged-tree manifest contains 6,034 report rows (416 `keyedEntry`, 85 `keyedCall`,
+5,517 `literalCandidate`, and 16 `imageTextCandidate`). Its literal-debt
 block is intentionally `reviewed:false`: classification and domain-by-domain burn-down
 remain active goal work, and the ratchet must not be armed before that review.
 

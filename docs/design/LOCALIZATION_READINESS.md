@@ -1,19 +1,25 @@
 # Localization / i18n Readiness Audit
 
-> **Implementation update - 2026-09-09 (WO-1605, through `50cba5715`):** The runtime gap described by
+> **Implementation update - 2026-09-09 (WO-1605, through `8fc15e9e8`):** The runtime gap described by
 > this June audit is now being closed. `LocalText` is the single Core facade;
 > `DeNelle.Localization.UnityLocalizationProvider` is its sole package-backed adapter;
 > selected and English `GameStrings` tables preload asynchronously; explicit locale
 > preferences and System Default are supported; missing keys fail visibly. Six build-enabled
-> tables now reconcile exactly to all 414 canonical entries (2,484 entries total). English, Spanish, Brazilian
+> tables now reconcile exactly to all 416 canonical entries (2,496 entries total). English, Spanish, Brazilian
 > Portuguese, German, French, and Russian are exposed, with every non-English choice labeled
 > Beta. Arabic, Japanese, Korean, and Simplified Chinese remain required for exact regional
 > parity but hidden until RTL/CJK font and layout gates pass. Settings is migrated and
 > refreshes labels in place; HUD/Raid compatibility catalogs now forward to `LocalText`.
 > Feedback and the Jeweler unlock/polish/reveal path use key-only wrappers with typed
-> arguments. Seven focused suites cover authority, literal leakage, locale parity,
+> arguments. Dungeon chests now use the `ChestInteractionText` wrapper for
+> `interaction.chest.open` and `interaction.chest.blockedByEnemies`; `BreakableContainer` shares the
+> localized combat refusal between its prompt and toast, and the old canon-twin chest rows/note are removed.
+> Compile/import at 2,496 entries, `CHEST_OK`, `LOCALIZATION_REGRESSION_OK 7/7 suites`, and
+> `LOCALE_FONT_BUILD_OK`.
+> Seven focused suites cover authority, literal leakage, locale parity,
 > Smart arguments (named and positional), Settings wiring, glyph coverage, and Flee state.
-> The broad inventory remains report-only pending human classification. Store has 39 keys
+> The 6,034-row inventory (416 `keyedEntry`, 85 `keyedCall`, 5,517 `literalCandidate`, and
+> 16 `imageTextCandidate`) remains report-only pending human classification. Store has 39 keys
 > staged in all required locales, but its runtime still uses legacy `StoreStrings`/canon;
 > the remaining Store cutover and many visible literals remain open. Current canon lives in
 > `docs/localization/architecture.md`.

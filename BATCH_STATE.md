@@ -891,9 +891,9 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
    EXISTING return-door arbiter that WO-1400 shipped for the deck return; lane D consumes it on CLOSE. No second
    return mechanism. Lane C hands the exact door line to lane D as text if the files are split across people.
 
-### 9. WO-1605 localization goal - checkpoint through `50cba5715` (2026-09-09)
+### 9. WO-1605 localization goal - checkpoint through `8fc15e9e8` (2026-09-09)
 
-- The foundation began at `20467d539` on `dev`; this checkpoint is through `50cba5715`. The shared tree already contained the owner's uncommitted
+- The foundation began at `20467d539` on `dev`; this checkpoint is through `8fc15e9e8`. The shared tree already contained the owner's uncommitted
   Feedback/Jeweler/Manage/build work, which was preserved. No stash/reset/cleanup was used.
 - One authority now exists: Core `LocalText` -> `ILocalTextProvider` -> the asynchronous
   `DeNelle.Localization.UnityLocalizationProvider` -> Unity `GameStrings`.
@@ -906,7 +906,10 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
   `storeSpotlightEmpty`, `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`. Offer/patronage
   assertions, value and balance comparisons, ambiguous locked-state wording, and the four trust-strip
   claims remain held pending product/channel/formatting review; the covenant remains English raster art.
-- `LocalizationBuilder.BuildAll` now reconciles 414 English keys into 2,484 enabled-table entries.
+- Dungeon chests now resolve `interaction.chest.open` and `interaction.chest.blockedByEnemies` through
+  `ChestInteractionText`. `BreakableContainer` uses localized copy for the open prompt and one shared
+  combat-refusal resolution for both prompt and toast; the old canon-twin chest keys/note are removed.
+- `LocalizationBuilder.BuildAll` now reconciles 416 English keys into 2,496 enabled-table entries.
 - Registered localization gates now cover authority, player-literal leakage, exact locale/table parity,
   Smart arguments, Settings in-place refresh/selector wiring, glyph coverage, and combat Flee state.
   Post-Store-cohort focused evidence: `Builds/localization-regression-store-buy-data.log`,
@@ -916,10 +919,11 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
 - Fresh mixed-tree evidence `Builds/data-regression-localization-store-cohorts-final.log` is 460/463:
   one collector source-shape assertion, five legacy HUD canon-parity assertions, and the Flee suite's
   missing registration in the dirty `DataRegression` edit. The focused localization lane remains 7/7.
-- Manifest generation/check is deterministic: 6,031 report rows = 414 `keyedEntry` + 83 `keyedCall`
-  + 5,518 `literalCandidate` + 16 `imageTextCandidate`. Literal debt remains report-only/unarmed and deliberately
-  unreviewed; 2,994 exact C# fingerprints still require domain classification before the new-debt
-  ratchet can be armed.
+- Chest evidence is compile/import at 2,496 entries, `CHEST_OK`,
+  `LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.
+- Manifest generation/check is deterministic: 6,034 report rows = 416 `keyedEntry` + 85 `keyedCall`
+  + 5,517 `literalCandidate` + 16 `imageTextCandidate`. Literal debt remains report-only/unarmed and
+  deliberately unreviewed; domain classification remains required before the new-debt ratchet can be armed.
 - Future player-facing copy changes must update all ten required locale catalogs and mirrors, rebuild
   all six enabled tables, and pass localization tests. Limited/provisional translations may await human
   review but must still satisfy parity.

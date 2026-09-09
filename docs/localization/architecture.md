@@ -1,6 +1,6 @@
 # Localization architecture and supported languages
 
-**Canon status:** Active architecture for WO-1605 through commit `50cba5715` (2026-09-09). This document describes the
+**Canon status:** Active architecture for WO-1605 through commit `8fc15e9e8` (2026-09-09). This document describes the
 implemented authority and regional contract. It does not claim that every player-facing surface has
 already migrated.
 
@@ -52,12 +52,12 @@ their JSON exists; their script, shaping, font, layout, and device gates must pa
 
 - Canonical transitional inputs are mirrored at `Assets/Resources/Data/Canonical/<locale>.json` and
   `Assets/StreamingAssets/Data/Canonical/<locale>.json`.
-- Both copies contain exactly 414 player keys today. `LocaleParityRegression` requires exact keys,
+- Both copies contain exactly 416 player keys today. `LocaleParityRegression` requires exact keys,
   nonempty values, semantically identical mirrors, and format-argument multisets for all 10 required locales.
 - `LocalizationBuilder` reads policy, registers only build-enabled locales, reconciles shared keys,
   generates the six `GameStrings` tables and Addressables groups, preserves Smart metadata, assigns
   deterministic locale order, and records English fallback metadata.
-- The six build-enabled Unity tables contain 2,484 entries in total (414 entries per locale).
+- The six build-enabled Unity tables contain 2,496 entries in total (416 entries per locale).
 - `LocaleParityRegression` compares every build-enabled Unity table byte-for-value with its canonical
   locale source, so updating all JSON regions without rebuilding the shipped tables remains a hard failure.
 - A new English key without the other nine regional values is a failing change, not an English-only
@@ -98,13 +98,16 @@ missing keys, English fallback, missing glyphs, or blank frames. The most recent
 source-shape assertion, five legacy HUD canon-parity assertions, and Flee's missing registration in
 that dirty `DataRegression` edit. Those failures are tracked separately from the green localization lane.
 
-The checkpoint inventory contains 6,031 rows: 414 `keyedEntry`, 83 `keyedCall`, 5,518
+The checkpoint inventory contains 6,034 rows: 416 `keyedEntry`, 85 `keyedCall`, 5,517
 `literalCandidate`, and 16 `imageTextCandidate` rows. Literal candidates remain report-only and unarmed while the
-baseline is human-classified; this count is discovery debt, not 5,518 confirmed defects.
+baseline is human-classified; this count is discovery debt, not 5,517 confirmed defects.
 
 The architecture, Settings, Feedback/Jeweler slice, shared Close treatment, calm navigation, Heart HUD,
 combat Flee control, and HUD/Raid forwarding shims are in place. Village and Canon compatibility readers now forward to the
-global facade. Store has 39 staged keys across its purchase-gate, Pi, wallet-mirror, commerce-state,
+global facade. Dungeon chests resolve `interaction.chest.open` and `interaction.chest.blockedByEnemies`
+through `ChestInteractionText`; `BreakableContainer` uses the localized open prompt and the same localized
+combat refusal for both prompt and toast. The obsolete `chestOpenPrompt`, `chestCombatRefusal`, and their
+dedicated canon note are removed from both canon twins. Store has 39 staged keys across its purchase-gate, Pi, wallet-mirror, commerce-state,
 and safe presentation cohorts. All 39 are translated across all ten required locales and generated into
 all six enabled tables, but this is data staging only:
 `StoreStrings` remains a legacy
@@ -121,3 +124,6 @@ The four legacy trust-strip rows are also intentionally held out. Their fee, tre
 claims are not uniformly accurate across Solana, Pi, and Google Play, and the covenant is still baked into
 English raster art. Provider-specific approved wording and a text-free/localized carrier are required before
 that cohort may stage or cut over.
+
+The chest checkpoint passed compile/import at 2,496 entries, `CHEST_OK`,
+`LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.

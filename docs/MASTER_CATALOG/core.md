@@ -844,8 +844,12 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   `zh-Hans` remain required for key/argument parity but hidden pending RTL/CJK font and
   layout readiness. See `docs/localization/architecture.md` for the generation, fallback,
   all-region change rule, and verification contract.
-  Through `50cba5715`, every canonical locale source and mirror contains 414 keys, and the six
-  build-enabled tables contain 2,484 entries. Store migration is data-first by semantic cohort: 39
+  Through `8fc15e9e8`, every canonical locale source and mirror contains 416 keys, and the six
+  build-enabled tables contain 2,496 entries. Dungeon chest interaction copy now resolves the live
+  `interaction.chest.open` and `interaction.chest.blockedByEnemies` keys through the thin
+  `ChestInteractionText` wrapper. `BreakableContainer` uses the localized open prompt and the same
+  localized combat refusal for both prompt and toast; the retired `chestOpenPrompt`,
+  `chestCombatRefusal`, and their dedicated note are absent from both canon twins. Store migration remains data-first by semantic cohort: 39
   purchase-gate, Pi, wallet-mirror, commerce-state, and safe presentation keys are present in all ten
   required locale catalogs and all six enabled tables, while `StoreStrings` intentionally remains on its
   legacy canon reader until the complete Store key set can switch to `LocalText` atomically. The safe
@@ -854,10 +858,12 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   value/balance comparisons, ambiguous locked-state wording, and all four trust-strip claims remain held
   pending product/channel review. The covenant also requires replacement of its baked-English plaque with
   a localizable carrier.
-  The checkpoint manifest has 6,031 rows: 414 `keyedEntry`, 83 `keyedCall`, 5,518 report-only/unarmed
+  The checkpoint manifest has 6,034 rows: 416 `keyedEntry`, 85 `keyedCall`, 5,517 report-only/unarmed
   `literalCandidate`, and 16 `imageTextCandidate`. Future player-facing copy changes must update every required locale
   catalog and mirror, rebuild all enabled tables, and pass the localization tests; limited/provisional
   translations may await human review but must still satisfy parity.
+  Chest evidence is compile/import at 2,496 entries, `CHEST_OK`,
+  `LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.
 
 - **Service registry:** `CoreServices` (8 slots, above). Callers null-check; register Awake / unregister OnDestroy.
 - **Panel routing:** panel registers opener on `PanelRouter` (+ optional context / context+mode arities);
