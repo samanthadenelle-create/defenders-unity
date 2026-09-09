@@ -426,6 +426,33 @@ function New-Manifest {
     }
 }
 
+function Assert-LiteralDebtBaseline {
+    param($Baseline)
+
+    if ($null -eq $Baseline) { throw 'Existing literalDebtBaseline is null.' }
+    if ($Baseline.PSObject.Properties.Name -notcontains 'schemaVersion' -or
+        [int]$Baseline.schemaVersion -ne 1) {
+        throw 'literalDebtBaseline must declare schemaVersion=1.'
+    }
+    if ($Baseline.PSObject.Properties.Name -notcontains 'scannerVersion' -or
+        [int]$Baseline.scannerVersion -ne 1) {
+        throw 'literalDebtBaseline must declare scannerVersion=1.'
+    }
+    if ($Baseline.PSObject.Properties.Name -notcontains 'reviewed' -or
+        $Baseline.reviewed -isnot [bool]) {
+        throw 'literalDebtBaseline must declare an explicit Boolean reviewed value.'
+    }
+    $expectedAlgorithm = 'sha256(normalizedPath\0member\0sink\0decodedValue\0samePathMemberSinkValueOrdinal)'
+    if ($Baseline.PSObject.Properties.Name -notcontains 'fingerprintAlgorithm' -or
+        [string]$Baseline.fingerprintAlgorithm -cne $expectedAlgorithm) {
+        throw "literalDebtBaseline fingerprintAlgorithm must be '$expectedAlgorithm'."
+    }
+    if ($Baseline.PSObject.Properties.Name -notcontains 'entries' -or
+        $null -eq $Baseline.entries -or $Baseline.entries -isnot [System.Array]) {
+        throw 'literalDebtBaseline entries must be an array.'
+    }
+}
+
 function Assert-Manifest {
     param($Manifest)
 
@@ -444,6 +471,11 @@ function Assert-Manifest {
         $identity = "$($entry.kind)|$($entry.key)|$($entry.source)|$($entry.line)|$($entry.english)"
         if ($seen.ContainsKey($identity)) { throw "Duplicate manifest row: $identity" }
         $seen[$identity] = $true
+    }
+
+    $baselineProperty = $Manifest.PSObject.Properties['literalDebtBaseline']
+    if ($null -ne $baselineProperty) {
+        Assert-LiteralDebtBaseline -Baseline $baselineProperty.Value
     }
 }
 
@@ -471,7 +503,21 @@ if ($Check) {
     exit 0
 }
 
+$existingLiteralDebtBaseline = $null
+if (Test-Path -LiteralPath $outputFullPath) {
+    try { $existingManifest = [System.IO.File]::ReadAllText($outputFullPath) | ConvertFrom-Json }
+    catch { throw "Existing manifest is not valid JSON; refusing to overwrite it: $($_.Exception.Message)" }
+    $baselineProperty = $existingManifest.PSObject.Properties['literalDebtBaseline']
+    if ($null -ne $baselineProperty) {
+        Assert-LiteralDebtBaseline -Baseline $baselineProperty.Value
+        $existingLiteralDebtBaseline = $baselineProperty.Value
+    }
+}
+
 $manifest = New-Manifest
+if ($null -ne $existingLiteralDebtBaseline) {
+    $manifest | Add-Member -NotePropertyName literalDebtBaseline -NotePropertyValue $existingLiteralDebtBaseline
+}
 Assert-Manifest -Manifest $manifest
 $json = ($manifest | ConvertTo-Json -Depth 12 -Compress).Replace("`r`n", "`n") + "`n"
 $parent = [System.IO.Path]::GetDirectoryName($outputFullPath)
