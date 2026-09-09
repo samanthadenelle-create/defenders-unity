@@ -12,11 +12,13 @@
 #
 # Output: Builds/Windows/DefendersOfTheRealm.exe   (log: Builds/build.log)
 # Usage:  powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
+# Release: powershell -ExecutionPolicy Bypass -File .\build-windows.ps1 -Release
 #
 # NOTE: keep this file ASCII-only. Windows PowerShell 5.1 reads BOM-less files
 # as ANSI, so non-ASCII chars (em-dashes, smart quotes) corrupt and break parse.
 # =============================================================================
 
+param([switch]$Release)
 $ErrorActionPreference = 'Stop'
 $proj       = $PSScriptRoot
 $hubEditors = 'C:\Program Files\Unity\Hub\Editor'
@@ -73,18 +75,22 @@ New-Item -ItemType Directory -Path (Join-Path $proj 'Builds') -Force | Out-Null
 $log = Join-Path $proj 'Builds\build.log'
 if (Test-Path $log) { Remove-Item $log -Force }
 
+$buildMethod = if ($Release) { 'DeNelle.Editor.DesktopBuild.BuildWindowsRelease' }
+               else { 'DeNelle.Editor.DesktopBuild.BuildWindows' }
+$buildLabel = if ($Release) { 'RELEASE (no dev tools, no watermark)' }
+              else { 'DEVELOPMENT (dev tools + watermark)' }
 $unityArgs = @(
     '-batchmode', '-quit',
     '-projectPath', $proj,
     '-buildTarget', 'Win64',
-    '-executeMethod', 'DeNelle.Editor.DesktopBuild.BuildWindows',
+    '-executeMethod', $buildMethod,
     '-logFile', $log
 )
 if (Get-Process -Name 'Unity' -ErrorAction SilentlyContinue) {
     Write-Error "A 'Unity' editor process is already running - close it before batchmode (project lock)."
     exit 3
 }
-Write-Host "[build] Launching Unity batchmode (fork-aware wait; first run after a reimport can take several minutes)."
+Write-Host "[build] Launching Unity batchmode: $buildLabel (fork-aware wait; first run after a reimport can take several minutes)."
 Write-Host "[build] Log: $log"
 & $unity @unityArgs | Out-Null
 $wrapperExit = $LASTEXITCODE
