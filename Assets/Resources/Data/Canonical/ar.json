@@ -351,6 +351,8 @@
   "hud.nav.hero": "البطل",
   "hud.nav.journey": "الرحلة",
   "hud.nav.manage": "الإدارة",
+  "hud.combat.flee.action": "انسحب",
+  "hud.combat.flee.confirm": "انسحب؟",
   "hud.heart.title": "قلب إيلاريون",
   "hud.heart.objective.defend": "دافع عن المملكة",
   "hud.heart.objective.prepareWave": "استعد للموجة التالية.",

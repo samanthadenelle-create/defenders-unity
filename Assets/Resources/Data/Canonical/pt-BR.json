@@ -330,6 +330,8 @@
   "hud.nav.hero": "HERÓI",
   "hud.nav.journey": "JORNADA",
   "hud.nav.manage": "GERENCIAR",
+  "hud.combat.flee.action": "Fugir",
+  "hud.combat.flee.confirm": "Fugir?",
   "hud.heart.title": "Coração de Elarion",
   "hud.heart.objective.defend": "Defenda o reino",
   "hud.heart.objective.prepareWave": "Prepare-se para a próxima onda.",

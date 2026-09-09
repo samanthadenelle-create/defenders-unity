@@ -1672,6 +1672,14 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143553
+  - m_Id: 40998596447350784
+    m_Localized: Fugir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40998596472516608
+    m_Localized: Fugir?
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

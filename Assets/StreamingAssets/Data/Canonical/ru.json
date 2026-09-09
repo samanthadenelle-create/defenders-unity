@@ -351,6 +351,8 @@
   "hud.nav.hero": "ГЕРОЙ",
   "hud.nav.journey": "ПУТЬ",
   "hud.nav.manage": "УПРАВЛЯТЬ",
+  "hud.combat.flee.action": "Бежать",
+  "hud.combat.flee.confirm": "Бежать?",
   "hud.heart.title": "Сердце Элариона",
   "hud.heart.objective.defend": "Защитите королевство",
   "hud.heart.objective.prepareWave": "Готовьтесь к следующей волне.",

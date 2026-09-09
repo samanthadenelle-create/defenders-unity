@@ -19,10 +19,11 @@ namespace DeNelle.Editor.Regression
             Run("smart-arguments", SmartArgumentRegression.Run, failures, log, ref passed);
             Run("settings", SettingsLocalizationRegression.Run, failures, log, ref passed);
             Run("glyph-coverage", GlyphCoverageRegression.Run, failures, log, ref passed);
+            Run("combat-flee", CombatHudFleeLocalizationRegression.Run, failures, log, ref passed);
 
             if (failures.Count == 0)
             {
-                log.AppendLine("LOCALIZATION_REGRESSION_OK " + passed + "/6 suites");
+                log.AppendLine("LOCALIZATION_REGRESSION_OK " + passed + "/7 suites");
                 Debug.Log(log.ToString());
                 return;
             }

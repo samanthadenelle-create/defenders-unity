@@ -351,6 +351,8 @@
   "hud.nav.hero": "英雄",
   "hud.nav.journey": "冒険",
   "hud.nav.manage": "管理",
+  "hud.combat.flee.action": "逃げる",
+  "hud.combat.flee.confirm": "逃げる？",
   "hud.heart.title": "エラリオンの心臓",
   "hud.heart.objective.defend": "王国を守れ",
   "hud.heart.objective.prepareWave": "次の波に備えよう。",

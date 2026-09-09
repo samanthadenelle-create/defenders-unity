@@ -385,6 +385,8 @@
   "hud.nav.hero": "HERO",
   "hud.nav.journey": "JOURNEY",
   "hud.nav.manage": "MANAGE",
+  "hud.combat.flee.action": "Flee",
+  "hud.combat.flee.confirm": "Flee?",
   "hud.heart.title": "Heart of Elarion",
   "hud.heart.objective.defend": "Defend the realm",
   "hud.heart.objective.prepareWave": "Prepare the realm for the next wave.",

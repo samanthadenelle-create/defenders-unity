@@ -408,6 +408,21 @@ namespace DeNelle.Editor.Localization
                 if (rekindleLabel == null ||
                     !string.Equals(rekindleLabel.text, rekindleExpected, StringComparison.Ordinal))
                     localeResult.errors.Add("hud: Heartfire timer row did not resolve the selected locale.");
+
+                var fleeLabel = GetField(kit, "_fleeLabel") as TMP_Text;
+                if (fleeLabel == null ||
+                    !string.Equals(fleeLabel.text, CombatHudText.ResolveFlee(false), StringComparison.Ordinal))
+                    localeResult.errors.Add("hud: initial Flee action did not resolve the selected locale.");
+                MethodInfo fleeTap = kitType.GetMethod("OnFleeTapped", BindingFlags.NonPublic | BindingFlags.Instance);
+                fleeTap?.Invoke(kit, null);
+                if (fleeLabel == null ||
+                    !string.Equals(fleeLabel.text, CombatHudText.ResolveFlee(true), StringComparison.Ordinal))
+                    localeResult.errors.Add("hud: armed Flee confirmation did not resolve the selected locale.");
+                kitType.GetMethod("RefreshLocalizedHudCopy", BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?.Invoke(kit, null);
+                if (fleeLabel == null ||
+                    !string.Equals(fleeLabel.text, CombatHudText.ResolveFlee(true), StringComparison.Ordinal))
+                    localeResult.errors.Add("hud: locale refresh lost the armed Flee meaning.");
                 return RenderSurface(code, "hud", hudObject, localeResult);
             }
             finally

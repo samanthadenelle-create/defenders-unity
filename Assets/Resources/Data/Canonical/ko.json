@@ -351,6 +351,8 @@
   "hud.nav.hero": "영웅",
   "hud.nav.journey": "여정",
   "hud.nav.manage": "관리",
+  "hud.combat.flee.action": "도망",
+  "hud.combat.flee.confirm": "도망?",
   "hud.heart.title": "엘라리온의 심장",
   "hud.heart.objective.defend": "왕국을 지키세요",
   "hud.heart.objective.prepareWave": "다음 공세를 준비하세요.",

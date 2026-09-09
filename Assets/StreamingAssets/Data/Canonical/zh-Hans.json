@@ -351,6 +351,8 @@
   "hud.nav.hero": "英雄",
   "hud.nav.journey": "旅程",
   "hud.nav.manage": "管理",
+  "hud.combat.flee.action": "撤退",
+  "hud.combat.flee.confirm": "确认撤退？",
   "hud.heart.title": "埃拉里昂之心",
   "hud.heart.objective.defend": "保卫王国",
   "hud.heart.objective.prepareWave": "准备迎接下一波。",

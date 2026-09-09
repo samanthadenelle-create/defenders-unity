@@ -655,7 +655,7 @@ namespace DeNelle.HUD.Kit
             // Two-tap arm/confirm (anti-misfire, carried from the retired BattleArenaHud
             // flee button): first tap arms for 2s ("Flee?"), second tap inside the window
             // actually flees; the window expiring disarms back to "Flee".
-            _fleeButton = ElarionUiKit.BuildObsidianButton(pool, "Flee",
+            _fleeButton = ElarionUiKit.BuildObsidianButton(pool, CombatHudText.ResolveFlee(false),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Red,
                 new Vector2(0.10f, 0.05f), new Vector2(0.98f, 0.48f), OnFleeTapped);
             _fleeLabel = _fleeButton.GetComponentInChildren<TMP_Text>();
@@ -2587,6 +2587,8 @@ namespace DeNelle.HUD.Kit
                 _heartPlate.NameLabel.text = HeartObjectiveCopy.Title;
             RepaintHeartObjective(force: true);
             RepaintHeartfire(force: true);
+            if (_fleeLabel != null)
+                _fleeLabel.text = CombatHudText.ResolveFlee(Time.unscaledTime < _fleeArmedUntil);
         }
 
         /// <summary>Approved active-combat dock: Attack, held Block, three live assignable skills,
@@ -4069,12 +4071,12 @@ namespace DeNelle.HUD.Kit
             if (Time.unscaledTime < _fleeArmedUntil)
             {
                 _fleeArmedUntil = 0f;
-                if (_fleeLabel != null) _fleeLabel.text = "Flee";
+                if (_fleeLabel != null) _fleeLabel.text = CombatHudText.ResolveFlee(false);
                 HudCommands.Flee();
                 return;
             }
             _fleeArmedUntil = Time.unscaledTime + 2f;
-            if (_fleeLabel != null) _fleeLabel.text = "Flee?";
+            if (_fleeLabel != null) _fleeLabel.text = CombatHudText.ResolveFlee(true);
             FlowTrace.Step("HudKit", "flee armed (tap again within 2s to confirm)");
         }
 
