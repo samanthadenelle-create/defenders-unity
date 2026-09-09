@@ -1,6 +1,6 @@
 # WO-2018 — Manage category-first navigation, detail space, and Army frames
 
-**Status:** IMPLEMENTED — AWAITING OWNER DEVICE MATCH
+**Status:** FIXED - checked in; awaiting owner device match on the next build
 
 **Date:** 2026-09-08
 

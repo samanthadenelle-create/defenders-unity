@@ -1,6 +1,6 @@
 # WO-1606 - Jeweler return FTUE pointer and reachable polish action
 
-**Status:** COMPLETE - production EXE/APK verified; APK installed on Seeker
+**Status:** FIXED - checked in for owner verification on the next build: Jeweler return/polish, serialized enemy cache loads, text-only enemy cues, Android large-screen/16KB packaging, and the release-player build switch
 
 ## Owner ruling (2026-09-08)
 
@@ -70,3 +70,8 @@ development-player smoke entered the exact raid scene and necromancer spawn, pro
 orders serialize to one cache writer, made the real necromancer body resident in 6.1 seconds,
 late-re-skinned the placeholders, exited 0, and logged zero cache-write/crash signatures. The corrected no-dev-tools release is
 `Builds/Windows/DefendersOfTheRealm.exe`.
+
+The same checked-in build set removes the 78%-opaque panel behind overworld enemy alert/name cues while
+retaining both world-space text elements, enables Android large-screen resizing and 16KB-aligned native
+packaging, and exposes the explicit Windows release-player switch. These remain in `FIXED` until the owner
+verifies them together on the next build.

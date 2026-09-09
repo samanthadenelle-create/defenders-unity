@@ -1,6 +1,6 @@
 # WO-2020 - Honest Feedback repair and permanent Settings door
 
-**Status:** IMPLEMENTING
+**Status:** FIXED - checked in; awaiting owner device match on the next build
 
 **Date:** 2026-09-08
 

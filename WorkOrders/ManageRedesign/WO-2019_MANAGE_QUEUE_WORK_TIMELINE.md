@@ -1,6 +1,6 @@
 # WO-2019 - Manage Queue work timeline
 
-**Status:** IMPLEMENTED - AWAITING OWNER DEVICE MATCH
+**Status:** FIXED - checked in; awaiting owner device match on the next build
 
 **Date:** 2026-09-08
 
