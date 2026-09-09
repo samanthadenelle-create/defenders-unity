@@ -1533,7 +1533,7 @@ namespace DeNelle.Wallet
             var go = new GameObject("pi-shelf-empty", typeof(RectTransform), typeof(LayoutElement));
             go.transform.SetParent(_shelfContent, false);
             go.GetComponent<LayoutElement>().preferredHeight = 76f;
-            MakeText(go.transform, StoreStrings.Get(StoreStrings.KeyPiShelfEmpty), 30,
+            MakeText(go.transform, StorePiText.ShelfEmpty.Resolve(), 30,
                 ElarionUi.ParchmentDim, FontStyles.Italic, TextAlignmentOptions.Center,
                 new Vector2(0.03f, 0.06f), new Vector2(0.97f, 0.94f));
         }
@@ -2679,7 +2679,7 @@ namespace DeNelle.Wallet
                     // Pi has no guest tier either, so the plate no longer formats the $4.99 line
                     // (StoreStrings.KeyPiWalletGate is STALE - see its note); it says wallet-at-any-
                     // price, Pi-worded, still a PLATE and not the Solana connect button.
-                    string piGate = StoreStrings.PiWalletRequired();
+                    string piGate = StorePiText.WalletGate.Resolve();
                     FitInto(MakeText(host, piGate, 30, ElarionUi.ParchmentDim, FontStyles.Italic,
                         TextAlignmentOptions.Center, ctaMin, ctaMax), 30);
                     FlowTrace.Step("Store", $"BuildSpotlightCta '{pack.Sku}': wallet-rule refusal, PI wording — " +
@@ -2743,7 +2743,7 @@ namespace DeNelle.Wallet
             // shows the pack and its USD anchor: browsable, honest, not purchasable here.
             if (PiDisplay && !PiRailOwnsTheStore)
             {
-                FitInto(MakeText(host, StoreStrings.Get(StoreStrings.KeyPiRailUnavailable), 30,
+                FitInto(MakeText(host, StorePiText.RailUnavailable.Resolve(), 30,
                     ElarionUi.ParchmentDim, FontStyles.Italic,
                     TextAlignmentOptions.Center, ctaMin, ctaMax), 30);
                 FlowTrace.Warn("Store", $"BuildSpotlightCta '{pack.Sku}': the PI SKIN is active but NO Pi payment " +
@@ -2967,10 +2967,10 @@ namespace DeNelle.Wallet
                     return pack != null ? pack.UsdReference : string.Empty;
 
                 // No server figure. Say WHY, in the player's own terms — never guess one.
-                if (!PiRailOwnsTheStore) return StoreStrings.Get(StoreStrings.KeyPiRailUnavailable);
+                if (!PiRailOwnsTheStore) return StorePiText.RailUnavailable.Resolve();
                 return PiCanSell(pack)
-                    ? StoreStrings.Get(StoreStrings.KeyPiPriceAtCheckout)
-                    : StoreStrings.Get(StoreStrings.KeyPiNotOnSale);
+                    ? StorePiText.PriceAtCheckout.Resolve()
+                    : StorePiText.NotOnSale.Resolve();
             }
 
 
@@ -3127,7 +3127,7 @@ namespace DeNelle.Wallet
             // test at the top means no future state can be added past it and reach the SKR text.
             if (PiDisplay)
             {
-                _balanceLabel.text = StoreStrings.Get(StoreStrings.KeyPiHeaderNotice);
+                _balanceLabel.text = StorePiText.HeaderNotice.Resolve();
                 return;
             }
 

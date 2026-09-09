@@ -21,7 +21,8 @@
 > The 6,034-row inventory (416 `keyedEntry`, 85 `keyedCall`, 5,517 `literalCandidate`, and
 > 16 `imageTextCandidate`) remains report-only pending human classification. Store has 39 translated
 > keys: the seven existing BUY GATE keys are live through `StoreBuyText` / `LocalText` and
-> `PurchaseGate`, with named `{Threshold}` used exactly twice in all ten locales; 32 other Store keys
+> `PurchaseGate`, with named `{Threshold}` used exactly twice in all ten locales; the six Pi-skin keys
+> are live through `StorePiText` / `LocalText`, and 26 other Store keys
 > remain staged on legacy `StoreStrings`/canon readers, so Store is not fully migrated. Importer 2,496,
 > `BUY_GATE_OK`, `STORE_PI_SKIN_OK`, `LOCALIZATION_REGRESSION_OK 7/7 suites`, and the green
 > `GooglePlayPackagingRegression` source gate passed.

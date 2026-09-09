@@ -1,6 +1,6 @@
 # WO-1605 - Localize every player-readable text surface
 
-**Status:** IN PROGRESS - through `e51c51358`, the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, the live dungeon-chest interaction, the seven-key live Store BUY GATE, and pre-Addressables Google Play localization sanitization; 32 other Store keys remain staged on legacy `StoreStrings`/canon, so Store and the broader visible-text migration remain incomplete
+**Status:** IN PROGRESS - the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, the live dungeon-chest interaction, the seven-key Store BUY GATE, the six-key Pi Store skin, and pre-Addressables Google Play localization sanitization; 26 other Store keys remain staged on legacy `StoreStrings`/canon, so Store and the broader visible-text migration remain incomplete
 
 **Owner decision:** Every written or player-readable phrase must be switchable by language. Nothing is
 spoken, so localized voice/audio is explicitly out of scope.
@@ -327,14 +327,14 @@ The first foundation increment is implemented and integrated:
   `LocalText`; `PurchaseGate` no longer resolves that cohort through `StoreStrings`. The wallet threshold
   uses the named `{Threshold}` argument exactly twice in every required locale;
 - the six-key Pi cohort replaces its stale guest-price threshold with the truthful wallet-at-every-price
-  policy, and the eight-key wallet cohort includes the real walletless banner plus a neutral transient
-  balance-unavailable state; both remain data staging pending their runtime cutovers;
+  policy and is live through `StorePiText` / `LocalText`; the eight-key wallet cohort includes the real
+  walletless banner plus a neutral transient balance-unavailable state and remains staged pending cutover;
 - the 11-key commerce-state cohort preserves explicit greyscale-safe state words, adds a localized
   network fallback, and corrects fulfilled/failed/pending headlines so they do not overstate outcomes;
 - the seven-key safe presentation cohort (`storeBandGap`, `storeBandGapSub`, `storeBandBasket`,
   `storeSpotlightEmpty`, `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`) brings the Store
-  translated total to 39 keys. These seven presentation keys plus the Pi, wallet, and commerce cohorts
-  are the 32 Store keys still staged behind legacy `StoreStrings`/canon readers. Offer/patronage
+  translated total to 39 keys. These seven presentation keys plus the wallet and commerce cohorts
+  are the 26 Store keys still staged behind legacy `StoreStrings`/canon readers. Offer/patronage
   assertions, value and balance comparisons, and ambiguous locked-state wording remain held for
   product and formatting review;
 - positional placeholders replaced with typed named arguments (`Minimum`, `Resource`,
@@ -358,6 +358,9 @@ The chest checkpoint additionally passed compile/import at 2,496 entries, `CHEST
 The Store BUY GATE runtime checkpoint preserved the 2,496-entry import and passed `BUY_GATE_OK`,
 `STORE_PI_SKIN_OK`, `LOCALIZATION_REGRESSION_OK 7/7 suites`, and the
 `GooglePlayPackagingRegression` source gate.
+The Pi runtime cutover resolves all six Pi-specific states through `StorePiText` / `LocalText` and passes
+`STORE_PI_SKIN_OK` plus `LOCALIZATION_REGRESSION_OK 8/8 suites`; its regression separately verifies the
+unmigrated SKR balance copy remains intact in legacy canon.
 
 The clean staged-tree manifest contains 6,034 report rows (416 `keyedEntry`, 85 `keyedCall`,
 5,517 `literalCandidate`, and 16 `imageTextCandidate`). Its literal-debt

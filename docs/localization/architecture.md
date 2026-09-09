@@ -111,7 +111,8 @@ combat refusal for both prompt and toast. The obsolete `chestOpenPrompt`, `chest
 dedicated canon note are removed from both canon twins. Store has 39 translated keys across its purchase-gate, Pi, wallet-mirror, commerce-state,
 and safe presentation cohorts. The seven existing BUY GATE keys are live through `StoreBuyText` /
 `LocalText` and `PurchaseGate`; `storeBuyWalletRequired` carries the named `{Threshold}` argument
-exactly twice in every required locale. The other 32 Store keys remain data staging behind legacy
+exactly twice in every required locale. The six-key Pi cohort is live through `StorePiText` and `LocalText`.
+The other 26 Store keys remain data staging behind legacy
 `StoreStrings`/canon readers, so Store is not fully migrated. Other Store cohorts and many direct
 visible HUD/runtime literals remain migration work. The literal
 inventory is deliberately report-only until its baseline is human-classified; do not describe WO-1605
@@ -131,6 +132,8 @@ The chest checkpoint passed compile/import at 2,496 entries, `CHEST_OK`,
 The BUY GATE runtime checkpoint preserved the 2,496-entry import and passed `BUY_GATE_OK`,
 `STORE_PI_SKIN_OK`, `LOCALIZATION_REGRESSION_OK 7/7 suites`, and the
 `GooglePlayPackagingRegression` source gate.
+The subsequent Pi runtime cutover passes `STORE_PI_SKIN_OK` and
+`LOCALIZATION_REGRESSION_OK 8/8 suites`, while separately pinning the untouched legacy SKR copy.
 
 ### Google Play localization variant
 

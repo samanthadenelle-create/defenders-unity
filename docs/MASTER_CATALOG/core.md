@@ -852,7 +852,8 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   `chestCombatRefusal`, and their dedicated note are absent from both canon twins. Store has 39 translated
   keys in all ten catalogs and all six enabled tables. Its seven existing BUY GATE keys are now live through
   `StoreBuyText` / `LocalText` and `PurchaseGate`, with named `{Threshold}` appearing exactly twice in
-  every required locale. The other 32 Store keys remain staged on legacy `StoreStrings`/canon readers,
+  every required locale. The six Pi-skin keys are live through `StorePiText` / `LocalText`; the other
+  26 Store keys remain staged on legacy `StoreStrings`/canon readers,
   so Store is not fully migrated. The safe
   presentation set is `storeBandGap`, `storeBandGapSub`, `storeBandBasket`, `storeSpotlightEmpty`,
   `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`; offer/patronage assertions,

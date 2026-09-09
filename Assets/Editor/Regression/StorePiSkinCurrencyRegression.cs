@@ -75,12 +75,15 @@ namespace DeNelle.Editor.Regression
                 string storePath = Path.Combine(root, "Assets/_Modules/Wallet/PackStore.cs");
                 string piPath = Path.Combine(root,
                     "Assets/_Modules/Core/Payments/Providers/Pi/PiBrowserPaymentProvider.cs");
-                string canonAPath = Path.Combine(root, "Assets/Resources/Data/Canonical/canon-strings.json");
-                string canonBPath = Path.Combine(root, "Assets/StreamingAssets/Data/Canonical/canon-strings.json");
+                string canonAPath = Path.Combine(root, "Assets/Resources/Data/Canonical/en.json");
+                string canonBPath = Path.Combine(root, "Assets/StreamingAssets/Data/Canonical/en.json");
+                string legacyCanonAPath = Path.Combine(root, "Assets/Resources/Data/Canonical/canon-strings.json");
+                string legacyCanonBPath = Path.Combine(root, "Assets/StreamingAssets/Data/Canonical/canon-strings.json");
                 string packsAPath = Path.Combine(root, "Assets/Resources/Data/Canonical/packs.json");
                 string packsBPath = Path.Combine(root, "Assets/StreamingAssets/Data/Canonical/packs.json");
 
-                foreach (string p in new[] { storePath, piPath, canonAPath, canonBPath, packsAPath, packsBPath })
+                foreach (string p in new[] { storePath, piPath, canonAPath, canonBPath,
+                                             legacyCanonAPath, legacyCanonBPath, packsAPath, packsBPath })
                     if (!File.Exists(p)) fail.Add("missing file " + p);
                 if (fail.Count > 0)
                 {
@@ -93,19 +96,24 @@ namespace DeNelle.Editor.Regression
                 string pi = File.ReadAllText(piPath);
                 string canonA = File.ReadAllText(canonAPath);
                 string canonB = File.ReadAllText(canonBPath);
+                string legacyCanonA = File.ReadAllText(legacyCanonAPath);
+                string legacyCanonB = File.ReadAllText(legacyCanonBPath);
 
                 // =============================================================
                 //  1. THE COPY
                 // =============================================================
                 if (!string.Equals(canonA, canonB, StringComparison.Ordinal))
-                    fail.Add("the two canonical canon-strings.json copies differ");
+                    fail.Add("the two canonical English localization copies differ");
                 checks++;
 
                 var canon = JObject.Parse(canonA);
+                if (!string.Equals(legacyCanonA, legacyCanonB, StringComparison.Ordinal))
+                    fail.Add("the two legacy Store canon copies differ");
+                var legacyCanon = JObject.Parse(legacyCanonA);
                 var seen = new HashSet<string>(StringComparer.Ordinal);
-                string[] piKeys = StoreStrings.PiSkinKeys;   // the class's OWN list - never retyped here
+                string[] piKeys = StorePiText.AllKeys;   // the class's OWN list - never retyped here
                 if (piKeys == null || piKeys.Length < 6)
-                    fail.Add("StoreStrings.PiSkinKeys is missing or shrank below the six authored Pi keys");
+                    fail.Add("StorePiText.AllKeys is missing or shrank below the six authored Pi keys");
                 checks++;
 
                 foreach (string key in piKeys ?? new string[0])
@@ -128,9 +136,9 @@ namespace DeNelle.Editor.Regression
 
                 // B: the SKR copy is STILL THERE, unchanged. A pass earned by deleting the SKR
                 // strings would be the opposite of "the SKR skin is byte-for-byte unchanged".
-                RequireCanon(canon, "storeBalanceValue", "SKR", fail, ref checks);
-                RequireCanon(canon, "storeBalanceAfter", "SKR", fail, ref checks);
-                RequireCanon(canon, "storeBalanceNoWallet", "Connect a wallet", fail, ref checks);
+                RequireCanon(legacyCanon, "storeBalanceValue", "SKR", fail, ref checks);
+                RequireCanon(legacyCanon, "storeBalanceAfter", "SKR", fail, ref checks);
+                RequireCanon(legacyCanon, "storeBalanceNoWallet", "Connect a wallet", fail, ref checks);
 
                 // =============================================================
                 //  2. THE HINGE IS THE SKIN, NOT THE CHANNEL
@@ -159,7 +167,7 @@ namespace DeNelle.Editor.Regression
                     "switch (_balanceState)",
                     "RenderBalanceLabel does not test PiDisplay BEFORE its balance-state switch",
                     fail, ref checks);
-                Require(store, "StoreStrings.Get(StoreStrings.KeyPiHeaderNotice)",
+                Require(store, "StorePiText.HeaderNotice.Resolve()",
                     "the Pi header notice never replaces the SKR wallet chip", fail, ref checks);
 
                 // ...and the SKR chip itself is still there for the SKR skin.
@@ -255,7 +263,7 @@ namespace DeNelle.Editor.Regression
                 // (2) set PiWalletRequiredSentence to the localized Solana wallet sentence;
                 // (3) restore `StoreStrings.Format(StoreStrings.KeyPiWalletGate, ...)` in the plate;
                 // (4) delete the `if (PiDisplay)` block in RouteGuestShortfallToWalletConnect.
-                string piGateCopy = StoreStrings.PiWalletRequiredSentence;
+                string piGateCopy = StorePiText.WalletGate.Resolve();
                 checks++;
                 if (string.IsNullOrWhiteSpace(piGateCopy) || piGateCopy.IndexOf("wallet", StringComparison.OrdinalIgnoreCase) < 0)
                     fail.Add("the Pi wallet plate no longer says 'wallet' - Pi has no guest tier (owner 2026-09-04: " +
@@ -278,10 +286,9 @@ namespace DeNelle.Editor.Regression
                              "two audiences, two plates (WO-1386 / WO-1323)");
                 RequireOrdered(store,
                     "if (walletIsTheBlocker && PiDisplay)",
-                    "StoreStrings.PiWalletRequired()",
+                    "StorePiText.WalletGate.Resolve()",
                     "FlowTrace.Step(\"Store\", $\"BuildSpotlightCta '{pack.Sku}': wallet-rule refusal, PI wording",
-                    "the Pi plate no longer renders StoreStrings.PiWalletRequired() - it would be back on the " +
-                    "stale storePiWalletGate row that names a $4.99 guest tier Pi no longer has", fail, ref checks);
+                    "the Pi plate no longer resolves the localized Pi wallet-gate key", fail, ref checks);
                 checks++;
                 if (store.IndexOf("StoreStrings.Format(StoreStrings.KeyPiWalletGate", StringComparison.Ordinal) >= 0)
                     fail.Add("PackStore formats the STALE storePiWalletGate row again - it says 'Packs over $4.99 are " +
@@ -297,7 +304,7 @@ namespace DeNelle.Editor.Regression
                 Require(store, "if (PiDisplay && !PiRailOwnsTheStore)",
                     "a Pi-skinned session with no Pi rail can still fall through to the Solana Buy path",
                     fail, ref checks);
-                Require(store, "StoreStrings.KeyPiRailUnavailable",
+                Require(store, "StorePiText.RailUnavailable.Resolve()",
                     "there is no worded refusal for a Pi session with no Pi rail", fail, ref checks);
 
                 // The SKR price label survives, and is only reached when PiDisplay is false.
@@ -315,7 +322,7 @@ namespace DeNelle.Editor.Regression
                 // The empty Pi shelf is SHOWN, not papered over.
                 Require(store, "BuildPiShelfNoticeIfNothingIsBuyable();",
                     "the empty-Pi-shelf notice is never called from Render", fail, ref checks);
-                Require(store, "StoreStrings.KeyPiShelfEmpty",
+                Require(store, "StorePiText.ShelfEmpty.Resolve()",
                     "there is no sentence for a shelf on which nothing is Pi-purchasable", fail, ref checks);
 
                 // =============================================================
@@ -503,7 +510,7 @@ namespace DeNelle.Editor.Regression
                 RequireOrdered(store,
                     "private void BuildPiShelfNoticeIfNothingIsBuyable()",
                     "var spotlight = ResolvePiSpotlightPack();",
-                    "StoreStrings.KeyPiShelfEmpty",
+                    "StorePiText.ShelfEmpty.Resolve()",
                     "the empty-Pi-shelf notice is still drawn when the spotlight carries a buyable pack - " +
                     "the store would contradict itself on one screen", fail, ref checks);
 
