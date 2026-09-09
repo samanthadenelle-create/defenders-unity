@@ -844,15 +844,16 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   `zh-Hans` remain required for key/argument parity but hidden pending RTL/CJK font and
   layout readiness. See `docs/localization/architecture.md` for the generation, fallback,
   all-region change rule, and verification contract.
-  Through `8fc15e9e8`, every canonical locale source and mirror contains 416 keys, and the six
+  Through `67eac2feb`, every canonical locale source and mirror contains 416 keys, and the six
   build-enabled tables contain 2,496 entries. Dungeon chest interaction copy now resolves the live
   `interaction.chest.open` and `interaction.chest.blockedByEnemies` keys through the thin
   `ChestInteractionText` wrapper. `BreakableContainer` uses the localized open prompt and the same
   localized combat refusal for both prompt and toast; the retired `chestOpenPrompt`,
-  `chestCombatRefusal`, and their dedicated note are absent from both canon twins. Store migration remains data-first by semantic cohort: 39
-  purchase-gate, Pi, wallet-mirror, commerce-state, and safe presentation keys are present in all ten
-  required locale catalogs and all six enabled tables, while `StoreStrings` intentionally remains on its
-  legacy canon reader until the complete Store key set can switch to `LocalText` atomically. The safe
+  `chestCombatRefusal`, and their dedicated note are absent from both canon twins. Store has 39 translated
+  keys in all ten catalogs and all six enabled tables. Its seven existing BUY GATE keys are now live through
+  `StoreBuyText` / `LocalText` and `PurchaseGate`, with named `{Threshold}` appearing exactly twice in
+  every required locale. The other 32 Store keys remain staged on legacy `StoreStrings`/canon readers,
+  so Store is not fully migrated. The safe
   presentation set is `storeBandGap`, `storeBandGapSub`, `storeBandBasket`, `storeSpotlightEmpty`,
   `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`; offer/patronage assertions,
   value/balance comparisons, ambiguous locked-state wording, and all four trust-strip claims remain held
@@ -864,6 +865,11 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   translations may await human review but must still satisfy parity.
   Chest evidence is compile/import at 2,496 entries, `CHEST_OK`,
   `LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.
+  BUY GATE evidence is importer 2,496, `BUY_GATE_OK`, `STORE_PI_SKIN_OK`,
+  `LOCALIZATION_REGRESSION_OK 7/7 suites`, and a green `GooglePlayPackagingRegression` source gate.
+  Google Play remains release-gated: Unity `GameStrings` Addressables are built before the JSON neutral
+  rewrite, so localized-table sanitization or channel variants remain required; Jeweler FTUE native SKR
+  strings are another unmapped Play-neutral blocker.
 
 - **Service registry:** `CoreServices` (8 slots, above). Callers null-check; register Awake / unregister OnDestroy.
 - **Panel routing:** panel registers opener on `PanelRouter` (+ optional context / context+mode arities);

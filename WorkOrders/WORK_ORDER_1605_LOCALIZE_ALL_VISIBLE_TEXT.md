@@ -1,6 +1,6 @@
 # WO-1605 - Localize every player-readable text surface
 
-**Status:** IN PROGRESS - through `8fc15e9e8`, the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, the live dungeon-chest interaction, and 39 Store keys staged; Store runtime still uses legacy `StoreStrings`/canon, and the full Store cutover plus remaining visible-text batches are open
+**Status:** IN PROGRESS - through `67eac2feb`, the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, the live dungeon-chest interaction, and the seven-key live Store BUY GATE; 32 other Store keys remain staged on legacy `StoreStrings`/canon, so Store and the broader visible-text migration remain incomplete
 
 **Owner decision:** Every written or player-readable phrase must be switchable by language. Nothing is
 spoken, so localized voice/audio is explicitly out of scope.
@@ -297,7 +297,7 @@ Every migration pull request or work order should contain one bounded module/sur
 Track progress by manifest rows and surfaces, not by raw key count. A single complex formatted dialogue and
 twenty repeated button labels are not equivalent work.
 
-## 10. Implementation checkpoint - 2026-09-09 (`8fc15e9e8`)
+## 10. Implementation checkpoint - 2026-09-09 (`67eac2feb`)
 
 The first foundation increment is implemented and integrated:
 
@@ -313,7 +313,7 @@ The first foundation increment is implemented and integrated:
   Japanese, Korean, and Simplified Chinese remain internal until font/RTL readiness is complete;
 - Feedback, Jeweler FTUE/polish/reveal, and Settings converted to key-only calls;
 - HUD and Raid compatibility catalogs forward through `LocalText`; Village and Canon compatibility
-  readers now do too, while Store remains an explicitly tracked coherent follow-up;
+  readers now do too, while Store remains an explicitly tracked incremental migration;
 - calm navigation and the complete Heart HUD cluster resolve through domain wrappers, including typed
   named arguments for troop counts and Heartfire timers;
 - the hostile two-tap Flee control uses separate action/confirmation keys and preserves its armed
@@ -323,20 +323,22 @@ The first foundation increment is implemented and integrated:
   `BreakableContainer` uses the localized open prompt and reuses the same localized combat refusal
   for both its prompt and toast. The retired `chestOpenPrompt`, `chestCombatRefusal`, and their
   dedicated note were removed from both canon twins;
-- Store purchase-gate copy is staged as one seven-key semantic cohort in all ten required locales and
-  all six enabled tables. This is not a runtime cutover: `StoreStrings` keeps its legacy reader until all
-  Store cohorts are present and can move to `LocalText` atomically;
+- the seven existing Store BUY GATE keys are live through the thin `StoreBuyText` wrappers and
+  `LocalText`; `PurchaseGate` no longer resolves that cohort through `StoreStrings`. The wallet threshold
+  uses the named `{Threshold}` argument exactly twice in every required locale;
 - the six-key Pi cohort replaces its stale guest-price threshold with the truthful wallet-at-every-price
   policy, and the eight-key wallet cohort includes the real walletless banner plus a neutral transient
-  balance-unavailable state; both remain data staging pending that same atomic Store cutover;
+  balance-unavailable state; both remain data staging pending their runtime cutovers;
 - the 11-key commerce-state cohort preserves explicit greyscale-safe state words, adds a localized
   network fallback, and corrects fulfilled/failed/pending headlines so they do not overstate outcomes;
 - the seven-key safe presentation cohort (`storeBandGap`, `storeBandGapSub`, `storeBandBasket`,
   `storeSpotlightEmpty`, `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`) brings the Store
-  staged total to 39 keys. Offer/patronage assertions, value and balance comparisons, and ambiguous
-  locked-state wording remain held for product and formatting review;
+  translated total to 39 keys. These seven presentation keys plus the Pi, wallet, and commerce cohorts
+  are the 32 Store keys still staged behind legacy `StoreStrings`/canon readers. Offer/patronage
+  assertions, value and balance comparisons, and ambiguous locked-state wording remain held for
+  product and formatting review;
 - positional placeholders replaced with typed named arguments (`Minimum`, `Resource`,
-  `AmountOver`, `Duration`, and `Gem`);
+  `AmountOver`, `Duration`, `Gem`, and `Threshold`);
 - domain conventions established for `hud`, `battle`, `interaction`, `shop`, `lore`,
   `settings`, and feature-specific namespaces;
 - authority, literal-leak, locale-parity, Smart-argument, and Settings regressions registered in
@@ -352,6 +354,9 @@ compile passed; its wrapper remains externally red only because this workstation
 optional WebGL built-in module required by the Solana package's WebGL input source.
 The chest checkpoint additionally passed compile/import at 2,496 entries, `CHEST_OK`,
 `LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.
+The Store BUY GATE runtime checkpoint preserved the 2,496-entry import and passed `BUY_GATE_OK`,
+`STORE_PI_SKIN_OK`, `LOCALIZATION_REGRESSION_OK 7/7 suites`, and the
+`GooglePlayPackagingRegression` source gate.
 
 The clean staged-tree manifest contains 6,034 report rows (416 `keyedEntry`, 85 `keyedCall`,
 5,517 `literalCandidate`, and 16 `imageTextCandidate`). Its literal-debt
@@ -365,6 +370,10 @@ may remain marked limited/provisional pending human review, but it cannot be omi
 The Store trust strip is held pending provider-specific/legal wording. Its fee/distributor/no-power
 claims are not uniformly accurate across payment channels, and its covenant is still carried by an
 English raster; none of those four legacy rows is counted as localized yet.
+
+Google Play remains release-gated: Unity `GameStrings` Addressables are built before the JSON
+Play-neutral rewrite, so channel-specific localized-table sanitization or variants are still required.
+The Jeweler FTUE's native SKR wording is a second unmapped Play-neutral blocker.
 
 ## 10. Explicit non-goals
 

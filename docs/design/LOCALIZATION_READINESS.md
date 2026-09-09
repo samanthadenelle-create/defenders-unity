@@ -1,6 +1,6 @@
 # Localization / i18n Readiness Audit
 
-> **Implementation update - 2026-09-09 (WO-1605, through `8fc15e9e8`):** The runtime gap described by
+> **Implementation update - 2026-09-09 (WO-1605, through `67eac2feb`):** The runtime gap described by
 > this June audit is now being closed. `LocalText` is the single Core facade;
 > `DeNelle.Localization.UnityLocalizationProvider` is its sole package-backed adapter;
 > selected and English `GameStrings` tables preload asynchronously; explicit locale
@@ -19,9 +19,14 @@
 > Seven focused suites cover authority, literal leakage, locale parity,
 > Smart arguments (named and positional), Settings wiring, glyph coverage, and Flee state.
 > The 6,034-row inventory (416 `keyedEntry`, 85 `keyedCall`, 5,517 `literalCandidate`, and
-> 16 `imageTextCandidate`) remains report-only pending human classification. Store has 39 keys
-> staged in all required locales, but its runtime still uses legacy `StoreStrings`/canon;
-> the remaining Store cutover and many visible literals remain open. Current canon lives in
+> 16 `imageTextCandidate`) remains report-only pending human classification. Store has 39 translated
+> keys: the seven existing BUY GATE keys are live through `StoreBuyText` / `LocalText` and
+> `PurchaseGate`, with named `{Threshold}` used exactly twice in all ten locales; 32 other Store keys
+> remain staged on legacy `StoreStrings`/canon readers, so Store is not fully migrated. Importer 2,496,
+> `BUY_GATE_OK`, `STORE_PI_SKIN_OK`, `LOCALIZATION_REGRESSION_OK 7/7 suites`, and the green
+> `GooglePlayPackagingRegression` source gate passed.
+> Google Play release remains blocked because `GameStrings` Addressables precede the JSON neutral rewrite;
+> localized-table sanitization/variants and unmapped Jeweler FTUE native SKR strings remain open. Current canon lives in
 > `docs/localization/architecture.md`.
 
 **Date:** 2026-06-28

@@ -1,6 +1,6 @@
 # Localization architecture and supported languages
 
-**Canon status:** Active architecture for WO-1605 through commit `8fc15e9e8` (2026-09-09). This document describes the
+**Canon status:** Active architecture for WO-1605 through commit `67eac2feb` (2026-09-09). This document describes the
 implemented authority and regional contract. It does not claim that every player-facing surface has
 already migrated.
 
@@ -107,11 +107,11 @@ combat Flee control, and HUD/Raid forwarding shims are in place. Village and Can
 global facade. Dungeon chests resolve `interaction.chest.open` and `interaction.chest.blockedByEnemies`
 through `ChestInteractionText`; `BreakableContainer` uses the localized open prompt and the same localized
 combat refusal for both prompt and toast. The obsolete `chestOpenPrompt`, `chestCombatRefusal`, and their
-dedicated canon note are removed from both canon twins. Store has 39 staged keys across its purchase-gate, Pi, wallet-mirror, commerce-state,
-and safe presentation cohorts. All 39 are translated across all ten required locales and generated into
-all six enabled tables, but this is data staging only:
-`StoreStrings` remains a legacy
-reader until its complete semantic migration can cut over atomically. Other Store cohorts and many direct
+dedicated canon note are removed from both canon twins. Store has 39 translated keys across its purchase-gate, Pi, wallet-mirror, commerce-state,
+and safe presentation cohorts. The seven existing BUY GATE keys are live through `StoreBuyText` /
+`LocalText` and `PurchaseGate`; `storeBuyWalletRequired` carries the named `{Threshold}` argument
+exactly twice in every required locale. The other 32 Store keys remain data staging behind legacy
+`StoreStrings`/canon readers, so Store is not fully migrated. Other Store cohorts and many direct
 visible HUD/runtime literals remain migration work. The literal
 inventory is deliberately report-only until its baseline is human-classified; do not describe WO-1605
 as complete or arm the debt ratchet early.
@@ -127,3 +127,10 @@ that cohort may stage or cut over.
 
 The chest checkpoint passed compile/import at 2,496 entries, `CHEST_OK`,
 `LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.
+The BUY GATE runtime checkpoint preserved the 2,496-entry import and passed `BUY_GATE_OK`,
+`STORE_PI_SKIN_OK`, `LOCALIZATION_REGRESSION_OK 7/7 suites`, and the
+`GooglePlayPackagingRegression` source gate.
+
+Google Play remains release-gated because Unity `GameStrings` Addressables are built before the JSON
+neutral rewrite. Channel-specific localized-table sanitization or variants are still required, and the
+Jeweler FTUE's native SKR strings are another unmapped Play-neutral blocker.

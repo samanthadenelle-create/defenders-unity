@@ -891,17 +891,19 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
    EXISTING return-door arbiter that WO-1400 shipped for the deck return; lane D consumes it on CLOSE. No second
    return mechanism. Lane C hands the exact door line to lane D as text if the files are split across people.
 
-### 9. WO-1605 localization goal - checkpoint through `8fc15e9e8` (2026-09-09)
+### 9. WO-1605 localization goal - checkpoint through `67eac2feb` (2026-09-09)
 
-- The foundation began at `20467d539` on `dev`; this checkpoint is through `8fc15e9e8`. The shared tree already contained the owner's uncommitted
+- The foundation began at `20467d539` on `dev`; this checkpoint is through `67eac2feb`. The shared tree already contained the owner's uncommitted
   Feedback/Jeweler/Manage/build work, which was preserved. No stash/reset/cleanup was used.
 - One authority now exists: Core `LocalText` -> `ILocalTextProvider` -> the asynchronous
   `DeNelle.Localization.UnityLocalizationProvider` -> Unity `GameStrings`.
 - Feature ownership stays separate through domain keys and thin `LocalizedText` /
   `LocalizedText<TArguments>` catalogs; English is not duplicated at call sites.
 - Phase A-B began with authority + Settings + HUD/Raid shims. Village/Canon compatibility readers now
-  forward to the facade. Store has 39 staged purchase-gate/Pi/wallet/commerce/presentation keys, but
-  runtime still uses legacy `StoreStrings`/canon; the full Store cutover remains open.
+  forward to the facade. Store has 39 translated keys: its seven-key BUY GATE is live through
+  `StoreBuyText`/`LocalText` and `PurchaseGate`, while 32 Pi/wallet/commerce/presentation keys remain
+  staged behind legacy `StoreStrings`/canon readers. Store is not fully migrated.
+- `storeBuyWalletRequired` uses named `{Threshold}` exactly twice in all ten required locales.
 - The safe Store presentation cohort is exactly `storeBandGap`, `storeBandGapSub`, `storeBandBasket`,
   `storeSpotlightEmpty`, `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`. Offer/patronage
   assertions, value and balance comparisons, ambiguous locked-state wording, and the four trust-strip
@@ -921,11 +923,16 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
   missing registration in the dirty `DataRegression` edit. The focused localization lane remains 7/7.
 - Chest evidence is compile/import at 2,496 entries, `CHEST_OK`,
   `LOCALIZATION_REGRESSION_OK 7/7 suites`, and `LOCALE_FONT_BUILD_OK`.
+- BUY GATE evidence is importer 2,496, `BUY_GATE_OK`, `STORE_PI_SKIN_OK`,
+  `LOCALIZATION_REGRESSION_OK 7/7 suites`, and a green `GooglePlayPackagingRegression` source gate.
 - Manifest generation/check is deterministic: 6,034 report rows = 416 `keyedEntry` + 85 `keyedCall`
   + 5,517 `literalCandidate` + 16 `imageTextCandidate`. Literal debt remains report-only/unarmed and
   deliberately unreviewed; domain classification remains required before the new-debt ratchet can be armed.
 - Future player-facing copy changes must update all ten required locale catalogs and mirrors, rebuild
   all six enabled tables, and pass localization tests. Limited/provisional translations may await human
   review but must still satisfy parity.
+- Google Play is still release-gated because Unity `GameStrings` Addressables are built before the JSON
+  neutral rewrite; channel-specific localized-table sanitization or variants remain required. Native SKR
+  wording in the Jeweler FTUE is another unmapped Play-neutral blocker.
 - CompileGate emitted `COMPILE_GATE_OK`; its outer wrapper remained red only on the known missing
   optional WebGL built-in module (`UnityEngine.WebGLInput` in the Solana package), not project code.
