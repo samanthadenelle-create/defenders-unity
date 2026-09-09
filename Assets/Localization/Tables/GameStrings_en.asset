@@ -16,14 +16,19 @@ MonoBehaviour:
     m_Code: en
   m_SharedData: {fileID: 11400000, guid: a280628737193b24f9e44f409150a145, type: 2}
   m_Metadata:
-    m_Items: []
+    m_Items:
+    - rid: 7338888474672496640
   m_TableData:
-  - m_Id: 1013964800
-    m_Localized: Tend the Heart. Hold the dark.
+  - m_Id: 40920301974368257
+    m_Localized: Syndrath the Devourer circles the Heart. The sky itself has turned
+      against us. Keep your eyes up, Keeper.
     m_Metadata:
       m_Items: []
-  - m_Id: 1076879360
-    m_Localized: Tend the Lantern. Hold the dark.
+  - m_Id: 40920301974368256
+    m_Localized: The walls hold a force-field of the Heart's own light - see it shimmer
+      in the gates. It turns the Hollowed back while it shines. But every blow thins
+      it, and a thinned field lets the dark slip through. Keep the walls and gates
+      mended, and the light keeps its strength.
     m_Metadata:
       m_Items: []
   - m_Id: 1076879361
@@ -39,8 +44,8 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1076879364
-    m_Localized: "Welcome home, Keeper. The Heart hums for you. Walk a while \u2014
-      the song will tell you what it needs."
+    m_Localized: Welcome home, Keeper. The Heart hums for you. Walk a while - the
+      song will tell you what it needs.
     m_Metadata:
       m_Items: []
   - m_Id: 1076879365
@@ -48,8 +53,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1076879366
-    m_Localized: "The Heart gives what it can spare. Hold these \u2014 you will need
-      them."
+    m_Localized: The Heart gives what it can spare. Hold these - you will need them.
     m_Metadata:
       m_Items: []
   - m_Id: 1076879367
@@ -92,7 +96,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073670
-    m_Localized: Welcome home, Guardian. The Heart is the Lantern itself. Protect
+    m_Localized: Welcome home, Keeper. The spire holds the realm's last song. Protect
       it.
     m_Metadata:
       m_Items: []
@@ -102,8 +106,8 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073672
-    m_Localized: "Build your defenses with what you have. Walk to the Crystal Mine
-      \u2014 tap to gather."
+    m_Localized: Build your defenses with what you have. Walk to the Crystal Mine
+      - tap to gather.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073673
@@ -111,8 +115,8 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073674
-    m_Localized: "When you are ready, begin a wave. Use Q to cast \u2014 your magic
-      comes back when the Lantern allows."
+    m_Localized: When you are ready, begin a wave. Tap a skill to cast - your magic
+      returns when the spire allows.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073675
@@ -120,13 +124,13 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073676
-    m_Localized: The Lantern remembers your kindness. Tend it well, Guardian.
+    m_Localized: The spire remembers your kindness. Tend it well, Keeper.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073677
-    m_Localized: "The Heart's light parts for those it knows. Walk through, Keeper
-      \u2014 but the Hollow Ones will press against it. Mend the gate as you mend
-      the walls."
+    m_Localized: The Heart's light parts for those it knows. Walk through, Keeper
+      - but the Hollow Ones will press against it. Mend the gate as you mend the
+      walls.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073678
@@ -157,7 +161,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073684
-    m_Localized: "Wisps of the unmade \u2014 quick, half-here. Aim true."
+    m_Localized: Wisps of the unmade - quick, half-here. Aim true.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073685
@@ -194,7 +198,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073693
-    m_Localized: "The song breaks. Defend, Keeper \u2014 defend now."
+    m_Localized: The song breaks. Defend, Keeper - defend now.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073694
@@ -214,11 +218,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073698
-    m_Localized: The Lantern stirs. The watch begins.
+    m_Localized: The spire stirs. The watch begins.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073699
-    m_Localized: A lane wavers. The Lantern felt it before you did.
+    m_Localized: A lane wavers. The chord felt it before you did.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073700
@@ -234,11 +238,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073703
-    m_Localized: "The light breaks. Defend, Guardian \u2014 defend now."
+    m_Localized: The chord breaks. Defend, Keeper - defend now.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073704
-    m_Localized: The Lantern shudders. Hold the line at all costs.
+    m_Localized: The spire shudders. Hold the line at all costs.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073705
@@ -274,7 +278,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073713
-    m_Localized: "\u2026"
+    m_Localized: ...
     m_Metadata:
       m_Items: []
   - m_Id: 1081073714
@@ -320,11 +324,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073724
-    m_Localized: "The dark withdraws \u2014 for now."
+    m_Localized: The dark withdraws - for now.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073725
-    m_Localized: The Lantern holds. The watch breathes.
+    m_Localized: The chord holds. The watch breathes.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073726
@@ -349,8 +353,8 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073731
-    m_Localized: "The Heart breaks. But the bond does not. Begin again, Keeper \u2014
-      there is no other answer."
+    m_Localized: The Heart breaks. But the bond does not. Begin again, Keeper - there
+      is no other answer.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073732
@@ -363,7 +367,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073734
-    m_Localized: The Lantern dims. But the bond does not. Begin again, Guardian.
+    m_Localized: The chord falters. But the bond does not. Begin again, Keeper.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073735
@@ -407,17 +411,17 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073745
-    m_Localized: The Wolf came back from the orchard with frost on its muzzle. You
-      did not ask.
+    m_Localized: Aldwin came back from the orchard with ice on his muzzle. You did
+      not ask.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073746
-    m_Localized: It pads silently. When the Hollowed come, it bares its teeth and
-      does not look away.
+    m_Localized: Aldwin pads silently. When the Hollowed come, he bares his teeth
+      and does not look away.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073747
-    m_Localized: Its breath does not cloud. You wonder if it is breathing at all.
+    m_Localized: His breath does not cloud. You wonder if he is breathing at all.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073748
@@ -442,8 +446,8 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073753
-    m_Localized: The Wolf came back from the orchard with a scrap of frost on its
-      muzzle. I asked. It did not say.
+    m_Localized: Aldwin came back from the orchard with a scrap of ice on his muzzle.
+      I asked. He did not say.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073754
@@ -484,7 +488,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073762
-    m_Localized: Elarion kept your hearth warm. Welcome back, Guardian.
+    m_Localized: Elarion kept your hearth warm. Welcome back, Keeper.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073763
@@ -507,9 +511,8 @@ MonoBehaviour:
       up through the stone.
     m_Metadata:
       m_Items: []
-  - m_Id: 1081073767
-    m_Localized: Food. What the Folk gather while you keep watch. It feeds the spirits
-      as it feeds the bond.
+  - m_Id: 40920301970173953
+    m_Localized: Tend the Lantern. Hold the dark.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073768
@@ -522,7 +525,8 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073770
-    m_Localized: Warm beds. Small windows. A place spirits feel theirs.
+    m_Localized: An ancient recess in the world tree's roots. The echoes rest here
+      between battles, their presence a low hum in the stones.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073771
@@ -548,13 +552,12 @@ MonoBehaviour:
       the stone.
     m_Metadata:
       m_Items: []
-  - m_Id: 1081073776
-    m_Localized: Food
+  - m_Id: 40920301970173952
+    m_Localized: Tend the Heart. Hold the dark.
     m_Metadata:
       m_Items: []
-  - m_Id: 1081073777
-    m_Localized: What the Folk gather while you keep watch. It feeds the spirits
-      as it feeds the bond.
+  - m_Id: 40920301924036608
+    m_Localized: Hold the Chord. Defend the Spire.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073778
@@ -643,8 +646,8 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073797
-    m_Localized: "How to keep the watch \u2014 what the previous Keepers would have
-      told you."
+    m_Localized: How to keep the watch - what the previous Keepers would have told
+      you.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073798
@@ -670,7 +673,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073803
-    m_Localized: "All you have gathered \u2014 every spirit bonded, every place raised."
+    m_Localized: All you have gathered - every spirit bonded, every place raised.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073804
@@ -695,8 +698,8 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073809
-    m_Localized: "Your magic, but it is the Heart's gift. Use what is given \u2014
-      it returns when it can."
+    m_Localized: Your magic, but it is the Heart's gift. Use what is given - it returns
+      when it can.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073810
@@ -805,16 +808,16 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073834
-    m_Localized: "Drag the joystick to move \u2014 or tap the ground to walk somewhere."
+    m_Localized: Drag the joystick to move - or tap the ground to walk somewhere.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073835
-    m_Localized: "The realm beyond Elarion stirs. Visit the Wayshrine \u2014 the pale
-      standing stone \u2014 to set out across the Realm Map."
+    m_Localized: The realm beyond Elarion stirs. Visit the Wayshrine - the pale standing
+      stone - to set out across the Realm Map.
     m_Metadata:
       m_Items: []
   - m_Id: 1081073836
-    m_Localized: "My lord \u2014 ENEMIES! The shop can wait!"
+    m_Localized: My lord - ENEMIES! The shop can wait!
     m_Metadata:
       m_Items: []
   - m_Id: 1081073837
@@ -826,7 +829,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1081073839
-    m_Localized: "Coin won't save us from this lot \u2014 your magic will!"
+    m_Localized: Coin won't save us from this lot - your magic will!
     m_Metadata:
       m_Items: []
   - m_Id: 1081073840
@@ -837,6 +840,666 @@ MonoBehaviour:
     m_Localized: Discounts after the wave, I swear it! Fight!
     m_Metadata:
       m_Items: []
+  - m_Id: 40920301974368258
+    m_Localized: A black wing crosses the sun. The Devourer hunts where the realm
+      is weakest - do not let it find the Heart wanting.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368259
+    m_Localized: Defenders of the Realm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368260
+    m_Localized: powered by SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368261
+    m_Localized: Take Up the Watch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368262
+    m_Localized: Dive into Village
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368263
+    m_Localized: Jump into the Action
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368264
+    m_Localized: Thrain
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368265
+    m_Localized: Frostweaver
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368266
+    m_Localized: An elder scholar of the crystal seams, his staff sings the cold
+      awake. Where Thrain walks, the dark slows and the frost remembers every name
+      it freezes.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368267
+    m_Localized: Grom
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368268
+    m_Localized: Lightbearer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368269
+    m_Localized: Hammer in hand and the sun's emblem on his shield, Grom carries
+      blessed steel into the breach. Where his light falls, the Hollowed falter and
+      the walls hold.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368270
+    m_Localized: Sylas
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368271
+    m_Localized: Wood Warden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368272
+    m_Localized: An elf of the green lanes who looses a clean arrow on the wind long
+      before the dark draws near. Sylas reads the wood, snares the swift, and turns
+      a tide arrow by arrow.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368273
+    m_Localized: Elara
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368274
+    m_Localized: Divine Healer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368275
+    m_Localized: A vessel of the Heart's own light, Elara mends the wounded and wraps
+      the faithful in holy ward. The dark cannot outlast a grace that rises faster
+      than it can wound.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368276
+    m_Localized: Choose Your First Warden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368277
+    m_Localized: A spirit will walk the watch beside you. Bond with one - it will
+      know your kindness, and your battles.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368278
+    m_Localized: Bond With This Warden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368279
+    m_Localized: The sawmill's blade hums against timber the green places of Elarion
+      still spare. Its planks brace the highest walls.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368280
+    m_Localized: The armorer's fire never cools. Here the Folk beat raw iron into
+      plate the Hollowed cannot easily bite through.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368281
+    m_Localized: Swap to SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368282
+    m_Localized: You send
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368283
+    m_Localized: You receive
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368284
+    m_Localized: Exchange rate
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368285
+    m_Localized: Service fee
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368286
+    m_Localized: Network fee
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368287
+    m_Localized: Swap Now
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368288
+    m_Localized: Powered by Jupiter Aggregator
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368289
+    m_Localized: Enter an amount to see the rate.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368290
+    m_Localized: Getting rate...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368291
+    m_Localized: Connect your wallet to swap.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368292
+    m_Localized: Sending to wallet for approval...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368293
+    m_Localized: Could not fetch rate. Check connection.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368294
+    m_Localized: Swap failed. Please try again.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368295
+    m_Localized: Tell Us Honestly
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368296
+    m_Localized: Tell us what works, what does not, and what is missing. We read
+      every response, and the thank-you is the same whatever you write.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368297
+    m_Localized: What is working, and what is not?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368298
+    m_Localized: Send And Claim
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368299
+    m_Localized: 'One time only: 1000 wood, 1000 stone and 1000 iron, delivered in
+      full.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368300
+    m_Localized: Rate Us On The Store
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368301
+    m_Localized: Separate, and nothing is rewarded for it - no store tells us whether
+      you did.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368302
+    m_Localized: Feedback
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368303
+    m_Localized: Send Feedback
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368304
+    m_Localized: Sending...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368305
+    m_Localized: We could not reach the feedback service just now. Please try again
+      later.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368306
+    m_Localized: The store link is not configured on this build.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368307
+    m_Localized: Thank you - your words are with us. 1000 wood, 1000 stone and 1000
+      iron have been added to your stores, in full.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368308
+    m_Localized: Thank you - your words are with us. The thank-you was already claimed
+      on this realm, so nothing was added this time.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368309
+    m_Localized: Thank you - your words are with us. The thank-you could not be added
+      right now; it is still owed to you and has not been used up.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301974368310
+    m_Localized: A few more words, please - at least {Minimum} characters.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40920301978562560
+    m_Localized: We could not verify your account, so nothing was sent. Try again
+      later.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562561
+    m_Localized: The server did not accept that. Nothing was sent - please try again.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562562
+    m_Localized: We could not reach the server. Your words were not sent; please
+      try again.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562563
+    m_Localized: Your {Resource} is now {AmountOver} above what your stores can hold.
+      All of it is yours and stays yours; harvests and rewards into {Resource} simply
+      pause until you spend back under.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40920301978562564
+    m_Localized: JEWELER UNLOCKED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562565
+    m_Localized: 'A rare item was recovered.
+
+      Sable can polish it into a refined
+      gem.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562566
+    m_Localized: Open Jeweler
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562567
+    m_Localized: Take it to Sable at the Jeweler.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562568
+    m_Localized: Checking the logged-in wallet for an active native SKR stake.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562569
+    m_Localized: 'Native SKR stake verified: +1 weekly re-roll added.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562570
+    m_Localized: 'Native SKR stake verified: +1 weekly re-roll added. Your 10,000+
+      SKR stake also raises the per-stone roll cap to 6.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562571
+    m_Localized: 'Native SKR stake not verified: no weekly re-roll was added.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562572
+    m_Localized: POLISH THE STONE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562573
+    m_Localized: Sable needs {Duration} to polish the stone. When the work is complete,
+      the gem inside will be revealed.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40920301978562574
+    m_Localized: Begin Polish - {Duration}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40920301978562575
+    m_Localized: Sable has begun polishing. Follow it in the Work Queue.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562576
+    m_Localized: The stone could not be placed on the bench.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562577
+    m_Localized: There is no rough stone in your larder.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562578
+    m_Localized: GEM REVEALED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40920301978562579
+    m_Localized: Sable reveals a {Gem}. It has been added to your larder.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40920301978562580
+    m_Localized: Keep Gem
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158154326016
+    m_Localized: Settings
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491840
+    m_Localized: Audio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491841
+    m_Localized: Master
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491842
+    m_Localized: Music
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491843
+    m_Localized: SFX
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491844
+    m_Localized: Mute all audio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491845
+    m_Localized: Audio mixer not wired yet - volumes persist and apply when it lands.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491846
+    m_Localized: Gameplay
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491847
+    m_Localized: Easy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491848
+    m_Localized: Normal
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491849
+    m_Localized: Hard
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491850
+    m_Localized: A long, calm build window - about 10 minutes between waves.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491851
+    m_Localized: The standard build window - about 5 minutes between waves.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491852
+    m_Localized: A short, tense build window - about 3 minutes between waves.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491853
+    m_Localized: Graphics
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491854
+    m_Localized: Low 30 FPS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491855
+    m_Localized: High 60 FPS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491856
+    m_Localized: Desktop 60 FPS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491857
+    m_Localized: Comfort
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491858
+    m_Localized: Screen shake
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491859
+    m_Localized: On
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491860
+    m_Localized: Off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491861
+    m_Localized: Language
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491862
+    m_Localized: Device Language
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491863
+    m_Localized: 'Choose: {Language}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491864
+    m_Localized: Wallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491865
+    m_Localized: Connect Wallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491866
+    m_Localized: Disconnect Wallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491867
+    m_Localized: Disconnect {Address}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491868
+    m_Localized: Help
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491869
+    m_Localized: Game Guide
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491870
+    m_Localized: Help
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491871
+    m_Localized: Reset Defaults
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491872
+    m_Localized: Your Town
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491873
+    m_Localized: Defence Reports
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491874
+    m_Localized: Defence Reports ({UnreadCount} new)
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491875
+    m_Localized: Legal
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491876
+    m_Localized: Privacy Policy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491877
+    m_Localized: Terms of Service
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491878
+    m_Localized: Ad Privacy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491879
+    m_Localized: Ad Privacy Choices
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491880
+    m_Localized: 'Do Not Sell: ON'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491881
+    m_Localized: 'Do Not Sell: OFF'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491882
+    m_Localized: Offline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491883
+    m_Localized: Offline Ready
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491884
+    m_Localized: Play Offline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491885
+    m_Localized: Developer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491886
+    m_Localized: Dev Panel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491887
+    m_Localized: '{Percent}%'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491888
+    m_Localized: Harvest
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491889
+    m_Localized: Collectors {0}/{1} full
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491890
+    m_Localized: Collect
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491891
+    m_Localized: '{0}% - tap'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491892
+    m_Localized: '{0} waiting'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491893
+    m_Localized: '{0} idle'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491894
+    m_Localized: '{0}/{1} idle'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491895
+    m_Localized: The Night Market
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491896
+    m_Localized: BAG
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491897
+    m_Localized: SKILLS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491898
+    m_Localized: LOADOUT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491899
+    m_Localized: Descend into forgotten places. Return with what survived.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491900
+    m_Localized: Explore the lands beyond the Heart's light.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491901
+    m_Localized: Face the challenge shaping the Realm now.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491902
+    m_Localized: The way is barred.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491903
+    m_Localized: RECOVERING
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491904
+    m_Localized: READY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491905
+    m_Localized: Recovering - raidable in {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491906
+    m_Localized: Ready to raid
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40931158179491907
+    m_Localized: This camp is still recovering from your last raid. You can hit it
+      again in {0}.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491908
+    m_Localized: The camp is broken for now. It regroups in {0}.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491909
+    m_Localized: '{0}h {1}m'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491910
+    m_Localized: '{0}m'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40931158179491911
+    m_Localized: less than a minute
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 7338888474672496640
+      type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries:
+        m_SharedEntries:
+        - id: 40920301974368310
+        - id: 40920301978562563
+        - id: 40920301978562573
+        - id: 40920301978562574
+        - id: 40920301978562579
+        - id: 40931158179491863
+        - id: 40931158179491867
+        - id: 40931158179491874
+        - id: 40931158179491887
+        - id: 40931158179491889
+        - id: 40931158179491891
+        - id: 40931158179491892
+        - id: 40931158179491893
+        - id: 40931158179491894
+        - id: 40931158179491905
+        - id: 40931158179491907
+        - id: 40931158179491908
+        - id: 40931158179491909
+        - id: 40931158179491910

@@ -20,8 +20,8 @@
 //   4. Sets the project-default / selected locale to English.
 //
 // IDEMPOTENT — re-running BuildAll() reuses the existing settings, locale and
-// table collection; existing string entries are UPDATED in place and new ones
-// added, so nothing is duplicated. Safe to run repeatedly.
+// table collection; current string entries are UPDATED in place, new ones are
+// added, and stale ones are removed. Safe to run repeatedly.
 //
 // ASSEMBLY NOTE. The DeNelle.Editor.asmdef is fixed (editing asmdefs is
 // forbidden). It already references Unity.Localization + Unity.Localization.Editor,
@@ -228,6 +228,18 @@ namespace DeNelle.Editor
             }
 
             var sharedData = collection.SharedData;
+            var desiredKeys = new HashSet<string>(flat.Keys, System.StringComparer.Ordinal);
+            var existingEntries = new List<SharedTableData.SharedTableEntry>(sharedData.Entries);
+            int removed = 0;
+            foreach (var entry in existingEntries)
+            {
+                if (entry == null || desiredKeys.Contains(entry.Key)) continue;
+                foreach (var table in collection.StringTables)
+                    table?.RemoveEntry(entry.Id);
+                sharedData.RemoveKey(entry.Id);
+                removed++;
+            }
+
             int count = 0;
             foreach (var kv in flat)
             {
@@ -235,13 +247,39 @@ namespace DeNelle.Editor
                 // key entry if it already exists (via FindKeyId(key, addIfMissing:true))
                 // and overwrites the localized value. This is what makes re-runs
                 // update in place instead of duplicating keys.
-                englishTable.AddEntry(kv.Key, kv.Value);
+                var localizedEntry = englishTable.AddEntry(kv.Key, kv.Value);
+                localizedEntry.IsSmart = UsesArguments(kv.Value);
                 count++;
             }
 
             EditorUtility.SetDirty(sharedData);
             EditorUtility.SetDirty(englishTable);
+            Debug.Log($"[LocalizationBuilder] Reconciled '{TableCollectionName}': " +
+                      $"{count} current entries, {removed} stale entries removed.");
             return count;
+        }
+
+        /// <summary>
+        /// Both typed named arguments and compatibility positional arguments travel
+        /// through StringTableEntry.GetLocalizedString(args), so both template shapes
+        /// must be Smart Strings in the package-backed path.
+        /// </summary>
+        private static bool UsesArguments(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return false;
+            for (int i = 0; i < value.Length - 1; i++)
+            {
+                if (value[i] != '{') continue;
+                if (value[i + 1] == '{')
+                {
+                    i++;
+                    continue;
+                }
+
+                char first = value[i + 1];
+                if (char.IsLetterOrDigit(first) || first == '_') return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -314,6 +352,16 @@ namespace DeNelle.Editor
             // English is the only / primary locale — give it top sort order so it
             // is the first selected locale in editor previews and menus.
             englishLocale.SortOrder = 0;
+            var stringDatabase = settings.GetStringDatabase();
+            if (stringDatabase != null)
+            {
+                stringDatabase.DefaultTable = TableCollectionName;
+                stringDatabase.UseFallback = true;
+            }
+            var assetDatabase = settings.GetAssetDatabase();
+            if (assetDatabase != null) assetDatabase.UseFallback = true;
+
+            EditorUtility.SetDirty(settings);
             EditorUtility.SetDirty(englishLocale);
         }
 

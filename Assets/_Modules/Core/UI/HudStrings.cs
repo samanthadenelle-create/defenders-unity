@@ -19,10 +19,8 @@
 //     (~144 ref px of label rect), and WO-1027's "Manage - 2 of 3 idle" is
 //     roughly four times that at the floor.
 //
-// So the words move HERE, into canon-strings.json — CLAUDE.md §7: player-facing
-// sentences live in BOTH canonical copies (Assets/Resources/Data/Canonical and
-// Assets/StreamingAssets/Data/Canonical), byte-identical, ASCII-only (TMP renders
-// non-ASCII as tofu). Nothing in this class hardcodes a sentence; it names KEYS.
+// This class now names keys only. English lives in en.json/GameStrings and all
+// runtime resolution goes through LocalText.
 //
 // ⛔ THE STANDING RULE THIS FILE ENCODES: when a HUD label does not fit, the WORDS
 // get shorter — never the font (FontFloor/FontHardFloor are floors, not budget),
@@ -32,15 +30,11 @@
 // landscape capture aspects, so a re-lengthened sentence fails the gate instead
 // of reaching a device.
 //
-// Loading mirrors RaidStrings verbatim (flat string->string map through
-// DeNelle.Core.CanonicalJson — Resources first, StreamingAssets fallback,
-// WebGL-safe). A missing key returns the visible "[[missing:key]]" marker AND
-// self-reports through FlowTrace — never a silent blank (§12: no silent failures).
+// This remains a compatibility key catalog while its call sites move to typed
+// LocalizedText wrappers. It is not a second table reader.
 // =============================================================================
 
 using System;
-using System.Collections.Generic;
-using Newtonsoft.Json;
 using DeNelle.Core.Diagnostics;
 
 namespace DeNelle.Core.UI
@@ -48,8 +42,6 @@ namespace DeNelle.Core.UI
     /// <summary>Canon-backed copy for the town HUD's rail chips and bar faces. Keys only.</summary>
     public static class HudStrings
     {
-        private const string CanonRelativePath = "Data/Canonical/canon-strings.json";
-
         // ── The ambient Collectors rail chip (WO-900 §4, re-fitted by WO-1144) ──
         // Two SHORT lines in a 220x112 chip. Line 1 is the state, line 2 the action.
         // ⚠ COPY LAW (WO-900 §4): this chip says "Collectors", never "Storage" —
@@ -153,7 +145,7 @@ namespace DeNelle.Core.UI
                                         " - the face renders the placeholder marker, not a typed name");
                 return label;
             }
-            FlowTrace.Step("Store", "store face label='" + label + "' source=canon-strings site=" + site);
+            FlowTrace.Step("Store", "store face label='" + label + "' source=LocalText site=" + site);
             return label;
         }
 
@@ -162,71 +154,25 @@ namespace DeNelle.Core.UI
         {
             string label = Get(key);
             FlowTrace.Step("Hero", "face label='" + label +
-                                   "' source=canon-strings site=" + (site ?? "unknown"));
+                                   "' source=LocalText site=" + (site ?? "unknown"));
             return label;
         }
 
-        private static Dictionary<string, string> _canon;
-
-        /// <summary>Resolves a canon key. Returns "[[missing:key]]" (and self-reports) when absent.</summary>
+        /// <summary>Resolves through the one global localization authority.</summary>
         public static string Get(string key)
         {
-            EnsureLoaded();
-            if (_canon != null && key != null && _canon.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value))
-                return value;
-            FlowTrace.Fail("HudKit", "canon-strings key '" + key + "' missing - the HUD chip/face would show a " +
-                                     "placeholder marker instead of telling the player what is waiting on them.");
-            return "[[missing:" + key + "]]";
+            return LocalText.Get(key);
         }
 
         /// <summary>Resolves a canon key and formats it. A bad format string degrades to the raw sentence.</summary>
         public static string Format(string key, params object[] args)
         {
-            string raw = Get(key);
-            if (args == null || args.Length == 0) return raw;
-            try { return string.Format(raw, args); }
-            catch (FormatException ex)
-            {
-                FlowTrace.Fail("HudKit", "canon-strings key '" + key + "' has a bad format placeholder: " + ex.Message);
-                return raw;
-            }
+            return LocalText.Format(key, args);
         }
 
         /// <summary>Test/diagnostic hook - drops the cached map so a re-read picks up an edit.</summary>
-        public static void Reload() { _canon = null; }
+        [Obsolete("LocalText owns locale table lifetime; Reload is no longer required.")]
+        public static void Reload() { }
 
-        private static void EnsureLoaded()
-        {
-            if (_canon != null) return;
-            try
-            {
-                string json = CanonicalJson.Read(CanonRelativePath);
-                if (string.IsNullOrEmpty(json))
-                {
-                    FlowTrace.Fail("HudKit", "canonical file not found (Resources or StreamingAssets): " +
-                                             CanonRelativePath + " - every HUD chip line would render as a placeholder.");
-                    _canon = new Dictionary<string, string>();
-                    return;
-                }
-
-                // Flat string->string map with some leading "_" metadata keys: deserialize
-                // loosely, keep only the string entries (the CanonStrings convention).
-                var raw = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-                var map = new Dictionary<string, string>();
-                if (raw != null)
-                {
-                    foreach (var kv in raw)
-                        if (kv.Value is string s) map[kv.Key] = s;
-                }
-                _canon = map;
-            }
-            catch (Exception ex)
-            {
-                // No silent catch (§12): the HUD still works, but say why it lost its words.
-                FlowTrace.Fail("HudKit", "failed to read " + CanonRelativePath + ": " +
-                                         ex.GetType().Name + ": " + ex.Message);
-                _canon = new Dictionary<string, string>();
-            }
-        }
     }
 }

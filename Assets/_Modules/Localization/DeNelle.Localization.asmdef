@@ -1,0 +1,18 @@
+{
+    "name": "DeNelle.Localization",
+    "rootNamespace": "DeNelle.Localization",
+    "references": [
+        "DeNelle.Core",
+        "Unity.Localization",
+        "Unity.ResourceManager"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

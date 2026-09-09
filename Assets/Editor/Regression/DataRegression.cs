@@ -1855,6 +1855,14 @@ namespace DeNelle.Editor
             // the chest open, which claims loot still lying on the floor.
             if (!DeNelle.Editor.ChestLootToastRegression.Run(out var chestLootToastReason)) failures.Add(chestLootToastReason); else log.AppendLine("[chest-loot-toast] " + chestLootToastReason);
 
+            // WO-1605 -- one global locale resolver, exact authority policy, a shrinking
+            // literal-debt inventory, locale parity, and translator-safe Smart arguments.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "localization-authority suite", () => { if (!DeNelle.Editor.Regression.LocalizationAuthorityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[localization-authority] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "player-text-literal-leak suite", () => { if (!DeNelle.Editor.Regression.PlayerTextLiteralLeakRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[player-text-literal-leak] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "locale-parity suite", () => { if (!DeNelle.Editor.Regression.LocaleParityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[locale-parity] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "smart-argument suite", () => { if (!DeNelle.Editor.Regression.SmartArgumentRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[smart-argument] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "settings-localization suite", () => { if (!DeNelle.Editor.Regression.SettingsLocalizationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[settings-localization] " + r); });
+
             // LAST LINE ABOVE THE END FENCE, DELIBERATELY: this suite opens
             // Main_Castle_Overworld in Single mode, so any suite registered after it would
             // census a different world than the one it was written against.

@@ -111,7 +111,7 @@ namespace DeNelle.Editor.Regression
             Require(router, "Help = 25,", failures, "[help-row] PanelId.Help = 25 is missing from the append-only enum");
             if (Regex.Matches(router, @"=\s*25\s*,").Count != 1)
                 failures.Add("[help-row] PanelId value 25 is not unique in the enum");
-            if (!Regex.IsMatch(settings, "BuildObsidianButton\\(body,\\s*\"Help\","))
+            if (!settings.Contains("LocalizedButton(body, () => SettingsText.Help.Resolve()"))
                 failures.Add("[help-row] SettingsController builds no \"Help\" button - Help has no door inside Settings");
             string helpClick = MemberBody(settings, "private void OnHelpClicked()");
             if (helpClick == null || helpClick.IndexOf("PanelRouter.Open(PanelId.Help)", StringComparison.Ordinal) < 0)

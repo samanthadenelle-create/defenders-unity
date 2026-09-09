@@ -890,3 +890,24 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
    caller-side handoff (the drawer's store door passes `(PanelId.Manage, "<tab>")` when it opens the store) through the
    EXISTING return-door arbiter that WO-1400 shipped for the deck return; lane D consumes it on CLOSE. No second
    return mechanism. Lane C hands the exact door line to lane D as text if the files are split across people.
+
+### 9. WO-1605 localization goal - foundation checkpoint (2026-09-08)
+
+- Base remains `20467d539` on `dev`; the shared tree already contained the owner's uncommitted
+  Feedback/Jeweler/Manage/build work, which was preserved. No stash/reset/cleanup was used.
+- One authority now exists: Core `LocalText` -> `ILocalTextProvider` -> the asynchronous
+  `DeNelle.Localization.UnityLocalizationProvider` -> Unity `GameStrings`.
+- Feature ownership stays separate through domain keys and thin `LocalizedText` /
+  `LocalizedText<TArguments>` catalogs; English is not duplicated at call sites.
+- Phase A-B scope is authority + Settings + HUD/Raid shims. Store/Village/Canon remain follow-ups.
+- `LocalizationBuilder.BuildAll` reconciled 335/335 English entries and removed zero stale keys.
+- Registered localization gates: authority, player-literal leakage, locale parity, Smart arguments,
+  and Settings in-place refresh/selector wiring. Focused evidence:
+  `Builds/localization-regression-final.log`, `LOCALIZATION_REGRESSION_OK 5/5 suites`.
+  Full evidence: `Builds/data-regression-localization-final2.log`,
+  `REGRESSION_OK 462/462 suites`.
+- Manifest generation/check is deterministic: 5,977 report rows. It remains deliberately
+  unreviewed; 2,994 exact C# fingerprints still require domain classification before the
+  new-debt ratchet can be armed.
+- CompileGate emitted `COMPILE_GATE_OK`; its outer wrapper remained red only on the known missing
+  optional WebGL built-in module (`UnityEngine.WebGLInput` in the Solana package), not project code.

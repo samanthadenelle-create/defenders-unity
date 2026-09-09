@@ -1,5 +1,18 @@
 # Localization / i18n Readiness Audit
 
+> **Implementation update - 2026-09-08 (WO-1605):** The runtime gap described by
+> this June audit is now being closed. `LocalText` is the single Core facade;
+> `DeNelle.Localization.UnityLocalizationProvider` is its sole package-backed adapter;
+> selected and English `GameStrings` tables preload asynchronously; explicit locale
+> preferences and System Default are supported; missing keys fail visibly. The English
+> table now reconciles exactly to all 335 canonical entries. Settings is migrated and
+> refreshes labels in place; HUD/Raid compatibility catalogs now forward to `LocalText`.
+> Feedback and the Jeweler unlock/polish/reveal path use key-only wrappers with typed
+> arguments. Five focused regressions cover authority, literal leakage, locale parity,
+> Smart arguments (named and positional), and Settings wiring. The broad inventory remains
+> report-only pending human classification, and English is still the only shipped locale,
+> so the overall product is not yet translation-ready.
+
 **Date:** 2026-06-28
 **Scope:** How `Echoes of Elarion / Defenders of the Realm` handles user-facing text, and how ready it is to ship a translated build.
 **Verdict:** **PARTIAL — good intent, shallow reach.** A clean externalized-string architecture exists for the *narrative spine* (intro, tutorials, heart-voice, tooltips, buildings, hero/pet select), and the Unity Localization package is installed and seeded. But the **runtime never actually goes through the Localization package**, the **majority of HUD/combat/shop/inventory UI hardcodes English inline**, **only `en` exists**, and the **font + layout stack is not glyph- or RTL-safe**. This is a translation-*aware* codebase, not a translation-*ready* one.

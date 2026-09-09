@@ -17,29 +17,17 @@
 //   sentence is the primary signal — any tint is decoration on top of it. Do not
 //   "simplify" the card by dropping the label and keeping the colour.
 //
-// Player-facing copy, so per CLAUDE.md §7 it lives in canon-strings.json — in BOTH
-// canonical copies (Assets/Resources/Data/Canonical and Assets/StreamingAssets/
-// Data/Canonical), byte-identical, ASCII-only (TMP renders non-ASCII as tofu).
-// Nothing here hardcodes a sentence; this class only names KEYS.
-//
-// Loading mirrors PromoStrings verbatim (flat string->string map through
-// DeNelle.Core.CanonicalJson — Resources first, StreamingAssets fallback,
-// WebGL-safe). A missing key returns the visible "[[missing:key]]" marker AND
-// self-reports through FlowTrace — never a silent blank.
+// This compatibility catalog names keys only. English lives in en.json/GameStrings
+// and every lookup forwards to LocalText, the one runtime authority.
 // =============================================================================
 
 using System;
-using System.Collections.Generic;
-using Newtonsoft.Json;
-using DeNelle.Core.Diagnostics;
 
 namespace DeNelle.Core.UI
 {
     /// <summary>Canon-backed copy for the per-camp raid cooldown. Keys only — no sentences.</summary>
     public static class RaidStrings
     {
-        private const string CanonRelativePath = "Data/Canonical/canon-strings.json";
-
         /// <summary>Card badge while a camp is on cooldown (a WORD, not a colour).</summary>
         public const string KeyCooldownBadge = "raidCooldownBadge";
 
@@ -73,30 +61,16 @@ namespace DeNelle.Core.UI
             KeyDurationHm, KeyDurationM, KeyDurationSub,
         };
 
-        private static Dictionary<string, string> _canon;
-
-        /// <summary>Resolves a canon key. Returns "[[missing:key]]" (and self-reports) when absent.</summary>
+        /// <summary>Resolves through the one global localization authority.</summary>
         public static string Get(string key)
         {
-            EnsureLoaded();
-            if (_canon != null && key != null && _canon.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value))
-                return value;
-            FlowTrace.Fail("Raid", "canon-strings key '" + key + "' missing — the raid card would show a " +
-                                   "placeholder marker instead of telling the player when the camp is raidable.");
-            return "[[missing:" + key + "]]";
+            return LocalText.Get(key);
         }
 
         /// <summary>Resolves a canon key and formats it. A bad format string degrades to the raw sentence.</summary>
         public static string Format(string key, params object[] args)
         {
-            string raw = Get(key);
-            if (args == null || args.Length == 0) return raw;
-            try { return string.Format(raw, args); }
-            catch (FormatException ex)
-            {
-                FlowTrace.Fail("Raid", "canon-strings key '" + key + "' has a bad format placeholder: " + ex.Message);
-                return raw;
-            }
+            return LocalText.Format(key, args);
         }
 
         /// <summary>
@@ -119,40 +93,7 @@ namespace DeNelle.Core.UI
         }
 
         /// <summary>Test/diagnostic hook — drops the cached map so a re-read picks up an edit.</summary>
-        public static void Reload() { _canon = null; }
-
-        private static void EnsureLoaded()
-        {
-            if (_canon != null) return;
-            try
-            {
-                string json = CanonicalJson.Read(CanonRelativePath);
-                if (string.IsNullOrEmpty(json))
-                {
-                    FlowTrace.Fail("Raid", "canonical file not found (Resources or StreamingAssets): " +
-                                           CanonRelativePath + " — every raid cooldown sentence would render as a placeholder.");
-                    _canon = new Dictionary<string, string>();
-                    return;
-                }
-
-                // Flat string->string map with some leading "_" metadata keys: deserialize
-                // loosely, keep only the string entries (the CanonStrings convention).
-                var raw = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-                var map = new Dictionary<string, string>();
-                if (raw != null)
-                {
-                    foreach (var kv in raw)
-                        if (kv.Value is string s) map[kv.Key] = s;
-                }
-                _canon = map;
-            }
-            catch (Exception ex)
-            {
-                // No silent catch (§12): the screen still works, but say why it lost its words.
-                FlowTrace.Fail("Raid", "failed to read " + CanonRelativePath + ": " +
-                                       ex.GetType().Name + ": " + ex.Message);
-                _canon = new Dictionary<string, string>();
-            }
-        }
+        [Obsolete("LocalText owns locale table lifetime; Reload is no longer required.")]
+        public static void Reload() { }
     }
 }

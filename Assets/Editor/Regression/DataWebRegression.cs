@@ -123,6 +123,17 @@ namespace DeNelle.Editor
         {
             "canon-strings.json",
             "en.json",
+            // Flat locale string maps share en.json's schema. These files are content-versioned
+            // by the StringTable collection/import, not by a top-level gameplay-catalog version.
+            "ar.json",
+            "de.json",
+            "es.json",
+            "fr.json",
+            "ja.json",
+            "ko.json",
+            "pt-BR.json",
+            "ru.json",
+            "zh-Hans.json",
             "garrison-recipes.json",
             "themes.json",
             // GENERATED, not authored: carries its own "generated" timestamp + "source" prefab path

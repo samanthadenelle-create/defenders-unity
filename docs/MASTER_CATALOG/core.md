@@ -831,6 +831,15 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
 
 ## Behaviors & seams (cross-assembly contracts)
 
+- **Localization (WO-1605):** every migrated surface calls the package-free
+  `DeNelle.Core.UI.LocalText` facade. `DeNelle.Localization.UnityLocalizationProvider`
+  is the only approved Unity String Database reader and asynchronously keeps the selected
+  locale plus English fallback resident. Feature files may define thin key catalogs using
+  `LocalizedText` / `LocalizedText<TArguments>`; they may not carry English sentences or
+  become separate resolvers. Keys remain separated by domain (`hud.*`, `battle.*`,
+  `interaction.*`, `shop.*`, `lore.*`, `settings.*`, and feature namespaces such as
+  `jeweler.*`) while the active locale and resolution path stay global.
+
 - **Service registry:** `CoreServices` (8 slots, above). Callers null-check; register Awake / unregister OnDestroy.
 - **Panel routing:** panel registers opener on `PanelRouter` (+ optional context / context+mode arities);
   any assembly opens by `PanelId`; visibility is arbitered by `PanelManager` (one modal at a time,

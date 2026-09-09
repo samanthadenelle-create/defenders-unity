@@ -30,6 +30,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using UnityEngine.Audio;
+using System.Collections.Generic;
 
 namespace DeNelle.Settings
 {
@@ -57,6 +58,8 @@ namespace DeNelle.Settings
         private Toggle _muteToggle, _shakeToggle;
         private Transform _qualityRow, _difficultyRow;
         private TextMeshProUGUI _difficultyBlurb, _audioSeam;
+        private Button _deviceLanguageButton, _chooseLanguageButton;
+        private readonly List<Action> _localizedLabelRefreshers = new List<Action>();
 #if !GOOGLE_PLAY
         private Button _walletConnectButton, _walletDisconnectButton;
 #endif
@@ -82,17 +85,18 @@ namespace DeNelle.Settings
         //   Gameplay  caption 54 + difficulty row 132 + blurb 54                    = 240
         //   Graphics  caption 54 + quality row 132                                  = 186
         //   Comfort   caption 54 + shake toggle 76                                  = 130
+        //   Language  caption 54 + row 120                                          = 174
         //   Wallet    caption 54 + row 132                                          = 186
         //   Help      caption 54 + Game Guide|Help row 120 + Reset Defaults row 120 = 294
         //   Legal     caption 54 + row 120                                          = 174
         //   Ad Privacy caption 54 + row 120                                         = 174
         //   Offline   caption 54 + row 120                                          = 174
         //   bottom pad 24
-        //   = 2066. Conditional sections (Defence Reports, Developer) add ConditionalSectionPx
+        //   = 2240. Conditional sections (Defence Reports, Developer) add ConditionalSectionPx
         //   each in EnsureBuilt when their condition holds.
         // Keep this constant in sync with the EnsureBuilt ladder if rungs change - EnsureBuilt
         // now TRACES an overrun (FlowTrace.Fail) so a stale sum is a logged line, not a cut row.
-        private const float RequiredLadderPx = 2066f;
+        private const float RequiredLadderPx = 2240f;
 
         /// <summary>One caption (54) + one 120 px button row: the size of each CONDITIONAL
         /// section (Defence Reports when reports exist, Developer when DevPanel is registered).</summary>
@@ -135,11 +139,29 @@ namespace DeNelle.Settings
         {
             SettingsGate.SettingsOpenRequested -= OnSettingsOpenRequested;
             SettingsGate.SettingsOpenRequested += OnSettingsOpenRequested;
+            LocalText.Changed -= OnLocalizedTextChanged;
+            LocalText.Changed += OnLocalizedTextChanged;
         }
 
         private void OnDisable()
         {
             SettingsGate.SettingsOpenRequested -= OnSettingsOpenRequested;
+            LocalText.Changed -= OnLocalizedTextChanged;
+        }
+
+        private void OnLocalizedTextChanged()
+        {
+            if (_modal == null)
+                return;
+
+            // Locale changes do not change this screen's structure. Retext in place so
+            // the open modal keeps its scroll position, slider state, focus and canvas.
+            RefreshLabels();
+            BuildSelectorButtons();
+            RefreshLanguageControls();
+#if !GOOGLE_PLAY
+            RefreshWalletControls();
+#endif
         }
 
         /// <summary>WO-1399: SettingsGate.RequestOpen landed here. <paramref name="source"/> names
@@ -200,6 +222,7 @@ namespace DeNelle.Settings
         private void EnsureBuilt()
         {
             if (_modal != null && _modal.canvas != null) return;
+            _localizedLabelRefreshers.Clear();
 
             // Chrome Close = Back (raises SettingsClosed via Close()).
             // WO-714 W8 (P7 font floor): widened 0.26-0.74 -> 0.08-0.92. The old ~518
@@ -207,11 +230,12 @@ namespace DeNelle.Settings
             // zones ("100%" needs ~60px, the value zone had ~52); at ~907px every zone
             // seats floor-size text. Portrait near-full-width matches the other
             // Obsidian panels (upgrade/inventory).
-            _modal = ElarionUiKit.BuildObsidianModal("SettingsUI", "Settings",
+            _modal = ElarionUiKit.BuildObsidianModal("SettingsUI", SettingsText.Title.Resolve(),
                 new Vector2(0.08f, 0.05f), new Vector2(0.92f, 0.95f), Close,
                 sortingOrder: 32000,   // settings sits above every other modal
                 frameName: RpgUiCatalog.FrameSettings, medallionIcon: "settings");
             MedievalUiSkin.ApplyShell(_modal.chrome);
+            TrackLocalized(_modal.chrome.title, () => SettingsText.Title.Resolve());
 
             // Register with the single-modal arbiter (battle-allowed — a system settings screen
             // must be openable from pause mid-combat and never rejected). Arbiter close = Close.
@@ -256,19 +280,20 @@ namespace DeNelle.Settings
 
             float y = 1f - Frac(14f);
             // ── Audio ────────────────────────────────────────────────────────
-            y = Caption(body, "Audio", y);
-            (_masterSlider, _masterValue) = SliderRow(body, "Master", ref y, OnMasterChanged);
-            (_musicSlider,  _musicValue)  = SliderRow(body, "Music",  ref y, OnMusicChanged);
-            (_sfxSlider,    _sfxValue)    = SliderRow(body, "SFX",    ref y, OnSfxChanged);
-            _muteToggle = ToggleRow(body, "Mute all audio", ref y, OnMuteChanged);
+            y = Caption(body, SettingsText.AudioSection, y);
+            (_masterSlider, _masterValue) = SliderRow(body, SettingsText.MasterVolume, ref y, OnMasterChanged);
+            (_musicSlider,  _musicValue)  = SliderRow(body, SettingsText.MusicVolume, ref y, OnMusicChanged);
+            (_sfxSlider,    _sfxValue)    = SliderRow(body, SettingsText.SfxVolume, ref y, OnSfxChanged);
+            _muteToggle = ToggleRow(body, SettingsText.MuteAll, ref y, OnMuteChanged);
             // WO-714 W8 (P7): 11 -> 30 (FontFloor) + FitBlock; row height grew to seat it.
-            _audioSeam = MakeText(body, "Audio mixer not wired yet - volumes persist and apply when it lands.",
+            _audioSeam = MakeText(body, SettingsText.MixerUnavailable.Resolve(),
                 30, ElarionUi.ParchmentDim, FontStyles.Italic, TextAlignmentOptions.Left,
                 new Vector2(0.06f, y - Frac(52f)), new Vector2(0.94f, y), multiline: true);
+            TrackLocalized(_audioSeam, () => SettingsText.MixerUnavailable.Resolve());
             y -= Frac(60f);
 
             // ── Gameplay ─────────────────────────────────────────────────────
-            y = Caption(body, "Gameplay", y);
+            y = Caption(body, SettingsText.GameplaySection, y);
             // 120 px rung: >= the 112 px kit touch floor, so ClampMinTouch never grows
             // these chips out of their band (the audit's header/caption overlap).
             _difficultyRow = ZoneRect(body, "DifficultyRow", new Vector2(0.06f, y - Frac(120f)), new Vector2(0.94f, y));
@@ -278,28 +303,41 @@ namespace DeNelle.Settings
             // via multiline:false), so it can never render across the buttons again.
             _difficultyBlurb = MakeText(body, "", 30, ElarionUi.ParchmentDim, FontStyles.Italic,
                 TextAlignmentOptions.Left, new Vector2(0.06f, y - Frac(46f)), new Vector2(0.94f, y));
+            TrackLocalized(_difficultyBlurb, () => SettingsText.DifficultyBlurb(SettingsModel.Difficulty));
             y -= Frac(54f);
 
             // ── Graphics ─────────────────────────────────────────────────────
-            y = Caption(body, "Graphics", y);
+            y = Caption(body, SettingsText.GraphicsSection, y);
             _qualityRow = ZoneRect(body, "QualityRow", new Vector2(0.06f, y - Frac(120f)), new Vector2(0.94f, y));
             y -= Frac(132f);
 
             // ── Comfort ──────────────────────────────────────────────────────
-            y = Caption(body, "Comfort", y);
-            _shakeToggle = ToggleRow(body, "Screen shake", ref y, OnShakeChanged);
+            y = Caption(body, SettingsText.ComfortSection, y);
+            _shakeToggle = ToggleRow(body, SettingsText.ScreenShake, ref y, OnShakeChanged);
+
+            // One global language authority serves every feature catalog. "Device Language"
+            // removes the explicit preference; the adjacent button cycles the locales actually
+            // shipped in this build, so adding a table automatically makes it selectable here.
+            y = Caption(body, SettingsText.LanguageSection, y);
+            _deviceLanguageButton = LocalizedButton(body, () => SettingsText.DeviceLanguage.Resolve(),
+                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
+                new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnDeviceLanguageClicked);
+            _chooseLanguageButton = LocalizedButton(body, ExplicitLanguageLabel,
+                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
+                new Vector2(0.52f, y - Frac(120f)), new Vector2(0.94f, y), OnChooseLanguageClicked);
+            y -= Frac(120f);
 
             // WO-1171 section 4: the real player-facing home for BOTH halves of wallet
             // ownership. The Wallet assembly stays behind CurrencySkinResolver's Core seam.
             // Two explicit controls make the available action legible without relying on colour;
             // the inapplicable one remains visible but disabled so players can discover both.
 #if !GOOGLE_PLAY
-            y = Caption(body, "Wallet", y);
-            _walletConnectButton = ElarionUiKit.BuildObsidianButton(body, "Connect Wallet",
+            y = Caption(body, SettingsText.WalletSection, y);
+            _walletConnectButton = LocalizedButton(body, () => SettingsText.ConnectWallet.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                 new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y),
                 CurrencySkinResolver.RequestWalletConnect);
-            _walletDisconnectButton = ElarionUiKit.BuildObsidianButton(body, "Disconnect Wallet",
+            _walletDisconnectButton = LocalizedButton(body, () => SettingsText.DisconnectWallet.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Red,
                 new Vector2(0.52f, y - Frac(120f)), new Vector2(0.94f, y),
                 CurrencySkinResolver.RequestWalletDisconnect);
@@ -307,8 +345,8 @@ namespace DeNelle.Settings
 #endif
 
             // ── Help + Reset (WO-588) ────────────────────────────────────────
-            y = Caption(body, "Help", y);
-            ElarionUiKit.BuildObsidianButton(body, "Game Guide",
+            y = Caption(body, SettingsText.HelpSection, y);
+            LocalizedButton(body, () => SettingsText.GameGuide.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnGameGuideClicked);
             // WO-1399: the HELP menu (Report a Bug / Controls / Reset Hero and Echoes / Credits) now
@@ -316,13 +354,13 @@ namespace DeNelle.Settings
             // and Defence Reports (WO-1026). It used to be what the gear dock's "Settings" row
             // opened, so Help was mislabelled and the real Settings was hidden behind Pause. A row
             // inside Settings keeps ONE door and keeps the 2x3 gear dock at six cells.
-            ElarionUiKit.BuildObsidianButton(body, "Help",
+            LocalizedButton(body, () => SettingsText.Help.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.52f, y - Frac(120f)), new Vector2(0.94f, y), OnHelpClicked);
             y -= Frac(120f);   // step PAST the row - Caption only advances 54, a button row is 120
             // Reset Defaults moved down to its own rung so the Help caption keeps two Help doors
             // side by side (Game Guide | Help) and the destructive red button sits alone.
-            ElarionUiKit.BuildObsidianButton(body, "Reset Defaults",
+            LocalizedButton(body, () => SettingsText.ResetDefaults.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Red,
                 new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnResetClicked);
             y -= Frac(120f);
@@ -344,11 +382,10 @@ namespace DeNelle.Settings
             int reportCount = DeNelle.Core.Defense.DefenseReportLedger.All().Count;
             if (reportCount > 0)
             {
-                y = Caption(body, "Your Town", y);
-                string label = unread > 0
-                    ? "Defence Reports (" + unread + " new)"
-                    : "Defence Reports";
-                ElarionUiKit.BuildObsidianButton(body, label,
+                y = Caption(body, SettingsText.TownSection, y);
+                LocalizedButton(body, () => unread > 0
+                        ? SettingsText.DefenceReportsUnread.Resolve(new UnreadReportsArguments(unread))
+                        : SettingsText.DefenceReports.Resolve(),
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                     new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnDefenseReportsClicked);
                 y -= Frac(120f);
@@ -361,11 +398,11 @@ namespace DeNelle.Settings
             // `git grep echoes-of-elarion.vercel.app -- Assets/*` returned zero hits.
             // ASCII-only labels (non-ASCII renders as tofu in TMP), and the two sit side by side on
             // the same 120 px rung every other row uses, so touch targets stay at the mobile floor.
-            y = Caption(body, "Legal", y);
-            ElarionUiKit.BuildObsidianButton(body, "Privacy Policy",
+            y = Caption(body, SettingsText.LegalSection, y);
+            LocalizedButton(body, () => SettingsText.PrivacyPolicy.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnPrivacyClicked);
-            ElarionUiKit.BuildObsidianButton(body, "Terms of Service",
+            LocalizedButton(body, () => SettingsText.TermsOfService.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.52f, y - Frac(120f)), new Vector2(0.94f, y), OnTermsClicked);
             y -= Frac(120f);
@@ -376,11 +413,11 @@ namespace DeNelle.Settings
             // rights: "Ad Privacy" re-asks the personalised-ads question, and the CCPA opt-out is a
             // standing instruction that is NOT cleared by re-answering the first one.
             // The label carries the state, not a colour (the owner is red/green colourblind).
-            y = Caption(body, "Ad Privacy", y);
-            ElarionUiKit.BuildObsidianButton(body, "Ad Privacy Choices",
+            y = Caption(body, SettingsText.AdPrivacySection, y);
+            LocalizedButton(body, () => SettingsText.AdPrivacyChoices.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnAdPrivacyClicked);
-            _doNotSellButton = ElarionUiKit.BuildObsidianButton(body, DoNotSellLabel(),
+            _doNotSellButton = LocalizedButton(body, DoNotSellLabel,
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.52f, y - Frac(120f)), new Vector2(0.94f, y), OnDoNotSellClicked);
             y -= Frac(120f);
@@ -395,9 +432,10 @@ namespace DeNelle.Settings
             // cache. Offering an app-style offline pull there is misleading and can strand the
             // player on a prompt asking an online web instance to get online before downloading.
 #if !UNITY_WEBGL
-            y = Caption(body, "Offline", y);
-            ElarionUiKit.BuildObsidianButton(body,
-                DeNelle.Core.OfflineContentService.PulledForThisBuild ? "Offline Ready" : "Play Offline",
+            y = Caption(body, SettingsText.OfflineSection, y);
+            LocalizedButton(body, () => DeNelle.Core.OfflineContentService.PulledForThisBuild
+                    ? SettingsText.OfflineReady.Resolve()
+                    : SettingsText.PlayOffline.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnOfflineClicked);
             y -= Frac(120f);
@@ -415,8 +453,8 @@ namespace DeNelle.Settings
             // references Core only; it never learns that DevTools exists.
             if (PanelRouter.IsRegistered(PanelId.DevPanel))
             {
-                y = Caption(body, "Developer", y);
-                ElarionUiKit.BuildObsidianButton(body, "Dev Panel",
+                y = Caption(body, SettingsText.DeveloperSection, y);
+                LocalizedButton(body, () => SettingsText.DeveloperPanel.Resolve(),
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                     new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnDevPanelClicked);
                 y -= Frac(120f);
@@ -511,8 +549,7 @@ namespace DeNelle.Settings
                 // FRESH-CAPTURE FIX (2026-07-06): "Desktop (60 FPS)" truncated to
                 // "(Desktop (60 FP…" on the chip — shorten the copy (drop the parens:
                 // "Desktop 60 FPS") and fit the label to one line so it can never clip.
-                string tierText = SettingsModel.TierLabel(captured)
-                    .Replace("(", "").Replace(")", "").Replace("  ", " ").Trim();
+                string tierText = SettingsText.QualityLabel(captured);
                 var b = ElarionUiKit.BuildObsidianButton(_qualityRow, tierText,
                     ElarionUiKit.ObsidianButtonStyle.Style1,
                     selected ? ElarionUiKit.ObsidianButtonColor.Yellow
@@ -529,7 +566,7 @@ namespace DeNelle.Settings
                 Difficulty captured = Difficulties[i];
                 bool selected = SettingsModel.Difficulty == captured;
                 float x0 = 0.005f + i / 3f, x1 = x0 + 1f / 3f - 0.01f;
-                var b = ElarionUiKit.BuildObsidianButton(_difficultyRow, DifficultyTuning.Label(captured),
+                var b = ElarionUiKit.BuildObsidianButton(_difficultyRow, SettingsText.DifficultyLabel(captured),
                     ElarionUiKit.ObsidianButtonStyle.Style1,
                     selected ? ElarionUiKit.ObsidianButtonColor.Yellow
                              : ElarionUiKit.ObsidianButtonColor.Gray,
@@ -607,9 +644,10 @@ namespace DeNelle.Settings
                 UpdateVolumeLabels();
                 BuildSelectorButtons();
                 if (_difficultyBlurb != null)
-                    _difficultyBlurb.text = DifficultyTuning.Blurb(SettingsModel.Difficulty);
+                    _difficultyBlurb.text = SettingsText.DifficultyBlurb(SettingsModel.Difficulty);
                 if (_audioSeam != null)
                     _audioSeam.gameObject.SetActive(!AudioMixerBridge.HasMixer);
+                RefreshLanguageControls();
 #if !GOOGLE_PLAY
                 RefreshWalletControls();
 #endif
@@ -638,8 +676,8 @@ namespace DeNelle.Settings
                 {
                     string address = CurrencySkinResolver.ConnectedWalletShortAddress;
                     label.text = connected && !string.IsNullOrEmpty(address)
-                        ? "Disconnect " + address
-                        : "Disconnect Wallet";
+                        ? SettingsText.DisconnectAddress.Resolve(new WalletAddressArguments(address))
+                        : SettingsText.DisconnectWallet.Resolve();
                 }
             }
         }
@@ -694,6 +732,57 @@ namespace DeNelle.Settings
             SettingsModel.ApplyScreenShake();
         }
 
+        private void OnDeviceLanguageClicked()
+        {
+            LocalText.UseSystemLocale();
+            RefreshLanguageControls();
+        }
+
+        private void OnChooseLanguageClicked()
+        {
+            var locales = LocalText.AvailableLocales;
+            if (locales == null || locales.Count == 0)
+                return;
+
+            int selected = -1;
+            for (int i = 0; i < locales.Count; i++)
+                if (string.Equals(locales[i].Code, LocalText.LanguageCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    selected = i;
+                    break;
+                }
+
+            LocalText.TrySelectLocale(locales[(selected + 1) % locales.Count].Code);
+            RefreshLanguageControls();
+        }
+
+        private void RefreshLanguageControls()
+        {
+            if (_deviceLanguageButton != null)
+                _deviceLanguageButton.interactable = !LocalText.UsesSystemLocale;
+            if (_chooseLanguageButton != null)
+            {
+                // With English alone, cycling would be a button-shaped no-op. It becomes
+                // available automatically when a second locale table ships.
+                _chooseLanguageButton.interactable = LocalText.AvailableLocales.Count > 1;
+                var label = _chooseLanguageButton.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (label != null) label.text = ExplicitLanguageLabel();
+            }
+        }
+
+        private static string ExplicitLanguageLabel()
+        {
+            string name = LocalText.LanguageCode;
+            var locales = LocalText.AvailableLocales;
+            for (int i = 0; i < locales.Count; i++)
+                if (string.Equals(locales[i].Code, LocalText.LanguageCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    name = locales[i].DisplayName;
+                    break;
+                }
+            return SettingsText.ChooseLanguage.Resolve(new LanguageArguments(name));
+        }
+
         private void OnQualityTierClicked(QualityTier tier)
         {
             SettingsModel.Quality = tier;
@@ -708,7 +797,7 @@ namespace DeNelle.Settings
             SettingsModel.Difficulty = difficulty;
             BuildSelectorButtons();
             if (_difficultyBlurb != null)
-                _difficultyBlurb.text = DifficultyTuning.Blurb(difficulty);
+                _difficultyBlurb.text = SettingsText.DifficultyBlurb(difficulty);
         }
 
         private void OnResetClicked()
@@ -777,7 +866,9 @@ namespace DeNelle.Settings
         private Button _doNotSellButton;
 
         private static string DoNotSellLabel() =>
-            DeNelle.Core.Monetization.AdConsentService.CcpaOptOut ? "Do Not Sell: ON" : "Do Not Sell: OFF";
+            DeNelle.Core.Monetization.AdConsentService.CcpaOptOut
+                ? SettingsText.DoNotSellOn.Resolve()
+                : SettingsText.DoNotSellOff.Resolve();
 
         /// <summary>Toggle the CCPA "do not sell or share" opt-out. Takes effect on the next SDK
         /// init; the value is persisted immediately so it cannot be lost by a crash before then.
@@ -895,27 +986,29 @@ namespace DeNelle.Settings
         }
 
         /// <summary>Section caption; returns the next row's top y.</summary>
-        private float Caption(Transform body, string text, float y)
+        private float Caption(Transform body, LocalizedText copy, float y)
         {
             // WO-714 W8 (P7 font floor): 15 -> 34 (above FontFloor 30; section headers
             // lead the ladder). MakeText auto-fits, so long captions ellipsize, never clip.
             // AUDIT FIX (2026-07-30): 46 px rung - the header owns its own full-width slim
             // band; button rows are floor-proof px rungs, so nothing inflates over it.
-            MakeText(body, text, 34, ElarionUi.Gilt, FontStyles.Bold,
+            var label = MakeText(body, copy.Resolve(), 34, ElarionUi.Gilt, FontStyles.Bold,
                 TextAlignmentOptions.Left, new Vector2(0.05f, y - Frac(46f)), new Vector2(0.95f, y));
+            TrackLocalized(label, copy.Resolve);
             return y - Frac(54f);
         }
 
         /// <summary>Label + Blink-skinned slider + % value, one row. Advances y.</summary>
-        private (Slider, TextMeshProUGUI) SliderRow(Transform body, string label, ref float y,
+        private (Slider, TextMeshProUGUI) SliderRow(Transform body, LocalizedText copy, ref float y,
             Action<float> onChanged)
         {
             float top = y, bottom = y - Frac(58f);   // AUDIT FIX 2026-07-30: px rung
             // WO-714 W8 (P7): 13 -> 30 (FontFloor).
-            MakeText(body, label, 30, ElarionUi.Parchment, FontStyles.Normal,
+            var copyLabel = MakeText(body, copy.Resolve(), 30, ElarionUi.Parchment, FontStyles.Normal,
                 TextAlignmentOptions.Left, new Vector2(0.06f, bottom), new Vector2(0.24f, top));
+            TrackLocalized(copyLabel, copy.Resolve);
 
-            var host = ZoneRect(body, "Slider_" + label, new Vector2(0.26f, bottom + Frac(12f)), new Vector2(0.82f, top - Frac(12f)));
+            var host = ZoneRect(body, "Slider_" + copy.Key, new Vector2(0.26f, bottom + Frac(12f)), new Vector2(0.82f, top - Frac(12f)));
             var sliderGo = new GameObject("Slider", typeof(RectTransform), typeof(Slider));
             sliderGo.transform.SetParent(host, false);
             var srt = sliderGo.GetComponent<RectTransform>();
@@ -978,7 +1071,9 @@ namespace DeNelle.Settings
             slider.onValueChanged.AddListener(v => onChanged(v));
 
             // WO-714 W8 (P7): 12 -> 30 (FontFloor); the widened modal seats "100%" at floor size.
-            var valueLabel = MakeText(body, "100%", 30, ElarionUi.ParchmentDim, FontStyles.Normal,
+            var valueLabel = MakeText(body,
+                SettingsText.Percent.Resolve(new PercentArguments(100)),
+                30, ElarionUi.ParchmentDim, FontStyles.Normal,
                 TextAlignmentOptions.Right, new Vector2(0.84f, bottom), new Vector2(0.94f, top));
 
             y = bottom - Frac(10f);
@@ -986,24 +1081,26 @@ namespace DeNelle.Settings
         }
 
         /// <summary>Label + uGUI Toggle (gold check), one row. Advances y.</summary>
-        private Toggle ToggleRow(Transform body, string label, ref float y, Action<bool> onChanged)
+        private Toggle ToggleRow(Transform body, LocalizedText copy, ref float y, Action<bool> onChanged)
         {
             // SWEEP 9413 R2 (#2): row raised 0.045 → 0.055 and the toggle box is now a FIXED
             // pixel square (below) — the fraction-stretched box collapsed to a sliver on the
             // capture aspect once the plate/outline landed.
             float top = y, bottom = y - Frac(64f);   // AUDIT FIX 2026-07-30: px rung
             // WO-714 W8 (P7): 13 -> 30 (FontFloor).
-            MakeText(body, label, 30, ElarionUi.Parchment, FontStyles.Normal,
+            var copyLabel = MakeText(body, copy.Resolve(), 30, ElarionUi.Parchment, FontStyles.Normal,
                 TextAlignmentOptions.Left, new Vector2(0.06f, bottom), new Vector2(0.70f, top));
+            TrackLocalized(copyLabel, copy.Resolve);
 
             // FRESH-CAPTURE FIX (2026-07-06, colorblind law): the toggle's state was carried
             // by the gold check ALONE (color/shape only) and the box read as an anonymous
             // square far from its label. An explicit "On"/"Off" state TEXT sits beside the
             // box — never color-alone — and updates with every value change.
-            var stateLbl = MakeText(body, "Off", 30, ElarionUi.Parchment, FontStyles.Bold,   // P7: 12 -> 30
+            var stateLbl = MakeText(body, SettingsText.ToggleOff.Resolve(), 30,
+                ElarionUi.Parchment, FontStyles.Bold,   // P7: 12 -> 30
                 TextAlignmentOptions.Right, new Vector2(0.71f, bottom), new Vector2(0.84f, top));
 
-            var host = ZoneRect(body, "Toggle_" + label, new Vector2(0.86f, bottom + Frac(5f)), new Vector2(0.94f, top - Frac(5f)));
+            var host = ZoneRect(body, "Toggle_" + copy.Key, new Vector2(0.86f, bottom + Frac(5f)), new Vector2(0.94f, top - Frac(5f)));
             var toggleGo = new GameObject("Toggle", typeof(RectTransform), typeof(Toggle));
             toggleGo.transform.SetParent(host, false);
             var trt = toggleGo.GetComponent<RectTransform>();
@@ -1045,17 +1142,48 @@ namespace DeNelle.Settings
             // must still repaint "On"/"Off" even while callbacks are suppressed).
             toggle.onValueChanged.AddListener(v =>
             {
-                if (stateLbl != null) stateLbl.text = v ? "On" : "Off";
+                if (stateLbl != null)
+                    stateLbl.text = v ? SettingsText.ToggleOn.Resolve() : SettingsText.ToggleOff.Resolve();
                 onChanged(v);
             });
+            TrackLocalized(stateLbl, () => toggle.isOn
+                ? SettingsText.ToggleOn.Resolve()
+                : SettingsText.ToggleOff.Resolve());
 
             y = bottom - Frac(12f);
             return toggle;
         }
 
+        private Button LocalizedButton(Transform parent, Func<string> resolve,
+            ElarionUiKit.ObsidianButtonStyle style, ElarionUiKit.ObsidianButtonColor color,
+            Vector2 min, Vector2 max, Action onClick)
+        {
+            var button = ElarionUiKit.BuildObsidianButton(parent, resolve(), style, color, min, max, onClick);
+            var label = button == null ? null : button.GetComponentInChildren<TextMeshProUGUI>(true);
+            TrackLocalized(label, resolve);
+            return button;
+        }
+
+        private void TrackLocalized(TextMeshProUGUI label, Func<string> resolve)
+        {
+            if (label == null || resolve == null) return;
+            _localizedLabelRefreshers.Add(() =>
+            {
+                if (label != null) label.text = resolve();
+            });
+        }
+
+        private void RefreshLabels()
+        {
+            for (int i = 0; i < _localizedLabelRefreshers.Count; i++)
+                _localizedLabelRefreshers[i]();
+            UpdateVolumeLabels();
+        }
+
         private static string FormatPercent(float value)
         {
-            return $"{Mathf.RoundToInt(Mathf.Clamp(value, 0f, SettingsModel.MaxVolume) * 100f)}%";
+            int percent = Mathf.RoundToInt(Mathf.Clamp(value, 0f, SettingsModel.MaxVolume) * 100f);
+            return SettingsText.Percent.Resolve(new PercentArguments(percent));
         }
 
         private static Transform ZoneRect(Transform parent, string name, Vector2 min, Vector2 max)

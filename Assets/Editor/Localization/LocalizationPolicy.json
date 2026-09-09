@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "scannerVersion": 1,
+  "baseLocale": "en",
+  "manifestPath": "docs/localization/manifest.json",
+  "scanRoots": [
+    "Assets/_Modules"
+  ],
+  "collections": [
+    {
+      "id": "game",
+      "source": "Assets/StreamingAssets/Data/Canonical/en.json",
+      "mirror": "Assets/Resources/Data/Canonical/en.json",
+      "unityShared": "Assets/Localization/Tables/GameStrings Shared Data.asset",
+      "unityTablePattern": "Assets/Localization/Tables/GameStrings_{locale}.asset"
+    }
+  ],
+  "supportedLocales": [
+    {
+      "code": "en",
+      "required": true
+    }
+  ],
+  "approvedAuthorities": [
+    {
+      "path": "Assets/_Modules/Core/UI/LocalText.cs",
+      "kind": "runtime-facade",
+      "reason": "Core-safe transition facade; the Unity Localization provider will become its backing authority."
+    },
+    {
+      "path": "Assets/_Modules/Localization/UnityLocalizationProvider.cs",
+      "kind": "unity-localization-provider",
+      "reason": "The package-backed adapter is the only runtime reader of Unity's String Database."
+    }
+  ],
+  "legacyAuthorities": [
+    {
+      "path": "Assets/_Modules/Core/Promo/PromoStrings.cs",
+      "kind": "direct-table-reader",
+      "owner": "localization",
+      "removeBy": "phase-2"
+    },
+    {
+      "path": "Assets/_Modules/Core/State/HeroCanonNames.cs",
+      "kind": "direct-table-reader",
+      "owner": "localization",
+      "removeBy": "phase-2"
+    },
+    {
+      "path": "Assets/_Modules/Onboarding/CanonStrings.cs",
+      "kind": "direct-table-reader",
+      "owner": "localization",
+      "removeBy": "phase-2"
+    },
+    {
+      "path": "Assets/_Modules/Village/Buildings/BuildingCatalog.cs",
+      "kind": "direct-table-reader",
+      "owner": "localization",
+      "removeBy": "phase-3"
+    },
+    {
+      "path": "Assets/_Modules/Village/VillageStrings.cs",
+      "kind": "direct-table-reader",
+      "owner": "localization",
+      "removeBy": "phase-2"
+    },
+    {
+      "path": "Assets/_Modules/Village/Waves/WaveData.cs",
+      "kind": "direct-table-reader",
+      "owner": "localization",
+      "removeBy": "phase-3"
+    },
+    {
+      "path": "Assets/_Modules/Wallet/StoreStrings.cs",
+      "kind": "direct-table-reader",
+      "owner": "localization",
+      "removeBy": "phase-2"
+    }
+  ],
+  "exemptions": []
+}

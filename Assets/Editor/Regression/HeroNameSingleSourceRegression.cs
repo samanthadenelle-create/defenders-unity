@@ -145,7 +145,7 @@ namespace DeNelle.Editor.Regression
         {
             string hud = StripComments(File.ReadAllText("Assets/_Modules/Core/UI/HudStrings.cs"));
             if (!hud.Contains("FlowTrace.Step(\"Hero\"") ||
-                !hud.Contains("source=canon-strings site="))
+                !hud.Contains("source=LocalText site="))
                 failures.Add("[face-trace] canon Hero face decisions are no longer traced");
         }
 
