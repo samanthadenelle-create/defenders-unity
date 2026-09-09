@@ -3,40 +3,34 @@
 // -----------------------------------------------------------------------------
 // The Onboarding scenes must NEVER hardcode a canon string (the v2 port-spec
 // Part 4 rule: "the Unity agent never types these inline"). The Localization
-// package will own these strings long-term, but Week 1 ships before the string
-// table is wired, so this tiny static loader reads the two canonical JSON files
-// directly — exactly the StreamingAssets pattern Theme.cs already uses for
-// themes.json (synchronous read; valid in the Editor and on the Week-1 desktop
-// targets; an Android UnityWebRequest path is a later concern).
+// package owns localizable copy through LocalText. This small compatibility
+// facade still reads canon-strings.json for protected proper nouns.
 //
 //   canon-strings.json — proper nouns: tagline, publisher, game title …
-//   en.json            — localizable strings incl. the 3-line cold open.
+//   LocalText          — localizable strings incl. the 3-line cold open.
 //
-// Both files are flat string→string maps, so a single Dictionary<string,string>
-// per file is enough. Unknown keys return a visible "[[missing:key]]" marker so
+// Canon strings use a flat string-to-string map. Unknown keys return a visible
+// "[[missing:key]]" marker so
 // a typo is obvious on screen rather than silently blank.
 // =============================================================================
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using Newtonsoft.Json;
 using UnityEngine;
+using DeNelle.Core.UI;
 
 namespace DeNelle.Onboarding
 {
     /// <summary>
     /// Static read-only access to the canonical onboarding strings —
-    /// <c>canon-strings.json</c> (proper nouns) and <c>en.json</c> (localizable
-    /// copy). Loaded lazily from StreamingAssets on first access.
+    /// <c>canon-strings.json</c> (proper nouns) and <see cref="LocalText"/>
+    /// (localizable copy). Canon data is loaded lazily on first access.
     /// </summary>
     public static class CanonStrings
     {
         /// <summary>StreamingAssets-relative path to the canon proper-noun file.</summary>
         private const string CanonRelativePath = "Data/Canonical/canon-strings.json";
-
-        /// <summary>StreamingAssets-relative path to the English localizable strings.</summary>
-        private const string LocaleRelativePath = "Data/Canonical/en.json";
 
         // ── Canon-strings.json keys used by the Onboarding module ────────────
         /// <summary>Key — the title-screen tagline ("Echoes of a Forgotten Civilization").
@@ -53,7 +47,7 @@ namespace DeNelle.Onboarding
         /// <summary>Key — the Heart-Wing brand-dragon proper noun.</summary>
         public const string KeyHeartWing = "heartWing";
 
-        // ── en.json keys for the three-line cold open (narrative-bible §7.1) ─
+        // LocalText keys for the three-line cold open (narrative-bible section 7.1).
         /// <summary>Key — cold-open line 1.</summary>
         public const string KeyColdOpenLine1 = "intro.coldOpen.line1";
         /// <summary>Key — cold-open line 2.</summary>
@@ -62,8 +56,6 @@ namespace DeNelle.Onboarding
         public const string KeyColdOpenLine3 = "intro.coldOpen.line3";
 
         private static Dictionary<string, string> _canon;
-        private static Dictionary<string, string> _locale;
-
         /// <summary>
         /// Resolves a key from <c>canon-strings.json</c> (the proper nouns).
         /// Returns a visible <c>[[missing:key]]</c> marker for an unknown key.
@@ -75,14 +67,10 @@ namespace DeNelle.Onboarding
         }
 
         /// <summary>
-        /// Resolves a key from <c>en.json</c> (the localizable copy).
+        /// Resolves a localizable key through the global <see cref="LocalText"/> facade.
         /// Returns a visible <c>[[missing:key]]</c> marker for an unknown key.
         /// </summary>
-        public static string Locale(string key)
-        {
-            EnsureLoaded();
-            return Resolve(_locale, key);
-        }
+        public static string Locale(string key) => LocalText.Get(key);
 
         /// <summary>The title-screen tagline — "Echoes of a Forgotten Civilization"
         /// (canon-strings.json "tagline"). Never hardcode it; this property is the seam.</summary>
@@ -100,12 +88,11 @@ namespace DeNelle.Onboarding
         /// <summary>The three cold-open lines, in order (narrative-bible §7.1).</summary>
         public static string[] ColdOpenLines()
         {
-            EnsureLoaded();
             return new[]
             {
-                Resolve(_locale, KeyColdOpenLine1),
-                Resolve(_locale, KeyColdOpenLine2),
-                Resolve(_locale, KeyColdOpenLine3),
+                Locale(KeyColdOpenLine1),
+                Locale(KeyColdOpenLine2),
+                Locale(KeyColdOpenLine3),
             };
         }
 
@@ -116,7 +103,6 @@ namespace DeNelle.Onboarding
         private static void EnsureLoaded()
         {
             if (_canon == null) _canon = LoadMap(CanonRelativePath);
-            if (_locale == null) _locale = LoadMap(LocaleRelativePath);
         }
 
         private static Dictionary<string, string> LoadMap(string relativePath)

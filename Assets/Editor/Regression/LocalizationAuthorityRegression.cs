@@ -30,6 +30,7 @@ namespace DeNelle.Editor.Regression
             try
             {
                 CheckAuthorities(policy, failures, notes);
+                CheckLegacyLocaleForwarders(failures, notes);
                 CheckCanonicalAndUnityTable(policy, failures, notes);
             }
             catch (Exception ex)
@@ -80,6 +81,37 @@ namespace DeNelle.Editor.Regression
 
             notes.Add(hits.Count + " declared authority/legacy reader(s) found");
             notes.Add(policy.legacyAuthorities.Count + " legacy reader(s) remain");
+        }
+
+        private static void CheckLegacyLocaleForwarders(
+            ICollection<string> failures,
+            ICollection<string> notes)
+        {
+            string[] hybridReaders =
+            {
+                "Assets/_Modules/Onboarding/CanonStrings.cs",
+                "Assets/_Modules/Village/VillageStrings.cs",
+            };
+
+            foreach (string relative in hybridReaders)
+            {
+                string full = LocalizationAuditIO.FullPath(relative);
+                if (!File.Exists(full))
+                {
+                    failures.Add("legacy locale forwarder missing: " + relative);
+                    continue;
+                }
+
+                string source = File.ReadAllText(full);
+                if (source.IndexOf("public static string Locale(string key) => LocalText.Get(key);",
+                        StringComparison.Ordinal) < 0)
+                    failures.Add("localizable branch does not forward through LocalText: " + relative);
+                if (source.IndexOf("LocaleRelativePath", StringComparison.Ordinal) >= 0 ||
+                    source.IndexOf("Data/Canonical/en.json", StringComparison.OrdinalIgnoreCase) >= 0)
+                    failures.Add("localizable branch still reads English canonical JSON: " + relative);
+            }
+
+            notes.Add("Onboarding/Village localizable branches forward through LocalText");
         }
 
         private static void CheckCanonicalAndUnityTable(LocalizationAuditIO.Policy policy, ICollection<string> failures, ICollection<string> notes)

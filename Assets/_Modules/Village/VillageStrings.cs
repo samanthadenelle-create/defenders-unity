@@ -8,40 +8,34 @@
 //
 //   canon-strings.json — proper nouns: crystalMine / petHouse / arcaneTower /
 //                        workshop / farm  (the BuildingDef.displayName keys).
-//   en.json            — localizable copy: buildingDesc.* description strings.
+//   LocalText          — localizable copy: buildingDesc.* description strings.
 //
 // CanonStrings.cs (DeNelle.Onboarding) does the identical job for the title
 // scene, but the Village asmdef does NOT reference Onboarding and must not
 // grow a cross-module dependency just for string lookup (asmdef isolation,
-// port spec Part 2). So this is a Village-local twin of that loader — same
-// StreamingAssets read, same flat-map parse, same [[missing:key]] marker. The
-// Localization package owns these strings long-term (port spec Part 3); this
-// is the Week-4 bridge until the string table is wired.
+// port spec Part 2). This compatibility facade keeps canon proper-name lookup
+// local while routing all translatable copy through the global LocalText seam.
 // =============================================================================
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using Newtonsoft.Json;
 using UnityEngine;
+using DeNelle.Core.UI;
 
 namespace DeNelle.Village
 {
     /// <summary>
     /// Static read-only access to the canonical strings the Village module
-    /// needs — <c>canon-strings.json</c> (proper nouns) and <c>en.json</c>
-    /// (localizable copy). Loaded lazily from StreamingAssets on first access.
+    /// needs: <c>canon-strings.json</c> for protected proper nouns and
+    /// <see cref="LocalText"/> for localizable copy.
     /// </summary>
     public static class VillageStrings
     {
         /// <summary>StreamingAssets-relative path to the canon proper-noun file.</summary>
         private const string CanonRelativePath = "Data/Canonical/canon-strings.json";
 
-        /// <summary>StreamingAssets-relative path to the English localizable strings.</summary>
-        private const string LocaleRelativePath = "Data/Canonical/en.json";
-
         private static Dictionary<string, string> _canon;
-        private static Dictionary<string, string> _locale;
 
         /// <summary>
         /// Resolves a key from <c>canon-strings.json</c> (the proper nouns —
@@ -55,15 +49,11 @@ namespace DeNelle.Village
         }
 
         /// <summary>
-        /// Resolves a key from <c>en.json</c> (the localizable copy — e.g.
+        /// Resolves a key through <see cref="LocalText"/> (the localizable copy, e.g.
         /// <c>buildingDesc.crystalMine</c>). Returns a visible
         /// <c>[[missing:key]]</c> marker for an unknown key.
         /// </summary>
-        public static string Locale(string key)
-        {
-            EnsureLoaded();
-            return Resolve(_locale, key);
-        }
+        public static string Locale(string key) => LocalText.Get(key);
 
         /// <summary>
         /// Resolves a building's display name from its <see cref="BuildingDef"/>.
@@ -91,7 +81,6 @@ namespace DeNelle.Village
         private static void EnsureLoaded()
         {
             if (_canon == null) _canon = LoadMap(CanonRelativePath);
-            if (_locale == null) _locale = LoadMap(LocaleRelativePath);
         }
 
         private static Dictionary<string, string> LoadMap(string relativePath)
