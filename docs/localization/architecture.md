@@ -1,6 +1,6 @@
 # Localization architecture and supported languages
 
-**Canon status:** Active architecture for WO-1605 as of 2026-09-08. This document describes the
+**Canon status:** Active architecture for WO-1605 through commit `50cba5715` (2026-09-09). This document describes the
 implemented authority and regional contract. It does not claim that every player-facing surface has
 already migrated.
 
@@ -52,15 +52,19 @@ their JSON exists; their script, shaping, font, layout, and device gates must pa
 
 - Canonical transitional inputs are mirrored at `Assets/Resources/Data/Canonical/<locale>.json` and
   `Assets/StreamingAssets/Data/Canonical/<locale>.json`.
-- Both copies contain exactly 407 player keys today. `LocaleParityRegression` requires exact keys,
+- Both copies contain exactly 414 player keys today. `LocaleParityRegression` requires exact keys,
   nonempty values, semantically identical mirrors, and format-argument multisets for all 10 required locales.
 - `LocalizationBuilder` reads policy, registers only build-enabled locales, reconciles shared keys,
   generates the six `GameStrings` tables and Addressables groups, preserves Smart metadata, assigns
   deterministic locale order, and records English fallback metadata.
+- The six build-enabled Unity tables contain 2,484 entries in total (414 entries per locale).
 - `LocaleParityRegression` compares every build-enabled Unity table byte-for-value with its canonical
   locale source, so updating all JSON regions without rebuilding the shipped tables remains a hard failure.
 - A new English key without the other nine regional values is a failing change, not an English-only
   fallback release. Removing or renaming a key has the same all-region requirement.
+- Any future player-facing copy addition or wording/argument change must update every required locale
+  catalog and its mirror, rebuild every enabled Unity table, and pass the localization tests. A translation
+  may be labeled limited or provisional pending human review, but it may not be omitted from parity.
 - Player-authored names, wallet addresses, and free-form feedback are data and are never translated.
 - Text baked into images should be removed in favor of text-free art plus localized TMP text. When text
   is inseparable from approved art, use a locale-specific Asset Table and keep accessible localized text.
@@ -94,17 +98,26 @@ missing keys, English fallback, missing glyphs, or blank frames. The most recent
 source-shape assertion, five legacy HUD canon-parity assertions, and Flee's missing registration in
 that dirty `DataRegression` edit. Those failures are tracked separately from the green localization lane.
 
+The checkpoint inventory contains 6,031 rows: 414 `keyedEntry`, 83 `keyedCall`, 5,518
+`literalCandidate`, and 16 `imageTextCandidate` rows. Literal candidates remain report-only and unarmed while the
+baseline is human-classified; this count is discovery debt, not 5,518 confirmed defects.
+
 The architecture, Settings, Feedback/Jeweler slice, shared Close treatment, calm navigation, Heart HUD,
 combat Flee control, and HUD/Raid forwarding shims are in place. Village and Canon compatibility readers now forward to the
-global facade. Store's purchase-gate, Pi, wallet-mirror, and commerce-state cohorts (32 keys total) are translated across
-all ten required locales and generated into all six enabled tables, but this is data staging only:
+global facade. Store has 39 staged keys across its purchase-gate, Pi, wallet-mirror, commerce-state,
+and safe presentation cohorts. All 39 are translated across all ten required locales and generated into
+all six enabled tables, but this is data staging only:
 `StoreStrings` remains a legacy
 reader until its complete semantic migration can cut over atomically. Other Store cohorts and many direct
 visible HUD/runtime literals remain migration work. The literal
 inventory is deliberately report-only until its baseline is human-classified; do not describe WO-1605
 as complete or arm the debt ratchet early.
 
-The four legacy trust-strip rows are intentionally held out of the localization tables. Their current
-claims are not uniformly accurate across Solana, Pi, and Google Play, and the covenant is still baked
-into English raster art. Provider-specific approved wording and a text-free/localized carrier are required
-before that cohort may stage or cut over.
+The safe presentation cohort is exactly `storeBandGap`, `storeBandGapSub`, `storeBandBasket`,
+`storeSpotlightEmpty`, `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`. The remaining
+presentation copy is held where it asserts time-limited offers or patronage, performs value/balance
+comparisons, or uses ambiguous locked-state wording; it needs product and formatting review before staging.
+The four legacy trust-strip rows are also intentionally held out. Their fee, treasury, power, and covenant
+claims are not uniformly accurate across Solana, Pi, and Google Play, and the covenant is still baked into
+English raster art. Provider-specific approved wording and a text-free/localized carrier are required before
+that cohort may stage or cut over.

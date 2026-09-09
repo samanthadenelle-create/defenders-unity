@@ -1,20 +1,21 @@
 # Localization / i18n Readiness Audit
 
-> **Implementation update - 2026-09-08 (WO-1605):** The runtime gap described by
+> **Implementation update - 2026-09-09 (WO-1605, through `50cba5715`):** The runtime gap described by
 > this June audit is now being closed. `LocalText` is the single Core facade;
 > `DeNelle.Localization.UnityLocalizationProvider` is its sole package-backed adapter;
 > selected and English `GameStrings` tables preload asynchronously; explicit locale
 > preferences and System Default are supported; missing keys fail visibly. Six build-enabled
-> tables now reconcile exactly to all 358 canonical entries. English, Spanish, Brazilian
+> tables now reconcile exactly to all 414 canonical entries (2,484 entries total). English, Spanish, Brazilian
 > Portuguese, German, French, and Russian are exposed, with every non-English choice labeled
 > Beta. Arabic, Japanese, Korean, and Simplified Chinese remain required for exact regional
 > parity but hidden until RTL/CJK font and layout gates pass. Settings is migrated and
 > refreshes labels in place; HUD/Raid compatibility catalogs now forward to `LocalText`.
 > Feedback and the Jeweler unlock/polish/reveal path use key-only wrappers with typed
-> arguments. Five focused regressions cover authority, literal leakage, locale parity,
-> Smart arguments (named and positional), and Settings wiring. The broad inventory remains
-> report-only pending human classification. Store/Village/Canon and many visible literals
-> remain open, so the overall migration is not complete. Current canon lives in
+> arguments. Seven focused suites cover authority, literal leakage, locale parity,
+> Smart arguments (named and positional), Settings wiring, glyph coverage, and Flee state.
+> The broad inventory remains report-only pending human classification. Store has 39 keys
+> staged in all required locales, but its runtime still uses legacy `StoreStrings`/canon;
+> the remaining Store cutover and many visible literals remain open. Current canon lives in
 > `docs/localization/architecture.md`.
 
 **Date:** 2026-06-28

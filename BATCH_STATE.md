@@ -891,17 +891,22 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
    EXISTING return-door arbiter that WO-1400 shipped for the deck return; lane D consumes it on CLOSE. No second
    return mechanism. Lane C hands the exact door line to lane D as text if the files are split across people.
 
-### 9. WO-1605 localization goal - foundation checkpoint (2026-09-08)
+### 9. WO-1605 localization goal - checkpoint through `50cba5715` (2026-09-09)
 
-- Base remains `20467d539` on `dev`; the shared tree already contained the owner's uncommitted
+- The foundation began at `20467d539` on `dev`; this checkpoint is through `50cba5715`. The shared tree already contained the owner's uncommitted
   Feedback/Jeweler/Manage/build work, which was preserved. No stash/reset/cleanup was used.
 - One authority now exists: Core `LocalText` -> `ILocalTextProvider` -> the asynchronous
   `DeNelle.Localization.UnityLocalizationProvider` -> Unity `GameStrings`.
 - Feature ownership stays separate through domain keys and thin `LocalizedText` /
   `LocalizedText<TArguments>` catalogs; English is not duplicated at call sites.
 - Phase A-B began with authority + Settings + HUD/Raid shims. Village/Canon compatibility readers now
-  forward to the facade; 32 Store purchase-gate/Pi/wallet/commerce keys are staged, while Store runtime cutover remains open.
-- `LocalizationBuilder.BuildAll` now reconciles 407 English keys into 2,442 enabled-table entries.
+  forward to the facade. Store has 39 staged purchase-gate/Pi/wallet/commerce/presentation keys, but
+  runtime still uses legacy `StoreStrings`/canon; the full Store cutover remains open.
+- The safe Store presentation cohort is exactly `storeBandGap`, `storeBandGapSub`, `storeBandBasket`,
+  `storeSpotlightEmpty`, `storeLedgerHeading`, `storeCardOwned`, and `storeCardGap`. Offer/patronage
+  assertions, value and balance comparisons, ambiguous locked-state wording, and the four trust-strip
+  claims remain held pending product/channel/formatting review; the covenant remains English raster art.
+- `LocalizationBuilder.BuildAll` now reconciles 414 English keys into 2,484 enabled-table entries.
 - Registered localization gates now cover authority, player-literal leakage, exact locale/table parity,
   Smart arguments, Settings in-place refresh/selector wiring, glyph coverage, and combat Flee state.
   Post-Store-cohort focused evidence: `Builds/localization-regression-store-buy-data.log`,
@@ -911,8 +916,12 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
 - Fresh mixed-tree evidence `Builds/data-regression-localization-store-cohorts-final.log` is 460/463:
   one collector source-shape assertion, five legacy HUD canon-parity assertions, and the Flee suite's
   missing registration in the dirty `DataRegression` edit. The focused localization lane remains 7/7.
-- Manifest generation/check is deterministic: 6,024 report rows. It remains deliberately
-  unreviewed; 2,994 exact C# fingerprints still require domain classification before the
-  new-debt ratchet can be armed.
+- Manifest generation/check is deterministic: 6,031 report rows = 414 `keyedEntry` + 83 `keyedCall`
+  + 5,518 `literalCandidate` + 16 `imageTextCandidate`. Literal debt remains report-only/unarmed and deliberately
+  unreviewed; 2,994 exact C# fingerprints still require domain classification before the new-debt
+  ratchet can be armed.
+- Future player-facing copy changes must update all ten required locale catalogs and mirrors, rebuild
+  all six enabled tables, and pass localization tests. Limited/provisional translations may await human
+  review but must still satisfy parity.
 - CompileGate emitted `COMPILE_GATE_OK`; its outer wrapper remained red only on the known missing
   optional WebGL built-in module (`UnityEngine.WebGLInput` in the Solana package), not project code.
