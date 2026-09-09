@@ -2341,8 +2341,73 @@
 > never as BUILD STATUS** -- "under construction"/"coming soon"/"dev"/"WIP" are BANNED player-facing
 > strings and get a REGRESSION ORACLE, not a comment, because that is the rule most likely to rot.
 > Status READY TO IMPLEMENT, 3 open rulings. No code yet.)*
-> ## ⚠ RECONCILED 2026-09-08 (Grok/UI seat): UI seat next free = **1089**.
-> *(Grok/UI seat minted **WO-1088** localization 4-model draft review pack (Desktop/translation + en + 9 locale drafts) and bumped 1088 -> 1089 in this SAME edit.)*
+> ## ⚠ RECONCILED 2026-09-09 (UI seat, sixth mint of the day): UI seat next free = **1100**.
+> *(UI seat minted **WO-1099** from F8 capture seq=4974 - an OWNER FLAG, note "here" - and bumped
+> 1099 -> 1100 in this SAME edit. **1099** = the Harvest Result panel banks **0** on all three rows
+> while storage reads `732,031 / 34,000 OVER` (**21.5x the L6 ceiling**, `TownBankCapacity.cs:519` +
+> `siege-stakes.json:5` ladder 2000->34000), and the footer promises *"every waiting unit banks as
+> soon as there is room"* - a promise that CANNOT be kept at 21x over cap
+> (`HarvestResultVM.cs:337`). Also: the EDITOR capture writer does not link its own screenshot the
+> way the device bridge does, so an owner flag whose payload is one word arrives with no frame.
+> ⚠ OPEN: "here" may mean "this panel is STUCK" (corroborating WO-1098, which named 'Harvest Result'
+> as the stuck modal 5 min earlier) or "these numbers are wrong". Owner's call, recorded both ways.)*
+>
+> ### superseded: RECONCILED 2026-09-09 (UI seat, fifth mint of the day): UI seat next free = **1099**.
+> *(UI seat minted **WO-1098** from F8 capture seq=4973 and bumped 1098 -> 1099 in this SAME edit.
+> **1098** = an arena win leaves **timeScale 0.00** (leaked hit-stop - the player reads FROZEN) AND
+> the **'Harvest Result' modal open** (interact suppressed, Back aims at an invisible panel).
+> ⛔ NOT WO-1093: battle-lock is not among the failed invariants. ⚠ WO-1297 fixed a **0.04** hit-stop
+> leak and is still awaiting felt-verify; this is **0.00**, and memory records a **0.28** on 09-03 -
+> THREE different leaked values says timeScale has no single owner. Ticket names the pattern: 1127 /
+> 1233 / 1337 each fixed ONE named holder and the gate keeps finding new ones, so the ticket asks the
+> owner the design question instead of shipping a fifth per-holder patch.)*
+>
+> ### superseded: RECONCILED 2026-09-09 (UI seat, fourth mint of the day): UI seat next free = **1098**.
+> *(UI seat minted **WO-1097** from F8 captures seq=4969-4971 and bumped 1097 -> 1098 in this SAME
+> edit. **1097** = `WaveManager.cs:2636` asks Addressables for `Enemies/Boss_Dragon` as
+> **`LoadAssetAsync<DragonBoss>`** - a COMPONENT type. Addressables addresses a prefab as GameObject
+> and says so verbatim, so the request is unsatisfiable BY CONSTRUCTION and the apex wave's dragon
+> never spawns. ⚠ The API's own XML doc at `EnemyAssetLoader.cs:112-115` uses that exact broken call
+> as its worked example, and `where T : Object` admits Component - so the docs prescribe it and the
+> compiler allows it. ONE bad call site (verified by grep; the other three pass Texture/GameObject)
+> behind a systemic hole.)*
+>
+> ### superseded: RECONCILED 2026-09-09 (UI seat, third mint of the day): UI seat next free = **1097**.
+> *(UI seat minted **WO-1096** from F8 capture seq=4968 and bumped 1096 -> 1097 in this SAME edit.
+> **1096** = the party-shop preview misses LOCAL gear address `gear/weapon/Shield1h_03` and renders a
+> fallback. ⛔ NOT WO-1089 (`warmerState=Warm, resident=44` - the warmer fix is WORKING) and ⛔ NOT the
+> s16 R2 class: the Gear group resolves to `Local.BuildPath`/`Local.LoadPath`, NOT the r2.dev remote
+> entry, so the bytes ship in the app. Ticket leads with the Editor play-mode-script check, because
+> "Use Existing Build" over stale local groups misses EVERY local address in the Editor while the
+> device is fine.)*
+>
+> ### superseded: RECONCILED 2026-09-09 (UI seat, second mint of the day): UI seat next free = **1096**.
+> *(UI seat minted **WO-1095** from F8 capture seq=4967 and bumped 1095 -> 1096 in this SAME edit.
+> **1095** = the RAID STRANDING WATCHDOG fired again - 225s in a 180s raid that never finalized by
+> objective, clock OR Retreat. ⚠ **NOT filed as a WO-1437 regression:** 1437 is CLOSED on the owner's
+> 09-07 felt-pass, and this capture is EDITOR-side against a tree with SIX uncommitted raid files
+> (RaidScoring + RaidDeployController among them). Attribution is deliberately left open with the
+> discriminating test written into the ticket. Do not re-open 1437 until a clean-tree run strands.)*
+>
+> ### superseded: RECONCILED 2026-09-09 (UI seat): UI seat next free = **1095**.
+> *(UI seat minted **WO-1089 through WO-1094** from the F8 backlog (captures 4705-4768) and bumped
+> 1089 -> 1095 in this SAME edit. **1089** = StructureContentWarmer throws on an invalid
+> AsyncOperationHandle at t=6s, the coroutine DIES, and every structure in town then misses —
+> P0, the town renders with NO BUILDINGS on the 09-09 device build; NOT the s16 R2 trap
+> (`lastTransportUrl=(none)`, nothing 404'd). **1090** = the welcome-back modal (sort 32020) opens
+> over the FTUE Skip control (sort 6000) and the watchdog charges modal-held time, so a first-run
+> beat is silently rescue-skipped. **1091** = the Stoneback biome drop is handed to the seam at
+> y=17 with no ground probe; the warp DOES land and the hero's own clamp reverts it one frame later
+> (the capture's own "THE WARP DID NOT HAPPEN" is FALSE). **1092** = the offline pull fetches
+> ~19.4MB that never becomes a cache entry; the verifier is CORRECT (total-remaining is
+> byte-identical to what landed) — diagnostic only, retry deliberately deferred. **1093** = `_stung`
+> is a one-way latch so a rep-chase re-stamps a pursuit one frame after ClearPursuits and the
+> battle-lock never releases after an arena win; owner ruled the leash at 26m. **1094** = the hero's
+> ±50 playable-bounds clamp is a castle-era constant inside a 1000x1000 merged world, and
+> `_isTeleporting` guards ZERO frames.
+> ⚠ **UI-SEAT OVERSTEP:** this triage ran edit agents before the owner stopped it; EIGHT `.cs` files
+> are dirty and UNTRUSTED (7 killed mid-edit). Braces balanced, 0 NULs, no gate, no commit, nothing
+> pushed. CLI: read `WorkOrders/WO_1089_1094_WORKING_TREE_NOTE.md` BEFORE touching that tree.)*
 >
 > ### superseded: RECONCILED 2026-09-07 (Grok/UI seat): UI seat next free = **1088**.
 > *(Grok/UI seat minted **WO-1084 through WO-1087** from four Seeker phone Screenshots (not F8) and bumped 1084 -> 1088 in this SAME edit.

@@ -738,6 +738,7 @@ namespace DeNelle.Editor
             // WO-1520 — the raid STAGING area: the marker is measured against every turret's reach and every
             // defender's awareness radius, and the 180s clock cannot advance before first engagement.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-staging suite", () => { if (!DeNelle.Editor.Regression.RaidStagingMarkerRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-staging] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-base-layout suite", () => { if (!DeNelle.Editor.Regression.RaidBaseLayoutRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-base-layout] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "reset-full-clear suite", () => { if (!DeNelle.Editor.Regression.ResetToNewGameFullClearRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[reset-full-clear] " + r); });
             // WO-1371 — the OTHER axis. reset-full-clear sweeps GameState FIELDS and says in its own
             // comments that a PlayerPrefs store "is not one"; this sweeps those stores, which is where

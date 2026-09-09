@@ -1333,13 +1333,70 @@ namespace DeNelle.Village
 
         private void Update()
         {
+            // =================================================================
+            //  WO-1414 D -- THE DEFERRAL IS NOW SYMMETRIC. This block is the half that was
+            //  missing: WO-1414 C only refused to OPEN over a live beat, and nothing ever
+            //  re-checked afterwards, so the opposite ordering was uncovered.
+            //  Captured 2026-09-05 (F8 seq 4682, re-RCA'd seq 4705): at hub load the flow is
+            //  ARMED but not STARTED -- during the 1.25s Settle window _step is null, so
+            //  TutorialFlow.IsAwaitingDialogue reads FALSE, TryShowPopup let the modal through,
+            //  and the chain then started UNDERNEATH it. Result: the modal at sortingOrder 32020
+            //  covered the ONE skip control at 6000
+            //  ([Flow:Tutorial] SKIP_TOP_HIT_BLOCKED top=ObsidianPanel path=WelcomeBackUI/ObsidianPanel)
+            //  and the founding beat was rescued-and-SKIPPED
+            //  (STEP-STUCK :: founding_greet ... played-and-charged 120s ... excluded 0s).
+            //
+            //  OWNER RULING (taken by the CLI lead, 2026-09-09): defer for the WHOLE mandatory
+            //  chain, not just a dialogue-awaiting beat. A brand-new player's away haul is
+            //  trivial and ALREADY BANKED (this popup is only a reveal), so deferring costs
+            //  nothing; interrupting the FTUE costs a beat.
+            //
+            //  DEFERRING, NOT RE-LAYERING (the same design intent recorded in TryShowPopup):
+            //  raising the skip control above the modal would leave the DIALOGUE covered, and the
+            //  dialogue is the thing the step is actually waiting on. So the report is taken away
+            //  and RE-PARKED into the existing _deferredReveal/_tutorialDeferred pair, released by
+            //  the existing path below when the chain finishes. No new mechanism, no second field.
+            // =================================================================
+            if (WelcomeBackPopup.IsOpen && TutorialFlow.IsMandatoryChainLive)
+            {
+                var onScreen = WelcomeBackPopup.ActiveResult;
+                WelcomeBackPopup.DismissIfOpen("mandatory tutorial chain live under the report (WO-1414 D)");
+                if (onScreen != null)
+                {
+                    _deferredReveal = onScreen;
+                    _tutorialDeferred = true;
+                    FlowTrace.Warn("Offline",
+                        $"welcome-back RE-PARKED: the report was already on screen (WelcomeBackUI/ObsidianPanel, " +
+                        $"sortingOrder 32020) when the mandatory tutorial chain went live at " +
+                        $"'{TutorialFlow.LiveChainStateLine}' -- it covers the ONE skip control (sortingOrder 6000) " +
+                        $"and the beat's dialogue, so it is deferred until the chain finishes " +
+                        $"(AwaySeconds={onScreen.AwaySeconds:0} haul={onScreen.Total} " +
+                        $"collectorsPending={onScreen.PendingCollectorTotal}). The haul is already banked; nothing " +
+                        "is lost by waiting.");
+                }
+                else
+                {
+                    // Dismissed but nothing to re-park: the open popup carried no result. Say so
+                    // rather than silently dropping a reveal -- a swallowed reveal is a §12 silent
+                    // failure, and this is the only branch where one could happen.
+                    FlowTrace.Warn("Offline",
+                        "welcome-back RE-PARK: the open report carried NO result to park (it was dismissed to clear " +
+                        $"the tutorial chain at '{TutorialFlow.LiveChainStateLine}'); nothing will be re-shown.");
+                }
+                return;
+            }
+
             if (_deferredReveal == null || !_tutorialDeferred) return;
-            if (TutorialFlow.IsAwaitingDialogue) return;
+            // SAME KEY IN BOTH DIRECTIONS. Releasing on the narrow !IsAwaitingDialogue while parking
+            // on the broad chain-live key would flap once per frame through the Settle window:
+            // release -> TryShowPopup -> park -> release. The narrow key is still read (and named)
+            // inside TryShowPopup, where it explains WHICH beat is waiting.
+            if (TutorialFlow.IsMandatoryChainLive) return;
             var pending = _deferredReveal;
             _deferredReveal = null;
             _tutorialDeferred = false;
             FlowTrace.Step("Offline",
-                $"welcome-back tutorial deferral RELEASED: no step is awaiting a dialogue any more " +
+                $"welcome-back tutorial deferral RELEASED: the mandatory tutorial chain is no longer live " +
                 $"(AwaySeconds={pending.AwaySeconds:0}).");
             TryShowPopup(pending);   // re-runs the combat + hub checks on the way in
         }
@@ -1383,13 +1440,25 @@ namespace DeNelle.Village
             // DEFERRING, NOT RE-LAYERING: raising the SKIP control above the modal would leave the
             // dialogue itself covered, which is the beat the step is actually waiting on. The haul
             // is already banked (this is only a reveal), so waiting costs the player nothing.
-            if (TutorialFlow.IsAwaitingDialogue)
+            // WO-1414 D -- THE KEY IS NOW THE WHOLE MANDATORY CHAIN, not just a dialogue-awaiting
+            // beat. The narrow key could not close the window that produced seq 4682: at hub load
+            // the flow is ARMED but not STARTED, _step is null through the 1.25s Settle window, and
+            // TutorialFlow.IsAwaitingDialogue therefore reads FALSE in exactly the frames the modal
+            // opens in. Owner ruling (CLI lead, 2026-09-09): defer for the whole chain -- the haul
+            // is already banked, so waiting costs nothing, while interrupting the FTUE costs a beat.
+            // The narrow signal is still READ here, as the REASON text: when a beat is genuinely
+            // waiting on a dialogue, the trace must still name which one.
+            if (TutorialFlow.IsMandatoryChainLive)
             {
                 _deferredReveal = result;
                 _tutorialDeferred = true;
+                string awaited = TutorialFlow.IsAwaitingDialogue
+                    ? $"a tutorial step is awaiting '{TutorialFlow.AwaitedDialogueSignal}'"
+                    : $"the mandatory tutorial chain is live at '{TutorialFlow.LiveChainStateLine}' " +
+                      "(no step is awaiting a dialogue yet -- this is the Settle window the narrow WO-1414 C key missed)";
                 FlowTrace.Step("Offline",
-                    $"welcome-back DEFERRED: a tutorial step is awaiting '{TutorialFlow.AwaitedDialogueSignal}' -- " +
-                    $"the reveal waits for the beat to end (AwaySeconds={result.AwaySeconds:0} haul={result.Total}).");
+                    $"welcome-back DEFERRED: {awaited} -- the reveal waits for the chain to finish " +
+                    $"(AwaySeconds={result.AwaySeconds:0} haul={result.Total}).");
                 return;
             }
 

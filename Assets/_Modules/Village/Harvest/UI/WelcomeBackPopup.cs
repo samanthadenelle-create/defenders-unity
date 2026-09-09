@@ -31,6 +31,29 @@ namespace DeNelle.Village.UI
     public sealed class WelcomeBackPopup : MonoBehaviour
     {
         private static WelcomeBackPopup s_active;
+
+        /// <summary>
+        /// WO-1414 D -- TRUE while a welcome-back report is ON SCREEN. Read by
+        /// <c>OfflineHarvestService.Update</c> (to re-park a report that opened before the
+        /// mandatory tutorial chain went live) and by <c>TutorialFlow.TickStepClock</c> (to
+        /// exclude modal-held seconds from the STEP-STUCK budget).
+        /// <para>
+        /// Sourced from <c>s_active</c>, never from a mirrored bool: the same one-owner rule
+        /// <c>TutorialFlow.AwaitedDialogueSignal</c> is written to. <see cref="Dismiss"/>
+        /// and <see cref="OnDestroy"/> both clear it, so it can never latch true after teardown.
+        /// </para>
+        /// </summary>
+        public static bool IsOpen => s_active != null;
+
+        /// <summary>
+        /// WO-1414 D -- the result the OPEN report is showing, or null when nothing is open.
+        /// The re-park path needs the on-screen result itself: <c>OfflineHarvestService._lastResult</c>
+        /// can be a later re-measure of the same window (see the smaller-window guard in
+        /// <see cref="Show"/>), and parking that instead would release a different report than the
+        /// one that was taken away.
+        /// </summary>
+        public static OfflineHarvestResult ActiveResult => s_active != null ? s_active._result : null;
+
         private OfflineHarvestResult _result;
         private ElarionUiKit.ObsidianModal _modal;
         private PanelHandle _panelHandle;
@@ -740,12 +763,21 @@ namespace DeNelle.Village.UI
         }
 
         /// <summary>
-        /// WO-1414 A -- close the open report, if any, because it is no longer about this game.
-        /// The one caller is <c>OfflineHarvestService</c>'s New Game hook: a summary already ON
-        /// SCREEN when START NEW is pressed was measured on the PREVIOUS save, and the reset has
-        /// no other way to reach it (this popup is code-built and owns its own host object).
-        /// Safe when nothing is open -- a no-op that still traces, so a capture can tell "nothing
-        /// was open" from "the hook never ran".
+        /// WO-1414 A -- close the open report, if any. The popup is code-built and owns its own
+        /// host object, so an outside owner has no other way to reach it. Safe when nothing is
+        /// open -- a no-op that still traces, so a capture can tell "nothing was open" from "the
+        /// hook never ran".
+        /// <para>
+        /// TWO callers, both in <c>OfflineHarvestService</c>, and the trace says which via
+        /// <paramref name="why"/>:
+        /// (A) the New Game hook -- a summary on screen when START NEW is pressed was measured on
+        /// the PREVIOUS save; (D) the mandatory-tutorial re-park -- the report is still about THIS
+        /// save and is re-parked in <c>_deferredReveal</c>, so the caller reads
+        /// <see cref="ActiveResult"/> before calling this.
+        /// </para>
+        /// ⚠ THE MESSAGE BELOW DELIBERATELY DOES NOT NAME A SAVE. It asserted "on the previous
+        /// save" when WO-1414 A was the only caller; under caller (D) that sentence is false, and
+        /// a trace line that states a fact it cannot know is the §11B failure this repo pays for.
         /// </summary>
         public static void DismissIfOpen(string why)
         {
@@ -757,8 +789,7 @@ namespace DeNelle.Village.UI
             }
             double away = open._result != null ? open._result.AwaySeconds : 0.0;
             FlowTrace.Step("Offline",
-                $"welcome-back DISMISSED ({why}): the open report covered {away:0}s of away time on the " +
-                "previous save.");
+                $"welcome-back DISMISSED ({why}): the open report covered {away:0}s of away time.");
             open.Dismiss();
         }
 

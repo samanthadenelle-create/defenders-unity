@@ -1000,6 +1000,58 @@ namespace DeNelle.Village
         private const float EngageRange = 2.6f; // contact -> transition
         private const float LeashRadius = 14f;  // wander this far from spawn until aggro
 
+        // =====================================================================================
+        // ⛔ F8 seq4768 — `_stung` WAS A ONE-WAY LATCH, AND THAT IS THE STUCK BATTLE-LOCK.
+        // -------------------------------------------------------------------------------------
+        // Until this change `_stung` was written true in exactly ONE place (the aggro test in
+        // Update) and cleared NOWHERE. The chase branch below is gated on that latch alone — it
+        // has no distance test of its own — so a rep that ever saw the hero kept calling
+        // SetBrainTargetPosition AND kept stamping PostureSignals.ReportPursuit EVERY FRAME, for
+        // the rest of the session, at ANY distance.
+        //
+        // THE ARENA-WIN SHAPE, read straight off BattleArena.Resolve (BattleArena.cs:2708-2766):
+        //   :2713  RepEngageWatcher.ResumeAll()  — un-freezes every home rep, and its OWN comment
+        //          says "while the masked return fades, the hero is still at the far arena, so a
+        //          resumed rep reads a ~7km distance and cannot aggro until the warp lands." That
+        //          is true of AGGRO. It was NOT true of the CHASE: the chase never re-reads the
+        //          distance, so a rep stung before the fight resumed stamping from 7 km away.
+        //   :2729  QuietNonPursuersOnBattleEnd() — PRESERVES pursuers by owner ruling, and the
+        //          latched rep reported IsPursuing=true, so it was preserved.
+        //   :2754  BattleSessionEnd.Release("arena win") -> PostureSignals.ClearPursuits().
+        // The clear at :2754 therefore lands one frame before the preserved rep's next Update
+        // re-stamps — which is verbatim F8 seq 4768: "re-stamped within one frame of a full
+        // ClearPursuits: key=-307854 owner='OverworldEncounterSpawner/rep-chase' age=0.00s",
+        // PursuitBattleProbe stays true, battle-lock never releases, and the owner is left in
+        // combat state standing in town after a win she already won.
+        //
+        // THE CURE IS A LEASH BREAK, NOT A WIDER TOLERANCE. DeaggroRange gives the chase the
+        // distance test it never had, with hysteresis above AggroRange so a rep at the edge of
+        // notice cannot flicker sting/un-sting frame to frame. A hero who is DEAD also breaks the
+        // chase — the same predicate, and the same reasoning, as the WO-1603 guard on the sibling
+        // stamp site in Enemy.DriveNav (Enemy.cs:1732-1752): PursuitActive exists to keep a
+        // chased hero's combat inputs live, and a downed hero has no inputs to serve.
+        //
+        // ⚠ DELIBERATELY *NOT* A WALL-CLOCK GIVE-UP TIMER. This file's own header (:10-11) is the
+        // owner's design — the rep chases at "+5% the hero's speed (so a too-tough mob can't be
+        // outrun -- the danger-gradient stake)". A "gives up after N seconds" rule would overturn
+        // that ruling to fix a SIGNAL bug. A chase that is closing keeps closing, forever, exactly
+        // as designed; only a chase that has lost the hero entirely lets go. A chase that is
+        // neither closing nor breaking off is instead REPORTED (ChaseStallWarnSeconds below), so
+        // the next capture names its own distance instead of costing another ticket.
+        //
+        // ⚠ AND THE DISTANCE TEST LIVES IN Update() ONLY — NEVER IN QuietIfNotPursuing(). Per the
+        // ordering above, that battle-end sweep runs while the hero is still ~7 km away at the
+        // arena, so a distance test THERE would quiet every rep on the map and break the owner's
+        // "an active chaser must finish" ruling. Update re-reads the distance after the warp lands.
+        // =====================================================================================
+        private const float DeaggroRange        = 26f;   // hysteresis above AggroRange(14): lose the hero past this and the chase breaks off
+        private const float ChaseStallWarnSeconds = 8f;  // diagnostic only: this long with no ground closed gets ONE throttled Warn
+        private const float WarpJumpMeters        = 5f;  // a distance JUMP this big is a hero warp, not a lost chase -> re-baseline the stall diagnostic
+
+        private float _stungAt;                          // Time.time the chase began (reported, never a give-up timer)
+        private float _progressAt;                       // last Time.time the chase actually closed ground (stall diagnostic)
+        private float _chaseBestDist = float.PositiveInfinity;  // closest the chase has got since its last re-baseline
+
         // -------------------------------------------------------------------------
         //  BATTLE ISOLATION + POST-LOSS GRACE (lose-flow fix, owner TOP priority).
         //  Two STATIC gates shared by EVERY home-scene rep:
@@ -1049,11 +1101,70 @@ namespace DeNelle.Village
         /// Returns true if it was quieted. Pursuers/engaged reps are left untouched.</summary>
         private bool QuietIfNotPursuing()
         {
+            // ⚠ THE PRESERVE RULE IS THE OWNER'S AND IT STAYS. What changed in F8 seq4768 is that
+            //   IsPursuing is now HONEST: Update's leash break (DeaggroRange / dead hero) clears
+            //   `_stung`, so "actively pursuing" no longer means "saw the hero once, ever". Do NOT
+            //   add a distance test here — this sweep runs from BattleArena.Resolve:2729 while the
+            //   hero is still at the far arena (~7 km), so it would quiet every rep on the map.
             if (_stung || _engaged) return false;   // actively pursuing / in a fight — preserve
             SetPackCombatPresentation(false);
             if (_threatCue != null) { Destroy(_threatCue); _threatCue = null; }
             _roamRepathAt = 0f;                     // repick a roam point next Update -> visibly resettles
             return true;
+        }
+
+        /// <summary>
+        /// F8 seq4768 — THE LEASH BREAK. Ends this rep's chase and, critically, STANDS ITS OWN PURSUIT
+        /// CLAIM DOWN so a full <c>ClearPursuits()</c> at battle end cannot be undone by a stale
+        /// re-stamp on the very next frame (F8 seq 4767/4768).
+        ///
+        /// Reverses everything the sting turned on — combat presentation, the "!" threat nameplate —
+        /// and forces a fresh roam heading so the rep visibly resettles instead of standing in a
+        /// combat pose facing a hero who is no longer there.
+        ///
+        /// ⛔ It revokes ONLY THIS BODY'S OWN KEY. Per WO-1337 no producer may write BattleLock or
+        /// call ClearPursuits: other live chasers must keep PursuitActive true so the hero's combat
+        /// HUD stays up while anything is still hunting her. <c>RevokePursuit</c> no-ops on an absent
+        /// key, so this is idempotent and safe to call on a rep that never stamped.
+        /// </summary>
+        private void Deaggro(string why)
+        {
+            if (!_stung) return;
+            _stung = false;
+            _chaseBestDist = float.PositiveInfinity;
+            _progressAt = 0f;
+
+            if (_enemy != null)
+                DeNelle.Core.HudModel.PostureSignals.RevokePursuit(_enemy.GetInstanceID());
+
+            SetPackCombatPresentation(false);
+            if (_threatCue != null) { Destroy(_threatCue); _threatCue = null; }
+            _roamRepathAt = 0f;                     // repick a roam point next Update -> visibly resettles
+
+            FlowTrace.Step("Encounter",
+                $"rep '{gameObject.name}' de-aggro ({why}) -> chase broken off, pursuit pulse REVOKED " +
+                $"(key={(_enemy != null ? _enemy.GetInstanceID() : 0)}, owner='OverworldEncounterSpawner/rep-chase'), " +
+                "back to peaceful roam. Until F8 seq4768 this rep would have kept stamping the pursuit ring " +
+                "every frame at any distance and held the battle-lock past the end of the fight.");
+        }
+
+        /// <summary>
+        /// True when this chase is over as a matter of fact, whatever the latch says: the hero has
+        /// left the leash entirely (<see cref="DeaggroRange"/>, hysteresis above <see cref="AggroRange"/>),
+        /// or she is DOWN (<paramref name="heroAlive"/>, computed once by the caller so the SAME
+        /// value gates the aggro test — see the note there; a null HeroHealth counts as ALIVE, so
+        /// nothing here can suppress a real chase in a scene that has no hero health component).
+        /// </summary>
+        private bool ChaseBrokeOff(bool heroAlive, float heroDist, out string why)
+        {
+            if (!heroAlive) { why = "hero is DOWN - a body has no combat inputs for PursuitActive to serve"; return true; }
+            if (heroDist > DeaggroRange)
+            {
+                why = $"hero lost the leash: d={heroDist:0.0}m > deaggro={DeaggroRange:0.0}m (aggro={AggroRange:0.0}m)";
+                return true;
+            }
+            why = null;
+            return false;
         }
 
         /// <summary>Open a post-loss re-aggro grace window: no rep may aggro/engage the hero until
@@ -1211,9 +1322,29 @@ namespace DeNelle.Village
 
             float d = Vector3.Distance(hero.transform.position, transform.position);
 
-            if (!_stung && d <= AggroRange)
+            // F8 seq4768 LEASH BREAK — the distance test the chase never had. Placed AFTER the
+            // AnyBattleInProgress return above, so the arena's own hero warp can never un-sting a
+            // rep mid-fight; and re-read every frame, so the ~7 km the hero spends at the arena
+            // during a masked return finally ends a chase instead of feeding it. See the block
+            // comment on DeaggroRange for why this is the fix and a wider probe tolerance is not.
+            // A null HeroHealth (headless / test scenes) counts as ALIVE — the same conservative
+            // reading BattleArena's own outcome arbitration takes ("bool heroAlive = hh == null ||
+            // hh.IsAlive;"), so nothing here can suppress a chase in a scene that has no hero health.
+            bool heroAlive = HeroHealth.Instance == null || HeroHealth.Instance.IsAlive;
+
+            if (_stung && ChaseBrokeOff(heroAlive, d, out string breakWhy)) Deaggro(breakWhy);
+
+            // ⚠ `heroAlive` GATES THE AGGRO TEST TOO, AND IT MUST. Without it a downed hero at
+            //   d<=AggroRange would break the chase on one line and RE-STING on the next, every
+            //   frame: danger-sting audio spam, a de-aggro Step per frame, and the pursuit pulse
+            //   stamped over her corpse anyway — the guard defeated and now loud. Refusing a dead
+            //   hero at BOTH ends is the symmetry Enemy.TryGetHeroAggroDestination already keeps
+            //   ("don't chase a downed/invulnerable hero"), which the WO-1603 wiring lint pins.
+            if (!_stung && heroAlive && d <= AggroRange)
             {
                 _stung = true;
+                _stungAt = _progressAt = Time.time;
+                _chaseBestDist = d;
                 SetPackCombatPresentation(true);
                 Guard.Try("Encounter", "chase sting", () => AbilityAudioBridge.PlayDangerSting());
                 // THREAT CUE (encounter feedback): raise a visible "!" nameplate over the rep the
@@ -1239,8 +1370,40 @@ namespace DeNelle.Village
                     // while pursued) can never miss this producer. Pulse self-expires (PursuitTtl).
                     // WO-1603: tagged so a stuck battle-lock names THIS producer instead of naming
                     // PursuitBattleProbe, which only reads the ring. One of three stamp sites.
+                    //
+                    // F8 seq4768: the stamp is reached ONLY past the leash break above, so it can no
+                    // longer fire for a rep that has lost the hero or is standing over her body.
+                    // The chase itself is unchanged — a rep that is closing still closes.
                     DeNelle.Core.HudModel.PostureSignals.ReportPursuit(
                         _enemy.GetInstanceID(), "OverworldEncounterSpawner/rep-chase");
+
+                    // STALL DIAGNOSTIC (F8 seq4768, instrumentation only — no behaviour change).
+                    // A chase inside the leash that has closed NO ground for ChaseStallWarnSeconds
+                    // is the one shape the leash break cannot judge: near, latched, and never going
+                    // to touch (blocked geometry / a navmesh island / a hero on an unreachable
+                    // ledge). It still holds the battle-lock, and F8 seq 4768 could not tell that
+                    // case from "far away" because the capture carries no distance. Name it here,
+                    // ONCE per interval, so the NEXT holder arrives with its own numbers attached.
+                    //
+                    // ⚠ IT MEASURES TIME-SINCE-PROGRESS, NOT TIME-SINCE-STING, AND IT RE-BASELINES
+                    //   ON A JUMP. Both matter: `_stungAt` would include the whole frozen battle
+                    //   window (the rep holds at :1314 while a fight is staged), and a hero who
+                    //   WARPS home lands far outside the best-ever distance, so a rep that then
+                    //   closes 20->15->12 m never beats its pre-battle best and would be reported
+                    //   "closed no ground" while it is in fact closing. A diagnostic that measures
+                    //   the wrong thing costs the next ticket (CLAUDE.md S12).
+                    if (d > _chaseBestDist + WarpJumpMeters) { _chaseBestDist = d; _progressAt = Time.time; }
+                    else if (d < _chaseBestDist) { _chaseBestDist = d; _progressAt = Time.time; }
+                    else if (Time.time - _progressAt > ChaseStallWarnSeconds && d > TouchDistance(hero) + 1f)
+                    {
+                        FlowTrace.Throttle("Encounter", $"chase-stall-{gameObject.name}", 5f,
+                            $"rep '{gameObject.name}' has closed no ground for {Time.time - _progressAt:0.0}s " +
+                            $"(chasing since t={_stungAt:0.0}): d={d:0.0}m, best={_chaseBestDist:0.0}m, touch={TouchDistance(hero):0.00}m, " +
+                            $"deaggro={DeaggroRange:0.0}m. It is INSIDE the leash so the F8 seq4768 break does not fire, " +
+                            "and it keeps stamping 'OverworldEncounterSpawner/rep-chase' into the pursuit ring - if a " +
+                            "BATTLE_QUIESCENCE_FAIL names that owner alongside this line, the holder is a BLOCKED " +
+                            "chase (navmesh island / unreachable hero), not a far-away latch.");
+                    }
                 }
                 else
                 {

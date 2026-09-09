@@ -149,6 +149,20 @@ namespace DeNelle.Village
         }
 
         /// <summary>
+        /// RAID DEFEND POST. Same wake/home as <see cref="SetLeash"/>, but the chase
+        /// cap is the post's, not <see cref="AggroTuning.BrainChaseLeashRadius"/> (30 m).
+        /// A 30 m chase from the south gate reaches staging and the whole garrison
+        /// dumps onto the pad (owner 2026-09-09: "all the enemies rushed at the start").
+        /// Also wakes on deployed troops, not only the hero.
+        /// </summary>
+        public void SetDefendPost(Vector3 home, float wakeRadius, float chaseRadius)
+        {
+            SetLeash(home, wakeRadius);
+            _defendPost = true;
+            _chaseLeashOverride = chaseRadius > 0f ? chaseRadius : 0f;
+        }
+
+        /// <summary>
         /// WO-770.11 leash decision (PURE — unit-testable without NavMesh/Enemy scaffolding).
         /// Returns true when the mob should be leashed OUT (yield no target, idle at anchor):
         /// a leash is active AND the hero is absent OR outside <paramref name="radius"/> of
@@ -204,6 +218,38 @@ namespace DeNelle.Village
             if (!engaged) return false;                // never engaged -> stay dormant
             if (chaseLeash <= 0f) return false;        // bait allowance disabled (legacy)
             return heroDistanceFromHome <= chaseLeash; // engaged: chase out to the bound
+        }
+
+        private bool RaiderInRadius(Vector3 home, float radius)
+        {
+            if (radius <= 0f || _scanBuffer == null) return false;
+            int n = Physics.OverlapSphereNonAlloc(home, radius, _scanBuffer);
+            for (int i = 0; i < n; i++)
+            {
+                if (_scanBuffer[i] == null) continue;
+                var troop = _scanBuffer[i].GetComponentInParent<TroopController>();
+                if (troop != null && troop.gameObject.activeInHierarchy) return true;
+            }
+            return false;
+        }
+
+        private float NearestTroopDistanceFromHome()
+        {
+            float best = float.PositiveInfinity;
+            float r = _chaseLeashOverride > 0f ? _chaseLeashOverride : _leashRadius;
+            if (r <= 0f || _scanBuffer == null) return best;
+            int n = Physics.OverlapSphereNonAlloc(_homeAnchor, r, _scanBuffer);
+            Vector3 home = _homeAnchor; home.y = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                if (_scanBuffer[i] == null) continue;
+                var troop = _scanBuffer[i].GetComponentInParent<TroopController>();
+                if (troop == null || !troop.gameObject.activeInHierarchy) continue;
+                Vector3 p = troop.transform.position; p.y = 0f;
+                float d = Vector3.Distance(p, home);
+                if (d < best) best = d;
+            }
+            return best;
         }
 
         /// <summary>
@@ -596,6 +642,10 @@ namespace DeNelle.Village
         // so it "wants engage" every tick and this latch is inert (zero regression).
         private bool _chaseEngaged;
 
+        // RAID DEFEND POST (2026-09-09): opt-in. Village/overworld stay on leash=0.
+        private bool  _defendPost;
+        private float _chaseLeashOverride;
+
         // WO-147: consolidated perception sensor (auto-added in Awake) + IsAlert drive.
         private AwarenessSensor _sensor;
         private float _sensorScanTimer;
@@ -973,22 +1023,36 @@ namespace DeNelle.Village
             bool wantsEngage = _hasRoomArea
                 ? ShouldWake(_roomArea, _wakeRadius, heroPresent, heroPosNow)
                 : !ShouldLeashOut(_homeAnchor, _leashRadius, heroPresent, heroPosNow);
+            if (_defendPost && !wantsEngage && _leashRadius > 0f)
+                wantsEngage = RaiderInRadius(_homeAnchor, _leashRadius);
 
             // BAIT ALLOWANCE: the notice ring above says whether the hero is close enough to
             // WAKE this mob; it must not also decide how far the mob may CHASE. Once engaged
             // we hold the chase out to the (data-driven, much wider) chase leash measured
             // from this mob's HOME - so an enemy baited off a pack actually follows.
             float heroFromHome = HeroDistanceFromHome(_hasRoomArea, _roomArea, _homeAnchor, heroPosNow);
-            bool holdChase = ShouldHoldChase(_chaseEngaged, wantsEngage, heroPresent,
-                                             heroFromHome, AggroTuning.BrainChaseLeashRadius);
+            float threatFromHome = heroFromHome;
+            if (_defendPost)
+            {
+                float troopFromHome = NearestTroopDistanceFromHome();
+                if (troopFromHome < threatFromHome) threatFromHome = troopFromHome;
+            }
+            float chaseCap = _chaseLeashOverride > 0f
+                ? _chaseLeashOverride
+                : AggroTuning.BrainChaseLeashRadius;
+            bool threatPresent = heroPresent || (_defendPost && !float.IsPositiveInfinity(threatFromHome)
+                                                 && threatFromHome < 10000f);
+            bool holdChase = ShouldHoldChase(_chaseEngaged, wantsEngage, threatPresent,
+                                             threatFromHome, chaseCap);
             if (holdChase != _chaseEngaged)
             {
                 // sec.12: the engage/break is a CAPTURED data line with the distance in it, so
                 // an F8 capture answers "did the leash break, and at what range" without a rerun.
                 DeNelle.Core.Diagnostics.FlowTrace.Step("EnemyAggro",
-                    $"{name}: chase-engaged -> {holdChase} (hero {heroFromHome:0.0}m from home, " +
-                    $"notice={(wantsEngage ? "in" : "out")}, chaseLeash {AggroTuning.BrainChaseLeashRadius:0.#}m, " +
-                    $"room='{(_hasRoomArea ? _roomId : "<none>")}' wake {_wakeRadius:0.#}m anchorLeash {_leashRadius:0.#}m)");
+                    $"{name}: chase-engaged -> {holdChase} (threat {threatFromHome:0.0}m from home, " +
+                    $"notice={(wantsEngage ? "in" : "out")}, chaseLeash {chaseCap:0.#}m, " +
+                    $"defendPost={_defendPost} room='{(_hasRoomArea ? _roomId : "<none>")}' " +
+                    $"wake {_wakeRadius:0.#}m anchorLeash {_leashRadius:0.#}m)");
             }
             _chaseEngaged = holdChase;
 
@@ -1106,6 +1170,8 @@ namespace DeNelle.Village
             // Left set, a re-used village wave enemy would start "engaged" and (harmlessly but
             // wrongly) carry the widened pursuit slack of a dungeon room it no longer belongs to.
             _chaseEngaged = false;
+            _defendPost = false;
+            _chaseLeashOverride = 0f;
 
             // Targeting / override state.
             _currentTarget           = null;

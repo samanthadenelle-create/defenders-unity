@@ -84,6 +84,25 @@
         "set": [],
         "count": 0
       },
+      "raidDress": {
+        "kit": "hexagon-green",
+        "gate": "wall_straight_gate",
+        "wallModule": "barrier",
+        "floor": "floor_dirt_large",
+        "towersVisual": "building_watchtower_green",
+        "props": [
+          { "token": "building_tent_green", "count": 4, "zone": "Courtyard" },
+          { "token": "barrel_large", "count": 4, "zone": "Courtyard" },
+          { "token": "crate_large", "count": 4, "zone": "Courtyard" },
+          { "token": "crates_stacked", "count": 2, "zone": "Courtyard" },
+          { "token": "weaponrack", "count": 2, "zone": "Courtyard" },
+          { "token": "banner_green", "count": 2, "zone": "Approach" },
+          { "token": "flag_green", "count": 2, "zone": "Gatehouse" },
+          { "token": "crate_large", "count": 2, "zone": "Gatehouse" },
+          { "token": "rubble_large", "count": 2, "zone": "Gatehouse" },
+          { "token": "rubble_large", "count": 3, "zone": "Courtyard" }
+        ]
+      },
       "garrison": {
         "composition": [
           {
@@ -138,8 +157,26 @@
         }
       ],
       "props": {
-        "set": [],
-        "count": 0
+        "set": ["barracks"],
+        "count": 1
+      },
+      "raidDress": {
+        "kit": "synty-castle",
+        "gate": "SM_Bld_Castle_Wall_Gate_01",
+        "wallModule": "SM_Bld_Castle_Wall_01",
+        "floor": "floor_tile_large",
+        "towersVisual": "SM_Bld_Castle_Wall_Tower_M_01",
+        "props": [
+          { "token": "barracks", "count": 1, "zone": "Courtyard" },
+          { "token": "House_Medieval_Medium", "count": 1, "zone": "Courtyard" },
+          { "token": "SM_Prop_Spike_Fortification_01", "count": 3, "zone": "Approach" },
+          { "token": "SM_Prop_Spike_Fortification_01", "count": 4, "zone": "Gatehouse" },
+          { "token": "crate_large", "count": 2, "zone": "Gatehouse" },
+          { "token": "barrel_large", "count": 4, "zone": "Courtyard" },
+          { "token": "crate_large", "count": 4, "zone": "Courtyard" },
+          { "token": "weaponrack", "count": 3, "zone": "Courtyard" },
+          { "token": "rubble_large", "count": 3, "zone": "Courtyard" }
+        ]
       },
       "garrison": {
         "composition": [
@@ -172,7 +209,7 @@
       "rewardMultiplier": 1.5,
       "raidCooldownSeconds": 28800, "_raidCooldownSecondsSuperseded": "WO-1379 2026-09-04 (landed at the door 2026-09-05)  -  Heartfire replaces the per-camp wall. RETIRED AS A GATE: RaidSelectionScreen no longer refuses a card tap on this window and no longer paints Recovering; HeartfireService.HasCharge is the ONE gate on WHEN you may raid. This field IS still read at runtime - RaidCooldownService.BeginAfterClear stamps the recovery RECORD from it on every clear (save evidence: SaveMigrator v41 derives everCompletedRaid from that record) - so it is RETAINED, not deleted. Do not shorten, do not delete: retired is not retuned. (This note used to say the field was not consulted at runtime; that was false - the stamp reads it, and until 2026-09-05 the door did too.)",
       "entranceCount": 1,
-      "interiorWallLayers": 0,
+      "interiorWallLayers": 1,
       "towerPlacementStyle": "OverlappingFire",
       "archerTowerCount": 5,
       "mageTowerCount": 2,
@@ -201,6 +238,23 @@
       "props": {
         "set": [],
         "count": 0
+      },
+      "raidDress": {
+        "kit": "dungeon-stone",
+        "gate": "wall_straight_gate",
+        "wallModule": "wall_cracked",
+        "floor": "floor_tile_large",
+        "towersVisual": "Tower_Castle_Square",
+        "props": [
+          { "token": "pillar_decorated", "count": 6, "zone": "Courtyard" },
+          { "token": "banner_white", "count": 4, "zone": "Keep" },
+          { "token": "torch_mounted", "count": 6, "zone": "Keep" },
+          { "token": "chest_gold", "count": 2, "zone": "Keep" },
+          { "token": "floor_tile_big_spikes", "count": 2, "zone": "Choke" },
+          { "token": "rubble_large", "count": 2, "zone": "Gatehouse" },
+          { "token": "crate_large", "count": 2, "zone": "Gatehouse" },
+          { "token": "rubble_large", "count": 3, "zone": "Courtyard" }
+        ]
       },
       "garrison": {
         "composition": [

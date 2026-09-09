@@ -1,6 +1,15 @@
+> **2026-09-09 — Q1 ANSWERED FROM DISK; IMPLEMENT VIA WO-1607–1611.**
+> Owner asked again to review the raid bases, use KayKit dungeon, and give them defenses
+> beyond fence + tower. The kit inventory, named-zone engine, and per-camp layouts now live
+> in `WORK_ORDER_1607_raid_bases_as_places.md` (spine) + 1608 (engine) + 1609 Easy / 1610 Hard /
+> 1611 Extreme. Do **not** bake this ticket as a second art pass on the same scenes.
+> Q1 four-vibe table below is superseded by 1607 §4 (Easy hexagon-green scavenger camp,
+> Hard hexagon-red fortress, Extreme dungeon-stone keep; Iron Bastion parked). Q2 remains:
+> Easy first (1609), then Hard, then Extreme.
+
 # WO-1593 — KayKit raid bases: landscape, walls, and towers that are not pillars
 
-**Status:** READY TO IMPLEMENT — needs owner kit pick (Q1) before bake  
+**Status:** READY TO IMPLEMENT — kit pick answered by WO-1607; implement through 1608–1611, do not double-bake  
 **Minted:** 2026-09-07 — program WO-1592; banner bumped with 1592–1595  
 **Priority:** P0 felt — “simple walls / towers look like a pillar / better landscape, could be entire KayKit”  
 **Lane:** World / Raid scenes (serialization bottleneck: one agent on raid builders at a time)  

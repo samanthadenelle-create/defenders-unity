@@ -32,7 +32,7 @@
 //   towers[]        -> the turret TYPE palette (weighted by count)(ResolveTowerTypes)
 //   difficulty      -> spire HP + the tower DPS budget            (TierFor)
 //   baseRadius      -> the ring half-extent (was ignored here)    (BuildConfigLayout)
-// Still dead and DELIBERATELY not faked: `props` (no prop dresser for raid bases yet).
+// WO-1608: `props` + `raidDress` are LIVE — RaidBaseDresser consumes them at bake time.
 // WO-932: `eliteCount` is LIVE — RaidGarrisonSpawner.ExpandComposition consumes it.
 //
 // BALANCE (the reason this is not just "more towers"): every turret's damage is
@@ -376,6 +376,16 @@ namespace DeNelle.Editor
             //    PROVEN outside every turret's reach and every defender's awareness radius.
             var staging = PlaceStagingMarker(root, def, radius, towerReport.MaxReach);
 
+            RaidBaseDresser.Dress(def, root, new RaidBaseDresser.LayoutContext
+            {
+                Radius = radius,
+                Innermost = innermost,
+                TwoGates = twoGates,
+                InnerLayers = innerLayers,
+                GateWidth = Mathf.Max(RaidBaseDresser.MinGateWidth, outer.GateWidth),
+                SegmentWidth = outer.SegmentWidth,
+            });
+
             Debug.Log(
                 $"[RaidBaseGenerator] '{root.name}' ({def.displayName}, {tier.Name}) BUILT: " +
                 $"radius {radius:F1}m (~{footprintPct:F0}% of the {MapHalfExtent * 2f:F0}m plane), " +
@@ -521,7 +531,8 @@ namespace DeNelle.Editor
             string prefabPath = entry != null ? entry.visualPrefabPath : null;
             if (!string.IsNullOrEmpty(prefabPath))
             {
-                var prefab = Resources.Load<GameObject>(prefabPath);
+                var prefab = RaidBaseDresser.LoadVisual(prefabPath);
+                if (prefab == null) prefab = RaidBaseDresser.LoadVisual(catalogId);
                 if (prefab != null)
                 {
                     go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
@@ -529,9 +540,9 @@ namespace DeNelle.Editor
                 }
                 else
                 {
-                    Debug.LogWarning($"[RaidBaseGenerator] spire art Resources/{prefabPath} " +
-                                     $"(centralBuilding '{catalogId}') not found - the art pack may not be " +
-                                     "imported. Falling back to a URP-safe primitive obelisk.");
+                    Debug.LogWarning($"[RaidBaseGenerator] spire art '{prefabPath}' " +
+                                     $"(centralBuilding '{catalogId}') not found in StructureContent/KayKit/Synty. " +
+                                     "Falling back to a URP-safe primitive obelisk.");
                 }
             }
             else
@@ -870,12 +881,12 @@ namespace DeNelle.Editor
         /// </summary>
         private static GameObject PlaceTowerProp(Transform parent, TowerPlan plan)
         {
-            var prefab = Resources.Load<GameObject>(plan.PrefabPath);
+            var prefab = RaidBaseDresser.LoadVisual(plan.PrefabPath);
             if (prefab == null && plan.PrefabPath != FallbackTowerPath)
             {
-                Debug.LogWarning($"[RaidBaseGenerator] turret art Resources/{plan.PrefabPath} " +
-                                 $"('{plan.CatalogId}') not found - trying the fallback tower art.");
-                prefab = Resources.Load<GameObject>(FallbackTowerPath);
+                Debug.LogWarning($"[RaidBaseGenerator] turret art '{plan.PrefabPath}' " +
+                                 $"('{plan.CatalogId}') not found - trying StructureContent watchtower.");
+                prefab = RaidBaseDresser.LoadVisual(FallbackTowerPath);
             }
 
             GameObject go;
@@ -886,9 +897,10 @@ namespace DeNelle.Editor
             }
             else
             {
-                Debug.LogWarning($"[RaidBaseGenerator] no turret art at all (Resources/{FallbackTowerPath} " +
+                Debug.LogWarning($"[RaidBaseGenerator] no turret art at all (StructureContent/{FallbackTowerPath} " +
                                  $"missing too) - building a URP-safe primitive turret for '{plan.Label}'.");
                 go = BuildFallbackTurret();
+                MagentaGuard.ProtectPrimitiveArt(go, "RaidBaseGenerator.PlaceTowerProp");
             }
 
             go.name = plan.Label;
@@ -970,6 +982,7 @@ namespace DeNelle.Editor
             public float HalfExtent;
             public int SlotsPerSide;
             public float SegmentWidth;
+            public float GateWidth;
         }
 
         /// <summary>
@@ -983,7 +996,7 @@ namespace DeNelle.Editor
         private static RingReport BuildRing(Transform root, float targetHalfExtent, int minSlotsPerSide,
                                             WallTier tier, bool[] gateSides, string ringName)
         {
-            var towerPrefab = Resources.Load<GameObject>(FallbackTowerPath);
+            var towerPrefab = RaidBaseDresser.LoadVisual(FallbackTowerPath);
             float towerHalf = MeasureTowerHalf(towerPrefab);
 
             // The wall run per side is the gap between the two corner towers.
@@ -1010,6 +1023,12 @@ namespace DeNelle.Editor
                                      $"CornerPost_{ringName}_{SideName[s]}") != null) towers++;
             }
 
+            int gateSpan = 1;
+            while (gateSpan * segW < RaidBaseDresser.MinGateWidth && gateSpan + 2 <= n)
+                gateSpan += 2;
+            int gateStart = gateIndex - gateSpan / 2;
+            float gateWidth = gateSpan * segW;
+
             int segs = 0;
             for (int s = 0; s < 4; s++)
             {
@@ -1019,7 +1038,7 @@ namespace DeNelle.Editor
                 var alongDir = rot * Vector3.right;
                 for (int i = 0; i < n; i++)
                 {
-                    if (sideHasGate && i == gateIndex) continue;   // the gate opening
+                    if (sideHasGate && i >= gateStart && i < gateStart + gateSpan) continue;
                     float along = -run * 0.5f + (i + 0.5f) * segW;
                     segs += PlaceSegment(root, midpoint + alongDir * along, rot, tier, segW,
                                          $"{ringName}_S{SideName[s]}_{i}");
@@ -1030,7 +1049,13 @@ namespace DeNelle.Editor
                       $"+/-{halfExtent:F1}m, {n} panel(s)/side @ {segW:F2}m (floor {minSlotsPerSide}), tier {tier} " +
                       $"({towers} watchtowers, {segs} wall panels), gates=[{GatesToStr(gateSides)}].");
 
-            return new RingReport { HalfExtent = halfExtent, SlotsPerSide = n, SegmentWidth = segW };
+            return new RingReport
+            {
+                HalfExtent = halfExtent,
+                SlotsPerSide = n,
+                SegmentWidth = segW,
+                GateWidth = gateWidth,
+            };
         }
 
         private static string GatesToStr(bool[] gateSides)
@@ -1074,7 +1099,8 @@ namespace DeNelle.Editor
             else
             {
                 go = BuildFallbackTurret();
-                Debug.LogWarning($"[RaidBaseGenerator] tower prefab missing at Resources/{FallbackTowerPath}; " +
+                MagentaGuard.ProtectPrimitiveArt(go, "RaidBaseGenerator.PlaceCornerTower");
+                Debug.LogWarning($"[RaidBaseGenerator] tower prefab missing at StructureContent/{FallbackTowerPath}; " +
                                  $"using a lightweight fallback post for '{name}'.");
             }
             go.name = name;                         // visual post; combat towers are separately budgeted

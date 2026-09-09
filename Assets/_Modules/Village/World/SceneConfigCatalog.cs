@@ -65,6 +65,30 @@ namespace DeNelle.Village
         public int count;
     }
 
+    /// <summary>WO-1608 - one KayKit/Synty/StructureContent dress instance.</summary>
+    [Serializable]
+    public sealed class RaidDressPropDef
+    {
+        public string token;
+        public int count = 1;
+        public string zone;
+    }
+
+    /// <summary>
+    /// WO-1608 - bake-time raid dress. Tokens resolve via RaidBaseDresser (KayKit /
+    /// Synty / StructureContent). Combat stats stay on DefenseTower / WallSegment.
+    /// </summary>
+    [Serializable]
+    public sealed class RaidDressDef
+    {
+        public string kit;
+        public string gate;
+        public string wallModule;
+        public string floor;
+        public string towersVisual;
+        public List<RaidDressPropDef> props;
+    }
+
     /// <summary>
     /// The FULL scene-config record — every field in scene-configs.json (existing
     /// + the WO raid-enrichment fields). Geometry fields drive the generator; the
@@ -128,6 +152,7 @@ namespace DeNelle.Village
         public string centralBuilding;
         public List<TowerDef> towers;
         public PropsDef props;
+        public RaidDressDef raidDress;
 
         // ── Garrison + scoring (spawner/scoring layers — NOT geometry) ───────
         public GarrisonDef garrison;

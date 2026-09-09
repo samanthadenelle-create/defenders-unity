@@ -649,7 +649,37 @@ namespace DeNelle.Core
             if (initStarted)
             {
                 while (!init.IsDone && Now() - t0 < WarmDeadlineSeconds) yield return null;
-                if (!init.IsDone)
+
+                // ⛔ IsValid() IS TESTED FIRST, AND THE ORDER IS THE FIX (2026-09-09 P0, found in
+                // StructureContentWarmer and identical here). In the Addressables that ships with
+                // this project, AsyncOperationHandle.IsDone is `!IsValid() || InternalOp.IsDone`
+                // (Runtime/ResourceManager/AsyncOperations/AsyncOperationHandle.cs:220/:475), so an
+                // INVALID handle reports itself DONE — while .Status reads through InternalOp and
+                // THROWS "Attempting to use an invalid operation handle" (:210/:465). The old
+                // `if (!IsDone) Warn(); else <read Status>` ladder therefore funnelled the invalid
+                // case straight into the throwing branch, and a throw out of a coroutine KILLS it.
+                //
+                // ⛔ WHY A HANDLE WE NEVER RELEASED GOES INVALID: Addressables hands every caller the
+                // SAME shared m_InitializationOperation once init has started
+                // (AddressablesImpl.cs:359-360) and arms ReleaseHandleOnCompletion on it when the
+                // FIRST caller used the default autoReleaseHandle=true (:420-421) — which includes
+                // Addressables' own chain (:107) and EnemyFamilyPullProbe.cs:33. Our `false` never
+                // reaches :421 on that shared-return path, so the op self-releases, is recycled, and
+                // this copy of the handle goes stale. On 2026-09-09 the structure warmer died exactly
+                // here and the owner's whole town rendered as pending-art proxies; the enemy pass has
+                // the same shape, so it gets the same guard before it costs an evening too.
+                if (!init.IsValid())
+                {
+                    FlowTrace.Fail(System,
+                        $"Addressables INIT handle is INVALID after {Now() - t0:F1}s: the shared " +
+                        "initialisation operation was released on completion by whoever started it " +
+                        "(AddressablesImpl.cs:359-360 + :420-421). Skipping the status read — reading " +
+                        ".Status here THROWS and would kill this coroutine, leaving the enemy address " +
+                        "space undiscovered and every enemy a capsule. The pass CONTINUES: an invalid " +
+                        "handle means the operation is finished and gone, and the locator enumeration " +
+                        "below needs no handle at all.");
+                }
+                else if (!init.IsDone)
                 {
                     // Deliberately NOT released while running, and deliberately NOT waited on.
                     // Leaking one handle beats either alternative.
@@ -659,7 +689,10 @@ namespace DeNelle.Core
                 }
                 else
                 {
-                    FlowTrace.Step(System, $"Addressables init {init.Status} in {Now() - t0:F1}s.");
+                    var initStatus = AsyncOperationStatus.None;
+                    Guard.Try(System, "read Addressables init status",
+                        () => { initStatus = init.Status; });
+                    FlowTrace.Step(System, $"Addressables init {initStatus} in {Now() - t0:F1}s.");
                     Guard.Try(System, "release init handle", () => Addressables.Release(init));
                 }
             }

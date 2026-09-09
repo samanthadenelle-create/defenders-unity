@@ -23,6 +23,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
+using DeNelle.Core;
 
 namespace DeNelle.Editor
 {
@@ -83,26 +84,40 @@ namespace DeNelle.Editor
         }
 
         // Add a flat ground plane at y=0 if the scene has none (idempotent by name).
+        // ALWAYS retint: a plane created on an older bake kept Unity's tan Default-Material
+        // because this method used to return early, which is the brown pad in the owner's
+        // 2026-09-09 raid frame.
         private static void EnsureGround(Scene scene)
         {
-            if (GameObject.Find(GroundName) != null) return;
-
-            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);   // Plane = MeshFilter + MeshRenderer + MeshCollider
-            ground.name = GroundName;
-            ground.transform.position = Vector3.zero;
-            ground.transform.localScale = new Vector3(GroundScale, 1f, GroundScale);
-
-            // Dark packed-earth material so the floor reads as ground (URP/Lit, matte).
-            var sh = Shader.Find("Universal Render Pipeline/Lit");
-            if (sh != null)
+            var ground = GameObject.Find(GroundName);
+            bool created = false;
+            if (ground == null)
             {
-                var m = new Material(sh);
-                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", new Color(0.16f, 0.13f, 0.10f, 1f));
-                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0f);
-                var r = ground.GetComponent<Renderer>();
-                if (r != null) r.sharedMaterial = m;
+                ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+                ground.name = GroundName;
+                ground.transform.position = Vector3.zero;
+                ground.transform.localScale = new Vector3(GroundScale, 1f, GroundScale);
+                created = true;
             }
-            Debug.Log($"[RaidNavBake] added {GroundName} ({GroundScale * 10f}m square) at y=0.");
+
+            var c = GroundColorFor(scene.name);
+            var m = MagentaGuard.BuildUrpLitMaterial(c);
+            var r = ground.GetComponent<Renderer>();
+            if (r != null && m != null) r.sharedMaterial = m;
+            MagentaGuard.ProtectPrimitiveArt(ground, "RaidNavBake.RaidGround");
+            Debug.Log($"[RaidNavBake] {(created ? "added" : "retinted")} {GroundName} " +
+                      $"({GroundScale * 10f}m square) color={c} scene={scene.name}.");
+        }
+
+        private static Color GroundColorFor(string sceneName)
+        {
+            if (!string.IsNullOrEmpty(sceneName) &&
+                sceneName.IndexOf("mage_enclave", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Color(0.11f, 0.10f, 0.13f, 1f);
+            if (!string.IsNullOrEmpty(sceneName) &&
+                sceneName.IndexOf("fortified_garrison", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Color(0.20f, 0.19f, 0.18f, 1f);
+            return new Color(0.18f, 0.14f, 0.09f, 1f);
         }
     }
 }

@@ -293,6 +293,12 @@ namespace DeNelle.Core
         private static bool s_warmStarted;
         private static int s_discovered;
 
+        // 2026-09-09 P0 — WHICH PHASE OF THE WARM PASS WAS RUNNING.
+        // The warm pass has no single "address" to name when it dies (init and the bulk download
+        // cover the whole key set), so a throw could only ever be reported as "somewhere in
+        // WarmRoutine". One word per stage turns the survival wrapper's Fail line into a location.
+        private static string s_warmPhase = "not-started";
+
         /// <summary>Where the warm pass has got to.</summary>
         public static StructureContentState State { get; private set; } = StructureContentState.Cold;
 
@@ -562,9 +568,15 @@ namespace DeNelle.Core
                 // the very next line means the catalog answered synchronously (no location) — a
                 // completely different defect from a handle that stays None for 20s and then times
                 // out, and the two were indistinguishable before this line existed.
+                // ⛔ status via StatusText, NOT handle.Status: a handle that is already invalid on
+                // the next line would throw, this whole lambda would report `started=false`, and the
+                // address would be RETIRED AS DEAD for the launch by the !started branch below — a
+                // permanent art loss caused purely by a diagnostic. PercentComplete is DROPPED from
+                // this line for the same reason — it also reads through InternalOp and throws on an
+                // invalid handle, and it told a reader nothing that isDone + status do not.
                 TraceStep(RemoteTunables.VerbosityVerbose,
-                    $"on-demand HANDLE '{address}': valid={handle.IsValid()} status={handle.Status} " +
-                    $"isDone={handle.IsDone} pctComplete={handle.PercentComplete:0.00} " +
+                    $"on-demand HANDLE '{address}': valid={handle.IsValid()} status={StatusText(handle)} " +
+                    $"isDone={handle.IsDone} " +
                     $"issuedIn={(Now() - startedAt) * 1000f:0.0}ms.");
                 handle.Completed += h => OnRequestCompleted(address, h, queued);
             });
@@ -592,7 +604,30 @@ namespace DeNelle.Core
         {
             s_inFlight.Remove(address);
 
-            if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+            // ⛔ THE HANDLE IS NOT AUTOMATICALLY SAFE JUST BECAUSE THIS IS THE Completed CALLBACK.
+            // Status and Result both read through InternalOp and THROW on an invalid handle
+            // (see TryReadStatus), and a throw here escapes into Addressables' own completion
+            // invoker — where it is even less recoverable than the coroutine throw that blanked the
+            // town on 2026-09-09. Ask IsValid() first, and NAME THE ADDRESS when it is not.
+            if (!TryReadStatus(handle, out var completedStatus))
+            {
+                s_failureCause[address] = "the AsyncOperationHandle was already INVALID when its own " +
+                    "Completed callback ran — the operation had been released/recycled by another " +
+                    "owner, so no status, result or exception could be read off it. " +
+                    "| classified=HANDLE-INVALID";
+                FlowTrace.Fail(System,
+                    $"async load of '{address}' completed on an INVALID handle after " +
+                    $"{SecondsWaiting(address):F1}s — nothing can be read off it, so the asset is " +
+                    "treated as NOT arrived. The address keeps its retry budget " +
+                    $"({AttemptsFor(address)}/{MaxRequestAttempts}) and is NOT retired, because an " +
+                    "invalid handle proves nothing about the bytes. No Release is attempted: " +
+                    "releasing an already-released handle is what creates the next invalid one.");
+                MaybeNotifySettled();
+                if (queued) ReleaseSlotAndPump();
+                return;
+            }
+
+            if (completedStatus == AsyncOperationStatus.Succeeded && handle.Result != null)
             {
                 s_resident[Key(typeof(Object), address)] = handle.Result;
                 s_retained.Add(handle);          // ⛔ retained for the process; see header (B)
@@ -621,7 +656,7 @@ namespace DeNelle.Core
                 if (budgetSpent) s_deadAddresses.Add(address);
 
                 FlowTrace.Fail(System,
-                    $"async load of '{address}' FAILED ({handle.Status}) after {SecondsWaiting(address):F1}s " +
+                    $"async load of '{address}' FAILED ({completedStatus}) after {SecondsWaiting(address):F1}s " +
                     $"on attempt {attempts}/{MaxRequestAttempts}. CAUSE: {cause}. " +
                     (budgetSpent
                         ? "Retry budget SPENT — retiring this address for the rest of the launch; the " +
@@ -862,7 +897,21 @@ namespace DeNelle.Core
             {
                 while (!init.IsDone && Now() - t0 < WarmDeadlineSeconds) yield return null;
 
-                if (!init.IsDone)
+                // ⛔ IsValid() FIRST — IsDone is TRUE for an invalid handle, so the old ladder sent
+                // the invalid case into the .Status read and threw. Same trap, same file, same fix
+                // as WarmRoutine; see TryReadStatus for the source citations. A throw here would
+                // have left s_piPrewarmDone false forever and held EVERY residency request for the
+                // life of the launch — the exact failure the Guard at the call site was written to
+                // prevent, arriving one layer deeper.
+                if (!init.IsValid())
+                {
+                    FlowTrace.Fail(System,
+                        $"Pi prewarm: the Addressables INIT handle is INVALID after {Now() - t0:F1}s " +
+                        "(the shared initialisation operation was released by whoever started it — " +
+                        "AddressablesImpl.cs:359-360 + :420-421). Skipping the status read and the " +
+                        "key harvest; the gate is still released below, so nothing is held.");
+                }
+                else if (!init.IsDone)
                 {
                     // Deliberately NOT released while it is still running, and deliberately NOT
                     // waited on. Leaking one handle beats blocking, and beats cancelling the very
@@ -876,7 +925,7 @@ namespace DeNelle.Core
                 else
                 {
                     TraceStep(RemoteTunables.VerbosityNormal,
-                        $"Pi prewarm: Addressables init {init.Status} in {Now() - t0:F1}s.");
+                        $"Pi prewarm: Addressables init {StatusText(init)} in {Now() - t0:F1}s.");
                     Guard.Try(System, "release Pi prewarm init handle", () => Addressables.Release(init));
 
                     // Harvest the key set. This is the second half of the divergence: without it
@@ -937,13 +986,83 @@ namespace DeNelle.Core
                 MaybeNotifySettled();
                 return;
             }
-            Guard.Try(System, "start structure warm pass", () => s_host.StartCoroutine(WarmRoutine()));
+            Guard.Try(System, "start structure warm pass", () => s_host.StartCoroutine(RunWarmPass()));
+        }
+
+        /// <summary>
+        /// ⛔ THE SURVIVAL WRAPPER (2026-09-09 P0). It pumps the warm pass by hand so that ANY throw
+        /// out of it is CAUGHT, NAMED, and turned into a TERMINAL state — instead of killing the
+        /// coroutine where nothing is watching.
+        /// <para>
+        /// ⛔ WHY THE TERMINAL STATE IS THE SEVERE HALF, not the tidy half.
+        /// <see cref="MaybeNotifySettled"/> returns early while <see cref="IsSettled"/> is false, and
+        /// IsSettled is <c>Warm || Degraded</c>. A pass that dies mid-flight therefore leaves State
+        /// pinned on <c>Warming</c> FOREVER, so every <see cref="WhenSettled"/> callback — including
+        /// HubStructureVisualInjector's re-apply of the skins it had to skip — never fires again.
+        /// That is why the owner's town stayed blank rather than filling in as the on-demand fetches
+        /// landed, and why the device's miss line still read <c>warmerState=Warming</c> eight seconds
+        /// after the throw. A non-terminal state is also a LIE to every diagnostic that prints it:
+        /// "Warming" reads as "still in flight" when the truth is "the pass is dead".
+        /// </para>
+        /// <para>Why a wrapper rather than try/catch inside the pass: C# forbids <c>yield return</c>
+        /// inside a try block that has a catch. Pumping the inner enumerator here puts the yield
+        /// OUTSIDE the try, which is legal, costs nothing, and needs no restructuring of the pass.</para>
+        /// </summary>
+        private static IEnumerator RunWarmPass()
+        {
+            var inner = WarmRoutine();
+
+            while (true)
+            {
+                object current = null;
+                bool moved = false;
+                bool faulted = false;
+
+                try
+                {
+                    moved = inner.MoveNext();
+                    if (moved) current = inner.Current;
+                }
+                catch (Exception ex)
+                {
+                    faulted = true;
+                    FlowTrace.Fail(System,
+                        $"warm pass THREW during phase '{s_warmPhase}' and has been stopped: " +
+                        $"{ex.GetType().Name}: {Flatten(ex.Message)}. Counts at the throw: " +
+                        $"discovered={s_discovered}, resident={s_resident.Count}, " +
+                        $"inFlight={s_inFlight.Count}, retained={s_retained.Count}, " +
+                        $"registeredKeys={s_registeredKeys.Count}. The pass is NOT restarted, but it " +
+                        "is no longer allowed to leave the warmer stuck on Warming — see the terminal " +
+                        "state below. On-demand Request() still works and callers keep their " +
+                        "pending-art proxy, so this is a degraded look, never a stall.");
+                }
+
+                if (faulted || !moved) break;
+                yield return current;
+            }
+
+            // ⛔ TERMINAL STATE, ON EVERY PATH. Reached on a clean finish (where WarmRoutine has
+            // already decided Warm/Degraded via DecideState, so this is inert) and on a throw (where
+            // nothing has decided anything). 'Warming' must never survive this line.
+            if (State == StructureContentState.Warming)
+            {
+                State = StructureContentState.Degraded;
+                FlowTrace.Fail(System,
+                    $"warm pass ENDED without deciding a state (phase '{s_warmPhase}', " +
+                    $"discovered={s_discovered}, resident={s_resident.Count}). Forcing DEGRADED so " +
+                    "IsSettled becomes true and the WhenSettled re-apply can finally run. Reporting " +
+                    "'Warming' forever is itself a defect: it told the 2026-09-09 miss lines the " +
+                    "bytes were 'still in flight' when the pass had been dead for 8 seconds.");
+            }
+
+            MaybeNotifySettled();
         }
 
         private static IEnumerator WarmRoutine()
         {
             using var _ = FlowTrace.Enter(System, "WarmRoutine");
             State = StructureContentState.Warming;
+            s_warmPhase = "init";
             float t0 = Now();
 
             // --- 1. Addressables init. THIS is where the remote catalog is fetched, and doing
@@ -957,7 +1076,34 @@ namespace DeNelle.Core
             if (initStarted)
             {
                 while (!init.IsDone && Now() - t0 < WarmDeadlineSeconds) yield return null;
-                if (!init.IsDone)
+
+                // ⛔ IsValid() IS TESTED FIRST, AND THE ORDER IS THE WHOLE FIX. IsDone is TRUE for
+                // an invalid handle (see TryReadStatus), so an `if (!IsDone) ... else <read Status>`
+                // ladder sends the invalid case into the branch that throws. This was the ROOT of
+                // the 2026-09-09 P0.
+                if (!init.IsValid())
+                {
+                    // ⛔ WHY A HANDLE WE NEVER RELEASED GOES INVALID — read at source, not inferred:
+                    // Addressables hands EVERY caller the same shared m_InitializationOperation once
+                    // initialisation has started (AddressablesImpl.cs:359-360), and arms
+                    // ReleaseHandleOnCompletion on that operation when the FIRST caller used the
+                    // default autoReleaseHandle=true (:420-421). Addressables' own chain does exactly
+                    // that (:107, reached by any load issued before init), and so does
+                    // EnemyFamilyPullProbe.cs:33. Our `InitializeAsync(false)` only protects the
+                    // operation when WE are the first caller; on the shared-return path the `false`
+                    // never reaches :421, the op self-releases on completion, is recycled, its
+                    // Version is bumped — and this copy of the handle is stale.
+                    FlowTrace.Fail(System,
+                        $"Addressables INIT handle is INVALID after {Now() - t0:F1}s: something else " +
+                        "owns the shared initialisation operation and released it on completion " +
+                        "(AddressablesImpl.cs:359-360 + :420-421). Reading .Status here is what threw " +
+                        "'Attempting to use an invalid operation handle' on 2026-09-09 (device capture " +
+                        "seq=4708, t=6.07s) and KILLED this coroutine — after which not one structure " +
+                        "address was ever requested and the whole town rendered as pending-art proxies. " +
+                        "The pass now CONTINUES: an invalid handle means the operation is finished and " +
+                        "gone, and the locator enumeration below needs no handle at all.");
+                }
+                else if (!init.IsDone)
                 {
                     // Deliberately NOT released while it is still running, and deliberately NOT
                     // waited on. Leaking one handle beats either alternative.
@@ -967,7 +1113,7 @@ namespace DeNelle.Core
                 }
                 else
                 {
-                    FlowTrace.Step(System, $"Addressables init {init.Status} in {Now() - t0:F1}s.");
+                    FlowTrace.Step(System, $"Addressables init {StatusText(init)} in {Now() - t0:F1}s.");
                     Guard.Try(System, "release init handle", () => Addressables.Release(init));
                 }
             }
@@ -976,6 +1122,7 @@ namespace DeNelle.Core
             // authored on the Structure_Art group (verified in StructureAddressablesMigrator —
             // it sets a GROUP, and a group name is not an Addressables key), so a label query
             // would silently match nothing. Reading the locators needs no network at all.
+            s_warmPhase = "enumerate";
             var keys = new List<string>();
             Guard.Try(System, "enumerate structure addresses", () =>
             {
@@ -999,6 +1146,7 @@ namespace DeNelle.Core
             // on-demand Request() above resolves from a file instead of the CDN.
             if (keys.Count > 0)
             {
+                s_warmPhase = "download";
                 AsyncOperationHandle dl = default;
                 bool dlStarted = Guard.Try(System, "DownloadDependenciesAsync(structures)",
                     () => { dl = Addressables.DownloadDependenciesAsync(keys, Addressables.MergeMode.Union, false); });
@@ -1007,7 +1155,21 @@ namespace DeNelle.Core
                 {
                     while (!dl.IsDone && Now() - t0 < WarmDeadlineSeconds) yield return null;
 
-                    if (!dl.IsDone)
+                    // ⛔ IsValid() FIRST, for the same reason as the init handle above: IsDone is
+                    // TRUE for an invalid handle, so testing it first routes the invalid case into
+                    // the .Status read and throws out of the coroutine.
+                    if (!dl.IsValid())
+                    {
+                        FlowTrace.Fail(System,
+                            $"structure download handle is INVALID after {Now() - t0:F1}s for " +
+                            $"{keys.Count} address(es) under '{AddressPrefix}' — the dependency " +
+                            "operation was released or recycled by someone other than us. NOT fatal " +
+                            "and NOT waited on: the residency phase below re-asks per address through " +
+                            "Request(), which is the path that actually makes assets resident. This " +
+                            "branch exists so the pass CONTINUES instead of throwing here, which is " +
+                            "how the 2026-09-09 blank town happened one handle earlier.");
+                    }
+                    else if (!dl.IsDone)
                     {
                         FlowTrace.Warn(System,
                             $"structure content still downloading after {Now() - t0:F1}s (deadline {WarmDeadlineSeconds}s) — " +
@@ -1017,7 +1179,7 @@ namespace DeNelle.Core
                     else
                     {
                         FlowTrace.Step(System,
-                            $"structure content download {dl.Status} in {Now() - t0:F1}s.");
+                            $"structure content download {StatusText(dl)} in {Now() - t0:F1}s.");
                         Guard.Try(System, "release download handle", () => Addressables.Release(dl));
                     }
                 }
@@ -1046,6 +1208,7 @@ namespace DeNelle.Core
             // deadline still lands instead of being dropped.
             if (keys.Count > 0)
             {
+                s_warmPhase = "residency";
                 for (int i = 0; i < keys.Count; i++) Request(keys[i]);
                 FlowTrace.Step(System,
                     $"warm pass requested {keys.Count} structure asset(s) for RESIDENCY " +
@@ -1059,11 +1222,13 @@ namespace DeNelle.Core
                         "NOT waited on and NOT cancelled; they still become resident when they land.");
             }
 
+            s_warmPhase = "settle";
             s_discovered = keys.Count;
             State = DecideState(s_discovered, s_resident.Count);
             FlowTrace.Step(System,
                 $"warm pass settled as {State} in {Now() - t0:F1}s (discovered={s_discovered}, " +
                 $"resident={s_resident.Count}, inFlight={s_inFlight.Count}, retained={s_retained.Count}).");
+            s_warmPhase = "done";
             MaybeNotifySettled();
         }
 
@@ -1114,6 +1279,60 @@ namespace DeNelle.Core
         // =====================================================================
 
         private static string Key(Type t, string address) => t.Name + ":" + address;
+
+        /// <summary>
+        /// Read <c>handle.Status</c> WITHOUT the throw that killed the warm pass on 2026-09-09.
+        /// Returns false when the handle is not valid; <paramref name="status"/> is then
+        /// <see cref="AsyncOperationStatus.None"/> and MUST NOT be printed as a real status.
+        /// <para>
+        /// ⛔ THE TRAP, AND IT IS THE OPPOSITE OF WHAT THE NAMES SUGGEST. Verified in the
+        /// Addressables that ships in this project
+        /// (Library/PackageCache/com.unity.addressables@8460f1c9c927,
+        /// Runtime/ResourceManager/AsyncOperations/AsyncOperationHandle.cs):
+        ///   * <c>IsDone</c> (:220 generic, :475 non-generic) is
+        ///         <c>!IsValid() || InternalOp.IsDone</c>
+        ///     — so an INVALID handle reports itself DONE.
+        ///   * <c>Status</c> (:283 / :555) goes through <c>InternalOp</c>, which THROWS
+        ///     <c>"Attempting to use an invalid operation handle"</c> (:210 / :465).
+        /// Put those together and the idiom this file used everywhere —
+        /// <code>
+        ///   while (!h.IsDone &amp;&amp; notPastDeadline) yield return null;
+        ///   if (!h.IsDone) Warn(); else Step(h.Status);
+        /// </code>
+        /// — funnels an invalid handle STRAIGHT INTO the throwing branch. A throw out of a
+        /// coroutine kills the coroutine, and killing this one is what blanked EVERY building in
+        /// the owner's town (device capture seq=4708, 2026-09-09, t=6.07s, scene Title).
+        /// </para>
+        /// <para>⛔ ASK <c>IsValid()</c> BEFORE <c>Status</c>, <c>Result</c> or
+        /// <c>OperationException</c>. NEVER infer validity from <c>IsDone</c>, and never order a
+        /// branch so that the IsDone test runs first.</para>
+        /// </summary>
+        private static bool TryReadStatus(AsyncOperationHandle handle, out AsyncOperationStatus status)
+        {
+            var read = AsyncOperationStatus.None;
+            bool valid = false;
+
+            // Even IsValid() sits behind a Guard. It only touches fields today, but this helper's
+            // entire job is "nothing on the warm path throws again", and a diagnostic that can
+            // itself fail is worse than no diagnostic (same reasoning as TryReadLastTransport).
+            Guard.Try(System, "read Addressables handle validity + status", () =>
+            {
+                valid = handle.IsValid();
+                if (valid) read = handle.Status;
+            });
+
+            status = read;
+            return valid;
+        }
+
+        /// <summary>
+        /// One-word description of a handle for a trace line, safe on an invalid handle.
+        /// Prints the real status when there is one and the literal <c>INVALID-HANDLE</c> when
+        /// there is not — never a manufactured <c>None</c>, because "None" is a legitimate live
+        /// status and conflating the two is how the next reader loses an evening.
+        /// </summary>
+        private static string StatusText(AsyncOperationHandle handle) =>
+            TryReadStatus(handle, out var s) ? s.ToString() : "INVALID-HANDLE";
 
         /// <summary>The last URL Addressables asked the webview to fetch (PROD-022 diagnostics).</summary>
         public static string LastRequestUrl => s_lastRequestUrl;

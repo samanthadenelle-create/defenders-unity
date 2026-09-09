@@ -93,7 +93,6 @@ namespace DeNelle.Editor.Regression
             {
                 { "faction",     "cosmetic/lore tag; no gameplay home yet (banner art lane)." },
                 { "themeColor",  "banner/accent hex; the raid selection UI does not tint yet." },
-                { "props",       "prop dressing set; no prop dresser exists for raid bases." },
                 { "oneStarTime", "documented as 'no upper bound' (always 0) - informational only." },
                 // WO-932: eliteCount REMOVED from this ledger — RaidGarrisonSpawner.ExpandComposition
                 // now appends eliteCount copies of the strongest composition / boss id.

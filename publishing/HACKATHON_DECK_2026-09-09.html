@@ -1,0 +1,403 @@
+<title>Echoes of Elarion Pitch</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Spectral:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root{
+    --obsidian:#0B0A0D;
+    --panel:#141218;
+    --panel-2:#1B1820;
+    --gold:#C9A227;
+    --gold-soft:#8C7326;
+    --ember:#B4482A;
+    --moss:#7C9070;
+    --parchment:#EDE6D8;
+    --parchment-dim:#A89F8E;
+    --hairline:rgba(201,162,39,.28);
+
+    --step--1:.78rem;
+    --step-0:1.02rem;
+    --step-1:1.35rem;
+    --step-2:1.9rem;
+    --step-3:2.7rem;
+    --step-4:3.9rem;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(120% 70% at 50% -10%, #1A1520 0%, rgba(11,10,13,0) 60%),
+      var(--obsidian);
+    color:var(--parchment);
+    font-family:"Spectral",Georgia,"Times New Roman",serif;
+    font-size:var(--step-0);
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .deck{
+    max-width:1080px;
+    margin:0 auto;
+    padding:40px 20px 96px;
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+  }
+
+  /* --- the Obsidian panel: the game's own modal chrome, black with gold trim --- */
+  .slide{
+    position:relative;
+    background:linear-gradient(180deg,var(--panel-2) 0%,var(--panel) 100%);
+    border:1px solid var(--hairline);
+    padding:52px 56px 48px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+  .slide::before,.slide::after{
+    content:"";
+    position:absolute;
+    width:14px;height:14px;
+    border:1px solid var(--gold);
+    opacity:.55;
+  }
+  .slide::before{top:9px;left:9px;border-right:0;border-bottom:0;}
+  .slide::after{bottom:9px;right:9px;border-left:0;border-top:0;}
+
+  .num{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:var(--step--1);
+    letter-spacing:.16em;
+    color:var(--gold-soft);
+    text-transform:uppercase;
+  }
+  h1,h2,h3{
+    font-family:"Cinzel",Palatino,Georgia,serif;
+    text-wrap:balance;
+    margin:0;
+    font-weight:700;
+    letter-spacing:.01em;
+  }
+  h1{font-size:var(--step-4);line-height:1.02;}
+  h2{font-size:var(--step-2);line-height:1.15;}
+  h3{font-size:var(--step-0);letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:500;}
+  p{margin:0;max-width:64ch;}
+  .lede{font-size:var(--step-1);line-height:1.5;color:var(--parchment);}
+  .dim{color:var(--parchment-dim);}
+  em{color:var(--parchment);font-style:italic;}
+  strong{color:#F6EFDF;font-weight:600;}
+
+  .rule{height:1px;background:linear-gradient(90deg,var(--gold) 0%,rgba(201,162,39,0) 72%);}
+
+  /* --- title slide --- */
+  .title-slide{padding:76px 56px 64px;gap:26px;}
+  .eyebrow{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:var(--step--1);
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    color:var(--gold);
+  }
+  .tagline{font-size:var(--step-1);font-style:italic;color:var(--parchment-dim);}
+  .title-meta{
+    display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;
+  }
+
+  /* --- reusable pieces --- */
+  .chip{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:var(--step--1);
+    letter-spacing:.04em;
+    padding:5px 11px;
+    border:1px solid var(--hairline);
+    color:var(--parchment-dim);
+    white-space:nowrap;
+  }
+  .chip.live{border-color:rgba(124,144,112,.55);color:var(--moss);}
+  .chip.hot{border-color:rgba(180,72,42,.55);color:#D8785C;}
+
+  .cols{display:grid;gap:26px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));}
+  .col h3{margin-bottom:8px;}
+  .col p{font-size:.96rem;}
+
+  .loop{display:grid;gap:0;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));border:1px solid var(--hairline);}
+  .loop > div{padding:20px 22px;border-right:1px solid var(--hairline);display:flex;flex-direction:column;gap:8px;}
+  .loop > div:last-child{border-right:0;}
+  .loop .step{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:var(--step--1);color:var(--gold-soft);letter-spacing:.14em;}
+  .loop .what{font-family:"Cinzel",Georgia,serif;font-size:1.06rem;color:#F6EFDF;}
+  .loop p{font-size:.9rem;color:var(--parchment-dim);}
+
+  ul{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:13px;}
+  li{display:grid;grid-template-columns:16px 1fr;gap:12px;align-items:start;max-width:70ch;}
+  li::before{content:"";margin-top:.62em;width:7px;height:7px;background:var(--gold);transform:rotate(45deg);}
+  li b{color:#F6EFDF;font-weight:600;}
+
+  .tablewrap{overflow-x:auto;}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:.95rem;}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid rgba(201,162,39,.16);}
+  th{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:var(--step--1);text-transform:uppercase;letter-spacing:.13em;
+    color:var(--gold-soft);font-weight:600;
+  }
+  td.tier{font-family:"Cinzel",Georgia,serif;color:#F6EFDF;}
+  td.amt{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;color:var(--gold);white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:0;}
+
+  code,.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.86em;color:var(--moss);word-break:break-all;}
+
+  .callout{
+    border-left:2px solid var(--ember);
+    padding:14px 20px;
+    background:rgba(180,72,42,.07);
+  }
+  .callout p{font-size:.98rem;}
+
+  .split{display:grid;gap:26px;grid-template-columns:1fr 1fr;}
+  @media (max-width:760px){
+    .split{grid-template-columns:1fr;}
+    .slide{padding:38px 26px 34px;}
+    .title-slide{padding:52px 26px 44px;}
+    :root{--step-4:2.6rem;--step-3:2rem;--step-2:1.5rem;}
+  }
+
+  .links{display:flex;flex-direction:column;gap:10px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.88rem;}
+  .links span{color:var(--gold-soft);letter-spacing:.1em;text-transform:uppercase;margin-right:10px;}
+  .links a{color:var(--parchment);text-decoration:none;border-bottom:1px solid var(--hairline);}
+  .links a:hover,.links a:focus-visible{color:var(--gold);border-color:var(--gold);}
+  a:focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
+
+  .foot{
+    text-align:center;font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:var(--step--1);letter-spacing:.18em;color:#5C5648;text-transform:uppercase;
+  }
+</style>
+
+<div class="deck">
+
+  <!-- 01 -->
+  <section class="slide title-slide">
+    <div class="eyebrow">Solana Mobile &middot; Seeker &middot; dApp Store</div>
+    <h1>Defenders of the Realm<br>Echoes of Elarion</h1>
+    <div class="rule"></div>
+    <p class="tagline">Echoes of a Forgotten Civilization</p>
+    <p class="lede">An action RPG and settlement builder for Android, built fun-first and shipped to
+      the Solana dApp Store &mdash; where staked SKR is read from the chain and answered in-game.</p>
+    <div class="title-meta">
+      <span class="chip live">Live on the dApp Store</span>
+      <span class="chip">Unity 6 &middot; IL2CPP &middot; ARM64</span>
+      <span class="chip">DeNelle Studios</span>
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section class="slide">
+    <div class="num">01 &mdash; The problem</div>
+    <h2>Mobile web3 gaming has an empty-stadium problem</h2>
+    <div class="split">
+      <p>The catalog is full of extraction-first apps with no game underneath. Players arrive for a
+        token, find nothing to do, and leave. The wallet is the product and the game is the wrapper.</p>
+      <p>What a store like this is actually short of is the ordinary thing: a game somebody wants to
+        open on the bus. <em>Build that first</em> &mdash; then the chain has something to attach to.</p>
+    </div>
+    <div class="callout">
+      <p><strong>Our position:</strong> fun-first, crypto as a swappable rail. Nothing on the chain
+        makes you stronger than a player who never connects a wallet.</p>
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section class="slide">
+    <div class="num">02 &mdash; The game</div>
+    <h2>One loop, four turns</h2>
+    <p class="lede">You defend the Heart of Elarion &mdash; a world-tree at the centre of a dying
+      realm. Combat feeds the economy, the economy funds the stronghold, the stronghold lets you
+      fight deeper.</p>
+    <div class="loop">
+      <div>
+        <span class="step">TURN I</span>
+        <span class="what">Fight</span>
+        <p>Real-time action combat. Four classes, talent trees that reach a castable ability on the
+          first point.</p>
+      </div>
+      <div>
+        <span class="step">TURN II</span>
+        <span class="what">Harvest</span>
+        <p>Echoes &mdash; the awakened essences of the people the tree guards &mdash; gather while
+          you play and while you are away.</p>
+      </div>
+      <div>
+        <span class="step">TURN III</span>
+        <span class="what">Build</span>
+        <p>A fully player-placed town: storefronts, defenses, walls, queues for building, training
+          and research.</p>
+      </div>
+      <div>
+        <span class="step">TURN IV</span>
+        <span class="what">Raid</span>
+        <p>Take the fight out to camps and enemy bases. Heartfire gates the raids; every camp states
+          what it pays.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section class="slide">
+    <div class="num">03 &mdash; Where it stands</div>
+    <h2>Already shipped, already updating</h2>
+    <p>This is not a hackathon prototype. The game is published and in players' hands on Seeker, and
+      the submission pipeline is a routine we run, not a thing we are about to attempt.</p>
+    <div class="cols">
+      <div class="col">
+        <h3>Live release</h3>
+        <p class="mono" style="color:var(--parchment)">2026.08.17.328845</p>
+        <p class="dim">Shipping updates on top of it; the next store build is cut and note-drafted.</p>
+      </div>
+      <div class="col">
+        <h3>App NFT</h3>
+        <p class="mono">5MG4atMRDSVn9t75oFz1KVxKdUkyz2wPi2MeunT8yFe6</p>
+      </div>
+      <div class="col">
+        <h3>Package</h3>
+        <p class="mono">com.denellestudios.echoesofelarion</p>
+        <p class="dim">Keystore-signed for in-place updates.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section class="slide">
+    <div class="num">04 &mdash; Mobile engineering</div>
+    <h2>What the Android work actually was</h2>
+    <ul>
+      <li><b>Two store variants from one tree.</b> The dApp Store artifact compiles the Solana and
+        SKR modules <em>in</em>; the Google Play artifact compiles them <em>out</em> entirely &mdash;
+        not runtime-gated, so the strings never reach the binary. A packaging gate fails the build if
+        that isolation breaks.</li>
+      <li><b>Mobile Wallet Adapter sign-in with session persistence.</b> Sign in once, stay signed in
+        for the day; the wallet is only re-asked at a purchase or a code redemption. Key material
+        never touches game code.</li>
+      <li><b>Manage rebuilt for a phone.</b> Nine full-screen pages, buildings as picture cards, a
+        queue drawer, pick-up-and-move for placed structures, a 112&nbsp;px touch-target floor.</li>
+      <li><b>Content served from a CDN, not packed in the APK</b> &mdash; with a parity gate that
+        blocks any release whose bundles were never uploaded.</li>
+      <li><b>Cloud save keyed to the connected wallet</b>, with guest device saves carrying over on
+        first connect.</li>
+      <li><b>A live capture harness</b> for on-device crash and softlock triage, used every session.</li>
+    </ul>
+  </section>
+
+  <!-- 06 -->
+  <section class="slide">
+    <div class="num">05 &mdash; SKR</div>
+    <h2>We read your stake. We never hold your SKR.</h2>
+    <p class="lede">SKR is Solana Mobile's token, not ours. We do not mint it, do not custody it, and
+      keep no withdrawable in-game SKR balance. It shows up in the game two ways, both non-custodial.</p>
+
+    <h3>I. Native staking, read-only</h3>
+    <p>The game queries the real SKR staking program for the player's <em>active</em> stake &mdash;
+      program <span class="mono">SKRskrmtL83pcL4YqLWt6iPefDqwXQWHSw9S9vz94BZ</span>, with the
+      stake-config and guardian-pool accounts and PDA seeds taken from Solana Mobile's own
+      <span class="mono">skr-staking</span> sample and decoded against its published IDL layout. The
+      connected wallet address is used <em>only as a lookup key</em>: no signature, no transfer, no
+      custody. Tiers are cumulative, and the whole table is authored data we can tune without a code
+      change.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th scope="col">Tier</th><th scope="col">Active SKR</th><th scope="col">What the realm gives back</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="tier">Seeker</td><td class="amt">1</td><td>A profile badge marking you as a staker</td></tr>
+          <tr><td class="tier">Vanguard</td><td class="amt">1,000</td><td>The &ldquo;Vanguard&rdquo; title, and a small daily Crystal trickle</td></tr>
+          <tr><td class="tier">Warden</td><td class="amt">25,000</td><td>The Warden banner sigil</td></tr>
+          <tr><td class="tier">Genesis</td><td class="amt">250,000</td><td>The &ldquo;Genesis&rdquo; title, and a golden aura on your hero in town</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="dim">Deliberately small &mdash; cosmetic and flavour only. A CI covenant gate fails the
+      build if a stake reward stops being cosmetic.</p>
+
+    <h3>II. SKR as a payment rail</h3>
+    <p>Every support pack carries a real SKR price beside SOL and USDC, so a player holding SKR pays
+      in SKR natively on the dApp Store build &mdash; where the platform takes 0%. That is exactly why
+      SKR is the currency we convert to. Signing routes through MWA and Seed Vault; the game builds a
+      transaction only for an explicit purchase.</p>
+  </section>
+
+  <!-- 07 -->
+  <section class="slide">
+    <div class="num">06 &mdash; The covenant</div>
+    <h2>Three lines we wrote into the build, not the pitch</h2>
+    <div class="cols">
+      <div class="col">
+        <h3>Never pay-to-win</h3>
+        <p>Chain-derived rewards are cosmetic or flavour. A player who never connects a wallet is
+          never behind one who does. Enforced by a gate, not a promise.</p>
+      </div>
+      <div class="col">
+        <h3>Never custodial</h3>
+        <p>You stake natively with Solana Mobile. We read. There is no in-game SKR ledger to drain,
+          because there is no in-game SKR ledger.</p>
+      </div>
+      <div class="col">
+        <h3>Never a hidden crypto app</h3>
+        <p>The Play build has the crypto surfaces compiled out of the binary; the dApp Store build has
+          them compiled in. Each store gets an honest artifact.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 -->
+  <section class="slide">
+    <div class="num">07 &mdash; Under the hood</div>
+    <h2>Built to keep shipping</h2>
+    <div class="split">
+      <ul>
+        <li><b>Unity 6, IL2CPP/ARM64</b>, twenty-plus assemblies on enforced dependency boundaries.</li>
+        <li><b>Data-driven design</b> &mdash; balance, tiers, packs and waves are authored JSON with
+          schema tests, so tuning is not a code change.</li>
+        <li><b>Instrumented, not guessed</b> &mdash; a permanent flow-trace layer plus an on-device
+          capture harness; frame-cost scopes name the dominant cost in milliseconds.</li>
+      </ul>
+      <ul>
+        <li><b>Gated releases</b> &mdash; compile, regression suites, UI capture and content parity
+          all have to be green on a fresh log before a build reaches a device.</li>
+        <li><b>Backend</b> &mdash; serverless save/auth with a wallet-keyed player id and cloud
+          carry-over.</li>
+        <li><b>Public repository</b>, with the same gates in the tree the judges can read.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 09 -->
+  <section class="slide">
+    <div class="num">08 &mdash; Next</div>
+    <h2>Where the SKR rail goes</h2>
+    <ul>
+      <li><b>Skin-in-the-game brackets.</b> Tournament buy-ins and prize pots settled in SKR &mdash;
+        the arena and wallet seams are already in the tree.</li>
+      <li><b>Seeker-exclusive cosmetics</b> that exist only in the dApp Store build, so the Solana
+        edition is the better edition rather than the same one with a wallet bolted on.</li>
+      <li><b>Deeper stake recognition</b> &mdash; more tiers, seasonal sigils, and staker-only town
+        flourishes, all still cosmetic and all still read-only.</li>
+      <li><b>Live-ops cadence:</b> seasonal content on the update pipeline that already ships.</li>
+    </ul>
+  </section>
+
+  <!-- 10 -->
+  <section class="slide">
+    <div class="num">09 &mdash; Links</div>
+    <h2>Play it, read it, run it</h2>
+    <div class="links">
+      <p><span>Store</span> Solana dApp Store &mdash; search &ldquo;Defenders Of the Realm&rdquo; on your Seeker</p>
+      <p><span>Site</span> <a href="https://echoes-of-elarion.vercel.app/">echoes-of-elarion.vercel.app</a></p>
+      <p><span>Repo</span> <a href="https://github.com/samanthadenelle-create/defenders-unity">github.com/samanthadenelle-create/defenders-unity</a></p>
+      <p><span>APK</span> direct download &mdash; link supplied with the submission</p>
+      <p><span>Studio</span> DeNelle Studios &middot; support.EoA@icloud.com</p>
+    </div>
+    <div class="rule"></div>
+    <p class="dim">Every figure in this deck was read from the shipping code or the live listing on
+      9 September 2026.</p>
+  </section>
+
+  <p class="foot">Heart of Elarion &middot; DeNelle Studios &middot; MMXXVI</p>
+</div>

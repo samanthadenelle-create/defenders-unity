@@ -335,7 +335,33 @@ namespace DeNelle.Village
         /// </para>
         /// Fails OPEN on a missing instance/state, the same rule as the ambient gate.
         /// </summary>
-        public static bool WaveLoopSuppressedForTutorial
+        public static bool WaveLoopSuppressedForTutorial => IsMandatoryChainLive;
+
+        /// <summary>
+        /// WO-1414 D -- TRUE while the MANDATORY FTUE chain owns the session: an armed instance
+        /// on a not-yet-Onboarded save that has not parked at <c>Finished</c>. This is the ONE
+        /// predicate for "the tutorial is in charge right now"; <see cref="WaveLoopSuppressedForTutorial"/>
+        /// delegates to it rather than carrying a second copy of the same three checks.
+        /// <para>
+        /// ⚠ THIS IS THE KEY THE WELCOME-BACK DEFERRAL MUST USE, NOT <see cref="IsAwaitingDialogue"/>.
+        /// Captured 2026-09-05 (F8 seq 4682/4705): at hub load the flow is ARMED but not STARTED --
+        /// during the <c>SettleSeconds</c> window <c>_step</c> is still null, so
+        /// <see cref="AwaitedDialogueSignal"/> reads null and the narrow key evaluates FALSE. The
+        /// modal opened in that window, the chain then started UNDERNEATH it, and the founding beat
+        /// died on its watchdog (<c>STEP-STUCK :: founding_greet</c>) with the SKIP control
+        /// unreachable (<c>SKIP_TOP_HIT_BLOCKED top=ObsidianPanel path=WelcomeBackUI/ObsidianPanel</c>).
+        /// The narrow key cannot close that window because the window is exactly where it reads null.
+        /// </para>
+        /// <para>
+        /// <c>Idle</c> counts as LIVE, deliberately -- see the note on
+        /// <see cref="WaveLoopSuppressedForTutorial"/>: <c>s_instance</c> is published in
+        /// <c>Awake</c> but <c>_phase</c> is not set until <c>Start</c>, so <c>Idle</c> can only
+        /// mean "Start has not run yet", which is the hub-load window this exists to cover. Do NOT
+        /// weaken it to <c>!= Idle &amp;&amp; != Finished</c>. Fails OPEN (false) on a missing
+        /// flag / state / instance, the same rule as the spawner gates.
+        /// </para>
+        /// </summary>
+        public static bool IsMandatoryChainLive
         {
             get
             {
@@ -345,6 +371,20 @@ namespace DeNelle.Village
                 var flow = s_instance;
                 if (flow == null) return false;          // fail-open, same rule as the ambient gate
                 return flow._phase != Phase.Finished;
+            }
+        }
+
+        /// <summary>WO-1414 D -- "<c>&lt;phase&gt;/&lt;stepId&gt;</c>" for the live flow, for a trace
+        /// line raised from OUTSIDE the flow (the welcome-back deferral). Static because the
+        /// deferral has no instance handle; null-safe, side-effect-free, and it names the Settle
+        /// window honestly as <c>Settling/&lt;none&gt;</c> rather than printing an empty awaited signal.</summary>
+        public static string LiveChainStateLine
+        {
+            get
+            {
+                var flow = s_instance;
+                if (flow == null) return "<no flow>";
+                return flow._phase + "/" + (flow._step != null ? flow._step.Id : "<none>");
             }
         }
 
@@ -506,6 +546,11 @@ namespace DeNelle.Village
         /// wall-clock <c>_watchdogAt</c> stamp, which charged app-background time to the step.</summary>
         private readonly StepClock _stepClock = new StepClock();
         private bool _suspendJumpTraced;            // one [Flow:Tutorial] line per step per suspend
+        /// <summary>WO-1414 D: the slice of <see cref="StepClock.Excluded"/> that was excluded
+        /// because a MODAL owned the screen, kept separately so the STEP-STUCK breakdown can say
+        /// WHY, not just how much. StepClock stays pure and untouched (it is pinned by
+        /// TutorialWatchdogBoundRegression); this is the reason-tag that lives with the flow.</summary>
+        private float _modalExcludedSeconds;
         private int _skips;
         private float _flowStartedAt;
         private bool _completionArmed;
@@ -777,6 +822,7 @@ namespace DeNelle.Village
             _stepEnteredAt = Time.unscaledTime;
             _stepClock.Reset();                    // WO-1036: a fresh PLAYED budget for this beat
             _suspendJumpTraced = false;
+            _modalExcludedSeconds = 0f;            // WO-1414 D: per-step, like the clock it annotates
             _completionArmed = false;
             _awaitSignal = step.Completion != null ? step.Completion.Signal : null;
             _coachBeats = 0;
@@ -2413,9 +2459,25 @@ namespace DeNelle.Village
 
             bool builder = DeNelle.Core.BuildModeState.IsActive;
             bool frozen  = WorldClockFrozen;
+            // WO-1414 D -- THE THIRD EXCLUSION, and it is the same rule as the other two: a beat
+            // must never be charged for seconds the player could not act in. Captured 2026-09-05
+            // (F8 seq 4682): the welcome-back modal sat over founding_greet at sortingOrder 32020
+            // while the SKIP control lives at 6000, so the ONE escape hatch was unreachable, and
+            // the breakdown still read "played-and-charged 120s ... excluded (builder/frozen) 0s"
+            // before the beat was RESCUED and recorded as SKIPPED. A modal is neither the builder
+            // nor a frozen clock, so it fell through both existing gates.
+            // NARROW ON PURPOSE: the welcome-back report specifically, NOT "any PanelManager modal".
+            // Pausing under Manage/Build/inventory screens would mask a genuinely stuck beat -- the
+            // exclusion is for a modal the player did not open and cannot see past, not for one they
+            // chose. Widen only with a capture that names the screen.
+            bool modal   = DeNelle.Village.UI.WelcomeBackPopup.IsOpen;
             int  before  = _stepClock.DiscardedJumpFrames;
 
-            _stepClock.Tick(Time.unscaledDeltaTime, excluded: builder || frozen);
+            float accepted = _stepClock.Tick(Time.unscaledDeltaTime, excluded: builder || frozen || modal);
+            // Attribute the frame to the modal only when the modal is the reason it was excluded,
+            // so the breakdown's "of which modal" slice can never overstate itself on a frame the
+            // builder or a frozen clock would have excluded anyway.
+            if (modal && !builder && !frozen) _modalExcludedSeconds += accepted;
 
             if (_stepClock.DiscardedJumpFrames > before && !_suspendJumpTraced)
             {
@@ -2459,6 +2521,24 @@ namespace DeNelle.Village
                 return;
             }
 
+            // WO-1414 D: never rescue a step while a modal the player did not open owns the screen.
+            // Captured 2026-09-05 (F8 seq 4682/4705): the welcome-back report opened over
+            // founding_greet and covered the ONE skip control (SKIP_TOP_HIT_BLOCKED
+            // top=ObsidianPanel path=WelcomeBackUI/ObsidianPanel), and the beat was then rescued-and
+            // -SKIPPED for 120s the player had no way to spend. Same shape as the two pauses above:
+            // TickStepClock has already EXCLUDED the frame, this is the visible "why we are not
+            // tripping" line. In a healthy run the deferral (WO-1414 D half A) takes the modal away
+            // within a frame of the chain going live, so this line should NOT fire -- if a capture
+            // ever shows it, half A did not hold and that is the finding.
+            if (DeNelle.Village.UI.WelcomeBackPopup.IsOpen)
+            {
+                FlowTrace.Once("Tutorial", "watchdog-modal-pause",
+                    "STEP-STUCK watchdog PAUSED while the welcome-back report owns the screen — it covers the " +
+                    "skip control (sortingOrder 32020 vs 6000), so this is not idle time (WO-1414 D). " +
+                    "The reveal should already have been deferred; seeing this line means it was not.");
+                return;
+            }
+
             float bound = WatchdogSecondsForCurrentStep();
             if (!_stepClock.Expired(bound)) return;
 
@@ -2489,6 +2569,7 @@ namespace DeNelle.Village
             float  idle     = _stepClock.Charged;                        // WO-1036: PLAYED, charged time
             float  wall     = Time.unscaledTime - _stepEnteredAt;        // what the old line reported
             float  excluded = _stepClock.Excluded;
+            float  modalOut = _modalExcludedSeconds;                     // WO-1414 D: WHY, not just how much
             float  jumped   = _stepClock.DiscardedJumpSeconds;
             _stepClock.RestartCharged();   // re-arm guard (belt-and-suspenders alongside the advance)
 
@@ -2498,8 +2579,10 @@ namespace DeNelle.Village
                 $"; ff.tutorialv2 on; builderOpenedThisStep={_builderOpenedThisStep}, coachBeats={_coachBeats}); " +
                 // WO-1036: the played/wall split IS the evidence. A large gap between them means the
                 // app was backgrounded or the world was frozen, and the beat is NOT what stalled.
-                $"[WO-1036 clock: played-and-charged {idle:0}s, wall {wall:0}s, excluded (builder/frozen) " +
-                $"{excluded:0}s, discarded suspend gap {jumped:0}s]; " +
+                // WO-1414 D: the excluded total now carries its REASONS. A non-zero modal slice says
+                // a screen the player did not open held the beat; a zero one says it did not.
+                $"[WO-1036 clock: played-and-charged {idle:0}s, wall {wall:0}s, excluded (builder/frozen/modal) " +
+                $"{excluded:0}s of which modal {modalOut:0}s, discarded suspend gap {jumped:0}s]; " +
                 "RESCUED via watchdog and recorded as SKIPPED - the step was NOT completed, its outro is " +
                 "suppressed (no fiction narrated), grants still applied so the player is never half-granted.");
             DeNelle.Core.Analytics.EventTracker.Track("tutorial_step_drop", new
@@ -2508,6 +2591,7 @@ namespace DeNelle.Village
                 secondsIdle = idle,
                 secondsWall = wall,
                 secondsExcluded = excluded,
+                secondsExcludedModal = modalOut,   // WO-1414 D
                 secondsSuspendGap = jumped,
                 autoAdvanced = true,
                 recordedAs = "skipped",

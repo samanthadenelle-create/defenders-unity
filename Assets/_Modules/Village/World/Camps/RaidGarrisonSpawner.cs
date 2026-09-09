@@ -166,6 +166,10 @@ namespace DeNelle.Village.World.Camps
             int enemyLevel = Mathf.Max(g.baseEnemyLevel, playerLevel + g.levelOffset);
             float difficulty = g.difficultyMultiplier > 0f ? g.difficultyMultiplier : 1f;
             float ring = Mathf.Max(2f, def.baseRadius * 0.5f);
+            int slotCount = CountGarrisonSlots();
+            FlowTrace.Step("Garrison",
+                $"seating={(slotCount > 0 ? "slots" : "ring")} count={(slotCount > 0 ? slotCount : 0)} " +
+                $"config='{configId}' ring={ring:F1}m");
 
             _garrisonRoot = new GameObject("[RaidGarrison]").transform;
             _garrisonRoot.SetParent(transform, false);
@@ -320,6 +324,7 @@ namespace DeNelle.Village.World.Camps
             // MiniBoss brain (tougher, holds the keep) — mirrors EnemyOutpost.SpawnBoss.
             var brain = boss.gameObject.GetComponent<EnemyBrain>();
             if (brain == null) brain = boss.gameObject.AddComponent<EnemyBrain>();
+            BindDefendPost(brain, pos, "Keep");
             brain.Role = EnemyRole.MiniBoss;
             // P0-5 (owner-filed, 2026-08-02): the boss had a brain but NO tactics, so it fell to
             // the legacy chain FindNearbyHero ?? FindNearestTower ?? FindClosestTarget. In a RAID
@@ -337,12 +342,20 @@ namespace DeNelle.Village.World.Camps
 
         private void SpawnGuard(string enemyId, int index, int count, int enemyLevel, float difficulty, float ring)
         {
-            // A single RING of stand positions at baseRadius * 0.5 inside the perimeter,
-            // NavMesh-snapped (DECISION: one ring). Centred on the base root (BossSpawn
-            // lives at the keep centre = root origin).
-            float ang = (count > 0 ? (index / (float)count) : 0f) * Mathf.PI * 2f;
-            Vector3 want = transform.position +
-                           new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * ring;
+            // Named GarrisonSlot_* markers (WO-1608) win when the bake authored them;
+            // otherwise the original ring at baseRadius * 0.5.
+            Vector3 want;
+            var slot = SlotAt(index);
+            if (slot != null)
+            {
+                want = slot.position;
+            }
+            else
+            {
+                float ang = (count > 0 ? (index / (float)count) : 0f) * Mathf.PI * 2f;
+                want = transform.position +
+                       new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * ring;
+            }
             Vector3 pos = SnapToNav(want);
 
             // SHARED stat block -> level scale -> fold difficulty. Hostile by default.
@@ -385,6 +398,7 @@ namespace DeNelle.Village.World.Camps
             // anchor still tethers it to the garrison, so it holds the keep rather than roaming.
             var guardBrain = guard.gameObject.GetComponent<EnemyBrain>();
             if (guardBrain == null) guardBrain = guard.gameObject.AddComponent<EnemyBrain>();
+            BindDefendPost(guardBrain, pos, slot != null ? slot.name : "Yard");
             EnemyRole guardRole = EnemyBrain.RoleForId(def.Id);
             guardBrain.Role = guardRole;
             guardBrain.RosterId = def.Id;   // owner ruling 2026-08-06: gates weapon attach (casters carry nothing)
@@ -440,6 +454,64 @@ namespace DeNelle.Village.World.Camps
             go.transform.SetParent(_garrisonRoot, false);
             go.transform.position = pos;
             return go.transform;
+        }
+
+        private List<Transform> _slots;
+
+        private int CountGarrisonSlots()
+        {
+            EnsureSlots();
+            return _slots.Count;
+        }
+
+        private Transform SlotAt(int index)
+        {
+            EnsureSlots();
+            if (_slots.Count == 0 || index < 0 || index >= _slots.Count) return null;
+            return _slots[index];
+        }
+
+        private void EnsureSlots()
+        {
+            if (_slots != null) return;
+            _slots = new List<Transform>();
+            var all = GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] == null || string.IsNullOrEmpty(all[i].name)) continue;
+                if (all[i].name.StartsWith("GarrisonSlot_")) _slots.Add(all[i]);
+            }
+            _slots.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+        }
+
+        /// <summary>
+        /// HOLD THE POST. SetBrainTarget(anchor) is an initial dest, not a leash —
+        /// with leash=0 ChooseTarget falls through to FindClosestTarget and every
+        /// guard beelines the hero at staging (owner 2026-09-09). Gate watch fights
+        /// the door; yard and keep stay inside so turrets can fire into the approach.
+        /// </summary>
+        private static void BindDefendPost(EnemyBrain brain, Vector3 home, string slotName)
+        {
+            if (brain == null) return;
+            float wake = 14f;
+            float chase = 16f;
+            if (!string.IsNullOrEmpty(slotName) &&
+                slotName.IndexOf("Gate", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                wake = 16f;
+                chase = 18f;
+            }
+            else if (!string.IsNullOrEmpty(slotName) &&
+                     (slotName.IndexOf("Keep", System.StringComparison.OrdinalIgnoreCase) >= 0
+                      || slotName.IndexOf("Boss", System.StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                wake = 12f;
+                chase = 14f;
+            }
+            brain.SetDefendPost(home, wake, chase);
+            FlowTrace.Step("Garrison",
+                "defendPost slot=" + (slotName ?? "?") + " wake=" + wake.ToString("0")
+                + "m chase=" + chase.ToString("0") + "m home=" + home);
         }
 
         private static Vector3 SnapToNav(Vector3 want)

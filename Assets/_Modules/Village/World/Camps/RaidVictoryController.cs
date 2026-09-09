@@ -69,7 +69,7 @@ namespace DeNelle.Village.World.Camps
         [SerializeField] private float _autoReturnSeconds = 30f;
 
         private RaidGarrisonSpawner _spawner;
-        private RaidSpire _spire;  // THE OBJECTIVE (owner concept 2026-08-02) - razing it wins
+        private RaidSpire _spire;  // razing it still wins; garrison wipe also wins (owner 2026-09-09)
         private bool _handled;     // victory handled once (guards a double OnCleared)
         private bool _returning;   // a return is already in flight
 
@@ -126,10 +126,10 @@ namespace DeNelle.Village.World.Camps
         private IEnumerator BindRoutine()
         {
             // ---- THE OBJECTIVE ------------------------------------------------
-            // Owner concept 2026-08-02: a raid is won by RAZING THE CENTRAL SPIRE, not by
-            // counting corpses. The spire is baked into the scene so it exists at load.
-            // A scene with no spire (a legacy bake) keeps the old garrison-wipe rule below,
-            // so nothing that already shipped becomes unwinnable.
+            // Spire raze still wins. Owner 2026-09-09 (felt, live raid): once the garrison
+            // is dead the player must not be left chopping an empty camp - garrison wipe
+            // ALSO wins. Either signal settles the raid; HandleVictory latches so the
+            // second one is a no-op.
             _spire = RaidSpire.Active != null ? RaidSpire.Active : FindAnyObjectByType<RaidSpire>();
             if (_spire != null)
             {
@@ -142,7 +142,7 @@ namespace DeNelle.Village.World.Camps
                 _spire.OnDestroyedEvent -= HandleSpireRazed;
                 _spire.OnDestroyedEvent += HandleSpireRazed;
                 FlowTrace.Step("Raid", $"RaidVictoryController bound to the OBJECTIVE: spire '{_spire.name}' " +
-                                       $"({_spire.MaxHp:0} HP). Razing it WINS the raid.");
+                                       $"({_spire.MaxHp:0} HP). Razing it OR wiping the garrison WINS the raid.");
             }
             else
             {
@@ -196,22 +196,14 @@ namespace DeNelle.Village.World.Camps
         }
 
         /// <summary>
-        /// The garrison was wiped. With a spire objective present this is a MILESTONE, not a
-        /// win — the owner's concept moved the win condition off corpse-count. Only a
-        /// spire-less (legacy) raid base still wins here, so old bakes never soft-lock.
+        /// The garrison was wiped. Owner 2026-09-09: that IS a win — do not leave the
+        /// player standing on an empty camp hitting the spire. Spire raze remains a
+        /// second, independent win (HandleSpireRazed); HandleVictory latches.
         /// </summary>
         private void HandleCleared(RaidGarrisonSpawner spawner)
         {
             if (_spawner != null) _spawner.OnCleared -= HandleCleared;
-
-            if (_spire != null && !_spire.IsDestroyed)
-            {
-                FlowTrace.Step("Raid", "garrison wiped, but the SPIRE still stands — the raid is not over. " +
-                                       $"Objective at {_spire.HpFraction:P0} HP. Raze it to win.");
-                return;
-            }
-
-            HandleVictory(_spire != null ? "garrison wiped after the spire fell" : "garrison wiped (legacy, no spire)");
+            HandleVictory("garrison wiped");
         }
 
         private void HandleVictory(string reason)

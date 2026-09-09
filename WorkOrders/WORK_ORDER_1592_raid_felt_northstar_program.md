@@ -1,6 +1,11 @@
+> **2026-09-09 — MAPS HALF DECOMPOSED.** Owner asked for raid-base design beyond fence + tower,
+> KayKit dungeon welcome. Layout program is WO-1607–1611 (answers 1593 Q1 from disk).
+> 1594 (star HUD) and 1595 (AI) stay the other two legs of this north star. Do not rebalance
+> caps here.
+
 # WO-1592 — Raid felt north star: maps, AI, and a living star clock
 
-**Status:** SPEC — program spine; implement via WO-1593 / 1594 / 1595  
+**Status:** SPEC — program spine; maps via WO-1607–1611; HUD 1594; AI 1595  
 **Minted:** 2026-09-07 (CLI / Grok seat) — banner bumped 1592 → 1592 in the same edit  
 **Priority:** P0 felt — owner: maps look bad (simple walls, towers like pillars); AI just runs and attacks; wants countdown + 3★ that degrade; better KayKit landscapes  
 **Depends on / respects:** `docs/RAID_BALANCE_AUDIT_2026-09-06.md` (do not rebalance caps until staging + targeting hold); WO-1520 staging/clock-on-engagement; existing `RaidScoring` / `RaidHudController` spine  
@@ -38,7 +43,8 @@ A raid should feel like **assaulting a place**, not a flat grey yard with sticks
 
 | WO | Title | Owns |
 |---|---|---|
-| **1593** | KayKit raid bases: landscape, walls, tower silhouettes | Scenes / injectors / KayKit art — **no hand-edit `.unity`** |
+| **1593** | KayKit raid bases (original art pass) | **Implement through 1607–1611** — do not double-bake |
+| **1607–1611** | Raid bases as places | Named zones, gatehouse, KayKit dungeon/hexagon dress, three camp layouts |
 | **1594** | Live countdown + star degradation HUD | `RaidHudController` + scoring presentation |
 | **1595** | Raid AI beyond rush (attackers + defenders) | `TroopController` / garrison brain / role tables |
 

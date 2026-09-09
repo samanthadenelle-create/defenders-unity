@@ -488,12 +488,36 @@ namespace DeNelle.Village.World.Camps
             s_reappearedThisSession = false;
         }
 
-        // The hero is tagged "Player" (CLAUDE.md sec.7). Falls back to the Heart, then
-        // the origin, so the Echo never returns into the void.
+        private const float ReturnBehindMetres = 2.4f;
+        private const float ReturnSideMetres = 1.4f;
+
+        /// <summary>Pure companion seat used by the post-battle return and its regression.
+        /// The Echo belongs beside/behind the hero, never at the hero's own origin.</summary>
+        public static Vector3 ReturnSeat(Vector3 heroPosition, Vector3 heroForward, Vector3 heroRight)
+        {
+            Vector3 forward = Vector3.ProjectOnPlane(heroForward, Vector3.up).normalized;
+            Vector3 right = Vector3.ProjectOnPlane(heroRight, Vector3.up).normalized;
+            if (forward.sqrMagnitude < 0.5f) forward = Vector3.forward;
+            if (right.sqrMagnitude < 0.5f) right = Vector3.right;
+            return heroPosition - forward * ReturnBehindMetres + right * ReturnSideMetres;
+        }
+
+        // The hero is tagged "Player" (CLAUDE.md sec.7). Seat the companion off the
+        // hero's capsule, then snap that desired seat to nearby walkable ground.
         private static Vector3 ResolveReturnPosition()
         {
             var player = GameObject.FindWithTag("Player");
-            if (player != null) return player.transform.position;
+            if (player != null)
+            {
+                Vector3 desired = ReturnSeat(player.transform.position,
+                    player.transform.forward, player.transform.right);
+                if (NavMesh.SamplePosition(desired, out NavMeshHit hit, 3f, NavMesh.AllAreas))
+                    return hit.position;
+                FlowTrace.Warn("Echo",
+                    $"echo REAPPEAR companion seat {desired} was not on a NavMesh within 3m -- using " +
+                    "the offset seat without snapping; it remains clear of the hero origin.");
+                return desired;
+            }
 
             var heart = Object.FindAnyObjectByType<HeartController>();
             if (heart != null)

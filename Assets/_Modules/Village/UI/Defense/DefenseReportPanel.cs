@@ -388,64 +388,60 @@ namespace DeNelle.Village.UI
                 return;
             }
 
-            // ── Verdict (a full sentence, never a colour) ───────────────────────
+            // Headline: the verdict is a WORD, the sentence under it carries the meaning,
+            // the score is a label. Never hue-only (owner is colourblind).
             Paragraph(_detailContent, OutcomeWord(r.Outcome), ElarionUi.FontHead, inkTitle, true);
-            Paragraph(_detailContent, OutcomeSentence(r.Outcome), ElarionUi.FontLabel, inkDim, false);
-            // The score is a LABEL. It prints only when it was actually derived -- a declined
-            // score shows NOTHING rather than a placeholder, the same rule as an unmeasured
-            // hold time. Number AND word, so it survives greyscale.
+            Paragraph(_detailContent, OutcomeSentence(r.Outcome), ElarionUi.FontBody, inkBody, false);
             if (r.HasDefenseScore)
                 Paragraph(_detailContent,
-                    "Defence score " + r.DefenseScore + "/100  -  "
+                    "Score " + r.DefenseScore + " / 100  -  "
                     + DefenseReportBuilder.DefenseScoreWord(r.DefenseScore),
                     ElarionUi.FontLabel, inkDim, false);
+            Spacer(_detailContent, 10f);
 
-            // ── Attacker. The panel renders THESE STRINGS. It never composes a name
-            //    from the Source enum — that is what keeps model (c) a source swap. The
-            //    single sanctioned Source read is the small chip below: a LABEL LOOKUP.
-            Paragraph(_detailContent, "ATTACKER", ElarionUi.FontLabel, inkDim, true);
+            // Attacker: the panel renders THESE STRINGS. It never composes a name from
+            // the Source enum -- that keeps model (c) a source swap. The one sanctioned
+            // Source read is the small chip: a LABEL LOOKUP.
+            Section(_detailContent, "Who came", inkTitle);
             Paragraph(_detailContent,
-                Safe(r.Attacker.DisplayName, "Unknown force") + "   (" + SourceChip(r.Attacker.Source) + ")",
+                Safe(r.Attacker.DisplayName, "Unknown force") + "  (" + SourceChip(r.Attacker.Source) + ")",
                 ElarionUi.FontBody, inkBody, false);
             Paragraph(_detailContent,
-                "Strength " + r.Attacker.PowerRating + "   -   wave " + r.WaveId
-                + "   -   lasted " + Mathf.RoundToInt(r.DurationSeconds) + "s",
+                "Wave " + r.WaveId + "  -  strength " + r.Attacker.PowerRating
+                + "  -  lasted " + DurationLabel(r.DurationSeconds),
                 ElarionUi.FontLabel, inkDim, false);
-            if (r.Attacker.Units.Count == 0)
-                Paragraph(_detailContent, "-  (no roster recorded)", ElarionUi.FontLabel, inkDim, false);
             for (int i = 0; i < r.Attacker.Units.Count; i++)
             {
                 var u = r.Attacker.Units[i];
                 if (u == null) continue;
-                Paragraph(_detailContent, "-  x" + u.Count + "  " + Safe(u.DefId, "unknown")
-                    + "  (level " + Mathf.Max(1, u.Level) + ")", ElarionUi.FontLabel, inkBody, false);
+                string lvl = Mathf.Max(1, u.Level) > 1 ? "  (level " + Mathf.Max(1, u.Level) + ")" : "";
+                Paragraph(_detailContent, "-  x" + u.Count + "  " + PrettyId(u.DefId) + lvl,
+                    ElarionUi.FontLabel, inkBody, false);
             }
 
-            // ── Your base at the time ──────────────────────────────────────────
-            Paragraph(_detailContent, "YOUR BASE AT THE TIME", ElarionUi.FontLabel, inkDim, true);
+            Section(_detailContent, "Your town", inkTitle);
             Paragraph(_detailContent,
-                r.Defender.StructureCount + " structures  -  " + r.Defender.WallCount + " wall sections  -  "
-                + r.Defender.TowerCount + " towers  -  hero "
-                + (r.Defender.HeroPresent ? "present" : "absent"),
+                r.Defender.StructureCount + " structures,  "
+                + r.Defender.WallCount + " wall sections,  "
+                + r.Defender.TowerCount + " towers.  "
+                + (r.Defender.HeroPresent ? "Hero was in town." : "Hero was away."),
                 ElarionUi.FontLabel, inkBody, false);
-            Paragraph(_detailContent, "Layout " + Safe(r.Defender.LayoutHash, "unknown")
-                + "  (this changes when you move a structure)", ElarionUi.FontLabel, inkDim, false);
+            // Layout hash is a fingerprint for "did a redesign change the outcome", not a
+            // player-facing string. Keep it in the log; putting it on the plate made the
+            // report read like a debug dump (owner 2026-09-09).
+            FlowTrace.Step("DefenseReport",
+                "layoutHash=" + Safe(r.Defender.LayoutHash, "unknown") + " id=" + r.Id);
 
-            // ── ⭐ THE DIAGNOSIS. The single most important line on the screen, placed
-            //    ABOVE the diagram and above the lists, because it is the sentence the whole
-            //    feature exists to produce: not "what did I lose" but "what do I move".
-            Paragraph(_detailContent, "WHAT WENT WRONG", ElarionUi.FontLabel, inkDim, true);
+            // THE DIAGNOSIS -- not "what did I lose" but "what do I move".
+            Section(_detailContent, "What to change", inkTitle);
             var diagnosis = Diagnose(r);
             for (int i = 0; i < diagnosis.Count; i++)
                 Paragraph(_detailContent, diagnosis[i], ElarionUi.FontBody, inkBody, i == 0);
 
-            // ── The plate. DECORATIVE BY DESIGN: every fact on it is also stated in words
-            //    above and below, so a reader who cannot parse the diagram (or for whom it
-            //    fails to build) loses nothing. ──────────────────────────────────
+            // The plate is DECORATION over facts already stated in words.
             BuildMapPlate(_detailContent, r, inkDim);
 
-            // ── Breaches — THE REDESIGN SIGNAL ─────────────────────────────────
-            Paragraph(_detailContent, "WHERE THEY GOT IN", ElarionUi.FontLabel, inkDim, true);
+            Section(_detailContent, "Where they got in", inkTitle);
             if (r.Breaches.Count == 0)
             {
                 Paragraph(_detailContent, "Nothing crossed your inner ring. The line held.",
@@ -457,38 +453,33 @@ namespace DeNelle.Village.UI
                 {
                     var b = r.Breaches[i];
                     if (b == null) continue;
-                    // The FIRST breach is called out in words ("1st") -- the ordinal is never
-                    // implied by colour or position alone.
                     string ord = i == 0 ? "1st" : (i + 1) + (i == 1 ? "nd" : i == 2 ? "rd" : "th");
                     Paragraph(_detailContent,
                         "-  " + ord + ": " + Safe(b.DisplayName, "Open ground")
-                        + "  at " + Mathf.RoundToInt(b.AtSeconds) + "s"
-                        + "  by " + Safe(b.AttackerDefId, "unknown")
-                        + "   (" + DefenseMapPlate.Compass(b.WorldX - r.Defender.CoreX,
+                        + "  at " + DurationLabel(b.AtSeconds)
+                        + "  by " + PrettyId(b.AttackerDefId)
+                        + "  (" + DefenseMapPlate.Compass(b.WorldX - r.Defender.CoreX,
                                                            b.WorldZ - r.Defender.CoreZ)
                         + " of the Heart)",
                         ElarionUi.FontLabel, inkBody, i == 0);
                 }
             }
 
-            // ── Rows, GROUPED BY LINE. Grouping is the cheap half of the diagnosis:
-            //    "my whole front line fell and nothing behind it was touched" is a thought a
-            //    flat list cannot produce. ────────────────────────────────────────
-            Paragraph(_detailContent, "WHAT BROKE", ElarionUi.FontLabel, inkDim, true);
+            Section(_detailContent, "What broke", inkTitle);
             if (r.Rows.Count == 0)
             {
                 Paragraph(_detailContent, "Nothing was damaged.", ElarionUi.FontBody, inkBody, false);
             }
             else
             {
-                RenderBandGroup(r, DefenseBand.Front, "FRONT LINE (they meet this first)", inkBody, inkDim);
-                RenderBandGroup(r, DefenseBand.Second, "SECOND LINE", inkBody, inkDim);
-                RenderBandGroup(r, DefenseBand.Core, "CORE (the Heart's ring)", inkBody, inkDim);
+                RenderBandGroup(r, DefenseBand.Front, "Front line (they meet this first)", inkBody, inkDim);
+                RenderBandGroup(r, DefenseBand.Second, "Second line", inkBody, inkDim);
+                RenderBandGroup(r, DefenseBand.Core, "Core (the Heart's ring)", inkBody, inkDim);
             }
 
-            // ── ResourcesLost — an EXPLICIT statement, never a blank ───────────────────
-            Paragraph(_detailContent, "WHAT IT COST YOU", ElarionUi.FontLabel, inkDim, true);
-            Paragraph(_detailContent, StakesLine(r.ResourcesLost), ElarionUi.FontBody, inkBody, false);
+            Section(_detailContent, "What they took", inkTitle);
+            Paragraph(_detailContent, StakesLead(r.ResourcesLost), ElarionUi.FontBody, inkBody, false);
+            Paragraph(_detailContent, StakesRule(r.ResourcesLost), ElarionUi.FontLabel, inkDim, false);
         }
 
         // ── ⭐ THE LEGIBILITY LAYER ──────────────────────────────────────────────
@@ -745,10 +736,11 @@ namespace DeNelle.Village.UI
         /// in greyscale, so nothing here depends on a tint.</para>
         /// </summary>
         private static string StakesLine(StakesLedger s)
+            => StakesLead(s) + "\n" + StakesRule(s);
+
+        private static string StakesLead(StakesLedger s)
         {
-            if (s == null || s.IsEmpty)
-                return "Nothing was taken.\n(Your reserve held -- raiders can never dig below it, " +
-                       "and crystals, purchases and equipped gear are never at risk.)";
+            if (s == null || s.IsEmpty) return "Nothing was taken.";
 
             var parts = new List<string>();
             if (s.Wood > 0) parts.Add(s.Wood + " wood");
@@ -760,11 +752,69 @@ namespace DeNelle.Village.UI
             // it cannot happen.
             if (s.Crystals > 0) parts.Add(s.Crystals + " crystals");
             if (s.Magic > 0) parts.Add(s.Magic + " magic");
+            return "They carried off " + string.Join(", ", parts) + ".";
+        }
 
-            return "They carried off " + string.Join(", ", parts) +
-                   ".\n(A protected reserve was left untouched and one attack can never take more " +
-                   "than its cap. Crystals, purchases and equipped gear are never at risk -- " +
-                   "stronger defences are what keep the rest.)";
+        private static string StakesRule(StakesLedger s)
+        {
+            if (s == null || s.IsEmpty)
+                return "Your reserve held. Crystals, purchases and equipped gear are never at risk.";
+            return "A protected reserve was left. One attack cannot take more than its cap. "
+                 + "Crystals, purchases and equipped gear are never at risk.";
+        }
+
+        private static string DurationLabel(float seconds)
+        {
+            int s = Mathf.Max(0, Mathf.RoundToInt(seconds));
+            if (s < 60) return s + "s";
+            int m = s / 60;
+            int r = s % 60;
+            return r == 0 ? m + "m" : m + "m " + r + "s";
+        }
+
+        /// <summary>Player-facing unit name from a stored def id. Presentation of the
+        /// opaque id, never a Source branch -- model (c) still swaps the producer.</summary>
+        private static string PrettyId(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return "unknown";
+            var sb = new System.Text.StringBuilder(id.Length + 4);
+            bool cap = true;
+            for (int i = 0; i < id.Length; i++)
+            {
+                char c = id[i];
+                if (c == '_' || c == '-') { sb.Append(' '); cap = true; continue; }
+                sb.Append(cap ? char.ToUpperInvariant(c) : c);
+                cap = false;
+            }
+            return sb.ToString();
+        }
+
+        private static void Section(Transform parent, string title, Color ink)
+        {
+            Spacer(parent, 8f);
+            Paragraph(parent, title, ElarionUi.FontLabel, ink, true);
+            var rule = new GameObject("Rule", typeof(RectTransform), typeof(LayoutElement), typeof(Image));
+            rule.transform.SetParent(parent, false);
+            var img = rule.GetComponent<Image>();
+            img.color = new Color(ink.r, ink.g, ink.b, 0.35f);
+            img.raycastTarget = false;
+            var rt = (RectTransform)rule.transform;
+            rt.sizeDelta = new Vector2(0f, 2f);
+            var le = rule.GetComponent<LayoutElement>();
+            le.preferredHeight = 2f;
+            le.minHeight = 2f;
+            le.flexibleHeight = 0f;
+        }
+
+        private static void Spacer(Transform parent, float px)
+        {
+            var go = new GameObject("Gap", typeof(RectTransform), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+            ((RectTransform)go.transform).sizeDelta = new Vector2(0f, px);
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredHeight = px;
+            le.minHeight = px;
+            le.flexibleHeight = 0f;
         }
 
         private static string RelativeTime(double whenUnixMs)

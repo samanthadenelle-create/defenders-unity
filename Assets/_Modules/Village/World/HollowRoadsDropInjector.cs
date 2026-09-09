@@ -58,6 +58,20 @@
 //      cannot distinguish "the warp did not happen" from "the warp went to the wrong
 //      biome" points the next reader at the wrong system, which is the specific way this
 //      one cost a ticket. Both branches now carry promised point, drift and settle time.
+//
+// WO-1606 (2026-09-09) — THE UNHONOURED CONTRACT, AND THE ALARM THAT NAMED THE WRONG OWNER:
+//   1. THE DROP POINT IS NOW GROUNDED BEFORE THE SEAM GETS IT. BiomeRoads.ResolveDrops is pure and
+//      documents (BiomeRoads.cs:322-332) that the CALLER must ground-probe and must fail loudly if
+//      it cannot. This file did neither: it handed drop.Point to SceneTransitionTrigger verbatim,
+//      and that point carries worldBounds.center.y (BiomeRoads.cs:420) = 17m of open air. One
+//      NavMesh.SamplePosition at seat time closes it, and a miss refuses the drop outright.
+//   2. THE SETTLE FAILURE KNOWS THREE CASES NOW. It asserted "THE WARP DID NOT HAPPEN" and blamed
+//      SceneTransitionTrigger / HeroLocomotion.WarpTo. On F8 seq 4706 that was FALSE: the warp
+//      landed on target at (-400, 17, 0) and the hero's OWN ±50 off-mesh clamp reverted it a frame
+//      later. The branch now distinguishes never-warped from warped-then-relocated and points the
+//      reader at the HeroLocomotion clamp Warn that proves which. Same lesson as change 2 above,
+//      one layer further down: an alarm that cannot tell two defects apart sends the reader to the
+//      wrong file, and this one did it twice.
 // =============================================================================
 
 using System;
@@ -347,6 +361,48 @@ namespace DeNelle.Village.World
             Vector3 seat = armBounds.center + arm.forward * (armBounds.extents.z * ArmEndFraction);
             seat.y = armBounds.min.y;
 
+            // ⚠ WO-1606 — GROUND THE DESTINATION BEFORE A DOOR IS BUILT FOR IT.
+            //
+            // BiomeRoads.ResolveDrops is a PURE derivation and says so in terms
+            // (BiomeRoads.cs:322-332): "Y is left at the bounds centre height; the caller is
+            // expected to ground-probe (raycast / NavMesh.SamplePosition) before actually seating
+            // anything ... A drop that cannot be grounded must FAIL LOUDLY at that seam rather than
+            // warping the hero into the terrain." THIS is that caller, and until now it honoured
+            // neither half: it assigned drop.Point to the seam VERBATIM.
+            //
+            // What that cost (F8 seq 4706, proven from the runtime trace, not inferred): the measured
+            // world is centred at y=17 (BiomeRoads.cs:420 seats the point at worldBounds.center.y),
+            // so every drop promised a point SEVENTEEN METRES IN THE AIR. HeroLocomotion.WarpTo
+            // sampled with a 5m radius, missed, and left the hero off-mesh at (-400, 17, 0) -- and
+            // the hero's own ±50 playable-bounds clamp relocated them on the very next frame. The
+            // warp DID happen; the destination was never walkable.
+            //
+            // ONE probe closes BOTH failure modes, because they are the same question asked of the
+            // same authority: a bad Y, and "no navmesh reaches 400m out". The radius is the file's
+            // existing ArrivalSampleRadius rather than a new number -- this file already trusts 12m
+            // as "near enough to navmesh to count" when it JUDGES an arrival, and using a different
+            // figure to CHOOSE the point than to judge it is how a door passes seating and fails
+            // arrival. A miss refuses the drop entirely (Fail + player-facing Notify, matching the
+            // WO-1604 fail-closed shape) instead of seating a door that cannot work.
+            if (!NavMesh.SamplePosition(drop.Point, out NavMeshHit groundHit, ArrivalSampleRadius, NavMesh.AllAreas))
+            {
+                FlowTrace.Fail(Sys, $"REFUSED the {BiomeRoads.ZoneName(drop.Region)} drop at seat time: its derived " +
+                                    $"destination {drop.Point} has NO navmesh within {ArrivalSampleRadius}m, so no " +
+                                    "walkable point can be promised there. Two things produce this and the probe " +
+                                    "cannot tell them apart (nor does it need to): the derived Y is the world " +
+                                    "bounds CENTRE height (BiomeRoads.cs:420), which is metres in the air on any " +
+                                    "terrain whose bounds are not floor-seated; or the navmesh simply does not " +
+                                    "bake that far out. Either way the arm dead-ends VISIBLY instead of teleporting " +
+                                    "the hero off the walkable world. NOT seated.");
+                Notify($"The road to {BiomeRoads.ZoneName(drop.Region)} is closed.");
+                return false;
+            }
+
+            // The GROUNDED point is what the seam targets and what the arrival check is promised --
+            // one point, one authority. Promising the raw derived point while warping to a grounded
+            // one would put the drift test back to measuring against a coordinate nothing uses.
+            Vector3 groundedPoint = groundHit.position;
+
             var go = new GameObject($"BiomeDrop_{drop.Region}");
             go.transform.SetParent(holder, false);
             go.transform.position = seat;
@@ -363,7 +419,7 @@ namespace DeNelle.Village.World
             // REUSE the existing crossing machinery — no fifth transition system.
             var seam = go.AddComponent<SceneTransitionTrigger>();
             seam.targetSceneName = SceneRouter.Castle;
-            seam.targetPosition = drop.Point;
+            seam.targetPosition = groundedPoint;
             seam.loadAdditive = false;
             seam.ProximityRadius = DropPromptRadius;
             // A non-empty promptOverride is what marks this a WALK-UP entry, which is what keeps
@@ -380,11 +436,13 @@ namespace DeNelle.Village.World
             // Arm the arrival check the moment this drop is taken.
             var announce = go.AddComponent<BiomeDropAnnouncer>();
             announce.Region = drop.Region;
-            announce.PromisedPoint = drop.Point;
+            announce.PromisedPoint = groundedPoint;
 
             FlowTrace.Step(Sys, $"drop seated: {BiomeRoads.ZoneName(drop.Region)} (tier " +
                                 $"{BiomeRoads.DangerTier(drop.Region)}, {BiomeRoads.Cardinal(drop.Region)}) at arm " +
-                                $"'{drop.ArmRoomId}' seat {seat} -> {SceneRouter.Castle} @ {drop.Point}. " +
+                                $"'{drop.ArmRoomId}' seat {seat} -> {SceneRouter.Castle} @ {groundedPoint} " +
+                                $"(GROUNDED from derived {drop.Point}, navmesh probe moved it " +
+                                $"{Vector3.Distance(drop.Point, groundedPoint):F1}m). " +
                                 $"Derivation: {drop.Derivation}");
             return true;
         }
@@ -498,6 +556,15 @@ namespace DeNelle.Village.World
             float waited = 0f;
             Transform hero = null;
 
+            // WO-1606 — CLOSEST APPROACH, not just the final position.
+            //
+            // The failure branch below has to answer "did the hero ever reach the point", and the
+            // FINAL position cannot answer it: a hero who arrives on target and is moved away one
+            // frame later reads identically to a hero who was never moved at all. That ambiguity is
+            // precisely what mis-routed F8 seq 4706. Tracking the nearest the hero ever got costs one
+            // float and turns the question into a measurement instead of an inference.
+            float closestDrift = float.PositiveInfinity;
+
             while (waited < ArrivalSettleBudget)
             {
                 if (hero == null)
@@ -512,6 +579,7 @@ namespace DeNelle.Village.World
                 {
                     float d = Vector3.Distance(new Vector3(hero.position.x, 0f, hero.position.z),
                                                new Vector3(s_promisedPoint.x, 0f, s_promisedPoint.z));
+                    if (d < closestDrift) closestDrift = d;
                     // Settled: the warp has landed the hero at (or very near) the promised point.
                     if (d <= ArrivalSettleRadius) break;
                 }
@@ -520,7 +588,7 @@ namespace DeNelle.Village.World
                 yield return null;
             }
 
-            VerifyArrival(sceneName, hero, waited);
+            VerifyArrival(sceneName, hero, waited, closestDrift);
         }
 
         /// <summary>
@@ -528,7 +596,8 @@ namespace DeNelle.Village.World
         /// the region the prompt named. Every failure is LOUD — a drop that quietly puts the player
         /// somewhere else is the same defect as a door that does nothing, just harder to notice.
         /// </summary>
-        private void VerifyArrival(string sceneName, Transform heroTransform, float settleSeconds)
+        private void VerifyArrival(string sceneName, Transform heroTransform, float settleSeconds,
+                                   float closestDrift)
         {
             // The hero was resolved by the settle loop, which already retried across the whole budget
             // (the hero can be mid-carry and un-taggable for the first frames of a Single load).
@@ -576,16 +645,78 @@ namespace DeNelle.Village.World
             // the drift and the settle time, so the capture answers the question by itself.
             if (drift > ArrivalSettleRadius)
             {
-                FlowTrace.Fail(Sys, $"the {BiomeRoads.ZoneName(s_pendingRegion)} drop NEVER LANDED: after " +
+                // ⚠ WO-1606 — THERE ARE THREE CASES HERE, NOT TWO, AND THIS MESSAGE USED TO ASSERT
+                //    THE WRONG ONE AS FACT.
+                //
+                // Until 2026-09-09 this branch ended with the flat sentence "THE WARP DID NOT
+                // HAPPEN" and named SceneTransitionTrigger.RepositionPlayerAfterLoad /
+                // HeroLocomotion.WarpTo as the culprits. On F8 seq 4706 that sentence was FALSE.
+                // The warp happened, and it LANDED -- at (-400, 17, 0), exactly the point the drop
+                // asked for. The hero was then relocated to the ±50 playable-bounds edge by
+                // HeroLocomotion's own off-mesh clamp (HeroLocomotion.cs:1388-1409) on the very next
+                // frame, because 17m in the air is off-mesh. A reader following this message went
+                // hunting in the two systems that had done their jobs correctly. An alarm that names
+                // the wrong owner costs more than no alarm.
+                //
+                // So the failure stays exactly as loud, and gets a THIRD verdict:
+                //   never warped      -- closest approach stayed wide for the whole budget
+                //   warped, relocated -- the hero WAS near the point at some sampled frame, or is
+                //                        now sitting on a bound that the promised point is outside
+                //   (and the mismatch case below, which is unchanged)
+                //
+                // Neither signal ASSERTS the clamp: the message names the one log line that proves
+                // it, which HeroLocomotion already emits and this file must not duplicate.
+                bool everReached = closestDrift <= ArrivalSettleRadius;
+
+                // The clamp's half-extent, read from HeroLocomotion.cs:1391 (`const float
+                // PlayableHalf = 50f`). It is quoted here ONLY to shape a diagnostic sentence -- no
+                // behaviour keys off it, so a drift in that constant degrades this hint rather than
+                // breaking a door. The exact-boundary test is deliberately a BAND, not an equality:
+                // the clamp writes the bound bit-exactly, then ground-snap and the agent move the
+                // hero a little off it before this check reads the position (seq 4706 landed at
+                // x=-50.34 from a clamp to -50).
+                const float ClampHalfHint = 50f;
+                const float ClampBandHint = 2f;
+                bool promisedOutsideClamp = Mathf.Abs(s_promisedPoint.x) > ClampHalfHint ||
+                                            Mathf.Abs(s_promisedPoint.z) > ClampHalfHint;
+                bool sittingOnClampEdge =
+                    Mathf.Abs(Mathf.Abs(at.x) - ClampHalfHint) <= ClampBandHint ||
+                    Mathf.Abs(Mathf.Abs(at.z) - ClampHalfHint) <= ClampBandHint;
+                bool clampSignature = promisedOutsideClamp && sittingOnClampEdge;
+
+                string verdict = everReached
+                    ? "THE WARP LANDED AND SOMETHING THEN MOVED THE HERO. The settle poll SAW them " +
+                      $"within {closestDrift:F1}m of the promised point before they ended up here, so " +
+                      "the crossing did its job and the defect is downstream of it."
+                    : clampSignature
+                        ? "THE WARP MAY WELL HAVE LANDED AND BEEN REVERTED - the settle poll never " +
+                          $"sampled the hero nearer than {closestDrift:F1}m, but the promised point lies " +
+                          $"OUTSIDE the hero's ±{ClampHalfHint:0.#}m off-mesh playable-bounds clamp and the " +
+                          "hero is now sitting ON that bound, which is that clamp's signature and not a " +
+                          "warp that never fired."
+                        : $"THE WARP DID NOT HAPPEN - the hero never came nearer than {closestDrift:F1}m " +
+                          "to the promised point at any sampled frame of the whole budget.";
+
+                string owner = (everReached || clampSignature)
+                    ? "DO NOT START IN SceneTransitionTrigger OR HeroLocomotion.WarpTo. Grep this same " +
+                      "capture for the line '[Flow:HeroLoco] playable-bounds CLAMP relocated the hero' " +
+                      "(HeroLocomotion.cs:1401-1409, throttled to 1/sec) - it names the before/after and " +
+                      "the agent state, and it is the proof of who moved them. If that line IS present, " +
+                      "the owner is the clamp and the real question is why the destination was off-mesh; " +
+                      "if it is ABSENT, look for a spawn placement that overrode the warp."
+                    : "This is a CROSSING failure (SceneTransitionTrigger.RepositionPlayerAfterLoad / " +
+                      "HeroLocomotion.WarpTo, or a spawn placement that overrode it), NOT a disagreement " +
+                      "between the drop derivation and the region split - the drop point is refused " +
+                      "before the door is built if it does not classify as its own region, and refused " +
+                      "again at seat time if it has no navmesh under it.";
+
+                FlowTrace.Fail(Sys, $"the {BiomeRoads.ZoneName(s_pendingRegion)} drop did not settle: after " +
                                     $"{settleSeconds:F2}s (budget {ArrivalSettleBudget:0.0}s) the hero is at {at}, " +
-                                    $"{drift:F1}m from the promised point {s_promisedPoint} - well outside the " +
-                                    $"{ArrivalSettleRadius:0.#}m settle radius. ZoneManager classifies where they " +
-                                    $"actually are as {BiomeRoads.ZoneName(landed)}, which says nothing about the " +
-                                    "derived point: THE WARP DID NOT HAPPEN. This is a CROSSING failure " +
-                                    "(SceneTransitionTrigger.RepositionPlayerAfterLoad / HeroLocomotion.WarpTo, or " +
-                                    "a spawn placement that overrode it), NOT a disagreement between the drop " +
-                                    "derivation and the region split - the drop point is refused before the door " +
-                                    "is built if it does not classify as its own region.");
+                                    $"{drift:F1}m from the promised point {s_promisedPoint} (closest approach " +
+                                    $"{closestDrift:F1}m) - well outside the {ArrivalSettleRadius:0.#}m settle " +
+                                    $"radius. ZoneManager classifies where they actually are as " +
+                                    $"{BiomeRoads.ZoneName(landed)}, which says nothing about the derived point. " +
+                                    $"VERDICT: {verdict} {owner}");
                 Notify($"The road to {BiomeRoads.ZoneName(s_pendingRegion)} did not carry you through.");
                 return;
             }

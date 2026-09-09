@@ -292,13 +292,13 @@ namespace DeNelle.Village
         public float ObjectiveHpFraction => _spire != null ? _spire.HpFraction : 0f;
 
         /// <summary>
-        /// The condition that ends the raid in a WIN: the spire falls. A legacy raid base
-        /// with no spire falls back to the old "garrison wiped" rule, so nothing that
-        /// shipped before regresses.
+        /// The condition that ends the raid in a WIN: the spire falls OR the garrison
+        /// is wiped. Owner 2026-09-09: a dead camp must settle, not wait for the empty
+        /// spire to be farmed. Either signal is enough; Finalize latches the result.
         /// </summary>
-        public bool RaidWon => _spire != null
-            ? _spire.IsDestroyed
-            : (_spawner != null && _spawner.Cleared);
+        public bool RaidWon =>
+            (_spire != null && _spire.IsDestroyed)
+            || (_spawner != null && _spawner.Cleared);
 
         /// <summary>Living garrison fraction razed, 0..1 (1 once the garrison is wiped).</summary>
         private float GarrisonRazedPct

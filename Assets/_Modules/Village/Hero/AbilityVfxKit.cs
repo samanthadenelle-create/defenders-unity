@@ -189,6 +189,19 @@ namespace DeNelle.Village
                     m.SetTexture("_BaseMap", stranded);
                     changed = true;
                 }
+                else
+                {
+                    // Lana 1AB_mat (Slash_stone_once / Impact_Physical) ships URP Particles/Unlit
+                    // with BOTH _BaseMap and _MainTex NULL. That draws opaque-looking WHITE
+                    // rectangles (owner raid screenshot 2026-09-09, footmen vs palisade). Feed
+                    // the shared soft-dot so a missing texture never renders as a hard square.
+                    var soft = SoftDotTexture;
+                    if (soft != null)
+                    {
+                        m.SetTexture("_BaseMap", soft);
+                        changed = true;
+                    }
+                }
             }
 
             // 2. Un-opaque: a particle glow/spell sprite must alpha-blend (or add), never

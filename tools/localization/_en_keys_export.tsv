@@ -1,0 +1,336 @@
+335
+title.tagline	Hold the Chord. Defend the Spire.
+title.tagline.legacy.bible	Tend the Heart. Hold the dark.
+title.tagline.legacy.story	Tend the Lantern. Hold the dark.
+intro.coldOpen.line1	In an old valley, an old tree.
+intro.coldOpen.line2	In the dark beyond, a slow cold rot.
+intro.coldOpen.line3	You are the Keeper. The song is yours now.
+tutorial.firstVillageLoad	Welcome home, Keeper. The Heart hums for you. Walk a while - the song will tell you what it needs.
+tutorial.firstApproachHeart	This is Elarion. Touch the dais. The crystal will remember you.
+tutorial.firstCrystalClaim	The Heart gives what it can spare. Hold these - you will need them.
+tutorial.firstBuildingUnlock	The Folk built these long before you. Each one tends to the Heart in its own way.
+tutorial.firstStoreVisit	What you cannot grow here, the wanderers bring. Spend wisely. Coins are slow to earn.
+tutorial.firstDefenseRun	The dark has noticed us. Place your companions at the slots. They will know what to do.
+tutorial.firstPetPlacement	A spirit at a slot defends. A spirit at a building tends. They cannot do both at once.
+tutorial.firstAbilityCastQ	This is your magic, but it is the Heart's gift. Use what is given. It returns when it can.
+tutorial.firstFrostNovaW	For when a lane fails. The cold buys you a breath. Use the breath well.
+tutorial.firstBeaconE	Plant light where the dark gathers thickest. The towers within will fight braver.
+tutorial.firstMeteorR	This is the deep magic. Spend it only when the Heart calls for it.
+tutorial.steps.1	Welcome home, Keeper. The spire holds the realm's last song. Protect it.
+tutorial.steps.2	The Hollowed come from the dark beyond the walls. They want to extinguish the Light.
+tutorial.steps.3	Build your defenses with what you have. Walk to the Crystal Mine - tap to gather.
+tutorial.steps.4	Good. Spend crystals at the Workshop to upgrade your defenses.
+tutorial.steps.5	When you are ready, begin a wave. Tap a skill to cast - your magic returns when the spire allows.
+tutorial.steps.6	Your Wardens fight beside you. Tap one to give them a station.
+tutorial.steps.7	The spire remembers your kindness. Tend it well, Keeper.
+tutorial.steps.forceField	The walls hold a force-field of the Heart's own light - see it shimmer in the gates. It turns the Hollowed back while it shines. But every blow thins it, and a thinned field lets the dark slip through. Keep the walls and gates mended, and the light keeps its strength.
+gate.firstSeen	The Heart's light parts for those it knows. Walk through, Keeper - but the Hollow Ones will press against it. Mend the gate as you mend the walls.
+gate.firstDestroyed	The gate has fallen. They come through unhindered. Hold the inner ring and repair the field before the next dark.
+gate.firstRepaired	The light remembers you. The gate holds again.
+wave.warning.ice.1	They come from the cold places. They will move slowly, and bite hard.
+wave.warning.ice.2	The frost-marked are at the gates. Keep your fires lit.
+wave.warning.fire.1	The ember-bound come, hungry for the green things. Hold the eastern lanes.
+wave.warning.fire.2	They burn as they march. Do not let them touch the Heart's roots.
+wave.warning.aether.1	Wisps of the unmade - quick, half-here. Aim true.
+wave.warning.aether.2	The half-souls drift in. They feel the Heart's pull. Turn them back.
+wave.warning.mixed.1	A many-tongued tide. Read the lanes before you place.
+wave.warning.mixed.2	They come from every dark. Trust your Wardens.
+wave.warning.boss.1	Alduin the Mournful walks at the head of this tide. He was a healer, once. Greet him with steel.
+wave.warning.boss.2	He returns when the Withering finds purchase. Send him back.
+wave.warning.apex.1	Syndrath the Devourer circles the Heart. The sky itself has turned against us. Keep your eyes up, Keeper.
+wave.warning.apex.2	A black wing crosses the sun. The Devourer hunts where the realm is weakest - do not let it find the Heart wanting.
+heartVoice.serene.toVigilant	The song shifts. The dark is at the gates.
+heartVoice.vigilant.toWarning	A lane wavers. The Heart felt it before you did.
+heartVoice.warning.toDanger	The walls are thinning. The Heart calls for you.
+heartVoice.danger.toCritical	The song breaks. Defend, Keeper - defend now.
+heartVoice.critical.toSerene	The Heart settles. The folk breathe again.
+heartVoice.boss	He stands within the gate. Time slows. The light dims.
+heartVoice.victorious	The song rises. The valley holds.
+heartVoice.alt.vigilant.1	The light shifts. The dark is at the gates.
+heartVoice.alt.vigilant.2	The spire stirs. The watch begins.
+heartVoice.alt.warning.1	A lane wavers. The chord felt it before you did.
+heartVoice.alt.warning.2	Something pushes harder than the rest. Look to it.
+heartVoice.alt.danger.1	The walls are thinning. Elarion calls for you.
+heartVoice.alt.danger.2	Two lanes at once. Keep your hands moving.
+heartVoice.alt.critical.1	The chord breaks. Defend, Keeper - defend now.
+heartVoice.alt.critical.2	The spire shudders. Hold the line at all costs.
+heartVoice.alt.boss.1	He stands within the gate. Time slows. The light dims.
+heartVoice.alt.boss.2	Alduin the Mournful walks the lane. Greet him with steel.
+heartVoice.alt.victorious.1	The light returns. The village breathes again.
+heartVoice.alt.victorious.2	The song rises. Elarion holds.
+heartDamage.threshold75	The crystal flickers. The Heart has taken its first blow.
+heartDamage.threshold50	Leaves fall in the wrong season. The song has gone thin.
+heartDamage.threshold25	The bark is cracking. Hold, Keeper. Hold.
+heartDamage.threshold10	The song is almost gone. Spend everything.
+heartDamage.threshold0	...
+heartDamage.alt.threshold75	The flame flickers. The Lantern has taken its first blow.
+heartDamage.alt.threshold50	Leaves fall in the wrong season. The warmth has gone thin.
+heartDamage.alt.threshold25	The bark is splitting. Hold, Guardian. Hold.
+heartDamage.alt.threshold10	The light is almost out. Spend everything.
+victory.wave.1	They fall back. The Heart steadies. A breath, then the next.
+victory.wave.2	The dark withdraws. Tend your companions. The song is not yet done.
+victory.wave.3	The lanes hold. The folk light a candle for you.
+victory.boss.1	Alduin breaks apart at the Heart's threshold. The Withering crawls home.
+victory.boss.2	The valley sings. The folk weep. You are still the Keeper. The work begins again tomorrow.
+victory.personalBest	None before you held so long. The old Keepers would have nodded.
+victory.waveCleared.1	The dark withdraws - for now.
+victory.waveCleared.2	The chord holds. The watch breathes.
+victory.waveCleared.3	The Folk light a candle for you.
+victory.waveCleared.4	The lanes are quiet again. Tend your Wardens.
+victory.waveCleared.5	A breath. A moment. The next tide will come.
+victory.waveCleared.6	The wind cools. Elarion remembers your name.
+defeat.1	The song stops. The folk look up. The wind feels cold for the first time.
+defeat.2	The Heart breaks. But the bond does not. Begin again, Keeper - there is no other answer.
+defeat.3	Elarion will return where it is needed. You will too.
+defeat.alt.1	The light stops. The folk look up. The wind feels cold for the first time.
+defeat.alt.2	The chord falters. But the bond does not. Begin again, Keeper.
+petCaption.aetherSprite	(a soft musical hum)
+petCaption.flamePup	(a warm yip, like a small bell)
+petCaption.iceWolf	(a low, considered breath)
+petCaption.levelUp	(a long, surprised note)
+petAmbient.aetherSprite.1	The Sprite watches you as you work. You do not know what it sees.
+petAmbient.aetherSprite.2	It hums a single note, then forgets it.
+petAmbient.aetherSprite.3	It glows brighter when you smile. You did not know that yet.
+petAmbient.flamePup.1	The Pup is dreaming of fire again. Its tail twitches.
+petAmbient.flamePup.2	It curled up on the warm stones at sunset. It has not moved since.
+petAmbient.flamePup.3	It bared its teeth at a draft. The draft retreated.
+petAmbient.iceWolf.1	Aldwin came back from the orchard with ice on his muzzle. You did not ask.
+petAmbient.iceWolf.2	Aldwin pads silently. When the Hollowed come, he bares his teeth and does not look away.
+petAmbient.iceWolf.3	His breath does not cloud. You wonder if he is breathing at all.
+keeperAmbient.1	The Pup is dreaming of fire again. Its tail twitches.
+keeperAmbient.2	The Mine is full. The Folk left a candle by the door this morning.
+keeperAmbient.3	There is a song in the wood, faint and old. The Heart is humming.
+keeperAmbient.4	The Sprite watches me as I work. I do not know what it sees.
+keeperAmbient.5	The Folk leave bread in the workshop when they do not see me. I find it. I do not thank them yet.
+keeperAmbient.6	Aldwin came back from the orchard with a scrap of ice on his muzzle. I asked. He did not say.
+keeperAmbient.7	The Tower's lamp has been lit for ten thousand mornings. It is my turn to keep it.
+keeperAmbient.8	I think the Heart sang me to sleep last night. I cannot tell anymore where its voice ends and mine begins.
+milestone.firstPetLevelUp	The Sprite glows brighter. Something it could not do yesterday, it can do today.
+milestone.firstSkillUnlocked	A new shape in the song. The Heart taught it while you slept.
+milestone.firstBossKill	Alduin falls. The folk will sing about this evening for a hundred years.
+milestone.firstStorePurchase	The wanderer bows. The folk will know your name in three valleys.
+milestone.firstBuildingUpgrade	The Workshop bell is louder now. The Folk are pleased.
+milestone.streak7Days	Seven mornings tending the song. The old Keepers would have called you 'one of ours' by now.
+returningPlayer	Elarion kept your hearth warm. Welcome back, Keeper.
+heroSelect.title	Defenders of the Realm
+heroSelect.subtitle	powered by SKR
+heroSelect.confirm	Take Up the Watch
+heroSelect.diveVillage	Dive into Village
+heroSelect.jumpAction	Jump into the Action
+hero.mage.name	Thrain
+hero.mage.role	Frostweaver
+hero.mage.blurb	An elder scholar of the crystal seams, his staff sings the cold awake. Where Thrain walks, the dark slows and the frost remembers every name it freezes.
+hero.knight.name	Grom
+hero.knight.role	Lightbearer
+hero.knight.blurb	Hammer in hand and the sun's emblem on his shield, Grom carries blessed steel into the breach. Where his light falls, the Hollowed falter and the walls hold.
+hero.ranger.name	Sylas
+hero.ranger.role	Wood Warden
+hero.ranger.blurb	An elf of the green lanes who looses a clean arrow on the wind long before the dark draws near. Sylas reads the wood, snares the swift, and turns a tide arrow by arrow.
+hero.cleric.name	Elara
+hero.cleric.role	Divine Healer
+hero.cleric.blurb	A vessel of the Heart's own light, Elara mends the wounded and wraps the faithful in holy ward. The dark cannot outlast a grace that rises faster than it can wound.
+petSelect.title	Choose Your First Warden
+petSelect.subtitle	A spirit will walk the watch beside you. Bond with one - it will know your kindness, and your battles.
+petSelect.confirm	Bond With This Warden
+elementBlurb.aether	Aether. The Heart's own light, shared and reshared. Mends what the dark has frayed.
+elementBlurb.flame	Flame. The hearth's old defiance. Burns what would creep into the warm places.
+elementBlurb.ice	Ice. The patient cold that holds the dark still until the song catches up.
+resourceBlurb.crystals	Crystals. The Heart's slow gift. Mined where its overflow seeps up through the stone.
+resourceBlurb.coins	Coins. Quiet currency, brought by the wanderers from valleys still standing. Spend them on what cannot be grown here.
+buildingDesc.crystalMine	Where the Heart's gem-sap seeps into stone. Pets here tend the seam.
+buildingDesc.petHouse	An ancient recess in the world tree's roots. The echoes rest here between battles, their presence a low hum in the stones.
+buildingDesc.arcaneTower	Built by the first Keepers. Holds the ward-stones that answer your call.
+buildingDesc.farm	Wheat that grows because the Heart wills it. Apples taste like the old summers.
+buildingDesc.workshop	Hammer and forge. The Folk make what the Keeper needs and ask nothing.
+buildingDesc.lumbermill	The sawmill's blade hums against timber the green places of Elarion still spare. Its planks brace the highest walls.
+buildingDesc.forge	The armorer's fire never cools. Here the Folk beat raw iron into plate the Hollowed cannot easily bite through.
+tooltip.resourceCrystals.title	Crystals
+tooltip.resourceCrystals.body	The Heart's slow gift. Mined where its overflow seeps up through the stone.
+tooltip.resourceCoins.title	Coins
+tooltip.resourceCoins.body	Quiet currency, brought by the wanderers from valleys still standing. Spend it on what cannot be grown here.
+tooltip.resourceVoidshards.title	Voidshards
+tooltip.resourceVoidshards.body	Splinters of the Withering, left where a great Hollow One fell. The ward-stones drink them and grow strong.
+tooltip.resourceStone.title	Stone
+tooltip.resourceStone.body	Drawn from the valley's old bones. The walls remember the shape of it.
+tooltip.resourceIron.title	Iron
+tooltip.resourceIron.body	Cold metal from the deep seams. The Folk forge it into walls the dark cannot easily pass.
+tooltip.resourceWood.title	Wood
+tooltip.resourceWood.body	Fallen timber from the green places the Heart still keeps. It braces the highest walls.
+tooltip.buttonWalls.title	The Walls
+tooltip.buttonWalls.body	Raise the perimeter the Folk built around the Heart. Stone, iron and wood mend it higher.
+tooltip.buttonTowers.title	The Towers
+tooltip.buttonTowers.body	Stone spires raised by the first Keepers. Their ward-stones answer your call against the dark.
+tooltip.buttonBuild.title	Build
+tooltip.buttonBuild.body	Touch a marked ground to raise a spire, or the wall to mend it higher. The Folk do the rest.
+tooltip.buttonSettings.title	The Keeper's Ledger
+tooltip.buttonSettings.body	Hear the old story again, keep a copy of your watch, or begin a new one.
+tooltip.buttonHelp.title	The Old Lessons
+tooltip.buttonHelp.body	How to keep the watch - what the previous Keepers would have told you.
+tooltip.buttonClan.title	The Other Valleys
+tooltip.buttonClan.body	Join your watch to other Keepers, tend the roster, and trade word across the realm.
+tooltip.buttonMailbox.title	The Mailbox
+tooltip.buttonMailbox.body	Notes carried in by the wanderers. Send your own word with your invite mark.
+tooltip.buttonHouse.title	Your Hall
+tooltip.buttonHouse.body	All you have gathered - every spirit bonded, every place raised.
+tooltip.waveTimerPill.title	The Dark Stirs
+tooltip.waveTimerPill.body	A tide gathers beyond the walls. Gather what you can and ready your defenses.
+tooltip.waveBegin.title	Call the Wave
+tooltip.waveBegin.body	Do not wait for the dark. Meet it now, on your own watch.
+tooltip.ability.mage.q.title	Arcane Bolt
+tooltip.ability.mage.q.body	Your magic, but it is the Heart's gift. Use what is given - it returns when it can.
+tooltip.ability.mage.w.title	Frost Nova
+tooltip.ability.mage.w.body	For when a lane fails. The cold buys you a breath. Use the breath well.
+tooltip.ability.mage.e.title	Healing Beacon
+tooltip.ability.mage.e.body	Plant light where the dark gathers thickest. The Heart and all who stand near mend in it.
+tooltip.ability.mage.r.title	Meteor Strike
+tooltip.ability.mage.r.body	This is the deep magic. Spend it only when the Heart calls for it.
+tooltip.ability.knight.q.title	Sword Strike
+tooltip.ability.knight.q.body	Plain steel, close and sure. It asks nothing of the Heart and is always ready.
+tooltip.ability.knight.w.title	Shield Bash
+tooltip.ability.knight.w.body	Set your shield against the tide. The Hollow Ones falter, and you keep the line.
+tooltip.ability.knight.e.title	Banner of Valor
+tooltip.ability.knight.e.body	Raise the old colors. A whole rank of the dark is cut down where it stands.
+tooltip.ability.knight.r.title	Vow of Iron
+tooltip.ability.knight.r.body	A promise kept to the Heart. Its light floods back into the wound.
+tooltip.ability.ranger.q.title	Quick Shot
+tooltip.ability.ranger.q.body	A clean arrow loosed long. It costs nothing and the string is never still for long.
+tooltip.ability.ranger.w.title	Snare Arrow
+tooltip.ability.ranger.w.body	Pin a Hollow One to the ground. It will not reach the Heart's roots tonight.
+tooltip.ability.ranger.e.title	Hawk's Eye
+tooltip.ability.ranger.e.body	Aim true and far. One shot carries the weight of the dark you turn back.
+tooltip.ability.ranger.r.title	Volley
+tooltip.ability.ranger.r.body	Loose every arrow to the sky at once. They come down like a hard rain on the tide.
+movementHint.joystick	Drag the joystick in the bottom-left corner to walk around the village.
+movementHint.tap	Tap anywhere on the ground and your hero will walk there.
+movementHint.both	Drag the joystick to move - or tap the ground to walk somewhere.
+realmMap.revealHint	The realm beyond Elarion stirs. Visit the Wayshrine - the pale standing stone - to set out across the Realm Map.
+shopkeeperPanic.1	My lord - ENEMIES! The shop can wait!
+shopkeeperPanic.2	Goods later, glory now! To arms!
+shopkeeperPanic.3	You want to shop? NOW?! Help us, please!
+shopkeeperPanic.4	Coin won't save us from this lot - your magic will!
+shopkeeperPanic.5	My lord, the till is barricaded! Get to the Heart!
+shopkeeperPanic.6	Discounts after the wave, I swear it! Fight!
+swap.title	Swap to SKR
+swap.inputLabel	You send
+swap.outputLabel	You receive
+swap.rateLabel	Exchange rate
+swap.feeLabel	Service fee
+swap.networkLabel	Network fee
+swap.confirm	Swap Now
+swap.poweredBy	Powered by Jupiter Aggregator
+swap.statusEnter	Enter an amount to see the rate.
+swap.statusLoading	Getting rate...
+swap.statusConnect	Connect your wallet to swap.
+swap.statusSigning	Sending to wallet for approval...
+swap.statusError	Could not fetch rate. Check connection.
+swap.statusFailed	Swap failed. Please try again.
+feedback.title	Tell Us Honestly
+feedback.body	Tell us what works, what does not, and what is missing. We read every response, and the thank-you is the same whatever you write.
+feedback.placeholder	What is working, and what is not?
+feedback.send	Send And Claim
+feedback.reward	One time only: 1000 wood, 1000 stone and 1000 iron, delivered in full.
+feedback.store	Rate Us On The Store
+feedback.storeCaption	Separate, and nothing is rewarded for it - no store tells us whether you did.
+feedback.settingsSection	Feedback
+feedback.settingsButton	Send Feedback
+feedback.sending	Sending...
+feedback.serviceUnavailable	We could not reach the feedback service just now. Please try again later.
+feedback.storeUnavailable	The store link is not configured on this build.
+feedback.thanks	Thank you - your words are with us. 1000 wood, 1000 stone and 1000 iron have been added to your stores, in full.
+feedback.alreadyClaimed	Thank you - your words are with us. The thank-you was already claimed on this realm, so nothing was added this time.
+feedback.grantUnavailable	Thank you - your words are with us. The thank-you could not be added right now; it is still owed to you and has not been used up.
+feedback.tooShort	A few more words, please - at least {Minimum} characters.
+feedback.noIdentity	We could not verify your account, so nothing was sent. Try again later.
+feedback.serverRefused	The server did not accept that. Nothing was sent - please try again.
+feedback.networkFailed	We could not reach the server. Your words were not sent; please try again.
+feedback.overCapacity	Your {Resource} is now {AmountOver} above what your stores can hold. All of it is yours and stays yours; harvests and rewards into {Resource} simply pause until you spend back under.
+jewelerFtue.title	JEWELER UNLOCKED
+jewelerFtue.body	A rare item was recovered.\nSable can polish it into a refined gem.
+jewelerFtue.openJeweler	Open Jeweler
+jewelerFtue.guidance	Take it to Sable at the Jeweler.
+jewelerFtue.stakeChecking	Checking the logged-in wallet for an active native SKR stake.
+jewelerFtue.stakeVerified	Native SKR stake verified: +1 weekly re-roll added.
+jewelerFtue.stakeVerifiedHighTier	Native SKR stake verified: +1 weekly re-roll added. Your 10,000+ SKR stake also raises the per-stone roll cap to 6.
+jewelerFtue.stakeNotVerified	Native SKR stake not verified: no weekly re-roll was added.
+jewelerPolish.title	POLISH THE STONE
+jewelerPolish.body	Sable needs {Duration} to polish the stone. When the work is complete, the gem inside will be revealed.
+jewelerPolish.begin	Begin Polish - {Duration}
+jewelerPolish.started	Sable has begun polishing. Follow it in the Work Queue.
+jewelerPolish.failed	The stone could not be placed on the bench.
+jewelerPolish.noStone	There is no rough stone in your larder.
+jewelerPolish.revealTitle	GEM REVEALED
+jewelerPolish.revealBody	Sable reveals a {Gem}. It has been added to your larder.
+jewelerPolish.keep	Keep Gem
+settings.title	Settings
+settings.section.audio	Audio
+settings.audio.master	Master
+settings.audio.music	Music
+settings.audio.sfx	SFX
+settings.audio.muteAll	Mute all audio
+settings.audio.mixerUnavailable	Audio mixer not wired yet - volumes persist and apply when it lands.
+settings.section.gameplay	Gameplay
+settings.difficulty.easy	Easy
+settings.difficulty.normal	Normal
+settings.difficulty.hard	Hard
+settings.difficulty.easyBlurb	A long, calm build window - about 10 minutes between waves.
+settings.difficulty.normalBlurb	The standard build window - about 5 minutes between waves.
+settings.difficulty.hardBlurb	A short, tense build window - about 3 minutes between waves.
+settings.section.graphics	Graphics
+settings.quality.low	Low 30 FPS
+settings.quality.high	High 60 FPS
+settings.quality.desktop	Desktop 60 FPS
+settings.section.comfort	Comfort
+settings.comfort.screenShake	Screen shake
+settings.toggle.on	On
+settings.toggle.off	Off
+settings.section.language	Language
+settings.language.systemDefault	Device Language
+settings.language.choose	Choose: {Language}
+settings.section.wallet	Wallet
+settings.wallet.connect	Connect Wallet
+settings.wallet.disconnect	Disconnect Wallet
+settings.wallet.disconnectAddress	Disconnect {Address}
+settings.section.help	Help
+settings.help.gameGuide	Game Guide
+settings.help.help	Help
+settings.help.resetDefaults	Reset Defaults
+settings.section.town	Your Town
+settings.town.defenceReports	Defence Reports
+settings.town.defenceReportsUnread	Defence Reports ({UnreadCount} new)
+settings.section.legal	Legal
+settings.legal.privacyPolicy	Privacy Policy
+settings.legal.termsOfService	Terms of Service
+settings.section.adPrivacy	Ad Privacy
+settings.adPrivacy.choices	Ad Privacy Choices
+settings.adPrivacy.doNotSellOn	Do Not Sell: ON
+settings.adPrivacy.doNotSellOff	Do Not Sell: OFF
+settings.section.offline	Offline
+settings.offline.ready	Offline Ready
+settings.offline.play	Play Offline
+settings.section.developer	Developer
+settings.developer.panel	Dev Panel
+settings.value.percent	{Percent}%
+hudCollectorsTitle	Harvest
+hudCollectorsCount	Collectors {0}/{1} full
+hudCollectorsFullLine	Collect
+hudCollectorsNearlyLine	{0}% - tap
+hudCollectorsWaitingLine	{0} waiting
+hudManageIdleAll	{0} idle
+hudManageIdleSome	{0}/{1} idle
+storeWordmark	The Night Market
+heroBag	BAG
+heroSkills	SKILLS
+heroLoadout	LOADOUT
+journeyCardDungeonsSubtitle	Descend into forgotten places. Return with what survived.
+journeyCardRealmMapSubtitle	Explore the lands beyond the Heart's light.
+journeyCardSeasonSubtitle	Face the challenge shaping the Realm now.
+dungeonSealedHeadline	The way is barred.
+raidCooldownBadge	RECOVERING
+raidReadyBadge	READY
+raidCooldownCardLine	Recovering - raidable in {0}
+raidReadyCardLine	Ready to raid
+raidCooldownBlocked	This camp is still recovering from your last raid. You can hit it again in {0}.
+raidCooldownStarted	The camp is broken for now. It regroups in {0}.
+raidDurationHm	{0}h {1}m
+raidDurationM	{0}m
+raidDurationSub	less than a minute

@@ -831,6 +831,15 @@ namespace DeNelle.Village
             Guard.Try("VFXManager", $"ProofUrpParticleShaders('{type}')",
                 () => ProofUrpParticleShaders(go, type));
 
+            // Owner Seeker frame 2026-09-09 09:46:58 (proof/seeker-broken-vfx-raid.png):
+            // Slash_stone_once (Impact_Physical) is a MESH quad whose URP particle mat
+            // has no authored texture. Healing it with SoftDot still draws a giant grey
+            // CARD in the raid courtyard. The contact read is HitSurfaceVfx; this mesh
+            // is not a slash, it is a billboard. Kill it on the pooled instance.
+            if (type == VFXType.Impact_Physical)
+                Guard.Try("VFXManager", "suppress untextured Impact_Physical mesh",
+                    () => SuppressUntexturedImpactMesh(go));
+
             // V §12: a wired prefab that ships NO ParticleSystem (or visible Renderer) pools and
             // "plays" but renders nothing — the silent-invisible-effect class. Verify ONCE per type
             // at warm time so a bad catalog entry self-reports instead of going quiet in combat.
@@ -838,6 +847,39 @@ namespace DeNelle.Village
 
             go.SetActive(false);
             return go;
+        }
+
+        /// <summary>
+        /// Lana Slash_stone_once draws a MESH quad. With 1AB_mat's empty _BaseMap it is a
+        /// white rectangle; after SoftDot heal it is a giant grey card (owner Seeker
+        /// 2026-09-09 09:46:58). Disable those mesh slots. Billboard particles, if any,
+        /// stay. Contact feedback is HitSurfaceVfx at the call site.
+        /// </summary>
+        private static void SuppressUntexturedImpactMesh(GameObject go)
+        {
+            if (go == null) return;
+            int killed = 0;
+            var meshes = go.GetComponentsInChildren<MeshRenderer>(true);
+            for (int i = 0; i < meshes.Length; i++)
+            {
+                if (meshes[i] == null) continue;
+                meshes[i].enabled = false;
+                killed++;
+            }
+            var psrs = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            for (int i = 0; i < psrs.Length; i++)
+            {
+                if (psrs[i] == null) continue;
+                if (psrs[i].renderMode == ParticleSystemRenderMode.Mesh)
+                {
+                    psrs[i].enabled = false;
+                    killed++;
+                }
+            }
+            if (killed > 0)
+                FlowTrace.Step("VFXManager",
+                    "Impact_Physical: disabled " + killed + " untextured mesh renderer(s) "
+                    + "(Slash_stone_once grey card).");
         }
 
         // V: a VFX GameObject MUST carry at least one ParticleSystem OR a visible Renderer to be
