@@ -161,6 +161,9 @@ explained, and `Heartfire is full` reported a STATE with no consequence attached
   Charged: **`Heartfire 3/3 (raids)`**. Spent: **`Heartfire 0/3 (raids) - next in 3h 12m`**. The three
   greyscale-safe marks stay; a full pool no longer paints a second row at all. Both strings are
   composed by `HeartfireCharges.PlateLabel` / `PlateRekindle` and pinned byte-exact (PIN G).
+- Those English phrases remain the semantic source of truth, while the player-facing Heart plate resolves
+  `hud.heart.*` through `HeartHudText` and `LocalText`. Every required region must update with an English
+  wording or argument change; translated grammar may reorder named values without changing the mechanic.
 - **INTRODUCED AT THE FIRST RAIDS-GRID OPEN, never at founding** — a new player has no raid to spend a
   charge on. One non-mandatory, one-shot dialogue beat (`ctx_heartfire` → `tut_ctx_heartfire`), latched
   on `seenTutorials`, no schema bump; the mandatory chain stays at eight.
