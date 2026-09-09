@@ -57,6 +57,8 @@ their JSON exists; their script, shaping, font, layout, and device gates must pa
 - `LocalizationBuilder` reads policy, registers only build-enabled locales, reconciles shared keys,
   generates the six `GameStrings` tables and Addressables groups, preserves Smart metadata, assigns
   deterministic locale order, and records English fallback metadata.
+- `LocaleParityRegression` compares every build-enabled Unity table byte-for-value with its canonical
+  locale source, so updating all JSON regions without rebuilding the shipped tables remains a hard failure.
 - A new English key without the other nine regional values is a failing change, not an English-only
   fallback release. Removing or renaming a key has the same all-region requirement.
 - Player-authored names, wallet addresses, and free-form feedback are data and are never translated.

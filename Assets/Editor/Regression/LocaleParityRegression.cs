@@ -121,6 +121,51 @@ namespace DeNelle.Editor.Regression
                     }
                 }
             }
+
+            // Canonical parity is necessary but not sufficient: the package-backed runtime ships
+            // generated Unity tables. A JSON-only change must stay red until every enabled table is
+            // rebuilt, including keys that are not exercised by the small screenshot surface set.
+            foreach (var locale in policy.supportedLocales.Where(l => l != null && l.enabledInBuild))
+            {
+                string localeSource = string.Equals(locale.code, policy.baseLocale,
+                    StringComparison.OrdinalIgnoreCase)
+                    ? collection.source
+                    : sourceDirectory + "/" + locale.code + ".json";
+                var canonical = new Dictionary<string, string>();
+                ioFailures.Clear();
+                if (!LocalizationAuditIO.TryReadFlatJson(localeSource, out canonical, ioFailures))
+                {
+                    foreach (string failure in ioFailures) failures.Add(failure);
+                    continue;
+                }
+
+                LocalizationAuditIO.UnityStringTable unity;
+                ioFailures.Clear();
+                string unityPath = LocalizationAuditIO.ReplaceLocale(collection.unityTablePattern, locale.code);
+                if (!LocalizationAuditIO.TryReadUnityTable(collection.unityShared, unityPath,
+                    out unity, ioFailures))
+                {
+                    foreach (string failure in ioFailures) failures.Add(failure);
+                    continue;
+                }
+
+                var generated = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var pair in unity.KeysById)
+                {
+                    string value;
+                    if (unity.ValuesById.TryGetValue(pair.Key, out value)) generated[pair.Value] = value;
+                }
+                var orphanIds = unity.ValuesById.Keys.Where(id => !unity.KeysById.ContainsKey(id))
+                    .OrderBy(id => id).ToList();
+                if (orphanIds.Count > 0)
+                    failures.Add(locale.code + " Unity table has " + orphanIds.Count +
+                                 " localized id(s) absent from shared data" +
+                                 LocalizationAuditIO.Sample(orphanIds.Select(id => id.ToString()).ToList()));
+
+                string unityDetail;
+                if (!LocalizationAuditIO.DictionariesEqual(canonical, generated, out unityDetail))
+                    failures.Add(locale.code + " Unity table differs from canonical: " + unityDetail);
+            }
         }
 
         private static void AddEmptyFailures(string localeCode, string collectionId,
