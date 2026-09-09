@@ -382,6 +382,8 @@
   "storeLedgerHeading": "Qué contiene",
   "storeCardOwned": "En posesión",
   "storeCardGap": "Lo que te falta",
+  "interaction.chest.open": "Abrir el cofre",
+  "interaction.chest.blockedByEnemies": "No mientras haya enemigos cerca.",
   "heroBag": "BOLSA",
   "heroSkills": "HABILIDADES",
   "heroLoadout": "EQUIPO",

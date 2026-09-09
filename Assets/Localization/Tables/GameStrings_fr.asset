@@ -1870,6 +1870,14 @@ MonoBehaviour:
     m_Localized: Votre manque
     m_Metadata:
       m_Items: []
+  - m_Id: 41028898699915264
+    m_Localized: Ouvrir le coffre
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41028898737664000
+    m_Localized: "Pas tant que des ennemis sont \xE0 proximit\xE9."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

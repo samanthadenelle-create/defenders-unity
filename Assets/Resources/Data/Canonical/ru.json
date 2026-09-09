@@ -403,6 +403,8 @@
   "storeLedgerHeading": "Содержимое",
   "storeCardOwned": "Получено",
   "storeCardGap": "Нехватка",
+  "interaction.chest.open": "Открыть сундук",
+  "interaction.chest.blockedByEnemies": "Нельзя, пока рядом враги.",
   "heroBag": "СУМКА",
   "heroSkills": "НАВЫКИ",
   "heroLoadout": "СНАРЯЖЕНИЕ",

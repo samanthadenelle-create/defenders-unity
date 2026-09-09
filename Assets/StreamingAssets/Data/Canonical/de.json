@@ -382,6 +382,8 @@
   "storeLedgerHeading": "Inhalt",
   "storeCardOwned": "Im Besitz",
   "storeCardGap": "Dein Bedarf",
+  "interaction.chest.open": "Truhe öffnen",
+  "interaction.chest.blockedByEnemies": "Nicht, solange Feinde in der Nähe sind.",
   "heroBag": "TASCHE",
   "heroSkills": "FÄHIGKEITEN",
   "heroLoadout": "AUSRÜSTUNG",

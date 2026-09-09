@@ -77,7 +77,7 @@ using DeNelle.Core.Combat;        // BattleLock - the combat-state authority
 using DeNelle.Core.Diagnostics;   // FlowTrace / Guard (CLAUDE.md sec.12)
 using DeNelle.Core.UI;            // ElarionUiKit.ShowToast
 using DeNelle.Village.Items;      // ItemDropSystem / ItemPickupSpawner (same assembly)
-// MobileInteractButton and VillageStrings are namespace DeNelle.Village - no using needed.
+// MobileInteractButton and ChestInteractionText are namespace DeNelle.Village - no using needed.
 
 namespace DeNelle.Village
 {
@@ -94,12 +94,6 @@ namespace DeNelle.Village
 
         /// <summary>Name of the child the chest body hangs under - the idempotency marker.</summary>
         private const string BodyName = "ChestVisual";
-
-        /// <summary>canon-strings.json key for the in-combat refusal sentence.</summary>
-        internal const string RefusalCanonKey = "chestCombatRefusal";
-
-        /// <summary>canon-strings.json key for the normal "open this" prompt.</summary>
-        internal const string PromptCanonKey = "chestOpenPrompt";
 
         // Matched to DungeonTreasureCache / DungeonExitInteractable so every dungeon
         // affordance feels identical: the button arms before the hero is on the prop.
@@ -174,9 +168,9 @@ namespace DeNelle.Village
             // never dead. Owner ruling: this "prevents player from trying to run in
             // collect and go" - loot rewards CLEARING a room, not sprinting past it.
             if (BattleLock.IsInBattle())
-                MobileInteractButton.Request(this, VillageStrings.Canon(RefusalCanonKey), RefuseOpen);
+                MobileInteractButton.Request(this, ChestInteractionText.BlockedByEnemies.Resolve(), RefuseOpen);
             else
-                MobileInteractButton.Request(this, VillageStrings.Canon(PromptCanonKey), Open);
+                MobileInteractButton.Request(this, ChestInteractionText.Open.Resolve(), Open);
         }
 
         private void ReleasePrompt()
@@ -194,7 +188,7 @@ namespace DeNelle.Village
         /// </summary>
         private void RefuseOpen()
         {
-            string sentence = VillageStrings.Canon(RefusalCanonKey);
+            string sentence = ChestInteractionText.BlockedByEnemies.Resolve();
             FlowTrace.Step(Sys, $"chest '{name}' open REFUSED - combat active (BattleLock.IsInBattle). " +
                 $"Player told: \"{sentence}\"");
             Guard.Try(Sys, "surface chest in-combat refusal",

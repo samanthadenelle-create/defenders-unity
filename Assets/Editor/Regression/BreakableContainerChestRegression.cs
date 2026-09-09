@@ -43,16 +43,11 @@
 //       matters: the header prose legitimately says composed scenes "carry no
 //       WaveManager", which a raw substring lint would read as a second authority.)
 //
-//   4 [chest-refusal-has-words]  A refused open is NEVER a dead tap - a dead tap reads
-//       as a bug, and the player would conclude the chest is broken rather than that
-//       enemies are near. The type exposes internal consts RefusalCanonKey
-//       ("chestCombatRefusal") and PromptCanonKey ("chestOpenPrompt"), and BOTH keys
-//       resolve to a NON-EMPTY, ASCII-only sentence in BOTH canonical dual copies of
-//       canon-strings.json, with the two copies AGREEING. The dual-copy law is the
-//       point: a key present in only one copy ships blank in half the build targets,
-//       and the button face would render as an empty pill. ASCII because TMP renders
-//       non-ASCII as tofu on device. The source must also still call ShowToast, or the
-//       refusal never reaches the screen at all.
+//   4 [chest-refusal-has-words]  A refused open is NEVER a dead tap. The semantic
+//       interaction.chest.* keys live in ChestInteractionText as LocalizedText values,
+//       resolve from both English locale mirrors, and no longer remain duplicated in
+//       legacy canon-strings.json. BreakableContainer must use the same localized
+//       blocked sentence for its prompt and toast.
 //
 //   5 [chest-drop-survives]  The loot lane is UNCHANGED by the redesign - that is the
 //       whole point of it. The file still calls ItemDropSystem.RollLines and
@@ -127,9 +122,12 @@ namespace DeNelle.Editor.Regression
         // Relative to Application.dataPath (never a hardcoded drive letter - the repo root
         // is machine-dependent, CLAUDE.md sec.0).
         private const string ChestSrcRel = "_Modules/Village/World/BreakableContainer.cs";
+        private const string ChestTextSrcRel = "_Modules/Village/World/ChestInteractionText.cs";
         private const string ReticleSrcRel = "_Modules/Village/Hero/HeroTargetIndicator.cs";
         private const string CanonResRel = "Resources/Data/Canonical/canon-strings.json";
         private const string CanonSaRel = "StreamingAssets/Data/Canonical/canon-strings.json";
+        private const string LocaleResRel = "Resources/Data/Canonical/en.json";
+        private const string LocaleSaRel = "StreamingAssets/Data/Canonical/en.json";
 
         // The combat-state authorities that are NOT allowed to appear in this file. One
         // authority or the gate disagrees with itself somewhere.
@@ -367,76 +365,83 @@ namespace DeNelle.Editor.Regression
         }
 
         // =====================================================================
-        //  CASE 4 - the refusal is real, canonical, ASCII words in BOTH copies.
+        //  CASE 4 - both states resolve through the localization authority.
         // =====================================================================
         private static void Case4_RefusalHasWords(List<string> failures, List<string> notes)
         {
-            var chest = FindType(ChestTypeName);
-            if (chest == null)
+            var textType = FindType("DeNelle.Village.ChestInteractionText");
+            if (textType == null)
             {
-                failures.Add("[chest-refusal-has-words] " + ChestTypeName + " not found - the canon keys are declared on " +
-                             "it, so nothing can be resolved");
+                failures.Add("[chest-refusal-has-words] ChestInteractionText not found - the chest has no typed " +
+                             "localization catalog for its prompt and refusal.");
                 return;
             }
 
-            string refusalKey = ReadConst(chest, "RefusalCanonKey", failures);
-            string promptKey = ReadConst(chest, "PromptCanonKey", failures);
+            string refusalKey = ReadConst(textType, "KeyBlockedByEnemies", failures);
+            string promptKey = ReadConst(textType, "KeyOpen", failures);
 
-            if (refusalKey != null && !string.Equals(refusalKey, "chestCombatRefusal", StringComparison.Ordinal))
-                failures.Add("[chest-refusal-has-words] RefusalCanonKey is '" + refusalKey + "', not 'chestCombatRefusal'. " +
-                             "The key is the contract between the code and canon-strings.json: change one side only and " +
-                             "VillageStrings.Canon returns nothing, so the button face and the toast both go BLANK - a " +
-                             "dead tap by another route.");
+            if (refusalKey != null && !string.Equals(refusalKey, "interaction.chest.blockedByEnemies", StringComparison.Ordinal))
+                failures.Add("[chest-refusal-has-words] KeyBlockedByEnemies is '" + refusalKey +
+                             "', not the semantic interaction.chest.blockedByEnemies key.");
 
-            if (promptKey != null && !string.Equals(promptKey, "chestOpenPrompt", StringComparison.Ordinal))
-                failures.Add("[chest-refusal-has-words] PromptCanonKey is '" + promptKey + "', not 'chestOpenPrompt' - the " +
-                             "shared Interact button would arm with an empty face and the player would not know the " +
-                             "chest is openable at all.");
+            if (promptKey != null && !string.Equals(promptKey, "interaction.chest.open", StringComparison.Ordinal))
+                failures.Add("[chest-refusal-has-words] KeyOpen is '" + promptKey +
+                             "', not the semantic interaction.chest.open key.");
 
-            var res = LoadCanon(CanonResRel, "Resources", failures);
-            var sa = LoadCanon(CanonSaRel, "StreamingAssets", failures);
+            var res = LoadCanon(LocaleResRel, "Resources English locale", failures);
+            var sa = LoadCanon(LocaleSaRel, "StreamingAssets English locale", failures);
 
-            foreach (var key in new[] { refusalKey ?? "chestCombatRefusal", promptKey ?? "chestOpenPrompt" })
+            foreach (var key in new[]
+                     {
+                         refusalKey ?? "interaction.chest.blockedByEnemies",
+                         promptKey ?? "interaction.chest.open",
+                     })
             {
                 string a = Lookup(res, key);
                 string b = Lookup(sa, key);
 
                 if (res != null && string.IsNullOrEmpty(a))
-                    failures.Add("[chest-refusal-has-words] canon key '" + key + "' is MISSING or empty in the Resources " +
-                                 "copy of canon-strings.json. The Resources copy is what a SHIPPED build loads, so the " +
-                                 "chest prompt / refusal would render as an empty pill on device - the exact dead-tap " +
-                                 "read this ruling forbids.");
+                    failures.Add("[chest-refusal-has-words] localized key '" + key + "' is missing or empty in the " +
+                                 "Resources English catalog.");
 
                 if (sa != null && string.IsNullOrEmpty(b))
-                    failures.Add("[chest-refusal-has-words] canon key '" + key + "' is MISSING or empty in the " +
-                                 "StreamingAssets copy of canon-strings.json. The dual-copy law: a key present in only " +
-                                 "one copy ships blank in half the build targets, and nobody notices until a device " +
-                                 "shows an unlabelled button.");
+                    failures.Add("[chest-refusal-has-words] localized key '" + key + "' is missing or empty in the " +
+                                 "StreamingAssets English catalog.");
 
                 if (!string.IsNullOrEmpty(a) && !string.IsNullOrEmpty(b) && !string.Equals(a, b, StringComparison.Ordinal))
-                    failures.Add("[chest-refusal-has-words] canon key '" + key + "' DRIFTED between the dual copies: " +
+                    failures.Add("[chest-refusal-has-words] localized key '" + key + "' drifted between the dual copies: " +
                                  "Resources says \"" + a + "\" and StreamingAssets says \"" + b + "\". The editor and the " +
                                  "shipped player would tell the player two different things about the same chest.");
-
-                foreach (var pair in new[] { new[] { a, "Resources" }, new[] { b, "StreamingAssets" } })
-                {
-                    string value = pair[0];
-                    if (string.IsNullOrEmpty(value)) continue;
-                    int bad = FirstNonAsciiIndex(value);
-                    if (bad >= 0)
-                        failures.Add("[chest-refusal-has-words] canon key '" + key + "' in the " + pair[1] + " copy carries " +
-                                     "a non-ASCII character at index " + bad + " (\"" + value + "\"). The TMP font atlas " +
-                                     "renders it as TOFU on device, so a carefully-worded refusal reads as a row of " +
-                                     "boxes (the HudUiRegression tofu law).");
-                }
             }
 
             string src = ReadSource(ChestSrcRel, "chest-refusal-has-words", failures);
             if (src == null) return;
-            if (StripComments(src).IndexOf("ShowToast", StringComparison.Ordinal) < 0)
+            string code = StripComments(src);
+            if (code.IndexOf("VillageStrings.Canon", StringComparison.Ordinal) >= 0)
+                failures.Add("[chest-refusal-has-words] BreakableContainer still resolves player copy through the legacy " +
+                             "VillageStrings.Canon reader.");
+            if (CountOccurrences(code, "ChestInteractionText.BlockedByEnemies.Resolve()") < 2)
+                failures.Add("[chest-refusal-has-words] the localized blocked sentence must be used by both the prompt " +
+                             "and refusal toast path.");
+            if (code.IndexOf("ChestInteractionText.Open.Resolve()", StringComparison.Ordinal) < 0)
+                failures.Add("[chest-refusal-has-words] the open prompt does not resolve through ChestInteractionText.");
+            if (code.IndexOf("ShowToast", StringComparison.Ordinal) < 0)
                 failures.Add("[chest-refusal-has-words] BreakableContainer.cs no longer calls ShowToast. The refusal " +
-                             "sentence exists in canon but never reaches the SCREEN, so a refused tap becomes silent - " +
+                             "sentence exists in the locale table but never reaches the SCREEN, so a refused tap becomes silent - " +
                              "and a silent tap reads as a broken button, which is the one outcome the ruling names.");
+
+            string textSrc = ReadSource(ChestTextSrcRel, "chest-refusal-has-words", failures);
+            if (textSrc != null && CountOccurrences(StripComments(textSrc), "new LocalizedText(") != 2)
+                failures.Add("[chest-refusal-has-words] ChestInteractionText must expose exactly two LocalizedText values.");
+
+            var canonRes = LoadCanon(CanonResRel, "legacy Resources canon", failures);
+            var canonSa = LoadCanon(CanonSaRel, "legacy StreamingAssets canon", failures);
+            foreach (string oldKey in new[] { "chestOpenPrompt", "chestCombatRefusal" })
+            {
+                if (Lookup(canonRes, oldKey) != null || Lookup(canonSa, oldKey) != null)
+                    failures.Add("[chest-refusal-has-words] legacy key '" + oldKey +
+                                 "' still duplicates localized chest copy in canon-strings.json.");
+            }
         }
 
         // =====================================================================
@@ -693,7 +698,7 @@ namespace DeNelle.Editor.Regression
             var f = t.GetField(name, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
             if (f == null)
             {
-                failures.Add("[chest-refusal-has-words] BreakableContainer." + name + " not found. The canon KEY is the " +
+                failures.Add("[chest-refusal-has-words] " + t.FullName + "." + name + " not found. The localization key is the " +
                              "contract between the code and canon-strings.json - without it the words are either " +
                              "hardcoded in the file (canon bypassed, so the copy can never be re-authored without a code " +
                              "change) or gone entirely (a dead tap).");
@@ -701,7 +706,7 @@ namespace DeNelle.Editor.Regression
             }
             if (!f.IsLiteral)
             {
-                failures.Add("[chest-refusal-has-words] BreakableContainer." + name + " is no longer a const literal - it " +
+                failures.Add("[chest-refusal-has-words] " + t.FullName + "." + name + " is no longer a const literal - it " +
                              "can now be assigned at runtime, so nothing pins which canon key the chest actually reads.");
                 return f.GetValue(null) as string;
             }

@@ -1853,6 +1853,14 @@ MonoBehaviour:
     m_Localized: O que falta
     m_Metadata:
       m_Items: []
+  - m_Id: 41028898699915264
+    m_Localized: "Abrir o ba\xFA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41028898737664000
+    m_Localized: "N\xE3o enquanto houver inimigos por perto."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

@@ -403,6 +403,8 @@
   "storeLedgerHeading": "所含内容",
   "storeCardOwned": "已拥有",
   "storeCardGap": "你的缺口",
+  "interaction.chest.open": "打开宝箱",
+  "interaction.chest.blockedByEnemies": "附近有敌人时无法打开。",
   "heroBag": "背包",
   "heroSkills": "技能",
   "heroLoadout": "配装",

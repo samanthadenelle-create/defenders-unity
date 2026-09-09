@@ -403,6 +403,8 @@
   "storeLedgerHeading": "内容",
   "storeCardOwned": "所持済み",
   "storeCardGap": "不足分",
+  "interaction.chest.open": "宝箱を開ける",
+  "interaction.chest.blockedByEnemies": "敵が近くにいる間は開けられません。",
   "heroBag": "バッグ",
   "heroSkills": "スキル",
   "heroLoadout": "ロードアウト",

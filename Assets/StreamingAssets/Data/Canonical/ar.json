@@ -403,6 +403,8 @@
   "storeLedgerHeading": "محتوياتها",
   "storeCardOwned": "مملوك",
   "storeCardGap": "ما ينقصك",
+  "interaction.chest.open": "افتح الصندوق",
+  "interaction.chest.blockedByEnemies": "لا يمكنك ذلك ما دام الأعداء قريبين.",
   "heroBag": "الحقيبة",
   "heroSkills": "المهارات",
   "heroLoadout": "التجهيز",

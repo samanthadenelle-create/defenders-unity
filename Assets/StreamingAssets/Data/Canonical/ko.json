@@ -403,6 +403,8 @@
   "storeLedgerHeading": "내용물",
   "storeCardOwned": "보유 중",
   "storeCardGap": "부족분",
+  "interaction.chest.open": "상자 열기",
+  "interaction.chest.blockedByEnemies": "근처에 적이 있는 동안에는 열 수 없습니다.",
   "heroBag": "가방",
   "heroSkills": "스킬",
   "heroLoadout": "로드아웃",

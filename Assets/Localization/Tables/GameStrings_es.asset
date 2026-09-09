@@ -1850,6 +1850,14 @@ MonoBehaviour:
     m_Localized: Lo que te falta
     m_Metadata:
       m_Items: []
+  - m_Id: 41028898699915264
+    m_Localized: Abrir el cofre
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41028898737664000
+    m_Localized: No mientras haya enemigos cerca.
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

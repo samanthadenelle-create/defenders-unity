@@ -403,6 +403,8 @@
   "storeLedgerHeading": "Son contenu",
   "storeCardOwned": "Possédé",
   "storeCardGap": "Votre manque",
+  "interaction.chest.open": "Ouvrir le coffre",
+  "interaction.chest.blockedByEnemies": "Pas tant que des ennemis sont à proximité.",
   "heroBag": "SAC",
   "heroSkills": "COMPÉTENCES",
   "heroLoadout": "ÉQUIPEMENT",

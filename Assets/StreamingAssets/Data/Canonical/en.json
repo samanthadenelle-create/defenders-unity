@@ -437,6 +437,8 @@
   "storeLedgerHeading": "What it holds",
   "storeCardOwned": "Owned",
   "storeCardGap": "Your gap",
+  "interaction.chest.open": "Open the chest",
+  "interaction.chest.blockedByEnemies": "Not while enemies are near.",
   "heroBag": "BAG",
   "heroSkills": "SKILLS",
   "heroLoadout": "LOADOUT",
