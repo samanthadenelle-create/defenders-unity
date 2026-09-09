@@ -40,11 +40,14 @@
           "icon": "\u2737",
           "color": "#b388ff",
           "effect": "shield",
+          "castAnim": "shell",
           "cooldown": 16,
           "manaCost": 5,
           "damage": 40,
           "range": 0,
-          "seconds": 4
+          "seconds": 4,
+          "vfxCast": "ShieldBuff_Cast",
+          "vfxResidual": "ShieldBuff_Aura"
         },
         "e": {
           "id": "mage.drain",
@@ -55,11 +58,13 @@
           "icon": "\u271a",
           "color": "#8b5cf6",
           "effect": "drainshot",
+          "castAnim": "drain",
           "cooldown": 9,
           "manaCost": 7,
           "damage": 28,
           "range": 13,
-          "castSeconds": 0.35
+          "castSeconds": 0.35,
+          "vfxCast": "EnemyCast_Cast"
         },
         "r": {
           "id": "mage.poison",
@@ -70,6 +75,7 @@
           "icon": "\u2739",
           "color": "#84cc16",
           "effect": "dot",
+          "castAnim": "poison",
           "cooldown": 42,
           "manaCost": 12,
           "damage": 40,
@@ -510,6 +516,7 @@
           "icon": "\u2744",
           "color": "#7dd3fc",
           "effect": "aoe",
+          "castAnim": "frost",
           "cooldown": 12,
           "manaCost": 3,
           "damage": 26,
@@ -546,11 +553,13 @@
           "icon": "\u2726",
           "color": "#7dd3fc",
           "effect": "manaweave",
+          "castAnim": "manaweave",
           "cooldown": 30,
           "manaCost": 0,
           "damage": 5,
           "range": 0,
-          "seconds": 3
+          "seconds": 3,
+          "vfxCast": "EnhamcingBuff_Cast"
         },
         "void-rift": {
           "id": "mage.void-rift",
@@ -562,11 +571,13 @@
           "icon": "\u2726",
           "color": "#b388ff",
           "effect": "aoe",
+          "castAnim": "voidrift",
           "cooldown": 18,
           "manaCost": 4,
           "damage": 40,
           "range": 5,
-          "freeze": 1.5
+          "freeze": 1.5,
+          "vfxCast": "RangedSpell-Powerful(Longcast)_Cast"
         },
         "blink": {
           "id": "mage.blink",
@@ -577,6 +588,7 @@
           "icon": "\u27be",
           "color": "#7dd3fc",
           "effect": "blink",
+          "castAnim": "blink",
           "cooldown": 8,
           "manaCost": 2,
           "damage": 0,
@@ -593,6 +605,7 @@
           "icon": "\u2604",
           "color": "#ff7043",
           "effect": "meteor",
+          "castAnim": "cataclysm",
           "cooldown": 50,
           "manaCost": 8,
           "damage": 600,
@@ -609,10 +622,12 @@
           "icon": "\u26a1",
           "color": "#a5b4fc",
           "effect": "strike",
+          "castAnim": "thunder",
           "cooldown": 6,
           "manaCost": 3,
           "damage": 65,
-          "range": 15
+          "range": 15,
+          "vfxCast": "Thunderbolt_Cast"
         },
         "heal": {
           "id": "mage.heal",
@@ -624,6 +639,7 @@
           "icon": "\u271a",
           "color": "#ffd27a",
           "effect": "heal",
+          "castAnim": "mend",
           "cooldown": 14,
           "manaCost": 3,
           "damage": 45,
@@ -641,6 +657,7 @@
           "icon": "\u2604",
           "color": "#ff7043",
           "effect": "meteor",
+          "castAnim": "meteor",
           "cooldown": 42,
           "manaCost": 6,
           "damage": 260,
@@ -659,10 +676,12 @@
           "icon": "\u271a",
           "color": "#8b5cf6",
           "effect": "drainshot",
+          "castAnim": "siphon",
           "cooldown": 9,
           "manaCost": 7,
           "damage": 28,
-          "range": 13
+          "range": 13,
+          "vfxCast": "Arcane_Cast"
         },
         "wither": {
           "id": "mage.wither",
@@ -675,12 +694,14 @@
           "icon": "\u2739",
           "color": "#fb923c",
           "effect": "dot",
+          "castAnim": "wither",
           "cooldown": 10,
           "manaCost": 7,
           "damage": 12,
           "range": 14,
           "dotDamage": 8,
-          "dotSeconds": 4
+          "dotSeconds": 4,
+          "vfxCast": "PosionCloud_Cast"
         }
       }
     },

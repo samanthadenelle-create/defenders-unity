@@ -252,8 +252,10 @@ namespace DeNelle.Editor.Regression
                     failures.Add("[new-spell-shape] mage.drain effect is '" + (drain.Effect ?? "<null>") +
                                  "', expected 'drainshot' (ResolveDrainshot - the ranger.healing-shot shape, " +
                                  "which is what makes the heal REAL rather than authored flavour).");
-                // No owner tag for Drain's reversed target->caster beam yet: hold every stage.
-                RequireUntagged(failures, drain.VfxCast,       "mage.drain", "vfxCast");
+                // Owner 2026-09-09 requested distinct spell identities; Drain now owns the
+                // existing dark-cast manual pick while its travel/impact remain unchanged.
+                if (!string.Equals(drain.VfxCast, "EnemyCast_Cast", StringComparison.Ordinal))
+                    failures.Add("[new-spell-shape] mage.drain must use EnemyCast_Cast");
                 RequireUntagged(failures, drain.VfxProjectile, "mage.drain", "vfxProjectile");
                 RequireUntagged(failures, drain.VfxImpact,     "mage.drain", "vfxImpact");
                 RequireUntagged(failures, drain.VfxResidual,   "mage.drain", "vfxResidual");
@@ -273,7 +275,8 @@ namespace DeNelle.Editor.Regression
                                  "', expected 'strike' (the core Strike branch - knight.thunderbolt's shape).");
                 if (thunder.EffectEnum != AbilityEffect.Strike)
                     failures.Add("[new-spell-shape] mage.thunder does not parse to AbilityEffect.Strike.");
-                RequireUntagged(failures, thunder.VfxCast,       "mage.thunder", "vfxCast");
+                if (!string.Equals(thunder.VfxCast, "Thunderbolt_Cast", StringComparison.Ordinal))
+                    failures.Add("[new-spell-shape] mage.thunder must use Thunderbolt_Cast");
                 RequireUntagged(failures, thunder.VfxProjectile, "mage.thunder", "vfxProjectile");
                 RequireUntagged(failures, thunder.VfxImpact,     "mage.thunder", "vfxImpact");
             }

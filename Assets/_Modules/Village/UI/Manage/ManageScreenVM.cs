@@ -4252,8 +4252,9 @@ namespace DeNelle.Village.UI
         /// <see cref="DeNelle.Village.BuildInventoryModel"/> (canon 3: "the model must expose the
         /// authoritative live list", ruling 20: reconcile before locking any numeric test), and the
         /// live per-structure state is joined on from the choice VMs this class already builds.
-        /// A row with no matching choice is authored and offered but NOT PLACED - it gets a real
-        /// BUILD door rather than a padlock with nowhere to go (ruling 18).
+        /// A row with no matching upgrade choice is checked against BaseLayout before it is
+        /// called unplaced. Civic singletons such as Store, Crafting Station, and Echo Hollow
+        /// deliberately have no upgrade ladder, but are still owned structures in this town.
         /// </summary>
         /// <summary>
         /// The reconciled BUILD inventory for THIS rebuild and THIS chip.
@@ -4388,7 +4389,41 @@ namespace DeNelle.Village.UI
             if (building != null) return ComposeBuildingItem(building, row);
             var defense = DefenseChoiceFor(row.Id);
             if (defense != null) return ComposeDefenseItem(defense, row);
+            if (IsPlacedThisTown(row.Id)) return ComposeOwnedNoUpgradeItem(row);
             return ComposeUnplacedItem(row);
+        }
+
+        /// <summary>Raw catalog-id ownership for structures with no level ladder. This is the
+        /// same per-town BaseLayout truth CountPlacedThisTown reads; it intentionally does not
+        /// use the monotonic ever-built ledger or a surfaced scene bake.</summary>
+        private static bool IsPlacedThisTown(string catalogEntryId)
+        {
+            if (string.IsNullOrEmpty(catalogEntryId)) return false;
+            var state = GameStateService.Instance != null ? GameStateService.Instance.State : null;
+            if (state == null || state.BaseLayout == null) return false;
+            for (int i = 0; i < state.BaseLayout.Count; i++)
+                if (string.Equals(state.BaseLayout[i].itemId, catalogEntryId,
+                    StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        /// <summary>An owned civic structure with no authored upgrade track. It has no BUILD
+        /// action because the singleton already exists; BUILT is state, not a disabled button.</summary>
+        private static ManageItemState ComposeOwnedNoUpgradeItem(BuildInventoryRow row)
+        {
+            return new ManageItemState
+            {
+                ItemId = row.Id,
+                DisplayName = Ascii(string.IsNullOrEmpty(row.DisplayName) ? row.Id : row.DisplayName),
+                IconId = ManageArt.BuildingPortraitKey(row.Id, 0),
+                Ownership = ManageOwnership.Owned,
+                UpgradeTrack = ManageUpgradeTrack.NotApplicable,
+                Level = 0,
+                MaxLevel = 0,
+                Badge = ManageTileBadge.Idle,
+                BadgeText = "BUILT",
+                NextRungLine = "Built in this town. No upgrade track is authored."
+            };
         }
 
         /// <summary>Authored, offered, not on the map yet. Owned=NotUnlocked with a door that opens.</summary>
@@ -4925,15 +4960,19 @@ namespace DeNelle.Village.UI
                 if (seen.Contains(c.BuildingId)) continue;
                 seen.Add(c.BuildingId);
 
-                int total = 0, ready = 0, locked = 0;
+                int total = 0, ready = 0, locked = 0, researched = 0, researching = 0;
                 for (int j = 0; j < ResearchChoices.Count; j++)
                 {
                     var p = ResearchChoices[j];
                     if (p == null || !string.Equals(p.BuildingId, c.BuildingId, StringComparison.OrdinalIgnoreCase)) continue;
                     total++;
-                    if (p.Locked) locked++;
+                    if (string.Equals(p.StateWord, "Researched", StringComparison.OrdinalIgnoreCase)) researched++;
+                    else if (string.Equals(p.StateWord, "Researching", StringComparison.OrdinalIgnoreCase)) researching++;
+                    else if (p.Locked) locked++;
                     else if (p.Ready) ready++;
                 }
+
+                bool complete = total > 0 && researched == total;
 
                 var item = new ManageItemState
                 {
@@ -4955,8 +4994,16 @@ namespace DeNelle.Village.UI
                     IconId = ManageArt.BuildingPortraitKey(c.BuildingId, 1),
                     Ownership = ManageOwnership.Owned,
                     UpgradeTrack = ManageUpgradeTrack.NotApplicable,
-                    Badge = ready > 0 ? ManageTileBadge.UpgradeAffordable : ManageTileBadge.Idle,
-                    BadgeText = ready > 0 ? ready + " READY" : (locked > 0 ? locked + " LOCKED" : total + " PERKS"),
+                    Badge = complete ? ManageTileBadge.Max
+                        : researching > 0 ? ManageTileBadge.Upgrading
+                        : ready > 0 ? ManageTileBadge.UpgradeAffordable
+                        : locked > 0 ? ManageTileBadge.Locked
+                        : ManageTileBadge.Idle,
+                    BadgeText = complete ? "COMPLETE"
+                        : researching > 0 ? researching + " RESEARCHING"
+                        : ready > 0 ? ready + " READY"
+                        : locked > 0 ? locked + " LOCKED"
+                        : total + " PERKS",
                     NextRungLine = total + " perk" + (total == 1 ? "" : "s") + " in this school."
                 };
                 // No action record: a school TILE is pure navigation and its command is the tile's

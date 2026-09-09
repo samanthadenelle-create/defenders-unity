@@ -432,7 +432,7 @@ namespace DeNelle.Village
         /// GameState + reach the building-upgrade ledger (NOT plain Grant). Returns the
         /// integer total banked (0 when the silo was empty).
         /// </summary>
-        public int DumpSilos()
+        public int DumpSilos(bool showOverflowResult = true)
         {
             using var _t = FlowTrace.Enter("Echo", "DumpSilos");
             var gs = GameStateService.Instance;
@@ -491,7 +491,9 @@ namespace DeNelle.Village
                 // a scope, it does not build UI and never learns a toast exists
                 // (ARCHITECTURE_PRINCIPLES Sec.2).
                 ResourceCost applied;
-                using (DeNelle.Core.UI.BankOverflowToastPresenter.BeginWarnScope("EchoService.DumpSilos"))
+                using (showOverflowResult
+                    ? DeNelle.Core.UI.BankOverflowToastPresenter.BeginWarnScope("EchoService.DumpSilos")
+                    : default(DeNelle.Core.UI.BankOverflowToastPresenter.WarnScope))
                 {
                     applied = eco.GrantSpendable(wood: wood, food: food, iron: iron, crystals: crystals);
                 }

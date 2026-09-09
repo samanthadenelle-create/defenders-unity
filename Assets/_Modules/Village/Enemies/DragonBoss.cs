@@ -540,6 +540,29 @@ namespace DeNelle.Village
             PlayPhaseAura(_phase);
         }
 
+        /// <summary>
+        /// Applies recurring-wave difficulty to a freshly configured dragon. Damage rises on
+        /// each return and attack gaps shorten, with a floor that preserves readable telegraphs.
+        /// </summary>
+        public void ApplyEncounterDifficulty(float damageMultiplier, float attackIntervalMultiplier)
+        {
+            damageMultiplier = Mathf.Max(1f, damageMultiplier);
+            attackIntervalMultiplier = Mathf.Clamp(attackIntervalMultiplier, 0.65f, 1f);
+
+            _swoopDamage *= damageMultiplier;
+            _breathDamage *= damageMultiplier;
+            _towerFireDamage *= damageMultiplier;
+            _phase1AttackInterval *= attackIntervalMultiplier;
+            _phase2AttackInterval *= attackIntervalMultiplier;
+            _phase3AttackInterval *= attackIntervalMultiplier;
+            _groundBurnInterval *= attackIntervalMultiplier;
+            _attackCooldown = _phase1AttackInterval;
+
+            FlowTrace.Step("DragonBoss",
+                $"'{_bossId}' recurring difficulty damage=x{damageMultiplier:F2} " +
+                $"attackInterval=x{attackIntervalMultiplier:F2}.");
+        }
+
         // -------------------------------------------------------------------------
         // Lifecycle
         // -------------------------------------------------------------------------

@@ -125,9 +125,9 @@ namespace DeNelle.Core.UI
             // it was eleven lines of paragraph for three resources, which is the defect.
             var vm = HarvestResultVM.Build(results, BuiltContainers);
             BuildRows(content, vm);
-            var close = ElarionUiKit.Button(content, "Close", ElarionUiKit.ButtonKind.Quiet,
-                new Vector2(0.34f, 0.09f), new Vector2(0.66f, 0.22f), Close);
-            MedievalUiSkin.ApplyButton(close, primary: false);
+            // BuildObsidianModal already owns the one shared Close face. A second content
+            // button here occupied the same lower band and produced the doubled CLOSE seen
+            // in the owner's harvest-result capture.
             // WO-1370 §12 - the modal's OWN numbers are traced, so a screenshot of unreadable copy
             // can be checked against what the code actually put on the screen (the previous trace
             // logged only a row COUNT, which proved nothing about legibility).

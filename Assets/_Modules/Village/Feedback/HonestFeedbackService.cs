@@ -281,6 +281,11 @@ namespace DeNelle.Village.Feedback
                 return false;
             }
             if (DeNelle.Core.Combat.BattleLock.IsInBattle()) { why = "a battle is live"; return false; }
+            // Build Mode is not a PanelManager modal: it owns its own HUD and pointer
+            // contract, so AnyOpen remains false while a placement/move is active. An
+            // automatic offer here would cover the PLACE rail and steal the confirming
+            // click while leaving the ghost alive underneath (WO-1612 device repro).
+            if (DeNelle.Core.BuildModeState.IsActive) { why = "build mode is active"; return false; }
             if (PanelManager.AnyOpen) { why = "another modal is open (" + PanelManager.OpenPanelName + ")"; return false; }
             if (PanelManager.InCloseGrace) { why = "inside the arbiter close-grace window"; return false; }
             return true;

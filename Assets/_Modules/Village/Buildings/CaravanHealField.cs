@@ -283,6 +283,12 @@ namespace DeNelle.Village
                 _ring.transform.localScale = Vector3.one * (FieldRadius * RingScalePerMeter);
                 _ringIsFallback = false;
 
+                // The purchased marker includes a filled ShockWave child. At this
+                // sustained scale it renders as the solid yellow plate under the wagon.
+                // Keep the readable perimeter ring; disable only the filled centre.
+                var filledCentre = _ring.transform.Find("ShockWave");
+                if (filledCentre != null) filledCentre.gameObject.SetActive(false);
+
                 // Calibration line: the marker's native footprint is unknown until the
                 // mirror lands — a capture shows the MEASURED world size vs FieldRadius.
                 var r = _ring.GetComponentInChildren<Renderer>(true);

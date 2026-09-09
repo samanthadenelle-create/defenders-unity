@@ -118,11 +118,13 @@ namespace DeNelle.Village
             return enqueued;
         }
 
-        /// <summary>Slot-cost resolver seam: TroopDef.Slots, 1 when the def is unknown.</summary>
+        /// <summary>Army-cap resolver: every known troop is one body/count. Tier and role
+        /// are balanced by stats, cost, training time and explicit per-type caps, never by
+        /// making an upgraded troop consume several of the player's ten places.</summary>
         public static int SlotOf(string id)
         {
             var d = TroopCatalog.Find(id);
-            return d != null && d.Slots > 0 ? d.Slots : 1;
+            return d != null ? 1 : 0;
         }
     }
 }

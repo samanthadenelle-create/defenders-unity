@@ -78,6 +78,7 @@ namespace DeNelle.Village
         private GameObject _ui;
         private Camera _camera;
         private TMPro.TextMeshProUGUI _status;
+        private Button _deployAllButton;
         private Button _rallyButton;
         private Button _retreatButton;
         private readonly List<TrayTile> _tiles = new List<TrayTile>();
@@ -519,7 +520,6 @@ namespace DeNelle.Village
         {
             if (!RaycastGround(screenPoint, out RaycastHit hit))
             {
-                SetStatus("Tap on the ground to deploy.");
                 return;
             }
 
@@ -580,7 +580,6 @@ namespace DeNelle.Village
             _deployed.Add(new Deployed { Controller = troop, OwnedId = next.Id });
             // Feed the scorer (WO-771.6): count the deploy + log it for re-watch. Null-safe.
             RaidScoring.Instance?.RecordDeploy(_armedDefId, deployPoint);
-            SetStatus($"Deployed {DisplayName(_armedDefId)}. Tap again to deploy more.");
             RefreshTiles();
         }
 
@@ -637,7 +636,6 @@ namespace DeNelle.Village
         {
             if (!RaycastGround(screenPoint, out RaycastHit hit))
             {
-                SetStatus("Tap the ground to set the rally point.");
                 return;
             }
             TroopRally.Point = hit.point;
@@ -761,7 +759,6 @@ namespace DeNelle.Village
         {
             _rallyMode = !_rallyMode;
             if (_rallyMode) Disarm();   // rally + deploy are exclusive arm states
-            SetStatus(_rallyMode ? "Rally: tap the ground to set the muster point." : "Rally off.");
             RefreshRallyButton();
         }
 
@@ -1447,7 +1444,9 @@ namespace DeNelle.Village
             var barBand = DeployBarBand;
             var bar = ElarionUiKit.Panel(_ui.transform,
                 new Vector2(barBand.xMin, barBand.yMin), new Vector2(barBand.xMax, barBand.yMax),
-                deep: true);
+                deep: false);
+            var barImg = bar.GetComponent<Image>();
+            if (barImg != null) barImg.color = new Color(0.04f, 0.035f, 0.03f, 0.38f);
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                 "deploy HUD seated above the reserved thumb band: bar y " +
                 barBand.yMin.ToString("F3") + ".." + barBand.yMax.ToString("F3") +
@@ -1482,13 +1481,16 @@ namespace DeNelle.Village
 
             BuildTrayTiles(bar.transform);
 
+            _deployAllButton = ElarionUiKit.Button(bar.transform, "Deploy All", ElarionUiKit.ButtonKind.Gold,
+                new Vector2(0.565f, 0.18f), new Vector2(0.695f, 0.82f), DeployAll);
+
             // Rally toggle + Retreat — right edge of the bar.
             _rallyButton = ElarionUiKit.Button(bar.transform, "Rally", ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.70f, 0.18f), new Vector2(0.83f, 0.82f), ToggleRally);
             _retreatButton = ElarionUiKit.Button(bar.transform, "Retreat", ElarionUiKit.ButtonKind.Danger,
                 new Vector2(0.845f, 0.18f), new Vector2(0.985f, 0.82f), OnRetreatPressed);
 
-            SetStatus("Tap a troop, then tap the ground to deploy. Rally to muster. Retreat to leave.");
+            if (_status != null) _status.text = "";
             RefreshTiles();
             RefreshRallyButton();
         }
@@ -1521,7 +1523,7 @@ namespace DeNelle.Village
 
             // Lay the tiles across the left ~68% of the bar.
             int count = defIds.Count;
-            float left = 0.03f, right = 0.68f;
+            float left = 0.03f, right = 0.55f;
             float w = (right - left) / Mathf.Max(1, count);
             for (int i = 0; i < count; i++)
             {
@@ -1536,7 +1538,22 @@ namespace DeNelle.Village
                 // Captured BEFORE the badge is parented under the button, so this is the name
                 // label and can never resolve to the count (WO-1464).
                 var nameLabel = btn.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-                if (nameLabel != null) ElarionUiKit.FitSingleLine(nameLabel);
+                if (nameLabel != null)
+                {
+                    nameLabel.text = string.Empty;
+                    nameLabel.enabled = false;
+                }
+
+                var portraitSeat = new GameObject("TroopPortrait", typeof(RectTransform));
+                portraitSeat.transform.SetParent(btn.transform, false);
+                var pr = portraitSeat.GetComponent<RectTransform>();
+                pr.anchorMin = new Vector2(0.12f, 0.04f);
+                pr.anchorMax = new Vector2(0.88f, 0.96f);
+                pr.offsetMin = Vector2.zero; pr.offsetMax = Vector2.zero;
+                var def = TroopCatalog.Find(defId);
+                string icon = def != null && !string.IsNullOrEmpty(def.IconId) ? def.IconId : defId;
+                ElarionUiKit.Portrait(portraitSeat.transform,
+                    Resources.Load<Sprite>("RpgUi/troop/" + icon), active: false);
 
                 // ── WO-1464: THE COUNT BADGE, READABLE BY LUMINANCE ─────────────────
                 // ⛔ It was ElarionUi.Ink (0.137, 0.098, 0.055 - near-black) painted on the
@@ -1572,12 +1589,53 @@ namespace DeNelle.Village
             }
         }
 
+        private void DeployAll()
+        {
+            var army = Army();
+            var hero = GameObject.FindWithTag("Player");
+            if (army == null || army.Owned == null || hero == null)
+            {
+                SetStatus("Deploy All unavailable - no ready army or hero.");
+                return;
+            }
+
+            Vector3 forward = Vector3.ProjectOnPlane(hero.transform.forward, Vector3.up).normalized;
+            if (forward.sqrMagnitude < 0.5f) forward = Vector3.forward;
+            Vector3 desired = hero.transform.position + forward * 7f;
+            if (!UnityEngine.AI.NavMesh.SamplePosition(desired, out UnityEngine.AI.NavMeshHit seat,
+                                                       8f, UnityEngine.AI.NavMesh.AllAreas))
+            {
+                SetStatus("Deploy All needs open ground ahead.");
+                return;
+            }
+
+            int deployedNow = 0;
+            var ready = new List<PlayerTroop>();
+            foreach (var owned in army.Owned)
+                if (owned != null && owned.IsDeployable && !IsDeployed(owned.Id)) ready.Add(owned);
+            foreach (var owned in ready)
+            {
+                int stack = CountDeployedOfType(owned.TroopDefId);
+                var troop = TroopDeployer.SpawnFromArmy(owned, seat.position, stack, _deploySpread);
+                if (troop == null) continue;
+                _deployed.Add(new Deployed { Controller = troop, OwnedId = owned.Id });
+                RaidScoring.Instance?.RecordDeploy(owned.TroopDefId, troop.transform.position);
+                deployedNow++;
+            }
+
+            Disarm();
+            RefreshTiles();
+            SetStatus(deployedNow > 0 ? "Deployed " + deployedNow + " troops in assault formation."
+                                      : "All ready troops are already deployed.");
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                "DEPLOY ALL -> " + deployedNow + " troop(s), tactic=Assault Formation, seat=" + seat.position + ".");
+        }
+
         private void ArmTile(string defId)
         {
             _rallyMode = false;
             RefreshRallyButton();
             _armedDefId = defId;
-            SetStatus($"{DisplayName(defId)} armed — tap the ground to deploy.");
             RefreshTiles();
         }
 
@@ -1587,12 +1645,22 @@ namespace DeNelle.Village
         private void RefreshTiles()
         {
             var army = Army();
+            int totalRemaining = 0;
             foreach (var tile in _tiles)
             {
                 int remaining = RemainingOfType(army, tile.DefId);
-                if (tile.CountLabel != null) tile.CountLabel.text = "x" + remaining;
+                totalRemaining += remaining;
+                if (tile.CountLabel != null)
+                    tile.CountLabel.text = tile.DefId == _armedDefId
+                        ? "[x" + remaining + "]" : "x" + remaining;
                 if (tile.Button != null)
                 {
+                    // Spent types leave the bar. A row of "Footman x0 / Archer x0" is the
+                    // screenshot the owner hated (2026-09-09) - a command strip of dead tiles
+                    // sitting on the fight. Rally / Retreat stay.
+                    bool keep = remaining > 0 || tile.DefId == _armedDefId;
+                    if (tile.Button.gameObject.activeSelf != keep)
+                        tile.Button.gameObject.SetActive(keep);
                     tile.Button.interactable = remaining > 0;
 
                     // ── WO-1464: THE ARMED CUE IS A MARKER, NOT A HUE ───────────────────
@@ -1612,16 +1680,14 @@ namespace DeNelle.Village
                     var lbl = tile.NameLabel;
                     if (lbl != null)
                     {
-                        bool armed = tile.DefId == _armedDefId;
-                        string name = DisplayName(tile.DefId);
-                        lbl.text = armed ? "[ " + name + " ]" : name;
-                        lbl.color = armed ? ElarionUi.Gilt : ElarionUi.Parchment;
+                        lbl.text = string.Empty;
                         // FitSingleLine is armed once at construction (BuildTrayTiles); TMP
                         // auto-sizing then re-fits the bracketed form on its own. Re-arming the
                         // fit guard every 10Hz refresh would stack components on the label.
                     }
                 }
             }
+            if (_deployAllButton != null) _deployAllButton.interactable = totalRemaining > 0;
         }
 
         private void RefreshRallyButton()
@@ -1633,7 +1699,14 @@ namespace DeNelle.Village
 
         private void SetStatus(string s)
         {
-            if (_status != null) _status.text = s;
+            // Persistent mid-fight copy ("Rally set — idle troops will muster there")
+            // sat in the world and the owner hated it (2026-09-09 raid frame). The
+            // status BAND stays (layout oracles measure it); the sentence is a toast.
+            // Instructional chatter (armed / tap the ground / Rally off) is not
+            // toasted - the tray already says that with brackets and Rally ON.
+            if (_status != null) _status.text = "";
+            if (string.IsNullOrEmpty(s)) return;
+            ElarionUiKit.ShowToast(s, ElarionUiKit.ToastTone.Info, lifeSeconds: 2.2f);
         }
 
         // =====================================================================

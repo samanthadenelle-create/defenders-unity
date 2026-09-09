@@ -2211,3 +2211,12 @@ prefab) · Notion "Work Orders" DB (live board) · `PIPELINE_STATE.md` (full pip
 
 *Maintenance: keep §3 and §5 current as the canon and the loop move. This sheet is the entry point —
 depth stays in the deep-dives it points to.*
+> **2026-09-09 LIVE TESTER FIX SET (WO-1612–1614):** All implemented findings are in the board's
+> Fixed bucket for next-build owner verification. Wave-20 dragon RCA is definitive: the live log
+> reached StartWave(20), then Addressables rejected `LoadEnemyAsset<DragonBoss>` because the published
+> address is a `GameObject`. WaveManager now loads the prefab correctly, holds clear while pending,
+> and fields progressively harder dragons at 20/25/30/... (HP +25%, damage +12%, attack gaps -5% per
+> return, gap floor 65%). Mage cast RCA is also closed: a raw generic trigger raced the variant and
+> VFX followed the hotbar seat; the generated Mage controller and ability data now give 13 non-primary
+> spells distinct cast identities/VFX. WO-1612 lists the rest of the gated live fixes. The “stuck
+> battle” capture was a real active Wave 23 with live enemies; F8 intentionally freezes time.

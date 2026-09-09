@@ -126,7 +126,7 @@ namespace DeNelle.Village.Buildings.Progression
         /// Collect All: hub collectors + echo silo dump in one CoC swoosh.
         /// Returns total integer resources banked.
         /// </summary>
-        public static int CollectAll()
+        public static int CollectAll(bool showResult = true)
         {
             using var _ = FlowTrace.Enter("Harvest", "CollectAll");
 
@@ -156,7 +156,7 @@ namespace DeNelle.Village.Buildings.Progression
             var bankedBy = new Dictionary<HarvestResource, int>();
             // ONE screen per tap: the collector rows and the silo dump's own overflow scope
             // (EchoService.DumpSilos, unchanged) land in the same HARVEST RESULT.
-            using (HarvestOverflowModal.BeginBatch("CollectAll"))
+            using (HarvestOverflowModal.BeginBatch(showResult ? "CollectAll" : null))
             {
                 foreach (var c in ResourceCollectorRegistry.All)
                 {
@@ -168,11 +168,11 @@ namespace DeNelle.Village.Buildings.Progression
                 }
 
                 var rows = BuildCollectorRows(before, bankedBy, storeBefore);
-                if (rows.Count > 0) HarvestOverflowModal.Present(rows);
+                if (showResult && rows.Count > 0) HarvestOverflowModal.Present(rows);
 
                 var echo = EchoService.Instance;
                 if (echo != null)
-                    total += echo.DumpSilos();
+                    total += echo.DumpSilos(showResult);
             }
 
             FlowTrace.Step("Harvest", $"collect-all total-banked={total}");

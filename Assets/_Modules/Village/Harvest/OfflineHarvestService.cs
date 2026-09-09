@@ -90,6 +90,13 @@ namespace DeNelle.Village
     {
         public static OfflineHarvestService Instance { get; private set; }
 
+        public const double MinAwaySummarySeconds = 30.0 * 60.0;
+
+        /// <summary>The haul is always applied; this controls only whether returning
+        /// from a meaningful absence opens the interruption-style summary.</summary>
+        public static bool ShouldRevealAwaySummary(OfflineHarvestResult result)
+            => result != null && result.HasSummaryContent && result.AwaySeconds >= MinAwaySummarySeconds;
+
         /// <summary>Trace name for this consumer's share of the shared offline window.</summary>
         public string OfflineConsumerName => "harvest-nodes";
 
@@ -977,13 +984,15 @@ namespace DeNelle.Village
             // "haul OR mend", which showed NOTHING to a player whose nodes were idle, whose
             // Echoes were quiet, whose three overnight builds had finished and whose farm was
             // sitting full -- the exact returning session sec.7 is written around.
-            bool show = result.HasSummaryContent;
+            bool hasContent = result.HasSummaryContent;
+            bool show = ShouldRevealAwaySummary(result);
             FlowTrace.Step("Offline",
                 $"claim #{window.Sequence}: away summary gate -> haul={result.Total}, " +
                 $"mendNews={result.HasMendNews}, jobs={result.CompletedJobCount}, " +
                 $"collectorsPending={result.PendingCollectorTotal} across {result.PendingCollectorCount} " +
-                $"collector(s), siloPending={result.SiloTotal} (atCap={result.SiloAtCap}) " +
-                $"=> {(show ? "REVEAL" : "no reveal")}.");
+                $"collector(s), siloPending={result.SiloTotal} (atCap={result.SiloAtCap}), " +
+                $"away={result.AwaySeconds:0}s minimum={MinAwaySummarySeconds:0}s " +
+                $"=> {(show ? "REVEAL" : hasContent ? "stored normally; short absence, no modal" : "no reveal")}.");
             if (!show) return;
 
             Claimed?.Invoke(result);

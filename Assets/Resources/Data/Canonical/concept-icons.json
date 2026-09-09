@@ -178,6 +178,10 @@
    "role": "spellicons",
    "name": "Arcanist12"
   },
+  "mage.siphon": {
+   "role": "spellicons",
+   "name": "Arcanist3"
+  },
   "mage.drain": {
    "role": "spellicons",
    "name": "Priest6"

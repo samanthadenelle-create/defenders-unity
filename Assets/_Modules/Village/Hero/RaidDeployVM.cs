@@ -469,7 +469,7 @@ namespace DeNelle.Village.Hero
                 var d = TroopCatalog.Find(id);
                 if (d == null) return new TroopInfo(null, 10f, false, 1);
                 bool ranged = d.Role != null && d.Role.ToLowerInvariant().Contains("ranged");
-                return new TroopInfo(d.DisplayName, d.AttackDamage, ranged, d.Slots > 0 ? d.Slots : 1);
+                return new TroopInfo(d.DisplayName, d.AttackDamage, ranged, 1);
             };
 
             return new RaidDeployVM(def, army, party, resolver, onClose, readiness);

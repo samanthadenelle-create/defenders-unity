@@ -364,6 +364,20 @@ namespace DeNelle.Editor
                                  "reveal gate -- a brand-new town would be shown a report with nothing in it");
                 if (nothing.Total != 0)
                     failures.Add($"case6 [new-game-claims-nothing] an empty away result reports Total={nothing.Total}");
+
+                // Case 7 [thirty-minute-reveal-floor]. Accrual/grant happens before this
+                // presentation decision; short gaps stay stored normally without interrupting play.
+                var shortGap = new OfflineHarvestResult { AwaySeconds = 29.0 * 60.0, Wood = 100 };
+                var threshold = new OfflineHarvestResult { AwaySeconds = 30.0 * 60.0, Wood = 100 };
+                if (OfflineHarvestService.ShouldRevealAwaySummary(shortGap))
+                    failures.Add("case7 [thirty-minute-reveal-floor] a 29-minute gap opens WHILE YOU WERE AWAY; " +
+                                 "short-gap resources should be stored normally with no modal");
+                if (!OfflineHarvestService.ShouldRevealAwaySummary(threshold))
+                    failures.Add("case7 [thirty-minute-reveal-floor] a content-bearing 30-minute gap does not " +
+                                 "open the away summary");
+                if (OfflineHarvestService.MinAwaySummarySeconds != 1800.0)
+                    failures.Add("case7 [thirty-minute-reveal-floor] threshold is " +
+                                 OfflineHarvestService.MinAwaySummarySeconds + "s, expected exactly 1800s");
             }
             catch (System.Exception ex)
             {

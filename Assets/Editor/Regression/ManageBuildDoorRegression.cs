@@ -121,6 +121,11 @@ namespace DeNelle.Editor
                 fixture.BaseLayout = new List<PlacedStructureData>
                 {
                     new PlacedStructureData("forge", 2, 2, 0, 1),
+                    // These three are the shipped no-ladder civic singleton class. They are
+                    // physically recorded in the town and must project BUILT, never BUILD.
+                    new PlacedStructureData("market", 4, 2, 0, 1),
+                    new PlacedStructureData("workshop", 6, 2, 0, 1),
+                    new PlacedStructureData("pet-house", 8, 2, 0, 1),
                 };
                 fixture.BuildingTiers["forge"] = 1;
                 fixture.Wood = 100000;
@@ -175,6 +180,9 @@ namespace DeNelle.Editor
 
                 int doorsChecked = 0, nonDefenceDoors = 0;
                 var missedNonDefence = new List<string>();
+                var ownedNoLadder = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { "market", "workshop", "pet-house" };
+                var ownedNoLadderChecked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 for (int i = 0; i < tileIds.Count; i++)
                 {
@@ -184,6 +192,16 @@ namespace DeNelle.Editor
                     var tab = detail != null ? detail.ActiveTab : null;
                     var selection = tab != null ? tab.Selection : null;
                     var action = selection != null ? selection.PrimaryAction : null;
+                    if (ownedNoLadder.Contains(id))
+                    {
+                        ownedNoLadderChecked.Add(id);
+                        if (action != null && string.Equals(action.Label, "BUILD", StringComparison.Ordinal))
+                            failures.Add("[placed-no-ladder-is-built] '" + id + "' is in BaseLayout but Manage " +
+                                         "still offers BUILD; the placement gate will contradict it as Already built");
+                        if (selection == null || !string.Equals(selection.StateText, "BUILT", StringComparison.Ordinal))
+                            failures.Add("[placed-no-ladder-is-built] '" + id + "' did not project the BUILT word");
+                        continue;
+                    }
                     // Only the BUILD face is this suite's business. An UPGRADE / MAX / QUEUED face
                     // belongs to a placed row and is pinned by the Buildings + Defense suites.
                     if (action == null || !string.Equals(action.Label, "BUILD", StringComparison.Ordinal))
@@ -222,6 +240,9 @@ namespace DeNelle.Editor
                 if (missedNonDefence.Count > 0)
                     failures.Add("[non-defence-row-has-a-door] these non-DEFENSE rows still lose their id: " +
                                  string.Join(", ", missedNonDefence));
+                if (ownedNoLadderChecked.Count != ownedNoLadder.Count)
+                    failures.Add("[placed-no-ladder-is-built] checked " + ownedNoLadderChecked.Count + "/" +
+                                 ownedNoLadder.Count + " civic singleton rows");
 
                 // RED: this is the whole outage in one number.
                 if (rootHits != 0)
@@ -230,7 +251,8 @@ namespace DeNelle.Editor
                                  "collection and is a dead end for those rows");
 
                 log.AppendLine("build tiles=" + tileIds.Count + " BUILD doors=" + doorsChecked +
-                               " (non-defence=" + nonDefenceDoors + ") root hits=" + rootHits);
+                               " (non-defence=" + nonDefenceDoors + ") root hits=" + rootHits +
+                               " placed no-ladder BUILT=" + ownedNoLadderChecked.Count + "/" + ownedNoLadder.Count);
             }
             finally
             {

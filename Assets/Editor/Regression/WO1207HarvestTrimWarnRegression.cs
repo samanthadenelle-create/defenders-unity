@@ -97,6 +97,7 @@ namespace DeNelle.Editor.Regression
             }
 
             CheckHarvestOptsIn(failures, notes);
+            CheckPassivePetReturnsStaySilent(failures, notes);
             CheckCopyUnchanged(failures, notes);
 
             if (failures.Count == 0)
@@ -112,6 +113,31 @@ namespace DeNelle.Editor.Regression
             reason = $"HARVEST TRIM WARN FAIL x{failures.Count}: " + string.Join(" | ", failures)
                    + (notes.Count > 0 ? $" [notes: {string.Join("; ", notes)}]" : "");
             return false;
+        }
+
+        private static void CheckPassivePetReturnsStaySilent(List<string> failures, List<string> notes)
+        {
+            string autoPath = Path.Combine(Application.dataPath,
+                "_Modules/Village/Buildings/Progression/AutoHarvestService.cs");
+            string collectorPath = Path.Combine(Application.dataPath,
+                "_Modules/Village/Buildings/Progression/ResourceCollectorService.cs");
+            string presenterPath = Path.Combine(Application.dataPath,
+                "_Modules/Core/UI/BankOverflowToastPresenter.cs");
+            string auto = File.Exists(autoPath) ? File.ReadAllText(autoPath) : "";
+            string collector = File.Exists(collectorPath) ? File.ReadAllText(collectorPath) : "";
+            string presenter = File.Exists(presenterPath) ? File.ReadAllText(presenterPath) : "";
+            if (auto.IndexOf("CollectAll(showResult: false)", StringComparison.Ordinal) < 0)
+                failures.Add("[passive-pet-return-silent] AutoHarvestService does not use the silent CollectAll path; " +
+                             "every passive return can reopen Harvest Result");
+            if (collector.IndexOf("public static int CollectAll(bool showResult = true)", StringComparison.Ordinal) < 0 ||
+                collector.IndexOf("echo.DumpSilos(showResult)", StringComparison.Ordinal) < 0)
+                failures.Add("[passive-pet-return-silent] CollectAll does not carry its presentation choice through " +
+                             "collector rows and the Echo silo dump");
+            if (presenter.IndexOf("_blockedConditionWarned.Contains", StringComparison.Ordinal) < 0 ||
+                presenter.IndexOf("s.Current < s.Max", StringComparison.Ordinal) < 0)
+                failures.Add("[one-alert-per-blocked-condition] overflow warnings are only time-throttled; an " +
+                             "unchanged over-cap code grant will reopen the modal forever");
+            if (failures.Count == 0) notes.Add("passive pet returns stay silent; one alert per continuing cap block");
         }
 
         // =====================================================================

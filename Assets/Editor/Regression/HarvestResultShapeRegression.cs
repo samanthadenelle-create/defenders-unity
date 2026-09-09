@@ -60,6 +60,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using DeNelle.Core.Economy;
 using DeNelle.Core.UI;
@@ -484,6 +485,21 @@ namespace DeNelle.Editor.Regression
                 if (none.Rows.Count != 0 || !string.IsNullOrEmpty(none.FooterLine))
                     failures.Add("[said-once] a null batch produced content (" + none.Rows.Count + " rows, footer='" +
                                  none.FooterLine + "')");
+
+                // -- 15 [one-close-owner] --------------------------------------
+                const string modalPath = "Assets/_Modules/Core/UI/HarvestOverflowModal.cs";
+                string modalSource = File.Exists(modalPath) ? File.ReadAllText(modalPath) : null;
+                if (modalSource == null)
+                    failures.Add("[one-close-owner] could not read " + modalPath);
+                else
+                {
+                    if (modalSource.IndexOf("BuildObsidianModal(\"HarvestOverflowUI\", \"HARVEST RESULT\"",
+                            StringComparison.Ordinal) < 0)
+                        failures.Add("[one-close-owner] Harvest Result no longer uses the shared obsidian modal owner");
+                    if (modalSource.IndexOf("ElarionUiKit.Button(content, \"Close\"", StringComparison.Ordinal) >= 0)
+                        failures.Add("[one-close-owner] Harvest Result manually builds a second Close inside content; " +
+                                     "BuildObsidianModal already owns the one shared close face");
+                }
             }
             catch (Exception ex)
             {

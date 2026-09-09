@@ -159,6 +159,18 @@ namespace DeNelle.Village
                 return;
             }
 
+            // A fully-attuned Caravan is passive scenery/healing, not an upgrade
+            // interaction. The old path kept advertising "Upgrade Wellspring" at L3,
+            // then opened the giant world-space max-level bubble on tap.
+            if (!CanOfferUpgrade(_currentLevel, _maxLevel))
+            {
+                MobileInteractButton.Release(this);
+                if (_promptGo != null) HidePrompt();
+                if (_uiOpen) CloseUpgradeUI();
+                _isInRange = false;
+                return;
+            }
+
             if (_uiOpen)
             {
                 if (_awaitingSimpleConfirm)
@@ -312,6 +324,11 @@ namespace DeNelle.Village
             Debug.Log($"[HealingFountain] Upgraded to Level {_currentLevel} " +
                       $"(heal {HealRate:0.0} HP/s). Coins remaining: {r.Coins}.");
             return true;
+        }
+
+        public static bool CanOfferUpgrade(int currentLevel, int maxLevel)
+        {
+            return currentLevel >= 1 && currentLevel < maxLevel;
         }
 
         private void ConfirmSimpleUpgrade()

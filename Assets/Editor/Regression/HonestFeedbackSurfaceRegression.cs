@@ -28,6 +28,9 @@ namespace DeNelle.Editor.Regression
                 Require(panel, "HonestFeedbackText.NetworkFailed");
                 Require(panel, "TooShort.Resolve(");
                 Require(panel, "OverCapacity.Resolve(");
+                Require(panel, "ShowReceipt(MessageFor(result))");
+                Require(panel, "_inputRoot.SetActive(false)");
+                Require(panel, "rt.anchorMin = new Vector2(0.08f, 0.14f)");
 
                 Forbid(bootstrap, "if (HonestFeedbackGrant.HasClaimed() || HonestFeedbackGrant.HasBeenOffered())");
                 Require(bootstrap, "panelGo.AddComponent<HonestFeedbackPanel>()");
@@ -38,6 +41,8 @@ namespace DeNelle.Editor.Regression
                 Require(settings, "PanelRouter.Open(PanelId.HonestFeedback)");
                 Require(service, "language = DeNelle.Core.UI.LocalText.LanguageCode");
                 Require(service, "systemLanguage = Application.systemLanguage.ToString()");
+                Require(service, "DeNelle.Core.BuildModeState.IsActive");
+                Require(service, "build mode is active");
                 Require(local, "Data/Canonical/");
                 Require(local, "public const string KeyTitle = \"feedback.title\"");
                 Require(local, "LocalizedText<MinimumCharactersArguments> TooShort");
@@ -46,7 +51,7 @@ namespace DeNelle.Editor.Regression
                 if (!string.Equals(streamEnglish, resourceEnglish, StringComparison.Ordinal))
                     throw new InvalidOperationException("StreamingAssets and Resources English tables drifted.");
 
-                result = "Honest Feedback uses separated two-column geometry, remains manually reachable after dismissal, centralizes player copy under feedback.* keys, and submits device language metadata.";
+                result = "Honest Feedback defers while Build Mode owns input, uses a bounded receipt surface, remains manually reachable after dismissal, centralizes player copy under feedback.* keys, and submits device language metadata.";
                 return true;
             }
             catch (Exception ex)

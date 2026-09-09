@@ -624,6 +624,15 @@ namespace DeNelle.Editor
                              "\"HudIcons/BuildingUpgrades/\" + IconName, which resolved the RETIRED 1963x789 " +
                              "landscape card strips - stretched into a tall cell behind an oval mask on the " +
                              "owner's device. One producer for every building key, off the catalog id.");
+            if (!Has(vm, "researched == total") ||
+                !Has(vm, "complete ? ManageTileBadge.Max") ||
+                !Has(vm, "complete ? \"COMPLETE\""))
+                failures.Add("[research-picker-complete] a school with every perk Researched is not projected " +
+                             "as COMPLETE/Max. Zero READY must never collapse to Idle/Available, because that " +
+                             "paints the green upgrade medallion even though the detail screen says Finished.");
+            if (!Has(vm, "researching > 0 ? ManageTileBadge.Upgrading"))
+                failures.Add("[research-picker-researching] an in-flight school is not projected as Upgrading - " +
+                             "the picker would advertise another ready purchase while its queue is active.");
 
             // ⛔ WO-1564's OWN RED RECIPE STILL STANDS: a count-derived capacity beats an authored one.
             if (!Has(vm, "ApplyPickerCapacity"))

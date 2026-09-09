@@ -249,6 +249,19 @@ namespace DeNelle.Editor
                     "Standing 2H Magic Area Attack 01",     // [2] w  Frost Nova
                     "Wizard_Heal",                          // [3] e  Healing Beacon
                     "Standing 2H Magic Attack 03",          // [4] r  Meteor Strike (ult)
+                    "standing 1H cast spell 01",            // [5] Arcane Shell
+                    "Standing 1H Magic Attack 02",          // [6] Drain
+                    "Standing 2H Magic Attack 04",          // [7] Poison Cloud
+                    "Standing 2H Magic Area Attack 01",     // [8] Frost Nova
+                    "Standing 2H Cast Spell 01",            // [9] Manaweave
+                    "Standing 2H Magic Area Attack 02",     // [10] Void Rift
+                    "Wizard_Spell_Cast",                    // [11] Blink
+                    "Standing 2H Magic Attack 05",          // [12] Cataclysm
+                    "Standing 1H Magic Attack 03",          // [13] Thunder
+                    "Wizard_Heal",                          // [14] Mend
+                    "Standing 2H Magic Attack 03",          // [15] Meteor Strike
+                    "Standing 2H Magic Attack 01",          // [16] Syphon Essence
+                    "Standing 2H Magic Attack 02",          // [17] Wither
                 },
                 searchRoots = WizardRoots },
             // RANGER FIRE CLIP (owner defect 2026-08-16): the ranger had NO firing animation.
@@ -580,6 +593,8 @@ namespace DeNelle.Editor
                 var toCast = sm.AddAnyStateTransition(castState);
                 toCast.hasExitTime = false; toCast.duration = 0.05f;
                 toCast.AddCondition(AnimatorConditionMode.If, 0f, "Cast");
+                if (HasAnySpellClip(spellClips))
+                    toCast.AddCondition(AnimatorConditionMode.Equals, 0f, "CastVariant");
                 toCast.AddCondition(AnimatorConditionMode.Less, StandingSpeedMax, "Speed"); // WO-218: standing only
                 AddNotDead(toCast);   // F8 4647: death is terminal — a corpse never casts
                 AddActionReturn(castState, locoState, combatLocoState, actionExit, CastExitDur);
@@ -1057,7 +1072,7 @@ namespace DeNelle.Editor
             if (spec.spellCastClips == null) return null;
             var clips = new AnimationClip[spec.spellCastClips.Length];
             bool wrap = !string.IsNullOrEmpty(spec.castingTarget);
-            for (int v = 1; v < spec.spellCastClips.Length && v <= 4; v++)
+            for (int v = 1; v < spec.spellCastClips.Length; v++)
             {
                 var clip = string.IsNullOrEmpty(spec.spellCastClips[v])
                     ? null : LoadClip(spec.spellCastClips[v], spec.searchRoots);
@@ -1090,14 +1105,13 @@ namespace DeNelle.Editor
                                                 AnimationClip[] spellClips)
         {
             if (spellClips == null) return 0;
-            string[] slotName = { "0", "q", "w", "e", "r" };
             int built = 0;
-            for (int v = 1; v < spellClips.Length && v <= 4; v++)
+            for (int v = 1; v < spellClips.Length; v++)
             {
                 var clip = spellClips[v];
                 if (clip == null) continue;
 
-                var state = sm.AddState($"Cast_{slotName[v]}");
+                var state = sm.AddState($"Cast_{CastVariantStateName(v)}");
                 state.motion = clip;
                 state.speed  = AttackSpeed;
 
@@ -1113,6 +1127,26 @@ namespace DeNelle.Editor
                 built++;
             }
             return built;
+        }
+
+        private static bool HasAnySpellClip(AnimationClip[] spellClips)
+        {
+            if (spellClips == null) return false;
+            for (int i = 1; i < spellClips.Length; i++)
+                if (spellClips[i] != null) return true;
+            return false;
+        }
+
+        private static string CastVariantStateName(int variant)
+        {
+            switch (variant)
+            {
+                case 1: return "q";
+                case 2: return "w";
+                case 3: return "e";
+                case 4: return "r";
+                default: return "ability" + variant;
+            }
         }
 
         /// <summary>
@@ -1173,6 +1207,8 @@ namespace DeNelle.Editor
             toCast.hasExitTime = false; toCast.duration = 0.05f;
             toCast.canTransitionToSelf = false;
             toCast.AddCondition(AnimatorConditionMode.If, 0f, "Cast");
+            if (HasAnySpellClip(spellClips))
+                toCast.AddCondition(AnimatorConditionMode.Equals, 0f, "CastVariant");
             // F8 4647: the overlay listens to the SAME Cast/Attack triggers as the base layer, on an
             // Override layer at weight 1 masked to arms+torso. Guarding only the base layer would leave
             // a corpse's arms swinging over the held death pose. Death is terminal on BOTH layers.
@@ -1195,13 +1231,12 @@ namespace DeNelle.Editor
             // arms play the specific spell. Same resolved clips as the base-layer states.
             if (spellClips != null)
             {
-                string[] slotName = { "0", "q", "w", "e", "r" };
-                for (int v = 1; v < spellClips.Length && v <= 4; v++)
+                for (int v = 1; v < spellClips.Length; v++)
                 {
                     var clip = spellClips[v];
                     if (clip == null) continue;
 
-                    var st = sm.AddState($"CastUpper_{slotName[v]}");
+                    var st = sm.AddState($"CastUpper_{CastVariantStateName(v)}");
                     st.motion = clip;
                     st.speed  = AttackSpeed;
 

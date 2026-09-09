@@ -578,8 +578,8 @@ namespace DeNelle.Village
 
             GameObject visual = Guard.Try("Structure",
                 $"reskin '{entry.id}' L{level} visual '{path}'",
-                // applyManualEuler:false — base catalog euler must NOT tip tier models (§9 / F8-2).
-                () => VisualFactory.Skin(root.transform, path, OptsFor(entry, applyManualEuler: false)),
+                // Base Euler remains excluded; only an explicitly-authored tier Euler may apply.
+                () => VisualFactory.Skin(root.transform, path, OptsForUpgradeLevel(entry, level)),
                 fallback: null);
             if (visual == null)
             {
@@ -611,13 +611,9 @@ namespace DeNelle.Village
                 missFixer?.SetMissTint(new Color(0.60f, 0.58f, 0.54f, 1f));
             }
 
-            // Orientation entries are authored against the BASE visualPrefabPath model (the
-            // CatalogOrientationBaker / owner-manual contract). ReskinForLevel only ever runs when a
-            // DIFFERENT tier model is worn (the early-return above), so applying the base euler here
-            // tips tier models that are already upright — F8-2 2026-07-07: tower_wall_wizard's Tripo
-            // base needs Z-90 while its L2 Tower_Medieval_Big (polyperfect) is upright. Tier models
-            // rely on their prefab-native orientation; a tier needing its own correction gets its own
-            // authoring seam when that real need exists.
+            // Base orientation remains isolated from upgrade art. A measured tier correction is
+            // authored independently in repo.upgradeOrientationEuler and has already been applied
+            // by OptsForUpgradeLevel before the model is fitted.
 
             foreach (var g in old) Object.Destroy(g);
 
@@ -631,6 +627,29 @@ namespace DeNelle.Village
             FlowTrace.Step("Structure", $"'{entry.id}' reskinned to tier-{level} model '{stem}' " +
                 $"(replaced {old.Count} old visual(s)); village cosmetic seam re-driven.");
             return true;
+        }
+
+        /// <summary>Production skin options for an authored upgrade model.</summary>
+        public static SkinOptions OptsForUpgradeLevel(CatalogEntry entry, int level)
+        {
+            var opts = OptsFor(entry, applyManualEuler: false);
+            int index = level - 2;
+            var ladder = entry != null && entry.repo != null
+                ? entry.repo.upgradeOrientationEuler
+                : null;
+            if (index >= 0 && ladder != null && index < ladder.Length)
+            {
+                var euler = ladder[index];
+                if (euler != null && euler.Length >= 3)
+                {
+                    var degrees = new Vector3(euler[0], euler[1], euler[2]);
+                    if (degrees.sqrMagnitude > 0.0001f)
+                        opts.LocalRotation = Quaternion.Euler(degrees);
+                    FlowTrace.Step("Structure",
+                        $"OptsForUpgradeLevel('{entry.id}', L{level}): tier Euler={degrees} (index {index}).");
+                }
+            }
+            return opts;
         }
 
         /// <summary>

@@ -153,7 +153,7 @@ namespace DeNelle.Village
             // town HUD owns the whole top row - see the WO-1464 block above).
             var band = ReadoutBand;
             var bar = ElarionUiKit.Panel(_ui.transform,
-                new Vector2(band.xMin, band.yMin), new Vector2(band.xMax, band.yMax), deep: true);
+                new Vector2(band.xMin, band.yMin), new Vector2(band.xMax, band.yMax), deep: false);
             FlowTrace.Step("Raid",
                 "raid readout seated in the reserved right column: x " +
                 band.xMin.ToString("F3") + ".." + band.xMax.ToString("F3") + ", y " +
@@ -161,7 +161,13 @@ namespace DeNelle.Village
                 " (clear of the hero nameplate and the compass - WO-1464).");
             // Passive HUD: the strip must never intercept a deploy/rally tap.
             var barImg = bar.GetComponent<Image>();
-            if (barImg != null) barImg.raycastTarget = false;
+            if (barImg != null)
+            {
+                barImg.raycastTarget = false;
+                // Quiet glass, not a gilt slab. The five readout rows stay (layout
+                // oracles pin SPIRE / Razed / timer); only the chrome gets out of the way.
+                barImg.color = new Color(0.04f, 0.035f, 0.03f, 0.42f);
+            }
             var barT = bar.transform;
 
             // ── THE COLUMN, top to bottom: TIMER / SPIRE / RAZED / STARS / TROOPS ────────

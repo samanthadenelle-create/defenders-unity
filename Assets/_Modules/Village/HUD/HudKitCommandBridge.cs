@@ -137,6 +137,20 @@ namespace DeNelle.Village.Hud
 
             HudCommands.RegisterBlock(held =>
             {
+                var abilities = Object.FindAnyObjectByType<HeroAbilities>();
+                if (abilities != null && string.Equals(abilities.HeroClass, "mage",
+                        System.StringComparison.OrdinalIgnoreCase))
+                {
+                    // A Mage has no physical shield: pointer-down casts the authored
+                    // Arcane Shell; pointer-up is only meaningful to held Knight Block.
+                    if (held)
+                    {
+                        bool fired = abilities.TryCast(AbilitySlot.W);
+                        FlowTrace.Step("HudKit", "mage protection -> Arcane Shell " +
+                                                   (fired ? "FIRED" : "gated"));
+                    }
+                    return;
+                }
                 var health = Object.FindAnyObjectByType<HeroHealth>();
                 if (health == null)
                 {

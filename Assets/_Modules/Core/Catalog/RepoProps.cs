@@ -144,6 +144,15 @@ namespace DeNelle.Core.Catalog
         public string[] upgradeVisualPath = null;
 
         /// <summary>
+        /// Optional per-tier local Euler correction, indexed like
+        /// <see cref="upgradeVisualPath"/>. Each row is [x,y,z] degrees. Empty or
+        /// missing rows retain the normal tier rule (prefab identity/native child pose).
+        /// This is deliberately per tier: applying a base-model correction globally
+        /// tips upgrade art from a different source family.
+        /// </summary>
+        public float[][] upgradeOrientationEuler = null;
+
+        /// <summary>
         /// S5 visual (WO-719 upgrade-tier albedo) - OPTIONAL per-level FORCED texture, indexed
         /// the SAME way as <see cref="upgradeVisualPath"/>: <c>upgradeTexturePath[0]</c> = the
         /// Resources-relative albedo forced onto the L2 tier model, <c>upgradeTexturePath[1]</c> =

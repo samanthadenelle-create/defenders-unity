@@ -411,6 +411,9 @@ namespace DeNelle.Village
 
         /// <summary>The apex flying boss for the current wave (null when not an apex wave / dead).</summary>
         private DragonBoss _liveApexBoss;
+        // Holds an apex wave open while the correctly-typed GameObject address arrives.
+        private bool _apexSpawnPending;
+        private const float ApexLoadTimeoutSeconds = 30f;
 
         /// <summary>WO-362: lazily-built tactical spawner (no inspector wiring required).</summary>
         private SmartEnemySpawner _smartSpawner;
@@ -481,6 +484,42 @@ namespace DeNelle.Village
         // cycle ends on the authored apex wave (the dragon returns as the cycle capstone at
         // true waves 37, 54, …). Clamped into the schedule range at runtime.
         private const int EndlessCycleStartWaveId = 4;
+
+        private const int FirstDragonWave = 20;
+        private const int DragonWaveInterval = 5;
+        private const float DragonHpGrowthPerReturn = 0.25f;
+        private const float DragonDamageGrowthPerReturn = 0.12f;
+        private const float DragonCadenceGainPerReturn = 0.05f;
+        private const float DragonMinimumIntervalMultiplier = 0.65f;
+
+        /// <summary>True for the recurring dragon cadence: 20, 25, 30, 35, ...</summary>
+        public static bool IsRecurringDragonWave(int waveId)
+            => waveId >= FirstDragonWave && (waveId - FirstDragonWave) % DragonWaveInterval == 0;
+
+        /// <summary>Zero for wave 20, one for 25, two for 30, and so on.</summary>
+        public static int DragonReturnTier(int waveId)
+            => IsRecurringDragonWave(waveId) ? (waveId - FirstDragonWave) / DragonWaveInterval : -1;
+
+        /// <summary>Each return carries 25% more max HP than the wave-20 dragon.</summary>
+        public static float DragonHpForWave(float baseHp, int waveId)
+        {
+            int tier = Mathf.Max(0, DragonReturnTier(waveId));
+            return Mathf.Max(1f, baseHp) * (1f + DragonHpGrowthPerReturn * tier);
+        }
+
+        /// <summary>Each return deals 12% more damage than the base encounter.</summary>
+        public static float DragonDamageMultiplierForWave(int waveId)
+        {
+            int tier = Mathf.Max(0, DragonReturnTier(waveId));
+            return 1f + DragonDamageGrowthPerReturn * tier;
+        }
+
+        /// <summary>Attack gaps shorten 5% per return, capped at 65% of authored timing.</summary>
+        public static float DragonAttackIntervalMultiplierForWave(int waveId)
+        {
+            int tier = Mathf.Max(0, DragonReturnTier(waveId));
+            return Mathf.Max(DragonMinimumIntervalMultiplier, 1f - DragonCadenceGainPerReturn * tier);
+        }
 
         /// <summary>
         /// True while an endless wave (beyond the authored schedule) is armed and the loop is
@@ -1931,6 +1970,19 @@ namespace DeNelle.Village
             }
             if (wave == null) { FlowTrace.Step("Wave", $"StartWave: no WaveDef for {waveId} — rolling to next countdown"); EnterCountdown(waveId + 1); return; }
 
+            // Recurring five-wave skill check from wave 20 onward. Endless composition can be
+            // replaying any authored family wave, so overlay a fresh declaration rather than
+            // tying the dragon to the old authored replay-cycle length.
+            ApexBossDef recurringDragon = ResolveRecurringDragon(waveId, wave.ApexBoss);
+            if (recurringDragon != null)
+            {
+                wave.ApexBoss = recurringDragon;
+                FlowTrace.Step("Waves",
+                    $"wave {waveId}: recurring dragon tier {DragonReturnTier(waveId)} armed " +
+                    $"(hp={recurringDragon.Hp:0}, damage=x{DragonDamageMultiplierForWave(waveId):F2}, " +
+                    $"attackInterval=x{DragonAttackIntervalMultiplierForWave(waveId):F2}).");
+            }
+
             // WO-1308: THE ONLY WRITER OF Active in the whole class. If a stuck battle-lock is
             // ever traced back to a latched Active phase, this line is where it was raised.
             SetPhase(WavePhase.Active, "StartWave");
@@ -1953,6 +2005,7 @@ namespace DeNelle.Village
             _breachArmTimer = 0f;
             _breachRoster.Clear();
             _liveApexBoss = null;
+            _apexSpawnPending = false;
             OnWaveStarted.Invoke(waveId);
 
             // An apex (flying-boss) wave drives the Heart's Boss threat state;
@@ -2097,6 +2150,29 @@ namespace DeNelle.Village
             // the dragon is aloft the moment the apex wave begins.
             if (wave.IsApexBossWave)
                 SpawnApexBoss(wave.ApexBoss);
+        }
+
+        private ApexBossDef ResolveRecurringDragon(int waveId, ApexBossDef current)
+        {
+            // Endless replay can hand us wave-20's apex declaration at true wave 37. Strip
+            // that legacy cycle artifact: after 20, ONLY the five-wave cadence is authoritative.
+            if (!IsRecurringDragonWave(waveId)) return waveId > FirstDragonWave ? null : current;
+
+            ApexBossDef template = _schedule != null ? _schedule.Find(FirstDragonWave)?.ApexBoss : null;
+            template ??= current;
+            if (template == null)
+            {
+                FlowTrace.Fail("Waves",
+                    $"wave {waveId}: recurring dragon cadence fired but wave {FirstDragonWave} has no apexBoss template.");
+                return null;
+            }
+
+            return new ApexBossDef
+            {
+                Id = $"{(string.IsNullOrEmpty(template.Id) ? "boss-dragon" : template.Id)}-wave{waveId}",
+                Hp = DragonHpForWave(template.Hp > 0f ? template.Hp : 4200f, waveId),
+                NameKey = template.NameKey,
+            };
         }
 
         /// <summary>Fire-once-per-session guard for the authored-batch discard warning
@@ -2633,15 +2709,20 @@ namespace DeNelle.Village
                 // (WireApexBossPrefab), so the serialized reference is null and no dragon
                 // ever spawns. Corruption-safe fallback (no risky village rebake): load the
                 // Boss_Dragon prefab via EnemyAssetLoader (Addressables-first, Resources/Enemies-fallback).
-                _apexBossPrefab = DeNelle.Core.EnemyAssetLoader.LoadEnemyAsset<DragonBoss>("Enemies/Boss_Dragon");
+                // Addressables publishes this key as a GameObject. The 2026-09-09 Wave-20
+                // trace proved that requesting DragonBoss throws InvalidKeyException even
+                // though the prefab exists under the requested address.
+                GameObject prefabObject = DeNelle.Core.EnemyAssetLoader.LoadEnemyPrefab("Boss_Dragon");
+                _apexBossPrefab = prefabObject != null
+                    ? prefabObject.GetComponentInChildren<DragonBoss>(true)
+                    : null;
                 if (_apexBossPrefab == null)
                 {
-                    // U(pgrade Debug->FlowTrace.Fail): the apex wave has no boss to spawn — the
-                    // wave's headline threat silently never appears. Fail-loud so a capture knows
-                    // the dragon was asked for and the prefab couldn't be resolved.
-                    FlowTrace.Fail("Waves",
-                        "SpawnApexBoss: Apex wave has no _apexBossPrefab AND EnemyAssetLoader found no " +
-                        "'Enemies/Boss_Dragon' via Addressables OR Resources — no dragon will spawn.");
+                    _apexSpawnPending = true;
+                    AwaitApexBossPrefab(boss, _currentWaveId).Forget();
+                    FlowTrace.Warn("Waves",
+                        "SpawnApexBoss: correctly requested GameObject address 'Enemies/Boss_Dragon'; " +
+                        "asset is not resident yet, so the apex clear gate is held while it loads.");
                     return;
                 }
                 FlowTrace.Warn("Waves",
@@ -2677,6 +2758,9 @@ namespace DeNelle.Village
                 ? boss.Id
                 : $"wave{_currentWaveId}-apex-boss";
             dragon.Configure(bossId, heartT, boss.Hp);
+            dragon.ApplyEncounterDifficulty(
+                DragonDamageMultiplierForWave(_currentWaveId),
+                DragonAttackIntervalMultiplierForWave(_currentWaveId));
 
             dragon.Died += HandleApexBossDied;
             _liveApexBoss = dragon;
@@ -2685,6 +2769,36 @@ namespace DeNelle.Village
             FlowTrace.Step("Waves",
                 $"SpawnApexBoss: Apex wave {_currentWaveId} — released flying boss '{bossId}' " +
                 $"(maxHp {(boss.Hp > 0f ? boss.Hp.ToString() : "prefab default")}).");
+        }
+
+        private async UniTaskVoid AwaitApexBossPrefab(ApexBossDef boss, int waveId)
+        {
+            float started = Time.unscaledTime;
+            while (this != null && _phase == WavePhase.Active && _currentWaveId == waveId &&
+                   Time.unscaledTime - started < ApexLoadTimeoutSeconds)
+            {
+                GameObject prefabObject = DeNelle.Core.EnemyAssetLoader.LoadEnemyPrefab("Boss_Dragon");
+                var component = prefabObject != null
+                    ? prefabObject.GetComponentInChildren<DragonBoss>(true)
+                    : null;
+                if (component != null)
+                {
+                    _apexBossPrefab = component;
+                    _apexSpawnPending = false;
+                    FlowTrace.Step("Waves",
+                        $"SpawnApexBoss: GameObject prefab became resident after " +
+                        $"{Time.unscaledTime - started:F1}s; releasing Syndrath for wave {waveId}.");
+                    SpawnApexBoss(boss);
+                    return;
+                }
+                await UniTask.Delay(System.TimeSpan.FromMilliseconds(100), ignoreTimeScale: true);
+            }
+
+            if (this == null || _currentWaveId != waveId) return;
+            _apexSpawnPending = false;
+            FlowTrace.Fail("Waves",
+                $"SpawnApexBoss: GameObject address 'Enemies/Boss_Dragon' did not yield a DragonBoss " +
+                $"within {ApexLoadTimeoutSeconds:F0}s; releasing the clear gate for wave {waveId}.");
         }
 
         /// <summary>
@@ -3066,7 +3180,7 @@ namespace DeNelle.Village
             // additionally holds open until the flying boss is down — the dragon
             // is not in _liveEnemies (it owns kinematic flight, not a NavMesh
             // agent), so its life is tracked separately via _liveApexBoss.
-            bool apexBossStillUp = _liveApexBoss != null && !_liveApexBoss.IsDead;
+            bool apexBossStillUp = _apexSpawnPending || (_liveApexBoss != null && !_liveApexBoss.IsDead);
 
             // WO-1113: a wave whose bodies are being METERED by the concurrency cap can hit
             // zero-on-field while reinforcements are still queued (kill the last 8 with one AoE

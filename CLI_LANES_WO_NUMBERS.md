@@ -189,7 +189,19 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-08 (CLI, hundred-and-twenty-ninth pass): main line next free = **1607**.
+> ## RECONCILED 2026-09-09 (CLI, hundred-and-thirty-first pass): main line next free = **1615**.
+> *(CLI minted **WO-1612 through WO-1614** from the owner's live tester pass: consolidated fixed
+> runtime/UI defects (1612), correctly loaded recurring progressive dragon at 20/25/30/... (1613),
+> and distinct learned-Mage cast animations/VFX (1614). All three are FIXED for next-build owner
+> verification. Bumped 1612 -> 1615 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-09 (CLI, hundred-and-thirtieth pass): main line next free = **1612**.
+> *(CLI minted **WO-1607 through WO-1611**: raid bases as places — program spine (1607),
+> layered-defense engine in RaidBaseGenerator (1608), then three camp layouts: Easy Forsaken Camp
+> (1609), Hard Broken Garrison (1610), Extreme Veiled Enclave as a KayKit dungeon keep (1611).
+> Answers WO-1593 Q1 from on-disk KayKit inventory. Bumped 1607 -> 1612 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-08 (CLI, hundred-and-twenty-ninth pass): main line next free = **1607**.
 > *(CLI minted **WO-1606**: first rough-stone return FTUE leaves a persistent objective and world
 > pointer on the Jeweler until the first accepted polish; the main Jeweler dialogue gains a
 > progression-gated polishing route to the existing JewelerCrafting panel. Bumped 1606 -> 1607 in

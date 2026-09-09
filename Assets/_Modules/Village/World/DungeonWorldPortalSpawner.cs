@@ -292,11 +292,30 @@ namespace DeNelle.Village.World
             // Destroy(this), not the host — DDOL singleton pattern (CLAUDE.md memory).
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnVisibilitySceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnVisibilitySceneLoaded;
         }
 
         private void OnDestroy()
         {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnVisibilitySceneLoaded;
             if (Instance == this) Instance = null;
+        }
+
+        private void OnVisibilitySceneLoaded(UnityEngine.SceneManagement.Scene scene,
+                                             UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            ApplyWorldOnlyVisibility(scene.name);
+        }
+
+        private void ApplyWorldOnlyVisibility(string sceneName)
+        {
+            if (_root == null) return;
+            bool visible = DeNelle.Core.HubScenes.IsOverworld(sceneName);
+            if (_root.gameObject.activeSelf != visible) _root.gameObject.SetActive(visible);
+            FlowTrace.Step("DungeonPortal",
+                $"world portal ring visibility={(visible ? "ON" : "OFF")} for scene '{sceneName}' " +
+                "(raid/dungeon scenes never inherit the DDOL map portals).");
         }
 
         private void Update()
@@ -360,6 +379,7 @@ namespace DeNelle.Village.World
 
             _root = new GameObject("[DungeonWorldPortals]").transform;
             DontDestroyOnLoad(_root.gameObject);
+            ApplyWorldOnlyVisibility(active);
 
             int placed = 0;
             for (int i = 0; i < defs.Count; i++)

@@ -3918,6 +3918,36 @@ namespace DeNelle.HUD.Kit
                 if (primary.button != null)
                     primary.button.interactable = true;
             }
+
+            // The second face is held physical Block for martial heroes. Thrain
+            // instead gets his authored W protection spell and its real cooldown.
+            if (_adaptiveCombatSlots != null && _adaptiveCombatSlots.Length > 1 &&
+                _adaptiveCombatSlots[1] != null)
+            {
+                var defensive = _adaptiveCombatSlots[1];
+                bool mage = _models.HeroVitals != null &&
+                            string.Equals(_models.HeroVitals.ClassId, "mage",
+                                System.StringComparison.OrdinalIgnoreCase);
+                if (mage && a.Slots.Count > 1)
+                {
+                    var shell = a.Slots[1];
+                    defensive.SetLabel(null);
+                    defensive.SetIcon(string.IsNullOrEmpty(shell.IconKey) ? null : UiStyle.Icon(shell.IconKey));
+                    defensive.SetCaption("SHELL");
+                    defensive.SetCooldown(shell.CooldownRemaining, shell.CooldownTotal);
+                    bool cooling = shell.CooldownRemaining > 0f && shell.CooldownTotal > 0f;
+                    if (defensive.button != null)
+                        defensive.button.interactable = shell.Equipped && shell.Affordable && !cooling;
+                }
+                else
+                {
+                    defensive.SetLabel(null);
+                    defensive.SetIcon(UiStyle.Icon("block", "shield", "defense"));
+                    defensive.SetCaption("BLOCK");
+                    defensive.SetCooldown(0f, 0f);
+                    if (defensive.button != null) defensive.button.interactable = true;
+                }
+            }
         }
 
         // WO-611 + WO-917 Phase B: an unassigned slot is a dimmed "+" plate, not a blank.

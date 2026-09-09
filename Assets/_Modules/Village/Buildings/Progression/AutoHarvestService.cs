@@ -52,7 +52,10 @@ namespace DeNelle.Village.Buildings.Progression
             if (_timer < TickInterval) return;
             _timer = 0f;
 
-            int banked = ResourceCollectorService.CollectAll();
+            // Passive collection must never open the player-owned Harvest Result modal.
+            // The first actionable warning belongs to a manual Collect; background ticks
+            // continue banking/retaining silently after that.
+            int banked = ResourceCollectorService.CollectAll(showResult: false);
             FlowTrace.Step("Perk", "auto-harvest tick collected " + banked);
         }
     }

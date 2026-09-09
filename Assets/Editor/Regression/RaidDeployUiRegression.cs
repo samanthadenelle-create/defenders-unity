@@ -61,6 +61,7 @@ namespace DeNelle.Editor
                 CheckScoutReportContract(failures, notes);
                 CheckDeployBandsDisjoint(failures, notes);
                 CheckDeployBarKitButton(failures, notes);
+                CheckInWorldTroopControls(failures, notes);
             }
             catch (Exception ex)
             {
@@ -386,6 +387,32 @@ namespace DeNelle.Editor
 
             if (failures.Count == before)
                 notes.Add("BEGIN ASSAULT = BuildObsidianButton Yellow, no DeployGlow slab, both CTAs seated on one row");
+        }
+
+        // -- 6. IN-WORLD TROOP CONTROLS -----------------------------------------
+        // The compact raid control must identify troops by the same round portrait
+        // language used elsewhere, and provide one deliberate all-army action.
+        static void CheckInWorldTroopControls(List<string> failures, List<string> notes)
+        {
+            const string Tag = "[in-world-troop-controls]";
+            int before = failures.Count;
+            string path = Path.Combine(Application.dataPath,
+                "_Modules/Village/Troops/RaidDeployController.cs");
+            if (!File.Exists(path)) { failures.Add(Tag + " RaidDeployController.cs not found at " + path); return; }
+            string text;
+            try { text = File.ReadAllText(path); }
+            catch (Exception ex) { failures.Add(Tag + " RaidDeployController.cs unreadable (" + ex.Message + ")"); return; }
+
+            if (text.IndexOf("Resources.Load<Sprite>(\"RpgUi/troop/\" + icon)", StringComparison.Ordinal) < 0 ||
+                text.IndexOf("ElarionUiKit.Portrait(portraitSeat.transform", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " troop-type buttons no longer use the canonical round troop portraits");
+            if (text.IndexOf("private void DeployAll()", StringComparison.Ordinal) < 0 ||
+                text.IndexOf("TroopDeployer.SpawnFromArmy", StringComparison.Ordinal) < 0 ||
+                text.IndexOf("\"Deploy All\"", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " the one-tap Deploy All route is incomplete");
+
+            if (failures.Count == before)
+                notes.Add("in-world troop controls use round portraits and a wired Deploy All action");
         }
 
         static string Join(IReadOnlyList<string> lines)

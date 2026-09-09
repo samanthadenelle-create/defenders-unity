@@ -1035,8 +1035,6 @@ namespace DeNelle.Village
                         if (p.nameHash == AnimCast) { _hasCastParam = true; break; }
                 }
             }
-            if (_animator != null && _hasCastParam) _animator.SetTrigger(AnimCast);
-
             // Core fix: also drive the guarded ActorAnimator (IActorAnimator) so the
             // DTT Patricia hero (and village) get the Cast/Attack states from the
             // HeroAnimatorFactory controllers (upper-body layer + base). The legacy
@@ -1070,10 +1068,28 @@ namespace DeNelle.Village
             // ability's. Derive the cast-clip variant from the RESOLVED ability instead — its explicit
             // castAnim key > its effect SHAPE's canonical keyword > the pressed slot as last-resort —
             // so the animation matches what the ability actually DOES, not which button fired it. The
-            // slot the caller passed is the fallback, so a stock loadout is unchanged where the effect
-            // maps back to its own slot clip. VFX keeps the caller's (slot) keyword — unchanged.
+            // slot the caller passed is the fallback. Animation and cast VFX both follow this resolved
+            // identity; following the hotbar seat made every learned spell in that seat look identical.
             int animVariant = ResolveAnimVariant(def, castVariant);
-            actor?.PlayCast(animVariant);
+            if (actor != null)
+            {
+                // The ActorAnimator sets CastVariant BEFORE Cast. Do not also fire the raw Cast
+                // trigger first: that races the controller into its generic state and was why
+                // learned Mage spells all appeared to reuse the same animation.
+                actor.PlayCast(animVariant);
+            }
+            else if (_animator != null && _hasCastParam)
+            {
+                // Legacy/controller fallback for a body without ActorAnimator.
+                int variantHash = Animator.StringToHash("CastVariant");
+                foreach (var p in _animator.parameters)
+                    if (p.nameHash == variantHash && p.type == AnimatorControllerParameterType.Int)
+                    {
+                        _animator.SetInteger(variantHash, animVariant);
+                        break;
+                    }
+                _animator.SetTrigger(AnimCast);
+            }
 
             Vector3 origin = transform.position;
 
@@ -1093,8 +1109,8 @@ namespace DeNelle.Village
             // abilities.json VfxCast default is suppressed. Single choke point for all actives.
             // The keyword is remembered for the PROJECTILE/IMPACT phases of this same cast
             // (phase bundle: vfxKey=start, vfxProjectile=travel, vfxImpact=end).
-            _currentCastKeyword = castVariant >= 0 && castVariant < CastVariantKeyword.Length
-                ? CastVariantKeyword[castVariant] : null;
+            _currentCastKeyword = animVariant >= 0 && animVariant < CastVariantKeyword.Length
+                ? CastVariantKeyword[animVariant] : null;
 
             // WO-1305 Part A: resolve MARQUEE-ness for this cast in the same breath as the
             // keyword, from the same owner sources, so the projectile phase below cannot
@@ -1108,7 +1124,7 @@ namespace DeNelle.Village
             // two beats additive: a manual motion-castings pick remains canon and still fires below,
             // while an empty row can no longer make the cast itself visually silent.
             SpellVfxFactory.PlayCast(def.EffectEnum, _heroClass, def.UnityColor, origin);
-            PlayCastVfxKey(def, origin, castVariant);
+            PlayCastVfxKey(def, origin, animVariant);
 
             // WO-999 gate findings (review of 3b7a5d77, 2026-08-15): the resource restore
             // arms ONLY for the class's designated basic (the locked Q def) and is consumed
@@ -1705,8 +1721,9 @@ namespace DeNelle.Village
             float shellMult = HeroTalentModifiers.MageShellStrengthMultiplier(_heroClass);
             float pct = basePct * shellMult;
             ApplyDamageShield(pct, secs, "arcane-shell", "Shell");
-            // Support cast beat: the class heal sting (no NEW VFX key — owner tags ability VFX
-            // and CLI maps key->hook verbatim; this hook is deliberately left untagged).
+            PlayResidualLoop(def, transform, secs, origin + Vector3.up * 1.0f);
+            // Support cast beat plus the owner-approved authored shield aura. The generic cast
+            // pipeline fires VfxCast; the residual stays parented for the mitigation window.
             AbilityAudioBridge.PlayForClassAndKind(_heroClass, AbilityEffect.Heal);
             FlowTrace.Step("HeroAbility",
                 $"shield '{def.Id ?? def.Name}': -{pct:0}% incoming for {secs:0.#}s " +
@@ -2594,6 +2611,21 @@ namespace DeNelle.Village
         {
             "KnightShieldBuff_Aura",
             "SpecialAbilityMage_Cast",
+            // Owner 2026-09-09: learned Mage spells must not collapse onto one cast look.
+            // Every key below is an existing manual-pick catalog row and is assigned to one
+            // Mage ability in abilities.json, so registry-only mode preserves that identity.
+            "ShieldBuff_Cast",
+            "EnemyCast_Cast",
+            "Posion_Cast",
+            "Freezing_Projectile",
+            "EnhamcingBuff_Cast",
+            "RangedSpell-Powerful(Longcast)_Cast",
+            "Dash_Blink",
+            "Thunderbolt_Cast",
+            "NoneMageHealingCast_Cast",
+            "MageMeoteorAOE_Cast",
+            "Arcane_Cast",
+            "PosionCloud_Cast",
             // WO-1343 (owner tag 2026-09-03, CONFIRMED BY HER as deliberate): KnightShieldBash_Impact
             // -> Hovl Studio/AAA Projectiles Vol 1/Prefabs/Flash and hits/Dragon punch flash.prefab.
             // Mapped VERBATIM to knight.shield-bash's vfxImpact in abilities.json.
@@ -2717,6 +2749,22 @@ namespace DeNelle.Village
                 case "ult":
                 case "r":
                     return 4;
+                // Mage skill-tree identities. These map one-to-one to distinct states/clips
+                // authored by HeroAnimatorFactory instead of collapsing every learned spell
+                // onto the pressed hotbar slot's stock motion.
+                case "shell":       return 5;
+                case "drain":       return 6;
+                case "poison":      return 7;
+                case "frost":       return 8;
+                case "manaweave":   return 9;
+                case "voidrift":    return 10;
+                case "blink":       return 11;
+                case "cataclysm":   return 12;
+                case "thunder":     return 13;
+                case "mend":        return 14;
+                case "meteor":      return 15;
+                case "siphon":      return 16;
+                case "wither":      return 17;
                 default:
                     return -1;   // leap/slam/shout/blink/unknown -> keep the pressed slot's clip
             }

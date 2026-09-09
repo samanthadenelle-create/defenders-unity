@@ -149,6 +149,15 @@ namespace DeNelle.Editor
                              "teardown - a destroyed portal orphans its aura (WO-753)");
             log.AppendLine("  (g) WO-753: held threshold aura is torn down with its portal");
 
+            // (h) The portal ring is DDOL, but its world objects belong only to the
+            // overworld. RaidBase_* must not inherit every portal around its empty horizon.
+            if (!Contains(spawner, "ApplyWorldOnlyVisibility") ||
+                !Contains(spawner, "HubScenes.IsOverworld(sceneName)") ||
+                !Contains(spawner, "_root.gameObject.SetActive(visible)"))
+                failures.Add("DungeonWorldPortalSpawner does not hide its persistent portal ring outside " +
+                             "the overworld - raid/dungeon cameras can see every map portal (D6)");
+            log.AppendLine("  (h) DDOL portal ring is visible only in the overworld");
+
             if (failures.Count > 0)
             {
                 reason = "portal-rebuild: " + string.Join("; ", failures);
@@ -156,8 +165,9 @@ namespace DeNelle.Editor
                 return false;
             }
 
-            reason = "portal-rebuild OK (7 cases: robust shader resolve, primitive-art opt-out, " +
-                     "deferred re-sweep, real additive state, single shader authority, arch structure, WO-753 teardown)";
+            reason = "portal-rebuild OK (8 cases: robust shader resolve, primitive-art opt-out, " +
+                     "deferred re-sweep, real additive state, single shader authority, arch structure, " +
+                     "WO-753 teardown, world-only visibility)";
             Debug.Log(log.ToString() + "PORTAL_REBUILD_OK");
             return true;
         }

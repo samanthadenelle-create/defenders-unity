@@ -486,7 +486,13 @@ namespace DeNelle.Editor.Regression
                 int end = json.IndexOf("\"id\":", at + 8, StringComparison.Ordinal);
                 string block = end > at ? json.Substring(at, end - at) : json.Substring(at);
 
+                if (id == "mage.wither" &&
+                    !Regex.IsMatch(block, "\"vfxCast\"\\s*:\\s*\"PosionCloud_Cast\""))
+                    failures.Add("[owner-tag] mage.wither must retain the owner's 2026-09-09 distinct cast pick PosionCloud_Cast");
+
                 foreach (var field in new[] { "vfxCast", "vfxProjectile", "vfxImpact", "vfxResidual" })
+                {
+                    if (id == "mage.wither" && field == "vfxCast") continue;
                     if (Regex.IsMatch(block, "\"" + field + "\"\\s*:\\s*\"[^\"]+\""))
                         failures.Add("[owner-tag] '" + id + "' has a NON-EMPTY " + field + ". The owner " +
                                      "tags VFX keys and this seat maps them verbatim - it never picks, " +
@@ -494,9 +500,10 @@ namespace DeNelle.Editor.Regression
                                      "creative pick the CLI is not allowed to make. If she HAS now tagged " +
                                      "it, add the id to this rule's exemption in the same commit as the " +
                                      "key, so the tag is recorded rather than assumed.");
+                }
             }
 
-            notes.Add("owner-tag: both new abilities still hold all four VFX keys empty, awaiting her tag");
+            notes.Add("owner-tag: mage.wither owns PosionCloud_Cast by the 2026-09-09 ruling; other untagged stages remain empty");
         }
 
         // =====================================================================

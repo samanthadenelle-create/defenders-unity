@@ -92,6 +92,7 @@ namespace DeNelle.Editor.Regression
                 CheckTutorialSeam(failures);
                 CheckHuskRetired(failures);
                 CheckHygiene(failures);
+                CheckReturnSeat(failures);
                 CheckLifecycle(failures, notes);
             }
             catch (Exception ex)
@@ -111,6 +112,19 @@ namespace DeNelle.Editor.Regression
                      "outpost summon retired); PetTaskController's repair husk and its installer are gone; " +
                      "no NULs." + (notes.Count > 0 ? " NOTES: " + string.Join("; ", notes.ToArray()) : "");
             return true;
+        }
+
+        private static void CheckReturnSeat(List<string> failures)
+        {
+            var hero = new Vector3(2.53f, 0.08f, -19.99f);
+            Vector3 seat = EchoWorldPresence.ReturnSeat(hero, Vector3.forward, Vector3.right);
+            float planarDistance = Vector2.Distance(new Vector2(hero.x, hero.z), new Vector2(seat.x, seat.z));
+            if (planarDistance < 2f)
+                failures.Add("[return-seat] post-battle Echo seat is only " + planarDistance.ToString("0.00") +
+                             "m from the hero. The live Wave 1 trace proved both were exactly " + hero +
+                             "; the companion must return beside/behind, never inside the hero capsule");
+            if (Mathf.Abs(seat.y - hero.y) > 0.001f)
+                failures.Add("[return-seat] the pure offset changed Y before the NavMesh grounding step");
         }
 
         // -- 1 [lifecycle] ----------------------------------------------------

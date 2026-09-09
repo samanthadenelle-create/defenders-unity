@@ -109,6 +109,9 @@ namespace DeNelle.Village.Feedback
 
         private ElarionUiKit.ObsidianModal _modal;
         private TMP_InputField _input;
+        private GameObject _inputRoot;
+        private TextMeshProUGUI _ask;
+        private TextMeshProUGUI _reward;
         private TextMeshProUGUI _status;
         private Button _sendButton;
         private bool _visible;
@@ -138,7 +141,11 @@ namespace DeNelle.Village.Feedback
 
         private void SetVisible(bool on)
         {
-            if (on) EnsureBuilt();
+            if (on)
+            {
+                EnsureBuilt();
+                RestoreFormForOpen();
+            }
             if (_modal == null || _modal.canvas == null) { _visible = false; return; }
             _visible = on;
             _modal.canvas.SetActive(on);
@@ -185,17 +192,17 @@ namespace DeNelle.Village.Feedback
                 // full-width fraction colliding after ClampMinTouch expanded both action bands.
                 // Copy and input own the left; the two actions own the right. No control shares a
                 // vertical lane with prose, so the touch floor cannot grow a button over text.
-                var ask = ElarionUiKit.Label(body, BodyLine, 0.67f, 0.84f,
+                _ask = ElarionUiKit.Label(body, BodyLine, 0.67f, 0.84f,
                     ElarionUi.Parchment, ElarionUi.FontLabel, TextAlignmentOptions.TopLeft, 0.08f, 0.58f);
-                ask.textWrappingMode = TextWrappingModes.Normal;
+                _ask.textWrappingMode = TextWrappingModes.Normal;
 
                 BuildNoteInput(body, new Vector2(0.08f, 0.49f), new Vector2(0.58f, 0.65f));
 
                 // What it pays, stated BEFORE the button is pressed.
-                var reward = ElarionUiKit.Label(body, RewardLine, 0.40f, 0.48f,
+                _reward = ElarionUiKit.Label(body, RewardLine, 0.40f, 0.48f,
                     ElarionUi.Gilt, ElarionUi.FontMicro, TextAlignmentOptions.Left, 0.08f, 0.58f,
                     bold: true);
-                reward.textWrappingMode = TextWrappingModes.Normal;
+                _reward.textWrappingMode = TextWrappingModes.Normal;
 
                 _sendButton = ElarionUiKit.Button(body, SendLabel, ElarionUiKit.ButtonKind.Gold,
                     new Vector2(0.63f, 0.60f), new Vector2(0.93f, 0.80f), OnSendClicked);
@@ -230,6 +237,7 @@ namespace DeNelle.Village.Feedback
         private void BuildNoteInput(Transform parent, Vector2 anchorMin, Vector2 anchorMax)
         {
             var host = new GameObject("FeedbackInput", typeof(Image), typeof(TMP_InputField));
+            _inputRoot = host;
             host.transform.SetParent(parent, false);
             var rt = (RectTransform)host.transform;
             rt.anchorMin = anchorMin; rt.anchorMax = anchorMax;
@@ -299,7 +307,10 @@ namespace DeNelle.Village.Feedback
             var result = await svc.SubmitAsync(note);
             _sending = false;
             RefreshSendInteractable();
-            SetStatus(MessageFor(result));
+            if (result == FeedbackSubmitResult.StoredAndGranted)
+                ShowReceipt(MessageFor(result));
+            else
+                SetStatus(MessageFor(result));
         }
 
         /// <summary>
@@ -330,6 +341,45 @@ namespace DeNelle.Village.Feedback
         {
             if (_status != null) _status.text = line ?? string.Empty;
             FlowTrace.Step(SysTag, "status: " + (line ?? "(cleared)"));
+        }
+
+        /// <summary>
+        /// A successful receipt can include one capacity sentence per resource. The normal
+        /// status strip is intentionally only one short-line tall, so the receipt takes over
+        /// the left column after submission instead of overpainting the prompt and input.
+        /// </summary>
+        private void ShowReceipt(string line)
+        {
+            if (_ask != null) _ask.gameObject.SetActive(false);
+            if (_reward != null) _reward.gameObject.SetActive(false);
+            if (_inputRoot != null) _inputRoot.SetActive(false);
+            if (_status != null)
+            {
+                var rt = (RectTransform)_status.transform;
+                rt.anchorMin = new Vector2(0.08f, 0.14f);
+                rt.anchorMax = new Vector2(0.58f, 0.82f);
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+                _status.alignment = TextAlignmentOptions.TopLeft;
+            }
+            SetStatus(line);
+        }
+
+        /// <summary>Reopening from Settings returns to the input form; the reward remains
+        /// claim-once because that rule lives in HonestFeedbackGrant, not in presentation.</summary>
+        private void RestoreFormForOpen()
+        {
+            if (_ask != null) _ask.gameObject.SetActive(true);
+            if (_reward != null) _reward.gameObject.SetActive(true);
+            if (_inputRoot != null) _inputRoot.SetActive(true);
+            if (_status == null) return;
+
+            var rt = (RectTransform)_status.transform;
+            rt.anchorMin = new Vector2(0.08f, 0.27f);
+            rt.anchorMax = new Vector2(0.58f, 0.39f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            _status.text = string.Empty;
         }
 
         /// <summary>The player-facing sentence for each submit outcome. Every branch has one -

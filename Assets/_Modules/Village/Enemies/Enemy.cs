@@ -3991,7 +3991,6 @@ namespace DeNelle.Village
                 // the corpse skyward. A ground-snap may only move DOWN or barely up — cap the
                 // addend and the lift.
                 const float MaxFootGap = 3f;
-                const float MaxSettleLift = 1.5f;
                 if (footGap > MaxFootGap)
                 {
                     // F8 seq 652: the old line printed the gap but NOT which renderer produced it,
@@ -4011,7 +4010,11 @@ namespace DeNelle.Village
                 if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 50f,
                                     groundMask, QueryTriggerInteraction.Ignore))
                 {
-                    float target = Mathf.Min(hit.point.y + footGap, pos.y + MaxSettleLift);
+                    // A death settle may descend, but it must never lift. The old
+                    // `pos.y + 1.5f` ceiling was applied again on every coroutine frame,
+                    // so a large animated renderer gap (the wave Ogre reports 2.27 m)
+                    // ratcheted an already-grounded corpse into the air.
+                    float target = DeathGroundTargetY(hit.point.y, footGap, pos.y);
                     pos.y = (lerp >= 1f) ? target : Mathf.Lerp(pos.y, target, lerp);
                     transform.position = pos;
                     if (lerp >= 1f)
@@ -4024,7 +4027,7 @@ namespace DeNelle.Village
                 // traverses) when no physics ground collider answered.
                 if (NavMesh.SamplePosition(pos, out NavMeshHit navHit, 5f, NavMesh.AllAreas))
                 {
-                    float target = Mathf.Min(navHit.position.y + footGap, pos.y + MaxSettleLift);
+                    float target = DeathGroundTargetY(navHit.position.y, footGap, pos.y);
                     pos.y = (lerp >= 1f) ? target : Mathf.Lerp(pos.y, target, lerp);
                     transform.position = pos;
                     // F8 2026-07-11 (floating corpses): this branch used to settle SILENTLY,
@@ -4044,6 +4047,16 @@ namespace DeNelle.Village
                 DeNelle.Core.Diagnostics.FlowTrace.Warn("Enemy",
                     $"SnapBodyToGround({gameObject.name}) threw (best-effort, death path unaffected): {e.GetType().Name}: {e.Message}");
             }
+        }
+
+        /// <summary>
+        /// Pure death-seat rule: renderer bounds may lower the corpse to put its visible
+        /// bottom on a surface, but animation bounds can never raise the actor root.
+        /// Repeated settle frames therefore cannot accumulate an upward ratchet.
+        /// </summary>
+        public static float DeathGroundTargetY(float surfaceY, float visibleBottomGap, float currentY)
+        {
+            return Mathf.Min(surfaceY + Mathf.Clamp(visibleBottomGap, 0f, 3f), currentY);
         }
 
         /// <summary>

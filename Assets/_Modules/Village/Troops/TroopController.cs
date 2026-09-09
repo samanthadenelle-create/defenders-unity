@@ -1395,17 +1395,26 @@ namespace DeNelle.Village
                         return;
                     }
 
-                    Guard.Try("TroopVisual", "melee connect vfx", () =>
-                        VFXManager.Play(VFXType.Impact_Physical, hitPos,
-                                        Quaternion.identity, playSound: false));
+                    // Structure hits (walls/gates/buildings): the Lana Slash_stone_once mesh
+                    // used by Impact_Physical has a URP particle mat with NO texture
+                    // (1AB_mat _BaseMap/_MainTex null). At troop cadence that reads as a
+                    // screen of white rectangles (owner raid 2026-09-09). The surface burst
+                    // is the right read on masonry anyway — skip the slash there.
+                    var surface = HitSurfaceVfx.Resolve(foeComp);
+                    bool structureHit = surface == HitSurface.Wood
+                                     || surface == HitSurface.Metal
+                                     || surface == HitSurface.Stone;
+                    if (!structureHit)
+                    {
+                        Guard.Try("TroopVisual", "melee connect vfx", () =>
+                            VFXManager.Play(VFXType.Impact_Physical, hitPos,
+                                            Quaternion.identity, playSound: false));
+                    }
 
-                    // WHAT the blow landed on, layered ON TOP of the generic arc rather than
-                    // replacing it: the arc is the CONTACT read and always fires, the surface
-                    // burst is the MATERIAL read. Resolve returns None rather than guessing and
-                    // Play no-ops on None, so an unrecognised target degrades to exactly the
-                    // behaviour above this comment.
+                    // WHAT the blow landed on. Resolve returns None rather than guessing and
+                    // Play no-ops on None.
                     Guard.Try("TroopVisual", "melee surface impact", () =>
-                        HitSurfaceVfx.ResolveAndPlay(foeComp, hitPos));
+                        HitSurfaceVfx.Play(surface, hitPos));
                 }
             }
         }

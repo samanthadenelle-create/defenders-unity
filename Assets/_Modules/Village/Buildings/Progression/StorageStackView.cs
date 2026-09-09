@@ -92,13 +92,20 @@ namespace DeNelle.Village.Buildings.Progression
                 return;
             }
 
-            var root = new GameObject("StorageFillStack").transform;
-            root.SetParent(transform, false);
-            root.localPosition = new Vector3(0f, 0.05f, 0f);
-            _props = new GameObject[VisibleProps[4]];
-            _homes = new Vector3[_props.Length];
             Vector3 slot = row.SlotSize.sqrMagnitude > 0.001f ? row.SlotSize : new Vector3(1.2f, 1f, 0.8f);
             float scale = row.PropScale > 0f ? row.PropScale : 1f;
+            // The old anchor was local zero, exactly the centre of GenericContainer's
+            // raised deck. Every visible sack/ingot therefore occupied the building
+            // instead of reading as its pallet. Seat the stack wholly beyond the
+            // authored structure footprint, on the approach (-Z) edge.
+            float footprint = _placed != null && CatalogRegistry.Get(_placed.itemId)?.repo?.placement != null
+                ? CatalogRegistry.Get(_placed.itemId).repo.placement.footprint
+                : 0f;
+            var root = new GameObject("StorageFillStack").transform;
+            root.SetParent(transform, false);
+            root.localPosition = StackAnchor(footprint, slot.z * scale);
+            _props = new GameObject[VisibleProps[4]];
+            _homes = new Vector3[_props.Length];
             for (int i = 0; i < _props.Length; i++)
             {
                 int col = i % 4;
@@ -183,6 +190,14 @@ namespace DeNelle.Village.Buildings.Progression
             if (raw > previous && fill < boundary + Deadband) return previous;
             if (raw < previous && fill > boundary - Deadband) return previous;
             return raw;
+        }
+
+        /// <summary>Local pallet seat, fully outside the structure's authored footprint.</summary>
+        public static Vector3 StackAnchor(float footprintMetres, float propDepthMetres)
+        {
+            float halfStructure = Mathf.Max(1f, footprintMetres) * 0.5f;
+            float halfStack = Mathf.Max(0.1f, propDepthMetres) * 0.5f;
+            return new Vector3(0f, 0.05f, -(halfStructure + halfStack + 0.15f));
         }
 
         private IEnumerator Animate(int index, bool show)

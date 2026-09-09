@@ -72,6 +72,7 @@ namespace DeNelle.Core.UI
     public static class BankOverflowToastPresenter
     {
         private static readonly Dictionary<BankResource, float> _lastShownAt = new Dictionary<BankResource, float>();
+        private static readonly HashSet<BankResource> _blockedConditionWarned = new HashSet<BankResource>();
         private static readonly List<BankOverflowStatus> _scopeTrims = new List<BankOverflowStatus>();
         private static bool _attached;
         private static int _scopeDepth;
@@ -92,6 +93,7 @@ namespace DeNelle.Core.UI
             ToastCount = 0;
             LastToastMessage = string.Empty;
             _lastShownAt.Clear();
+            _blockedConditionWarned.Clear();
             _scopeTrims.Clear();
             _scopeDepth = 0;
             _scopeSource = null;
@@ -212,12 +214,23 @@ namespace DeNelle.Core.UI
             for (int i = 0; i < order.Count; i++)
             {
                 var s = merged[order[i]];
+                // One alert for one continuing blocked-storage condition. A code grant can
+                // leave a wallet over cap for a long time; passive pet/auto-collect ticks must
+                // not reopen this modal every cooldown. If the player spent below the cap,
+                // s.Current proves the old condition cleared and a later fill may alert once.
+                if (s.Current < s.Max) _blockedConditionWarned.Remove(s.Resource);
+                if (_blockedConditionWarned.Contains(s.Resource))
+                {
+                    throttled++;
+                    continue;
+                }
                 if (_lastShownAt.TryGetValue(s.Resource, out float last) && now - last < cooldown)
                 {
                     throttled++;
-                    continue;                       // screen-only throttle; the Flow warn already fired
+                    continue;
                 }
                 _lastShownAt[s.Resource] = now;
+                _blockedConditionWarned.Add(s.Resource);
                 sentences.Add(SentenceFor(s));
                 spoken++;
             }

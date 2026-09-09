@@ -98,9 +98,6 @@ namespace DeNelle.Editor.Regression
         /// </summary>
         private static readonly Dictionary<string, string> DeliberatelyUnauthored = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            // WO-1306 (2026-09-02): the mage's new cost-1 base grant. Its own JSON says the row is
-            // held empty pending the owner's art tag, the same way its VFX keys are.
-            { "mage.siphon", "WO-1306 holds the row for an owner art tag (abilities.json records it verbatim)" },
             // WO-1330 (2026-09-02): the two new over-time abilities. Their VFX keys are held
             // EMPTY by that ticket's own [owner-tag] rule for the same reason the icon row is
             // held here -- the owner tags the art and this seat maps it verbatim, so picking an

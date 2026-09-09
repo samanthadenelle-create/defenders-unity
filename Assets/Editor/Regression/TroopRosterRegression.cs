@@ -104,7 +104,9 @@ namespace DeNelle.Editor
 
                 // --- 4) cost / slot sanity ---------------------------------------
                 if (def.CostGold < 0) failures.Add($"'{e.Id}' costGold {def.CostGold} < 0.");
-                if (def.Slots < 1)    failures.Add($"'{e.Id}' slots {def.Slots} < 1 (a troop must occupy at least one army slot).");
+                if (def.Slots != 1)   failures.Add($"'{e.Id}' slots {def.Slots}, expected 1 - army capacity is troop count, not weighted points.");
+                if (TroopDialogueCommands.SlotOf(def.Id) != 1)
+                    failures.Add($"'{e.Id}' production capacity resolver does not count it as exactly one troop.");
 
                 // --- 5) WO-735 visuals: non-empty model + iconId -----------------
                 if (string.IsNullOrEmpty(def.Model))
@@ -148,8 +150,8 @@ namespace DeNelle.Editor
                     failures.Add($"troop-catapult role='{catapult.Role}' — expected 'siege' (structure-prefer hunt).");
                 if (catapult.MaxOwned != 1)
                     failures.Add($"troop-catapult maxOwned={catapult.MaxOwned} — expected 1 (one owned at a time).");
-                if (catapult.Slots < 3)
-                    failures.Add($"troop-catapult slots={catapult.Slots} — expected >= 3 (army housing tax).");
+                if (catapult.Slots != 1)
+                    failures.Add($"troop-catapult slots={catapult.Slots} - expected 1; maxOwned=1 is its scarcity rule, not a housing tax.");
                 if (catapult.AttackRange < 22f)
                     failures.Add($"troop-catapult attackRange={catapult.AttackRange} — expected >= 22 (standoff vs T1 towers).");
                 if (catapult.MoveSpeed > 2.5f)
