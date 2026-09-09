@@ -844,6 +844,9 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   `zh-Hans` remain required for key/argument parity but hidden pending RTL/CJK font and
   layout readiness. See `docs/localization/architecture.md` for the generation, fallback,
   all-region change rule, and verification contract.
+  Store migration is data-first by semantic cohort: its seven purchase-gate keys are present in all
+  ten required locale catalogs and all six enabled tables, while `StoreStrings` intentionally remains
+  on its legacy reader until the complete Store key set can switch to `LocalText` atomically.
 
 - **Service registry:** `CoreServices` (8 slots, above). Callers null-check; register Awake / unregister OnDestroy.
 - **Panel routing:** panel registers opener on `PanelRouter` (+ optional context / context+mode arities);

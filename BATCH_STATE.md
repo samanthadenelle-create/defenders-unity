@@ -899,14 +899,16 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
   `DeNelle.Localization.UnityLocalizationProvider` -> Unity `GameStrings`.
 - Feature ownership stays separate through domain keys and thin `LocalizedText` /
   `LocalizedText<TArguments>` catalogs; English is not duplicated at call sites.
-- Phase A-B scope is authority + Settings + HUD/Raid shims. Store/Village/Canon remain follow-ups.
-- `LocalizationBuilder.BuildAll` reconciled 335/335 English entries and removed zero stale keys.
-- Registered localization gates: authority, player-literal leakage, locale parity, Smart arguments,
-  and Settings in-place refresh/selector wiring. Focused evidence:
-  `Builds/localization-regression-final.log`, `LOCALIZATION_REGRESSION_OK 5/5 suites`.
+- Phase A-B began with authority + Settings + HUD/Raid shims. Village/Canon compatibility readers now
+  forward to the facade; Store purchase-gate data is staged, while Store runtime cutover remains open.
+- `LocalizationBuilder.BuildAll` now reconciles 382 English keys into 2,292 enabled-table entries.
+- Registered localization gates now cover authority, player-literal leakage, exact locale/table parity,
+  Smart arguments, Settings in-place refresh/selector wiring, glyph coverage, and combat Flee state.
+  Post-Store-cohort focused evidence: `Builds/localization-regression-store-buy-data.log`,
+  `LOCALIZATION_REGRESSION_OK 7/7 suites`.
   Full evidence: `Builds/data-regression-localization-final2.log`,
   `REGRESSION_OK 462/462 suites`.
-- Manifest generation/check is deterministic: 5,977 report rows. It remains deliberately
+- Manifest generation/check is deterministic: 5,999 report rows. It remains deliberately
   unreviewed; 2,994 exact C# fingerprints still require domain classification before the
   new-debt ratchet can be armed.
 - CompileGate emitted `COMPILE_GATE_OK`; its outer wrapper remained red only on the known missing
