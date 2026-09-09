@@ -52,7 +52,7 @@ their JSON exists; their script, shaping, font, layout, and device gates must pa
 
 - Canonical transitional inputs are mirrored at `Assets/Resources/Data/Canonical/<locale>.json` and
   `Assets/StreamingAssets/Data/Canonical/<locale>.json`.
-- Both copies contain exactly 373 player keys today. `LocaleParityRegression` requires exact keys,
+- Both copies contain exactly 375 player keys today. `LocaleParityRegression` requires exact keys,
   nonempty values, semantically identical mirrors, and format-argument multisets for all 10 required locales.
 - `LocalizationBuilder` reads policy, registers only build-enabled locales, reconciles shared keys,
   generates the six `GameStrings` tables and Addressables groups, preserves Smart metadata, assigns
@@ -86,13 +86,13 @@ license, atlas, and their Unity metadata are all tracked.
 ## Verification and current boundary
 
 Run `tools/localization/run-localization-overnight.ps1` with Unity closed. It verifies the manifest,
-runs the six focused localization suites, runs the complete data regression, and captures Settings
+runs the seven focused localization suites, runs the complete data regression, and captures Settings
 top, Settings language controls, and HUD at 2670 x 1200 for every build-enabled locale. The current
-checkpoint is 6/6 focused suites, 462/462 full suites, and 18/18 screenshots with no missing keys,
+checkpoint is 7/7 focused suites, 462/462 full suites, and 18/18 screenshots with no missing keys,
 English fallback, missing glyphs, or blank frames.
 
 The architecture, Settings, Feedback/Jeweler slice, shared Close treatment, calm navigation, Heart HUD,
-and HUD/Raid forwarding shims are in place. Village and Canon compatibility readers now forward to the
+combat Flee control, and HUD/Raid forwarding shims are in place. Village and Canon compatibility readers now forward to the
 global facade, but Store and many direct visible HUD/runtime literals remain migration work. The literal
 inventory is deliberately report-only until its baseline is human-classified; do not describe WO-1605
 as complete or arm the debt ratchet early.

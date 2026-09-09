@@ -13,7 +13,7 @@ Close the Unity Editor, then run the complete localization lane from the reposit
 powershell -ExecutionPolicy Bypass -File .\tools\localization\run-localization-overnight.ps1
 ```
 
-This checks that the text manifest is current, runs the six focused localization suites, runs the
+This checks that the text manifest is current, runs the seven focused localization suites, runs the
 full data regression gate, and then writes and validates the screenshots. For a faster local visual
 iteration, omit the full data gate with `-SkipFullRegression`.
 
@@ -65,8 +65,8 @@ LOCALIZATION_SMOKE_OK locales=6 screenshots=18/18
 4. no visible TMP label contains `[[missing:...]]` or Unity's missing-translation message;
 5. every visible character is present in the label's assigned TMP font or fallback chain; and
 6. no visible key resolves through the English table in a non-English locale; and
-7. calm navigation plus the Heart title, objective, Heartfire count, and timer equal the selected
-   locale's live resolved values.
+7. calm navigation, the Heart title/objective/Heartfire rows, and both semantic states of the two-tap
+   Flee control equal the selected locale's live resolved values.
 
 Failures are written to the summary before `BuildFailedException` makes the batch command fail.
 Inspect the per-locale `errors`, `missingMarkers`, `missingGlyphs`, and `englishFallbackKeys` arrays.

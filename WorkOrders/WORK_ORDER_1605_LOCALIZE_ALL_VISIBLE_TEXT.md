@@ -1,6 +1,6 @@
 # WO-1605 - Localize every player-readable text surface
 
-**Status:** IN PROGRESS - current checkpoint covers localization authority, regional parity, six-locale beta, and the calm/Heart HUD; Store and remaining visible-text batches are still open
+**Status:** IN PROGRESS - current checkpoint covers localization authority, regional parity, six-locale beta, and calm/Heart/Flee HUD copy; Store and remaining visible-text batches are still open
 
 **Owner decision:** Every written or player-readable phrase must be switchable by language. Nothing is
 spoken, so localized voice/audio is explicitly out of scope.
@@ -306,7 +306,7 @@ The first foundation increment is implemented and integrated:
   acting only as key catalogs;
 - one global selected locale, persisted explicit choice, System Default mode, asynchronous
   table loading, and English fallback;
-- exact reconciliation of six build-enabled Unity tables to 373 canonical keys each, including
+- exact reconciliation of six build-enabled Unity tables to 375 canonical keys each, including
   stale-key removal, Smart String metadata, deterministic ordering, and English fallback metadata;
 - ten required regional catalogs with exact English-key and placeholder parity; English, Spanish,
   Brazilian Portuguese, German, French, and Russian are build-enabled beta locales, while Arabic,
@@ -316,6 +316,8 @@ The first foundation increment is implemented and integrated:
   readers now do too, while Store remains an explicitly tracked coherent follow-up;
 - calm navigation and the complete Heart HUD cluster resolve through domain wrappers, including typed
   named arguments for troop counts and Heartfire timers;
+- the hostile two-tap Flee control uses separate action/confirmation keys and preserves its armed
+  semantic state when the locale changes;
 - positional placeholders replaced with typed named arguments (`Minimum`, `Resource`,
   `AmountOver`, `Duration`, and `Gem`);
 - domain conventions established for `hud`, `battle`, `interaction`, `shop`, `lore`,
@@ -323,16 +325,16 @@ The first foundation increment is implemented and integrated:
 - authority, literal-leak, locale-parity, Smart-argument, and Settings regressions registered in
   the full data gate.
 
-Evidence: the latest canonical import reports 2,238 localized entries across six enabled tables;
-the focused suite reports `LOCALIZATION_REGRESSION_OK 6/6 suites`, and the full registered
+Evidence: the latest canonical import reports 2,250 localized entries across six enabled tables;
+the focused suite reports `LOCALIZATION_REGRESSION_OK 7/7 suites`, and the full registered
 suite reports `REGRESSION_OK 462/462 suites`. The locale smoke harness reports
 `LOCALIZATION_SMOKE_OK locales=6 screenshots=18/18` at the Seeker landscape reference size,
 with Settings top/language-row and HUD proof frames per enabled locale. CompileGate's project
 compile passed; its wrapper remains externally red only because this workstation lacks the
 optional WebGL built-in module required by the Solana package's WebGL input source.
 
-The clean staged-tree manifest contains 5,991 report rows (373 keyed entries, 81 keyed wrapper
-calls, 5,521 candidates, and 16 raster reviews). Its exact 2,994-fingerprint literal-debt
+The clean staged-tree manifest contains 5,992 report rows (375 keyed entries, 83 keyed wrapper
+calls, 5,518 candidates, and 16 raster reviews). Its exact 2,994-fingerprint literal-debt
 block is intentionally `reviewed:false`: classification and domain-by-domain burn-down
 remain active goal work, and the ratchet must not be armed before that review.
 
