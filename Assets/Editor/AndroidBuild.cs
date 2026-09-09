@@ -318,6 +318,18 @@ namespace DeNelle.Editor
             // the APK size for no benefit.
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
 
+            // Large-screen / foldable readiness (Play Console, 2026-09-08): do not lock the
+            // player activity to landscape. AutoRotation with every direction enabled makes
+            // Unity emit an unrestricted orientation contract, while the generated Unity 6
+            // GameActivity remains resizeable. The UI already derives its layout from the live
+            // canvas and safe area, so tablets, desktop windows and fold posture changes may
+            // resize without Android letterboxing the game.
+            PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+            PlayerSettings.allowedAutorotateToPortrait = true;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = true;
+            PlayerSettings.allowedAutorotateToLandscapeRight = true;
+            PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+
             // Min SDK 26 (Android 8) — the Seeker ships with Android 13 (API 33),
             // and 26 is the modern floor for IL2CPP / 64-bit Play Store policy.
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
@@ -346,7 +358,8 @@ namespace DeNelle.Editor
             // indistinguishable (see ApplyVersionStamp).
             ApplyVersionStamp();
 
-            Debug.Log($"[AndroidBuild] PlayerSettings: id={PackageId}, IL2CPP, ARM64, minSdk=26.");
+            Debug.Log($"[AndroidBuild] PlayerSettings: id={PackageId}, IL2CPP, ARM64, minSdk=26, " +
+                      "resizeable activity + unrestricted auto-rotation.");
         }
 
         /// <summary>

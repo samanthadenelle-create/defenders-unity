@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 
 namespace DeNelle.Editor
 {
@@ -43,6 +44,29 @@ namespace DeNelle.Editor
                     "Play artifact define composition no longer strips SOLANA_SDK", failures);
             Require(build, ".Append(wanted)", "artifact define composition no longer supplies its channel stamp", failures);
             Require(build, "GooglePlayPackagingGate.AssertBuiltArtifact(artifactPath)", "successful AAB bypasses post-build inspection", failures);
+            Require(build, "PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation",
+                    "Android build does not remove the landscape-only orientation restriction", failures);
+            Require(build, "PlayerSettings.allowedAutorotateToPortrait = true",
+                    "Android build does not permit portrait on large/foldable displays", failures);
+            Require(build, "PlayerSettings.allowedAutorotateToPortraitUpsideDown = true",
+                    "Android build does not permit reverse portrait on large/foldable displays", failures);
+            Require(build, "PlayerSettings.allowedAutorotateToLandscapeRight = true",
+                    "Android build does not permit landscape-right", failures);
+            Require(build, "PlayerSettings.allowedAutorotateToLandscapeLeft = true",
+                    "Android build does not permit landscape-left", failures);
+
+            // Google Sign-In 1.0.4 originally shipped a 4 KB-aligned prebuilt native library.
+            // Keep the Maven coordinate/API stable, but pin the maintainer's 16 KB rebuild by
+            // digest in BOTH the source m2 repository and EDM's generated local repository.
+            // If dependency resolution restores the old AAR, this turns red before submission.
+            const string alignedGoogleSignInSha256 =
+                "BDB08061F4371042B2E55859F914543FB01CA452F506B234E01C13CB55A885A0";
+            RequireSha256(
+                "Assets/GoogleSignIn/Editor/m2repository/com/google/signin/google-signin-support/1.0.4/google-signin-support-1.0.4.srcaar",
+                alignedGoogleSignInSha256, "source Google Sign-In support archive is not the 16 KB-aligned rebuild", failures);
+            RequireSha256(
+                "Assets/GeneratedLocalRepo/GoogleSignIn/Editor/m2repository/com/google/signin/google-signin-support/1.0.4/google-signin-support-1.0.4.aar",
+                alignedGoogleSignInSha256, "resolved Google Sign-In support archive is not the 16 KB-aligned rebuild", failures);
 
             int gateAt = build.IndexOf("GooglePlayPackagingGate.AssertSourceIsolation()", StringComparison.Ordinal);
             int buildAt = build.IndexOf("BuildAndroidArtifact(isGooglePlay: true)", StringComparison.Ordinal);
@@ -330,6 +354,24 @@ namespace DeNelle.Editor
             if (failures.Count == 0) return true;
             reason = "PLAY_PACKAGING_GATE_FAIL: " + string.Join(" | ", failures);
             return false;
+        }
+
+        private static void RequireSha256(string path, string expected, string message, List<string> failures)
+        {
+            if (!File.Exists(path))
+            {
+                failures.Add("missing " + path);
+                return;
+            }
+
+            using (var sha = SHA256.Create())
+            using (var stream = File.OpenRead(path))
+            {
+                string actual = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "");
+                if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
+                    failures.Add(message + ": " + path + " SHA-256 " + actual +
+                                 " != pinned 16 KB rebuild " + expected);
+            }
         }
 
         private static string Read(string path, List<string> failures)
