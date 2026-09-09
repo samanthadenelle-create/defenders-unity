@@ -1620,6 +1620,26 @@ MonoBehaviour:
     m_Localized: Fermer
     m_Metadata:
       m_Items: []
+  - m_Id: 40980547224776704
+    m_Localized: "B\xC2TIR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942528
+    m_Localized: PARLER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942529
+    m_Localized: "H\xC9ROS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942530
+    m_Localized: VOYAGE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942531
+    m_Localized: "G\xC9RER"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

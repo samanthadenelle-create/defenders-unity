@@ -1606,6 +1606,26 @@ MonoBehaviour:
     m_Localized: Fechar
     m_Metadata:
       m_Items: []
+  - m_Id: 40980547224776704
+    m_Localized: CONSTRUIR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942528
+    m_Localized: FALAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942529
+    m_Localized: "HER\xD3I"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942530
+    m_Localized: JORNADA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942531
+    m_Localized: GERENCIAR
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

@@ -268,8 +268,14 @@ namespace DeNelle.Editor
         /// <summary>The faces the calm dock ships, left to right. This is the ONE place the set is
         /// written down, and it is asserted against a dock that was actually built — not against a
         /// constant, and not against the source text that authored it.</summary>
-        private static readonly string[] ShippedDockFaces =
-            { "BUILD", "TALK", "HERO", "JOURNEY", "MANAGE" };
+        private static readonly string[] ShippedDockKeys =
+        {
+            DeNelle.Core.UI.HudStrings.KeyNavBuild,
+            DeNelle.Core.UI.HudStrings.KeyNavTalk,
+            DeNelle.Core.UI.HudStrings.KeyNavHero,
+            DeNelle.Core.UI.HudStrings.KeyNavJourney,
+            DeNelle.Core.UI.HudStrings.KeyNavManage,
+        };
 
         /// <summary>Shipping surfaces (w, h): the Seeker, a 16:9 desktop window, a tablet, and the
         /// portrait reference. The dock solves in reference pixels, so the aspect is the variable.</summary>
@@ -349,24 +355,25 @@ namespace DeNelle.Editor
                 order.Sort((a, b) => seeds[a].CompareTo(seeds[b]));
                 var measured = order.Select(i => captions[i]).ToList();
 
-                if (measured.Count != ShippedDockFaces.Length)
+                string[] expected = ShippedDockKeys.Select(DeNelle.Core.UI.HudStrings.Get).ToArray();
+                if (measured.Count != expected.Length)
                 {
                     failures.Add(Tag + " the built dock carries " + measured.Count + " face(s) [" +
-                                 string.Join(" ", measured) + "], expected " + ShippedDockFaces.Length +
-                                 " [" + string.Join(" ", ShippedDockFaces) + "]");
+                                 string.Join(" ", measured) + "], expected " + expected.Length +
+                                 " [" + string.Join(" ", expected) + "]");
                 }
                 else
                 {
                     for (int i = 0; i < measured.Count; i++)
-                        if (!string.Equals(measured[i], ShippedDockFaces[i], System.StringComparison.Ordinal))
+                        if (!string.Equals(measured[i], expected[i], System.StringComparison.Ordinal))
                             failures.Add(Tag + " face " + i + " is '" + measured[i] + "', expected '" +
-                                         ShippedDockFaces[i] + "' — measured order [" +
+                                         expected[i] + "' — measured order [" +
                                          string.Join(" ", measured) + "]. A face that swaps places keeps " +
                                          "every source literal intact, which is why this is measured.");
                 }
 
                 // ── geometry, re-derived from the COUNT that was found ────────
-                int n = measured.Count > 0 ? measured.Count : ShippedDockFaces.Length;
+                int n = measured.Count > 0 ? measured.Count : expected.Length;
                 float headroom = DeNelle.HUD.Kit.HudAreasHost.ActionBarRightHeadroomRatio;
                 float mountFrac = DeNelle.HUD.Kit.HudAreasHost.ActionBarMaxX -
                                   DeNelle.HUD.Kit.HudAreasHost.ActionBarMinX;

@@ -1579,6 +1579,26 @@ MonoBehaviour:
     m_Localized: Close
     m_Metadata:
       m_Items: []
+  - m_Id: 40980547224776704
+    m_Localized: BUILD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942528
+    m_Localized: TALK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942529
+    m_Localized: HERO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942530
+    m_Localized: JOURNEY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942531
+    m_Localized: MANAGE
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

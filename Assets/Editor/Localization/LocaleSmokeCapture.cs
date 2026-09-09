@@ -347,6 +347,37 @@ namespace DeNelle.Editor.Localization
 
                 foreach (Transform transform in hudObject.GetComponentsInChildren<Transform>(true))
                     if (transform.name == "Widget_heartStatus") transform.gameObject.SetActive(true);
+
+                var dockLabels = GetField(kit, "_peacefulDockLabels") as TMP_Text[];
+                string[] dockKeys =
+                {
+                    HudStrings.KeyNavBuild, HudStrings.KeyNavTalk, HudStrings.KeyNavHero,
+                    HudStrings.KeyNavJourney, HudStrings.KeyNavManage,
+                };
+                if (dockLabels == null || dockLabels.Length != dockKeys.Length)
+                {
+                    localeResult.errors.Add("hud: localized calm-dock label handles were not built.");
+                }
+                else
+                {
+                    var actual = new string[dockKeys.Length];
+                    for (int i = 0; i < dockKeys.Length; i++)
+                    {
+                        actual[i] = dockLabels[i] != null ? dockLabels[i].text : string.Empty;
+                        string expected = HudStrings.Get(dockKeys[i]);
+                        if (!string.Equals(actual[i], expected, StringComparison.Ordinal))
+                            localeResult.errors.Add("hud: dock label " + i + " is '" + actual[i] +
+                                                    "', expected locale key " + dockKeys[i] + " = '" + expected + "'.");
+                    }
+                    if (!string.Equals(code, EnglishCode, StringComparison.OrdinalIgnoreCase) &&
+                        actual.SequenceEqual(new[] { "BUILD", "TALK", "HERO", "JOURNEY", "MANAGE" }))
+                        localeResult.errors.Add("hud: translated locale retained every English calm-dock caption.");
+                }
+
+                var collector = GetField(kit, "_collectorsChipLabel") as TMP_Text;
+                string collectorExpected = HudStrings.Get(HudStrings.KeyCollectorsTitle);
+                if (collector == null || !string.Equals(collector.text, collectorExpected, StringComparison.Ordinal))
+                    localeResult.errors.Add("hud: Collectors startup seed did not resolve hudCollectorsTitle.");
                 return RenderSurface(code, "hud", hudObject, localeResult);
             }
             finally

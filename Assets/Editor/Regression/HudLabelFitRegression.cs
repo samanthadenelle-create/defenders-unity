@@ -113,7 +113,9 @@ namespace DeNelle.Editor.Regression
         /// sheet's order and the bar's order were already NOT the same, on the very first delivery.
         /// That is exactly why a face's icon is keyed by that face's own caption and never by a
         /// slot index: the next sheet is free to disagree again.</summary>
-        private static readonly string[] BarFaceCaptions = { "BUILD", "TALK", "HERO", "JOURNEY", "MANAGE" };
+        private static readonly string[] BarFaceIconKeys = { "build", "talk", "hero", "journey", "manage" };
+        private static readonly string[] BarFaceLabelSymbols =
+            { "KeyNavBuild", "KeyNavTalk", "KeyNavHero", "KeyNavJourney", "KeyNavManage" };
 
         /// <summary>Where authored face art lives.</summary>
         private const string ActionBarArtDir = "Assets/Resources/UI/ElarionMedieval/actionbar/";
@@ -1220,12 +1222,14 @@ namespace DeNelle.Editor.Regression
             string src = ReadSrc(HudSrc);
             if (src == null) { failures.Add("[bar-face-icons] cannot read " + HudSrc); return; }
 
-            // ---- 8a  the icon key is DERIVED from the caption, never hand-paired -------------
-            if (src.IndexOf("string iconKey = (caption ?? string.Empty).ToLowerInvariant();",
+            // ---- 8a  the icon key is stable data, separate from translated display copy ------
+            if (src.IndexOf("BuildPeacefulDockSlot(int index, string iconKey, string labelKey,",
                             StringComparison.Ordinal) < 0)
-                failures.Add("[bar-face-icons] BuildPeacefulDockSlot no longer derives its icon key from " +
-                             "the caption. Hand-pairing a key to a slot is how MANAGE and JOURNEY get " +
-                             "swapped - the sheet's order is not the bar's order");
+                failures.Add("[bar-face-icons] BuildPeacefulDockSlot must receive separate stable icon " +
+                             "and localized label keys; deriving art from translated copy breaks icons");
+            if (src.IndexOf("string iconKey = (caption ?? string.Empty).ToLowerInvariant();",
+                            StringComparison.Ordinal) >= 0)
+                failures.Add("[bar-face-icons] translated caption is still used as an icon identity");
             if (src.IndexOf("UiStyle.Icon(iconKey,", StringComparison.Ordinal) < 0)
                 failures.Add("[bar-face-icons] BuildPeacefulDockSlot no longer resolves its own icon via " +
                              "UiStyle.Icon(iconKey, ...) - the caption has stopped being the icon key");
@@ -1242,15 +1246,16 @@ namespace DeNelle.Editor.Regression
 
             // ---- 8b  five faces, right captions, right order, no icon passed positionally ----
             int found = 0;
-            for (int i = 0; i < BarFaceCaptions.Length; i++)
+            for (int i = 0; i < BarFaceIconKeys.Length; i++)
             {
-                string want = "BuildPeacefulDockSlot(" + i + ", \"" + BarFaceCaptions[i] + "\",";
+                string want = "BuildPeacefulDockSlot(" + i + ", \"" + BarFaceIconKeys[i] +
+                              "\", HudStrings." + BarFaceLabelSymbols[i] + ",";
                 int at = src.IndexOf(want, StringComparison.Ordinal);
                 if (at < 0)
                 {
                     failures.Add("[bar-face-icons] no '" + want + "' in " + HudSrc + " - the calm dock's " +
-                                 "face order changed. Slot " + i + " is expected to be " + BarFaceCaptions[i] +
-                                 "; if the bar genuinely re-ordered, re-order BarFaceCaptions WITH it so the " +
+                                 "face order changed. Slot " + i + " is expected to be " + BarFaceIconKeys[i] +
+                                 "; if the bar genuinely re-ordered, re-order BarFaceIconKeys WITH it so the " +
                                  "art keys move too");
                     continue;
                 }
@@ -1258,22 +1263,25 @@ namespace DeNelle.Editor.Regression
                 int eol = src.IndexOf('\n', at);
                 string line = eol < 0 ? src.Substring(at) : src.Substring(at, eol - at);
                 if (line.IndexOf("UiStyle.Icon(", StringComparison.Ordinal) >= 0)
-                    failures.Add("[bar-face-icons] slot " + i + " (" + BarFaceCaptions[i] + ") is handed a " +
+                    failures.Add("[bar-face-icons] slot " + i + " (" + BarFaceIconKeys[i] + ") is handed a " +
                                  "UiStyle.Icon(...) at the CALL SITE: '" + line.Trim() + "'. That re-opens the " +
                                  "hand-paired key - the slot must resolve its art from its own caption");
-                for (int c = 0; c < BarFaceCaptions[i].Length; c++)
-                    if (BarFaceCaptions[i][c] > 126)
-                        failures.Add("[bar-face-icons] caption '" + BarFaceCaptions[i] + "' is not ASCII");
             }
-            if (found != BarFaceCaptions.Length)
-                notes.Add("only " + found + " of " + BarFaceCaptions.Length + " calm-dock faces matched");
+            if (found != BarFaceIconKeys.Length)
+                notes.Add("only " + found + " of " + BarFaceIconKeys.Length + " calm-dock faces matched");
 
             // ---- 8c  the caption is STILL live text -----------------------------------------
             // If this ever stops being true the art becomes the only producer of the word, and
             // then a baked word is not a duplicate - it is the whole label, un-localisable.
-            if (src.IndexOf("slot.SetCaption(caption);", StringComparison.Ordinal) < 0)
-                failures.Add("[bar-face-icons] BuildPeacefulDockSlot no longer calls slot.SetCaption(caption) - " +
+            if (src.IndexOf("slot.SetCaption(caption);", StringComparison.Ordinal) < 0 ||
+                src.IndexOf("string caption = HudStrings.Get(labelKey);", StringComparison.Ordinal) < 0)
+                failures.Add("[bar-face-icons] BuildPeacefulDockSlot no longer resolves and paints its label key - " +
                              "the face's word must stay LIVE text; art must never become its only producer");
+            if (src.IndexOf("LocalText.Changed += RefreshLocalizedHudCopy;", StringComparison.Ordinal) < 0 ||
+                src.IndexOf("LocalText.Changed -= RefreshLocalizedHudCopy", StringComparison.Ordinal) < 0)
+                failures.Add("[bar-face-icons] calm-dock labels do not repaint on locale changes with teardown");
+            if (src.IndexOf("HudStrings.Get(HudStrings.KeyCollectorsTitle)", StringComparison.Ordinal) < 0)
+                failures.Add("[bar-face-icons] Collectors startup seed bypasses its localized HUD key");
 
             // ---- 8d  every face has a named row, in BOTH shipped copies of the table ---------
             string res = ReadSrc(ConceptIconsRes);
@@ -1303,15 +1311,15 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[bar-face-icons] " + EmblemSheetJson + " does not name the sheet '" +
                              EmblemSheetRes + "' - the manifest and the art have drifted apart");
 
-            for (int i = 0; i < BarFaceCaptions.Length; i++)
+            for (int i = 0; i < BarFaceIconKeys.Length; i++)
             {
-                string key = BarFaceCaptions[i].ToLowerInvariant();
+                string key = BarFaceIconKeys[i];
                 string blockRes = JsonBlock(res, key);
                 string blockStr = JsonBlock(str, key);
                 if (blockRes == null)
                 {
                     failures.Add("[bar-face-icons] concept-icons.json has no '" + key + "' row, so the " +
-                                 BarFaceCaptions[i] + " face has nowhere to name its authored art");
+                                 BarFaceIconKeys[i] + " face has nowhere to name its authored art");
                     continue;
                 }
                 if (blockStr == null)
@@ -1342,7 +1350,7 @@ namespace DeNelle.Editor.Regression
                 // ---- 8e  the baked-word denylist ------------------------------------------
                 for (int b = 0; b < BakedWordFaceArt.Length; b++)
                     if (pathRes.IndexOf(BakedWordFaceArt[b], StringComparison.OrdinalIgnoreCase) >= 0)
-                        failures.Add("[bar-face-icons] the " + BarFaceCaptions[i] + " face points at '" +
+                        failures.Add("[bar-face-icons] the " + BarFaceIconKeys[i] + " face points at '" +
                                      pathRes + "', which has the word PAINTED INTO THE PNG. The dock already " +
                                      "draws that word as live text, so the face would print it twice in two " +
                                      "fonts - the WO-1341 defect exactly. Use text-free emblem art");
@@ -1352,7 +1360,7 @@ namespace DeNelle.Editor.Regression
                 if (sliceBlock == null)
                 {
                     failures.Add("[bar-face-icons] the slice manifest " + EmblemSheetJson + " has no face " +
-                                 "named '" + key + "', so the " + BarFaceCaptions[i] + " face would resolve " +
+                                 "named '" + key + "', so the " + BarFaceIconKeys[i] + " face would resolve " +
                                  "NOTHING from the owner's sheet and silently keep a pack icon. Re-run " +
                                  "Elarion/UI/Re-slice Action Bar Emblems");
                     continue;

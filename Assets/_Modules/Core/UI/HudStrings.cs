@@ -80,6 +80,14 @@ namespace DeNelle.Core.UI
         /// <summary>Manage face line 2 when some lines are cooking; {0} = idle, {1} = total.</summary>
         public const string KeyManageIdleSome = "hudManageIdleSome";
 
+        // -- Calm village navigation dock --
+        // Display copy is localized; icon identities stay stable English data keys.
+        public const string KeyNavBuild = "hud.nav.build";
+        public const string KeyNavTalk = "hud.nav.talk";
+        public const string KeyNavHero = "hud.nav.hero";
+        public const string KeyNavJourney = "hud.nav.journey";
+        public const string KeyNavManage = "hud.nav.manage";
+
         // -- The store's ONE player-facing name (WO-1398) --
         // Two HUD rows both read "Night Market" and opened two different screens, while the
         // store's own title came from canon (storeWordmark) and the Realm deck card said
@@ -122,6 +130,7 @@ namespace DeNelle.Core.UI
             KeyCollectorsTitle, KeyCollectorsCount, KeyCollectorsFullLine,
             KeyCollectorsNearlyLine, KeyCollectorsWaitingLine,
             KeyManageIdleAll, KeyManageIdleSome,
+            KeyNavBuild, KeyNavTalk, KeyNavHero, KeyNavJourney, KeyNavManage,
             KeyStoreWordmark,
             KeyHeroBag, KeyHeroSkills, KeyHeroLoadout,
             KeyJourneyDungeons, KeyJourneyRealmMap, KeyJourneySeason,

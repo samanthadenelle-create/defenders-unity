@@ -1447,6 +1447,26 @@ MonoBehaviour:
     m_Key: common.close
     m_Metadata:
       m_Items: []
+  - m_Id: 40980547224776704
+    m_Key: hud.nav.build
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942528
+    m_Key: hud.nav.talk
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942529
+    m_Key: hud.nav.hero
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942530
+    m_Key: hud.nav.journey
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40980547249942531
+    m_Key: hud.nav.manage
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

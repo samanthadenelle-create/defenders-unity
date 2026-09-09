@@ -275,6 +275,17 @@ namespace DeNelle.HUD.Kit
         private TMP_Text _collectorsChipLabel;
         private int _collectorStatusVersion = -1;
 
+        private static readonly string[] PeacefulDockLabelKeys =
+        {
+            HudStrings.KeyNavBuild,
+            HudStrings.KeyNavTalk,
+            HudStrings.KeyNavHero,
+            HudStrings.KeyNavJourney,
+            HudStrings.KeyNavManage,
+        };
+        private readonly TMP_Text[] _peacefulDockLabels = new TMP_Text[5];
+        private bool _localTextSubscribed;
+
         // WO-1515 sec.2B (owner ruling 2026-09-06 20:05) - THE ATTACK REPORT CHIP.
         // "the only way to get to the defense report is buried under settings then realm.
         //  should be on screen as a button if there is a report that is incoming".
@@ -1922,7 +1933,7 @@ namespace DeNelle.HUD.Kit
             // this 0f with a bigger literal that happens to clear four rows — see HudRailClearance
             // for why a second hand-maintained number is the same bug one resource later.
             RectTransform collectorsBand;
-            var chip = BuildRailChip(rrt, "CollectorsChip", "Collectors", 0f,
+            var chip = BuildRailChip(rrt, "CollectorsChip", HudStrings.Get(HudStrings.KeyCollectorsTitle), 0f,
                                      OnCollectorsChipTapped, out collectorsBand);
             var clearance = collectorsBand != null
                 ? collectorsBand.gameObject.AddComponent<HudRailClearance>() : null;
@@ -1954,6 +1965,7 @@ namespace DeNelle.HUD.Kit
                                          "tell will show nothing (the kit returned no button/text).");
 
             Register("collectorsChip", WrapAsWidget("collectorsChip", root));
+            BindLocalizedHudCopy();
         }
 
         private void OnCollectorsChipTapped()
@@ -2434,32 +2446,33 @@ namespace DeNelle.HUD.Kit
             _peacefulDockLayout.Configure(rootRt, PeacefulDockSlotY0, PeacefulDockSlotY1,
                 HudAreasHost.ActionBarRightHeadroomRatio, HudDockLayout.GapFraction);
 
-            // WO-1359 — THE FACE'S ICON IS KEYED BY ITS OWN CAPTION, never by its slot index.
-            // BuildPeacefulDockSlot resolves UiStyle.Icon(caption.ToLowerInvariant(), ...) itself,
-            // so "MANAGE" can only ever draw the 'manage' art. That is not tidiness: the sheet the
+            // WO-1605 — display copy is localized while icon IDs remain stable authored data.
+            // BuildPeacefulDockSlot receives both explicitly, so translated copy can never change
+            // which emblem is loaded. That is not tidiness: the sheet the
             // owner authors reads BUILD/TALK/HERO/MANAGE across the top with JOURNEY beneath, while
             // the bar shows BUILD/TALK/HERO/JOURNEY/MANAGE — a position-indexed slice silently
             // swaps the last two, and both faces still look plausible, so nobody catches it.
             // The extra ids below are the LEGACY pack fallbacks, kept so a face whose authored art
             // has not landed yet renders exactly what it renders today.
-            BuildPeacefulDockSlot(0, "BUILD", new[] { "hammer" }, () =>
+            BuildPeacefulDockSlot(0, "build", HudStrings.KeyNavBuild, new[] { "hammer" }, () =>
             {
                 if (_owner != null) _owner.BuildRequested?.Invoke();
             });
-            BuildPeacefulDockSlot(1, "TALK", new[] { "speech", "dialogue" }, () =>
+            BuildPeacefulDockSlot(1, "talk", HudStrings.KeyNavTalk, new[] { "speech", "dialogue" }, () =>
             {
                 HudCommands.Talk();
                 if (_owner != null) _owner.TalkRequested?.Invoke();
             });
-            BuildPeacefulDockSlot(2, "HERO", new[] { "helmet", "sword" }, () =>
+            BuildPeacefulDockSlot(2, "hero", HudStrings.KeyNavHero, new[] { "helmet", "sword" }, () =>
             {
                 if (!PanelRouter.Open(PanelId.HeroDeck))
                     FlowTrace.Warn("HudKit", "Hero workspace opener not registered");
             });
-            BuildPeacefulDockSlot(3, "JOURNEY", new[] { "compass", "quest" }, OnQuestsAction);
-            BuildPeacefulDockSlot(4, "MANAGE", new[] { "banner", "shield" }, OnManageAction);
+            BuildPeacefulDockSlot(3, "journey", HudStrings.KeyNavJourney, new[] { "compass", "quest" }, OnQuestsAction);
+            BuildPeacefulDockSlot(4, "manage", HudStrings.KeyNavManage, new[] { "banner", "shield" }, OnManageAction);
 
             Register("peacefulDock", WrapAsWidget("peacefulDock", _peacefulDockRoot));
+            BindLocalizedHudCopy();
         }
 
         /// <summary>
@@ -2494,17 +2507,17 @@ namespace DeNelle.HUD.Kit
         private HudDockSlotLayout _peacefulDockLayout;
 
         /// <summary>
-        /// One calm-dock medallion. WO-1359: the caption is the ICON KEY as well as the printed
-        /// word — the slot resolves its own art from <paramref name="caption"/> lower-cased, so the
-        /// face's name and the face's art cannot be given to different slots. <paramref
+        /// One calm-dock medallion. <paramref name="iconKey"/> is stable authored-data identity;
+        /// <paramref name="labelKey"/> resolves the live translated caption. <paramref
         /// name="iconFallbacks"/> are the older pack concepts, tried in order only when the
         /// caption's own art is absent, which is what keeps the bar looking exactly as it does
         /// today until authored art is dropped in. A null icon is NOT an error and never blanks the
         /// face: the kit's medallion keeps its own look and the live caption still names it.
         /// </summary>
-        private void BuildPeacefulDockSlot(int index, string caption, string[] iconFallbacks, Action command)
+        private void BuildPeacefulDockSlot(int index, string iconKey, string labelKey,
+                                           string[] iconFallbacks, Action command)
         {
-            string iconKey = (caption ?? string.Empty).ToLowerInvariant();
+            string caption = HudStrings.Get(labelKey);
             // The authored emblem sheet is asked FIRST and by name; the pack fallbacks below are
             // only reached when her art cannot be resolved. Which one answered decides how the
             // medallion is dressed, so the two lookups stay separate.
@@ -2538,6 +2551,8 @@ namespace DeNelle.HUD.Kit
             // fallback keeps the kit medallion it has always had.
             if (authored != null) ElarionUiKit.PresentAuthoredEmblem(slot);
             slot.SetCaption(caption);
+            if (index >= 0 && index < _peacefulDockLabels.Length)
+                _peacefulDockLabels[index] = slot.caption;
             // WO-1319 acceptance 2 — the caption's degradation is AUTHORED, not incidental.
             // SetCaption leaves the kit default (word-wrap on, autosize floor 6f), so a caption
             // that outgrew its face either re-flowed or shrank to an illegible smear. The shared
@@ -2550,6 +2565,24 @@ namespace DeNelle.HUD.Kit
             if (slot.button != null) ElarionUiKit.ClampMinTouch(slot.button);
             if (_peacefulDockLayout != null)
                 _peacefulDockLayout.AddSlot((RectTransform)slot.root.transform, slot.caption);
+        }
+
+        private void BindLocalizedHudCopy()
+        {
+            if (_localTextSubscribed) return;
+            LocalText.Changed += RefreshLocalizedHudCopy;
+            _unsubscribe.Add(() => LocalText.Changed -= RefreshLocalizedHudCopy);
+            _localTextSubscribed = true;
+            RefreshLocalizedHudCopy();
+        }
+
+        private void RefreshLocalizedHudCopy()
+        {
+            for (int i = 0; i < _peacefulDockLabels.Length && i < PeacefulDockLabelKeys.Length; i++)
+                if (_peacefulDockLabels[i] != null)
+                    _peacefulDockLabels[i].text = HudStrings.Get(PeacefulDockLabelKeys[i]);
+            if (_collectorsChipLabel != null)
+                _collectorsChipLabel.text = HudStrings.Get(HudStrings.KeyCollectorsTitle);
         }
 
         /// <summary>Approved active-combat dock: Attack, held Block, three live assignable skills,
