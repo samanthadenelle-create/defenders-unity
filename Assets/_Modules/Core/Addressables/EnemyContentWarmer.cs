@@ -150,6 +150,8 @@ namespace DeNelle.Core
 
         // Type+address keys with an in-flight typed request (dedupe — a wave asks per body).
         private static readonly HashSet<string> s_inFlight = new HashSet<string>();
+        private static readonly Dictionary<string, string> s_inFlightFamily =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         // Type+address keys that resolved to nothing even asynchronously; stop re-requesting them.
         private static readonly HashSet<string> s_deadKeys = new HashSet<string>();
@@ -157,8 +159,20 @@ namespace DeNelle.Core
         // Families whose bundles have been asked for (dedupe — every body of a wave asks).
         private static readonly HashSet<string> s_familiesRequested = new HashSet<string>();
 
+        // Requested is historical/dedupe state; this set means a family bundle writer is
+        // active RIGHT NOW. Keeping them separate prevents a suppressed family prefetch from
+        // making later typed requests wait forever.
+        private static readonly HashSet<string> s_familyDownloadsInFlight =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         // Families whose bundle download has completed (diagnostics + the loader's report line).
         private static readonly HashSet<string> s_familiesLocal = new HashSet<string>();
+
+        // A spawn commonly asks for a family prefetch and its first concrete body in the
+        // same frame. Starting both operations makes two providers write/read the same cache
+        // file concurrently. Queue typed loads behind the family download instead.
+        private static readonly Dictionary<string, List<Action<bool>>> s_afterFamilyDownload =
+            new Dictionary<string, List<Action<bool>>>(StringComparer.OrdinalIgnoreCase);
 
         // First time each address was asked for and could not be served. Powers the
         // "how long has it been waiting" number in every skip line.
@@ -242,7 +256,7 @@ namespace DeNelle.Core
 
         /// <summary>True when this family's bundles have been asked for and have not landed yet.</summary>
         public static bool IsFamilyDownloading(string family) =>
-            !string.IsNullOrEmpty(family) && s_familiesRequested.Contains(family) && !s_familiesLocal.Contains(family);
+            !string.IsNullOrEmpty(family) && s_familyDownloadsInFlight.Contains(family);
 
         // =====================================================================
         //  Family identity
@@ -335,15 +349,47 @@ namespace DeNelle.Core
             if (string.IsNullOrWhiteSpace(address)) return;
 
             string key = Key(typeof(T), address);
+            string family = FamilyOf(address).ToLowerInvariant();
             if (s_deadKeys.Contains(key)) return;
             if (s_resident.ContainsKey(key)) return;
+            bool typedFamilyWriterActive = HasTypedRequestInFlight(family);
             if (!s_inFlight.Add(key)) return;
+            s_inFlightFamily[key] = family;
 
             EnsureHost();
             // Do not infer a bundle label from the model spelling here. The address load below
             // already pulls its exact bundle; encounter lookahead calls WarmFamily with the
             // canonical EnemyDef.Family from enemies.json.
 
+            if (AddressablesCacheHealth.UnsafeThisSession)
+            {
+                RejectUnsafeRequest<T>(address, key);
+                return;
+            }
+
+            if (IsFamilyDownloading(family) || typedFamilyWriterActive)
+            {
+                if (!s_afterFamilyDownload.TryGetValue(family, out var waiting))
+                {
+                    waiting = new List<Action<bool>>();
+                    s_afterFamilyDownload[family] = waiting;
+                }
+                waiting.Add(ok =>
+                {
+                    if (ok && !AddressablesCacheHealth.UnsafeThisSession)
+                        StartRequest<T>(address, key);
+                    else
+                        RejectUnsafeRequest<T>(address, key);
+                });
+                FlowTrace.Step(System, $"'{address}' ({typeof(T).Name}) queued behind the in-flight '{family}' cache writer; the cache file has one writer.");
+                return;
+            }
+
+            StartRequest<T>(address, key);
+        }
+
+        private static void StartRequest<T>(string address, string key) where T : Object
+        {
             bool started = Guard.Try(System, $"async request '{address}' ({typeof(T).Name})", () =>
             {
                 var handle = Addressables.LoadAssetAsync<T>(address);
@@ -356,8 +402,18 @@ namespace DeNelle.Core
                 // outright (InvalidKeyException) is dead for this launch; stop asking so a
                 // re-skin loop cannot spin on it.
                 s_inFlight.Remove(key);
+                s_inFlightFamily.Remove(key);
                 s_deadKeys.Add(key);
             }
+        }
+
+        private static void RejectUnsafeRequest<T>(string address, string key) where T : Object
+        {
+            s_inFlight.Remove(key);
+            s_inFlightFamily.Remove(key);
+            s_deadKeys.Add(key);
+            FlowTrace.Fail(System, $"'{address}' ({typeof(T).Name}) was not loaded because the AssetBundle cache is unsafe this launch. A placeholder is retained; restart once to run the armed cache repair.");
+            MaybeNotifySettled();
         }
 
         /// <summary>Untyped convenience — see <see cref="Request{T}"/>.</summary>
@@ -366,9 +422,12 @@ namespace DeNelle.Core
         private static void OnRequestCompleted<T>(string address, string key, AsyncOperationHandle<T> handle)
             where T : Object
         {
+            string family = FamilyOf(address).ToLowerInvariant();
             s_inFlight.Remove(key);
+            s_inFlightFamily.Remove(key);
 
-            if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+            bool ok = handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null;
+            if (ok)
             {
                 s_resident[key] = handle.Result;
                 s_retained.Add(handle);          // ⛔ retained for the process; see header (B)
@@ -390,6 +449,7 @@ namespace DeNelle.Core
                 Guard.Try(System, $"release failed handle '{address}'", () => Addressables.Release(handle));
             }
 
+            CompleteFamilyWaiters(family, ok);
             MaybeNotifySettled();
         }
 
@@ -407,6 +467,16 @@ namespace DeNelle.Core
             if (!s_familiesRequested.Add(family)) return;
 
             EnsureHost();
+
+            // Catalog discovery can settle after the raid's first exact request has already
+            // started. Do not then launch a label sweep over the same bundle: whichever path
+            // started first remains the sole cache writer.
+            if (HasTypedRequestInFlight(family))
+            {
+                FlowTrace.Step(System,
+                    $"family '{family}' prefetch suppressed because an exact asset request already owns its cache write; one writer retained.");
+                return;
+            }
 
             string label = LabelFor(family);
             if (State != EnemyContentState.Ready)
@@ -446,19 +516,43 @@ namespace DeNelle.Core
 
             bool started = Guard.Try(System, $"download family '{family}' by label '{label}'", () =>
             {
+                s_familyDownloadsInFlight.Add(family);
                 var dl = Addressables.DownloadDependenciesAsync(label, false);
                 dl.Completed += h =>
                 {
-                    s_familiesLocal.Add(family);
+                    s_familyDownloadsInFlight.Remove(family);
+                    bool ok = h.Status == AsyncOperationStatus.Succeeded;
+                    if (ok) s_familiesLocal.Add(family);
+                    else AddressablesCacheHealth.ReportDownloadFailure($"enemy family '{family}' / '{label}'");
                     FlowTrace.Step(System,
                         $"family '{family}' bundles {h.Status} via '{label}'. " +
                         "Only this family was fetched; the rest of the enemy payload was NOT downloaded.");
                     Guard.Try(System, $"release family download '{family}'", () => Addressables.Release(h));
+                    CompleteFamilyWaiters(family, ok);
                     MaybeNotifySettled();
                 };
             });
 
-            if (!started) s_familiesRequested.Remove(family);
+            if (!started)
+            {
+                s_familyDownloadsInFlight.Remove(family);
+                s_familiesRequested.Remove(family);
+            }
+        }
+
+        private static bool HasTypedRequestInFlight(string family)
+        {
+            foreach (var pair in s_inFlightFamily)
+                if (string.Equals(pair.Value, family, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        private static void CompleteFamilyWaiters(string family, bool ok)
+        {
+            if (!s_afterFamilyDownload.TryGetValue(family, out var waiting)) return;
+            s_afterFamilyDownload.Remove(family);
+            foreach (var resume in waiting)
+                Guard.Try(System, $"resume request after family '{family}'", () => resume(ok));
         }
 
         // =====================================================================

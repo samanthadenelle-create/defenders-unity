@@ -787,6 +787,8 @@ namespace DeNelle.Core
                 {
                     allOk = false;
                     failedChunks++;
+                    AddressablesCacheHealth.ReportDownloadFailure(
+                        $"offline chunk {start}..{start + count - 1}");
                     FlowTrace.Fail(Sys, $"offline pull FAILED for chunk {start}..{start + count - 1} " +
                                         $"(first key '{chunk[0]}') - the player is NOT offline-ready.");
                 }

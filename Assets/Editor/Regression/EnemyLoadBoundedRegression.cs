@@ -83,6 +83,7 @@ namespace DeNelle.Editor
         // Repo-relative paths of the seam under guard.
         private const string LoaderRel     = "_Modules/Core/Addressables/EnemyAssetLoader.cs";
         private const string WarmerRel     = "_Modules/Core/Addressables/EnemyContentWarmer.cs";
+        private const string CacheHealthRel = "_Modules/Core/Addressables/AddressablesCacheHealth.cs";
         private const string ResolverRel   = "_Modules/Core/Addressables/EnemyEditorSyncResolver.cs";
         private const string FactoryRel    = "_Modules/Village/Enemies/EnemyFactory.cs";
         private const string SkinnerRel    = "_Modules/Village/Enemies/EnemyLateSkinner.cs";
@@ -111,6 +112,7 @@ namespace DeNelle.Editor
 
             string loaderPath   = Abs(assets, LoaderRel);
             string warmerPath   = Abs(assets, WarmerRel);
+            string cacheHealthPath = Abs(assets, CacheHealthRel);
             string factoryPath  = Abs(assets, FactoryRel);
             string skinnerPath  = Abs(assets, SkinnerRel);
 
@@ -288,6 +290,18 @@ namespace DeNelle.Editor
                 RequireToken(failures, warmer, "public static void WarmFamily", WarmerRel,
                     "owner ruling 2026-08-20: 'I want this broken down to each family of enemy'. WarmFamily is that " +
                     "ruling in code — one family's bundles, on demand");
+                RequireToken(failures, warmer, "s_afterFamilyDownload", WarmerRel,
+                    "typed asset loads must queue behind an in-flight family download so raid spawn cannot make " +
+                    "two providers write/read the same cache file concurrently");
+                RequireToken(failures, warmer, "CompleteFamilyWaiters", WarmerRel,
+                    "queued typed requests must resume only after the family cache write completes");
+                RequireToken(failures, warmer, "HasTypedRequestInFlight", WarmerRel,
+                    "the inverse race must also be closed: a late family prefetch cannot overlap an exact " +
+                    "asset request that already owns the cache write");
+                RequireToken(failures, warmer, "s_familyDownloadsInFlight", WarmerRel,
+                    "historical family-request state must be distinct from a currently active cache writer");
+                RequireToken(failures, warmer, "AddressablesCacheHealth.ReportDownloadFailure", WarmerRel,
+                    "a failed family cache write must quarantine later remote loads for the session");
 
                 string warmBody;
                 if (!TryMethodBody(warmer, "IEnumerator WarmRoutine(", out warmBody))
@@ -341,6 +355,28 @@ namespace DeNelle.Editor
 
                 log.AppendLine($"  {WarmerRel}: coroutine discovery pass, per-family on-demand fetch, retains, " +
                                "Ready gated on discovery.");
+            }
+
+            // 3c. Corrupt bundles can abort inside Unity's native serializer before a managed
+            // failed handle exists. Existing installs need a pre-Addressables cache migration.
+            string cacheRaw = ReadOrNull(cacheHealthPath);
+            if (cacheRaw == null)
+            {
+                failures.Add($"Assets/{CacheHealthRel} is missing — existing players can retain a corrupt bundle " +
+                             "cache and crash natively when a raid first opens that family.");
+            }
+            else
+            {
+                string cache = Code(cacheRaw);
+                RequireToken(failures, cache, "RuntimeInitializeLoadType.BeforeSceneLoad", CacheHealthRel,
+                    "cache repair must precede every AfterSceneLoad Addressables warmer");
+                RequireToken(failures, cache, "Caching.ClearCache", CacheHealthRel,
+                    "the migration must remove stale native AssetBundle cache entries");
+                RequireToken(failures, cache, "PrefRepairEpoch", CacheHealthRel,
+                    "repair must be one-time rather than forcing a download on every launch");
+                RequireToken(failures, cache, "UnsafeThisSession", CacheHealthRel,
+                    "if Unity refuses repair, later remote deserialization must fail closed this launch");
+                log.AppendLine($"  {CacheHealthRel}: one-time pre-load repair plus fail-closed session quarantine.");
             }
 
             // ── 4. THE CALL SITE USES THE ENEMY SEAM (the capture's real bug) ──
