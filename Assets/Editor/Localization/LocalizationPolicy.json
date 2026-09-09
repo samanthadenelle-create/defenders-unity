@@ -35,12 +35,6 @@
   ],
   "legacyAuthorities": [
     {
-      "path": "Assets/_Modules/Core/Promo/PromoStrings.cs",
-      "kind": "direct-table-reader",
-      "owner": "localization",
-      "removeBy": "phase-2"
-    },
-    {
       "path": "Assets/_Modules/Core/State/HeroCanonNames.cs",
       "kind": "direct-table-reader",
       "owner": "localization",

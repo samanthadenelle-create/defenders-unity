@@ -11,17 +11,9 @@
 // error gets its OWN sentence, each sentence says whether the code was consumed,
 // and none of them is reused for a second cause.
 //
-// Those sentences are player-facing copy, so per CLAUDE.md §7 they live in
-// canon-strings.json — in BOTH canonical copies (Assets/Resources/Data/Canonical
-// and Assets/StreamingAssets/Data/Canonical), byte-identical, ASCII-only (TMP
-// renders non-ASCII as tofu). Nothing here hardcodes a sentence; this class only
-// names KEYS. Pinned by PromoRedeemEntryRegression.
-//
-// Loading mirrors CanonStrings.LoadMap verbatim (flat string->string map read
-// through DeNelle.Core.CanonicalJson — Resources first, StreamingAssets fallback,
-// WebGL-safe). CanonStrings itself lives in DeNelle.Onboarding, which neither
-// DeNelle.Core nor DeNelle.Wallet may reference (read the .asmdef — §5), hence
-// this Core-side twin rather than a cross-assembly reach.
+// Those sentences are player-facing copy, so this compatibility catalog names
+// stable keys and forwards resolution to LocalText, the one runtime localization
+// authority. Nothing here owns, parses, or caches an English sentence.
 //
 // A missing key returns the visible "[[missing:key]]" marker (the house
 // convention) AND self-reports through FlowTrace — never a silent blank on a
@@ -29,65 +21,61 @@
 // =============================================================================
 
 using System;
-using System.Collections.Generic;
-using Newtonsoft.Json;
-using UnityEngine;
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.UI;
 
 namespace DeNelle.Core.Promo
 {
-    /// <summary>Canon-backed copy for the promo-code redeem door. Keys only — no sentences.</summary>
+    /// <summary>Localization-backed compatibility catalog for the promo-code redeem door.</summary>
     public static class PromoStrings
     {
-        private const string CanonRelativePath = "Data/Canonical/canon-strings.json";
-
         // ── Chrome ───────────────────────────────────────────────────────────
         /// <summary>Label of the store's entry button ("Redeem a Code").</summary>
-        public const string KeyEntry       = "redeemEntry";
+        public const string KeyEntry       = "promo.redeem.entry";
         /// <summary>Panel title.</summary>
-        public const string KeyTitle       = "redeemTitle";
+        public const string KeyTitle       = "promo.redeem.title";
         /// <summary>One-line explanation under the title.</summary>
-        public const string KeyBlurb       = "redeemBlurb";
+        public const string KeyBlurb       = "promo.redeem.blurb";
         /// <summary>Input-field placeholder.</summary>
-        public const string KeyPlaceholder = "redeemPlaceholder";
+        public const string KeyPlaceholder = "promo.redeem.placeholder";
         /// <summary>Submit-button label.</summary>
-        public const string KeyAction      = "redeemAction";
+        public const string KeyAction      = "promo.redeem.action";
         /// <summary>Static hint under the field (case-insensitivity).</summary>
-        public const string KeyHint        = "redeemHint";
+        public const string KeyHint        = "promo.redeem.hint";
         /// <summary>Status line while the request is in flight.</summary>
-        public const string KeyBusy        = "redeemBusy";
+        public const string KeyBusy        = "promo.redeem.busy";
 
         // ── Success ──────────────────────────────────────────────────────────
         /// <summary>Success line; {0} = the composed reward summary.</summary>
-        public const string KeySuccess          = "redeemSuccess";
+        public const string KeySuccess          = "promo.redeem.success";
         /// <summary>Success line when the code carried no reward at all.</summary>
-        public const string KeySuccessNoReward  = "redeemSuccessNoReward";
+        public const string KeySuccessNoReward  = "promo.redeem.successNoReward";
         /// <summary>Reward part; {0} = crystal amount.</summary>
-        public const string KeyRewardCrystals   = "redeemRewardCrystals";
+        public const string KeyRewardCrystals   = "promo.redeem.rewardCrystals";
         /// <summary>Reward part; {0} = coin amount.</summary>
-        public const string KeyRewardCoins      = "redeemRewardCoins";
+        public const string KeyRewardCoins      = "promo.redeem.rewardCoins";
         /// <summary>Reward part; {0} = the store pack name.</summary>
-        public const string KeyRewardPack       = "redeemRewardPack";
+        public const string KeyRewardPack       = "promo.redeem.rewardPack";
 
         // ── Failures — ONE distinct sentence per documented cause ────────────
         /// <summary>The player submitted an empty field.</summary>
-        public const string KeyErrEmpty       = "redeemErrEmpty";
+        public const string KeyErrEmpty       = "promo.redeem.error.empty";
         /// <summary>Server: INVALID_CODE.</summary>
-        public const string KeyErrInvalid     = "redeemErrInvalid";
+        public const string KeyErrInvalid     = "promo.redeem.error.invalid";
         /// <summary>Server: ALREADY_REDEEMED (also the local dedup set).</summary>
-        public const string KeyErrAlreadyUsed = "redeemErrAlreadyUsed";
+        public const string KeyErrAlreadyUsed = "promo.redeem.error.alreadyUsed";
         /// <summary>Server: EXPIRED.</summary>
-        public const string KeyErrExpired     = "redeemErrExpired";
+        public const string KeyErrExpired     = "promo.redeem.error.expired";
         /// <summary>Server: PLAYER_LIMIT_REACHED.</summary>
-        public const string KeyErrPlayerLimit = "redeemErrPlayerLimit";
+        public const string KeyErrPlayerLimit = "promo.redeem.error.playerLimit";
         /// <summary>No connection / unreachable endpoint — the code was NOT spent.</summary>
-        public const string KeyErrOffline     = "redeemErrOffline";
+        public const string KeyErrOffline     = "promo.redeem.error.offline";
         /// <summary>Identity proof refused (401/400 from the wallet-auth rail).</summary>
-        public const string KeyErrIdentity    = "redeemErrIdentity";
+        public const string KeyErrIdentity    = "promo.redeem.error.identity";
         /// <summary>No player identity at all — nothing to key the redemption to.</summary>
-        public const string KeyErrSignIn      = "redeemErrSignIn";
+        public const string KeyErrSignIn      = "promo.redeem.error.signIn";
         /// <summary>Anything else (unparseable body, unnamed error code).</summary>
-        public const string KeyErrUnknown     = "redeemErrUnknown";
+        public const string KeyErrUnknown     = "promo.redeem.error.unknown";
 
         /// <summary>Every failure key, in one place, so the oracle can prove they are distinct.</summary>
         public static readonly string[] FailureKeys =
@@ -96,64 +84,36 @@ namespace DeNelle.Core.Promo
             KeyErrPlayerLimit, KeyErrOffline, KeyErrIdentity, KeyErrSignIn, KeyErrUnknown,
         };
 
-        private static Dictionary<string, string> _canon;
-
-        /// <summary>Resolves a canon key. Returns "[[missing:key]]" (and self-reports) when absent.</summary>
+        /// <summary>Resolves a localization key and retains the visible missing-key contract.</summary>
         public static string Get(string key)
         {
-            EnsureLoaded();
-            if (_canon != null && key != null && _canon.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value))
-                return value;
-            FlowTrace.Fail("Promo", $"canon-strings key '{key}' missing — the redeem screen would show a placeholder marker instead of a sentence.");
-            return $"[[missing:{key}]]";
+            string value = LocalText.Get(key);
+            ReportMissing(key, value);
+            return value;
         }
 
-        /// <summary>Resolves a canon key and formats it. A bad format string degrades to the raw sentence.</summary>
+        /// <summary>Resolves and formats through the localization authority.</summary>
         public static string Format(string key, params object[] args)
         {
-            string raw = Get(key);
-            if (args == null || args.Length == 0) return raw;
-            try { return string.Format(raw, args); }
-            catch (FormatException ex)
-            {
-                FlowTrace.Fail("Promo", $"canon-strings key '{key}' has a bad format placeholder: {ex.Message}");
-                return raw;
-            }
+            string value = args == null || args.Length == 0
+                ? LocalText.Get(key)
+                : LocalText.Format(key, args);
+            ReportMissing(key, value);
+            return value;
         }
 
-        /// <summary>Test/diagnostic hook — drops the cached map so a re-read picks up an edit.</summary>
-        public static void Reload() { _canon = null; }
+        /// <summary>
+        /// Compatibility hook retained for callers compiled against the former local cache.
+        /// LocalText owns cache lifetime now, so PromoStrings has nothing to invalidate.
+        /// </summary>
+        public static void Reload() { }
 
-        private static void EnsureLoaded()
+        private static void ReportMissing(string key, string value)
         {
-            if (_canon != null) return;
-            try
-            {
-                string json = CanonicalJson.Read(CanonRelativePath);
-                if (string.IsNullOrEmpty(json))
-                {
-                    FlowTrace.Fail("Promo", $"canonical file not found (Resources or StreamingAssets): {CanonRelativePath} — every redeem sentence would render as a placeholder.");
-                    _canon = new Dictionary<string, string>();
-                    return;
-                }
-
-                // Flat string->string map with some leading "_" metadata keys: deserialize
-                // loosely, keep only the string entries (the CanonStrings convention).
-                var raw = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-                var map = new Dictionary<string, string>();
-                if (raw != null)
-                {
-                    foreach (var kv in raw)
-                        if (kv.Value is string s) map[kv.Key] = s;
-                }
-                _canon = map;
-            }
-            catch (Exception ex)
-            {
-                // No silent catch (§12): the screen still works, but say why it lost its words.
-                FlowTrace.Fail("Promo", $"failed to read {CanonRelativePath}: {ex.GetType().Name}: {ex.Message}");
-                _canon = new Dictionary<string, string>();
-            }
+            string marker = "[[missing:" + (key ?? string.Empty) + "]]";
+            if (string.Equals(value, marker, StringComparison.Ordinal))
+                FlowTrace.Fail("Promo", "localization key '" + key +
+                    "' missing - the redeem screen would show a placeholder instead of a sentence.");
         }
     }
 }

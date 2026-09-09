@@ -1355,6 +1355,90 @@ MonoBehaviour:
     m_Key: raidDurationSub
     m_Metadata:
       m_Items: []
+  - m_Id: 40945817708179456
+    m_Key: promo.redeem.entry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345280
+    m_Key: promo.redeem.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345281
+    m_Key: promo.redeem.blurb
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345282
+    m_Key: promo.redeem.placeholder
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345283
+    m_Key: promo.redeem.action
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345284
+    m_Key: promo.redeem.hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345285
+    m_Key: promo.redeem.busy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345286
+    m_Key: promo.redeem.success
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539584
+    m_Key: promo.redeem.successNoReward
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539585
+    m_Key: promo.redeem.rewardCrystals
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539586
+    m_Key: promo.redeem.rewardCoins
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539587
+    m_Key: promo.redeem.rewardPack
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539588
+    m_Key: promo.redeem.error.empty
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539589
+    m_Key: promo.redeem.error.invalid
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539590
+    m_Key: promo.redeem.error.alreadyUsed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539591
+    m_Key: promo.redeem.error.expired
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539592
+    m_Key: promo.redeem.error.playerLimit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539593
+    m_Key: promo.redeem.error.offline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539594
+    m_Key: promo.redeem.error.identity
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539595
+    m_Key: promo.redeem.error.signIn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539596
+    m_Key: promo.redeem.error.unknown
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

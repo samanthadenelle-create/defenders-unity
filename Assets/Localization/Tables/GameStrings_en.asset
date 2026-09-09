@@ -1476,6 +1476,100 @@ MonoBehaviour:
     m_Localized: less than a minute
     m_Metadata:
       m_Items: []
+  - m_Id: 40945817708179456
+    m_Localized: Redeem a Code
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345280
+    m_Localized: REDEEM A CODE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345281
+    m_Localized: Have a code from an event, a creator or the team? Enter it here.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345282
+    m_Localized: Enter your code
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345283
+    m_Localized: Redeem
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345284
+    m_Localized: Codes are not case sensitive.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345285
+    m_Localized: Checking your code...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817733345286
+    m_Localized: Code accepted - {0} added to your realm.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40945817737539584
+    m_Localized: Code accepted, but it carried no reward to add.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539585
+    m_Localized: '{0} Crystals'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40945817737539586
+    m_Localized: '{0} Gold'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40945817737539587
+    m_Localized: '{0} Pack'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40945817737539588
+    m_Localized: Enter a code first.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539589
+    m_Localized: We do not recognize that code. Check the spelling and try again
+      - nothing was used up.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539590
+    m_Localized: You have already redeemed this code. Each code can be used once
+      per player.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539591
+    m_Localized: This code has expired and is no longer being accepted.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539592
+    m_Localized: You have reached the promo code limit for this account, so no more
+      codes can be redeemed.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539593
+    m_Localized: We could not reach the rewards server. Your code was NOT used -
+      check your connection and try again.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539594
+    m_Localized: We could not verify your account, so the code was NOT used. Sign
+      in, then try again.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539595
+    m_Localized: Sign in before redeeming a code - rewards are tied to your account.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40945817737539596
+    m_Localized: Something went wrong on our end and the code was NOT used. Please
+      try again in a moment.
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1503,3 +1597,7 @@ MonoBehaviour:
         - id: 40931158179491908
         - id: 40931158179491909
         - id: 40931158179491910
+        - id: 40945817733345286
+        - id: 40945817737539585
+        - id: 40945817737539586
+        - id: 40945817737539587

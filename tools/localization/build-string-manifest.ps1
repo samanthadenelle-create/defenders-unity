@@ -330,6 +330,14 @@ function Add-CanonicalJsonRows {
     }
 
     foreach ($relativeName in @($selected.Keys | Sort-Object)) {
+        # Locale tables other than English are translations of the keyed source,
+        # not new authored-copy debt. Keep draft and shipped BCP-47 locale files
+        # out of literalCandidate inventory; parity gates own them instead.
+        if ($relativeName -ne 'en.json' -and
+            $relativeName -match '^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*\.json$') {
+            continue
+        }
+
         $fullPath = [string]$selected[$relativeName]
         $source = Get-RepoRelativePath $fullPath
         $raw = [System.IO.File]::ReadAllText($fullPath)

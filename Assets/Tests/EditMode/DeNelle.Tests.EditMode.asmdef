@@ -11,6 +11,7 @@
         "DeNelle.Editor",
         "DeNelle.Web3",
         "UniTask",
+        "Unity.Localization",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

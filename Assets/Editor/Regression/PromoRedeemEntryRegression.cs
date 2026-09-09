@@ -2,7 +2,7 @@
 // PromoRedeemEntryRegression [promo-redeem-entry] — the promo-code DOOR.
 // Marker: PROMO_REDEEM_ENTRY_OK / PROMO_REDEEM_ENTRY_FAIL. Expected: GREEN.
 // -----------------------------------------------------------------------------
-// Assembly: DeNelle.EditorRegression. SOURCE-LINT + canon-data oracle (no PlayMode),
+// Assembly: DeNelle.EditorRegression. SOURCE-LINT + localization-data oracle (no PlayMode),
 // so it slots straight into the headless DataRegression.RunAll batch gate.
 //
 // WHAT IT PINS (the promo-redeem door WO)
@@ -20,11 +20,11 @@
 //                   capture is spendable by whoever reads it.
 //   3. DISTINCT   — every documented server error (INVALID_CODE / ALREADY_REDEEMED /
 //                   EXPIRED / PLAYER_LIMIT_REACHED) plus the offline and identity cases maps
-//                   to its OWN non-empty canon sentence. A bare "invalid code" on a redeem
+//                   to its OWN non-empty localized sentence. A bare "invalid code" on a redeem
 //                   screen reads as a scam: the player cannot tell a typo from a spent code
 //                   from an outage on our side.
-//   4. DUAL COPY  — those sentences exist, byte-identical, in BOTH canonical copies
-//                   (Resources + StreamingAssets) and are ASCII (TMP renders non-ASCII tofu).
+//   4. LOCALIZED  — PromoStrings forwards to LocalText, and its English rows exist,
+//                   byte-identical, in both localizable source copies.
 //   5. UNGATED    — the store entry is NOT gated on FeatureFlags.RealmStorePurchase. That
 //                   flag gates BUYING; redeeming spends no money and must work while
 //                   purchases are disabled. Proven structurally: the button is built in
@@ -61,24 +61,27 @@ namespace DeNelle.Editor
         private const string ServicePath = "Assets/_Modules/Core/Promo/PromoCodeService.cs";
         private const string StringsPath = "Assets/_Modules/Core/Promo/PromoStrings.cs";
         private const string DeadUiPath  = "Assets/_Modules/Core/Promo/PromoCodeUI.cs";
-        private const string CanonResources       = "Assets/Resources/Data/Canonical/canon-strings.json";
-        private const string CanonStreamingAssets = "Assets/StreamingAssets/Data/Canonical/canon-strings.json";
+        private const string EnglishResources       = "Assets/Resources/Data/Canonical/en.json";
+        private const string EnglishStreamingAssets = "Assets/StreamingAssets/Data/Canonical/en.json";
 
-        // The canon keys the failure taxonomy hangs on. Every one must exist, be non-empty,
+        // The localization keys the failure taxonomy hangs on. Every one must exist, be non-empty,
         // be ASCII, and be DIFFERENT from all the others.
         private static readonly string[] FailureKeys =
         {
-            "redeemErrEmpty", "redeemErrInvalid", "redeemErrAlreadyUsed", "redeemErrExpired",
-            "redeemErrPlayerLimit", "redeemErrOffline", "redeemErrIdentity", "redeemErrSignIn",
-            "redeemErrUnknown",
+            "promo.redeem.error.empty", "promo.redeem.error.invalid",
+            "promo.redeem.error.alreadyUsed", "promo.redeem.error.expired",
+            "promo.redeem.error.playerLimit", "promo.redeem.error.offline",
+            "promo.redeem.error.identity", "promo.redeem.error.signIn",
+            "promo.redeem.error.unknown",
         };
 
         // The chrome/success copy the screen cannot render without.
         private static readonly string[] ChromeKeys =
         {
-            "redeemEntry", "redeemTitle", "redeemBlurb", "redeemPlaceholder", "redeemAction",
-            "redeemHint", "redeemBusy", "redeemSuccess", "redeemSuccessNoReward",
-            "redeemRewardCrystals", "redeemRewardCoins", "redeemRewardPack",
+            "promo.redeem.entry", "promo.redeem.title", "promo.redeem.blurb",
+            "promo.redeem.placeholder", "promo.redeem.action", "promo.redeem.hint",
+            "promo.redeem.busy", "promo.redeem.success", "promo.redeem.successNoReward",
+            "promo.redeem.rewardCrystals", "promo.redeem.rewardCoins", "promo.redeem.rewardPack",
         };
 
         public static bool Run(out string reason)
@@ -92,7 +95,8 @@ namespace DeNelle.Editor
                 CheckPanelRoutesThroughService(failures, log);
                 CheckNoCodeEverLogged(failures, log);
                 CheckErrorTaxonomyIsDistinct(failures, log);
-                CheckCanonStringsDualCopy(failures, log);
+                CheckStringsUseLocalizationAuthority(failures, log);
+                CheckLocalizableStringsDualCopy(failures, log);
                 CheckEntryIsNotPurchaseGated(failures, log);
                 CheckRewardUsesThePackSeam(failures, log);
                 CheckDeadUiStaysLabelled(failures, log);
@@ -242,7 +246,7 @@ namespace DeNelle.Editor
                 var m = Regex.Match(svc, "\"" + err + "\"\\s*=>\\s*PromoStrings\\.(\\w+)");
                 if (!m.Success)
                 {
-                    failures.Add($"PromoCodeService does not map the documented backend error '{err}' to its own canon key — " +
+                    failures.Add($"PromoCodeService does not map the documented backend error '{err}' to its own localization key — " +
                                  "that failure would fall through to the generic sentence and the player could not tell " +
                                  "what actually happened to their code");
                     continue;
@@ -250,13 +254,13 @@ namespace DeNelle.Editor
                 mapped[err] = m.Groups[1].Value;
             }
 
-            var seenKeys = new Dictionary<string, string>();   // canon key -> first error that claimed it
+            var seenKeys = new Dictionary<string, string>();   // localization key -> first error that claimed it
             foreach (var kv in mapped)
             {
                 if (kv.Value == "KeyErrUnknown")
                     failures.Add($"'{kv.Key}' is mapped to the catch-all KeyErrUnknown — a documented cause must say what it is");
                 if (seenKeys.TryGetValue(kv.Value, out var firstOwner))
-                    failures.Add($"'{kv.Key}' and '{firstOwner}' share the canon key '{kv.Value}' — two different causes reading as one sentence");
+                    failures.Add($"'{kv.Key}' and '{firstOwner}' share the localization key '{kv.Value}' — two different causes reading as one sentence");
                 else
                     seenKeys[kv.Value] = kv.Key;
             }
@@ -268,21 +272,43 @@ namespace DeNelle.Editor
             if (svc.IndexOf("KeyErrIdentity", StringComparison.Ordinal) < 0)
                 failures.Add("PromoCodeService never uses KeyErrIdentity — a refused identity proof would be indistinguishable from a bad code");
 
-            // No sentence may be typed inline: the copy lives in canon (§7).
+            // No sentence may be typed inline: the copy lives behind LocalText (§7).
             if (Regex.IsMatch(svc, @"OnRedeemFailed\?\.Invoke\(\s*""") || Regex.IsMatch(svc, @"OnRedeemFailed\?\.Invoke\(\s*\$"""))
-                failures.Add("PromoCodeService raises OnRedeemFailed with a hardcoded sentence — player copy belongs in canon-strings.json (CLAUDE.md §7)");
+                failures.Add("PromoCodeService raises OnRedeemFailed with a hardcoded sentence — player copy belongs behind LocalText (CLAUDE.md §7)");
 
-            log.AppendLine($"  error taxonomy: {mapped.Count}/4 documented errors mapped to distinct canon keys, plus offline + identity");
+            log.AppendLine($"  error taxonomy: {mapped.Count}/4 documented errors mapped to distinct localization keys, plus offline + identity");
         }
 
-        // ── 4. the words exist in BOTH canonical copies, identically, ASCII ───
-        private static void CheckCanonStringsDualCopy(List<string> failures, StringBuilder log)
+        // ── 4. one localization authority + byte-identical English sources ───
+        private static void CheckStringsUseLocalizationAuthority(List<string> failures, StringBuilder log)
         {
-            string res = ReadRepoFile(CanonResources);
-            string sa  = ReadRepoFile(CanonStreamingAssets);
+            string source = ReadRepoFile(StringsPath);
+            if (source == null)
+            {
+                failures.Add($"{StringsPath} unreadable — the promo localization seam cannot be verified");
+                return;
+            }
+
+            string code = StripLineComments(source);
+            if (code.IndexOf("LocalText.Get", StringComparison.Ordinal) < 0 ||
+                code.IndexOf("LocalText.Format", StringComparison.Ordinal) < 0)
+                failures.Add("PromoStrings no longer forwards Get + Format through LocalText — promo copy has split from the runtime localization authority");
+
+            if (code.IndexOf("CanonicalJson.Read", StringComparison.Ordinal) >= 0 ||
+                code.IndexOf("JsonConvert.DeserializeObject", StringComparison.Ordinal) >= 0 ||
+                code.IndexOf("CanonRelativePath", StringComparison.Ordinal) >= 0)
+                failures.Add("PromoStrings still owns a direct canonical JSON reader/cache — it must remain a thin LocalText compatibility catalog");
+
+            log.AppendLine("  localization seam: PromoStrings Get + Format forward to LocalText; no private JSON reader remains");
+        }
+
+        private static void CheckLocalizableStringsDualCopy(List<string> failures, StringBuilder log)
+        {
+            string res = ReadRepoFile(EnglishResources);
+            string sa  = ReadRepoFile(EnglishStreamingAssets);
             if (res == null || sa == null)
             {
-                failures.Add("a canon-strings.json copy is unreadable — the redeem screen's words cannot be verified");
+                failures.Add("an en.json copy is unreadable — the redeem screen's words cannot be verified");
                 return;
             }
 
@@ -294,27 +320,27 @@ namespace DeNelle.Editor
 
                 if (vRes == null)
                 {
-                    failures.Add($"canon-strings key '{key}' missing from the Resources copy — the screen would render the " +
+                    failures.Add($"en.json key '{key}' missing from the Resources copy — the screen would render the " +
                                  $"literal '[[missing:{key}]]' where a sentence belongs");
                     continue;
                 }
                 if (vSa == null)
                 {
-                    failures.Add($"canon-strings key '{key}' missing from the StreamingAssets copy — CanonicalJson falls back to it, " +
+                    failures.Add($"en.json key '{key}' missing from the StreamingAssets copy — LocalText falls back to it, " +
                                  "so a build that ships without Resources would lose this sentence");
                     continue;
                 }
                 if (!string.Equals(vRes, vSa, StringComparison.Ordinal))
-                    failures.Add($"canon-strings '{key}' DIFFERS between the Resources and StreamingAssets copies " +
+                    failures.Add($"en.json '{key}' DIFFERS between the Resources and StreamingAssets copies " +
                                  "— the same screen would read differently depending on which file loaded");
 
                 if (string.IsNullOrWhiteSpace(vRes))
-                    failures.Add($"canon-strings '{key}' is empty — a blank line on a redeem screen is a silent failure");
+                    failures.Add($"en.json '{key}' is empty — a blank line on a redeem screen is a silent failure");
 
                 foreach (char c in vRes)
                     if (c > 126)
                     {
-                        failures.Add($"canon-strings '{key}' contains a non-ASCII character — TMP renders it as tofu on device");
+                        failures.Add($"en.json '{key}' contains a non-ASCII character — TMP renders it as tofu on device");
                         break;
                     }
 
@@ -329,15 +355,15 @@ namespace DeNelle.Editor
                     if (string.CompareOrdinal(a, b) >= 0) continue;
                     if (values.TryGetValue(a, out var va) && values.TryGetValue(b, out var vb) &&
                         string.Equals(va, vb, StringComparison.Ordinal))
-                        failures.Add($"canon-strings '{a}' and '{b}' are the SAME sentence — two different failures the player " +
+                        failures.Add($"en.json '{a}' and '{b}' are the SAME sentence — two different failures the player " +
                                      "cannot tell apart is the vague-refusal defect this suite exists to prevent");
                 }
 
             // Success must not silently claim a reward the grant path did not deliver.
-            if (values.TryGetValue("redeemSuccess", out var success) && success.IndexOf("{0}", StringComparison.Ordinal) < 0)
-                failures.Add("canon-strings 'redeemSuccess' lost its {0} placeholder — the reward amounts would never reach the player");
+            if (values.TryGetValue("promo.redeem.success", out var success) && success.IndexOf("{0}", StringComparison.Ordinal) < 0)
+                failures.Add("en.json 'promo.redeem.success' lost its {0} placeholder — the reward amounts would never reach the player");
 
-            log.AppendLine($"  canon: {values.Count} redeem keys present in BOTH copies, ASCII, failure sentences all distinct");
+            log.AppendLine($"  localization data: {values.Count} redeem keys present in BOTH en.json copies, ASCII, failure sentences all distinct");
         }
 
         // ── 5. the entry is NOT gated on the purchase flag ────────────────────
@@ -500,7 +526,7 @@ namespace DeNelle.Editor
             {
                 Debug.Log(log.ToString() + "PROMO_REDEEM_ENTRY_OK");
                 reason = "PROMO REDEEM ENTRY OK -- the Realm Store carries an ungated Redeem-a-Code door, it drives " +
-                         "PromoCodeService (no second HTTP client), every documented failure has its own canon sentence in " +
+                         "PromoCodeService (no second HTTP client), every documented failure has its own localized sentence in " +
                          "both copies, the code string is never logged, and the reward lands on the uncapped pack grant seam";
                 return true;
             }
