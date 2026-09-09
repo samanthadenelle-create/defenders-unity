@@ -1,6 +1,6 @@
 # WO-1605 - Localize every player-readable text surface
 
-**Status:** IN PROGRESS - the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, the live dungeon-chest interaction, the seven-key Store BUY GATE, the six-key Pi Store skin, and pre-Addressables Google Play localization sanitization; 26 other Store keys remain staged on legacy `StoreStrings`/canon, so Store and the broader visible-text migration remain incomplete
+**Status:** READY - active implementation; the current checkpoint covers localization authority, regional parity, six-locale beta, calm/Heart/Flee HUD copy, the live dungeon-chest interaction, the seven-key Store BUY GATE, the six-key Pi Store skin, and pre-Addressables Google Play localization sanitization; 26 other Store keys remain staged on legacy `StoreStrings`/canon, so Store and the broader visible-text migration remain incomplete
 
 **Owner decision:** Every written or player-readable phrase must be switchable by language. Nothing is
 spoken, so localized voice/audio is explicitly out of scope.
