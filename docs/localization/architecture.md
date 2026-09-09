@@ -52,7 +52,7 @@ their JSON exists; their script, shaping, font, layout, and device gates must pa
 
 - Canonical transitional inputs are mirrored at `Assets/Resources/Data/Canonical/<locale>.json` and
   `Assets/StreamingAssets/Data/Canonical/<locale>.json`.
-- Both copies contain exactly 396 player keys today. `LocaleParityRegression` requires exact keys,
+- Both copies contain exactly 407 player keys today. `LocaleParityRegression` requires exact keys,
   nonempty values, semantically identical mirrors, and format-argument multisets for all 10 required locales.
 - `LocalizationBuilder` reads policy, registers only build-enabled locales, reconciles shared keys,
   generates the six `GameStrings` tables and Addressables groups, preserves Smart metadata, assigns
@@ -96,10 +96,15 @@ that dirty `DataRegression` edit. Those failures are tracked separately from the
 
 The architecture, Settings, Feedback/Jeweler slice, shared Close treatment, calm navigation, Heart HUD,
 combat Flee control, and HUD/Raid forwarding shims are in place. Village and Canon compatibility readers now forward to the
-global facade. Store's purchase-gate, Pi, and wallet-mirror cohorts (21 keys total) are translated across
+global facade. Store's purchase-gate, Pi, wallet-mirror, and commerce-state cohorts (32 keys total) are translated across
 all ten required locales and generated into all six enabled tables, but this is data staging only:
 `StoreStrings` remains a legacy
 reader until its complete semantic migration can cut over atomically. Other Store cohorts and many direct
 visible HUD/runtime literals remain migration work. The literal
 inventory is deliberately report-only until its baseline is human-classified; do not describe WO-1605
 as complete or arm the debt ratchet early.
+
+The four legacy trust-strip rows are intentionally held out of the localization tables. Their current
+claims are not uniformly accurate across Solana, Pi, and Google Play, and the covenant is still baked
+into English raster art. Provider-specific approved wording and a text-free/localized carrier are required
+before that cohort may stage or cut over.

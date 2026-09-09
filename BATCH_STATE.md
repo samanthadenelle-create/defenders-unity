@@ -900,8 +900,8 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
 - Feature ownership stays separate through domain keys and thin `LocalizedText` /
   `LocalizedText<TArguments>` catalogs; English is not duplicated at call sites.
 - Phase A-B began with authority + Settings + HUD/Raid shims. Village/Canon compatibility readers now
-  forward to the facade; 21 Store purchase-gate/Pi/wallet keys are staged, while Store runtime cutover remains open.
-- `LocalizationBuilder.BuildAll` now reconciles 396 English keys into 2,376 enabled-table entries.
+  forward to the facade; 32 Store purchase-gate/Pi/wallet/commerce keys are staged, while Store runtime cutover remains open.
+- `LocalizationBuilder.BuildAll` now reconciles 407 English keys into 2,442 enabled-table entries.
 - Registered localization gates now cover authority, player-literal leakage, exact locale/table parity,
   Smart arguments, Settings in-place refresh/selector wiring, glyph coverage, and combat Flee state.
   Post-Store-cohort focused evidence: `Builds/localization-regression-store-buy-data.log`,
@@ -911,7 +911,7 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
 - Fresh mixed-tree evidence `Builds/data-regression-localization-store-cohorts-final.log` is 460/463:
   one collector source-shape assertion, five legacy HUD canon-parity assertions, and the Flee suite's
   missing registration in the dirty `DataRegression` edit. The focused localization lane remains 7/7.
-- Manifest generation/check is deterministic: 6,013 report rows. It remains deliberately
+- Manifest generation/check is deterministic: 6,024 report rows. It remains deliberately
   unreviewed; 2,994 exact C# fingerprints still require domain classification before the
   new-debt ratchet can be armed.
 - CompileGate emitted `COMPILE_GATE_OK`; its outer wrapper remained red only on the known missing
