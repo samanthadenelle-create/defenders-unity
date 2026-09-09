@@ -78,8 +78,8 @@ namespace DeNelle.Editor.Regression
     public static class HudLabelFitRegression
     {
         // ── the canonical artefacts ──────────────────────────────────────────
-        private const string CanonRes = "Assets/Resources/Data/Canonical/canon-strings.json";
-        private const string CanonStr = "Assets/StreamingAssets/Data/Canonical/canon-strings.json";
+        private const string EnglishRes = "Assets/Resources/Data/Canonical/en.json";
+        private const string EnglishStr = "Assets/StreamingAssets/Data/Canonical/en.json";
         private const string HudSrc   = "Assets/_Modules/HUD/Kit/HudKitController.cs";
         private const string TierSrc  = "Assets/_Modules/Village/Progression/TierSystem.cs";
         private const string AreasRes = "Assets/Resources/Data/Canonical/hud-areas.json";
@@ -262,12 +262,12 @@ namespace DeNelle.Editor.Regression
             if (_authored != null && _authored.TryGetValue(key, out raw))
             {
                 notes.Add("'" + key + "' did not resolve through the runtime loader headlessly - measured the " +
-                          "authored canon-strings text instead");
+                          "authored English localization text instead");
                 try { return args == null || args.Length == 0 ? raw : string.Format(raw, args); }
                 catch (FormatException) { return raw; }
             }
-            failures.Add("[copy] canon key '" + key + "' resolves to nothing at runtime AND is absent from " +
-                         CanonRes + " - the HUD would paint a placeholder marker");
+            failures.Add("[copy] localization key '" + key + "' resolves to nothing at runtime AND is absent from " +
+                         EnglishRes + " - the HUD would paint a placeholder marker");
             return "";
         }
 
@@ -473,12 +473,12 @@ namespace DeNelle.Editor.Regression
         }
 
         // =====================================================================
-        //  CASE 1 - the words live in canon, in BOTH copies, in ASCII
+        //  CASE 1 - the words live in the English localization catalog, in BOTH copies, in ASCII
         // =====================================================================
         private static void Case1_CanonParity(List<string> failures, List<string> notes)
         {
-            var res = ReadCanon(CanonRes, failures);
-            var str = ReadCanon(CanonStr, failures);
+            var res = ReadCanon(EnglishRes, failures);
+            var str = ReadCanon(EnglishStr, failures);
             _authored = res;
             if (res == null || str == null) return;
 
@@ -487,13 +487,13 @@ namespace DeNelle.Editor.Regression
                 string a, b;
                 if (!res.TryGetValue(key, out a))
                 {
-                    failures.Add("[canon-parity] " + CanonRes + " has no '" + key + "' - the HUD would " +
+                    failures.Add("[canon-parity] " + EnglishRes + " has no '" + key + "' - the HUD would " +
                                  "render the [[missing:key]] marker where a word belongs");
                     continue;
                 }
                 if (!str.TryGetValue(key, out b))
                 {
-                    failures.Add("[canon-parity] " + CanonStr + " has no '" + key + "' - a device build " +
+                    failures.Add("[canon-parity] " + EnglishStr + " has no '" + key + "' - a device build " +
                                  "reading StreamingAssets would lose this line");
                     continue;
                 }
@@ -508,7 +508,7 @@ namespace DeNelle.Editor.Regression
                         break;
                     }
             }
-            notes.Add(HudStrings.AllKeys.Length + " HUD copy keys present in both canonical copies");
+            notes.Add(HudStrings.AllKeys.Length + " HUD copy keys present in both English localization copies");
         }
 
         // =====================================================================
@@ -1468,7 +1468,7 @@ namespace DeNelle.Editor.Regression
             catch { return null; }
         }
 
-        /// <summary>Flat string->string read of a canonical file (the CanonStrings convention),
+        /// <summary>Flat string->string read of a canonical locale file,
         /// without pulling a JSON dependency into this suite: the canonical copies are one
         /// "key": "value" pair per line.</summary>
         private static Dictionary<string, string> ReadCanon(string path, List<string> failures)

@@ -93,10 +93,11 @@ Run `tools/localization/run-localization-overnight.ps1` with Unity closed. It ve
 runs the eight focused localization suites, runs the complete data regression, and captures Settings
 top, Settings language controls, and HUD at 2670 x 1200 for every build-enabled locale. The Store
 data cohorts pass 7/7 focused suites, and the 2026-09-09 visual run is 18/18 screenshots with no
-missing keys, English fallback, missing glyphs, or blank frames. The most recent clean full gate is
-462/462; a later run against the unrelated mixed working tree is 460/463 because of one collector
-source-shape assertion, five legacy HUD canon-parity assertions, and Flee's missing registration in
-that dirty `DataRegression` edit. Those failures are tracked separately from the green localization lane.
+missing keys, English fallback, missing glyphs, or blank frames. The current complete registered gate is
+`REGRESSION_OK 465/465 suites`. `HudLabelFitRegression` now checks player copy against the two `en.json`
+localization catalogs rather than the protected-name `canon-strings.json` twins; its runtime measurements
+still resolve through `HudStrings` and `LocalText`. The Flee and Google Play variant policy oracles are
+registered in `DataRegression`, and the HUD clearance source oracle recognizes the localized Collectors label.
 
 The checkpoint inventory contains 6,034 rows: 416 `keyedEntry`, 85 `keyedCall`, 5,517
 `literalCandidate`, and 16 `imageTextCandidate` rows. Literal candidates remain report-only and unarmed while the

@@ -1659,7 +1659,7 @@ namespace DeNelle.Editor
                              "component's name (WO-1435).");
 
             var call = Regex.Match(src,
-                @"BuildRailChip\(\s*rrt\s*,\s*""CollectorsChip""\s*,\s*""Collectors""\s*,\s*([-0-9.]+)f");
+                @"BuildRailChip\(\s*rrt\s*,\s*""CollectorsChip""\s*,\s*HudStrings\.Get\(HudStrings\.KeyCollectorsTitle\)\s*,\s*([-0-9.]+)f");
             if (!call.Success)
             {
                 failures.Add("HARVEST CLEARANCE — the Collectors chip's BuildRailChip call was not " +
