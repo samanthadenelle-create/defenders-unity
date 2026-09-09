@@ -1759,6 +1759,40 @@ MonoBehaviour:
       ce qui se trouve ici peut toujours \xEAtre obtenu en jouant."
     m_Metadata:
       m_Items: []
+  - m_Id: 41009956723929088
+    m_Localized: Connectez un portefeuille pour voir vos SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289216
+    m_Localized: "SKR : portefeuille associ\xE9 - autorisez-le"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289217
+    m_Localized: "SKR : identit\xE9 associ\xE9e - autorisez-la"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289218
+    m_Localized: 'SKR : consultation du portefeuille...'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289219
+    m_Localized: Solde SKR indisponible pour le moment
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289220
+    m_Localized: 'Solde : {0} SKR'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 41009956753289221
+    m_Localized: ~${0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 41009956753289222
+    m_Localized: "Connectez un portefeuille pour acheter - prix affich\xE9s en USD"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1798,3 +1832,5 @@ MonoBehaviour:
         - id: 40992049398853639
         - id: 40992049398853640
         - id: 41003251969601537
+        - id: 41009956753289220
+        - id: 41009956753289221

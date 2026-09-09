@@ -1751,6 +1751,40 @@ MonoBehaviour:
       kann weiterhin im Spiel verdient werden."
     m_Metadata:
       m_Items: []
+  - m_Id: 41009956723929088
+    m_Localized: Verbinde eine Wallet, um deine SKR zu sehen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289216
+    m_Localized: "SKR: Wallet verkn\xFCpft - autorisieren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289217
+    m_Localized: "SKR: Identit\xE4t verkn\xFCpft - autorisieren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289218
+    m_Localized: 'SKR: Wallet wird abgefragt...'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289219
+    m_Localized: "SKR-Guthaben derzeit nicht verf\xFCgbar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289220
+    m_Localized: 'Guthaben: {0} SKR'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 41009956753289221
+    m_Localized: ~${0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 41009956753289222
+    m_Localized: Wallet zum Kaufen verbinden - Preise in USD
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1790,3 +1824,5 @@ MonoBehaviour:
         - id: 40992049398853639
         - id: 40992049398853640
         - id: 41003251969601537
+        - id: 41009956753289220
+        - id: 41009956753289221

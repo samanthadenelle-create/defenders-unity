@@ -1567,6 +1567,38 @@ MonoBehaviour:
     m_Key: storePiShelfEmpty
     m_Metadata:
       m_Items: []
+  - m_Id: 41009956723929088
+    m_Key: storeBalanceNoWallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289216
+    m_Key: storeBalanceBoundAddress
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289217
+    m_Key: storeBalanceBoundIdentity
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289218
+    m_Key: storeBalanceChecking
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289219
+    m_Key: storeBalanceUnavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289220
+    m_Key: storeBalanceValue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289221
+    m_Key: storeBalanceFiat
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289222
+    m_Key: storeWalletlessBrowsingBanner
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

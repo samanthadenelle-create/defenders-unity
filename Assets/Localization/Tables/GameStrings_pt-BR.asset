@@ -1744,6 +1744,40 @@ MonoBehaviour:
       o que est\xE1 aqui pode ser obtido dentro do jogo."
     m_Metadata:
       m_Items: []
+  - m_Id: 41009956723929088
+    m_Localized: Conecte uma carteira para ver seus SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289216
+    m_Localized: 'SKR: carteira vinculada - autorize'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289217
+    m_Localized: 'SKR: identidade vinculada - autorize'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289218
+    m_Localized: 'SKR: consultando a carteira...'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289219
+    m_Localized: "Saldo de SKR indispon\xEDvel no momento"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41009956753289220
+    m_Localized: 'Saldo: {0} SKR'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 41009956753289221
+    m_Localized: ~${0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 41009956753289222
+    m_Localized: "Conecte uma carteira para comprar - pre\xE7os em USD"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1783,3 +1817,5 @@ MonoBehaviour:
         - id: 40992049398853639
         - id: 40992049398853640
         - id: 41003251969601537
+        - id: 41009956753289220
+        - id: 41009956753289221
