@@ -1778,6 +1778,53 @@ MonoBehaviour:
     m_Localized: "Conecte uma carteira para comprar - pre\xE7os em USD"
     m_Metadata:
       m_Items: []
+  - m_Id: 41016777593368576
+    m_Localized: '[PRONTO] Pronto'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534400
+    m_Localized: '[AGUARDE] Abrindo carteira - geralmente leva menos de 2 segundos'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534401
+    m_Localized: "[A\xC7\xC3O] Aguardando sua aprova\xE7\xE3o - aprove ou cancele
+      na carteira"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534402
+    m_Localized: '[ENVIADO] Enviado'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534403
+    m_Localized: "[VERIFICA\xC7\xC3O] Confirmando em {0} - geralmente leva alguns
+      segundos"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 41016777618534404
+    m_Localized: "[ENTREGA] Confirmado - entregando o conte\xFAdo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534405
+    m_Localized: "[CONCLU\xCDDO] Na sua conta"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534406
+    m_Localized: '[CANCELADO] Compra cancelada - nenhum pagamento foi enviado'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534407
+    m_Localized: '[FALHA] Compra interrompida'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534408
+    m_Localized: "[PENDENTE] Compra pendente - n\xE3o pague novamente"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534409
+    m_Localized: rede
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1819,3 +1866,4 @@ MonoBehaviour:
         - id: 41003251969601537
         - id: 41009956753289220
         - id: 41009956753289221
+        - id: 41016777618534403

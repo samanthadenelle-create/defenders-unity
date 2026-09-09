@@ -1785,6 +1785,52 @@ MonoBehaviour:
     m_Localized: Wallet zum Kaufen verbinden - Preise in USD
     m_Metadata:
       m_Items: []
+  - m_Id: 41016777593368576
+    m_Localized: '[BEREIT] Bereit'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534400
+    m_Localized: "[WARTEN] Wallet wird ge\xF6ffnet - meist unter 2 Sekunden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534401
+    m_Localized: "[AKTION] Warte auf deine Freigabe - in der Wallet best\xE4tigen
+      oder abbrechen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534402
+    m_Localized: '[GESENDET] Gesendet'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534403
+    m_Localized: "[PR\xDCFUNG] Best\xE4tigung auf {0} - meist nur wenige Sekunden"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 41016777618534404
+    m_Localized: "[ZUSTELLUNG] Best\xE4tigt - Inhalt wird zugestellt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534405
+    m_Localized: '[FERTIG] In deinem Konto'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534406
+    m_Localized: '[ABGEBROCHEN] Kauf abgebrochen - keine Zahlung wurde gesendet'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534407
+    m_Localized: '[FEHLER] Kauf unterbrochen'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534408
+    m_Localized: '[AUSSTEHEND] Kauf ausstehend - nicht erneut bezahlen'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534409
+    m_Localized: Netzwerk
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1826,3 +1872,4 @@ MonoBehaviour:
         - id: 41003251969601537
         - id: 41009956753289220
         - id: 41009956753289221
+        - id: 41016777618534403

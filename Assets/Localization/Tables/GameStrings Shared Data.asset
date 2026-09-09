@@ -1599,6 +1599,50 @@ MonoBehaviour:
     m_Key: storeWalletlessBrowsingBanner
     m_Metadata:
       m_Items: []
+  - m_Id: 41016777593368576
+    m_Key: storeCommerceReady
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534400
+    m_Key: storeCommerceOpeningWallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534401
+    m_Key: storeCommerceAwaitingApproval
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534402
+    m_Key: storeCommerceSubmitted
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534403
+    m_Key: storeCommerceVerifying
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534404
+    m_Key: storeCommerceDelivering
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534405
+    m_Key: storeCommerceFulfilled
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534406
+    m_Key: storeCommerceCancelled
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534407
+    m_Key: storeCommerceFailed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534408
+    m_Key: storeCommerceDelayed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534409
+    m_Key: storeCommerceNetworkFallback
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

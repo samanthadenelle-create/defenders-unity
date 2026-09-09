@@ -1747,6 +1747,51 @@ MonoBehaviour:
     m_Localized: Connect a wallet to buy - prices shown in USD
     m_Metadata:
       m_Items: []
+  - m_Id: 41016777593368576
+    m_Localized: '[READY] Ready'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534400
+    m_Localized: '[WAIT] Opening wallet - usually under 2 seconds'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534401
+    m_Localized: '[ACTION] Awaiting your approval - approve or cancel in your wallet'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534402
+    m_Localized: '[SENT] Submitted'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534403
+    m_Localized: '[CHECK] Confirming on {0} - usually a few seconds'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 41016777618534404
+    m_Localized: '[DELIVER] Confirmed - delivering contents'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534405
+    m_Localized: '[DONE] In your account'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534406
+    m_Localized: '[CANCELLED] Purchase cancelled - no payment was sent'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534407
+    m_Localized: '[FAILED] Purchase interrupted'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534408
+    m_Localized: '[PENDING] Purchase pending - do not pay again'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534409
+    m_Localized: network
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1788,3 +1833,4 @@ MonoBehaviour:
         - id: 41003251969601537
         - id: 41009956753289220
         - id: 41009956753289221
+        - id: 41016777618534403

@@ -1776,6 +1776,52 @@ MonoBehaviour:
     m_Localized: Conecta una billetera para comprar - precios en USD
     m_Metadata:
       m_Items: []
+  - m_Id: 41016777593368576
+    m_Localized: '[LISTO] Listo'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534400
+    m_Localized: '[ESPERA] Abriendo billetera - suele tardar menos de 2 segundos'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534401
+    m_Localized: "[ACCI\xD3N] Esperando tu aprobaci\xF3n - aprueba o cancela en tu
+      billetera"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534402
+    m_Localized: '[ENVIADO] Enviado'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534403
+    m_Localized: "[REVISI\xD3N] Confirmando en {0} - suele tardar unos segundos"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 41016777618534404
+    m_Localized: '[ENTREGA] Confirmado - entregando el contenido'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534405
+    m_Localized: '[HECHO] En tu cuenta'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534406
+    m_Localized: "[CANCELADO] Compra cancelada - no se envi\xF3 ning\xFAn pago"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534407
+    m_Localized: '[FALLO] Compra interrumpida'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534408
+    m_Localized: '[PENDIENTE] Compra pendiente - no vuelvas a pagar'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534409
+    m_Localized: red
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1817,3 +1863,4 @@ MonoBehaviour:
         - id: 41003251969601537
         - id: 41009956753289220
         - id: 41009956753289221
+        - id: 41016777618534403

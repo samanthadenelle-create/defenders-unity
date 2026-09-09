@@ -1793,6 +1793,55 @@ MonoBehaviour:
     m_Localized: "Connectez un portefeuille pour acheter - prix affich\xE9s en USD"
     m_Metadata:
       m_Items: []
+  - m_Id: 41016777593368576
+    m_Localized: "[PR\xCAT] Pr\xEAt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534400
+    m_Localized: "[ATTENTE] Ouverture du portefeuille - g\xE9n\xE9ralement moins
+      de 2 secondes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534401
+    m_Localized: '[ACTION] En attente de votre approbation - approuvez ou annulez
+      dans le portefeuille'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534402
+    m_Localized: "[ENVOY\xC9] Envoy\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534403
+    m_Localized: "[V\xC9RIFICATION] Confirmation sur {0} - g\xE9n\xE9ralement quelques
+      secondes"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 41016777618534404
+    m_Localized: "[LIVRAISON] Confirm\xE9 - livraison du contenu"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534405
+    m_Localized: "[TERMIN\xC9] Dans votre compte"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534406
+    m_Localized: "[ANNUL\xC9] Achat annul\xE9 - aucun paiement n\u2019a \xE9t\xE9
+      envoy\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534407
+    m_Localized: "[\xC9CHEC] Achat interrompu"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534408
+    m_Localized: "[EN ATTENTE] Achat en attente - ne payez pas \xE0 nouveau"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41016777618534409
+    m_Localized: "r\xE9seau"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1834,3 +1883,4 @@ MonoBehaviour:
         - id: 41003251969601537
         - id: 41009956753289220
         - id: 41009956753289221
+        - id: 41016777618534403
