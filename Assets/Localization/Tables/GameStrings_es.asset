@@ -1689,10 +1689,10 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 41003251969601537
-    m_Localized: "Los paquetes de m\xE1s de {0} requieren una billetera conectada
+    m_Localized: "Los paquetes de m\xE1s de {Threshold} requieren una billetera conectada
       para que tus compras sigan siendo tuyas si reinstalas el juego o cambias de
       tel\xE9fono. Conecta una billetera para comprar este paquete; ahora mismo puedes
-      comprar sin ella cualquier paquete de {0} o menos."
+      comprar sin ella cualquier paquete de {Threshold} o menos."
     m_Metadata:
       m_Items:
       - rid: 7338888477077143552

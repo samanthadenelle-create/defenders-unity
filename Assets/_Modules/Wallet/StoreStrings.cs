@@ -1,33 +1,11 @@
 // =============================================================================
-// StoreStrings — the ONE home for every word the store's BUY GATE says.
+// StoreStrings — legacy access for store copy not yet migrated to LocalText.
 // -----------------------------------------------------------------------------
 // Assembly: DeNelle.Wallet   Namespace: DeNelle.Wallet
 //
-// WHY THIS FILE EXISTS
-// A refusal on a screen that takes money is the highest-stakes sentence in the
-// game. "Buy" that does nothing, or a greyed button with no words, reads as
-// broken-or-dishonest and the player is right to read it that way. So every reason
-// the Buy CTA can refuse gets its OWN sentence, each sentence says what the player
-// CAN still do, and none of them says "the flag is off".
-//
-// Those sentences are player-facing copy, so per CLAUDE.md §7 they live in
-// canon-strings.json — in BOTH canonical copies (Assets/Resources/Data/Canonical
-// and Assets/StreamingAssets/Data/Canonical), byte-identical, ASCII-only (TMP
-// renders non-ASCII as tofu). Nothing here hardcodes a sentence; this class only
-// names KEYS.
-//
-// ⚠ WHY A MODULE-LOCAL TWIN RATHER THAN A SHARED LOADER. There are already three
-// of these — CanonStrings (DeNelle.Onboarding), VillageStrings (DeNelle.Village),
-// PromoStrings (DeNelle.Core) — and each exists for the same reason: the asmdefs do
-// not let one module reach another's reader, and growing a cross-module reference
-// purely for string lookup is the dependency the port spec forbids (read the
-// .asmdef — CLAUDE.md §5). What must never be duplicated is the SENTENCE, and it is
-// not: canon-strings.json holds exactly one copy of every line below. A twenty-line
-// loader is not duplicated state; a second copy of the words would be.
-//
-// A missing key returns the visible "[[missing:key]]" marker (the house convention)
-// AND self-reports through FlowTrace — never a silent blank on the one screen where
-// a blank costs money.
+// New or migrated player-facing copy must use LocalText through a module shim such
+// as StoreBuyText. This reader remains temporarily for the unmigrated Store rows;
+// retire it as those cohorts move onto the shared localization authority.
 // =============================================================================
 
 using System;
@@ -39,55 +17,19 @@ using DeNelle.Core.Diagnostics;
 
 namespace DeNelle.Wallet
 {
-    /// <summary>Canon-backed copy for the store's buy gate. Keys only — no sentences.</summary>
+    /// <summary>Legacy canon-backed access for Store rows not yet migrated to LocalText.</summary>
     public static class StoreStrings
     {
         private const string CanonRelativePath = "Data/Canonical/canon-strings.json";
-
-        /// <summary>Purchases are not open in this build at all (FeatureFlags.RealmStorePurchase OFF).</summary>
-        public const string KeyBuyClosed = "storeBuyClosed";
-
-        /// <summary>The flag is ON but the payment rail cannot settle — refused BEFORE any charge.</summary>
-        public const string KeyBuyRailNotReady = "storeBuyRailNotReady";
-
-        /// <summary>
-        /// The price-gated refusal on the NON-crypto channels: above
-        /// <see cref="PurchaseGate.WalletRequiredAboveUsd"/> a connected wallet is required. {0} = the
-        /// threshold, formatted from that constant so the copy can never drift from the rule it
-        /// describes. On the Solana rail the sentence is <see cref="CryptoWalletRequired"/> instead -
-        /// <see cref="PurchaseGate.WalletRefusalSentence"/> is the one place that chooses.
-        /// </summary>
-        public const string KeyBuyWalletRequired = "storeBuyWalletRequired";
-
-        /// <summary>
-        /// WO-1386 (owner ruling 2026-09-04, verbatim: <i>"nothing should be guest buyable on a crypto
-        /// account otherwise we can never persist change"</i>). The refusal a Seeker GUEST sees on ANY
-        /// pack: it says WHY in the owner's sense - the purchase must be yours on every device - and it
-        /// is never a bare "wallet required". Deliberately carries no {0}: on the Solana rail there is
-        /// no threshold left to name, so a formatted price would be a lie about a tier that no longer
-        /// exists.
-        /// <para>⚠ A SENTENCE, NOT A KEY - the one exception in this file, and why: WO-1386's edit lane
-        /// did not include canon-strings.json, and a key without its canon row would render as
-        /// "[[missing:...]]" on the one screen where that reads as a scam. So the words live HERE, as
-        /// the single authority, read through <see cref="CryptoWalletRequired"/>. If a later change
-        /// moves them into canon-strings.json it must MOVE them (delete this const), never copy them -
-        /// two homes for one sentence is the drift this file's header forbids.</para>
-        /// </summary>
-        public const string BuyWalletRequiredCryptoSentence =
-            "Connect a wallet so this purchase is yours on every device.";
-
-        /// <summary>The WO-1386 refusal on every channel but Google Play (Solana, Pi, Unknown).
-        /// See <see cref="BuyWalletRequiredCryptoSentence"/>.</summary>
-        public static string CryptoWalletRequired() => BuyWalletRequiredCryptoSentence;
 
         /// <summary>
         /// WO-1386, second ruling the same evening (owner 2026-09-04, verbatim: <i>"mark anything for
         /// Pi as same logic based on USD"</i>). The Pi-worded card plate for the wallet rule: Pi has
         /// NO guest tier either, so the plate can no longer name a $4.99 line. Still Pi-worded per
         /// WO-1323 (a Pi player is not sent to a Solana wallet flow by a button; this is a PLATE), and
-        /// still ASCII, SKR-free and distinct from the Solana sentence. Same one-exception rule as
-        /// <see cref="BuyWalletRequiredCryptoSentence"/>: a sentence here because canon-strings.json was
-        /// outside the lane; MOVE it to canon later, never copy it.
+        /// still ASCII, SKR-free and distinct from the localized Solana sentence. This remaining
+        /// legacy exception is inline because canon-strings.json was outside its original lane;
+        /// MOVE it to LocalText later, never copy it.
         /// </summary>
         public const string PiWalletRequiredSentence =
             "Connect a wallet before buying in Pi, at any price, so this purchase is yours on every device.";
@@ -121,22 +63,6 @@ namespace DeNelle.Wallet
         /// survive any re-wording.
         /// </summary>
         public const string WalletlessBrowsingBannerProbe = "Connect a wallet";
-
-        /// <summary>Short button face when the wallet rule is the blocker ("Connect Wallet").</summary>
-        public const string KeyBuyWalletRequiredCta = "storeBuyWalletRequiredCta";
-
-        /// <summary>Short button face when the whole rail is closed ("Coming soon").</summary>
-        public const string KeyBuyComingSoon = "storeBuyComingSoon";
-
-        /// <summary>Shelf-level line for a store that browses but cannot sell.</summary>
-        public const string KeyShelfClosed = "storeShelfClosed";
-
-        /// <summary>Every buy-gate key in one place, so the oracle can prove each resolves and is distinct.</summary>
-        public static readonly string[] BuyGateKeys =
-        {
-            KeyBuyClosed, KeyBuyRailNotReady, KeyBuyWalletRequired,
-            KeyBuyWalletRequiredCta, KeyBuyComingSoon, KeyShelfClosed,
-        };
 
         // =====================================================================
         //  WO-1050 — The Night Market presentation copy

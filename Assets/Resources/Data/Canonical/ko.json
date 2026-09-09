@@ -366,7 +366,7 @@
   "storeWordmark": "밤의 시장",
   "storeBuyClosed": "구매 기능은 아직 이용할 수 없습니다. 이곳의 모든 상품은 계속 게임에서 획득할 수 있습니다.",
   "storeBuyRailNotReady": "이 버전에서는 결제 시스템이 아직 준비되지 않아 요금이 청구되지 않았습니다. 다음 업데이트 후 다시 시도해 주세요.",
-  "storeBuyWalletRequired": "{0}를 초과하는 팩은 지갑을 연결해야 구매할 수 있습니다. 지갑을 연결하면 게임을 다시 설치하거나 휴대폰을 바꿔도 구매 내역이 유지됩니다. 이 팩을 구매하려면 지갑을 연결하세요. {0} 이하의 팩은 지금 지갑 없이 구매할 수 있습니다.",
+  "storeBuyWalletRequired": "{Threshold}를 초과하는 팩은 지갑을 연결해야 구매할 수 있습니다. 지갑을 연결하면 게임을 다시 설치하거나 휴대폰을 바꿔도 구매 내역이 유지됩니다. 이 팩을 구매하려면 지갑을 연결하세요. {Threshold} 이하의 팩은 지금 지갑 없이 구매할 수 있습니다.",
   "storeBuyWalletRequiredCrypto": "모든 기기에서 이 구매 내역을 유지하려면 지갑을 연결하세요.",
   "storeBuyWalletRequiredCta": "지갑 연결",
   "storeBuyComingSoon": "출시 예정",

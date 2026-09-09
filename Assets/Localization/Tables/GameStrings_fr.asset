@@ -1706,10 +1706,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 41003251969601537
-    m_Localized: "Les packs de plus de {0} n\xE9cessitent un portefeuille connect\xE9
-      afin que vos achats restent \xE0 vous si vous r\xE9installez le jeu ou changez
-      de t\xE9l\xE9phone. Connectez un portefeuille pour acheter ce pack ; vous pouvez
-      acheter d\xE8s maintenant sans portefeuille tout pack \xE0 {0} ou moins."
+    m_Localized: "Les packs de plus de {Threshold} n\xE9cessitent un portefeuille
+      connect\xE9 afin que vos achats restent \xE0 vous si vous r\xE9installez le
+      jeu ou changez de t\xE9l\xE9phone. Connectez un portefeuille pour acheter ce
+      pack ; vous pouvez acheter d\xE8s maintenant sans portefeuille tout pack \xE0
+      {Threshold} ou moins."
     m_Metadata:
       m_Items:
       - rid: 7338888477077143555

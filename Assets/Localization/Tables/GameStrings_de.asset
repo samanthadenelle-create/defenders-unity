@@ -1698,10 +1698,10 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 41003251969601537
-    m_Localized: "F\xFCr Pakete \xFCber {0} muss eine Wallet verbunden sein, damit
-      deine K\xE4ufe dir auch nach einer Neuinstallation oder einem Handywechsel
+    m_Localized: "F\xFCr Pakete \xFCber {Threshold} muss eine Wallet verbunden sein,
+      damit deine K\xE4ufe dir auch nach einer Neuinstallation oder einem Handywechsel
       erhalten bleiben. Verbinde eine Wallet, um dieses Paket zu kaufen; Pakete f\xFCr
-      {0} oder weniger kannst du jetzt auch ohne Wallet kaufen."
+      {Threshold} oder weniger kannst du jetzt auch ohne Wallet kaufen."
     m_Metadata:
       m_Items:
       - rid: 7338888477077143554

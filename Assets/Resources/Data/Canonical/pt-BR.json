@@ -345,7 +345,7 @@
   "storeWordmark": "O Mercado Noturno",
   "storeBuyClosed": "As compras ainda não estão disponíveis. Tudo o que está aqui pode ser obtido dentro do jogo.",
   "storeBuyRailNotReady": "O sistema de pagamento ainda não está pronto nesta versão, então nada foi cobrado. Tente novamente após a próxima atualização.",
-  "storeBuyWalletRequired": "Pacotes acima de {0} exigem uma carteira conectada para que suas compras continuem sendo suas se você reinstalar o jogo ou trocar de celular. Conecte uma carteira para comprar este pacote; qualquer pacote de {0} ou menos pode ser comprado agora mesmo sem ela.",
+  "storeBuyWalletRequired": "Pacotes acima de {Threshold} exigem uma carteira conectada para que suas compras continuem sendo suas se você reinstalar o jogo ou trocar de celular. Conecte uma carteira para comprar este pacote; qualquer pacote de {Threshold} ou menos pode ser comprado agora mesmo sem ela.",
   "storeBuyWalletRequiredCrypto": "Conecte uma carteira para que esta compra continue sendo sua em todos os seus dispositivos.",
   "storeBuyWalletRequiredCta": "Conectar carteira",
   "storeBuyComingSoon": "Em breve",

@@ -75,8 +75,32 @@ namespace DeNelle.Editor.Regression
     public static class BuyGateAndPriceLadderRegression
     {
         private const string PacksRelPath  = "Data/Canonical/packs.json";
-        private const string CanonRelPath  = "Data/Canonical/canon-strings.json";
+        private const string EnglishRelPath = "Data/Canonical/en.json";
         private const string CosmeticsRel  = "Data/Canonical/cosmetics.json";
+
+        private const string BuyClosedKey = "storeBuyClosed";
+        private const string BuyRailNotReadyKey = "storeBuyRailNotReady";
+        private const string BuyWalletRequiredKey = "storeBuyWalletRequired";
+        private const string BuyWalletRequiredCryptoKey = "storeBuyWalletRequiredCrypto";
+        private const string BuyWalletRequiredCtaKey = "storeBuyWalletRequiredCta";
+        private const string BuyComingSoonKey = "storeBuyComingSoon";
+        private const string ShelfClosedKey = "storeShelfClosed";
+
+        private static readonly KeyValuePair<string, string>[] BuyGateCopy =
+        {
+            new KeyValuePair<string, string>(BuyClosedKey,
+                "Purchases are not open yet. Everything here is still earned in-game."),
+            new KeyValuePair<string, string>(BuyRailNotReadyKey,
+                "The payment rail is not ready in this build, so nothing was charged. Try again after the next update."),
+            new KeyValuePair<string, string>(BuyWalletRequiredKey,
+                "Packs over {Threshold} need a connected wallet, so what you buy stays yours if you reinstall or change phones. Connect a wallet to buy this one - anything {Threshold} and under you can buy right now."),
+            new KeyValuePair<string, string>(BuyWalletRequiredCryptoKey,
+                "Connect a wallet so this purchase is yours on every device."),
+            new KeyValuePair<string, string>(BuyWalletRequiredCtaKey, "Connect Wallet"),
+            new KeyValuePair<string, string>(BuyComingSoonKey, "Coming soon"),
+            new KeyValuePair<string, string>(ShelfClosedKey,
+                "Coming soon - purchases are not open in this build. Nothing here is required to play."),
+        };
 
         /// <summary>PlayerPrefs key behind FeatureFlags.RealmStorePurchase (FeatureFlags.Get: "ff." + name).</summary>
         private const string BuyFlagPrefKey = "ff.realmstorepurchase";
@@ -129,7 +153,7 @@ namespace DeNelle.Editor.Regression
 
                 CaseThresholdBoundary(failures, log);
                 CaseSolanaGuestRefusedWithConnectSentence(failures, log);
-                CaseRefusalSentencesExist(failures, log);
+                CaseLocalizedRefusalSentences(failures, log);
                 CaseChargePathConsultsTheGate(failures, log);
             }
             catch (Exception ex)
@@ -167,7 +191,7 @@ namespace DeNelle.Editor.Regression
         private static void CaseDualCopy(List<string> failures, StringBuilder log)
         {
             AssertCopiesIdentical(PacksRelPath, failures, log);
-            AssertCopiesIdentical(CanonRelPath, failures, log);
+            AssertCopiesIdentical(EnglishRelPath, failures, log);
         }
 
         private static void AssertCopiesIdentical(string rel, List<string> failures, StringBuilder log)
@@ -450,10 +474,10 @@ namespace DeNelle.Editor.Regression
         //  because on this rail there is no threshold left to name.
         //
         //  PROVEN RED (one line each):
-        //    * StoreStrings.BuyWalletRequiredCryptoSentence reworded ("Wallet required.")
+        //    * storeBuyWalletRequiredCrypto reworded ("Wallet required.")
         //      -> "[solana-guest] the Solana refusal sentence is not the owner's" fails.
         //    * PurchaseGate.WalletRefusalSentence: drop the channel test so it always
-        //      formats KeyBuyWalletRequired -> "[solana-guest] hearth-spark was refused with
+        //      resolves StoreBuyText.WalletRequired -> "[solana-guest] hearth-spark was refused with
         //      the THRESHOLD sentence" fails.
         //    * PurchaseGate.CanBuy: `RequiresWallet(usd, channel)` -> `RequiresWallet(usd,
         //      PaymentChannel.GooglePlay)` -> "[solana-guest] hearth-spark ($4.99) is
@@ -463,29 +487,26 @@ namespace DeNelle.Editor.Regression
         {
             const string owner = "Connect a wallet so this purchase is yours on every device.";
 
-            // The copy, pinned to the owner's sentence and to the one accessor every caller uses.
-            if (!string.Equals(StoreStrings.BuyWalletRequiredCryptoSentence, owner, StringComparison.Ordinal))
-                failures.Add("[solana-guest] the Solana refusal sentence is not the owner's. Expected \"" + owner +
-                             "\" (WO-1386, 2026-09-04), got \"" + StoreStrings.BuyWalletRequiredCryptoSentence + "\".");
-            if (!string.Equals(StoreStrings.CryptoWalletRequired(), StoreStrings.BuyWalletRequiredCryptoSentence, StringComparison.Ordinal))
-                failures.Add("[solana-guest] StoreStrings.CryptoWalletRequired() does not return BuyWalletRequiredCryptoSentence - two homes for one sentence.");
-            foreach (char c in StoreStrings.BuyWalletRequiredCryptoSentence)
+            // The copy is a localized semantic row, not an inline StoreStrings exception.
+            string localizedOwner = StoreBuyText.WalletRequiredCrypto.Resolve();
+            if (string.IsNullOrEmpty(localizedOwner) || localizedOwner.StartsWith("[[missing:", StringComparison.Ordinal))
+                failures.Add("[solana-guest] localized '" + BuyWalletRequiredCryptoKey + "' did not resolve through StoreBuyText.");
+            foreach (char c in owner)
                 if (c > 127) { failures.Add("[solana-guest] the Solana refusal sentence is not ASCII - TMP renders it as tofu."); break; }
-            if (StoreStrings.BuyWalletRequiredCryptoSentence.IndexOf("wallet", StringComparison.OrdinalIgnoreCase) < 0)
+            if (owner.IndexOf("wallet", StringComparison.OrdinalIgnoreCase) < 0)
                 failures.Add("[solana-guest] the Solana refusal never says 'wallet' - the remedy must be NAMED.");
-            if (StoreStrings.BuyWalletRequiredCryptoSentence.IndexOf("{0}", StringComparison.Ordinal) >= 0)
+            if (owner.IndexOf("{Threshold}", StringComparison.Ordinal) >= 0 || owner.IndexOf("{0}", StringComparison.Ordinal) >= 0)
                 failures.Add("[solana-guest] the Solana refusal formats a threshold - there is no guest tier on this rail to name.");
 
-            string thresholdSentence = StoreStrings.Format(StoreStrings.KeyBuyWalletRequired,
-                "$" + PurchaseGate.WalletRequiredAboveUsd.ToString("0.00", CultureInfo.InvariantCulture));
-            if (!string.Equals(PurchaseGate.WalletRefusalSentence(PaymentChannel.SolanaDappStore), owner, StringComparison.Ordinal))
-                failures.Add("[solana-guest] PurchaseGate.WalletRefusalSentence(SolanaDappStore) is not the owner's sentence.");
+            string thresholdSentence = ResolveWalletThreshold();
+            if (!string.Equals(PurchaseGate.WalletRefusalSentence(PaymentChannel.SolanaDappStore), localizedOwner, StringComparison.Ordinal))
+                failures.Add("[solana-guest] PurchaseGate.WalletRefusalSentence(SolanaDappStore) does not use StoreBuyText.WalletRequiredCrypto.");
             // Owner 2026-09-04: "mark anything for Pi as same logic based on USD" - Pi and an Unknown
             // channel get the SAME connect sentence from the gate. RED: `channel != GooglePlay` ->
             // `channel == SolanaDappStore` in WalletRefusalSentence.
-            if (!string.Equals(PurchaseGate.WalletRefusalSentence(PaymentChannel.PiBrowser), owner, StringComparison.Ordinal))
+            if (!string.Equals(PurchaseGate.WalletRefusalSentence(PaymentChannel.PiBrowser), localizedOwner, StringComparison.Ordinal))
                 failures.Add("[solana-guest] PurchaseGate.WalletRefusalSentence(PiBrowser) is not the owner's connect sentence - Pi is 'same logic based on USD' (2026-09-04).");
-            if (!string.Equals(PurchaseGate.WalletRefusalSentence(PaymentChannel.Unknown), owner, StringComparison.Ordinal))
+            if (!string.Equals(PurchaseGate.WalletRefusalSentence(PaymentChannel.Unknown), localizedOwner, StringComparison.Ordinal))
                 failures.Add("[solana-guest] PurchaseGate.WalletRefusalSentence(Unknown) is not the owner's connect sentence - an unnamed channel is fail-closed.");
             if (!string.Equals(PurchaseGate.WalletRefusalSentence(PaymentChannel.GooglePlay), thresholdSentence, StringComparison.Ordinal))
                 failures.Add("[solana-guest] PurchaseGate.WalletRefusalSentence(GooglePlay) is not the $4.99 threshold sentence - " +
@@ -544,7 +565,7 @@ namespace DeNelle.Editor.Regression
                 else if (string.Equals(why, thresholdSentence, StringComparison.Ordinal))
                     failures.Add("[solana-guest] " + canary.Sku + " was refused with the THRESHOLD sentence on SolanaDappStore - " +
                                  "that names a $4.99 guest tier the crypto rail no longer has.");
-                else if (!string.Equals(why, owner, StringComparison.Ordinal))
+                else if (!string.Equals(why, localizedOwner, StringComparison.Ordinal))
                     failures.Add("[solana-guest] " + canary.Sku + " was refused, but not by the wallet rule with the owner's " +
                                  "sentence. Reason given: \"" + why + "\". An earlier gate (kill switch / rail) is " +
                                  "masking the wallet rule, so this case proves nothing about it.");
@@ -629,9 +650,7 @@ namespace DeNelle.Editor.Regression
                         // refused by the rail (no resolvable mint today), so assert on the sentence
                         // rather than on the bool: a guest-tier pack must never be told to connect
                         // a wallet, because connecting one would not change anything for it.
-                        if (!allowed && string.Equals(why, StoreStrings.Format(
-                                StoreStrings.KeyBuyWalletRequired, "$" +
-                                PurchaseGate.WalletRequiredAboveUsd.ToString("0.00", CultureInfo.InvariantCulture)),
+                        if (!allowed && string.Equals(why, ResolveWalletThreshold(),
                                 StringComparison.Ordinal))
                             failures.Add("[wallet-rule] '" + sku + "' ($" + usd.ToString("0.00", CultureInfo.InvariantCulture) +
                                          ") was refused with the WALLET sentence, but it is at or under the $" +
@@ -660,43 +679,74 @@ namespace DeNelle.Editor.Regression
         //  [copy] -- the refusal must be HONEST AND ACTIONABLE, and authored in
         //  canon-strings.json rather than typed inline (CLAUDE.md §7).
         // =====================================================================
-        private static void CaseRefusalSentencesExist(List<string> failures, StringBuilder log)
+        private static void CaseLocalizedRefusalSentences(List<string> failures, StringBuilder log)
         {
-            StoreStrings.Reload();
-            var seen = new HashSet<string>(StringComparer.Ordinal);
-
-            foreach (string key in StoreStrings.BuyGateKeys)
+            JObject english = ReadEnglishTable(failures);
+            string[] keyConstants =
             {
-                string s = StoreStrings.Get(key);
-                if (string.IsNullOrEmpty(s) || s.StartsWith("[[missing:", StringComparison.Ordinal))
-                {
-                    failures.Add("[copy] canon-strings has no '" + key + "' - the store would refuse a purchase " +
-                                 "with a placeholder marker on the one screen where that reads as a scam.");
-                    continue;
-                }
-                if (!seen.Add(s))
+                StoreBuyText.KeyClosed,
+                StoreBuyText.KeyRailNotReady,
+                StoreBuyText.KeyWalletRequired,
+                StoreBuyText.KeyWalletRequiredCrypto,
+                StoreBuyText.KeyWalletRequiredCta,
+                StoreBuyText.KeyComingSoon,
+                StoreBuyText.KeyShelfClosed,
+            };
+            var declaredKeys = new HashSet<string>(keyConstants, StringComparer.Ordinal);
+            var allKeys = new HashSet<string>(StoreBuyText.AllKeys, StringComparer.Ordinal);
+            var wrapperKeys = new HashSet<string>(StringComparer.Ordinal)
+            {
+                StoreBuyText.Closed.Key,
+                StoreBuyText.RailNotReady.Key,
+                StoreBuyText.WalletRequired.Key,
+                StoreBuyText.WalletRequiredCrypto.Key,
+                StoreBuyText.WalletRequiredCta.Key,
+                StoreBuyText.ComingSoon.Key,
+                StoreBuyText.ShelfClosed.Key,
+            };
+            if (declaredKeys.Count != BuyGateCopy.Length || allKeys.Count != BuyGateCopy.Length || !declaredKeys.SetEquals(allKeys))
+                failures.Add("[copy/authority] StoreBuyText key constants and AllKeys must name the same seven BUY GATE semantic keys exactly once.");
+
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var expected in BuyGateCopy)
+            {
+                string key = expected.Key;
+                string authored = english?[key]?.Value<string>();
+                if (!declaredKeys.Contains(key))
+                    failures.Add("[copy/authority] StoreBuyText has no public key constant for '" + key + "'.");
+                if (!wrapperKeys.Contains(key))
+                    failures.Add("[copy/authority] StoreBuyText has no LocalizedText field for '" + key + "'.");
+
+                if (!string.Equals(authored, expected.Value, StringComparison.Ordinal))
+                    failures.Add("[copy/semantics] English '" + key + "' drifted. Expected \"" + expected.Value +
+                                 "\", got \"" + (authored ?? "<missing>") + "\".");
+                if (!string.IsNullOrEmpty(authored) && !seen.Add(authored))
                     failures.Add("[copy] '" + key + "' reuses another key's sentence. Each refusal has a different " +
                                  "remedy; sharing one sentence tells the player the wrong thing about at least one.");
-
-                foreach (char c in s)
-                    if (c > 127)
-                    {
-                        failures.Add("[copy] '" + key + "' contains a non-ASCII character - TMP renders it as tofu.");
-                        break;
-                    }
             }
 
-            string walletLine = StoreStrings.Get(StoreStrings.KeyBuyWalletRequired);
-            if (walletLine.IndexOf("{0}", StringComparison.Ordinal) < 0)
-                failures.Add("[copy] 'storeBuyWalletRequired' does not format {0}. The threshold must come from " +
-                             "PurchaseGate.WalletRequiredAboveUsd so the copy cannot drift from the rule; a typed " +
-                             "'$4.99' in the sentence is a second copy of the number.");
+            string walletLine = english?[BuyWalletRequiredKey]?.Value<string>() ?? string.Empty;
+            if (CountOccurrences(walletLine, "{Threshold}") != 2 || walletLine.IndexOf("{0}", StringComparison.Ordinal) >= 0)
+                failures.Add("[copy] 'storeBuyWalletRequired' must contain named {Threshold} exactly twice and no positional {0}; " +
+                             "WalletThresholdArguments is the sole runtime source of the threshold.");
             if (walletLine.IndexOf("wallet", StringComparison.OrdinalIgnoreCase) < 0)
                 failures.Add("[copy] 'storeBuyWalletRequired' never says 'wallet' - the refusal must NAME the remedy, " +
                              "not just decline.");
 
-            log.AppendLine("  [copy] " + StoreStrings.BuyGateKeys.Length + " buy-gate sentences present, distinct, " +
-                           "ASCII-only; the wallet refusal names its remedy and formats the threshold");
+            string formatted = ResolveWalletThreshold();
+            string threshold = "$" + PurchaseGate.WalletRequiredAboveUsd.ToString("0.00", CultureInfo.InvariantCulture);
+            if (formatted.IndexOf("{Threshold}", StringComparison.Ordinal) >= 0 ||
+                CountOccurrences(formatted, threshold) != 2)
+                failures.Add("[copy/runtime] StoreBuyText wallet refusal did not resolve named WalletThresholdArguments; got \"" + formatted + "\".");
+
+            string gateSourcePath = Application.dataPath + "/_Modules/Wallet/PurchaseGate.cs";
+            string gateSource = File.Exists(gateSourcePath) ? File.ReadAllText(gateSourcePath) : string.Empty;
+            if (gateSource.IndexOf("StoreBuyText.", StringComparison.Ordinal) < 0 ||
+                gateSource.IndexOf("StoreStrings.", StringComparison.Ordinal) >= 0)
+                failures.Add("[copy/authority] PurchaseGate must resolve BUY GATE copy through StoreBuyText/LocalText and must not retain StoreStrings calls.");
+
+            log.AppendLine("  [copy] 7 BUY GATE semantic rows exactly pinned in en.json; StoreBuyText exposes a key and LocalizedText wrapper for each; " +
+                           "the Google Play refusal uses named {Threshold} twice and PurchaseGate no longer reads StoreStrings");
         }
 
         // =====================================================================
@@ -745,6 +795,41 @@ namespace DeNelle.Editor.Regression
         // =====================================================================
         //  Helpers
         // =====================================================================
+        private static string ResolveWalletThreshold()
+        {
+            string threshold = "$" + PurchaseGate.WalletRequiredAboveUsd.ToString("0.00", CultureInfo.InvariantCulture);
+            var arguments = new WalletThresholdArguments(threshold);
+            return StoreBuyText.WalletRequired.Resolve(arguments);
+        }
+
+        private static JObject ReadEnglishTable(List<string> failures)
+        {
+            try
+            {
+                string json = DeNelle.Core.CanonicalJson.Read(EnglishRelPath);
+                if (string.IsNullOrEmpty(json))
+                {
+                    failures.Add("[copy/authority] en.json could not be read through CanonicalJson.");
+                    return null;
+                }
+                return JObject.Parse(json);
+            }
+            catch (Exception ex)
+            {
+                failures.Add("[copy/authority] en.json parse failed: " + ex.GetType().Name + ": " + ex.Message);
+                return null;
+            }
+        }
+
+        private static int CountOccurrences(string value, string token)
+        {
+            if (string.IsNullOrEmpty(value) || string.IsNullOrEmpty(token)) return 0;
+            int count = 0;
+            for (int at = 0; (at = value.IndexOf(token, at, StringComparison.Ordinal)) >= 0; at += token.Length)
+                count++;
+            return count;
+        }
+
         private static JArray ReadPacks(List<string> failures, StringBuilder log)
         {
             try

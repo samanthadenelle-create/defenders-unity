@@ -1691,10 +1691,10 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 41003251969601537
-    m_Localized: "Pacotes acima de {0} exigem uma carteira conectada para que suas
-      compras continuem sendo suas se voc\xEA reinstalar o jogo ou trocar de celular.
-      Conecte uma carteira para comprar este pacote; qualquer pacote de {0} ou menos
-      pode ser comprado agora mesmo sem ela."
+    m_Localized: "Pacotes acima de {Threshold} exigem uma carteira conectada para
+      que suas compras continuem sendo suas se voc\xEA reinstalar o jogo ou trocar
+      de celular. Conecte uma carteira para comprar este pacote; qualquer pacote
+      de {Threshold} ou menos pode ser comprado agora mesmo sem ela."
     m_Metadata:
       m_Items:
       - rid: 7338888477077143553

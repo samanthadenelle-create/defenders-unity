@@ -189,7 +189,7 @@ namespace DeNelle.Editor
         /// Play-neutral copy for the PLAYER-FACING keys that carry a forbidden token in their
         /// authored (Seeker) value. Keyed by the leaf property name, which is unique across the
         /// mirrored catalogs (en.json's keys are flat dotted strings, e.g. "swap.title").
-        /// Every value here is ASCII and preserves the {0} placeholders of the original.
+        /// Every value here is ASCII and preserves the named placeholders of the original.
         /// </summary>
         private static readonly Dictionary<string, string> PlayNeutralStringReplacements =
             new Dictionary<string, string>(StringComparer.Ordinal)
@@ -204,7 +204,7 @@ namespace DeNelle.Editor
                 { "storeBalanceValue",             "Balance: {0}" },
                 { "storeCommerceOpeningWallet",    "[WAIT] Opening checkout - usually under 2 seconds" },
                 { "storeCommerceAwaitingApproval", "[ACTION] Awaiting your approval - approve or cancel in the store prompt" },
-                { "storeBuyWalletRequired",        "Packs over {0} need a signed-in account, so what you buy stays yours if you reinstall or change phones. Sign in to buy this one - anything {0} and under you can buy right now." },
+                { "storeBuyWalletRequired",        "Packs over {Threshold} need a signed-in account, so what you buy stays yours if you reinstall or change phones. Sign in to buy this one - anything {Threshold} and under you can buy right now." },
                 { "storeBuyWalletRequiredCta",     "Continue" },
                 // en.json
                 { "heroSelect.subtitle",           "Choose your champion" },

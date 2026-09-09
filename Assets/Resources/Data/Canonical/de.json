@@ -345,7 +345,7 @@
   "storeWordmark": "Der Nachtmarkt",
   "storeBuyClosed": "Käufe sind noch nicht verfügbar. Alles hier kann weiterhin im Spiel verdient werden.",
   "storeBuyRailNotReady": "Das Zahlungssystem ist in dieser Version noch nicht bereit, daher wurde nichts berechnet. Versuche es nach dem nächsten Update erneut.",
-  "storeBuyWalletRequired": "Für Pakete über {0} muss eine Wallet verbunden sein, damit deine Käufe dir auch nach einer Neuinstallation oder einem Handywechsel erhalten bleiben. Verbinde eine Wallet, um dieses Paket zu kaufen; Pakete für {0} oder weniger kannst du jetzt auch ohne Wallet kaufen.",
+  "storeBuyWalletRequired": "Für Pakete über {Threshold} muss eine Wallet verbunden sein, damit deine Käufe dir auch nach einer Neuinstallation oder einem Handywechsel erhalten bleiben. Verbinde eine Wallet, um dieses Paket zu kaufen; Pakete für {Threshold} oder weniger kannst du jetzt auch ohne Wallet kaufen.",
   "storeBuyWalletRequiredCrypto": "Verbinde eine Wallet, damit dieser Kauf auf all deinen Geräten dir gehört.",
   "storeBuyWalletRequiredCta": "Wallet verbinden",
   "storeBuyComingSoon": "Demnächst",

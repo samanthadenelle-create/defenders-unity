@@ -166,8 +166,8 @@ namespace DeNelle.Wallet
         /// </summary>
         public static string WalletRefusalSentence(PaymentChannel channel) =>
             channel != PaymentChannel.GooglePlay
-                ? StoreStrings.CryptoWalletRequired()
-                : StoreStrings.Format(StoreStrings.KeyBuyWalletRequired, FormatUsd(WalletRequiredAboveUsd));
+                ? StoreBuyText.WalletRequiredCrypto.Resolve()
+                : StoreBuyText.WalletRequiredFor(FormatUsd(WalletRequiredAboveUsd));
 
         /// <summary>
         /// True when this device has a REAL, provider-attested wallet keying the save - the same
@@ -212,7 +212,7 @@ namespace DeNelle.Wallet
 
             if (!FeatureFlags.RealmStorePurchase)
             {
-                reason = StoreStrings.Get(StoreStrings.KeyBuyClosed);
+                reason = StoreBuyText.Closed.Resolve();
                 FlowTrace.Once("Store", "buy-gated",
                     "PurchaseGate: Buy is CLOSED (ff.realmstorepurchase OFF). This is the shipping state - " +
                     "the payment rails underneath are not finished (see PurchaseGate.ChecklistReport). " +
@@ -225,7 +225,7 @@ namespace DeNelle.Wallet
             // factual check must be able to veto an optimistic flag.
             if (!SkrMintResolvable() && !string.Equals(PrimaryRail(), "USDC/SOL", StringComparison.Ordinal))
             {
-                reason = StoreStrings.Get(StoreStrings.KeyBuyRailNotReady);
+                reason = StoreBuyText.RailNotReady.Resolve();
                 FlowTrace.Fail("Store",
                     "PurchaseGate: Buy is ON but the default rail has NO RESOLVABLE MINT " +
                     "(WalletEndpoints.SkrMint is empty for this network). Refusing at the gate rather " +
@@ -257,7 +257,7 @@ namespace DeNelle.Wallet
             {
                 // Not a player error, so it does not get a player sentence dressed as one - but it
                 // must still refuse rather than fall through into a charge with no SKU.
-                reason = StoreStrings.Get(StoreStrings.KeyBuyRailNotReady);
+                reason = StoreBuyText.RailNotReady.Resolve();
                 FlowTrace.Fail("Store", "PurchaseGate.CanBuy(pack): pack is NULL - refusing. A charge with no SKU " +
                                         "could not be granted, refunded or supported.");
                 return false;
@@ -315,9 +315,9 @@ namespace DeNelle.Wallet
         /// readable from the words alone.</para>
         /// </summary>
         public static string BlockedCtaLabel(PackDef pack) =>
-            StoreStrings.Get(WalletIsTheBlocker(pack)
-                ? StoreStrings.KeyBuyWalletRequiredCta
-                : StoreStrings.KeyBuyComingSoon);
+            WalletIsTheBlocker(pack)
+                ? StoreBuyText.WalletRequiredCta.Resolve()
+                : StoreBuyText.ComingSoon.Resolve();
 
         /// <summary>
         /// True when the ONLY thing standing between this player and this pack is a connected
@@ -332,7 +332,7 @@ namespace DeNelle.Wallet
             RequiresWallet(pack.Pricing.Usd) && !HasDurableIdentity;
 
         /// <summary>Player-readable line for a shelf that is browsable but not buyable.</summary>
-        public static string ClosedShelfLine() => StoreStrings.Get(StoreStrings.KeyShelfClosed);
+        public static string ClosedShelfLine() => StoreBuyText.ShelfClosed.Resolve();
 
         // =====================================================================
         //  Idempotent grant ledger

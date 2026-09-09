@@ -252,7 +252,7 @@ namespace DeNelle.Editor.Regression
                 //       on PiDisplay BEFORE it asks PurchaseGate - a Pi player cannot complete a
                 //       _wallet.Connect() handshake, so the plate is the refusal, not the button.
                 // PROVEN RED (one line each): (1) drop "wallet" from PiWalletRequiredSentence;
-                // (2) set PiWalletRequiredSentence to BuyWalletRequiredCryptoSentence;
+                // (2) set PiWalletRequiredSentence to the localized Solana wallet sentence;
                 // (3) restore `StoreStrings.Format(StoreStrings.KeyPiWalletGate, ...)` in the plate;
                 // (4) delete the `if (PiDisplay)` block in RouteGuestShortfallToWalletConnect.
                 string piGateCopy = StoreStrings.PiWalletRequiredSentence;
@@ -273,7 +273,7 @@ namespace DeNelle.Editor.Regression
                 if (!string.IsNullOrEmpty(piGateCopy) && piGateCopy.IndexOf("SKR", StringComparison.OrdinalIgnoreCase) >= 0)
                     fail.Add("the Pi wallet plate names SKR");
                 checks++;
-                if (string.Equals(StoreStrings.BuyWalletRequiredCryptoSentence, piGateCopy, StringComparison.Ordinal))
+                if (string.Equals(StoreBuyText.WalletRequiredCrypto.Resolve(), piGateCopy, StringComparison.Ordinal))
                     fail.Add("the Solana connect sentence and the Pi wallet plate are the SAME sentence - " +
                              "two audiences, two plates (WO-1386 / WO-1323)");
                 RequireOrdered(store,

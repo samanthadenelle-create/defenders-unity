@@ -1663,9 +1663,9 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 41003251969601537
-    m_Localized: Packs over {0} need a connected wallet, so what you buy stays yours
-      if you reinstall or change phones. Connect a wallet to buy this one - anything
-      {0} and under you can buy right now.
+    m_Localized: Packs over {Threshold} need a connected wallet, so what you buy
+      stays yours if you reinstall or change phones. Connect a wallet to buy this
+      one - anything {Threshold} and under you can buy right now.
     m_Metadata:
       m_Items:
       - rid: 7338888474672496640

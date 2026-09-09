@@ -366,7 +366,7 @@
   "storeWordmark": "Le Marché Nocturne",
   "storeBuyClosed": "Les achats ne sont pas encore disponibles. Tout ce qui se trouve ici peut toujours être obtenu en jouant.",
   "storeBuyRailNotReady": "Le système de paiement n’est pas prêt dans cette version, aucun montant n’a donc été débité. Réessayez après la prochaine mise à jour.",
-  "storeBuyWalletRequired": "Les packs de plus de {0} nécessitent un portefeuille connecté afin que vos achats restent à vous si vous réinstallez le jeu ou changez de téléphone. Connectez un portefeuille pour acheter ce pack ; vous pouvez acheter dès maintenant sans portefeuille tout pack à {0} ou moins.",
+  "storeBuyWalletRequired": "Les packs de plus de {Threshold} nécessitent un portefeuille connecté afin que vos achats restent à vous si vous réinstallez le jeu ou changez de téléphone. Connectez un portefeuille pour acheter ce pack ; vous pouvez acheter dès maintenant sans portefeuille tout pack à {Threshold} ou moins.",
   "storeBuyWalletRequiredCrypto": "Connectez un portefeuille afin que cet achat reste à vous sur tous vos appareils.",
   "storeBuyWalletRequiredCta": "Connecter le portefeuille",
   "storeBuyComingSoon": "Bientôt disponible",

@@ -345,7 +345,7 @@
   "storeWordmark": "El Mercado Nocturno",
   "storeBuyClosed": "Las compras aún no están disponibles. Todo lo que hay aquí se puede conseguir jugando.",
   "storeBuyRailNotReady": "El sistema de pago no está listo en esta versión, así que no se ha realizado ningún cargo. Vuelve a intentarlo después de la próxima actualización.",
-  "storeBuyWalletRequired": "Los paquetes de más de {0} requieren una billetera conectada para que tus compras sigan siendo tuyas si reinstalas el juego o cambias de teléfono. Conecta una billetera para comprar este paquete; ahora mismo puedes comprar sin ella cualquier paquete de {0} o menos.",
+  "storeBuyWalletRequired": "Los paquetes de más de {Threshold} requieren una billetera conectada para que tus compras sigan siendo tuyas si reinstalas el juego o cambias de teléfono. Conecta una billetera para comprar este paquete; ahora mismo puedes comprar sin ella cualquier paquete de {Threshold} o menos.",
   "storeBuyWalletRequiredCrypto": "Conecta una billetera para que esta compra siga siendo tuya en todos tus dispositivos.",
   "storeBuyWalletRequiredCta": "Conectar billetera",
   "storeBuyComingSoon": "Próximamente",
