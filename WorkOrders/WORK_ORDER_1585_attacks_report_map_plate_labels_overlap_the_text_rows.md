@@ -1,6 +1,6 @@
 # WORK ORDER 1585 - "Attacks on your town": the map plate's labels ("1st BREACH", "HEART") draw over the report's text rows
 
-**Status:** FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's Seeker screenshot
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:07:40, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's Seeker screenshot
 **Silo / Lane:** Core/UI defense report - `Assets/_Modules/Core/UI/DefenseMapPlate.cs`, the report panel in `Assets/_Modules/HUD/Kit/HudKitController.cs` (search "ATTACKS ON YOUR TOWN"), `Assets/_Modules/Core/HudModel/DefenseReportChipModel.cs`
 **Type:** EXISTING system, LAYOUT DEFECT
 **Priority:** P2

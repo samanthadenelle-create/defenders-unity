@@ -1,6 +1,6 @@
 # WO-1576: Web R2 parity gate blocks content build when target state is missing
 
-**Status:** FIXED - tools/command-centre.ps1 builds WebGL content BEFORE r2-ship (content-hashed bundles the run built are the ones pushed/verified); a missing aa/WebGL/settings.json emits R2_PARITY_REBUILD_NEEDED then refuses AFTER the build with the one-liner if still absent; parity refusals carry the real R2 line; -DryRun prints the order; PARSE_OK + COMMAND_CENTRE_DRYRUN_OK 2026-09-07. Canon on the step order (CLI_OPERATIONS_RUNBOOK, HANDOVER, KEY_FACTS, WO-1199) still describes the old order. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:07:14, build 2026.09.08.361259). PRIOR STATUS: FIXED - tools/command-centre.ps1 builds WebGL content BEFORE r2-ship (content-hashed bundles the run built are the ones pushed/verified); a missing aa/WebGL/settings.json emits R2_PARITY_REBUILD_NEEDED then refuses AFTER the build with the one-liner if still absent; parity refusals carry the real R2 line; -DryRun prints the order; PARSE_OK + COMMAND_CENTRE_DRYRUN_OK 2026-09-07. Canon on the step order (CLI_OPERATIONS_RUNBOOK, HANDOVER, KEY_FACTS, WO-1199) still describes the old order. PRIOR STATUS: READY TO IMPLEMENT
 **Minted:** 2026-09-07 (web ship chain ordering fix; number from
 CLI_LANES_WO_NUMBERS.md main-line banner, bumped 1576 -> 1577 in same edit)
 **Silo:** Build / gates (tooling only - no gameplay, no scene, no content)

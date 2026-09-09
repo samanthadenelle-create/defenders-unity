@@ -180,14 +180,27 @@
 > fine as history. A copied number is the bug **even when it was right the day it was written** -
 > that is exactly how the retired 860-899 UI block kept re-seeding collisions from CLAUDE.md sec.2.
 
-> ## MANAGE-REDESIGN SERIES (2000-block): **WO-2001 through WO-2017 are TAKEN**; next free = **WO-2018**.
+> ## MANAGE-REDESIGN SERIES (2000-block): **WO-2001 through WO-2020 are TAKEN**; next free = **WO-2021**.
+> *(CLI minted **WO-2020** for the owner's Seeker Honest Feedback overlap, permanent Settings door,
+> localization-ready feedback copy, language metadata, proof image, regression, APK, and install.)*
 > *(A THIRD, DISJOINT NAMESPACE, declared 2026-09-06, exactly like the PROD series. The owner delivered a
 > 17-part Manage redesign program authored outside this repo; it arrived pre-numbered in a 2000-block, so the
 > block is DECLARED here rather than renumbered - renumbering a delivered set is how cross-references rot.
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-07 (CLI, hundred-and-twenty-seventh pass): main line next free = **1605**.
+> ## RECONCILED 2026-09-08 (CLI, hundred-and-twenty-ninth pass): main line next free = **1607**.
+> *(CLI minted **WO-1606**: first rough-stone return FTUE leaves a persistent objective and world
+> pointer on the Jeweler until the first accepted polish; the main Jeweler dialogue gains a
+> progression-gated polishing route to the existing JewelerCrafting panel. Bumped 1606 -> 1607 in
+> this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-08 (CLI, hundred-and-twenty-eighth pass): main line next free = **1606**.
+> *(CLI minted **WO-1605**: migrate every visible/written player-facing phrase and text-bearing image
+> to one switchable localization library. Audio is explicitly out of scope because nothing is spoken.
+> Bumped 1605 -> 1606 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-07 (CLI, hundred-and-twenty-seventh pass): main line next free = **1605**.
 > *(CLI minted **1600** Jeweler modal on the Title after START NEW, **1601** skills tree frame band, **1602** new-town ground reads as water then haze, **1603** retreat battle-lock held by PursuitBattleProbe (regression of 1337, F8 4701/4702), **1604** biome road drop lands in the wrong region (F8 4703) - the owner's first run on 359651. Bumped 1600 -> 1605 in this SAME edit.)*
 >
 > ### superseded: RECONCILED 2026-09-07 (CLI, hundred-and-twenty-sixth pass): main line next free = **1600**.
@@ -2316,7 +2329,10 @@
 > never as BUILD STATUS** -- "under construction"/"coming soon"/"dev"/"WIP" are BANNED player-facing
 > strings and get a REGRESSION ORACLE, not a comment, because that is the rule most likely to rot.
 > Status READY TO IMPLEMENT, 3 open rulings. No code yet.)*
-> ## ⚠ RECONCILED 2026-09-07 (Grok/UI seat): UI seat next free = **1088**.
+> ## ⚠ RECONCILED 2026-09-08 (Grok/UI seat): UI seat next free = **1089**.
+> *(Grok/UI seat minted **WO-1088** localization 4-model draft review pack (Desktop/translation + en + 9 locale drafts) and bumped 1088 -> 1089 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-07 (Grok/UI seat): UI seat next free = **1088**.
 > *(Grok/UI seat minted **WO-1084 through WO-1087** from four Seeker phone Screenshots (not F8) and bumped 1084 -> 1088 in this SAME edit.
 > **1084** = YOU DIED is a giant green fill with combat HUD still live at 0 HP (\logs/device/seeker-shots/Screenshot_20260907-132616.png\).
 > **1085** = world renders as black void / blue strip only (\Screenshot_20260907-132324.png\).

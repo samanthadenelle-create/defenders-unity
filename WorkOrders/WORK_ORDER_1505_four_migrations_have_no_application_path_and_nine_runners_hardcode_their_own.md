@@ -1,6 +1,6 @@
 # WO-1505: four numbered migrations have NO application path, and nine hand-rolled runners each hardcode their own list
 
-**Status:** FIXED - tools/run-migrations.mjs is the single runner; seven run-*-migration.mjs are refusal shims (exit 16 -> use run-migrations.mjs), every .sql on disk reachable, pinned in test/migrations.runner.test.js (npm test 452/452, 2026-09-07). RESIDUAL for the owner: tools/wo1440-apply-0013-repair.mjs and wo1440-apply-migration.mjs still apply their own ids (outside the run-*.mjs glob); no --dry-run exists (needs DB contact); the live-anchor docs still name run-schema-repair.mjs (re-point per s15). PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:10:50, build 2026.09.08.361259). PRIOR STATUS: FIXED - tools/run-migrations.mjs is the single runner; seven run-*-migration.mjs are refusal shims (exit 16 -> use run-migrations.mjs), every .sql on disk reachable, pinned in test/migrations.runner.test.js (npm test 452/452, 2026-09-07). RESIDUAL for the owner: tools/wo1440-apply-0013-repair.mjs and wo1440-apply-migration.mjs still apply their own ids (outside the run-*.mjs glob); no --dry-run exists (needs DB contact); the live-anchor docs still name run-schema-repair.mjs (re-point per s15). PRIOR STATUS: READY TO IMPLEMENT
 **Silo:** `api/migrations/` + `tools/run-*-migration*.mjs`. Parent of WO-1446 (the signed_at gap is one
 instance of this family).
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner

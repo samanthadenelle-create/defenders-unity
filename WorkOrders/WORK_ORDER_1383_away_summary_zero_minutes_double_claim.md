@@ -1,6 +1,6 @@
 # WO-1383: "YOUR REALM WORKED FOR 0m" after 12.6 hours - the resume claim races the cold-load claim; and the label never shows hours and minutes
 
-**Status:** FIXED - in 65d5a7eae, on the Seeker in build 2026.09.05.355952 (installed 2026-09-04 ~23:40); device proof on 355952: SKIPPED/DEFERRED/RELEASED claim lines, one claim per window, "YOUR REALM WORKED FOR 27m". Awaiting owner felt-test (leave the app for a few minutes, reopen: the popup shows the elapsed time and claims once). Lane history: edit-only lane 23:03 on the two Harvest files + two oracles.
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:09:13, build 2026.09.08.361259). PRIOR STATUS: FIXED - in 65d5a7eae, on the Seeker in build 2026.09.05.355952 (installed 2026-09-04 ~23:40); device proof on 355952: SKIPPED/DEFERRED/RELEASED claim lines, one claim per window, "YOUR REALM WORKED FOR 27m". Awaiting owner felt-test (leave the app for a few minutes, reopen: the popup shows the elapsed time and claims once). Lane history: edit-only lane 23:03 on the two Harvest files + two oracles.
 
 **Owner (2026-09-04 23:02), verbatim:** "can i ask why it says your realm worked for 0m two issues
 should be some time that passed and minutes and hours if applicable should show"

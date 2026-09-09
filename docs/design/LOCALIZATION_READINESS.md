@@ -4,14 +4,18 @@
 > this June audit is now being closed. `LocalText` is the single Core facade;
 > `DeNelle.Localization.UnityLocalizationProvider` is its sole package-backed adapter;
 > selected and English `GameStrings` tables preload asynchronously; explicit locale
-> preferences and System Default are supported; missing keys fail visibly. The English
-> table now reconciles exactly to all 335 canonical entries. Settings is migrated and
+> preferences and System Default are supported; missing keys fail visibly. Six build-enabled
+> tables now reconcile exactly to all 358 canonical entries. English, Spanish, Brazilian
+> Portuguese, German, French, and Russian are exposed, with every non-English choice labeled
+> Beta. Arabic, Japanese, Korean, and Simplified Chinese remain required for exact regional
+> parity but hidden until RTL/CJK font and layout gates pass. Settings is migrated and
 > refreshes labels in place; HUD/Raid compatibility catalogs now forward to `LocalText`.
 > Feedback and the Jeweler unlock/polish/reveal path use key-only wrappers with typed
 > arguments. Five focused regressions cover authority, literal leakage, locale parity,
 > Smart arguments (named and positional), and Settings wiring. The broad inventory remains
-> report-only pending human classification, and English is still the only shipped locale,
-> so the overall product is not yet translation-ready.
+> report-only pending human classification. Store/Village/Canon and many visible literals
+> remain open, so the overall migration is not complete. Current canon lives in
+> `docs/localization/architecture.md`.
 
 **Date:** 2026-06-28
 **Scope:** How `Echoes of Elarion / Defenders of the Realm` handles user-facing text, and how ready it is to ship a translated build.

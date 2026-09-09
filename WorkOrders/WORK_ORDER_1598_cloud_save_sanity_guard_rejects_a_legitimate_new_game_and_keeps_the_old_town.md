@@ -1,6 +1,6 @@
 # WORK ORDER 1598 - The cloud save sanity guard rejects a legitimate NEW GAME as "implausible_drop" / "rollback", so the cloud row keeps the old town (and would hand it back on load)
 
-**Status:** FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the Command Center event table
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:07:31, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the Command Center event table
 **Silo / Lane:** api/game/save.js (the sanity guard + audit), api/game/load.js, test/; client half in `Assets/_Modules/Core/State/GameStateService.cs` (the save body) + the New Game reset path (`ResetToNewGame`)
 **Type:** EXISTING system, DEFECT (economy integrity + progress loss on load)
 **Priority:** P1 - the owner started a new game this morning as ruled; her cloud row still says 901 crystals

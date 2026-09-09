@@ -1,6 +1,6 @@
 # WORK ORDER 1584 - Store sell screen: a "*" where the item art should be, a blank first row, and the detail names an item the list does not highlight
 
-**Status:** FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's Seeker screenshot
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:09:44, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's Seeker screenshot
 **Silo / Lane:** Village/Hero party shop (the vendor SELL tab) - `Assets/_Modules/Village/Hero/PartyShopVM.cs`, `PartyShopPanelMvvm.cs`
 **Type:** EXISTING system, DEFECT (visual + state)
 **Priority:** P1 - the owner asked twice ("did you see screenshot regarding the store? not the realm store te regular sell screen. Look at seeker screenshots not the f8 ones")

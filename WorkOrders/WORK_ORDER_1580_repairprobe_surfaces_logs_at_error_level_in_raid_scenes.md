@@ -1,6 +1,6 @@
 # WO-1580 - RepairProbe SURFACES logs at error level inside raid scenes, so every raid produces an F8 capture
 
-**Status:** FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:54, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT
 **Priority:** P3
 **Silo:** Village / Instrumentation (RepairAvailabilityProbe)
 **Source:** owner Seeker session 2026-09-07, build 2026.09.07.359076, F8 seq 4698

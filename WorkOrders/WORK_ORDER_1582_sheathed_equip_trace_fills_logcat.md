@@ -1,6 +1,6 @@
 # WO-1582: Sheathed-Weapon Equip Trace Fills Logcat Ring (P2)
 
-**Status:** FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:06, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT
 
 Device logcat 2026-09-07 08:28-08:29: `[Flow:Equip] sheathed long axis on 'Hero (Blaise)': tiltFromVertical=0deg (must read ~0; ~90 means it is lying across the body) longAxisDotUp=1 ...` repeats every ~5 seconds (12 lines in one minute) with no value changes. This is a per-frame measurement inside `ApplyHoldPose` using `FlowTrace.Throttle(..., 5f, ...)` at `Assets/_Modules/Village/Hero/EquipmentController.cs:4047`.
 

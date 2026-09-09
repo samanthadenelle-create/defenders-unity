@@ -1,6 +1,6 @@
 # WO-1535: finish the enemy stat-table SSOT migration - 12 of 13 raid garrison ids are still hardcoded
 
-**Status:** FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - **SEQUENCE AFTER WO-1530** (the enemy scaling measurement).
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:55, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - **SEQUENCE AFTER WO-1530** (the enemy scaling measurement).
 **Silo:** Village/Enemies - `GarrisonStatBlocks`, `WildlandsRoster`, `enemies.json`, `CombatAtbRegression`.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1535 -> 1537 in the same edit; **drafted as 1532 and renumbered** -

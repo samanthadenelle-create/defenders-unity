@@ -1,6 +1,6 @@
 # WO-1526: hero death no longer ends the raid - the army fights on, capped at 2 stars
 
-**Status:** FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - owner ruling 2026-09-06 20:33
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:56, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - owner ruling 2026-09-06 20:33
 **Silo:** Village/Troops - `RaidScoring` + the hero-death settle in `RaidDeployController` /
 `HeroDeathEndState`'s raid branch.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner

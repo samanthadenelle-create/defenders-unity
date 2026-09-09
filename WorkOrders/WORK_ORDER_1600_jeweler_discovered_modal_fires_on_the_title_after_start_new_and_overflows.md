@@ -1,6 +1,6 @@
 # WORK ORDER 1600 - "JEWELER DISCOVERED" fires on the TITLE screen after START NEW, its body overflows the plate, and its button lands on the title's CLOSE
 
-**Status:** FIXED - implemented in the 2026-09-07 evening gate (COMPILE_GATE_OK Builds/cg-wave11.log, REGRESSION_OK 456/456 Builds/reg-wave11.log 14:19); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's reset screenshot
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:10:47, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 evening gate (COMPILE_GATE_OK Builds/cg-wave11.log, REGRESSION_OK 456/456 Builds/reg-wave11.log 14:19); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's reset screenshot
 **Silo / Lane:** Village/Crafting FTUE - `Assets/_Modules/Village/Crafting/JewelerDiscoveryFtue.cs` (TryPresent ~:55-80), `JewelerProgression` (IsUnlocked / Completed - the flags that must reset), the New Game reset path (`ResetToNewGame`, `ResetToNewGameFullClearRegression`)
 **Type:** EXISTING system, RESET LEAK + LAYOUT
 **Priority:** P1 - first thing a player sees after START NEW

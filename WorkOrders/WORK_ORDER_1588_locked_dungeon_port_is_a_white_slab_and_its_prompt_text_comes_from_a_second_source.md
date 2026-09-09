@@ -1,6 +1,6 @@
 # WORK ORDER 1588 - The locked dungeon port is an untextured white slab with a glowing keyhole, and the "Locked" prompt on screen is not the string the port's code owns
 
-**Status:** FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's F8 flag seq 4699
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:53, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's F8 flag seq 4699
 **Silo / Lane:** Dungeons - `Assets/_Modules/Dungeons/ComposedLockedPort.cs`, the door visual seam from WO-1568 (`CommonDungeonDoor.cs` / `BuildDoorVisual`, `Assets/Resources/Dungeon/Door/*`), the prompt presenter
 **Type:** EXISTING system, VISUAL + a duplicated-producer smell
 **Priority:** P2

@@ -1,6 +1,6 @@
 # WO-1490: the Research school grid shows 5 cards instead of 4 and leaves a 45% dead band; the tree has no art panel or RESEARCH button
 
-**Status:** AWAITING OWNER MATCH - the three named defects were closed by the overnight Manage passes
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:07:20, build 2026.09.08.361259). PRIOR STATUS: AWAITING OWNER MATCH - the three named defects were closed by the overnight Manage passes
 (`c0c30f715`, `94808e2e2`); this seat re-measured them at HEAD and closed the one item that was still
 open, which turned out to be the MEASUREMENT and not the layout. See §5.
 **Silo:** Manage 2000-block (WO-2010, research schools).

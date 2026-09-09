@@ -1,6 +1,6 @@
 # WORK ORDER 1275 - Rewarded SKU entitlements, remote cache, and unlock scrolls
 
-**Status:** FIXED 2026-08-29 — server-authoritative SKU restore, expiry/revocation handling, permanent Stone Gate progression, and idempotent Wave 7 Healing Caravan Plans implemented and headless-verified; awaiting owner Seeker test.
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:09:34, build 2026.09.08.361259). PRIOR STATUS: FIXED 2026-08-29 — server-authoritative SKU restore, expiry/revocation handling, permanent Stone Gate progression, and idempotent Wave 7 Healing Caravan Plans implemented and headless-verified; awaiting owner Seeker test.
 **Minted:** 2026-08-28 by Codex CLI under WO-1271.
 **Lane:** Backend entitlement + progression/content. No purchase-path changes.
 

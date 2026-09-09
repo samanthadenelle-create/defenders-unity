@@ -839,6 +839,11 @@ retired — signature is IN the value now) · `dotr-sync-queue` · `dotr-event-q
   become separate resolvers. Keys remain separated by domain (`hud.*`, `battle.*`,
   `interaction.*`, `shop.*`, `lore.*`, `settings.*`, and feature namespaces such as
   `jeweler.*`) while the active locale and resolution path stay global.
+  The release/region authority is `Assets/Editor/Localization/LocalizationPolicy.json`:
+  `en`, `es`, `pt-BR`, `de`, `fr`, and `ru` are build-enabled; `ar`, `ja`, `ko`, and
+  `zh-Hans` remain required for key/argument parity but hidden pending RTL/CJK font and
+  layout readiness. See `docs/localization/architecture.md` for the generation, fallback,
+  all-region change rule, and verification contract.
 
 - **Service registry:** `CoreServices` (8 slots, above). Callers null-check; register Awake / unregister OnDestroy.
 - **Panel routing:** panel registers opener on `PanelRouter` (+ optional context / context+mode arities);

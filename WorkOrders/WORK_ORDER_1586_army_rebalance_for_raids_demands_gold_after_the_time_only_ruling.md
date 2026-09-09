@@ -1,6 +1,6 @@
 # WORK ORDER 1586 - Rebalancing the army for a raid says "need gold" for every change; the ruling is gold ONLY skips the wait
 
-**Status:** FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's report
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:53, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's report
 **Silo / Lane:** Village/Troops muster - `Assets/_Modules/Village/Troops/ArmyMusterService.cs`, `ArmyMusterVM.cs`, `ArmyMusterPanel.cs`, `BarracksService.cs`; suite `TrainingCostsTimeOnlyRegression`
 **Type:** EXISTING system, RULING VIOLATION (WO-1387, closed on the owner's Pass 2026-09-07T00:49)
 **Priority:** P1 - blocks the raid loop for a player who has upgraded troops

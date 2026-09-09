@@ -1,6 +1,6 @@
 # WORK ORDER 1042 — Rough stone → Jeweler polish → refined gem: the missing link, as a timed graded job
 
-**Status:** FIXED — AWAITING OWNER FELT-TEST TO CLOSE. Prior status: DONE 2026-08-16 (`eff761fcc`) — the §5 rulings were taken live and implemented; RESULT filed; pending PO felt-verify
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:10:46, build 2026.09.08.361259). PRIOR STATUS: FIXED — AWAITING OWNER FELT-TEST TO CLOSE. Prior status: DONE 2026-08-16 (`eff761fcc`) — the §5 rulings were taken live and implemented; RESULT filed; pending PO felt-verify
 **Minted:** 2026-08-16 (UI seat) — provenance stack bumped 1042 → 1043 in the same edit
 **Lane:** Dungeon → Jeweler economy. ⚠ Timed work — canon §8 constrains where it may live (§4).
 **Provenance:** owner design, 2026-08-16 (verbatim intent): a dungeon drops a **rough/unidentified

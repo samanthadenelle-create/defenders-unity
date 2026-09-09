@@ -1,6 +1,6 @@
 # WO-1577: Web ship aliases public domain to old deployment, never the current one
 
-**Status:** FIXED - tools/web-ship.ps1 aliases the public domains to the deployment it just made and refuses (WEB_ALIAS_FAIL, exit 16) unless `vercel alias ls` proves the alias names the new host; -DryRun prints the plan; PARSE_OK + WEB_DRYRUN_OK 2026-09-07. Unproven until the next real ship: Test-AliasResolves against live `alias ls` output; the cross-project defenders-webgl alias. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:10:44, build 2026.09.08.361259). PRIOR STATUS: FIXED - tools/web-ship.ps1 aliases the public domains to the deployment it just made and refuses (WEB_ALIAS_FAIL, exit 16) unless `vercel alias ls` proves the alias names the new host; -DryRun prints the plan; PARSE_OK + WEB_DRYRUN_OK 2026-09-07. Unproven until the next real ship: Test-AliasResolves against live `alias ls` output; the cross-project defenders-webgl alias. PRIOR STATUS: READY TO IMPLEMENT
 **Minted:** 2026-09-07 (web ship chain alias fix; number from
 CLI_LANES_WO_NUMBERS.md main-line banner, bumped 1577 -> 1578 in same edit)
 **Silo:** Build / gates (tooling only - no gameplay, no scene, no content)

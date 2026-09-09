@@ -1,6 +1,6 @@
 # WO-1458: raid walls and the spire crown are still admitted to the hostile target set, 320 times a session
 
-**Status:** FIXED - landed in d6511b8e5 (faction-classified admit + Case8 oracle), verified at HEAD
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:57, build 2026.09.08.361259). PRIOR STATUS: FIXED - landed in d6511b8e5 (faction-classified admit + Case8 oracle), verified at HEAD
 2026-09-07 by lane read; owner felt-test closes (a device raid with zero NON-ENEMY ADMITTED Warns).
 PRIOR STATUS: READY TO IMPLEMENT
 **Silo:** `Assets/_Modules/Village/Combat/` targeting admit rule + the raid base prefab collider layers.

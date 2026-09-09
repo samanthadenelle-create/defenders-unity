@@ -1,6 +1,6 @@
 # WORK ORDER 1587 - The offline save queue fails to drain six times in a row while the session renews fine, and the "why=" line the warning points at never prints
 
-**Status:** FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's device log
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:09:47, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's device log
 **Silo / Lane:** Core/State sync - `Assets/_Modules/Core/State/GameStateService.cs` (the offline queue drain), `Assets/_Modules/Wallet/BackendRequestSigner.cs` (identity for the save call), the `[Flow:Sync]` / `[Flow:Wallet]` traces
 **Type:** EXISTING system, DEFECT (cloud save behind; local save safe)
 **Priority:** P1 - the store update's headline is "sign in once and stay signed in"; a cloud copy that silently falls behind is the next thing the owner will hit

@@ -138,6 +138,7 @@
 - [Audio & Music — V1 Design Plan](design/AUDIO_DESIGN_V1.md)  · 🟢 Stable · 2945 words · modified 2026-06-28
 - [Live-Ops & Retention — the Post-Launch Engagement Engine](design/LIVEOPS_RETENTION.md)  · 🟢 Stable · 4461 words · modified 2026-06-28
 - [Localization / i18n Readiness Audit](design/LOCALIZATION_READINESS.md)  · 🟢 Stable · 1588 words · modified 2026-06-28
+- [Localization Architecture and Supported Languages](localization/architecture.md)  · 🟡 In Progress · WO-1605 runtime canon · modified 2026-09-08
 - [Village Recovery — Diagnosis Report](diagnosis-report.md)  · 🟢 Stable · 1711 words · modified 2026-06-16
 - [Dungeons — Storyline & Questline Arcs](dungeons-storyline.md)  · 🟢 Stable · 3470 words · modified 2026-06-16
 - [Claude Code Work Order — Enemy Mob Sets + VFX Layer](enemy-mob-sets-work-order.md)  · 🟢 Stable · 3061 words · modified 2026-06-16

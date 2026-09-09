@@ -1,6 +1,6 @@
 # WO-1452: the absolute session cap is defeated by sending any junk X-Nonce header
 
-**Status:** FIXED - the renewal gate keys on a VERIFIABLE signature (nonce+signature offered -> session withheld from verifyWallet, signature verified, nonce burned; junk headers fall back to the capped renewal); behavioural tests against a faked Neon driver, npm test 452/452 (2026-09-07); deployed to production in the same hour; owner felt-test closes (sign in, play a day, no re-prompt, no bypass). PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:09:42, build 2026.09.08.361259). PRIOR STATUS: FIXED - the renewal gate keys on a VERIFIABLE signature (nonce+signature offered -> session withheld from verifyWallet, signature verified, nonce burned; junk headers fall back to the capped renewal); behavioural tests against a faked Neon driver, npm test 452/452 (2026-09-07); deployed to production in the same hour; owner felt-test closes (sign in, play a day, no re-prompt, no bypass). PRIOR STATUS: READY TO IMPLEMENT
 **Silo:** `api/auth/session.js` + `api/_lib/wallet-auth.js`. Sequence AFTER WO-1446 (the column must exist).
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1452 -> 1453 in the same edit).

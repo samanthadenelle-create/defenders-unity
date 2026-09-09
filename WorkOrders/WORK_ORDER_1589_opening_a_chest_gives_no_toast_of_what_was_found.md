@@ -1,6 +1,6 @@
 # WORK ORDER 1589 - Opening a chest gives no toast saying what was found; the loot goes to a world mote the player has to notice
 
-**Status:** FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's words
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:10:49, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's words
 **Silo / Lane:** Village/World loot - `Assets/_Modules/Village/World/BreakableContainer.cs` (the `[Flow:Loot]` producer), the reward-toast seam used by kills (`Enemy.cs:3625` "KILL REWARD TOAST ... routed=CombatText(Reward)"), the dungeon chest path
 **Type:** EXISTING system, FEEDBACK GAP (WO-1296 "modal and world feedback ownership" family)
 **Priority:** P2

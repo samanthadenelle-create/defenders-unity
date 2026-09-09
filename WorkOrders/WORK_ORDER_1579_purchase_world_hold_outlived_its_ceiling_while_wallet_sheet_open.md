@@ -1,6 +1,6 @@
 # WO-1579 - A purchase world hold outlived its 180s ceiling by over two hours while the wallet round trip ran
 
-**Status:** FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:09:43, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT
 **Priority:** P1
 **Silo:** Wallet / Commerce (PackStore, SolanaWalletProvider, WorldHold) - **Source:** owner
 Seeker session 2026-09-07, build 2026.09.07.359076, F8 seq 4690-4693

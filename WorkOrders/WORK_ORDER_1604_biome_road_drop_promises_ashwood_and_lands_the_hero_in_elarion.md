@@ -1,6 +1,6 @@
 # WORK ORDER 1604 - The biome road drop promised Ashwood and landed the hero at (0, 0.08, 50), which ZoneManager calls Elarion
 
-**Status:** FIXED - implemented in the 2026-09-07 evening gate (COMPILE_GATE_OK Builds/cg-wave11.log, REGRESSION_OK 456/456 Builds/reg-wave11.log 14:19); reaches the Seeker with the next tester build; owner felt-test closes it. (fail-closed drop + the single boundary owner; the crossing that never landed the hero is a separate ticket) PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from F8 seq 4703
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:05, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 evening gate (COMPILE_GATE_OK Builds/cg-wave11.log, REGRESSION_OK 456/456 Builds/reg-wave11.log 14:19); reaches the Seeker with the next tester build; owner felt-test closes it. (fail-closed drop + the single boundary owner; the crossing that never landed the hero is a separate ticket) PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from F8 seq 4703
 **Silo / Lane:** Village/World - `Assets/_Modules/Village/World/HollowRoadsDropInjector.cs` (~:495-512, the arrival check), `BiomeRoads` (the region split / ZoneName), `ZoneManager`
 **Type:** EXISTING system, DEFECT (the prompt lied)
 **Priority:** P2

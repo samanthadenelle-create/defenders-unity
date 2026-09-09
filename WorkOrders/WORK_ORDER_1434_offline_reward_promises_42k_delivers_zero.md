@@ -1,6 +1,6 @@
 # WO-1434: the Welcome Back screen advertises 42,782 resources, delivers ZERO, and hides the two biggest rows
 
-**Status:** FIXED - ON THE SEEKER 2026.09.07.358574 - landed in `5bc5025f5` (see RESULT); the zero-headroom popup PNG is still owed. The latent Grant remainder defect found while verifying is WO-1445.
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:09:46, build 2026.09.08.361259). PRIOR STATUS: FIXED - ON THE SEEKER 2026.09.07.358574 - landed in `5bc5025f5` (see RESULT); the zero-headroom popup PNG is still owed. The latent Grant remainder defect found while verifying is WO-1445.
 **Silo:** Village/Harvest + Core/Economy + the WelcomeBackPopup view. Disjoint from the Manage 2000-block.
 **Source:** owner felt-test 2026-09-06 on build **2026.09.06.358161**, two messages:
 > *"something seems wrong with the reward for offline"* / *"this screen too. Way too much here"*

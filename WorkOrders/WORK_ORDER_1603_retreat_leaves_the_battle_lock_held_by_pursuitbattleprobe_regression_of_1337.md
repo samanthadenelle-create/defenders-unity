@@ -1,6 +1,6 @@
 # WORK ORDER 1603 - Retreat leaves the battle lock HELD by PursuitBattleProbe again (regression of WO-1337, closed on the owner's Pass this morning)
 
-**Status:** FIXED - implemented in the 2026-09-07 evening gate (COMPILE_GATE_OK Builds/cg-wave11.log, REGRESSION_OK 456/456 Builds/reg-wave11.log 14:19); reaches the Seeker with the next tester build; owner felt-test closes it. (instrumentation + the dead-hero pulse guard; the device pulser is named by the next capture) PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from F8 seq 4701/4702
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:05, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 evening gate (COMPILE_GATE_OK Builds/cg-wave11.log, REGRESSION_OK 456/456 Builds/reg-wave11.log 14:19); reaches the Seeker with the next tester build; owner felt-test closes it. (instrumentation + the dead-hero pulse guard; the device pulser is named by the next capture) PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from F8 seq 4701/4702
 **Silo / Lane:** Core/Combat - `Assets/_Modules/Core/Combat/PursuitBattleProbe.cs`, the retreat path (`BattleQuiescenceGate`, WO-1127/1308/1337 seams), the pursuit pulse owner (Enemy/EnemyBrain aggro tick)
 **Type:** EXISTING system, REGRESSION
 **Priority:** P1 - combat input stays suppressed and the HUD cannot return to town after a retreat

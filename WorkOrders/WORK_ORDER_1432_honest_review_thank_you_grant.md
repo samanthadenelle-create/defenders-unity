@@ -1,6 +1,6 @@
 # WO-1432: the "enjoying the game? leave an honest review" thank-you grant
 
-**Status:** FIXED - ON THE SEEKER 2026.09.07.358574 - landed in `5bc5025f5` (see RESULT); the section 4 decision is CLOSED (owner, 2026-09-06: **Option B**).
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:10:45, build 2026.09.08.361259). PRIOR STATUS: FIXED - ON THE SEEKER 2026.09.07.358574 - landed in `5bc5025f5` (see RESULT); the section 4 decision is CLOSED (owner, 2026-09-06: **Option B**).
 **Silo:** Core/UI + Core/Economy + Core/State. File-disjoint from the Manage 2000-block and from the build hub.
 **Source:** owner, 2026-09-06, verbatim across three messages:
 > *"I would love to add a screen after first few minutes, enjoying playing? Leave a review and get an

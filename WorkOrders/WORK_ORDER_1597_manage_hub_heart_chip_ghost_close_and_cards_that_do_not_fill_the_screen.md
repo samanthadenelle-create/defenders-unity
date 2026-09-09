@@ -1,6 +1,6 @@
 # WORK ORDER 1597 - Manage hub: the HEART chip has no reason to be there unless an upgrade is due, a ghost CLOSE sits under the cards, and the three cards fill half the screen with empty wells
 
-**Status:** FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's device and words
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:10:48, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's device and words
 **Silo / Lane:** Village/UI Manage hub - `Assets/_Modules/Village/UI/Manage/ManageScreenPanel.cs` (BuildLauncher / hub cards / `BuildHubHeartDoor` ~:436-480, ~:2020-2045), `ManageScreenVM.cs` (`OpenHeartRequested`), `Assets/_Modules/Core/Manage/ManageArt.cs` (hub art keys :132-134), suite `ManageMockupConformanceRegression`
 **Type:** EXISTING system, owner ruling on the last unmatched screen
 **Priority:** P1 - "its the only one wrong" (the other eight Manage screens closed on her Pass this morning)

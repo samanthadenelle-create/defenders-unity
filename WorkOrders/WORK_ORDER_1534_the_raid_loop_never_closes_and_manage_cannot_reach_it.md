@@ -1,6 +1,6 @@
 # WO-1534: the raid loop never closes, and three Manage tickets are DONE against a design that was reversed
 
-**Status:** FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY - PARTIAL: one gate run owed, plus the §G4 owner felt checks. **Measured at HEAD
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:55, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 afternoon gate wave (COMPILE_GATE_OK Builds/cg-wave10h.log, REGRESSION_OK 454/454 Builds/reg-wave10d.log 13:05); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY - PARTIAL: one gate run owed, plus the §G4 owner felt checks. **Measured at HEAD
 2026-09-07 (§G): Parts A1-A6 and B2-B5 ALL LANDED** in `d6511b8e5` / `c0c30f715` while this ticket sat;
 B1 landed 2026-09-06 (RESULT file). The only code item left is `BuildInventoryFilterRegression` **case 7**,
 written this lane and **unrun** — flip on `REGRESSION_OK <n>/<n>` from a fresh log. Both status words are

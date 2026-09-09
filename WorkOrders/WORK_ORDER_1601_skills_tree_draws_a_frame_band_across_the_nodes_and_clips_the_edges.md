@@ -1,6 +1,6 @@
 # WORK ORDER 1601 - The Skills tree draws a wide gold frame band straight across the nodes, and the outer nodes are clipped at the panel edges
 
-**Status:** FIXED - implemented in the 2026-09-07 evening gate (COMPILE_GATE_OK Builds/cg-wave11.log, REGRESSION_OK 456/456 Builds/reg-wave11.log 14:19); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's reset screenshot
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:10:47, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 evening gate (COMPILE_GATE_OK Builds/cg-wave11.log, REGRESSION_OK 456/456 Builds/reg-wave11.log 14:19); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's reset screenshot
 **Silo / Lane:** Village/Hero skills - `HeroSkillTreePanelMvvm` (log: `[Flow:UI] HeroSkillTreePanelMvvm created (single instance)` 13:28:40 / 13:29:06), its layout and the kit frame it draws
 **Type:** EXISTING system, LAYOUT DEFECT
 **Priority:** P1 - the screen is unreadable

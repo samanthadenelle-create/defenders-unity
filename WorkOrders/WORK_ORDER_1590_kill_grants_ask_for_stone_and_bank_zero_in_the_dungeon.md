@@ -1,6 +1,6 @@
 # WORK ORDER 1590 - Every dungeon kill asks for 8 Stone and banks 0: the material grant shortfalls on Stone while Wood and Iron land in full
 
-**Status:** FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's device log
+**Status:** CLOSED 2026-09-08 - owner felt-test PASS (validated 2026-09-09T02:08:52, build 2026.09.08.361259). PRIOR STATUS: FIXED - implemented in the 2026-09-07 gate wave (COMPILE_GATE_OK Builds/cg-wave9.log 10:40, REGRESSION_OK 446/446 Builds/reg-wave9.log 11:02); reaches the Seeker with the next tester build; owner felt-test closes it. PRIOR STATUS: READY TO IMPLEMENT (instrument first) - minted 2026-09-07 (CLI) from the owner's device log
 **Silo / Lane:** Village/Enemies reward grant - `Assets/_Modules/Village/Enemies/Enemy.cs:3515` (the SHORTFALL warn) and the economy sink it calls; `EconomyService` / the Stone lane (WO-1416 "the quarry pays stone - one producer three answers")
 **Type:** EXISTING system, DEFECT (a promised grant not paid)
 **Priority:** P2
