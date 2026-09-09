@@ -1515,6 +1515,34 @@ MonoBehaviour:
     m_Key: hud.combat.flee.confirm
     m_Metadata:
       m_Items: []
+  - m_Id: 41003251944435712
+    m_Key: storeBuyClosed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601536
+    m_Key: storeBuyRailNotReady
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601537
+    m_Key: storeBuyWalletRequired
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601538
+    m_Key: storeBuyWalletRequiredCrypto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601539
+    m_Key: storeBuyWalletRequiredCta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601540
+    m_Key: storeBuyComingSoon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601541
+    m_Key: storeShelfClosed
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

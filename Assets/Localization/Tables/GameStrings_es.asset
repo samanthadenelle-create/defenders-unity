@@ -1677,6 +1677,43 @@ MonoBehaviour:
     m_Localized: "\xBFHuir?"
     m_Metadata:
       m_Items: []
+  - m_Id: 41003251944435712
+    m_Localized: "Las compras a\xFAn no est\xE1n disponibles. Todo lo que hay aqu\xED
+      se puede conseguir jugando."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601536
+    m_Localized: "El sistema de pago no est\xE1 listo en esta versi\xF3n, as\xED
+      que no se ha realizado ning\xFAn cargo. Vuelve a intentarlo despu\xE9s de la
+      pr\xF3xima actualizaci\xF3n."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601537
+    m_Localized: "Los paquetes de m\xE1s de {0} requieren una billetera conectada
+      para que tus compras sigan siendo tuyas si reinstalas el juego o cambias de
+      tel\xE9fono. Conecta una billetera para comprar este paquete; ahora mismo puedes
+      comprar sin ella cualquier paquete de {0} o menos."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 41003251969601538
+    m_Localized: Conecta una billetera para que esta compra siga siendo tuya en todos
+      tus dispositivos.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601539
+    m_Localized: Conectar billetera
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601540
+    m_Localized: "Pr\xF3ximamente"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601541
+    m_Localized: "Pr\xF3ximamente: las compras no est\xE1n disponibles en esta versi\xF3n.
+      No necesitas nada de aqu\xED para jugar."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1715,3 +1752,4 @@ MonoBehaviour:
         - id: 40992049398853638
         - id: 40992049398853639
         - id: 40992049398853640
+        - id: 41003251969601537

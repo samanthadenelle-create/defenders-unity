@@ -1694,6 +1694,43 @@ MonoBehaviour:
     m_Localized: Fuir ?
     m_Metadata:
       m_Items: []
+  - m_Id: 41003251944435712
+    m_Localized: "Les achats ne sont pas encore disponibles. Tout ce qui se trouve
+      ici peut toujours \xEAtre obtenu en jouant."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601536
+    m_Localized: "Le syst\xE8me de paiement n\u2019est pas pr\xEAt dans cette version,
+      aucun montant n\u2019a donc \xE9t\xE9 d\xE9bit\xE9. R\xE9essayez apr\xE8s la
+      prochaine mise \xE0 jour."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601537
+    m_Localized: "Les packs de plus de {0} n\xE9cessitent un portefeuille connect\xE9
+      afin que vos achats restent \xE0 vous si vous r\xE9installez le jeu ou changez
+      de t\xE9l\xE9phone. Connectez un portefeuille pour acheter ce pack ; vous pouvez
+      acheter d\xE8s maintenant sans portefeuille tout pack \xE0 {0} ou moins."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 41003251969601538
+    m_Localized: "Connectez un portefeuille afin que cet achat reste \xE0 vous sur
+      tous vos appareils."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601539
+    m_Localized: Connecter le portefeuille
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601540
+    m_Localized: "Bient\xF4t disponible"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601541
+    m_Localized: "Bient\xF4t disponible : les achats ne sont pas ouverts dans cette
+      version. Rien ici n\u2019est n\xE9cessaire pour jouer."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1732,3 +1769,4 @@ MonoBehaviour:
         - id: 40992049398853638
         - id: 40992049398853639
         - id: 40992049398853640
+        - id: 41003251969601537

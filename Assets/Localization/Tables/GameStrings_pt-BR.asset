@@ -1680,6 +1680,42 @@ MonoBehaviour:
     m_Localized: Fugir?
     m_Metadata:
       m_Items: []
+  - m_Id: 41003251944435712
+    m_Localized: "As compras ainda n\xE3o est\xE3o dispon\xEDveis. Tudo o que est\xE1
+      aqui pode ser obtido dentro do jogo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601536
+    m_Localized: "O sistema de pagamento ainda n\xE3o est\xE1 pronto nesta vers\xE3o,
+      ent\xE3o nada foi cobrado. Tente novamente ap\xF3s a pr\xF3xima atualiza\xE7\xE3o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601537
+    m_Localized: "Pacotes acima de {0} exigem uma carteira conectada para que suas
+      compras continuem sendo suas se voc\xEA reinstalar o jogo ou trocar de celular.
+      Conecte uma carteira para comprar este pacote; qualquer pacote de {0} ou menos
+      pode ser comprado agora mesmo sem ela."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 41003251969601538
+    m_Localized: Conecte uma carteira para que esta compra continue sendo sua em
+      todos os seus dispositivos.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601539
+    m_Localized: Conectar carteira
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601540
+    m_Localized: Em breve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601541
+    m_Localized: "Em breve: as compras n\xE3o est\xE3o dispon\xEDveis nesta vers\xE3o.
+      Nada daqui \xE9 necess\xE1rio para jogar."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1718,3 +1754,4 @@ MonoBehaviour:
         - id: 40992049398853638
         - id: 40992049398853639
         - id: 40992049398853640
+        - id: 41003251969601537

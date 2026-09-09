@@ -1687,6 +1687,42 @@ MonoBehaviour:
     m_Localized: Fliehen?
     m_Metadata:
       m_Items: []
+  - m_Id: 41003251944435712
+    m_Localized: "K\xE4ufe sind noch nicht verf\xFCgbar. Alles hier kann weiterhin
+      im Spiel verdient werden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601536
+    m_Localized: "Das Zahlungssystem ist in dieser Version noch nicht bereit, daher
+      wurde nichts berechnet. Versuche es nach dem n\xE4chsten Update erneut."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601537
+    m_Localized: "F\xFCr Pakete \xFCber {0} muss eine Wallet verbunden sein, damit
+      deine K\xE4ufe dir auch nach einer Neuinstallation oder einem Handywechsel
+      erhalten bleiben. Verbinde eine Wallet, um dieses Paket zu kaufen; Pakete f\xFCr
+      {0} oder weniger kannst du jetzt auch ohne Wallet kaufen."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 41003251969601538
+    m_Localized: "Verbinde eine Wallet, damit dieser Kauf auf all deinen Ger\xE4ten
+      dir geh\xF6rt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601539
+    m_Localized: Wallet verbinden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601540
+    m_Localized: "Demn\xE4chst"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41003251969601541
+    m_Localized: "Demn\xE4chst: K\xE4ufe sind in dieser Version noch nicht verf\xFCgbar.
+      Nichts hier ist zum Spielen erforderlich."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1725,3 +1761,4 @@ MonoBehaviour:
         - id: 40992049398853638
         - id: 40992049398853639
         - id: 40992049398853640
+        - id: 41003251969601537
