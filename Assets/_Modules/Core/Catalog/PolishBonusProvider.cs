@@ -34,7 +34,11 @@
 // so no call site ever hardcodes a platform check.
 // =============================================================================
 
+using System;
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.Platform;
+using DeNelle.Core.State;
+using UnityEngine;
 
 namespace DeNelle.Core.Catalog
 {
@@ -59,12 +63,30 @@ namespace DeNelle.Core.Catalog
     }
 
     /// <summary>
+    /// Reads the active native SKR stake through the single read-only staking seam. A positive,
+    /// verified active stake grants one weekly re-roll; 10,000+ SKR also raises the per-stone cap.
+    /// The provider never owns a wallet, RPC client, probability, or outcome table.
+    /// </summary>
+    public sealed class NativeSkrPolishBonus : IPolishBonusProvider
+    {
+        public const long ExpandedRollCapStake = 10_000L;
+
+        private static StakeStanding Standing => StakeRewardsResolver.Resolve();
+
+        public int ExtraWeeklyRerolls => Standing.HasStake ? 1 : 0;
+        public int RollCapDelta => Standing.HasStake && Standing.ActiveStake >= ExpandedRollCapStake ? 1 : 0;
+    }
+
+    /// <summary>
     /// The installed provider, plus the flag gate. Query through here, never through a provider
     /// reference held at a call site — that is what keeps the platform flag in exactly one place.
     /// </summary>
     public static class PolishBonuses
     {
         private const string Sys = "JewelPolish";
+        private const string WeeklyPeriodKey = "jewelpolish.stake.week";
+        private const string WeeklyUsedKey = "jewelpolish.stake.used";
+        private const double WeekMs = 7d * 24d * 60d * 60d * 1000d;
         private static readonly IPolishBonusProvider Zero = new NoPolishBonus();
         private static IPolishBonusProvider _installed;
 
@@ -98,5 +120,52 @@ namespace DeNelle.Core.Catalog
 
         /// <summary>Roll-cap bonus. 0 unless a provider is installed AND the flag is on.</summary>
         public static int RollCapDelta => Active.RollCapDelta;
+
+        /// <summary>Unspent native-staker re-rolls in the current fixed seven-day period.</summary>
+        public static int WeeklyRerollsRemaining
+        {
+            get
+            {
+                int allowance = Math.Max(0, ExtraWeeklyRerolls);
+                if (allowance == 0) return 0;
+                RefreshWeeklyPeriod();
+                return Math.Max(0, allowance - Math.Max(0, PlayerPrefs.GetInt(WeeklyUsedKey, 0)));
+            }
+        }
+
+        /// <summary>
+        /// Consumes one weekly attempt only after the normal per-stone allowance is exhausted.
+        /// The period uses the server-anchored clock when available and is reconciled by the same
+        /// backend clock used by other timed allowances; offline falls back to device UTC.
+        /// </summary>
+        public static bool TryConsumeWeeklyReroll()
+        {
+            if (WeeklyRerollsRemaining <= 0) return false;
+            int used = Math.Max(0, PlayerPrefs.GetInt(WeeklyUsedKey, 0)) + 1;
+            PlayerPrefs.SetInt(WeeklyUsedKey, used);
+            PlayerPrefs.Save();
+            FlowTrace.Step(Sys, $"native SKR weekly re-roll CONSUMED: {used}/{Math.Max(0, ExtraWeeklyRerolls)} used.");
+            return true;
+        }
+
+        private static void RefreshWeeklyPeriod()
+        {
+            double nowMs;
+            if (!ServerClock.TryNowUnixMs(out nowMs))
+                nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            int period = (int)Math.Floor(Math.Max(0d, nowMs) / WeekMs);
+            if (PlayerPrefs.GetInt(WeeklyPeriodKey, -1) == period) return;
+            PlayerPrefs.SetInt(WeeklyPeriodKey, period);
+            PlayerPrefs.SetInt(WeeklyUsedKey, 0);
+            PlayerPrefs.Save();
+            FlowTrace.Step(Sys, $"native SKR weekly re-roll period advanced to {period}; usage reset.");
+        }
+    }
+
+    /// <summary>Installs the real attempt-only adapter. The distribution flag remains authoritative.</summary>
+    public static class NativeSkrPolishBonusBootstrap
+    {
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Install() => PolishBonuses.Install(new NativeSkrPolishBonus());
     }
 }

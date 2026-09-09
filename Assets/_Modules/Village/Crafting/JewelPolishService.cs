@@ -249,7 +249,9 @@ namespace DeNelle.Village.Crafting
             // attempts a single stone can ever absorb even if none of them shatter. Without it, an
             // unlucky-but-patient player could still grind one stone indefinitely.
             // ⚠ The cap may be RAISED by an attempt bonus (staking grants ATTEMPTS, never odds).
-            if (DungeonRunPayout.RollsLeft <= 0)
+            bool useWeeklyStakeReroll = DungeonRunPayout.RollsLeft <= 0 &&
+                                        PolishBonuses.WeeklyRerollsRemaining > 0;
+            if (DungeonRunPayout.RollsLeft <= 0 && !useWeeklyStakeReroll)
             {
                 failure = "This stone has been worked as far as it will go.";
                 FlowTrace.Step(Sys, $"re-polish refused: roll cap reached " +
@@ -257,8 +259,17 @@ namespace DeNelle.Village.Crafting
                 return false;
             }
 
-            return TryStart(gemId, JewelPolishCatalog.RePolishScore,
-                            JewelPolishCatalog.RePolishSeconds, "re-polish", out failure);
+            bool started = TryStart(gemId, JewelPolishCatalog.RePolishScore,
+                                    JewelPolishCatalog.RePolishSeconds, "re-polish", out failure);
+            if (started && useWeeklyStakeReroll)
+            {
+                if (PolishBonuses.TryConsumeWeeklyReroll())
+                    FlowTrace.Step(Sys, "re-polish used the verified native SKR weekly bonus attempt.");
+                else
+                    FlowTrace.Fail(Sys, "re-polish started after a native SKR weekly bonus check, but the " +
+                                        "allowance could not be consumed. Inspect the stake/time authority.");
+            }
+            return started;
         }
 
         private static bool TryStart(string inputItemId, int score, float seconds, string verb,
@@ -529,6 +540,7 @@ namespace DeNelle.Village.Crafting
 
                 inv.Add(gemId, 1);
                 FlowTrace.Step(Sys, $"polish COMPLETE: '{input}' (score {score}) -> '{gemId}' granted.");
+                JewelPolishFlowPanel.ShowReveal(gemId);
             }
         }
 

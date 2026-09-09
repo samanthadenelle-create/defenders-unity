@@ -355,11 +355,15 @@ namespace DeNelle.Editor
                         continue;
                     }
                 }
+                // Attempt/cap authorization legitimately consults the provider earlier in the
+                // service. Only the outcome/disclosure surface must be structurally blind to it.
+                int outcomeAt = svc.IndexOf("public static string RollOutcome", StringComparison.Ordinal);
+                string outcomeAndDisclosure = outcomeAt >= 0 ? svc.Substring(outcomeAt) : svc;
                 foreach (var banned in new[] { "PolishBonuses", "IPolishBonusProvider" })
                 {
-                    if (svc.IndexOf(banned, StringComparison.Ordinal) < 0) continue;
+                    if (outcomeAndDisclosure.IndexOf(banned, StringComparison.Ordinal) < 0) continue;
                     failures.Add(
-                        $"FAIRNESS BROKEN: JewelPolishService references {banned}. The bonus provider " +
+                        $"FAIRNESS BROKEN: JewelPolishService outcome/disclosure references {banned}. The bonus provider " +
                         "grants ATTEMPTS ONLY and must never be visible to the roll or to the disclosed " +
                         "odds - a staker's roll must be exactly as likely as a free player's. The owner " +
                         "explicitly replaced a proposed +5% staker odds bonus with extra attempts for " +

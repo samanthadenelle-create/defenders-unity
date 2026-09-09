@@ -848,16 +848,69 @@
           ],
           "options": [
             {
-              "text": "I'd like to buy.",
+              "text": "Buy supplies.",
               "goto": "open_buy"
             },
             {
-              "text": "I'd like to sell.",
+              "text": "Sell items.",
               "goto": "open_sell"
+            },
+            {
+              "text": "Craft.",
+              "goto": "craft_categories"
             },
             {
               "text": "Just passing through.",
               "goto": "end"
+            }
+          ]
+        },
+        {
+          "id": "craft_categories",
+          "options": [
+            {
+              "text": "Potions and consumables.",
+              "goto": "open_alchemy"
+            },
+            {
+              "text": "Rings and amulets.",
+              "goto": "open_jewelry"
+            },
+            {
+              "text": "Polish a stone.",
+              "goto": "open_polish",
+              "requires": "jeweler_unlocked"
+            },
+            {
+              "text": "Back.",
+              "goto": "talk"
+            }
+          ]
+        },
+        {
+          "id": "open_alchemy",
+          "commands": [
+            {
+              "verb": "OpenAlchemy",
+              "args": []
+            }
+          ]
+        },
+        {
+          "id": "open_jewelry",
+          "commands": [
+            {
+              "verb": "OpenJeweler",
+              "args": []
+            }
+          ]
+        },
+        {
+          "id": "open_polish",
+          "commands": [
+            {
+              "verb": "OpenRoughStonePolish",
+              "args": []
             }
           ]
         },

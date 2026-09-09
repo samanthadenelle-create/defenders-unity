@@ -1,9 +1,11 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using DeNelle.Core;
 using DeNelle.Core.Catalog;
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.Platform;
 using DeNelle.Core.State;
 using DeNelle.Core.UI;
 
@@ -68,9 +70,11 @@ namespace DeNelle.Village.Crafting
     public sealed class JewelerDiscoveryFtue : MonoBehaviour
     {
         public const string CompletionKey = "ftue.jeweler.first_polish";
-        public const string DiscoveryCopy = "You recovered a rare rough stone. This first find is guaranteed; future stones are uncommon, and not every dungeon holds one.";
+        public const string GuidanceHighlightId = "world.jeweler";
         private static JewelerDiscoveryFtue _instance;
         private ElarionUiKit.ObsidianModal _modal;
+        private TMP_Text _body;
+        private TMP_Text _stakeStatus;
         private PanelHandle _panel;
         private WorldHold.Handle _hold;
 
@@ -85,8 +89,11 @@ namespace DeNelle.Village.Crafting
 
         private void OnEnable()
         {
+            TutorialHighlightRegistry.RegisterResolver(GuidanceHighlightId,
+                () => new HighlightTarget(ResolveJewelerTarget()));
             SceneManager.sceneLoaded += OnSceneLoaded;
             JewelPolishService.FirstPolishActionStarted += Complete;
+            StakeRewardsResolver.StakeChanged += OnStakeChanged;
             GameStateService.NewGameStarted += OnNewGameStarted;
             TryPresent();
         }
@@ -95,8 +102,11 @@ namespace DeNelle.Village.Crafting
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
             JewelPolishService.FirstPolishActionStarted -= Complete;
+            StakeRewardsResolver.StakeChanged -= OnStakeChanged;
             GameStateService.NewGameStarted -= OnNewGameStarted;
-            Close();
+            TutorialHighlightRegistry.Unregister(GuidanceHighlightId);
+            CloseInternal(resumeGuidance: false);
+            HideGuidance();
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => TryPresent();
@@ -110,12 +120,13 @@ namespace DeNelle.Village.Crafting
         /// </summary>
         private void OnNewGameStarted()
         {
-            if (_modal == null) return;
-            FlowTrace.Step("JewelerFtue",
-                "NewGameStarted: dismissing a STANDING discovery card - the reset cleared " +
-                "carrier=GameState.EverAcquiredItemIds['" + DungeonExclusiveItems.RoughStoneId +
-                "'], so the evidence this card reports no longer exists.");
-            Close();
+            if (_modal != null)
+                FlowTrace.Step("JewelerFtue",
+                    "NewGameStarted: dismissing a STANDING discovery card - the reset cleared " +
+                    "carrier=GameState.EverAcquiredItemIds['" + DungeonExclusiveItems.RoughStoneId +
+                    "'], so the evidence this card reports no longer exists.");
+            CloseInternal(resumeGuidance: false);
+            HideGuidance();
         }
 
         private static bool Completed
@@ -178,10 +189,12 @@ namespace DeNelle.Village.Crafting
             {
                 // A card the world no longer justifies is DISMISSED, never left standing:
                 // this is the half that stops a Title-raised card riding START NEW into town.
-                if (_modal != null) Close();
+                if (_modal != null) CloseInternal(resumeGuidance: false);
+                HideGuidance();
                 return;
             }
             if (_modal != null) return;
+            HideGuidance();
             Present();
         }
 
@@ -199,7 +212,7 @@ namespace DeNelle.Village.Crafting
             // observe _modal null (the probe is polled later, not evaluated here).
             _hold = WorldHold.AcquirePlayerOwned("jeweler-discovery",
                 () => this != null && _modal != null && _modal.canvas != null);
-            _modal = ElarionUiKit.BuildObsidianModal("JewelerDiscoveryUI", "JEWELER DISCOVERED",
+            _modal = ElarionUiKit.BuildObsidianModal("JewelerDiscoveryUI", JewelerDiscoveryText.Title.Resolve(),
                 ElarionUiKit.ModalArchetype.Compact, Close, sortingOrder: 31030);
             MedievalUiSkin.ApplyShell(_modal.chrome, compact: true);
             _panel = PanelManager.Register("Jeweler Discovery", Close,
@@ -240,15 +253,68 @@ namespace DeNelle.Village.Crafting
             // Copy occupies the upper part of the well; the verb takes the lower band with a gap.
             // No overflowMode here: FitBlock owns wrapping + Truncate + bounded auto-size, so the
             // copy shrinks to its plate instead of spilling past it.
-            var body = ElarionUiKit.Label(well,
-                DiscoveryCopy + "\n\nCrafting transforms materials you own. The Jeweler can polish this raw stone into a refined gem.",
-                0.30f, 0.94f, ElarionUi.Parchment, ElarionUi.FontBody,
-                TextAlignmentOptions.TopLeft, 0.02f, 0.98f);
-            body.enableWordWrapping = true;
-            ElarionUiKit.FitBlock(body, ElarionUi.FontFloorMobile, ElarionUi.FontBody);
-            var open = ElarionUiKit.Button(well, "Open Crafting: Jeweler", ElarionUiKit.ButtonKind.Gold,
+            BuildRoughStoneImage(well);
+            _body = ElarionUiKit.Label(well, DiscoveryBodyCopy(),
+                0.50f, 0.68f, ElarionUi.Parchment, ElarionUi.FontBody,
+                TextAlignmentOptions.Top, 0.05f, 0.95f);
+            _body.enableWordWrapping = true;
+            ElarionUiKit.FitBlock(_body, ElarionUi.FontFloorMobile, ElarionUi.FontBody);
+            _stakeStatus = ElarionUiKit.Label(well, NativeStakeBonusLine(),
+                0.29f, 0.50f, ElarionUi.Gilt, ElarionUi.FontLabel,
+                TextAlignmentOptions.Center, 0.05f, 0.95f);
+            _stakeStatus.enableWordWrapping = true;
+            ElarionUiKit.FitBlock(_stakeStatus, ElarionUi.FontFloorMobile, ElarionUi.FontLabel);
+            var open = ElarionUiKit.Button(well, JewelerDiscoveryText.OpenJeweler.Resolve(), ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.04f, 0.02f), new Vector2(0.96f, 0.24f), OpenJeweler);
             MedievalUiSkin.ApplyButton(open, primary: true);
+        }
+
+        private static void BuildRoughStoneImage(Transform well)
+        {
+            const string artKey = "ItemIcons/ing_rough_stone";
+            Sprite stone = Resources.Load<Sprite>(artKey);
+            if (stone == null)
+            {
+                FlowTrace.Warn("JewelerFtue", "rough-stone image missing at Resources/" + artKey +
+                                               "; the card will keep its translated rare-item copy.");
+                return;
+            }
+            GameObject art = ElarionUiKit.AddImage(well, "RoughStoneImage",
+                new Vector2(0.32f, 0.66f), new Vector2(0.68f, 0.96f), Color.white, rounded: false);
+            Image image = art != null ? art.GetComponent<Image>() : null;
+            if (image == null) return;
+            image.sprite = stone;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+        }
+
+        private static string DiscoveryBodyCopy() => JewelerDiscoveryText.Body.Resolve();
+
+        private void OnStakeChanged()
+        {
+            if (_stakeStatus == null) return;
+            _stakeStatus.text = NativeStakeBonusLine();
+            ElarionUiKit.FitBlock(_stakeStatus, ElarionUi.FontFloorMobile, ElarionUi.FontLabel);
+            FlowTrace.Step("JewelerFtue", "native SKR stake read completed; discovery entitlement line refreshed.");
+        }
+
+        private static string NativeStakeBonusLine()
+        {
+#if DAPP_STORE
+            IStakeQuery query = StakeRewardsResolver.Query;
+            if (query == null || !query.TryGetActiveStake(out _))
+                return JewelerDiscoveryText.StakeChecking.Resolve();
+            StakeStanding standing = StakeRewardsResolver.Resolve();
+            if (standing.HasStake && PolishBonuses.ExtraWeeklyRerolls > 0)
+            {
+                return (PolishBonuses.RollCapDelta > 0
+                    ? JewelerDiscoveryText.StakeVerifiedHighTier
+                    : JewelerDiscoveryText.StakeVerified).Resolve();
+            }
+            return JewelerDiscoveryText.StakeNotVerified.Resolve();
+#else
+            return string.Empty;
+#endif
         }
 
         private void OpenJeweler()
@@ -260,7 +326,39 @@ namespace DeNelle.Village.Crafting
         private void Complete()
         {
             GameStateService.Instance?.MarkTutorialSeen(CompletionKey);
-            Close();
+            CloseInternal(resumeGuidance: false);
+            HideGuidance();
+        }
+
+        private static Transform ResolveJewelerTarget()
+        {
+            // Point at the storefront speaker the player naturally meets. It now routes
+            // into the same polishing panel as the separate runtime bench. The bench is
+            // a safe fallback while the placed storefront/NPC finishes spawning.
+            var storefront = GameObject.Find("CastleVendor_Jeweler");
+            if (storefront != null) return storefront.transform;
+            var bench = GameObject.Find("CastleVendor_JewelersBench");
+            return bench != null ? bench.transform : null;
+        }
+
+        private void RefreshGuidance()
+        {
+            if (_modal != null) return;
+            string scene = SceneManager.GetActiveScene().name ?? string.Empty;
+            if (!ShouldPresent(scene, out _)) { HideGuidance(); return; }
+
+            ObjectiveStripUi.Show(JewelerDiscoveryText.Guidance.Resolve());
+            DeNelle.Village.FtueWorldPointer.TryShow(GuidanceHighlightId);
+            FlowTrace.Step("JewelerFtue",
+                "persistent guidance ARMED: objective strip + world pointer -> '" +
+                GuidanceHighlightId + "'; remains until FirstPolishActionStarted.");
+        }
+
+        private static void HideGuidance()
+        {
+            ObjectiveStripUi.Hide();
+            if (DeNelle.Village.FtueWorldPointer.ArmedTargetId == GuidanceHighlightId)
+                DeNelle.Village.FtueWorldPointer.Hide();
         }
 
         // WO-1471: the per-frame renew Update is DELETED - it was the workaround for
@@ -268,14 +366,17 @@ namespace DeNelle.Village.Crafting
         // WO-1360/WO-1471: with no ceiling the host's own lifecycle is the net, so this component
         // steps out on BOTH exits. OnDisable already calls Close(); a destroyed host never receives
         // OnDisable in every teardown order, so OnDestroy releases the hold and the card together.
-        private void OnDestroy() => Close();
+        private void OnDestroy() => CloseInternal(resumeGuidance: false);
 
-        private void Close()
+        private void Close() => CloseInternal(resumeGuidance: true);
+
+        private void CloseInternal(bool resumeGuidance)
         {
             if (_panel != null) PanelManager.NotifyClosed(_panel);
             _hold?.Dispose(); _hold = null;
             if (_modal != null && _modal.canvas != null) Destroy(_modal.canvas);
-            _modal = null; _panel = null;
+            _modal = null; _panel = null; _body = null; _stakeStatus = null;
+            if (resumeGuidance) RefreshGuidance();
         }
     }
 }

@@ -387,6 +387,7 @@ namespace DeNelle.Editor
             if (c.StartsWith("pet_owned_")) return true;
             if (c.StartsWith("pet_grantable_")) return true;
             if (c == "pet_select_closed") return true;
+            if (c == "jeweler_unlocked") return true;
             if (c == "onboarded") return true;
             return false;
         }

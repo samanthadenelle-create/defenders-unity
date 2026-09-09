@@ -167,7 +167,23 @@ namespace DeNelle.Core.Platform
         /// <see cref="MockStakeQuery"/>. Assigning a real read-only chain reader here lights up the
         /// live path with zero call-site changes.
         /// </summary>
-        public static IStakeQuery Query { get; set; } = new UnavailableStakeQuery();
+        private static IStakeQuery _query = new UnavailableStakeQuery();
+
+        /// <summary>Raised when the wallet-backed read completes or its cached amount changes.</summary>
+        public static event Action StakeChanged;
+
+        public static IStakeQuery Query
+        {
+            get => _query;
+            set
+            {
+                _query = value ?? new UnavailableStakeQuery();
+                StakeChanged?.Invoke();
+            }
+        }
+
+        /// <summary>Lets an asynchronous query announce that its cached on-chain value changed.</summary>
+        public static void NotifyStakeChanged() => StakeChanged?.Invoke();
 
         // =====================================================================
         //  Public resolve API

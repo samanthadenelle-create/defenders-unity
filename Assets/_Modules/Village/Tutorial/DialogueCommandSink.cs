@@ -101,6 +101,7 @@ namespace DeNelle.Village
                 // dialogue ends by opening the jewelry-crafting bench — the SAME panel the station's own
                 // BuildingInteractable opens (BuildingType.JewelersBench route). Mirrors OpenAlchemy.
                 case "OpenJeweler":    PanelRouter.Open(PanelId.JewelerCrafting); break;
+                case "OpenRoughStonePolish": Crafting.JewelPolishFlowPanel.ShowStart(); break;
                 // EYES-SWEEP 2026-07-06: legacy PanelId.HeroTalents route REMOVED (dead panel;
                 // rendered black). One panel, one route: HeroSkillTree.
                 case "OpenTalents":    PanelRouter.Open(PanelId.HeroSkillTree); break;
@@ -408,7 +409,7 @@ namespace DeNelle.Village
         // ── Conditions → live game state ─────────────────────────────────────────
         // Keys: !<key> (negation) · quest_<id>_active · quest_<id>_done ·
         //       keystone_<name> · keystone_count_min_<n> · pet_owned_<species> ·
-        //       pet_grantable_<species> · pet_select_closed · onboarded.
+        //       pet_grantable_<species> · pet_select_closed · jeweler_unlocked · onboarded.
         //       Unknown => false (logged).
         public bool Check(string condition)
         {
@@ -464,6 +465,12 @@ namespace DeNelle.Village
                 bool ownsAny = acq.Owns("ice-wolf") || acq.Owns("flame-pup") || acq.Owns("aether-sprite");
                 return ownsAny && acq.FilledSlotCount >= acq.MaxSlots;
             }
+
+            // The storefront and bench converge on the same polishing panel only after
+            // the first dungeon-earned rough stone. Before then, hide the route instead
+            // of advertising a destination that correctly refuses to open.
+            if (condition == "jeweler_unlocked")
+                return DeNelle.Village.Crafting.JewelerProgression.IsUnlocked;
 
             if (condition == "onboarded")
             {
