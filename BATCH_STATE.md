@@ -908,6 +908,9 @@ Cost chips: wood/stone still word-fallback where the currency sprite is missing 
   `LOCALIZATION_REGRESSION_OK 7/7 suites`.
   Full evidence: `Builds/data-regression-localization-final2.log`,
   `REGRESSION_OK 462/462 suites`.
+- Fresh mixed-tree evidence `Builds/data-regression-localization-store-cohorts-final.log` is 460/463:
+  one collector source-shape assertion, five legacy HUD canon-parity assertions, and the Flee suite's
+  missing registration in the dirty `DataRegression` edit. The focused localization lane remains 7/7.
 - Manifest generation/check is deterministic: 6,013 report rows. It remains deliberately
   unreviewed; 2,994 exact C# fingerprints still require domain classification before the
   new-debt ratchet can be armed.

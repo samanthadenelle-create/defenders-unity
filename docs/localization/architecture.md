@@ -88,8 +88,11 @@ license, atlas, and their Unity metadata are all tracked.
 Run `tools/localization/run-localization-overnight.ps1` with Unity closed. It verifies the manifest,
 runs the seven focused localization suites, runs the complete data regression, and captures Settings
 top, Settings language controls, and HUD at 2670 x 1200 for every build-enabled locale. The Store
-data cohorts pass 7/7 focused suites; the latest complete gate is 462/462 and the latest visual
-run is 18/18 screenshots with no missing keys, English fallback, missing glyphs, or blank frames.
+data cohorts pass 7/7 focused suites, and the 2026-09-09 visual run is 18/18 screenshots with no
+missing keys, English fallback, missing glyphs, or blank frames. The most recent clean full gate is
+462/462; a later run against the unrelated mixed working tree is 460/463 because of one collector
+source-shape assertion, five legacy HUD canon-parity assertions, and Flee's missing registration in
+that dirty `DataRegression` edit. Those failures are tracked separately from the green localization lane.
 
 The architecture, Settings, Feedback/Jeweler slice, shared Close treatment, calm navigation, Heart HUD,
 combat Flee control, and HUD/Raid forwarding shims are in place. Village and Canon compatibility readers now forward to the

@@ -332,8 +332,9 @@ The first foundation increment is implemented and integrated:
   the full data gate.
 
 Evidence: the latest canonical import reports 2,376 localized entries across six enabled tables;
-the post-cohort focused suite reports `LOCALIZATION_REGRESSION_OK 7/7 suites`. The latest full registered
-suite before this data-only cohort reports `REGRESSION_OK 462/462 suites`. The latest locale smoke harness reports
+the post-cohort focused suite reports `LOCALIZATION_REGRESSION_OK 7/7 suites`. The latest clean full registered
+suite reports `REGRESSION_OK 462/462 suites`; a subsequent mixed-tree run is honestly red at 460/463 on
+three unrelated HUD/source-registration assertions. The 2026-09-09 locale smoke harness reports
 `LOCALIZATION_SMOKE_OK locales=6 screenshots=18/18` at the Seeker landscape reference size,
 with Settings top/language-row and HUD proof frames per enabled locale. CompileGate's project
 compile passed; its wrapper remains externally red only because this workstation lacks the

@@ -34,6 +34,13 @@ Outputs are overwritten deterministically under `Builds/localization-smoke/`:
 - `<locale>_settings_2670x1200.png`
 - `<locale>_settings_language_2670x1200.png`
 - `<locale>_hud_2670x1200.png`
+
+## Latest evidence
+
+The 2026-09-09 run reports `LOCALIZATION_SMOKE_OK locales=6 screenshots=18/18`. Its summary records
+zero English fallbacks, missing markers, missing glyphs, or capture errors in every enabled locale.
+Manual review caught and corrected the remaining Spanish, Brazilian Portuguese, and German Store
+wordmarks; the rerun shows `DER NACHTMARKT` centered on the German HUD card without an ellipsis.
 - `summary.json`
 
 Expected locales are deliberately fixed in release order: `en`, `es`, `pt-BR`, `de`, `fr`, `ru`.
