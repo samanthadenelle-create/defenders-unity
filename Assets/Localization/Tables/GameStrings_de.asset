@@ -1831,6 +1831,34 @@ MonoBehaviour:
     m_Localized: Netzwerk
     m_Metadata:
       m_Items: []
+  - m_Id: 41022231052595200
+    m_Localized: "L\xDCCKE SCHLIESSEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343936
+    m_Localized: Eine Ressource, sonst nichts.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343937
+    m_Localized: DAS HERZ IN BEWEGUNG BRINGEN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343938
+    m_Localized: "Derzeit sind keine Angebote verf\xFCgbar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343939
+    m_Localized: Inhalt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343940
+    m_Localized: Im Besitz
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343941
+    m_Localized: Dein Bedarf
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

@@ -1643,6 +1643,34 @@ MonoBehaviour:
     m_Key: storeCommerceNetworkFallback
     m_Metadata:
       m_Items: []
+  - m_Id: 41022231052595200
+    m_Key: storeBandGap
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343936
+    m_Key: storeBandGapSub
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343937
+    m_Key: storeBandBasket
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343938
+    m_Key: storeSpotlightEmpty
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343939
+    m_Key: storeLedgerHeading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343940
+    m_Key: storeCardOwned
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343941
+    m_Key: storeCardGap
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

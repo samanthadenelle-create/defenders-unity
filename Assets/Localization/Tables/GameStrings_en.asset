@@ -1792,6 +1792,34 @@ MonoBehaviour:
     m_Localized: network
     m_Metadata:
       m_Items: []
+  - m_Id: 41022231052595200
+    m_Localized: CLOSE THE GAP
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343936
+    m_Localized: One resource, nothing else.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343937
+    m_Localized: GET THE HEART MOVING
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343938
+    m_Localized: No offers are available right now.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343939
+    m_Localized: What it holds
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343940
+    m_Localized: Owned
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343941
+    m_Localized: Your gap
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

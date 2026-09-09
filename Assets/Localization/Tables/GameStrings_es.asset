@@ -1822,6 +1822,34 @@ MonoBehaviour:
     m_Localized: red
     m_Metadata:
       m_Items: []
+  - m_Id: 41022231052595200
+    m_Localized: CUBRE LO QUE TE FALTA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343936
+    m_Localized: "Un recurso y nada m\xE1s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343937
+    m_Localized: "PON EL CORAZ\xD3N EN MARCHA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343938
+    m_Localized: No hay ofertas disponibles en este momento.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343939
+    m_Localized: "Qu\xE9 contiene"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343940
+    m_Localized: "En posesi\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343941
+    m_Localized: Lo que te falta
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

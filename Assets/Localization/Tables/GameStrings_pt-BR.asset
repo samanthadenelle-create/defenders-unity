@@ -1825,6 +1825,34 @@ MonoBehaviour:
     m_Localized: rede
     m_Metadata:
       m_Items: []
+  - m_Id: 41022231052595200
+    m_Localized: COMPLETE O QUE FALTA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343936
+    m_Localized: Um recurso e nada mais.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343937
+    m_Localized: "FA\xC7A O CORA\xC7\xC3O PULSAR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343938
+    m_Localized: "Nenhuma oferta est\xE1 dispon\xEDvel no momento."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343939
+    m_Localized: "O que cont\xE9m"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343940
+    m_Localized: Seu
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343941
+    m_Localized: O que falta
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

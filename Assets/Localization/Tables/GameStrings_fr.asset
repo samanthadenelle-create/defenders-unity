@@ -1842,6 +1842,34 @@ MonoBehaviour:
     m_Localized: "r\xE9seau"
     m_Metadata:
       m_Items: []
+  - m_Id: 41022231052595200
+    m_Localized: COMBLEZ LE MANQUE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343936
+    m_Localized: Une ressource, rien de plus.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343937
+    m_Localized: "FAITES BATTRE LE C\u0152UR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343938
+    m_Localized: "Aucune offre n\u2019est disponible pour le moment."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343939
+    m_Localized: Son contenu
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343940
+    m_Localized: "Poss\xE9d\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41022231090343941
+    m_Localized: Votre manque
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
