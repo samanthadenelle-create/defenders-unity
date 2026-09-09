@@ -1862,6 +1862,7 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "locale-parity suite", () => { if (!DeNelle.Editor.Regression.LocaleParityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[locale-parity] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "smart-argument suite", () => { if (!DeNelle.Editor.Regression.SmartArgumentRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[smart-argument] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "settings-localization suite", () => { if (!DeNelle.Editor.Regression.SettingsLocalizationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[settings-localization] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "glyph-coverage suite", () => { if (!DeNelle.Editor.Regression.GlyphCoverageRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[glyph-coverage] " + r); });
 
             // LAST LINE ABOVE THE END FENCE, DELIBERATELY: this suite opens
             // Main_Castle_Overworld in Single mode, so any suite registered after it would

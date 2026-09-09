@@ -1929,8 +1929,8 @@ namespace DeNelle.Core.UI
         // runs) on force-built panels (Canvas.ForceUpdateCanvases makes TMP generate the same
         // frame the row is created, before TMP_Settings.defaultFontAsset has been leaned on).
         // We never assigned a font here, so EVERY label was one timing edge from this NRE.
-        // Assign the default font explicitly before any .text set; fall back to the shipped
-        // LiberationSans SDF under Resources; Warn (never NRE / never silently blank) if both miss.
+        // Assign the tracked locale font explicitly before any .text set; retain the package
+        // default and legacy LiberationSans only as compatibility fallbacks.
         private static TMPro.TMP_FontAsset _fontCache;
         /// <summary>Assign a resolved TMP font to <paramref name="t"/> if it has none, so its first
         /// GenerateTextMesh() cannot NRE. Call this BEFORE setting .text on any code-built TMP that
@@ -1941,12 +1941,12 @@ namespace DeNelle.Core.UI
             var f = ResolveDefaultFont();
             if (f != null) t.font = f;
             else DeNelle.Core.Diagnostics.FlowTrace.Warn("UI",
-                "ElarionUiKit.Label: no TMP font (TMP_Settings.defaultFontAsset null AND LiberationSans SDF " +
-                "absent from Resources) — assigning none to avoid an NRE; text may not render until a font ships.");
+                "ElarionUiKit.Label: tracked locale font and compatibility TMP defaults are absent — " +
+                "assigning none to avoid an NRE; text may not render until a font ships.");
         }
 
-        /// <summary>THE default-chain font (TMP_Settings.defaultFontAsset ?? Resources
-        /// "Fonts &amp; Materials/LiberationSans SDF"), resolved once and cached. Exposed because the
+        /// <summary>THE default-chain font. The committed static locale atlas is authoritative;
+        /// package-local TMP defaults remain compatibility fallbacks only. Resolved once and cached. Exposed because the
         /// numeral-legibility gate (ElarionUiKitObsidian) must be able to judge the font a rejected
         /// ROLE will actually fall back to — one resolution path, so the gate can never report on a
         /// font different from the one that draws. Null only when neither is present.</summary>
@@ -1954,7 +1954,9 @@ namespace DeNelle.Core.UI
         {
             if (_fontCache == null)
             {
-                _fontCache = TMPro.TMP_Settings.defaultFontAsset
+                _fontCache = UnityEngine.Resources.Load<TMPro.TMP_FontAsset>(
+                                 "Localization/Fonts/ElarionLocaleFallback")
+                          ?? TMPro.TMP_Settings.defaultFontAsset
                           ?? UnityEngine.Resources.Load<TMPro.TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
             }
             return _fontCache;

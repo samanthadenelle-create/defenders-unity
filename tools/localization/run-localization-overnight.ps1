@@ -9,6 +9,7 @@ $ErrorActionPreference = "Stop"
 $localizationRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../.."))
 $unityRunner = Join-Path $localizationRoot "run-unity-method.ps1"
 $manifestBuilder = Join-Path $PSScriptRoot "build-string-manifest.ps1"
+$fontTrackingCheck = Join-Path $PSScriptRoot "check-localization-font-assets.ps1"
 
 function Invoke-LocalizationGate {
     param(
@@ -25,6 +26,9 @@ function Invoke-LocalizationGate {
 
 Push-Location $localizationRoot
 try {
+    & $fontTrackingCheck -RepoRoot $localizationRoot
+    if ($LASTEXITCODE -ne 0) { throw "Localization font tracking check failed." }
+
     & $manifestBuilder -RepoRoot $localizationRoot -Check
     if ($LASTEXITCODE -ne 0) { throw "Localization manifest is stale." }
 

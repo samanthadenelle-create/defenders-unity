@@ -38,7 +38,7 @@ format arguments change, whether or not that locale is currently exposed in Sett
 | `pt-BR` | português (Brasil) | Yes | Yes | Beta, AI first draft |
 | `de` | Deutsch | Yes | Yes | Beta, AI first draft |
 | `fr` | français | Yes | Yes | Beta, AI first draft |
-| `ru` | русский | Yes | Yes | Beta, AI first draft |
+| `ru` | русский | Yes | Yes | Beta, AI first draft; tracked Cyrillic glyph coverage |
 | `ar` | العربية | Yes | No | Internal/limited; RTL shaping, layout, and fonts required |
 | `ja` | 日本語 | Yes | No | Internal/limited; CJK font coverage required |
 | `ko` | 한국어 | Yes | No | Internal/limited; CJK font coverage required |
@@ -52,7 +52,7 @@ their JSON exists; their script, shaping, font, layout, and device gates must pa
 
 - Canonical transitional inputs are mirrored at `Assets/Resources/Data/Canonical/<locale>.json` and
   `Assets/StreamingAssets/Data/Canonical/<locale>.json`.
-- Both copies contain exactly 358 player keys today. `LocaleParityRegression` requires exact keys,
+- Both copies contain exactly 363 player keys today. `LocaleParityRegression` requires exact keys,
   nonempty values, semantically identical mirrors, and format-argument multisets for all 10 required locales.
 - `LocalizationBuilder` reads policy, registers only build-enabled locales, reconciles shared keys,
   generates the six `GameStrings` tables and Addressables groups, preserves Smart metadata, assigns
@@ -63,12 +63,30 @@ their JSON exists; their script, shaping, font, layout, and device gates must pa
 - Text baked into images should be removed in favor of text-free art plus localized TMP text. When text
   is inseparable from approved art, use a locale-specific Asset Table and keep accessible localized text.
 
+## Font authority
+
+The default runtime font is the committed static atlas at
+`Assets/Resources/Localization/Fonts/ElarionLocaleFallback.asset`, generated from the tracked
+Liberation Sans source and OFL license under `Assets/Localization/Fonts/Source`. Title, body, and
+stamp role fonts explicitly reference this asset as their fallback. `GlyphCoverageRegression` reads
+every value in every build-enabled locale and requires each used Unicode character to exist in this
+tracked static atlas; it deliberately ignores machine-local TMP settings and dynamic font assets.
+
+Regenerate it after an enabled locale introduces a new character:
+
+```text
+-executeMethod DeNelle.Editor.Localization.LocaleFontBuilder.Build
+```
+
+Then run `tools/localization/check-localization-font-assets.ps1` after staging to prove the source,
+license, atlas, and their Unity metadata are all tracked.
+
 ## Verification and current boundary
 
 Run `tools/localization/run-localization-overnight.ps1` with Unity closed. It verifies the manifest,
-runs the five focused localization suites, runs the complete data regression, and captures Settings
+runs the six focused localization suites, runs the complete data regression, and captures Settings
 top, Settings language controls, and HUD at 2670 x 1200 for every build-enabled locale. The current
-checkpoint is 5/5 focused suites, 462/462 full suites, and 18/18 screenshots with no missing keys,
+checkpoint is 6/6 focused suites, 462/462 full suites, and 18/18 screenshots with no missing keys,
 English fallback, missing glyphs, or blank frames.
 
 The architecture, Settings, Feedback/Jeweler slice, shared Close treatment, and HUD/Raid forwarding

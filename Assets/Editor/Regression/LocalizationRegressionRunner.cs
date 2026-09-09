@@ -18,10 +18,11 @@ namespace DeNelle.Editor.Regression
             Run("locale-parity", LocaleParityRegression.Run, failures, log, ref passed);
             Run("smart-arguments", SmartArgumentRegression.Run, failures, log, ref passed);
             Run("settings", SettingsLocalizationRegression.Run, failures, log, ref passed);
+            Run("glyph-coverage", GlyphCoverageRegression.Run, failures, log, ref passed);
 
             if (failures.Count == 0)
             {
-                log.AppendLine("LOCALIZATION_REGRESSION_OK " + passed + "/5 suites");
+                log.AppendLine("LOCALIZATION_REGRESSION_OK " + passed + "/6 suites");
                 Debug.Log(log.ToString());
                 return;
             }
