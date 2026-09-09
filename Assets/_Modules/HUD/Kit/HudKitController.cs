@@ -2330,7 +2330,7 @@ namespace DeNelle.HUD.Kit
             // (name = "Heart of Elarion" + a single HP bar). Only HealthFill is used; the mana row is
             // hidden so it reads as the world-tree/heart status, never a second hero MP bar.
             // (ASCII name; the old "♥" heart glyph tofu'd on the build font.)
-            _heartPlate = ElarionUiKit.BuildPartyNameplate(root.transform, "Heart of Elarion",
+            _heartPlate = ElarionUiKit.BuildPartyNameplate(root.transform, HeartObjectiveCopy.Title,
                 new Vector2(0.02f, 0.02f), new Vector2(0.99f, 0.98f));
             // ── WO-1384: FOUR ROWS, ONE PLATE, EVERY BAND STATED ONCE ──────────────────
             // Owner felt-test 2026-09-04 (Seeker, build 355905): "there is something under the
@@ -2583,6 +2583,10 @@ namespace DeNelle.HUD.Kit
                     _peacefulDockLabels[i].text = HudStrings.Get(PeacefulDockLabelKeys[i]);
             if (_collectorsChipLabel != null)
                 _collectorsChipLabel.text = HudStrings.Get(HudStrings.KeyCollectorsTitle);
+            if (_heartPlate.NameLabel != null)
+                _heartPlate.NameLabel.text = HeartObjectiveCopy.Title;
+            RepaintHeartObjective(force: true);
+            RepaintHeartfire(force: true);
         }
 
         /// <summary>Approved active-combat dock: Attack, held Block, three live assignable skills,
@@ -5200,8 +5204,7 @@ namespace DeNelle.HUD.Kit
             }
             else
             {
-                _heartfireLabel.text = label +
-                                        (string.IsNullOrEmpty(line) ? string.Empty : " - " + line);
+                _heartfireLabel.text = DeNelle.Core.State.HeartfireCharges.PlateCombined(label, line);
             }
 
             // Only the COUNT is worth a line; the countdown moves every second and would

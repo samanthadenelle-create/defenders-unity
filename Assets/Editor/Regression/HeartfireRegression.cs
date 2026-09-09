@@ -614,7 +614,7 @@ namespace DeNelle.Editor.Regression
                       "what a charge BUYS in a width that seats on one fitted line");
 
             // G2 - the ruled spent string, composed exactly as the View composes it.
-            string spent = spentLabel + " - " + spentTail;
+            string spent = HeartfireCharges.PlateCombined(spentLabel, spentTail);
             if (!string.Equals(spent, "Heartfire 0/3 (raids) - next in 3h 12m", StringComparison.Ordinal))
                 f.Add("G2 the spent plate reads '" + spent + "' -- the owner ruled " +
                       "'Heartfire 0/3 (raids) - next in 3h 12m'");

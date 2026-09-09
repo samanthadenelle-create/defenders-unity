@@ -378,6 +378,36 @@ namespace DeNelle.Editor.Localization
                 string collectorExpected = HudStrings.Get(HudStrings.KeyCollectorsTitle);
                 if (collector == null || !string.Equals(collector.text, collectorExpected, StringComparison.Ordinal))
                     localeResult.errors.Add("hud: Collectors startup seed did not resolve hudCollectorsTitle.");
+
+                object heartPlateObject = GetField(kit, "_heartPlate");
+                if (!(heartPlateObject is ElarionUiKit.PartyNameplateHandle heartPlate) ||
+                    heartPlate.NameLabel == null ||
+                    !string.Equals(heartPlate.NameLabel.text, HeartHudText.Title.Resolve(), StringComparison.Ordinal))
+                    localeResult.errors.Add("hud: Heart title did not resolve hud.heart.title.");
+
+                var heartObjective = GetField(kit, "_heartObjectiveLabel") as TMP_Text;
+                var armySnapshot = DeNelle.Core.HudModel.HudActionBarModel.Shared.ArmySnapshot;
+                string objectiveExpected = DeNelle.Core.HudModel.HeartObjectiveCopy.Resolve(
+                    false, DeNelle.Core.HudModel.PostureSignals.RaidCapable,
+                    DeNelle.Core.HudModel.PostureSignals.RaidLock, armySnapshot, out _);
+                if (heartObjective == null ||
+                    !string.Equals(heartObjective.text, objectiveExpected, StringComparison.Ordinal))
+                    localeResult.errors.Add("hud: Heart objective did not resolve the selected locale/state.");
+
+                var heartfireLabel = GetField(kit, "_heartfireLabel") as TMP_Text;
+                var rekindleLabel = GetField(kit, "_heartfireRekindleLabel") as TMP_Text;
+                int paintedLit = Convert.ToInt32(GetField(kit, "_heartfireLitPainted"));
+                int paintedMax = Convert.ToInt32(GetField(kit, "_heartfireMaxPainted"));
+                long paintedSeconds = Convert.ToInt64(GetField(kit, "_heartfireSecondsPainted"));
+                string heartfireExpected = DeNelle.Core.State.HeartfireCharges.PlateLabel(paintedLit, paintedMax);
+                string rekindleExpected = DeNelle.Core.State.HeartfireCharges.PlateRekindle(
+                    paintedLit, paintedMax, paintedSeconds);
+                if (heartfireLabel == null ||
+                    !string.Equals(heartfireLabel.text, heartfireExpected, StringComparison.Ordinal))
+                    localeResult.errors.Add("hud: Heartfire count row did not resolve the selected locale.");
+                if (rekindleLabel == null ||
+                    !string.Equals(rekindleLabel.text, rekindleExpected, StringComparison.Ordinal))
+                    localeResult.errors.Add("hud: Heartfire timer row did not resolve the selected locale.");
                 return RenderSurface(code, "hud", hudObject, localeResult);
             }
             finally

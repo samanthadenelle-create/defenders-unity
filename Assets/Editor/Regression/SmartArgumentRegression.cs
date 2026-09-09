@@ -26,6 +26,13 @@ namespace DeNelle.Editor.Regression
             string collectorCount = HudStrings.Format(HudStrings.KeyCollectorsCount, 2, 3);
             if (!string.Equals(collectorCount, "Collectors 2/3 full", StringComparison.Ordinal))
                 failures.Add("live HudStrings -> LocalText.Format positional path returned '" + collectorCount + "'");
+            string heartTroops = HeartHudText.TrainOther.Resolve(new HeartTroopsArguments(3));
+            if (!string.Equals(heartTroops, "Train 3 troops to unlock Raids", StringComparison.Ordinal))
+                failures.Add("live HeartHudText -> LocalText.Format named path returned '" + heartTroops + "'");
+            string heartfire = HeartHudText.HeartfireNextHoursMinutes.Resolve(
+                new HeartfireHoursMinutesArguments(3, 12));
+            if (!string.Equals(heartfire, "next in 3h 12m", StringComparison.Ordinal))
+                failures.Add("live Heartfire named path returned '" + heartfire + "'");
 
             LocalizationAuditIO.Policy policy;
             if (!LocalizationAuditIO.TryLoadPolicy(out policy, failures))

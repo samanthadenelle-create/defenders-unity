@@ -1467,6 +1467,46 @@ MonoBehaviour:
     m_Key: hud.nav.manage
     m_Metadata:
       m_Items: []
+  - m_Id: 40992049365299200
+    m_Key: hud.heart.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853632
+    m_Key: hud.heart.objective.defend
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853633
+    m_Key: hud.heart.objective.prepareWave
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853634
+    m_Key: hud.heart.objective.buildBarracks
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853635
+    m_Key: hud.heart.objective.trainOne
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853636
+    m_Key: hud.heart.objective.trainOther
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853637
+    m_Key: hud.heart.heartfire.plate
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853638
+    m_Key: hud.heart.heartfire.nextMinutes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853639
+    m_Key: hud.heart.heartfire.nextHoursMinutes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853640
+    m_Key: hud.heart.heartfire.combined
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

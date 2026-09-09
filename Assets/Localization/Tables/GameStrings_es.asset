@@ -1623,6 +1623,52 @@ MonoBehaviour:
     m_Localized: GESTIONAR
     m_Metadata:
       m_Items: []
+  - m_Id: 40992049365299200
+    m_Localized: "Coraz\xF3n de Elarion"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853632
+    m_Localized: Defiende el reino
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853633
+    m_Localized: "Prep\xE1rate para la pr\xF3xima oleada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853634
+    m_Localized: Necesitas Cuartel - Construir > Reino
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853635
+    m_Localized: Entrena {Troops} tropa para abrir Incursiones
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40992049398853636
+    m_Localized: Entrena {Troops} tropas para abrir Incursiones
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40992049398853637
+    m_Localized: "Fuego del Coraz\xF3n {Charges}/{MaxCharges} (incursiones)"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40992049398853638
+    m_Localized: "pr\xF3ximo en {Minutes} min"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40992049398853639
+    m_Localized: "pr\xF3ximo en {Hours} h {Minutes} min"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 40992049398853640
+    m_Localized: '{Plate} - {Rekindle}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
   references:
     version: 2
     RefIds:
@@ -1655,3 +1701,9 @@ MonoBehaviour:
         - id: 40945817737539586
         - id: 40945817737539587
         - id: 40958822273560576
+        - id: 40992049398853635
+        - id: 40992049398853636
+        - id: 40992049398853637
+        - id: 40992049398853638
+        - id: 40992049398853639
+        - id: 40992049398853640

@@ -73,8 +73,9 @@ namespace DeNelle.Editor.Regression
 
             // RED: delete ` + SpendTag` from HeartfireCharges.PlateLabel.
             string charged = HeartfireCharges.PlateLabel(3, 3);
-            string spent = HeartfireCharges.PlateLabel(0, 3) + " - " +
-                           HeartfireCharges.PlateRekindle(0, 3, 3d * 3600d + 12d * 60d);
+            string spent = HeartfireCharges.PlateCombined(
+                HeartfireCharges.PlateLabel(0, 3),
+                HeartfireCharges.PlateRekindle(0, 3, 3d * 3600d + 12d * 60d));
             if (!string.Equals(charged, "Heartfire 3/3 (raids)", StringComparison.Ordinal) ||
                 !string.Equals(spent, "Heartfire 0/3 (raids) - next in 3h 12m", StringComparison.Ordinal))
                 failures.Add("[plate-copy-unchanged] WO-1415's byte-exact Heartfire plate words drifted");

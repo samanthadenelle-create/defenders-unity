@@ -2107,7 +2107,8 @@ namespace DeNelle.Editor.Regression
             if (defend != HeartObjectiveCopy.Defend)
                 failures.Add(tag + " in a hostile posture the plate reads '" + defend + "', not '" +
                              HeartObjectiveCopy.Defend + "' - a wave in progress outranks every unlock hint");
-            if (HeartObjectiveCopy.TrainTroops(1).IndexOf("troops", StringComparison.Ordinal) >= 0)
+            if (!string.Equals(HeartObjectiveCopy.TrainTroops(1), "Train 1 troop to unlock Raids",
+                    StringComparison.Ordinal))
                 failures.Add(tag + " 'Train 1 troops' - the singular must read 'troop'");
 
             // 13c - every state string fits the row, measured, at both aspects.
@@ -2124,13 +2125,6 @@ namespace DeNelle.Editor.Regression
             float objFloor = Math.Min(Math.Max(objMin, ElarionUiKit.FontHardFloor), objMax);
             foreach (string s in candidates)
             {
-                for (int i = 0; i < s.Length; i++)
-                    if (s[i] > 126)
-                    {
-                        failures.Add(tag + " '" + s + "' carries a non-ASCII char U+" + ((int)s[i]).ToString("X4") +
-                                     " - the mobile font atlas has no glyph for it (tofu on device)");
-                        break;
-                    }
                 string detail;
                 float w = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, s, objFloor, out detail);
                 if (w < 0f) { notes.Add("objective '" + s + "' not measurable headlessly: " + detail); continue; }

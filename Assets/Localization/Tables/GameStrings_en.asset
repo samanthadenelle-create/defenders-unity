@@ -1599,6 +1599,52 @@ MonoBehaviour:
     m_Localized: MANAGE
     m_Metadata:
       m_Items: []
+  - m_Id: 40992049365299200
+    m_Localized: Heart of Elarion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853632
+    m_Localized: Defend the realm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853633
+    m_Localized: Prepare the realm for the next wave.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853634
+    m_Localized: Raids unlock at a Barracks - Build > Realm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853635
+    m_Localized: Train {Troops} troop to unlock Raids
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40992049398853636
+    m_Localized: Train {Troops} troops to unlock Raids
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40992049398853637
+    m_Localized: Heartfire {Charges}/{MaxCharges} (raids)
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40992049398853638
+    m_Localized: next in {Minutes}m
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40992049398853639
+    m_Localized: next in {Hours}h {Minutes}m
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 40992049398853640
+    m_Localized: '{Plate} - {Rekindle}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
   references:
     version: 2
     RefIds:
@@ -1631,3 +1677,9 @@ MonoBehaviour:
         - id: 40945817737539586
         - id: 40945817737539587
         - id: 40958822273560576
+        - id: 40992049398853635
+        - id: 40992049398853636
+        - id: 40992049398853637
+        - id: 40992049398853638
+        - id: 40992049398853639
+        - id: 40992049398853640

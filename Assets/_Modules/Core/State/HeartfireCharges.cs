@@ -58,6 +58,7 @@
 // =============================================================================
 
 using System;
+using DeNelle.Core.UI;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Ops;
 
@@ -390,7 +391,7 @@ namespace DeNelle.Core.State
         /// not.
         /// </summary>
         public static string PlateLabel(int charges, int maxCharges) =>
-            CountLabel(charges, maxCharges) + " " + SpendTag;
+            HeartHudText.HeartfirePlate.Resolve(new HeartfireCountArguments(charges, maxCharges));
 
         /// <summary>
         /// THE PLATE'S SECOND ROW: "next in 3h 12m" while a charge is pending, and EMPTY on
@@ -402,8 +403,23 @@ namespace DeNelle.Core.State
         {
             if (maxCharges < 1) maxCharges = 1;
             if (charges >= maxCharges) return string.Empty;
-            return "next in " + ShortWait(secondsToNext);
+            if (double.IsNaN(secondsToNext) || secondsToNext < 0d) secondsToNext = 0d;
+            long totalMinutes = (long)Math.Ceiling(secondsToNext / 60d);
+            if (totalMinutes < 1) totalMinutes = 1;
+            long hours = totalMinutes / 60;
+            long minutes = totalMinutes % 60;
+            return hours > 0
+                ? HeartHudText.HeartfireNextHoursMinutes.Resolve(
+                    new HeartfireHoursMinutesArguments(hours, minutes))
+                : HeartHudText.HeartfireNextMinutes.Resolve(new HeartfireMinutesArguments(minutes));
         }
+
+        /// <summary>Localized one-line fallback when the plate cannot create its second row.</summary>
+        public static string PlateCombined(string plate, string rekindle) =>
+            string.IsNullOrEmpty(rekindle)
+                ? plate
+                : HeartHudText.HeartfireCombined.Resolve(
+                    new HeartfireCombinedArguments(plate, rekindle));
 
         /// <summary>
         /// A COARSE wait, for a row read at a glance: "3h 12m", "12m". Distinct from

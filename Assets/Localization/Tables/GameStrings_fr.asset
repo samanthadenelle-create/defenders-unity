@@ -1640,6 +1640,52 @@ MonoBehaviour:
     m_Localized: "G\xC9RER"
     m_Metadata:
       m_Items: []
+  - m_Id: 40992049365299200
+    m_Localized: "C\u0153ur d'Elarion"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853632
+    m_Localized: "D\xE9fendez le royaume"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853633
+    m_Localized: "Pr\xE9parez la prochaine vague."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853634
+    m_Localized: "Caserne requise - B\xE2tir > Royaume"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 40992049398853635
+    m_Localized: "Entra\xEEnez {Troops} soldat pour ouvrir les raids"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 40992049398853636
+    m_Localized: "Entra\xEEnez {Troops} soldats pour ouvrir les raids"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 40992049398853637
+    m_Localized: "Feu du C\u0153ur {Charges}/{MaxCharges} (raids)"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 40992049398853638
+    m_Localized: prochain dans {Minutes} min
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 40992049398853639
+    m_Localized: prochain dans {Hours} h {Minutes} min
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 40992049398853640
+    m_Localized: '{Plate} - {Rekindle}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
   references:
     version: 2
     RefIds:
@@ -1672,3 +1718,9 @@ MonoBehaviour:
         - id: 40945817737539586
         - id: 40945817737539587
         - id: 40958822273560576
+        - id: 40992049398853635
+        - id: 40992049398853636
+        - id: 40992049398853637
+        - id: 40992049398853638
+        - id: 40992049398853639
+        - id: 40992049398853640

@@ -24,8 +24,8 @@
 //     has never finished a raid, the cap afterwards). "Train N" is
 //     Required - (Deployable + Queued), the same arithmetic the raid door refuses on.
 //
-// ASCII ONLY - the mobile font atlas has no glyphs past U+007E (the Raids lock
-// copy precedent in PostureSignals.RaidLockCopy).
+// Player copy resolves through LocalText. GlyphCoverageRegression validates every
+// enabled-locale character against the tracked static runtime font.
 // =============================================================================
 
 using System;
@@ -39,22 +39,33 @@ namespace DeNelle.Core.HudModel
     /// </summary>
     public static class HeartObjectiveCopy
     {
+        public const string KeyTitle = HeartHudText.KeyTitle;
+        public const string KeyDefend = HeartHudText.KeyDefend;
+        public const string KeyPrepareWave = HeartHudText.KeyPrepareWave;
+        public const string KeyBuildBarracks = HeartHudText.KeyBuildBarracks;
+        public const string KeyTrainOne = HeartHudText.KeyTrainOne;
+        public const string KeyTrainOther = HeartHudText.KeyTrainOther;
+
+        public static string Title => HeartHudText.Title.Resolve();
         /// <summary>The hostile-posture line (unchanged from the pre-WO-1407 View).</summary>
-        public const string Defend = "Defend the realm";
+        public static string Defend => HeartHudText.Defend.Resolve();
         /// <summary>The raid-capable, army-ready line (the pre-WO-1407 static sentence,
         /// now reachable only when the player has nothing to unlock).</summary>
-        public const string PrepareWave = "Prepare the realm for the next wave.";
+        public static string PrepareWave => HeartHudText.PrepareWave.Resolve();
         /// <summary>No Barracks stands (never built, or lost) - the door is the Build
         /// screen's Realm collection. The same line for NoBarracks and BarracksLost: the
         /// remedy is identical on this plate (build one) and the Journey card already
         /// distinguishes the two (PostureSignals.RaidLockCopy).</summary>
-        public const string BuildBarracks = "Raids unlock at a Barracks - Build > Realm";
+        public static string BuildBarracks => HeartHudText.BuildBarracks.Resolve();
 
         /// <summary>The train line for <paramref name="troops"/> more slots.</summary>
         public static string TrainTroops(int troops)
         {
             if (troops < 1) troops = 1;
-            return "Train " + troops + (troops == 1 ? " troop" : " troops") + " to unlock Raids";
+            var arguments = new HeartTroopsArguments(troops);
+            return troops == 1
+                ? HeartHudText.TrainOne.Resolve(arguments)
+                : HeartHudText.TrainOther.Resolve(arguments);
         }
 
         /// <summary>
