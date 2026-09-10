@@ -1,6 +1,7 @@
 # WO-1622 - run-unity-method.ps1 returns VERDICT=FAIL reason=LOG_SCAN on a run that PASSED, because the Solana package's WebGL advisories match its `error CS` grep
 
-**Status:** READY TO IMPLEMENT
+**Status:** FIXED 2026-09-10 - lead re-judged with the patched runner: Builds/wave1-compile4 now PASS (errorCS=21 underAssets=0 elsewhere=21, set aside with a NOTE), Builds/wave1-compile2 still FAIL (underAssets=14). The WebGL skip is surfaced as the count + NOTE, not a marker field (lead accepted option 2). (was: IMPLEMENTED - awaiting lead review, lane RUNNER)
+**RESULT:** `WorkOrders/WORK_ORDER_1622_run_unity_method_log_scan_false_negative_on_package_advisories.RESULT.md`
 **Minted:** 2026-09-10 (CLI, main-line banner; bumped 1621 -> 1625 in the SAME edit)
 **Silo / Lane:** Tooling / gate runner (`run-unity-method.ps1`) - **isolated, no .cs, no Unity**
 **Severity:** P1 process, and the blocking consumer is MEASURED, not assumed:

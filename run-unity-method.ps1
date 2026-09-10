@@ -6,7 +6,19 @@
 # quirk), so the process this script starts can return early with a blank exit
 # code while the actual editor keeps working. We therefore ignore the wrapper
 # exit code and poll until no 'Unity' process remains, then judge success from
-# the log (compile errors / exceptions / "Aborting batchmode").
+# the log (compile errors under Assets/ - see WO-1622 below - exceptions /
+# "Aborting batchmode").
+#
+# WO-1622 (2026-09-10): the compile-error half of that scan is SCOPED TO Assets/.
+# It used to be a bare, path-blind 'error CS\d+' grep over the whole log. Since
+# 2026-09-07 the compile gate deliberately PRINTS the error lines it has already
+# ruled advisory - the Solana package's WebGL CS1069 module-reference gap, 21 of
+# them - so every clean compile carried 'error CS' text and this runner failed it
+# while its own evidence line said the expected marker was FOUND on a fresh log.
+# Measured 2026-09-10 across Builds/: 19 of the 21 logs matching 'error CS' carry
+# ZERO errors under Assets/. Only a compiler error whose OWN source path is under
+# Assets/ is this tree's verdict; that criterion is authored ONCE, here, and must
+# not be re-implemented in any calling chain (CLAUDE.md s.16).
 #
 # ASCII-only on purpose: Windows PowerShell 5.1 reads BOM-less files as ANSI,
 # so smart-quotes / em-dashes corrupt and break the parse.
@@ -169,12 +181,29 @@ if ($judgeOnly) {
 
 # --- judge success from the log ----------------------------------------------
 $succeeded = $false; $compileErr = $false; $license = $false
+# WO-1622 counters. Kept as COUNTS, not booleans, so the verdict line can never
+# imply that the non-Assets error lines were absent - they were set aside, and the
+# reader is told how many. Silently turning "some other layer's errors" into a bare
+# green is the class of defect memory gates-report-success-without-proving-it names.
+$errCsTotal = 0; $errCsAssets = 0; $firstAssetsErr = ''
 if (Test-Path $log) {
     $succeeded  = [bool](Select-String -Path $log -Pattern 'Exiting batchmode successfully|terminate with return code 0' -Quiet -ErrorAction SilentlyContinue)
-    $compileErr = [bool](Select-String -Path $log -Pattern 'error CS\d+' -Quiet -ErrorAction SilentlyContinue)
-    $license    = [bool](Select-String -Path $log -Pattern 'HandshakeResponse reported an error|No valid Unity Editor license|ResponseCode: 505|Unsupported protocol version' -Quiet -ErrorAction SilentlyContinue)
+    # Bind to the error's OWN path token - '<...>Assets/<file>(line,col): error CSnnnn' -
+    # so a Packages/ line that merely MENTIONS Assets in its message text is not counted,
+    # and an Assets/ error is counted whether Unity emitted it raw or the gate echoed it.
+    $errCsLines  = @(Select-String -Path $log -Pattern 'error CS\d+' -ErrorAction SilentlyContinue)
+    $errCsTotal  = $errCsLines.Count
+    $assetsHits  = @($errCsLines | Where-Object { $_.Line -match 'Assets[\\/][^:\r\n]*\(\d+,\d+\):\s*error CS\d+' })
+    $errCsAssets = $assetsHits.Count
+    if ($errCsAssets -gt 0) { $firstAssetsErr = $assetsHits[0].Line.Trim() }
+    $compileErr  = ($errCsAssets -gt 0)
+    $license     = [bool](Select-String -Path $log -Pattern 'HandshakeResponse reported an error|No valid Unity Editor license|ResponseCode: 505|Unsupported protocol version' -Quiet -ErrorAction SilentlyContinue)
 }
-Write-Host "[run] wrapperExit=$wrapperExit timedOut=$timedOut succeeded=$succeeded license=$license compileErrors=$compileErr"
+$errCsOther = $errCsTotal - $errCsAssets
+$errScan    = "errorCS=$errCsTotal underAssets=$errCsAssets elsewhere=$errCsOther"
+Write-Host "[run] wrapperExit=$wrapperExit timedOut=$timedOut succeeded=$succeeded license=$license compileErrors=$compileErr ($errScan)"
+if ($errCsOther -gt 0) { Write-Host "[run] NOTE: $errCsOther 'error CS' line(s) outside Assets/ were SET ASIDE - they are not this tree's verdict (WO-1622). They are still in the log; read them there." }
+if ($errCsAssets -gt 0) { Write-Host "[run] first Assets/ compile error: $firstAssetsErr" }
 Write-Host "[run] --- log tail (45) ---"
 if (Test-Path $log) { Get-Content $log -Tail 45 }
 
@@ -232,9 +261,9 @@ if ($ExpectMarker -eq '') {
 # license error as fatal when the run did NOT reach a clean exit.
 if ($succeeded -and -not $compileErr) {
     if ($ExpectMarker -eq '') {
-        Write-Verdict "[run] VERDICT=PASS-UNASSERTED (log text only, NO marker was checked) log=$log mtime=$logMtimeS sizeBytes=$logSize"
+        Write-Verdict "[run] VERDICT=PASS-UNASSERTED (log text only, NO marker was checked) log=$log mtime=$logMtimeS sizeBytes=$logSize $errScan"
     } else {
-        Write-Verdict "[run] VERDICT=PASS marker='$ExpectMarker' FOUND log=$log mtime=$logMtimeS sizeBytes=$logSize"
+        Write-Verdict "[run] VERDICT=PASS marker='$ExpectMarker' FOUND log=$log mtime=$logMtimeS sizeBytes=$logSize $errScan"
     }
     exit 0
 }
@@ -245,5 +274,6 @@ if ($license) {
             Write-Host "[run] *** The Hub is NOT needed for batchmode. Reboot only if closing the Hub does not clear it, and do NOT kill processes. ***"
     exit 7
 }
-Write-Verdict "[run] VERDICT=FAIL reason=LOG_SCAN (no clean-exit line, or compile errors present) $evidence"
+Write-Verdict "[run] VERDICT=FAIL reason=LOG_SCAN (no clean-exit line, or compile errors under Assets/) $evidence $errScan"
+if ($errCsAssets -gt 0) { Write-Host "[run] LOG_SCAN first Assets/ compile error: $firstAssetsErr" }
 exit 1
