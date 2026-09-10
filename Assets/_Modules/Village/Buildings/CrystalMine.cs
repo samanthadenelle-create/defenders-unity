@@ -77,7 +77,18 @@ namespace DeNelle.Village
 
         private WaveManager _wave;
         private GameObject _currentVisual;
-        private int[] _curve;                  // cached data-driven yield curve (buildings.json)
+        // WO-1653 - THE CURVE CACHE IS STATIC, AND THAT IS THE POINT.
+        // The yield curve is authored DATA (buildings.json), identical for every mine in
+        // the world, so a per-instance cache was per-instance only by accident. Making it
+        // static is what lets CrystalsPerWaveAt below be reachable WITHOUT a MonoBehaviour,
+        // which is what the Manage detail card needs to state "Crystals / wave 2 -> 4"
+        // without writing the curve read a second time. Exactly the shape WO-1567 used when
+        // ResourceCollector.ThroughputScale's private per-hour formula became the public
+        // ResourceBuildingProgression.ProductionPerHour: ONE producer, two readers.
+        // NOTE: this is a CURVE cache, never a LEVEL. The mine still READS its level off
+        // PlacedStructure and owns none - [single-level-authority] in
+        // CrystalProductionRegression fails if a component-local level field returns.
+        private static int[] s_curve;          // cached data-driven yield curve (buildings.json)
         private PlacedStructure _placed;
         private bool _placedResolved;
 
@@ -132,7 +143,7 @@ namespace DeNelle.Village
             }
 
             int level = CurrentLevel;
-            int yield = CrystalsPerWave(level);
+            int yield = CrystalsPerWaveAt(level);
             economy.AddCrystals(yield);
             Debug.Log($"[CrystalMine] Wave {waveId} cleared - +{yield} Crystals awarded (mine L{level}).");
         }
@@ -141,8 +152,15 @@ namespace DeNelle.Village
         /// The per-wave crystal yield at <paramref name="level"/>, read from buildings.json
         /// (the <c>crystal-mine</c> entry's <c>crystalsPerWave</c> key) so the payout curve is
         /// DATA, not a C# literal. Indexed by <c>level - 1</c> and clamped into range.
+        ///
+        /// <para>⭐ WO-1653 - THE ONE PRODUCER OF "HOW MUCH THIS MINE PAYS", and PUBLIC STATIC
+        /// for exactly one reason: the Manage detail card has to state the mine's
+        /// current -&gt; next yield ("Crystals / wave  2 -&gt; 4") and the only alternative was
+        /// to read the curve a second time in the VM. Two readers of one authored curve is
+        /// the duplicated state CLAUDE.md sections 2/5/16 record three times over. The wave
+        /// payout at <see cref="OnWaveCleared"/> and the Manage card now call THIS.</para>
         /// </summary>
-        private int CrystalsPerWave(int level)
+        public static int CrystalsPerWaveAt(int level)
         {
             int[] curve = Curve();
             int idx = Mathf.Clamp(level - 1, 0, curve.Length - 1);
@@ -161,9 +179,9 @@ namespace DeNelle.Village
         /// falls back to a flat <see cref="DefaultCrystalsPerWave"/> curve, warned not swallowed
         /// (CLAUDE.md section 12: no silent failures).
         /// </summary>
-        private int[] Curve()
+        private static int[] Curve()
         {
-            if (_curve != null) return _curve;
+            if (s_curve != null) return s_curve;
 
             int[] parsed = null;
             try
@@ -192,8 +210,8 @@ namespace DeNelle.Village
             if (parsed == null || parsed.Length == 0)
                 parsed = new[] { DefaultCrystalsPerWave };
 
-            _curve = parsed;
-            return _curve;
+            s_curve = parsed;
+            return s_curve;
         }
 
         /// <summary>Array -> the curve verbatim; scalar -> a flat curve (read-migration);

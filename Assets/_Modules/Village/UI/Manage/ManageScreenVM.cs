@@ -5303,7 +5303,13 @@ namespace DeNelle.Village.UI
                     {
                         item = ComposeDefenseItem(d, null);
                         description = Ascii(d.Description);
-                        stats = TwoFacts("Placed", Ascii(d.PlacedText), null, null);
+                        // ⭐ WO-1653 - A PLACED PRODUCER KEEPS ITS NUMBERS. This was a bare
+                        // TwoFacts("Placed", ...), which is why the owner's Crystal Mine capture
+                        // (ManageFlow_BUILD_action_2670x1200.png) drew one row reading
+                        // "Placed .... 1 placed . L2" where mockup panel 3 draws a
+                        // current -> next table. DefenseStatRows keeps that Placed fact and puts
+                        // the numeric rows ABOVE it when the subject actually has one.
+                        stats = DefenseStatRows(d);
                         costs = CostVms(d.UpgradeCostParts);
                         costCaption = "Upgrade Cost";
                         timeText = Ascii(d.UpgradeTimeText);
@@ -5488,12 +5494,21 @@ namespace DeNelle.Village.UI
         /// shape the mockup draws for buildings. The ruling asks for the SAME table, so this fills
         /// that field rather than inventing a next-level layout.</para>
         ///
-        /// <para>⚠ FIVE ROWS, DELIBERATELY. BuildStatRows seats <c>Mathf.Min(count, 5)</c> rows and
-        /// WARNS when the band cannot hold them all, so a sixth would silently be the one dropped.
-        /// Health / Damage / Range / Speed are the four the curves actually move (strength scales
-        /// MaxHp + DPS, reach scales AttackRange + AggroRadius, per troop-upgrades.json's own
-        /// header); Train time is the fifth because it is the price. COST is not a row: training
-        /// charges nothing since WO-1387, so a cost row would read "free" forever.</para>
+        /// <para>⚠ FOUR ROWS, DELIBERATELY. The renderer seats as many as the band can hold at
+        /// its cull floor (<c>ManageWorkspacePanel.BuildStatRows</c>: <c>Mathf.Min(seats,
+        /// stats.Count)</c>, where <c>seats</c> is DERIVED from the band's measured height) and
+        /// WARNS when it cannot hold them all, so a fifth could silently be the one dropped.
+        /// ⛔ THAT CAP IS NOT THE LITERAL 5 THIS COMMENT CLAIMED until 2026-09-10 - it is
+        /// px-derived and there is no literal to read. Health / Attack / Range / Speed are the
+        /// four the curves actually move (strength scales MaxHp + DPS, reach scales AttackRange +
+        /// AggroRadius, per troop-upgrades.json's own header). Train time is NOT among them - it
+        /// left for the clock band, see the note at the end of this method. COST is not a row
+        /// either: training charges nothing since WO-1387, so a cost row would read "free"
+        /// forever (owner ruling; WO-1654 section 5 forbids inventing one).</para>
+        ///
+        /// <para>⭐ WO-1654 row 5.3: each of the four carries a <c>ManageArt.Stat*</c> glyph key.
+        /// The key is an ADDITION to the worded label, never a replacement - the owner is
+        /// red/green colourblind and WO-1566 C8 makes greyscale the gate.</para>
         /// </summary>
         private static IReadOnlyList<ManageStatVM> TroopStatRows(TroopChoiceVM c)
         {
@@ -5513,10 +5528,25 @@ namespace DeNelle.Village.UI
             var next = c.HasNextLevel ? TroopStatResolver.Effective(def, level + 1) : null;
 
             var rows = new List<ManageStatVM>(5);
-            rows.Add(StatRow("Health", now.MaxHp, next != null ? (float?)next.MaxHp : null, "0"));
-            rows.Add(StatRow("Damage", now.AttackDamage, next != null ? (float?)next.AttackDamage : null, "0.0"));
-            rows.Add(StatRow("Range", now.AttackRange, next != null ? (float?)next.AttackRange : null, "0.0"));
-            rows.Add(StatRow("Speed", now.MoveSpeed, next != null ? (float?)next.MoveSpeed : null, "0.0"));
+            // WO-1654 row 5.3 - THE FOUR STATS NOW CARRY THEIR GLYPHS, and the second stat is
+            // called what the art and the mockup call it.
+            // "Damage" -> "Attack": the delivered sheet is stat-ATTACK.png and yardstick row 5.3
+            // reads "Health / Attack / Range / Speed". The card was the only surface still saying
+            // Damage, so the screen disagreed with its own art over one stat's name. The VALUE is
+            // untouched - it is still TroopStatResolver's AttackDamage, the same number the live
+            // unit fights with; only the word the player reads moves.
+            // ⚠ THE KEY RIDES BESIDE THE LABEL, IT DOES NOT REPLACE IT (WO-1566 C8, greyscale
+            // gate). Nothing here is conditional on the sprite resolving: ManageArt.LoadSprite
+            // degrades an unresolvable key to a transparent image, and the WORD is what the
+            // colourblind read survives on.
+            rows.Add(StatRow("Health", now.MaxHp, next != null ? (float?)next.MaxHp : null, "0",
+                ManageArt.StatHealth));
+            rows.Add(StatRow("Attack", now.AttackDamage, next != null ? (float?)next.AttackDamage : null, "0.0",
+                ManageArt.StatAttack));
+            rows.Add(StatRow("Range", now.AttackRange, next != null ? (float?)next.AttackRange : null, "0.0",
+                ManageArt.StatRange));
+            rows.Add(StatRow("Speed", now.MoveSpeed, next != null ? (float?)next.MoveSpeed : null, "0.0",
+                ManageArt.StatSpeed));
             // Training time does NOT scale with troop level (BarracksService prices a train at
             // TroopDef.BuildSeconds flat), so this row carries no delta - stating one would be a
             // promotion the game does not deliver.
@@ -5652,12 +5682,142 @@ namespace DeNelle.Village.UI
             return TwoFacts("Next level", Ascii(b.AfterUpgradeText), null, null);
         }
 
-        private static ManageStatVM StatRow(string label, float now, float? next, string format)
+        /// <summary>
+        /// WO-1653 - THE PLACED-STRUCTURE DETAIL'S CURRENT -&gt; NEXT TABLE.
+        ///
+        /// <para>WHY THIS EXISTS AND WHY IT IS NOT <see cref="BuildingStatRows"/>. The audit
+        /// row 3.3 read as "the Defense branch runs first and discards the production table". IT
+        /// DOES NOT: the composer already tries <c>BuildingChoiceFor</c> BEFORE
+        /// <c>DefenseChoiceFor</c>. The real cause is LIST MEMBERSHIP -
+        /// <c>BuildBuildingChoices</c> skips every id where
+        /// <c>BuildingTierCatalog.IsUpgradable</c> is false, so on the captured run
+        /// (Builds/wave5-manageflow2) BuildingChoices held exactly
+        /// {arcane, armorer, barracks, farm, forge, lumbermill} ("building choices projected=6")
+        /// while mine_crystal / lumberyard / foundry / silo were among the 11 DEFENCE choices.
+        /// <c>BuildingChoiceFor("mine_crystal")</c> therefore returns NULL and the card falls
+        /// through to the placed branch. Reordering the branches would have changed nothing.</para>
+        ///
+        /// <para>AND <see cref="BuildingStatRows"/> COULD NOT HAVE SERVED THIS CARD EITHER.
+        /// Its production row is gated on
+        /// <c>ResourceBuildingProgression.IsResourceBuilding</c>, and that catalog knows exactly
+        /// THREE ids - farm / lumbermill / forge (its own <c>OrderedIds</c>). The Crystal Mine is
+        /// not one of them and has no per-hour production at all: it pays PER CLEARED WAVE, off
+        /// buildings.json's authored <c>crystalsPerWave</c> curve. Printing "Production / hr" over
+        /// that number would be a unit the game does not use, on the one screen a player uses to
+        /// decide (CLAUDE.md section 11B) - so the row says "Crystals / wave".</para>
+        ///
+        /// <para>THE LEVEL AXIS IS THE PLACED LEVEL, NOT A CITY TIER. Everything reached here
+        /// is on the PLACED-STRUCTURE ladder (<c>UpgradeFamilyResolver</c> rule 1), so
+        /// <see cref="DefenseChoiceVM.Level"/> -&gt; <see cref="DefenseChoiceVM.NextLevel"/> is
+        /// the axis an upgrade actually moves, and it is the same axis
+        /// <c>TownBankCapacity.CapacityAtLevel</c> and <c>CrystalMine.CrystalsPerWaveAt</c> already
+        /// key off. That is a DIFFERENT axis from the city-ladder card, which moves on the tier's
+        /// authored multiplier - which is exactly why the two composers stay separate rather than
+        /// sharing a method that would have to be told which axis it is on.</para>
+        ///
+        /// <para>NO NUMBER IS PRODUCED HERE. Capacity comes from the ONE capacity reader and
+        /// the yield from the ONE payout producer; this method only asks and formats. A subject
+        /// with neither keeps EXACTLY the row it has today - the bare Placed fact - so towers and
+        /// walls are byte-identical to the shipped card.</para>
+        /// </summary>
+        private IReadOnlyList<ManageStatVM> DefenseStatRows(DefenseChoiceVM d)
+        {
+            if (d == null) return Array.Empty<ManageStatVM>();
+
+            var rows = new List<ManageStatVM>(4);
+            int level = Mathf.Max(1, d.Level);
+            // NextLevel is 0 at Max (DefenseChoiceVM's own doc), so a delta is asked for ONLY
+            // when there is a rung above - an arrow at the ceiling promises an upgrade that
+            // does not exist.
+            int next = d.NextLevel > level ? d.NextLevel : level;
+
+            var entry = string.IsNullOrEmpty(d.CatalogEntryId)
+                ? null : DeNelle.Core.Catalog.CatalogRegistry.Get(d.CatalogEntryId);
+            var repo = entry != null ? entry.repo : null;
+
+            // STORAGE - silo / lumberyard / foundry. The placed level IS the capacity ladder's
+            // index, so this is the same producer the building card asks, at the honest axis.
+            if (DeNelle.Core.Economy.TownBankCapacity.IsStorageContainer(repo))
+            {
+                int nowCap = DeNelle.Core.Economy.TownBankCapacity.CapacityAtLevel(repo, level);
+                int thenCap = DeNelle.Core.Economy.TownBankCapacity.CapacityAtLevel(repo, next);
+                if (nowCap > 0)
+                {
+                    rows.Add(StatRow("Storage", nowCap, next > level ? (float?)thenCap : null, "N0"));
+                    FlowTrace.Step("Manage", "placed detail storage id=" + (d.Id ?? "?") +
+                        " L" + level + " now=" + nowCap +
+                        (next > level ? " next(L" + next + ")=" + thenCap : " (no further level)"));
+                }
+                else
+                {
+                    FlowTrace.Warn("Manage", "placed detail for '" + (d.Id ?? "?") + "' is a storage " +
+                        "container but CapacityAtLevel returned " + nowCap + " at L" + level + " - no " +
+                        "Storage row is drawn rather than printing a ceiling the bank does not enforce");
+                }
+            }
+
+            // CRYSTALS PER WAVE - the Crystal Mine, the subject of the capture this WO cites.
+            // The behaviour id is the catalog's own answer to "what does this structure DO"
+            // (RepoProps.behaviorId, the same string StructureFactory switches on to attach the
+            // component), so the card and the runtime agree by construction rather than by a
+            // second id list kept here.
+            if (repo != null && string.Equals(repo.behaviorId, "CrystalMine", StringComparison.Ordinal))
+            {
+                int nowYield = CrystalMine.CrystalsPerWaveAt(level);
+                int thenYield = CrystalMine.CrystalsPerWaveAt(next);
+                if (nowYield > 0)
+                {
+                    // The unit rides in the LABEL for the same reason the building card's
+                    // "Production / hr" does: a bare "2" states no period and means nothing.
+                    rows.Add(StatRow("Crystals / wave", nowYield,
+                        next > level ? (float?)thenYield : null, "N0"));
+                    FlowTrace.Step("Manage", "placed detail crystals id=" + (d.Id ?? "?") +
+                        " L" + level + " now=" + nowYield + "/wave" +
+                        (next > level ? " next(L" + next + ")=" + thenYield + "/wave" : " (no further level)"));
+                }
+                else
+                {
+                    FlowTrace.Warn("Manage", "placed detail for '" + (d.Id ?? "?") + "' carries the " +
+                        "CrystalMine behaviour but CrystalsPerWaveAt(" + level + ") returned " + nowYield +
+                        " - buildings.json's crystalsPerWave curve authors a zero rung, which is the " +
+                        "WO-856 defect (a producer that produces nothing), so no row is drawn");
+                }
+            }
+
+            // The PLACED fact is KEPT, not replaced - it is the only line that says how many of
+            // this type stand in town and which one the CTA acts on (ruling 3.1).
+            rows.Add(new ManageStatVM { Label = "Placed", Value = Ascii(d.PlacedText) });
+
+            if (rows.Count > 1)
+            {
+                // Same shape as the building card: the prose says what a NUMBER cannot, and it
+                // rides BENEATH the table rather than replacing it.
+                if (!string.IsNullOrWhiteSpace(d.AfterUpgradeText))
+                    rows.Add(new ManageStatVM { Label = "Next level", Value = Ascii(d.AfterUpgradeText) });
+                return rows;
+            }
+
+            // Nothing numeric to say. The card keeps EXACTLY the row it shipped with - reported,
+            // not faked. Towers and walls land here and are unchanged.
+            FlowTrace.Once("Manage", "placed-stat-placed-only:" + (d.Id ?? "?"),
+                "the placed-structure card for '" + (d.Id ?? "?") + "' has no numeric current->next " +
+                "pair to draw (mockup panel 3), so it keeps the bare Placed fact. It is neither a " +
+                "storage container nor a per-wave producer, so there is no number to state.");
+            return TwoFacts("Placed", Ascii(d.PlacedText), null, null);
+        }
+
+        /// <param name="iconKey">WO-1654 - OPTIONAL and defaulted, so every existing caller is
+        /// untouched. The building / storage / placed rows pass nothing and draw no glyph, which
+        /// is correct: no stat sheet was authored for them, and a wrong glyph is worse than
+        /// none.</param>
+        private static ManageStatVM StatRow(string label, float now, float? next, string format,
+            string iconKey = null)
         {
             return new ManageStatVM
             {
                 Label = label,
                 Value = now.ToString(format),
+                IconKey = iconKey,
                 // Only when it actually CHANGES: an arrow pointing at the same number reads as a
                 // promotion that buys nothing.
                 DeltaText = next.HasValue && Mathf.Abs(next.Value - now) > 0.01f

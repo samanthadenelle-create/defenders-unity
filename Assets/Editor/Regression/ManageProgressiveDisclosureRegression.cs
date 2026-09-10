@@ -29,6 +29,10 @@ namespace DeNelle.Editor
             // after the one above so the two never share an installed GameState.
             CheckBuildingProductionRow(failures);
 
+            // [placed-producer-keeps-its-numbers] WO-1653 panel row 3, the PLACED half. Its own
+            // fixture, run after the two above so no installed GameState is ever shared.
+            CheckPlacedProducerStatRows(failures);
+
             // ⭐ [grid-tile-states-its-state] WO-1563, the RENDERER half. The model half is
             // asserted inside the fixture above; this is the binding that was missing. BuildTile
             // referenced tile.StateText EXACTLY ZERO TIMES while the sibling renderer BuildListRow
@@ -1006,6 +1010,264 @@ namespace DeNelle.Editor
                 if (hadLevelPref) PlayerPrefs.SetInt(LevelPrefsKey, priorLevelPref);
                 else PlayerPrefs.DeleteKey(LevelPrefsKey);
             }
+        }
+
+        // =====================================================================
+        //  [placed-producer-keeps-its-numbers] - WO-1653, PANEL ROW 3, THE PLACED HALF
+        // ---------------------------------------------------------------------
+        //  THE DEFECT, from a frame the owner can open:
+        //  Builds/wave5-manageflow1/ManageFlow_BUILD_action_2670x1200.png draws the CRYSTAL MINE
+        //  detail card with ONE row - "Placed .......... 1 placed . L2" - where mockup panel 3
+        //  draws a current -> next table. ComposeDetail's placed branch set
+        //  stats = TwoFacts("Placed", ...) and that was the WHOLE table.
+        //
+        //  WHAT THE AUDIT GOT WRONG, and why this case pins the COMPOSED VM rather than a branch
+        //  order (proven against Builds/wave5-manageflow2, 2026-09-10):
+        //    * It is NOT branch ordering. ComposeDetail already tries BuildingChoiceFor BEFORE
+        //      DefenseChoiceFor. The cause is LIST MEMBERSHIP: BuildBuildingChoices skips every
+        //      id where BuildingTierCatalog.IsUpgradable is false, so the captured run projected
+        //      SIX building choices {arcane, armorer, barracks, farm, forge, lumbermill} and
+        //      ELEVEN defence choices including mine_crystal / lumberyard / foundry / silo.
+        //      Reordering the branches would have changed nothing, which is exactly why a case
+        //      pinned on ordering would have been worthless.
+        //    * BuildingStatRows could not have served this card either. Its production row is
+        //      gated on ResourceBuildingProgression.IsResourceBuilding, and that catalog holds
+        //      exactly farm / lumbermill / forge. The mine has NO per-hour production at all -
+        //      it pays PER CLEARED WAVE off buildings.json's crystalsPerWave curve. So the honest
+        //      label is "Crystals / wave", never "Production / hr", and this case asserts the
+        //      honest one (CLAUDE.md section 11B: a unit the game does not use is a lie).
+        //
+        //  THE THREE PARTS, which fail for three different reasons:
+        //    1. THE MINE. A placed L2 mine_crystal composes a "Crystals / wave" row whose value
+        //       AND delta equal CrystalMine.CrystalsPerWaveAt at the placed level and the next -
+        //       the SAME producer OnWaveCleared pays from, so the card and the payout cannot
+        //       drift. Wired to the producer, never to a literal from buildings.json.
+        //    2. THE CONTAINER. A placed silo composes a "Storage" row equal to
+        //       TownBankCapacity.CapacityAtLevel at the same axis. A different producer and a
+        //       different structure, so part 1 passing on a special case cannot carry part 2.
+        //    3. THE PLACED FACT SURVIVES. Both cards still carry "Placed". The fix ADDS rows; it
+        //       must never trade one truth for another.
+        //
+        //  RED PROOF against the pre-fix tree: restore
+        //  `stats = TwoFacts("Placed", Ascii(d.PlacedText), null, null);` in ComposeDetail's
+        //  placed branch (it was ManageScreenVM.cs:5306) -> parts 1 and 2 both fire with "has no
+        //  ... row", because TwoFacts emits the Placed pair and nothing else.
+        // =====================================================================
+        private static void CheckPlacedProducerStatRows(List<string> failures)
+        {
+            const string Tag = "[placed-producer-keeps-its-numbers] ";
+            const string MineId = "mine_crystal";
+            const string SiloId = "silo";
+            const int MineLevel = 2;
+            const int SiloLevel = 1;
+
+            var prior = GameStateService.Instance;
+            bool hadTabPref = PlayerPrefs.HasKey(ManageScreenVM.LastTabPrefKey);
+            int priorTabPref = PlayerPrefs.GetInt(ManageScreenVM.LastTabPrefKey, 0);
+            GameObject host = null;
+            GameState fixture = null;
+            try
+            {
+                // The fixture must be able to EXERCISE the thing under test, or a green here
+                // proves nothing. FAIL, never skip.
+                var mineEntry = CatalogRegistry.Get(MineId);
+                var siloEntry = CatalogRegistry.Get(SiloId);
+                if (mineEntry == null || siloEntry == null)
+                {
+                    failures.Add(Tag + "the catalog cannot resolve '" + MineId + "' / '" + SiloId +
+                                 "', so neither placed card could have been composed. FAIL, not a skip.");
+                    return;
+                }
+
+                fixture = ScriptableObject.CreateInstance<GameState>();
+                fixture.Onboarded = true;
+                fixture.VillageTier = 5;
+                // L2 of 3 for the mine (a REAL rung above it, so the delta half measures
+                // something), L1 of 6 for the silo. The 5th ctor arg is the persisted level.
+                fixture.BaseLayout = new List<PlacedStructureData>
+                {
+                    new PlacedStructureData(MineId, 21, 9, 0, MineLevel),
+                    new PlacedStructureData(SiloId, 12, 6, 0, SiloLevel),
+                };
+                fixture.ObsidianQueue = ObsidianQueueState.Empty();
+                fixture.Wood = 1000000;
+                fixture.Iron = 1000000;
+                var balances = fixture.Resources;
+                balances.Food = 1000000;
+                balances.Coins = 1000000;
+                balances.Crystals = 1000000;
+                fixture.Resources = balances;
+
+                host = new GameObject("GSS (manage-placed-producer oracle)");
+                var service = host.AddComponent<GameStateService>();
+                if (!InstallState(service, fixture))
+                {
+                    failures.Add(Tag + "the GameStateService state seam is not reflectable, so the " +
+                                 "placed detail card could not be composed and neither numeric row " +
+                                 "is measured. FAIL, not a skip.");
+                    return;
+                }
+
+                // ── PART 1: the mine's per-wave yield ────────────────────────
+                var mineStats = ComposeDetailStats(MineId);
+                if (mineStats == null)
+                {
+                    failures.Add(Tag + "OpenDetail(Build, " + MineId + ") composed no visible selection, " +
+                                 "so the yield row could not be read. FAIL, not a skip.");
+                    return;
+                }
+
+                int expectNowYield = CrystalMine.CrystalsPerWaveAt(MineLevel);
+                int expectNextYield = CrystalMine.CrystalsPerWaveAt(MineLevel + 1);
+                var yieldRow = FindStat(mineStats, "Crystals / wave");
+                if (yieldRow == null)
+                {
+                    failures.Add(Tag + "the Crystal Mine detail card has NO \"Crystals / wave\" row. " +
+                                 "Mockup panel 3 draws a current -> next table and a placed producer is " +
+                                 "exactly the case that has one; the card the owner captured showed the " +
+                                 "bare \"Placed\" fact instead. Rows present: " + StatLabels(mineStats));
+                }
+                else
+                {
+                    string expectNowText = ((float)expectNowYield).ToString("N0");
+                    if (!string.Equals(yieldRow.Value, expectNowText, StringComparison.Ordinal))
+                        failures.Add(Tag + "the mine card reads \"" + (yieldRow.Value ?? "<null>") +
+                                     "\" crystals/wave but CrystalMine.CrystalsPerWaveAt(" + MineLevel +
+                                     ") - the SAME producer OnWaveCleared pays from - says \"" +
+                                     expectNowText + "\". The card and the payout are reading different " +
+                                     "functions, which is the drift one public producer exists to stop.");
+
+                    if (expectNextYield == expectNowYield)
+                    {
+                        failures.Add(Tag + "L" + MineLevel + " -> L" + (MineLevel + 1) + " moves the mine's " +
+                                     "yield by nothing (" + expectNowYield + " -> " + expectNextYield +
+                                     "/wave), so the delta half of this case is asserting on a flat pair. " +
+                                     "buildings.json authors a RISING crystalsPerWave curve; if that is " +
+                                     "gone, the upgrade buys no crystals.");
+                    }
+                    else
+                    {
+                        string expectNextText = ((float)expectNextYield).ToString("N0");
+                        if (!string.Equals(yieldRow.DeltaText, expectNextText, StringComparison.Ordinal))
+                            failures.Add(Tag + "the mine card's yield delta reads \"" +
+                                         (yieldRow.DeltaText ?? "<null>") + "\" but the next PLACED level " +
+                                         "gives \"" + expectNextText + "\". The placed ladder - not a city " +
+                                         "tier - is the axis a mine upgrade actually moves.");
+                    }
+                }
+
+                // ── PART 3a: the Placed fact survives on the mine ────────────
+                if (FindStat(mineStats, "Placed") == null)
+                    failures.Add(Tag + "the Crystal Mine card LOST its \"Placed\" row. The yield table is " +
+                                 "an ADDITION - the placed count is the only line that says how many of " +
+                                 "this type stand in town and which one the CTA acts on. Rows present: " +
+                                 StatLabels(mineStats));
+
+                // ── PART 2: the container's capacity ─────────────────────────
+                var siloStats = ComposeDetailStats(SiloId);
+                if (siloStats == null)
+                {
+                    failures.Add(Tag + "OpenDetail(Build, " + SiloId + ") composed no visible selection, " +
+                                 "so the storage row could not be read. FAIL, not a skip.");
+                    return;
+                }
+
+                var repo = siloEntry.repo;
+                if (!DeNelle.Core.Economy.TownBankCapacity.IsStorageContainer(repo))
+                {
+                    failures.Add(Tag + "'" + SiloId + "' is no longer a storage container, so part 2 " +
+                                 "would assert on nothing. Either the catalog row lost its " +
+                                 "storageResource or the classifier moved. FAIL, not a skip.");
+                }
+                else
+                {
+                    int expectNowCap = DeNelle.Core.Economy.TownBankCapacity.CapacityAtLevel(repo, SiloLevel);
+                    int expectNextCap = DeNelle.Core.Economy.TownBankCapacity.CapacityAtLevel(repo, SiloLevel + 1);
+                    var capRow = FindStat(siloStats, "Storage");
+                    if (capRow == null)
+                    {
+                        failures.Add(Tag + "the Silo detail card has NO \"Storage\" row. A placed storage " +
+                                     "container's whole promotion IS its capacity, and the one capacity " +
+                                     "reader already answers it at the placed level. Rows present: " +
+                                     StatLabels(siloStats));
+                    }
+                    else
+                    {
+                        string expectNowText = ((float)expectNowCap).ToString("N0");
+                        if (!string.Equals(capRow.Value, expectNowText, StringComparison.Ordinal))
+                            failures.Add(Tag + "the silo card reads Storage \"" + (capRow.Value ?? "<null>") +
+                                         "\" but TownBankCapacity.CapacityAtLevel(L" + SiloLevel + ") - the " +
+                                         "ONE capacity reader the bank itself uses - says \"" + expectNowText +
+                                         "\".");
+                        if (expectNextCap > expectNowCap)
+                        {
+                            string expectNextText = ((float)expectNextCap).ToString("N0");
+                            if (!string.Equals(capRow.DeltaText, expectNextText, StringComparison.Ordinal))
+                                failures.Add(Tag + "the silo card's Storage delta reads \"" +
+                                             (capRow.DeltaText ?? "<null>") + "\" but the next placed level " +
+                                             "holds \"" + expectNextText + "\".");
+                        }
+                    }
+
+                    // ── PART 3b: the Placed fact survives on the container ───
+                    if (FindStat(siloStats, "Placed") == null)
+                        failures.Add(Tag + "the Silo card LOST its \"Placed\" row. Rows present: " +
+                                     StatLabels(siloStats));
+                }
+            }
+            catch (Exception ex)
+            {
+                failures.Add(Tag + "threw " + ex.GetType().Name + ": " + ex.Message);
+            }
+            finally
+            {
+                SetGssInstance(prior);
+                if (host != null) UnityEngine.Object.DestroyImmediate(host);
+                if (fixture != null) UnityEngine.Object.DestroyImmediate(fixture);
+                if (hadTabPref) PlayerPrefs.SetInt(ManageScreenVM.LastTabPrefKey, priorTabPref);
+                else PlayerPrefs.DeleteKey(ManageScreenVM.LastTabPrefKey);
+            }
+        }
+
+        /// <summary>Opens the BUILD detail for <paramref name="itemId"/> on a FRESH model and
+        /// returns the composed stats table, or null when no selection was composed. A fresh VM
+        /// per subject so one card's nav state cannot colour the next one's.</summary>
+        private static IReadOnlyList<ManageStatVM> ComposeDetailStats(string itemId)
+        {
+            var model = new ManageScreenVM();
+            model.EnterTab(ManageTabId.Build);
+            model.OpenDetail(ManageTabId.Build, itemId, null, null);
+            var ws = model.ComposeWorkspace();
+            if (ws == null || ws.Tabs == null) return null;
+            for (int i = 0; i < ws.Tabs.Count; i++)
+                if (ws.Tabs[i] != null && ws.Tabs[i].Selection != null && ws.Tabs[i].Selection.Visible)
+                    return ws.Tabs[i].Selection.Stats ?? (IReadOnlyList<ManageStatVM>)Array.Empty<ManageStatVM>();
+            return null;
+        }
+
+        /// <summary>The stat row with this exact label, or null.</summary>
+        private static ManageStatVM FindStat(IReadOnlyList<ManageStatVM> stats, string label)
+        {
+            if (stats == null) return null;
+            for (int i = 0; i < stats.Count; i++)
+                if (stats[i] != null && string.Equals(stats[i].Label, label, StringComparison.Ordinal))
+                    return stats[i];
+            return null;
+        }
+
+        /// <summary>The composed labels, comma-joined, so a failure message names what the card
+        /// DID draw instead of only what it did not.</summary>
+        private static string StatLabels(IReadOnlyList<ManageStatVM> stats)
+        {
+            if (stats == null || stats.Count == 0) return "<none>";
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < stats.Count; i++)
+            {
+                if (stats[i] == null) continue;
+                if (sb.Length > 0) sb.Append(", ");
+                sb.Append('"').Append(stats[i].Label ?? "<null>").Append('"');
+            }
+            return sb.Length == 0 ? "<none>" : sb.ToString();
         }
 
         private static bool InstallState(GameStateService svc, GameState state)

@@ -1,6 +1,36 @@
 # WO-1653: a PLACED resource building's detail card loses its production table to the Defense branch
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate
+
+> ## ⚠ CORRECTION 2026-09-10 (MANAGE-VM lane) — §2 BELOW IS WRONG TWICE. READ THIS FIRST.
+> Both corrections are proved at source / on the captured log, per CLAUDE.md §11B. Full working in
+> `WORK_ORDER_1653_placed_resource_building_detail_loses_its_production_table.RESULT.md`.
+>
+> **(a) IT IS NOT BRANCH ORDERING.** §2 says "the Defense branch wins first" while citing `:5301` for
+> Defense and `:5284` for Building — i.e. it contradicts its own line numbers. The composer already
+> tries `BuildingChoiceFor` FIRST. **Reordering the branches would have changed nothing.**
+> The real cause is **LIST MEMBERSHIP**: `BuildBuildingChoices` opens with
+> `if (!BuildingTierCatalog.IsUpgradable(id)) continue;`, so an id with no `building-tiers.json`
+> ladder never enters `BuildingChoices` and `BuildingChoiceFor("mine_crystal")` returns NULL.
+> Proved on `Builds/wave5-manageflow2`: `building choices projected=6`
+> {arcane, armorer, barracks, farm, forge, lumbermill} vs `defense choices projected=11` including
+> mine_crystal / lumberyard / foundry / silo.
+>
+> **(b) `BuildingStatRows` COULD NOT HAVE SERVED THIS CARD.** §2's warning box claims mine_crystal
+> satisfies `ResourceBuildingProgression.IsResourceBuilding`. **It does not.** That catalog holds
+> exactly THREE ids — farm / lumbermill / forge (`ResourceBuildingProgression.cs:173-175`). The mine
+> has **no per-hour production at all**: it pays PER CLEARED WAVE off `buildings.json`'s authored
+> `crystalsPerWave` curve `[1,2,4]`. Implementing §3's prescribed fix literally would have rendered
+> **exactly nothing new** and closed the ticket on an unchanged card.
+>
+> **CONSEQUENCE FOR ACCEPTANCE:** row 1's `Production / hr` is a unit this structure does not use —
+> a lie on the decide screen (§11B). It is re-pointed to **`Crystals / wave  2 -> 4`** plus the
+> `Placed` fact. Row 3's `building detail production id=mine_crystal` trace **can never fire**; it is
+> re-pointed to `[Flow:Manage] placed detail crystals id=mine_crystal L2 now=2/wave next(L3)=4/wave`.
+>
+> **⚠ SILO DEVIATION, DECLARED:** `Assets/_Modules/Village/Buildings/CrystalMine.cs` was touched —
+> producer extraction only, zero behaviour change (`CrystalsPerWaveAt` made public static so the card
+> and the wave payout read ONE function). The lead rules on it before commit.
 **Silo:** `Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs` (VM only — the renderer is correct).
 **Number:** PRE-ASSIGNED by the lead. ⛔ **Do NOT edit `CLI_LANES_WO_NUMBERS.md`.**
 **Source:** WO-1566 audit re-tick, RESULT row **3.3** (audit `2039e2c41`, re-tick `9592cdd6f`).
