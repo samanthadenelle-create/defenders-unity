@@ -136,15 +136,33 @@ lines, 0 status contradictions`.
    project (e.g. `defenders-pi.vercel.app`, one `vercel alias` command, reversible) or a `--prod` on
    `defenders-webgl` (its id is in the web-ship registry now, but its default domain is SSO-gated, so that one
    would ALSO need the protection changed).
+   **RULED 2026-09-10 morning:** aliased to https://defenders-pi.vercel.app - MEASURED this morning,
+   `curl -sS -o /dev/null -w "%{http_code}" -L https://defenders-pi.vercel.app` -> **200**, no SSO wall.
+   Push of `dev` is AUTHORISED **and DONE** - proven, not assumed: `git reflog show origin/dev --date=iso`
+   reads `c10e4f5d1 refs/remotes/origin/dev@{2026-09-10 03:23:47 -0500}: update by push`, and after
+   `git fetch origin dev`, `git merge-base --is-ancestor` returns YES for all three of `bbd83b0d6`,
+   `965051ab9`, `63aaa8a6c` against `origin/dev`. (A first read at ~03:20 showed `dev...origin/dev` =
+   95/0 with none of them ancestors - that read PREDATED the 03:23 push. Recorded so nobody re-derives it.)
 2. **WO-1373 rough stone:** are "top two tiers" the code ladder (mage_enclave + iron_bastion, shipped)
    or the difficulty labels (would add fortified_garrison)? Day cap global (shipped) or per camp?
    Star-to-polish-grade mapping (shipped: settled stars, documented default).
+   **RULED 2026-09-10:** *"As shipped - code ladder top two (mage_enclave + iron_bastion), one stone per
+   day GLOBAL across raids"*. Recorded in `WorkOrders/WORK_ORDER_1373_raid_rewards_and_rough_stone_chain.md`;
+   Status flipped to FIXED. ⚠ The **star-to-polish-grade mapping** was NOT part of this ruling - the
+   shipped default stands and that clause stays open.
 3. **WO-1099:** your one line on the 13:06 frame I sent (stuck open vs nonsense numbers) closes it.
 4. **WO-1412 item 2:** the busy-only label cannot show an honest SKR amount from the Village assembly
    (the quote lives in Wallet, which Village may not reference). USD-only, or a Core DTO for the quote?
+   **RULED 2026-09-10:** *"USD only - the busy label shows the USD price; SKR only where Wallet already
+   renders it"*. No Core DTO, no new asmdef reference. Recorded in
+   `WorkOrders/WORK_ORDER_1412_store_close_ejects_the_player_from_manage.md`; Status back to READY TO IMPLEMENT.
 5. **WO-1430 fields 3-5:** `levelCurve` (a curve is a balance design), `visibilityRule` (client string vs
    server object contract), `expiry_behavior` (the client is never told an item expired).
 6. **WO-1461 cache cap:** 1800 per resource is a stated derivation, not your number.
+   **RULED 2026-09-10:** *"Keep 1800 per resource"* - the cap stays a TUNABLE, already remote-tunable at
+   `Assets/_Modules/Core/Ops/RemoteTunables.cs:411` (`RaidCacheCapPerResourceDefault = 1800`, key
+   `raid.cacheCapPerResource`), so no code change. Recorded in
+   `WorkOrders/WORK_ORDER_1461_three_star_raid_clear_banks_25_of_1800_wood.md`; Status flipped to FIXED.
 7. **WO-1619 Forsaken Camp spire art:** the lane substituted the default arcane spire; it proposes a
    ruined watchtower or wooden keep for an orc scavenger camp. Your creative call.
 9. **WO-1574 troop portraits (lane PORTRAITS, BLOCKED):** all nine `Assets/Resources/RpgUi/troop/troop-*.png`

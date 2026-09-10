@@ -1,6 +1,6 @@
 # WO-1412: Manage -> store -> CLOSE lands on the HUD, ejecting the player from Manage; BUY BUILDER is unpriced and shows while a slot is free
 
-**Status:** AWAITING OWNER RULING - item 2 (the busy-only label cannot show an honest SKR amount from the Village assembly; USD-only until ruled); item 1 IMPLEMENTED - awaiting gate (2026-09-09 lane STORE-RETURN; bucket corrected by the lead so an open ruling never reads as Done) *(was: IMPLEMENTED (item 1) - item 2 needs ruling; before that: IN PROGRESS - ABSORBED INTO WO-1418 lane D (Codex batch, BATCH_STATE PART 8 / 8.5 ruling 3: the sending tab rides the existing return-door arbiter); lands and flips with 1418. Before that: READY TO IMPLEMENT - minted 2026-09-05 from the merged UI review)*
+**Status:** READY TO IMPLEMENT - item 2 RULED 2026-09-10: USD-only busy label (no Core DTO); item 1 landed 965051ab9 (was: AWAITING OWNER RULING - item 2) *(prior chain: IMPLEMENTED (item 1) - item 2 needs ruling; before that: IN PROGRESS - ABSORBED INTO WO-1418 lane D (Codex batch, BATCH_STATE PART 8 / 8.5 ruling 3: the sending tab rides the existing return-door arbiter); before that: READY TO IMPLEMENT - minted 2026-09-05 from the merged UI review)*
 **Note 2026-09-06:** no diff hunk in the working tree carries a WO-1412 marker, and its parent WO-1418 is CLOSED - this ticket needs re-verification against WO-1418's landed diff before it can be closed.
 **Note 2026-09-09 (lane STORE-RETURN) - the 09-06 observation above is RESOLVED, re-read at source:**
 the WO-1418 diff DID land the return-door half and it does carry the marker - `Assets/_Modules/Wallet/PackStore.cs:1303`
@@ -10,6 +10,20 @@ opens `// WO-1412: the sending Manage surface owns the return door`, and the sen
 offer at `:2977`. What was genuinely MISSING was acceptance item 1's ORACLE, which this lane wrote:
 `Assets/Editor/Regression/StoreReturnToManageRegression.cs`. Acceptance item 2's SKR half is BLOCKED on an
 owner/lead ruling - see the RESULT file; the label ships USD-only until then and no asmdef reference was added.
+
+### OWNER RULING 2026-09-10 (morning)
+**Question put to her** (`docs/HANDOVER_2026-09-10_overnight.md` §3 item 4): the busy-only BUY BUILDER
+label cannot show an honest SKR amount from the Village assembly - the quote lives in the Wallet
+assembly, which Village may not reference. USD-only, or a Core DTO carrying the quote?
+
+**Owner chose, verbatim:** *"USD only - the busy label shows the USD price; SKR only where Wallet already
+renders it"*.
+
+So acceptance **item 2 ships USD-only**: no Core DTO, no new asmdef reference, and no SKR string built
+outside Wallet. Wallet keeps rendering SKR on the surfaces that already do. The ticket returns to READY -
+the item-2 label is now a single-lane edit with the ruling in hand.
+- Item 1 landed: `965051ab9` *"fix(manage): WO-2007 the build card asks the same ownership question as the
+  tile; WO-1412 store return pinned"* (2026-09-09 23:51:50 -0500; `git branch --contains` -> `dev`).
 
 ## Evidence
 - Device walk (build 355952) - SEEN (`REVIEW_MERGED.md` row 11): `docs/qa/UI_REVIEW_2026-09-05/11-research-upgrade-door.png`

@@ -1,6 +1,6 @@
 # WORK ORDER 1373 - Raids pay big, and drop rough stone: the Jeweler chain closes the loop
 
-**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane RAID-3) PRIOR STATUS: READY TO IMPLEMENT - RULED 2026-09-09 (section 4); every number a tunable. PRIOR: ⛔ **BLOCKED ON ONE OWNER RULING** (§4, the exclusivity reversal)
+**Status:** FIXED 2026-09-10 - ruled as shipped (code ladder top two, global day cap); landed bbd83b0d6, gated wave1-reg3; owner felt-test closes (was: IMPLEMENTED - awaiting gate, lane RAID-3) PRIOR STATUS: READY TO IMPLEMENT - RULED 2026-09-09 (section 4); every number a tunable. PRIOR: ⛔ **BLOCKED ON ONE OWNER RULING** (§4, the exclusivity reversal)
 
 > ⚠ **SCOPE OF THE 2026-09-09 IMPLEMENTATION, stated so nobody reads this ticket as closed.**
 > Lane RAID-3 landed the §4 ruling only: the raid drop (top two tiers, one per UTC day), the
@@ -146,6 +146,24 @@ draw nothing else has. Removing it without replacing that draw makes dungeons st
 
 ### OWNER RULING 2026-09-09 (recorded by the CLI lead)
 Section 4 is RULED. Shape: ONE rough stone item (no grade split, no new material). Raids: only the top two raid tiers may drop it, at most 1 per day (a daily cap, tunable). Dungeons: 5% drop rate (tunable), EXCLUDING the starter dungeons. The jeweler outcome is random (RND) at the bench. This supersedes the A/B/C framing (closest to A with a daily cap).
+
+### OWNER RULING 2026-09-10 (morning)
+**Question put to her** (`docs/HANDOVER_2026-09-10_overnight.md` §3 item 2): are "top two tiers" the
+CODE ladder (`mage_enclave` + `iron_bastion`, as shipped) or the difficulty LABELS (which would add
+`fortified_garrison`)? And is the day cap GLOBAL or per camp?
+
+**Owner chose, verbatim:** *"As shipped - code ladder top two (mage_enclave + iron_bastion), one stone
+per day GLOBAL across raids"*.
+
+So the 2026-09-09 lane RAID-3 implementation is **correct as built** - this ruling changes no code.
+- Landed: `bbd83b0d6` *"feat(raid): WO-1373 rough stone from the top two raid tiers, one per day,
+  through the one payout authority"* (2026-09-09 23:51:50 -0500; `git branch --contains` -> `dev`).
+- Gated wave 1, markers read on the logs this session: `Builds/wave1-compile4` -> `COMPILE_GATE_OK :: scripts compiled clean`; `Builds/wave1-reg3` -> `REGRESSION_OK 492/492 suites -- 492 green, 0 red, 0 skipped` (log mtime 23:57, postdates the commit).
+- ⚠ **NOT ruled today, still open:** the **star-to-polish-grade mapping** (§3 item 2's third clause -
+  "shipped: settled stars, documented default"). The shipped default stands until she rules it; do NOT
+  read this ruling as covering it.
+- ⚠ **Also still open:** §2b's three game-changer RINGS, per the scope blockquote at the top of this
+  ticket. FIXED here means the §4 drop chain is built and gated, NOT that the whole ticket is done.
 
 **Which shape do you want?** Each preserves the raid payoff; they differ in what happens to dungeons.
 

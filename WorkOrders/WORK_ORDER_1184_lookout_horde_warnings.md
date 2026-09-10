@@ -1,6 +1,6 @@
 # WO-1184 — Earned lookout warnings: phone alerts + a LOOKOUT REPORT HUD surface
 
-**Status:** AWAITING OWNER RULING - owner 2026-09-10 morning, verbatim: "i do get a report post battle offline" (the post-battle offline report surface RENDERS on her device); remaining question = close the report half and keep only the phone-alert half as its own spec? (was: BLOCKED ON OWNER CAPTURE - see banner)
+**Status:** CLOSED 2026-09-10 - owner ruling (morning, via AskUserQuestion): "Close it" - the offline post-battle report renders on her device (her testimony 2026-09-10); the ticket body described code that no longer existed (09-06 banner); phone alerts get their own spec only if she asks later. (was: AWAITING OWNER RULING)
 read-only RCA lane proved the body describes code that no longer exists. **Do not pick this up without a
 device screenshot and the build id.**
 
