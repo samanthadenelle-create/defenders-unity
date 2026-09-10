@@ -62,6 +62,7 @@ namespace DeNelle.Editor
                 CheckDeployBandsDisjoint(failures, notes);
                 CheckDeployBarKitButton(failures, notes);
                 CheckInWorldTroopControls(failures, notes);
+                CheckDeployToastAboveModal(failures, notes);
             }
             catch (Exception ex)
             {
@@ -413,6 +414,144 @@ namespace DeNelle.Editor
 
             if (failures.Count == before)
                 notes.Add("in-world troop controls use round portraits and a wired Deploy All action");
+        }
+
+        // =====================================================================
+        //  7. WO-1640 ITEM B [deploy-toast-above-modal] -- A TOAST FIRED FROM THIS
+        //     PANEL MUST DRAW ABOVE IT.
+        // ---------------------------------------------------------------------
+        //  The defect, from the device (Builds/device-frames/2026-09-10_raid_logcat_stream.txt
+        //  :25546-25547 + 2026-09-10_0607_arena_01_entry.png): the WO-1542 outmatch confirm
+        //  fired and logged, and the player saw nothing. RaidDeployScreen's canvas is a
+        //  ScreenSpaceOverlay modal at 31050 with overrideSorting and a 0.94-alpha kit
+        //  Backdrop; ElarionUiKit.ShowToast builds its own ScreenSpaceOverlay canvas at the
+        //  DEFAULT sortingOrder 720. 720 under 31050, behind an opaque plate. The first
+        //  BEGIN ASSAULT tap therefore looked dead.
+        //
+        //  WHY A SOURCE LINT AND NOT A BUILT PROBE: ShowToast early-outs on
+        //  !Application.isPlaying (ElarionUiKitConformance.cs:398), so an edit-mode oracle
+        //  can never build a toast to measure. The relation between the two numbers IS the
+        //  contract, and both numbers live in one file -- so read them both, out of that
+        //  file, and require the relation. It cannot go stale the way a copied literal can.
+        //
+        //  RED BY CONSTRUCTION: against the pre-WO-1640 file there is no ToastSortingOrder
+        //  const at all and not one ShowToast in OnDeploy carries the argument, so every
+        //  branch below fires. It also fails LOUDLY (never silently green) if the panel's
+        //  BuildModalCanvas call, the const, or OnDeploy itself is renamed or removed.
+        // =====================================================================
+        static void CheckDeployToastAboveModal(List<string> failures, List<string> notes)
+        {
+            const string Tag = "[deploy-toast-above-modal]";
+            int before = failures.Count;
+            string path = Path.Combine(Application.dataPath, DeployScreenRel);
+            if (!File.Exists(path)) { failures.Add(Tag + " RaidDeployScreen.cs not found at " + path); return; }
+            string text;
+            try { text = File.ReadAllText(path); }
+            catch (Exception ex) { failures.Add(Tag + " RaidDeployScreen.cs unreadable (" + ex.Message + ")"); return; }
+
+            // (a) The panel's own modal band, read off the live call. ⛔ The ASSIGNMENT form,
+            //     not the bare call: the WO-1640 comment block a few lines above OnDeploy
+            //     quotes the canvas name and the band, and a bare-call search would find the
+            //     COMMENT if the real call were ever removed -- reading a number out of prose
+            //     and passing. This suite exists because a copy went stale; it may not become
+            //     one itself.
+            const string CanvasCall = "_ui = ElarionUiKit.BuildModalCanvas(\"RaidDeployScreenUI\"";
+            int mc = text.IndexOf(CanvasCall, StringComparison.Ordinal);
+            if (mc < 0)
+            {
+                failures.Add(Tag + " no `_ui = ElarionUiKit.BuildModalCanvas(\"RaidDeployScreenUI\", ...)` assignment " +
+                             "found -- this pin " +
+                             "reads the panel's sorting band out of that call, so it cannot judge anything. " +
+                             "Re-point it at whatever built the deploy canvas instead of deleting it.");
+                return;
+            }
+            int mcEnd = text.IndexOf(')', mc);
+            int mcComma = text.IndexOf(',', mc);
+            int modalOrder;
+            if (mcEnd < 0 || mcComma < 0 || mcComma > mcEnd ||
+                !int.TryParse(text.Substring(mcComma + 1, mcEnd - mcComma - 1).Trim(), out modalOrder))
+            {
+                failures.Add(Tag + " the BuildModalCanvas(\"RaidDeployScreenUI\", ...) sorting argument is no " +
+                             "longer a plain integer literal -- this pin can no longer read the panel's band, " +
+                             "so update it in the same change that made the argument dynamic.");
+                return;
+            }
+
+            // (b) The toast band this screen hands ShowToast.
+            const string ConstDecl = "private const int ToastSortingOrder";
+            int cd = text.IndexOf(ConstDecl, StringComparison.Ordinal);
+            int cdEq = cd >= 0 ? text.IndexOf('=', cd) : -1;
+            int cdEnd = cdEq >= 0 ? text.IndexOf(';', cdEq) : -1;
+            int toastOrder;
+            if (cd < 0 || cdEnd < 0 ||
+                !int.TryParse(text.Substring(cdEq + 1, cdEnd - cdEq - 1).Trim(), out toastOrder))
+            {
+                failures.Add(Tag + " RaidDeployScreen has no readable \"" + ConstDecl + " = <n>;\" -- WO-1640 " +
+                             "raised this screen's toasts above its own modal band, and without that constant " +
+                             "the kit default (720) applies and every toast this panel fires is painted UNDER " +
+                             "its 0.94-alpha backdrop, exactly as on the 2026-09-10 device frames.");
+                return;
+            }
+
+            if (toastOrder <= modalOrder)
+                failures.Add(Tag + " ToastSortingOrder is " + toastOrder + " but the panel's own canvas is " +
+                             modalOrder + " -- the relation is INVERTED and the confirm sentence draws behind " +
+                             "the panel that asked for it (WO-1640 item B). The toast band must exceed the " +
+                             "modal band.");
+
+            // (c) Every toast fired while this panel is up carries it. OpenTroopsDoor's toast
+            //     is deliberately NOT in scope: it fires after Close(), with no panel to hide
+            //     behind. OnDeploy's are the ones the player taps into.
+            int start = text.IndexOf("private void OnDeploy()", StringComparison.Ordinal);
+            if (start < 0)
+            {
+                failures.Add(Tag + " RaidDeployScreen.OnDeploy not found -- the BEGIN ASSAULT handler moved, " +
+                             "and this pin was reading its toasts. Re-point it.");
+                return;
+            }
+            int end = text.IndexOf("// ── Data helpers", start, StringComparison.Ordinal);
+            if (end < 0) end = Math.Min(start + 8000, text.Length);
+            string body = text.Substring(start, end - start);
+
+            // Non-vacuous: a body with no toasts at all would pass every check below.
+            var spans = new List<int>();
+            int at = 0;
+            while ((at = body.IndexOf("ShowToast(", at, StringComparison.Ordinal)) >= 0) { spans.Add(at); at++; }
+            if (spans.Count == 0)
+            {
+                failures.Add(Tag + " OnDeploy fires no ShowToast at all, so this check proves nothing -- and " +
+                             "the WO-1542 outmatch confirm plus the WO-932 under-construction refusal both " +
+                             "spoke through one. A refused or confirmed tap with no word is a dead tap.");
+                return;
+            }
+            for (int i = 0; i < spans.Count; i++)
+            {
+                int s = spans[i];
+                int e = i + 1 < spans.Count ? spans[i + 1] : body.Length;
+                string call = body.Substring(s, e - s);
+                if (call.IndexOf("sortingOrder: ToastSortingOrder", StringComparison.Ordinal) < 0)
+                {
+                    int line = 1;
+                    for (int k = 0; k < start + s && k < text.Length; k++) if (text[k] == '\n') line++;
+                    failures.Add(Tag + " the ShowToast at RaidDeployScreen.cs:" + line + " does not pass " +
+                                 "sortingOrder: ToastSortingOrder, so it takes the kit default (720) and draws " +
+                                 "UNDER this panel's " + modalOrder + " band and its 0.94-alpha backdrop. That " +
+                                 "is the WO-1640 defect: the player taps, the log records a toast, and nothing " +
+                                 "appears on screen.");
+                }
+            }
+
+            // (d) §5.1 -- arrival is traced BEFORE any branch reports. Without it "tap not
+            //     received" and "tap received and swallowed" are indistinguishable.
+            int firstTrace = body.IndexOf("FlowTrace.", StringComparison.Ordinal);
+            if (firstTrace < 0 || firstTrace > spans[0])
+                failures.Add(Tag + " OnDeploy's first FlowTrace call does not precede its first ShowToast -- the " +
+                             "BEGIN ASSAULT tap arrives untraced (WO-1640 §5.1), which is the silent-arrival " +
+                             "hole CLAUDE.md §12 forbids.");
+
+            if (failures.Count == before)
+                notes.Add("deploy toasts ride sortingOrder " + toastOrder + " above the panel's " + modalOrder +
+                          " modal band, and the BEGIN ASSAULT tap is traced on arrival");
         }
 
         static string Join(IReadOnlyList<string> lines)

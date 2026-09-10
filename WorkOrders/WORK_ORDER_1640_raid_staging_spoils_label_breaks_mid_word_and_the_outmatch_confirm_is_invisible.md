@@ -1,6 +1,6 @@
 # WO-1640 - Raid staging: "SPOILS" breaks mid-word into "SPOIL / S", and the two-tap outmatch confirm draws behind the panel that asks for it
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate + device frame (lane RAID-STAGING 2026-09-10)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; number block 1637-1642 pre-assigned by the
 lead, banner bumped 1637 -> 1643 in the SAME edit)
 **Silo / Lane:** UI - `Assets/_Modules/Village/Hero/RaidDeployScreen.cs` and the kit helpers it calls

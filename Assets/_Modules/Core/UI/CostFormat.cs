@@ -110,7 +110,10 @@ namespace DeNelle.Core.UI
             layout.childControlWidth = true; layout.childControlHeight = true;
             layout.childForceExpandWidth = false; layout.childForceExpandHeight = false;
             layout.spacing = 4;
-            if (!string.IsNullOrEmpty(prefix)) AddCostText(root.transform, prefix, color, fontPx);
+            // WO-1640 ITEM A: the PREFIX is a WORD and a word never breaks. The amounts are
+            // untouched (see SealPrefixCell) -- this change is confined to the prefix cell.
+            if (!string.IsNullOrEmpty(prefix))
+                SealPrefixCell(AddCostText(root.transform, prefix, color, fontPx), prefix, fontPx);
             if (parts == null) return rt;
             for (int i = 0; i < parts.Count; i++)
             {
@@ -130,17 +133,99 @@ namespace DeNelle.Core.UI
             return rt;
         }
 
-        private static void AddCostText(Transform parent, string value, Color color, float fontPx)
+        /// <summary>Builds one cell of the row. Returns the label so the caller can seal the
+        /// PREFIX cell (WO-1640) without a second construction path.</summary>
+        private static TextMeshProUGUI AddCostText(Transform parent, string value, Color color, float fontPx)
         {
             var go = new GameObject("CostText", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
             go.transform.SetParent(parent, false);
             var text = go.GetComponent<TextMeshProUGUI>();
+            // WO-1640: the kit's own font law (ElarionUiKit.Label, "assign a font BEFORE .text
+            // so first generation can't NRE") was never applied on this construction path.
+            // EnsureFont no-ops when TMP has already resolved one, and it authors no width --
+            // this is the ONE line here that touches the amount cells too, and it changes no
+            // authored geometry. It also makes the prefix's GetPreferredValues honest.
+            EnsureFont(text);
             text.text = value; text.fontSize = fontPx; text.fontStyle = FontStyles.Bold;
             text.color = color; text.alignment = TextAlignmentOptions.Center; text.raycastTarget = false;
             var layout = go.GetComponent<LayoutElement>();
             float metricScale = fontPx / 13f;
             layout.preferredWidth = Math.Max(28f, value.Length * 8f) * metricScale;
             layout.preferredHeight = Math.Max(24f, fontPx + 4f);
+            return text;
+        }
+
+        /// <summary>Breathing room in reference px between the prefix's measured glyph run and
+        /// its cell edge, so a sub-pixel metric difference can never re-open the wrap.</summary>
+        private const float PrefixPadPx = 6f;
+
+        // =====================================================================
+        //  WO-1640 ITEM A -- THE COST-ROW PREFIX IS A WORD, AND A WORD NEVER BREAKS.
+        // ---------------------------------------------------------------------
+        //  Builds/device-frames/2026-09-10_0605_raid_staging.png (2670x1200, build
+        //  363529, Seeker) -- the raid staging screen's spoils row read:
+        //
+        //        SPOIL
+        //            S      1800   1100   2200
+        //
+        //  RaidDeployScreen.BuildSpoilsChips passes prefix "SPOILS" at fontPx 24. The
+        //  8-px-per-character heuristic in AddCostText above is calibrated for the 13 px
+        //  DEFAULT size, so it authored max(28, 6*8) * (24/13) = 88.6 ref px for six BOLD
+        //  CAPS -- and AddCostText had never authored a wrapping mode, so TMP's default
+        //  word-wrap was live and broke the single word onto two lines.
+        //
+        //  TWO THINGS, BOTH CONFINED TO THE PREFIX CELL:
+        //   1. NoWrap. Exactly what the kit already authors for the wallet amount
+        //      (ElarionUiKitObsidian.cs:973). NoWrap cannot break a word, full stop.
+        //   2. The cell is widened to TMP's OWN measurement of this string at this size
+        //      and weight, taken as a MAX against the heuristic -- so no existing caller's
+        //      prefix can ever come back NARROWER than the width it has today. This can
+        //      remove a wrap; it can never create one.
+        //
+        //  ⛔ NOT A FITTER, DELIBERATELY. FitSingleLine at fontPx 24 clamps min=max=24
+        //  (24 is already below ElarionUiKitObsidian.FontFloor=30) and switches overflow to
+        //  Ellipsis -- the row would read "SPOIL..." instead of "SPOIL / S", which is not
+        //  an improvement. And WO-697's kit law (ElarionUiKitObsidian.cs:964-967) forbids
+        //  ellipsis/auto-shrink on a currency VALUE; NoWrap does neither, so the law holds
+        //  even though the prefix is not a number.
+        //
+        //  ⛔ NO minWidth. LayoutElement.minWidth here would let the row's minimum sum
+        //  exceed the band it was given, and the HorizontalLayoutGroup would then push
+        //  children OUTSIDE it -- the exact WO-1060 escape CostRowFitRegression reds for.
+        //
+        //  Pinned by CostRowFitRegression [fit-SPOILS-24] + its RED companion.
+        // =====================================================================
+        private static void SealPrefixCell(TextMeshProUGUI text, string value, float fontPx)
+        {
+            if (text == null) return;
+
+            var layout = text.GetComponent<LayoutElement>();
+            float heuristicPx = layout != null ? layout.preferredWidth : 0f;
+
+            float measuredPx = 0f;
+            try { measuredPx = text.GetPreferredValues(value).x; }
+            catch { measuredPx = 0f; }   // no font resolved yet -> keep the heuristic
+
+            float wantedPx = measuredPx > 0.5f ? measuredPx + PrefixPadPx : heuristicPx;
+            bool widened = layout != null && wantedPx > heuristicPx;
+            if (widened) layout.preferredWidth = wantedPx;
+
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+
+            // §5.2 of the WO -- the authoring-time half of the fit numbers. The RENDER-time
+            // half (resolved rect width, textInfo.lineCount) is read post-layout by
+            // CostRowFitRegression, which is the only place a settled canvas exists.
+            // Parts into locals first: the gate's brace scanner has no interpolated-string
+            // model (CLAUDE.md §1).
+            string heuristicTxt = heuristicPx.ToString("0.#");
+            string measuredTxt = measuredPx.ToString("0.#");
+            string wantedTxt = wantedPx.ToString("0.#");
+            string fontTxt = fontPx.ToString("0.#");
+            FlowTrace.Once("CostFormat", "prefix-fit-" + value,
+                "CostRow prefix '" + value + "' len=" + value.Length + " fontPx=" + fontTxt +
+                " heuristicPx=" + heuristicTxt + " measuredPx=" + measuredTxt +
+                " authoredPx=" + wantedTxt + " widened=" + widened +
+                " wrap=NoWrap (WO-1640: the prefix is a word, never a broken one)");
         }
     }
 }

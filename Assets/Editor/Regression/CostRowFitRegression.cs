@@ -41,6 +41,7 @@
 using System.Collections.Generic;
 using System.Text;
 using DeNelle.Core.UI;
+using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -86,10 +87,12 @@ namespace DeNelle.Editor.Regression
 
             foreach (var a in Aspects)
             {
-                casesRun += 3;
+                casesRun += 5;
                 CaseFitsPlain(a.x, a.y, failures, log);
                 CaseFitsWithNeedPrefix(a.x, a.y, failures, log);
                 CaseRedWhenWidthUncontrolled(a.x, a.y, failures, log);
+                CasePrefixIsOneWholeWord(a.x, a.y, failures, log);
+                CaseRedWhenPrefixWraps(a.x, a.y, failures, log);
             }
 
             if (failures.Count > 0)
@@ -107,7 +110,10 @@ namespace DeNelle.Editor.Regression
             reason = "COST_ROW_FIT_OK " + casesRun + "/" + casesRun + " cases -- ElarionUiKit.CostRow keeps " +
                      "every child inside its " + BandWidthPx.ToString("0.#") + " ref px band (with and without " +
                      "the NEED prefix), and the same measurement goes RED when childControlWidth is turned " +
-                     "back off -- at " + Aspects.Length + " landscape aspects.\n" + log;
+                     "back off; and the \"" + SpoilsPrefix + "\" prefix at fontPx " +
+                     SpoilsPrefixFontPx.ToString("0.#") + " renders as ONE whole word, with a RED companion " +
+                     "that restores the pre-WO-1640 cell and sees the break -- at " + Aspects.Length +
+                     " landscape aspects.\n" + log;
             return true;
         }
 
@@ -230,6 +236,173 @@ namespace DeNelle.Editor.Regression
             finally { Kill(canvas); }
         }
 
+        // =====================================================================
+        //  WO-1640 ITEM A -- THE PREFIX IS A WORD, AND A WORD NEVER BREAKS.
+        // ---------------------------------------------------------------------
+        //  COVERAGE GAP THIS CLOSES (named by WO-1640 §7): every case above probes the
+        //  DEFAULT fontPx with the short "NEED" prefix, and all of them assert
+        //  CONTAINMENT -- whether a child's RECT escapes the band. A wrapped word does
+        //  not escape anything; it just reads as two lines inside a rect that is exactly
+        //  as wide as it always was. So nothing here could see the defect the owner saw:
+        //
+        //      Builds/device-frames/2026-09-10_0605_raid_staging.png
+        //          SPOIL
+        //              S      1800   1100   2200
+        //
+        //  RaidDeployScreen.BuildSpoilsChips passes prefix "SPOILS" at fontPx 24 --
+        //  6 bold caps that the 8-px-per-character heuristic sized at 88.6 ref px, with
+        //  no wrapping mode authored, so TMP broke the single word.
+        //
+        //  THIS CASE MEASURES THE WRAP, NOT THE FIT: lineCount and characterCount off the
+        //  built label's own textInfo after a forced mesh update. It runs on a DELIBERATELY
+        //  WIDE card so the HorizontalLayoutGroup never has to shrink anybody -- a narrow
+        //  band would confound "the heuristic undersized the word" with "the group ran out
+        //  of room", which are different bugs with different fixes.
+        // =====================================================================
+        private const string SpoilsPrefix = "SPOILS";
+        private const float SpoilsPrefixFontPx = 24f;
+        /// <summary>A card far wider than the row needs, so shrink can never be the cause.</summary>
+        private const float WidePrefixCardPx = 900f;
+
+        /// <summary>The pre-WO-1640 authored width for a prefix -- AddCostText's 8-px-per-character
+        /// heuristic, recomputed here rather than copied as a literal so the RED case reproduces
+        /// whatever the heuristic is, not whatever it was the day this was written.</summary>
+        private static float HeuristicPrefixWidthPx(string value, float fontPx)
+        {
+            return Mathf.Max(28f, value.Length * 8f) * (fontPx / 13f);
+        }
+
+        private static void CasePrefixIsOneWholeWord(int w, int h, List<string> failures, StringBuilder log)
+        {
+            string at = w + "x" + h;
+            GameObject canvas = null;
+            try
+            {
+                canvas = BuildCanvas(w, h);
+                var card = Card(canvas.transform, WidePrefixCardPx);
+                var row = BuildSpoilsRow(card);
+                Settle(canvas);
+
+                var prefix = PrefixLabel(row);
+                if (prefix == null)
+                {
+                    failures.Add("PREFIX(" + SpoilsPrefix + ") @" + at + ": the CostRow's first child is not a " +
+                                 "TextMeshProUGUI, so the prefix cell could not be measured at all. A vacuous " +
+                                 "wrap check reads green forever -- fix the fixture before trusting this suite.");
+                    return;
+                }
+
+                prefix.ForceMeshUpdate();
+                int lines = prefix.textInfo != null ? prefix.textInfo.lineCount : -1;
+                int chars = prefix.textInfo != null ? prefix.textInfo.characterCount : -1;
+                float rectPx = ((RectTransform)prefix.transform).rect.width;
+
+                if (lines != 1 || chars != SpoilsPrefix.Length)
+                {
+                    failures.Add("PREFIX(" + SpoilsPrefix + ") @" + at + ": the prefix rendered on " + lines +
+                                 " line(s) with " + chars + " of " + SpoilsPrefix.Length + " characters, in a " +
+                                 rectPx.ToString("0.#") + " ref px cell. That is the WO-1640 defect: the staging " +
+                                 "screen read \"SPOIL\" over an orphan \"S\". Check that ElarionUiKit.CostRow " +
+                                 "still calls SealPrefixCell (CostFormat.cs) -- it authors NoWrap and widens the " +
+                                 "cell to TMP's own measurement instead of the 8-px-per-character heuristic.");
+                    return;
+                }
+
+                log.AppendLine("  [fit-" + SpoilsPrefix + "-" + SpoilsPrefixFontPx.ToString("0") + " @" + at +
+                               "] prefix '" + SpoilsPrefix + "' -> " + lines + " line, " + chars + "/" +
+                               SpoilsPrefix.Length + " chars, cell " + rectPx.ToString("0.#") + " ref px (the " +
+                               "pre-fix heuristic authored " +
+                               HeuristicPrefixWidthPx(SpoilsPrefix, SpoilsPrefixFontPx).ToString("0.#") + ").");
+            }
+            finally { Kill(canvas); }
+        }
+
+        // ---------------------------------------------------------------------
+        //  RED -- restore BOTH halves of the pre-WO-1640 prefix cell (the heuristic
+        //  width AND TMP's default word-wrap) on a row built by the production method,
+        //  and require the very measurement the green case uses to SEE the break.
+        //  Restoring only one half would not reproduce it: a wide cell does not wrap
+        //  even with Normal wrapping, and NoWrap does not break even in a narrow one.
+        // ---------------------------------------------------------------------
+        private static void CaseRedWhenPrefixWraps(int w, int h, List<string> failures, StringBuilder log)
+        {
+            string at = w + "x" + h;
+            GameObject canvas = null;
+            try
+            {
+                canvas = BuildCanvas(w, h);
+                var card = Card(canvas.transform, WidePrefixCardPx);
+                var row = BuildSpoilsRow(card);
+
+                var prefix = PrefixLabel(row);
+                var cell = prefix != null ? prefix.GetComponent<LayoutElement>() : null;
+                if (prefix == null || cell == null)
+                {
+                    failures.Add("RED-PREFIX @" + at + ": the CostRow prefix cell has no TMP label or no " +
+                                 "LayoutElement, so the WO-1640 defect cannot be reproduced and the green " +
+                                 "prefix case proves nothing.");
+                    return;
+                }
+
+                // The pre-WO-1640 CONDITION, stated as a condition rather than as one pixel
+                // value: a cell NARROWER than the word, with TMP's default word-wrap live.
+                // That is what the device frame shows. Taking the heuristic literally would
+                // make this case's red depend on the shipped font's metrics happening to
+                // exceed 88.6 px -- true on ElarionLocaleFallback, but a font swap would then
+                // turn the RED case into a false FAILURE rather than a finding, and a suite
+                // that cries wolf gets ignored. min() keeps it red for the right reason.
+                float measuredPx = prefix.GetPreferredValues(SpoilsPrefix).x;
+                float heuristicPx = HeuristicPrefixWidthPx(SpoilsPrefix, SpoilsPrefixFontPx);
+                cell.preferredWidth = Mathf.Max(8f, Mathf.Min(heuristicPx, measuredPx - 4f));
+                prefix.textWrappingMode = TextWrappingModes.Normal;
+                Settle(canvas);
+                prefix.ForceMeshUpdate();
+
+                int lines = prefix.textInfo != null ? prefix.textInfo.lineCount : -1;
+                float rectPx = ((RectTransform)prefix.transform).rect.width;
+                if (lines <= 1)
+                {
+                    failures.Add("RED-PREFIX @" + at + ": the pre-WO-1640 cell was restored (width " +
+                                 cell.preferredWidth.ToString("0.#") + " ref px, resolved " +
+                                 rectPx.ToString("0.#") + ", wrapping Normal) and \"" + SpoilsPrefix +
+                                 "\" STILL came back on " + lines + " line(s). The wrap measurement cannot go " +
+                                 "red, so it is not evidence -- fix the measurement before trusting any " +
+                                 "COST_ROW_FIT_OK.");
+                    return;
+                }
+
+                log.AppendLine("  [red-prefix @" + at + "] cell narrowed to " +
+                               cell.preferredWidth.ToString("0.#") + " ref px (heuristic " +
+                               heuristicPx.ToString("0.#") + ", TMP measures " + measuredPx.ToString("0.#") +
+                               ") + wrapping Normal -> '" + SpoilsPrefix +
+                               "' breaks onto " + lines + " lines. The measurement can see the defect.");
+            }
+            finally { Kill(canvas); }
+        }
+
+        /// <summary>The staging screen's own row, through the production kit method: the three
+        /// spoils resources and the "SPOILS" prefix at the fontPx RaidDeployScreen passes.</summary>
+        private static RectTransform BuildSpoilsRow(Transform card)
+        {
+            var parts = CostFormat.Parts(new[]
+            {
+                ("wood", "Wood", 1800),
+                ("iron", "Iron", 1100),
+                ("gold", "Gold", 2200),
+            });
+            return ElarionUiKit.CostRow(card, parts,
+                new Vector2(0.04f, 0.10f), new Vector2(0.96f, 0.90f),
+                ElarionUi.Parchment, prefix: SpoilsPrefix, fontPx: SpoilsPrefixFontPx);
+        }
+
+        /// <summary>CostRow adds the prefix FIRST, so it is child 0. Returns null when that is
+        /// not a label -- the caller fails loudly rather than measuring nothing.</summary>
+        private static TextMeshProUGUI PrefixLabel(RectTransform row)
+        {
+            if (row == null || row.childCount == 0) return null;
+            return row.GetChild(0).GetComponent<TextMeshProUGUI>();
+        }
+
         // ---------------------------------------------------------------------
         //  Fixture plumbing.
         // ---------------------------------------------------------------------
@@ -251,13 +424,18 @@ namespace DeNelle.Editor.Regression
         }
 
         /// <summary>A build card at BuildPaletteUI's authored width.</summary>
-        private static Transform Card(Transform parent)
+        private static Transform Card(Transform parent) => Card(parent, CardWidthPx);
+
+        /// <summary>A card at an explicit width. WO-1640's prefix cases pass a deliberately
+        /// WIDE one so the HorizontalLayoutGroup never has to shrink a child -- their subject
+        /// is the wrap, and a shrink would confound it with the WO-1060 containment bug.</summary>
+        private static Transform Card(Transform parent, float widthPx)
         {
             var go = new GameObject("Card_fixture", typeof(RectTransform));
             go.transform.SetParent(parent, false);
             var rt = go.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(CardWidthPx, CardHeightPx);
+            rt.sizeDelta = new Vector2(widthPx, CardHeightPx);
             rt.anchoredPosition = Vector2.zero;
             return go.transform;
         }

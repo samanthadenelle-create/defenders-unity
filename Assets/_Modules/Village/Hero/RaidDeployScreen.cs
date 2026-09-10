@@ -1053,16 +1053,83 @@ namespace DeNelle.Village.Hero
 
         private void OnEditArmy() => OpenTroopsDoor("EDIT ARMY");
 
+        // =====================================================================
+        //  WO-1640 ITEM B — A TOAST FIRED FROM THIS PANEL MUST DRAW ABOVE IT.
+        // ---------------------------------------------------------------------
+        //  The panel's canvas is BuildModalCanvas("RaidDeployScreenUI", 31050) with
+        //  overrideSorting = true (see OpenInternal), and since WO-1462 it carries the
+        //  kit's opaque 0.94-alpha Backdrop. ElarionUiKit.ShowToast builds its own
+        //  ScreenSpaceOverlay canvas at sortingOrder 720 by default
+        //  (ElarionUiKitConformance.cs:394, applied :411) — 720 UNDER 31050, behind an
+        //  opaque plate. Both canvases are ScreenSpaceOverlay (ElarionUiKit.cs:104 and
+        //  ElarionUiKitConformance.cs:409-411), so the comparison is a plain sortingOrder
+        //  one and the toast loses it every time.
+        //
+        //  DEVICE PROOF, not inference (Builds/device-frames/2026-09-10_raid_logcat_stream.txt):
+        //    :25546  [Flow:UI] kit toast -> 'Outmatched: 9 defenders against your 8. Tap
+        //            BEGIN ASSAULT again to march anyway.' tone=Info
+        //    :25547  [Flow:Raid] BEGIN ASSAULT: outmatched camp - asked once, did NOT refuse.
+        //  ...and 2026-09-10_0607_arena_01_entry.png, the staging screen after that tap:
+        //  the face is lit and NO confirm text appears anywhere. The WO-1542 two-tap step
+        //  is an owner ruling and is UNTOUCHED here — what is fixed is that the player
+        //  never saw the sentence that explains it.
+        //
+        //  ⛔ THIS IS NOT A KIT CHANGE. sortingOrder is ALREADY a caller-supplied optional
+        //  on ShowToast, so raising it HERE moves this screen's toasts and nothing else in
+        //  the game. The WO's shape 2 ("raise the toast overlay's sorting") was called out
+        //  as kit-wide and needing its own pins; this is that fix confined to one caller.
+        //
+        //  WHY 31400 AND NOT MORE: it clears every modal panel in the game
+        //  (highest measured 2026-09-10: 31300, PlayerDeckWorkspace's
+        //  BuildModalCanvas(WorkspaceName + "Canvas", 31300)) and stays BELOW
+        //  BugReportToastCanvas / Village2VictoryBanner at 32000, which must keep the top
+        //  band. Pinned by RaidDeployUiRegression [deploy-toast-above-modal], which reads
+        //  BOTH numbers out of this file and fails if the relation inverts.
+        //
+        //  ⚠ NOT PROVEN by this lane: whether the 0607 frame's toast was on screen and
+        //  occluded, or had already expired. The sorting arithmetic above is proven; that
+        //  particular frame's timing is not, and the WO says not to claim it.
+        private const int ToastSortingOrder = 31400;
+
+        /// <summary>The confirm sentence is ~80 characters — exactly the 480x76 default
+        /// card's stated two-line capacity (ElarionUiKitConformance.cs:390-397), past which
+        /// a third line draws OUTSIDE the plate. It is also a QUESTION, so it gets longer
+        /// than the 2.2 s default to be read and acted on.</summary>
+        private const float ConfirmToastWidth = 760f, ConfirmToastHeight = 132f;
+        private const float ConfirmToastLife = 5.0f;
+
         private void OnDeploy()
         {
+            // WO-1640 §5.1 — ARRIVAL. Every refusal branch below traced; arrival did not, so
+            // "tap not received" and "tap received and swallowed" were indistinguishable
+            // except by inference. This line is the difference (CLAUDE.md §12).
+            string tapRaid = _vm != null ? _vm.RaidId : "(no vm)";
+            string tapScene = _vm != null ? _vm.SceneName : "(no vm)";
+            bool tapNeedsConfirm = _vm != null && _vm.NeedsOutmatchConfirm;
+            int tapFielded = _vm != null ? _vm.Fielded : -1;
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                "BEGIN ASSAULT tap received: raid='" + tapRaid + "' scene='" + tapScene +
+                "' fielded=" + tapFielded + " needsOutmatchConfirm=" + tapNeedsConfirm +
+                // ⛔ THIS CHAIN MIRRORS THE BRANCHES BELOW IN ORDER, ALL OF THEM. A trace that
+                // names a branch the code did not take is worse than one that names none
+                // (CLAUDE.md §12) — the scene-not-in-build refusal is a real branch and it is
+                // here for that reason. IsSceneInBuild is a pure Build-Settings read.
+                " -> branch=" + (_vm == null ? "no-vm"
+                    : string.IsNullOrEmpty(tapScene) ? "no-scene"
+                    : !DeNelle.Core.SceneRouter.IsSceneInBuild(tapScene) ? "scene-not-in-build"
+                    : tapFielded <= 0 ? "zero-army"
+                    : tapNeedsConfirm ? "outmatch-confirm" : "march"));
+
             if (_vm == null)
             {
-                ElarionUiKit.ShowToast("Raid briefing is not ready.", ElarionUiKit.ToastTone.Danger);
+                ElarionUiKit.ShowToast("Raid briefing is not ready.", ElarionUiKit.ToastTone.Danger,
+                    sortingOrder: ToastSortingOrder);
                 return;
             }
             if (string.IsNullOrEmpty(_vm.SceneName))
             {
-                ElarionUiKit.ShowToast("This raid has no battleground yet.", ElarionUiKit.ToastTone.Danger);
+                ElarionUiKit.ShowToast("This raid has no battleground yet.", ElarionUiKit.ToastTone.Danger,
+                    sortingOrder: ToastSortingOrder);
                 Debug.LogWarning("[RaidDeployScreen] DEPLOY: empty sceneName.");
                 return;
             }
@@ -1071,7 +1138,7 @@ namespace DeNelle.Village.Hero
                 // WO-932 Phase 2: honest under-construction — never silent strand.
                 ElarionUiKit.ShowToast(
                     "Raid under construction — battleground not in this build.",
-                    ElarionUiKit.ToastTone.Danger);
+                    ElarionUiKit.ToastTone.Danger, sortingOrder: ToastSortingOrder);
                 DeNelle.Core.Diagnostics.FlowTrace.Fail("Raid",
                     $"BEGIN ASSAULT refused: scene '{_vm.SceneName}' not in Build Settings.");
                 return;
@@ -1081,7 +1148,8 @@ namespace DeNelle.Village.Hero
             // copy exists only to give the player a word instead of a dead tap.
             if (_vm.Fielded <= 0)
             {
-                ElarionUiKit.ShowToast("No troops trained yet. Visit the Barracks.", ElarionUiKit.ToastTone.Danger);
+                ElarionUiKit.ShowToast("No troops trained yet. Visit the Barracks.", ElarionUiKit.ToastTone.Danger,
+                    sortingOrder: ToastSortingOrder);
                 DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
                     "BEGIN ASSAULT tapped with fielded=0 - refused (WO-1403 ruling); the button should not " +
                     "have been drawn.");
@@ -1097,9 +1165,19 @@ namespace DeNelle.Village.Hero
             if (_vm.NeedsOutmatchConfirm)
             {
                 _vm.AcknowledgeOutmatch();
-                ElarionUiKit.ShowToast(_vm.OutmatchToast, ElarionUiKit.ToastTone.Info);
+                // WO-1640 ITEM B: above the panel (ToastSortingOrder), on a card big enough
+                // for the whole sentence, and held long enough to read and act on. The words
+                // are still the VM's — this View composes none of them, and RaidSelectionVM's
+                // one producer is untouched, so the sentence still names BEGIN ASSAULT and the
+                // face it names still says BEGIN ASSAULT.
+                ElarionUiKit.ShowToast(_vm.OutmatchToast, ElarionUiKit.ToastTone.Info,
+                    lifeSeconds: ConfirmToastLife, sortingOrder: ToastSortingOrder,
+                    cardWidth: ConfirmToastWidth, cardHeight: ConfirmToastHeight);
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
-                    "BEGIN ASSAULT: outmatched camp - asked once, did NOT refuse. The next tap marches.");
+                    "BEGIN ASSAULT: outmatched camp - asked once, did NOT refuse. The next tap marches. " +
+                    "The confirm is drawn at sortingOrder " + ToastSortingOrder + ", above this panel's own " +
+                    "modal band (WO-1640) - before that it took the kit default and was painted under the " +
+                    "0.94-alpha backdrop.");
                 return;
             }
 
@@ -1110,7 +1188,8 @@ namespace DeNelle.Village.Hero
             DeNelle.Village.World.Camps.EchoGuideService.NoteExpeditionTarget(_vm.RaidId, "BEGIN ASSAULT");
 
             string name = !string.IsNullOrEmpty(_vm.DisplayNameRaw) ? _vm.DisplayNameRaw : _vm.RaidId;
-            ElarionUiKit.ShowToast("Assaulting " + name + "…", ElarionUiKit.ToastTone.Info);
+            ElarionUiKit.ShowToast("Assaulting " + name + "…", ElarionUiKit.ToastTone.Info,
+                sortingOrder: ToastSortingOrder);
             Debug.Log($"[RaidDeployScreen] BEGIN ASSAULT -> SceneRouter.GoRaid('{_vm.SceneName}').");
             // SHARED CONTRACT: the VM loads the raid scene; the in-raid deploy tray handles
             // the actual unit placement.
