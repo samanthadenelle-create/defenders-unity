@@ -361,3 +361,166 @@ This lane owns this ticket. Its hand-back is incomplete until this file's `**Sta
 flipped and
 `WorkOrders/WORK_ORDER_1637_raid_arena_reads_flat_ring_spire_and_sky_are_one_pale_tan.RESULT.md`
 is written, with both paths reported. The lead regenerates `BOARD.html`.
+
+---
+
+## 11. STEP 1 HAND-BACK - RAID-ART lane, 2026-09-10 (instrumentation only; NO ruling acted on)
+
+**Status deliberately NOT flipped.** The lead's brief scopes this lane to sec.4 Step 1 only. This
+file stays `READY TO IMPLEMENT` until the owner rules on sec.3 and Step 2 lands, and no
+`.RESULT.md` is written. That overrides sec.10 for this pass, by the lead's instruction.
+
+**Rebased onto:** `f33451b11` (`git merge --ff-only refs/heads/dev`, fast-forward from
+`f5d39acd1`). Every line number below was re-read at source AFTER that rebase.
+
+### 11.1 What was added - the per-family material trace and the atmosphere line
+
+| File | Lines (post-edit) | What |
+|---|---|---|
+| `Assets/Editor/ArenaBoundaryRing.cs` | `:42-45` | `using System.Collections.Generic;` + `using DeNelle.Core.Diagnostics;` |
+| | `:406-465` | **`public static void TraceMaterials(string flowSys, string family, string resolvedPath, GameObject inst)`** - one `FlowTrace.Step` per family naming the resolved prefab path, renderer count, and per DISTINCT `sharedMaterial`: `name`, `shader.name`, `_BaseMap` (texture name or `NULL`), `_BaseColor` as F3 RGB. `FlowTrace.Warn` when the instance has no `Renderer` at all. Wrapped in `Guard.Try` (CLAUDE.md sec.12 - no silent catch). |
+| | `:119` / `:185` | `string flowSys = null` added as an OPTIONAL trailing parameter to `PlacePolarRing` and `PlaceSquarePerimeter`. Optional so no existing call site breaks; a null tag means "this caller does not trace". |
+| | `:123-124`, `:238-241` | a `HashSet<string> traced` per call, so the trace fires **once per distinct prefab**, not once per piece - the ring is 300+ objects from three prefabs. |
+| | `:140`, `:266` | the call sites, on the first instance of each palette entry. |
+| `Assets/Editor/WallTools/RaidBaseGenerator.cs` | `:1388-1393` | `BuildArenaBoundary` now passes `RaidBaseDresser.Sys` as `flowSys`, so the ring's materials land on the SAME `[Flow:RaidBase]` tag the dresser already uses. |
+| | `:784-789` | `PlaceSpire` traces the spire AFTER `SeatOnGround` and AFTER the fallback branch, so the primitive obelisk self-reports too. Family string carries `catalogId`; path is `entry.visualPrefabPath` or `<primitive obelisk>`. |
+| `Assets/Editor/WallTools/RaidBaseDresser.cs` | `:407-413`, `:429-435` | `CladRing` traces the **base wall** family on its first placed panel: the token, the kit, the ring radius, `AssetDatabase.GetAssetPath(model)` and the material read-out. This is the half sec.2 records as NOT PROVEN. `CladRing` is called twice when `InnerLayers > 0`, so an inner keep wall gets its own line (different token + radius). |
+| | `:312-324`, `:350`, `:353-378` | `DressAtmosphere(string kit)` -> `DressAtmosphere(string kit, string sceneId)`; new `TraceAtmosphere` emits ONE line per bake: `fog=ON/OFF mode=<FogMode> colour=(r,g,b) start=<m> end=<m> ambient=(r,g,b)`. |
+| | `:148` | the single call site, now passing `def.id`. |
+| `Assets/Editor/ProceduralSiegeArenaBuilder.cs` | `:67-73`, `:216-218` | TRACE ONLY. New `private const string FlowSys = "SiegeArena"`, passed through `PlaceCoverRing` -> `PlacePolarRing`, so the battle arena's own four cover rings + boundary ring report their materials too. **No palette, prop, plate or atmosphere value changed in this file.** |
+
+**Design notes that are load-bearing, so they are not re-derived next time:**
+
+- **`sharedMaterial`, never `.material`.** `.material` INSTANTIATES a copy; an editor bake SAVES the
+  scene, so reading `.material` here would leak a duplicate material into the shipped raid. Written
+  into the method header at `ArenaBoundaryRing.cs:394-397`.
+- **The tag is a PARAMETER, not a literal.** `ArenaBoundaryRing` is in `DeNelle.Editor`;
+  `RaidBaseDresser.Sys` (`"RaidBase"`) is in `DeNelle.EditorWallTools`, which references
+  `DeNelle.Editor` and not the reverse (`Assets/Editor/WallTools/DeNelle.EditorWallTools.asmdef:4-9`,
+  opened this session). Copying `"RaidBase"` into the helper would be the duplicated-state failure
+  CLAUDE.md sec.2 / sec.5 / sec.16 each describe.
+- **`DressAtmosphere` gained `sceneId` because `kit` cannot identify a camp.** `KitFor`
+  (`RaidBaseDresser.cs:258-262`) returns `"hexagon-green"` for **both** `raider_camp_small` and
+  `iron_bastion` - neither id matches the two named branches. A run that bakes every camp would
+  otherwise print two indistinguishable atmosphere lines. Same defect WO-1619 fixed on the spire
+  line.
+- **The atmosphere values are read BACK OUT of `RenderSettings`, not echoed from the literals.**
+  Echoing proves the method compiled; reading back proves what the scene will be saved with.
+
+### 11.2 Measurements taken this session (no bake was run - see 11.4)
+
+- **All four raid scenes' baked lighting block, read at source** (`.unity` lines `:17-23` in each):
+
+  | scene | `m_Fog` | `m_FogMode` | `m_FogColor` | start | end | `m_AmbientSkyColor` |
+  |---|---|---|---|---|---|---|
+  | `RaidBase_raider_camp_small` | 1 | 1 (Linear) | 0.66, 0.58, 0.42 | 22 | 95 | 0.42, 0.36, 0.26 |
+  | `RaidBase_fortified_garrison` | 1 | 1 | 0.58, 0.55, 0.50 | 28 | 115 | 0.38, 0.36, 0.33 |
+  | `RaidBase_mage_enclave` | 1 | 1 | 0.14, 0.13, 0.16 | 18 | 88 | 0.22, 0.20, 0.24 |
+  | `RaidBase_IronBastion` | **0** | **3 (ExpSquared)** | 0.5, 0.5, 0.5 | 0 | 300 | 0.212, 0.227, 0.259 |
+
+  The first three match `DressAtmosphere`'s three branches exactly, confirming sec.1d.
+  **`RaidBase_IronBastion` carries UNITY DEFAULTS** - fog off, ExpSquared, 0.5 grey. But
+  `iron_bastion`'s config authors **no `raidDress` block at all**
+  (`Assets/Resources/Data/Canonical/scene-configs.json:304-355`, opened this session - it has
+  `props`, `garrison`, `themeColor`, `entranceCount: 1`, and no `raidDress` key), so `KitFor` sends
+  it to `"hexagon-green"` and `DressAtmosphere` would set `fog = true` unconditionally
+  (`RaidBaseDresser.cs:326-327`). **The scene on disk therefore did NOT come from a
+  `Dress`-running bake of the current code, and NOTHING statically available says why.** That is a
+  real open question and the new ATMOSPHERE line is what settles it on the next bake - it will
+  either print for `iron_bastion` (and the scene is simply stale) or not print at all (and that
+  scene's entry point never calls `Dress`). **Not proven either way here.**
+
+- **`RockPaths` is shared with the battle arena's siege venue, confirmed at source**
+  (`ProceduralSiegeArenaBuilder.cs:79-80` post-edit, `:71-72` pre-edit). It is consumed there
+  **twice**: the `Rock` cover ring at radius 56 m / 16 pieces / scale 0.9-1.6
+  (`ProceduralSiegeArenaBuilder.cs:150`) **and** the `OuterBoundary_Ring` at radius 72 m /
+  40 pieces / scale 1.4-2.2 (`:149` pre-edit, `:157` post-edit). Sec.1e cited only the boundary; the
+  cover ring is a second reach and is recorded here.
+
+### 11.3 The three axes, for the owner (sec.3) - what the code would change, and what it reaches
+
+The owner is colourblind (memory `owner-colorblind-delegate-visual-creative`) - each axis is stated
+as an OBJECT / DISTANCE decision, never as a hue. No default is proposed.
+
+1. **The ring's MATERIAL.**
+   *Code change:* either `ArenaBoundaryRing.RockPaths` (`:65-70` post-edit) - swap which polyperfect
+   prefabs the palette draws from - or re-bind the swatch those prefabs carry.
+   *Reach:* **all four raid camps' boundary rings AND the battle arena's siege venue, in TWO places**
+   (its 56 m rock cover ring and its 72 m outer boundary ring). `ProceduralSiegeArenaBuilder`
+   delegates `RockPaths` to this very array (`:79-80`); there is no second copy to change and no way
+   to move one venue without the other **unless the ruling deliberately splits the palette**. If the
+   two venues should now differ, that split has to be said out loud and both venues re-baked.
+
+2. **The ATMOSPHERE - fog end distance vs. the ring radius.**
+   *Code change:* `RaidBaseDresser.DressAtmosphere`'s `hexagon-green` branch (`:342-348` post-edit) -
+   push `fogEndDistance` past the ring, or lower the fog's reach, or leave it and let the material
+   carry the contrast. The arithmetic is the finding: the ring sits **68.6-97 m** from centre
+   (`RaidBaseGenerator.cs:131-132` from `:92`, `:106`, `:313`) and linear fog ends at **95 m**, so
+   most of the ring renders at 60-100% fog toward a colour in its own hue family.
+   *Reach:* the `hexagon-green` branch dresses **`raider_camp_small` AND `iron_bastion`** (both via
+   `KitFor`, `:258-262`). It does **not** reach `fortified_garrison` (`synty-castle`) or
+   `mage_enclave` (`dungeon-stone`), which have their own branches. It does **not** reach the battle
+   arena at all - `ProceduralSiegeArenaBuilder` never touches `RenderSettings` (grepped this
+   session). Every camp needs a re-bake for a change here to reach a device.
+
+3. **The BASE PERIMETER - height and mass, not colour.**
+   *Code change:* the wall token itself. `DefaultWall("hexagon-green")` returns `"barrier"`
+   (`RaidBaseDresser.cs:272-277`), or a camp may author `raidDress.wallModule`. Changing it to a
+   taller module changes what `CladRing` (`:391-438`) instantiates and what `MeasureLongest` /
+   `FitPieceAlong` fit along the run. This is the WO-1607 sec.6 `:139` "thickness, not a stick"
+   question.
+   *Reach:* per-camp if done in `scene-configs.json` `raidDress.wallModule`; all `hexagon-green`
+   camps if done in `DefaultWall`. **It does NOT reach the battle arena** - the siege venue has no
+   clad ring. **WARNING: It also does not reach the shipped device until every affected camp is re-baked**,
+   and `WO-1634` owns the `raidDress` arrays in that file (sec.9).
+
+### 11.4 What is NOT done, and NOT proven
+
+- **No bake was run, so the trace has produced ZERO lines.** The lead holds the single Unity seat
+  (an APK build was in flight). Acceptance item 3 is therefore OPEN: it needs a fresh raid bake and
+  the `[Flow:RaidBase] MAT ...` / `ATMOSPHERE ...` lines pasted. **Every material claim in this file
+  is still a prefab / `.mat` / baked-scene reading, exactly as sec.2 says.**
+- **No compile gate was run** (single Unity seat). `python tools/gate_brace.py` and a NUL/raw-brace
+  check both pass on all four files - see the lane hand-back. That is a brace proof, not a compile
+  proof.
+- **No palette, no fog value, no prop, no prefab path and no `scene-configs.json` value was
+  changed.** The sec.3 ruling has not been made and nothing here pre-empts it.
+- **The regressions in sec.7 were opened.** `Assets/Editor/Regression/RaidArenaShapeRegression.cs`
+  asserts SOURCE-TEXT tokens on this path - `CaseArenaBoundary` (`:591-624`) requires
+  `"ArenaBoundaryRing.PlaceSquarePerimeter"`, `"ArenaBoundaryRing.RockPaths"`, `"gates=[none]"` and
+  the containment constants in `RaidBaseGenerator.cs`; `"PlaceSquarePerimeter"`, `"PlacePolarRing"`,
+  `"MeasureMinFootprint"` in `ArenaBoundaryRing.cs`; and `"ArenaBoundaryRing.PlacePolarRing"` in
+  `ProceduralSiegeArenaBuilder.cs`. **Every one of those tokens is still present** - the edits are
+  purely additive, and the two signature changes ADD an optional trailing parameter, so no call-site
+  text moved. `:795-860` re-derives the band fit arithmetically from constants none of which were
+  touched. `RaidBaseLayoutRegression.cs` source-lints the dresser (`:148-190`, `:242-276`) for
+  `Zone_Gatehouse`, `Zone_Courtyard`, `GarrisonSlot_`, `def.raidDress.props`,
+  `AssetRoots.StructureContent`, `MinGateWidth = 3.5f`, and FORBIDS `def.props` and `DefaultProps` -
+  none of which this pass adds or removes. **Not proven: that either suite passes**, because no
+  suite was run.
+- **The coverage-gap rule sec.7 proposes** (red when `fogEndDistance < ringRadius`) was **NOT
+  written**. It is a real gap and it is cheap; it needs its own ticket, and per
+  `LayoutOracle.cs:17-20` it must be SEEN RED before the fix, which cannot happen without the Unity
+  seat. **Raised, not done.**
+
+## 12. Lead addendum - Step 1 trace lines on the fresh bake (2026-09-10 07:2x, `Builds/wave5-bake1`)
+
+Ring, base wall, spire and atmosphere as the bake resolved them (sort -u of the MAT/ATMOSPHERE lines):
+
+```
+[Flow:RaidBase] ATMOSPHERE 'fortified_garrison' kit=synty-castle fog=ON mode=Linear colour=(0.580, 0.550, 0.500) start=28.0m end=115.0m ambient=(0.380, 0.360, 0.330)
+[Flow:RaidBase] ATMOSPHERE 'mage_enclave' kit=dungeon-stone fog=ON mode=Linear colour=(0.140, 0.130, 0.160) start=18.0m end=88.0m ambient=(0.220, 0.200, 0.240)
+[Flow:RaidBase] ATMOSPHERE 'raider_camp_small' kit=hexagon-green fog=ON mode=Linear colour=(0.660, 0.580, 0.420) start=22.0m end=95.0m ambient=(0.420, 0.360, 0.260)
+[Flow:RaidBase] MAT ArenaBoundary (boundary ring) prefab='Assets/polyperfect/Low Poly Ultimate Pack/_M/Prefabs_M/Nature_M/Stones_M/Rock_Pillar.prefab' renderers=1 distinct=1 mat='M_14_Brown_lightest_LPUP' shader='Universal Render Pipeline/Lit' _BaseMap=NULL _BaseColor=(0.863, 0.749, 0.604)
+[Flow:RaidBase] MAT ArenaBoundary (boundary ring) prefab='Assets/polyperfect/Low Poly Ultimate Pack/_M/Prefabs_M/Nature_M/Stones_M/Stone_Large.prefab' renderers=1 distinct=1 mat='M_14_Brown_lightest_LPUP' shader='Universal Render Pipeline/Lit' _BaseMap=NULL _BaseColor=(0.863, 0.749, 0.604)
+[Flow:RaidBase] MAT ArenaBoundary (boundary ring) prefab='Assets/polyperfect/Low Poly Ultimate Pack/_M/Prefabs_M/Nature_M/Stones_M/Stone_Medium_Flat.prefab' renderers=1 distinct=1 mat='M_14_Brown_lightest_LPUP' shader='Universal Render Pipeline/Lit' _BaseMap=NULL _BaseColor=(0.863, 0.749, 0.604)
+[Flow:RaidBase] MAT base wall token='SM_Bld_Castle_Wall_01' kit=synty-castle radius=22.1m prefab='Assets/Synty/PolygonFantasyKingdom/Prefabs/Castle/SM_Bld_Castle_Wall_01.prefab' renderers=1 distinct=1 mat='Castle_Wall_01' shader='Synty/Generic_Basic' _BaseMap=n/a _BaseColor=(1.000, 1.000, 1.000)
+[Flow:RaidBase] MAT base wall token='SM_Bld_Castle_Wall_01' kit=synty-castle radius=49.0m prefab='Assets/Synty/PolygonFantasyKingdom/Prefabs/Castle/SM_Bld_Castle_Wall_01.prefab' renderers=1 distinct=1 mat='Castle_Wall_01' shader='Synty/Generic_Basic' _BaseMap=n/a _BaseColor=(1.000, 1.000, 1.000)
+[Flow:RaidBase] MAT base wall token='barrier' kit=hexagon-green radius=31.0m prefab='Assets/Models/KayKit/KayKit Dungeon Remastered 1.1/Assets/fbx(unity)/barrier.fbx' renderers=1 distinct=1 mat='dungeon_texture_URP' shader='Universal Render Pipeline/Lit' _BaseMap=dungeon_texture _BaseColor=(1.000, 1.000, 1.000)
+[Flow:RaidBase] MAT base wall token='wall' kit=dungeon-stone radius=24.3m prefab='Assets/Models/KayKit/KayKit Dungeon Remastered 1.1/Assets/fbx(unity)/wall.fbx' renderers=1 distinct=1 mat='dungeon_texture_URP' shader='Universal Render Pipeline/Lit' _BaseMap=dungeon_texture _BaseColor=(1.000, 1.000, 1.000)
+[Flow:RaidBase] MAT base wall token='wall_cracked' kit=dungeon-stone radius=54.0m prefab='Assets/Models/KayKit/KayKit Dungeon Remastered 1.1/Assets/fbx(unity)/wall_cracked.fbx' renderers=1 distinct=1 mat='dungeon_texture_URP' shader='Universal Render Pipeline/Lit' _BaseMap=dungeon_texture _BaseColor=(1.000, 1.000, 1.000)
+[Flow:RaidBase] MAT spire 'tower_arcane_spire' prefab='Structures/ArcaneSpire_1' renderers=1 distinct=1 mat='Color_bcf8a365-0849-42ab-9611-99d7fa0d2f81' shader='Universal Render Pipeline/Lit' _BaseMap=ArcaneSpire_Albedo _BaseColor=(1.000, 1.000, 1.000)
+[Flow:RaidBase] MAT spire 'tower_ruined_watchtower' prefab='Structures/building_tower_base_green' renderers=1 distinct=1 mat='hexagons_medieval_URP' shader='Universal Render Pipeline/Lit' _BaseMap=hexagons_medieval _BaseColor=(1.000, 1.000, 1.000)
+```
+
+Reading: the boundary ring is ONE swatch, `M_14_Brown_lightest_LPUP` (URP/Lit, the pack's lightest brown) on all three rock prefabs; the green camp's base wall is the KayKit dungeon `barrier` piece (`dungeon_texture_URP`, radius 31.0 m); the Forsaken Camp spire is `building_tower_base_green` on the `hexagons_medieval` atlas; fog on raider_camp_small is Linear 22-95 m, colour (0.66, 0.58, 0.42) - the same tan family as the ring swatch. The ruling (s.3) is now being made against measured material state.

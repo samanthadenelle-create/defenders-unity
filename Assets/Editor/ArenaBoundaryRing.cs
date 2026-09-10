@@ -39,8 +39,10 @@
 // <repo>/Assets/polyperfect/Low Poly Ultimate Pack/_M/Prefabs_M/Nature_M/.
 // =============================================================================
 
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using DeNelle.Core.Diagnostics;
 
 namespace DeNelle.Editor
 {
@@ -114,9 +116,12 @@ namespace DeNelle.Editor
         public static void PlacePolarRing(
             Transform parent, System.Random rng, float radius, int count, float jitter,
             string[] prefabRelPaths, string label, ref int placedCounter,
-            float scaleMin, float scaleMax, string logTag)
+            float scaleMin, float scaleMax, string logTag, string flowSys = null)
         {
             if (parent == null || rng == null || prefabRelPaths == null || prefabRelPaths.Length == 0) return;
+
+            // WO-1637 step 1: one MAT line per DISTINCT prefab in the palette, not per piece.
+            var traced = new HashSet<string>();
 
             for (int i = 0; i < count; i++)
             {
@@ -132,6 +137,7 @@ namespace DeNelle.Editor
                 float s = Mathf.Lerp(scaleMin, scaleMax, (float)rng.NextDouble());
                 go.transform.localScale *= s;
                 go.name = label + "_" + i;
+                if (traced.Add(rel)) TraceMaterials(flowSys, label + " (polar)", NatureRoot + rel, go);
                 placedCounter++;
             }
         }
@@ -176,7 +182,7 @@ namespace DeNelle.Editor
             Transform parent, System.Random rng, float halfExtent, float bandHalf, float bandFill,
             float containmentSlack, float containmentHeadroom, float overlapFactor, float radialJitterCap,
             string[] prefabRelPaths, string label,
-            float scaleMin, float scaleMax, int maxPerSide, string logTag)
+            float scaleMin, float scaleMax, int maxPerSide, string logTag, string flowSys = null)
         {
             var report = new BoundaryReport();
             if (parent == null || rng == null || prefabRelPaths == null || prefabRelPaths.Length == 0)
@@ -229,6 +235,10 @@ namespace DeNelle.Editor
             float radialJitter = Mathf.Min(Mathf.Max(0f, radialJitterCap), Mathf.Max(0f, jitterRoom));
 
             int placed = 0;
+            // WO-1637 step 1: one MAT line per DISTINCT prefab in the palette, not per piece.
+            // The ring is 300+ objects drawn from three prefabs; three lines answer the ticket
+            // and 300 would evict the rest of the bake log.
+            var traced = new HashSet<string>();
             var sideNames = new[] { "S", "E", "N", "W" };
             for (int s = 0; s < 4; s++)
             {
@@ -253,6 +263,7 @@ namespace DeNelle.Editor
                     float sc = Mathf.Lerp(appliedScaleMin, appliedScaleMax, (float)rng.NextDouble());
                     go.transform.localScale *= sc;
                     go.name = label + "_" + sideNames[s] + "_" + i;
+                    if (traced.Add(rel)) TraceMaterials(flowSys, label + " (boundary ring)", NatureRoot + rel, go);
                     placed++;
                 }
             }
@@ -363,6 +374,94 @@ namespace DeNelle.Editor
             fallback.transform.localScale = new Vector3(FallbackFootprint, 1.5f, FallbackFootprint);
             TintFallback(fallback);
             return fallback;
+        }
+
+        // =====================================================================
+        //  WO-1637 STEP 1 - THE PER-FAMILY MATERIAL TRACE.
+        //
+        //  Until this existed, NOTHING on the arena bake path named a material. The ring
+        //  builder logged geometry only (RaidBaseGenerator's ring line: piece, stride, gap,
+        //  reach, jitter), the spire logged its art PATH, and the dresser logged art TOKENS -
+        //  so "which material did the thing the owner is looking at actually resolve to"
+        //  could only be answered by reading a .prefab and a .mat by hand and hoping the
+        //  bake agreed. That is a prefab reading, not a measurement (CLAUDE.md sec.11B).
+        //
+        //  This is the line that answers it, forever, for any family any builder places.
+        //  It is PERMANENT instrumentation (CLAUDE.md sec.12 - never strip; flag off at
+        //  most). It runs at BAKE time only, once per family per bake, so it costs nothing
+        //  on device and never touches a frame path.
+        //
+        //  sharedMaterial, NEVER material: `.material` INSTANTIATES a copy, and an editor
+        //  bake SAVES the scene - so reading `.material` here would leak a duplicate
+        //  material into the shipped raid, which is the exact class of damage the fallback
+        //  tint below exists to avoid.
+        //
+        //  `flowSys` is a PARAMETER, not a constant, because this file lives in
+        //  DeNelle.Editor and the raid tag ("RaidBase") is owned by RaidBaseDresser.Sys in
+        //  DeNelle.EditorWallTools - which references DeNelle.Editor and not the other way
+        //  round. Copying the literal here would be the duplicated-state failure CLAUDE.md
+        //  sec.2 / sec.5 / sec.16 each describe. A null/empty tag means "this caller does
+        //  not trace", which is what keeps the parameter optional at every call site.
+        // =====================================================================
+        public static void TraceMaterials(string flowSys, string family, string resolvedPath, GameObject inst)
+        {
+            if (string.IsNullOrEmpty(flowSys) || inst == null) return;
+
+            Guard.Try(flowSys, "material trace " + family, () =>
+            {
+                var rends = inst.GetComponentsInChildren<Renderer>(true);
+                string path = string.IsNullOrEmpty(resolvedPath) ? "<unknown>" : resolvedPath;
+
+                if (rends == null || rends.Length == 0)
+                {
+                    FlowTrace.Warn(flowSys, "MAT " + family + " prefab='" + path +
+                                   "' has NO Renderer at all - nothing in this family can be shading, " +
+                                   "so a palette or fog change cannot be what the player is seeing.");
+                    return;
+                }
+
+                var seen = new HashSet<string>();
+                var parts = new List<string>();
+                for (int i = 0; i < rends.Length; i++)
+                {
+                    if (rends[i] == null) continue;
+                    var mat = rends[i].sharedMaterial;
+                    if (mat == null)
+                    {
+                        if (seen.Add("<null>")) parts.Add("mat=<NULL - this renders MAGENTA under URP>");
+                        continue;
+                    }
+
+                    string matName = mat.name;
+                    if (!seen.Add(matName)) continue;
+
+                    string shaderName = mat.shader != null ? mat.shader.name : "<null shader>";
+
+                    string baseMap = "n/a";
+                    if (mat.HasProperty("_BaseMap"))
+                    {
+                        var tex = mat.GetTexture("_BaseMap");
+                        baseMap = tex == null ? "NULL" : tex.name;
+                    }
+
+                    string baseColor = "n/a";
+                    if (mat.HasProperty("_BaseColor"))
+                    {
+                        var c = mat.GetColor("_BaseColor");
+                        string r = c.r.ToString("F3");
+                        string g = c.g.ToString("F3");
+                        string b = c.b.ToString("F3");
+                        baseColor = "(" + r + ", " + g + ", " + b + ")";
+                    }
+
+                    parts.Add("mat='" + matName + "' shader='" + shaderName +
+                              "' _BaseMap=" + baseMap + " _BaseColor=" + baseColor);
+                }
+
+                string joined = parts.Count > 0 ? string.Join(" | ", parts.ToArray()) : "<no material read>";
+                FlowTrace.Step(flowSys, "MAT " + family + " prefab='" + path + "' renderers=" +
+                               rends.Length + " distinct=" + parts.Count + " " + joined);
+            });
         }
 
         private static void TintFallback(GameObject go)

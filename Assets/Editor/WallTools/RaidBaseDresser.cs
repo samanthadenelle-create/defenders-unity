@@ -145,7 +145,7 @@ namespace DeNelle.Editor
             string floorTok = dress != null && !string.IsNullOrEmpty(dress.floor) ? dress.floor : DefaultFloor(kit);
             string towerTok = dress != null && !string.IsNullOrEmpty(dress.towersVisual) ? dress.towersVisual : DefaultTower(kit);
 
-            DressAtmosphere(kit);
+            DressAtmosphere(kit, def.id);
             HideWallRenderers(root);
             CladRing(root, wallTok, ctx.Radius, ctx.GateWidth, ctx.TwoGates, kit);
             if (ctx.InnerLayers > 0)
@@ -309,7 +309,19 @@ namespace DeNelle.Editor
 
         // -- walls / gate -----------------------------------------------------
 
-        private static void DressAtmosphere(string kit)
+        /// <summary>
+        /// WO-1637 step 1 gave this method a <paramref name="sceneId"/>. It had only `kit`, and
+        /// <see cref="KitFor"/> routes BOTH `raider_camp_small` AND `iron_bastion` to
+        /// "hexagon-green" (neither id matches the two named branches), so a run that bakes every
+        /// camp printed nothing that could tell those two apart - the same defect WO-1619 fixed on
+        /// the spire line, whose reasoning is written at RaidBaseGenerator.PlaceSpire.
+        /// <para/>
+        /// The trace reads the values BACK OUT of <see cref="RenderSettings"/> after the branch
+        /// has run, rather than echoing the literals above it. Echoing the literal proves only
+        /// that this method was compiled; reading it back proves what the scene will actually be
+        /// SAVED with, which is the thing the ticket is about (CLAUDE.md sec.11B).
+        /// </summary>
+        private static void DressAtmosphere(string kit, string sceneId)
         {
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
@@ -334,6 +346,33 @@ namespace DeNelle.Editor
                 RenderSettings.fogEndDistance = 95f;
                 RenderSettings.ambientLight = new Color(0.42f, 0.36f, 0.26f);
             }
+
+            TraceAtmosphere(kit, sceneId);
+        }
+
+        /// <summary>
+        /// One RenderSettings line per bake (WO-1637 step 1). Read back, never echoed.
+        /// </summary>
+        private static void TraceAtmosphere(string kit, string sceneId)
+        {
+            Guard.Try(Sys, "atmosphere trace", () =>
+            {
+                var fogC = RenderSettings.fogColor;
+                var ambC = RenderSettings.ambientLight;
+
+                string fogOn = RenderSettings.fog ? "ON" : "OFF";
+                string fogRgb = "(" + fogC.r.ToString("F3") + ", " + fogC.g.ToString("F3") + ", " +
+                                fogC.b.ToString("F3") + ")";
+                string ambRgb = "(" + ambC.r.ToString("F3") + ", " + ambC.g.ToString("F3") + ", " +
+                                ambC.b.ToString("F3") + ")";
+                string start = RenderSettings.fogStartDistance.ToString("F1");
+                string end = RenderSettings.fogEndDistance.ToString("F1");
+                string mode = RenderSettings.fogMode.ToString();
+
+                FlowTrace.Step(Sys, "ATMOSPHERE '" + sceneId + "' kit=" + kit + " fog=" + fogOn +
+                               " mode=" + mode + " colour=" + fogRgb + " start=" + start + "m end=" +
+                               end + "m ambient=" + ambRgb);
+            });
         }
 
         private static void HideWallRenderers(Transform root)
@@ -365,6 +404,14 @@ namespace DeNelle.Editor
             float step = run / n;
             var parent = EnsureZone(root, "Zone_Clad");
 
+            // WO-1637 step 1: the BASE WALL family. The ticket's sec.2 records the wall's
+            // material as explicitly NOT PROVEN - LoadVisual's five-step search order was never
+            // traced to the folder it resolves for a given camp, so "the knee-high grey railing"
+            // is a SHAPE reading with no material behind it. This names both halves: which asset
+            // the token resolved to, and what that asset is actually shaded with.
+            string cladPath = AssetDatabase.GetAssetPath(model);
+            bool cladTraced = false;
+
             for (int s = 0; s < 4; s++)
             {
                 bool gated = northGate ? (s == 2) : ((s == 0) || (twoGates && s == 2));
@@ -379,6 +426,13 @@ namespace DeNelle.Editor
                     var go = InstantiateVisual(model, parent, $"Clad_{s}_{i}", pos,
                                                rot, stripColliders: true);
                     if (go != null) FitPieceAlong(go, step * 0.98f, piece);
+                    if (go != null && !cladTraced)
+                    {
+                        cladTraced = true;
+                        string cladFamily = "base wall token='" + token + "' kit=" + kit +
+                                            " radius=" + radius.ToString("F1") + "m";
+                        ArenaBoundaryRing.TraceMaterials(Sys, cladFamily, cladPath, go);
+                    }
                 }
             }
         }
@@ -824,6 +878,8 @@ namespace DeNelle.Editor
                 // that is not re-seated floats or sinks by its own bounds delta.
                 go.transform.localScale *= slot.Scale;
                 SeatOnGround(go);
+                // Traced AFTER the re-seat, so the logged world position is the one that ships.
+                TraceProp(zone != null ? zone.name : "<no zone>", p, k, model, go);
                 if (p.cover) EnsureCoverCollider(go);
                 placed++;
             }
@@ -857,10 +913,52 @@ namespace DeNelle.Editor
                                            Quaternion.Euler(0f, (seed + k * 40) % 360, 0f),
                                            stripColliders: !p.cover);
                 if (go == null) continue;
+                TraceProp(zone != null ? zone.name : "<no zone>", p, k, model, go);
                 if (p.cover) EnsureCoverCollider(go);
                 placed++;
             }
             return placed;
+        }
+
+        // =====================================================================
+        //  WO-1638 STEP 1 - THE PER-PLACED-PROP TRACE.
+        //
+        //  WO-1638 exists because the bake log could not answer a question the device frames
+        //  raised: two green slabs stand on the south gatehouse line and NOTHING said what they
+        //  are. The dresser logged a COUNT ("gate mouth south props=4", "props 'id' total=N") and
+        //  a count is not an identification - the ticket's own sec.4 step 1 says so. Every
+        //  candidate object in that frame is authored art placed exactly where the code says, so
+        //  the only missing fact was WHICH object, and the log was silent on it.
+        //
+        //  One line per PLACED prop: the zone GameObject it landed under, the AUTHORED zone
+        //  string from scene-configs.json (which can differ - ZoneOf falls through to Courtyard
+        //  for an unknown or a Choke/Keep on a camp with no inner layers), the instance index,
+        //  the art that resolved, and the WORLD position. World, not local, because the frames
+        //  and every other measurement in these tickets are in world metres.
+        //
+        //  Bake-time only, editor-only, never a frame path. PERMANENT (CLAUDE.md sec.12).
+        // =====================================================================
+        private static void TraceProp(string zoneName, RaidDressPropDef p, int index,
+                                      GameObject model, GameObject placed)
+        {
+            if (p == null || placed == null) return;
+
+            Guard.Try(Sys, "prop trace " + p.token, () =>
+            {
+                var w = placed.transform.position;
+                string authoredZone = string.IsNullOrEmpty(p.zone) ? "<unauthored>" : p.zone;
+                string art = model != null ? model.name : "<null>";
+                string artPath = model != null ? AssetDatabase.GetAssetPath(model) : "<null>";
+                if (string.IsNullOrEmpty(artPath)) artPath = "<not an asset>";
+                string pos = "(" + w.x.ToString("F3") + ", " + w.y.ToString("F3") + ", " +
+                             w.z.ToString("F3") + ")";
+                string cover = p.cover ? " cover=yes" : " cover=no";
+
+                FlowTrace.Step(Sys, "PROP zone=" + zoneName + " authoredZone=" + authoredZone +
+                               " i=" + index + " token='" + p.token + "' art='" + art +
+                               "' asset='" + artPath + "' world=" + pos + " name='" +
+                               placed.name + "'" + cover);
+            });
         }
 
         /// <summary>

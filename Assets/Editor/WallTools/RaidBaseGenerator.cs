@@ -781,6 +781,13 @@ namespace DeNelle.Editor
             }
             SeatOnGround(go);
 
+            // WO-1637 step 1. AFTER the fallback branch, so the primitive obelisk self-reports
+            // too: "the spire reads as more ring" is a material question and no line on this path
+            // has ever named the spire's material - only its art PATH, which is an import-time
+            // reading, not a render-time one (WO-1637 sec.2).
+            string spireArt = string.IsNullOrEmpty(prefabPath) ? "<primitive obelisk>" : prefabPath;
+            ArenaBoundaryRing.TraceMaterials(RaidBaseDresser.Sys, "spire '" + catalogId + "'", spireArt, go);
+
             var spire = go.GetComponent<RaidSpire>();
             if (spire == null) spire = go.AddComponent<RaidSpire>();
             spire.Configure(def.id, catalogId, tier.SpireHp, built);
@@ -1378,7 +1385,12 @@ namespace DeNelle.Editor
                 ArenaBoundaryOverlap, ArenaBoundaryRadialJitterCap,
                 ArenaBoundaryRing.RockPaths, ArenaBoundaryPieceLabel,
                 ArenaBoundaryScaleMin, ArenaBoundaryScaleMax, ArenaBoundaryMaxPerSide,
-                "[RaidBaseGenerator]");
+                "[RaidBaseGenerator]",
+                // WO-1637 step 1: the ring's MATERIAL, on the same tag the dresser already uses,
+                // so one grep of a bake log reads every art decision this scene made. The tag is
+                // passed (not copied into ArenaBoundaryRing) because DeNelle.Editor cannot see
+                // DeNelle.EditorWallTools - see TraceMaterials' header.
+                RaidBaseDresser.Sys);
 
             // Same line shape as the wall rings above, so one grep reads every ring in a bake.
             string gapText = report.WorstGap <= 0f

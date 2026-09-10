@@ -64,6 +64,14 @@ namespace DeNelle.Editor
         // self-identify as coming from THIS builder.
         private const string LogTag = "[ProceduralSiegeArenaBuilder]";
 
+        // WO-1637 step 1 (TRACE ONLY - no palette, prop or atmosphere change in this file).
+        // RockPaths is SHARED with the raid arena boundary (see the property below), so a ruling
+        // that re-points that palette moves this venue too. That is exactly why this builder's
+        // ring must report its own resolved materials: otherwise the only measured material state
+        // in the game would be the raid's, and the battle arena's would be inferred from the fact
+        // that it reads the same array - which is a code reading, not a measurement.
+        private const string FlowSys = "SiegeArena";
+
         // WO-1632: the pack root, the tree/rock palettes, the polar-ring placement math
         // and the graceful-miss instantiate now live in ArenaBoundaryRing (same assembly),
         // shared with RaidBaseGenerator's arena boundary. The RNG draw order is unchanged,
@@ -206,7 +214,8 @@ namespace DeNelle.Editor
             float scaleMin, float scaleMax)
         {
             ArenaBoundaryRing.PlacePolarRing(parent, rng, radius, count, jitter, prefabRelPaths,
-                                             label, ref placedCounter, scaleMin, scaleMax, LogTag);
+                                             label, ref placedCounter, scaleMin, scaleMax, LogTag,
+                                             FlowSys);
         }
 
         // =====================================================================

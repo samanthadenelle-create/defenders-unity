@@ -269,3 +269,197 @@ This lane owns this ticket. Its hand-back is incomplete until this file's `**Sta
 flipped and
 `WorkOrders/WORK_ORDER_1638_raid_gatehouse_banners_read_as_untextured_green_placeholder_boxes.RESULT.md`
 is written, with both paths reported. The lead regenerates `BOARD.html`.
+
+---
+
+## 10. STEP 1 HAND-BACK - RAID-ART lane, 2026-09-10 (instrument + identify; NO dressing changed)
+
+**Status deliberately NOT flipped.** The lead's brief scopes this lane to sec.4 Step 1 only. This
+file stays `READY TO IMPLEMENT` until the owner rules on sec.3 and Step 2 lands, and no
+`.RESULT.md` is written. That overrides sec.9 for this pass, by the lead's instruction.
+
+**Rebased onto:** `f33451b11` (`git merge --ff-only refs/heads/dev`, fast-forward from
+`f5d39acd1`). Every line number below was re-read at source AFTER that rebase.
+
+**Sec.0 honoured:** gate placement, the gate token, `entranceCount` and `PlaceGatehouse` were NOT
+touched, read-only. Nothing in this pass changes a placement, a prop, a token or any data.
+
+### 10.1 The trace that was added
+
+| File | Lines (post-edit) | What |
+|---|---|---|
+| `Assets/Editor/WallTools/RaidBaseDresser.cs` | `:924-963` | **`TraceProp(string zoneName, RaidDressPropDef p, int index, GameObject model, GameObject placed)`** - one `FlowTrace.Step` on tag `Sys` (`"RaidBase"`, `:27`) per PLACED prop: the zone GameObject it landed under, the AUTHORED `p.zone` string, the instance index, `model.name`, `AssetDatabase.GetAssetPath(model)`, the WORLD position to F3, the instance name and whether it is a cover prop. Wrapped in `Guard.Try`. |
+| | `:882` | call site in `PlaceCourtyardCluster`, placed AFTER `go.transform.localScale *= slot.Scale` and `SeatOnGround(go)` so the logged world position is the one that ships. |
+| | `:916` | call site in `PlaceZoneProps` - **this is the one that covers the Gatehouse zone**, and therefore the two objects this ticket is about. |
+
+This closes the gap sec.4 step 1 names: the dresser logged a COUNT
+(`"gate mouth south props=N"` `:512`, `"props <id> total=N"` `:759-762`) and a count is not an
+identification. It is PERMANENT instrumentation (CLAUDE.md sec.12), bake-time and editor-only, never
+on a frame path.
+
+*(This lane also added the WO-1637 material / atmosphere traces in the same files - see WO-1637
+sec.11. They are additive and disjoint from this ticket's prop path.)*
+
+### 10.2 THE IDENTIFICATION - static reading of the scene, with citations
+
+Scene: `Assets/Scenes/RaidBase_raider_camp_small.unity`, parsed this session by walking each
+`--- !u!1001 PrefabInstance` block and reading its `m_SourcePrefab` guid, its `m_TransformParent`
+and its `m_LocalPosition` overrides.
+
+STOP: **THE LINE NUMBERS IN SEC.1B ARE STALE.** That table cites `:15390` / `:51119` (flags),
+`:22055` / `:40534` (`GateFlank_south_L/_R`) and `:53639` / `:21185` (gatehouses). After the rebase
+onto `f33451b11` the flags are unchanged but **the gatehouse and flank rows have MOVED**. Sec.1b
+itself flagged those as "the lane's to re-confirm the same way before it edits either object" - they
+were, and four of the six had moved. Current values:
+
+| object | name-override line | block header line | source guid | parent | local position |
+|---|---|---|---|---|---|
+| `Prop_flag_green` | `:15390` | `:15340` (`&447269132`) | `e275bfa05131a654e9975ba7da0c45e1` | `859173303` | (+6.4764786, 0.0000079, -28.5) |
+| `Prop_flag_green` | `:51119` | `:51069` (`&1590553026`) | `e275bfa05131a654e9975ba7da0c45e1` | `859173303` | (-6.4764786, 0.0000079, -28.5) |
+| `GateFlank_south_L` | `:44715` | `:44665` (`&1363995993`) | `fcf76db4544b7e5498781f360bda601d` | `859173303` | (-4.704127, 0.0034347, -31) |
+| `GateFlank_south_R` | `:30439` | `:30389` (`&929314104`) | `fcf76db4544b7e5498781f360bda601d` | `859173303` | (+4.704127, 0.0034347, -31) |
+| `GateFlank_north_L` | `:12254` | `:12204` (`&364332944`) | `fcf76db4544b7e5498781f360bda601d` | `859173303` | (+4.704127, 0.0034347, +31) |
+| `GateFlank_north_R` | `:26743` | `:26693` (`&822802589`) | `fcf76db4544b7e5498781f360bda601d` | `859173303` | (-4.704127, 0.0034347, +31) |
+| `Gatehouse_south` | `:68721` | `:68667` (`&2120792871`) | `be6f23503acaba849bfd4cfdec7f01e2` | `859173303` | (0, 0.0500361, -31) |
+| `Gatehouse_north` | `:8557` | `:8503` (`&252421004`) | `be6f23503acaba849bfd4cfdec7f01e2` | `859173303` | (0, 0.0500361, +31) |
+
+**All eight share parent `fileID: 859173303`, and that transform is `Zone_Gatehouse`:** GameObject
+`&859173302` at `:28172`, `m_Name: Zone_Gatehouse` at `:28181`, its Transform `--- !u!4 &859173303`
+at `:28187`. So **the flags ARE the `Prop_flag_green` children of `Zone_Gatehouse`** - sec.4 step 1
+option 2's phrasing is correct on the parentage. **None of the eight carries an `m_LocalScale`
+override**, confirming sec.1b: no squashed mesh.
+
+**Guid -> asset path** (each read from that file's own `.fbx.meta` line 2):
+
+| guid | asset |
+|---|---|
+| `e275bfa05131a654e9975ba7da0c45e1` | `Assets/Models/KayKit/KayKit Medieval Hexagon Pack 1.0.1/Assets/fbx(unity)/decoration/props/flag_green.fbx` |
+| `fcf76db4544b7e5498781f360bda601d` | `.../fbx(unity)/buildings/green/building_watchtower_green.fbx` |
+| `be6f23503acaba849bfd4cfdec7f01e2` | `.../fbx(unity)/buildings/neutral/wall_straight_gate.fbx` |
+
+WARNING: **Read from the MAIN tree, not this worktree.** `Assets/Models/*` is gitignored
+(`.gitignore:124-125`), so the KayKit packs do not exist in an agent worktree at all. The three
+`.meta` files were opened under the repo's own checkout. **The `fbx` (non-`unity`) twins carry
+DIFFERENT guids** - `flag_green.fbx` is `55fc800f2b1a4d34b8e27c736ab91888` and
+`building_watchtower_green.fbx` is `51710785969fe21419d15fb3fe65cac6` - so the scene binds the
+`fbx(unity)` variants specifically, and a search that finds the wrong twin will read the wrong
+importer settings.
+
+### 10.3 WHICH pair the green slabs are - the static discriminator, and its limit
+
+**The instance COUNT settles it as far as a static reading can.**
+
+- `flag_green` (`e275bf...`) appears **exactly TWICE** in the whole scene - the two rows above.
+  Both are on the SOUTH gatehouse.
+- `building_watchtower_green` (`fcf76d...`) appears **TWELVE** times: the four `GateFlank_*` above,
+  plus **eight** instances named `Visual` (block headers `:12654`, `:25418`, `:32816`, `:33783`,
+  `:40674`, `:53483`, `:63201`, `:66223`) - those are the turret reskins, which
+  `ReplaceChildrenWith` names `"Visual"` (`RaidBaseDresser.cs:655`).
+- `wall_straight_gate` (`be6f23...`) appears **twice** - the two gatehouses. Sec.0 item 1 and
+  sec.1d hold exactly as written.
+
+`RaidStagingPoint` - the hero's deploy seat - is at local `(0, 0, -51.199013)`
+(GameObject `&160286183`, `m_Name` at `:4894`; Transform `&160286184`, `m_LocalPosition` at `:4910`).
+So the hero starts **due south of the base facing north**, which is why the compass strip in the
+frames reads NW / N / NE and why the SOUTH gatehouse is the one in shot. From that seat the flag
+pair is **23.6 m** away and the flank pair **20.7 m** - both in the near field, both symmetric about
+x = 0, so distance alone does not separate them.
+
+**The count does.** The frames report exactly TWO green slabs (sec.1a). If the slab were
+`building_watchtower_green`, the same art stands **twelve** times in this scene - the north
+gatehouse's flank pair and eight wall-ring turrets - and the frame from that seat would carry many
+more than two of them. The art that appears exactly twice, only on the south gatehouse, is
+`flag_green`.
+
+STOP: **This is a STATIC reading, not a render proof, and it is labelled so on purpose.** It reasons
+from instance counts and positions in the saved scene plus a shape reading of a zoomed frame
+(sec.1a). It does NOT name the GameObject the renderer drew. **Acceptance item 1 is still OPEN**;
+it closes on the next bake, when the `:916` `PROP zone=Zone_Gatehouse ... token='flag_green' ...
+world=(6.476, 0.000, -28.500)` line prints - or, failing that, on sec.4 step 1 option 2
+(disable-and-re-shoot). No bake was run this pass: the lead holds the single Unity seat.
+
+### 10.4 NEW FINDING, not fixed - the north gatehouse has NO flags
+
+`PropSlot`'s Gatehouse branch (`RaidBaseDresser.cs:1022-1026` post-edit) is:
+
+    float flank = Mathf.Max(5f, ctx.GateWidth * 0.5f + 2.2f);
+    return new Vector3((k % 2 == 0 ? -1f : 1f) * flank, 0f, -ctx.Radius + 2.5f);
+
+`z` is **hardcoded to `-ctx.Radius + 2.5`** for every instance index `k`. There is no north branch
+and no side parameter, so **every prop authored to the `Gatehouse` zone lands on the SOUTH gate,
+however many are authored.** The scene confirms it: two `flag_green`, both at `z = -28.5`, none at
+`z = +28.5`. `PlaceGatehouse` DOES place both gates and both flank pairs (`:465-466`), so the
+asymmetry is the PROP path's alone. This is why sec.2's "NOT claimed the north wall looks the same"
+is true in a stronger sense than it was written: the north gatehouse **cannot** look the same,
+because it has no banners at all. Recorded for the sec.3 ruling - **not touched**, because fixing it
+is a placement change and this pass changes no placement.
+
+### 10.5 The three options, for the owner (sec.3) - what the code would change, and what it reaches
+
+The owner is colourblind (memory `owner-colorblind-delegate-visual-creative`) - each option is stated
+as an OBJECT decision. No default is proposed.
+
+1. **KEEP the banner, re-material / re-tint it so it sits in the camp's palette.**
+   *Code change:* nothing in the placement path. It is a MATERIAL change on the KayKit hexagon atlas
+   binding, or a per-instance material override applied in `InstantiateVisual`
+   (`RaidBaseDresser.cs:236-254`) for this token.
+   *Reach:* **`flag_green` is bound in this scene ONLY** (2 instances, both here). But the atlas
+   behind it, `hexagons_medieval_URP.mat`, is the shared `hexagon-green` kit material - re-tinting
+   **the atlas** would move every hexagon-green piece in every camp on that kit (`raider_camp_small`
+   and `iron_bastion`, both via `KitFor`, `:258-262`), including the gates, the flank towers and the
+   eight turret `Visual`s. A per-token override reaches only the banners. **Say which.**
+   *Does NOT reach the battle arena's siege venue* - `ProceduralSiegeArenaBuilder` uses no KayKit art.
+
+2. **SWAP for a different gatehouse prop** (brazier / wall-bracket banner / shield rack).
+   *Code change:* prefer the DATA edit - the `Gatehouse`-zone row in `raidDress.props` for
+   `raider_camp_small` in `Assets/Resources/Data/Canonical/scene-configs.json` (the block at
+   `:66-140`), plus its byte-equal `Assets/StreamingAssets` mirror. **WARNING: That array belongs to
+   WO-1634** (sec.8) - this lands after it or the lead merges the two. Canonical JSON is edited in
+   BINARY with the newline count proven (memory `canonical-json-edits-binary-only-verify-newlines`).
+   *Reach:* one camp, if done as data. If instead done by changing a `Default*` helper in the
+   dresser, it reaches every `hexagon-green` camp.
+
+3. **REMOVE the pair** and leave the gatehouse to the gate plus its flank towers.
+   *Code change:* delete the `Gatehouse`-zone row from that camp's `raidDress.props` - same file,
+   same WO-1634 dependency, same binary-edit rule. No C# change at all.
+   *Reach:* one camp. **WARNING: Consider sec.10.4 first:** the north gatehouse is already bare, so
+   "remove" makes both gates match, and "keep / re-tint" leaves an asymmetry the ruling may want to
+   close separately.
+
+**WARNING: Shared-palette note the lead must carry to the owner:** none of these three touches
+`ArenaBoundaryRing.RockPaths`. That array IS shared with `ProceduralSiegeArenaBuilder` (its
+`RockPaths` property delegates to it, `:79-80` post-edit), which consumes it twice - a 56 m rock
+cover ring and the 72 m `OuterBoundary_Ring`. **That sharing is WO-1637's axis 1, not this
+ticket's.** It is repeated here only so the two rulings are not conflated.
+
+### 10.6 What is NOT done, and NOT proven
+
+- **No bake was run**, so the new `PROP` lines have produced ZERO output and acceptance items 1-5
+  are all OPEN. The lead holds the single Unity seat (an APK build was in flight).
+- **No compile gate was run.** `python tools/gate_brace.py` and a NUL / raw-brace check pass on all
+  four touched files (see the lane hand-back). That is a brace proof, not a compile proof.
+- **Not proven: which pair the renderer actually drew.** Sec.10.3. The static reading is stated as a
+  reading.
+- **Not proven: that the material resolves at RENDER as it does at import.** Sec.2 asked for this
+  explicitly if claimed - it is not claimed. WO-1637's new `MAT` trace
+  (`ArenaBoundaryRing.TraceMaterials`) reports the ring, spire and base wall; **it is NOT wired to
+  the prop path**, so a banner's material is still unproven. If the sec.3 answer is "re-tint", wire
+  `TraceMaterials` into `TraceProp` first and prove it.
+- **One prop path is still COUNT-ONLY, deliberately: `PlaceGateFlanks`** (`RaidBaseDresser.cs:487-512`).
+  It instantiates `rubble_large` / `crate_large` as `"GateFlankProp"` at `:507` from a hardcoded
+  `xs`/`zs` grid, not from a `RaidDressPropDef`, so `TraceProp` cannot take it - it has no authored
+  row to name. It still logs only `"gate mouth <side> props=N"` (`:512`). Those objects are rubble and
+  crates, not banners, so they are NOT a candidate for this ticket - but a reader of the new `PROP`
+  lines will see gatehouse-adjacent objects with no line of their own, and that is why. A sibling
+  trace for it is cheap and unclaimed.
+- **Nothing was changed on the other three camps**, and their scenes were not opened except for the
+  baked lighting block (WO-1637 sec.11.2).
+
+## 11. Lead addendum - the PROP trace on the fresh bake (2026-09-10, `Builds/wave5-bake1`)
+
+```
+[Flow:RaidBase] PROP zone=Zone_Gatehouse authoredZone=Gatehouse i=0 token='flag_green' art='flag_green' asset='Assets/Models/KayKit/KayKit Medieval Hexagon Pack 1.0.1/Assets/fbx(unity)/decoration/props/flag_green.fbx' world=(-6.476, 0.000, -28.500) name='Prop_flag_green' cover=no
+[Flow:RaidBase] PROP zone=Zone_Gatehouse authoredZone=Gatehouse i=1 token='flag_green' art='flag_green' asset='Assets/Models/KayKit/KayKit Medieval Hexagon Pack 1.0.1/Assets/fbx(unity)/decoration/props/flag_green.fbx' world=(6.476, 0.000, -28.500) name='Prop_flag_green' cover=no
+```
+
+Render-side confirmation of s.10: the only two `flag_green` placements in the scene are the Gatehouse pair at (+/-6.476, 0, -28.5) - the south gatehouse; no north-gatehouse flag line exists. The identification is now trace-proven, not static.
