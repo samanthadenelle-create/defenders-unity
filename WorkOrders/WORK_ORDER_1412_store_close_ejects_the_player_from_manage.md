@@ -1,7 +1,15 @@
 # WO-1412: Manage -> store -> CLOSE lands on the HUD, ejecting the player from Manage; BUY BUILDER is unpriced and shows while a slot is free
 
-**Status:** IN PROGRESS - ABSORBED INTO WO-1418 lane D (Codex batch, BATCH_STATE PART 8 / 8.5 ruling 3: the sending tab rides the existing return-door arbiter); lands and flips with 1418. *(was: READY TO IMPLEMENT - minted 2026-09-05 from the merged UI review)*
+**Status:** AWAITING OWNER RULING - item 2 (the busy-only label cannot show an honest SKR amount from the Village assembly; USD-only until ruled); item 1 IMPLEMENTED - awaiting gate (2026-09-09 lane STORE-RETURN; bucket corrected by the lead so an open ruling never reads as Done) *(was: IMPLEMENTED (item 1) - item 2 needs ruling; before that: IN PROGRESS - ABSORBED INTO WO-1418 lane D (Codex batch, BATCH_STATE PART 8 / 8.5 ruling 3: the sending tab rides the existing return-door arbiter); lands and flips with 1418. Before that: READY TO IMPLEMENT - minted 2026-09-05 from the merged UI review)*
 **Note 2026-09-06:** no diff hunk in the working tree carries a WO-1412 marker, and its parent WO-1418 is CLOSED - this ticket needs re-verification against WO-1418's landed diff before it can be closed.
+**Note 2026-09-09 (lane STORE-RETURN) - the 09-06 observation above is RESOLVED, re-read at source:**
+the WO-1418 diff DID land the return-door half and it does carry the marker - `Assets/_Modules/Wallet/PackStore.cs:1303`
+opens `// WO-1412: the sending Manage surface owns the return door`, and the sending half is
+`ManageScreenVM.OpenRealmStoreFromManage` (`Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs:3015-3021`,
+`SetReturnDoor("Manage tab=" + tab, () => PanelRouter.Open(PanelId.Manage, tab))`), reached from the builder
+offer at `:2977`. What was genuinely MISSING was acceptance item 1's ORACLE, which this lane wrote:
+`Assets/Editor/Regression/StoreReturnToManageRegression.cs`. Acceptance item 2's SKR half is BLOCKED on an
+owner/lead ruling - see the RESULT file; the label ships USD-only until then and no asmdef reference was added.
 
 ## Evidence
 - Device walk (build 355952) - SEEN (`REVIEW_MERGED.md` row 11): `docs/qa/UI_REVIEW_2026-09-05/11-research-upgrade-door.png`
@@ -36,6 +44,10 @@ Trace: `FlowTrace.Step("Store", "close -> return opener=Manage tab=<tab>")`; `Fl
 "builder upsell shown=<bool> busy=<n>/<max> price='<text>'")`.
 
 ## Acceptance
+- [~] WRITTEN 2026-09-09, NOT YET RUN (the lane cannot fire Unity): `Assets/Editor/Regression/StoreReturnToManageRegression.cs`
+      (markers `STORE_RETURN_TO_MANAGE_OK` / `_FAIL`; register in `DataRegression.RunAll`). The SKR half of the
+      third clause below is deliberately NOT pinned in either direction - see the in-file note in case F and the
+      ruling request in the RESULT. Original text:
 - [ ] RED first: `StoreReturnToManageRegression` - open Manage Troops, open the store from the drawer, close it:
       the active panel is Manage on tab Troops (trace line), not the HUD; drawer fixture with a free slot: no
       label contains `BUY BUILDER`; all-busy fixture: the label contains `SKR` and `$`. Fails on the current tree.

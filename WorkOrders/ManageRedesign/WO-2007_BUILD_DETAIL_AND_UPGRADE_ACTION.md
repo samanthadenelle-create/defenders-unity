@@ -1,6 +1,6 @@
 # WO-2007 — Simplify Building Detail and Upgrade Action
 
-**Status:** IN PROGRESS - PARTIAL: the action-state model behind build detail landed in bb51b8b9c; the detail-panel acceptance (no duplicate state copy, no dead MAX LEVEL action, no false lock on owned buildings) is not verified at HEAD 2026-09-06.
+**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane MANAGE-DOOR); owner device match closes
 
 **Priority:** P0  
 **Depends on:** WO-2006, WO-2003

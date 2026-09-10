@@ -5296,8 +5296,37 @@ namespace DeNelle.Village.UI
                     var row = InventoryRowById(nav.ItemId);
                     if (row != null)
                     {
-                        item = ComposeUnplacedItem(row);
+                        // ⛔ WO-2007 - THE CARD ASKS THE SAME OWNERSHIP QUESTION AS THE TILE.
+                        // This was a bare ComposeUnplacedItem(row), and that is the whole
+                        // MANAGE_BUILD_DOOR_FAIL: the GRID routes through ComposeBuildItem, which
+                        // asks IsPlacedThisTown and hands a placed, no-ladder civic singleton to
+                        // ComposeOwnedNoUpgradeItem - while the CARD assumed "no upgrade ladder
+                        // means never built". So 'market', 'workshop' and 'pet-house', all three
+                        // physically recorded in BaseLayout, painted BUILT on their tile and offered
+                        // BUILD on their card, and the placement gate then refused that very button
+                        // as "Already built". The card lied about state the town already knows.
+                        //
+                        // ⚠ IsPlacedThisTown IS CALLED HERE RATHER THAN ComposeBuildItem, AND THAT
+                        // IS DELIBERATE, NOT A SECOND DECIDER. ComposeBuildItem opens with
+                        // BuildingChoiceFor(row.Id, row.TierLadderId); TierLadderId is the FAMILY id
+                        // from CatalogRegistry.ResolveUpgradeId (BuildInventoryModel.cs:302-305) and
+                        // need not equal row.Id, so it can match a BuildingChoiceVM that the
+                        // BuildingChoiceFor(nav.ItemId, nav.ItemId) branch above already missed -
+                        // and that branch is the ONLY one that fills stats / costs / costCaption /
+                        // timeText, so routing wholesale would paint a laddered building's card with
+                        // an empty cost band. The decider being shared is the OWNERSHIP one
+                        // (IsPlacedThisTown), and no family-resolution site is added:
+                        // docs/ARCHITECTURE.md section 6, "never add a second family-resolution or
+                        // upgrade-start site".
+                        bool placedNoLadder = IsPlacedThisTown(row.Id);
+                        item = placedNoLadder ? ComposeOwnedNoUpgradeItem(row) : ComposeUnplacedItem(row);
                         description = Ascii(row.Description);
+                        FlowTrace.Step("Manage", "build detail '" + row.Id + "' projects the word '" +
+                            (item != null ? (item.BadgeText ?? "") : "<none>") + "' because it is " +
+                            (placedNoLadder
+                                ? "recorded in this town's BaseLayout and authors no upgrade ladder, so ownership IS the state and the card carries no BUILD action"
+                                : "not in this town's BaseLayout, so the card carries the direct-placement BUILD door") +
+                            " (WO-2007)");
                     }
                     break;
                 }
