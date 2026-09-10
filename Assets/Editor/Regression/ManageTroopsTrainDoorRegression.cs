@@ -308,6 +308,9 @@ namespace DeNelle.Editor
 
                 // ── CASE 13 (WO-1564 part 2): the QUEUE DRAWER speaks WORDS, not ids ──
                 CheckQueueRowsNameThingsInWords(vm, svc, throwaway, failures, log);
+
+                // ── CASE 16 (WO-1668): a LOCKED troop's CTA is a DEAD "LOCKED" face ──
+                CheckLockedTroopCtaIsADisabledLockedFace(vm, failures, log);
             }
             finally
             {
@@ -493,6 +496,143 @@ namespace DeNelle.Editor
                              "on an empty roster. FAIL, not a skip.");
             else
                 log.AppendLine($"  case 8 OK - {measured} troop detail card(s) measured");
+
+            vm.EnterTab(ManageTabId.Army);   // leave the model on a grid, as the earlier cases found it
+        }
+
+        // ── CASE 16 body (WO-1668, owner ruling 2026-09-10 on WO-1566 audit row 6.3) ──
+        /// <summary>
+        /// A LOCKED troop's detail CTA is a DEAD face wearing the model's own locked word - not the
+        /// live "VIEW BARRACKS" route the audit photographed.
+        ///
+        /// <para>THE DEFECT THIS IS SHAPED AROUND, and why no earlier suite caught it: row 6.3 asked
+        /// for a button reading LOCKED and visibly disabled; the shipped card
+        /// (Builds/ui-capture/ManageFlow_ARMY_locked_2670x1200.png) painted a gold, ENABLED
+        /// "VIEW BARRACKS" under a LOCKED state chip. Every pin that mentioned "VIEW BARRACKS"
+        /// lived in ManageStateModelRegression as a hand-built FIXTURE feeding
+        /// ManageStateInvariants.Validate - and the validator never inspects the projected face, so
+        /// nothing in the repo asserted what the player actually saw. The divergence survived to a
+        /// screenshot audit for exactly that reason.</para>
+        ///
+        /// <para>⚠ MEASURED RED FIRST. Before WO-1668, ManageVmProjection.ProjectAction's
+        /// `blocked &amp;&amp; Route.IsRoutable` branch set `Label = action.Route.Cta` and
+        /// `Enabled = true`, so BOTH assertions below fail on the old face: the label reads
+        /// VIEW BARRACKS, not LOCKED, and the button is pressable. Mutation that reds it again:
+        /// delete the `action.LockedFace` early-return from that branch, or drop
+        /// `LockedFace = true` from ManageScreenVM's locked-troop arm.</para>
+        ///
+        /// <para>⛔ AND IT PINS THE HALF THAT MUST NOT MOVE WITH IT: the model's Route stays
+        /// ROUTABLE. ManageStateInvariants' [lock-without-a-door] (ruling 18) fails a
+        /// PrerequisiteBlocked action carrying Route.None, so a future seat "simplifying" the dead
+        /// face by clearing the route would trade the owner's ruling for a validator failure. The
+        /// route is asserted at SOURCE because the composed ManageItemState is internal to the VM -
+        /// the same idiom cases 5, 6, 7 and 12 already use.</para>
+        /// </summary>
+        private static void CheckLockedTroopCtaIsADisabledLockedFace(
+            ManageScreenVM vm, List<string> failures, StringBuilder log)
+        {
+            if (vm == null) { failures.Add("[case 16] no ManageScreenVM to measure."); return; }
+
+            vm.EnterTab(ManageTabId.Army);
+            if (!vm.AvailableTabIds.Contains(ManageTabId.Army))
+            {
+                failures.Add("[case 16] the ARMY tab is not available on a fixture that places a barracks, so no " +
+                             "locked troop card could be composed and the owner's row-6.3 ruling is unmeasured.");
+                return;
+            }
+
+            int measured = 0;
+            for (int i = 0; i < vm.TroopChoices.Count; i++)
+            {
+                var c = vm.TroopChoices[i];
+                if (c == null || c.Unlocked) continue;
+
+                vm.OpenDetail(ManageTabId.Army, c.Id, null, null);
+                var ws = vm.ComposeWorkspace();
+                if (ws == null || ws.Tabs == null || ws.Tabs.Count == 0)
+                {
+                    failures.Add($"[case 16] ComposeWorkspace produced no tabs for locked troop '{c.Id}'.");
+                    continue;
+                }
+                int index = Mathf.Clamp(ws.ActiveTabIndex, 0, ws.Tabs.Count - 1);
+                var sel = ws.Tabs[index].Selection;
+                if (sel == null || !sel.Visible)
+                {
+                    failures.Add($"[case 16] the detail screen for locked troop '{c.Id}' has no visible selection " +
+                                 "card - the player taps a locked troop and gets nothing.");
+                    continue;
+                }
+                measured++;
+
+                var face = sel.PrimaryAction;
+                if (face == null || !face.Visible)
+                {
+                    failures.Add($"[case 16] locked troop '{c.Id}' seats NO primary face at all. The ruling is a " +
+                                 "DISABLED button, not an absent one - a card with no CTA band reads as unfinished.");
+                    continue;
+                }
+
+                // THE WORD. Asserted against the shipped symbol, never a re-typed literal, so the
+                // pin cannot drift from the composer if the owner ever re-words the state.
+                if (!string.Equals(face.Label, ManageScreenVM.LockedTroopWord, StringComparison.Ordinal))
+                    failures.Add($"[case 16] locked troop '{c.Id}' CTA reads \"{face.Label}\", expected " +
+                                 $"\"{ManageScreenVM.LockedTroopWord}\". Owner ruling 2026-09-10 (WO-1566 row 6.3): " +
+                                 "the locked ARMY tile's CTA must be a disabled LOCKED face, not VIEW BARRACKS.");
+
+                // THE ENABLEMENT. ManageWorkspacePanel.BuildActionRow assigns
+                // `btn.interactable = face.Enabled` verbatim, so this field IS the shipped
+                // pressability - and the kit's own disabledColor is what paints it.
+                if (face.Enabled)
+                    failures.Add($"[case 16] locked troop '{c.Id}' CTA is ENABLED. Row 6.3 asks for \"visibly " +
+                                 "disabled\"; an enabled face on a locked item walks the player into a refusal.");
+
+                if (face.Activate != null)
+                    failures.Add($"[case 16] locked troop '{c.Id}' CTA still carries an Activate callback - a dead " +
+                                 "face that can still be fired by any caller that ignores Enabled.");
+
+                // THE REASON AND THE HINT. Nothing is lost with the door: the blocker sentence
+                // rides the why band and the unlock requirement rides the card's hint band. The
+                // audited frame already painted "Requires Barracks Tier 4" there.
+                if (string.IsNullOrWhiteSpace(face.DisabledReasonText))
+                    failures.Add($"[case 16] locked troop '{c.Id}' CTA is disabled with NO reason text - the button " +
+                                 "went dead and took its explanation with it (canon 11 question 6: if I cannot " +
+                                 "act, why?).");
+
+                if (string.IsNullOrWhiteSpace(sel.AuxiliaryText))
+                    failures.Add($"[case 16] locked troop '{c.Id}' card carries no AuxiliaryText, so the unlock hint " +
+                                 "(\"Requires Barracks Tier N\") is not on the screen at all. ProjectSelection " +
+                                 "promotes a NotUnlocked item's LockReason onto that band; if it is empty the " +
+                                 "player is told the troop is locked and never told how to unlock it.");
+
+                log.AppendLine($"  case 16 - {c.Id}: cta=\"{face.Label}\" enabled={face.Enabled} " +
+                               $"why=\"{face.DisabledReasonText}\" hint=\"{sel.AuxiliaryText}\"");
+            }
+
+            if (measured == 0)
+                failures.Add("[case 16] no LOCKED troop produced a detail card, so every assertion above passed on " +
+                             "an empty set. FAIL, not a skip - the fixture seats a barracks below the top tier " +
+                             "precisely so locked troops exist (see case 15's note: \"States actually present: " +
+                             "QueueBlocked,Locked over 9 tiles\").");
+            else
+                log.AppendLine($"  case 16 OK - {measured} locked troop card(s) measured");
+
+            // The SOURCE half: the door must survive in the MODEL even though the face declines it.
+            string src = ReadSource(VmPath, failures);
+            if (!string.IsNullOrEmpty(src))
+            {
+                // ⚠ THE TRAILING COMMA IS LOAD-BEARING: it is the OBJECT-INITIALISER shape, so a
+                // comment quoting the flag can never satisfy this pin. ManageApprovedLauncherRegression's
+                // own note (:77-79) records the day a Contains() a comment could satisfy shipped as
+                // a pin that could not fail.
+                if (!src.Contains("LockedFace = true,"))
+                    failures.Add("[case 16] ManageScreenVM no longer flags the locked troop's Train action " +
+                                 "LockedFace - ProjectAction would turn it back into a live VIEW BARRACKS door.");
+                if (!src.Contains("ManageRoute.ToBuildCard(\"barracks\""))
+                    failures.Add("[case 16] the locked troop's Train action no longer routes to the barracks BUILD " +
+                                 "card. The ROUTE must stay even though the face is dead: ManageStateInvariants' " +
+                                 "[lock-without-a-door] (ruling 18) fails a PrerequisiteBlocked action carrying " +
+                                 "Route.None, so removing it trades the owner's ruling for a validator failure.");
+            }
 
             vm.EnterTab(ManageTabId.Army);   // leave the model on a grid, as the earlier cases found it
         }

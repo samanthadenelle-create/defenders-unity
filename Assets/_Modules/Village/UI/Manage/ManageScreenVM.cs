@@ -3288,7 +3288,19 @@ namespace DeNelle.Village.UI
         {
             bool affordable = CanAfford(materials) && GoldBalance() >= gold;
             string materialText = DescribeCost(materials);
-            string costText = materialText == "free" ? gold + " gold" : materialText + ", " + gold + " gold";
+            // WO-1657 item A (owner ruling 2026-09-10 12:12): a ZERO gold term is NOT a cost part.
+            // This composer used to concatenate the gold clause unconditionally, so with WO-947
+            // applied to the ladder (every building-tiers.json tier now authors costGold 0) the
+            // browse row would have read "Wood 2600  Stone 970, 0 gold" - a zero chip, which is the
+            // very thing the ticket was raised about. Every sibling composer already self-omits at
+            // zero (CostFormat.Parts skips amount <= 0, CostFormat.cs:32-34; DescribeCost above
+            // rides that; BuildingUpgradeVM.AddCoinCostLine returns on amount <= 0) - this was the
+            // one hand-rolled string that did not. "free" stays the empty-basket word.
+            string goldText = gold > 0 ? gold + " gold" : "";
+            string costText =
+                materialText == "free"
+                    ? (goldText.Length > 0 ? goldText : "free")
+                    : (goldText.Length > 0 ? materialText + ", " + goldText : materialText);
             BrowseRows.Add(new BrowseRowVM {
                 Label = label, CostText = costText, Affordable = affordable,
                 StateText = affordable ? "Ready" : "Short on resources",
@@ -4748,6 +4760,18 @@ namespace DeNelle.Village.UI
         /// </summary>
         private const string UpgradeAffordableGridWordProvisional = "UPGRADE";
 
+        /// <summary>
+        /// The ONE word a locked troop wears - on its tile badge AND on its dead CTA face
+        /// (owner ruling 2026-09-10, WO-1668, closing WO-1566 audit row 6.3).
+        ///
+        /// <para>⛔ IT IS A CONSTANT BECAUSE IT IS SAID TWICE. The badge chip and the button now
+        /// carry the identical word, and two literals is the duplicated state CLAUDE.md §2/§5/§16
+        /// each describe in their own words - one gets re-worded, the chip and the button disagree,
+        /// and the screen teaches the player two names for one state. Public so the oracle asserts
+        /// against THIS symbol rather than re-typing the string.</para>
+        /// </summary>
+        public const string LockedTroopWord = "LOCKED";
+
         private ManageItemState ComposeTroopItem(TroopChoiceVM c)
         {
             bool atMax = !c.HasNextLevel;
@@ -4785,14 +4809,33 @@ namespace DeNelle.Village.UI
                     ? "Locked until the Barracks reaches Tier " + c.LockTier + "."
                     : Ascii(c.Requirement);
                 item.Badge = ManageTileBadge.Locked;
-                item.BadgeText = "LOCKED";
+                item.BadgeText = LockedTroopWord;
                 // Ruling 21: the barracks BUILDING tier gates troop unlocks, so the door is the
                 // barracks BUILD card - a screen that already exists and already works.
+                //
+                // ⭐ WO-1668 - THE FACE SAYS "LOCKED" AND IS DEAD, THE ROUTE STAYS (owner ruling
+                // 2026-09-10, closing WO-1566 audit row 6.3:
+                //   RESULT.md:188 - "the CTA reads VIEW BARRACKS, a live enabled route - not a
+                //   disabled LOCKED", against the frame
+                //   Builds/ui-capture/ManageFlow_ARMY_locked_2670x1200.png).
+                // ⛔ BOTH HALVES ARE DELIBERATE AND NEITHER MAY BE "TIDIED":
+                //   * Route stays ManageRoute.ToBuildCard. ManageStateInvariants'
+                //     [lock-without-a-door] FAILS a PrerequisiteBlocked action with Route.None
+                //     (ruling 18), so clearing the route to kill the button would trade the
+                //     owner's ruling for a validator failure. ManageVmProjection.ProjectAction
+                //     reads LockedFace and declines to OFFER the door; the model still knows it.
+                //   * Cta is the SAME word the badge carries, from the one constant below - never
+                //     a second "LOCKED" literal. The Cta was previously discarded on this arm
+                //     (the projection overwrote it with Route.Cta), so nothing is displaced.
+                // The unlock sentence is untouched and is NOT invented here: item.LockReason above
+                // is c.Requirement ("Requires Barracks Tier 4" in the frame) and ProjectSelection
+                // promotes it onto the card's hint band for a NotUnlocked item.
                 item.Add(new ManageAction
                 {
                     Kind = ManageActionKind.Train,
                     Availability = ManageActionAvailability.PrerequisiteBlocked,
-                    Cta = trainFace,
+                    Cta = LockedTroopWord,
+                    LockedFace = true,
                     BlockerReason = item.LockReason,
                     Route = ManageRoute.ToBuildCard("barracks", "VIEW BARRACKS"),
                     IsPrimary = true

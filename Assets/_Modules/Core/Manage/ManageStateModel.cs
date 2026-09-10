@@ -207,6 +207,25 @@ namespace DeNelle.Core.Manage
         /// <summary>True for the one action a tile surfaces first.</summary>
         public bool IsPrimary;
 
+        /// <summary>
+        /// The blocker is a LOCK the player cannot walk out of from this face, so the button reads
+        /// this action's own <see cref="Cta"/> and renders DISABLED even though <see cref="Route"/>
+        /// is routable (owner ruling 2026-09-10, WO-1668, closing WO-1566 audit row 6.3:
+        /// "the locked ARMY tile's CTA must be a DISABLED 'LOCKED' face, not 'VIEW BARRACKS'").
+        ///
+        /// <para>⛔ THE ROUTE STAYS, AND THAT IS THE POINT. ManageStateInvariants'
+        /// [lock-without-a-door] (ruling 18) FAILS a PrerequisiteBlocked action carrying
+        /// Route.None, so clearing the route to get a dead face would trade one defect for a
+        /// validator failure. The MODEL still names a destination; only the PRESENTATION declines
+        /// to offer it as a button - which is the HP B2B split (CLAUDE.md architecture law:
+        /// presentation is a separate layer that never touches the objects).</para>
+        ///
+        /// <para>The unlock guidance is NOT lost: a NotUnlocked item's <see cref="ManageItemState.LockReason"/>
+        /// is promoted onto the card's hint band by ManageVmProjection.ProjectSelection, which is
+        /// where the captured frame already painted "Requires Barracks Tier 4".</para>
+        /// </summary>
+        public bool LockedFace;
+
         public static ManageAction NotApplicable(ManageActionKind kind) =>
             new ManageAction { Kind = kind, Availability = ManageActionAvailability.NotApplicable };
     }
@@ -253,8 +272,12 @@ namespace DeNelle.Core.Manage
     /// <item>Max-level Footman, train queue full -> Owned + Max + Train action QueueBlocked
     /// routed to the Queue, CTA "VIEW QUEUE".</item>
     /// <item>Locked Outrider -> NotUnlocked + Train action PrerequisiteBlocked routed to the
-    /// barracks BUILD card, CTA "VIEW BARRACKS" (owner ruling 21: the barracks BUILDING tier
-    /// gates troop unlocks, so that door genuinely opens).</item>
+    /// barracks BUILD card (owner ruling 21: the barracks BUILDING tier gates troop unlocks, so
+    /// the model always names a destination that genuinely opens) and flagged
+    /// <see cref="ManageAction.LockedFace"/>, so the FACE reads "LOCKED" and is disabled.
+    /// ⛔ This example said CTA "VIEW BARRACKS" until 2026-09-10; the owner ruled that face out
+    /// (WO-1668 / WO-1566 row 6.3). The ROUTE is unchanged - only what the button says and
+    /// whether it is pressable.</item>
     /// </list>
     /// </summary>
     public sealed class ManageItemState

@@ -82,6 +82,10 @@ namespace DeNelle.Core.Manage
         /// is the defect this program exists to kill - and it is satisfied without the renderer
         /// ever seeing a <see cref="ManageRoute"/>.</para>
         ///
+        /// <para>The ONE exception is <see cref="ManageAction.LockedFace"/>: the route stays in the
+        /// model (the validator demands one) but the face keeps the action's own Cta and renders
+        /// disabled - WO-1668, the owner's ruling on WO-1566 row 6.3.</para>
+        ///
         /// <para>A blocked action with NO routable route stays visible and DISABLED, carrying
         /// its BlockerReason. That combination is itself a violation the Wave-0 validator
         /// reports; the projection surfaces it rather than hiding the button.</para>
@@ -111,6 +115,25 @@ namespace DeNelle.Core.Manage
 
             if (blocked && action.Route.IsRoutable)
             {
+                // ⭐ WO-1668 (owner ruling 2026-09-10, closing WO-1566 audit row 6.3) - A LOCK MAY
+                // DECLINE ITS OWN DOOR. The model still names a destination (ruling 18 and the
+                // [lock-without-a-door] invariant both require it), but a face flagged LockedFace
+                // keeps ITS OWN words and renders DISABLED rather than becoming a live route.
+                // ⛔ Measured, not assumed: Builds/ui-capture/ManageFlow_ARMY_locked_2670x1200.png
+                // showed a gold, enabled "VIEW BARRACKS" under a "LOCKED" state chip - the branch
+                // below is what produced it. The unlock sentence is NOT lost with the door: a
+                // NotUnlocked item's LockReason is promoted onto the hint band by ProjectSelection,
+                // and that frame already painted it ("Requires Barracks Tier 4").
+                // Enabled stays false and StyleRole stays the blocked default (Secondary ->
+                // ButtonKind.Quiet), so the renderer's `btn.interactable = face.Enabled` gets the
+                // kit's own disabledColor - no colour is decided here.
+                if (action.LockedFace)
+                {
+                    vm.Enabled = false;
+                    vm.DisabledReasonText = action.BlockerReason;
+                    return vm;
+                }
+
                 // The blocker HAS a door. The button becomes the door, in the model's words.
                 vm.Label = action.Route.Cta;
                 vm.StyleRole = ManageActionStyleRole.Navigate;
