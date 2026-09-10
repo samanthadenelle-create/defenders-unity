@@ -6133,159 +6133,38 @@ namespace DeNelle.Editor
         //  belongs to a different rule; growing it would violate its own header.
         //
         // ---------------------------------------------------------------------
+        //  ⚠ SHRUNK 2026-09-10, 68 -> 4, AND EVERY DELETION IS A MEASUREMENT, NOT A TIDY-UP.
+        //  Two runs on `dev` proved 64 of the 68 no longer match a live finding:
+        //    Builds/wave3-capture10   -- the FULL capture. 91 panel builds, 875 labels read,
+        //                               0 unproved, 4 findings -- ALL FOUR baselined, 0 new.
+        //                               Its stamp's own glyphBaselined field reads 4.
+        //    Builds/wave3-navcapture6 -- the NAVIGATION capture, re-run over the same
+        //                               workspaces: 15 panel builds, 3 findings, 3 baselined,
+        //                               0 new. The Realm/Manage survivors, corroborated twice.
+        //  The per-panel tally lines name the four surviving panel builds, one finding each:
+        //  EndStateWaveClear_repairAll_1920x1080, RealmWorkspace_1920x1080,
+        //  ManageWorkspace_2340x1080, ManageWorkspace_2670x1200.
+        //
+        //  ⚠ WHICH RealmWorkspace_1920x1080 ENTRY SURVIVED WAS PROVEN BY ELIMINATION, NOT
+        //  READ OFF THE RUN -- the tally names the PANEL, never the entry, because a baselined
+        //  finding is deliberately not printed. Say so rather than implying the log named it.
+        //  The elimination: its four DeckCardPurpose_* siblings share ONE authoring site
+        //  (PlayerDeckWorkspace.BuildCard), and RealmWorkspace_2340x1080 and _2670x1200 print
+        //  NO tally line at all on capture10 -- zero findings -- so that site cleared on every
+        //  captured aspect; the DeckCard_The Night Market TITLE was explicitly DECLINED by
+        //  WO-1636's Remainder sub-lane and taken by no other lane. It is the one left.
+        //
+        //  ⚠ capture10's stamp reads head=5a65a78319 dirty=true -- it measured a DIRTY tree,
+        //  not a commit. This shrink makes the list AGREE with what that run measured; the next
+        //  capture is the proof it still holds at HEAD, and it should read baselined=4.
         private static readonly string[] GlyphBaseline =
         {
-            // ---- BuildMenuUpgradeTower_1920x1080 (1) ----
-            "BuildMenuUpgradeTower_1920x1080|ObsidianPanel/PanelContent/Zone_Body/ActionBand/ObsBtn_Not enough resources/Label|16 of 18",
-            //   "NOT ENOUGH RESOURCES" at font 30 [30..44, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- RumorBoard_1920x1080 (4) ----
-            "RumorBoard_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/PosterHook|24 of 33",
-            //   "Done: Clear 3 waves at the western gate." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/RewardRow/RewardChip_Word/Fill/Label|4 of 10",
-            //   "A found item" at font 24 [24..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_underway/Body/PosterHook|27 of 62",
-            //   "Carry the sealed ledger past the flooded ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_longest/Body/PosterHook|27 of 49",
-            //   "Brom unfolds a letter soaked through and ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- RumorBoard_page2_1920x1080 (3) ----
-            "RumorBoard_page2_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch1/Body/PosterHook|29 of 61",
-            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_page2_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch2/Body/PosterHook|29 of 61",
-            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_page2_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_avail1/Body/PosterHook|28 of 60",
-            //   "Track down why the first bell rings with ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- RumorBoard_2340x1080 (4) ----
-            "RumorBoard_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/PosterHook|28 of 33",
-            //   "Done: Clear 3 waves at the western gate." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/RewardRow/RewardChip_Word/Fill/Label|5 of 10",
-            //   "A found item" at font 24 [24..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_underway/Body/PosterHook|31 of 62",
-            //   "Carry the sealed ledger past the flooded ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_longest/Body/PosterHook|30 of 49",
-            //   "Brom unfolds a letter soaked through and ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- RumorBoard_page2_2340x1080 (3) ----
-            "RumorBoard_page2_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch1/Body/PosterHook|32 of 61",
-            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_page2_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch2/Body/PosterHook|32 of 61",
-            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_page2_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_avail1/Body/PosterHook|30 of 60",
-            //   "Track down why the first bell rings with ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- RumorBoard_2670x1200 (4) ----
-            "RumorBoard_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/PosterHook|28 of 33",
-            //   "Done: Clear 3 waves at the western gate." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/RewardRow/RewardChip_Word/Fill/Label|5 of 10",
-            //   "A found item" at font 24 [24..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_underway/Body/PosterHook|31 of 62",
-            //   "Carry the sealed ledger past the flooded ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_longest/Body/PosterHook|30 of 49",
-            //   "Brom unfolds a letter soaked through and ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- RumorBoard_page2_2670x1200 (3) ----
-            "RumorBoard_page2_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch1/Body/PosterHook|33 of 61",
-            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_page2_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch2/Body/PosterHook|33 of 61",
-            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RumorBoard_page2_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_avail1/Body/PosterHook|30 of 60",
-            //   "Track down why the first bell rings with ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- NightMarket_800x360 (6) ----
-            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/TopBar/Text|32 of 36",
-            //   "Connect a wallet to buy - prices shown in..." at font 30 [30..30, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-wood/Text|ZERO of 5",
-            //   "4,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-iron/Text|ZERO of 5",
-            //   "2,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-crystals/Text|ZERO of 3",
-            //   "400" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-stone/Text|ZERO of 5",
-            //   "1,500" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-coins/Text|ZERO of 3",
-            //   "600" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- NightMarket_915x412 (6) ----
-            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/TopBar/Text|32 of 36",
-            //   "Connect a wallet to buy - prices shown in..." at font 30 [30..30, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-wood/Text|ZERO of 5",
-            //   "4,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-iron/Text|ZERO of 5",
-            //   "2,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-crystals/Text|ZERO of 3",
-            //   "400" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-stone/Text|ZERO of 5",
-            //   "1,500" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-coins/Text|ZERO of 3",
-            //   "600" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- NightMarket_1280x720 (3) ----
-            "NightMarket_1280x720|ObsidianPanel/PanelFill/NightMarket/TopBar/Text|28 of 36",
-            //   "Connect a wallet to buy - prices shown in..." at font 30 [30..30, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_1280x720|ObsidianPanel/PanelFill/NightMarket/Body/Commerce/LandscapeActions/Scroll/Content/utility-row-MONTHLY LEDGER/ObsBtn_MONTHLY LEDGER/Label|12 of 13",
-            //   "MONTHLY LEDGER" at font 28 [28..28, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_1280x720|ObsidianPanel/PanelFill/NightMarket/BottomBand/CommerceCta/ObsBtn_Connect Wallet/Label|12 of 13",
-            //   "CONNECT WALLET" at font 30 [30..38, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- NightMarket_2670x1200 (6) ----
-            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/TopBar/Text|32 of 36",
-            //   "Connect a wallet to buy - prices shown in..." at font 30 [30..30, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-wood/Text|ZERO of 5",
-            //   "4,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-iron/Text|ZERO of 5",
-            //   "2,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-crystals/Text|ZERO of 3",
-            //   "400" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-stone/Text|ZERO of 5",
-            //   "1,500" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-coins/Text|ZERO of 3",
-            //   "600" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
             // ---- EndStateWaveClear_repairAll_1920x1080 (1) ----
             "EndStateWaveClear_repairAll_1920x1080|ObsidianPanel/PanelContent/Zone_Body/Zone_RewardWell/Band/SpoilCell2/SpoilRow/Label|17 of 19",
             //   "DESTROYED, looted 120" at font 30 [30..50, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- HeroSelect_1080x1920 (5) ----
-            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Signature/Label|7 of 10",
-            //   "Shield Bash" at font 25 [25..50, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Skills/Label|7 of 11",
-            //   "Sword Heroic" at font 20 [20..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Skills/Label|8 of 10",
-            //   "Shield Bash" at font 20 [20..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Skills/Label|8 of 13",
-            //   "Warden's Grace" at font 20 [20..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Skills/Label|8 of 13",
-            //   "Radiant Strike" at font 20 [20..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- RealmWorkspace_1920x1080 (5) ----
+            // ---- RealmWorkspace_1920x1080 (1) ----
             "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/Label|12 of 14",
             //   "THE NIGHT MARKET" at font 30 [30..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/DeckCardPurpose_The Night Market|21 of 30",
-            //   "Browse clearly priced realm offers" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Defense Report/DeckCardPurpose_Defense Report|20 of 28",
-            //   "Review attacks against your town" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Monthly Ledger/DeckCardPurpose_Monthly Ledger|20 of 33",
-            //   "Review non-expiring monthly progress" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Game Guide/DeckCardPurpose_Game Guide|21 of 28",
-            //   "Read controls, systems, and help" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            // ---- RealmWorkspace_2340x1080 (4) ----
-            "RealmWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/DeckCardPurpose_The Night Market|23 of 30",
-            //   "Browse clearly priced realm offers" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            "RealmWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Defense Report/DeckCardPurpose_Defense Report|23 of 28",
-            //   "Review attacks against your town" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            "RealmWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Monthly Ledger/DeckCardPurpose_Monthly Ledger|23 of 33",
-            //   "Review non-expiring monthly progress" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            "RealmWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Game Guide/DeckCardPurpose_Game Guide|23 of 28",
-            //   "Read controls, systems, and help" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            // ---- RealmWorkspace_2670x1200 (4: 2 from the full capture, 2 from the navigation one) ----
-            "RealmWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/DeckCardPurpose_The Night Market|24 of 30",
-            //   "Browse clearly priced realm offers" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            "RealmWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Defense Report/DeckCardPurpose_Defense Report|23 of 28",
-            //   "Review attacks against your town" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
-            "RealmWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Monthly Ledger/DeckCardPurpose_Monthly Ledger|23 of 33",
-            //   "Review non-expiring monthly progress" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
-            "RealmWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Game Guide/DeckCardPurpose_Game Guide|23 of 28",
-            //   "Read controls, systems, and help" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
-            // ---- JourneyWorkspace_1920x1080 (2) ----
-            "JourneyWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/JourneyCardGrid/DeckCard_Quests/DeckCardPurpose_Quests|20 of 21",
-            //   "0 active . 0 ready to claim" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
-            "JourneyWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/JourneyCardGrid/DeckCard_Raids/DeckCardPurpose_Raids|18 of 25",
-            //   "Army 0 / 10 . train to open a camp" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
-            // ---- JourneyWorkspace_2340x1080 (1) ----
-            "JourneyWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/JourneyCardGrid/DeckCard_Raids/DeckCardPurpose_Raids|20 of 25",
-            //   "Army 0 / 10 . train to open a camp" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
-            // ---- JourneyWorkspace_2670x1200 (1) ----
-            "JourneyWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/JourneyCardGrid/DeckCard_Raids/DeckCardPurpose_Raids|20 of 25",
-            //   "Army 0 / 10 . train to open a camp" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
             // ---- ManageWorkspace_2340x1080 (1) ----
             "ManageWorkspace_2340x1080|ObsidianPanel/PanelContent/ManageCategoryLauncher/ManageCategoryGrid/ManageCard_ARMY/Label|11 of 14",
             //   "BUILD A BARRACKS" at font 30 [30..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636 (nav capture)

@@ -1,6 +1,6 @@
 # WO-1618 - The scaled raid clock froze at 50s while the raid ran ~455s engaged
 
-**Status:** BLOCKED - awaiting the raid capture that names the frozen step; INSTRUMENTED (lane RAID-CLOCK 2026-09-10)
+**Status:** BLOCKED - awaiting a settle-vs-scene capture on an INSTRUMENTED build; the CLOCK ITSELF IS CLEARED (2026-09-10 device raid, APK 2026.09.10.363529: 105.2s of staging billed 0.0s, then 180.2s of engaged scene time billed 179.0s at avgScaleTotal=0.996, ONE scorer, no drop, no freeze, watchdog silent) - seq 4980 ran on a DIFFERENT, uninstrumented build and its engagement moment is not in evidence
 **Minted:** 2026-09-09 (CLI, main-line banner; bumped 1615 -> 1619 in the SAME edit)
 **Silo / Lane:** Raid (lane RAID hand-back)
 **Severity:** P1 felt - the player fought a raid for over eight minutes and was scored on 50
@@ -327,3 +327,226 @@ it 60 times and `DestroyImmediate`s it **without finalizing** - a correct harnes
 defect - so the unguarded warn would have put a false *"the clock died"* line in **every gate log**.
 Headless batchmode PLAY sessions still report, so the capture path this ticket depends on is
 untouched.
+
+### THE CAPTURE THIS TICKET WAS BLOCKED ON - device, 2026-09-10, build 363529
+
+Read-only device lane. Seeker `SM02G4061955851`, `versionName=2026.09.10.363529`. One full raid,
+The Forsaken Camp (`raider_camp_small`), played to `TIME!`. Log:
+`Builds/device-frames/2026-09-10_raid_logcat.txt` (a live `logcat -v time` stream was also held open
+for the whole raid at `..._raid_logcat_stream.txt`, so the load window could not be evicted from the
+256 KiB ring). **64 `clock tick:` lines captured.** All lines below are verbatim from that file.
+
+**Origin armed - ONE scorer for the whole raid:**
+
+```
+09-10 06:02:18.163 [Flow:Raid] clock origin armed: inst=-41072 unscaledTime=313.6s frame=10119 timeScale=1.00 holds=0.
+09-10 06:02:18.263 [Flow:Raid] RAID CLOCK armed: 180s | loot bases crystals=20 food=60 wood=1800 iron=1100 gold=2200.
+```
+
+`inst=-41072` is carried by **every one of the 64 tick lines** - proven, not sampled:
+`grep -ac "clock tick:"` returns **64** and
+`grep -a "clock tick:" | grep -c "inst=-41072"` returns **64**. There was no second scorer.
+
+**The clock did NOT start at scene load - it started on first defender contact, and said so:**
+
+```
+09-10 06:04:03.601 [Flow:Raid] clock started reason=defender acquired target (RaidGuard (orc-berserker-Lv3-1)) (staging ended; 180s raid clock now running, deployed=0, honorStars=3/3).
+```
+
+That is **105.4 s after** the scene loaded at 06:02:18. Every tick before it reads
+`engaged=False reason=none elapsed=0.0s/180.0s` while `scene=` climbs to 85.1 s.
+
+**Progression - `elapsed` tracks real time 1:1 once engaged (abridged; full set in the log file):**
+
+```
+06:02:18.273  ts=1.00  elapsed=0.0/180.0    scene=0.0    fps=0.0    engaged=False
+06:03:43.169  ts=1.00  elapsed=0.0/180.0    scene=85.1   fps=59.7   engaged=False
+06:04:08.207  ts=0.77  elapsed=4.2/180.0    scene=110.2  fps=56.9   engaged=True  holds=1 hold=[fx:death-slowmo]
+06:04:43.249  ts=1.00  elapsed=39.2/180.0   scene=145.2  fps=58.3   engaged=True
+06:05:13.296  ts=1.00  elapsed=69.0/180.0   scene=175.2  fps=59.1   engaged=True
+06:05:43.340  ts=0.04  elapsed=99.0/180.0   scene=205.3  fps=58.3   engaged=True  holds=1 hold=[fx:hit-stop]
+06:06:13.383  ts=1.00  elapsed=129.0/180.0  scene=235.3  fps=59.1   engaged=True
+06:06:43.427  ts=1.00  elapsed=159.0/180.0  scene=265.4  fps=59.3   engaged=True
+06:07:13.465  ts=1.00  elapsed=180.0/180.0  scene=295.4  fps=59.5   engaged=True  finalized=True
+06:07:33.489  ts=1.00  elapsed=180.0/180.0  scene=315.4  fps=59.3   engaged=True  finalized=True
+```
+
+**Only TWO of the 64 ticks read `timeScale` below 1.00**, and both name their holder:
+
+```
+09-10 06:04:08.207 ... timeScale=0.77 ... dips=1 holds=1 holdScale=0.77 hold=[fx:death-slowmo] elapsed=4.2s/180.0s
+09-10 06:05:43.340 ... timeScale=0.04 ... dips=2 holds=1 holdScale=0.04 hold=[fx:hit-stop]     elapsed=99.0s/180.0s
+```
+
+Both released on their own; **once the clock was engaged** `avgScaleTotal` never fell below **0.994**
+and finished at **0.997**. ⚠ It does dip earlier: the second tick of the session
+(`06:02:23.052`, still `engaged=False`) reads `avgScaleWin=0.941 avgScaleTotal=0.941` with
+`frames=276 fps=55.1` - a scene-load hitch during staging, before any clock time was billed.
+The matching WO-1618 hold warn also fired once, exactly as instrumented:
+
+```
+09-10 06:04:07.409 W [Flow:Raid] world hold CHANGED under a live raid clock: holds 0->2 effectiveScale 1.00->0.02 reasons=[fx:hit-stop, fx:death-slowmo] timeScale=0.02 elapsed=3.8s engaged=True scene=109.3s.
+```
+
+**What this capture says, routed through section 4's table:**
+
+- It is the **`avgScaleWin` ~1.00 and `elapsed` lagging `scene`** branch - but `frames=` sits at
+  292-300 per 5 s window against `fps=` 58-60 the whole way, so `Update` never stalled. The lag is
+  **entirely** the 105.4 s staging window, and `clock started reason=…(staging ended…)` names it as
+  deliberate.
+- `engaged=False` appears only BEFORE that line, always with the SAME `inst=-41072`, so it is the
+  staging gate and not the broken single-writer invariant.
+- Final divergence: `scene=315.4s` vs `elapsed=180.0/180.0`. `315.4 - 180.0 = 135.4`, of which
+  **105.4 s is staging** and the remainder is the tail after `finalized=True` plus the two VFX holds.
+- **On THIS build, on THIS device, the raid clock did not freeze.** It ran 0 -> 180 s billed at
+  ~0.997 of real time and finalized correctly; the HUD showed 3:00 -> 0:00 and the raid ended
+  `TIME!` (frame `Builds/device-frames/2026-09-10_0620_arena_11_result.png`).
+
+⛔ **NOT claimed:** that the original 50s/455s symptom is fixed. That report was a *scaled* clock
+freeze; this run never reproduced it (two brief holds only). What this capture DOES establish is
+that a large `scene` vs `elapsed` gap is **expected** whenever staging runs long, so the original
+455 s figure must be re-read as scene time, not as billed clock time, before any behavioural edit.
+A repro of the true freeze still needs a run that shows `avgScaleWin` well below 1.00 sustained, or
+ticks stopping outright. **Status is left BLOCKED for the ticket's owning lane to rule on.**
+
+Frames from the same session are indexed in
+`WorkOrders/WORK_ORDER_1632_raid_arena_exterior_boundary_ring.md` under
+`## DEVICE FRAMES 2026-09-10 (build 363529)`.
+
+### INCREMENT 2026-09-10 (edge 4 ramp flood)
+
+The defect §4 of the ruling below recorded is now **fixed in the instrument** - no clock behaviour
+changed, again.
+
+**What was wrong:** edge 4 keyed on *any* change to the hold set, **including a scale-only one**.
+`WorldHold.SetScale` re-points a LIVE hold every frame of an ease, so a death slow-mo's ease-back
+wrote one ~450-byte line per frame. Measured in the 2026-09-10 device raid: **75** `world hold
+CHANGED` lines, **62** of them same-count ramp frames (`holds 1->1 effectiveScale 0.45->0.46`,
+`0.46->0.47`, ...) - about 62 lines in 1.3 s, which is the logcat-ring flood this ticket's own §4
+forbids.
+
+**The change** - `Assets/_Modules/Village/Troops/RaidScoring.cs`:
+
+| | before | after |
+|---|---|---|
+| edge condition | `:1438` `if (holdCount != _lastHoldCount \|\| !Mathf.Approximately(holdScale, _lastEffectiveScale))` | `:1458` `if (holdCount != _lastHoldCount)`, with a new silent `else if` scale-only arm at `:1483-1488` |
+| the line | `:1444` | `:1467`, now carrying `ramp=<frames> minScale=<deepest>` |
+| new fields | - | `:310` `_holdRampFrames`, `:311` `_holdMinScaleSinceReport` |
+
+**Expected volume on that same raid: 13 lines, down from 75.** That is not an estimate - the
+capture's own edge stream (`holds N->M effectiveScale x->y` from all 75 lines) was replayed through
+each candidate rule this session:
+
+| rule | lines on the 2026-09-10 raid |
+|---|---|
+| as shipped (any change) | **75** |
+| count-change OR scale moved >= 0.05 from last reported | 24 |
+| count-change OR scale moved >= 0.10 from last reported | 18 |
+| count-change OR scale moved >= 0.25 from last reported | 15 |
+| **count-change only (chosen)** | **13** |
+
+**Why the count-key and not a threshold - it keeps every discriminating value:**
+
+1. The ramp's intermediate values are already integrated **exactly** by `avgScaleWin` on the 5 s
+   tick. A mean cannot miss a value a threshold might straddle, and the mean is this ticket's
+   load-bearing number in the first place.
+2. A hold that **sits** low is caught by edge 5 on persistence, whatever its count does.
+3. The one value a pure count-change rule would otherwise drop - how deep the world actually went
+   during a suppressed ease - is carried **forward onto the next line** as `minScale=`, with `ramp=`
+   naming how many frames it covered. Zero extra lines, nothing lost.
+4. It is **frame-rate independent**: exactly one line per acquire and one per release, at any ramp
+   length, on any device. A threshold still emits more lines on a longer or steeper ramp, so it caps
+   the flood rather than removing it.
+
+**Pins re-verified after the edit** (the raw-text counts `RaidStagingMarkerRegression.Case5` reads,
+`Assets/Editor/Regression/RaidStagingMarkerRegression.cs:376-387`): `_elapsed\s*\+=` = **1**,
+`_engaged\s*=\s*true` = **1**, `_finalized\s*=\s*true` = **1**, `if\s*\(\s*!_engaged\s*\)` present
+and preceding the advance, `if (_finalized) return;` present, `clock started reason=` present, the
+grace-timer lint finds nothing. `gate_brace.py` -> `bad=0`; NUL = 0; line endings uniform CRLF.
+
+Also corrected in the same pass: the `ScaleDepartureReportSeconds` doc comment cited
+`WorldHold.cs:757` for the 1.2 s figure; the string actually lives at `WorldHold.cs:568` and `:763`,
+and the comment now says so.
+
+---
+
+## RULING FROM DATA 2026-09-10 (lane RAID-CLOCK)
+
+**Evidence, read at source this session:** `Builds/device-frames/2026-09-10_raid_logcat.txt` - the raw
+device log, **not** a lane summary of it. One full Forsaken Camp raid, ended `TIME!`. Build stamp in
+the same file at `05:57:03.115`: `ApplicationInfo 'com.denellestudios.echoesofelarion', Version
+'2026.09.10.363529'`. Every number below is a grep of that file.
+
+### 1. The clock is CLEARED. All three section-4 mechanisms are disproven, with numbers.
+
+| # | mechanism (section 4) | verdict | the line that decides it |
+|---|---|---|---|
+| 1 | a stuck world hold starving the SCALED delta | **NO** | `avgScaleTotal` runs **0.996-0.997** for the whole raid. **Zero** `world timeScale LEFT 1.00 and STAYED there` lines - not one departure outlived the 1.5 s shelf life. The only dips were `fx:hit-stop` (0.02) and `fx:death-slowmo` (0.77), both self-releasing inside one tick window. |
+| 2 | engagement dropping back to false | **NO** | **Zero** `clock ENGAGEMENT DROPPED` lines. The single-writer invariant held on device, as the source read predicted. |
+| 3 | `Update` not running on that instance / a second scorer | **NO** | **Exactly ONE** `clock origin armed` line (`inst=-41072 unscaledTime=313.6s frame=10119`), and **all 64** `clock tick:` lines carry `inst=-41072 isInstance=True`. `frames=` per 5 s window ran 285-300 at `fps=56.9-59.9` - the scorer was pumped every frame. **Zero** `clock owner DISABLED` / `DESTROYED` lines. |
+
+### 2. Staging is not billed, and the clock then tracks real time 1:1
+
+- `06:04:03.206` - last staging tick: `engaged=False reason=none elapsed=0.0s/180.0s scene=105.2s`.
+  **105.2 s of scene life billed as 0.0 s.** That is the WO-1520 invariant working, measured.
+- `06:04:03.601` - `clock started reason=defender acquired target (RaidGuard (orc-berserker-Lv3-1))
+  (staging ended; 180s raid clock now running, deployed=0, honorStars=3/3)` - **105.44 s** after the
+  origin line at `06:02:18.163`.
+- `06:07:03.449` - last pre-expiry tick: `elapsed=179.0s/180.0s scene=285.4s`. Engaged scene time is
+  `285.4 - 105.2 = 180.2 s` against **179.0 s billed** - a gap of **1.2 s**, which is the two
+  cosmetic dips and nothing else.
+- `06:07:04.409` - `raid clock expired at 180.0s (destruction 10%)`; settle reads
+  `raid scored: 0 star(s), 10% razed, 180.0s`. **Zero** `STRANDING WATCHDOG FIRED` lines in the whole
+  capture: the clock finalized itself, which is the exact thing seq 4980 said never happened.
+
+### 3. Why this does NOT close seq 4980 - and the ticket stays BLOCKED
+
+The mechanism is now the only one consistent with a working clock: `elapsed` counts **engaged** time,
+`scene` counts everything, so a long staging phase makes the two diverge with nothing broken. But
+**that is an explanation offered, not an explanation proven**, and section 11B forbids shipping the
+difference as a fact:
+
+- **It is a different build.** This capture is `2026.09.10.363529`. Seq 4980 ran on the 09-09 device
+  build, and section 3 of this WO records that the 09-09 tree carried lane RAID's **uncommitted**
+  edits - so the seq-4980 APK's `RaidScoring` is not even the committed 09-09 code, let alone this
+  one. A raid measured on the fixed build cannot testify about the broken one.
+- **The seq-4980 engagement moment is not in evidence.** Re-read this session,
+  `logs/f8-inbox/capture-20260909-144859-seq4980.md` is a 145-line harvested window that contains no
+  `clock started reason=` line at all. An engagement ~459 s before the fire would have scrolled out
+  of that window, so its absence proves nothing in either direction.
+- **Two numbers in seq 4980 are unexplained by the staging story and are recorded rather than waved
+  through:** `46% razed` with `deployed 10, survivors 10, wounded 0` (`survival=100%`), and a
+  watchdog that fired saying the clock **never finalized**. For the benign reading to hold, the
+  player must have staged ~459 s and then razed 46% in 50 s without losing a troop. That is possible.
+  Nothing here measures it.
+
+**The capture that discriminates, stated exactly:** any raid on an instrumented build (this build or
+later) whose settle line's `elapsed=` is materially below the raid's felt duration, **or** in which
+`STRANDING WATCHDOG FIRED` appears. No new instrumentation is needed - the tick lines are permanent,
+so the next occurrence answers it on its own. Read the ticks immediately before that settle:
+
+- the missing seconds are covered by a run of `engaged=False` ticks with `elapsed` pinned at `0.0s`
+  -> **staging, not a defect** - and this ticket closes on that line.
+- `elapsed` lags while `engaged=True` -> read `avgScaleWin`: below 1.00 names a hold (the
+  `world hold CHANGED` edge names its reason), `frames=` far below `fps x window` names a stalled
+  `Update`, and a second `inst=` names a second scorer.
+
+### 4. A defect this raid found in the INSTRUMENTATION itself (not in the clock)
+
+The `world hold CHANGED` edge (#4) fires on **every frame of a slow-motion RAMP**. Measured in this
+one raid: **75** `world hold CHANGED` lines, of which **62** are same-count ramp frames -
+`holds 1->1 effectiveScale 0.45->0.46`, `0.46->0.47`, ... - one death slow-mo ease-back writing ~62
+lines in about 1.3 s. `WorldHold.SetScale` re-points a LIVE hold, and the edge compares
+`EffectiveScale` for change, so a ramp reads as a new edge every frame. In a long fight with many
+deaths this is exactly the logcat-ring flood section 4 exists to avoid.
+
+**Not fixed here - lane instruction was explicitly do not edit `RaidScoring.cs` on this pass.** The
+cheap fix when someone does: treat a same-hold-count change as an edge only when the scale moves by
+more than a threshold, or gate the ramp frames the way edge 5 already gates a departure on
+persistence. Recorded so the next seat does not rediscover it from a flooded capture.
+
+### 5. Untouched
+
+`RaidScoring.cs` was not edited on this pass. No behavioural change has ever been made under this
+ticket - the clock behaves exactly as it did before WO-1618 was opened, and the instrumentation
+stays in the code permanently (CLAUDE.md §12).

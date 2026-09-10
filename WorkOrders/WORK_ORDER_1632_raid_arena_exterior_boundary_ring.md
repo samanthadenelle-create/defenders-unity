@@ -459,3 +459,138 @@ Applied default: **rocks only**, matching `ProceduralSiegeArenaBuilder:157`'s `O
 verbatim ("a low wall of large rocks"), at scale 2.2-3.4. `ArenaBoundaryRing.TreePaths` is already
 exported, so switching to a mixed palette is a one-line change at the call site if she wants the
 edge to read as a treeline instead of a boulder field.
+
+---
+
+## DEVICE FRAMES 2026-09-10 (build 363529)
+
+Read-only device lane. Seeker `SM02G4061955851`, package `com.denellestudios.echoesofelarion`,
+`versionName=2026.09.10.363529` / `versionCode=363529` (read from
+`adb shell dumpsys package`, this session). Screencap framebuffer is **2670x1200 landscape** on every
+frame - the WO-1631 landscape-only lock holds; no portrait frame was produced. One full raid was
+played end to end: The Forsaken Camp (Regular), `raider_camp_small` ->
+scene `RaidBase_raider_camp_small`, ended `TIME!` at 0:00 with 10% razed.
+
+All paths relative to the repo root, under `Builds/device-frames/`.
+
+### Approach frames
+
+| PNG | What it shows |
+|---|---|
+| `2026-09-10_0558_raid_title_363529.png` | Title, LANDSCAPE, CONTINUE / START NEW / PLAY INTRO. |
+| `2026-09-10_0559_after_continue.png` | WELCOME BACK, KEEPER idle-yield modal (3h 53m, storage full). |
+| `2026-09-10_0600_after_collect.png` | HARVEST RESULT modal - wood/iron/stone all 3,000/3,000 FULL. |
+| `2026-09-10_0601_after_close.png` | DAILY CHEST modal. |
+| `2026-09-10_0602_town.png` | Town, `Main_Castle_Overworld`, bottom dock BUILD/TALK/HERO/JOURNEY/MANAGE. |
+| `2026-09-10_0603_journey_deck.png` | Journey deck - QUESTS and RAIDS cards only. |
+| `2026-09-10_0604_raid_selection.png` | **Raid selection** - 4 camps; Forsaken Camp (Regular) CLEARED, "Outmatched - Army 9 advised". |
+| `2026-09-10_0605_raid_staging.png` | **Staging screen** - Grom + Sylas, ARMY 8/10, Footman x8, Orc Necromancer 96 power, Scout Report, BEGIN ASSAULT. |
+| `2026-09-10_0607_arena_01_entry.png` | First BEGIN ASSAULT tap only highlighted the face; the screen did not advance (see issue 1). |
+
+### Arena frames - the three things the owner asked to see
+
+| PNG | What it shows |
+|---|---|
+| `2026-09-10_0608_arena_01_entry.png` | **Arena entry, staging camera.** The **exterior boundary ring is visible and continuous across the entire horizon** - a band of tan rock pillars behind the base wall on every side that the camera reaches. Spire, courtyard props and the low grey wall rail all in frame. Clock static 3:00, Troops 0/0. |
+| `2026-09-10_0609_arena_02_pan_left.png` | Same view, camera pitched - **best single frame of the ring reading as an enclosing edge** left-to-right across the full 2670 px. |
+| `2026-09-10_0610_arena_03_pan_right.png` | Ring again from a slightly lower pitch; ground plane edge visible bottom-left/bottom-right. |
+| `2026-09-10_0612_arena_04_hero_forward.png` | **Courtyard cover props, close.** Weapon rack, red crates, barrels, rock cluster, red-roofed tent, low wall segments - props are at hero scale and sit between the hero and the spire, i.e. they read as cover, not as a decor border. |
+| `2026-09-10_0613_arena_05_hero_left_edge.png` | Props from inside the base ring (crates, racks, tent) with the boundary ring behind them. Clock ticking 2:54; "HERO DOW…" text visible behind the deploy bar. |
+| `2026-09-10_0614_arena_06_wide.png` | **Widest arena frame.** Ring across the full horizon, spire left of centre, props foreground. Clock 2:16. |
+| `2026-09-10_0615_arena_07_deploy.png` | **Cleanest composite frame** - 8/8 troops deployed and fighting, ring on the horizon, crate + weapon rack + tent as cover, spire behind. |
+| `2026-09-10_0616_arena_08_boundary.png` | Combat under way, Razed 4%, ring still fully enclosing at this camera yaw. |
+| `2026-09-10_0617_arena_09_toward_ring.png` | Clock 1:34, Razed 6%, Troops 5/8. Hero is on the ground beside its shield and the camera did not advance - the walk input had no effect from here on (capture limit, section below). Ring, spire, crate, weapon rack and tent all in frame. |
+| `2026-09-10_0618_arena_10_ring_edge.png` | Same locked camera, clock 1:26, Razed 6%, Troops 4/8. |
+| `2026-09-10_0620_arena_11_result.png` | **TIME!** - clock ran out, 10% razed, 4 troops wounded, +189 wood / +198 iron / +396 gold / +2 crystals, 0/3 stars. |
+| `2026-09-10_0625_back_in_town.png` | Back in town after RETURN TO CASTLE - Grom Lv 4, gold 1402. Device left here. |
+
+**The `HHMM` in each filename is an approximate wall-clock label, not the device log timestamp.** The
+authoritative times are in the logcat: scene load `06:02:17.884`, clock start `06:04:03.601`,
+finalize `06:07:13`. **Exactly one raid was played**, despite `0607` and `0608` both carrying
+"arena_01_entry" in their names.
+
+### Camera coverage - what these frames DO and DO NOT cover
+
+Camera diversity here is **pitch changes plus hero walking only**. Single-finger `adb shell input
+swipe` did not yaw the camera (frames `_02` and `_03` are near-identical viewpoints), and there is no
+pinch, so no zoom-out was attempted. The hero went down roughly 10 s after the clock engaged (Army 8
+vs a 9-defender garrison - the selection screen said "Outmatched"), after which movement locked and
+no further camera position was reachable. Read the compass strip: frames `_01`-`_03` show NW/N/NE,
+frames `_04`-`_10` show NW/N/NE/E. **The camera never faced south or west.** The hero seat is at
+z=-51.2 and the ring sits at +/-68.6 m, so the southern and western arc of the ring was never in
+frame and is NOT evidenced here.
+
+### Verdict against this ticket's acceptance
+
+- **The exterior boundary ring SHIPPED and is visible.** Every arena frame shows a continuous band of
+  tan rock pillars running the full width of the frame, unbroken, with no gap or open edge in any
+  frame. ⚠ **Scope of that claim: the north-facing arc only** (compass NW through E). The southern
+  and western arc was never in frame - see "Camera coverage" above - so "on every side" is NOT
+  proven by this capture.
+- **Courtyard cover props are PRESENT and at hero scale** (WO-1633): crates, barrels, weapon racks,
+  a red-roofed tent and rock clusters, standing between the hero seat and the spire, with walkable
+  ground between them. ⛔ The frames CANNOT show whether they carry colliders, nor whether the
+  layout is "2-3 clustered rings with a clear lane" - that is WO-1633's own claim and is not
+  evidenced here either way.
+- **The Forsaken Camp spire SHIPPED** (WO-1619): the pale stone tower at centre. Confirmed in the log:
+  `RaidSpire 'RaidSpire': built a solid capsule hitbox (h=14.4 r=5.3)` and
+  `RaidSpire 'RaidSpire' online: 1200 HP, config='raider_camp_small', art='tower_ruined_watchtower'`
+  - h=14.4 m matches WO-1619's `achieved=14.40m`.
+
+### Viewable issues named plainly (NOT acted on - read-only lane)
+
+1. **BEGIN ASSAULT needed two taps.** The first tap only lit the face; the screen stayed on staging
+   for 15 s. The second tap loaded the raid. Reproduced once; not proven to be systematic.
+2. **A thin RED LINE is drawn across the arena - UNIDENTIFIED, not proven to be a defect.** Visible
+   in `..._0612`, `..._0615`, `..._0616`, `..._0617` and `..._0618`, running from a distant figure
+   near the left edge (x~130-200, y~480) to the hero. Two candidates, neither proven: (a) an
+   intentional aim/threat telegraph - the log carries 130 `[Flow:CastTelegraph]` and 64
+   `[Flow:ThreatTell]` lines in this window, including
+   `target-marker START unit=Wall_Outer_SS_8 path=VFX/UI/TalentNodePointer caster=Hero (Blaise)
+   ability='target lock (auto)' windup=6.00s`; or (b) leftover debug geometry. **The check:**
+   `grep -aE "\[Flow:(ThreatTell|CastTelegraph)\]" Builds/device-frames/2026-09-10_raid_logcat.txt`
+   and correlate the START/END timestamps against the frames the line appears in, then read the
+   `VFX/UI/TalentNodePointer` prefab. Do not open an RCA against working code before that read.
+3. **Two flat untextured BRIGHT GREEN BOXES stand on the base-wall line - UNIDENTIFIED.** A
+   symmetric pair, one right of centre in nearly every arena frame and one left of centre in
+   `..._0609`. They carry no texture and read as placeholder next to the finished crates and racks.
+   The scout report for this camp says "Wood walls, **2 gates**", so a plausible - but **unproven** -
+   reading is that these ARE the two gate markers rendering untextured. **The check:** open the
+   `RaidBase_raider_camp_small` scene / bake log for the gate objects and read their material. No
+   gate-prop line exists in this logcat either way.
+4. **The boundary ring and the spire are the same washed-out pale tan as the sky**, low contrast and
+   flat-shaded. The ring is geometrically present but does not READ as a wall; this is the most
+   likely remaining source of the owner's "feels incomplete and not polished".
+5. **The raid readout panel (top right) is low contrast** - "Razed 0%" and "Troops 0/0" are grey on a
+   translucent grey plate and are close to illegible over the pale ground.
+6. **The yellow objective chevron is enormous** and overlaps the compass bar and the centre of the
+   screen in `..._0612`, `..._0614`, `..._0618`.
+7. **"HERO DOWN" is rendered BEHIND the deploy bar** and is clipped to "HERO DOW…"
+   (`..._0613_arena_05_hero_left_edge.png`).
+8. **`DEPLOY …` bar face is truncated with an ellipsis** in every arena frame.
+
+Outside this ticket, seen on the way in and not acted on: `SPOILS` wraps to `SPOIL / S` on the
+staging screen (`..._0605`); the RAIDS deck card has untinted white patches at its corners
+(`..._0603`); `ATTACK REPORT HELD` overlaps the `Echoes 2/6` chip in town (`..._0602` and
+`..._0625`); and in `..._0625`, taken immediately AFTER a raid was played with 8 troops, the Heart
+of Elarion panel still reads **"Train 2 troops to unlock Raids"**.
+
+Logcat for this session: `Builds/device-frames/2026-09-10_raid_logcat.txt` (`-d` dump) and
+`Builds/device-frames/2026-09-10_raid_logcat_stream.txt` (live stream held open across the raid so
+the load window could not be evicted from the ring). **No `ArenaBoundary` / `ring 'Arena'` / `props '`
+lines exist in either** - the ring and the props are BAKED scene content (commit `2e66a552e`), not
+runtime-built, so there is nothing for them to log. Their proof is the frames above, not a marker.
+
+### Tickets minted from these frames (CLI minting lane, 2026-09-10; block 1637-1642)
+
+| WO | What it owns | Premise correction carried in the ticket |
+|---|---|---|
+| [1637](WORK_ORDER_1637_raid_arena_reads_flat_ring_spire_and_sky_are_one_pale_tan.md) | issue 4 - ring, spire and sky are one pale tan; the base wall is a low grey railing | The ring did NOT fall back and no material failed on device. The tan is the palette pick (`M_14_Brown_lightest_LPUP`, no albedo texture) compounding with baked fog `(0.66,0.58,0.42)` ending at 95 m while the ring sits at 68.6-97 m. Also: the siege venue already SHARES this palette, and "WO-1607 section 4" is the wrong citation - the wall row is section 6 `:139`. |
+| [1638](WORK_ORDER_1638_raid_gatehouse_banners_read_as_untextured_green_placeholder_boxes.md) | issue 3 - the two flat green slabs | **They are NOT the gates.** The gates are `Gatehouse_south` / `_north` at `(0,0.05,-/+31)`, real KayKit `wall_straight_gate`. The slabs are a symmetric gatehouse prop pair; the 5x zoom shows a hanging banner with two finials, matching `flag_green.fbx`. |
+| [1639](WORK_ORDER_1639_raid_hud_readout_is_illegible_and_three_labels_are_cut_or_buried.md) | issues 5, 6, 7, 8 - readout contrast, objective marker, HERO DOWN, DEPLOY | Measured contrast: `Troops 0/0` **1.12:1**, `Razed 0%` 1.72:1, nothing on the panel reaches 3:1 (plate alpha 0.42 vs the kit's canon 0.98). The "chevron" is not a UI element - no raid objective chevron is authored anywhere; the only matching candidate is world-space and unclamped. |
+| [1640](WORK_ORDER_1640_raid_staging_spoils_label_breaks_mid_word_and_the_outmatch_confirm_is_invisible.md) | issue 1 + the `SPOIL / S` line | **Issue 1 is not a defect and IS systematic.** The first tap fires the owner-ruled WO-1542 outmatch confirm (logcat `:25544-25547`, 9 defenders vs 8). The real defect: its toast draws at sortingOrder 720 under a 31050 panel with a 0.94-alpha backdrop, so the player never sees the question. |
+| [1641](WORK_ORDER_1641_heart_objective_still_says_unlock_raids_after_the_first_raid.md) | the stale Heart gate copy | **Not stale - it FLIPPED.** `..._0602` reads "Prepare the realm for the next wave."; `..._0625` reads the gate line. `FIRST RAID COMPLETED ... everCompletedRaid false->true` (logcat `:60381`) moves the bar from 3 to the cap of 10, and the same emitter prints `required=3` then `required=10` 108 ms apart. |
+| [1642](WORK_ORDER_1642_town_chrome_raids_card_white_corners_and_the_attack_report_chip_off_plate.md) | the RAIDS card corners + the ATTACK REPORT chip | `raids.png` has an opaque checkerboard border; the existing `OpaqueMargins` crop is RECTANGULAR, so residue survives in the rounded corners. And the chip does not "overlap" the Echoes chip - it is a 3-line caption escaping its own plate at BOTH edges, landing in the gutter above it. |
+
+**Every one of the eight issues above is now owned.** Issue 2 (the thin red line) is deliberately NOT
+minted - it is still unidentified, and this section's own check for it has not been run.

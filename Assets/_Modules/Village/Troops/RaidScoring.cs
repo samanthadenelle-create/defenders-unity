@@ -307,6 +307,8 @@ namespace DeNelle.Village
         private bool _everEngaged;              // latch, so a true->false engagement drop is detectable
         private int _lastHoldCount = -1;        // last observed WorldHold.Count (edge detector)
         private float _lastEffectiveScale = -1f;// last observed WorldHold.EffectiveScale (edge detector)
+        private int _holdRampFrames;            // scale-only (ease) frames suppressed since the last hold line
+        private float _holdMinScaleSinceReport = 1f; // deepest EffectiveScale across those frames
         private bool _lastScaleWasNormal = true;// last observed "Time.timeScale ~= 1" verdict (edge detector)
         private float _scaleLeftNormalAtUnscaled;// unscaled time the clock last left ~1.00 (0 = it is at ~1.00)
         private bool _scaleLeaveWarned;         // true once THIS departure from ~1.00 has been reported
@@ -315,7 +317,7 @@ namespace DeNelle.Village
 
         /// <summary>WO-1618 - how long, in UNSCALED seconds, the world clock must stay away from 1.00
         /// before the departure is worth a line. The longest DELIBERATE dip in the tree is 1.2s
-        /// (WorldHold.cs:757 names it while refusing to restore a stale baseline), so anything that
+        /// (WorldHold.cs:568 and :763 both name it in text), so anything that
         /// outlives this is not a cosmetic beat. Warning on every hit-stop instead would put two
         /// ~450-byte lines on every hit and evict the boot window out of the 256 KiB device logcat
         /// ring - destroying the evidence this ticket exists to capture.</summary>
@@ -1436,20 +1438,53 @@ namespace DeNelle.Village
 
             // ── EDGE 2: the hold set changed. Describe() walks the hold list, so it is called ONLY
             // inside the edge, never per frame.
-            if (holdCount != _lastHoldCount || !Mathf.Approximately(holdScale, _lastEffectiveScale))
+            //
+            // ⛔ THE EDGE IS THE HOLD **COUNT**, NOT THE SCALE - measured, not assumed. As first
+            // written this fired on ANY change including a scale-only one, and the 2026-09-10 device
+            // raid produced 75 of these lines, 62 of them same-count RAMP frames
+            // (`holds 1->1 effectiveScale 0.45->0.46`, `0.46->0.47`, ...): one death slow-mo
+            // ease-back writing ~62 lines in about 1.3s. WorldHold.SetScale re-points a LIVE hold
+            // every frame of an ease, so a scale-keyed edge is a per-frame log on a cosmetic beat -
+            // the exact logcat-ring flood this ticket's own §4 forbids. Replaying that capture's
+            // edge stream through this rule yields 13 lines instead of 75.
+            //
+            // NOTHING DISCRIMINATING IS LOST, and that is why this rule and not a threshold:
+            //   * the ramp's intermediate values are already integrated EXACTLY by avgScaleWin on
+            //     the 5s tick - a mean cannot miss a value a threshold might straddle;
+            //   * a hold that SITS low is caught by edge 5 on persistence, whatever its count;
+            //   * the deepest point of a suppressed ramp is carried FORWARD on the next line as
+            //     minScale=, with ramp= counting the frames it covered - so the one value a pure
+            //     count-change rule would otherwise drop is still reported, at zero extra lines.
+            // A count-keyed edge is also FRAME-RATE INDEPENDENT: exactly one line per acquire and
+            // one per release, at any ramp length or device speed. A threshold is not.
+            if (holdCount != _lastHoldCount)
             {
                 if (_lastHoldCount >= 0)
                 {
                     string holdWho = DeNelle.Core.UI.WorldHold.Describe();
+                    float deepest = Mathf.Min(_holdMinScaleSinceReport, holdScale);
                     FlowTrace.Warn("Raid",
                         $"world hold CHANGED under a live raid clock: holds {_lastHoldCount}->{holdCount} " +
                         $"effectiveScale {_lastEffectiveScale:F2}->{holdScale:F2} reasons=[{holdWho}] " +
+                        $"ramp={_holdRampFrames} minScale={deepest:F2} " +
                         $"timeScale={timeScale:F2} elapsed={_elapsed:F1}s engaged={_engaged} " +
                         $"scene={Mathf.Max(0f, Time.unscaledTime - _sceneStartUnscaled):F1}s. " +
                         "Every second this sits below 1.00 is a second the raid clock does not bill, " +
-                        "because the single advance uses the SCALED delta.");
+                        "because the single advance uses the SCALED delta. ramp= counts the " +
+                        "scale-only frames since the last line and minScale= is the deepest the " +
+                        "world reached across them - the ease itself is deliberately not logged.");
                 }
                 _lastHoldCount = holdCount;
+                _lastEffectiveScale = holdScale;
+                _holdRampFrames = 0;
+                _holdMinScaleSinceReport = holdScale;
+            }
+            else if (!Mathf.Approximately(holdScale, _lastEffectiveScale))
+            {
+                // A scale-only move on the same hold set: an ease. Counted and depth-tracked, never
+                // logged. Two int/float ops, no string built, no allocation.
+                _holdRampFrames++;
+                if (holdScale < _holdMinScaleSinceReport) _holdMinScaleSinceReport = holdScale;
                 _lastEffectiveScale = holdScale;
             }
 
