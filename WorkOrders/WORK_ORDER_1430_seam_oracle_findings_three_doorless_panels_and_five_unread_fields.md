@@ -1,6 +1,10 @@
 # WO-1430: the seam oracles' first eight findings - three panels no player can open, five authored fields no code reads
 
-**Status:** IN PROGRESS - Group A (the three doorless panels) RESOLVED in `bb51b8b9c` (`PanelDoorRegression.cs:159-161` allowlist now empty); Group B (five unread fields) still exempted in `AuthoredFieldReaderRegression.cs`. Minted 2026-09-06 (CLI). Each finding is EXEMPTED in its oracle with a dated pointer
+**Status:** IMPLEMENTED (Group B: 2 of 5 wired) - awaiting gate (2026-09-09 lane FIELDS); 3 need an owner ruling.
+Group A (the three doorless panels) RESOLVED in `bb51b8b9c` (`PanelDoorRegression.cs:159-161` allowlist now empty).
+Group B: `unlockMethod` and `requiresHero` are WIRED and their exemptions DELETED (both the `ParkedClaims` and the
+`UnreadBaseline` rows); `levelCurve`, `visibilityRule` and `expiry_behavior` stay exempted pending three owner
+rulings stated in `WORK_ORDER_1430_...RESULT.md` §3. Minted 2026-09-06 (CLI). Each remaining finding is EXEMPTED in its oracle with a dated pointer
 to this file, so the gate is green and the oracles stay sharp for anything NEW. **Nothing here is hidden; it is parked.**
 **Silo:** mixed - HUD panels, and five separate catalogs
 **Source:** `PanelDoorRegression` and `AuthoredFieldReaderRegression`, both shipped 2026-09-06 in Wave 0 of the Manage

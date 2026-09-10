@@ -484,6 +484,12 @@ namespace DeNelle.Core.Quests
                 if (exclude != null && t.Id == exclude) continue;
                 // Skip templates whose required feature isn't shipped (week-7).
                 if (!string.IsNullOrEmpty(t.RequiresFeature) && !FeatureShipped(t.RequiresFeature)) continue;
+                // WO-1430 Group B: the SIBLING gate, half-built until 2026-09-09. `requiresHero`
+                // sat beside `requiresFeature` with NO reader anywhere, so the day someone
+                // authored a hero requirement it would have been silently ignored - the WO-1038
+                // shape (authored content, no code, no error). It is read HERE, on the same line
+                // of reasoning as its sibling, and it warns rather than shrugging.
+                if (!HeroRequirementMet(t.RequiresHero, CurrentHeroClass())) continue;
                 // DEF-223: a Day-1-guaranteed template (build-towers) is force-
                 // selected for its slot for a player who has never completed it,
                 // making the tutorial-aligned quest deterministic on day one. It
@@ -567,6 +573,64 @@ namespace DeNelle.Core.Quests
             "raids"         => DeNelle.Core.HudModel.PostureSignals.RaidCapable,
             _ => true,
         };
+
+        // =====================================================================
+        // WO-1430 GROUP B -- `requiresHero`, the half-built sibling gate.
+        // ---------------------------------------------------------------------
+        // ⚠ NO SPEC DEFINES THIS FIELD. Measured 2026-09-09: `git log -S"requiresHero"`
+        // over this file returns ONE commit (1a64930d7, "Daily quests, second dungeon,
+        // six canonical data tables") which introduced it with no reader; the only doc
+        // that mentions it is WORK_ORDER_558 (CLOSED 2026-08-26), whose §A says the
+        // authored pack carries *"No requiresHero (single-Knight north star)"*.
+        // daily-quests.json authors it on ZERO rows today.
+        //
+        // THE INTERPRETATION CHOSEN, STATED SO IT CAN BE OVERRULED: a save holds exactly
+        // ONE hero (`SaveSchema.PersistedState.heroClass`, surfaced live as
+        // `GameStateService.Instance.State.HeroClass`); there is no owned-hero roster in
+        // the tree (searched for one, found none). So "requires hero X" can only mean
+        // "the player's chosen class IS X". If the owner means something else - a party
+        // member, an unlocked companion - `HeroRequirementMet` is the ONE function to
+        // change, and nothing else moves.
+        //
+        // FAILS CLOSED AND LOUD: no class chosen yet -> not met; an unrecognised name ->
+        // FlowTrace.Warn + not met. Never silently eligible: handing a player a daily
+        // that names a hero they are not is the "quest board lies" failure FeatureShipped's
+        // own header describes.
+        // =====================================================================
+
+        /// <summary>
+        /// PURE predicate over the authored <c>requiresHero</c> string. No service lookup, so
+        /// it is directly pinnable (AuthoredFieldGateRegression). Blank/absent = no requirement.
+        /// </summary>
+        public static bool HeroRequirementMet(string requiresHero, DeNelle.Core.State.HeroClassOpt current)
+        {
+            if (string.IsNullOrWhiteSpace(requiresHero)) return true;
+            string wanted = requiresHero.Trim();
+            // Enum.TryParse accepts the UNDERLYING NUMBER ("3") as well as the name, and a
+            // numeric daily-quests.json row is authored nonsense, not a hero. Reject it here
+            // so it takes the loud path below rather than silently resolving to Ranger.
+            bool named = !char.IsDigit(wanted[0]) && wanted[0] != '-' && wanted[0] != '+';
+            if (!named ||
+                !Enum.TryParse<DeNelle.Core.State.HeroClassOpt>(wanted, true, out var required) ||
+                required == DeNelle.Core.State.HeroClassOpt.None)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("DailyQuest",
+                    $"template requiresHero='{requiresHero}' names no known hero class " +
+                    "(Mage/Knight/Ranger/Cleric) -> template SKIPPED. Correct the authored value; " +
+                    "an unreadable requirement must never silently pass as 'no requirement'.");
+                return false;
+            }
+            if (current == DeNelle.Core.State.HeroClassOpt.None) return false;
+            return required == current;
+        }
+
+        /// <summary>The live chosen hero class, or None when no save/class exists yet.</summary>
+        private static DeNelle.Core.State.HeroClassOpt CurrentHeroClass()
+        {
+            var svc = DeNelle.Core.State.GameStateService.Instance;
+            var st = svc != null ? svc.State : null;
+            return st != null ? st.HeroClass : DeNelle.Core.State.HeroClassOpt.None;
+        }
 
         private static string LocalDateString() => DateTime.Now.ToString("yyyy-MM-dd");
 

@@ -69,7 +69,9 @@
 // a gate that blocks a ship.
 //
 // Marker: AUTHORED_FIELD_READER_OK / AUTHORED_FIELD_READER_FAIL <case>.
-// EXPECTED ON ARRIVAL: **RED** on the five curated fields in Case B.
+// EXPECTED ON ARRIVAL: **RED** on the five curated fields in Case B. Two of those
+// five were WIRED on 2026-09-09 (WO-1430 lane FIELDS) and their exemptions deleted;
+// three remain parked pending an owner ruling. See ParkedClaims below.
 //
 // Wire (DataRegression.RunAll):
 //   DeNelle.Core.Diagnostics.Guard.Try("Regression", "authored-field-reader suite", () => { if (!DeNelle.Editor.AuthoredFieldReaderRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[authored-field-reader] " + r); });
@@ -98,7 +100,7 @@ namespace DeNelle.Editor
         // for the CLI seat to triage, NOT exceptions.
         // =====================================================================
         // =====================================================================
-        // PARKED 2026-09-06 by the CLI seat. Each of these five IS a real finding -
+        // PARKED 2026-09-06 by the CLI seat (five then, THREE now). Each IS a real finding -
         // an authored promise no code keeps - and each is written up, with the
         // decision owed, in:
         //   WorkOrders/WORK_ORDER_1430_seam_oracle_findings_three_doorless_panels_and_five_unread_fields.md
@@ -112,11 +114,22 @@ namespace DeNelle.Editor
         // deliberately retired and the copy implying it is corrected in the same
         // change (CLAUDE.md §15). Delete the entry then - do NOT leave it.
         // =====================================================================
+        //
+        // ---------------------------------------------------------------------
+        // 2026-09-09 (WO-1430 lane FIELDS): TWO OF THE FIVE ARE WIRED AND THEIR
+        // ENTRIES ARE DELETED, not amended - `unlockMethod` (now the gate inside
+        // CosmeticOwnershipService.GrantAchievement, via
+        // CosmeticCatalog.IsAchievementUnlock) and `requiresHero` (now read in
+        // DailyQuestService.RollOne beside its sibling requiresFeature). Their
+        // UnreadBaseline rows below were deleted in the SAME change: Case C
+        // `continue`s on a read field BEFORE consulting the baseline, so a stale
+        // baseline row is silently tolerated and nothing would ever remind us.
+        // The remaining three each need an OWNER RULING - recorded in the WO's
+        // RESULT file, not guessed at here.
+        // =====================================================================
         private static readonly HashSet<string> ParkedClaims = new HashSet<string>(StringComparer.Ordinal)
         {
-            "UnlockMethod|unlockMethod|Cosmetics/CosmeticCatalog.cs",
             "LevelCurve|levelCurve|Village/Harvest/EchoBalanceCatalog.cs",
-            "RequiresHero|requiresHero|Core/Quests/DailyQuests.cs",
             "VisibilityRule|visibilityRule|Core/Data/CardCollectionCatalog.cs",
             "ExpiryBehavior|expiry_behavior|Core/Data/CardCollectionCatalog.cs",
         };
@@ -127,10 +140,15 @@ namespace DeNelle.Editor
             {
                 "UnlockMethod|unlockMethod|Cosmetics/CosmeticCatalog.cs",
                 "cosmetics.json authors unlockMethod on 37 rows, EVERY one of them \"achievement\" " +
-                "(counted 2026-09-06). That is a claim about HOW the item is obtained. The only code " +
-                "that touches the key is EconomyMetaCatalogRegression.cs:129-138, which checks the " +
-                "STRING is in {buy,achievement}. No production path asks it, so nothing gates a " +
-                "cosmetic on an achievement and nothing routes the other kind to a purchase"
+                "(re-counted at source 2026-09-09 in BOTH canonical twins). That is a claim about HOW " +
+                "the item is obtained, and since 2026-09-09 it is a GATE: CosmeticCatalog." +
+                "IsAchievementUnlock is the one reader, and CosmeticOwnershipService.GrantAchievement " +
+                "REFUSES a row that does not claim it. ⚠ THIS ENTRY'S ORIGINAL TEXT WAS WRONG about " +
+                "\"the only code that touches the key\": HUD/CosmeticShopPanel.cs:402 reads it BY " +
+                "REFLECTION (the HUD asmdef may not reference DeNelle.Cosmetics) to pick the price " +
+                "caption - a reader this scan structurally cannot see, and display-only either way. " +
+                "If this case fires again, the GATE was deleted and any milestone caller can hand out " +
+                "a purchase-only cosmetic free"
             },
             new[]
             {
@@ -144,9 +162,12 @@ namespace DeNelle.Editor
                 "RequiresHero|requiresHero|Core/Quests/DailyQuests.cs",
                 "DailyQuests declares requiresHero beside requiresFeature. requiresFeature IS read " +
                 "(in DailyQuests.cs itself) and daily-quests.json authors it (\"raids\" on 2 rows). " +
-                "requiresHero has NO reader anywhere. The gate is half-built: the day someone authors " +
-                "a hero requirement it will be silently ignored, which is the WO-1038 shape - authored " +
-                "content, no code, no error"
+                "requiresHero had NO reader anywhere until 2026-09-09: the gate was half-built, so the " +
+                "day someone authored a hero requirement it would be silently ignored - the WO-1038 " +
+                "shape (authored content, no code, no error). It is now read in DailyQuestService." +
+                "RollOne through the pure predicate DailyQuestService.HeroRequirementMet, which fails " +
+                "CLOSED and warns on an unrecognised hero name. If this case fires again the gate was " +
+                "removed and daily-quests.json can once more make a promise the roller ignores"
             },
             new[]
             {
@@ -215,7 +236,9 @@ namespace DeNelle.Editor
             "RecipientAta|recipientAta|Wallet/PurchaseQuoteService.cs",
             "RequestedCollectionId|requested_collection_id|Core/Data/CardCollectionCatalog.cs",
             "RequiresFlag|requiresFlag|Core/Quests/QuestCatalog.cs",
-            "RequiresHero|requiresHero|Core/Quests/DailyQuests.cs",
+            // "RequiresHero|..." DELETED 2026-09-09 (WO-1430 lane FIELDS) - it gained a
+            // production reader in DailyQuestService.RollOne. Case C returns early on a
+            // read field, so leaving the row would have been tolerated in silence.
             "SafeFallbackItemId|safeFallbackItemId|Core/Data/CardCollectionCatalog.cs",
             "Saga|saga|Village/Crafting/GearCraftingRecipeCatalog.cs",
             "Saga|saga|Village/Crafting/JewelerRecipeCatalog.cs",
@@ -224,7 +247,9 @@ namespace DeNelle.Editor
             "Stack|stack|Commerce/PackCatalog.cs",
             "StartNode|startNode|Core/Dialogue/DialogueModel.cs",
             "StartUtc|startUtc|Wallet/BattleMonthlyCatalog.cs",
-            "UnlockMethod|unlockMethod|Cosmetics/CosmeticCatalog.cs",
+            // "UnlockMethod|..." DELETED 2026-09-09 (WO-1430 lane FIELDS) - CosmeticCatalog.
+            // IsAchievementUnlock reads it and GrantAchievement gates on it. Same reasoning
+            // as the RequiresHero row above: a read field never reaches the baseline check.
             "UpgradeType|upgradeType|Village/Buildings/BuildingCatalog.cs",
             "VisibilityRule|visibilityRule|Core/Data/CardCollectionCatalog.cs",
             "archetype|archetype|Dungeons/RoomForge/DungeonComposeLayout.cs",

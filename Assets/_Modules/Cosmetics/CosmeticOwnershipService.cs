@@ -87,9 +87,33 @@ namespace DeNelle.Cosmetics
             Changed?.Invoke();
         }
 
+        /// <summary>
+        /// The EARNED-THROUGH-PLAY door. WO-1430 Group B: this now honours the authored
+        /// <c>unlockMethod</c> - a catalog row that does not claim <c>"achievement"</c> is
+        /// REFUSED here and says so, instead of being handed out free by any milestone
+        /// caller (<c>TierSystem.cs:198</c>) exactly as if it were earned.
+        ///
+        /// ⚠ AN ID THE CATALOG DOES NOT KNOW STILL NO-OPS SILENTLY-BY-DESIGN, because
+        /// <c>PackStoreVM</c> deliberately calls this first for pack SKUs that are not
+        /// cosmetics rows and then falls through to <see cref="MarkCosmeticOwned"/>
+        /// (PackStoreVM.cs:285-319). Turning that miss into a Warn would fire on every
+        /// pack purchase. A REFUSAL - known row, wrong unlock method - is the real
+        /// anomaly and is the one that traces.
+        /// </summary>
         public bool GrantAchievement(string id)
         {
-            if (string.IsNullOrEmpty(id) || CosmeticCatalog.Find(id) == null) return false;
+            if (string.IsNullOrEmpty(id)) return false;
+            var def = CosmeticCatalog.Find(id);
+            if (def == null) return false;
+            if (!CosmeticCatalog.IsAchievementUnlock(def))
+            {
+                FlowTrace.Warn("Cosmetics", "GrantAchievement('" + id + "') REFUSED: cosmetics.json authors " +
+                               "unlockMethod=" + (def.UnlockMethod ?? "<null>") + ", not " +
+                               CosmeticCatalog.AchievementUnlock + " - this row is not earnable through play, so " +
+                               "the achievement door must not open it. Route it through its own purchase/grant path, " +
+                               "or correct the authored unlockMethod.");
+                return false;
+            }
             return MarkCosmeticOwned(id);
         }
 

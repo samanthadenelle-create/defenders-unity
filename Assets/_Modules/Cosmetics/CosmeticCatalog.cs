@@ -65,9 +65,10 @@ namespace DeNelle.Cosmetics
         /// (pet-aether-twilight) and, like <see cref="MeshPath"/>, previously discarded on load.</summary>
         [JsonProperty("specialSale")] public bool SpecialSale;
 
-        /// <summary>True for items the player must earn through gameplay.</summary>
-        public bool IsAchievement =>
-            string.Equals(UnlockMethod, "achievement", StringComparison.OrdinalIgnoreCase);
+        /// <summary>True for items the player must earn through gameplay. Delegates to
+        /// <see cref="CosmeticCatalog.IsAchievementUnlock"/> so there is exactly ONE definition
+        /// of what <c>unlockMethod</c> means (WO-1430 Group B).</summary>
+        public bool IsAchievement => CosmeticCatalog.IsAchievementUnlock(this);
 
         /// <summary>Preview hex parsed to a Unity Color; falls back to grey on a parse miss.</summary>
         public Color PreviewUnityColor =>
@@ -91,6 +92,45 @@ namespace DeNelle.Cosmetics
     public static class CosmeticCatalog
     {
         private const string StreamingRelativePath = "Data/Canonical/cosmetics.json";
+
+        // =====================================================================
+        // WO-1430 GROUP B -- `unlockMethod` IS THE GATE, NOT A LABEL.
+        // ---------------------------------------------------------------------
+        // AuthoredFieldReaderRegression found `unlockMethod` authored on 37 rows
+        // with no PRODUCTION READER. Measured 2026-09-09 at source:
+        // `grep -c '"unlockMethod"'` = 37 in BOTH canonical twins
+        // (Assets/Resources/Data/Canonical/cosmetics.json and the StreamingAssets
+        // copy), and all 37 read "achievement".
+        //
+        // ⚠ THE ORACLE'S OWN "why" WAS PARTLY WRONG, and the correction matters:
+        // the key IS touched in production -- `HUD/CosmeticShopPanel.cs:402` reads
+        // it BY REFLECTION (the HUD asmdef may not reference DeNelle.Cosmetics),
+        // which the scan cannot see, and uses it only to choose the price CAPTION
+        // ("Earn via play" vs "Unavailable"). Read-for-display is not honoured.
+        // What was missing was a GATE: `GrantAchievement` accepted ANY catalog id,
+        // so the achievement grant path and a purchase path were indistinguishable
+        // and a row authored `"buy"` would be handed out free by
+        // `TierSystem.cs:198`'s milestone grant. THAT is what the field now decides.
+        // =====================================================================
+
+        /// <summary>The authored <c>unlockMethod</c> value meaning "earned through play".</summary>
+        public const string AchievementUnlock = "achievement";
+
+        /// <summary>The authored <c>unlockMethod</c> value meaning "obtained by purchase".</summary>
+        public const string BuyUnlock = "buy";
+
+        /// <summary>
+        /// THE ONE production reader of <c>unlockMethod</c>: true when this row claims to be
+        /// earned through gameplay. Callers gate on this - <see cref="CosmeticOwnershipService.
+        /// GrantAchievement"/> refuses a row that does not claim it, so the authored string
+        /// decides which door an item may come through. A null def or a null/blank
+        /// <c>unlockMethod</c> is NOT an achievement unlock (fail closed).
+        /// </summary>
+        public static bool IsAchievementUnlock(CosmeticDef def) =>
+            def != null && string.Equals(def.UnlockMethod, AchievementUnlock, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Convenience overload by id; false when the id is unknown to the catalog.</summary>
+        public static bool IsAchievementUnlock(string id) => IsAchievementUnlock(Find(id));
 
         private static CosmeticCatalogData _data;
 
