@@ -263,6 +263,10 @@ entries (six harvest lines need the non-overflow path), push.
   `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=279`, `APK_DONE`; install `Success` (`Builds/wave6-install.runner.txt`,
   09:08); `dumpsys versionName=2026.09.10.363722`; portrait flags still 0. Device proofs owed on it: Manage hub CLOSE (WO-1648 device
   close), the WO-1652 play-mode TextFitGuard census in logcat, the raid HUD family (still blocked on the 10-troop door).
+- **Android production APK, fifth build (sixth wave):** `Builds/overnight-apk-status.txt` -> `APK_OK 10:11 size=444MB`,
+  `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=279`, `APK_DONE`; install `Success` (`Builds/wave6-install-b.runner.txt`,
+  10:12); `dumpsys versionName=2026.09.10.363786`; portrait flags still 0. Device proofs owed: the eight allowlist entries retiring on a
+  fresh logcat (WO-1658), the Manage hub cost band, the raid HUD family (still blocked on the 10-troop door).
 - **Seeker install:** `install-apk-to-seeker.ps1 -Build:$false -Install:$true` -> `Performing Streamed
   Install / Success` on `SM02G4061955851` (00:23). Device frames under `Builds/device-frames/` and sent
   to the owner as they were taken.
