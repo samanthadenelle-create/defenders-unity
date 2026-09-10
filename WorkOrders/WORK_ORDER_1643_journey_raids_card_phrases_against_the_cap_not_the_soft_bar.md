@@ -218,3 +218,7 @@ The implementing lane owns this ticket. Its hand-back is incomplete until this f
 line is flipped and
 `WorkOrders/WORK_ORDER_1643_journey_raids_card_phrases_against_the_cap_not_the_soft_bar.RESULT.md`
 is written, with both paths reported. The lead regenerates `BOARD.html`.
+
+## Device evidence (lead, 2026-09-10 08:14, APK 2026.09.10.363660)
+
+`Builds/device-frames/2026-09-10_0814_363660_town_dock.png` (2670x1200, opened): the Journey deck RAIDS card reads "Army 8 / 10 . no camp in reach" (`_0817b_363660_journey_deck.png`) while logcat 08:17:45 shows the raid door itself opened the drillmaster panel (required 10 on this save). Owner felt-verify closes.

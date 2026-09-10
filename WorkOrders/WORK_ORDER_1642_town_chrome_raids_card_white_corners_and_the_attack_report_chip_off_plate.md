@@ -326,3 +326,7 @@ This lane owns this ticket. Its hand-back is incomplete until this file's `**Sta
 flipped and
 `WorkOrders/WORK_ORDER_1642_town_chrome_raids_card_white_corners_and_the_attack_report_chip_off_plate.RESULT.md`
 is written, with both paths reported. The lead regenerates `BOARD.html`.
+
+## Device evidence (lead, 2026-09-10 08:14, APK 2026.09.10.363660)
+
+`Builds/device-frames/2026-09-10_0814_363660_town_dock.png` (2670x1200, opened): the ATTACK REPORT chip draws on two lines inside the rail plate; the Journey deck RAIDS card has no white corners (`_0817b_363660_journey_deck.png`). Owner felt-verify closes.

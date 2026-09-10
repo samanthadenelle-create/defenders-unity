@@ -239,3 +239,7 @@ This lane owns this ticket. Its hand-back is incomplete until this file's `**Sta
 flipped and
 `WorkOrders/WORK_ORDER_1641_heart_objective_still_says_unlock_raids_after_the_first_raid.RESULT.md`
 is written, with both paths reported. The lead regenerates `BOARD.html`.
+
+## Device evidence (lead, 2026-09-10 08:14, APK 2026.09.10.363660)
+
+`Builds/device-frames/2026-09-10_0814_363660_town_dock.png` (2670x1200, opened): the heart plate reads "Train 2 troops for the next raid" (8 deployable of cap 10, everCompletedRaid true). Owner felt-verify closes.

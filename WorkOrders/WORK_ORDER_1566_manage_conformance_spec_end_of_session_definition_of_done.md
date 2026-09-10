@@ -1,6 +1,6 @@
 # WO-1566: the Manage conformance spec — the end-of-session definition of DONE
 
-**Status:** AUDITED 2026-09-10 - 51 pass / 4 fail / 11 unmeasured / 1 blocked-on-art / 1 superseded (68 rows), see RESULT — this is a **SPEC, not a lane.** It does not itself change code; it is the
+**Status:** AUDITED 2026-09-10 - 56 pass / 9 fail / 2 unmeasured / 1 blocked-on-art / 1 superseded (69 rows), see RESULT — this is a **SPEC, not a lane.** It does not itself change code; it is the
 acceptance every Manage lane is measured against before the session closes.
 **Silo:** none — it is the yardstick. Each row names the lane that owns the fix.
 **Source:** owner ask 2026-09-06: *"can you write the specs so the work at the end of CLI's session matches
@@ -99,7 +99,7 @@ another pass"*).
 | C4 | **One** heading. No second section heading, no `Filter: ALL` sub-line, no hint sentence | — |
 | C5 | No `HEART L<n>` chip (it is not in the mockup) — **only once the Heart keeps a door elsewhere** | WO-1430 |
 | C6 | No element overlaps; nothing clipped mid-word; no text band under ~24 px | WO-1488 |
-| C7 | Every tappable ≥ `ElarionUiKit.MinTouchPx` (**112**) | ⚠ last measured **110.4 px** on every `ManageTabs/ObsBtn_*`, `ManageQueueDoor`, `ManageFilters/ObsBtn_*` — **still red** |
+| C7 | Every tappable >= `ElarionUiKit.MinTouchPx` (**112**) | ⚠ **SUPERSEDED 2026-09-10 (WO-1650) — THE FROZEN "110.4 px ... still red" FIGURE IS RETIRED, NOT RESTATED.** It was unsourced at HEAD: `ManageTabs` and `ManageQueueDoor` are not names in the tree at all, and no log reproduces the number. ⛔ **DO NOT WRITE A MEASUREMENT INTO THIS ROW AGAIN — READ THE MARKER.** The instrument is the CAPTURE-SIDE touch auditor `UICaptureLaunch.ReportTouchOracle` (WO-1060), marker **`UI_TOUCH_OK <clean>/<checked> panels`**. Fresh reading, `Builds/wave5-capture5` (07:57): `UI_TOUCH_OK 97/97 panels -- no control authored under MinTouchPx(112) so the clamp had nothing to rescue, and no two interactive rects intersect.` ⚠ **That run shot the Manage HUB only.** The filter chips live on the BUILD grid, which only `RunManageFlowMapCaptureHeadless` shoots — and it did not run (no `MANAGE_FLOW_MAP_OK` on any 2026-09-10 log). So C7 is **PROVEN for the hub, UNPROVEN for panels 2-8** until that capture runs. Full evidence: `WORK_ORDER_1650_...RESULT.md`. |
 | C8 | Meaning never carried by hue alone — **greyscale is the gate** | WO-1563 |
 
 ### Panel 1 — MANAGE (hub)

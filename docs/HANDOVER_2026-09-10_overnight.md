@@ -185,6 +185,19 @@ Gold@0.15 veil, ElarionUiKit.cs:2670-2683 - WO-1639's ObsidianFill sits UNDER it
 RAID-HUD lane). Banner 1648. PowerShell `git show | Set-Content` mangled a .cs during the first red-first attempt (memory written); the
 bash redirect version compiled.
 
+Fourth wave COMMITTED (07:59, gate chain 27: `wave5-compile4` COMPILE_GATE_OK, `wave5-reg2` REGRESSION_OK 494/494, `wave5-capture5`
+UI_CAPTURE_OK 97 + UI_GEOMETRY_OK 97 + UI_GLYPH_OK 97/97, `wave5-navcapture5` 15 + 15/15): `04ce52dab` Manage ARMY two-line face + WO-1636
+FIXED; `da143473c` WO-1643 IMPLEMENTED; `376657294` WO-1645 capture (red-first proven); `7dbe342c2` WO-1646 IMPLEMENTED; `e671df9a9` WO-1647
+IMPLEMENTED (plate now samples black headless; device measurement pending); `3c12ee3a9` board + banner 1648; `dd8342230` stamp 363660;
+`2039e2c41` WO-1566 AUDITED (50/4/12 of 68; MANAGE-AUDIT lane minting 1648-1650 for the hub CLOSE 12/255, the ruling-21 oracle, the C7
+figure; banner to 1651 with them). WO-1567's run (`RunManageFlowMapCaptureHeadless` -> `Builds/wave5-manageflow1`) launched 08:09.
+
+DEVICE-FRAMES lane on 363660 (08:13-08:24, `Builds/device-frames/2026-09-10_08*_363660_*`): WO-1641 line, WO-1642 chip, WO-1643 subtitle
+all on device (town_dock, journey_deck); WO-1648 CLOSE plate 13/255 on device vs 172/255 for BUILD, while the queue drawer CLOSE at the
+same screen position reads 254/255 -> real render defect in the hub paint path (ManageScreenPanel.cs:1362-1375), fix lane next; raid branch
+stopped at the door (full-army redirect, required 10, 8 held) so WO-1639/1640/1646/1647 device proofs are unproven; queue drawer empty so
+WO-1651 unproven on device; logcat `_0824_363660_logcat.txt` (3 app instances, filter PID 1040; no Unity exception).
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
@@ -215,6 +228,12 @@ bash redirect version compiled.
   `https://defenders-of-the-realm-v2-k7n3pyuv6.vercel.app` (repo-linked project, never --prod), alias
   `https://defenders-pi.vercel.app` moved to it (HTTP 200, serves loader `4bef8671e63a615effc52d21e09bdb3e.loader.js` = the
   file in `Builds/WebGL/Build/`).
+- **Android production APK, third build (fourth wave):** `Builds/overnight-apk-status.txt` -> `APK_START 07:59`, `SCHEMA_PARITY_OK`,
+  `APK_OK 08:05 size=444MB`, `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=279`, `APK_DONE`; install `Success`
+  (`Builds/wave5-install.runner.txt`); `dumpsys versionName=2026.09.10.363660`; stamp `dd8342230`, portrait flags still 0. Frames:
+  `Builds/device-frames/2026-09-10_0807_363660_title.png` and `_after_continue.png` (2670x1200; CONTINUE dropped into a live wave on this
+  save, so no raid frame yet - the raid HUD / deploy bar / plate colour device checks (WO-1639/1640/1646/1647 measurement 1) need a raid
+  the owner starts, or a scripted deploy). Pushed: dev = `2039e2c41` (08:08, LFS 5001 objects).
 - **Seeker install:** `install-apk-to-seeker.ps1 -Build:$false -Install:$true` -> `Performing Streamed
   Install / Success` on `SM02G4061955851` (00:23). Device frames under `Builds/device-frames/` and sent
   to the owner as they were taken.
@@ -434,6 +453,16 @@ bash redirect version compiled.
 7. **WO-1644 front door** - the front-door capture also skips ProveGeometryMoves / ReportFidelity / ReportGeometry /
    ReportTouchOracle (four one-liners); widen now or separate ticket?
 8. **Google Play country list** - which countries is the listing open in (answers the probabilistic-item disclosure question).
+
+9. **Raid device proofs on your save** - the raid door needs 10 troops and the save holds 8 with 1319 gold; may the CLI train 2 Footmen
+   (1100 gold) to run the WO-1639/1640/1646/1647 device checks, or will you play the raid yourself?
+10. **Dock captions** - on 363660 the five dock captions (BUILD / TALK / HERO / JOURNEY / MANAGE) draw below the plate on the terrain
+    (`2026-09-10_0814_363660_town_dock.png`); legible but low contrast. Ticket it, or intended?
+
+11. **Manage BUILD panel shape** (WO-1566 audit rows 2.1/2.2, F5) - BUILD is a 4-tile category picker (ECONOMY / DEFENSE / CRAFT /
+    STORAGE) with no filter chip row, not the mockup's five chips over a 5x2 grid. Keep the picker (update the mockup) or restore the
+    chips-over-grid?
+12. **Locked ARMY CTA copy** (row 6.3) - it reads "VIEW BARRACKS" instead of a disabled "LOCKED". Keep as shipped?
 
 ## 4. Findings the next seat must not re-derive
 

@@ -1,6 +1,6 @@
 # WO-1650: WO-1566's C7 "110.4 px" touch-floor figure is unsourced at HEAD — re-source it or retire it
 
-**Status:** READY TO IMPLEMENT
+**Status:** DONE 2026-09-10 - C7 re-pointed at `UI_TOUCH_OK`, the 110.4 px figure RETIRED and DISPROVEN. Acceptance 2 MEASURED on `Builds/wave5-manageflow1` (08:09): `UI_TOUCH_OK 20/20 panels -- no control authored under MinTouchPx(112)`. All 5 acceptance rows met. See `WORK_ORDER_1650_wo1566_c7_110_4_px_figure_unsourced_at_head.RESULT.md`
 **Silo:** documentation + the touch oracle. **No gameplay code.**
 **Number:** PRE-ASSIGNED by the lead. ⛔ **Do NOT edit `CLI_LANES_WO_NUMBERS.md`.**
 **Source:** WO-1566 audit, `WORK_ORDER_1566_..._definition_of_done.RESULT.md` chrome row **C7**
