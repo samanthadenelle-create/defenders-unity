@@ -562,6 +562,13 @@ namespace DeNelle.Village.UI
         // of ApplyDrawerPlacement still finds them. Rename them when panel 8's rows are built.
         private GameObject _drawerHeading;
         private GameObject _drawerHide;
+        // WO-1648 - the CLOSE read-back's own budget. Two states, three frames each: enough to
+        // clear the un-laid-out first frame, few enough that the log never floods.
+        private const int CloseReadbackMaxPerState = 3;
+        private const int CloseReadbackMaxOccluders = 12;
+        private int _closeReadbackHubCount;
+        private int _closeReadbackDrawerCount;
+
         /// <summary>The shared kit CLOSE. WO-1491: visible on the HUB only (mockup panel 1).</summary>
         private Button _chromeClose;
         /// <summary>
@@ -1844,6 +1851,228 @@ namespace DeNelle.Village.UI
             // BUILD / ARMY / RESEARCH grids, the detail cards, the research tree and the queue
             // overlay all lose their only route back to town again.
             if (_manageExit != null) _manageExit.gameObject.SetActive(true);
+
+            // ⭐ WO-1648 - THE READ-BACK FIRES HERE, AFTER THE SetActive FLIPS ABOVE.
+            // It reports what RENDERS, never what was set; see TraceHubCloseReadback.
+            if (_hubShowing && !_queueDrawerOpen) TraceHubCloseReadback("hub");
+        }
+
+        // =====================================================================
+        //  WO-1648 - THE CLOSE READ-BACK. INSTRUMENT FIRST (CLAUDE.md §12).
+        // ---------------------------------------------------------------------
+        //  THE MEASUREMENT THAT FORCED IT (device, build 2026.09.10.363660, ONE session):
+        //    Builds/device-frames/2026-09-10_0814_363660_manage_hub.png          CLOSE plate
+        //      (box 1119,975,1553,1079) max Rec.709 luma  13/255, brightest RGB (13,13,13)
+        //    Builds/device-frames/2026-09-10_0815_363660_manage_queue_drawer.png SAME box
+        //      max luma 254/255, brightest RGB (255,255,246)
+        //  ⛔ IT IS THE SAME GameObject IN BOTH FRAMES, NOT TWO CONSTRUCTION PATHS. A x12
+        //  brightness boost of the hub crop reproduces the drawer crop's art intact - the
+        //  gold perimeter, the plate's bevel, the word CLOSE - so nothing is missing, mis-
+        //  coloured or mis-seated. The whole subtree is attenuated to ~0.05 of itself
+        //  (per-pixel ratio over the plate caps at 0.0512 = 13/254), and `_chromeClose`
+        //  stays ACTIVE with the drawer open because ApplyScreenVisibility gates it on
+        //  `_hubShowing` alone - the drawer opens FROM the hub. The drawer's OWN close is a
+        //  different control entirely (BuildQueueDrawer's "X", top-right).
+        //  ⛔ THE EXISTING TRACE CANNOT SEE THIS. MANAGE_HUB_CLOSE prints what the code SET
+        //  (interactable, "CLOSE", Parchment, a gold perimeter) and every one of those is
+        //  true on the dark frame. A setter echo is not a read-back, which is precisely why
+        //  a green source lint sat beside a 13/255 control.
+        //
+        //  THE TWO LIVE CANDIDATES, and the field that separates them:
+        //    A. OCCLUSION - a later-drawn near-opaque graphic overlaps the plate on the hub
+        //       and is SetActive(false) once the drawer opens. `_launcherHost`
+        //       (ManageCategoryLauncher, BuildLauncher :2002-2008) carries an Image at
+        //       (0.012,0.014,0.018, alpha 0.995), is parented to `operationalWell.parent`
+        //       with the WELL's own anchors/offsets - and the well's floor was dropped onto
+        //       the CLOSE band by the geometry pass (:1417-1436), the hub re-reserving that
+        //       band INSIDE this host as empty space. It is built AFTER the kit chrome's
+        //       close, so it draws over it, and it flips exactly the right way: active on
+        //       the hub, SetActive(false) when the drawer opens (:1798).
+        //       ⚠ Consistent with, NOT proof of: a single 0.995 layer transmits 0.005 and
+        //       the measured ratio is ~0.05. Blend space (linear vs gamma) and 8-bit
+        //       rounding put both inside the plausible band, so the pixels alone cannot
+        //       close it - the OCCLUDERS list below names the graphic or it does not exist.
+        //    B. SUBTREE ALPHA - an inherited CanvasGroup / tint sits near 0.05 on the hub
+        //       and 1.0 with the drawer open. `inhAlpha` (CanvasRenderer.GetInheritedAlpha)
+        //       and `crColor` are the discriminator: at ~1.0 on BOTH lines candidate B is
+        //       DEAD and the answer is in OCCLUDERS; below ~0.1 on the hub line it is B and
+        //       the occluder list is noise.
+        //  ⛔ NO PAINT EDIT UNTIL ONE OF THOSE TWO LINES NAMES IT. Two live causes, one
+        //  cheap read - guessing here is the banned move.
+        // =====================================================================
+        /// <summary>
+        /// Read BACK what the shared CLOSE actually renders as - resolved colour, canvas-renderer
+        /// colour, INHERITED alpha, cull state, material, draw order, and every graphic drawn after
+        /// it that overlaps its rect. Fires in both states (hub, drawer-open) so the log carries a
+        /// DELTA rather than a snapshot; the capping counter keeps it off the per-frame path.
+        /// </summary>
+        private void TraceHubCloseReadback(string when)
+        {
+            if (_chromeClose == null) return;
+            // Bounded, not once: the first call can land on a frame whose layout has not run
+            // (this file's own geometry pass says rects read ZERO there), so a strict Once would
+            // pin the useless frame. Three per state settles it and still never floods.
+            bool hubState = string.Equals(when, "hub", StringComparison.Ordinal);
+            if (hubState)
+            {
+                if (_closeReadbackHubCount >= CloseReadbackMaxPerState) return;
+            }
+            else
+            {
+                if (_closeReadbackDrawerCount >= CloseReadbackMaxPerState) return;
+            }
+
+            // ⛔ THE BUDGET IS SPENT ON A MEASURED FRAME, NEVER ON AN UNBUILT ONE, and that is the
+            // difference between this read-back answering the ticket and mis-answering it.
+            // ApplyScreenVisibility null-checks `_launcherHost` (:1798), i.e. it is designed to be
+            // callable BEFORE BuildLauncher exists. Three early calls would burn the whole hub
+            // budget on frames where candidate A's graphic HAS NOT BEEN BUILT YET - every line
+            // would read `OVERLAPPING: NONE`, which is the exact answer that clears candidate A.
+            // A read-back that can report the absence of a thing that does not exist yet is worse
+            // than no read-back: it is confidently wrong. Same for a zero-area rect - a rect under
+            // an unrun layout resolves to ZERO however many canvas updates are forced at it (this
+            // file says so at ResolveDrawerBands), and every overlap test against it is false.
+            if (hubState && _launcherHost == null) return;
+
+            try
+            {
+                Canvas.ForceUpdateCanvases();
+
+                var plateRt = _chromeClose.transform as RectTransform;
+                Rect budgetRect = WorldAabb(plateRt);
+                if (budgetRect.width <= 0f || budgetRect.height <= 0f) return;
+                if (hubState) _closeReadbackHubCount++;
+                else _closeReadbackDrawerCount++;
+                Graphic plate = _chromeClose.targetGraphic as Graphic;
+                if (plate == null) plate = _chromeClose.GetComponent<Graphic>();
+                TMP_Text label = _chromeClose.GetComponentInChildren<TMP_Text>(true);
+
+                string plateLine = DescribeCloseGraphic("plate", plate);
+                string labelLine = DescribeCloseGraphic("label", label);
+
+                // The plate's own world-space AABB (measured above, before the budget was spent),
+                // so the occluder test below is a rect test and not a parenthood guess.
+                Rect plateRect = budgetRect;
+                string rectPart = plateRect.xMin.ToString("0") + ".." + plateRect.xMax.ToString("0") +
+                                  " x " + plateRect.yMin.ToString("0") + ".." + plateRect.yMax.ToString("0");
+
+                int drawnAfter;
+                string occluders = DescribeCloseOccluders(plate, plateRect, out drawnAfter);
+                string countPart = drawnAfter.ToString();
+
+                FlowTrace.Step("Manage", "MANAGE_HUB_CLOSE_READBACK[" + when + "] " + plateLine +
+                    " || " + labelLine + " || worldAabb " + rectPart + " || " + countPart +
+                    " graphic(s) drawn AFTER the plate in this canvas; OVERLAPPING: " + occluders);
+            }
+            catch (Exception e)
+            {
+                // No silent failures (§12.2): a read-back that threw is a finding, not a gap.
+                FlowTrace.Warn("Manage", "MANAGE_HUB_CLOSE_READBACK[" + when + "] THREW " +
+                    e.GetType().Name + ": " + e.Message + " - the CLOSE render state is UNMEASURED " +
+                    "on this frame; do not read its absence as green.");
+            }
+        }
+
+        /// <summary>One graphic's RESOLVED render state. Every part is computed into a local first,
+        /// so no quote ever lands inside an interpolation hole (CLAUDE.md §1 gate brace rule).</summary>
+        private static string DescribeCloseGraphic(string role, Graphic g)
+        {
+            if (g == null) return role + "=<none>";
+            Color c = g.color;
+            string colorPart = c.r.ToString("0.###") + "," + c.g.ToString("0.###") + "," +
+                               c.b.ToString("0.###") + ",a" + c.a.ToString("0.###");
+            var cr = g.canvasRenderer;
+            string crPart = "<no canvasRenderer>";
+            string inhPart = "?";
+            string cullPart = "?";
+            if (cr != null)
+            {
+                Color crc = cr.GetColor();
+                crPart = crc.r.ToString("0.###") + "," + crc.g.ToString("0.###") + "," +
+                         crc.b.ToString("0.###") + ",a" + crc.a.ToString("0.###");
+                inhPart = cr.GetInheritedAlpha().ToString("0.####");
+                cullPart = cr.cull ? "CULLED" : "drawn";
+            }
+            string matPart = g.material != null ? g.material.name : "<null material>";
+            string activePart = g.gameObject.activeInHierarchy ? "active" : "INACTIVE";
+            string enabledPart = g.enabled ? "enabled" : "DISABLED";
+            string sibPart = g.transform.GetSiblingIndex().ToString();
+            return role + "='" + PathFromCanvas(g.transform) + "' color=" + colorPart +
+                   " crColor=" + crPart + " inhAlpha=" + inhPart + " " + cullPart + " " +
+                   activePart + " " + enabledPart + " sibling=" + sibPart + " mat=" + matPart;
+        }
+
+        /// <summary>Every ACTIVE graphic drawn after <paramref name="plate"/> in the same canvas whose
+        /// world AABB overlaps it. Pre-order DFS is uGUI's draw order - a bare sibling index would
+        /// miss a plate parented one level up, which is exactly candidate A's shape.</summary>
+        private static string DescribeCloseOccluders(Graphic plate, Rect plateRect, out int drawnAfter)
+        {
+            drawnAfter = 0;
+            if (plate == null) return "<no plate graphic to compare against>";
+            var canvas = plate.GetComponentInParent<Canvas>();
+            if (canvas == null) return "<the plate has no Canvas ancestor>";
+
+            var order = new List<Graphic>();
+            CollectGraphicsPreOrder(canvas.transform, order);
+            int mine = order.IndexOf(plate);
+            if (mine < 0) return "<the plate is not in its own canvas walk - report this line>";
+
+            var hits = new List<string>();
+            for (int i = mine + 1; i < order.Count; i++)
+            {
+                var g = order[i];
+                if (g == null || !g.gameObject.activeInHierarchy || !g.enabled) continue;
+                drawnAfter++;
+                Rect r = WorldAabb(g.transform as RectTransform);
+                if (r.width <= 0f || r.height <= 0f) continue;
+                if (!r.Overlaps(plateRect)) continue;
+                if (hits.Count >= CloseReadbackMaxOccluders) continue;
+                Color c = g.color;
+                string colorPart = c.r.ToString("0.###") + "," + c.g.ToString("0.###") + "," +
+                                   c.b.ToString("0.###") + ",a" + c.a.ToString("0.###");
+                string alphaPart = g.canvasRenderer != null
+                    ? g.canvasRenderer.GetInheritedAlpha().ToString("0.###") : "?";
+                hits.Add("'" + PathFromCanvas(g.transform) + "' color=" + colorPart +
+                         " inhAlpha=" + alphaPart);
+            }
+            if (hits.Count == 0) return "NONE (nothing drawn after the plate overlaps it)";
+            return string.Join(" ; ", hits.ToArray());
+        }
+
+        private static void CollectGraphicsPreOrder(Transform t, List<Graphic> into)
+        {
+            if (t == null) return;
+            var g = t.GetComponent<Graphic>();
+            if (g != null) into.Add(g);
+            for (int i = 0; i < t.childCount; i++) CollectGraphicsPreOrder(t.GetChild(i), into);
+        }
+
+        private static Rect WorldAabb(RectTransform rt)
+        {
+            if (rt == null) return new Rect(0f, 0f, 0f, 0f);
+            var corners = new Vector3[4];
+            rt.GetWorldCorners(corners);
+            float minX = Mathf.Min(corners[0].x, corners[2].x);
+            float maxX = Mathf.Max(corners[0].x, corners[2].x);
+            float minY = Mathf.Min(corners[0].y, corners[2].y);
+            float maxY = Mathf.Max(corners[0].y, corners[2].y);
+            return new Rect(minX, minY, maxX - minX, maxY - minY);
+        }
+
+        private static string PathFromCanvas(Transform t)
+        {
+            if (t == null) return "<null>";
+            string path = t.name;
+            var p = t.parent;
+            int guard = 0;
+            while (p != null && guard < 12)
+            {
+                path = p.name + "/" + path;
+                if (p.GetComponent<Canvas>() != null) break;
+                p = p.parent;
+                guard++;
+            }
+            return path;
         }
 
         private void ShowWorkspace()
@@ -2004,6 +2233,53 @@ namespace DeNelle.Village.UI
             _launcherHost.anchorMax = operationalWell.anchorMax;
             _launcherHost.offsetMin = operationalWell.offsetMin;
             _launcherHost.offsetMax = operationalWell.offsetMax;
+
+            // ⭐⭐ WO-1648 - THE HOST'S FLOOR STOPS ABOVE THE CLOSE BAND, AND THIS LINE IS THE FIX.
+            //
+            //  MEASURED, NOT REASONED (device build 2026.09.10.363660 + the read-back this file
+            //  carries at TraceHubCloseReadback):
+            //    device hub frame  -> the CLOSE plate maxes at  13/255, brightest RGB (13,13,13)
+            //    device drawer frame, same screen box -> 254/255, (255,255,246)
+            //    UI_LUMA_FAIL x2, ManageFlow_BUILD_hub_2670x1200: close max=14/255 mean=0.67
+            //      rect 1115..1555 x 86..242 vs reference 'BUILD' max=174.3/255, floor=61
+            //    MANAGE_HUB_CLOSE_READBACK[hub]:
+            //      plate color=1,1,1,a1 crColor=1,1,1,a1 inhAlpha=1 drawn active enabled
+            //      label color=0.953,0.918,0.827,a1 inhAlpha=1
+            //      OVERLAPPING: ... ; 'ManageScreenUI/ObsidianPanel/PanelContent/
+            //                         ManageCategoryLauncher' color=0.012,0.014,0.018,a0.995
+            //
+            //  ⛔ THE CONTROL WAS NEVER DIM. `inhAlpha=1` on every line kills the whole family of
+            //  alpha/tint theories outright: nothing faded the button. THIS Image - the launcher
+            //  host's own near-black backing - is drawn AFTER the kit chrome's close (the close is
+            //  built inside BuildObsidianPanel, this host is built later, so it is a later sibling
+            //  in the same parent) and its rect COVERED the close band, because it copied the
+            //  operational well's rect verbatim and the geometry pass deliberately drops that
+            //  well's floor ONTO the close band on every screen (see the CLOSE-band reclaim above).
+            //  A 0.995-alpha plate over a button is a button the player cannot see.
+            //
+            //  THE CURE IS THE RECT, NOT THE PAINT. The host now stops at the top of the close
+            //  band, so the plate physically cannot reach the control:
+            //    * NOT by lowering this Image's alpha - the hub would go translucent over the
+            //      town, which is the exact thing ManageBodyFill exists to prevent.
+            //    * NOT by re-ordering siblings - putting the close on top would leave a near-black
+            //      plate drawn THROUGH the band it does not own, and the next control seated there
+            //      would be swallowed in exactly the same way. Draw order hides the symptom; the
+            //      rect is the defect.
+            //  ⛔ THE CARD GEOMETRY IS UNCHANGED BY CONSTRUCTION. The band this removes from the
+            //  host is the SAME `closeReserve + HubBandGapPx` the card band already subtracted
+            //  INSIDE the host (`bottomF`), so the reservation simply moved out of the grid's
+            //  fractions and into the host's rect - and `bottomF` is now 0 for that reason. Change
+            //  one without the other and the hub reserves the band twice, which is a half-height
+            //  card row - the very defect WO-1597 measured at ~583px.
+            // ⛔ THIS IS THE HUB'S **ONE** CLOSE-BAND RESERVATION. `bottomF` in the card-band
+            // derivation below is 0 BECAUSE of this line - grep either name and you land on both.
+            // Verified 2026-09-10: `bottomF` reaches nothing but `grid.anchorMin` (and its degenerate
+            // fallback), and `_launcherGrid` is only ever a parent for cards - no other seat derives
+            // a rect from the grid's floor expecting it to be the close band.
+            float hubCloseBandInsetPx = Mathf.Max(HubCloseBandPx, _hubCloseReservePx) + HubBandGapPx;
+            _launcherHost.offsetMin = new Vector2(_launcherHost.offsetMin.x,
+                                                  _launcherHost.offsetMin.y + hubCloseBandInsetPx);
+
             var bg = go.GetComponent<Image>();
             bg.color = new Color(0.012f, 0.014f, 0.018f, 0.995f);
 
@@ -2057,7 +2333,17 @@ namespace DeNelle.Village.UI
             // HubCloseBandPx stays as the FLOOR: it is what the band needs even if the measured
             // reclaim came back small (a fallback frame with no layout, for instance).
             float closeReserve = Mathf.Max(HubCloseBandPx, _hubCloseReservePx);
-            float bottomF = Mathf.Clamp01((closeReserve + HubBandGapPx) / hostH);
+            // ⭐ WO-1648 - THE RESERVATION MOVED UP ONE LEVEL, TO THE HOST'S RECT, and this is its
+            // other half. `hubCloseBandInsetPx` above raised the HOST's floor by exactly
+            // `closeReserve + HubBandGapPx`, because the host's near-black backing was measured
+            // covering the CLOSE plate at 14/255. The band the cards get is therefore the WHOLE
+            // host now, and the pixels the cards occupy are unchanged - they simply stop being
+            // described as a fraction of a taller rect.
+            // ⛔ DO NOT RESTORE `(closeReserve + HubBandGapPx) / hostH` HERE while the host inset
+            // stands. That reserves the same band TWICE and hands back the half-height card row
+            // WO-1597 measured. The two lines move together or not at all; `closeReserve` is kept
+            // as the single number both of them read, and the trace below still reports it.
+            float bottomF = 0f;
             // ⭐ WO-1597 - THE HEART BAND IS RESERVED ONLY WHEN THE CHIP IS DRAWN.
             // ⛔ THE PREDICATE IS READ ONCE, HERE, AND HANDED TO BOTH WRITERS. The band and the chip
             // used to be decided in two places on two different frames (this method at chrome time,
@@ -3335,6 +3621,13 @@ namespace DeNelle.Village.UI
                     image.color = new Color(0.05f, 0.045f, 0.035f, 0.985f);
                 }
             }
+
+            // ⭐ WO-1648 - THE SECOND HALF OF THE READ-BACK, and the reason it is a DELTA.
+            // The device frames differ only in this state: the CLOSE plate reads 13/255 with the
+            // drawer shut and 254/255 with it open, on ONE build and ONE session. Logging both
+            // states from one helper means the next reader compares two lines instead of
+            // theorising about one.
+            if (_queueDrawerOpen) TraceHubCloseReadback("drawer-open");
         }
 
         /// <summary>WO-1393: the title-row QUEUE face stays on screen while the drawer is open and
