@@ -94,6 +94,7 @@ namespace DeNelle.Editor.Regression
                 Case5_EgressLawIsNotWeakened(failures, notes, log);
                 Case6_NoTypedWorldCoordinatesInTheDerivation(failures, notes, log);
                 Case7_TunnelIdentityIsTheRuledOne(failures, notes, log);
+                Case8_TheDestinationIsGroundedByTheSceneThatOwnsIt(failures, notes, log);
             }
             catch (Exception ex)
             {
@@ -105,7 +106,7 @@ namespace DeNelle.Editor.Regression
             string noteStr = notes.Count > 0 ? " | " + string.Join("; ", notes) : "";
             if (failures.Count == 0)
             {
-                reason = "biome-roads: 7 cases green" + noteStr;
+                reason = "biome-roads: 8 cases green" + noteStr;
                 Debug.Log(log.ToString() + "BIOME_ROADS_OK");
                 return true;
             }
@@ -639,6 +640,108 @@ namespace DeNelle.Editor.Regression
             notes.Add($"[biome-roads-identity] id '{BiomeRoads.TunnelSceneId}' frozen; display '{shown}' " +
                       "matched against canon-strings dual copy");
             log.AppendLine($"  identity: id '{BiomeRoads.TunnelSceneId}' (frozen) / name '{shown}' (WO-1044 R1)");
+        }
+
+        // ── Case 8 — the destination is grounded by the scene that OWNS it. ────
+        //
+        // WO-1692. The tunnel is entered SINGLE (SceneRouter.cs:323 -> SceneManager.LoadSceneAsync
+        // with the default LoadSceneMode), so while dg_hollow_roads is active the hub scene and its
+        // baked navmesh are UNLOADED. A NavMesh probe run from inside the tunnel therefore asks the
+        // tunnel's own nine-room corridor about a point 400m out in another world, and misses every
+        // time -- which is exactly what shipped: F8 seq 5003-5006 refused all four drops with
+        // identical text, seq 5007 read "seated 0 of 4 biome drops", and its trailing hint blamed the
+        // arm room ids (Case 2 above has been green throughout, so that hint was never true).
+        //
+        // THIS CASE IS A SOURCE LINT ON PURPOSE. The defect is structural -- a question asked in a
+        // scene that cannot answer it -- and it leaves no artefact in data, only in where the call
+        // sits. The same shape already guards HeroPlayableBoundsRegression's typed-bound rule.
+        // The arrival-side probe (NavMesh.SamplePosition of the HERO's own position, in the
+        // destination scene) is legitimate and deliberately NOT forbidden: it runs where the mesh it
+        // queries actually lives.
+        private static void Case8_TheDestinationIsGroundedByTheSceneThatOwnsIt(
+            List<string> failures, List<string> notes, StringBuilder log)
+        {
+            string src = ReadStripped(InjectorSrc);
+            if (src == null)
+            {
+                failures.Add($"[biome-roads-grounding] cannot read {InjectorSrc} - the lint has not run, so it " +
+                             "has not passed.");
+                return;
+            }
+
+            // (a) A drop point may be probed in EXACTLY ONE place: the hub-side helper. Not "never" --
+            //     WO-1091 requires the fail-closed probe to exist, and it does; it must simply run
+            //     where the destination scene is loaded. So the lint is positional, not prohibitive.
+            int groundStart = src.IndexOf("bool TryGroundDrop", StringComparison.Ordinal);
+            int groundEnd = groundStart >= 0
+                ? src.IndexOf("Vector3 GroundY", groundStart, StringComparison.Ordinal)
+                : -1;
+            if (groundStart < 0 || groundEnd < 0)
+            {
+                failures.Add("[biome-roads-grounding] the hub-side TryGroundDrop helper is gone (or no longer sits " +
+                             "above GroundY). It is the ONE place a drop point may be probed - in the hub, where " +
+                             "the destination scene's navmesh is loaded.");
+            }
+            else
+            {
+                string hubProbe = src.Substring(groundStart, groundEnd - groundStart);
+                if (!Regex.IsMatch(hubProbe, @"NavMesh\s*\.\s*SamplePosition\s*\(\s*drop\s*\."))
+                    failures.Add("[biome-roads-grounding] TryGroundDrop no longer probes the drop point. Without it " +
+                                 "an ungrounded drop is remembered and seated at the derived bounds-CENTRE height " +
+                                 "(WO-1091 item 1, fail-closed, is exactly this branch).");
+
+                string outsideHub = src.Remove(groundStart, groundEnd - groundStart);
+                if (Regex.IsMatch(outsideHub, @"NavMesh\s*\.\s*SamplePosition\s*\(\s*drop\s*\."))
+                    failures.Add("[biome-roads-grounding] a DROP point is probed outside TryGroundDrop. Every other " +
+                                 "site in this file runs while the tunnel is active, and the tunnel load is SINGLE " +
+                                 "(SceneRouter.cs:323) - the hub and its navmesh are unloaded, so such a probe " +
+                                 "interrogates the corridor's own mesh and refuses every road (F8 seq 5003-5007).");
+            }
+
+            // (b) And none inside the seating method itself, whatever the local is called.
+            int seatStart = src.IndexOf("bool TrySeatDrop", StringComparison.Ordinal);
+            int seatEnd = src.IndexOf("Transform FindComposeRoot", StringComparison.Ordinal);
+            if (seatStart >= 0 && seatEnd > seatStart)
+            {
+                string seatBody = src.Substring(seatStart, seatEnd - seatStart);
+                if (seatBody.Contains("NavMesh.SamplePosition") || seatBody.Contains("NavMesh .SamplePosition"))
+                    failures.Add("[biome-roads-grounding] TrySeatDrop contains a NavMesh.SamplePosition call. " +
+                                 "Nothing seated in the tunnel may validate a destination against the tunnel's " +
+                                 "navmesh - the destination scene is not loaded.");
+            }
+            else
+            {
+                notes.Add("[biome-roads-grounding] TrySeatDrop/FindComposeRoot boundary not found - the " +
+                          "method-scoped half of the lint did not run (check (a) still did).");
+            }
+
+            // (c) The grounding must EXIST on the hub side, and be consumed on the tunnel side.
+            //     Absence of the probe alone would pass a version that seats an ungrounded 17m-in-the-
+            //     air point, which is the WO-1606 defect this must not regress into.
+            if (!src.Contains("GroundDropsInHub"))
+                failures.Add("[biome-roads-grounding] HollowRoadsDropInjector has no GroundDropsInHub pass - the " +
+                             "four destinations would be seated at the derived bounds-CENTRE height (17m of open " +
+                             "air on the live world), which is the WO-1606 defect.");
+            if (!src.Contains("TryRecallGroundedDrop"))
+                failures.Add("[biome-roads-grounding] the tunnel does not recall a hub-grounded destination " +
+                             "(TryRecallGroundedDrop is gone) - a seated drop would promise an unvalidated point.");
+            if (!Regex.IsMatch(src, @"RememberHubBounds[\s\S]{0,600}?GroundDropsInHub"))
+                failures.Add("[biome-roads-grounding] RememberHubBounds no longer runs the grounding pass. That " +
+                             "call is the ONLY moment the destination world is loaded; without it every road is " +
+                             "refused for want of a memo.");
+
+            // (d) The hub-side call site still exists at all.
+            string spawner = ReadStripped(SpawnerSrc);
+            if (spawner == null)
+                failures.Add($"[biome-roads-grounding] cannot read {SpawnerSrc} - the hub-side half of the lint " +
+                             "has not run.");
+            else if (!spawner.Contains("RememberHubBounds"))
+                failures.Add("[biome-roads-grounding] the hub no longer calls HollowRoadsDropInjector." +
+                             "RememberHubBounds, so nothing measures OR grounds the world the tunnel drops into.");
+
+            notes.Add("[biome-roads-grounding] destination grounded in the hub, recalled in the tunnel; no " +
+                      "drop-point navmesh probe in the tunnel scene");
+            log.AppendLine("  grounding: hub grounds the four destinations; the tunnel never probes for them");
         }
 
         // ── helpers ────────────────────────────────────────────────────────────

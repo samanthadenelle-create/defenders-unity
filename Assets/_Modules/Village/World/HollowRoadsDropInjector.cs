@@ -72,6 +72,22 @@
 //      reader at the HeroLocomotion clamp Warn that proves which. Same lesson as change 2 above,
 //      one layer further down: an alarm that cannot tell two defects apart sends the reader to the
 //      wrong file, and this one did it twice.
+//
+// WO-1692 (2026-09-10) — THE RIGHT QUESTION, ASKED IN THE WRONG SCENE:
+//   WO-1606's seat-time navmesh sample of drop.Point ran INSIDE dg_hollow_roads and asked
+//   about a coordinate in Main_Castle_Overworld. SceneRouter loads the tunnel SINGLE
+//   (SceneManager.LoadSceneAsync, default mode, SceneRouter.cs:323), so the hub and its baked navmesh
+//   are unloaded and the only mesh in memory is this corridor's. The probe could not hit on any
+//   terrain in any build: F8 seq 5003-5006 (Seeker, 2026-09-10) refused ALL FOUR drops with identical
+//   text and seq 5007 read "seated 0 of 4 biome drops - every tunnel arm dead-ends", whose own
+//   trailing hint blamed the arm room ids. That hint was WRONG (the ids match, and
+//   BiomeRoadsRegression Case 2 has been green throughout) -- a static suspicion printed by a
+//   zero-count branch read as a finding, which is the same "alarm names the wrong owner" failure the
+//   two entries above are about, a third time.
+//   THE FIX: the hub grounds the four destinations while it is still loaded (RememberHubBounds ->
+//   GroundDropsInHub: terrain height for Y, then its OWN navmesh for walkability) and the tunnel
+//   consumes that memo -- exactly the shape the hub BOUNDS already used, and for the same reason.
+//   The tunnel never probes for a destination it cannot see. Pinned by BiomeRoadsRegression Case 8.
 // =============================================================================
 
 using System;
@@ -361,47 +377,51 @@ namespace DeNelle.Village.World
             Vector3 seat = armBounds.center + arm.forward * (armBounds.extents.z * ArmEndFraction);
             seat.y = armBounds.min.y;
 
-            // ⚠ WO-1606 — GROUND THE DESTINATION BEFORE A DOOR IS BUILT FOR IT.
+            // ⚠ WO-1692 — THE DESTINATION IS GROUNDED BY THE HUB, AND THIS FILE MUST NOT RE-ASK.
             //
-            // BiomeRoads.ResolveDrops is a PURE derivation and says so in terms
-            // (BiomeRoads.cs:322-332): "Y is left at the bounds centre height; the caller is
-            // expected to ground-probe (raycast / NavMesh.SamplePosition) before actually seating
-            // anything ... A drop that cannot be grounded must FAIL LOUDLY at that seam rather than
-            // warping the hero into the terrain." THIS is that caller, and until now it honoured
-            // neither half: it assigned drop.Point to the seam VERBATIM.
+            // WO-1606 was right that BiomeRoads.ResolveDrops is a PURE derivation which documents
+            // (BiomeRoads.cs:322-332) that the CALLER must ground-probe -- Y is left at the bounds
+            // centre height, which on the live 1000x42x1000 world is SEVENTEEN METRES OF OPEN AIR,
+            // and on F8 seq 4706 the hero was warped straight into it.
             //
-            // What that cost (F8 seq 4706, proven from the runtime trace, not inferred): the measured
-            // world is centred at y=17 (BiomeRoads.cs:420 seats the point at worldBounds.center.y),
-            // so every drop promised a point SEVENTEEN METRES IN THE AIR. HeroLocomotion.WarpTo
-            // sampled with a 5m radius, missed, and left the hero off-mesh at (-400, 17, 0) -- and
-            // the hero's own ±50 playable-bounds clamp relocated them on the very next frame. The
-            // warp DID happen; the destination was never walkable.
+            // But it put the probe HERE, and here cannot answer. drop.Point is a coordinate in
+            // Main_Castle_Overworld; this code runs inside dg_hollow_roads, which SceneRouter loads
+            // SINGLE (SceneManager.LoadSceneAsync with the default mode, SceneRouter.cs:323). The hub
+            // and its baked navmesh are UNLOADED. NavMesh.SamplePosition here interrogates the
+            // tunnel's own nine-room corridor about a point 400m outside it, so it misses every time,
+            // on every terrain, in every build -- F8 seq 5003-5006 refused all four drops with
+            // identical text and seq 5007 read "seated 0 of 4 biome drops".
             //
-            // ONE probe closes BOTH failure modes, because they are the same question asked of the
-            // same authority: a bad Y, and "no navmesh reaches 400m out". The radius is the file's
-            // existing ArrivalSampleRadius rather than a new number -- this file already trusts 12m
-            // as "near enough to navmesh to count" when it JUDGES an arrival, and using a different
-            // figure to CHOOSE the point than to judge it is how a door passes seating and fails
-            // arrival. A miss refuses the drop entirely (Fail + player-facing Notify, matching the
-            // WO-1604 fail-closed shape) instead of seating a door that cannot work.
-            if (!NavMesh.SamplePosition(drop.Point, out NavMeshHit groundHit, ArrivalSampleRadius, NavMesh.AllAreas))
+            // The grounding therefore happens in RememberHubBounds, called from the hub while the
+            // terrain and the navmesh that own the answer are both loaded, and this file CONSUMES it.
+            // Same shape the bounds already used, for the same reason.
+            //
+            // ⛔ DO NOT PUT A NAVMESH SAMPLE OF drop.Point BACK IN THIS METHOD. The refusal
+            //    below is not a weaker check -- it is the same check, asked of the only scene that can
+            //    answer it. BiomeRoadsRegression Case 8 fails if the probe returns here.
+            if (!TryRecallGroundedDrop(drop.Region, out Vector3 groundedPoint))
             {
-                FlowTrace.Fail(Sys, $"REFUSED the {BiomeRoads.ZoneName(drop.Region)} drop at seat time: its derived " +
-                                    $"destination {drop.Point} has NO navmesh within {ArrivalSampleRadius}m, so no " +
-                                    "walkable point can be promised there. Two things produce this and the probe " +
-                                    "cannot tell them apart (nor does it need to): the derived Y is the world " +
-                                    "bounds CENTRE height (BiomeRoads.cs:420), which is metres in the air on any " +
-                                    "terrain whose bounds are not floor-seated; or the navmesh simply does not " +
-                                    "bake that far out. Either way the arm dead-ends VISIBLY instead of teleporting " +
-                                    "the hero off the walkable world. NOT seated.");
+                string why = !s_hubGroundingRan
+                    ? "the hub NEVER RAN its grounding pass - RememberHubBounds was not called, so the hero " +
+                      "reached the tunnel without the hub ever probing its own navmesh (suspect the portal " +
+                      "spawner path that calls it)"
+                    : s_hubNavMeshQueryable
+                        ? "the hub ran the pass with a queryable navmesh and still could not ground this road - " +
+                          "the bake does not reach the derived point (the per-region Warn from the hub carries " +
+                          "the derived point, the terrain-grounded point and the radius)"
+                        : "the hub ran the pass but NO navmesh was queryable there at all - the probe was asked " +
+                          "before the surface registered, or the hub scene carries no loaded mesh";
+
+                FlowTrace.Fail(Sys, $"REFUSED the {BiomeRoads.ZoneName(drop.Region)} drop at seat time: the hub has " +
+                                    $"no GROUNDED destination for it (derived point was {drop.Point}). Reason: {why}. " +
+                                    "This file does NOT probe for itself: the destination lives in " +
+                                    $"{SceneRouter.Castle}, which is unloaded while the tunnel is active " +
+                                    "(SceneRouter.cs:323 loads Single), so the only navmesh in memory here is this " +
+                                    "corridor's and it cannot answer for that world. The arm dead-ends VISIBLY " +
+                                    "instead of teleporting the hero off the walkable world. NOT seated.");
                 Notify($"The road to {BiomeRoads.ZoneName(drop.Region)} is closed.");
                 return false;
             }
-
-            // The GROUNDED point is what the seam targets and what the arrival check is promised --
-            // one point, one authority. Promising the raw derived point while warping to a grounded
-            // one would put the drift test back to measuring against a coordinate nothing uses.
-            Vector3 groundedPoint = groundHit.position;
 
             var go = new GameObject($"BiomeDrop_{drop.Region}");
             go.transform.SetParent(holder, false);
@@ -441,7 +461,7 @@ namespace DeNelle.Village.World
             FlowTrace.Step(Sys, $"drop seated: {BiomeRoads.ZoneName(drop.Region)} (tier " +
                                 $"{BiomeRoads.DangerTier(drop.Region)}, {BiomeRoads.Cardinal(drop.Region)}) at arm " +
                                 $"'{drop.ArmRoomId}' seat {seat} -> {SceneRouter.Castle} @ {groundedPoint} " +
-                                $"(GROUNDED from derived {drop.Point}, navmesh probe moved it " +
+                                $"(HUB-GROUNDED from derived {drop.Point}, terrain+navmesh moved it " +
                                 $"{Vector3.Distance(drop.Point, groundedPoint):F1}m). " +
                                 $"Derivation: {drop.Derivation}");
             return true;
@@ -499,14 +519,192 @@ namespace DeNelle.Village.World
         private static bool s_hubBoundsKnown;
         private static Bounds s_hubBounds;
 
-        /// <summary>Called from the hub while the terrain IS loaded, so the tunnel can derive
-        /// against real measured geometry rather than a constant.</summary>
+        // ── WO-1692 — THE GROUNDING MEMO, AND WHY IT CANNOT LIVE IN THE TUNNEL ──────────────
+        //
+        // WO-1606 put a navmesh sample of drop.Point in TrySeatDrop. The intent was
+        // right and the PLACE was not, and the difference cost every road: the tunnel is entered
+        // through SceneRouter, whose loader is SceneManager.LoadSceneAsync(name) with the DEFAULT
+        // mode -- LoadSceneMode.Single (SceneRouter.cs:323). By the time this file runs inside
+        // dg_hollow_roads the hub scene is UNLOADED, and its baked navmesh
+        // (Assets/Scenes/Main_Castle_Overworld/NavMesh-Main_Castle_Overworld.asset, referenced at
+        // Main_Castle_Overworld.unity:17047) went with it. The only navmesh in memory is the
+        // tunnel's own nine-room corridor, and the question being asked of it is about a point
+        // 400m away in a different world. It cannot hit, on any terrain, in any build -- which is
+        // why F8 seq 5003-5006 refused all FOUR drops with identical text and seq 5007 read
+        // "seated 0 of 4 biome drops".
+        //
+        // The file already knew the hub was gone: it recalls the hub's BOUNDS from a memo for
+        // exactly this reason (see the comment on TryRecallHubBounds's caller). The navmesh needed
+        // the same treatment. So the probe moves to RememberHubBounds, which runs in the hub with
+        // terrain AND navmesh live, and the tunnel consumes the answer instead of re-asking it.
+        //
+        // ⛔ DO NOT "RESTORE" A NAVMESH PROBE TO THE TUNNEL SIDE. A destination-scene coordinate
+        //    cannot be validated from a scene that is not the destination. BiomeRoadsRegression
+        //    Case 8 fails if one comes back.
+        private static readonly Dictionary<RegionId, Vector3> s_hubGroundedDrops =
+            new Dictionary<RegionId, Vector3>();
+
+        /// <summary>True once the hub has RUN the grounding pass (whatever it concluded).</summary>
+        private static bool s_hubGroundingRan;
+
+        /// <summary>
+        /// Control result: was ANY navmesh queryable near the world origin at memo time? This is the
+        /// one measurement that separates the two causes the old seat-time message admitted it could
+        /// not tell apart -- "the navmesh does not bake that far out" (origin hits, 400m misses) from
+        /// "there was no queryable navmesh at all when we asked" (origin misses too, i.e. we asked
+        /// before the surface registered). Without it, a reader of a refusal has to guess.
+        /// </summary>
+        private static bool s_hubNavMeshQueryable;
+
+        /// <summary>
+        /// Called from the hub while the terrain IS loaded, so the tunnel can derive against real
+        /// measured geometry rather than a constant -- and (WO-1692) so the four destinations can be
+        /// GROUNDED against the hub's own navmesh, which is the only navmesh that can answer for them.
+        /// </summary>
         public static void RememberHubBounds(Bounds bounds)
         {
             s_hubBounds = bounds;
             s_hubBoundsKnown = true;
             FlowTrace.Step(Sys, $"hub world bounds remembered for the tunnel: centre {bounds.center} " +
                                 $"size {bounds.size}.");
+
+            GroundDropsInHub(bounds);
+        }
+
+        /// <summary>
+        /// Ground the four derived drop points HERE, in the hub, where the terrain and the navmesh
+        /// that own the answer are both loaded. Remembers a walkable point per region, or remembers
+        /// nothing for a region it could not ground -- never a guess.
+        /// </summary>
+        private static void GroundDropsInHub(Bounds bounds)
+        {
+            s_hubGroundedDrops.Clear();
+            s_hubGroundingRan = true;
+
+            // CONTROL PROBE FIRST. Ask the same authority a question whose answer we already know
+            // (the hero is standing in this world), so a later refusal can be read without guessing.
+            Vector3 originProbe = GroundY(new Vector3(0f, bounds.center.y, 0f), bounds);
+            s_hubNavMeshQueryable = NavMesh.SamplePosition(originProbe, out NavMeshHit originHit,
+                                                           ArrivalSampleRadius, NavMesh.AllAreas);
+            FlowTrace.Step(Sys, s_hubNavMeshQueryable
+                ? $"hub navmesh control probe HIT at {originHit.position} (asked at {originProbe}) - the " +
+                  "mesh is queryable, so any drop refused below is refused for REACH, not for absence."
+                : $"hub navmesh control probe MISSED at {originProbe} within {ArrivalSampleRadius}m - NO " +
+                  "navmesh was queryable in the hub at memo time. Any refusal below says nothing about " +
+                  "how far the mesh reaches; it says the question was asked too early or the hub has no " +
+                  "baked mesh loaded.");
+
+            List<BiomeRoads.Drop> drops = BiomeRoads.ResolveDrops(bounds);
+            for (int i = 0; i < drops.Count; i++)
+            {
+                // Drop is a STRUCT, so this is a local copy and re-seating its Y mutates nothing the
+                // resolver owns.
+                //
+                // TWO CORRECTIONS, IN ORDER, AND THE FIRST IS WHY THE SECOND CAN SUCCEED.
+                //
+                // (a) Y. ResolveDrops is pure and leaves Y at worldBounds.center.y (BiomeRoads.cs:420)
+                //     -- 17m of open air on the live 1000x42x1000 world. On a terrain 42m tall the
+                //     vertical error alone can exceed the sample radius, so probing the raw point
+                //     would miss even where the mesh is perfectly good. The terrain answers "where is
+                //     the ground at this x/z" exactly, so it is asked first, and the answer is written
+                //     back INTO drop.Point -- there is one point being probed, not a shadow copy.
+                // (b) The navmesh probe, which is the actual walkability question. That is
+                //     TryGroundDrop, and it is the WO-1091 fail-closed branch, moved to the scene that
+                //     can answer it rather than weakened.
+                BiomeRoads.Drop drop = drops[i];
+                Vector3 derived = drop.Point;
+                drop.Point = GroundY(drop.Point, bounds);
+
+                if (!TryGroundDrop(drop, out Vector3 walkable)) continue;
+
+                s_hubGroundedDrops[drop.Region] = walkable;
+                FlowTrace.Step(Sys, $"hub grounded the {BiomeRoads.ZoneName(drop.Region)} drop: derived " +
+                                    $"{derived} -> terrain {drop.Point} -> navmesh {walkable} " +
+                                    $"(moved {Vector3.Distance(derived, walkable):F1}m). {drop.Derivation}");
+            }
+
+            if (s_hubGroundedDrops.Count != BiomeRoads.DropRegions.Length)
+            {
+                FlowTrace.Warn(Sys, $"hub grounded {s_hubGroundedDrops.Count} of {BiomeRoads.DropRegions.Length} " +
+                                    "biome drops. The tunnel will seat exactly the grounded ones and name every " +
+                                    "road it cannot open - it does NOT re-probe (its own scene's navmesh cannot " +
+                                    "answer for the hub; SceneRouter.cs:323 loads it Single).");
+            }
+        }
+
+        /// <summary>
+        /// THE WO-1091 FAIL-CLOSED PROBE, run where it can be answered.
+        /// <para>
+        /// WO-1091 item 1 is one sentence: a drop that cannot be grounded seats NO door, and says so
+        /// loudly -- FlowTrace.Fail for the capture, a player-facing Notify for the screen, and no
+        /// seat. That contract is UNCHANGED here. What WO-1692 changed is WHERE it runs: the hub,
+        /// while the terrain and the navmesh that own the answer are loaded, instead of the tunnel,
+        /// where the destination scene is unloaded and the question is unanswerable. A probe that
+        /// cannot hit is not a fail-closed guard, it is a closed door with a reason attached.
+        /// </para>
+        /// <para>
+        /// The radius is <see cref="ArrivalSampleRadius"/>, the same figure the arrival judge uses --
+        /// choosing the point more tightly than the trip is judged is how a door passes seating and
+        /// fails arrival, so there is ONE radius in this file and this is it.
+        /// </para>
+        /// </summary>
+        private static bool TryGroundDrop(BiomeRoads.Drop drop, out Vector3 walkable)
+        {
+            walkable = drop.Point;
+
+            if (!NavMesh.SamplePosition(drop.Point, out NavMeshHit groundHit, ArrivalSampleRadius, NavMesh.AllAreas))
+            {
+                // Both verdict words are computed OUT of the interpolation holes on purpose:
+                // CLAUDE.md sec.1 -- CompileGate's brace scanner has no interpolated-string model, so a
+                // nested quote inside a {...} hole can make a balanced file read as unbalanced and
+                // withhold COMPILE_GATE_OK.
+                string controlWord = s_hubNavMeshQueryable ? "HIT" : "MISSED";
+                string reading = s_hubNavMeshQueryable
+                    ? "the bake not reaching that far out"
+                    : "no queryable hub navmesh at all";
+
+                FlowTrace.Fail(Sys, $"REFUSED the {BiomeRoads.ZoneName(drop.Region)} drop: the hub could not ground " +
+                                    $"it. The point was terrain-seated to {drop.Point} and has NO navmesh within " +
+                                    $"{ArrivalSampleRadius}m of THAT, so no walkable destination can be promised " +
+                                    $"there. The origin control probe {controlWord}, which reads as {reading}. No " +
+                                    "door is seated for this road: the tunnel arm dead-ends VISIBLY instead of " +
+                                    "teleporting the hero off the walkable world.");
+                Notify($"The road to {BiomeRoads.ZoneName(drop.Region)} is closed.");
+                return false;
+            }
+
+            // The probe's OWN hit is the grounded point -- both consumers get this one, and nothing
+            // downstream ever sees the derived coordinate again.
+            Vector3 groundedPoint = groundHit.position;
+            walkable = groundedPoint;
+            return true;
+        }
+
+        /// <summary>
+        /// Put <paramref name="point"/> on the ground: terrain height at that x/z if a terrain owns
+        /// the spot, else a downward raycast from above the measured world, else the point unchanged
+        /// (and said so). MEASURED every time -- no typed floor height anywhere in here.
+        /// </summary>
+        private static Vector3 GroundY(Vector3 point, Bounds bounds)
+        {
+            Terrain terrain = Terrain.activeTerrain;
+            if (terrain != null)
+            {
+                // Terrain.SampleHeight is terrain-relative; the transform's own y makes it world.
+                float y = terrain.SampleHeight(point) + terrain.transform.position.y;
+                return new Vector3(point.x, y, point.z);
+            }
+
+            float top = bounds.max.y + 50f;
+            if (Physics.Raycast(new Vector3(point.x, top, point.z), Vector3.down,
+                                out RaycastHit rh, top - bounds.min.y + 100f, ~0, QueryTriggerInteraction.Ignore))
+                return new Vector3(point.x, rh.point.y, point.z);
+
+            FlowTrace.Warn(Sys, $"GroundY found neither an active Terrain nor a collider under {point} - the " +
+                                "point keeps its derived (bounds-centre) height, which is metres in the air. The " +
+                                "navmesh probe that follows will almost certainly refuse it, and that refusal is " +
+                                "honest rather than a guessed floor.");
+            return point;
         }
 
         private static bool TryRecallHubBounds(out Bounds bounds)
@@ -514,6 +712,11 @@ namespace DeNelle.Village.World
             bounds = s_hubBounds;
             return s_hubBoundsKnown;
         }
+
+        /// <summary>Recall the hub-grounded, walkable destination for a region. False = the hub never
+        /// grounded that road, and the tunnel must refuse it rather than invent one.</summary>
+        private static bool TryRecallGroundedDrop(RegionId region, out Vector3 grounded)
+            => s_hubGroundedDrops.TryGetValue(region, out grounded);
 
         // =====================================================================
         //  Arrival verification
