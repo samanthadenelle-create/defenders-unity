@@ -246,8 +246,35 @@ namespace DeNelle.Core.UI
 
             // THE NAME - the row's identity, upper case, top-left. Position + weight carry the
             // hierarchy here; nothing is distinguished by hue (the owner is colourblind).
+            // ⛔ THE FOUR BANDS BELOW ARE APPORTIONED SO EACH SEATS THE 30 px FontFloor LINE
+            // (WO-1658). Do not shrink one to buy room for another without redoing the sum.
+            // MEASURED, not inferred — 2026-09-10_0943_363722_logcat.txt, the session whose
+            // `[Flow:Bank] harvest-result rows: ... shown=3 ... footer='reassure'` fixes n=3 with
+            // no "+N more" line, so h = min(RowHeightMax, (0.86 - 0.30 - 0.02*3) / 3) = 0.1667 of
+            // a ~805 px content rect = a ~134 px plate. At that plate the OLD fractions resolved:
+            //   bar value 0.30..0.50 = 0.20 -> `rect 742x26 ... floor 30 -> 22, fontSize now 24`
+            //   waiting   0.03..0.27 = 0.24 -> `rect 742x32 ... floor 30 -> 26, fontSize now 29`
+            // i.e. the store line shipped at 24 px and the waiting line at 29 px. THE ROOT CAUSE
+            // IS THE ONE THE GUARD'S OWN COMMENT NAMES: a band authored as a fraction OF a
+            // fraction. The guard was concealing it, not saving it (0 post-check iterations,
+            // stillBlank=0).
+            // THE THRESHOLD: the guard relaxes when floor(h / lineFactor) - 1 < FontFloor, so a
+            // band is legal at h >= (FontFloor + 1) * lineFactor = 31 * 1.1499 = 35.65 px.
+            // lineFactor is the font's own faceInfo.lineHeight / pointSize — ElarionLocaleFallback
+            // .asset is 73.59375 / 64 = 1.1499, the 1.15 the device logged.
+            // THE NEW SUM on a 134 px plate (>= 0.29 buys 38.9 px, comfortably past 35.65):
+            //   waiting 0.01..0.30 = 0.29 -> 38.9 px   bar 0.31..0.60 = 0.29 -> 38.9 px
+            //   name    0.61..0.99 = 0.38 -> 50.9 px   banked 0.59..1.00 = 0.41 -> 54.9 px
+            // THE COST, stated rather than hidden: name keeps FontLabel(40) at full size (needs
+            // 46 px), banked renders ~47 instead of FontBody(50) (which needs 57.5). Both stay
+            // far above the floor and the hierarchy (banked largest, then name) is preserved.
+            // ⚠ RESIDUAL, unfixed and reported in WO-1658's RESULT: when a "+N more" line exists
+            // the floor moves to RowsFloorWithOverflow and h = (0.50 - 0.06)/3 = 0.1467 -> a
+            // ~118 px plate, where 0.29 buys only 34 px and the guard relaxes to 28. Three 36 px
+            // bands plus gaps do not fit 118 px, so no fraction closes that case — it needs the
+            // row band itself to grow, which collides with the footer sentence at 0.225..0.29.
             var name = ElarionUiKit.Label(plate.transform, row.ResourceName.ToUpperInvariant(),
-                0.56f, 0.98f, ElarionUi.Parchment, ElarionUi.FontLabel,
+                0.61f, 0.99f, ElarionUi.Parchment, ElarionUi.FontLabel,
                 TextAlignmentOptions.Left, 0.04f, leftEnd * 0.62f, bold: true);
             // Every label on this plate carries the DOCUMENTED mobile floor explicitly
             // (ElarionUi.FontFloorMobile = 30): the kit's default is the same number today, and
@@ -258,14 +285,25 @@ namespace DeNelle.Core.UI
 
             // THE BIG NUMBER - what BANKED. The largest glyph on the plate on purpose: it is the
             // one figure the player came to read.
-            var banked = ElarionUiKit.Label(plate.transform, row.BankedText, 0.52f, 1f,
+            var banked = ElarionUiKit.Label(plate.transform, row.BankedText, 0.59f, 1f,
                 ElarionUi.Gold, ElarionUi.FontBody, TextAlignmentOptions.Right,
                 leftEnd * 0.62f, leftEnd, bold: true);
             ElarionUiKit.FitSingleLine(banked, ElarionUi.FontFloorMobile, ElarionUi.FontBody);
 
             // THE STORE - a bar whose value label carries BOTH figures AND the state WORD.
             var bar = ElarionUiKit.Bar(plate.transform, ElarionUiKit.BarKind.Castle,
-                new Vector2(0.04f, 0.30f), new Vector2(leftEnd, 0.50f), withValue: true);
+                // WO-1658: 0.31..0.60, NOT the old 0.30..0.50.
+                // ⚠ THE BAR'S BAND *IS* THE VALUE LABEL'S BAND — that is why this line is the
+                // driver. `ElarionUiKit.Bar` (ElarionUiKit.cs:2114) builds its track as
+                // `Well(parent, anchorMin, anchorMax)` -> `AddImage(parent, "Well", …)`
+                // (ElarionUiKit.cs:157, which is the `Well` in the device path
+                // `HarvestRow_Wood/Well/Label`), then parents the value label at 0..1 of it
+                // (ElarionUiKit.cs:2136-2139). So the label inherits these two anchors exactly.
+                // ⛔ Grow the band HERE, at the caller — never those kit-side 0..1 anchors, which
+                // every `Bar` in the game reads. (This is `ElarionUiKit.Bar`, NOT the Obsidian
+                // kit's `BuildObsidianBar`, whose root is named `ObsidianBar_<kind>`; the "Well"
+                // in the logged path is what tells the two apart.)
+                new Vector2(0.04f, 0.31f), new Vector2(leftEnd, 0.60f), withValue: true);
             if (bar != null)
             {
                 if (bar.fill != null) bar.fill.fillAmount = row.Fill01;
@@ -279,7 +317,7 @@ namespace DeNelle.Core.UI
             // THE SECOND NUMBER - what waits (or, on the burn path, what was lost).
             if (!string.IsNullOrEmpty(row.WaitingText))
             {
-                var waiting = ElarionUiKit.Label(plate.transform, row.WaitingText, 0.03f, 0.27f,
+                var waiting = ElarionUiKit.Label(plate.transform, row.WaitingText, 0.01f, 0.30f,
                     ElarionUi.Parchment, ElarionUi.FontMicro, TextAlignmentOptions.Left,
                     0.04f, leftEnd, bold: false);
                 ElarionUiKit.FitSingleLine(waiting, ElarionUi.FontFloorMobile, ElarionUi.FontMicro);

@@ -4268,10 +4268,29 @@ namespace DeNelle.Village.UI
             if (verbLabel != null && !string.IsNullOrEmpty(price))
             {
                 var vrt = verbLabel.rectTransform;
-                vrt.anchorMin = new Vector2(vrt.anchorMin.x, 0.38f);
+                // ⛔ 0.39..0.98 VERB / 0.03..0.37 COST — BOTH BANDS SEAT THE 30 px FontFloor LINE
+                // (WO-1658). The plate height and the touch box are UNCHANGED; only the two
+                // labels' own rects move, so the mockup reads the same.
+                // MEASURED, not inferred: the FlowTrace below printed `MANAGE_HUB_HEART band
+                // 0.798..1.0 of a 556px host = 112px tall` on 2026-09-10_0943_363722_logcat.txt,
+                // and the old cost band 0.06..0.36 = 0.30 of 112 = 33.6 px is exactly the
+                // `TextFitGuard '250 Crystals' [...]: rect 452x33 lineFactor 1.15 — floor 30 -> 28`
+                // the same log carries.
+                // WHY FIX IT WHEN NOTHING SHRANK: that line reports `fontSize now 30`, so the
+                // shipped string still renders AT the floor. What moved is the guard's fontSizeMin,
+                // down to 28 — a standing licence for the NEXT price string to go sub-legible with
+                // no new warning ("1,250 Crystals" is four glyphs longer than "250 Crystals").
+                // A band that only passes because today's text happens to be short is not authored.
+                // THE ARITHMETIC: legal at h >= (FontFloor + 1) * lineFactor = 31 * 1.1499 = 35.65
+                // px (lineFactor = the font's faceInfo.lineHeight / pointSize; ElarionLocaleFallback
+                // .asset is 73.59375 / 64 = 1.1499, the 1.15 the device logged). 0.03..0.37 = 0.34
+                // of 112 = 38.1 px, so fitMin = floor(38.1 / 1.1499) - 1 = 32 and the guard does
+                // not relax at all. The verb keeps 0.39..0.98 = 0.59 of 112 = 66 px, still the
+                // "two lines at 30 plus leading" the note above it promises.
+                vrt.anchorMin = new Vector2(vrt.anchorMin.x, 0.39f);
                 vrt.anchorMax = new Vector2(vrt.anchorMax.x, 0.98f);
                 vrt.offsetMin = vrt.offsetMax = Vector2.zero;
-                var cost = ElarionUiKit.Label(heart.transform, price, 0.06f, 0.36f,
+                var cost = ElarionUiKit.Label(heart.transform, price, 0.03f, 0.37f,
                     ElarionUi.Parchment, (int)ElarionUi.FontLabel,
                     TextAlignmentOptions.Center, 0.06f, 0.94f);
                 if (cost != null)

@@ -1833,8 +1833,29 @@ namespace DeNelle.HUD.Kit
         // off the bottom.
         private const float ResRowHeightPx = 56f;
         private const float ResRowGapPx = 5f;
-        /// <summary>WO-1221: height of the collapsed chip's "+N more" hint tag, reference px.</summary>
-        private const float ResHintHeightPx = 26f;
+        /// <summary>WO-1221: height of the collapsed chip's "+N more" hint tag, reference px.
+        /// ⛔ THIS BAND MUST SEAT THE 30 px FontFloor LINE — DO NOT LOWER IT (WO-1658).
+        /// It was 26f, and the device measured exactly that: 2026-09-10_0943_363722_logcat.txt
+        /// reports `TextFitGuard '+4' [.../CurrencyChip_Gold/Label]: rect 398x26 lineFactor 1.15
+        /// — floor 30 -> 21 (0 post-check iterations), fontSize now 23`. The always-on HUD rail's
+        /// hint was shipping at 23 px, 7 px under the owner's legibility floor, and no capture
+        /// could ever show it (headless captures never enter Play mode, so the guard never runs
+        /// and every gated PNG rendered it at 30 — WO-1652's subject).
+        /// THE ARITHMETIC, so a later edit can re-derive it instead of copying this number:
+        /// the guard relaxes when `floor(h / lineFactor) - 1 &lt; FontFloor`, so a band is legal
+        /// only at `h >= (FontFloor + 1) * lineFactor` = 31 * 1.1499 = 35.65 px. lineFactor is
+        /// the FONT's own `faceInfo.lineHeight / pointSize` — Assets/Resources/Localization/
+        /// Fonts/ElarionLocaleFallback.asset carries 73.59375 / 64 = 1.1499, which is the 1.15
+        /// the device logged. 38f is that threshold plus the WO-1658 minBand margin
+        /// ((FontFloor + 1) * lineFactor + 2 = 37.65).
+        /// ⚠ AND THE OLD "grew rect 26px -> 26px" LINE IS NOT A DRIVEN-RECT FAILURE. This rect is
+        /// sizeDelta-driven (anchorMin.y == anchorMax.y below), so the guard's offset write DID
+        /// take: its minBand uses FontHardFloor and lands at (20+1)*1.1499+2 = 26.148, a deficit
+        /// of 0.148 px that `(int)` truncates back to 26 in the message. The grow worked; it was
+        /// aiming at the HARD floor, which is not the goal.
+        /// Growing downward is safe: the hint is SetActive(false) whenever the expanded stack is
+        /// open (see SetResourcePanelOpen), so the extra extent never overlaps ResRow_0.</summary>
+        private const float ResHintHeightPx = 38f;
 
         // WO-778: the always-visible CoC-style Builders chip — busy count, tap opens
         // the WORK QUEUE. Player copy: "Builders"/"Training" — never "Obsidian".
