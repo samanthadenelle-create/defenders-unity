@@ -174,6 +174,24 @@ namespace DeNelle.Core.UI
                 float shortest = Mathf.Min(br.width, br.height);
                 if (shortest >= ElarionUiKit.MinTouchPx - 0.5f) continue;
 
+                // WO-1623 — THE HOST'S MEASURED SIZE TRAVELS WITH THE FINDING.
+                // Without it the reader of a capture log can only DERIVE the parent height
+                // (resolved px / authored fraction) and then author the fix off an inference,
+                // which is exactly the guess CLAUDE.md §11B forbids. WO-1623's own §1d had to
+                // publish a table labelled "derived, not measured" for this reason, and its
+                // §4 Step 1 made printing the real number the lane's first task. The parent is
+                // the rect a fractional band is a fraction OF, so it is the one extra number
+                // that turns "too short" into "and here is what it must be".
+                string host = string.Empty;
+                var parentRt = brt != null ? brt.parent as RectTransform : null;
+                if (parentRt != null && TryRectInRoot(parentRt, root, out Rect pr))
+                {
+                    float needFrac = pr.height > 0.01f ? ElarionUiKit.MinTouchPx / pr.height : 0f;
+                    host = " Its host '" + PathOf(parentRt, canvasGo.transform) + "' measures " +
+                           pr.width.ToString("0.#") + "x" + pr.height.ToString("0.#") +
+                           " ref px, so the floor is " + needFrac.ToString("0.###") +
+                           " of the host's HEIGHT -- author it in px, not as that fraction.";
+                }
                 found.Add(new Finding(FindingKind.SubTouchFloorBand, true,
                     "SUB-TOUCH-FLOOR BAND" + at + " '" + PathOf(b.transform, canvasGo.transform) +
                     "' resolves " + br.width.ToString("0.#") + "x" + br.height.ToString("0.#") +
@@ -181,7 +199,7 @@ namespace DeNelle.Core.UI
                     (ElarionUiKit.MinTouchPx - shortest).ToString("0.#") + " px UNDER " +
                     "ElarionUiKit.MinTouchPx (" + ElarionUiKit.MinTouchPx.ToString("0.#") +
                     "). ClampMinTouch will grow it SYMMETRICALLY about its centre at runtime and " +
-                    "spill it into both neighbours. Author the band AT the floor."));
+                    "spill it into both neighbours. Author the band AT the floor." + host));
             }
 
             return found;

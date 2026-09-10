@@ -36,6 +36,40 @@ namespace DeNelle.Village
         // model would have made two places own one fact.
         internal const string HiddenUntilFinishedArtId = "gate_stone";
         private const string MissingImageCopy = "Image coming soon";
+
+        // =====================================================================
+        //  WO-1623 — THE FOOTER LINK'S BAND, IN REFERENCE PIXELS.
+        //
+        //  ⛔ A FRACTION CANNOT EXPRESS A PIXEL FLOOR. The band used to be authored as
+        //  y .05 -> .155 of Zone_Body — .105 of a host whose height CHANGES with the
+        //  aspect — and the capture oracle measured it at 60.3 / 53.3 / 52.4 ref px on
+        //  1920x1080 / 2340x1080 / 2670x1200 (Builds/wave1-capture, three
+        //  SUB-TOUCH-FLOOR BAND lines, every one of the run's UI_GEOMETRY_FAIL x3).
+        //  ElarionUiKit.MinTouchPx is 112, so the same authored fraction was ~52-60 px
+        //  SHORT on every captured surface, and no fraction fixes that: the shortfall is
+        //  a different number of "fraction" on each aspect. These are px, and
+        //  MinTouchPx is READ, never retyped — the touch floor has one owner
+        //  (ElarionUiKit.cs:347).
+        //
+        //  ⛔ AND ClampMinTouch IS NOT THE FIX. The oracle's own message says why: it
+        //  grows a sub-floor button SYMMETRICALLY about its centre in LateUpdate, so a
+        //  60 px band becomes 112 px by pushing ~26 px UP into the category grid and
+        //  ~26 px DOWN off the panel. The net is the last resort, not the author.
+        //
+        //  The grid's bottom edge moves up by exactly this reserve, from the same
+        //  constants, so the two rects cannot disagree about where the footer begins.
+        // =====================================================================
+        /// <summary>The footer link's height. THE kit touch floor, read from its one owner.</summary>
+        private const float FooterLinkBandPx = ElarionUiKit.MinTouchPx;
+        /// <summary>Gap between the band's bottom edge and the body zone's bottom edge.</summary>
+        private const float FooterLinkBottomInsetPx = 12f;
+        /// <summary>Gap between the band's TOP edge and the category grid's bottom edge. Must stay
+        /// comfortably above <c>LayoutOracle.OverlapPadPx</c> (2) — two tap targets that touch are
+        /// the oracle's Assert B, and trading one finding for seven is not a fix.</summary>
+        private const float FooterLinkGridGapPx = 16f;
+        /// <summary>What the footer costs the category grid, bottom-up, in reference px.</summary>
+        private const float FooterLinkReservePx =
+            FooterLinkBottomInsetPx + FooterLinkBandPx + FooterLinkGridGapPx;
         private readonly List<GameObject> _pageObjects = new List<GameObject>();
         private RectTransform _panel;
         private CardCollectionDocument _document;
@@ -126,7 +160,19 @@ namespace DeNelle.Village
         {
             // Reserve the upper body band for the first-use/category guidance. The
             // device capture proved .96 let row one paint directly through that line.
-            var grid = Region("CategoryGrid", new Vector2(.02f, .18f), new Vector2(.98f, .84f));
+            // ⛔ WO-1623 — THE BOTTOM EDGE IS NO LONGER A FRACTION. It read `.18f`, which
+            // reserved 90 px on one captured aspect and 103 px on another for a footer band
+            // that needs a FIXED 112 px on all of them (see the FooterLink* constants). The
+            // anchor now sits ON the zone's bottom edge and the reserve is applied as a px
+            // OFFSET, so the grid clears the footer by the same distance at every aspect and
+            // the two rects are derived from one set of numbers.
+            var grid = Region("CategoryGrid", new Vector2(.02f, 0f), new Vector2(.98f, .84f));
+            grid.offsetMin = new Vector2(0f, FooterLinkReservePx);
+            FlowTrace.Step("BuildCollections",
+                "WO-1623 category grid bottom = " + FooterLinkReservePx.ToString("0.#") +
+                "px above the body zone (footer inset " + FooterLinkBottomInsetPx.ToString("0.#") +
+                " + band " + FooterLinkBandPx.ToString("0.#") +
+                " + gap " + FooterLinkGridGapPx.ToString("0.#") + "), not the retired .18 fraction.");
             var layout = grid.gameObject.AddComponent<HorizontalLayoutGroup>();
             if (_document?.Collections == null) return;
             var visible = new List<CardCollectionDefinition>();
@@ -216,8 +262,12 @@ namespace DeNelle.Village
         //
         //  A footer TEXT LINK says what it is: a way out of the build catalog to the
         //  screen that manages what is already standing. It sits in the root band below
-        //  the card row (the grid ends at y .18), so it takes nothing from the seven
-        //  categories and cannot be mistaken for one of them.
+        //  the card row, so it takes nothing from the seven categories and cannot be
+        //  mistaken for one of them.
+        //  ⚠ WO-1623 CORRECTED THIS PARAGRAPH: it used to say "(the grid ends at y .18)",
+        //  and that parenthesis had become false — the grid's bottom edge is now a PIXEL
+        //  reserve (FooterLinkReservePx), because a fraction cannot hold a touch floor.
+        //  The band below is authored from the same constants; read them, not a fraction.
         // =====================================================================
         private void BuildManageDefensesFooterLink()
         {
@@ -232,19 +282,43 @@ namespace DeNelle.Village
                     PanelRouter.Open(PanelId.Manage, "Defense");
                 });
                 var rt = link.GetComponent<RectTransform>();
-                rt.anchorMin = new Vector2(.28f, .05f);
-                rt.anchorMax = new Vector2(.72f, .155f);
-                rt.offsetMin = rt.offsetMax = Vector2.zero;
+                // ⛔ WO-1623 — X IS A FRACTION, Y IS PIXELS, AND THAT ASYMMETRY IS THE FIX.
+                // The link's WIDTH was never the defect (the oracle measured 666-746 ref px on
+                // every captured aspect), so it stays proportional to the panel. Its HEIGHT is a
+                // TOUCH FLOOR, which is a number of pixels on a finger, not a share of a rect —
+                // so both y anchors collapse onto the zone's bottom edge and the band's two
+                // edges are set as px offsets from it. Pivot is set BEFORE the offsets: moving a
+                // pivot afterwards keeps sizeDelta and anchoredPosition, which would slide the
+                // rect straight back off the floor. Same shape as UICaptureLaunch.MakePixelBand
+                // (:4736) — the codebase's existing pixel-band idiom, mirrored to the bottom edge.
+                rt.anchorMin = new Vector2(.28f, 0f);
+                rt.anchorMax = new Vector2(.72f, 0f);
+                rt.pivot = new Vector2(.5f, 0f);
+                rt.offsetMin = new Vector2(0f, FooterLinkBottomInsetPx);
+                rt.offsetMax = new Vector2(0f, FooterLinkBottomInsetPx + FooterLinkBandPx);
                 link.name = "ManageDefensesFooterLink";
                 var label = link.GetComponentInChildren<TextMeshProUGUI>();
                 if (label != null)
                 {
                     label.enableWordWrapping = false;
                     label.enableAutoSizing = true;
+                    // ⚠ WO-1623 LEFT THIS 16f ALONE, DELIBERATELY — it is BELOW the kit's own
+                    // ElarionUiKit.FontHardFloor (20, ElarionUiKitObsidian.cs:3044), which is a
+                    // real finding, but the caption is out of this ticket's scope (WO-1623 §7)
+                    // and changing it is a legibility ruling, not a geometry one. With the band
+                    // now a full 112 px tall the autosizer has room to sit at fontSizeMax, so
+                    // the sub-floor minimum is DORMANT rather than load-bearing. Recorded in the
+                    // RESULT as a follow-up; do not "tidy" it here without a ticket.
                     label.fontSizeMin = 16f;
                     label.fontSizeMax = 24f;
                     label.overflowMode = TextOverflowModes.Overflow;
                 }
+                FlowTrace.Step("BuildCollections",
+                    "WO-1623 footer band authored in px: inset " +
+                    FooterLinkBottomInsetPx.ToString("0.#") + " + height " +
+                    FooterLinkBandPx.ToString("0.#") + " (= ElarionUiKit.MinTouchPx) above the " +
+                    "body zone's bottom edge, x .28-.72 as before. The retired .05-.155 fraction " +
+                    "resolved 52-60 ref px and was the whole of the capture run's geometry red.");
                 FlowTrace.Step("Build",
                     "WO-1411: the 8th 'Upgrade Defenses' CARD is retired; the Manage > Defense door " +
                     "is now the footer text link below the category grid (route unchanged).");
