@@ -1,6 +1,6 @@
 # WORK ORDER 1700 - Nothing is buyable on the Pi rail since WO-1386: a server-verified Pi sign-in must count as the durable identity
 
-**Status:** IMPLEMENTED - awaiting the owner's testnet purchase in Pi Browser (the Pi portal's last mainnet step)
+**Status:** FIXED - owner felt-test PASS 2026-09-10 23:42Z (testnet purchase completed on the Seeker in Pi Browser)
 **Minted:** 2026-09-10 16:55 by the CLI lead from the owner's live Seeker session in Pi Browser ("all say not on sale", "says connect a wallet", "but other screen showed i am connected", "last step to get to mainnet is successful testnet purchase"). Main-line banner bumped 1700 -> 1701 in the same edit.
 **Silo:** Wallet / Pi. One predicate in `Assets/_Modules/Wallet/PurchaseGate.cs`. No scene, no JSON, no backend.
 **Exception named (orchestration cadence):** lead-implemented. The owner is live, near her weekly token limit, and the Pi portal is waiting on one purchase; the change is one channel-gated predicate with the captured data in hand.
@@ -29,3 +29,8 @@
 - The purchase itself (owner, live). The Pi API key in Vercel was an 11-character placeholder until 16:20 today; the production redeploy that makes the new key visible to `/api/pi/approve` and `/api/pi/complete` is the owner's click (the seat is not permitted to run it). Without that redeploy, approve will fail at api.minepi.com with the placeholder key.
 - Copy: the Pi plate says "Connect a wallet" where "Sign in with Pi" is the actual remedy (`storePiWalletGate`). Not changed here; a copy ticket if the owner wants it.
 - Owner also reported "modal pop ups everywhere are not loading settings" in Pi Browser; no capture yet, no ticket minted.
+
+## 6. RESULT (2026-09-10 23:42Z, Seeker, Pi Browser 1.17.1, build 2026.09.10.364108 on the alias)
+Captured (web_trace): `createPayment ... sku=hearth-spark amount=52.72 Pi`, `approve OK paymentId=r33smtC4UjtMoqvemqewjJOBi24L`, `complete OK ... txid=51a1fd62cb5a6ad5fd453af62829df9fd180e8cff582fa12a4487daf5f95bb89`, `grant for 'hearth-spark' applied and journalled as settled`, `purchase COMPLETE`. Owner: "completed payment". This is the Pi Developer Portal's last checklist item before mainnet.
+
+Two earlier attempts (23:28Z, 23:34Z) failed at approve with PI_PAYMENT_UNKNOWN (Pi upstream 404). Cause, proven by calling api.minepi.com directly: the payment was created under the app Pi Browser binds to the URL, whose consent sheet reads "Defenders of the Realm", while the API key configured at 16:20 belonged to the separate App Studio record "Echoes Of Elarion" (that key returned 404 for both payment ids and an empty incomplete_server_payments list; the Defenders of the Realm key returned 200). PI_NETWORK_API_KEY now holds the Defenders of the Realm key (Production + Preview, redeployed by the owner, dpl f0b86w6sk). Keep that app record; deleting it breaks payments again. Mainnet is a new app record and a new key (network fixed at registration), flipped together with PiEnvironment.Sandbox (WO-1325).
