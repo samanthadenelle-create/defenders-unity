@@ -60,8 +60,13 @@
 // here. One call, `applyPulse(state, actualSkr, cfg)`, owns the whole per-pulse
 // transition — the immediate decrease clamp, the 25% ramp, the streak, the
 // lifetime tier — and `evaluate(state, cfg)` derives the score/tier read model.
-// Its unit is WHOLE SKR; the chain's is u128 base units, and `stakeReadingToSkr`
-// below is the single crossing, made with that module's own boundary helpers.
+// Its unit is WHOLE SKR; the chain's is u128 base units and heartbound_state's is
+// TOO. ⚠ THERE ARE THREE CROSSINGS, NOT ONE (corrected WO-1693 — this comment said
+// "the single crossing" while the state write had NO conversion at all, which is
+// exactly the gap that shipped): `stakeReadingToSkr` (chain reading -> SKR),
+// `stateSnapshotToPulseState` (stored raw -> SKR) and the persist site
+// (SKR -> raw, via `skrToRawTokens`). All three use that module's own helpers and
+// none of them re-implements the unit.
 //
 // TRANSACTIONALITY — honest note. Spec step 10 says "Persist transactionally".
 // `node_modules/` is absent from this worktree, so whether this repo's
@@ -180,7 +185,9 @@ const telemetry = require('./heartbound-telemetry.js');
 const TE = telemetry.HEARTBOUND_EVENTS;
 
 /**
- * ⛔ THE UNIT BOUNDARY, IN EXACTLY ONE PLACE.
+ * ⛔ THE CHAIN-READING CROSSING. ⚠ It was labelled "THE UNIT BOUNDARY, IN EXACTLY
+ * ONE PLACE" until WO-1693, and that label was false in a costly way: the write
+ * back to heartbound_state crossed no boundary at all. See the two adapters below.
  * HEART-003 works in WHOLE SKR as a Number (`isEligible(actualSkr)`,
  * `applyPulse(state, actualSkr)`); the chain speaks u128 base units
  * (1 SKR = 1e6, `heartbound-resonance-config.json` "chain"). Converting is the
@@ -205,6 +212,74 @@ function stakeReadingToSkr(reading, resonance, cfg) {
         return resonance.skrFromShares(reading.sharesRaw, reading.sharePriceRaw, cfg);
     }
     throw new TypeError('readStake snapshot carries none of { skr } | { rawTokens|rawU128 } | { sharesRaw, sharePriceRaw }');
+}
+
+/**
+ * ⛔ WO-1693 — THE STATE CROSSING, IN. heartbound_state stores RAW u128 BASE UNITS
+ * (NUMERIC(39,0), migration 0025:113) and heartbound-state.js hands them over as
+ * DIGIT STRINGS (`toSnapshot`, heartbound-state.js:219-221). This function is the
+ * ONLY place that turns one of those snapshots into the whole-SKR row shape
+ * `processPlayerForPulse` documents and consumes.
+ *
+ * ⚠ WITHOUT IT, `Number('4000000000')` reads a 4,000 SKR position as four BILLION
+ *   SKR. The eligibility floor, the ramp and the whole curve would then run on a
+ *   number 1e6 too large — the same defect as the write side, in the other
+ *   direction, and silent instead of loud.
+ *
+ * `walletAddress` is `playerId` because ONE WALLET = ONE REALM (heartbound-state.js
+ * header): the player id IS the wallet, and a second copy of it would be the
+ * duplicated-state failure that header refuses.
+ */
+function stateSnapshotToPulseState(snapshot, resonance = resonanceModule, cfg) {
+    if (!snapshot || typeof snapshot !== 'object')
+        throw new TypeError('stateSnapshotToPulseState: a heartbound-state snapshot is required');
+    return {
+        playerId: snapshot.playerId,
+        walletAddress: snapshot.playerId,
+        // ⚠ THE NAME SAYS UTC, SO THE VALUE IS AN ISO STRING. `toMs` below would
+        // accept the raw millisecond number too, and this WO's whole thesis is that
+        // a name which does not carry its unit is how a defect hides — so the
+        // adapter is not allowed to be its own counter-example.
+        activatedAtUtc: snapshot.activatedAtMs == null ? null : new Date(snapshot.activatedAtMs).toISOString(),
+        lastVerifiedAtUtc: snapshot.lastVerifiedAtMs == null ? null : new Date(snapshot.lastVerifiedAtMs).toISOString(),
+        lastActualStake: resonance.rawTokensToSkr(snapshot.lastActualStake || '0', cfg),
+        effectiveResonatingStake: resonance.rawTokensToSkr(snapshot.effectiveResonatingStake || '0', cfg),
+        continuousPulseCount: Number(snapshot.continuousPulseCount || 0),
+        totalLifetimePulses: Number(snapshot.totalLifetimePulses || 0),
+        highestLifetimeTier: Number(snapshot.highestLifetimeTier || 0),
+    };
+}
+
+/**
+ * ⛔ WO-1693 — THE STATE CROSSING, OUT. Maps this module's persist payload onto
+ * `heartbound-state.recordVerifiedStake`'s option names.
+ *
+ * The payload's stake fields are ALREADY raw base-unit digit strings and say so in
+ * their names (`lastActualStakeRaw` / `effectiveResonatingStakeRaw`); the writer's
+ * option names do not carry the unit, which is precisely how the two units ended
+ * up on one name. This adapter is where the rename happens, once, in the open.
+ *
+ * ⚠ IT PASSES `currentTreeResonanceStage` THROUGH AND DOES NOT INVENT ONE. The
+ *   pulse job does not compute a tree stage, so the field is absent from the
+ *   payload and the writer's own default (0) applies — which OVERWRITES a stage a
+ *   HEART-005 lane may have set. That is a real gap, recorded as finding §2 of
+ *   WO-1693 rather than papered over here: fixing it means the writer leaving the
+ *   column alone when the caller says nothing, which is a change to a statement
+ *   this WO's brief does not own.
+ */
+function verifiedStakeArgsFromPersistPayload(payload) {
+    if (!payload || typeof payload !== 'object')
+        throw new TypeError('verifiedStakeArgsFromPersistPayload: a persist payload is required');
+    const args = {
+        lastActualStake: payload.lastActualStakeRaw,
+        effectiveResonatingStake: payload.effectiveResonatingStakeRaw,
+        resonanceScore: String(payload.resonanceScore == null ? 0 : payload.resonanceScore),
+        resonanceTier: Number(payload.resonanceTier || 0),
+        verifiedAtUtc: payload.lastVerifiedAtUtc == null ? null : payload.lastVerifiedAtUtc,
+    };
+    if (payload.currentTreeResonanceStage != null)
+        args.currentTreeResonanceStage = Number(payload.currentTreeResonanceStage);
+    return args;
 }
 
 // --- Small helpers -----------------------------------------------------------
@@ -477,11 +552,23 @@ async function processPlayerForPulse(deps) {
     // mapping api/referral/install-brag.js:118-140 uses for achievement_grants.
     // A PENDING row from an earlier failed run also conflicts here, so it is
     // PROMOTED in place below rather than re-inserted.
+    // ⛔ WO-1693 — `player_pulse_grant.effective_stake` is NUMERIC(39,**6**) in
+    //    WHOLE SKR (heartbound-pulse-schema.sql:107-113), a DIFFERENT unit and a
+    //    different scale from heartbound_state's raw NUMERIC(39,0) above. It is
+    //    therefore formatted for THIS column, by the module that owns the unit, and
+    //    deliberately NOT through heartbound-state's toRawAmountText — that function
+    //    coerces a u128 integer and would reject the very fraction this column
+    //    exists to hold. `String(effectiveStake)` (what shipped before) happens to
+    //    be valid text for 2734.375 and is still wrong: a large Number prints as
+    //    `1e+21`, which Postgres rejects, and a long one prints past scale 6, which
+    //    Postgres silently rounds.
+    const effectiveStakeText = res.skrToNumericText(effectiveStake, cfg);
+
     const inserted = await sql`
         INSERT INTO player_pulse_grant
             (player_id, global_pulse_id, status, effective_stake, resonance_score, resonance_tier, granted_at)
         VALUES (${state.playerId}, ${pulse.pulse_id}, ${GRANT_STATUS.GRANTED},
-                ${String(effectiveStake)}, ${score}, ${tier}, ${new Date(now).toISOString()})
+                ${effectiveStakeText}, ${score}, ${tier}, ${new Date(now).toISOString()})
         ON CONFLICT (player_id, global_pulse_id) DO NOTHING
         RETURNING player_id, global_pulse_id, status
     `;
@@ -498,7 +585,7 @@ async function processPlayerForPulse(deps) {
             await sql`
                 UPDATE player_pulse_grant
                 SET status = ${GRANT_STATUS.GRANTED},
-                    effective_stake = ${String(effectiveStake)},
+                    effective_stake = ${effectiveStakeText},
                     resonance_score = ${score},
                     resonance_tier = ${tier},
                     pending_reason = NULL,
@@ -511,10 +598,20 @@ async function processPlayerForPulse(deps) {
         }
     }
 
+    // ⛔ WO-1693 — THE UNIT CROSSING, OUT, AND THE NAMES CARRY IT.
+    //    heartbound_state's two stake columns are NUMERIC(39,0) in RAW BASE UNITS
+    //    (migration 0025:113). `nextState.actualSkr` / `effectiveStake` are WHOLE
+    //    SKR and routinely FRACTIONAL (the ramp gives 1750 -> 2312.5 -> 2734.375),
+    //    so handing them over under the bare names `lastActualStake` /
+    //    `effectiveResonatingStake` — which is what shipped before this WO — put
+    //    two units 1e6 apart on one name and threw on pulse 2.
+    //    The conversion is resonance's own (`skrToRawTokens`), it is applied HERE
+    //    and nowhere else, and the `Raw` suffix means the next reader of this
+    //    payload cannot mistake the unit the way this lane's predecessor did.
     await persistPlayerState(sql, {
         playerId: state.playerId,
-        lastActualStake: nextState.actualSkr,
-        effectiveResonatingStake: effectiveStake,
+        lastActualStakeRaw: res.skrToRawTokens(nextState.actualSkr, cfg).toString(),
+        effectiveResonatingStakeRaw: res.skrToRawTokens(effectiveStake, cfg).toString(),
         continuousPulseCount,
         totalLifetimePulses,
         highestLifetimeTier: nextState.highestLifetimeTier,
@@ -728,6 +825,8 @@ module.exports = {
     GRANT_STATUS,
     SKIP,
     stakeReadingToSkr,
+    stateSnapshotToPulseState,
+    verifiedStakeArgsFromPersistPayload,
     detectPulse,
     processPlayerForPulse,
     selectCatchupPulses,

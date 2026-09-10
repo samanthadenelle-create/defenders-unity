@@ -118,6 +118,42 @@ function toRawAmountText(value, label = 'raw amount') {
     return parsed.toString();
 }
 
+/**
+ * ⛔ WO-1693 — THE VERIFIED-STAKE WRITER TAKES RAW u128 BASE UNITS, AND NOTHING ELSE.
+ *
+ * `last_actual_stake` and `effective_resonating_stake` are NUMERIC(39,0)
+ * (api/migrations/20260910_0025_heartbound_state.sql:113, api/schema.sql:2104) and
+ * their unit is CHAIN BASE UNITS. heartbound-resonance.js works in WHOLE SKR and
+ * its ramp returns FRACTIONS from the second pulse on (1750 -> 2312.5 -> 2734.375),
+ * so before WO-1693 the same two option names carried two units 1e6 apart and the
+ * first caller to wire the pulse's persist path into this function killed the daily
+ * cron with `expected a non-negative integer string, got "2312.5"`.
+ *
+ * A fraction is now refused HERE, with a message that names the unit and the one
+ * function that produces it, instead of surfacing as resonance's generic integer
+ * complaint three frames down.
+ *
+ * ⚠ AND HERE IS WHAT THIS GUARD CANNOT DO, stated rather than implied: a WHOLE-SKR
+ *   value that happens to be an INTEGER (pulse 1's `1750`) is INDISTINGUISHABLE
+ *   from 1750 base units. No guard on this side can catch it — it would be
+ *   accepted, stored 1e6 too small, and read back as 0.00175 SKR. The only defence
+ *   against that is the conversion happening at the CALLER's boundary, which is
+ *   why heartbound-pulse.js now passes `*Raw` digit strings under names that carry
+ *   the unit. This function is the second line, not the first.
+ */
+function toVerifiedStakeText(value, label) {
+    const fractional =
+        (typeof value === 'number' && Number.isFinite(value) && !Number.isInteger(value)) ||
+        (typeof value === 'string' && /^\s*\d+\.\d+\s*$/.test(value));
+    if (fractional) {
+        throw new TypeError(
+            `${label} must be RAW SKR BASE UNITS (a u128 integer; 1 SKR = chain.skrBaseUnits), ` +
+            `never whole SKR: expected an integer, got ${JSON.stringify(value)}. ` +
+            `Convert at the boundary with heartbound-resonance.skrToRawTokens(skr).toString().`);
+    }
+    return toRawAmountText(value, label);
+}
+
 /** Read a NUMERIC(39,0) column back as a bigint. Postgres hands it over as text. */
 function rawAmountFromRow(value, label = 'raw amount') {
     if (value == null) return 0n;
@@ -309,8 +345,10 @@ async function recordVerifiedStake(sql, playerId, {
     requireSql(sql);
     requirePlayerId(playerId);
     requireStatus(status);
-    const actual = toRawAmountText(lastActualStake, 'lastActualStake');
-    const effective = toRawAmountText(effectiveResonatingStake, 'effectiveResonatingStake');
+    // ⛔ RAW BASE UNITS ONLY — see toVerifiedStakeText. Passing whole SKR here is
+    //    the WO-1693 defect, and a fractional one is refused by name.
+    const actual = toVerifiedStakeText(lastActualStake, 'lastActualStake');
+    const effective = toVerifiedStakeText(effectiveResonatingStake, 'effectiveResonatingStake');
     const tier = toCount(resonanceTier, 'resonanceTier');
     const stage = toCount(currentTreeResonanceStage, 'currentTreeResonanceStage');
     const score = String(resonanceScore);
@@ -367,27 +405,21 @@ async function recordVerifiedStake(sql, playerId, {
             status: snapshot.status,
             tier: snapshot.resonanceTier,
             resonanceScore: Number(snapshot.resonanceScore),
-            // ⛔ NO STAKE BUCKET ON THIS EVENT, DELIBERATELY, AND THIS IS A FINDING.
-            //    The unit of `last_actual_stake` is AMBIGUOUS ACROSS ITS TWO
-            //    CALLERS at HEAD: this module coerces through toRawAmountText, whose
-            //    ceiling is u128 and whose whole reason for NUMERIC(39,0) is CHAIN
-            //    BASE UNITS (see MAX_RAW_AMOUNT above) — while
-            //    heartbound-pulse.js:514-525 hands persistPlayerState
-            //    `nextState.actualSkr`, which heartbound-resonance.js works in as
-            //    WHOLE SKR. 1e6 apart. A bucket taken over both would file every
-            //    base-unit row as "1m+" and read as a realm of whales — an
-            //    instrument that manufactures the exact signal WO-1682's ceiling
-            //    is meant to test. So this event carries the tier and the score
-            //    (unambiguous) and no amount, until the unit is settled.
-            //    ⛔ AND THE MISMATCH THROWS, IT DOES NOT MERELY MIS-BUCKET. The ramp
-            //    yields FRACTIONS from the second pulse on — measured 2026-09-10:
-            //    activate(4000) then applyPulse x3 gives 1750, 2312.5, 2734.375 —
-            //    and `toRawAmountText('2734.375')` raises
-            //    "expected a non-negative integer string". So the first caller to
-            //    wire heartbound-pulse's persistPlayerState into recordVerifiedStake
-            //    kills the daily cron for every staked player.
-            //    ⚠ NOT THIS LANE'S TO SETTLE: it is a cross-lane contract between
-            //    WO-1675 and WO-1677. Raised in WORK_ORDER_1684_....RESULT.md.
+            // ⛔ STILL NO STAKE BUCKET ON THIS EVENT, AND THE REASON HAS CHANGED.
+            //    WO-1684 §5.1 left it off because the unit of `last_actual_stake`
+            //    was AMBIGUOUS across its two callers, 1e6 apart, and a bucket taken
+            //    over both would file every base-unit row as "1m+" and read as a
+            //    realm of whales — an instrument manufacturing the exact signal
+            //    WO-1682's ceiling exists to test.
+            //    ⭐ WO-1693 SETTLED THE UNIT: this column is RAW BASE UNITS, the
+            //    writer refuses anything else (toVerifiedStakeText above), and
+            //    heartbound-pulse.js converts at its boundary.
+            //    ⚠ BUT `telemetry.stakeBucket` LADDERS WHOLE SKR (WO-1684 RESULT
+            //    §5.2, and api/heartbound/status.js:400-408 ladders base units with
+            //    the SAME LABELS). Adding a bucket here therefore needs the
+            //    conversion applied first, and the two ladders reconciled — that is
+            //    WO-1684 §5.2's follow-up, not this one. Left off rather than
+            //    bucketed in the wrong unit.
             continuousPulseCount: snapshot.continuousPulseCount,
             extra: { source: 'heartbound-state.recordVerifiedStake' },
         }));
@@ -528,6 +560,7 @@ module.exports = {
     HEARTBOUND_STATUSES,
     MAX_RAW_AMOUNT,
     toRawAmountText,
+    toVerifiedStakeText,
     rawAmountFromRow,
     toSnapshot,
     readHeartboundState,

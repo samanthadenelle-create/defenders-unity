@@ -31,6 +31,9 @@
 //
 //   1. BOUNDARY   sharesToRawTokens / rawTokensToSkr / skrFromShares
 //                 u128 chain values -> SKR as a Number, converted ONCE, in BigInt.
+//                 ...and BACK: skrToRawTokens / skrToNumericText (WO-1693). The
+//                 crossing is bidirectional because SKR is what this module
+//                 RETURNS and base units are what the columns STORE.
 //   2. MATH       stakePower / tenurePower / resonanceScore / tierForScore
 //                 The spec's formulae. Callable directly, because the spec's own
 //                 vector table (:299-311) is StakePower alone.
@@ -137,6 +140,69 @@ function rawTokensToSkr(rawTokens, cfg = DEFAULT_CONFIG) {
 /** The whole boundary in one call: chain u128 pair -> SKR. */
 function skrFromShares(sharesRaw, sharePriceRaw, cfg = DEFAULT_CONFIG) {
     return rawTokensToSkr(sharesToRawTokens(sharesRaw, sharePriceRaw, cfg), cfg);
+}
+
+/**
+ * ⭐ WO-1693 — THE INVERSE OF rawTokensToSkr, AND THE ONLY SANCTIONED WAY BACK.
+ *
+ * SKR (whole, and routinely FRACTIONAL - the 25% ramp yields 1750, 2312.5,
+ * 2734.375 on the first three pulses) -> chain base units as a BigInt.
+ *
+ * ⛔ WHY IT LIVES HERE AND NOT AT THE CALL SITE. Every stake column downstream is
+ *    NUMERIC(39,0) in RAW base units (api/migrations/20260910_0025_heartbound_state.sql:113)
+ *    while this module's whole output surface is whole SKR. Before WO-1693 the
+ *    return direction had NO conversion at all: heartbound-pulse.js handed
+ *    `nextState.effectiveSkr` straight to a writer that coerces through a u128
+ *    integer rule, so pulse 2 threw
+ *    `expected a non-negative integer string, got "2312.5"` and killed the daily
+ *    cron. The forward crossing was already this module's job (rawTokensToSkr);
+ *    the return crossing is the same fact read the other way, and putting it
+ *    anywhere else would be a second copy of `chain.skrBaseUnits`.
+ *
+ * ⚠ IT IS LOSSY BELOW ONE BASE UNIT, DELIBERATELY AND EXACTLY ONCE. A base unit is
+ *   the finest amount the chain can express, so rounding to it invents nothing;
+ *   the whole and fractional parts are split BEFORE the BigInt multiply so a large
+ *   position never rides through a double. A carry (frac rounding up to a full
+ *   unit) falls out of the addition and needs no special case.
+ */
+function skrToRawTokens(skr, cfg = DEFAULT_CONFIG) {
+    const value = Number(skr);
+    if (!Number.isFinite(value)) throw new TypeError(`skr: expected a finite number, got ${skr}`);
+    if (value < 0) throw new RangeError(`skr must not be negative: ${value}`);
+    const unit = toBigInt(cfg.chain.skrBaseUnits, 'chain.skrBaseUnits');
+    if (unit <= 0n) throw new RangeError('chain.skrBaseUnits must be positive');
+    const whole = Math.trunc(value);
+    if (!Number.isSafeInteger(whole))
+        throw new RangeError(`skr ${value} exceeds Number.MAX_SAFE_INTEGER - pass base units as a string or BigInt, not a rounded double`);
+    const frac = value - whole;
+    return BigInt(whole) * unit + BigInt(Math.round(frac * Number(unit)));
+}
+
+/**
+ * SKR -> the fixed-point TEXT a NUMERIC(39,<scale>) stake column takes, where the
+ * scale is DERIVED from `chain.skrBaseUnits` and is never a literal 6.
+ *
+ * ⛔ THE SCALE IS NOT A CONSTANT ANYWHERE. api/_lib/heartbound-pulse-schema.sql:107-113
+ *    declares `effective_stake NUMERIC(39,6)` and states in the same breath WHY:
+ *    "Six decimals is exactly the chain's base-unit granularity
+ *    (heartbound-resonance-config.json chain.skrBaseUnits = 1e6)". A `toFixed(6)`
+ *    at the call site would be that sentence copied into code, and would drift the
+ *    day the base unit does. Deriving it makes the column's scale and the chain's
+ *    granularity ONE fact.
+ *
+ * ⚠ `String(2734.375)` was what shipped before WO-1693. It happens to be valid
+ *   NUMERIC text, and it is still wrong: a Number large enough prints as `1e+21`,
+ *   which Postgres rejects, and one long enough prints more decimals than the
+ *   column holds, which Postgres silently ROUNDS. Both are avoided by going
+ *   through base units first.
+ */
+function skrToNumericText(skr, cfg = DEFAULT_CONFIG) {
+    const unit = toBigInt(cfg.chain.skrBaseUnits, 'chain.skrBaseUnits');
+    const decimals = unit.toString().length - 1;
+    if (10n ** BigInt(decimals) !== unit)
+        throw new RangeError(`chain.skrBaseUnits must be a power of ten to express a NUMERIC scale, got ${unit}`);
+    const digits = skrToRawTokens(skr, cfg).toString().padStart(decimals + 1, '0');
+    return decimals === 0 ? digits : `${digits.slice(0, -decimals)}.${digits.slice(-decimals)}`;
 }
 
 // ── eligibility ──────────────────────────────────────────────────────────────
@@ -376,6 +442,8 @@ module.exports = {
     sharesToRawTokens,
     rawTokensToSkr,
     skrFromShares,
+    skrToRawTokens,
+    skrToNumericText,
     // eligibility
     minimumStake,
     isEligible,
