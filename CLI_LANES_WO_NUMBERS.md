@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-fifty-second pass): main line next free = **1664**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-fifty-third pass): main line next free = **1667**.
+> WO-1664 (five controls under the touch floor rely on the clamp), WO-1665 (state-word probe 20 px + PartyNameplate stand-down), WO-1666 (HudLabelFit pins over retired surfaces) minted by the DEVICE-FRAMES-4 and LABEL-PINS lanes on lead pre-assigned numbers.
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-second pass): main line next free = **1664**.
 > WO-1663 (HudLabelFit pins measure the Body font over Title faces - 9 sites) minted by the HUD-CHIP lane on a lead pre-assigned number.
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-first pass): main line next free = **1663**.
