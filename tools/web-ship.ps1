@@ -360,7 +360,7 @@ $Surfaces = @(
         DeployedByChain = $false
         Aliases         = @('defenders-webgl.vercel.app')
         Expect          = @()
-        Purpose         = 'The WebGL build the marketing site links to. Owns the game bytes. BLOCKED from deploying until the owner supplies its project id - it is still VERIFIED every run (byte-compared against the other webgl surface), so a stale copy still withholds WEB_PARITY_OK.'
+        Purpose         = 'The WebGL build the marketing site links to. Owns the game bytes. Its project id was CLOSED 2026-09-07 (above); the chain still does NOT deploy it (DeployedByChain false, owner call) - it is VERIFIED every run (byte-compared against the other webgl surface), so a stale copy still withholds WEB_PARITY_OK.'
     },
     [pscustomobject]@{
         Name            = 'defenders-backend'

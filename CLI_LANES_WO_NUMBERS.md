@@ -189,7 +189,33 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-09 (CLI, hundred-and-thirty-third pass): main line next free = **1621**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-thirty-fourth pass): main line next free = **1625**.
+> *(CLI minted **WO-1621 through WO-1624** - four lane findings, none owner-reported, each with its
+> evidence opened at source or measured this session: the Title screen's PLAY INTRO caption
+> ellipsises to "PLAY INT..." on the owner's 1200x2670 portrait device frame
+> `Builds/device-frames/2026-09-10_0028_title_363195.png` because `FitSingleLine(label, 24f, 34f)`
+> at `TitleController.cs:325` is EXHAUSTED, not missing - third occurrence of the class already
+> RCA'd in `HudActionBarModel.cs:245-258` and `:338-352` (1621, **instrument first**);
+> `run-unity-method.ps1:248` prints `VERDICT=FAIL reason=LOG_SCAN` on a run that emitted
+> `COMPILE_GATE_OK` and `Exiting batchmode successfully now!`, because the bare `error CS\d+` grep at
+> `:174` matches the Solana package's 21 CS1069 WebGL advisories - and `morning-ship-chain.ps1:111`
+> BLOCKS on that exit code (1622); the Build Collections footer link
+> `ManageDefensesFooterLink` resolves 52.4 ref px against `MinTouchPx` 112, `UI_GEOMETRY_FAIL x3`
+> across three resolutions in both `Builds/wave1-capture` and the older `Builds/social-ui-capture.log`
+> (1623); and the F8 desktop daemon has thrown on every pass since 2026-07-09 at
+> `f8-watch-daemon.ps1:224` (`'FileShare.ReadWrite'` carries the TYPE name inside the string), so
+> `passFails` reads **9124** and the Editor/Player log classifier at `:232-236` has NEVER run - F8
+> break-log flags still surface because that block precedes the throw (1624). Bumped 1621 -> 1625 in
+> this SAME edit.
+> **TWO PREMISES IN THE BRIEF WERE DISPROVEN AT SOURCE and are recorded in the tickets rather than
+> implemented** (CLAUDE.md sec.11B): (a) "exempt the lines CompileGate tagged advisory" does NOT fix
+> 1622 - only **12 of the 21** matches carry the `(package, advisory)` prefix; the other **9** are the
+> raw compiler emissions CompileGate is quoting, so the grep still reds (WO-1622 sec.1e). (b) The
+> 1624 message is NOT "PS 5.1 does not coerce the bare token" - the SAME call coerces `'Open'` and
+> `'Read'` fine; PowerShell's own text says *"Unable to match the identifier name FileShare.ReadWrite
+> to a valid enumerator name"*, i.e. a type-qualified name inside a string (WO-1624 sec.1b).)*
+>
+> ### superseded: RECONCILED 2026-09-09 (CLI, hundred-and-thirty-third pass): main line next free = **1621**.
 > *(CLI minted **WO-1619 and WO-1620** - two lane findings surfaced by the WO-1616 / WO-1617 RESULT
 > files, neither owner-reported: raid spire height capped by the `8f` scale factor so every baked
 > spire lands at 8.0 m against a 14.4 m target (1619, **instrument first** - a bake log line per
