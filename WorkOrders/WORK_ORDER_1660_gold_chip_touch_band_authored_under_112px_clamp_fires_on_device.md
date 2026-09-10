@@ -1,6 +1,7 @@
 # WORK ORDER 1660 — The town gold chip's touch band is authored UNDER MinTouchPx, and only the runtime clamp rescues it
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate
+**Result:** `WorkOrders/WORK_ORDER_1660_gold_chip_touch_band_authored_under_112px_clamp_fires_on_device.RESULT.md` (HUD-CHIP lane, 2026-09-10; no Unity run in-lane — the gate is the lead's)
 **Silo:** HUD / kit layout (`Assets/_Modules/HUD/Kit/HudKitController.cs`, `Assets/Editor/UICaptureLaunch.cs`)
 **Origin:** DEVICE-FRAMES-3 lane, WO-1658 device measurement, 2026-09-10
 **Device under test:** Seeker SM02G4061955851, APK **2026.09.10.363786** (`dumpsys package com.denellestudios.echoesofelarion` → `versionCode=363786 versionName=2026.09.10.363786`, read before launch), 2670x1200 landscape, one app PID **8062** for the whole session.

@@ -1825,11 +1825,14 @@ namespace DeNelle.HUD.Kit
         /// rail element this class cannot edit lands on the same edge.</summary>
         internal const float RailGutterPx = ElarionUi.PadPanel * 3f;   // 54
         // Expanded resource rows hang BELOW the gold chip (owner mockup WO-1221). They are
-        // display-only — the gold chip is the one tap target and stays >= MinTouchPx via
-        // ClampMinTouch. 4×MinTouchPx cannot physically fit under ActionRail top (0.42) on
-        // the captured 2670x1200 Seeker (~326 ref px to the screen bottom), so the rows
+        // display-only — the gold chip is the one tap target and is AUTHORED at
+        // RailChipHeightPx (WO-1660, see BuildResourceChips). ⚠ THIS LINE READ "stays >=
+        // MinTouchPx via ClampMinTouch" until 2026-09-10, and that was the defect wearing the
+        // clothes of a design note: relying on the clamp is what let the band ship 8.5 px
+        // under the floor for eight months. 4×MinTouchPx cannot physically fit under ActionRail
+        // top on the captured 2670x1200 Seeker (~326 ref px to the screen bottom), so the rows
         // match the gold chip's WIDTH and use a compact readable height. 56×4 + 5×3 = 239
-        // ref px, which seats under a clamped 112 px gold chip without dropping Wood/Iron
+        // ref px, which seats under the 112 px gold chip without dropping Wood/Iron
         // off the bottom.
         private const float ResRowHeightPx = 56f;
         private const float ResRowGapPx = 5f;
@@ -3200,8 +3203,40 @@ namespace DeNelle.HUD.Kit
             // (WO-1221 owner ruling 2026-08-26 — the old 6-second peek is retired).
             // WO-697 icon-first: the coin icon carries identity; "Gold" is the no-art
             // fallback tag only (builder-enforced — the chip is never a naked number).
+            // ⭐ WO-1660 — THE CHIP'S HEIGHT IS AUTHORED IN PX, AT THE TAP FLOOR.
+            // ---------------------------------------------------------------------
+            // WHAT SHIPPED (owner device, Seeker 2670x1200, APK 2026.09.10.363786,
+            // Builds/device-frames/2026-09-10_1019_363786_logcat.txt PID 8062 @10:17:26.858):
+            //     [touch-oracle] CLAMP FIRED .../Widget_resourceChipsCollapsed/CurrencyChip_Gold:
+            //     authored 398.1x103.5 -> grown 398.1x112 (1.0x on W, 1.08x on H).
+            // The band was authored as a FRACTION of the ActionRail widget (y 0.45..1.0, i.e.
+            // 0.55 of a 188.2 ref px band = 103.5 px) while every sibling rail element is
+            // authored in px off RailChipHeightPx (see RailBand / BuildRailChip). A fraction
+            // cannot know the floor, so the floor was missed by 8.5 px at this aspect and only
+            // ClampMinTouch rescued it — symmetrically about the centre, spilling into both
+            // neighbours, exactly what LayoutOracle's ASSERT A text forbids relying on.
+            // ⛔ THE CLAMP IS UNCHANGED AND STAYS ARMED (see ElarionUiKit.cs:1082-1086, and the
+            // ClampMinTouch(tapBtn) call below). It is the correct rescue for a build that
+            // shipped wrong; this authoring simply gives it nothing to rescue.
+            // THE FORM: point-anchor y to the ActionRail band's TOP and hang a fixed px band off
+            // it — the same pivot-then-sizeDelta idiom RailBand uses for the Echoes/Builders
+            // chips, so all three rail elements are denominated in the one constant. x is
+            // deliberately left STRETCHED (0.05..1.0): the collapsed chip is 398 px wide on the
+            // Seeker, already far above the floor, the four expanded rows inherit that width,
+            // and HudRailGutter's stretched branch owns the right edge (it writes offsetMax.x
+            // only — the two axes never cross).
+            // ⚠ DELTA vs THE SHIPPED FRAME, stated rather than hidden: the clamp grew the chip
+            // symmetrically, so its top edge sat 4.25 ref px ABOVE the ActionRail top. Authored
+            // this way the top edge lands ON it, so the chip, the "+N" hint and the expanded
+            // stack all seat ~4 ref px lower than APK 363786. Everything below derives
+            // (HudRailClearance measures the laid-out bottom edge), so nothing needs a second
+            // edit — but the owner's device re-frame will show that shift.
             _resGoldOnly = ElarionUiKit.CurrencyChip(pool, ElarionUiKit.CurrencyKind.Gold,
-                new Vector2(0.05f, 0.45f), new Vector2(1f, 1f), primary: true, tag: "Gold");
+                new Vector2(0.05f, 1f), new Vector2(1f, 1f), primary: true, tag: "Gold");
+            var goldRt = (RectTransform)_resGoldOnly.root.transform;
+            goldRt.pivot = new Vector2(0.5f, 1f);
+            goldRt.sizeDelta = new Vector2(0f, RailChipHeightPx);
+            goldRt.anchoredPosition = Vector2.zero;
             var tapGo = _resGoldOnly.root;
             if (_resGoldOnly.plate != null)
             {

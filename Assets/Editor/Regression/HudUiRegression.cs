@@ -1353,7 +1353,8 @@ namespace DeNelle.Editor
             CheckResourceRailLayout2670(src, failures, notes);
 
             notes.Add("resource-rail raise: gold-chip child + SetActive + UiSurfaceProbe INACTIVE-fail " +
-                      "+ occupancy + 2670x1200 hang-below-gold layout pinned (WO-1221)");
+                      "+ occupancy + 2670x1200 hang-below-gold layout pinned (WO-1221) + the chip's " +
+                      "AUTHORED band measured against ElarionUiKit.MinTouchPx (7h, WO-1660)");
         }
 
         /// <summary>7f — calm(town) actionRail occupies resourceChipsCollapsed (the gold chip
@@ -1399,7 +1400,10 @@ namespace DeNelle.Editor
         // ⛔ EVERY NUMBER BELOW IS READ FROM SOURCE, NOT TYPED HERE. That is the whole point.
         // 7g used to carry its own copies — `actionRailY0 = 0.040f, actionRailY1 = 0.420f` and
         // `goldAnchorY0 = 0.82f` — and BOTH had gone stale: HudAreasHost.cs authors ActionRail at
-        // 0.770..0.965 and BuildResourceChips seats the gold chip at min.y 0.45. It also used
+        // 0.770..0.965 and BuildResourceChips seated the gold chip at min.y 0.45 (⚠ WO-1660 has
+        // since replaced that fraction with a px band off RailChipHeightPx — see the two-form
+        // model in ReadRightColumn; the fraction survives only as the revert-detecting fallback).
+        // It also used
         // `Mathf.Lerp` for the CanvasScaler factor, which is wrong: MatchWidthOrHeight lerps in
         // LOG space (verified at source, Library/PackageCache/com.unity.ugui@a9ea81766fbd/Runtime/
         // UGUI/UI/Core/Layout/CanvasScaler.cs:328-331), a geometric mean — 1.243 here, not 1.549.
@@ -1447,7 +1451,11 @@ namespace DeNelle.Editor
         }
 
         /// <summary>Gold chip anchor min.y within the ActionRail mount, read from the
-        /// <c>CurrencyChip(pool, ... CurrencyKind.Gold, new Vector2(x, y), ...)</c> call.</summary>
+        /// <c>CurrencyChip(pool, ... CurrencyKind.Gold, new Vector2(x, y), ...)</c> call.
+        /// ⚠ WO-1660 RETIRED THIS AS THE PRIMARY READ — the chip's height is now authored in PX
+        /// (<c>goldRt.sizeDelta = new Vector2(0f, RailChipHeightPx)</c>), because a fraction
+        /// cannot know the tap floor and shipped 103.5 px against MinTouchPx 112. This stays as
+        /// the FALLBACK model so a revert of the driver reds 7h instead of silently skipping.</summary>
         private static float ReadGoldChipMinY(string src, float fallback, List<string> notes)
         {
             var m = Regex.Match(src,
@@ -1479,7 +1487,29 @@ namespace DeNelle.Editor
             }
 
             RightColumn col;
-            if (!ReadRightColumn(src, rowCount, out col, notes)) return;
+            if (!ReadRightColumn(src, rowCount, out col, failures, notes)) return;
+
+            // ── 7h — THE AUTHORED BAND IS AT THE TAP FLOOR (WO-1660) ───────────────────────
+            // ⛔ RED PROOF, so this pin is not one that was never seen fail. Against the
+            // pre-WO-1660 tree — the fractional form `new Vector2(0.05f, 0.45f) .. (1f, 1f)` —
+            // this resolves (1 - 0.45) * the ActionRail band at 2670x1200 = 103.5 ref px and
+            // FAILS by 8.5. That is the same number the Seeker logged on APK 2026.09.10.363786
+            // (Builds/device-frames/2026-09-10_1019_363786_logcat.txt, PID 8062, 10:17:26.858:
+            // "authored 398.1x103.5 -> grown 398.1x112"), which is what makes this arithmetic a
+            // model of the device rather than of itself. With the px authoring it reads 112.
+            // ⛔ THE FLOOR IS READ FROM THE CONSTANT, NEVER RESTATED. And the remedy is never to
+            // lower the floor or to lean on ClampMinTouch: the clamp grows the band symmetrically
+            // about its centre into BOTH neighbours, which is the consequence, not the fix.
+            float touchFloor = DeNelle.Core.UI.ElarionUiKit.MinTouchPx;
+            if (col.GoldAuthoredH < touchFloor - 0.5f)
+                failures.Add("RESOURCE RAIL — the collapsed gold chip's band is AUTHORED at " +
+                             col.GoldAuthoredH.ToString("0.#") + " ref px at 2670x1200, " +
+                             (touchFloor - col.GoldAuthoredH).ToString("0.#") + " px UNDER " +
+                             "ElarionUiKit.MinTouchPx (" + touchFloor.ToString("0.#") + "). Only " +
+                             "ClampMinTouch rescues it at runtime, symmetrically about the centre and " +
+                             "into both neighbours — LayoutOracle ASSERT A's own rule text. Author the " +
+                             "height in px off RailChipHeightPx, as every sibling rail element does " +
+                             "(WO-1660).");
 
             // Screen-space y from the TOP (capture convention).
             float scale = 2670f / (col.CanvasW <= 0f ? 1f : col.CanvasW);
@@ -1504,10 +1534,14 @@ namespace DeNelle.Editor
             public float CanvasW, CanvasH;
             public float ActionRailTop, QueueTop, QueueBottom;
             public float GoldTop, GoldBottom;
+            /// <summary>WO-1660: the chip's height AS AUTHORED, before any ClampMinTouch rescue.
+            /// This is the number ASSERT A measures and the one the device logged at 103.5.</summary>
+            public float GoldAuthoredH;
             public float StackTop, StackBottom;
         }
 
-        private static bool ReadRightColumn(string src, int rowCount, out RightColumn c, List<string> notes)
+        private static bool ReadRightColumn(string src, int rowCount, out RightColumn c,
+                                            List<string> failures, List<string> notes)
         {
             c = default(RightColumn);
             string hostPath = Path.Combine(Application.dataPath, "_Modules", "HUD", "Kit", "HudAreasHost.cs");
@@ -1532,26 +1566,54 @@ namespace DeNelle.Editor
             float rowH = ReadConstFloat(src, "ResRowHeightPx", 56f, notes);
             float rowGap = ReadConstFloat(src, "ResRowGapPx", 5f, notes);
             float railGap = ReadConstFloat(src, "RailGapPx", 6f, notes);
-            float goldMinY = ReadGoldChipMinY(src, 0.45f, notes);
-
             c.ActionRailTop = (1f - arY1) * c.CanvasH;
             c.QueueTop = (1f - qsY1) * c.CanvasH;
             c.QueueBottom = (1f - qsY0) * c.CanvasH;
             float actionRailH = (arY1 - arY0) * c.CanvasH;
-            // ⚠ THE GOLD CHIP IS CLAMPED, AND MODELLING IT UNCLAMPED IS ~4 REF PX OF LIE.
-            // BuildResourceChips calls ElarionUiKit.ClampMinTouch(tapBtn) on this chip, and the
-            // clamp grows a sub-floor side "symmetrically about the centre" to MinTouchPx
-            // (ElarionUiKit.cs:1044-1060). Its authored height here is (1-0.45) * the ActionRail
-            // band = 103.5 ref px at 2670x1200 — BELOW the 112 floor — so the chip really resolves
-            // 112 tall with its bottom edge ~4.25 px lower than the anchors alone say, and the
-            // whole stack hanging off it moves down with it. Fold the clamp in rather than state
-            // numbers the device does not have.
-            c.GoldTop = c.ActionRailTop;
-            float goldH = (1f - goldMinY) * actionRailH;
-            float clampedH = Mathf.Max(goldH, DeNelle.Core.UI.ElarionUiKit.MinTouchPx);
-            float grow = (clampedH - goldH) * 0.5f;   // symmetric about the centre
-            c.GoldTop -= grow;
-            c.GoldBottom = c.GoldTop + clampedH;
+
+            // ⭐ WO-1660 — TWO AUTHORING FORMS, MODELLED EXPLICITLY, NEVER GUESSED.
+            // ---------------------------------------------------------------------
+            // FORM 1 (current): the chip point-anchors to the ActionRail band's TOP and hangs a
+            //   fixed px band off it — `goldRt.sizeDelta = new Vector2(0f, RailChipHeightPx)`,
+            //   with `RailChipHeightPx = ElarionUiKit.MinTouchPx`. Height is the constant; the
+            //   clamp has nothing to grow, so no growth is folded in.
+            // FORM 2 (pre-WO-1660, kept so a revert REDS 7h instead of skipping): the height was
+            //   (1 - minY) * the ActionRail band, and ClampMinTouch grew a sub-floor side
+            //   "symmetrically about the centre" to MinTouchPx (ElarionUiKit.cs:1172-1186). At
+            //   2670x1200 that authored 103.5 ref px and resolved 112 with the top edge 4.25 px
+            //   HIGHER than the anchors alone say — which is the WO-1660 device measurement.
+            // ⛔ AND NEITHER-FORM IS A FAILURE, NOT A NOTE. ReadGoldChipMinY's regex still MATCHES
+            // form 1's `new Vector2(0.05f, 1f)` and would hand back minY 1.0 -> a 0 px chip, i.e.
+            // the oracle would model a HUD the game does not have and report on it. An oracle
+            // carrying a stale model reports GREEN over a real defect — the failure this whole
+            // block was corrected for in WO-1435, and the failure that let 103.5 ship.
+            bool pxAuthored =
+                Regex.IsMatch(src, @"goldRt\.sizeDelta\s*=\s*new\s+Vector2\(\s*[-0-9.]+f\s*,\s*RailChipHeightPx\s*\)") &&
+                src.IndexOf("RailChipHeightPx = ElarionUiKit.MinTouchPx", StringComparison.Ordinal) >= 0;
+            float goldH;
+            if (pxAuthored)
+            {
+                goldH = DeNelle.Core.UI.ElarionUiKit.MinTouchPx;
+                c.GoldTop = c.ActionRailTop;
+            }
+            else
+            {
+                float goldMinY = ReadGoldChipMinY(src, 0.45f, notes);
+                if (goldMinY >= 0.99f)
+                {
+                    failures.Add("RESOURCE RAIL — the gold chip's band matches NEITHER authoring form: " +
+                                 "no px `goldRt.sizeDelta = new Vector2(_, RailChipHeightPx)` and the " +
+                                 "parsed anchor min.y is " + goldMinY.ToString("0.###") + " (a zero-height " +
+                                 "fraction). The right-column model would be measuring a HUD that does not " +
+                                 "exist, which is how a sub-floor band ships green. Re-point this parse at " +
+                                 "the new authoring in the SAME change (WO-1660).");
+                    return false;
+                }
+                goldH = (1f - goldMinY) * actionRailH;
+                c.GoldTop = c.ActionRailTop - Mathf.Max(0f, DeNelle.Core.UI.ElarionUiKit.MinTouchPx - goldH) * 0.5f;
+            }
+            c.GoldAuthoredH = goldH;
+            c.GoldBottom = c.GoldTop + Mathf.Max(goldH, DeNelle.Core.UI.ElarionUiKit.MinTouchPx);
             c.StackTop = c.GoldBottom + railGap;
             c.StackBottom = c.StackTop + rowCount * rowH + (rowCount - 1) * rowGap;
             return true;
@@ -1567,9 +1629,18 @@ namespace DeNelle.Editor
         // Harvest/Collectors chip was pinned in the QueueStatus mount directly beneath it at a
         // CONSTANT `yFromTopPx = 0f`. Two things in one gutter, one variable, nothing reconciling.
         //
-        // ⛔ RED PROOF — the numbers this check produces against the pre-fix tree, at the owner's
-        // 2670x1200 (canvas 965.4 ref px tall; CanvasScaler log-weighted factor 1.243; the gold
-        // chip's ClampMinTouch growth folded in, see ReadRightColumn):
+        // ⚠ THE NUMBERS BELOW ARE THE WO-1435 RECORD, AT THAT DATE'S AUTHORING. WO-1660 authored
+        // the gold chip's band in px instead of as a fraction, which removes the ClampMinTouch
+        // growth this model used to fold in — so the chip's top edge no longer sits 4.25 ref px
+        // above the ActionRail top, and every distance quoted below shifts DOWN by that much.
+        // The check itself is unaffected: every number it compares is DERIVED from source reads
+        // (that is the whole point of WO-1435's correction), and the clearance it asserts is
+        // RailGapPx at every row count either way. Deliberately not re-typed: a hand-recomputed
+        // table is exactly the copy that goes stale next.
+        //
+        // ⛔ RED PROOF — the numbers this check produced against the pre-WO-1435 tree, at the
+        // owner's 2670x1200 (canvas 965.4 ref px tall; CanvasScaler log-weighted factor 1.243;
+        // the gold chip's ClampMinTouch growth folded in, see ReadRightColumn):
         //     four-row panel   147.6 .. 386.6 ref px from the canvas top
         //     Harvest chip     241.3 .. 353.3        (yFromTop 0f in a band whose top is 241.3)
         // The chip is ENTIRELY INSIDE the panel — 112 ref px of overlap on a shared right edge and
@@ -1707,7 +1778,7 @@ namespace DeNelle.Editor
                 // A parse failure NOTES and stops the layout half (the check-7f/7g convention in
                 // this file) rather than failing — an oracle that cannot read the geometry must
                 // not invent a verdict in either direction. The source lints above still stand.
-                if (!ReadRightColumn(src, n, out col, notes)) return;
+                if (!ReadRightColumn(src, n, out col, failures, notes)) return;
 
                 // The rule, mirrored from HudRailClearance.Apply. It is stated once there and once
                 // here on purpose: this half exists to FAIL when the source half is missing, so it

@@ -628,6 +628,15 @@ namespace DeNelle.Editor
                 // WO-1286: the conditional Raids bar face is retired; Raids is a stable Journey
                 // card. Keep the legacy helper below for forensic comparison, but never emit it
                 // as current UI evidence.
+                // ⭐ WO-1660 — THE TOWN HUD CANVAS JOINS THE GATED RUN.
+                // The kit builder was ALREADY wrapped for capture (CaptureAdaptiveHudOnce), but
+                // its only caller was the separate RunAdaptiveHudCaptureHeadless entry point,
+                // which emits no Report* marker at all. So the always-on HUD rail -- the surface
+                // the player looks at for the whole session -- was never measured by ASSERT A,
+                // and the gold chip's sub-floor band (WO-1660 §1: authored 398.1x103.5 against
+                // MinTouchPx 112) reached an owner device with every gate green. Identical hole,
+                // identical remedy, to the Night Market note ~40 lines above.
+                count += CaptureAdaptiveHud();       // 3 postures x 3 landscape targets
                 count += CaptureMaintenanceBanner(); // WO-1243: the operator seal, as the player reads it
                 count += CaptureHeroSelect();        // WO-1248: carousel rotate control, words fully readable
                 count += CapturePlayerDecks();       // WO-1286: Realm/Hero/Journey mobile card workspaces
@@ -1687,9 +1696,27 @@ namespace DeNelle.Editor
         public static void RunAdaptiveHudCaptureHeadless()
         {
             Directory.CreateDirectory(OutDir);
-            int count = ForEachTarget("AdaptiveHud", CaptureAdaptiveHudOnce);
-            if (count == 9) Debug.Log("ADAPTIVE_HUD_CAPTURE_OK 9/9");
-            else Debug.LogError("ADAPTIVE_HUD_CAPTURE_FAIL " + count + "/9");
+            int count = CaptureAdaptiveHud();
+            // WO-1660: the expected frame count DERIVES from the target table and the three
+            // postures below. It was the literal 9, which is a second copy of
+            // LandscapeTargets.Length -- add a fourth aspect and the literal reports FAIL on a
+            // clean run (the duplicated-state failure CLAUDE.md documents at §2/§5/§16).
+            int expected = LandscapeTargets.Length * AdaptiveHudShotsPerTarget;
+            if (count == expected) Debug.Log("ADAPTIVE_HUD_CAPTURE_OK " + count + "/" + expected);
+            else Debug.LogError("ADAPTIVE_HUD_CAPTURE_FAIL " + count + "/" + expected);
+        }
+
+        /// <summary>Peaceful + gear-open + combat: the three shots CaptureAdaptiveHudOnce takes
+        /// per target. Named once, so neither caller re-types the number.</summary>
+        private const int AdaptiveHudShotsPerTarget = 3;
+
+        /// <summary>WO-1660: the ONE call site of the adaptive-HUD body, so the gated run
+        /// (RunCaptureHeadless) and the focused entry point (RunAdaptiveHudCaptureHeadless)
+        /// cannot drift into measuring different HUDs. Every frame goes through
+        /// RenderCanvasToPng, which is where AuditGeometry / the touch + glyph oracles live.</summary>
+        private static int CaptureAdaptiveHud()
+        {
+            return ForEachTarget("AdaptiveHud", CaptureAdaptiveHudOnce);
         }
 
         /// <summary>Focused proof that a one-line tutorial/townsfolk helper uses the compact
@@ -9589,7 +9616,37 @@ namespace DeNelle.Editor
                     // Max because the Train line is full - ruling 13 lets Trainable win over Max,
                     // which this body's own failure message already spells out. Draining the queue
                     // globally would flip ManageFlow_ARMY_max to Trainable and FAIL the run.
-                    if (frame != ManageFlowFrame.ActionDetail) SeedManageFlowExtraQueue(queueService);
+                    // ⭐ WO-1661 §4C - AND THE ARMY GRID IS NOW THE SECOND EXEMPTION, for the same
+                    // reason as the first and with a different victim.
+                    // ⛔ NO TROOP-SEEDING EDIT COULD HAVE DONE THIS, and that is worth writing
+                    // down because the ticket assumed one would.
+                    // ⛔ CITED BY SYMBOL, NOT BY LINE NUMBER. A line number written into a
+                    // permanent comment is stale the next time anyone edits that file - the
+                    // duplicated-state failure CLAUDE.md §2/§5/§16 each describe. (This comment
+                    // carried three such numbers when it was drafted and all three were ALREADY
+                    // wrong, because the same change added a doc block above the method.)
+                    // ManageScreenVM.ComposeTroopItem's badge precedence puts its `trainLineFull`
+                    // arm ABOVE its `UPGRADE AVAILABLE` arm, so while the Train line sits at its
+                    // depth cap EVERY unlocked troop reads QUEUE FULL and the UpgradeAffordable
+                    // state is UNREACHABLE on this grid no matter what the fixture stores. That is exactly
+                    // what ManageFlow_ARMY_gridtop_2670x1200.png shows today: MAX x1, QUEUE FULL
+                    // x4, LOCKED x4 - longest word "QUEUE FULL", 10 chars - while the device
+                    // painted the 17-char "UPGRADE AVAILABLE" and ellipsised it. UI_GLYPH_OK was
+                    // an honest pass over strings the shipped game does not produce.
+                    // ⚠ ONLY GridTop, and only on ARMY. GridBottom, QueueDrawer and the three
+                    // detail frames keep their saturation: the drawer frame exists to document a
+                    // FULL line, and draining it globally is the failure the note above warns of.
+                    // Footman is unaffected either way - ComposeTroopItem hoists its `atMax` arm
+                    // ABOVE `trainLineFull`, so the MAX tile stays MAX with the line drained.
+                    // Effect, derived from BarracksService.CanUpgradeTroop (unlocked &&
+                    // HasNextTroopLevel && !IsUpgradingTroop, with NO affordability or
+                    // prerequisite test since WO-1387): the four unlocked non-max troops become
+                    // UPGRADE AVAILABLE, which is the longest word the shipped game can put on this
+                    // grid and the one the oracle must be handed.
+                    bool armyGridNeedsUpgradableState =
+                        tab == DeNelle.Core.Manage.ManageTabId.Army && frame == ManageFlowFrame.GridTop;
+                    if (frame != ManageFlowFrame.ActionDetail && !armyGridNeedsUpgradableState)
+                        SeedManageFlowExtraQueue(queueService);
 
                     panelHost = new GameObject("~UICap" + shotName);
                     var panel = panelHost.AddComponent<ManageScreenPanel>();
@@ -9652,6 +9709,52 @@ namespace DeNelle.Editor
                         throw new InvalidOperationException(
                             "the model refused tab " + tab + " (it is not available in this fixture) -- " +
                             "this frame cannot be shot honestly");
+
+                    // ⭐ WO-1661 §4C - THE SEEDING IS ASSERTED, NOT HOPED FOR.
+                    // ⛔ WITHOUT THIS THROW THE EXEMPTION ABOVE IS WORSE THAN NOTHING. If the
+                    // drained Train line does NOT produce an upgradable troop, the frame shoots a
+                    // grid whose longest word is still short, UI_GLYPH_OK still passes over strings
+                    // the player never sees, and the ticket gets marked covered while the capture
+                    // stays exactly as blind as the one that missed the device defect. A frame that
+                    // cannot photograph the state it claims must FAIL, loudly, in one run.
+                    // ⚠ THE TEST IS THE RULE, NOT THE WORD. It asks whether the composer authored
+                    // a grid face DISTINCT from the row face - which is the whole subject of
+                    // WO-1661 - and never which word that is. The owner's ruling on §4B changes one
+                    // constant in ManageScreenVM and nothing here (CLAUDE.md §2/§5/§16: the second
+                    // copy is the bug).
+                    if (armyGridNeedsUpgradableState)
+                    {
+                        var armyTab = ActiveManageTabVm(vm);
+                        var armyTiles = armyTab != null ? armyTab.Tiles : null;
+                        string shortFaced = null;
+                        string faceNote = null;
+                        for (int ti = 0; armyTiles != null && ti < armyTiles.Count; ti++)
+                        {
+                            var at = armyTiles[ti];
+                            if (at == null) continue;
+                            string rowFace = at.StateText ?? "";
+                            string gridFace = at.StateWord ?? "";
+                            if (gridFace.Length == 0) continue;
+                            if (string.Equals(gridFace, rowFace, StringComparison.Ordinal)) continue;
+                            shortFaced = at.Id;
+                            faceNote = gridFace + " (grid, " + gridFace.Length.ToString() + " chars) vs " +
+                                       rowFace + " (row, " + rowFace.Length.ToString() + " chars)";
+                            break;
+                        }
+                        if (shortFaced == null)
+                            throw new InvalidOperationException(
+                                "MANAGE_FLOW_MAP: the ARMY grid frame is the one that must photograph a troop " +
+                                "in the upgrade-available state, and NO tile on it carries a grid face distinct " +
+                                "from its row face -- so this frame would document the same blind spot that let " +
+                                "the device paint 'UPGRADE A...' (WO-1661 section 1). States actually present: " +
+                                ManageFlowObservedStates(vm) + ". Two things can cause this: the composer's " +
+                                "UpgradeAffordable branch stopped authoring a BadgeWord (ManageScreenVM, the " +
+                                "defect itself), or the Train line is still at its depth cap so every unlocked " +
+                                "troop reads QUEUE FULL and the state is unreachable (the seeding exemption " +
+                                "above did not take).");
+                        _flowStateNotes.Add(ManageScreenVM.TabWordOf(tab) + "/" + ManageFlowStateWord(frame) +
+                                            " -> upgrade-available grid face on '" + shortFaced + "': " + faceNote);
+                    }
                     }
 
                     if (frame == ManageFlowFrame.ActionDetail ||
