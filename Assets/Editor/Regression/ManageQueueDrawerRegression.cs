@@ -726,6 +726,22 @@ namespace DeNelle.Editor.Regression
                     failures.Add("[rows-inside-the-plate] the queue row's timer line is not fitted to its own " +
                                  "floor. `0f` resolves to the kit's FontFloor (30) against a 32px max - two " +
                                  "points of headroom, which is what truncated \"11m 0s left (0% do...\"");
+                // ⛔ WO-1651 - THE REFUND NOTE IS THE TIMER LINE'S SIBLING AND WAS LEFT ON `0f`.
+                // WO-1488 fixed `state` and stopped there; `refund` shares the SAME 0.285-of-row band
+                // and kept the 30px kit floor, so at the aspect where _queueRowPx clamps to
+                // ElarionUiKit.MinTouchPx (112) its band is 0.285 x 112 = 31.9 px and a 30px line box
+                // does not fit AT ALL. Builds/wave5-manageflow1 (2026-09-10): "No refund - nothing was
+                // paid for this job" drew ZERO of 33 printable glyphs on all three of
+                // ManageFlow_{BUILD,ARMY,RESEARCH}_queue_2670x1200 - a WHOLE-LINE CULL, clean at 1920
+                // and 2340. This case is the sibling of the one above precisely so the pair cannot
+                // drift apart again.
+                // RED MUTATION: restore `FitSingleLine(refund, 0f, QueueLineFontPx)`.
+                if (!panel.Contains("FitSingleLine(refund, QueueStateFontFloorPx, QueueLineFontPx)"))
+                    failures.Add("[rows-inside-the-plate] the queue row's REFUND note is not fitted to the " +
+                                 "row's own floor. `0f` resolves to the kit's FontFloor (30), whose line box " +
+                                 "does not fit the 0.285-of-row band at all once the row clamps to " +
+                                 "MinTouchPx - the note is CULLED WHOLE, so the one player who gets nothing " +
+                                 "back is told nothing (WO-1651)");
                 if (Count(panel, "DrawerOverlayY0") < 3 || Count(panel, "DrawerOverlayY1") < 3)
                     failures.Add("[rows-inside-the-plate] the overlay's rect is not read from the shared " +
                                  "constants by BOTH writers. BuildQueueDrawer authored -0.25..0.99 and " +

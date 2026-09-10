@@ -7065,7 +7065,37 @@ namespace DeNelle.Village.UI
                     var refund = ElarionUiKit.Label(row, refundText,
                                                     QRowRefundY0, QRowRefundY1, ElarionUi.ParchmentDim,
                                                     (int)QueueLineFontPx, TextAlignmentOptions.Left, x0, QueueTextX1);
-                    ElarionUiKit.FitSingleLine(refund, 0f, QueueLineFontPx);
+                    // ⛔ WO-1651: THE REFUND NOTE IS FITTED TO THE ROW'S OWN FLOOR, EXACTLY LIKE THE
+                    // TIMER LINE TWO BLOCKS UP. It read `0f` until 2026-09-10, and `0f` resolves to
+                    // the kit's FontFloor (30) against a 32px max - the SAME two-points-of-headroom
+                    // bug WO-1488 already fixed on `state`, left standing on the sibling that shares
+                    // its band height.
+                    // MEASURED, Builds/wave5-manageflow1 (2026-09-10), the same finding four times on
+                    // each of ManageFlow_{BUILD,ARMY,RESEARCH}_queue_2670x1200 and CLEAN at 1920 and
+                    // 2340: "No refund - nothing was paid for this job" drew ZERO of 33 printable
+                    // glyphs - a WHOLE-LINE CULL, not an ellipsis - at rect y -54.3..-22.4, i.e. a
+                    // 31.9 px band, font 30 [autosize 30..32].
+                    // ⭐ WHY ONLY 2670, ARITHMETIC THAT CLOSES ON THE MEASUREMENT: the row height is
+                    // _queueRowPx = Clamp(ideal, ElarionUiKit.MinTouchPx, RowHeightPx), and at this
+                    // aspect it is pinned to the TOUCH FLOOR, 112. This band is
+                    // QRowRefundY1 - QRowRefundY0 = 0.285 of the row, and 0.285 x 112 = 31.92 px -
+                    // the captured 31.9 to a tenth of a pixel. At 1920/2340 `ideal` clears the floor,
+                    // the row is taller, and the same fraction seats the line.
+                    // ⛔ SO IT IS THE **ONE**-LINE NEED THAT IS UNMET, NOT A TWO-LINE NEED, AND A
+                    // WRAP WOULD BE THE WRONG SHAPE - two lines want ~2x this band inside 31.9 px.
+                    // The line factor is bounded by this run's OWN two labels: the `name` label sits
+                    // in a 0.317 x 112 = 35.5 px band at the same 30 floor and renders (so 30f <=
+                    // 35.5, f <= 1.183), while this one culls (so 30f > 31.9, f > 1.063). At the
+                    // row's own floor of 24 the line box is at most 24 x 1.183 = 28.4 px against
+                    // 31.9 px of band - it clears by >= 3.5 px (+11%).
+                    // ⛔ NO FLOOR IS LOWERED BELOW THE KIT'S: QueueStateFontFloorPx is 24, above
+                    // ElarionUiKit.FontHardFloor (20), and it is the floor this very row already
+                    // uses one label away. No player copy is shortened.
+                    // ⚠ WIDTH IS A SEPARATE AXIS AND IS **NOT** PROVEN HERE. The oracle logs a rect
+                    // only for labels it FAILS, so no run has measured this sentence's width at 24;
+                    // if the next capture ellipsises it horizontally in the 426.6 px lane that is a
+                    // NEW finding with its own lever (x0 / QueueTextX1), not this one coming back.
+                    ElarionUiKit.FitSingleLine(refund, QueueStateFontFloorPx, QueueLineFontPx);
                 }
             }
 
