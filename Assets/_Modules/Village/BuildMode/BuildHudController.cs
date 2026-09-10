@@ -706,7 +706,29 @@ namespace DeNelle.Village
             var railRt = railFill.transform as RectTransform;
             _okChip = MakeWordVerb(railRt, "OkChip", PlaceVerbWord, ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.015f, 0.02f), new Vector2(0.325f, 0.98f),
-                () => _onPlace?.Invoke(), out _okChipLabel);
+                () =>
+                {
+                    // WO-1615 §3.2 — THE DISCRIMINATING TRACE, and it is PERMANENT (CLAUDE.md §12:
+                    // instrumentation is never stripped). Before this line the button path produced
+                    // NO trace at all, so a log could not tell "a higher uGUI surface ate the click
+                    // and OkChip never fired" from "OkChip fired and the callback was null / bound
+                    // to a dead controller instance". Emitted under the "Build" tag (not this file's
+                    // usual "BuildHud") deliberately: it must sit in the SAME grep as
+                    // "PlaceConfirm: UI PLACE button latch consumed", which is the very next line the
+                    // reader expects to see. bound=False => EnsureHud's binding never ran for the
+                    // instance that drew this HUD; a bound target whose id is NOT the live
+                    // BuildModeController means a stale delegate.
+                    var placeTarget = _onPlace?.Target as UnityEngine.Object;
+                    FlowTrace.Step("Build",
+                        "OkChip TAPPED (onPlace bound=" + (_onPlace != null) +
+                        ", target='" + (placeTarget != null ? placeTarget.name : "<none>") +
+                        "' id=" + (placeTarget != null ? placeTarget.GetInstanceID() : 0) +
+                        "). The bound callback raises BuildModeController.RequestUiPlaceConfirm, " +
+                        "which sets the ONE commit latch (ConfirmKind.UiPlace). If this line prints " +
+                        "and 'PlaceConfirm: UI PLACE button latch consumed' does not follow, the " +
+                        "binding is stale; if this line never prints, the click never reached OkChip.");
+                    _onPlace?.Invoke();
+                }, out _okChipLabel);
             MakeWordVerb(railRt, "RotChip", "ROTATE", ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.345f, 0.02f), new Vector2(0.655f, 0.98f),
                 () => _onRotateRight?.Invoke(), out _);

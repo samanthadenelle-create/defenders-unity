@@ -969,6 +969,28 @@ namespace DeNelle.Village
             return s_uiHits.Count > 0;
         }
 
+        /// <summary>
+        /// WO-1615 §3.1 — the full scene path of a transform ("Canvas/Panel/Rail/OkChip"), for the
+        /// over-UI suppression trace. A bare GameObject NAME is not enough to identify a raycast
+        /// owner: this project builds several code-made canvases whose children share names, so the
+        /// path is what tells the reader WHICH canvas ate the tap. Depth-capped so a pathological
+        /// hierarchy can never turn one log line into a wall of text.
+        /// </summary>
+        private static string HierarchyPathOf(Transform t)
+        {
+            if (t == null) return "<none>";
+            var sb = new System.Text.StringBuilder(t.name);
+            var p = t.parent;
+            int guard = 0;
+            while (p != null && guard++ < 16)
+            {
+                sb.Insert(0, p.name + "/");
+                p = p.parent;
+            }
+            if (p != null) sb.Insert(0, ".../");
+            return sb.ToString();
+        }
+
         private bool PlaceConfirmedThisFrame() => ConfirmIntentThisFrame() != ConfirmKind.None;
 
         /// <summary>
@@ -1014,7 +1036,31 @@ namespace DeNelle.Village
             // is unaffected: it arrives via the explicit _uiPlaceLatch above.)
             if (IsPointOverUi(_input.ScreenPoint))
             {
-                FlowTrace.Warn("Build", $"PlaceConfirm SUPPRESSED: tap at {_input.ScreenPoint} is over UI (button tap, not a world placement)");
+                // WO-1615 §3.1 — NAME THE SURFACE THAT OWNS THE CLICK. PERMANENT (CLAUDE.md §12).
+                // The suppression itself is correct and untouched: a tap on a labeled chip must
+                // never also drop a building. But saying only "is over UI" is exactly why the move
+                // defect could not be diagnosed — the log proved a tap was eaten and never said BY
+                // WHAT. IsPointOverUi leaves s_uiHits populated (sorted topmost-first) on the true
+                // path, so the owner is readable right here with no second raycast. The module name
+                // separates a uGUI GraphicRaycaster (which canvas) from a UI Toolkit PanelRaycaster
+                // (a UIDocument over the top), and the loop flag proves the tap happened during MOVE.
+                string uiOwner = "<none>", uiPath = "<none>", uiModule = "<none>";
+                int uiSort = 0;
+                if (s_uiHits.Count > 0)
+                {
+                    var top = s_uiHits[0];
+                    var topGo = top.gameObject;
+                    if (topGo != null) { uiOwner = topGo.name; uiPath = HierarchyPathOf(topGo.transform); }
+                    if (top.module != null) uiModule = top.module.GetType().Name;
+                    uiSort = top.sortingOrder;
+                }
+                FlowTrace.Warn("Build", $"PlaceConfirm SUPPRESSED: tap at {_input.ScreenPoint} is over UI " +
+                    $"(button tap, not a world placement). hits[0]='{uiOwner}' path='{uiPath}' " +
+                    $"module={uiModule} sortingOrder={uiSort} hitCount={s_uiHits.Count} " +
+                    $"movingSelected={_movingSelected} armed={(_armed != null)}. " +
+                    "If hits[0] is NOT 'OkChip' while movingSelected=true, THAT surface owns the PLACE " +
+                    "rect during a move; if it IS 'OkChip' and no 'OkChip TAPPED' line follows, the " +
+                    "chip's own click delivery is the defect.");
                 return ConfirmKind.None;
             }
             // Suppress confirms whose screen point sits in the move-stick zone.
