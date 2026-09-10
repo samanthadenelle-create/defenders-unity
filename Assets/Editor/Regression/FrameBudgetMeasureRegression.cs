@@ -23,9 +23,15 @@
 //   2. [4-arg]     each frame-path scope uses the ACCUMULATING 4-arg overload, not
 //                  the 3-arg one. The 3-arg Scope logs on every Dispose; across the
 //                  Sites table x 60 fps that is >1000 lines/sec, which evicts the boot
-//                  window out of the 256 KiB Android ring (memory:
+//                  window out of the Android logcat ring (memory:
 //                  logcat-ring-buffer-destroys-evidence). Instrumentation that
-//                  destroys the evidence is worse than none.
+//                  destroys the evidence is worse than none. NOTE: the ring size
+//                  is PER DEVICE and must be read with `adb logcat -g`, never
+//                  assumed - this comment carried a flat "256 KiB" until
+//                  2026-09-10, when that command on the Seeker returned 16 MiB
+//                  per buffer with nothing evicted (WO-1459 device capture). The
+//                  rule is unchanged: a per-frame emit is forbidden regardless of
+//                  ring size, because the ring you are logging into is unknown.
 //   3. [budget]    the budget passed is a real, bounded number. A budget of 0
 //                  silently disables the warn; a budget of 100 never fires. The
 //                  measured floor is 45.1ms/frame, so a per-scope budget has to sit
@@ -37,6 +43,13 @@
 //                  line, on its OWN timer - folding it into SampleInterval would
 //                  change the cadence of the live `LOW fps=` telemetry these two
 //                  WOs are being read from, which is a behaviour change.
+//   6. [split]     PerfReporter still emits the CPU-main / render-thread / GPU
+//                  "frame split:" line, from a helper called ONCE per roll-up
+//                  window and never from Update, sampling every frame, with an
+//                  explicit unavailable branch instead of zeros. WO-1459's
+//                  2026-09-10 Seeker capture measured 43.9ms frames of which all
+//                  20 accumulating scopes explained 5.8%; without this line the
+//                  other ~94% has no owner and the ticket cannot be routed.
 // =============================================================================
 using System;
 using System.Collections.Generic;
@@ -172,7 +185,8 @@ namespace DeNelle.Editor.Regression
                 reason = "[frame-budget-measure] SOURCE LINT FAIL [overload]: FrameScope.Dispose logs " +
                          "directly to the Sink. That is the 3-arg Scope's behaviour and it is exactly " +
                          "what the frame path must not do - one line per scope per frame evicts the " +
-                         "boot window out of the 256 KiB Android ring. Accumulate; let the throttled " +
+                         "boot window out of the Android logcat ring - whose size is per device and " +
+                         "must be read with adb logcat -g, not assumed. Accumulate; let the throttled " +
                          "warn and PerfReporter's 1s roll-up do the emitting.";
                 return false;
             }
@@ -231,6 +245,121 @@ namespace DeNelle.Editor.Regression
                 return false;
             }
             notes.Append("rollup=" + rollup.ToString("0.##") + "s ");
+
+            // --- 6. the CPU-main / render-thread / GPU split rides the SAME cadence -----
+            // WO-1459, device capture 2026-09-10: town idle measured 22-23 fps / 43.9 ms
+            // while all 20 accumulating scopes together came to a mean of 57.9 ms per
+            // 1000 ms of wall clock - about 5.8 percent. So the budget table above can
+            // ELIMINATE those 20 sites and can never name the cost; the split line is the
+            // instrument that says whether the missing time is main-thread, render-thread
+            // or GPU. If it is ever deleted the ticket loses its only routing evidence and
+            // the next seat is back to theorising, which is what sec.12 forbids.
+            if (!perfNoComments.Contains("frame split: "))
+            {
+                reason = "[frame-budget-measure] SOURCE LINT FAIL [split]: PerfReporter no longer " +
+                         "emits the \"frame split: \" line. That line is the ONLY per-thread " +
+                         "attribution in the build; without it roughly 94 percent of every device " +
+                         "frame is unmeasured and a perf ticket can only be guessed at.";
+                return false;
+            }
+            foreach (string ident in new[]
+                     {
+                         "FrameTimingManager.CaptureFrameTimings",
+                         "FrameTimingManager.GetLatestTimings",
+                         "FrameTimingManager.IsFeatureEnabled",
+                         "cpuFrameTime",
+                         "cpuMainThreadFrameTime",
+                         "cpuRenderThreadFrameTime",
+                         "gpuFrameTime",
+                         "cpuMainThreadPresentWaitTime",
+                     })
+            {
+                if (perfCode.Contains(ident)) continue;
+                reason = "[frame-budget-measure] SOURCE LINT FAIL [split]: PerfReporter no longer " +
+                         "reads `" + ident + "`. The split needs the capture call, the count-returning " +
+                         "getter, the availability check and all four timing terms - dropping any one " +
+                         "of them turns the line into a partial picture that still reads as complete.";
+                return false;
+            }
+            if (!perfNoComments.Contains("unavailable"))
+            {
+                reason = "[frame-budget-measure] SOURCE LINT FAIL [split]: PerfReporter no longer " +
+                         "carries the unavailable branch. When the platform reports no timings the " +
+                         "line must SAY so; printing zeros instead reads as \"the GPU is free\" and " +
+                         "routes the ticket to the wrong thread.";
+                return false;
+            }
+
+            string splitEmitBody = ExtractBody(perfCode, "private void ReportFrameSplit()", null);
+            if (splitEmitBody == null || splitEmitBody.IndexOf("FlowTrace.Step(", StringComparison.Ordinal) < 0)
+            {
+                reason = "[frame-budget-measure] SOURCE LINT FAIL [split]: ReportFrameSplit is absent " +
+                         "or no longer emits through FlowTrace. An accumulator nothing reads out is " +
+                         "silent instrumentation - CLAUDE.md sec.12 forbids the silent path.";
+                return false;
+            }
+            // The two cadences are DELIBERATELY asymmetric. The available line is data and
+            // earns one emit per roll-up window; the unavailable line says the same static
+            // thing every window and must therefore emit ONCE per play session. Without this
+            // pin a build with the player setting off prints a line a second, and WebTrace
+            // POSTs one a second, purely to repeat a fact no one can act on until a rebuild -
+            // the same log-volume failure the 4-arg accumulating overload exists to prevent.
+            if (splitEmitBody.IndexOf("FlowTrace.Once(", StringComparison.Ordinal) < 0)
+            {
+                reason = "[frame-budget-measure] SOURCE LINT FAIL [split]: ReportFrameSplit no longer " +
+                         "routes the unavailable state through FlowTrace.Once. Once dedupes on " +
+                         "system plus key for the play session, which is what keeps a build with the " +
+                         "frame-timing player setting off from repeating an unactionable line every " +
+                         "second for the whole run.";
+                return false;
+            }
+
+            // The emit must live at the ROLL-UP cadence and NEVER inside Update. Once per
+            // frame is ~23 lines a second on the measured device, which is the flood the
+            // 4-arg overload exists to prevent. Literals are read from the comment-stripped
+            // (literal-preserving) text, structure from the literal-stripped text - the same
+            // split the [rollup] section above uses, so prose cannot fake either half.
+            string updateLiterals = ExtractBody(perfNoComments, "private void Update()", null);
+            string updateCode     = ExtractBody(perfCode,       "private void Update()", null);
+            if (updateLiterals == null || updateCode == null)
+            {
+                reason = "[frame-budget-measure] SOURCE LINT FAIL [split]: could not locate " +
+                         "PerfReporter's Update body, so the lint cannot prove the split line is not " +
+                         "emitted per frame. It fails rather than pass blind.";
+                return false;
+            }
+            if (updateLiterals.Contains("frame split")
+                || updateCode.Contains("FlowTrace.Step(")
+                || updateCode.Contains("FlowTrace.Warn("))
+            {
+                reason = "[frame-budget-measure] SOURCE LINT FAIL [split]: PerfReporter.Update emits " +
+                         "a trace line directly. The split and the budget roll-up must both be emitted " +
+                         "from their throttled helpers - a per-frame emit is the log flood that evicts " +
+                         "the evidence the capture was taken for.";
+                return false;
+            }
+            if (!updateCode.Contains("SampleFrameSplit()"))
+            {
+                reason = "[frame-budget-measure] SOURCE LINT FAIL [split]: PerfReporter.Update no " +
+                         "longer calls SampleFrameSplit(). The timings must be captured EVERY frame " +
+                         "and averaged; sampling only at the roll-up yields one instantaneous frame " +
+                         "reading wearing the clothes of a mean.";
+                return false;
+            }
+            int splitCallAt  = updateCode.IndexOf("ReportFrameSplit()", StringComparison.Ordinal);
+            int splitCallAt2 = splitCallAt < 0
+                ? -1
+                : updateCode.IndexOf("ReportFrameSplit()", splitCallAt + 1, StringComparison.Ordinal);
+            int rollupGuardAt = updateCode.IndexOf("BudgetRollupInterval", StringComparison.Ordinal);
+            if (splitCallAt < 0 || splitCallAt2 >= 0 || rollupGuardAt < 0 || splitCallAt < rollupGuardAt)
+            {
+                reason = "[frame-budget-measure] SOURCE LINT FAIL [split]: ReportFrameSplit() is not " +
+                         "called exactly once, from inside the BudgetRollupInterval branch. The split " +
+                         "must ride the SAME cadence as the frame-budget line so the two read as one " +
+                         "window in the device log - and it must not be called on the raw frame path.";
+                return false;
+            }
+            notes.Append("split=cadence+availability-guarded ");
 
             // --- 1/2/3. every named frame-path method carries a 4-arg scope IN ITS BODY --
             var missing = new List<string>();

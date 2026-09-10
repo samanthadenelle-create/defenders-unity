@@ -1,6 +1,6 @@
 # WO-1459: device frame floor - 26 fps median, 11 fps worst in a raid, with timeScale at 1.00
 
-**Status:** READY TO IMPLEMENT (instrument first; NO fix before the data names the cost)
+**Status:** BLOCKED - awaiting the split capture on the Seeker (needs the next APK); INSTRUMENTED frame split (lane FRAME-SPLIT 2026-09-10)
 **Silo:** Perf. Read-only profiling lane; touches nothing until the measurement lands.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1459 -> 1460 in the same edit).
@@ -211,3 +211,146 @@ attach over `adb`, or a `FrameTimingManager` (`cpuFrameTime` / `cpuRenderThreadF
 `gpuFrameTime`) readout folded into the existing `PerfReporter` roll-up. That is the next
 *instrumentation* step this WO's own status demands, and it is named here as the next measurement, not
 as a fix.
+
+## INSTRUMENTED 2026-09-10 (frame split)
+
+Edit-only lane (FRAME-SPLIT). No Unity run, no gate, no commit, nothing installed, no device touched.
+This section records the instrument that was ADDED; it measures nothing by itself — the numbers come
+from the next device capture. **No frame cost was changed.** Two `.cs` files touched, both via the
+Write/Edit tools on the Windows path (CLAUDE.md §0/§1 forbid bash redirects on `.cs`, which overrides
+the harness's "prefer bash for edits" hint); `python tools/gate_brace.py` reports
+`GATE_BRACE_SUMMARY bad=0 of 2` and both files carry zero NUL bytes.
+
+### What was added
+
+`Assets/_Modules/Core/Diagnostics/PerfReporter.cs` (+169 lines)
+
+| Line | What |
+|---|---|
+| `:65` | `public static string LastFrameSplit` — dev-HUD readout, mirrors `LastSummary` |
+| `:81-124` | frame-split state + the reasoning block (why, how, dedupe, availability) |
+| `:158` | `_lastSplitEmitTime` seeded in `Awake` |
+| `:184` | `SampleFrameSplit()` — per-frame ACCUMULATE, emits nothing |
+| `:197` | `ReportFrameSplit()` — called inside the existing `BudgetRollupInterval` branch, **first**, so it still prints when the scope table is empty (`ReportFrameBudget` early-outs at `:220`) |
+| `:267-302` | `SampleFrameSplit` body — `Guard.Try`-wrapped |
+| `:309-382` | `ReportFrameSplit` body — averages, worst, resets, and the asymmetric emit at `:373/:375` |
+
+**The two cadences are asymmetric on purpose.** The *available* line is data and earns one
+`FlowTrace.Step` per roll-up window (`:375`), adjacent to `frame budget:` so the pair reads as one
+window. The *unavailable* line goes through `FlowTrace.Once("Perf", "frame-split-unavailable", ...)`
+(`:373`) and therefore prints on the first window of the play session and never again — `Once` dedupes
+on `system + "/" + key` against a `HashSet`, `FlowTrace.cs:225-237`, cleared only by `ResetSession`
+(`:240`). The unavailable state is static for a whole run, so repeating it every second would add a log
+line per second and a WebTrace POST per second to restate a fact nothing can act on before a rebuild —
+the §12 log-volume failure the accumulating overload exists to prevent. `LastFrameSplit` still
+refreshes every window, so a dev HUD reads the current state either way.
+
+`Assets/Editor/Regression/FrameBudgetMeasureRegression.cs` (+107 lines)
+
+| Line | What |
+|---|---|
+| `:46-53` | header item 6, `[split]`, stating what it pins and why |
+| `:249-362` | the `[split]` case: the `frame split: ` literal, the API identifiers, the unavailable branch, `ReportFrameSplit` emits through `FlowTrace`, **and through `FlowTrace.Once` for the unavailable state** (`:307`), plus the cadence pins — `Update` must call `SampleFrameSplit()` every frame, must contain **exactly one** `ReportFrameSplit()` and it must sit **after** the `BudgetRollupInterval` guard, and `Update` must emit no trace line itself |
+| `:24-32`, `:188-189` | the stale flat **256 KiB** logcat-ring figure replaced: the ring is **per device and must be read with `adb logcat -g`** (16 MiB measured on the Seeker 2026-09-10, nothing evicted). The rule is unchanged — a per-frame emit is forbidden whatever the ring size, precisely because the ring you are logging into is unknown |
+
+Literal checks read `perfNoComments`, identifier checks read `perfCode` — the same split the existing
+`[rollup]` case uses at `:186` vs `:194`, so neither prose nor stripped literals can fake a pass.
+
+### The API, read at source this session
+
+`UnityEngine.FrameTimingManager` / `UnityEngine.FrameTiming` in `UnityEngine.CoreModule.dll`, read out
+of **this project's own editor**, `6000.4.8f1` (`ProjectSettings/ProjectVersion.txt:1`), two ways:
+
+- doc XML: `.../6000.4.8f1/Editor/Data/Managed/UnityEngine/UnityEngine.CoreModule.xml:14374-14422`
+  (the manager) and `:14314-14357` (the fields).
+- Cecil over the same DLL, for the exact signatures: `public static` class; `Boolean IsFeatureEnabled()`,
+  `Void CaptureFrameTimings()`, `UInt32 GetLatestTimings(UInt32 numFrames, FrameTiming[] timings)`;
+  `FrameTiming` is a public struct whose `cpuFrameTime` / `cpuMainThreadFrameTime` /
+  `cpuMainThreadPresentWaitTime` / `cpuRenderThreadFrameTime` / `gpuFrameTime` are `Double` and
+  `frameStartTimestamp` is `UInt64`.
+
+Field meanings quoted verbatim from that XML: `cpuFrameTime` = *"total CPU frame time calculated as the
+time between ends of two frames, which includes all waiting time and overheads"*; `cpuMainThreadFrameTime`
+= *"total time between start of the frame and when the main thread finished the job"*;
+`cpuRenderThreadFrameTime` = *"the frame time between start of the work on the render thread and when
+Present was called"*; `cpuMainThreadPresentWaitTime` = *"the CPU time the last frame spent in waiting for
+Present on the main thread"*; `gpuFrameTime` = *"the GPU time for a given frame"*. All in ms.
+
+**Dedupe, and why it matters:** `GetLatestTimings` hands back the latest *completed* frame, which lands
+a few frames behind, so consecutive `Update` calls can return the SAME frame. A repeated
+`frameStartTimestamp` is skipped and counted as a `repeats` term instead. Without this the `n=` count
+and every mean would be inflated — a number that looks like a mean and is not.
+
+### ⚠ The player setting, read this session — the lead's one-line switch
+
+```
+ProjectSettings/ProjectSettings.asset:157   enableFrameTimingStats: 0
+```
+
+And the Seeker APK is a **RELEASE** player: `Assets/Editor/AndroidBuild.cs:141` sets
+`options = BuildOptions.None` (no `BuildOptions.Development` anywhere in that file).
+
+**This lane did NOT edit ProjectSettings** — it never rides a lane commit. Flipping that field to `1` is
+the lead's call.
+
+⚠ **Stated at its actual tier (§11B.A).** What is PROVEN: the setting reads `0`, and the Android build
+sets `BuildOptions.None`. What is NOT proven from here: the exact rule by which Unity gates
+`FrameTimingManager` — `UnityEditor.CoreModule.xml:39769-39773` documents
+`PlayerSettings.enableFrameTimingStats` as nothing more than *"Enable frame timing statistics"* and says
+nothing about editor / development-player / release-player behaviour. So the honest expectation is:
+**if** the manager returns no timings on the device, the line will say
+`frame split: unavailable (... IsFeatureEnabled=false ...)` — **not zeros** — and that negative is
+itself the answer, because it names the reason and points at this flag. **The one cheap way to close
+it:** read the split line on the very next device log. If it carries numbers, the flag was never the
+gate; if it says unavailable, flip the flag, rebuild, recapture. Either way one capture settles it.
+
+📋 **Log volume:** the unavailable line prints **once per play session**, not once per second — see the
+asymmetric-cadence note above. So on a device where the setting is off the whole run costs exactly one
+extra line, and `grep -c "frame split: unavailable"` returning `1` is the expected reading, not `0`.
+
+**Graphics API context, recorded not asserted:** `ProjectSettings.asset:575-578` lists a
+`m_BuildTargetGraphicsAPIs` entry for `WindowsStandaloneSupport` only — there is **no Android entry**, so
+Android runs the automatic default. Whether that default's API exposes a GPU timer on this device is
+unproven from here; that is exactly why a zero GPU sum prints `gpu=n/a` rather than `gpu=0.0ms`.
+
+### The grep the lead runs on the next device logcat
+
+```
+grep -E "\[Flow:Perf\] frame split:" <logcat.txt> | tail -40
+grep -c "frame split: unavailable" <logcat.txt>
+```
+
+Line shape, at the same 1 s cadence as the existing `frame budget:` line and adjacent to it:
+
+```
+[Flow:Perf] frame split: cpuFrame=43.8ms cpuMain=12.1ms cpuRender=9.4ms gpu=31.7ms presentWait=4.9ms (worst main=20.1 render=12.0 gpu=41.0; n=23 frames over 23 polls, 0 repeats, window 1.00s)
+```
+
+(That example is FORMAT, not data — no split has been captured on any device yet.)
+
+### How to route the ticket from those numbers
+
+The frame to explain is ~43.9 ms (22-23 fps), of which the 20 `Measure` scopes explain ~5.8%. Compare
+each term against `cpuFrame`:
+
+| Reading | Verdict | Where the ticket goes |
+|---|---|---|
+| `cpuMain` ≈ `cpuFrame`, `cpuRender` and `gpu` well below | **CPU main-thread bound** | the ~94% is un-instrumented main-thread work — Animator, physics, UI/canvas rebuild, culling, engine callbacks, un-measured `Update`s. Widen the `Sites` table; do NOT touch `HeroLocomotion.Update` first (it is worth ≤ ~0.9 fps by this WO's own arithmetic) |
+| `cpuRender` ≈ `cpuFrame`, `cpuMain` well below | **render-thread bound** | draw submission / batching / material and shader variant churn |
+| `gpu` ≈ `cpuFrame`, and/or `presentWait` large on the main thread | **GPU bound** | fill rate, shader cost, resolution/`heightScale`, overdraw. `presentWait` large + `cpuMain` small is the classic "main thread is waiting for the GPU" signature |
+| all three well below `cpuFrame` | **waiting, not working** | vsync interval or thermal throttling, not a workload — pair with the `Thermal Status: 3 (SEVERE)` reading above and re-run cooled and unplugged before any code change |
+| `gpu=n/a` with healthy CPU terms | GPU timer absent on this API | not a finding about cost; the GPU branch stays unresolved |
+| `unavailable` | the switch above was never flipped | flip `enableFrameTimingStats`, rebuild, recapture |
+
+⚠ **Do not fix anything off this section.** It adds an instrument. Acceptance item 1 stays open until a
+device capture carries the split line and one row above is actually satisfied.
+
+### Stale number corrected in the same lane (was flagged, then ruled in by the lead)
+
+`FrameBudgetMeasureRegression.cs` said the Android logcat ring is **256 KiB** in two places — the header
+at `:26` and the `[4-arg]` reason string at `:175`. The 2026-09-10 device capture in this very WO
+(`adb logcat -g`, quoted at `:60-70`) measured **16 MiB per buffer with nothing evicted**. Both now say
+the ring size is **per device and must be read with `adb logcat -g`**, with the Seeker measurement named
+as a dated observation rather than a new constant to copy. The reasoning is untouched: a per-frame emit
+stays forbidden *because* the ring you are logging into is unknown. Replacing one hard number with
+another would have re-seeded the same duplicated-state failure CLAUDE.md §2/§5/§16 each describe.

@@ -61,6 +61,8 @@ namespace DeNelle.Core.Diagnostics
         public static string LastSummary { get; private set; } = "";
         /// <summary>The last sampled FPS (updated on every sample while enabled).</summary>
         public static float LastFps { get; private set; }
+        /// <summary>The last emitted CPU/render/GPU split line (WO-1459). Empty until the first roll-up.</summary>
+        public static string LastFrameSplit { get; private set; } = "";
 
         // ── Singleton / install ───────────────────────────────────────────────
         private static PerfReporter s_instance;
@@ -75,6 +77,54 @@ namespace DeNelle.Core.Diagnostics
         private readonly System.Collections.Generic.List<FlowTrace.FrameSample> _budgetBuf =
             new System.Collections.Generic.List<FlowTrace.FrameSample>(32);
         private readonly System.Text.StringBuilder _budgetSb = new System.Text.StringBuilder(256);
+
+        // ── Frame-split state (WO-1459) ───────────────────────────────────────
+        // WHY THIS EXISTS. The 2026-09-10 Seeker capture measured town-idle at 22-23 fps /
+        // 43.9 ms while ALL 20 FlowTrace.Measure scopes together accounted for a mean of
+        // 57.9 ms per 1000 ms of wall clock — about 5.8%. So ~94% of every frame sits
+        // OUTSIDE every instrumented scope, and the budget table above can only ELIMINATE
+        // those 20 scopes, never name the cause. The one cheap measurement that splits the
+        // remaining time is a CPU-main / render-thread / GPU breakdown, which is what this
+        // block adds. It is INSTRUMENTATION, not a fix: nothing here changes a frame cost.
+        //
+        // HOW. UnityEngine.FrameTimingManager (UnityEngine.CoreModule, verified against
+        // Unity 6000.4.8f1's own UnityEngine.CoreModule.xml — this project's editor version
+        // per ProjectSettings/ProjectVersion.txt):
+        //   CaptureFrameTimings()   snapshots the platform's timing data for later access
+        //   GetLatestTimings(n,[])  fills the array, RETURNS HOW MANY it could actually get
+        //   IsFeatureEnabled()      whether frame timing statistics are enabled
+        // and the FrameTiming fields used below, each quoted from that same xml:
+        //   cpuFrameTime                 total CPU frame time, end-of-frame to end-of-frame,
+        //                                including all waiting time and overheads, in ms
+        //   cpuMainThreadFrameTime       start of frame -> main thread finished the job, ms
+        //   cpuRenderThreadFrameTime     start of render-thread work -> Present called, ms
+        //   cpuMainThreadPresentWaitTime CPU time spent waiting for Present on the main
+        //                                thread last frame, ms  (the "wait" term)
+        //   gpuFrameTime                 GPU time for the frame, ms
+        //   frameStartTimestamp          used HERE only as a frame IDENTITY, to dedupe
+        //
+        // DEDUPE. GetLatestTimings hands back the latest COMPLETED frame, which lands a few
+        // frames behind. Two consecutive Update calls can therefore return the SAME frame.
+        // Counting it twice would inflate n and skew the means, so a repeat frameStartTimestamp
+        // is skipped and counted separately as a repeat. That is the difference between a mean
+        // and a number that merely looks like one.
+        //
+        // AVAILABILITY. On a platform where the feature is off the manager returns ZERO
+        // timings. Zeros would read as "the GPU is free", which is the exact misread that
+        // sends a perf ticket down the wrong branch, so the line says unavailable instead —
+        // and names IsFeatureEnabled so the reader can tell "feature off" from "on but the
+        // platform reported nothing". Likewise a zero gpu sum over a window that DID collect
+        // CPU samples prints n/a, not 0.0: GPU timers are graphics-API dependent.
+        private float _lastSplitEmitTime;
+        private readonly FrameTiming[] _splitBuf = new FrameTiming[1];
+        private readonly System.Text.StringBuilder _splitSb = new System.Text.StringBuilder(256);
+        private double _splitCpuFrameSum, _splitMainSum, _splitRenderSum, _splitGpuSum, _splitWaitSum;
+        private double _splitMainMax, _splitRenderMax, _splitGpuMax;
+        private int  _splitSamples;      // frames actually accumulated this window
+        private int  _splitPolls;        // Update ticks that asked for a timing this window
+        private int  _splitRepeats;      // polls that returned a frame already counted
+        private bool _splitFeatureOn;    // last IsFeatureEnabled reading
+        private ulong _splitLastFrameStamp;
 
         // =====================================================================
         //  Bootstrap
@@ -105,6 +155,7 @@ namespace DeNelle.Core.Diagnostics
             s_instance = this;
             _lastSampleTime = Time.unscaledTime;
             _lastBudgetTime = Time.unscaledTime;
+            _lastSplitEmitTime = Time.unscaledTime;
             _frames = 0;
         }
 
@@ -126,6 +177,12 @@ namespace DeNelle.Core.Diagnostics
 
             _frames++;
 
+            // WO-1459: ACCUMULATE ONLY. One CaptureFrameTimings + one GetLatestTimings per
+            // frame is what makes the roll-up below a genuine interval MEAN rather than a
+            // single instantaneous reading — the manager only snapshots when asked. Nothing
+            // is logged from here: emitting per frame is the logcat flood §12 forbids.
+            SampleFrameSplit();
+
             float now = Time.unscaledTime;
 
             // WO-1483: once a second, drain the frame-path Measure scopes and emit ONE
@@ -133,6 +190,11 @@ namespace DeNelle.Core.Diagnostics
             if (now - _lastBudgetTime >= BudgetRollupInterval)
             {
                 _lastBudgetTime = now;
+                // WO-1459: the split rides the SAME cadence, one adjacent line. It is emitted
+                // FIRST and unconditionally, because ReportFrameBudget early-outs when the
+                // scope table is empty and the split must still be readable in that case —
+                // an empty table is exactly the state that made the split necessary.
+                ReportFrameSplit();
                 ReportFrameBudget();
             }
 
@@ -190,6 +252,132 @@ namespace DeNelle.Core.Diagnostics
                          .Append(" over ").Append(_budgetBuf.Count).Append(" scopes");
 
                 FlowTrace.Step("Perf", _budgetSb.ToString());
+            });
+        }
+
+        // =====================================================================
+        //  Frame split (WO-1459) — CPU main thread vs render thread vs GPU
+        // =====================================================================
+
+        /// <summary>
+        /// Per-frame ACCUMULATE step. Asks FrameTimingManager for the latest completed
+        /// frame and folds it into the window sums. Emits NOTHING — the roll-up owns the
+        /// one line. Guarded: a diagnostic must never break a frame.
+        /// </summary>
+        private void SampleFrameSplit()
+        {
+            Guard.Try("Perf", "frame-split-sample", () =>
+            {
+                _splitPolls++;
+                _splitFeatureOn = FrameTimingManager.IsFeatureEnabled();
+
+                FrameTimingManager.CaptureFrameTimings();
+                uint got = FrameTimingManager.GetLatestTimings(1u, _splitBuf);
+                if (got == 0u) return;   // unsupported / stats off -> _splitSamples stays 0
+
+                var t = _splitBuf[0];
+
+                // Frame IDENTITY, not a duration: the same completed frame is handed back
+                // until a new one finishes, and double-counting it would fake the mean.
+                // A stamp of 0 is treated as NO identity rather than as one shared identity:
+                // whether every platform populates this field is not proven here, and if one
+                // reports 0 the naive compare would call every frame after the first a repeat
+                // and leave the window averaging a single frame while still printing n.
+                ulong stamp = t.frameStartTimestamp;
+                if (stamp != 0UL && stamp == _splitLastFrameStamp) { _splitRepeats++; return; }
+                _splitLastFrameStamp = stamp;
+
+                _splitCpuFrameSum += t.cpuFrameTime;
+                _splitMainSum     += t.cpuMainThreadFrameTime;
+                _splitRenderSum   += t.cpuRenderThreadFrameTime;
+                _splitGpuSum      += t.gpuFrameTime;
+                _splitWaitSum     += t.cpuMainThreadPresentWaitTime;
+
+                if (t.cpuMainThreadFrameTime   > _splitMainMax)   _splitMainMax   = t.cpuMainThreadFrameTime;
+                if (t.cpuRenderThreadFrameTime > _splitRenderMax) _splitRenderMax = t.cpuRenderThreadFrameTime;
+                if (t.gpuFrameTime             > _splitGpuMax)    _splitGpuMax    = t.gpuFrameTime;
+
+                _splitSamples++;
+            });
+        }
+
+        /// <summary>
+        /// Emit ONE <c>[Flow:Perf] frame split:</c> line per roll-up window, averaged over
+        /// the frames actually collected, then reset the window. Prints an explicit
+        /// unavailable line rather than zeros when the platform reported no timings.
+        /// </summary>
+        private void ReportFrameSplit()
+        {
+            Guard.Try("Perf", "frame-split", () =>
+            {
+                float splitNow = Time.unscaledTime;
+                float window   = splitNow - _lastSplitEmitTime;
+                _lastSplitEmitTime = splitNow;
+
+                _splitSb.Length = 0;
+                _splitSb.Append("frame split: ");
+
+                if (_splitSamples <= 0)
+                {
+                    // NOT zeros. Zeros would read as "nothing costs anything", which is the
+                    // misread that routes a perf ticket to the wrong thread.
+                    string enabled = _splitFeatureOn ? "true" : "false";
+                    _splitSb.Append("unavailable (FrameTimingManager returned 0 timings over ")
+                            .Append(_splitPolls).Append(" polls, IsFeatureEnabled=").Append(enabled)
+                            .Append("; this data requires the enableFrameTimingStats player ")
+                            .Append("setting, which reads 0 in ProjectSettings)");
+                }
+                else
+                {
+                    double inv = 1.0 / _splitSamples;
+                    double cpuFrame = _splitCpuFrameSum * inv;
+                    double main     = _splitMainSum     * inv;
+                    double render   = _splitRenderSum   * inv;
+                    double gpu      = _splitGpuSum      * inv;
+                    double wait     = _splitWaitSum     * inv;
+
+                    _splitSb.Append("cpuFrame=").Append(cpuFrame.ToString("F1")).Append("ms ")
+                            .Append("cpuMain=").Append(main.ToString("F1")).Append("ms ")
+                            .Append("cpuRender=").Append(render.ToString("F1")).Append("ms ")
+                            .Append("gpu=");
+
+                    // A zero GPU sum across a window that DID collect CPU samples means the
+                    // graphics API reported no GPU timer, not that the GPU was idle.
+                    if (_splitGpuSum <= 0.0) _splitSb.Append("n/a");
+                    else                     _splitSb.Append(gpu.ToString("F1")).Append("ms");
+
+                    _splitSb.Append(" presentWait=").Append(wait.ToString("F1")).Append("ms")
+                            .Append(" (worst main=").Append(_splitMainMax.ToString("F1"))
+                            .Append(" render=").Append(_splitRenderMax.ToString("F1"))
+                            .Append(" gpu=").Append(_splitGpuMax.ToString("F1"))
+                            .Append("; n=").Append(_splitSamples)
+                            .Append(" frames over ").Append(_splitPolls).Append(" polls, ")
+                            .Append(_splitRepeats).Append(" repeats, window ")
+                            .Append(window.ToString("F2")).Append("s)");
+                }
+
+                LastFrameSplit = _splitSb.ToString();
+
+                // CADENCE IS ASYMMETRIC ON PURPOSE (§12 log volume).
+                // AVAILABLE -> Step, once per roll-up window: those lines are the DATA, and
+                // they sit next to the frame-budget line so the two read as one window.
+                // UNAVAILABLE -> Once, keyed "Perf/frame-split-unavailable", so it prints on
+                // the FIRST window of the play session and never again
+                // (FlowTrace.Once dedupes on system + "/" + key against a HashSet,
+                // FlowTrace.cs:225-237, cleared only by ResetSession at :240). The state is
+                // static — a flag that is off stays off for the whole run — so repeating it
+                // every second would add a line per second, and WebTrace a POST per second,
+                // to say the same thing nothing can act on until a rebuild. The dev-HUD
+                // readout above still refreshes every window either way.
+                if (_splitSamples <= 0)
+                    FlowTrace.Once("Perf", "frame-split-unavailable", LastFrameSplit);
+                else
+                    FlowTrace.Step("Perf", LastFrameSplit);
+
+                _splitCpuFrameSum = 0.0; _splitMainSum = 0.0; _splitRenderSum = 0.0;
+                _splitGpuSum = 0.0;      _splitWaitSum = 0.0;
+                _splitMainMax = 0.0;     _splitRenderMax = 0.0; _splitGpuMax = 0.0;
+                _splitSamples = 0;       _splitPolls = 0;       _splitRepeats = 0;
             });
         }
 
