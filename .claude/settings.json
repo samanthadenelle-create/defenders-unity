@@ -42,18 +42,6 @@
         ]
       }
     ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/orchestration-cadence.ps1 -LaneDone",
-            "timeout": 15,
-            "statusMessage": "Lane done: board flip + top-up owed"
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [

@@ -23,6 +23,13 @@ $Stamp    = Join-Path $StampDir 'orchestration-cadence.stamp'
 if (-not (Test-Path $RuleFile)) { exit 0 }
 if (-not (Test-Path $StampDir)) { New-Item -ItemType Directory -Path $StampDir -Force | Out-Null }
 
+# 2026-09-09 21:0x: a lane reported "tenth identical fire" - the SubagentStop wiring re-prompted
+# the SUBAGENT on every stop attempt (the event runs in the subagent's context, not the lead's).
+# That event is UNWIRED in settings.json; -LaneDone stays for a manual invocation only. Hooks are
+# session-wide, so PostToolUse can also fire inside a lane - the shared stamp caps that at one
+# reminder per interval across all of them, which is acceptable. NOT PROVEN which context each
+# fire lands in; measure before changing the cadence again.
+
 $now = Get-Date
 $due = $true
 if (-not $LaneDone -and (Test-Path $Stamp)) {
