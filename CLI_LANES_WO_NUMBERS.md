@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-seventh pass): main line next free = **1653**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-eighth pass): main line next free = **1656**.
+> WO-1653 (placed resource building detail loses its production table), WO-1654 (troop stat rows: no icon channel, Damage -> Attack), WO-1655 (gate has no display name in either catalog) minted by the MANAGE-AUDIT lane on lead pre-assigned numbers.
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-seventh pass): main line next free = **1653**.
 > WO-1652 (UiKitTextFitGuard never fires in headless captures) minted by the MANAGE-COPY lane on a lead pre-assigned number.
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-sixth pass): main line next free = **1652**.
