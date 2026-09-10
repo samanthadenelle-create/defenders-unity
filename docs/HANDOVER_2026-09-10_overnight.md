@@ -216,6 +216,13 @@ tapping it closes the hub; WO-1654 icons + "Attack" on Footman and Archer, greys
 and a Quarry card showing Wood + Gold cost and "Level 0 of 4" while READY -> minting 1656/1657. No placed crystal mine on the owner save,
 so WO-1653's "Crystals / wave" is proven headless only. Pushed: dev = `26c58799c` (09:09).
 
+Sixth wave COMMITTED (10:06, gate chain 33: `wave6-compile4` COMPILE_GATE_OK, `wave6-reg4` REGRESSION_OK 496/496, `wave6-capture2` 97 all-OK,
+`wave6-navcapture2` 15 all-OK, `wave6-manageflow3` 20 all-OK + UI_LUMA_ORACLE_OK): WO-1652 remedy B (relaxKey tokens + FitGuardRelaxAllowlist,
+eight leashed entries, PartialSkip when no device log) + WO-1656 (stand-down message no longer accuses the producer); WO-1657 item B (founding
+wording "Not yet upgraded . 4 levels", ruling 14; item A = ruling 13); WO-1658 (eight bands to >= 37.65 px: ResHintHeightPx 26 -> 38, harvest
+well anchors, Manage hub cost band). WO-1659 CLOSED no live defect (`bf6ac69d9`). Next: APK #5, a device session to retire the allowlist
+entries (six harvest lines need the non-overflow path), push.
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
@@ -488,6 +495,10 @@ so WO-1653's "Crystals / wave" is proven headless only. Pushed: dev = `26c58799c
 
 13. **Upgrade cost basket** (WO-1657) - the placed Quarry card charges Wood + Gold on upgrade: `building-tiers.json` CostGold, pinned by
     BuildingUpgradeRegression:593, while WO-947 says regular = wood + iron. Does WO-947 govern upgrades (CostGold -> 0) or build cost only?
+
+14. **Founding-level heading copy** (WO-1657 item B) - a placed building with no tier entry is tier 0 = placed (your earlier ruling: the
+    ladder is 1-based for UPGRADES, not for existence), so the head no longer says "Level 0 of 4"; it now reads "Not yet upgraded . 4 levels"
+    (constant ManageVmProjection.FoundingLevelWord). Keep that wording or give another?
 
 ## 4. Findings the next seat must not re-derive
 
