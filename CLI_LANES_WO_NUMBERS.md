@@ -189,7 +189,40 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-thirty-fourth pass): main line next free = **1625**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-thirty-fifth pass): main line next free = **1628**.
+> *(CLI minting lane minted **WO-1625 through WO-1627** - three lane findings handed back by the
+> WO-1620 / WO-1623 / WO-1624 RESULT files, none owner-reported, each re-proven at source this
+> session rather than carried from the RESULT that raised it:
+> `f8-check-inbox.ps1:37-47` decides its liveness verdict on AGE ALONE (`$StaleSeconds = 90`, `:30`),
+> so it printed `F8_DAEMON_OK` for ~13 h with `pass-failed: ...` interpolated into the same line as
+> `detail={4}` and `passFails` at **9360** - and it is a TWO-file fix, because
+> `f8-inbox-lib.ps1:160-168` does not project `passFails` into the producer hashtable at all, while
+> the live `device` producer carries no such key (so a missing key MUST read as 0 or the fix degrades
+> a healthy producer) (1625);
+> `BuildCollectionBrowser.cs:312` writes `label.fontSizeMin = 16f` straight onto TMP, under the kit's
+> `FontHardFloor = 20f` (`ElarionUiKitObsidian.cs:3044`) and around `FitSingleLine`'s clamp at `:3062`
+> - the same file already calls that factory at `:461`, and routing through it also flips overflow to
+> Ellipsis (`:3065`) and arms `ArmFitGuard` (`:3069`), a behaviour change the ticket mandates and
+> names (1626);
+> and `docs/WEAPON_ARMOR_ORIENT_LOGIC.md:164-171` is short its preview rows, flagged TWICE in two days
+> (`WORK_ORDER_1616_*.RESULT.md:172-177` item 8, `WORK_ORDER_1620_*.RESULT.md:193-198`) (1627).
+> Bumped 1625 -> 1628 in this SAME edit.
+> **THE THIRD BRIEF'S PREMISE WAS DISPROVEN AT SOURCE AND SLOT 1627 WAS RE-SCOPED rather than minted
+> on it** (CLAUDE.md sec.11B): the brief said the Seating-Editor BOW preview passes
+> `_animator.transform` where the attach path passes `transform`. It does not. Bow ATTACH
+> (`EquipmentController.cs:1440`) and bow PREVIEW (`:5234`) carry the IDENTICAL ternary
+> `_animator != null ? _animator.transform : transform`, as does the sheathed preview (`:5390`) and
+> `TraceBowSeatMeasured` (`:1611`). `transform` was proven of the SHIELD attach (`:2918-2919`), and
+> `WORK_ORDER_1620_*.RESULT.md:200-203` generalised that across seams. **There is no bow
+> preview-vs-attach divergence and no code edit to make**; what remains is a cross-seam CONVENTION
+> difference (shield seam: bare `transform`; bow seam: the ternary; `_animator` comes from
+> `GetComponentInChildren`, `:5673-5674`) which is **not investigated and not claimed**. 1627 is
+> therefore a DOCS-ONLY ticket: write the missing table rows and put a `CORRECTION` banner on the
+> frozen 1620 RESULT, in the shape `WORK_ORDER_1616_*.RESULT.md:178` item 9 already uses. A lane sent
+> after the briefed "fix" would have edited a line that is already correct, against an in-code comment
+> (`:5266-5267`) that explicitly forbids it.)*
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-thirty-fourth pass): main line next free = **1625**.
 > *(CLI minted **WO-1621 through WO-1624** - four lane findings, none owner-reported, each with its
 > evidence opened at source or measured this session: the Title screen's PLAY INTRO caption
 > ellipsises to "PLAY INT..." on the owner's 1200x2670 portrait device frame
