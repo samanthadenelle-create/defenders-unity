@@ -41,9 +41,20 @@ using UnityEngine.UI;
 
 namespace DeNelle.Core.UI
 {
-    /// <summary>The numeric layout gate: Assert A (sub-touch-floor authoring) and
-    /// Assert B (no two interactive rects may intersect). Pure measurement — it never
-    /// moves, resizes or disables anything it inspects.</summary>
+    /// <summary>The numeric layout gate: Assert A (sub-touch-floor authoring), Assert B
+    /// (no two interactive rects may intersect) and Assert C (the glyphs inside a rect
+    /// must survive). Asserts A and B are pure measurement — they never move, resize or
+    /// disable anything they inspect.
+    /// <para>⚠ ASSERT C IS THE ONE EXCEPTION AND IT IS DECLARED HERE, NOT DISCOVERED LATER
+    /// (WO-1630). It calls <c>TMP_Text.ForceMeshUpdate()</c> on every label it examines,
+    /// which REGENERATES that label's mesh. There is no other way to read glyph survival:
+    /// the count lives on the generated mesh and <c>textInfo</c> is stale — or null — until
+    /// a layout pass has run. It is the same call WO-1628's own probe and
+    /// <c>NightMarketRuntimeLayoutRegression.CheckNotTruncated</c> make, and it regenerates
+    /// what was already there rather than changing any authored value: no rect moves, no
+    /// component is disabled, no string is rewritten. Leaving the "pure measurement"
+    /// sentence standing unqualified would have made this header lie, which is the failure
+    /// mode CLAUDE.md §15 names.</para></summary>
     public static class LayoutOracle
     {
         /// <summary>Containment slack, reference px. Sub-pixel seams are not defects.</summary>
@@ -61,6 +72,20 @@ namespace DeNelle.Core.UI
             ButtonOverText,
             /// <summary>Assert A — an authored band resolves under <see cref="ElarionUiKit.MinTouchPx"/>.</summary>
             SubTouchFloorBand,
+            /// <summary>Assert C (WO-1630) — a label draws fewer glyphs than the printable
+            /// characters it was given: the rect is where it belongs and the words inside it
+            /// are not.</summary>
+            TextTruncated,
+            /// <summary>Assert C, STAND-DOWN HALF — a label produced no textInfo after
+            /// ForceMeshUpdate (no font resolved), so its glyph survival was NOT proved this
+            /// run.
+            /// <para>⛔ ITS OWN KIND, NOT A PREFIX ON <see cref="TextTruncated"/>, AND THAT IS
+            /// THE WHOLE POINT. A caller asking "did Assert C go red?" matches on the kind; if
+            /// an unproved label shared the truncation kind, a run in which NO font resolved
+            /// would answer YES and a red-first proof could be satisfied by a total measurement
+            /// failure. A run where nothing could be measured must never be able to read as a
+            /// run where everything fit.</para></summary>
+            TextUnmeasured,
         }
 
         /// <summary>One defect, already worded for the log.</summary>
@@ -85,6 +110,20 @@ namespace DeNelle.Core.UI
         /// only decorate the messages — the numbers come from the resolved rects.</summary>
         public static List<Finding> Audit(GameObject canvasGo, string label, int w, int h)
         {
+            return Audit(canvasGo, label, w, h, out _);
+        }
+
+        /// <summary>As above, plus the number of labels Assert C actually MEASURED — the ones that
+        /// survived every exclusion and produced a real textInfo.
+        /// <para>⛔ THE COUNT EXISTS BECAUSE THE FINDINGS ALONE CANNOT DISTINGUISH "EVERY LABEL FIT"
+        /// FROM "NO RULE LOOKED AT A SINGLE LABEL" (WO-1630). Both return zero findings. A caller
+        /// that reports the first as clean without reading this number is the exact blindness the
+        /// whole ticket exists to end — a typo, an inverted comparison or a predicate that silently
+        /// excludes every control reports a clean run and looks identical to a healthy one.</para></summary>
+        public static List<Finding> Audit(GameObject canvasGo, string label, int w, int h,
+                                          out int glyphLabelsMeasured)
+        {
+            glyphLabelsMeasured = 0;
             var found = new List<Finding>();
             RectTransform root = canvasGo != null ? canvasGo.GetComponent<RectTransform>() : null;
             if (root == null) return found;
@@ -202,7 +241,157 @@ namespace DeNelle.Core.UI
                     "spill it into both neighbours. Author the band AT the floor." + host));
             }
 
+            // ---- ASSERT C: THE GLYPHS INSIDE THE RECT MUST SURVIVE (WO-1630) ------
+            //
+            //  ⛔ EVERY OTHER RULE ON THIS PATH MEASURES *WHERE* A RECT IS. A label whose
+            //  rect sits neatly inside its plate while TMP has cut the contents away is
+            //  invisible to all of them — which is why seven truncated Build Collections
+            //  captions rendered "nothing affordable y" at two of three aspects on
+            //  2026-09-10 while the geometry run on the same log passed 91 canvases,
+            //  correctly, because no rule looked. The only detector left for that whole
+            //  class was a human opening a PNG.
+            //
+            //  THE TEST IS VISIBLE GLYPHS vs PRINTABLE SOURCE CHARACTERS, read off the
+            //  GENERATED MESH. The shape is lifted from
+            //  NightMarketRuntimeLayoutRegression.CheckNotTruncated rather than invented
+            //  a third time. The lighter HubRepairAffordance.WarnIfClipped records in its
+            //  own doc block why the raw `characterCount < text.Length` form is the WEAKER
+            //  signal: characterCount is TMP's PARSED count, so a newline or a markup tag
+            //  in the source convicts a perfectly healthy string. Soft wrap alone does not
+            //  trip the glyph form either — a wrapped label that kept every character
+            //  counts every character, which is why WO-1628's 1920x1080 probe read
+            //  "2 lines, 22 chars" against a 22-character source and was NOT a defect.
+            //
+            //  ⚠ WHY NOT `isTextTruncated` AS THE TEST. Its semantics are overflow-mode
+            //  dependent and were NOT verified against TMP source when this rule was
+            //  written, so it is printed as a CORROBORATING field and never asserted on.
+            //  The glyph count is mode-agnostic: it catches a Truncate cut and an Ellipsis
+            //  substitution the same way.
+            foreach (var t in texts)
+            {
+                // Exclusions, each one justified where it sits. They mirror the
+                // ButtonOverText predicate above so the two rules cannot disagree about
+                // which labels exist.
+                if (t == null || !t.enabled || !t.gameObject.activeInHierarchy) continue;
+                if (t.color.a < 0.05f) continue;                 // invisible: it has no glyphs to lose
+                // Masked/scrolled-out content is clipped BY CONSTRUCTION. Its glyph count
+                // is a property of the viewport, not of the authoring, and cannot be judged.
+                if (ClippedOut(t.transform, canvasGo.transform, root)) continue;
+                // Overflow mode CANNOT truncate — by definition it spills instead. Sweeping
+                // those is pure noise, and noise is what pushes real findings past the
+                // caller's print cap. (Measured across Assets/ 2026-09-10: only Ellipsis,
+                // Truncate and Overflow are ever assigned in this tree; Linked and Page,
+                // whose glyphs legitimately live on ANOTHER label, do not occur, so they are
+                // deliberately not special-cased on a hypothetical.)
+                if (t.overflowMode == TextOverflowModes.Overflow) continue;
+
+                string src = t.text ?? string.Empty;
+                int printable = PrintableCount(src, t.richText);
+                if (printable == 0) continue;                    // nothing was asked for; a different rule's business
+
+                // A rect that cannot be resolved into root-canvas space cannot be JUDGED in
+                // root-canvas space -- exactly the skip ButtonOverText makes above. Substituting
+                // a zero rect and carrying on would print "(x 0..0, y 0..0)" findings against
+                // degenerate or unbuilt labels nobody ever sees, which is first-run noise on
+                // precisely the objects that are not the defect.
+                var trt = t.transform as RectTransform;
+                if (!TryRectInRoot(trt, root, out Rect tr)) continue;
+
+                t.ForceMeshUpdate();
+                var info = t.textInfo;
+                if (info == null || info.characterInfo == null)
+                {
+                    // ⛔ NOT A SILENT CONTINUE. A branch that returns having asserted nothing
+                    // is the most expensive defect class in this repo, and worse inside an
+                    // oracle that polices others for it. This is the same stand-down
+                    // CheckNotTruncated declares as a PartialSkip that NAMES the label.
+                    found.Add(new Finding(FindingKind.TextUnmeasured, true,
+                        "TEXT UNMEASURED" + at + " '" + PathOf(t.transform, canvasGo.transform) +
+                        "' (\"" + Snippet(src) + "\") produced NO textInfo after ForceMeshUpdate -- " +
+                        "no font resolved, so this label's glyph survival is NOT PROVED this run. " +
+                        "It is reported, never skipped: a run where nothing could be measured must " +
+                        "never read as a run where everything fit."));
+                    continue;
+                }
+
+                // MEASURED: it passed every exclusion and TMP produced a real mesh for it. Counted
+                // here rather than at the top of the loop, so an excluded or unmeasurable label can
+                // never inflate the number a caller uses to decide whether this run proved anything.
+                glyphLabelsMeasured++;
+
+                int count = Mathf.Min(info.characterCount, info.characterInfo.Length);
+                // A deliberate partial reveal is not a defect: typewriter/reveal effects author
+                // exactly this state on purpose, and convicting them would train the reader to
+                // ignore the rule. Both windows are checked because either one alone hides
+                // glyphs the mesh never drew.
+                if (t.maxVisibleCharacters < count || t.firstVisibleCharacter > 0) continue;
+
+                int visible = 0;
+                for (int i = 0; i < count; i++)
+                    if (info.characterInfo[i].isVisible) visible++;
+                if (visible >= printable) continue;
+
+                string facts = " " + RectStr(tr) + " at font " + t.fontSize.ToString("0.#") +
+                               " [autosize " + t.fontSizeMin.ToString("0.#") + ".." +
+                               t.fontSizeMax.ToString("0.#") + ", enabled=" + t.enableAutoSizing +
+                               "] overflow=" + t.overflowMode + " wrap=" + t.textWrappingMode +
+                               " isTextTruncated=" + t.isTextTruncated +
+                               " (corroborating only -- the glyph count is the assertion).";
+
+                if (visible == 0)
+                {
+                    found.Add(new Finding(FindingKind.TextTruncated, true,
+                        "TEXT CULLED WHOLE" + at + " '" + PathOf(t.transform, canvasGo.transform) +
+                        "' (\"" + Snippet(src) + "\") draws ZERO of " + printable +
+                        " printable glyphs." + facts +
+                        " The band has no room for one character at the resolved size."));
+                    continue;
+                }
+
+                found.Add(new Finding(FindingKind.TextTruncated, true,
+                    "TEXT TRUNCATED" + at + " '" + PathOf(t.transform, canvasGo.transform) +
+                    "' (\"" + Snippet(src) + "\") draws " + visible + " of " + printable +
+                    " printable glyphs." + facts +
+                    " The rect is where it belongs and the words inside it are not -- give the " +
+                    "band room or shorten the copy; lowering the font floor trades one unreadable " +
+                    "caption for another."));
+            }
+
             return found;
+        }
+
+        /// <summary>Non-whitespace characters of the source string — the denominator Assert C
+        /// measures visible glyphs against.
+        /// <para>⚠ MARKUP IS EXCLUDED WHEN THE LABEL PARSES IT, AND THAT GUARD IS MEASURED, NOT
+        /// DEFENSIVE. TMP strips tag characters out during parsing so they never reach
+        /// characterInfo, while <c>char.IsWhiteSpace</c> happily counts every one of them as
+        /// printable — so a raw non-whitespace count reads
+        /// <c>&lt;color=#FF6B6B&gt;No Wallet Bound&lt;/color&gt;</c>
+        /// (Assets/_Modules/Core/Debug/DebugCanvasUI.cs:156) as 36 printable against 13 drawn
+        /// and convicts a label that lost nothing.</para>
+        /// <para>KNOWN LIMIT, stated rather than hidden: a <c>&lt;sprite&gt;</c> tag draws one
+        /// visible glyph and contributes zero printable, so a sprite-bearing label reads
+        /// visible &gt; printable and is passed. That direction is a MISS, never a false
+        /// conviction, which is the safe direction for a rule that must survive its first
+        /// live run without being suppressed.</para>
+        /// <para>An unmatched '&lt;' is counted as an ordinary character rather than swallowing
+        /// the remainder of the string — copy containing a lone angle bracket is text, not
+        /// markup.</para></summary>
+        public static int PrintableCount(string s, bool richText)
+        {
+            if (string.IsNullOrEmpty(s)) return 0;
+            int n = 0;
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (richText && c == '<')
+                {
+                    int close = s.IndexOf('>', i + 1);
+                    if (close > i) { i = close; continue; }      // a real tag: skipped whole
+                }
+                if (!char.IsWhiteSpace(c)) n++;
+            }
+            return n;
         }
 
         // ---------------------------------------------------------------------

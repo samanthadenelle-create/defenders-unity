@@ -35,6 +35,22 @@
 //                                              was shot at (or _DEGRADED, an error)
 //     UI_GEOMETRY_OK <n> canvases           -- numeric layout assertions passed
 //                                              (or UI_GEOMETRY_FAIL x<n>, an error)
+//     UI_GLYPH_OK <clean>/<checked> panels  -- WO-1630: every measurable label drew every
+//                                              printable character it was given (or
+//                                              UI_GLYPH_FAIL x<n>, an error). Its own marker,
+//                                              not folded into the geometry one: that marker
+//                                              also covers text-off-plate, so a reader could
+//                                              not tell from it whether the glyph class
+//                                              specifically was clean. Carries `labels=<n>`,
+//                                              `baselined=<n>` and `unproved=<n>` on BOTH paths:
+//                                              how many labels were measured, how many findings
+//                                              are the WO-1636 known debt, and how many stood
+//                                              down because no font resolved. `labels=0` over any
+//                                              number of panels is a FAIL, because zero findings
+//                                              from zero measurements reads exactly like
+//                                              everything fitting. Any finding that is NOT a
+//                                              baseline entry reds -- including a new one on a
+//                                              panel that already carries entries.
 //     UI_ENDSTATE_FIT_OK <n> banners        -- WO-952: no `body rows COMPRESSED to fit`
 //                                              fired AND the RESOLVED band stack measures
 //                                              >= 0.995 of the content's own demand
@@ -542,6 +558,7 @@ namespace DeNelle.Editor
             _geoFailures.Clear();
             _geoCanvasesChecked = 0;
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _touchPanelsChecked = 0;
             _touchPanelsClean = 0;
             _endStateFits.Clear();
@@ -624,6 +641,10 @@ namespace DeNelle.Editor
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();   // WO-1060: UI_TOUCH_OK <clean>/<checked> panels
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             ReportEndStateFit();
 
             // The marker a headless caller greps to confirm the run produced pixels.
@@ -644,6 +665,7 @@ namespace DeNelle.Editor
             _geoFailures.Clear();
             _geoCanvasesChecked = 0;
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _touchPanelsChecked = 0;
             _touchPanelsClean = 0;
             ProveGeometryMoves();
@@ -665,6 +687,7 @@ namespace DeNelle.Editor
             _geoFailures.Clear();
             _geoCanvasesChecked = 0;
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _touchPanelsChecked = 0;
             _touchPanelsClean = 0;
 
@@ -673,6 +696,10 @@ namespace DeNelle.Editor
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
 
             const int expected = 15; // five workspaces x three landscape device targets
             if (count == expected && _fidelityDegraded == 0 && _geoFailures.Count == 0 &&
@@ -774,7 +801,16 @@ namespace DeNelle.Editor
                           " geometryFindings=" + _geoFailures.Count +
                           " touchPanels=" + _touchPanelsChecked +
                           " touchClean=" + _touchPanelsClean +
-                          " touchFindings=" + _touchFailures.Count);
+                          " touchFindings=" + _touchFailures.Count +
+                          // WO-1630: the glyph tallies ride the SAME stamp line as the sha,
+                          // for the same reason every other Report* total does -- so a ticket
+                          // quoting a glyph FAIL count can be checked against the log it says
+                          // it came from. glyphLabels=0 with panels>0 means nothing was measured.
+                          " glyphPanels=" + _glyphPanelsChecked +
+                          " glyphLabels=" + _glyphLabelsMeasured +
+                          " glyphFindings=" + _glyphLabelFindings +
+                          " glyphBaselined=" + _glyphBaselinedCount +
+                          " glyphUnproved=" + _glyphUnmeasuredCount);
             }
             catch (Exception e)
             {
@@ -1560,6 +1596,10 @@ namespace DeNelle.Editor
             int count = ForEachTarget("HonestFeedback", CaptureHonestFeedbackOnce);
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             if (count == 3 && _geoFailures.Count == 0 && _touchFailures.Count == 0)
                 Debug.Log("HONEST_FEEDBACK_CAPTURE_OK 3/3; geometry=clean; touch=clean");
             else
@@ -1613,6 +1653,7 @@ namespace DeNelle.Editor
             _fidelityReasons.Clear();
             _geoFailures.Clear();
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
 
             int count = CaptureReflectedSecondary(
@@ -1620,6 +1661,10 @@ namespace DeNelle.Editor
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             if (count == 3 && _fidelityDegraded == 0 && _geoFailures.Count == 0 &&
                 _touchFailures.Count == 0)
                 Debug.Log("MONTHLY_LEDGER_CAPTURE_OK 3/3; fidelity=clean; geometry=clean; touch=clean");
@@ -2195,6 +2240,7 @@ namespace DeNelle.Editor
             _geoFailures.Clear();
             _geoCanvasesChecked = 0;
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _touchPanelsChecked = 0;
             _touchPanelsClean = 0;
             ProveGeometryMoves();
@@ -2225,6 +2271,10 @@ namespace DeNelle.Editor
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             bool clean = count == LandscapeTargets.Length
                          && _fidelityDegraded == 0
                          && _geoMoveProof != null
@@ -2717,12 +2767,17 @@ namespace DeNelle.Editor
             _fidelityReasons.Clear();
             _geoFailures.Clear();
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
 
             int frames = ForEachTarget("PartyShopPopulated", CapturePartyShopPopulatedOnce);
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             if (frames == 3 && _geoFailures.Count == 0 && _touchFailures.Count == 0)
                 Debug.Log("PARTY_SHOP_POPULATED_CAPTURE_OK 3/3 frames; real Forge stock selected; touch=clean");
             else
@@ -2809,6 +2864,7 @@ namespace DeNelle.Editor
             _geoFailures.Clear();
             _geoCanvasesChecked = 0;
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _touchPanelsChecked = 0;
             _touchPanelsClean = 0;
             ProveGeometryMoves();
@@ -2816,6 +2872,10 @@ namespace DeNelle.Editor
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             bool clean = count == NightMarketTargets.Length
                          && _fidelityDegraded == 0
                          && _geoMoveProof != null
@@ -5838,6 +5898,12 @@ namespace DeNelle.Editor
             _geoCanvasesChecked++;
             var fails = new List<string>();
             var crossFails = new List<string>();   // WO-1060 Assert B, cross-parent half (touch marker only)
+            var glyphFails = new List<string>();        // WO-1630 Assert C (glyph marker only)
+            var glyphUnmeasured = new List<string>();   // WO-1630 Assert C stand-down (glyph marker only)
+            // WO-1630: labels Assert C actually MEASURED on this panel. Zero findings and zero
+            // measured is NOT a clean panel -- it is a panel nothing looked at, and the two must
+            // never print the same line. Stays 0 if the audit throws before Assert C runs.
+            int glyphLabelsMeasured = 0;
             string at = " [" + label + " @" + w + "x" + h + "]";
 
             try
@@ -5892,9 +5958,20 @@ namespace DeNelle.Editor
                 //  touch marker, because section 5 is explicit: four panels are known-bad
                 //  today and a widened assert wired straight into a live gate would turn
                 //  every commit red and be suppressed within the week.
-                foreach (var f in LayoutOracle.Audit(canvasGo, label, w, h))
+                //  WO-1630: Assert C's two kinds are branched out FIRST and go to NEITHER
+                //  bucket. Falling through to `fails` would put glyph survival into the
+                //  pre-existing geometry gate on its very first run, with nobody having
+                //  ever measured how many labels truncate across the captured set -- the
+                //  exact "a widened assert wired straight into a live gate turns every
+                //  commit red and is suppressed within the week" outcome §5 above forbids.
+                //  It gets its own tally and its own marker instead; see ReportGlyphOracle.
+                foreach (var f in LayoutOracle.Audit(canvasGo, label, w, h, out glyphLabelsMeasured))
                 {
-                    if (f.Kind == LayoutOracle.FindingKind.ButtonsOverlap && !f.SameParent)
+                    if (f.Kind == LayoutOracle.FindingKind.TextTruncated)
+                        glyphFails.Add(f.Message);   // WO-1630 Assert C
+                    else if (f.Kind == LayoutOracle.FindingKind.TextUnmeasured)
+                        glyphUnmeasured.Add(f.Message);   // WO-1630 Assert C, stand-down half
+                    else if (f.Kind == LayoutOracle.FindingKind.ButtonsOverlap && !f.SameParent)
                         crossFails.Add(f.Message);   // WO-1060 Assert B, cross-parent half
                     else
                         fails.Add(f.Message);        // unchanged gate
@@ -5903,6 +5980,11 @@ namespace DeNelle.Editor
             catch (Exception e)
             {
                 fails.Add("GEOMETRY AUDIT THREW" + at + " " + e.GetType().Name + ": " + e.Message);
+                // WO-1630: the throw is already a geometry FAIL, but Assert C must not be able
+                // to count this panel as measured-and-clean. It asserted nothing here.
+                glyphUnmeasured.Add("TEXT UNMEASURED" + at + " the audit THREW before Assert C " +
+                                    "could finish (" + e.GetType().Name + ") -- no label on this " +
+                                    "panel had its glyph survival proved this run.");
             }
 
             _geoFailures.AddRange(fails);
@@ -5933,6 +6015,41 @@ namespace DeNelle.Editor
             else if (baselined)
                 Debug.LogWarning("[touch-oracle] BASELINED (known debt, still red) " + label +
                                  " -- this panel's WO removes its own allow-list entry when it lands.");
+
+            // WO-1630: Assert C's own tally, kept apart from the touch one by KIND rather than
+            // by message prefix. The touch classifier above reads prefixes because its three
+            // rules already share the `fails` list; Assert C never enters that list, so a
+            // prefix test here would be a second, weaker copy of a routing decision the
+            // `foreach` above already made. Do NOT add these prefixes to the touch classifier.
+            _glyphPanelsChecked++;
+            _glyphLabelsMeasured += glyphLabelsMeasured;
+            _glyphLabelFindings += glyphFails.Count;
+            _glyphUnmeasuredCount += glyphUnmeasured.Count;
+            for (int i = 0; i < glyphUnmeasured.Count; i++) _glyphUnproved.Add(glyphUnmeasured[i]);
+            // WO-1636: split the panel's findings into KNOWN DEBT and NEW. A baselined finding
+            // is warned about and kept out of the marker; anything else reds, including a NEW
+            // finding on a panel that already carries entries -- the baseline is keyed per
+            // finding precisely so that stays true.
+            int baselinedHere = 0;
+            var freshFails = new List<string>();
+            for (int i = 0; i < glyphFails.Count; i++)
+            {
+                if (IsGlyphBaselined(label, glyphFails[i])) baselinedHere++;
+                else freshFails.Add(glyphFails[i]);
+            }
+            _glyphBaselinedCount += baselinedHere;
+
+            // ONE COMPACT LINE PER PANEL, ALWAYS. The per-finding lines below are capped at
+            // GeoMaxPrintedLines -- the seeding run hit that cap and 8 findings were never read,
+            // which is exactly why this line exists and is never capped.
+            if (glyphFails.Count > 0)
+                _glyphPanelTally.Add(label + " @" + w + "x" + h + ": " + glyphFails.Count +
+                                     " truncated label(s) (" + baselinedHere + " baselined, " +
+                                     freshFails.Count + " new)");
+
+            if (freshFails.Count == 0) _glyphPanelsClean++;
+            else
+                for (int i = 0; i < freshFails.Count; i++) _glyphFailures.Add(freshFails[i]);
         }
 
         // ---------------------------------------------------------------------
@@ -5971,6 +6088,233 @@ namespace DeNelle.Editor
             if (string.IsNullOrEmpty(label)) return false;
             for (int i = 0; i < TouchBaseline.Length; i++)
                 if (label.IndexOf(TouchBaseline[i], StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            return false;
+        }
+
+        // ---------------------------------------------------------------------
+        //  WO-1630 / WO-1636 -- THE GLYPH BASELINE. SEPARATE LIST, SEPARATE LAWS.
+        //
+        //  Seeded 2026-09-10 from TWO live runs of Assert C, and it took two because the
+        //  first could not print everything it found:
+        //    Builds/wave3-capture2   -- the FULL capture. 91 panel builds, 876 labels
+        //                               measured, 0 unproved, 68 truncations over 21 panel
+        //                               builds. It PRINTED 60 of the 68: GeoMaxPrintedLines
+        //                               caps printed lines, the per-panel tally is uncapped
+        //                               and read 68, and the run's own trailing line said
+        //                               "... and 8 more".
+        //    Builds/wave3-navcapture -- the NAVIGATION capture, run to READ THE OTHER 8
+        //                               rather than to raise the cap. 15 panel builds, 144
+        //                               labels, 19 findings of which 11 were already listed
+        //                               here -- so the 8 new ones are exactly the 8 the full
+        //                               run could not print, corroborated twice over.
+        //  ⛔ THE CAP WAS NOT RAISED, AND MUST NOT BE. Widening the reading is what closed
+        //  the gap; widening the cap would only have moved the ceiling for the next run.
+        //  Every entry below is a measurement,
+        //  never a guess: it carries the panel build, the label's hierarchy path and
+        //  the counts the oracle actually read, and the comment under it carries the
+        //  copy, the font, the autosize band and the overflow/wrap mode -- enough to
+        //  author the fix without re-running anything.
+        //
+        //  ⛔ THIS LIST MAY ONLY EVER SHRINK. Each fix deletes its own entries in the
+        //  same commit; adding an entry requires an owner ruling. When the last one
+        //  goes, DELETE THE MECHANISM -- an empty suppression list is an invitation
+        //  to add to it. Every line names WO-1636, the umbrella ticket that owns the
+        //  68 and whose sub-fixes delete these lines one panel family at a time.
+        //
+        //  ⛔ IT IS KEYED PER FINDING, NOT PER PANEL, AND THAT IS THE WHOLE DESIGN.
+        //  TouchBaseline suppresses a whole panel by name; doing that here would mean
+        //  a NEW caption cut on NightMarket -- which already owns 21 entries -- lands
+        //  silently under an existing suppression, which is how a baseline turns into
+        //  a blindfold. A finding is baselined ONLY when the panel build, the exact
+        //  hierarchy path AND the exact drawn-of-printable counts all match. Change
+        //  the copy, change the band, or cut one more glyph, and it reds.
+        //
+        //  ⛔ NOT ADDED TO TouchBaseline, which is shrink-only by owner ruling and
+        //  belongs to a different rule; growing it would violate its own header.
+        //
+        // ---------------------------------------------------------------------
+        private static readonly string[] GlyphBaseline =
+        {
+            // ---- BuildMenuUpgradeTower_1920x1080 (1) ----
+            "BuildMenuUpgradeTower_1920x1080|ObsidianPanel/PanelContent/Zone_Body/ActionBand/ObsBtn_Not enough resources/Label|16 of 18",
+            //   "NOT ENOUGH RESOURCES" at font 30 [30..44, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- RumorBoard_1920x1080 (4) ----
+            "RumorBoard_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/PosterHook|24 of 33",
+            //   "Done: Clear 3 waves at the western gate." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/RewardRow/RewardChip_Word/Fill/Label|4 of 10",
+            //   "A found item" at font 24 [24..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_underway/Body/PosterHook|27 of 62",
+            //   "Carry the sealed ledger past the flooded ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_longest/Body/PosterHook|27 of 49",
+            //   "Brom unfolds a letter soaked through and ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- RumorBoard_page2_1920x1080 (3) ----
+            "RumorBoard_page2_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch1/Body/PosterHook|29 of 61",
+            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_page2_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch2/Body/PosterHook|29 of 61",
+            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_page2_1920x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_avail1/Body/PosterHook|28 of 60",
+            //   "Track down why the first bell rings with ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- RumorBoard_2340x1080 (4) ----
+            "RumorBoard_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/PosterHook|28 of 33",
+            //   "Done: Clear 3 waves at the western gate." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/RewardRow/RewardChip_Word/Fill/Label|5 of 10",
+            //   "A found item" at font 24 [24..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_underway/Body/PosterHook|31 of 62",
+            //   "Carry the sealed ledger past the flooded ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_longest/Body/PosterHook|30 of 49",
+            //   "Brom unfolds a letter soaked through and ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- RumorBoard_page2_2340x1080 (3) ----
+            "RumorBoard_page2_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch1/Body/PosterHook|32 of 61",
+            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_page2_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch2/Body/PosterHook|32 of 61",
+            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_page2_2340x1080|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_avail1/Body/PosterHook|30 of 60",
+            //   "Track down why the first bell rings with ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- RumorBoard_2670x1200 (4) ----
+            "RumorBoard_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/PosterHook|28 of 33",
+            //   "Done: Clear 3 waves at the western gate." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/RewardRow/RewardChip_Word/Fill/Label|5 of 10",
+            //   "A found item" at font 24 [24..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_underway/Body/PosterHook|31 of 62",
+            //   "Carry the sealed ledger past the flooded ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_longest/Body/PosterHook|30 of 49",
+            //   "Brom unfolds a letter soaked through and ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- RumorBoard_page2_2670x1200 (3) ----
+            "RumorBoard_page2_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch1/Body/PosterHook|33 of 61",
+            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_page2_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_watch2/Body/PosterHook|33 of 61",
+            //   "Hold the western fields until the lantern..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RumorBoard_page2_2670x1200|ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_avail1/Body/PosterHook|30 of 60",
+            //   "Track down why the first bell rings with ..." at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- NightMarket_800x360 (6) ----
+            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/TopBar/Text|32 of 36",
+            //   "Connect a wallet to buy - prices shown in..." at font 30 [30..30, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-wood/Text|ZERO of 5",
+            //   "4,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-iron/Text|ZERO of 5",
+            //   "2,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-crystals/Text|ZERO of 3",
+            //   "400" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-stone/Text|ZERO of 5",
+            //   "1,500" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_800x360|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-coins/Text|ZERO of 3",
+            //   "600" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- NightMarket_915x412 (6) ----
+            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/TopBar/Text|32 of 36",
+            //   "Connect a wallet to buy - prices shown in..." at font 30 [30..30, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-wood/Text|ZERO of 5",
+            //   "4,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-iron/Text|ZERO of 5",
+            //   "2,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-crystals/Text|ZERO of 3",
+            //   "400" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-stone/Text|ZERO of 5",
+            //   "1,500" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_915x412|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-coins/Text|ZERO of 3",
+            //   "600" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- NightMarket_1280x720 (3) ----
+            "NightMarket_1280x720|ObsidianPanel/PanelFill/NightMarket/TopBar/Text|28 of 36",
+            //   "Connect a wallet to buy - prices shown in..." at font 30 [30..30, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_1280x720|ObsidianPanel/PanelFill/NightMarket/Body/Commerce/LandscapeActions/Scroll/Content/utility-row-MONTHLY LEDGER/ObsBtn_MONTHLY LEDGER/Label|12 of 13",
+            //   "MONTHLY LEDGER" at font 28 [28..28, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_1280x720|ObsidianPanel/PanelFill/NightMarket/BottomBand/CommerceCta/ObsBtn_Connect Wallet/Label|12 of 13",
+            //   "CONNECT WALLET" at font 30 [30..38, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- NightMarket_2670x1200 (6) ----
+            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/TopBar/Text|32 of 36",
+            //   "Connect a wallet to buy - prices shown in..." at font 30 [30..30, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-wood/Text|ZERO of 5",
+            //   "4,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-iron/Text|ZERO of 5",
+            //   "2,000" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-crystals/Text|ZERO of 3",
+            //   "400" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-stone/Text|ZERO of 5",
+            //   "1,500" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "NightMarket_2670x1200|ObsidianPanel/PanelFill/NightMarket/Body/Spotlight/ledger-coins/Text|ZERO of 3",
+            //   "600" at font 30 [30..32, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- EndStateWaveClear_repairAll_1920x1080 (1) ----
+            "EndStateWaveClear_repairAll_1920x1080|ObsidianPanel/PanelContent/Zone_Body/Zone_RewardWell/Band/SpoilCell2/SpoilRow/Label|17 of 19",
+            //   "DESTROYED, looted 120" at font 30 [30..50, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- HeroSelect_1080x1920 (5) ----
+            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Signature/Label|7 of 10",
+            //   "Shield Bash" at font 25 [25..50, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Skills/Label|7 of 11",
+            //   "Sword Heroic" at font 20 [20..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Skills/Label|8 of 10",
+            //   "Shield Bash" at font 20 [20..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Skills/Label|8 of 13",
+            //   "Warden's Grace" at font 20 [20..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "HeroSelect_1080x1920|ObsidianPanel/PanelContent/HeroStageWell/DetailsStrip/Col_Skills/Label|8 of 13",
+            //   "Radiant Strike" at font 20 [20..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            // ---- RealmWorkspace_1920x1080 (5) ----
+            "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/Label|12 of 14",
+            //   "THE NIGHT MARKET" at font 30 [30..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
+            "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/DeckCardPurpose_The Night Market|21 of 30",
+            //   "Browse clearly priced realm offers" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Defense Report/DeckCardPurpose_Defense Report|20 of 28",
+            //   "Review attacks against your town" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Monthly Ledger/DeckCardPurpose_Monthly Ledger|20 of 33",
+            //   "Review non-expiring monthly progress" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Game Guide/DeckCardPurpose_Game Guide|21 of 28",
+            //   "Read controls, systems, and help" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            // ---- RealmWorkspace_2340x1080 (4) ----
+            "RealmWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/DeckCardPurpose_The Night Market|23 of 30",
+            //   "Browse clearly priced realm offers" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            "RealmWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Defense Report/DeckCardPurpose_Defense Report|23 of 28",
+            //   "Review attacks against your town" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            "RealmWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Monthly Ledger/DeckCardPurpose_Monthly Ledger|23 of 33",
+            //   "Review non-expiring monthly progress" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            "RealmWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Game Guide/DeckCardPurpose_Game Guide|23 of 28",
+            //   "Read controls, systems, and help" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            // ---- RealmWorkspace_2670x1200 (4: 2 from the full capture, 2 from the navigation one) ----
+            "RealmWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/DeckCardPurpose_The Night Market|24 of 30",
+            //   "Browse clearly priced realm offers" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            "RealmWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Defense Report/DeckCardPurpose_Defense Report|23 of 28",
+            //   "Review attacks against your town" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636
+            "RealmWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Monthly Ledger/DeckCardPurpose_Monthly Ledger|23 of 33",
+            //   "Review non-expiring monthly progress" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
+            "RealmWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_Game Guide/DeckCardPurpose_Game Guide|23 of 28",
+            //   "Read controls, systems, and help" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
+            // ---- JourneyWorkspace_1920x1080 (2) ----
+            "JourneyWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/JourneyCardGrid/DeckCard_Quests/DeckCardPurpose_Quests|20 of 21",
+            //   "0 active . 0 ready to claim" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
+            "JourneyWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/JourneyCardGrid/DeckCard_Raids/DeckCardPurpose_Raids|18 of 25",
+            //   "Army 0 / 10 . train to open a camp" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
+            // ---- JourneyWorkspace_2340x1080 (1) ----
+            "JourneyWorkspace_2340x1080|ObsidianPanel/PanelFill/Zone_Body/JourneyCardGrid/DeckCard_Raids/DeckCardPurpose_Raids|20 of 25",
+            //   "Army 0 / 10 . train to open a camp" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
+            // ---- JourneyWorkspace_2670x1200 (1) ----
+            "JourneyWorkspace_2670x1200|ObsidianPanel/PanelFill/Zone_Body/JourneyCardGrid/DeckCard_Raids/DeckCardPurpose_Raids|20 of 25",
+            //   "Army 0 / 10 . train to open a camp" at font 30 [30..34, enabled=True] overflow=Truncate wrap=Normal -- WO-1636 (nav capture)
+            // ---- ManageWorkspace_2340x1080 (1) ----
+            "ManageWorkspace_2340x1080|ObsidianPanel/PanelContent/ManageCategoryLauncher/ManageCategoryGrid/ManageCard_ARMY/Label|11 of 14",
+            //   "BUILD A BARRACKS" at font 30 [30..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636 (nav capture)
+            // ---- ManageWorkspace_2670x1200 (1) ----
+            "ManageWorkspace_2670x1200|ObsidianPanel/PanelContent/ManageCategoryLauncher/ManageCategoryGrid/ManageCard_ARMY/Label|11 of 14",
+            //   "BUILD A BARRACKS" at font 30 [30..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636 (nav capture)
+        };
+
+        /// <summary>True when this exact finding was measured on the seeding run and is carried
+        /// as known debt. Matched on all THREE fields -- panel build, hierarchy path, counts --
+        /// so a new cut, a moved label or a changed string is never absorbed by a neighbour's
+        /// entry.</summary>
+        private static bool IsGlyphBaselined(string label, string message)
+        {
+            if (string.IsNullOrEmpty(label) || string.IsNullOrEmpty(message)) return false;
+            for (int i = 0; i < GlyphBaseline.Length; i++)
+            {
+                string e = GlyphBaseline[i];
+                int a = e.IndexOf('|');
+                if (a <= 0) continue;
+                int b = e.IndexOf('|', a + 1);
+                if (b <= a) continue;
+                if (!string.Equals(label, e.Substring(0, a), StringComparison.Ordinal)) continue;
+                string path = e.Substring(a + 1, b - a - 1);
+                if (message.IndexOf("'" + path + "'", StringComparison.Ordinal) < 0) continue;
+                string counts = e.Substring(b + 1);
+                if (message.IndexOf(" draws " + counts + " printable", StringComparison.Ordinal) < 0) continue;
+                return true;
+            }
             return false;
         }
 
@@ -6018,6 +6362,131 @@ namespace DeNelle.Editor
             Debug.LogError("UI_TOUCH_FAIL x" + _touchFailures.Count + " over " + _touchPanelsChecked +
                            " panels (" + _touchPanelsClean + " clean) -- each line names the panel, the " +
                            "control and the numbers. Author the band above the floor; do not rely on the clamp.");
+        }
+
+        // =====================================================================
+        //  WO-1630 -- ASSERT C'S OWN MARKER: DID THE GLYPHS SURVIVE?
+        // ---------------------------------------------------------------------
+        //  ⛔ A DISTINCT MARKER, AND THE PRECEDENT IS TWENTY LINES ABOVE. The
+        //  clamp/overlap class was given its own marker rather than folded into
+        //  the geometry one, because the geometry marker also covers
+        //  text-off-plate and a reader could not tell from it whether the
+        //  touch/overlap class specifically was clean. Folding glyph survival
+        //  into either existing tally repeats exactly that -- the same defect
+        //  that once let a small suite's pass read as the full suite's pass.
+        //
+        //  The emitted names are UI_GLYPH_OK / UI_GLYPH_FAIL and this method is
+        //  their ONE definition site. Judge by the marker on a FRESH log, never
+        //  by the exit code -- this repo's runners exit 0 on refusals and FAILs,
+        //  and marker-absent on a fresh log is a FAILURE, not an unknown.
+        //
+        //  ⚠ THREE OUTCOMES, NOT TWO, AND THE THIRD IS WHY THIS RULE CAN BE
+        //  TRUSTED. "Nothing measured" and "everything fit" are the SAME clean
+        //  line to a grep unless the reporter separates them, so:
+        //    * zero panels                       -> FAIL, nothing was proved
+        //    * panels measured, none proved      -> FAIL, no font resolved at all
+        //    * findings                          -> FAIL, each line names the label
+        //    * clean                             -> OK, carrying the unproved count
+        //  A run with unproved labels still prints OK when the rest fit, but the
+        //  count travels ON the marker line so it can never be read as silence.
+        // =====================================================================
+        private static readonly List<string> _glyphFailures = new List<string>();
+        private static readonly List<string> _glyphPanelTally = new List<string>();
+        private static readonly List<string> _glyphUnproved = new List<string>();
+        private static int _glyphPanelsChecked;
+        private static int _glyphPanelsClean;
+        private static int _glyphLabelFindings;
+        private static int _glyphUnmeasuredCount;
+        private static int _glyphLabelsMeasured;
+        private static int _glyphBaselinedCount;
+
+        /// <summary>Clear Assert C's tallies. Called beside every existing
+        /// <c>_touchFailures.Clear()</c> rather than from inside the reporter: every entry
+        /// point in this file READS the tallies AFTER its Report* calls (the pass/fail
+        /// verdicts and the capture stamp both do), so a self-clearing reporter would make
+        /// the glyph counts unreadable at precisely the place a ticket's quoted numbers get
+        /// checked against the log they claim to come from.</summary>
+        private static void ResetGlyphOracle()
+        {
+            _glyphFailures.Clear();
+            _glyphPanelTally.Clear();
+            _glyphUnproved.Clear();
+            _glyphPanelsChecked = 0;
+            _glyphPanelsClean = 0;
+            _glyphLabelFindings = 0;
+            _glyphUnmeasuredCount = 0;
+            _glyphLabelsMeasured = 0;
+            _glyphBaselinedCount = 0;
+        }
+
+        private static void ReportGlyphOracle()
+        {
+            if (_glyphPanelsChecked == 0)
+            {
+                Debug.LogError("UI_GLYPH_FAIL x0 -- ZERO panels were measured, so the glyph-survival " +
+                               "oracle proved nothing this run. A clean geometry marker beside this " +
+                               "line still means no rule looked inside a single label.");
+                return;
+            }
+            if (_glyphLabelsMeasured == 0)
+            {
+                // ⛔ THE BRANCH THAT MAKES THE CLEAN LINE MEAN ANYTHING. Panels were visited and NOT
+                // ONE label was measured, which returns zero findings and is byte-identical, to a
+                // grep, to a run in which everything fit. The two causes are separated because the
+                // fix is different for each.
+                if (_glyphUnmeasuredCount > 0)
+                    Debug.LogError("UI_GLYPH_FAIL x0 labels -- " + _glyphPanelsChecked + " panels were " +
+                                   "visited and NOT ONE label could be measured (" + _glyphUnmeasuredCount +
+                                   " stand-downs: TMP produced no textInfo, i.e. no font resolved). This " +
+                                   "run proves NOTHING about glyph survival and MAY NOT be cited as clean.");
+                else
+                    Debug.LogError("UI_GLYPH_FAIL x0 labels -- " + _glyphPanelsChecked + " panels were " +
+                                   "visited and Assert C's exclusions skipped EVERY label on all of them, " +
+                                   "with no stand-downs recorded. A predicate that silently excludes every " +
+                                   "control reports a clean run and looks identical to a healthy one; that " +
+                                   "is the blindness this rule exists to end, so it is a FAIL, not silence.");
+                int stood = Mathf.Min(_glyphUnproved.Count, GeoMaxPrintedLines);
+                for (int i = 0; i < stood; i++) Debug.LogError("[glyph-oracle] " + _glyphUnproved[i]);
+                return;
+            }
+
+            for (int i = 0; i < _glyphPanelTally.Count; i++)
+                Debug.LogWarning("[glyph-oracle] " + _glyphPanelTally[i]);
+            int unprovedShown = Mathf.Min(_glyphUnproved.Count, GeoMaxPrintedLines);
+            for (int i = 0; i < unprovedShown; i++)
+                Debug.LogWarning("[glyph-oracle] NOT PROVED " + _glyphUnproved[i]);
+
+            if (_glyphFailures.Count == 0)
+            {
+                Debug.Log("UI_GLYPH_OK " + _glyphPanelsClean + "/" + _glyphPanelsChecked +
+                          " panels labels=" + _glyphLabelsMeasured +
+                          " baselined=" + _glyphBaselinedCount +
+                          " unproved=" + _glyphUnmeasuredCount +
+                          " -- every measurable label " +
+                          "drew every printable character it was given. <clean>/<checked> counts PANEL " +
+                          "BUILDS, not distinct panels: each aspect is its own assertion, because a " +
+                          "caption that fits at one aspect can lose its last word at another.");
+                return;
+            }
+
+            int shown = Mathf.Min(_glyphFailures.Count, GeoMaxPrintedLines);
+            for (int i = 0; i < shown; i++) Debug.LogError("[glyph-oracle] " + _glyphFailures[i]);
+            if (_glyphFailures.Count > shown)
+                Debug.LogError("[glyph-oracle] ... and " + (_glyphFailures.Count - shown) +
+                               " more (the per-panel tally lines above are NOT capped)");
+
+            // ⛔ THE x-NUMBER IS THE NEW FINDINGS, NOT EVERY FINDING. A headline that counted
+            // baselined debt too would name a number with no printed lines under it -- 68 in a
+            // run whose only red is 8 -- and a marker whose count does not match its own evidence
+            // is the defect this whole rule exists to end. The total still travels, labelled.
+            Debug.LogError("UI_GLYPH_FAIL x" + _glyphFailures.Count + " NEW over " + _glyphPanelsChecked +
+                           " panels (" + _glyphPanelsClean + " clean, labels=" + _glyphLabelsMeasured +
+                           ", baselined=" + _glyphBaselinedCount +
+                           " of " + _glyphLabelFindings + " found" +
+                           ", unproved=" + _glyphUnmeasuredCount +
+                           ") -- each line names the label, both counts, the rect and the font. A rect " +
+                           "in the right place whose words were cut away is invisible to every other " +
+                           "rule on this path.");
         }
 
         private static void ReportGeometry()
@@ -6702,12 +7171,17 @@ namespace DeNelle.Editor
             _fidelityReasons.Clear();
             _geoFailures.Clear();
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
 
             int frames = ForEachTarget("BagUse", CaptureBagUseOnce);
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             if (frames == 6 && _fidelityDegraded == 0 && _geoFailures.Count == 0 &&
                 _touchFailures.Count == 0)
                 Debug.Log("BAG_USE_CAPTURE_OK 6/6 frames; production effect; hp+inventory asserted; touch=clean");
@@ -6817,6 +7291,7 @@ namespace DeNelle.Editor
             _fidelityReasons.Clear();
             _geoFailures.Clear();
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
 
             int count = 0;
@@ -6838,6 +7313,10 @@ namespace DeNelle.Editor
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             const int expected = 36;
             if (count == expected && _fidelityDegraded == 0 && _geoFailures.Count == 0 && _touchFailures.Count == 0)
                 Debug.Log("REGISTERED_SECONDARY_CAPTURE_OK 36/36 frames; routes=12; touch=clean");
@@ -7097,11 +7576,16 @@ namespace DeNelle.Editor
             _fidelityReasons.Clear();
             _geoFailures.Clear();
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
             int count = CaptureManageWorkspace();
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             if (count == 3 && _fidelityDegraded == 0 && _geoFailures.Count == 0 && _touchFailures.Count == 0)
                 Debug.Log("MANAGE_HUB_CAPTURE_OK " + count + "/3 frames; touch=clean");
             else
@@ -7117,11 +7601,16 @@ namespace DeNelle.Editor
             _fidelityReasons.Clear();
             _geoFailures.Clear();
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
             int count = CaptureManageDefense();
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             if (count == 3 && _fidelityDegraded == 0 && _geoFailures.Count == 0 && _touchFailures.Count == 0)
                 Debug.Log("MANAGE_DEFENSE_CAPTURE_OK " + count + "/3 frames; drawer=collapsed; touch=clean");
             else
@@ -7193,6 +7682,7 @@ namespace DeNelle.Editor
             _fidelityReasons.Clear();
             _geoFailures.Clear();
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
 
             var shots = new[]
@@ -7228,6 +7718,10 @@ namespace DeNelle.Editor
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             if (count == expected && ledger == 0 && _fidelityDegraded == 0 &&
                 _geoFailures.Count == 0 && _touchFailures.Count == 0)
                 Debug.Log("MANAGE_OPERATIONAL_CAPTURE_OK " + count + "/" + expected +
@@ -7282,6 +7776,7 @@ namespace DeNelle.Editor
             _fidelityReasons.Clear();
             _geoFailures.Clear();
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
 
             int count = CaptureManageLiveQueue(ManageTab.Defense) +
@@ -7290,6 +7785,10 @@ namespace DeNelle.Editor
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             if (count == 9 && _fidelityDegraded == 0 && _geoFailures.Count == 0 && _touchFailures.Count == 0)
                 Debug.Log("MANAGE_LIVE_QUEUE_CAPTURE_OK 9/9 frames; running+pending; touch=clean");
             else
@@ -8082,6 +8581,7 @@ namespace DeNelle.Editor
             _fidelityReasons.Clear();
             _geoFailures.Clear();
             _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
             _flowInventory.Clear();
             _flowStateNotes.Clear();
@@ -8124,6 +8624,10 @@ namespace DeNelle.Editor
             ReportFidelity();
             ReportGeometry();
             ReportTouchOracle();
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
             if (count == expected && ledger == 0 && _fidelityDegraded == 0 &&
                 _geoFailures.Count == 0 && _touchFailures.Count == 0)
                 // ⛔ THE FRAME SET IS DESCRIBED FROM THE PLAN, NOT RETYPED. This line used to read

@@ -18,7 +18,9 @@
 //    RED-B  two same-size controls stacked       -> Assert B must fire
 //    RED-B2 the same, across DIFFERENT parents   -> Assert B must fire AND
 //                                                   classify SameParent=false
+//    RED-C  a caption in a band too small for it -> Assert C must fire (WO-1630)
 //    GREEN  the identical controls, laid apart   -> the oracle must be silent
+//    GREEN-C the same caption given room         -> Assert C must be silent
 //
 //  RED-B2 is the case the sibling-only test walked past for months (WO-1058's
 //  Cancel inside Upgrade's band; the Night Market row drawn over the row above,
@@ -41,14 +43,31 @@
 //  canvas in an edit-mode batchmode call reports the editor's own 640x480 —
 //  reading a raw rect there was F8-5's root cause.
 //
-//  ⚠ NO TMP, NO CATALOG, NO PANEL BUILDERS. The controls are built by hand and
-//  armed with ElarionUiKit.ClampMinTouch, so the suite cannot go red because a
-//  font asset or a sprite failed to resolve headless. It proves the ORACLE, not
-//  the art pipeline.
+//  ⚠ NO CATALOG, NO PANEL BUILDERS, AND NO TMP IN CASES A / B / B2 / GREEN. Those
+//  controls are built by hand and armed with ElarionUiKit.ClampMinTouch, so they
+//  cannot go red because a font asset or a sprite failed to resolve headless. They
+//  prove the ORACLE, not the art pipeline.
+//
+//  ⛔ RED-C AND GREEN-C ARE THE DECLARED EXCEPTION, AND THEY MUST BE (WO-1630).
+//  Assert C measures GLYPHS ON A GENERATED MESH; there is no way to author that
+//  defect without a real TMP_Text and a resolvable font, so the constraint above
+//  cannot be honoured by the one case that needs it. It is not quietly bent —
+//  it is bounded, and the boundary is enforced:
+//    * both cases call ElarionUiKit.EnsureFont, the production resolution seam;
+//    * if no font resolves, the case adds a FAILURE that says the rule could not
+//      be proved. It does NOT stand down green. A suite that reports a clean line
+//      because its fixture never loaded is the exact blindness this whole file
+//      exists to end, and CLAUDE.md §11B forbids reading an unproved thing as a
+//      proved one;
+//    * a TextUnmeasured finding is likewise treated as a FAILURE of RED-C, never
+//      as the red it was looking for — a PartialSkip is not a red.
+//  So a missing font asset turns this suite RED with a message naming the font as
+//  the cause, and can never turn it green.
 // =====================================================================
 
 using System.Collections.Generic;
 using System.Text;
+using TMPro;
 using DeNelle.Core.UI;
 using UnityEditor;
 using UnityEngine;
@@ -84,10 +103,12 @@ namespace DeNelle.Editor.Regression
 
             foreach (var a in Aspects)
             {
-                casesRun += 4;
+                casesRun += 6;
                 CaseSubFloor(a.x, a.y, failures, log);
                 CaseOverlapSiblings(a.x, a.y, failures, log);
                 CaseOverlapCrossParent(a.x, a.y, failures, log);
+                CaseGlyphTruncated(a.x, a.y, failures, log);   // WO-1630 RED-C
+                CaseGlyphFits(a.x, a.y, failures, log);        // WO-1630 GREEN-C
                 CaseClean(a.x, a.y, failures, log);
             }
 
@@ -105,7 +126,9 @@ namespace DeNelle.Editor.Regression
             reason = "UI_TOUCH_ORACLE_OK " + casesRun + "/" + casesRun + " cases -- LayoutOracle went RED on " +
                      "an authored sub-MinTouchPx(" + ElarionUiKit.MinTouchPx.ToString("0.#") + ") band and on " +
                      "stacked controls (sibling AND cross-parent), named both widgets and the overlap in px, " +
-                     "and stayed silent on the same controls laid apart -- at " + Aspects.Length + " landscape aspects.\n" + log;
+                     "and stayed silent on the same controls laid apart -- at " + Aspects.Length + " landscape aspects. " +
+                     "WO-1630: it ALSO went red on a caption whose band cannot hold it, naming the label and " +
+                     "both glyph counts, and stayed silent on the same caption given room.\n" + log;
             return true;
         }
 
@@ -243,6 +266,151 @@ namespace DeNelle.Editor.Regression
         }
 
         // ---------------------------------------------------------------------
+        //  RED-C — Assert C must fire when a caption's band cannot hold it.
+        //
+        //  The defect is authored to WO-1628's own signature: the Build Collections
+        //  category subtitle, fitted with the production ElarionUiKit.FitBlock (normal
+        //  wrap, bounded autosize, Truncate) into a band too short for the copy. That
+        //  panel rendered "nothing affordable y" — the last word cut after one letter — at
+        //  two of three aspects while a geometry run on the same log passed 91 canvases,
+        //  because every other rule on that path measures WHERE the rect is.
+        //
+        //  ⚠ WO-1628's own figure for that panel is "21 of 22", and it is DELIBERATELY NOT
+        //  reused as an expectation here: that pair is characterCount vs text.Length, a
+        //  different metric on a different denominator from this rule's visible-glyphs vs
+        //  printable-characters. Carrying a number across metrics is how this repo's copied
+        //  state goes stale, so the counts are read off the run, never quoted from a doc.
+        //
+        //  A healthy caption carrying the SAME string sits in the same canvas, so a rule
+        //  that flags EVERY label fails here rather than shipping and being suppressed.
+        // ---------------------------------------------------------------------
+        private const string GlyphProbeCopy = "Nothing you can afford is in here yet";
+
+        private static void CaseGlyphTruncated(int w, int h, List<string> failures, StringBuilder log)
+        {
+            string at = w + "x" + h;
+            GameObject canvas = null;
+            try
+            {
+                canvas = BuildCanvas(w, h, out _);
+                var host = Host(canvas.transform, "CardGrid");
+
+                // A band ~6% x 3% of the canvas: at 1920x1080 reference px that is roughly
+                // 115x32, which cannot hold 37 characters at the 18px autosize floor.
+                var cut = KitLabel(host, "cut-caption", GlyphProbeCopy,
+                                   new Vector2(0.06f, 0.60f), new Vector2(0.12f, 0.63f), failures, at);
+                var roomy = KitLabel(host, "roomy-caption", GlyphProbeCopy,
+                                     new Vector2(0.35f, 0.30f), new Vector2(0.90f, 0.55f), failures, at);
+                if (cut == null || roomy == null) return;   // KitLabel already recorded WHY
+
+                Settle(canvas);
+                var found = LayoutOracle.Audit(canvas, "SyntheticGlyphTruncated", w, h, out int measured);
+
+                // THE SAME FLOOR GREEN-C CARRIES, for the same reason: two labels were authored
+                // into this canvas, so anything less than two measured means the fixture, not the
+                // rule, is what this run is reporting on.
+                if (measured < 2)
+                {
+                    failures.Add("RED-C @" + at + ": Assert C measured " + measured + " of the 2 labels " +
+                                 "this case authored, so whatever it did or did not find is a statement " +
+                                 "about the FIXTURE, not about the rule. Not a red and not a pass.");
+                    return;
+                }
+
+                // ⛔ A STAND-DOWN IS NOT A RED. If the oracle could not measure the label,
+                // RED-C proved nothing and says so rather than passing on the wrong kind.
+                var unmeasured = First(found, LayoutOracle.FindingKind.TextUnmeasured);
+                if (unmeasured != null)
+                {
+                    failures.Add("RED-C @" + at + ": Assert C could NOT MEASURE the fixture, so the rule " +
+                                 "is UNPROVEN this run -- not passed. A run where nothing could be measured " +
+                                 "must never read as a run where everything fit. Line: " + unmeasured);
+                    return;
+                }
+
+                var hit = First(found, LayoutOracle.FindingKind.TextTruncated);
+                if (hit == null)
+                {
+                    failures.Add("RED-C @" + at + ": a " + GlyphProbeCopy.Length + "-character caption was " +
+                                 "fitted into a band ~6% x 3% of the canvas with the production FitBlock " +
+                                 "(Truncate) and Assert C did NOT fire. Glyph survival is not being measured, " +
+                                 "and every clean glyph marker since is worthless -- this is WO-1628's defect " +
+                                 "walking free, where the rect is in the right place and the words are gone.");
+                    return;
+                }
+                if (!hit.Contains("cut-caption"))
+                    failures.Add("RED-C @" + at + ": Assert C fired but did not NAME the offending label " +
+                                 "('cut-caption' absent). The owner is colourblind and cannot act on an " +
+                                 "unnamed control. Line: " + hit);
+                if (!hit.Contains(" of "))
+                    failures.Add("RED-C @" + at + ": Assert C fired without BOTH counts (drawn of printable). " +
+                                 "'this is truncated' is useless; the numbers are what size the band. Line: " + hit);
+                // EVERY finding is checked, not just the first: a rule that flags the healthy
+                // caption in a LATER line is over-firing exactly as much, and would be suppressed
+                // within a week. First-line-only would have let that through.
+                for (int i = 0; i < found.Count; i++)
+                    if (found[i].Message.Contains("roomy-caption"))
+                        failures.Add("RED-C @" + at + ": Assert C flagged the HEALTHY caption too -- the rule " +
+                                     "is over-firing and would be suppressed within a week. Line: " + found[i].Message);
+
+                log.AppendLine("  [red-C @" + at + "] " + hit);
+            }
+            finally { Kill(canvas); }
+        }
+
+        // ---------------------------------------------------------------------
+        //  GREEN-C — the same caption, given room. Assert C must be silent.
+        // ---------------------------------------------------------------------
+        private static void CaseGlyphFits(int w, int h, List<string> failures, StringBuilder log)
+        {
+            string at = w + "x" + h;
+            GameObject canvas = null;
+            try
+            {
+                canvas = BuildCanvas(w, h, out _);
+                var host = Host(canvas.transform, "CardGrid");
+
+                var roomy = KitLabel(host, "roomy-caption", GlyphProbeCopy,
+                                     new Vector2(0.20f, 0.30f), new Vector2(0.90f, 0.60f), failures, at);
+                if (roomy == null) return;
+
+                Settle(canvas);
+                var found = LayoutOracle.Audit(canvas, "SyntheticGlyphFits", w, h, out int measured);
+
+                // ⛔ THE FLOOR, AND IT IS ASSERTED BEFORE ANY EXISTENCE TEST. A GREEN case's whole
+                // verdict is SILENCE, so without this every assertion below hangs off "a finding
+                // exists" and the method checks ZERO things when the fixture is absent -- it would
+                // report green over a canvas that measured nothing at all. That is
+                // RaidCooldownRegression case 5 (2026-08-21), where a teardown left a DESTROYED
+                // state installed and the cases under it asserted against nothing while staying in
+                // the green column. `measured` is Assert C's own count of labels it actually read a
+                // mesh for, so this asks the oracle to prove it looked before its silence is
+                // allowed to mean anything.
+                if (measured < 1)
+                {
+                    string why = First(found, LayoutOracle.FindingKind.TextUnmeasured) ??
+                                 "and NO TextUnmeasured finding either, so Assert C's exclusions " +
+                                 "skipped the label outright rather than standing down on it";
+                    failures.Add("GREEN-C @" + at + ": Assert C MEASURED NOTHING (labels=" + measured +
+                                 ") on a canvas built with one healthy caption, so this case's silence " +
+                                 "proves nothing and is NOT a pass. " + why);
+                    return;
+                }
+
+                var hit = First(found, LayoutOracle.FindingKind.TextTruncated);
+                if (hit != null)
+                {
+                    failures.Add("GREEN-C @" + at + ": a caption with room to spare was reported TRUNCATED. " +
+                                 "A rule that fires on healthy copy gets suppressed, not fixed. Line: " + hit);
+                    return;
+                }
+                log.AppendLine("  [green-C @" + at + "] " + GlyphProbeCopy.Length +
+                               " chars in a 70% x 30% band -- Assert C silent.");
+            }
+            finally { Kill(canvas); }
+        }
+
+        // ---------------------------------------------------------------------
         //  GREEN — the same controls, laid correctly. The oracle must be silent.
         // ---------------------------------------------------------------------
         private static void CaseClean(int w, int h, List<string> failures, StringBuilder log)
@@ -346,6 +514,39 @@ namespace DeNelle.Editor.Regression
 
             ElarionUiKit.ClampMinTouch(btn);             // the production guard, not a stand-in
             return btn;
+        }
+
+        /// <summary>A kit-contract CAPTION for Assert C: a real TMP_Text, fitted with the
+        /// production <see cref="ElarionUiKit.FitBlock"/> (normal wrap, bounded autosize,
+        /// Truncate) so the fixture carries exactly the settings the Build Collections subtitle
+        /// carries on a real panel.
+        /// <para>⛔ RETURNS NULL AND RECORDS A FAILURE WHEN NO FONT RESOLVES. It never returns a
+        /// fontless label for the case to measure, because the resulting silence would be
+        /// indistinguishable from a healthy layout — see this file's header. The caller stops.</para></summary>
+        private static TMP_Text KitLabel(Transform parent, string name, string copy,
+                                         Vector2 min, Vector2 max, List<string> failures, string at)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = min; rt.anchorMax = max;
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+
+            var t = go.GetComponent<TextMeshProUGUI>();
+            ElarionUiKit.EnsureFont(t);                  // the production resolution seam
+            if (t.font == null)
+            {
+                failures.Add("GLYPH FIXTURE @" + at + ": ElarionUiKit.EnsureFont resolved NO TMP font for '" +
+                             name + "', so Assert C cannot be proved this run. This is a FAILURE, not a " +
+                             "stand-down: a suite that reports clean because its fixture never loaded is the " +
+                             "blindness this file exists to end. Fix the font asset, then re-run.");
+                return null;
+            }
+            t.text = copy;
+            t.color = Color.white;                       // opaque: the alpha exclusion must not eat it
+            t.alignment = TextAlignmentOptions.Top;
+            ElarionUiKit.FitBlock(t, 18f, 21f);  // the production fit, not a stand-in
+            return t;
         }
 
         /// <summary>Force a full synchronous layout pass. Twice, matching the capture harness:

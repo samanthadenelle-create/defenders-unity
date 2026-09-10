@@ -1,6 +1,6 @@
 # WO-1630 - The capture oracle measures WHERE every rect is and never whether the glyphs inside it survived
 
-**Status:** READY TO IMPLEMENT
+**Status:** FIXED 2026-09-10 - fourth LayoutOracle finding kind (visible glyphs vs printable source) with its own UI_GLYPH marker from all 14 report sites, RED-first synthetic case, per-finding shrink-only GlyphBaseline seeded from two measured runs (68); first live run found 68 cut labels over 21 panels (WO-1636); green on wave3-capture9 / navcapture5 (was: IMPLEMENTED - awaiting gate + capture (lane GLYPH-ORACLE 2026-09-10))
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1629 -> 1631 in the SAME edit, with WO-1629)
 **Silo / Lane:** Core UI oracle + capture harness
 (`Assets/_Modules/Core/UI/LayoutOracle.cs`, `Assets/Editor/UICaptureLaunch.cs`,
