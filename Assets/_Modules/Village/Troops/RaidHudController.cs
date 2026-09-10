@@ -18,8 +18,13 @@
 //
 // COLOURBLIND-SAFE (repo law): every state reads by SHAPE / MOTION / NUMBER, never
 // hue alone — the timer is a number + a shrinking bar (+ a pulse under 30s), stars
-// are filled/empty DIAMONDS + an "n/3" count, destruction is a number + a fill bar,
-// troops are a plain "alive/deployed" number.
+// are large/small DIAMONDS + a pop on loss + an "n/3" count, destruction is a number
+// + a fill bar, troops are a plain "alive/deployed" number.
+//
+// ⚠ WO-1594: the stars bind RaidScoring.PresentationStars (HONOR — three lit at engage,
+// snuffed as milestones pass), NOT ProjectedStars (the earn-up settle preview). Do not
+// "restore" ProjectedStars here: a HUD that earns up from 0 tells the player nothing
+// during the fight and then jumps at the end, which is the defect the ticket names.
 //
 // ASCII-only runtime strings. Canon: the village is Elarion (never Avalon).
 // =============================================================================
@@ -62,6 +67,23 @@ namespace DeNelle.Village
 
         private static readonly Color StarLit = ElarionUi.Gilt;
         private static readonly Color StarDim = new Color(1f, 1f, 1f, 0.14f);
+
+        // ── WO-1594 honor stars: SHAPE carries the state, not hue ────────────────────────
+        // The owner is red/green colourblind (repo law), and dimming alone is luminance, not
+        // shape - on a bright band a 14% alpha diamond and a gilt one can read as the same
+        // token. A snuffed star therefore also SHRINKS, so lit vs lost is a silhouette
+        // difference at a glance, with the "n/3" number as the third, hue-free channel.
+        private const float StarSizeLit = 34f;
+        private const float StarSizeLost = 20f;
+
+        /// <summary>Seconds the death-pop animation runs on the star that just went dark.</summary>
+        private const float StarPopSeconds = 0.45f;
+
+        // Presentation-only snuff state: which tier we last painted, which diamond is popping,
+        // and how long it has left. Unscaled, so a hit-stop or a hold cannot freeze the feedback.
+        private int _shownStars = -1;
+        private int _poppingStar = -1;
+        private float _popTimer;
 
         // =====================================================================
         //  Self-install — one HUD per RaidBase_* scene
@@ -228,7 +250,7 @@ namespace DeNelle.Village
                 var img = d.GetComponent<Image>();
                 img.raycastTarget = false;
                 var rt = img.rectTransform;
-                rt.sizeDelta = new Vector2(34f, 34f);
+                rt.sizeDelta = new Vector2(StarSizeLit, StarSizeLit);
                 rt.localRotation = Quaternion.Euler(0f, 0f, 45f);   // diamond
                 _starDiamonds[i] = img;
             }
@@ -291,11 +313,42 @@ namespace DeNelle.Village
                 if (_timerLabel != null) _timerLabel.transform.localScale = Vector3.one * pulse;
             }
 
-            // Stars: filled/empty diamonds (shape) + n/3 (number).
-            int stars = s.ProjectedStars;
+            // ── WO-1594 HONOR STARS ──────────────────────────────────────────────────────
+            // Bind PresentationStars, NOT ProjectedStars. ProjectedStars is the settle preview
+            // and it EARNS UP from 0, so the bar sat at 0/3 through the whole fight and jumped
+            // at the end - which narrates nothing and is the felt defect this ticket names. The
+            // honor read starts at 3/3 the instant the raid engages and goes DARK as milestones
+            // pass, so the pressure is legible without arithmetic.
+            int stars = s.PresentationStars;
+            if (_shownStars >= 0 && stars < _shownStars)
+            {
+                // A star just died: pop the highest one that is now dark. Motion, not hue.
+                _poppingStar = Mathf.Clamp(stars, 0, _starDiamonds.Length - 1);
+                _popTimer = StarPopSeconds;
+            }
+            _shownStars = stars;
+
+            if (_popTimer > 0f) _popTimer = Mathf.Max(0f, _popTimer - RefreshInterval);
+            if (_popTimer <= 0f) _poppingStar = -1;
+
             for (int i = 0; i < _starDiamonds.Length; i++)
-                if (_starDiamonds[i] != null)
-                    _starDiamonds[i].color = i < stars ? StarLit : StarDim;
+            {
+                var d = _starDiamonds[i];
+                if (d == null) continue;
+                bool lit = i < stars;
+                d.color = lit ? StarLit : StarDim;
+
+                // SHAPE is the primary channel (colourblind law): a lost star is visibly smaller.
+                float size = lit ? StarSizeLit : StarSizeLost;
+                if (i == _poppingStar && _popTimer > 0f)
+                {
+                    // One outward flare that settles into the smaller silhouette, so the moment
+                    // of loss is READ rather than noticed later.
+                    float t = Mathf.Clamp01(_popTimer / StarPopSeconds);
+                    size = Mathf.Lerp(StarSizeLost, StarSizeLit * 1.35f, t);
+                }
+                d.rectTransform.sizeDelta = new Vector2(size, size);
+            }
             if (_starCount != null) _starCount.text = stars + "/3";
 
             // THE OBJECTIVE: spire HP remaining. Colourblind-safe - a NUMBER plus a bar

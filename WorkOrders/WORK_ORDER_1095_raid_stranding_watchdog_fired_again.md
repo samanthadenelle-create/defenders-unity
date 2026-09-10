@@ -1,6 +1,6 @@
 # WORK ORDER 1095 — the raid stranding watchdog fired again: 225 s in a 180 s raid that never finalized
 
-**Status:** READY TO IMPLEMENT — **attribution unresolved, read the caveat first**
+**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane RAID)
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1095 → 1096 in the same edit)
 **Silo:** Raid
 **Severity:** P1 — a felt softlock; only the last-resort watchdog got the player out
@@ -64,6 +64,24 @@ subscription. **The running Editor was compiled against in-flight work, not agai
 3. If it strands on clean code too, **then** re-open WO-1437 as a regression, with this capture as
    the evidence, and pin it — a P0 that passed a felt-test and came back within 48 h needs a
    behavioural regression case, not a third manual fix.
+
+## ⚠ ADDENDUM 2026-09-09 — the attribution above is SETTLED, and the "Do NOT" below is narrowed
+
+This body was written before the RCA. `docs/READY_RCA_2026-09-09.md` ("WO-1095") then **proved the
+cause from capture**, and it is neither of the two the original text was choosing between:
+
+> The watchdog uses total raid-scene age while `RaidScoring` deliberately excludes staging time.
+> The failing run entered the raid at 17:15:42.851Z and fired 224.977 s later, exactly its 180+45 s
+> bound, while the screenshot still showed 2:46 on the real clock (only 14 s engaged). This is a
+> **clock-domain mismatch**, not merely an absent subscriber.
+
+So this is **not** a regression of `5bc5025f5` and **not** one of the six dirty files. It is a
+cross-change invariant break: WO-1520 (`d6511b8e52`) made the clock engagement-gated; the watchdog
+(`5bc5025f5b`) still measured scene age. Both changes were correct on their own.
+
+**The "Do NOT" below still binds as written — nothing about it was softened.** The 225 s bound is
+UNCHANGED, the `Fail` severity is UNCHANGED, and the arm was not deleted. What changed is the
+*interval the bound is applied to*. The fix is the measurement, not the net.
 
 ## Do NOT
 

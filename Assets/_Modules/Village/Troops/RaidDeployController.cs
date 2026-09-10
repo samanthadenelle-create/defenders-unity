@@ -197,6 +197,27 @@ namespace DeNelle.Village
         private bool _heroDownAcknowledged;
 
         /// <summary>
+        /// WO-1095 - TRUE once <see cref="OnRaidTimeExpired"/> is actually subscribed to
+        /// <c>RaidScoring.OnTimeExpired</c>. It exists so the stranding watchdog's failure text
+        /// can STATE whether the subscriber is installed instead of ACCUSING it.
+        ///
+        /// <para>The old last-resort line said "the OnTimeExpired subscriber is missing or
+        /// RaidScoring never installed" on every firing. In the 2026-09-09 capture (F8 seq 4980)
+        /// neither was true: no "deploy HUD failed to build" line was emitted, and
+        /// <c>RaidScoring.Finalize</c> ran on a live scorer immediately after the watchdog fired
+        /// ("stars settled: 0 ... elapsed=50s/180s"). A trace that names a cause it has not
+        /// checked sends the next reader to the wrong file (CLAUDE.md sec.11B).</para>
+        /// </summary>
+        private bool _clockSubscribed;
+
+        /// <summary>
+        /// WO-1095 - did <see cref="BuildHud"/> succeed? A raid with a built HUD has a Retreat
+        /// button, so it is NOT the exitless state the tight backstop bound was chosen for.
+        /// Read by <see cref="ClassifyStranding"/>; reported in the failure text.
+        /// </summary>
+        private bool _hudBuilt;
+
+        /// <summary>
         /// WO-1110 fault-injection hook: when true the next <see cref="BuildHud"/> throws.
         /// Exists so the "a HUD build failure still leaves an exit" acceptance can be PROVEN
         /// by a deliberate injection rather than by reading the diff (CLAUDE.md §12 — the
@@ -218,6 +239,7 @@ namespace DeNelle.Village
             StartCoroutine(BindScoringRoutine());
 
             bool built = DeNelle.Core.Diagnostics.Guard.Try("Raid", "build raid deploy HUD", BuildHud);
+            _hudBuilt = built;   // WO-1095: the watchdog reports this instead of guessing at it.
             if (!built)
             {
                 // The tray/Retreat button are gone; say so loudly and tell the player the
@@ -252,11 +274,7 @@ namespace DeNelle.Village
                 if (_scoring != null) break;
                 yield return null;
             }
-            if (_scoring != null)
-            {
-                _scoring.OnTimeExpired -= OnRaidTimeExpired;
-                _scoring.OnTimeExpired += OnRaidTimeExpired;
-            }
+            if (_scoring != null) SubscribeClock("bind routine");
 
             // WO-1437: arm the terminal-state net in the SAME place, and for the same reason,
             // the clock subscriber is bound here — before BuildHud, so no exit depends on
@@ -271,6 +289,26 @@ namespace DeNelle.Village
             // RaidScoring.DefaultClockSeconds for its backstop deadline.
             DeNelle.Core.Diagnostics.Guard.Try("Raid", "arm raid stranding watchdog",
                 () => StartCoroutine(StrandingWatchdog()));
+        }
+
+        /// <summary>
+        /// WO-1095 - the ONE place the clock-expiry subscriber is installed. Idempotent
+        /// (<c>-=</c> then <c>+=</c>), so calling it twice cannot double-fire the retreat.
+        ///
+        /// <para>It exists because <see cref="BindScoringRoutine"/> gives up after ten frames.
+        /// A scorer that self-installs later than that used to leave the raid permanently
+        /// unsubscribed - the watchdog re-resolved <c>RaidScoring.Instance</c> every tick but
+        /// never bound to it, so the ONE arm that ends a raid on time was never armed and only
+        /// the net could get the player out. The watchdog now calls this on its late resolve.</para>
+        /// </summary>
+        private void SubscribeClock(string where)
+        {
+            if (_scoring == null || _clockSubscribed) return;
+            _scoring.OnTimeExpired -= OnRaidTimeExpired;
+            _scoring.OnTimeExpired += OnRaidTimeExpired;
+            _clockSubscribed = true;
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                $"raid clock subscriber installed ({where}) - OnTimeExpired -> retreat is armed.");
         }
 
         // =====================================================================
@@ -296,6 +334,126 @@ namespace DeNelle.Village
         /// HUD — the raid's one exitless state).
         /// </summary>
         private const float UnsettledBackstopGraceSeconds = 45f;
+
+        // =====================================================================
+        //  WO-1095 — THE WATCHDOG MUST MEASURE THE SAME INTERVAL THE CLOCK MEASURES
+        // =====================================================================
+        /// <summary>
+        /// PROVEN DEFECT, 2026-09-09 (docs/READY_RCA_2026-09-09.md, "WO-1095"). The raid clock
+        /// is ENGAGEMENT-GATED since WO-1520: <c>RaidScoring.Update</c> returns before
+        /// <c>_elapsed += Time.deltaTime</c> until first contact, so staging is free. This
+        /// watchdog measured something else entirely - <c>aliveFor</c>, unscaled seconds since
+        /// the RAID SCENE loaded - and compared that scene age against <c>clock + 45</c>. Two
+        /// different intervals, one bound.
+        ///
+        /// <para><b>Capture 1 (seq 4967).</b> Raid entered 17:15:42.851Z, watchdog fired
+        /// 17:19:27.828Z: 224.977 s of SCENE age, exactly the 180+45 bound - while the owner's
+        /// screenshot still read <b>2:46</b> remaining, i.e. 14 s of the 180 s raid had elapsed.
+        /// The player was yanked out of a raid with 166 valid seconds left.</para>
+        ///
+        /// <para><b>Capture 2 (seq 4980).</b> <c>scene_loaded RaidBase_raider_camp_small</c> at
+        /// <c>t=1036.537</c>, watchdog Fail at <c>t=1546.019</c> - 509.5 s of wall clock, and the
+        /// line printed <c>510s</c>. It was NOT 510 s of raid: the settle line that followed in
+        /// the same log reads <c>elapsed=50s/180s</c>. Same defect, one order of magnitude
+        /// louder.</para>
+        ///
+        /// <para><b>THE FIX IS THE MEASUREMENT, NOT THE BOUND.</b> Nothing here is loosened: the
+        /// 45 s grace is untouched and the arm's <c>Fail</c> severity is untouched (WO-1095's
+        /// "do NOT raise the bound / downgrade the severity" holds). The watchdog now
+        /// accumulates <c>engagedFor</c> - unscaled seconds since <c>RaidScoring.Engaged</c> -
+        /// and bounds THAT.</para>
+        ///
+        /// <para><b>WHY UNSCALED AND NOT <c>ElapsedSeconds</c> ITSELF.</b> Same START as the
+        /// clock (first engagement), deliberately different TICK. <c>_elapsed</c> advances on
+        /// <c>Time.deltaTime</c>, so anything holding <c>timeScale</c> at 0 freezes it - and a
+        /// net that reads a frozen number never fires, which converts today's premature exit
+        /// into a permanent strand. That is not hypothetical: in seq 4980 the scaled clock was
+        /// stuck at 50 s across ~455 s of engaged wall time. This file's own doctrine already
+        /// says it ("UNSCALED throughout: a hold left at timeScale=0 by any other system must
+        /// never become a new way to strand the player"), and
+        /// <c>RaidTerminalStateRegression</c> Case C pins it.</para>
+        /// </summary>
+        public enum StrandingArm
+        {
+            /// <summary>Nothing to rescue.</summary>
+            None = 0,
+            /// <summary>Engaged, and the raid clock's own interval overran its grace.</summary>
+            EngagedOverrun = 1,
+            /// <summary>No RaidScoring in the scene at all - wall clock is the only measure left.</summary>
+            ScorerMissing = 2,
+            /// <summary>Still staging with NO HUD: the raid's one genuinely exitless state.</summary>
+            StagingWithNoHud = 3,
+            /// <summary>Still staging with a working HUD - the generous absolute ceiling.</summary>
+            StagingCeiling = 4,
+        }
+
+        /// <summary>
+        /// Tunable key for the absolute staging ceiling. Read through
+        /// <c>RemoteTunables.SpecFor</c> so this call site answers
+        /// <see cref="StagingCeilingSecondsDefault"/> until the row is registered, and goes live
+        /// the moment it is - it never trips the "unregistered key" trace.
+        /// </summary>
+        public const string KeyRaidStagingCeilingSeconds = "raid.stagingCeilingSeconds";
+
+        /// <summary>
+        /// Unscaled seconds a player may stand in STAGING, with a working HUD (so Retreat is on
+        /// screen), before the net takes the route home back.
+        ///
+        /// <para>⚠ THIS IS A CHOSEN NUMBER, NOT "today's value" - and it is written down as
+        /// chosen because nothing today bounds staging at all except the 225 s scene-age bound
+        /// that WO-1095 proved to be the false positive. 900 s is deliberately far outside any
+        /// staging a player would sit through on purpose, so it can only catch a session that is
+        /// genuinely dead. Tune it on the rail, never by editing this const.</para>
+        /// </summary>
+        public const int StagingCeilingSecondsDefault = 900;
+
+        private static float StagingCeilingSeconds
+        {
+            get
+            {
+                var spec = DeNelle.Core.Ops.RemoteTunables.SpecFor(KeyRaidStagingCeilingSeconds);
+                if (spec == null) return StagingCeilingSecondsDefault;
+                return Mathf.Max(60f, DeNelle.Core.Ops.RemoteTunables.Int(KeyRaidStagingCeilingSeconds));
+            }
+        }
+
+        /// <summary>
+        /// The watchdog's decision, PURE so an oracle can assert it with no scene and no Unity
+        /// play session. Every arm below is the same 45 s grace on a DIFFERENT interval; which
+        /// interval is legitimate depends only on what actually exists in the scene.
+        /// </summary>
+        /// <param name="scoringPresent">Is there a live RaidScoring?</param>
+        /// <param name="engaged">Has the raid clock started (first contact)?</param>
+        /// <param name="aliveForSeconds">Unscaled seconds since the raid scene loaded.</param>
+        /// <param name="engagedForSeconds">Unscaled seconds since first engagement.</param>
+        /// <param name="clockSeconds">The raid clock.</param>
+        /// <param name="graceSeconds"><see cref="UnsettledBackstopGraceSeconds"/>.</param>
+        /// <param name="stagingCeilingSeconds"><see cref="StagingCeilingSeconds"/>.</param>
+        /// <param name="hudBuilt">Did the deploy HUD build (is there a Retreat button)?</param>
+        public static StrandingArm ClassifyStranding(
+            bool scoringPresent, bool engaged,
+            float aliveForSeconds, float engagedForSeconds,
+            float clockSeconds, float graceSeconds, float stagingCeilingSeconds,
+            bool hudBuilt)
+        {
+            float deadline = clockSeconds + graceSeconds;
+
+            // No scorer at all. There is no engagement gate to respect because there is no
+            // clock, so scene age IS the only interval - and this is the case the old text
+            // named. It keeps the tight bound, because a raid with no scorer can never settle.
+            if (!scoringPresent)
+                return aliveForSeconds >= deadline ? StrandingArm.ScorerMissing : StrandingArm.None;
+
+            if (engaged)
+                return engagedForSeconds >= deadline ? StrandingArm.EngagedOverrun : StrandingArm.None;
+
+            // STAGING. The clock has not started, so the player is not overdue by any measure
+            // the game itself uses. Only two things can still be wrong here:
+            if (!hudBuilt)
+                return aliveForSeconds >= deadline ? StrandingArm.StagingWithNoHud : StrandingArm.None;
+
+            return aliveForSeconds >= stagingCeilingSeconds ? StrandingArm.StagingCeiling : StrandingArm.None;
+        }
 
         /// <summary>
         /// GUARANTEES A RAID SESSION REACHES A TERMINAL STATE. This is the general form the
@@ -340,6 +498,7 @@ namespace DeNelle.Village
         {
             float settledFor = 0f;
             float aliveFor = 0f;
+            float engagedFor = 0f;   // WO-1095: the SAME interval the raid clock measures.
 
             while (true)
             {
@@ -354,7 +513,24 @@ namespace DeNelle.Village
                 float dt = Time.unscaledDeltaTime;
                 aliveFor += dt;
 
-                if (_scoring == null) _scoring = RaidScoring.Instance;
+                if (_scoring == null)
+                {
+                    _scoring = RaidScoring.Instance;
+                    // WO-1095: BindScoringRoutine gives up after ten frames. A scorer that
+                    // installs later than that used to be re-resolved here and then never
+                    // subscribed, so the raid's on-time exit stayed unarmed for the whole
+                    // session and this net was the only way out. Bind it here too.
+                    if (_scoring != null)
+                    {
+                        DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                            $"RaidScoring resolved LATE ({aliveFor:0.0}s into the raid scene) - " +
+                            "BindScoringRoutine's 10-frame poll had already given up. Subscribing " +
+                            "the clock-expiry exit from the watchdog so the raid still ends on time.");
+                        SubscribeClock("watchdog late resolve");
+                    }
+                }
+
+                if (_scoring != null && _scoring.Engaged) engagedFor += dt;
 
                 bool settled = _scoring != null && _scoring.Finalized;
                 if (settled)
@@ -390,20 +566,63 @@ namespace DeNelle.Village
                     yield break;
                 }
 
-                // LAST-RESORT arm: a raid that never settled at all. The clock's OnTimeExpired
-                // subscriber normally ends this at 180s; if it is missing AND the HUD failed to
-                // build, this is the only remaining exit in the game's one exitless state.
+                // LAST-RESORT arms: a raid that never settled at all. WO-1095 - the interval
+                // bounded here is the one the RAID CLOCK measures (engaged time), not the age
+                // of the scene, because staging is deliberately free (WO-1520).
                 float clock = _scoring != null ? _scoring.ClockSeconds : RaidScoring.DefaultClockSeconds;
-                if (aliveFor < clock + UnsettledBackstopGraceSeconds) continue;
+                bool engaged = _scoring != null && _scoring.Engaged;
+                var arm = ClassifyStranding(
+                    _scoring != null, engaged, aliveFor, engagedFor,
+                    clock, UnsettledBackstopGraceSeconds, StagingCeilingSeconds, _hudBuilt);
+                if (arm == StrandingArm.None) continue;
+
+                // STATE the facts; never accuse a subscriber this controller can see is bound.
+                // Every one of these was unknown to the reader of the old line, and each of them
+                // discriminates a different upstream defect (CLAUDE.md sec.11B / sec.12).
+                string state =
+                    $"arm={arm} aliveFor={aliveFor:0}s engagedFor={engagedFor:0}s " +
+                    $"clock={clock:0}s grace={UnsettledBackstopGraceSeconds:0}s " +
+                    $"stagingCeiling={StagingCeilingSeconds:0}s " +
+                    $"scoring={(_scoring != null ? "present" : "MISSING")} " +
+                    $"engaged={engaged} reason='{(_scoring != null ? _scoring.EngagedReason : "n/a")}' " +
+                    $"clockElapsed={(_scoring != null ? _scoring.ElapsedSeconds.ToString("0.0") : "n/a")}s " +
+                    $"subscriber={(_clockSubscribed ? "INSTALLED" : "MISSING")} " +
+                    $"hudBuilt={_hudBuilt} timeScale={Time.timeScale:0.00}";
+
+                string diagnosis;
+                switch (arm)
+                {
+                    case StrandingArm.ScorerMissing:
+                        diagnosis = "There is NO RaidScoring in this scene, so there is no clock and " +
+                                    "no on-time exit at all - scene age was the only interval left to " +
+                                    "measure. Find why the scorer never self-installed.";
+                        break;
+                    case StrandingArm.StagingWithNoHud:
+                        diagnosis = "The player never engaged AND the deploy HUD failed to build, so " +
+                                    "there is no Retreat button and no clock ticking - the raid's one " +
+                                    "genuinely exitless state. Find why BuildHud threw.";
+                        break;
+                    case StrandingArm.StagingCeiling:
+                        diagnosis = "The player never engaged at all within the absolute staging " +
+                                    "ceiling. The HUD built, so Retreat WAS on screen; this is a dead " +
+                                    "session, not an overrun raid. Tune the ceiling on '" +
+                                    KeyRaidStagingCeilingSeconds + "', never in code.";
+                        break;
+                    default:
+                        diagnosis = "The raid clock's OWN interval overran its grace without the clock " +
+                                    "ever expiring. If clockElapsed above is far BELOW engagedFor, the " +
+                                    "scaled clock is being held (RaidScoring advances _elapsed on " +
+                                    "Time.deltaTime) - find what is holding timeScale. If it is NOT " +
+                                    "below, OnTimeExpired fired and its subscriber did not end the raid.";
+                        break;
+                }
 
                 DeNelle.Core.Diagnostics.FlowTrace.Fail("Raid",
-                    $"RAID STRANDING WATCHDOG FIRED (last-resort arm) - {aliveFor:0}s in a raid scene " +
-                    $"with a {clock:0}s clock that NEVER finalized, so neither the objective, the clock " +
-                    "expiry nor Retreat ended this session (WO-1526: hero death is no longer an exit - " +
-                    "the army fights on and the raid ends by objective, Retreat or the clock). " +
-                    "Routing home anyway. This arm " +
-                    "firing means the OnTimeExpired subscriber is missing or RaidScoring never " +
-                    "installed - fix THAT (WO-1437).");
+                    "RAID STRANDING WATCHDOG FIRED (last-resort arm) - a raid that NEVER finalized, so " +
+                    "neither the objective, the clock expiry nor Retreat ended this session (WO-1526: " +
+                    "hero death is no longer an exit - the army fights on and the raid ends by objective, " +
+                    "Retreat or the clock). Routing home anyway. " + diagnosis +
+                    " The watchdog is a safety net, NOT the fix (WO-1437). STATE: " + state);
                 ForceExitHome("unsettled-raid last-resort watchdog");
                 yield break;
             }

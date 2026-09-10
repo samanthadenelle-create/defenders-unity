@@ -1,6 +1,6 @@
 # WO-1594 — Raid countdown clock + stars that start lit and go dark
 
-**Status:** READY TO IMPLEMENT — creative milestone table needs owner OK (Q1)  
+**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane RAID)  
 **Minted:** 2026-09-07 — program WO-1592  
 **Priority:** P0 felt — “onscreen clock counting down starting with 3 stars; lose third then second as milestones pass”  
 **Lane:** Raid HUD / scoring presentation  
@@ -59,10 +59,18 @@ Think **time bands + failure floors**, not opaque formulas:
 
 ---
 
-## 4. Owner rulings
+## 4. Owner rulings — ANSWERED 2026-09-07
 
-**Q1.** Accept T3=90s / T2=150s / D2=50%, or name new numbers.  
-**Q2.** On hero death: snuff ★★★ immediately (aligns with 2★ cap) — **recommend YES**.
+**Q1.** Owner, verbatim: *"1594 you determine what is realistic and fair"* → **T3 = 90 s, T2 = 150 s,
+D2 = 50 %** (locked). Half the clock to keep the third star; the last 30 s before timeout for the
+second, and only if the camp is still under half razed; the first star is never snuffed mid-fight for
+time alone.
+
+**Q2.** Owner, verbatim: *"1594 q2 yes"* → hero death snuffs ★★★ immediately. **YES.**
+
+*(Both rulings are quoted from commit `5c3c82de2` on `grok/raid-1593-1595`, which recorded them in
+this file and its RESULT. That commit is NOT an ancestor of HEAD — the code was re-implemented onto
+HEAD rather than merged. See the RESULT for what differs.)*
 
 ---
 
@@ -78,3 +86,41 @@ Think **time bands + failure floors**, not opaque formulas:
 ## 6. Not in scope
 
 KayKit art (1593), AI roles (1595), army caps, garrison HP retune.
+
+---
+
+## 7. Owner ruling 2026-09-09 - THE MILESTONES ARE TUNABLES
+
+**Owner, verbatim choice:** ***"Tunables with those defaults"***
+
+The WO-1594 RESULT flagged T3 / T2 / D2 as compiled constants and asked for a ruling rather than
+promoting them unilaterally (RESULT section 8, third bullet). She ruled: they go on the
+`RemoteTunables` rail, **at the values already ruled in section 4** - 90 s, 150 s, 50 %.
+
+| Milestone | Key | Kind | Shipping default | Was |
+|---|---|---|---|---|
+| T3 - the third star snuffs | `raid.honorThirdStarSeconds` | int seconds | `90` | `const float HonorThirdStarSeconds = 90f` |
+| T2 - the second star may snuff | `raid.honorSecondStarSeconds` | int seconds | `150` | `const float HonorSecondStarSeconds = 150f` |
+| D2 - destruction needed to keep the second | `raid.honorSecondStarMinDestructionPct` | int PERCENT | `50` | `const float HonorSecondStarMinDestruction = 0.50f` |
+
+- **The defaults ARE today's behaviour, byte for byte.** No row, no network, no parse, no registry
+  entry all resolve to 90 / 150 / 50, so this change is behaviour-neutral on its own.
+- **D2 is an integer PERCENT because the rail carries no floats.** `RaidScoring` clamps `0..100` and
+  divides by `100`; `Pct` is in the key name so a console reader cannot mistake `50` for a fraction.
+- **Every read goes through `RemoteTunables.SpecFor(key)` BEFORE `Int(key)`** - the same shape
+  `RaidDeployController.StagingCeilingSeconds` uses for `raid.stagingCeilingSeconds` (WO-1095). That
+  guard is load-bearing, not defensive: `Int` answers `0` for an unregistered key, and `T3 = 0`
+  would put the third honor star out on the FIRST FRAME of every raid **and**, through `Finalize`'s
+  `min(settle, honor)` clamp, silently cap every raid in the game at two stars.
+- **These are not only presentation.** Lowering T3 lowers what raids PAY. That is stated on the doc
+  row so the owner is not surprised by it at 2am.
+
+**Acceptance for this ruling (in addition to section 5):**
+
+7. All six sources move in ONE change: `RemoteTunables` registry + defaults, the defaults oracle's
+   `ExpectedKnobCount` and `ExpectedDefaults`, `api/_lib/tunables.js`, the manifest cards, the
+   regenerated `api/_lib/tunable-manifest.generated.json`, and `docs/PROD022_TUNABLE_FLAGS.md`.
+8. `node tools/gen-tunable-manifest.mjs` prints `TUNABLE_MANIFEST_GEN_OK` and
+   `node --test test/tunables-manifest.test.js` is green.
+9. `RaidWatchdogHonorRegression` asserts against the SHIPPING DEFAULT consts, never the live
+   properties - an oracle that read the property it tests would measure the thing against itself.

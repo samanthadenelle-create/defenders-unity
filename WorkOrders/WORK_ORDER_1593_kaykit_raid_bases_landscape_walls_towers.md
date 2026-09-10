@@ -9,7 +9,7 @@
 
 # WO-1593 — KayKit raid bases: landscape, walls, and towers that are not pillars
 
-**Status:** READY TO IMPLEMENT — kit pick answered by WO-1607; implement through 1608–1611, do not double-bake  
+**Status:** IMPLEMENTED - 6a5c7a36d on HEAD 2026-09-09 (was READY); superseded by WO-1607/1608-1611, do not double-bake; owner felt-test closes. See `WORK_ORDER_1593_kaykit_raid_bases_landscape_walls_towers.RESULT.md`. PRIOR STATUS: READY TO IMPLEMENT — kit pick answered by WO-1607; implement through 1608–1611, do not double-bake  
 **Minted:** 2026-09-07 — program WO-1592; banner bumped with 1592–1595  
 **Priority:** P0 felt — “simple walls / towers look like a pillar / better landscape, could be entire KayKit”  
 **Lane:** World / Raid scenes (serialization bottleneck: one agent on raid builders at a time)  

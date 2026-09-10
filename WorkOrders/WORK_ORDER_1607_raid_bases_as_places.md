@@ -1,6 +1,6 @@
 # WO-1607 — Raid bases as places: layered defenses, not a fence and a tower
 
-**Status:** READY TO IMPLEMENT — program spine; implement via WO-1608 / 1609 / 1610 / 1611  
+**Status:** IMPLEMENTED - 6a5c7a36d on HEAD 2026-09-09 (was READY); owner felt-test closes. See `WORK_ORDER_1607_raid_bases_as_places.RESULT.md`. PRIOR STATUS: READY TO IMPLEMENT — program spine; implement via WO-1608 / 1609 / 1610 / 1611  
 **Minted:** 2026-09-09 (CLI) — banner bumped 1607 → 1612 in the same edit  
 **Priority:** P0 felt — owner: review the raid bases, design them better, use prefabs (KayKit dungeon is a good fit), better defenses than fence + tower, “needs to have something to it”  
 **Lane:** World / Raid scenes (serialization bottleneck: one agent on raid builders at a time)  
@@ -155,6 +155,12 @@ Until she answers, implementers use the recommended column. Do not stall 1608 on
 4. Staging pocket still outside every turret and defender (WO-1520 assert stays loud).  
 5. Troops can path staging → gate → courtyard → (choke) → spire. No new nav softlock.  
 6. Win condition unchanged: raze `RaidSpire`. Extra destructibles are optional.  
+   > ⚠ **CORRECTED 2026-09-09 by owner ruling - the sentence above is INCOMPLETE, and it is kept
+   > verbatim rather than deleted because section 10 is a record of what it used to say.** Owner,
+   > verbatim: ***"Keep both: spire raze OR full garrison wipe"***. There are **TWO independent
+   > win paths**, either of which ends the raid in a victory: razing `RaidSpire`, **or** wiping the
+   > garrison. Read acceptance 6 as *"win condition unchanged: raze `RaidSpire` **or** wipe the
+   > garrison; extra destructibles are optional."* See section 10.
 7. Missing KayKit pack does not fail the bake.  
 8. `COMPILE_GATE_OK` + a raid-base layout regression that **fails** if Easy still has `props.count == 0` and `interiorWallLayers` semantics ignore named zones.
 
@@ -165,3 +171,65 @@ Implement WO-1608 first (RaidBaseGenerator named zones + KayKit dresser), then W
 Do not hand-edit RaidBase_*.unity. Do not retune garrison HP. Do not touch RaidHudController or TroopController.
 Reuse KayKitChallengeOutpostBuilder / DungeonSceneBuilder loaders; do not fork a third KayKit resolver.
 ```
+
+---
+
+## 10. RULED 2026-09-09 - the win condition, and which one the oracle pins
+
+> ## ✅ RULED 2026-09-09. OWNER, VERBATIM: ***"Keep both: spire raze OR full garrison wipe"***
+>
+> **This is ruling (A) below, stated as canon rather than as "the shipped behaviour standing until
+> she rules".** BOTH win paths are canon: razing `RaidSpire` ends the raid in a victory, and wiping
+> the garrison ends the raid in a victory. Either signal is enough; `RaidScoring.Finalize` latches
+> the result, and `RaidVictoryController.HandleVictory` de-duplicates the two signals through its
+> `_handled` latch, so a camp whose last defender dies on the same frame the spire falls settles
+> once.
+>
+> **Nothing in code changes.** `RaidBaseLayoutRegression.CaseGarrisonWipeWins` was already pinning
+> exactly this, and it is now pinning a RULED behaviour instead of an undecided one - **it stays
+> exactly as it is, and no seat may re-point it.** Acceptance 6 above carried the stale half of
+> this and now carries a dated correction; the old sentence is deliberately left in place, because
+> the record of what it used to say is what makes the correction checkable.
+>
+> **The two live win seams, read at source 2026-09-09:**
+> - `RaidScoring.RaidWon` = `(_spire != null && _spire.IsDestroyed) || (_spawner != null && _spawner.Cleared)`
+> - `RaidVictoryController.HandleCleared` -> `HandleVictory("garrison wiped")`, and
+>   `HandleSpireRazed` -> `HandleVictory(...)` - two callers, one latched settle.
+
+**HISTORY - the question as it stood before the ruling, kept unrewritten (CLAUDE.md section 15):**
+
+**Acceptance 6 above says:** *"Win condition unchanged: raze `RaidSpire`. Extra destructibles are
+optional."*
+
+**The shipped oracle says something else.** Read at source 2026-09-09,
+`Assets/Editor/Regression/RaidBaseLayoutRegression.cs:201-216`, case `CaseGarrisonWipeWins` FAILS
+the suite unless all three of these hold:
+
+| Assertion | The line it requires |
+|---|---|
+| `RaidVictoryController.cs` must NOT contain `"the raid is not over"` | failing text: *"still treats garrison wipe as a milestone - the player would be left hitting an empty camp."* |
+| `RaidVictoryController.cs` MUST contain `HandleVictory("garrison wiped")` | failing text: *"HandleCleared no longer calls HandleVictory on garrison wipe."* |
+| `RaidScoring.cs` MUST contain `_spawner != null && _spawner.Cleared` | failing text: *"RaidScoring.RaidWon no longer treats a wiped garrison as a win."* |
+
+So **garrison wipe is pinned as an INDEPENDENT win path**, not as an optional extra on top of
+razing the spire. That is a real deviation from acceptance 6, and it is deliberate work, not drift -
+`WorkOrders/WORK_ORDER_1095_raid_stranding_watchdog_fired_again.md` records the same ruling in the
+owner's own voice, dated the same day: *"a dead camp must settle, not wait for the empty spire to be
+farmed."*
+
+**The two possible rulings, and what each costs:**
+
+- **(A) Garrison wipe IS a win.** Then acceptance 6 is the stale text and this section replaces it;
+  the oracle already pins the shipped behaviour and nothing in code changes.
+- **(B) Raze the spire is the only win.** Then `CaseGarrisonWipeWins` is pinning a behaviour the
+  program does not want, and BOTH the case and `RaidVictoryController` / `RaidScoring` must change.
+  That is a felt change to every camp, so it is not a doc edit.
+
+WARNING: **No seat may resolve this by picking the reading it prefers.** A lane never re-points an oracle
+on its own; a sanctioned re-point carries an owner ruling and a comment naming the WO. Until she
+rules, the shipped behaviour (A) stands because it is what is on HEAD and what the suite proves -
+**recorded as the current state, not as the decision.**
+
+*(Raised by the Silo 0 pass, `docs/reference/READY_SILOS_2026-09-09.md` SILO 0 row 1607 and the
+BLOCKED-ON-OWNER table. Unrelated to WO-1617, which touches `PlaceSpire` / `MapCatalogArt` in the
+same suite's files but not this case.)*
