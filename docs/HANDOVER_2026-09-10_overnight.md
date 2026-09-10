@@ -198,6 +198,17 @@ same screen position reads 254/255 -> real render defect in the hub paint path (
 stopped at the door (full-army redirect, required 10, 8 held) so WO-1639/1640/1646/1647 device proofs are unproven; queue drawer empty so
 WO-1651 unproven on device; logcat `_0824_363660_logcat.txt` (3 app instances, filter PID 1040; no Unity exception).
 
+Fifth wave COMMITTED (09:02, gate chain 30: `wave6-compile1` COMPILE_GATE_OK, `wave6-reg1` REGRESSION_OK 495/495 (+TextFitGuardArm,
++QueueJobCatalogCoverage), `wave6-manageflow1` MANAGE_FLOW_MAP_OK 20 + UI_GEOMETRY/TOUCH/GLYPH OK + UI_LUMA_ORACLE_OK 2, `wave6-capture1`
+UI_CAPTURE_OK 97 all-OK, `wave6-navcapture1` 15 all-OK): `a4edbc662` WO-1655 (phantom fixture id, coverage oracle); `c131c5db1` WO-1648
+hub CLOSE (launcher well occluded it; read-back trace + luma oracle, RED-first on wave5-manageflow3 UI_LUMA_FAIL x2, green now;
+ManageFlow_BUILD_hub PNG opened: CLOSE visible); `a5f3b45e4` WO-1652 instrument (captures proven un-guarded: CENSUS armCalls=963
+armed=0; play-mode log still owed, remedy tabled); `1aee88a02` WO-1653 (Crystals/wave 2 -> 4 + Placed + Next level on the mine card,
+PNG opened); `abaa19831` WO-1654 (stat icons + Attack, archer card PNG opened); `b24da162a` + `c1ec945a5` board. Earlier this hour:
+`7bf8f532e` WO-1651 refund note; `ad14a435f` WO-1567 PARTIALLY DONE - AWAITING OWNER MATCH; `efc56f67c` mints 1653-1655; `9592cdd6f`
+WO-1650 DONE + WO-1566 re-tick (56/9/2 of 69, then 5.4 withdrawn as the WO-1387 ruling); `736b6b4b9` 1648/1650 mints, 1649 BURNED.
+Banner 1656. APK rebuild #4 launched 09:02 (`Builds/wave6-apk-chain.txt`).
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
@@ -234,6 +245,10 @@ WO-1651 unproven on device; logcat `_0824_363660_logcat.txt` (3 app instances, f
   `Builds/device-frames/2026-09-10_0807_363660_title.png` and `_after_continue.png` (2670x1200; CONTINUE dropped into a live wave on this
   save, so no raid frame yet - the raid HUD / deploy bar / plate colour device checks (WO-1639/1640/1646/1647 measurement 1) need a raid
   the owner starts, or a scripted deploy). Pushed: dev = `2039e2c41` (08:08, LFS 5001 objects).
+- **Android production APK, fourth build (fifth wave):** `Builds/overnight-apk-status.txt` -> `APK_OK 09:07 size=444MB`,
+  `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=279`, `APK_DONE`; install `Success` (`Builds/wave6-install.runner.txt`,
+  09:08); `dumpsys versionName=2026.09.10.363722`; portrait flags still 0. Device proofs owed on it: Manage hub CLOSE (WO-1648 device
+  close), the WO-1652 play-mode TextFitGuard census in logcat, the raid HUD family (still blocked on the 10-troop door).
 - **Seeker install:** `install-apk-to-seeker.ps1 -Build:$false -Install:$true` -> `Performing Streamed
   Install / Success` on `SM02G4061955851` (00:23). Device frames under `Builds/device-frames/` and sent
   to the owner as they were taken.
