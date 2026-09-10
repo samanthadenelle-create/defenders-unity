@@ -466,8 +466,35 @@ namespace DeNelle.Village
             // A framed dark-glass COLUMN on the right (the deploy tray owns the bottom, and the
             // town HUD owns the whole top row - see the WO-1464 block above).
             var band = ReadoutBand;
+            // ⛔ WO-1647 — `innerRim: false` IS LOAD-BEARING. IT IS WHAT MAKES THE PLATE BLACK.
+            // ElarionUiKit.Panel's innerRim parameter DEFAULTS TO TRUE (ElarionUiKit.cs:145-146),
+            // and `AddInnerRim` (:2670-2683) IS NOT A RIM: it lays a FULL-RECT quad at a 1 px inset
+            // over the host's whole face, coloured AccentSoft (Gold @ 0.30, UiStyle.cs:116) at HALF
+            // alpha - i.e. GOLD AT 0.15 ACROSS THE ENTIRE PLATE. The kit says so about itself at
+            // :2657-2668: *"It only reads as a rim because the fill is half-alpha, so on an ornate
+            // plate it VEILS the art rather than framing it."*
+            //
+            // MEASURED, not argued: Builds/wave5-capture4 (HEAD files, 07:43)
+            // RaidHud_2670x1200.png reads the plate interior at RGB (88, 71, 17) - dark OLIVE.
+            // ObsidianFill over black is (5, 5, 6). The plate was ~18x too bright in red and
+            // wearing a hue the fill does not contain, so `barImg.color` below was only ever
+            // setting what sits UNDERNEATH a gold veil.
+            //
+            // ⚠ AND IT COST A CONTRAST FLOOR. Recomputed against the veiled ground (88,71,17), the
+            // unlit honor diamonds - EmptyTrackFill, white @ 0.40 - measure **2.86 : 1**, UNDER the
+            // 3:1 non-text component floor WO-1639 sized them to clear. Against the real
+            // ObsidianFill ground they are 3.71:1 (capture) / 3.77:1 (device). The text rows held
+            // either way (4.84:1 worst), so WO-1639's headline fix was sound; this is the half of
+            // it that was measured against a background that is not what renders.
+            //
+            // ⛔ The fix is at the CALLER, never in the kit. Lowering AccentSoft's alpha or
+            // touching Gold would repaint every panel in the game to fix two (WO-1647 sec.4
+            // Option C, forbidden without an owner ruling). `innerRim: false` is the seam the kit
+            // already provides and the tree already uses - precedent at
+            // HeroInventoryController.cs:632. The other veiled callers stay veiled, deliberately.
             var bar = ElarionUiKit.Panel(_ui.transform,
-                new Vector2(band.xMin, band.yMin), new Vector2(band.xMax, band.yMax), deep: false);
+                new Vector2(band.xMin, band.yMin), new Vector2(band.xMax, band.yMax),
+                deep: false, innerRim: false);
             FlowTrace.Step("Raid",
                 "raid readout seated in the reserved right column: x " +
                 band.xMin.ToString("F3") + ".." + band.xMax.ToString("F3") + ", y " +
