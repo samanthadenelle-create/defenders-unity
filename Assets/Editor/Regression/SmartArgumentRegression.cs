@@ -29,6 +29,12 @@ namespace DeNelle.Editor.Regression
             string heartTroops = HeartHudText.TrainOther.Resolve(new HeartTroopsArguments(3));
             if (!string.Equals(heartTroops, "Train 3 troops to unlock Raids", StringComparison.Ordinal))
                 failures.Add("live HeartHudText -> LocalText.Format named path returned '" + heartTroops + "'");
+            // WO-1641 - the post-first-raid twin, through the same live path. Both keys carry the
+            // identical {Troops} argument, so a translator dropping it on one and not the other is
+            // caught here rather than on a device frame.
+            string heartNextRaid = HeartHudText.TrainNextRaidOther.Resolve(new HeartTroopsArguments(2));
+            if (!string.Equals(heartNextRaid, "Train 2 troops for the next raid", StringComparison.Ordinal))
+                failures.Add("live HeartHudText post-first-raid named path returned '" + heartNextRaid + "'");
             string heartfire = HeartHudText.HeartfireNextHoursMinutes.Resolve(
                 new HeartfireHoursMinutesArguments(3, 12));
             if (!string.Equals(heartfire, "next in 3h 12m", StringComparison.Ordinal))

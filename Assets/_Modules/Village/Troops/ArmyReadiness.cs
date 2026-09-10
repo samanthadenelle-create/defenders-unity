@@ -78,6 +78,23 @@ namespace DeNelle.Village
             /// decision is <see cref="Ready"/> and it is already made here.
             /// </summary>
             public bool FirstRaidSoftGate;
+            /// <summary>
+            /// WO-1641: TRUE when this save has already finished a raid (the WO-823 latch).
+            /// PRESENTATION ONLY - like <see cref="FirstRaidSoftGate"/> it may WORD the copy and
+            /// must never re-decide the door; <see cref="Ready"/> is already that decision.
+            ///
+            /// IT IS NOT THE SAME BIT AS <see cref="FirstRaidSoftGate"/> AND MUST NOT BE DERIVED
+            /// FROM IT. Soft is "required &lt; cap", so an army whose cap is at or below the
+            /// softened floor reads soft=false on a save that has never raided - exactly the
+            /// player this bit has to tell apart.
+            ///
+            /// NAMED "PastFirstRaid", NOT the obvious name, ON PURPOSE: FirstRaidSoftGateRegression
+            /// gate 7 sweeps every runtime file outside RaidDeployController and Core/State for an
+            /// ASSIGNMENT of the flag's own name and reds on it, because a second writer forks the
+            /// one-owner latch. This field only ever COPIES the value in, so it must not wear that
+            /// name (the initializer below would read as a write).
+            /// </summary>
+            public bool PastFirstRaid;
         }
 
         /// <summary>
@@ -132,6 +149,7 @@ namespace DeNelle.Village
                 RosterSlots = army.SlotsUsed(TroopDialogueCommands.SlotOf),
                 RequiredSlots = required,
                 FirstRaidSoftGate = soft,
+                PastFirstRaid = everCompletedRaid,
                 Ready = deployableSlots + queuedSlots >= required
             };
         }

@@ -338,6 +338,8 @@
   "hud.heart.objective.buildBarracks": "Precisa de Quartel - Construir > Reino",
   "hud.heart.objective.trainOne": "Treine {Troops} soldado para liberar Raides",
   "hud.heart.objective.trainOther": "Treine {Troops} soldados para liberar Raides",
+  "hud.heart.objective.trainNextRaidOne": "Treine {Troops} soldado para o próximo raide",
+  "hud.heart.objective.trainNextRaidOther": "Treine {Troops} soldados para o próximo raide",
   "hud.heart.heartfire.plate": "Fogo do Coração {Charges}/{MaxCharges} (raides)",
   "hud.heart.heartfire.nextMinutes": "próximo em {Minutes} min",
   "hud.heart.heartfire.nextHoursMinutes": "próximo em {Hours} h {Minutes} min",

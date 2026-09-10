@@ -359,6 +359,8 @@
   "hud.heart.objective.buildBarracks": "Caserne requise - Bâtir > Royaume",
   "hud.heart.objective.trainOne": "Entraînez {Troops} soldat pour ouvrir les raids",
   "hud.heart.objective.trainOther": "Entraînez {Troops} soldats pour ouvrir les raids",
+  "hud.heart.objective.trainNextRaidOne": "Entraînez {Troops} soldat pour le prochain raid",
+  "hud.heart.objective.trainNextRaidOther": "Entraînez {Troops} soldats pour le prochain raid",
   "hud.heart.heartfire.plate": "Feu du Cœur {Charges}/{MaxCharges} (raids)",
   "hud.heart.heartfire.nextMinutes": "prochain dans {Minutes} min",
   "hud.heart.heartfire.nextHoursMinutes": "prochain dans {Hours} h {Minutes} min",

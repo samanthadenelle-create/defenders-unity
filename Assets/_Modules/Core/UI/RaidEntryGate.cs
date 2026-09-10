@@ -51,6 +51,21 @@ namespace DeNelle.Core.UI
             /// that produced it. 0 = never published (the Ready=true default).
             /// </summary>
             public int RequiredSlots;
+            /// <summary>
+            /// WO-1641: TRUE when the save has ALREADY finished a raid (ArmyReadiness.Snapshot.
+            /// PastFirstRaid relayed verbatim). The bar this snapshot was judged against tells you
+            /// the NUMBER; this bit tells you what falling short of it MEANS. Under the softened
+            /// floor on a save that has never raided, raids are genuinely still locked; over it,
+            /// raids are open and the army is merely short of the full-cap party the door now asks
+            /// for - the same "Train N" sentence read as an UNLOCK in both, which is the defect.
+            ///
+            /// Never derive this from RequiredSlots == CapSlots: a small-cap army makes those equal
+            /// on a save that has never raided.
+            ///
+            /// FALSE on the pre-WO-1641 4-arg publish and on the Ready=true default, so an
+            /// un-migrated / headless / pre-publish surface keeps the pre-first-raid wording.
+            /// </summary>
+            public bool PastFirstRaid;
         }
 
         private static int _armyStatusVersion;
@@ -73,10 +88,20 @@ namespace DeNelle.Core.UI
         public static void PublishArmyStatus(bool ready, int deployableSlots, int queuedSlots, int capSlots,
                                              int requiredSlots)
         {
+            // Pre-WO-1641 callers carried no first-raid bit; FALSE keeps the pre-first-raid wording.
+            PublishArmyStatus(ready, deployableSlots, queuedSlots, capSlots, requiredSlots, false);
+        }
+
+        /// <summary>WO-1641 overload: also relays whether the save has ALREADY finished a raid
+        /// (ArmyReadiness.Snapshot.PastFirstRaid) so the Heart plate can say what being short of
+        /// the bar MEANS, instead of claiming an unlock the player already earned.</summary>
+        public static void PublishArmyStatus(bool ready, int deployableSlots, int queuedSlots, int capSlots,
+                                             int requiredSlots, bool pastFirstRaid)
+        {
             var cur = ArmyStatus;
             if (cur.Ready == ready && cur.DeployableSlots == deployableSlots &&
                 cur.QueuedSlots == queuedSlots && cur.CapSlots == capSlots &&
-                cur.RequiredSlots == requiredSlots)
+                cur.RequiredSlots == requiredSlots && cur.PastFirstRaid == pastFirstRaid)
                 return;   // unchanged — Version holds, HUD stays quiet
             if (cur.Ready != ready)
                 FlowTrace.Step("Raid", "army status -> " + (ready ? "READY" : "NOT READY") +
@@ -89,6 +114,7 @@ namespace DeNelle.Core.UI
                 QueuedSlots = queuedSlots,
                 CapSlots = capSlots,
                 RequiredSlots = requiredSlots,
+                PastFirstRaid = pastFirstRaid,
                 Version = ++_armyStatusVersion
             };
         }

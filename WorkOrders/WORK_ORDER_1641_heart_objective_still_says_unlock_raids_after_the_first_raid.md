@@ -1,6 +1,6 @@
 # WO-1641 - The Heart plate says "Train 2 troops to unlock Raids" 5 minutes after the player finished a raid
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate (lane HEART-COPY 2026-09-10)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; number block 1637-1642 pre-assigned by the
 lead, banner bumped 1637 -> 1643 in the SAME edit)
 **Silo / Lane:** HUD copy + the readiness bar it names. `Assets/_Modules/Core/HudModel/HudStateCopy.cs`

@@ -338,6 +338,8 @@
   "hud.heart.objective.buildBarracks": "Kaserne nötig - Bauen > Reich",
   "hud.heart.objective.trainOne": "Bilde {Troops} Kämpfer für Raubzüge aus",
   "hud.heart.objective.trainOther": "Bilde {Troops} Kämpfer für Raubzüge aus",
+  "hud.heart.objective.trainNextRaidOne": "Bilde {Troops} Kämpfer für den nächsten Raubzug aus",
+  "hud.heart.objective.trainNextRaidOther": "Bilde {Troops} Kämpfer für den nächsten Raubzug aus",
   "hud.heart.heartfire.plate": "Herzfeuer {Charges}/{MaxCharges} (Raubzüge)",
   "hud.heart.heartfire.nextMinutes": "nächstes in {Minutes} Min.",
   "hud.heart.heartfire.nextHoursMinutes": "nächstes in {Hours} Std. {Minutes} Min.",

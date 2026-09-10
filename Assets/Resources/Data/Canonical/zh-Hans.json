@@ -359,6 +359,8 @@
   "hud.heart.objective.buildBarracks": "需要兵营 - 建造 > 王国",
   "hud.heart.objective.trainOne": "训练 {Troops} 名士兵以解锁突袭",
   "hud.heart.objective.trainOther": "训练 {Troops} 名士兵以解锁突袭",
+  "hud.heart.objective.trainNextRaidOne": "训练 {Troops} 名士兵备战下一次突袭",
+  "hud.heart.objective.trainNextRaidOther": "训练 {Troops} 名士兵备战下一次突袭",
   "hud.heart.heartfire.plate": "心火 {Charges}/{MaxCharges}（突袭）",
   "hud.heart.heartfire.nextMinutes": "距下次 {Minutes} 分钟",
   "hud.heart.heartfire.nextHoursMinutes": "距下次 {Hours} 小时 {Minutes} 分钟",

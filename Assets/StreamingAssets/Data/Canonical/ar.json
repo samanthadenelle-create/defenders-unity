@@ -359,6 +359,8 @@
   "hud.heart.objective.buildBarracks": "الثكنة مطلوبة - بناء > المملكة",
   "hud.heart.objective.trainOne": "درّب {Troops} جندي لفتح الغارات",
   "hud.heart.objective.trainOther": "درّب {Troops} جنود لفتح الغارات",
+  "hud.heart.objective.trainNextRaidOne": "درّب {Troops} جندي للغارة التالية",
+  "hud.heart.objective.trainNextRaidOther": "درّب {Troops} جنود للغارة التالية",
   "hud.heart.heartfire.plate": "نار القلب {Charges}/{MaxCharges} (الغارات)",
   "hud.heart.heartfire.nextMinutes": "التالي خلال {Minutes} د",
   "hud.heart.heartfire.nextHoursMinutes": "التالي خلال {Hours} س {Minutes} د",

@@ -9,6 +9,11 @@ namespace DeNelle.Core.UI
         public const string KeyBuildBarracks = "hud.heart.objective.buildBarracks";
         public const string KeyTrainOne = "hud.heart.objective.trainOne";
         public const string KeyTrainOther = "hud.heart.objective.trainOther";
+        // WO-1641: the SAME shortfall, AFTER the first raid. Raids are already unlocked by then,
+        // so the pair above would claim a lock the player has already opened; these say what the
+        // shortfall actually means - the full-cap party the door asks for from that point on.
+        public const string KeyTrainNextRaidOne = "hud.heart.objective.trainNextRaidOne";
+        public const string KeyTrainNextRaidOther = "hud.heart.objective.trainNextRaidOther";
         public const string KeyHeartfirePlate = "hud.heart.heartfire.plate";
         public const string KeyHeartfireNextMinutes = "hud.heart.heartfire.nextMinutes";
         public const string KeyHeartfireNextHoursMinutes = "hud.heart.heartfire.nextHoursMinutes";
@@ -22,6 +27,10 @@ namespace DeNelle.Core.UI
             new LocalizedText<HeartTroopsArguments>(KeyTrainOne);
         public static readonly LocalizedText<HeartTroopsArguments> TrainOther =
             new LocalizedText<HeartTroopsArguments>(KeyTrainOther);
+        public static readonly LocalizedText<HeartTroopsArguments> TrainNextRaidOne =
+            new LocalizedText<HeartTroopsArguments>(KeyTrainNextRaidOne);
+        public static readonly LocalizedText<HeartTroopsArguments> TrainNextRaidOther =
+            new LocalizedText<HeartTroopsArguments>(KeyTrainNextRaidOther);
         public static readonly LocalizedText<HeartfireCountArguments> HeartfirePlate =
             new LocalizedText<HeartfireCountArguments>(KeyHeartfirePlate);
         public static readonly LocalizedText<HeartfireMinutesArguments> HeartfireNextMinutes =

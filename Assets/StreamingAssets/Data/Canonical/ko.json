@@ -359,6 +359,8 @@
   "hud.heart.objective.buildBarracks": "병영 필요 - 건설 > 왕국",
   "hud.heart.objective.trainOne": "레이드 해금에 병사 {Troops}명 훈련",
   "hud.heart.objective.trainOther": "레이드 해금에 병사 {Troops}명 훈련",
+  "hud.heart.objective.trainNextRaidOne": "다음 레이드에 병사 {Troops}명 훈련",
+  "hud.heart.objective.trainNextRaidOther": "다음 레이드에 병사 {Troops}명 훈련",
   "hud.heart.heartfire.plate": "심장불꽃 {Charges}/{MaxCharges} (레이드)",
   "hud.heart.heartfire.nextMinutes": "다음 충전까지 {Minutes}분",
   "hud.heart.heartfire.nextHoursMinutes": "다음 충전까지 {Hours}시간 {Minutes}분",

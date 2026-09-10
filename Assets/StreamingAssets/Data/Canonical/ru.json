@@ -359,6 +359,8 @@
   "hud.heart.objective.buildBarracks": "Нужна казарма — Строить > Королевство",
   "hud.heart.objective.trainOne": "Обучите {Troops} бойца для рейдов",
   "hud.heart.objective.trainOther": "Обучите {Troops} бойцов для рейдов",
+  "hud.heart.objective.trainNextRaidOne": "Обучите {Troops} бойца для следующего рейда",
+  "hud.heart.objective.trainNextRaidOther": "Обучите {Troops} бойцов для следующего рейда",
   "hud.heart.heartfire.plate": "Огонь Сердца {Charges}/{MaxCharges} (рейды)",
   "hud.heart.heartfire.nextMinutes": "следующий через {Minutes} мин",
   "hud.heart.heartfire.nextHoursMinutes": "следующий через {Hours} ч {Minutes} мин",

@@ -1679,6 +1679,14 @@ MonoBehaviour:
     m_Key: interaction.chest.blockedByEnemies
     m_Metadata:
       m_Items: []
+  - m_Id: 41482615928696832
+    m_Key: hud.heart.objective.trainNextRaidOne
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41482615958056960
+    m_Key: hud.heart.objective.trainNextRaidOther
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

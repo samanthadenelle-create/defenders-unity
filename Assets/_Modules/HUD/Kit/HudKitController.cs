@@ -1787,6 +1787,32 @@ namespace DeNelle.HUD.Kit
         private const float RailChipHeightPx = ElarionUiKit.MinTouchPx;   // 112
         /// <summary>Collapsed chip width — == EchoUnlockFeedback.EchoChipWidthPx.</summary>
         private const float RailChipWidthPx = 220f;
+        // ── THE PLATE IS NOT THE BAND (WO-1642 item B, owner 2026-09-10: the town chrome
+        //    "feels incomplete and not polished") ───────────────────────────────────────────
+        // MedievalUiSkin.ApplyButton paints the kit plate with Image.Type.Simple
+        // (MedievalUiSkin.cs:70), so the 2172x724 sprite STRETCHES across the whole chip band —
+        // and that sprite's own ink occupies only the upper-middle 59% of its height. Measured off
+        // Assets/Resources/UI/ElarionMedieval/buttons/button-normal-empty.png (alpha > 32):
+        // rows 105..533 of 724 = 0.145..0.736 of the band, its dark core 0.174..0.709. Confirmed
+        // against the shipped frame Builds/device-frames/2026-09-10_0602_town.png: the Echoes chip
+        // is authored at band centre 0.475 of a 1200-px-tall screen (device band 560.4..699.6) and
+        // its plate's dark core measures rows 585..658 there, against 584.6..659.1 predicted.
+        //
+        // ⛔ SO A LABEL ANCHORED TO THE BAND IS NOT ON THE PLATE. BuildObsidianButton's label call
+        // (ElarionUiKitObsidian.cs:683) reads Label(parent, text, y0: 0f, y1: 1f, …, x0: 0.04f,
+        // x1: 0.96f) — ⚠ THE 0.04/0.96 PAIR IS x, NOT y (ElarionUiKit.cs:1905-1907 declares
+        // y0/y1 BEFORE the optional x0/x1), which is also where DefenseReportLayoutRegression's
+        // 0.92 label inset comes from. So the label spans the FULL 112 px band vertically —
+        // 16.2 px ABOVE the plate's top edge and 29.6 px BELOW its bottom one. A one-word chip
+        // never notices. The three-line "ATTACK / REPORT / HELD" in that same frame does:
+        // FitBlock filled the 112 px band (3 lines at ~27 px) and the first and last lines painted
+        // onto the town wall at either end of the plate, the harness's own RULE 1 class
+        // (UICaptureLaunch.cs:5851-5872). It was never a collision with the Echoes chip.
+        private const float RailPlateInkTopFrac = 0.145f;
+        private const float RailPlateInkBottomFrac = 0.736f;
+        /// <summary>Breathing room inside the plate's ornate rim, reference px. Small on purpose:
+        /// the band it leaves must still seat TWO lines at the chip's 22 px fit floor.</summary>
+        private const float RailPlateInsetPx = 3f;
         /// <summary>Gap between a chip and its expanded section. WO-1435 made it `internal`
         /// (was `private`) so <see cref="HudRailClearance"/> holds the SAME gap when it seats a
         /// chip below a panel — a second "6f" typed into the clearance component would be the
@@ -2049,8 +2075,14 @@ namespace DeNelle.HUD.Kit
                 // verbatim the RCA of this same WO's list-row overlap. "ATTACK REPORT BREACHED"
                 // cannot seat on one ~202px line above the kit's legibility floor either, and
                 // the half that would ellipsize away is the OUTCOME WORD, which is the only part
-                // that survives greyscale. So: FitBlock (wrap + bounded auto-size + truncate) in
-                // the 112px-tall face the chip already reserves.
+                // that survives greyscale. So: FitBlock (wrap + bounded auto-size + truncate).
+                //
+                // WO-1642: ...but fitted to THE PLATE, not to the band. SeatOnRailPlate must run
+                // BEFORE FitBlock - TMP auto-sizes against the rect it has, so a label re-seated
+                // afterwards keeps a size chosen for the old, taller box. The copy is untouched:
+                // DefenseReportChipModel still composes "ATTACK REPORT\nHELD" and nothing here
+                // shortens a player-facing string.
+                SeatOnRailPlate(_defenseChipLabel, "defenseReportChip");
                 ElarionUiKit.FitBlock(_defenseChipLabel, 22f, 30f);
             }
             else
@@ -2206,6 +2238,64 @@ namespace DeNelle.HUD.Kit
             rt.anchoredPosition = new Vector2(0f, -yFromTopPx);
             go.AddComponent<HudRailGutter>();
             return rt;
+        }
+
+        /// <summary>
+        /// Re-seat a rail chip's label onto the kit plate's INK band, in REFERENCE PIXELS
+        /// (WO-1623/WO-1628 idiom: pivot first, then offsets; never a share of the parent).
+        /// <para>Why this exists at all is written at <see cref="RailPlateInkTopFrac"/>: the plate
+        /// stretches across the band but its ink does not, so the kit's full-height label anchors
+        /// hand a multi-line caption all 112 px of the band inside a plate that shows ~66.
+        /// Collapsing the y anchors onto the band's TOP edge and hanging a fixed px band off it
+        /// means the fitter measures the surface the player can actually see.</para>
+        /// <para>WHAT THE MEASUREMENT SAYS THIS BAND SEATS (so it is decided, not hoped):
+        /// 112 * 0.736 - 3 - (112 * 0.145 + 3) = <b>60.2 ref px</b>. The shipped label carries the
+        /// TITLE role - MedievalUiSkin.ApplyButton ends on EnsureFont(FontRole.Title) - whose asset
+        /// (Resources/RpgUi/font/font_title.asset, Merriweather Bold) declares m_LineHeight 80.448
+        /// at m_PointSize 64, i.e. 1.257 em. So at the chip's 22 px fit floor TWO lines need 55.3 px
+        /// and fit; THREE need 82.9 px and cannot. Width agrees: summing that asset's glyph
+        /// advances, "ATTACK REPORT" is 190.7 ref px at 22 px (196.4 with the skin's
+        /// characterSpacing 2) inside the label's 220 * 0.92 = 202.4 px rect, so the title seats
+        /// on ONE line. The caption therefore resolves to two lines at the floor - the font is
+        /// never driven under it, and no player-facing string is shortened.</para>
+        /// <para>⚠ THE WIDTH MARGIN IS 6.0 px (196.4 of 202.4, ~3%) AND IT IS THE ONE NUMBER THE
+        /// CAPTURE MUST CONFIRM. Kerning can only shrink it further, but if "ATTACK REPORT" ever
+        /// failed to seat on one line the caption would go back to three, exceed this band and be
+        /// TRUNCATED at the floor instead of overflowing - a worse failure than the one being
+        /// fixed. The cheap remedy if that happens is width, and the room exists: the plate's own
+        /// ink spans x 0.021..0.978 of the band = 210.5 px. Not taken here, because width is not
+        /// implicated by the captured defect (the escape is at the plate's TOP and BOTTOM) and
+        /// DefenseReportLayoutRegression's budget models this rect EXACTLY at 220 * 0.92 - moving
+        /// the inset would silently make that oracle wrong in the optimistic direction.</para>
+        /// </summary>
+        private static void SeatOnRailPlate(TMP_Text label, string who)
+        {
+            if (label == null) return;
+            var rt = label.rectTransform;
+            if (rt == null) return;
+
+            float top = RailChipHeightPx * RailPlateInkTopFrac + RailPlateInsetPx;
+            float bottom = RailChipHeightPx * RailPlateInkBottomFrac - RailPlateInsetPx;
+            if (bottom - top < ElarionUi.PadPanel)
+            {
+                FlowTrace.Warn("HudKit", "WO-1642: the plate band for '" + who + "' resolved to " +
+                                         (bottom - top).ToString("F1") + " ref px - too thin to seat a " +
+                                         "caption, so the label keeps the kit's own anchors.");
+                return;
+            }
+
+            string before = rt.anchorMin.y.ToString("F2") + ".." + rt.anchorMax.y.ToString("F2");
+            rt.anchorMin = new Vector2(rt.anchorMin.x, 1f);
+            rt.anchorMax = new Vector2(rt.anchorMax.x, 1f);
+            rt.pivot = new Vector2(rt.pivot.x, 1f);
+            rt.offsetMax = new Vector2(rt.offsetMax.x, -top);
+            rt.offsetMin = new Vector2(rt.offsetMin.x, -bottom);
+
+            FlowTrace.Step("HudKit", "WO-1642 '" + who + "' label seated on the PLATE: " +
+                                     top.ToString("F1") + ".." + bottom.ToString("F1") + " ref px from the " +
+                                     "band top (" + (bottom - top).ToString("F1") + " px tall), retiring the " +
+                                     "kit's y anchors " + before + " which spanned the whole " +
+                                     RailChipHeightPx.ToString("F0") + " px band.");
         }
 
         /// <summary>THE rail arbiter: at most ONE expanded section, ever. Reused by the Builders
@@ -5370,7 +5460,8 @@ namespace DeNelle.HUD.Kit
             FlowTrace.Step("HudKit", "objective -> '" + text + "' (raidCapable=" + capable +
                            ", barracks=" + barracks + ", deployable=" + army.DeployableSlots +
                            ", queued=" + army.QueuedSlots + ", required=" + army.RequiredSlots +
-                           ", ready=" + army.Ready + ", lock=" + lock_ + ", hostile=" + hostile +
+                           ", ready=" + army.Ready + ", pastFirstRaid=" + army.PastFirstRaid +
+                           ", lock=" + lock_ + ", hostile=" + hostile +
                            (troopsNeeded > 0 ? ", trainNeeded=" + troopsNeeded : "") + ")");
         }
 

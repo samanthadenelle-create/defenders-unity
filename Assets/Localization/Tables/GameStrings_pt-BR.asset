@@ -1861,6 +1861,16 @@ MonoBehaviour:
     m_Localized: "N\xE3o enquanto houver inimigos por perto."
     m_Metadata:
       m_Items: []
+  - m_Id: 41482615928696832
+    m_Localized: "Treine {Troops} soldado para o pr\xF3ximo raide"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 41482615958056960
+    m_Localized: "Treine {Troops} soldados para o pr\xF3ximo raide"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
   references:
     version: 2
     RefIds:
@@ -1903,3 +1913,5 @@ MonoBehaviour:
         - id: 41009956753289220
         - id: 41009956753289221
         - id: 41016777618534403
+        - id: 41482615928696832
+        - id: 41482615958056960

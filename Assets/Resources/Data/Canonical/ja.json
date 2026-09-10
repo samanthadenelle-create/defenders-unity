@@ -359,6 +359,8 @@
   "hud.heart.objective.buildBarracks": "兵舎が必要 - 建設 > 王国",
   "hud.heart.objective.trainOne": "襲撃解放に兵士を{Troops}人訓練",
   "hud.heart.objective.trainOther": "襲撃解放に兵士を{Troops}人訓練",
+  "hud.heart.objective.trainNextRaidOne": "次の襲撃に兵士を{Troops}人訓練",
+  "hud.heart.objective.trainNextRaidOther": "次の襲撃に兵士を{Troops}人訓練",
   "hud.heart.heartfire.plate": "心火 {Charges}/{MaxCharges}（襲撃）",
   "hud.heart.heartfire.nextMinutes": "次まで{Minutes}分",
   "hud.heart.heartfire.nextHoursMinutes": "次まで{Hours}時間{Minutes}分",

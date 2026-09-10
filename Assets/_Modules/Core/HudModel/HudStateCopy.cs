@@ -23,6 +23,9 @@
 //     slots and (WO-1407) RequiredSlots = the WO-823 soft gate (3 on a save that
 //     has never finished a raid, the cap afterwards). "Train N" is
 //     Required - (Deployable + Queued), the same arithmetic the raid door refuses on.
+//     (WO-1641) PastFirstRaid rides the same snapshot: the bar gives the NUMBER, this
+//     bit gives its MEANING - genuinely locked before the first raid, merely short of
+//     the full-cap party after it. It is a wording input; Ready is still the door.
 //
 // Player copy resolves through LocalText. GlyphCoverageRegression validates every
 // enabled-locale character against the tracked static runtime font.
@@ -45,6 +48,8 @@ namespace DeNelle.Core.HudModel
         public const string KeyBuildBarracks = HeartHudText.KeyBuildBarracks;
         public const string KeyTrainOne = HeartHudText.KeyTrainOne;
         public const string KeyTrainOther = HeartHudText.KeyTrainOther;
+        public const string KeyTrainNextRaidOne = HeartHudText.KeyTrainNextRaidOne;
+        public const string KeyTrainNextRaidOther = HeartHudText.KeyTrainNextRaidOther;
 
         public static string Title => HeartHudText.Title.Resolve();
         /// <summary>The hostile-posture line (unchanged from the pre-WO-1407 View).</summary>
@@ -69,10 +74,31 @@ namespace DeNelle.Core.HudModel
         }
 
         /// <summary>
+        /// WO-1641 - the train line for a player who has ALREADY finished a raid.
+        ///
+        /// The number and the arithmetic are identical to <see cref="TrainTroops"/>; only the
+        /// PROMISE changes. Measured on the device 2026-09-10 (build 363529): 108 ms after
+        /// RaidDeployController stamped the first-raid latch, RequiredSlots moved 3 -> 10 and this
+        /// plate repainted, correctly and on time, to "Train 2 troops to unlock Raids" - at a
+        /// player who had just come back from a raid. Nothing was stale and nothing had failed;
+        /// the one sentence under !Ready simply had no way to say "the door is open, your party is
+        /// short". Now it does.
+        /// </summary>
+        public static string TrainNextRaid(int troops)
+        {
+            if (troops < 1) troops = 1;
+            var arguments = new HeartTroopsArguments(troops);
+            return troops == 1
+                ? HeartHudText.TrainNextRaidOne.Resolve(arguments)
+                : HeartHudText.TrainNextRaidOther.Resolve(arguments);
+        }
+
+        /// <summary>
         /// Resolve the plate's line 2.
         /// hostile -> <see cref="Defend"/>;
         /// !raidCapable with a Barracks lock (NoBarracks / BarracksLost) -> <see cref="BuildBarracks"/>;
-        /// raidCapable and the army is short of the WO-823 bar -> <see cref="TrainTroops"/>;
+        /// raidCapable and the army is short of the WO-823 bar -> <see cref="TrainTroops"/> before
+        /// the first raid, <see cref="TrainNextRaid"/> after it (WO-1641);
         /// otherwise (ready, or the flag is off and nothing the player does can open the
         /// door) -> <see cref="PrepareWave"/>.
         /// <paramref name="troopsNeeded"/> is the N the train line names (0 when not that state).
@@ -97,7 +123,12 @@ namespace DeNelle.Core.HudModel
                 int required = army.RequiredSlots > 0 ? army.RequiredSlots : army.CapSlots;
                 int have = Math.Max(0, army.DeployableSlots) + Math.Max(0, army.QueuedSlots);
                 troopsNeeded = Math.Max(1, required - have);
-                return TrainTroops(troopsNeeded);
+                // WO-1641: same shortfall, two meanings. Before the first raid the door really is
+                // locked and "unlock Raids" is the truth; after it the door is open and the army is
+                // short of the full-cap party it now asks for. The bit rides the snapshot
+                // (RaidArmyStatus.PastFirstRaid) precisely so this stays Core presentation - the
+                // HUD may not reach GameState, and this branch must not re-decide the door.
+                return army.PastFirstRaid ? TrainNextRaid(troopsNeeded) : TrainTroops(troopsNeeded);
             }
             return PrepareWave;
         }

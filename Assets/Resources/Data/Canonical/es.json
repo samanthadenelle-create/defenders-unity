@@ -338,6 +338,8 @@
   "hud.heart.objective.buildBarracks": "Necesitas Cuartel - Construir > Reino",
   "hud.heart.objective.trainOne": "Entrena {Troops} tropa para abrir Incursiones",
   "hud.heart.objective.trainOther": "Entrena {Troops} tropas para abrir Incursiones",
+  "hud.heart.objective.trainNextRaidOne": "Entrena {Troops} tropa para la próxima incursión",
+  "hud.heart.objective.trainNextRaidOther": "Entrena {Troops} tropas para la próxima incursión",
   "hud.heart.heartfire.plate": "Fuego del Corazón {Charges}/{MaxCharges} (incursiones)",
   "hud.heart.heartfire.nextMinutes": "próximo en {Minutes} min",
   "hud.heart.heartfire.nextHoursMinutes": "próximo en {Hours} h {Minutes} min",

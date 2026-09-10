@@ -1543,8 +1543,18 @@ namespace DeNelle.Editor.Regression
         /// region onto the button, so PNG y p renders at button y (p - fy0)/(fy1 - fy0). This
         /// case happens to be safe because raids-locked.png's alpha bbox is (3,7)-(1410,736) of
         /// 1416x742, i.e. fy0..fy1 = 0.008..0.991 and the two frames coincide to within 1%. A
-        /// face with a real packaging margin (raids.png crops 0.088..0.929) would NOT, and this
-        /// assumption predates WO-1636 - it is recorded here, not fixed here.</para>
+        /// face with a real packaging margin would NOT, and this assumption predates WO-1636 - it
+        /// is recorded here, not fixed here.</para>
+        /// <para>⭐ RE-MEASURED WO-1642 (2026-09-10), because raids.png was given a real alpha
+        /// channel that day: this sentence used to quote its crop as 0.088..0.929 and it now
+        /// measures <b>~0.086..0.930</b> (alpha bbox (49,62)-(1725,810) of 1774x887, threshold
+        /// a &gt; 8, same rule as MeasureCardPng below).
+        /// ⛔ THE RE-EXPORT DOES NOT MAKE THAT CROP THE IDENTITY, and any note claiming it does is
+        /// wrong: PlayerDeckWorkspace.MeasureArtFit returns Corrected = true for ANY margin it can
+        /// see, and only the alphaSawNoMargin branch renders 1:1. quests.png (alpha margin
+        /// L47 T62 R47 B74, spans 0.947 x 0.847) has always taken that same corrected route - so
+        /// the two cards were never at different aspects, and the white corner patches were the
+        /// ONLY rendered difference between them.</para>
         /// <para>MEASURED BEFORE IT WAS CHANGED (replica of MeasurePlate/Contrast run over the
         /// PNG bytes, 2026-09-10): raids-locked.png over the enlarged 0.06-0.86 plate reads ink
         /// 0.0014 (ceiling 0.006) and 9.10 / 10.25 / 15.98 : 1 for Gold / ParchmentDim /
@@ -2101,6 +2111,20 @@ namespace DeNelle.Editor.Regression
                 { Ready = false, DeployableSlots = 1, QueuedSlots = 1, CapSlots = 10, RequiredSlots = 3 };
             var legacy = new RaidEntryGate.RaidArmyStatus   // pre-WO-1407 publish: RequiredSlots 0 -> cap
                 { Ready = false, DeployableSlots = 4, QueuedSlots = 0, CapSlots = 10, RequiredSlots = 0 };
+            // WO-1641 - THE FIXTURE THAT WAS MISSING, and its absence is why this shipped. Nothing
+            // here drove Resolve with the bar AT the cap on a save that has already raided, which
+            // is the ordinary state of every post-first-raid player. Device frame
+            // Builds/device-frames/2026-09-10_0625_back_in_town.png, 5 minutes after a completed
+            // raid, read "Train 2 troops to unlock Raids" at a player who had just raided.
+            var raided = new RaidEntryGate.RaidArmyStatus
+                { Ready = false, DeployableSlots = 8, QueuedSlots = 0, CapSlots = 10, RequiredSlots = 10,
+                  PastFirstRaid = true };
+            // The pre-first-raid EDGE the soft-gate bit alone cannot see: a cap at or below the
+            // softened floor makes required == cap, so "required == cap" is NOT a stand-in for
+            // "has raided". This save has never raided and must keep the unlock wording.
+            var smallCapFirstRaid = new RaidEntryGate.RaidArmyStatus
+                { Ready = false, DeployableSlots = 1, QueuedSlots = 0, CapSlots = 3, RequiredSlots = 3,
+                  PastFirstRaid = false };
             int n;
 
             string noBarracks = HeartObjectiveCopy.Resolve(false, false, PostureSignals.RaidLockReason.NoBarracks, empty, out n);
@@ -2124,6 +2148,25 @@ namespace DeNelle.Editor.Regression
             if (!leg.StartsWith("Train 6 ", StringComparison.Ordinal))
                 failures.Add(tag + " a publish without RequiredSlots must fall back to the CAP (10 - 4 = 6); read '" +
                              leg + "'");
+            // WO-1641 RED-FIRST: against HEAD before the fix this reads "Train 2 troops to unlock
+            // Raids" and both asserts below fire. RED recipe to re-prove it: drop the
+            // army.PastFirstRaid branch in HeartObjectiveCopy.Resolve.
+            string raidedShort = HeartObjectiveCopy.Resolve(false, true, PostureSignals.RaidLockReason.None, raided, out n);
+            if (raidedShort.IndexOf("unlock", StringComparison.OrdinalIgnoreCase) >= 0)
+                failures.Add(tag + " a save that has ALREADY finished a raid reads '" + raidedShort +
+                             "' - the plate is claiming an unlock the player has already earned. " +
+                             "After the first raid the bar is the full cap and falling short of it " +
+                             "means the raid PARTY is short, not that Raids are locked");
+            if (!raidedShort.StartsWith("Train 2 ", StringComparison.Ordinal) || n != 2)
+                failures.Add(tag + " 8 deployable against a post-first-raid bar of 10 reads '" + raidedShort +
+                             "' (n=" + n + ") - expected the same arithmetic as before, 10 - 8 = 2");
+            string smallCap = HeartObjectiveCopy.Resolve(false, true, PostureSignals.RaidLockReason.None,
+                                                        smallCapFirstRaid, out n);
+            if (smallCap.IndexOf("unlock Raids", StringComparison.Ordinal) < 0)
+                failures.Add(tag + " a save that has NEVER raided whose cap equals the softened bar reads '" +
+                             smallCap + "' - it must still read the unlock line. Reading 'has raided' off " +
+                             "RequiredSlots == CapSlots is exactly the derivation this case forbids");
+
             string wave = HeartObjectiveCopy.Resolve(false, true, PostureSignals.RaidLockReason.None, ready, out n);
             if (wave.IndexOf("wave", StringComparison.OrdinalIgnoreCase) < 0 || n != 0)
                 failures.Add(tag + " a raid-capable, army-ready save reads '" + wave + "' - expected the wave line");
@@ -2138,11 +2181,16 @@ namespace DeNelle.Editor.Regression
             if (!string.Equals(HeartObjectiveCopy.TrainTroops(1), "Train 1 troop to unlock Raids",
                     StringComparison.Ordinal))
                 failures.Add(tag + " 'Train 1 troops' - the singular must read 'troop'");
+            if (!string.Equals(HeartObjectiveCopy.TrainNextRaid(1), "Train 1 troop for the next raid",
+                    StringComparison.Ordinal))
+                failures.Add(tag + " the post-first-raid singular reads '" + HeartObjectiveCopy.TrainNextRaid(1) +
+                             "' - expected 'Train 1 troop for the next raid'");
 
             // 13c - every state string fits the row, measured, at both aspects.
             string[] candidates =
             {
                 HeartObjectiveCopy.BuildBarracks, HeartObjectiveCopy.TrainTroops(10),
+                HeartObjectiveCopy.TrainNextRaid(10),   // WO-1641 - the post-first-raid twin
                 HeartObjectiveCopy.PrepareWave, HeartObjectiveCopy.Defend,
             };
             float objMin, objMax, rowX0, rowX1;
