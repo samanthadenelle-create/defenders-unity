@@ -1,6 +1,7 @@
 # WORK ORDER 1673 — Google Play probabilistic-item obligations (Korea + Brazil) now that the listing is open in all countries
 
-**Status:** READY TO IMPLEMENT
+**Status:** PARTIALLY IMPLEMENTED 2026-09-10 - D7 (stale drop-model note) and D1 (the imaginary `JewelPolishRegression`, built for real as 6 cases) are DONE and RED-first proven; D2 (derive the covenant file list) not started; D3/D4/D5/D6 are store text, the Korea/Brazil readings, the Arena wager and the SKR-staking question - all OWNER-gated, none touched by this lane. RESULT: `WorkOrders/WORK_ORDER_1673_google_play_probabilistic_item_disclosures_korea_brazil.RESULT.md`
+**Registration owed to the lead (this lane did NOT edit `DataRegression.cs`):** see the RESULT's "Registration line" section - one line, to be pasted beside the covenant suite.
 **Silo:** Compliance / publishing + one editor regression + one in-app disclosure surface. No gameplay tuning, no economy rebalance, no scene files.
 **Raised by:** COMPLIANCE lane, 2026-09-10, on the owner's 12:20 ruling that the Play listing is open in **all countries**.
 **Number:** PRE-ASSIGNED by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately **NOT** edited by this lane.

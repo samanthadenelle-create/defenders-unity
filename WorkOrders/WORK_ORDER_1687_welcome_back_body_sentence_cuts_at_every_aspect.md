@@ -1,6 +1,6 @@
 # WORK ORDER 1687 — The welcome-back away-window sentence is cut at every captured aspect
 
-**Status:** IMPLEMENTED 2026-09-10 — band raised at the driver (`CappedSentenceH` 0.12 -> 0.21); RED line quoted below; `COMPILE_GATE` / `REGRESSION` / a fresh `WELCOME_BACK_CAPTURE` run are owed, then PO felt-verify to close
+**Status:** IMPLEMENTED (PASS 3) 2026-09-10 - pass 1 was a proven no-op, pass 2 reserved the band but left six consumers able to draw through it AND broke the compile (CS7036, mine), pass 3 moves the floor into the room CHECK so every caller inherits it. Owner ruled 13:32: SENTENCE FIRST, drop the lines that do not fit - recorded in section 3B. `COMPILE_GATE` / `REGRESSION` / a fresh `WELCOME_BACK_CAPTURE` are owed, then PO felt-verify to close
 **Result:** `WorkOrders/WORK_ORDER_1687_welcome_back_body_sentence_cuts_at_every_aspect.RESULT.md`
 **Silo:** UI / layout, one file (`WelcomeBackPopup.cs`). No economy, no gameplay, no scene files.
 **Raised by:** the glyph oracle, on its **first ever run** over the welcome-back capture path (WO-1664 wired it there).
@@ -112,6 +112,112 @@ the other. That helper is **not** re-pointed here: it is not reported as cutting
 nobody measured to fix a band somebody did is how a felt-test report gets spent on working code.
 
 ---
+
+## 3B. ⛔ PASS 1 WAS A NO-OP. The band was never height-limited — it was LEFTOVER-limited.
+
+`Builds/wave9-welcome1`, run with `CappedSentenceH = 0.21f` **confirmed present in the main tree**
+(`grep -n "CappedSentenceH" …/WelcomeBackPopup.cs` → `:174` `0.21f` and `:304`), printed **the same
+line, with a byte-identical rect**:
+
+```
+TEXT TRUNCATED [WelcomeBack_1920x1080] 'ObsidianPanel/PanelContent/Zone_Body/Label'
+  ("Your realm gathers for a limited stretch whil...") draws 60 of 72 ... (x -481.2..481.2, y -220.1..-187.5)
+```
+
+**The producer was right; the mechanism was wrong.** The sentence was seated at
+`Mathf.Max(0.03f, y - CappedSentenceH) .. y`. Traced through the worst-case fixture
+(`CaptureWelcomeBackOnce`: four non-zero resources, no doors, a three-line mend report,
+`WasCapped = true`):
+
+| step | consumes | `y` |
+|---|---|---|
+| start | — | 0.820 |
+| 4 resource rows | `4 x (0.095 + 0.012)` | **0.392** |
+| 0 door rows (this fixture sets no PostureSignals) | — | 0.392 |
+| 3 mend lines | `3 x (0.09 + 0.01)` | **0.0920** |
+
+At `y = 0.092` the `Mathf.Max` clamps to `0.03` **for every H above 0.062**, so the band is
+`0.092 - 0.03 = 0.062` of body — at 1920x1080 that is `0.062 x 526.2 =` **32.6 ref px**, which is
+`220.1 - 187.5` **exactly**. H = 0.12 and H = 0.21 yield an identical rect, which is why the second
+capture reprinted the first capture's numbers.
+
+⚠ **My pass-1 RESULT named this clamp as a residual risk and then asserted the band would grow
+anyway. It could not. The clamp was already binding before the change, and one line of arithmetic
+against the fixture would have shown it. That is the error, recorded rather than quietly corrected.**
+
+### The real finding: the body is OVERSUBSCRIBED, so something must yield
+
+| wants | of body |
+|---|---|
+| 4 resource rows | 0.428 |
+| 3 mend lines | 0.300 |
+| the away-window sentence | 0.210 |
+| **total demand** | **0.938** |
+| **available** (`0.82` down to `MinRowY` `0.06`) | **0.760** |
+
+**Short by 0.178 however the space is divided.** No height constant can resolve that — only a
+priority decision can.
+
+### Pass 2 — reserve the sentence, let the mend lines yield
+
+- **`:174-201`, new `RowStackFloor`** = `MinRowY + (WasCapped ? CappedSentenceH + RowGap : 0)`.
+- **`:304`** the sentence is seated at the **absolute** band `MinRowY .. MinRowY + CappedSentenceH` —
+  no longer derived from `y`, so it cannot be squeezed by whatever ran before it.
+- **`AddMendLine`** now takes that floor and **returns false** instead of drawing through it;
+  `AddMendRows` `FlowTrace.Warn`s the count it skipped.
+
+Post-fix trace, same fixture: resource rows leave `y = 0.392`, the floor is `0.282`, **one** mend line
+draws (`y = 0.292`), two are skipped and warned, and the sentence gets its full
+`0.21 x 526.2 =` **110.5 ref px** — about **3.6 lines** at the 26 px autosize floor, against the
+32.6 px (one line) it had. The 72-glyph sentence fits.
+
+### ⭐ OWNER RULING 2026-09-10 13:32 — **SENTENCE FIRST; drop the lines that do not fit**
+
+Pass 2 raised the priority question as open. **It is now closed by the owner:** the away-window
+sentence outranks the flowing lines, and anything that does not fit is dropped rather than allowed to
+squeeze it. **This is no longer "flagged, not decided" — it is the rule this file implements**, and it
+is why the skip paths below are correct rather than a compromise. A sentence cut mid-word tells the
+player something **false** about their rewards; a skipped line is an **omission** whose fact the Echoes
+panel still holds. `AddDoorRows` had already established skip-and-`FlowTrace.Warn` as this screen's
+answer to "no room", so the ruling generalises an existing precedent rather than inventing one.
+
+## 3C. ⛔ PASS 3 — the compile break I caused, and the six consumers pass 2 missed
+
+`Builds/wave10-compile1`:
+
+```
+Assets\_Modules\Village\Harvest\UI\WelcomeBackPopup.cs(571,33): error CS7036: There is no argument
+given that corresponds to the required formal parameter 'floor' of
+'WelcomeBackPopup.AddMendLine(Transform, ref float, string, Color, float)'
+```
+
+**Mine.** Pass 2 added the `floor` parameter to `AddMendLine` and updated three of its **four**
+call sites. The fourth is `AddDestinyFooter`'s silo-stalled line. I swept the mend rows and never
+grepped the method's own name.
+
+**And the miss was not only a compile error — it was a hole in the reservation.** That call was guarded
+by `HasRoom(y)`, which compared against `MinRowY` (0.06), **not** the reserved floor. So did five
+others: job rows, the "ALSO FINISHED" aggregate, collector rows, "ALSO WAITING", and the table footer.
+Pass 2 taught the three loudest consumers to respect the band and left six free to draw straight
+through it. **Fixing the callers one at a time is how a reservation becomes a suggestion.**
+
+**Pass 3 moves the rule into the CHECK, so every caller inherits it:**
+
+- `HasRoomFor(y, h)` is new and measures against **`RowStackFloor`**; `HasRoom` and `HasDoorRoom` are
+  now expressed in terms of it. All three became **instance** members (the floor depends on
+  `_result.WasCapped`); every one of the eight call sites was already in an instance method, verified
+  method-by-method, so nothing else moved.
+- The silo-stalled line passes `RowStackFloor` and traces its skip.
+- ⚠ **A latent bug found while doing it:** the table footer asked `HasRoom(y)` — which reserves
+  `RowH` **0.095** — and then called `AddFooterSentence`, which consumes **0.19**. It could clear its
+  own gate and still overrun by a full row, landing on the reserved band. It now asks
+  `HasRoomFor(y, FooterSentenceH)`, and `AddFooterSentence` reads the same named constant so the check
+  and the consumption can never disagree again.
+
+**Post-pass-3 trace, worst-case fixture:** floor `0.282`; resource rows leave `y = 0.392`; **`mended`
+draws** (`y = 0.292`); `spent` and `stalled` skip; the silo-stalled line and the footer sentence both
+skip; every skip is `FlowTrace.Warn`ed with `y` and the floor. The sentence keeps its full
+`0.21 x 526.2 = ` **110.5 ref px** ≈ **3.6 lines**.
 
 ## 4. Acceptance
 

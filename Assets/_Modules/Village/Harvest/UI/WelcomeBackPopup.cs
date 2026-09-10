@@ -88,18 +88,148 @@ namespace DeNelle.Village.UI
         private const int MaxCollectorRows = 4;
 
         /// <summary>WO-1408 -- a DOOR row is more than twice a data row's height, and the number
-        /// is a measurement, not taste. The body band is 0.22..0.82 of a modal that is 0.84 of the
-        /// screen, so body height = 0.60 x 0.84 x screenH. At 1200px that is ~605px, and a
-        /// <see cref="RowH"/> row is ~57px -- under HALF the project's MinTouchPx (112). At 0.21
-        /// the plate is ~127px (at a 1080-tall screen, ~114px), and the door face fills it
-        /// EXACTLY (anchors 0..1), so the face clears the floor on both. A door the player cannot
-        /// reliably hit is the same cul-de-sac this ticket exists to close, one layer down.</summary>
-        private const float DoorRowH = 0.21f;
+        /// is a measurement, not taste. The body band is <see cref="BodyY0"/>..0.82 of a modal
+        /// that is 0.84 of the screen. A <see cref="RowH"/> row is ~46 ref px -- under HALF the
+        /// project's MinTouchPx (112). The door face fills its plate EXACTLY (anchors 0..1), so
+        /// the plate height IS the touch band. A door the player cannot reliably hit is the same
+        /// cul-de-sac this ticket exists to close, one layer down.
+        ///
+        /// <para>⛔ RAISED 0.21 -&gt; 0.245 BY WO-1664 (2026-09-10) BECAUSE THE OLD NUMBER WAS
+        /// COMPUTED IN THE WRONG UNITS, and the wrong units are the whole lesson. The retired
+        /// comment reasoned "at 0.21 the plate is ~127px (at a 1080-tall screen, ~114px)" -- that
+        /// is 0.21 x 0.60 x 0.84 x 1200 = 127 DEVICE pixels. <c>ElarionUiKit.MinTouchPx</c> is a
+        /// REFERENCE-pixel floor, and the kit scaler (referenceResolution (1080,1920),
+        /// MatchWidthOrHeight 0.5, ElarionUiKit.cs:109-111) puts a 2670x1200 screen at
+        /// refHeight = 1200 / ((2670/1080)^0.5 x (1200/1920)^0.5) = 965.4. So the plate was really
+        /// 0.21 x 0.60 x 0.84 x 965.4 = 102.2 REF px -- 9.8 under the floor the comment claimed to
+        /// clear. Reasoning in device px against a reference-px constant is how a band passes its
+        /// own doc block and fails the oracle.</para>
+        ///
+        /// <para>The number that is checked, in the units the floor is in: the modal content is
+        /// 0.84 x 965.4 = 810.9 ref px (CORROBORATED, not derived -- the Seeker logged COLLECT's
+        /// authored height as 89.2 px for a 0.110 band, and 89.2 / 0.110 = 810.9), the body is
+        /// 0.82 - <see cref="BodyY0"/> = 0.58 of that = 470.3 ref px, so the floor needs
+        /// 112 / 470.3 = 0.2381 and 0.245 resolves to 115.2 ref px. 965.4 is the SMALLEST
+        /// refHeight across the captured aspects (1080.0 / 978.4 / 965.4), so clearing it there
+        /// clears it everywhere.</para>
+        ///
+        /// <para>⚠ A taller door row means FEWER of them fit before <see cref="HasDoorRoom"/>
+        /// refuses: three from the top of an empty body, where 0.21 allowed four. That path is
+        /// already handled -- <see cref="AddDoorRows"/> FlowTrace.Warns and skips -- and a door
+        /// the player can actually hit is worth more than a fourth one that is drawn and missed.</para>
+        /// </summary>
+        private const float DoorRowH = 0.245f;
 
-        private static bool HasRoom(float y) => y - RowH >= MinRowY;
+        /// <summary>The report body's floor in modal-content space (its ceiling is 0.82, set in
+        /// <c>Build</c>). ⛔ RAISED 0.22 -&gt; 0.24 by WO-1664 to buy the bottom thumb band the
+        /// 0.140 of content that COLLECT and the raid door need to seat MinTouchPx, WITHOUT
+        /// spending the shell's bottom margin (the old 0.045 inset would have had to fall to
+        /// ~0.028 otherwise) and without squeezing the ready line, which got TALLER not shorter.
+        /// Body rows are fractions of the body, so they lose 3.3% of their height and none of
+        /// their count -- <see cref="MinRowY"/> and <see cref="MaxJobRows"/> are unchanged.</summary>
+        private const float BodyY0 = 0.24f;
+
+        /// <summary>The bottom thumb band in modal-content space: COLLECT, the WO-1408 raid door
+        /// beside it, and (just above) the readiness line. ⛔ ONE BAND, THREE CONSUMERS -- the
+        /// two faces MUST share it or they desynchronise, which is what
+        /// <see cref="AddReadyBand"/>'s comment has always said and what WO-1664's pin now
+        /// enforces. 0.040..0.180 = 0.140 x 810.9 = 113.5 ref px, clearing
+        /// <c>ElarionUiKit.MinTouchPx</c> (112). It was 0.045..0.155 = 0.110 x 810.9 = 89.2, and
+        /// the Seeker printed exactly that: <c>CLAMP FIRED WelcomeBackUI/ObsidianPanel/
+        /// PanelContent/ObsBtn_COLLECT: authored 357.4x89.2 -&gt; grown 357.4x112</c>.</summary>
+        private const float ActionBandY0 = 0.040f;
+        private const float ActionBandY1 = 0.180f;
+
+        /// <summary>
+        /// Height, as a fraction of the BODY, of the away-window ("limited stretch") sentence.
+        /// ⛔ RAISED 0.12 -&gt; 0.21 BY WO-1687 (2026-09-10) AND THE NUMBER IS LINE ARITHMETIC,
+        /// NOT TASTE. The glyph oracle caught this sentence cut at ALL THREE captured aspects the
+        /// first time it was ever measured on this path:
+        ///   [glyph-oracle] TEXT TRUNCATED [WelcomeBack_2670x1200] '.../Zone_Body/Label'
+        ///   ("Your realm gathers for a limited stretch whil...") draws 68 of 72 printable glyphs
+        /// (1920x1080: 60 of 72; 2340x1080: 67 of 72). The string has exactly 72 non-space
+        /// characters, which is how the label was identified with certainty rather than by guess.
+        ///
+        /// <para>WHY IT CUT. The label wraps (FitBlock = Normal wrap + Truncate + autosize
+        /// 26..FontMicro) and TMP's Truncate drops whatever overflows the band's HEIGHT. At the
+        /// autosize floor of 26 px a line costs about 26 x 1.2 = 31 ref px, so a two-line render
+        /// needs ~62 and a three-line render ~94. The old 0.12 of body bought only
+        /// 0.12 x 470 = 56 ref px at the smallest reference height (965.4, the Seeker) - short of
+        /// even TWO lines - so the sentence rendered one line and truncated the rest. The narrower
+        /// the aspect the more lines it needs, which is why 1920x1080 cut the MOST (60/72) despite
+        /// having the TALLEST band in pixels: the driver is WIDTH forcing extra lines, not height
+        /// alone. 0.21 buys ~99 ref px at the worst aspect, which seats three lines.</para>
+        ///
+        /// <para>⚠ THE FIX IS THE BAND, DELIBERATELY - NOT THE FONT AND NOT THE COPY. Dropping the
+        /// autosize floor below <c>ElarionUiKit.FontHardFloor</c> (20) is forbidden, and shortening
+        /// the sentence needs an owner ruling because this line is the player's only explanation of
+        /// the away-window cap (its subject was already corrected twice, WO-1434 and WO-1499).</para>
+        ///
+        /// <para>PRECEDENT, LEFT ALONE ON PURPOSE: <see cref="AddFooterSentence"/> already reserves
+        /// 0.19 of body for "the one full sentence on this screen". There were TWO full sentences
+        /// and only one of them got that treatment - this was the other. That helper is NOT
+        /// re-pointed here: it is not reported as cutting, and moving a band nobody measured to fix
+        /// a band somebody did is how a felt-test report gets spent on working code.</para>
+        /// </summary>
+        private const float CappedSentenceH = 0.21f;
+
+        /// <summary>Height of the TABLE's footer sentence (<see cref="AddFooterSentence"/>).
+        /// ⛔ NAMED IN WO-1687 pass 3 so its room CHECK and its actual CONSUMPTION read the same
+        /// constant: the check asked <c>HasRoom</c> (which reserves <see cref="RowH"/>, 0.095) while
+        /// the draw took 0.19, so it could clear its own gate and still overrun by a full row.</summary>
+        private const float FooterSentenceH = 0.19f;
+
+        /// <summary>
+        /// The lowest <c>y</c> the FLOWING row stack may consume down to, in body space.
+        /// <c>MinRowY</c> normally; <c>MinRowY + CappedSentenceH + RowGap</c> when the away-window
+        /// sentence is going to be drawn, because that sentence now owns a RESERVED band at the
+        /// body's floor instead of taking whatever the stack left behind.
+        ///
+        /// <para>⛔ WHY THIS EXISTS, AND WHY WO-1687's FIRST PASS WAS A NO-OP. The sentence used to
+        /// be seated at <c>Mathf.Max(0.03f, y - CappedSentenceH) .. y</c>. In the worst-case capture
+        /// fixture the stack reaches it at <c>y = 0.092</c> (0.82, minus four resource rows at
+        /// 0.095+0.012, minus three mend lines at 0.09+0.01 - traced, and it lands on 0.0920), so
+        /// the Max clamped to 0.03 and the band was <c>0.092 - 0.03 = 0.062</c> of body = 32.6 ref px
+        /// at 1920x1080. That is the number the glyph oracle measured (y -220.1..-187.5). Because the
+        /// clamp was ALREADY binding, raising the height from 0.12 to 0.21 produced a byte-identical
+        /// rect - the second capture proved it by printing the same line twice. A height constant
+        /// cannot fix a band that is limited by what is left, only a RESERVATION can.</para>
+        ///
+        /// <para>⚠ AND THE REAL FINDING IS OVERSUBSCRIPTION, WHICH THIS ONLY TRIAGES. The worst-case
+        /// report wants 0.428 (four resource rows) + 0.300 (three mend lines) + 0.210 (the sentence)
+        /// = 0.938 of a body that offers 0.82 - 0.06 = 0.760. It is short by 0.178 no matter how the
+        /// space is divided, so SOMETHING must yield. This reserves the sentence and lets the mend
+        /// lines yield, because a sentence cut mid-word tells the player something false about their
+        /// rewards while a skipped mend line is an omission the Echoes panel still holds - and
+        /// AddDoorRows already established skip-and-Warn as this screen's answer to "no room".
+        /// Whether that is the right trade is an OWNER call; see WO-1687 section 4.</para>
+        /// </summary>
+        private float RowStackFloor =>
+            MinRowY + (_result != null && _result.WasCapped ? CappedSentenceH + RowGap : 0f);
+
+        /// <summary>
+        /// Room for something <paramref name="h"/> tall at <paramref name="y"/>, measured against
+        /// <see cref="RowStackFloor"/> -- NOT against <see cref="MinRowY"/>.
+        ///
+        /// <para>⛔ THE FLOOR MOVED AND EVERY ROOM CHECK HAD TO MOVE WITH IT (WO-1687 pass 3).
+        /// Pass 2 reserved the away-window sentence a band at the body's floor and taught the three
+        /// mend lines to respect it -- but SIX other consumers (job rows, the "ALSO FINISHED"
+        /// aggregate, collector rows, "ALSO WAITING", the silo-stalled line and the table footer)
+        /// were still asking <c>HasRoom</c>, which compared against MinRowY and therefore happily
+        /// drew straight through the reserved band. Fixing the three loudest callers and leaving
+        /// the rest is how a reservation becomes a suggestion, so the CHECK now owns the rule and
+        /// every caller inherits it.</para>
+        ///
+        /// <para>⚠ These became INSTANCE members in the same change: the floor depends on
+        /// <c>_result.WasCapped</c>. Every caller was already an instance method, so nothing else
+        /// moved.</para>
+        /// </summary>
+        private bool HasRoomFor(float y, float h) => y - h >= RowStackFloor;
+
+        private bool HasRoom(float y) => HasRoomFor(y, RowH);
 
         /// <summary>Room for a DOOR row (taller than a data row -- see <see cref="DoorRowH"/>).</summary>
-        private static bool HasDoorRoom(float y) => y - DoorRowH >= MinRowY;
+        private bool HasDoorRoom(float y) => HasRoomFor(y, DoorRowH);
 
         public static void Show(OfflineHarvestResult result)
         {
@@ -158,7 +288,7 @@ namespace DeNelle.Village.UI
             if (_modal.chrome.layout != null && _modal.chrome.layout.body != null)
             {
                 var bodyRect = _modal.chrome.layout.body;
-                bodyRect.anchorMin = new Vector2(bodyRect.anchorMin.x, 0.22f);
+                bodyRect.anchorMin = new Vector2(bodyRect.anchorMin.x, BodyY0);
                 bodyRect.anchorMax = new Vector2(bodyRect.anchorMax.x, 0.82f);
                 bodyRect.offsetMin = Vector2.zero;
                 bodyRect.offsetMax = Vector2.zero;
@@ -224,7 +354,13 @@ namespace DeNelle.Village.UI
                     // goes stale the day the storage ladder raises the window (offline-storage
                     // .json authors 10h/12h/16h/24h/36h per tier). Name the rule, not the value.
                     "Your realm gathers for a limited stretch while you are away. Nothing gathered is lost.",
-                    Mathf.Max(0.03f, y - 0.12f), y, ElarionUi.Gold,
+                    // ⛔ A RESERVED BAND AT THE BODY'S FLOOR, NOT `y` MINUS A HEIGHT (WO-1687 pass 2).
+                    // Taking it off the flowing `y` is what made this sentence cut: by the time the
+                    // stack reached it, `y` was 0.092 and Mathf.Max(0.03f, y - H) clamped to 0.03,
+                    // handing it 0.062 of body -- ONE line -- no matter how large H was. Raising H
+                    // therefore could not, and did not, change a single pixel. The band is now
+                    // absolute, and RowStackFloor keeps the stack above it.
+                    MinRowY, MinRowY + CappedSentenceH, ElarionUi.Gold,
                     ElarionUi.FontMicro, TextAlignmentOptions.Center, 0.06f, 0.94f, bold: true);
                 ElarionUiKit.FitBlock(capped, 26f, ElarionUi.FontMicro);
             }
@@ -232,9 +368,13 @@ namespace DeNelle.Village.UI
             // This report can contain seven data lines; the generic footer zone is
             // re-seated above the shared Close reservation and lands in that data stack.
             // Seat the sole action directly in the shell's bottom thumb band instead.
+            // ⛔ THE Y BAND IS ActionBandY0..ActionBandY1 AND IT IS NOT A LITERAL HERE ANY MORE
+            // (WO-1664): AddReadyBand seats the raid door on the SAME band, and two hand-typed
+            // copies of one band is how the pair desynchronises. Read that constant's doc block
+            // for why 0.045..0.155 was 22.8 ref px under MinTouchPx.
             var collect = ElarionUiKit.BuildObsidianButton(_modal.chrome.content.transform, "COLLECT",
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
-                new Vector2(0.37f, 0.045f), new Vector2(0.63f, 0.155f), CollectAndDismiss);
+                new Vector2(0.37f, ActionBandY0), new Vector2(0.63f, ActionBandY1), CollectAndDismiss);
             MedievalUiSkin.ApplyButton(collect, primary: true);
             var face = collect != null ? collect.targetGraphic as Image : null;
             if (face != null) face.type = Image.Type.Simple;
@@ -270,19 +410,35 @@ namespace DeNelle.Village.UI
         {
             var mend = _result != null ? _result.Mend : null;
             if (mend == null || !mend.HasContent) return;
-            AddMendLine(body, ref y, EchoMendCopy.AwayMendedLine(mend), ElarionUi.Parchment);
-            AddMendLine(body, ref y, EchoMendCopy.AwaySpentLine(mend), ElarionUi.ParchmentDim);
-            AddMendLine(body, ref y, EchoMendCopy.AwayStallLine(mend), ElarionUi.Gold);
+            float floor = RowStackFloor;
+            int dropped = 0;
+            if (!AddMendLine(body, ref y, EchoMendCopy.AwayMendedLine(mend), ElarionUi.Parchment, floor)) dropped++;
+            if (!AddMendLine(body, ref y, EchoMendCopy.AwaySpentLine(mend), ElarionUi.ParchmentDim, floor)) dropped++;
+            if (!AddMendLine(body, ref y, EchoMendCopy.AwayStallLine(mend), ElarionUi.Gold, floor)) dropped++;
+            if (dropped > 0)
+                FlowTrace.Warn("WelcomeBack",
+                    $"{dropped} mend line(s) had no room above the reserved away-window band " +
+                    $"(y={y:F3}, floor={floor:F3}) and were skipped. The facts are not lost - the " +
+                    "Echoes panel still holds them - and the alternative was cutting the one " +
+                    "sentence that explains the away cap, which is the WO-1687 defect.");
         }
 
-        private static void AddMendLine(Transform body, ref float y, string text, Color color)
+        /// <summary>One mend line. Returns FALSE when it had no room and was skipped.
+        /// <para>⛔ THE FLOOR IS NOT OPTIONAL (WO-1687 pass 2). These lines are the last flowing
+        /// consumers before the reserved away-window band, and they used to draw unconditionally --
+        /// which is how the stack ran down to y=0.092 and squeezed that sentence to a single line.
+        /// Skipping is the established answer to "no room" on this screen: <see cref="AddDoorRows"/>
+        /// FlowTrace.Warns and skips for exactly the same reason.</para></summary>
+        private static bool AddMendLine(Transform body, ref float y, string text, Color color, float floor)
         {
-            if (string.IsNullOrEmpty(text)) return;
+            if (string.IsNullOrEmpty(text)) return true;   // nothing to say is not a drop
             const float h = 0.09f;
+            if (y - h < floor) return false;
             var label = ElarionUiKit.Label(body, text, y - h, y, color,
                 ElarionUi.FontMicro, TextAlignmentOptions.Center, 0.07f, 0.93f, bold: true);
             ElarionUiKit.FitBlock(label, 24f, ElarionUi.FontMicro);
             y -= h + 0.01f;
+            return true;
         }
 
         // =====================================================================
@@ -437,18 +593,29 @@ namespace DeNelle.Village.UI
             string stalled = OfflineHarvestService.SiloStalledLine(_result);
             if (!string.IsNullOrEmpty(stalled))
             {
-                if (HasRoom(y)) AddMendLine(body, ref y, stalled, ElarionUi.Gold);
-                else FlowTrace.Warn("Offline",
-                    "welcome-back: the Echo-silo-full line had no room left in the report body -- the silo is " +
-                    "still full and still gathering nothing; only the sentence is unlisted.");
+                // WO-1687 pass 3 -- THE FOURTH CALLER. The pass-2 signature change taught the three
+                // mend lines to stop at RowStackFloor and missed this one, which broke the compile
+                // (CS7036) and would ALSO have drawn through the reserved sentence band. Same floor,
+                // same skip trace: the sentence outranks the line, per the owner's 13:32 ruling.
+                if (!HasRoom(y) || !AddMendLine(body, ref y, stalled, ElarionUi.Gold, RowStackFloor))
+                    FlowTrace.Warn("Offline",
+                        $"welcome-back: the Echo-silo-full line had no room above the reserved away-window " +
+                        $"band (y={y:F3}, floor={RowStackFloor:F3}) -- the silo is still full and still " +
+                        "gathering nothing; only the sentence is unlisted.");
             }
 
             string footer = OfflineHarvestService.ReturnFooterLine(rows);
             if (string.IsNullOrEmpty(footer)) return;
-            if (!HasRoom(y))
+            // WO-1687 pass 3 -- ASK FOR THE HEIGHT IT ACTUALLY TAKES. This used to ask HasRoom(y),
+            // which reserves RowH (0.095), and then call AddFooterSentence, which consumes 0.19 --
+            // so it could clear its own check and still overrun by a full row. With the away-window
+            // band reserved below it, that overrun lands ON the sentence, which is the defect this
+            // ticket exists to close.
+            if (!HasRoomFor(y, FooterSentenceH))
             {
                 FlowTrace.Warn("Offline",
-                    $"welcome-back: the footer '{footer}' had no room left in the report body -- the units still " +
+                    $"welcome-back: the footer '{footer}' had no room above the reserved away-window band " +
+                    $"(y={y:F3}, floor={RowStackFloor:F3}, needs {FooterSentenceH:F3}) -- the units still " +
                     "stay where they are on COLLECT (never burned), only the sentence is unlisted.");
                 return;
             }
@@ -468,7 +635,7 @@ namespace DeNelle.Village.UI
         private static void AddFooterSentence(Transform body, ref float y, string text)
         {
             if (string.IsNullOrEmpty(text)) return;
-            const float h = 0.19f;
+            const float h = FooterSentenceH;
             var label = ElarionUiKit.Label(body, text, y - h, y, ElarionUi.Gold,
                 ElarionUi.FontMicro, TextAlignmentOptions.Top, 0.07f, 0.93f, bold: true);
             ElarionUiKit.FitBlock(label, 24f, ElarionUi.FontMicro);
@@ -552,17 +719,22 @@ namespace DeNelle.Village.UI
         {
             if (_doors == null || !_doors.HasReadyDoor) return;
 
-            var line = ElarionUiKit.Label(content, _doors.ReadyLine, 0.168f, 0.215f,
+            // Directly ABOVE the action band, under the body's floor (BodyY0). WO-1664 moved it
+            // up with the band and made it TALLER, not shorter: 0.185..0.235 is 0.050 x 810.9 =
+            // 40.5 ref px against the old 0.168..0.215 = 38.1, so the ElarionUi.FontMicro line
+            // gained room rather than paying for the buttons below it.
+            var line = ElarionUiKit.Label(content, _doors.ReadyLine, 0.185f, 0.235f,
                 ElarionUi.Gold, ElarionUi.FontMicro, TextAlignmentOptions.Center,
                 0.06f, 0.94f, bold: true);
             ElarionUiKit.FitSingleLine(line);
 
-            // SAME y band as COLLECT (0.045..0.155), to its right. COLLECT keeps its exact
-            // geometry -- it is pinned by AwaySummaryReportRegression case 5 as the literal
-            // `new Vector2(0.63f, 0.155f), CollectAndDismiss`, and it stays the PRIMARY.
+            // SAME y band as COLLECT, to its right -- and it is the SAME CONSTANTS now, not a
+            // second copy of the same two numbers (WO-1664). COLLECT stays the PRIMARY.
+            // AwaySummaryReportRegression case 5 pins the pairing; TouchFloorAuthoringRegression
+            // pins that these two faces can never drift apart again.
             var raid = ElarionUiKit.BuildObsidianButton(content, _doors.ReadyDoorText,
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
-                new Vector2(0.68f, 0.045f), new Vector2(0.90f, 0.155f),
+                new Vector2(0.68f, ActionBandY0), new Vector2(0.90f, ActionBandY1),
                 CollectThenRouteReady);
             MedievalUiSkin.ApplyButton(raid, primary: false);
             var raidFace = raid != null ? raid.targetGraphic as Image : null;
