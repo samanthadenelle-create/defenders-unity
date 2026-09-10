@@ -1,6 +1,7 @@
 # WORK ORDER 1098 — an arena win leaves timeScale at 0.00 and the 'Harvest Result' modal open
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - f4e4630e3 on HEAD 2026-09-09 (was READY); owner felt-test closes
+PRIOR STATUS: READY TO IMPLEMENT
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1098 → 1099 in the same edit)
 **Silo:** Combat / quiescence · UI panels
 **Severity:** P0-felt — the world reads as frozen and the interact button is suppressed

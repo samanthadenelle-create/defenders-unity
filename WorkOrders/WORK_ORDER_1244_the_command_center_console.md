@@ -1,8 +1,30 @@
 # WORK ORDER 1244 - The Command Center CONSOLE: build the surface WO-1169 specced
 
-**Status:** READY TO IMPLEMENT - owner felt-test 2026-09-03 Fail. Bounced from Fixed. PRIOR STATUS: FIXED 2026-08-27 - the console is built and gated. READ half: `api/admin/stats.js?view=ops` (additive, SELECT-only) returning toggles, promos, player reports and ops history; proven HTTP 200 against the LIVE database. WRITE half: `api/admin/ops.js`, a DIFFERENT file behind a SECOND secret (`ADMIN_OPS_KEY`), POST-only, no CORS, fail-CLOSED when that key is unset. No refund, grant or edit of `purchase_quotes`/`purchase_entitlements` exists anywhere in it, and a test asserts the table names never appear. Phone-first ASCII page, no framework, no build step, key held in memory only. 41 tests, 25 mutations proven RED; the lead independently re-verified the second-key mutation (1 fail, restored 41/41). Whole JS suite 136/136, SCHEMA_PARITY_OK 19 tables.
+**Status:** READY TO IMPLEMENT - owner felt-test 2026-09-09 Fail. Bounced from Fixed. PRIOR STATUS: FIXED - closes on the next prod api deploy (owner 2026-09-09) PRIOR STATUS: FIXED 2026-08-27 - the console is built and gated. READ half: `api/admin/stats.js?view=ops` (additive, SELECT-only) returning toggles, promos, player reports and ops history; proven HTTP 200 against the LIVE database. WRITE half: `api/admin/ops.js`, a DIFFERENT file behind a SECOND secret (`ADMIN_OPS_KEY`), POST-only, no CORS, fail-CLOSED when that key is unset. No refund, grant or edit of `purchase_quotes`/`purchase_entitlements` exists anywhere in it, and a test asserts the table names never appear. Phone-first ASCII page, no framework, no build step, key held in memory only. 41 tests, 25 mutations proven RED; the lead independently re-verified the second-key mutation (1 fail, restored 41/41). Whole JS suite 136/136, SCHEMA_PARITY_OK 19 tables.
 
-> ⛔ **ONE OWNER ACTION BLOCKS THE FELT-VERIFY: `ADMIN_OPS_KEY` IS NOT SET ON THE DEPLOYMENT.** Until it is, every write answers `OPS_WRITE_NOT_CONFIGURED` and says so with the remedy on screen. Reads work now; flipping a toggle from the phone (acceptance 5) cannot work until that env var exists. It must be a DIFFERENT value from `ADMIN_DASH_KEY` - a second key that equals the first is one key.
+### OWNER RULING 2026-09-09 (recorded by the CLI lead)
+The 09-03 Fail was caused by the unset ADMIN_OPS_KEY; it was set and proven live by the owner 2026-09-06. The ticket closes when the next production api deploy lands and she confirms the console operations work end-to-end.
+
+> ### 2026-09-09 - WARNING: THE BLOCKER BELOW IS **CLOSED**. `ADMIN_OPS_KEY` IS SET, AND IT WAS PROVEN LIVE.
+> `docs/GET_WELL_PLAN_2026-09-06.md` section 7 item 2 (read at source 2026-09-09) records it struck
+> through: *"DONE by the owner 2026-09-06 22:5x (her word). PROVEN LIVE by the owner the same hour:
+> she minted a custom SKU through the command centre, an ops WRITE, which the endpoint refuses with
+> `OPS_WRITE_NOT_CONFIGURED` while the key is unset (`api/admin/ops.js:177-184`). A CLI probe cannot
+> see past the read key (prod answered UNAUTHORIZED)."* A successful ops write **is** the proof the
+> key exists, because the fail-closed refusal is unconditional while it does not.
+>
+> The dispatch-table note carried in `docs/reference/READY_SILOS_2026-09-09.md` (the "ADMIN_OPS_KEY
+> unset" ledger entry) is therefore **STALE**. The paragraph below is kept verbatim as the record
+> rather than rewritten (CLAUDE.md sec.15).
+>
+> **WHAT IS ACTUALLY MISSING IS THE OWNER'S MISSING-SURFACE LIST from the 2026-09-03 Fail.** She
+> bounced this ticket from Fixed without naming which surface was absent or wrong, so no lane can
+> act: "Fail" plus a working key is not a defect anyone can chase. This is BLOCKED-ON-OWNER for one
+> answer - *which screens/controls did you expect and not find* - and must not be dispatched until
+> she gives it. Acceptance 2 (a true 390px phone-width screenshot) also remains hers; headless Edge
+> on Windows enforces a ~500px minimum window, so no shot taken from a seat is honest.
+
+> ⛔ **[SUPERSEDED 2026-09-09, see the banner above] ONE OWNER ACTION BLOCKS THE FELT-VERIFY: `ADMIN_OPS_KEY` IS NOT SET ON THE DEPLOYMENT.** Until it is, every write answers `OPS_WRITE_NOT_CONFIGURED` and says so with the remedy on screen. Reads work now; flipping a toggle from the phone (acceptance 5) cannot work until that env var exists. It must be a DIFFERENT value from `ADMIN_DASH_KEY` - a second key that equals the first is one key.
 >
 > **Acceptance 2 (phone-width screenshot) is the owner's.** Headless Edge on Windows enforces a ~500px minimum window, so no shot taken here is a true 390px viewport. The gate page is proven to render (`proof/img/wo1244-console-gate.png`) and `.gate{max-width:440px}` is correct, but a real phone is the only honest check.
 **Silo:** Backend (`api/`) + admin console surface

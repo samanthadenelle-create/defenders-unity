@@ -189,7 +189,36 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-09 (CLI, hundred-and-thirty-first pass): main line next free = **1615**.
+> ## RECONCILED 2026-09-09 (CLI, hundred-and-thirty-third pass): main line next free = **1621**.
+> *(CLI minted **WO-1619 and WO-1620** - two lane findings surfaced by the WO-1616 / WO-1617 RESULT
+> files, neither owner-reported: raid spire height capped by the `8f` scale factor so every baked
+> spire lands at 8.0 m against a 14.4 m target (1619, **instrument first** - a bake log line per
+> spire before any tuning edit; SEQUENCED behind WO-1617's gate + re-bake, same file same method),
+> and the in-game Seating Editor's shield preview still deriving its own rotation from raw
+> `body.forward/up` - the last second decider now that WO-1616 joined hero + NPC onto one authority
+> (1620, SEQUENCED behind the WO-1431 + WO-1616 gates). Bumped 1619 -> 1621 in this SAME edit.
+> **A THIRD candidate was DISPROVEN AT SOURCE and deliberately NOT MINTED:** WO-1616 RESULT sec.6
+> item 9 reports that `TroopDef.Weapon`/`Offhand` use the string `"None"` as a sentinel and that
+> *"6 of 9 roster rows"* therefore build placeholder cubes. `troops.json` carries **ZERO** `"None"`
+> strings in `weapon` or `offhand` (`grep -c` = 0 and 0 on both canonical twins, which `cmp` reports
+> byte-identical and which `git diff HEAD` reports unchanged). The 9 rows simply OMIT the key - 2 have
+> no `weapon`, 7 no `offhand` - `TroopDef.cs:83/:89` declare no default, and
+> `TroopGearApplier.Apply:47/:55` already filter with `IsNullOrEmpty`. The only `"None"` in the file
+> is `"element": "None"` (8 rows). A python `.get()` walk prints Python's `None` for a missing key,
+> which is the most likely misread. Minting it would have sent a lane to add a filter that can never
+> fire and a RED-first suite that can never red - CLAUDE.md sec.11B. **Do not re-mint it from that
+> RESULT line**; the RESULT is a frozen artifact and needs a `CORRECTION` banner from its owner
+> (CLAUDE.md sec.15), including its *"expect a moved grey slab on a footman"* warning.)*
+>
+> ### superseded: RECONCILED 2026-09-09 (CLI, hundred-and-thirty-second pass): main line next free = **1619**.
+> *(CLI minted **WO-1615 through WO-1618** - the three proven RCAs that had no ticket
+> (`docs/reference/READY_SILOS_2026-09-09.md` footnote) plus the RAID lane's seq-4980 hand-back:
+> build Move -> PLACE does not seat the tower (1615, instrument first), raid NPC shield seats at a
+> hard-coded offset (1616, SEQUENCED behind WO-1431), raid ballista on its edge at monument scale
+> (1617, SEQUENCED behind the WO-1607 felt-test), and the scaled raid clock frozen at 50s inside a
+> ~510s scene (1618, instrument first). Bumped 1615 -> 1619 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-09 (CLI, hundred-and-thirty-first pass): main line next free = **1615**.
 > *(CLI minted **WO-1612 through WO-1614** from the owner's live tester pass: consolidated fixed
 > runtime/UI defects (1612), correctly loaded recurring progressive dragon at 20/25/30/... (1613),
 > and distinct learned-Mage cast animations/VFX (1614). All three are FIXED for next-build owner

@@ -1,6 +1,9 @@
 # WO-1446: the renewal cap cannot deploy - auth_sessions.signed_at does not exist on the live Neon DB
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - owner ran the schema repair (her word, 2026-09-09); api deploy hold LIFTED; prod parity re-check owed at the next deploy
+
+### OWNER RULING 2026-09-09 (recorded by the CLI lead)
+The owner ran `tools/run-schema-repair.mjs` against live Neon before 2026-09-09 evening. The migration file exists on HEAD, and the runner executed it live. API deploy hold is lifted; a prod parity re-check is owed at the next deploy to confirm the live column matches. WO-1449 and WO-1453 were held behind this blocker.
 **Note 2026-09-06:** the `signed_at` ALTER TABLE in `api/schema.sql` arrived under WO-1441, not under this ticket. This ticket's own acceptance - a numbered migration file, the live-DB sweep, and the drift test - is still unmet, so it stays READY.
 **Silo:** `api/auth/session.js` + `api/_lib/wallet-auth.js` + `api/migrations/` + `api/schema.sql`. Backend only,
 disjoint from every Unity lane.

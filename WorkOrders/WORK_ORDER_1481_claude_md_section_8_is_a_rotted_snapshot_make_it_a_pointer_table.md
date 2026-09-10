@@ -1,6 +1,6 @@
 # WO-1481: CLAUDE.md section 8 is a dated snapshot embedded in the read-first law, and it has rotted
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD 2026-09-09 (was READY); owner felt-test closes. See `WORK_ORDER_1481_claude_md_section_8_is_a_rotted_snapshot_make_it_a_pointer_table.RESULT.md`. PRIOR STATUS: READY TO IMPLEMENT
 **Silo:** `CLAUDE.md` sec.7 + sec.8 (+ `PIPELINE_STATE.md`, `KEY_FACTS.md` for the duplicated facts).
 Docs only; no code.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner

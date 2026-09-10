@@ -1,6 +1,6 @@
 # WO-1450: ProbeForStructure logs 320 lines a second with stack frames and destroys the device evidence window
 
-**Status:** IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD 2026-09-09 (was READY); owner felt-test closes. See `WORK_ORDER_1450_enemy_aggro_probe_log_evicts_the_logcat_ring.RESULT.md`. PRIOR STATUS: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT
 **Silo:** `Assets/_Modules/Village/AI/` (`Enemy`/`EnemyAggro` `ProbeForStructure`). Diagnostics only; no combat
 behaviour changes.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner

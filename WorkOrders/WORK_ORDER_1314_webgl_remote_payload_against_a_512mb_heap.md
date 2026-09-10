@@ -2,7 +2,10 @@
 
 # WORK ORDER 1314 — The WebGL remote payload is shaped for a native client, against a 512 MB heap
 
-**Status:** READY TO IMPLEMENT - ⛔ THE "PROVEN ROOT" CLAIM IS RETRACTED 2026-09-03. The owner loaded the same build in a NORMAL DESKTOP BROWSER and it fails at the SAME percentage, so a webview memory ceiling cannot be the mechanism. The oversized payload is still real and still worth reducing; it is NOT the root of PROD-022. Real signature is `t.subarray` on undefined in the Unity loader = a decompression/serve failure. See the RETRACTED banner at the end.
+**Status:** READY TO IMPLEMENT - PARKED (owner 2026-09-09: measure in Pi Browser on the Seeker first)
+
+### OWNER RULING 2026-09-09 (recorded by the CLI lead)
+Both WO-1484 and WO-1314 need measured over the Seeker in Pi Browser to verify. The 2026-09-09 desktop/controlled-run retractions in docs/READY_RCA_2026-09-09.md do not close them. A measurement session must run the game in Pi Browser ON THE SEEKER (not desktop, not headless).
 **Silo:** Web / Content
 **Minted:** 2026-09-02 (CLI) while answering the owner's question about Pi breaking on the CDN.
 **Severity:** P2 pending proof — see "What is NOT proven" before acting on it.

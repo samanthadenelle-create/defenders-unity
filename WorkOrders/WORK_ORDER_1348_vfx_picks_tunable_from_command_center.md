@@ -3,6 +3,24 @@
 **Status:** READY TO IMPLEMENT - ⛔ **DISPATCH HELD** until the WO-1343/1344/1345/1346/1347 agents land
 and the tree is gated. Three of them are already authoring tunables; a sixth agent in the same registry
 is the exact collision each of them was warned about. Release after the gate.
+
+> ### 2026-09-09 - WARNING: THE DISPATCH HELD CONDITION ABOVE IS **STALE**. The hold is RELEASED.
+> The five tickets it waits on landed on 09-03 / 09-04: `docs/reference/READY_SILOS_2026-09-05.md`
+> section 4 (the 1348 row, `:71`) records *"Hold is released (1343/1344 CLOSED, 1345-1347 FIXED) -
+> the WO's Status text is stale, banner it"*, and its audit line `:147` calls out this exact Status
+> sentence by name. This banner is that fix; the Status line above is kept verbatim as the record
+> rather than rewritten (CLAUDE.md sec.15 - flag, do not silently overwrite).
+>
+> **The ticket remains READY TO IMPLEMENT, and it is NEW ARCHITECTURE, not a wiring job.**
+> `grep -rn "realm\.vfx" Assets --include=*.cs` returned **0 hits**, run 2026-09-09 - the runtime
+> pick path her `realm.vfx(set)` namespace names **does not exist yet**. Today every VFX pick is
+> read by editor-time tooling from `Assets/Editor/VfxManualPicks.json`, which is why a retag costs a
+> rebuild. The lane must BUILD the runtime override seam (`VfxAssetLoader` / `HovlVfxCatalog`), not
+> re-point an existing one.
+>
+> **P3.** Owner iteration speed, not player-felt. It sequences AFTER any lane sharing the remote
+> tunables rail merge files (`api/_lib/tunable-manifest.js`, `api/admin/console.js` /
+> `api/admin/ops.js`) - that shared-file collision, not the landed tickets, is the live constraint.
 **Silo / Lane:** Command Center + the remote tunables rail + VFX pick resolution
 **Type:** EXISTING assets and an EXISTING rail; the PICK moves from build-time to runtime.
 **Minted:** 2026-09-03 (CLI) on a direct owner ask, with her own namespace proposal.

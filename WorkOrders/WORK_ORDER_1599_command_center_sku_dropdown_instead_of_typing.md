@@ -1,6 +1,6 @@
 # WORK ORDER 1599 - Command Center: pick a SKU from a dropdown instead of typing it
 
-**Status:** READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's ask
+**Status:** IMPLEMENTED - b10038556 on HEAD 2026-09-09 (was READY); owner felt-test closes. See `WORK_ORDER_1599_command_center_sku_dropdown_instead_of_typing.RESULT.md`. PRIOR STATUS: READY TO IMPLEMENT - minted 2026-09-07 (CLI) from the owner's ask
 **Silo / Lane:** api/admin/console.js (the console page), api/_lib/sku-catalog.js + `GET /api/admin/stats?view=skus` (the catalog the dropdown reads, WO-1532), api/_lib/ops.js (the ops that take a sku), test/
 **Type:** EXISTING system, USABILITY
 **Priority:** P2 (owner-facing; she mints codes and packs by hand)
