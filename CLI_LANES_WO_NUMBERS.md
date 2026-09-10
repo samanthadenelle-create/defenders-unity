@@ -189,7 +189,47 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-thirty-sixth pass): main line next free = **1629**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-thirty-seventh pass): main line next free = **1631**.
+> *(CLI minting lane minted **WO-1629 + WO-1630** - the two items WO-1628's own RESULT sec.5 raised
+> for minting, each re-proven at source this session rather than carried from the RESULT that raised
+> it. **WO-1629** = the Manage Placed card's caption at `BuildCollectionBrowser.cs:492-497` is STILL
+> authored as `new Vector2(.08f, .05f)` / `new Vector2(.92f, .21f)` - the exact pair WO-1628 retired
+> for the seven category cards, which now carry `CaptionBandPx` (`:107`) / `CaptionTopFrac` (`:112`)
+> in reference px - and its copy is **45** characters against the category caption's 22, in a band
+> WO-1628 measured too short for 22. **THE BIGGER FINDING IS THE EVIDENCE HOLE:** the capture calls
+> the SINGLE-ARG overload at `UICaptureLaunch.cs:8965` (`browser.Show(_ => { });`), so
+> `BuildManagePlacedCard` bails at `BuildCollectionBrowser.cs:428-434` and the card has NEVER been
+> rendered in any capture - while the LIVE game DOES pass the callback
+> (`BuildPaletteUI.cs:345-347`). So the player gets EIGHT cards and every captured PNG shows SEVEN,
+> the cards share one `HorizontalLayoutGroup` (`:216`, restated `:324-326`), and WO-1628's
+> `CaptionBandPx = 50f` was therefore authored off a grid the player never sees - which is why
+> re-asserting WO-1628's acceptance on the eight-card frame is IN SCOPE in 1629. The 45-chars-needs-
+> more-than-50px premise is explicitly NOT claimed (it is the RESULT's inference; `preferredHeightPx`
+> for that label has never been read). The pin `BuildCollectionPlayerRegression.cs:205-209` allows the
+> retired pair ONCE today and its own comment says to tighten it to zero on this frame; that tighten
+> is Step 3. Routing constraint recorded: `PlacedStructureDoorRegression.cs:210` pins the regex
+> `BuildManagePlacedCard\s*\(\s*grid\s*\)`, so passing the probe list as a parameter REDS C4b.
+> **WO-1630** = there is no glyph-survival assert anywhere on the capture path.
+> `LayoutOracle.cs:56-64` declares exactly three finding kinds, all rect geometry (`ButtonOverText`
+> reads `t.text` only to quote it, `:156`), and the harness's fourth rule
+> `RULE 1 [text-off-plate]` (`UICaptureLaunch.cs:5851-5872`) measures whether the text RECT escapes
+> its plate - so seven captions cut mid-word passed a clean 91-canvas geometry run. Spec: a fourth
+> kind, with the discriminator taken from the TWO existing implementations rather than a third
+> variant - `NightMarketRuntimeLayoutRegression.CheckNotTruncated` (`:705-772`: visible glyphs vs
+> PRINTABLE source chars, `ForceMeshUpdate` first, a PartialSkip that NAMES the label when no font
+> resolves) and `HubRepairAffordance.WarnIfClipped` (`:600-632`, whose `:610-612` records why raw
+> `characterCount` false-positives on a wrapped string). Red-first is mandatory
+> (`LayoutOracle.cs:16-21`) and it COLLIDES with `UiTouchClampRegression.cs:44-48` ("NO TMP ... so the
+> suite cannot go red because a font asset failed to resolve headless") - the ticket makes the lane
+> resolve that in the same commit and forbids a PartialSkip reading as a red. Routing is decided in
+> the ticket, not left open: its OWN tally + its own distinct marker registered at
+> `DataRegression.cs:14-22`, on the `:5977-5986` precedent, and a SEPARATE `GlyphBaseline` - never an
+> addition to `TouchBaseline`, which is shrink-only by owner ruling (`:5946-5949`). Both tickets edit
+> `UICaptureLaunch.cs` (1629 at `:8965`, 1630 at `:5825-5975`), so they are NOT file-disjoint and each
+> sec.7 says the lead sequences them.
+> Bumped 1629 -> 1631 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-thirty-sixth pass): main line next free = **1629**.
 > *(CLI minting lane minted **WO-1628** - a VIEWABLE defect, evidence-first: on the fresh headless
 > capture written 2026-09-10 01:34, all SEVEN Build Collections category cards print their
 > affordability sub-caption as `nothing affordable y` - the word `yet` cut after one letter -
