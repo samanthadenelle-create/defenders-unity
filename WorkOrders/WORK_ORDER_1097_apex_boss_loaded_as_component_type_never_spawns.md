@@ -1,6 +1,7 @@
 # WORK ORDER 1097 — the apex boss is requested as a COMPONENT type, so Addressables can never return it and the dragon never spawns
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - f4e4630e3 on HEAD 2026-09-09 (was READY); owner felt-test closes
+PRIOR STATUS: READY TO IMPLEMENT
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1097 → 1098 in the same edit)
 **Silo:** Content / Addressables · Waves
 **Severity:** P1 — the apex wave's headline threat silently never appears
@@ -91,6 +92,24 @@ So this is a **single-call-site bug with a systemic hole behind it.** Fix both.
 - [ ] A regression pins the apex boss resolve.
 - [ ] Brace balance; gate markers on a fresh log.
 - [ ] Owner felt-verifies an apex wave and closes.
+
+## 2026-09-09 — lane LOADER
+
+Acceptance item 4 IMPLEMENTED - awaiting gate (2026-09-09 lane LOADER)
+
+- `Assets/_Modules/Core/Addressables/EnemyAssetLoader.cs` — the XML doc on `LoadEnemyAsset<T>` now
+  shows the GameObject-typed call plus the `GetComponentInChildren<DragonBoss>(true)` walk (the shape
+  `WaveManager.cs:2715` already runs); the broken Component-typed literal is gone from the file
+  entirely, counter-example included, so a lint for it is unambiguous.
+- Same file: a **type screen** at the head of `Load<T>` refuses any `Component`-derived `T` with a
+  `FlowTrace.Fail` naming the address and the requested type, then returns null — never a throw on the
+  player path. Public surface added: `IsUnsatisfiableComponentRequest(Type)` (pure),
+  `TypeScreenMarker` (the const the gate matches on), `ResetTypeScreenReports()` (gate-only).
+  Every pre-existing FlowTrace/Guard call is untouched.
+- `Assets/Editor/Regression/EnemyAssetTypeScreenRegression.cs` — new suite, marker
+  `ENEMY_ASSET_TYPE_SCREEN_OK`. Items 3 and 5 are **not** duplicated; `[apex-dragon-spawn]` keeps them.
+- ⚠ `where T : Object` is deliberately unchanged: C# cannot express "Object but not Component", so the
+  runtime screen is the guard, not an omission.
 
 ## Unproven
 

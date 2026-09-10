@@ -74,6 +74,9 @@ using System.Collections.Generic;
 using DeNelle.Core.Diagnostics;   // FlowTrace / Guard — §12 instrument the seam
 using UnityEngine;
 using Object = UnityEngine.Object;
+// ⚠ EnemyAssetLoader declares `public const string System` (the FlowTrace tag), which SHADOWS the
+// `System` namespace inside the class — `System.Type` will not compile in there. Alias it once here.
+using SysType = System.Type;
 
 namespace DeNelle.Core
 {
@@ -111,9 +114,52 @@ namespace DeNelle.Core
 
         /// <summary>
         /// Generic escape hatch for enemy assets addressed by a FULL Resources-relative key
-        /// (prefix included), e.g. <c>LoadEnemyAsset&lt;DragonBoss&gt;("Enemies/Boss_Dragon")</c>.
+        /// (prefix included), e.g. <c>LoadEnemyAsset&lt;GameObject&gt;("Enemies/Boss_Dragon")</c>.
+        /// <para>⛔ <b>T MUST BE A TYPE ADDRESSABLES ACTUALLY PUBLISHES</b> — a GameObject, a
+        /// RuntimeAnimatorController, a Texture, a Material, a ScriptableObject. <b>NEVER a
+        /// Component / MonoBehaviour.</b> A prefab is addressed as <c>UnityEngine.GameObject</c>
+        /// and Addressables cannot hand back a Component type: the request is unsatisfiable by
+        /// construction, on every platform, every time. That was WO-1097 — the apex wave asked
+        /// for its boss by component type, the load could only ever fail, and the dragon silently
+        /// never spawned. This seam now REFUSES such a request (see
+        /// <see cref="IsUnsatisfiableComponentRequest"/>) and returns null after a
+        /// <c>FlowTrace.Fail</c> naming the address and the requested type.</para>
+        /// <para>The working shape — load the GameObject, then walk to the component:</para>
+        /// <code>
+        /// GameObject prefab = EnemyAssetLoader.LoadEnemyAsset&lt;GameObject&gt;("Enemies/Boss_Dragon");
+        /// DragonBoss boss = prefab != null ? prefab.GetComponentInChildren&lt;DragonBoss&gt;(true) : null;
+        /// </code>
+        /// <para>(<c>LoadEnemyPrefab("Boss_Dragon")</c> is the same call with the prefix applied —
+        /// prefer it for bodies. This is what <c>WaveManager</c> does at its apex-boss seam.)</para>
+        /// <para>⚠ The <c>where T : Object</c> constraint CANNOT be tightened to exclude Components:
+        /// C# cannot express "Object but not Component". The runtime screen below is the guard —
+        /// the constraint staying loose is a language limit, not an omission.</para>
         /// </summary>
         public static T LoadEnemyAsset<T>(string key) where T : Object => Load<T>(key);
+
+        /// <summary>
+        /// Marker prefix on every type-screen refusal line. A <c>public const</c> on purpose: the
+        /// gate matches against THIS string rather than a retyped copy (CLAUDE.md §2/§5 — a copied
+        /// literal is how a pin and its producer drift apart).
+        /// </summary>
+        public const string TypeScreenMarker = "ENEMY_ASSET_TYPE_SCREEN";
+
+        /// <summary>
+        /// TRUE when <paramref name="requested"/> is a type this seam can NEVER return, because
+        /// Addressables publishes a prefab as <c>UnityEngine.GameObject</c> and cannot hand back a
+        /// <see cref="Component"/> living on it. Pure — no side effects, no load, safe to probe.
+        /// <para>This is the WO-1097 class in one predicate. See <see cref="LoadEnemyAsset{T}"/>.</para>
+        /// </summary>
+        public static bool IsUnsatisfiableComponentRequest(SysType requested)
+            => requested != null && typeof(Component).IsAssignableFrom(requested);
+
+        /// <summary>Refusals already reported (address|type), so a per-frame caller cannot flood the
+        /// log — a flooded log evicts the boot window and destroys the evidence (§12).</summary>
+        private static readonly HashSet<string> s_reportedTypeScreen = new HashSet<string>();
+
+        /// <summary>GATE-ONLY: forget which refusals have been reported, so a regression can assert
+        /// the trace deterministically regardless of what ran before it in the same domain.</summary>
+        public static void ResetTypeScreenReports() => s_reportedTypeScreen.Clear();
 
         /// <summary>
         /// Ask for an enemy FAMILY's content ahead of time without waiting for it — the on-demand
@@ -141,6 +187,35 @@ namespace DeNelle.Core
         private static T Load<T>(string address) where T : Object
         {
             if (string.IsNullOrWhiteSpace(address)) return null;
+
+            // ---- 0. TYPE SCREEN (WO-1097) ------------------------------------
+            // Addressables addresses a prefab as UnityEngine.GameObject. A Component-typed request
+            // is unsatisfiable BY CONSTRUCTION — Addressables answers it with
+            //   InvalidKeyException: No Asset found for Key=<addr> with Type=<Component>.
+            //   Key exists as Type=UnityEngine.GameObject, which is not assignable from ...
+            // and the caller, which cannot distinguish that from "not downloaded yet", waits
+            // forever. That is exactly how the apex wave shipped without its dragon (WO-1097,
+            // F8 seq 4969-4971). REFUSE IT HERE, LOUDLY, and return null:
+            //   • loud, because a silent null reads as "not resident yet" and self-heals never;
+            //   • null and NOT a throw, because this runs on the player path from wave callbacks
+            //     and scene entry — an exception there costs a frame's worth of spawns, and the
+            //     whole contract of this file is that a content problem degrades, never stops.
+            if (IsUnsatisfiableComponentRequest(typeof(T)))
+            {
+                if (s_reportedTypeScreen.Add(address + "|" + typeof(T).FullName))
+                {
+                    FlowTrace.Fail(System,
+                        $"{TypeScreenMarker} REFUSED: '{address}' was requested as {typeof(T).FullName}, " +
+                        "which derives from UnityEngine.Component. Addressables publishes a prefab as " +
+                        "UnityEngine.GameObject and CANNOT return a component from it, so this request " +
+                        "could never succeed on any platform — it is the WO-1097 defect, caught at the " +
+                        $"seam instead of failing silently forever. FIX THE CALLER: load the GameObject " +
+                        $"(LoadEnemyAsset<GameObject>(\"{address}\") or LoadEnemyPrefab) and then " +
+                        $"GetComponentInChildren<{typeof(T).Name}>(true) on it. Returning null: the " +
+                        "caller shows its placeholder; nothing stalls.");
+                }
+                return null;
+            }
 
             T result = null;
 
