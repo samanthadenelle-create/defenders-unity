@@ -409,6 +409,37 @@ const PRESENTATION = {
         min: 0,
         max: 1000000,
     },
+    'raid.lootRepeatClearPct': {
+        area: 'misc',
+        label: 'Raid reward: share paid for a REPEAT clear',
+        what: 'What percentage of the wood, iron, stone and gold a raid pays when you clear ' +
+              'the SAME camp again before its cooldown has run out. The game ships at 60, ' +
+              'which is your ruling: full pay for the first clear after a cooldown, 60 ' +
+              'percent for a repeat inside the same cycle, back to full once the cooldown ' +
+              'expires. Crystals are not affected - those are once a day whatever you do. ' +
+              'Set it to 100 to remove the repeat penalty altogether. It can never go above ' +
+              '100, so a repeat can never pay more than a first clear.',
+        min: 0,
+        max: 100,
+        risk: 'This is the number a player meets as "I won and got almost nothing". It sets ' +
+              'whether re-running a camp reads as useful practice or as a waste of a raid.',
+    },
+    'raid.cacheCapPerResource': {
+        area: 'misc',
+        label: 'Raid Cache: how much overflow it holds per resource',
+        what: 'When you win a raid and your storage is full, the leftover is held in a Raid ' +
+              'Cache instead of being thrown away, and you claim it once you have upgraded ' +
+              'or spent. This is how much the cache will hold of any ONE resource. The game ' +
+              'ships at 1800 - one perfect first-tier raid\'s worth of wood - so the cache ' +
+              'can never quietly turn into a second, bigger warehouse. Only wood, iron and ' +
+              'stone go in it; crystals and gold have no storage limit in the first place. ' +
+              'Set it to 0 and overflow is thrown away again, the way it used to be.',
+        min: 0,
+        max: 1000000,
+        risk: 'The size was never specified - you asked for "a modest cap" and this is one ' +
+              'raid\'s worth. Too small and a win still mostly evaporates; too large and the ' +
+              'cache removes the reason to upgrade storage at all.',
+    },
 
     'raid.starterArmySize': {
         area: 'misc',
@@ -552,6 +583,123 @@ const PRESENTATION = {
         max: 1000,
         risk: 'Below 100 a win would lose money, so the game refuses it. Well above 200 the ' +
               'Arena starts printing Crystals, which undercuts the store.',
+    },
+
+    'hero.playableFallbackHalf': {
+        area: 'misc',
+        label: 'Hero: invisible wall distance in maps with no ground data',
+        what: 'How far, in metres, the hero may wander from the centre of a map before ' +
+              'the game pulls them back - and ONLY in maps the game cannot measure for ' +
+              'itself. The home overworld measures its own size, so this number is never ' +
+              'used there. Raid bases and the raid village cannot be measured, so this is ' +
+              'their wall. The game ships at 50, which is exactly what it used before.',
+        min: 1,
+        max: 100000,
+        risk: 'Too small and the hero snaps back inside a raid base they should be able ' +
+              'to cross. Too large and a hero who walks off the map keeps going instead ' +
+              'of being caught. Takes effect the next time a map loads.',
+    },
+
+    'raid.stagingCeilingSeconds': {
+        area: 'misc',
+        label: 'Raid: how long a player may sit in staging before the game sends them home',
+        what: 'Staging is the screen where troops are placed before an assault begins. It ' +
+              'costs nothing on the raid clock, so this is only meant to catch a session ' +
+              'that has actually died - a phone put down and forgotten. The game ships at ' +
+              '900 seconds, which is fifteen minutes.',
+        min: 60,
+        max: 86400,
+        risk: 'Too short and a player who takes their time placing troops gets thrown out ' +
+              'of a raid they were still setting up. Too long and a dead session sits there ' +
+              'holding the raid instead of being cleaned up.',
+    },
+
+    'raid.honorThirdStarSeconds': {
+        area: 'misc',
+        label: 'Raid: seconds before the third star goes dark',
+        what: 'A raid starts with three stars lit and puts them out as time passes. This ' +
+              'is how many seconds of fighting a player gets before the THIRD star goes ' +
+              'dark. The timer only starts when the fight starts, so setting up costs ' +
+              'nothing. The game ships at 90 seconds, which is half the raid clock. It ' +
+              'changes the reward too: a raid can never pay more stars than the bar was ' +
+              'still showing at the end.',
+        min: 1,
+        max: 86400,
+        risk: 'Too small and almost every raid loses its third star, so the best reward ' +
+              'stops feeling reachable. Too large and speed stops mattering at all. ' +
+              'Takes effect on the next raid.',
+    },
+
+    'raid.honorSecondStarSeconds': {
+        area: 'misc',
+        label: 'Raid: seconds before the second star can go dark',
+        what: 'How many seconds of fighting before the SECOND star is at risk. It only ' +
+              'goes dark if the camp is still less than half wrecked by then, so a player ' +
+              'who is making progress keeps it. The game ships at 150 seconds - the last ' +
+              'thirty before the clock runs out. The FIRST star is never taken away for ' +
+              'time alone, whatever this is set to.',
+        min: 1,
+        max: 86400,
+        risk: 'Too small and a slow raid is punished twice over. Set it above the raid ' +
+              'clock and this milestone simply never happens. Takes effect on the next raid.',
+    },
+
+    'raid.honorSecondStarMinDestructionPct': {
+        area: 'misc',
+        label: 'Raid: how wrecked a camp must be to keep the second star',
+        what: 'The percentage of a camp that has to be destroyed by the time above for ' +
+              'the second star to stay lit. The game ships at 50, meaning half the camp. ' +
+              '0 means the second star is never taken away; 100 means only a total ' +
+              'flattening keeps it.',
+        min: 0,
+        max: 100,
+        risk: 'Too high and players who fought well still lose the star, which reads as ' +
+              'the game cheating. Too low and the milestone stops asking for anything. ' +
+              'Takes effect on the next raid.',
+    },
+
+    'raid.roughStoneMinTier': {
+        area: 'misc',
+        label: 'Rough stone: lowest raid camp that can drop one',
+        what: 'Raid camps sit on a ladder: 1 the Forsaken Camp, 2 the Broken Garrison, ' +
+              '3 the Veiled Enclave, 4 the Iron Bastion. This is the lowest rung that ' +
+              'is allowed to pay a rough stone. The game ships at 3, which is your ' +
+              'ruling that only the top two tiers may drop it. Set it to 2 to let the ' +
+              'Broken Garrison drop as well. Set it to 5 and no raid drops stone at all.',
+        min: 1,
+        max: 99,
+        risk: 'Rough stone is the only thing the Jeweler chain eats, so this decides ' +
+              'which raids feel like they lead somewhere. Lowering it makes rings much ' +
+              'faster to reach. Takes effect on the next raid you win.',
+    },
+    'raid.roughStonePerDayCap': {
+        area: 'misc',
+        label: 'Rough stone: how many raids may pay one per day',
+        what: 'How many rough stones ALL your raids together can pay inside one day ' +
+              '(the day rolls over at UTC midnight). The game ships at 1, which is your ' +
+              'ruling of no more than one a day. It is a shared total, not one per ' +
+              'camp - winning both top camps on the same day still pays one stone. ' +
+              'Set it to 0 to stop raids dropping stone without changing the tier above.',
+        min: 0,
+        max: 99,
+        risk: 'This is the tap on the whole ring ladder. Raise it and the rarest rings ' +
+              'stop being a long climb; drop it to 0 and dungeons become the only ' +
+              'source again. Takes effect on the next raid you win.',
+    },
+    'dungeon.roughStoneDropPct': {
+        area: 'misc',
+        label: 'Rough stone: chance a dungeon run pays one',
+        what: 'The percentage chance that finishing a dungeon pays a rough stone, once ' +
+              'you already own your first one. The game ships at 5, which is your ' +
+              'ruling. Starter dungeons never pay it whatever this is set to, and your ' +
+              'very first stone is still guaranteed and cannot be rolled away. The ' +
+              'build before this change used 15, so setting it back to 15 restores the ' +
+              'old rate exactly.',
+        min: 0,
+        max: 100,
+        risk: 'Dungeons were the only source of rough stone before raids could drop it. ' +
+              'Set this too low and a delve stops paying for the lantern oil; too high ' +
+              'and the Jeweler stops being a climb. Takes effect on the next run you finish.',
     },
 
     // ---- the PROD-022 loading knobs. Not balance. They live under Misc because

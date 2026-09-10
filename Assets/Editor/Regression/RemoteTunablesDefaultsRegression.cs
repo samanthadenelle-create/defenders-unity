@@ -120,10 +120,21 @@ namespace DeNelle.Editor.Regression
         /// WO-1374 raid-reward knobs (two bases + the five-rung performance ladder), and the
         /// WO-1374 free-starter-squad size, the two WO-1379 Heartfire pacing knobs, and the
         /// WO-1388 Builder's Hour crew duration, and the three WO-1384b Night Market glow
-        /// feel knobs, and the four WO-1366 Arena wager price knobs.
+        /// feel knobs, and the four WO-1366 Arena wager price knobs, and the three WO-1594 raid
+        /// HONOR MILESTONES (owner ruling 2026-09-09, "Tunables with those defaults").
         /// Pinned as a literal, not as Registry.Length - an oracle that measures the thing
         /// against itself certifies nothing.</summary>
-        private const int ExpectedKnobCount = 42;
+        // ⚠ 45, and READ THIS BEFORE "CORRECTING" IT. This const sat at 42 while
+        // RemoteTunables.Registry already held 44 — the WO-1461 lane added
+        // raid.lootRepeatClearPct and raid.cacheCapPerResource to the Registry and to
+        // ExpectedDefaults above WITHOUT bumping the count, which makes case [count] RED for a
+        // reason that has nothing to do with either knob. WO-1094 adds the 45th
+        // (hero.playableFallbackHalf) and WO-1095 the 46th (raid.stagingCeilingSeconds), taking
+        // the count to 46 so the combined tree can gate. If the 1461 lane bumps it too, the value
+        // every lane must land on is 46, not 44.
+        // WO-1594 (owner ruling 2026-09-09, "Tunables with those defaults") adds the 47th, 48th
+        // and 49th - the three raid HONOR MILESTONES - taking the count to 49.
+        private const int ExpectedKnobCount = 52;
 
         /// <summary>
         /// ⭐ THE CONTRACT, STATED INDEPENDENTLY OF THE CODE.
@@ -219,6 +230,21 @@ namespace DeNelle.Editor.Regression
             // "Crystals are timer compression."
             new KeyValuePair<string, int>("raid.lootCrystalsBase", 20),
             new KeyValuePair<string, int>("raid.lootCrystalsPerStar", 2),
+            // WO-1461 - THE REPEAT-CLEAR SHARE, and the FOURTH deliberate departure from
+            // "the default is today's behaviour" (alongside the two vfx.* fixes, the ruled
+            // drain rate and the two raid bases). Today this build pays 25 percent, from a
+            // compiled const RaidClaimService.RepeatClearLootMultiplier = 0.25f, and that IS
+            // the defect: the owner ruled 60 on 2026-09-06 20:33 ("100% first clear after
+            // cooldown, 60% repeat clear during the same cycle, then reset to 100% when the
+            // camp's cooldown expires") and a const cannot be flipped. 25 is one row away.
+            new KeyValuePair<string, int>("raid.lootRepeatClearPct", 60),
+            // WO-1461 - THE RAID CACHE CEILING, per resource. (!) THE ONE ENTRY IN THIS TABLE
+            // WHOSE DEFAULT IS NEITHER TODAY'S BEHAVIOUR NOR AN OWNER-STATED NUMBER. She ruled
+            // the MECHANIC and said only "a modest cap". 1800 is a STATED DERIVATION - exactly
+            // one perfect Camp I wood haul (raid.lootWoodBase above) - so the cache holds at
+            // most one raid's worth and cannot become a second bank. Recorded here rather than
+            // dressed up as a ruling; WO-1461's RESULT carries it as an open item.
+            new KeyValuePair<string, int>("raid.cacheCapPerResource", 1800),
             // The free starter squad (map section 2). 3 is her number and is exactly what
             // 1,650 gold used to buy - the wall this removes. Granted once per save.
             new KeyValuePair<string, int>("raid.starterArmySize", 3),
@@ -248,6 +274,43 @@ namespace DeNelle.Editor.Regression
             new KeyValuePair<string, int>("arena.wagerTier2", 100),
             new KeyValuePair<string, int>("arena.wagerTier3", 200),
             new KeyValuePair<string, int>("arena.winPursePct", 200),
+            // WO-1094 - the FALLBACK half-extent of the hero's off-mesh playable-bounds clamp,
+            // in metres, for a scene whose extent cannot be MEASURED from a Terrain. 50 is
+            // EXACTLY the bound this build replaced, so this one is squarely inside the file's
+            // rule rather than another departure from it: an empty table reproduces today's
+            // behaviour in every unmeasured scene, and the measured extent wins wherever a
+            // Terrain exists. Clamped 1..100000 at HeroLocomotion, so a typo of 0 cannot pin
+            // the hero to the origin.
+            new KeyValuePair<string, int>("hero.playableFallbackHalf", 50),
+            // WO-1095 - the stranding watchdog's wall-clock ceiling on raid STAGING, in seconds.
+            // 900 is exactly what RaidDeployController already answers for itself while the key
+            // has no TunableSpec, so registering it is behaviour-neutral by construction.
+            new KeyValuePair<string, int>("raid.stagingCeilingSeconds", 900),
+            // WO-1594 - THE RAID HONOR MILESTONES, owner ruling 2026-09-09, verbatim choice:
+            // "Tunables with those defaults". 90 / 150 / 50 are what RaidScoring hardcoded as
+            // 90f / 150f / 0.50f, so an empty table narrates and PAYS exactly what this build
+            // shipped. The third is an integer PERCENT because the rail carries no floats; the
+            // consumer clamps 0..100 and divides by 100. All three are read through
+            // RemoteTunables.SpecFor BEFORE Int, which is load-bearing rather than defensive:
+            // Int answers 0 for an unregistered key, and T3 = 0 would snuff the third honor
+            // star on the first frame of every raid AND cap every payout at two stars through
+            // RaidScoring.Finalize's min(settle, honor) clamp.
+            new KeyValuePair<string, int>("raid.honorThirdStarSeconds", 90),
+            new KeyValuePair<string, int>("raid.honorSecondStarSeconds", 150),
+            new KeyValuePair<string, int>("raid.honorSecondStarMinDestructionPct", 50),
+            // WO-1373 - THE ROUGH-STONE CHAIN (owner ruling 2026-09-09). The tier row is the
+            // LOWER of the top two camp rungs on the RaidLootTunables Camp I..Iron Bastion
+            // ladder, so 3 admits mage_enclave + iron_bastion and nothing below. The per-day
+            // cap is GLOBAL across every camp, not per-camp. Both open a faucet that did not
+            // exist before this ticket, so neither has a "today's behaviour" to reproduce;
+            // minTier 5 is the row that turns the raid drop back off.
+            new KeyValuePair<string, int>("raid.roughStoneMinTier", 3),
+            new KeyValuePair<string, int>("raid.roughStonePerDayCap", 1),
+            // WO-1373 - and this one IS a deliberate departure from "the default is today's
+            // behaviour", stated rather than hidden: the build shipped 15, as the compiled
+            // const DungeonController.PostFirstRoughStoneDropRate = 0.15f. The owner ruled 5.
+            // A row of 15 restores the previous rate exactly.
+            new KeyValuePair<string, int>("dungeon.roughStoneDropPct", 5),
         };
 
         /// <summary>The two knobs whose resolved value is readable from the CONSUMER, so
@@ -353,7 +416,8 @@ namespace DeNelle.Editor.Regression
                          "WO-1343 night-store aura knobs + the seven WO-1374 raid-reward knobs + the " +
                          "WO-1374 starter-squad size + the two WO-1379 Heartfire knobs + the WO-1388 " +
                          "Builder's Hour crew duration + the three WO-1384b Night Market glow knobs + the " +
-                         "four WO-1366 Arena wager price knobs) resolve to " +
+                         "four WO-1366 Arena wager price knobs + the three WO-1594 raid honor " +
+                         "milestones + the three WO-1373 rough-stone chain knobs) resolve to " +
                          "their SHIPPING DEFAULTS (today's behaviour, byte for byte) on every failure " +
                          "path: no database row, server-reported readOk=false, malformed JSON, an empty " +
                          "body, a corrupt device cache, values the server would refuse, and garbage " +

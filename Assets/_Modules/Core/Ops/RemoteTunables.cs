@@ -382,6 +382,34 @@ namespace DeNelle.Core.Ops
         /// <summary>Extra crystals per earned star. 2, down from 10.</summary>
         public const int RaidLootCrystalsPerStarDefault = 2;
 
+        /// <summary>
+        /// WO-1461. PERCENT of the ordinary loot a REPEAT clear pays - one inside the camp's
+        /// still-running cooldown cycle. 60 is the owner's ruling of 2026-09-06 20:33, verbatim:
+        /// <i>"100% first clear after cooldown, 60% repeat clear during the same cycle, then
+        /// reset to 100% when the camp's cooldown expires."</i>
+        ///
+        /// <para>⛔ A FOURTH DELIBERATE DEPARTURE from "the default is today's behaviour",
+        /// alongside the two vfx.* fixes, the ruled drain rate and the two raid bases. Today
+        /// this build pays 25 - <c>RaidClaimService.RepeatClearLootMultiplier</c> was a compiled
+        /// <c>const 0.25f</c> - and that is the defect WO-1461 exists to close. The invariant
+        /// that still binds: no row, no network, no parse => exactly what this build hardcodes,
+        /// and 25 is one flag flip away.</para>
+        /// </summary>
+        public const int RaidLootRepeatClearPctDefault = 60;
+
+        /// <summary>
+        /// WO-1461. Per-resource ceiling on the RAID CACHE - the temporary hold that catches
+        /// raid loot the town bank has no room for, so a win above the cap is never burned.
+        /// Owner ruling 2026-09-06 20:33: <i>"Never destroy raid loot because storage is full.
+        /// Put overflow into a temporary Raid Cache with a modest cap."</i>
+        ///
+        /// <para>⚠ 1800 IS NOT HER NUMBER - she said "a modest cap" and named none. It is
+        /// exactly one perfect Camp I wood haul (<see cref="RaidLootWoodBaseDefault"/>), so the
+        /// cache holds at most ONE raid's worth of any one resource and cannot quietly become a
+        /// second, larger bank. Registered as a knob so her number lands without a rebuild.</para>
+        /// </summary>
+        public const int RaidCacheCapPerResourceDefault = 1800;
+
         /// <summary>Int. Wood a perfect Camp I raid pays before the difficulty multiplier.</summary>
         public const string KeyRaidLootWoodBase = "raid.lootWoodBase";
 
@@ -420,6 +448,14 @@ namespace DeNelle.Core.Ops
 
         /// <summary>Int extra CRYSTALS per earned star.</summary>
         public const string KeyRaidLootCrystalsPerStar = "raid.lootCrystalsPerStar";
+
+        /// <summary>Int PERCENT of ordinary loot a REPEAT clear pays inside the camp's cooldown
+        /// cycle. Consumer: <c>RaidClaimService.RepeatClearPct</c>, clamped 0..100 there.</summary>
+        public const string KeyRaidLootRepeatClearPct = "raid.lootRepeatClearPct";
+
+        /// <summary>Int per-resource ceiling on the RAID CACHE. Consumer:
+        /// <c>RaidClaimService.CacheCapPerResource</c>, clamped 0..1000000 there.</summary>
+        public const string KeyRaidCacheCapPerResource = "raid.cacheCapPerResource";
 
         /// <summary>
         /// Int COUNT of free Footmen granted the first time a save has a Barracks
@@ -556,6 +592,140 @@ namespace DeNelle.Core.Ops
         /// <summary>Int percent. The win purse as a percent of the wager; 100 = stake back only.
         /// Clamped 100..1000 at the consumer, so a WIN can never lose money.</summary>
         public const string KeyArenaWinPursePct = "arena.winPursePct";
+
+        /// <summary>
+        /// WO-1094 — the FALLBACK half-extent, in metres, the hero's off-mesh playable-bounds
+        /// clamp uses in a scene whose world extent cannot be MEASURED.
+        /// <para>
+        /// 50 IS EXACTLY TODAY'S BEHAVIOUR, and this knob is the file's own rule applied
+        /// literally rather than an exception to it. WO-1094 replaced a hardcoded ±50 clamp with
+        /// one derived from the live Terrain extent, which is correct in the merged hub — but
+        /// three shipped scenes carry NO Terrain at all (Village2, RaidBase_*, the legacy
+        /// MainCastle_Hall, counted in the scene files 2026-09-09), and in those a purely-derived
+        /// bound would have been NO bound: the hero drifts unbounded on the off-mesh transform
+        /// fallback, in the raid loop that is the north star. So the measured bound wins wherever
+        /// it exists, and where it does not, THIS is the bound — a row, not a constant.
+        /// </para>
+        /// <para>
+        /// It is deliberately a HALF-EXTENT about the origin rather than four edges: that is the
+        /// shape the shipped ±50 had, and inventing an asymmetric fallback would be picking a
+        /// world nobody measured. Clamped 1..100000 at the consumer, so a console typo of 0
+        /// cannot pin every unmeasured scene's hero to the origin.
+        /// </para>
+        /// </summary>
+        public const int HeroPlayableFallbackHalfDefault = 50;
+
+        /// <summary>Int, METRES. Half-extent of the hero clamp in a scene with no measurable extent.</summary>
+        public const string KeyHeroPlayableFallbackHalf = "hero.playableFallbackHalf";
+
+        /// <summary>
+        /// WO-1095 — the absolute WALL-CLOCK ceiling, in seconds, on raid STAGING before the
+        /// stranding watchdog gives up and routes the player home. 900 = fifteen minutes, and it
+        /// is exactly the fallback <c>RaidDeployController</c> already answers for itself while
+        /// this key has no <see cref="TunableSpec"/> — so registering it changes nothing on its
+        /// own and simply makes the number reachable without a rebuild.
+        /// </summary>
+        public const int RaidStagingCeilingSecondsDefault = 900;
+
+        /// <summary>Int, SECONDS. Wall-clock ceiling on raid staging before the stranding watchdog fires.</summary>
+        public const string KeyRaidStagingCeilingSeconds = "raid.stagingCeilingSeconds";
+
+        // ---------------------------------------------------------------------
+        //  WO-1594 - THE HONOR MILESTONES. Owner ruling 2026-09-09, verbatim
+        //  choice: "Tunables with those defaults".
+        //
+        //  The raid HUD opens with three stars lit and snuffs them as milestones
+        //  pass (RaidScoring.ComputeHonorStars), and Finalize clamps the payout to
+        //  min(settle, honor) - so these three numbers decide both what the bar
+        //  narrates AND what a raid can pay. They were three compiled consts on
+        //  RaidScoring (90f / 150f / 0.50f) from 2026-09-07, which means the
+        //  pacing of every raid in the game needed a 30-minute rebuild to move.
+        //  Her standing ruling since 2026-09-02 is that a balance number is a row.
+        //
+        //  THE DEFAULTS ARE TODAY'S BEHAVIOUR EXACTLY. 90 / 150 / 50 are the
+        //  values RaidScoring hardcoded, so no row, no network and no parse pays
+        //  and narrates precisely what this build shipped. The consumer reads them
+        //  through SpecFor(key) FIRST (RaidScoring's HonorThirdStarSeconds and
+        //  friends), so an unregistered key answers the shipping default rather
+        //  than Int()'s 0-for-unknown - which for the third-star milestone would
+        //  have snuffed the star on the first frame of every raid.
+        //
+        //  THE THIRD ONE IS A PERCENT, DELIBERATELY. The rail is integer-only, and
+        //  the scorer wants a 0..1 fraction; "Pct" is in the key name so a console
+        //  reader cannot mistake 50 for a fraction. The consumer clamps 0..100 and
+        //  divides by 100.
+        //
+        //  Bare int consts, because tools/gen-tunable-manifest.mjs resolves ONLY
+        //  that shape.
+        // ---------------------------------------------------------------------
+
+        /// <summary>SHIPPED: elapsed RAID seconds after which the third honor star snuffs.</summary>
+        public const int RaidHonorThirdStarSecondsDefault = 90;
+
+        /// <summary>SHIPPED: elapsed RAID seconds after which the second honor star may snuff.</summary>
+        public const int RaidHonorSecondStarSecondsDefault = 150;
+
+        /// <summary>SHIPPED: destruction PERCENT that must be reached by T2 to keep the second star.</summary>
+        public const int RaidHonorSecondStarMinDestructionPctDefault = 50;
+
+        /// <summary>Int, SECONDS. The speed honor: past this the third honor star goes dark. Clamped to at least 1 at the consumer.</summary>
+        public const string KeyRaidHonorThirdStarSeconds = "raid.honorThirdStarSeconds";
+
+        /// <summary>Int, SECONDS. Past this the second honor star goes dark IF destruction is still under the D2 threshold. Clamped to at least 1 at the consumer.</summary>
+        public const string KeyRaidHonorSecondStarSeconds = "raid.honorSecondStarSeconds";
+
+        /// <summary>Int PERCENT, 0..100. Destruction that must be reached by T2 to keep the second honor star.</summary>
+        public const string KeyRaidHonorSecondStarMinDestructionPct = "raid.honorSecondStarMinDestructionPct";
+
+        // ---------------------------------------------------------------------
+        //  WO-1373 - THE ROUGH-STONE CHAIN. Three knobs, owner ruling 2026-09-09,
+        //  verbatim: "there is only one stone type till it gets to jeweler, and
+        //  then its RND. So only top two tiers of raids can drop stone and no more
+        //  than 1 per day. 5% drop rate in dungeons not included the starter
+        //  dungeons".
+        //
+        //  ALL THREE DEFAULTS ARE HER RULING, AND TWO OF THEM ARE DELIBERATE
+        //  DEPARTURES FROM "the default is today's behaviour" - stated, not hidden:
+        //    * raid.roughStoneMinTier / raid.roughStonePerDayCap open a faucet that
+        //      did NOT exist before this ticket (no raid path granted the stone;
+        //      grep of Assets/_Modules for the id hit only the catalog and the
+        //      polish service). There is no prior behaviour to reproduce. Setting
+        //      minTier above the top rung (5) turns the raid drop off entirely, and
+        //      THAT is the row that restores the pre-WO-1373 build.
+        //    * dungeon.roughStoneDropPct ships at 5, and the build shipped 15
+        //      (DungeonController.PostFirstRoughStoneDropRate = 0.15f). 15 restores
+        //      it exactly. The ruling is the reason for the change; the row is the
+        //      reason nobody needs a rebuild to argue with it.
+        //
+        //  WHY minTier IS A TIER AND NOT A LIST OF CAMP IDS: the camps already sit
+        //  on an ordered I..IV ladder (RaidLootTunables.CampIdCamp1..CampIdBastion),
+        //  so "the top two" is arithmetic on that ladder rather than a second copy
+        //  of the id set that would rot the day a fifth camp lands. 3 = the LOWER of
+        //  the top two rungs, i.e. mage_enclave and iron_bastion drop, Camps I and
+        //  II do not. A row of 2 lets fortified_garrison in without a rebuild - see
+        //  the WO-1373 RESULT, which names that as the one config the row moves.
+        //
+        //  Bare int consts, because tools/gen-tunable-manifest.mjs resolves ONLY
+        //  that shape.
+        // ---------------------------------------------------------------------
+
+        /// <summary>RULED: lowest camp TIER (1..4) that may drop a rough stone. 3 = the top two rungs.</summary>
+        public const int RaidRoughStoneMinTierDefault = 3;
+
+        /// <summary>RULED: how many rough stones ALL raids together may pay in one UTC day.</summary>
+        public const int RaidRoughStonePerDayCapDefault = 1;
+
+        /// <summary>RULED: PERCENT chance a completed non-starter dungeon run pays a rough stone.</summary>
+        public const int DungeonRoughStoneDropPctDefault = 5;
+
+        /// <summary>Int, 1..4. Lowest raid camp tier that may drop a rough stone. Above 4 turns the raid drop off.</summary>
+        public const string KeyRaidRoughStoneMinTier = "raid.roughStoneMinTier";
+
+        /// <summary>Int, COUNT per UTC day, across every camp. 0 turns the raid drop off.</summary>
+        public const string KeyRaidRoughStonePerDayCap = "raid.roughStonePerDayCap";
+
+        /// <summary>Int PERCENT, 0..100. Post-introduction rough-stone drop chance in a non-starter dungeon.</summary>
+        public const string KeyDungeonRoughStoneDropPct = "dungeon.roughStoneDropPct";
 
         // ---------------------------------------------------------------------
         //  WO-1343 - THE NIGHT STORE'S AURA. Four knobs, and they exist because
@@ -970,6 +1140,34 @@ namespace DeNelle.Core.Ops
                 "from the base so 'should a great raid pay MORE crystals or just more gold' stays " +
                 "a question she can answer without re-deriving the base."),
 
+            new TunableSpec(KeyRaidLootRepeatClearPct, TunableKind.Int, RaidLootRepeatClearPctDefault,
+                "PERCENT of the ordinary wood/iron/stone/gold a REPEAT clear pays - a clear taken " +
+                "while the camp's cooldown from the previous clear is still running. 60 = the " +
+                "owner's ruling: '100% first clear after cooldown, 60% repeat clear during the " +
+                "same cycle, then reset to 100% when the camp's cooldown expires.' Crystals are " +
+                "NOT on this axis - they are all-or-nothing on the once-per-UTC-day stamp. " +
+                "100 removes the repeat penalty entirely; clamped to 0..100 at the consumer, so " +
+                "a repeat can never pay MORE than a first clear.",
+                "NOT a PROD-022 hypothesis - the FARM-SUPPRESSION lever, and the number a player " +
+                "meets as 'I won and got nothing'. It shipped as a compiled const 0.25f and " +
+                "disagreed with her ruling for three days precisely because it was not a knob " +
+                "(WO-1461). How hard a re-clear should bite before the cooldown expires is a " +
+                "felt question about whether replay is practice or a chore."),
+
+            new TunableSpec(KeyRaidCacheCapPerResource, TunableKind.Int, RaidCacheCapPerResourceDefault,
+                "Per-resource ceiling on the RAID CACHE - the temporary hold that catches raid " +
+                "loot the town bank has no room for, so a win above the cap waits instead of " +
+                "being destroyed. 1800 is one perfect Camp I wood haul, i.e. the cache holds at " +
+                "most one raid's worth of any one resource. Applies to the CAPPED resources only " +
+                "(wood/iron/stone); crystals and gold have no ceiling and are never clamped. " +
+                "0 turns the cache off and restores the pre-WO-1461 burn. Clamped to 0..1000000.",
+                "NOT a PROD-022 hypothesis - and the ONE knob here whose default is NOT the " +
+                "owner's own number. She ruled the MECHANIC ('never destroy raid loot because " +
+                "storage is full ... a temporary Raid Cache with a modest cap') and named no " +
+                "size. 1800 is a stated derivation, not a pick, and it is a knob so her number " +
+                "replaces it in seconds. Too small and the cache is a slower burn; too large and " +
+                "it removes the upgrade pressure the cache exists to create."),
+
             new TunableSpec(KeyRaidStarterArmySize, TunableKind.Int, RaidStarterArmySizeDefault,
                 "How many FREE Footmen a save receives the first time it has a Barracks. 3 = the " +
                 "owner's number, and exactly what 1,650 gold used to buy. Granted once per save " +
@@ -1069,6 +1267,89 @@ namespace DeNelle.Core.Ops
                 "NOT a PROD-022 hypothesis - the house edge as one number. Whether 2x is generous " +
                 "enough to make a Crystal wager feel worth the risk, or so generous the Arena becomes " +
                 "a Crystal faucet, is the balance question this row answers without a rebuild."),
+
+            new TunableSpec(KeyHeroPlayableFallbackHalf, TunableKind.Int, HeroPlayableFallbackHalfDefault,
+                "Half-extent, in metres, of the hero's off-mesh playable-bounds clamp in a scene " +
+                "whose world extent cannot be MEASURED from a Terrain (WO-1094). Ships at 50 - " +
+                "EXACTLY the hardcoded bound this build replaced, so an empty table reproduces " +
+                "today's behaviour in every unmeasured scene. Where a Terrain IS present the " +
+                "MEASURED extent wins and this row is never read. Clamped 1..100000 at the " +
+                "consumer, so a typo of 0 cannot pin the hero to the origin.",
+                "NOT a PROD-022 hypothesis - the honest floor under a derived bound. Three shipped " +
+                "scenes carry no Terrain (Village2, RaidBase_*, legacy MainCastle_Hall), and there " +
+                "a purely-derived clamp is NO clamp: the hero drifts unbounded on the off-mesh " +
+                "transform fallback, inside the raid loop. Whether 50 is still the right box for a " +
+                "raid base - it was authored for the old castle - is a felt question, and a row."),
+
+            new TunableSpec(KeyRaidStagingCeilingSeconds, TunableKind.Int, RaidStagingCeilingSecondsDefault,
+                "Raises the absolute wall-clock ceiling on raid STAGING before the stranding " +
+                "watchdog routes the player home.",
+                "WO-1095 - staging is free on the raid clock, so only a dead session should trip " +
+                "a wall-clock bound."),
+
+            new TunableSpec(KeyRaidHonorThirdStarSeconds, TunableKind.Int, RaidHonorThirdStarSecondsDefault,
+                "Elapsed RAID seconds after which the THIRD honor star goes dark (WO-1594) - the " +
+                "speed honor. Ships at 90, which is half of the 180 s raid clock and EXACTLY the " +
+                "value RaidScoring hardcoded. The clock is engagement-gated (WO-1520), so staging " +
+                "never spends it. Clamped to at least 1 at the consumer, which also answers this " +
+                "default outright while the key has no spec - a 0 here would snuff the third star " +
+                "on the first frame of every raid.",
+                "NOT a PROD-022 hypothesis - the PACE OF A RAID as one number, and the owner's " +
+                "ruling 2026-09-09, verbatim: 'Tunables with those defaults'. How long a player " +
+                "may take before the fight stops reading as fast is felt on device, and it moves " +
+                "the payout as well as the bar: Finalize clamps loot to min(settle, honor)."),
+
+            new TunableSpec(KeyRaidHonorSecondStarSeconds, TunableKind.Int, RaidHonorSecondStarSecondsDefault,
+                "Elapsed RAID seconds after which the SECOND honor star may go dark (WO-1594) - " +
+                "and only if destruction is still under the D2 threshold below. Ships at 150: the " +
+                "last 30 s before a 180 s timeout, exactly what RaidScoring hardcoded. Clamped to " +
+                "at least 1 at the consumer. The FIRST star is never snuffed mid-fight for time " +
+                "alone - cracking the camp always pays something - and no row can change that.",
+                "NOT a PROD-022 hypothesis - the second half of the same pacing question. Set it " +
+                "above the clock to retire the milestone entirely without a rebuild."),
+
+            new TunableSpec(KeyRaidHonorSecondStarMinDestructionPct, TunableKind.Int,
+                RaidHonorSecondStarMinDestructionPctDefault,
+                "Destruction PERCENT a camp must have reached by T2 to KEEP the second honor star " +
+                "(WO-1594). Ships at 50 - the 0.50f RaidScoring hardcoded. It is a percent because " +
+                "the rail is integer-only; the consumer clamps 0..100 and divides by 100, so 100 " +
+                "means only a total razing keeps the star and 0 means the milestone never bites.",
+                "NOT a PROD-022 hypothesis - the 'are you actually making progress' half of the T2 " +
+                "milestone. Whether half a camp is the right bar at 150 s is a felt question about " +
+                "how punishing a slow raid should be, and now a row instead of a rebuild."),
+
+            new TunableSpec(KeyRaidRoughStoneMinTier, TunableKind.Int, RaidRoughStoneMinTierDefault,
+                "Lowest raid camp TIER (1..4 on the RaidLootTunables Camp I..Iron Bastion ladder) " +
+                "that may drop a rough stone (WO-1373). Ships at 3 - the LOWER of the top two " +
+                "rungs - so mage_enclave and iron_bastion drop and raider_camp_small / " +
+                "fortified_garrison do not. 2 lets the Broken Garrison in; 5 turns the raid drop " +
+                "off entirely and restores the pre-WO-1373 build. Clamped 1..99 at the consumer.",
+                "NOT a PROD-022 hypothesis - the owner's ruling 2026-09-09, verbatim: 'only top " +
+                "two tiers of raids can drop stone'. Which rung counts as 'top' is the one part " +
+                "of that sentence a fifth camp would change, so it is a row rather than a list."),
+
+            new TunableSpec(KeyRaidRoughStonePerDayCap, TunableKind.Int, RaidRoughStonePerDayCapDefault,
+                "How many rough stones EVERY raid together may pay inside one UTC day (WO-1373). " +
+                "Ships at 1 - the owner's 'no more than 1 per day'. This is a GLOBAL count, not " +
+                "per-camp: clearing both eligible camps on the same day pays one stone, not two. " +
+                "0 turns the raid drop off without touching the tier row. Clamped 0..99 at the " +
+                "consumer; the ledger is a UTC day key plus a count, so it self-expires.",
+                "NOT a PROD-022 hypothesis - the FAUCET BOUND on the only material the Jeweler " +
+                "chain consumes. Whether one a day is generous or stingy is exactly the kind of " +
+                "felt call that used to cost a rebuild, and it decides how fast the ring ladder " +
+                "climbs."),
+
+            new TunableSpec(KeyDungeonRoughStoneDropPct, TunableKind.Int, DungeonRoughStoneDropPctDefault,
+                "PERCENT chance a COMPLETED, non-starter dungeon run pays a rough stone once the " +
+                "player has already earned their first one (WO-1373). Ships at 5, the owner's " +
+                "ruling. NOTE - THE BUILD SHIPPED 15 (DungeonController.PostFirstRoughStoneDropRate = " +
+                "0.15f), so 15 restores the previous behaviour exactly. STARTER dungeons (layout " +
+                "tier 1) are excluded by a separate tier gate, not by this number. The guaranteed " +
+                "FIRST stone is not on this axis and still cannot be rolled away. Clamped 0..100.",
+                "NOT a PROD-022 hypothesis - the dungeon half of the same faucet, and the number " +
+                "that decides whether a delve reads as worth the lantern oil. Kept on its own row " +
+                "from the raid cap so 'should dungeons still be the better source' stays a " +
+                "question she can answer by moving one value."),
         };
 
         // Swapped atomically by ApplyPayload. Never mutated in place.

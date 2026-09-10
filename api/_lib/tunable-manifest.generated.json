@@ -158,6 +158,16 @@
             "default": 2
         },
         {
+            "key": "raid.lootRepeatClearPct",
+            "kind": "int",
+            "default": 60
+        },
+        {
+            "key": "raid.cacheCapPerResource",
+            "kind": "int",
+            "default": 1800
+        },
+        {
             "key": "raid.starterArmySize",
             "kind": "int",
             "default": 3
@@ -211,6 +221,46 @@
             "key": "arena.winPursePct",
             "kind": "int",
             "default": 200
+        },
+        {
+            "key": "hero.playableFallbackHalf",
+            "kind": "int",
+            "default": 50
+        },
+        {
+            "key": "raid.stagingCeilingSeconds",
+            "kind": "int",
+            "default": 900
+        },
+        {
+            "key": "raid.honorThirdStarSeconds",
+            "kind": "int",
+            "default": 90
+        },
+        {
+            "key": "raid.honorSecondStarSeconds",
+            "kind": "int",
+            "default": 150
+        },
+        {
+            "key": "raid.honorSecondStarMinDestructionPct",
+            "kind": "int",
+            "default": 50
+        },
+        {
+            "key": "raid.roughStoneMinTier",
+            "kind": "int",
+            "default": 3
+        },
+        {
+            "key": "raid.roughStonePerDayCap",
+            "kind": "int",
+            "default": 1
+        },
+        {
+            "key": "dungeon.roughStoneDropPct",
+            "kind": "int",
+            "default": 5
         }
     ]
 }
