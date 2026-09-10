@@ -51,7 +51,28 @@ namespace DeNelle.Editor.Regression
                 // RED recipe: return blank when no camp passes the deployment predicate.
                 var zero = new JourneyDeckSubtitleVM(0, 0, 0, 10, 0);
                 RequireContains(zero.RaidsSubtitle, "Army 0 / 10", "zero-army state");
-                RequireContains(zero.RaidsSubtitle, "train to open a camp", "zero-camp remedy");
+                // WO-1643: RE-POINTED, NOT DELETED. This assertion pinned "train to open a
+                // camp" - the clause that made the card contradict an OPEN raid door. The
+                // no-camp clause now states the camp fact alone. The fraction assertions above
+                // (:39 "3 / 10", :53 "Army 0 / 10") and the plural pin (:41 "1 camp") are
+                // deliberately UNCHANGED: which numerator the fraction should carry is a
+                // separate open ruling and this lane did not touch the seed.
+                RequireContains(zero.RaidsSubtitle, "no camp in reach", "zero-camp state");
+
+                // WO-1643 RED recipe: restore the training verb in the no-camp branch.
+                // Pins the OLD shape OUT so it cannot come back silently.
+                ForbidBoth(zero, "train");
+
+                // WO-1643 acceptance 3 - THE CONTRADICTION FIXTURE.
+                // The device state that produced the ticket: RaidEntryGate had published
+                // ready=True (deployable=8, queued=0, required=3) and the card still said
+                // "train". This composer takes no readiness input by design, so the pin is that
+                // NO no-camp sentence may carry army advice at all - which holds for every
+                // readiness state rather than only the one that was captured.
+                var readyNoCamp = new JourneyDeckSubtitleVM(0, 0, 8, 10, 0);
+                RequireContains(readyNoCamp.RaidsSubtitle, "Army 8 / 10 . no camp in reach",
+                    "ready-but-no-camp state");
+                ForbidBoth(readyNoCamp, "train");
 
                 result = "JOURNEY_DECK_SUBTITLE_OK fixture='" + fixture.QuestsSubtitle +
                          "' / '" + fixture.RaidsSubtitle + "'";

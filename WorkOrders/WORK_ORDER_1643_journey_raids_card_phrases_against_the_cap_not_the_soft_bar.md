@@ -1,6 +1,16 @@
 # WO-1643 - The Journey RAIDS card says "Army 8 / 10 . train to open a camp" to a player the raid door would have let through
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate
+**Implemented:** 2026-09-10 by the JOURNEY-CARD lane, in worktree `agent-ac6db22cce5d58766` off
+`dev@0a7edc6b1`. Two files, both `GATE_BRACE_SUMMARY bad=0 of 2`, 0 NUL bytes:
+`Assets/_Modules/Core/HudModel/JourneyDeckSubtitleVM.cs` (paint-time input trace + the no-camp
+clause) and `Assets/Editor/Regression/JourneyDeckSubtitleRegression.cs` (one assertion re-pointed,
+three preserved, two new pins). **ZERO edit to `BuildTimerService.cs` and `ArmyReadiness.cs`** - the
+fraction was not touched, so the lead's WO-1641 3-way merge is unaffected.
+⚠ **The copy is PROVISIONAL: the sec.3 owner ruling is still owed** - see the RESULT, sec.5.
+⚠ **sec.4 Step 1's premise was FALSE at HEAD and is corrected in the RESULT** - `SetRaidOpenCampCount`
+has traced since WO-1404 (`PostureSignals.cs:423`); the real gap was that it is change-only.
+**RESULT:** `WorkOrders/WORK_ORDER_1643_journey_raids_card_phrases_against_the_cap_not_the_soft_bar.RESULT.md`
 **Minted:** 2026-09-10 by the HEART-COPY lane, at the lead's instruction on the WO-1641 hand-back
 (main-line banner bumped **1643 -> 1644** in the SAME edit).
 **Silo / Lane:** HUD copy. `Assets/_Modules/Core/HudModel/JourneyDeckSubtitleVM.cs` (the sentence)
