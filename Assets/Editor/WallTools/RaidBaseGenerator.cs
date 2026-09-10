@@ -116,12 +116,48 @@ namespace DeNelle.Editor
 
         // -- SPIRE MONUMENT FIT (WO-1617). These were three bare literals inside PlaceSpire
         //    ("targetHeight * 1.6f, 8f, 18f"). They are TUNABLES now, with TODAY'S VALUES as the
-        //    defaults - the ticket changes WHO the fit applies to, never the numbers, so the
-        //    arcane-spire bake must land on the identical height it did before (8.0 m, proven in
-        //    Builds/raidbase-bake.log). Do not retune here without a WO.
+        //    defaults - WO-1617 changed WHO the fit applies to, never the numbers.
+        //
+        //    WO-1619 STEP 2 UPDATE: these three are STILL unmoved, but the "must land on the
+        //    identical 8.0 m" note that used to sit here is RETIRED, and it was never a target -
+        //    it was the SATURATION. The instrumented bake (Builds/wave2-bake, 2026-09-10) printed,
+        //    identically for all three baked configs (raider_camp_small / fortified_garrison /
+        //    mage_enclave):
+        //      "SPIRE FIT ... rawHeight=1.002m prefabScaleBefore=0.010 target=14.40m
+        //       wantedFactor=14.366 appliedFactor=8.000 saturatedAt=UPPER achieved=8.02m
+        //       (56% of target) - SATURATED"
+        //    The monument clamp asked for 14.40 m every time; ScaleToHeight's factor ceiling
+        //    handed back 8.02 m. The arcane spire now lands at its 14.40 m target - that is the
+        //    change, and the monument tunables below did not move to get it.
         internal const float SpireMonumentMultiplier = 1.6f;
         internal const float SpireMonumentMinHeight = 8f;
         internal const float SpireMonumentMaxHeight = 18f;
+
+        // -- SPIRE FIT FACTOR BOUNDS (WO-1619 step 2). These were two bare literals inside
+        //    ScaleToHeight's Mathf.Clamp ("0.2f, 8f"), and the upper one was the whole defect:
+        //    it, not the monument clamp above, decided how tall a raid spire actually rendered.
+        //
+        //    THE RULING (WO-1619 sec.3): the factor bound is NOT the authority for a monument
+        //    fit. SpireMonumentMinHeight / SpireMonumentMaxHeight own "how tall should this be",
+        //    and the achieved height can never exceed SpireMonumentMaxHeight no matter how large
+        //    this ceiling is, because the TARGET is already clamped there before the fit runs.
+        //    So this bound's only remaining job is refusing to magnify degenerate art - which is
+        //    a different concern from monument height, and must stop silently capping it.
+        //
+        //    THE VALUE, derived from measured numbers only (CLAUDE.md sec.11B - no invented
+        //    "smallest sane art" figure): the tallest target the monument path can ever ask for
+        //    is SpireMonumentMaxHeight = 18 m; the measured rendered height of the shipped spire
+        //    art is 1.002 m (Builds/wave2-bake, 2026-09-10), so 18 / 1.002 = 17.96 is the largest
+        //    factor today's art can legitimately need. 24 clears that with margin for shorter
+        //    art, and is NON-BINDING across the whole authored [8 m, 18 m] target range for the
+        //    art we actually ship. The exact margin is a lead/owner-tunable choice, not a
+        //    measurement - it is a named tunable precisely so retuning it is one edit here.
+        //
+        //    THE LOWER BOUND DOES NOT MOVE (WO-1619 sec.5 pin): 0.2f is doing real work against
+        //    oversized art and no measurement licensed touching it. It is named here only so
+        //    that zero magic literals survive in the fit path.
+        internal const float SpireFitFactorMin = 0.2f;
+        internal const float SpireFitFactorMax = 24f;
 
         private const string RootName = "RaidBase_IronBastion";
         private const string DefaultScene = "Assets/Scenes/MainCastle_Hall.unity";
@@ -1248,18 +1284,30 @@ namespace DeNelle.Editor
         /// Uniformly scale an object so its rendered height matches <paramref name="target"/>.
         /// Returns the height achieved.
         ///
-        /// WO-1619 STEP 1 - INSTRUMENT ONLY, NO BEHAVIOUR CHANGE. The clamp below can SATURATE,
-        /// and until this line was written a saturated fit was INDISTINGUISHABLE from a satisfied
-        /// one in the bake log: the method already returned the truth (b.size.y * f) and nothing
-        /// compared it to what was asked for. Every call now reports the raw measured bounds
-        /// height, the target, the factor the fit WANTED, the factor it was ALLOWED, which bound
-        /// it hit, and the achieved height. A saturated fit reports at WARNING, because
-        /// "I could not do what I was asked" is an anomaly, not information (CLAUDE.md sec.12).
+        /// WO-1619 STEP 1 - the instrumentation. The clamp below can SATURATE, and until that
+        /// line was written a saturated fit was INDISTINGUISHABLE from a satisfied one in the
+        /// bake log: the method already returned the truth (b.size.y * f) and nothing compared
+        /// it to what was asked for. Every call reports the raw measured bounds height, the
+        /// target, the factor the fit WANTED, the factor it was ALLOWED, which bound it hit, and
+        /// the achieved height. A saturated fit reports at WARNING, because "I could not do what
+        /// I was asked" is an anomaly, not information (CLAUDE.md sec.12).
         ///
-        /// The 0.2f / 8f bounds are DELIBERATELY still bare literals here. Turning them into
-        /// named tunables beside SpireMonumentMultiplier is WO-1619 STEP 2, and step 2 is
-        /// licensed by the numbers this instrumentation prints - not by reading this file.
-        /// The lower bound is doing real work against oversized art (WO-1619 sec.5 pin).
+        /// WO-1619 STEP 2 - what the instrumentation then PROVED, and the fix it licensed.
+        /// Builds/wave2-bake (2026-09-10), all three baked configs, identical to 3 decimals:
+        ///   "rawHeight=1.002m prefabScaleBefore=0.010 target=14.40m wantedFactor=14.366
+        ///    appliedFactor=8.000 saturatedAt=UPPER achieved=8.02m (56% of target) - SATURATED"
+        /// The CAP was the wrong axis, not the target:
+        ///  - `raw` is a WORLD-space AABB (Renderer.bounds, encapsulated below), so it ALREADY
+        ///    includes the prefab's 0.010 localScale. `wanted = target / raw` is therefore
+        ///    world-metres over world-metres and prefabScaleBefore never enters the factor at
+        ///    all - a pre-scaled prefab does not make the target wrong, it only explains why the
+        ///    factor needed is large.
+        ///  - 14.366 is the honest factor for 1.002 m of art at a 14.40 m target, and the old
+        ///    8f ceiling refused it, silently, on every raid the game ships.
+        /// The two bounds are now the named tunables SpireFitFactorMin / SpireFitFactorMax
+        /// declared beside SpireMonumentMultiplier - zero magic literals survive in the fit path
+        /// (WO-1619 sec.3). The LOWER bound's value did not move: it is doing real work against
+        /// oversized art (WO-1619 sec.5 pin).
         ///
         /// <paramref name="what"/> is the caller's label for the log line. It is REQUIRED and
         /// there is no silent branch: a fit that reports nothing is the exact defect this
@@ -1293,7 +1341,7 @@ namespace DeNelle.Editor
             }
 
             float wanted = target / raw;
-            float f = Mathf.Clamp(wanted, 0.2f, 8f);
+            float f = Mathf.Clamp(wanted, SpireFitFactorMin, SpireFitFactorMax);
             go.transform.localScale *= f;
             float achieved = raw * f;
 

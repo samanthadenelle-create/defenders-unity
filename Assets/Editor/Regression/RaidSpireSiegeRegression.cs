@@ -76,6 +76,7 @@ namespace DeNelle.Editor.Regression
                     CaseExactlyOnePredicate(gen, dress, failures, notes);
                     CaseMonumentFitIsTunable(gen, failures, notes);
                     CaseSaturationIsReported(gen, failures, notes);
+                    CaseScaleFactorBoundsAreTunable(gen, failures, notes);
                     CaseDresserRoutesSpireThroughTheDecider(gen, dress, failures, notes);
                 }
             }
@@ -166,9 +167,14 @@ namespace DeNelle.Editor.Regression
         }
 
         /// <summary>
-        /// The monument fit survives as a TUNABLE with today's values as defaults. The ticket
-        /// changes WHO the fit applies to, never the numbers - the arcane-spire bake must still
-        /// land on 8.0 m (Builds/raidbase-bake.log).
+        /// The monument fit survives as a TUNABLE with today's values as defaults. WO-1617
+        /// changed WHO the fit applies to, never the numbers, and WO-1619 step 2 did not move
+        /// them either - it removed the factor ceiling that was overriding them.
+        ///
+        /// The "must still land on 8.0 m" note this doc used to carry is RETIRED: 8.0 m was
+        /// never the target, it was the SATURATION (Builds/wave2-bake, 2026-09-10, all three
+        /// baked configs: target=14.40m appliedFactor=8.000 achieved=8.02m saturatedAt=UPPER).
+        /// The height these tunables ask for is 14.40 m and it always was.
         /// </summary>
         private static void CaseMonumentFitIsTunable(string gen, List<string> failures, List<string> notes)
         {
@@ -203,9 +209,9 @@ namespace DeNelle.Editor.Regression
         /// (case (a) fails), or drop the label argument at the PlaceSpire call site so the fit
         /// goes back to reporting nothing identifiable (case (b) fails).
         ///
-        /// NOT PINNED HERE: that the 0.2f / 8f bounds are named tunables. That is WO-1619
-        /// STEP 2, it is RED at this commit by design, and a red case for a change nobody has
-        /// made yet would fail the lead's combined gate. Its spec lives in the WO.
+        /// THE BOUNDS ARE PINNED NEXT DOOR, NOT HERE: CaseScaleFactorBoundsAreTunable is
+        /// WO-1619 step 2's case and it landed with step 2's edit, exactly as this doc said it
+        /// would. This case still owns only the REPORTING.
         /// </summary>
         private static void CaseSaturationIsReported(string gen, List<string> failures, List<string> notes)
         {
@@ -231,6 +237,74 @@ namespace DeNelle.Editor.Regression
                              "cannot be attributed to a scene (WO-1619).");
 
             notes.Add("fit saturation reported");
+        }
+
+        /// <summary>
+        /// WO-1619 STEP 2. The scale-factor bounds inside ScaleToHeight are NAMED TUNABLES, and
+        /// the upper one is NOT ALLOWED TO BE THE AUTHORITY ON MONUMENT HEIGHT.
+        ///
+        /// WHAT WENT WRONG (measured, not inferred - Builds/wave2-bake, 2026-09-10, printed
+        /// identically for raider_camp_small, fortified_garrison and mage_enclave):
+        ///   "rawHeight=1.002m prefabScaleBefore=0.010 target=14.40m wantedFactor=14.366
+        ///    appliedFactor=8.000 saturatedAt=UPPER achieved=8.02m (56% of target) - SATURATED"
+        /// The monument clamp asked for 14.40 m on every raid the game ships and a bare 8f
+        /// literal inside Mathf.Clamp handed back 8.02 m. SpireMonumentMinHeight /
+        /// SpireMonumentMaxHeight own "how tall should this be"; the factor bound's job is
+        /// refusing to magnify degenerate art, and it must not silently cap a monument.
+        ///
+        /// THE INVARIANT, and why it is a comparison rather than a hardcoded 24: the achieved
+        /// height can never exceed SpireMonumentMaxHeight anyway, because the TARGET is clamped
+        /// there before the fit runs. So the ceiling is non-binding for one-metre-class art
+        /// exactly when it is at least SpireMonumentMaxHeight (18 / 1.002 = 17.96 is the largest
+        /// factor today's measured art can need). Pinning that relation lets the lead retune the
+        /// margin in one edit without touching this suite, and still reds the regression.
+        ///
+        /// RED AT BASE 406dbda07: ScaleToHeight read "Mathf.Clamp(wanted, 0.2f, 8f)" with both
+        /// bounds inline and neither const existed.
+        /// MUTATION THAT RE-REDS IT: re-inline either bound at the Mathf.Clamp call site, or set
+        /// SpireFitFactorMax below SpireMonumentMaxHeight (e.g. back to 8f).
+        /// </summary>
+        private static void CaseScaleFactorBoundsAreTunable(string gen, List<string> failures, List<string> notes)
+        {
+            string[] decls =
+            {
+                "internal const float SpireFitFactorMin =",
+                "internal const float SpireFitFactorMax =",
+            };
+            for (int i = 0; i < decls.Length; i++)
+                if (gen.IndexOf(decls[i], StringComparison.Ordinal) < 0)
+                    failures.Add("[fitbounds] missing '" + decls[i] + "' - ScaleToHeight's clamp bounds must be " +
+                                 "named tunables declared beside SpireMonumentMultiplier, not bare literals " +
+                                 "inside Mathf.Clamp (WO-1619 sec.3: a magic literal that survives a ticket " +
+                                 "about a magic literal is the ticket failing).");
+
+            string fit = MethodBody(gen, "private static float ScaleToHeight(");
+            if (fit == null) { failures.Add("[fitbounds] cannot locate ScaleToHeight in " + GeneratorSrc); return; }
+
+            if (fit.IndexOf("Mathf.Clamp(wanted, SpireFitFactorMin, SpireFitFactorMax)", StringComparison.Ordinal) < 0)
+                failures.Add("[fitbounds] ScaleToHeight does not clamp through SpireFitFactorMin/SpireFitFactorMax - " +
+                             "the fit path must read its bounds from the tunables (WO-1619).");
+
+            if (fit.IndexOf(", 0.2f, 8f)", StringComparison.Ordinal) >= 0)
+                failures.Add("[fitbounds] ScaleToHeight still carries the inline ', 0.2f, 8f)' clamp bounds - this " +
+                             "is the literal that silently capped every raid spire at 8.02m against a 14.40m " +
+                             "target (Builds/wave2-bake, 2026-09-10).");
+
+            float ceiling = ConstFloat(gen, "SpireFitFactorMax");
+            float monument = ConstFloat(gen, "SpireMonumentMaxHeight");
+            if (ceiling <= 0f)
+                failures.Add("[fitbounds] cannot parse SpireFitFactorMax's value out of " + GeneratorSrc);
+            else if (monument <= 0f)
+                failures.Add("[fitbounds] cannot parse SpireMonumentMaxHeight's value out of " + GeneratorSrc);
+            else if (ceiling < monument)
+                failures.Add("[fitbounds] SpireFitFactorMax (" + ceiling.ToString("0.###") + ") is below " +
+                             "SpireMonumentMaxHeight (" + monument.ToString("0.###") + "), so the factor ceiling " +
+                             "is once again the authority on monument height: one-metre-class art can no longer " +
+                             "reach the tallest target the monument clamp is allowed to ask for. The measured " +
+                             "spire art renders at 1.002m (Builds/wave2-bake, 2026-09-10) and needs a factor of " +
+                             "17.96 at an 18m target (WO-1619 sec.3).");
+
+            notes.Add("fit factor bounds tunable");
         }
 
         /// <summary>
@@ -290,6 +364,29 @@ namespace DeNelle.Editor.Regression
                 }
             }
             return null;
+        }
+
+        /// <summary>
+        /// Value of a `const float &lt;name&gt; = &lt;literal&gt;f;` declaration, read out of the source
+        /// text. Returns 0f when the declaration is absent or unparseable, which every caller
+        /// reports as a failure - a value this oracle cannot read must never pass as satisfied.
+        /// Invariant-comparing two tunables beats hardcoding either of their values here
+        /// (WO-1619: this suite exists because a hardcoded number decided a height).
+        /// </summary>
+        private static float ConstFloat(string src, string name)
+        {
+            if (string.IsNullOrEmpty(src)) return 0f;
+            int at = src.IndexOf("const float " + name + " =", StringComparison.Ordinal);
+            if (at < 0) return 0f;
+            int eq = src.IndexOf('=', at);
+            if (eq < 0) return 0f;
+            int end = src.IndexOf(';', eq);
+            if (end < 0) return 0f;
+
+            string lit = src.Substring(eq + 1, end - eq - 1).Trim();
+            if (lit.EndsWith("f", StringComparison.OrdinalIgnoreCase)) lit = lit.Substring(0, lit.Length - 1);
+            return float.TryParse(lit, System.Globalization.NumberStyles.Float,
+                                  System.Globalization.CultureInfo.InvariantCulture, out float v) ? v : 0f;
         }
 
         private static int Count(string src, string needle)

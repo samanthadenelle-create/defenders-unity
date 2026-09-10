@@ -1,6 +1,6 @@
 # WO-1619 - Raid spire height is capped by the 8x scale factor: every baked spire lands short of the monument height the code asks for
 
-**Status:** BLOCKED - awaiting the bake that prints the spire measurement; INSTRUMENTED step 1 (lane SPIRE 2026-09-10)
+**Status:** FIXED 2026-09-10 - gated (Builds/wave2-compile4, Builds/wave2-reg4 493/493) and re-baked (Builds/wave2-bake2: all three configs appliedFactor=14.366 saturatedAt=none achieved=14.40m 100% of target; Builds/wave2-navbake2: 4/4 walkable); owner felt-test closes (the spire is now ~2x taller; hitbox and collapse sink scale with it). OPEN: the Forsaken Camp spire ART is still your creative call (section 8). (was: IMPLEMENTED - awaiting gate + re-bake (lane SPIRE-2 2026-09-10))
 **Minted:** 2026-09-09 (CLI, main-line banner; bumped 1619 -> 1621 in the SAME edit)
 **Silo / Lane:** World / Raid scene builders (serialization bottleneck - ONE agent on the raid
 builders at a time, CLAUDE.md sec.9)
