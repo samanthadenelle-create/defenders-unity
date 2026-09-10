@@ -1,7 +1,26 @@
 # WO-1567: consolidate the Manage art wave — clear two compile blockers, gate, capture, build, push
 
-**Status:** READY TO IMPLEMENT — **handover to the CLI lane.** Owner ask 2026-09-06: *"hand over the
-details in a WO to CLI for them to consolidate and push with the build."*
+**Status:** PARTIALLY DONE - AWAITING OWNER MATCH 2026-09-10 - the chain RAN and every mechanical gate
+in §3 that was fired is green on a fresh log: `Builds/wave5-compile5` `COMPILE_GATE_OK`;
+`Builds/wave5-reg3` `REGRESSION_OK 494/494 suites` with **`ManagePortraitCoverageRegression` green BY
+NAME** (`MANAGE_PORTRAIT_COVERAGE_OK 68 ... resolve; 0 ... absent`); `Builds/wave5-manageflow2`
+`MANAGE_FLOW_MAP_OK 20 frames` + `UI_GEOMETRY_OK 20` + `UI_TOUCH_OK 20/20` + `UI_GLYPH_OK 20/20
+labels=361 baselined=0`, with `CAPTURE_LEDGER_MISSING`/`_DUPLICATE` both 0 and all 20
+`Builds/ui-capture/ManageFlow_*.png` on disk; ship: `APK_OK 08:05 size=444MB` + `R2_PARITY_OK
+objects=279` (postdating the APK, §16) + build `2026.09.10.363660`; device frames captured. PNGs
+OPENED - the hub frame shows criterion zero met (full-bleed, not the 64% plate), three whole two-line
+descriptions and art on all three cards. ⛔ **BUT §6.0 IS THE GATE THAT CLOSES THIS AND IT IS THE
+OWNER'S:** a device frame beside its mockup panel, >=95% on SIZE/FONT/STYLE/CONTEXT/IMAGES - "items 1-4
+... can never mark a ticket done". Board bucket = **Verify**. OPEN: (1) the owner match; (2) §3 step
+ZERO `CATALOG_FALLBACK_GEN_OK` was **NOT re-run this session** (last hit 09-09 13:02); (3) the order's
+final `AAB` step not run; (4) §6 item 4's panel-by-panel is 51 pass / 4 fail / 11 unmeasured per the
+`736b6b4b9` audit; (5) §4a row 3b PRODUCTION-per-hour still an open handback
+(`ResourceBuildingProgression` producer owed); (6) the on-device install + `dumpsys` version were NOT
+verified by the closing lane (no install line in `overnight-apk-status.txt`). Also NOT run:
+`MANAGE_OPERATIONAL_CAPTURE_OK` (a different entry point; blocks nothing here). RESULT:
+`WorkOrders/WORK_ORDER_1567_consolidate_the_manage_art_wave_gate_capture_and_ship.RESULT.md`
+*(was: READY TO IMPLEMENT — **handover to the CLI lane.** Owner ask 2026-09-06: "hand over the
+details in a WO to CLI for them to consolidate and push with the build.")*
 **Priority:** P1 — it is the gate/ship step for work that is already committed and cannot be proven until
 the tree compiles.
 **Silo:** the gate + capture + build chain. ⛔ **This WO changes no gameplay code.** The only edits it
@@ -378,3 +397,7 @@ because `DrawerTitlePx = DrawerTitleOverlayPx` is one number rather than two tha
 - **`RaidSelectionSpoilsRegression`'s intent.** Re-point it with the ruling; **do not delete the suite** to
   make the gate green. Deleting an oracle to pass a gate is the failure this repo has an entire §12 about.
 - Any other lane's uncommitted work. Consolidate by **explicit path**, never `git add -A` (§11).
+
+## Lead addendum (2026-09-10 08:35) - open item 6 closed, item 2 re-run
+
+Install proven: `Builds/wave5-install.runner.txt` reads `Performing Streamed Install` / `Success` (08:05:52); `adb shell dumpsys package com.denellestudios.echoesofelarion` read by the lead at 08:06 -> `versionName=2026.09.10.363660` (stamp commit dd8342230). Step ZERO `CatalogFallbackGenerator.Generate` re-run by the lead after this close-out (log `Builds/wave5-catfallback1`, marker recorded below when it lands).
