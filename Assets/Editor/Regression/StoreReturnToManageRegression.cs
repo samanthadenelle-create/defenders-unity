@@ -32,7 +32,11 @@
 //      "close -> return opener=", and contains NO SetReturnDoor / PanelRouter.Open - the
 //      "no second return path" half of the ruling.
 //   F  [busy-only-upsell] the builder upsell is not offered while a slot is free, and the
-//      offered label carries a PRICE (see the pending-ruling note in that case).
+//      offered label carries the AUTHORED USD PRICE and no token amount. OWNER RULING
+//      2026-09-10 (WO-1412 item 2): this label is USD ONLY - the Village assembly renders
+//      PackDef.UsdReference, the token amount is shown only where DeNelle.Wallet already
+//      renders it, and no Core DTO carries one across. The 09-09 "awaits a ruling" note that
+//      stood in this case is CLOSED; the negative pin is now correct, not defect-enforcing.
 //
 // RED-FIRST - ONE-LINE MUTATIONS that turn this suite RED on the fixed tree:
 //   * delete the `PanelManager.SetReturnDoor("Manage tab=" + tab, ...)` line from
@@ -44,6 +48,10 @@
 //     (a second return route racing the arbiter).
 //   * delete `PanelManager.ClearReturnDoor("manage-store-open-failed")` -> B fails.
 //   * change `busy >= slots` to `busy >= 0` in BuildSlotOffer -> F fails.
+//   * change `pack.UsdReference` to `pack.Pricing.Skr + " SKR"` in BuildSlotOffer -> F fails
+//     TWICE: the composition no longer reads the USD anchor, and the forbidden-token sweep
+//     catches `.Skr`. That mutation COMPILES from DeNelle.Village today, which is exactly why
+//     it is pinned (WO-1412 item 2, owner ruling 2026-09-10 - the label is USD ONLY).
 //
 // THE HONEST LIMIT (section 11B). Cases A-C drive the REAL ManageScreenVM through the REAL
 // PanelRouter/PanelManager arbiter with fake registered panels - that half is behavioural.
@@ -52,6 +60,10 @@
 // state in editor batchmode, so E and the all-busy half of F are SOURCE sweeps and are
 // labelled as such. The runtime half of those two is the device walk the WO already asks
 // for (11 -> 12 reproduced, CLOSE returns to Manage).
+// F's PRICE half is split on the same honesty line: BEHAVIOURAL on the price SOURCE (the
+// real PackCatalog, the real authored anchor), SOURCE on the COMPOSITION. The composed
+// string is not re-built in the suite - BuilderUpsellButtonText is "" whenever the upsell
+// is hidden, and re-composing it here would assert the test against itself.
 // =============================================================================
 
 using System;
@@ -63,6 +75,10 @@ using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Jobs;
 using DeNelle.Core.UI;
 using DeNelle.Village.UI;
+// PackCatalog / PackDef live in the DeNelle.Commerce ASSEMBLY under the DeNelle.Wallet
+// NAMESPACE (Assets/_Modules/Commerce/PackCatalog.cs:46). This using buys the case F price
+// source, not the wallet rail.
+using DeNelle.Wallet;
 
 namespace DeNelle.Editor.Regression
 {
@@ -166,7 +182,7 @@ namespace DeNelle.Editor.Regression
                 reason = "STORE RETURN TO MANAGE OK - the Manage handoff records the sending tab, the store's " +
                          "close returns through the one arbiter to that same tab after the close grace, a failed " +
                          "open clears the door, a HUD-opened store returns nowhere, and the builder upsell is " +
-                         "offered only when every slot is busy";
+                         "offered only when every slot is busy and priced in USD only (ruling 2026-09-10)";
                 return true;
             }
             reason = "store-return-to-manage: " + string.Join("; ", failures);
@@ -427,6 +443,46 @@ namespace DeNelle.Editor.Regression
                              "(SlotOfferText='" + (vm.SlotOfferText ?? "<null>") + "', button='" +
                              (vm.BuilderUpsellButtonText ?? "<null>") + "')");
 
+            // -- item 2, owner ruling 2026-09-10: the label carries the USD price and no token
+            // amount. Behavioural half: the PRICE SOURCE the label composes from. The composed
+            // string itself is deliberately NOT reconstructed here - BuilderUpsellButtonText is ""
+            // in any batchmode fixture (the upsell is hidden, asserted above), and re-composing
+            // `BuyBuilderButtonCopy + " - " + UsdReference` in the suite would assert the test
+            // against itself. So: BEHAVIOURAL on what the price resolves to, SOURCE on how the
+            // label is composed from it. Together those pin "what the player reads is the USD
+            // price, and nothing else".
+            PackCatalog.Reload();
+            var pack = PackCatalog.Find(PackCatalog.PermanentBuilderSku);
+            if (pack == null)
+            {
+                failures.Add(Tag + " F: PackCatalog.Find('" + PackCatalog.PermanentBuilderSku + "') returned null, so the " +
+                             "busy-only label falls to the literal 'Price unavailable' and carries NO price - the unpriced " +
+                             "BUY BUILDER of the WO-1412 report, arriving through the data instead of the code");
+            }
+            else
+            {
+                string usd = pack.UsdReference;
+                if (pack.Pricing == null || pack.Pricing.Usd <= 0d)
+                    failures.Add(Tag + " F: the permanent-builder pack authors no positive usd anchor, so the one price the " +
+                                 "Village assembly may render does not exist (Assets/Resources/Data/Canonical/packs.json)");
+                else if (string.IsNullOrEmpty(usd) || usd.IndexOf('$') < 0)
+                    failures.Add(Tag + " F: PackDef.UsdReference ('" + (usd ?? "<null>") + "') is not a USD price string - " +
+                                 "the ruled label copy reads '" + ManageScreenVM.BuyBuilderButtonCopy + " - <usd>'");
+                // Culture-safe on purpose: UsdReference formats with "0.00" under the CURRENT
+                // culture (PackCatalog.cs:324), so the expected substring is formatted the same
+                // way rather than matched against a hard \d+\.\d{2} shape.
+                else if (usd.IndexOf(pack.Pricing.Usd.ToString("0.00"), StringComparison.Ordinal) < 0)
+                    failures.Add(Tag + " F: UsdReference '" + usd + "' does not carry the authored usd anchor " +
+                                 pack.Pricing.Usd.ToString("0.00") + " - the label would price the SKU at something " +
+                                 "nobody authored");
+                if (Mentions(usd, "skr"))
+                    failures.Add(Tag + " F: the price the busy-only label renders carries a TOKEN amount ('" + usd + "'). " +
+                                 "Owner ruling 2026-09-10: this label is USD ONLY; the token amount is shown only where the " +
+                                 "Wallet assembly already renders it");
+                log.AppendLine("  F: price source - UsdReference='" + usd + "' from the authored usd anchor " +
+                               (pack.Pricing != null ? pack.Pricing.Usd.ToString("0.00") : "<none>") + ", no token amount");
+            }
+
             // Source half: the predicate and the price. BuildTimerService is a scene singleton and
             // cannot be driven to all-busy in editor batchmode (honest limit above).
             string src = ReadOrNull(VmSrc);
@@ -445,19 +501,39 @@ namespace DeNelle.Editor.Regression
                              "half of the WO-1412 report");
             if (!offer.Contains("slot free - tap") || !offer.Contains("slots free - tap"))
                 failures.Add(Tag + " F: the free-slot branch does not tell the player to use the queue verb instead");
-            // STOP NO SKR ASSERTION HERE, IN EITHER DIRECTION, AND THAT IS DELIBERATE (2026-09-09).
-            // WO-1412 asks for "BUY BUILDER - 511 SKR (~$9.99)". The honest SKR figure is SERVER-
-            // QUOTED (PurchaseQuoteService.SkrAmountFor, assembly DeNelle.Wallet); the authored
-            // packs.json `pricing.skr` is named IN SOURCE as "a stale hand-typed figure ... nobody
-            // will honour" (Assets/_Modules/Wallet/SolanaPackPricing.cs, WO-1158). Village does not
-            // reference DeNelle.Wallet and WO-1282's pointer block in PackCatalog.cs forbids adding
-            // it (a Google Play artifact excludes that assembly whole). So: pinning "contains SKR"
-            // would fail forever, and pinning "contains no SKR" would enforce the OPPOSITE of the
-            // ticket - the ManageQueueDrawerRegression mistake, where a suite guaranteed the defect.
-            // The label stays USD-only until the owner rules. See WORK_ORDER_1412 item 2.
+            if (!offer.Contains("BuilderUpsellButtonText = BuyBuilderButtonCopy + \" - \" + price"))
+                failures.Add(Tag + " F: the offered label is no longer composed as '<copy> - <price>' from the single " +
+                             "resolved price local - a second composition is a second place the ruled copy can drift");
+
+            // -- THE ITEM 2 PIN (owner ruling 2026-09-10). THIS LABEL IS USD ONLY.
+            // The 2026-09-09 note that stood here declined to assert anything about a token amount
+            // in EITHER direction, because the ticket asked for "BUY BUILDER - 511 SKR (~$9.99)"
+            // and no honest token figure is reachable from DeNelle.Village. THE OWNER HAS NOW
+            // RULED: the busy-only label renders the USD price the Village assembly can already
+            // read, the token amount is shown ONLY where the Wallet assembly already renders it,
+            // and NO Core DTO carries one across. So the negative pin is now CORRECT rather than
+            // defect-enforcing, and it is written here.
+            //
+            // COMMENTS ARE STRIPPED BEFORE THIS SWEEP AND THAT IS LOAD-BEARING. The ruling comment
+            // in BuildSlotOffer NAMES the forbidden symbols (that is how it stops the next seat
+            // reaching for them); sweeping the raw body would fire on the warning itself - RED for
+            // the wrong reason, which teaches a future seat to delete the warning.
+            string offerCode = StripLineComments(offer);
+            foreach (string forbidden in new[] { ".Skr", "AmountFor(", "AmountLabel(", "UsdApprox(",
+                                                 "SolanaPackPricing", "PurchaseQuoteService", "\"SKR\"" })
+            {
+                if (offerCode.Contains(forbidden))
+                    failures.Add(Tag + " F: BuildSlotOffer reaches a TOKEN price through '" + forbidden + "'. Owner ruling " +
+                                 "2026-09-10: this label is USD ONLY. pack.Pricing.Skr COMPILES from here (Commerce " +
+                                 "assembly) and is the trap - SolanaPackPricing.cs:62-64 calls that authored figure a " +
+                                 "stale hand-typed number nobody will honour; the honest amount is server-quoted and " +
+                                 "lives in DeNelle.Wallet, which DeNelle.Village.asmdef must never reference " +
+                                 "(GooglePlayPackagingGate pins that half)");
+            }
 
             log.AppendLine("  F: upsell hidden with no all-busy line, no 'Buy builder' copy on any surface; source - " +
-                           "gated on busy >= slots, priced from UsdReference (SKR half awaits a ruling)");
+                           "gated on busy >= slots, composed as '<copy> - <price>' from UsdReference, and no token-price " +
+                           "symbol reachable in the method body (ruling 2026-09-10: USD only)");
         }
 
         // -- helpers ----------------------------------------------------------
@@ -479,6 +555,26 @@ namespace DeNelle.Editor.Regression
                 log.AppendLine("  " + caseName + ": NOTE - an opener was already registered before this case " +
                                "(Manage=" + manage + " RealmStore=" + store + "); this suite's fake openers replace " +
                                "it and cannot restore it. Check suite ordering if a later case misbehaves.");
+        }
+
+        /// <summary>
+        /// Drops <c>//</c> line comments so a SOURCE sweep reads CODE, not prose. Case F's
+        /// forbidden-token sweep must not fire on the ruling comment inside BuildSlotOffer, which
+        /// deliberately NAMES the symbols it forbids so the next seat does not reach for them.
+        /// <para>Block comments and a <c>//</c> inside a string literal are NOT modelled.
+        /// BuildSlotOffer contains neither (read at source 2026-09-10); if one ever appears, this
+        /// helper is the single place to teach.</para>
+        /// </summary>
+        private static string StripLineComments(string src)
+        {
+            if (string.IsNullOrEmpty(src)) return src;
+            var sb = new StringBuilder(src.Length);
+            foreach (string line in src.Split('\n'))
+            {
+                int i = line.IndexOf("//", StringComparison.Ordinal);
+                sb.Append(i >= 0 ? line.Substring(0, i) : line).Append('\n');
+            }
+            return sb.ToString();
         }
 
         private static bool Mentions(string text, string needle) =>

@@ -167,3 +167,134 @@ Until (a) or (b) is answered the label stays USD-only and the oracle stays silen
 
 Quality gate on the one `.cs` written: **braces 46 open / 46 close, 0 NUL bytes, 0 non-ASCII characters.**
 Every existing `FlowTrace` call was left in place; none was added to a shipped file and none was removed.
+
+---
+
+# 2026-09-10 lane STORE-LABEL - ruling received, item 2 implemented
+
+**Lane:** STORE-LABEL (edit-only), 2026-09-10, isolated worktree of branch `dev`, base `c10e4f5d1`.
+**Never fired Unity, never staged, never committed.** Section 3 above is FROZEN as written on 09-09; this
+section is additive. Item 1's landed half is commit `965051ab9` (read this session).
+
+## 1. THE RULING (owner, 2026-09-10 morning) - section 4's question (a)/(b) is answered
+
+> The busy-only label is **USD ONLY** - the USD price the Village assembly can already read.
+> **SKR is shown only where the Wallet assembly already renders it. NO Core DTO.**
+
+That closes both branches of section 4's question at once: (a) the USD ladder governs THIS label's display,
+so the ticket's own `511 SKR (~$9.99)` spec is superseded; and (b) the Core-side DTO the lane offered as the
+only correct implementation is explicitly **not** sanctioned. **No asmdef was edited and none may be.**
+
+## 2. What the label does now, read at source 2026-09-10
+
+The composition was ALREADY correct on HEAD - `Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs`:
+
+| Line (as it is now, post-edit) | Code |
+|---|---|
+| `:1186` | `BuilderUpsellVisible = svc != null && slots > 0 && busy >= slots;` (the busy-only gate) |
+| `:1189` | `var pack = PackCatalog.Find(PackCatalog.PermanentBuilderSku);` |
+| `:1208` | `string price = pack != null ? pack.UsdReference : "Price unavailable";` |
+| `:1209` | `BuilderUpsellButtonText = BuyBuilderButtonCopy + " - " + price;` -> the player reads **`Buy builder - $9.99`** |
+
+The price source is `PackDef.UsdReference` (`Assets/_Modules/Commerce/PackCatalog.cs:324`,
+`Pricing != null ? $"${Pricing.Usd:0.00}" : "$0.00"`), fed by `usd: 9.99` authored at
+`Assets/Resources/Data/Canonical/packs.json:902-911`. `PackCatalog` sits in the **`DeNelle.Commerce`
+assembly** under the `DeNelle.Wallet` **namespace** (`PackCatalog.cs:46`) - which is why Village reads it
+today with no rail reference.
+
+**Proof no Wallet reference was added or is needed:** `Assets/_Modules/Village/DeNelle.Village.asmdef:4-28`
+lists `DeNelle.Core` (`:5`), `DeNelle.Commerce` (`:6`), `DeNelle.BattleATB`, `DeNelle.AI`,
+`DeNelle.Cosmetics`, `DeNelle.Data`, `DeNelle.Pets`, `DeNelle.Audio` and third-party rows. **`DeNelle.Wallet`
+is absent**, and the file is byte-identical to HEAD (no diff hunk touches it). That absence is already pinned
+independently at `Assets/Editor/Regression/GooglePlayPackagingGate.cs:203-204`
+(`if (village.Contains("\"DeNelle.Wallet\"")) failures.Add(...)`), so this lane added no second asmdef guard -
+one would be duplicated state.
+
+## 3. What changed
+
+| Path | Change |
+|---|---|
+| `Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs` | **COMMENT ONLY, zero behaviour change.** The old note read as a *limitation* ("Wallet-specific SKR conversion ... intentionally unavailable"), which invites a future seat to lift it. It now records the RULING, names both wrong ways to reach a token price, and points at the pin. |
+| `Assets/Editor/Regression/StoreReturnToManageRegression.cs` | Case F extended with the item-2 pin; header case list, honest-limit note, RED-first mutation list, `using`, `Run`'s reason string and a new `StripLineComments` helper updated with it. |
+| `WorkOrders/WORK_ORDER_1412_...md` | **The first `**Status:**` line ONLY** - lane RULINGS-AM owns the ruling block in that file in the main tree; nothing else in it was touched. |
+
+`ManageScreenVM.BuildSlotOffer`'s signature and `BuildRepairOffer`'s were deliberately left untouched: case F
+slices the source between them, and moving either anchor would blind the pin.
+
+**The suite IS registered** - checked at source rather than assumed, because commit `965051ab9`'s stat does
+not list `DataRegression.cs` and the 09-09 lane handed the line to the lead: it landed separately and now
+sits at `Assets/Editor/Regression/DataRegression.cs:1956`
+(`Guard.Try("Regression", "store-return-to-manage suite", ...)`). So both the item-1 pin and the new item-2
+pin run in the full suite; this lane added no registration line. No ambiguity risk from the new
+`using DeNelle.Wallet;`: nothing in `Assets/_Modules/Wallet` or `Assets/_Modules/Commerce` declares a
+`PanelManager`, `PanelRouter`, `PanelId`, `FlowTrace`, `Guard`, `ITraceSink` or `ChannelId` (grepped
+2026-09-10, no hits).
+
+## 4. The item-2 pin, and why it is now correct where the 09-09 silence was
+
+Case F previously asserted **nothing** about a token amount in either direction, on the reasoning (still
+sound at the time) that pinning "contains SKR" would fail forever and pinning "contains no SKR" would enforce
+the opposite of the ticket. **The ruling inverts that second half:** USD-only IS the ticket now, so the
+negative pin is the correct one. The in-file note recording the 09-09 reasoning was replaced with the ruling,
+so the closed question is not re-seeded.
+
+**Behavioural half** (real `PackCatalog`, `Reload()` then `Find(PermanentBuilderSku)` - the
+`BuilderSkuRegression.cs:47-52` pattern):
+- a null pack is a FAILURE, not a skip: it makes the label read `Buy builder - Price unavailable`, i.e. the
+  unpriced BUY BUILDER of the original report arriving through the data instead of the code;
+- `Pricing.Usd > 0`; `UsdReference` carries `$`; `UsdReference` contains `Pricing.Usd.ToString("0.00")`.
+  **Both sides format under the current culture on purpose** - `PackCatalog.cs:324` is culture-sensitive, so
+  a hard `\d+\.\d{2}` regex would go RED on a comma-decimal machine and teach nothing;
+- `UsdReference` contains no `skr` (case-insensitive).
+
+**Source half** on `BuildSlotOffer`: `busy >= slots`, `pack.UsdReference`, both free-slot verb branches, and
+the exact composition `BuilderUpsellButtonText = BuyBuilderButtonCopy + " - " + price`; then a
+forbidden-token sweep for `.Skr`, `AmountFor(`, `AmountLabel(`, `UsdApprox(`, `SolanaPackPricing`,
+`PurchaseQuoteService`, `"SKR"`.
+
+> ### THE COMMENT STRIP IS LOAD-BEARING, AND IT WAS MEASURED, NOT ASSUMED
+> The new ruling comment in `BuildSlotOffer` **names the forbidden symbols** - that is how it stops the next
+> seat reaching for them. Sweeping the RAW method body was simulated over the post-edit file this session:
+> `.Skr`, `SolanaPackPricing` and `PurchaseQuoteService` are **present in the raw body and absent from the
+> code** once `//` comments are stripped. Three of seven tokens would therefore have fired **RED for the
+> wrong reason**, and the cheapest way for a future seat to "fix" that RED is to delete the warning. Hence
+> `StripLineComments`. Its limits (no block-comment, no `//`-inside-a-string model - neither occurs in
+> `BuildSlotOffer`, read 2026-09-10) are written on the helper.
+
+**The composed label string is deliberately NOT reconstructed in the suite.** `BuilderUpsellButtonText` is
+`""` in any batchmode fixture (the upsell is hidden, which case F asserts), so a "the label contains no SKR"
+check on it would be vacuous; re-composing `BuyBuilderButtonCopy + " - " + UsdReference` in the test would
+assert the test against itself. Behavioural on the price SOURCE + source on the COMPOSITION is the honest
+split, and the case F log line says so.
+
+## 5. RED-first - the mutation, and what is UNPROVEN
+
+> **Change `pack.UsdReference` to `pack.Pricing.Skr + " SKR"` in `BuildSlotOffer`.** Case F fails TWICE: the
+> composition no longer reads the USD anchor, and the forbidden-token sweep catches `.Skr`. **That mutation
+> COMPILES from `DeNelle.Village` today** (`PackPricing.Skr` is public at `PackCatalog.cs:78`, Commerce
+> assembly) and would put on screen the figure `Assets/_Modules/Wallet/SolanaPackPricing.cs:62-64` calls
+> *"a stale hand-typed figure ... nobody will honour"*. It is the single most likely wrong "fix" of item 2,
+> which is exactly why it is the pin.
+
+Also RED: delete the `busy >= slots` gate (already pinned); null out the authored `usd` anchor in
+`packs.json` -> the behavioural half fails.
+
+> ### UNPROVEN (section 11B - stated as unproven rather than ticked)
+> - **The suite has never been RUN by this lane** (may not fire Unity). The RED-first claim above is
+>   REASONED FROM THE MUTATION, not measured. What WAS measured this session: the case F **source** sweep was
+>   simulated in Python over the post-edit `ManageScreenVM.cs` - all five positive anchors present in the
+>   stripped code, all seven forbidden tokens absent from it. The **behavioural** half (PackCatalog resolving
+>   under batchmode) is unmeasured here; `BuilderSkuRegression` resolves the same SKU the same way and is
+>   green in the run this base carries, which is evidence, not proof.
+> - **Acceptance items 2 (headless `ManageQueueTroops_2670x1200.png` recapture) and 3 (the device walk) remain
+>   OPEN.** Untouched by this lane, as by the last.
+> - **Board bucket, unchanged from section 3b:** the mandated status string leads with `IMPLEMENTED`, and
+>   `tools/board_build.py:187` buckets a leading `IMPLEMENTED` as **Done**. The string was written verbatim as
+>   the brief ordered (11B B). Flagging it here so the lead's choice stays deliberate.
+
+## 6. Quality gate on the files this lane touched
+
+`python tools/gate_brace.py Assets/Editor/Regression/StoreReturnToManageRegression.cs Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs`
+-> `bad=0 of 2`, exit 0. NUL-byte scan: **0** in both (38686 / 355080 bytes). No `FlowTrace` call was added or
+removed; the existing `[Flow:Manage] builder upsell shown=... price='...'` line at `ManageScreenVM.cs:1224`
+already prints the ruled label and is the device-walk proving line.

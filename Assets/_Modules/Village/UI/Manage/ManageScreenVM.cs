@@ -1187,8 +1187,24 @@ namespace DeNelle.Village.UI
             if (BuilderUpsellVisible)
             {
                 var pack = PackCatalog.Find(PackCatalog.PermanentBuilderSku);
-                // Commerce owns the authored USD anchor. Wallet-specific SKR conversion and
-                // approximation extensions are intentionally unavailable to the Village assembly.
+                // ⭐ OWNER RULING 2026-09-10 (WO-1412 item 2) - THIS LABEL IS USD ONLY, AND THAT IS
+                // THE ANSWER, NOT A LIMITATION AWAITING A BETTER ONE. The ticket originally spec'd
+                // "BUY BUILDER - 511 SKR (~$9.99)"; the owner ruled the busy-only label renders the
+                // USD price the Village assembly can already read (PackDef.UsdReference, the
+                // AUTHORED usd anchor, Assets/_Modules/Commerce/PackCatalog.cs:324), and the token
+                // amount is shown ONLY where the Wallet assembly already renders it. No Core DTO
+                // was sanctioned to carry it here.
+                //
+                // DO NOT "improve" this into a token price. The two ways to reach one are both
+                // wrong from here:
+                //   * pack.Pricing.Skr compiles today (PackPricing.Skr is public, Commerce
+                //     assembly) and is the trap - SolanaPackPricing.cs:62-64 (WO-1158) calls that
+                //     authored figure "a stale hand-typed figure ... nobody will honour".
+                //   * the HONEST amount is server-quoted (PurchaseQuoteService.SkrAmountFor) and
+                //     lives in DeNelle.Wallet, which DeNelle.Village.asmdef does NOT reference
+                //     (:4-28) and MUST NOT - GooglePlayPackagingGate.cs:203-204 fails the build if
+                //     that reference is ever added, because a Play artifact excludes Wallet whole.
+                // Pinned by StoreReturnToManageRegression case F.
                 string price = pack != null ? pack.UsdReference : "Price unavailable";
                 BuilderUpsellButtonText = BuyBuilderButtonCopy + " - " + price;
                 SlotOfferText = BuyBuilderLabelCopy;
