@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-fifty-third pass): main line next free = **1667**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-fifty-fourth pass): main line next free = **1691**.
+> Lead pre-assigned block: WO-1667 (LABEL-PINS), 1668 (LOCKED-FACE), 1669 (STAGING-SPOILS), 1670 (ECHO-CHIP), 1671-1672 (DOCK-CAPTIONS), 1673 (TOUCH-FLOOR: Play disclosures), **1674-1686 reserved for the HEARTBOUND-TRIAGE lane (HEART-001..013 spec, docs/specs/)**, 1687 (welcome-back sentence), 1688 (START NEW wipe, P1), 1689 (raid gate scale), 1690 (fifteen more label bands). Any of 1674-1686 the triage does not consume is BURNED, not reused.
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-third pass): main line next free = **1667**.
 > WO-1664 (five controls under the touch floor rely on the clamp), WO-1665 (state-word probe 20 px + PartyNameplate stand-down), WO-1666 (HudLabelFit pins over retired surfaces) minted by the DEVICE-FRAMES-4 and LABEL-PINS lanes on lead pre-assigned numbers.
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-second pass): main line next free = **1664**.

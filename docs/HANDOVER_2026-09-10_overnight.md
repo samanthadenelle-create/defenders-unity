@@ -252,6 +252,16 @@ canon conflicts as owner questions; index + dependency order will be `docs/specs
 
 **INCIDENT 12:18 (DEVICE-RAID lane, APK 363866):** the owner's Seeker save was reset to a new game - `2026-09-10_1209_363866_raid_logcat_stream.txt:133058` `[Flow:Save] ResetToNewGame: ENTER ... epoch 1789060460 -> 1789060736 ... wrote signed save (len=3417)` then `OnStartNew: routing to HeroSelect`; frames `_1220_363866_raid_10_after_continue.png` (Thrain Lv1, gold 700, Heartfire 3/3, buildings) vs `_1233_363866_raid_20_town_gold_before.png` (Grom Lv1, empty field). The lane spent nothing, trained nothing, raided nothing; adbd logged no tap for the START NEW press; a screen-recorder overlay bubble was on screen (the lane disabled that app - the lead re-enabled it 12:41; a ~2 min recording exists in the recorder's storage; a wallet signing sheet appeared and was CLOSED unsigned). Cloud never wrote this session (auth-absent, queue retained), so a backend row may hold the old town, but ApplyBackendState now refuses older epochs. START NEW wipes before hero select with no confirm (TitleController.cs:417) -> WO-1688 P1. **Owner ruled 12:43: ACCEPT the fresh save.** No recovery attempt; the device raid proofs (WO-1639/1640/1646/1647 device, WO-1637/1638 frames) now need a Barracks + 10 troops on the new economy - parked until the owner plays there herself or approves a spend. Device untouched since 12:33.
 
+Eighth wave in the tree (13:00, awaiting chain 41): chain 39 `wave8-compile2` COMPILE_GATE_OK, captures all OK (106 / 15 / 20 / front door
+6/6 touch=clean / welcome-back 6/6 touch=clean), `wave8-reg2` 495/497 - the two reds ([bar-face-icons] on the dock hoist; the allowlist
+suite finding fifteen NEW under-floor bands on the raid lane's logcat: dialogue Affiliation 30->25, SkipTutorialConfirm 30->21, body well,
+EndState header, target nameplate) both back with their lanes (DOCK-CAPTIONS re-pointed; FIT-GUARD leashing under WO-1690). Chain 40a
+`wave9-*`: raid scenes re-baked on the ruled arena (grey ring, fog 45-200, wall), `SiegeArena.unity` baked for the first time, navmesh 4/4.
+Merged and awaiting the gate: 1664 (six touch floors + front-door/welcome-back touch reporting), 1665 (probe/guard read-backs), 1666, 1667
+(dock caption weight term, portrait surface dropped per the landscape ruling), 1657A (no gold on the upgrade ladder), 1668 (LOCKED face),
+1669 (spoils floor), 1670 (Echo seam + chip hide), 1671/1672 (caption plates + outside dock), 1673 D1/D7 (polish note + regression), 1687
+(welcome-back sentence), 1688 (START NEW confirm + backup, P1), 1637/1638 (arena). Banner 1691 (1674-1686 reserved to HEARTBOUND).
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
@@ -517,6 +527,9 @@ design rule, owner verbatim: "when you are outside the castle should not be the 
 talk but can use items still" (WO-1672, outside-the-walls dock mode).
 **RULED 12:20:** 4 = keep the near-black readout plate; 8 = the Play listing is open in ALL countries, so the Korea + Brazil
 probabilistic-item disclosures apply (WO-1673, store-listing text). **All fifteen rulings are now answered.**
+**RULED 12:55:** dungeons take the same outside dock (WO-1672); the ITEM picker keeps the world pause outside; the ATTACK REPORT chip HIDES
+while the resource panel is expanded (WO-1670 follow-up).
+**RULED 13:02:** the dialogue Affiliation tag (authored 26) goes up to the 30 px floor (WO-1690 item 4).
 
 WO-1673 (Play disclosures) minted: six live RNG mechanics, none purchasable with real money or hard currency; the daily chest, every
 rewarded ad and packs.json have NO RNG. Two things for the owner before any questionnaire: the dormant Arena wager stakes REAL purchasable
