@@ -1,6 +1,39 @@
 # WORK ORDER 1657 — Quarry detail shows a **Gold** upgrade cost and reads "Level 0 of 4" while status is READY
 
-**Status:** READY TO IMPLEMENT
+**Status:** ITEM B IMPLEMENTED - awaiting gate. ⚠ ITEM A: OWNER RULING STILL PENDING (Reading 1 vs Reading 2, §2) - NO CODE TOUCHED, `CostGold` / the catalog row / `BuildingUpgradeRegression:593` are all untouched.
+
+> ## ✅ ITEM B RESOLVED 2026-09-10 (MANAGE-VM lane) — **B2, and it is proven, not chosen.**
+> Full working in
+> `WORK_ORDER_1657_quarry_upgrade_cost_shows_gold_and_level_0_of_4_while_ready.RESULT.md`.
+>
+> **§3's producer question is CLOSED and the answer was NOT either candidate it listed.** Neither
+> `BuildingUpgradePanelMvvm.cs:971` nor `ManageScreenVM.cs:1840` composes this head. The head is
+> `ManageSelectionVM.LevelText`, composed at **`ManageVmProjection.cs:319-322`**, and the chain is:
+> `ModifierService.TierOf` returns **0 on a `GameState.BuildingTiers` DICTIONARY MISS**
+> (`ModifierService.cs:44-47`) → `BuildingChoiceVM.Level` → `ManageItemState.Level` → that
+> expression. **Deciding captured line, `Builds/wave6-manageflow1` (fresh, 09:00):**
+> `[Flow:Manage] building choice id=farm level=0/4 state=Upgradable next=1 ready=True icon='Portraits/Buildings/farm' benefit='Stone production +10%.'`
+> — that benefit string is the frame's `Next level` line **verbatim**, which is what ties the log
+> line to the frame. Siblings on the same run read `level=1/4`, `3/4`, `4/4`.
+>
+> **THE VERDICT IS B2. Level 0 is REAL and must never be "corrected" to 1.** `building-tiers.json`
+> authors the farm ladder as tiers **1,2,3,4**, and tier 1 authors `foodProductionMult: 1.1` — i.e.
+> the "+10%" the card offers to **BUY**. `ModifierService.TierProductionMult` says the same in code
+> and in its own words: *"A tier below 1 contributes identity"* (`:106`). The founding state
+> genuinely sits BELOW the ladder. **So the defect is the WORDING, and the fix is display-only** —
+> no default changed, no tier seeded, no economy moved (this game is live on the dApp Store).
+> Precedent, so nothing was invented: ruling 3.7 already forbids painting a level zero
+> (`ManageResearchCardRegression` `[no-level-zero]`, *"Never paint LEVEL 0"*).
+>
+> ⚠ **THE WORDING ITSELF IS THE OWNER'S CALL** and is isolated behind one constant,
+> `ManageVmProjection.FoundingLevelWord`. It currently composes **`Not yet upgraded . 4 levels`**.
+> Change the constant, never the branch — the RED pin asserts the CONTRACT (no level claimed, the
+> ceiling still stated), so new words do not go RED.
+>
+> **NOT IN SCOPE, NAMED SO IT IS NOT LOST:** `BuildingChoiceVM.LockText`
+> (`ManageScreenVM.cs:1625`) composes `"Level " + level + " . Heart " + n` from the SAME sentinel,
+> so a LOCKED founding building still reads `Level 0 . Heart N` on the rail. Different string,
+> different surface, deliberately untouched — worth its own ticket.
 **Silo:** Economy / Manage detail-card VM + building-tier data
 **Opened:** 2026-09-10 by the DEVICE-FRAMES-2 lane
 **Source:** device play-mode session, APK **2026.09.10.363722**, Seeker `SM02G4061955851`

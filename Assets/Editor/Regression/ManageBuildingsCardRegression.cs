@@ -4,7 +4,9 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using DeNelle.Core.Catalog; // WO-1657 item B - CatalogRegistry.ResolveUpgradeId (collector_farm -> farm)
 using DeNelle.Core.Jobs;
+using DeNelle.Core.Manage;   // WO-1657 item B - ManageSelectionVM / ManageTabId, the composed detail
 using DeNelle.Core.State;
 using DeNelle.Village;
 using DeNelle.Village.UI;
@@ -25,6 +27,7 @@ namespace DeNelle.Editor
             try
             {
                 CheckLiveModel(failures, log);
+                CheckFoundingLevelLine(failures, log);
                 CheckPanelSource(failures, log);
                 CheckBuildingPortraitCoverage(failures, log);
             }
@@ -126,6 +129,227 @@ namespace DeNelle.Editor
                 if (host != null) UnityEngine.Object.DestroyImmediate(host);
                 if (fixture != null) UnityEngine.Object.DestroyImmediate(fixture);
             }
+        }
+
+        // =====================================================================
+        //  [founding-building-is-not-level-zero] - WO-1657 ITEM B
+        // ---------------------------------------------------------------------
+        //  THE DEFECT, from a device frame the owner can open:
+        //  Builds/device-frames/2026-09-10_0915b_363722_build_detail_quarry_placed.png reads
+        //  "Level 0 of 4" on the QUARRY card while the chip says READY, a live UPGRADE face is
+        //  offered, and the stats table draws "Production / hr  1,872 -> 2,016". A placed,
+        //  producing building presenting as level ZERO reads as un-built.
+        //
+        //  THE PRODUCER, PROVEN - not grepped (CLAUDE.md section 12):
+        //  ModifierService.TierOf returns 0 on a GameState.BuildingTiers DICTIONARY MISS
+        //  (ModifierService.cs:44-47) -> BuildingChoiceVM.Level -> ManageItemState.Level ->
+        //  ManageVmProjection's LevelText. The deciding line is on the fresh flow-map run
+        //  Builds/wave6-manageflow1: `building choice id=farm level=0/4 state=Upgradable next=1`
+        //  whose benefit string is the frame's "Next level" line verbatim.
+        //
+        //  ⛔ THE NUMBER IS RIGHT AND THIS CASE MUST NEVER BE "FIXED" BY MAKING IT 1.
+        //  building-tiers.json authors the farm ladder as tiers 1..4, tier 1 buying
+        //  foodProductionMult 1.1 - the "+10%" the card offers to PURCHASE - and
+        //  ModifierService.TierProductionMult states in its own code that "a tier below 1
+        //  contributes identity" (:106). The founding state genuinely sits BELOW the ladder. A
+        //  fixture that seeded a tier would be asserting on the very state that is not the bug.
+        //  So THIS FIXTURE DELIBERATELY LEAVES BuildingTiers WITHOUT A "farm" KEY - that dictionary
+        //  miss IS the device's state, and it is the whole point of the case.
+        //
+        //  THE TWO PARTS:
+        //    1. FOUNDING. A placed farm with no tier entry composes a level line that does NOT
+        //       claim a level, and that still states the ceiling so the player sees the ladder.
+        //       (Ruling 3.7 already forbids painting a level zero - ManageResearchCardRegression's
+        //       [no-level-zero] pins it on the other surface that owns this slot.)
+        //    2. THE UPGRADED PATH IS UNTOUCHED. The same fixture with BuildingTiers["farm"] = 2
+        //       still composes exactly "Level 2 of 4", byte for byte, so the founding branch
+        //       cannot bleed into the ordinary case.
+        //  ⛔ It pins the COMPOSED VM (ManageSelectionVM.LevelText), never a rendered string and
+        //  never the word itself - the WORDING is an owner call isolated behind
+        //  ManageVmProjection.FoundingLevelWord, so this case asserts the CONTRACT (no level
+        //  claimed, ceiling stated) and lets the owner change the words without going RED.
+        //
+        //  RED PROOF against the pre-fix tree: restore
+        //  `LevelText = item.MaxLevel > 0 ? "Level " + item.Level + " of " + item.MaxLevel : ...`
+        //  in ManageVmProjection (it was :319-322) -> part 1 fires, because the line then opens
+        //  with the literal this case forbids.
+        // =====================================================================
+        private static void CheckFoundingLevelLine(List<string> failures, StringBuilder log)
+        {
+            const string Tag = "[founding-building-is-not-level-zero] ";
+            // The word part 3 hunts for. It is a PROBE, not the wording contract: the wording is
+            // an owner call behind ManageVmProjection.FoundingLevelWord, and if the owner changes
+            // it this probe is updated with it. Parts 1 and 2 - the assertions that actually pin
+            // the contract - deliberately do not mention the words at all.
+            const string FoundingWordProbe = "upgraded";
+            // ⛔ TWO IDS, AND THEY ARE NOT INTERCHANGEABLE. "collector_farm" is the CATALOG /
+            // BaseLayout id (displayName "Quarry"); "farm" is the LADDER id that
+            // CatalogRegistry.ResolveUpgradeId maps it onto, and it is what CountPlacedThisTown
+            // keys the tally on, what BuildingChoiceVM.Id carries, and what the device trace
+            // prints (`building choice id=farm level=0/4`). There is NO "farm" row in
+            // structures-catalog.json (verified 2026-09-10), so placing "farm" would place a
+            // GHOST: nothing would count it, BuildingChoices would be empty, and this case would
+            // FAIL after the fix as loudly as before it - a pin that proves nothing twice.
+            // ⛔ NEVER rename collector_farm (WO-1657 section 5: it is a LIVE SAVE KEY).
+            const string PlacedId = "collector_farm";
+            const string LadderId = "farm";
+            const int SeededTier = 2;
+            const string UnplacedId = "barracks";  // deliberately NOT in this fixture's BaseLayout
+
+            GameStateService prior = GameStateService.Instance;
+            GameObject host = null;
+            GameState fixture = null;
+            bool hadTabPref = PlayerPrefs.HasKey(ManageScreenVM.LastTabPrefKey);
+            int priorTabPref = PlayerPrefs.GetInt(ManageScreenVM.LastTabPrefKey, 0);
+            try
+            {
+                // The fixture must be able to EXERCISE the thing under test. If the catalog no
+                // longer maps the placement id onto the ladder id, everything below asserts on an
+                // empty model - so it is checked FIRST, and it is a FAIL, never a skip.
+                if (CatalogRegistry.Get(PlacedId) == null)
+                {
+                    failures.Add(Tag + "the catalog cannot resolve '" + PlacedId + "', so nothing could " +
+                                 "have been placed and no level line composed. FAIL, not a skip.");
+                    return;
+                }
+                string resolved = CatalogRegistry.ResolveUpgradeId(PlacedId);
+                if (!string.Equals(resolved, LadderId, StringComparison.OrdinalIgnoreCase))
+                {
+                    failures.Add(Tag + "CatalogRegistry.ResolveUpgradeId('" + PlacedId + "') now returns '" +
+                                 (resolved ?? "<null>") + "', not '" + LadderId + "'. CountPlacedThisTown keys " +
+                                 "its tally on that mapping, so this fixture would place a structure no " +
+                                 "BuildingChoice counts and the case would assert on nothing. FAIL, not a skip.");
+                    return;
+                }
+
+                int ceiling = BuildingTierCatalog.MaxTier(LadderId);
+                if (ceiling < 2)
+                {
+                    failures.Add(Tag + "building-tiers.json no longer authors a ladder of 2+ tiers for '" +
+                                 LadderId + "' (MaxTier=" + ceiling + "), so neither half of this case " +
+                                 "could have been exercised. FAIL, not a skip.");
+                    return;
+                }
+
+                fixture = ScriptableObject.CreateInstance<GameState>();
+                fixture.Onboarded = true;
+                fixture.VillageTier = 5;
+                fixture.BaseLayout = new List<PlacedStructureData>
+                {
+                    new PlacedStructureData(PlacedId, 4, 2, 0, 1),
+                };
+                // ⛔ NO fixture.BuildingTiers[LadderId] ENTRY, DELIBERATELY. The dictionary miss is
+                // the state the device is in and the state under test. Seeding one here would
+                // quietly test the case that already worked.
+                fixture.Wood = 1000000;
+                fixture.Iron = 1000000;
+                var balances = fixture.Resources;
+                balances.Food = 1000000;
+                balances.Coins = 1000000;
+                balances.Crystals = 1000000;
+                fixture.Resources = balances;
+                fixture.ObsidianQueue = ObsidianQueueState.Empty();
+
+                host = new GameObject("GSS (manage-founding-level oracle)");
+                var service = host.AddComponent<GameStateService>();
+                if (!InstallState(service, fixture))
+                {
+                    failures.Add(Tag + "GameStateService state seam is unavailable, so the level line " +
+                                 "could not be composed. FAIL, not a skip.");
+                    return;
+                }
+
+                // ── PART 1: the founding building ────────────────────────────
+                string founding = ComposeLevelText(LadderId);
+                if (founding == null)
+                {
+                    failures.Add(Tag + "OpenDetail(Build, " + LadderId + ") composed no visible selection, " +
+                                 "so the level line could not be read. FAIL, not a skip.");
+                    return;
+                }
+
+                // The forbidden opening is built from parts so this message can never itself trip
+                // a source scan that hunts the literal (ManageResearchCardRegression's
+                // [no-level-zero] scans a panel body for exactly that shape).
+                string forbidden = "Level " + 0;
+                if (founding.StartsWith(forbidden, StringComparison.Ordinal))
+                    failures.Add(Tag + "a PLACED, producing '" + LadderId + "' with no tier entry composes " +
+                                 "the level line \"" + founding + "\". ModifierService.TierOf returned a " +
+                                 "DICTIONARY MISS, not a stored level, and the card painted the sentinel as " +
+                                 "though it were a rung - which reads as un-built beside a READY chip and a " +
+                                 "live upgrade face. Ruling 3.7 already forbids this on the Research card.");
+
+                if (founding.IndexOf(ceiling.ToString(), StringComparison.Ordinal) < 0)
+                    failures.Add(Tag + "the founding level line \"" + founding + "\" never states the ladder " +
+                                 "ceiling (" + ceiling + "). Dropping the number is not a fix - the player " +
+                                 "then cannot see there is a ladder at all, which loses more than the wrong " +
+                                 "number cost.");
+
+                log.AppendLine("founding level line='" + founding + "' ceiling=" + ceiling);
+
+                // ── PART 2: the ordinary upgraded path is byte-identical ─────
+                fixture.BuildingTiers[LadderId] = SeededTier;
+                string upgraded = ComposeLevelText(LadderId);
+                string expected = "Level " + SeededTier + " of " + ceiling;
+                if (upgraded == null)
+                {
+                    failures.Add(Tag + "with BuildingTiers[" + LadderId + "]=" + SeededTier + " the detail " +
+                                 "composed no visible selection. FAIL, not a skip.");
+                }
+                else if (!string.Equals(upgraded, expected, StringComparison.Ordinal))
+                {
+                    failures.Add(Tag + "an UPGRADED '" + LadderId + "' composes \"" + upgraded + "\" but must " +
+                                 "still read exactly \"" + expected + "\". The founding branch has bled into " +
+                                 "the ordinary path - the WO-1657 change is display-only and must leave every " +
+                                 "level >= 1 byte-identical.");
+                }
+                log.AppendLine("upgraded level line='" + (upgraded ?? "<null>") + "'");
+
+                // ── PART 3: an UNBUILT building must not claim "not yet upgraded" ─────
+                // ⚠ WHY THIS IS HERE. ProjectSelection is shared by EVERY tab, so the founding
+                // branch would be a NEW wrong claim if an unbuilt row could reach it - "not yet
+                // upgraded" asserts the thing EXISTS. Today it cannot: ComposeUnplacedItem,
+                // ComposeOwnedNoUpgradeItem and ComposeTroopItem all set MaxLevel = 0, and the
+                // branch is gated on MaxLevel > 0 (ComposeDefenseItem cannot reach it either -
+                // BuildDefenseChoices floors its level with Mathf.Clamp(.., 1, ceiling)). That
+                // guarantee is STRUCTURAL and invisible, which is exactly the kind that gets
+                // deleted by accident, so it is pinned rather than trusted.
+                string unbuilt = ComposeLevelText(UnplacedId);
+                if (unbuilt != null && unbuilt.IndexOf(FoundingWordProbe, StringComparison.OrdinalIgnoreCase) >= 0)
+                    failures.Add(Tag + "the UNBUILT '" + UnplacedId + "' composes the level line \"" + unbuilt +
+                                 "\". The founding line means \"placed, producing, no rung bought\" - on a " +
+                                 "building that does not exist it is a new false claim replacing the old one. " +
+                                 "Something has started handing unplaced rows a ceiling.");
+                log.AppendLine("unbuilt level line='" + (unbuilt ?? "<null>") + "'");
+            }
+            catch (Exception ex)
+            {
+                failures.Add(Tag + "threw " + ex.GetType().Name + ": " + ex.Message);
+            }
+            finally
+            {
+                SetGssInstance(prior);
+                if (host != null) UnityEngine.Object.DestroyImmediate(host);
+                if (fixture != null) UnityEngine.Object.DestroyImmediate(fixture);
+                if (hadTabPref) PlayerPrefs.SetInt(ManageScreenVM.LastTabPrefKey, priorTabPref);
+                else PlayerPrefs.DeleteKey(ManageScreenVM.LastTabPrefKey);
+            }
+        }
+
+        /// <summary>Opens the BUILD detail for <paramref name="itemId"/> on a FRESH model and
+        /// returns the composed <c>ManageSelectionVM.LevelText</c>, or null when no selection was
+        /// composed. A fresh VM per read so a cached rebuild cannot mask a state change.</summary>
+        private static string ComposeLevelText(string itemId)
+        {
+            var model = new ManageScreenVM();
+            model.EnterTab(ManageTabId.Build);
+            model.OpenDetail(ManageTabId.Build, itemId, null, null);
+            var ws = model.ComposeWorkspace();
+            if (ws == null || ws.Tabs == null) return null;
+            for (int i = 0; i < ws.Tabs.Count; i++)
+                if (ws.Tabs[i] != null && ws.Tabs[i].Selection != null && ws.Tabs[i].Selection.Visible)
+                    return ws.Tabs[i].Selection.LevelText ?? string.Empty;
+            return null;
         }
 
         private static void CheckPanelSource(List<string> failures, StringBuilder log)

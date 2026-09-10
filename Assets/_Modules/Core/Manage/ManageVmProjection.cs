@@ -316,8 +316,12 @@ namespace DeNelle.Core.Manage
                 // UpgradeTrack.NotApplicable. Gating on the TRACK rather than on the level keeps
                 // that true instead of relying on a perk happening to have Level 0.
                 // Case matches the mockup ("Level 2"), not the old shouted "LEVEL 2 OF 6".
+                // ⭐ WO-1657 ITEM B - A FOUNDING BUILDING NO LONGER CLAIMS TO BE "Level 0".
+                // See FoundingLevelText and the block above it for the proof and the reasoning.
                 LevelText = item.MaxLevel > 0
-                    ? "Level " + item.Level + " of " + item.MaxLevel
+                    ? (item.Level > 0
+                        ? "Level " + item.Level + " of " + item.MaxLevel
+                        : FoundingLevelText(item.MaxLevel))
                     : (item.Level > 0 && item.UpgradeTrack != ManageUpgradeTrack.NotApplicable
                         ? "Level " + item.Level
                         : null),
@@ -351,6 +355,71 @@ namespace DeNelle.Core.Manage
         }
 
         // ── helpers ───────────────────────────────────────────────────────────
+
+        // =====================================================================
+        //  WO-1657 ITEM B - "Level 0 of 4" ON A PLACED, PRODUCING, READY BUILDING
+        // ---------------------------------------------------------------------
+        //  THE FRAME: Builds/device-frames/2026-09-10_0915b_363722_build_detail_quarry_placed.png
+        //  (APK 2026.09.10.363722, Seeker SM02G4061955851). The Quarry card reads "Level 0 of 4"
+        //  beside a READY chip, a live UPGRADE face, and "Production / hr  1,872 -> 2,016". A
+        //  placed, producing building presenting as level ZERO reads as un-built to a player.
+        //
+        //  THE PRODUCER, PROVEN END TO END - NOT GREPPED (CLAUDE.md section 12):
+        //    ModifierService.TierOf (ModifierService.cs:44-47) returns 0 when GameState.
+        //      BuildingTiers has NO ENTRY for the id - a DICTIONARY MISS, not a stored level
+        //    -> BuildBuildingChoices sets BuildingChoiceVM.Level = ModifierService.TierOf(id)
+        //    -> ManageScreenVM.ComposeBuildingItem sets ManageItemState.Level = c.Level
+        //    -> THIS expression painted "Level " + 0 + " of " + 4.
+        //  THE DECIDING CAPTURED LINE, Builds/wave6-manageflow1 (fresh, 2026-09-10 09:00):
+        //    [Flow:Manage] building choice id=farm level=0/4 state=Upgradable next=1 ready=True
+        //    icon='Portraits/Buildings/farm' benefit='Stone production +10%.'
+        //  ("farm" is the Quarry's LADDER id; the catalog row is collector_farm, displayName
+        //  "Quarry" - and that benefit string is the frame's "Next level" line verbatim, which is
+        //  what ties the log line to the frame.) Siblings on the same run read level=1/4, 3/4 and
+        //  4/4, so the zero is this building's state, not a broken read.
+        //
+        //  ⭐ THE VERDICT IS WO-1657's B2, NOT B1 - LEVEL 0 IS REAL AND MUST NOT BE "CORRECTED"
+        //  TO 1. building-tiers.json authors the farm ladder as tiers 1,2,3,4 (read at source
+        //  2026-09-10; tier 1 authors foodProductionMult 1.1, i.e. the "+10%" the card offers to
+        //  BUY). ModifierService.TierProductionMult says the same thing in code and in its own
+        //  words - "A tier below 1 contributes identity" (ModifierService.cs:106, `if (tier < 1)
+        //  return 1f;`). So the founding state genuinely sits BELOW the ladder: the building
+        //  produces at base and has not bought rung 1. Writing 1 there would claim a purchased
+        //  multiplier the player has not paid for - the WO's B1 reading, and it is wrong.
+        //  ⛔ THEREFORE THE DEFECT IS THE WORDING, NOT THE NUMBER, and the fix is display-only.
+        //  Nothing upstream is touched: no default is changed, no tier is seeded, no economy
+        //  moves. That matters more than usual - this game is live on the Solana dApp Store.
+        //
+        //  PRECEDENT, so this is not an invented rule: ruling 3.7 already forbids painting a
+        //  level zero on the Research card, pinned by ManageResearchCardRegression's
+        //  [no-level-zero] ("Never paint LEVEL 0"). This applies the SAME ruling to the building
+        //  card, which is the other surface that owns the level slot.
+        //
+        //  ⛔ THE CEILING IS NOT RE-DERIVED HERE. It is item.MaxLevel, which the composer already
+        //  carries from BuildingTierCatalog.MaxTier - CLAUDE.md section 8 forbids a second
+        //  hardcoded level ceiling and this line adds none.
+        // =====================================================================
+
+        /// <summary>
+        /// ⚠ THE WORDING IS AN OWNER CALL - WO-1657 section 3, reading B2. CHANGE THIS CONSTANT,
+        /// NEVER THE BRANCH. The structural rule (a dictionary-miss sentinel is not a level, and
+        /// ruling 3.7 forbids painting level zero) is settled; the exact words a founding building
+        /// shows are the owner's to overrule, and they are isolated here so overruling them is a
+        /// one-token edit that cannot disturb the proven logic above.
+        /// <para>Kept SHORT deliberately: this lands in the detail card's level band beside the
+        /// state chip, which TMP will cull rather than wrap. It states the LADDER DEPTH so the
+        /// player still sees what they are buying into, and it never claims a level.</para>
+        /// </summary>
+        private const string FoundingLevelWord = "Not yet upgraded";
+
+        /// <summary>The level line for a building that is placed and producing but has bought no
+        /// rung yet. See the block above for why this is not "Level 0" and not "Level 1".</summary>
+        private static string FoundingLevelText(int maxLevel)
+        {
+            return maxLevel > 0
+                ? FoundingLevelWord + " . " + maxLevel + " levels"
+                : FoundingLevelWord;
+        }
 
         private static ManageAction FirstRunning(ManageItemState item)
         {

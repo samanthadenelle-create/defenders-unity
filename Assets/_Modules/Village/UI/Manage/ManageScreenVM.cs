@@ -1673,10 +1673,25 @@ namespace DeNelle.Village.UI
                 else if (isLocked) locked++;
                 // WO-1405 — the BENEFIT rides the same line as the state, so "the row prices the
                 // tap and never says what it buys" is a log read, not a felt-test.
+                // ⭐ WO-1657 ITEM B - THE READ-BACK TOKEN NAMES THE LEVEL'S SOURCE AXIS.
+                // The line already printed the level's VALUE, which is why "Level 0 of 4" could be
+                // seen on a device frame and still leave the ticket guessing between an off-by-one
+                // and a real founding state. The value alone cannot tell those apart. This token
+                // names WHERE the number came from, so the next reader of a log settles it in ONE
+                // read instead of tracing four files:
+                //   BuildingTiers            -> a level STORED in GameState.BuildingTiers
+                //   founding(no-tiers-entry) -> ModifierService.TierOf returned its DICTIONARY-MISS
+                //                               default; the building is placed and has bought no
+                //                               rung. That is a REAL state, not a bad read - see
+                //                               CountPlacedThisTown's "tier 0 = placed" ruling.
+                // ⛔ APPENDED AT THE END, DELIBERATELY: nothing before benefit= moves, so any eye
+                // or grep already trained on this line's shape still works.
+                string tierSource = level > 0 ? "BuildingTiers" : "founding(no-tiers-entry)";
                 FlowTrace.Step("Manage", "building choice id=" + id + " level=" + level + "/" + maxLevel +
                     " state=" + stateWord + " next=" + nextTier + " ready=" + ready +
                     " icon='" + (choice.IconKey ?? "<fallback>") + "'" +
-                    " benefit='" + choice.AfterUpgradeText + "'");
+                    " benefit='" + choice.AfterUpgradeText + "'" +
+                    " tier-source=" + tierSource);
                 // NEVER A SILENT BLANK (§12): the card paints "After upgrade: " + this string, so an
                 // unauthored tier Effect would render an empty band with no evidence anywhere.
                 if (!isMax && string.IsNullOrWhiteSpace(choice.AfterUpgradeText))
