@@ -330,3 +330,7 @@ is written, with both paths reported. The lead regenerates `BOARD.html`.
 ## Device evidence (lead, 2026-09-10 08:14, APK 2026.09.10.363660)
 
 `Builds/device-frames/2026-09-10_0814_363660_town_dock.png` (2670x1200, opened): the ATTACK REPORT chip draws on two lines inside the rail plate; the Journey deck RAIDS card has no white corners (`_0817b_363660_journey_deck.png`). Owner felt-verify closes.
+
+## OWNER RULING (2026-09-10 12:16)
+
+The Echo chip encroachment (0.022 into QueueStatus) is FIXED NOW via a HudLayoutBands seam - ticketed as WO-1670.

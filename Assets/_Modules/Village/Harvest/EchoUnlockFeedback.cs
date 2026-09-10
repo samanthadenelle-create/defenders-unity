@@ -51,34 +51,31 @@ namespace DeNelle.Village
     [DisallowMultipleComponent]
     public sealed class EchoUnlockFeedback : MonoBehaviour
     {
-        /// <summary>WO-867: vertical centre of this chip's band on HudAreasHost's right column.
-        /// <para>⚠ THE JUSTIFICATION THAT USED TO SIT HERE WAS STALE, AND BOTH NUMBERS IT CITED
-        /// ARE GONE (corrected WO-1642, 2026-09-10). It read "the ONE free band ... between
-        /// ActionRail's top (0.420) and QueueStatus's bottom (0.530)". Re-read at source this
-        /// session, HudAreasHost.cs authors ActionRail at 0.770..0.965 (`:130`) and QueueStatus at
-        /// 0.510..0.750 (`:175`) — so neither 0.420 nor 0.530 exists, and the band this constant
-        /// claims to be docked in does not either. That is the duplicated-state rot CLAUDE.md §2,
-        /// §5 and §16 each describe: a number copied into a second file goes stale where it
-        /// stands.</para>
-        /// <para>WHAT IS TRUE TODAY, MEASURED NOT ASSUMED: the chip is a FIXED 112 ref px tall box
-        /// centred on this fraction, so on the owner's 2670x1200 Seeker frame (canvas 1080x1920,
-        /// match 0.5 → scale 1.243, band 139.2 device px) it occupies 0.418..0.532 of screen
-        /// height — its top edge sits about <b>0.022 INSIDE QueueStatus's 0.510 bottom</b>. No
-        /// pixel overlap has been observed: on Builds/device-frames/2026-09-10_0602_town.png this
-        /// chip's plate measures device rows 585..658 and the attack-report chip's plate above it
-        /// ends at 545. The encroachment is RECORDED, not fixed here — moving a placement the
-        /// owner felt-tested (2026-07-24) is a ruling, not a comment repair.</para>
-        /// <para>⛔ DO NOT WRITE A MOUNT RECT INTO THIS FILE AGAIN. The only cure for the copy is
-        /// deleting it: this chip lives in DeNelle.Village and may not reference DeNelle.HUD
-        /// (CLAUDE.md §5), so having it READ the band needs a shared table in
-        /// DeNelle.Core.UI.HudLayoutBands — the same seam WO-1436 and WO-1464 already cut for the
-        /// raid deploy bar and the move stick. That is a structural change with an owner ruling
-        /// attached; it is raised, not smuggled in here.</para></summary>
-        private const float EchoChipBandCentreY = 0.475f;
-
-        /// <summary>WO-867: chip width, reference px — fits "Echoes 6/6" on one line at the kit's
-        /// button label size without wrapping. Height is <see cref="ElarionUiKit.MinTouchPx"/>.</summary>
-        private const float EchoChipWidthPx = 220f;
+        // ⭐ WO-1670 (owner ruling 2026-09-10 12:16) — THIS FILE NO LONGER AUTHORS THE CHIP'S
+        // BAND, AND THE DELETION IS THE FIX.
+        // -------------------------------------------------------------------------------------
+        // Two private consts stood here: `EchoChipBandCentreY = 0.475f` and
+        // `EchoChipWidthPx = 220f`. The first was a fraction of HudAreasHost's right column
+        // restated in a file that cannot see it — DeNelle.Village may not reference DeNelle.HUD
+        // (CLAUDE.md §5) — and the comment attached to it had ALREADY been corrected twice for
+        // naming bands that no longer existed (WO-1642, 2026-09-10: it cited an ActionRail top of
+        // 0.420 and a QueueStatus bottom of 0.530; the real values are 0.770 and 0.510). That
+        // comment's own closing line was the instruction this change carries out, verbatim:
+        // "⛔ DO NOT WRITE A MOUNT RECT INTO THIS FILE AGAIN. The only cure for the copy is
+        // deleting it ... having it READ the band needs a shared table in
+        // DeNelle.Core.UI.HudLayoutBands."
+        //
+        // WHAT THE COPY COST, MEASURED (WO-1670 §1c, re-derived from source this session):
+        // a FIXED 112 ref px box on a CENTRE fraction resolves a DIFFERENT top edge at every
+        // aspect — 0.5330 at 2670x1200, 0.5269 at 1920x1080 — so it reached 0.0230 / 0.0169
+        // INSIDE the QueueStatus mount's 0.510 floor, and 0.0212 / 0.0101 into the live ATTACK
+        // REPORT chip's resting band on an identical 220 px right gutter. WO-1642 measured the
+        // PLATES and correctly saw no pixel collision; that gap exists only because the kit
+        // sprite's ink occupies 0.145..0.736 of its band. The BANDS overlapped.
+        //
+        // The band is now HudLayoutBands.QueueStatusMount + EchoChipTopY / EchoChipWidthPx /
+        // EchoChipHeightPx / EchoChipEdgeInsetPx, read below. ⛔ Do not re-introduce a local
+        // fraction, width or inset here — read the seam, and change it THERE if it must change.
 
         private GameObject _pipCanvas;
         /// <summary>The right-column Echoes chip's label — carries the word AND the count
@@ -455,39 +452,44 @@ namespace DeNelle.Village
             if (_chipLabel == null)
                 FlowTrace.Warn("Echo", "Echoes chip: no TMP label — the Echo count will not render.");
 
-            // Owner 2026-07-24 felt-test placement, preserved: RIGHT screen edge, vertically
-            // centred (the LEFT edge is the HudKit gear slide-dock, so RIGHT is the free edge).
-            // A square touch target that meets the mobile MinTouchPx ~112 standard. The roster it
+            // Owner 2026-07-24 felt-test placement, preserved in substance: RIGHT screen edge,
+            // low in the right column (the LEFT edge is the HudKit gear slide-dock, so RIGHT is
+            // the free edge). A touch target at the mobile MinTouchPx ~112 floor. The roster it
             // opens stays the full-screen 31000 single-arbiter modal (z-fix preserved). The kit
             // anchored the button at (1,0.5) with zero offsets; collapse that to a fixed-size box
-            // pinned to the right edge (pivot 1,0.5 + inset), then clamp to the touch floor.
+            // pinned to the right edge, then clamp to the touch floor.
             var rt = btn.transform as RectTransform;
             if (rt != null)
             {
-                // WO-867 — DOCK IT IN A REAL BAND ON THE RIGHT COLUMN.
-                // HudAreasHost reserves 0.780..0.995 x for the right column. Anchor the chip on
-                // EchoChipBandCentreY at a FIXED 112-px height, so it occupies 0.418..0.532.
-                // Fixed pixels, never a fraction of parent.
-                // ⚠ The two mount fractions this comment used to quote as the band's edges no
-                // longer exist — read the correction (and the live 0.510 / 0.770 values) on
-                // EchoChipBandCentreY above rather than restating any of them here.
-                rt.anchorMin = new Vector2(1f, EchoChipBandCentreY);
-                rt.anchorMax = new Vector2(1f, EchoChipBandCentreY);
-                rt.pivot = new Vector2(1f, 0.5f);
+                // ⭐ WO-1670 — HUNG FROM ITS TOP EDGE OFF THE SHARED SEAM, NOT CENTRED ON A LOCAL
+                // FRACTION. HudLayoutBands.EchoChipTopY is one clearance gap under
+                // QueueStatusMount's floor, so this chip cannot overlap the Collectors / ATTACK
+                // REPORT band above it however the two are later re-authored — they read one
+                // table. Anchoring the TOP (pivot 1,1) rather than the centre is the load-bearing
+                // half: the box is FIXED pixels, so a centre fraction yields a different top edge
+                // at every aspect and no single centre can be disjoint everywhere. The top is a
+                // pure fraction (0.500) and identical at 2670x1200 and 1920x1080; the box hangs
+                // down from it. Fixed pixels, never a fraction of parent (WO-841).
+                // ⛔ The band, the width, the height and the inset ALL belong to the seam. Do not
+                // reintroduce a literal here — see the WO-1670 block at the top of this file.
+                rt.anchorMin = new Vector2(1f, HudLayoutBands.EchoChipTopY);
+                rt.anchorMax = new Vector2(1f, HudLayoutBands.EchoChipTopY);
+                rt.pivot = new Vector2(1f, 1f);
                 // SAFE-AREA INSET (measured off the headless capture 2026-07-30): the old raw
                 // -16f resolved to only ~18 device px at 2340x1080 (~7 dp, ~1.15mm on the Seeker)
                 // -- reads as flush, and sits inside the rounded-corner / landscape-cutout /
-                // gesture band. 3 x PadPanel = 54 ref px ~= 24 dp (~60 device px), 1.5x the
-                // Material 16 dp screen margin, using the dp scale in
-                // docs/SME/VISUAL_TOUCH_CONTRAST_AUDIT_2026-07-14.md (1 dp ~= 2.21 ref px on
-                // this 1080x1920 / match-0.5 canvas). Authored as a deliberate multiple of
-                // PadPanel, never a raw literal (WO-779 spacing rule).
+                // gesture band. HudLayoutBands.EchoChipEdgeInsetPx is 3 x PadPanel = 54 ref px
+                // ~= 24 dp (~60 device px), 1.5x the Material 16 dp screen margin, using the dp
+                // scale in docs/SME/VISUAL_TOUCH_CONTRAST_AUDIT_2026-07-14.md (1 dp ~= 2.21 ref px
+                // on this 1080x1920 / match-0.5 canvas). It is the SAME expression as
+                // HudKitController.RailGutterPx, so the four right-column faces share one right
+                // edge; that equality used to be two hand-kept literals.
                 // TODO(WO-779 s5.6): replace with the shared Screen.safeArea helper once it exists.
-                rt.anchoredPosition = new Vector2(-(ElarionUi.PadPanel * 3f), 0f);  // 54 ref px right-edge inset
+                rt.anchoredPosition = new Vector2(-HudLayoutBands.EchoChipEdgeInsetPx, 0f);
                 // "Echoes 6/6" needs a wider face than the old square; height stays AT the touch
                 // floor so ClampMinTouch has nothing to grow (the growth is what pushed WO-868's
                 // corner button off-screen).
-                rt.sizeDelta = new Vector2(EchoChipWidthPx, ElarionUiKit.MinTouchPx);
+                rt.sizeDelta = new Vector2(HudLayoutBands.EchoChipWidthPx, HudLayoutBands.EchoChipHeightPx);
             }
             ElarionUiKit.ClampMinTouch(btn);                   // kit touch floor guard (never shrinks)
         }

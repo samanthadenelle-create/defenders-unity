@@ -163,16 +163,29 @@ namespace DeNelle.HUD.Kit
             // felt-test report. ⛔ Do not hardcode a left-column rect here again.
             Add(HudArea.Dock,        HudLayoutBands.DockMount);
             Add(HudArea.HeartStatus, HudLayoutBands.HeartMount);
-            // WO-778: Builders/Training chip — right column, below System (.88), above the
-            // ActionRail top (.42); the only occupant of this free band (no collision).
+            // WO-778: Builders/Training chip — right column, below System (0.880) and clear of
+            // the ActionRail band above it; the only occupant of this free band (no collision).
             // WO-864 (2026-08-03): the occupant is now a MinTouchPx summary button over a
             // QueueRailView card rail, BOTH laid out in FIXED PIXELS off the top of this
-            // band (112 + 6 + 200 = 318 ref px, inside the ~328 this band resolves to at
-            // 2340x1080). Nothing inside is a fraction of the band any more, so leftover
-            // height is transparent rather than the old full-height dark rows plate that
-            // reserved five rows to show one job. Still clear of ActionRail (tops 0.420).
-            // (RIGHT column - deliberately not in HudLayoutBands, which owns the LEFT one.)
-            Add(HudArea.QueueStatus, new Vector2(0.780f, 0.510f), new Vector2(0.995f, 0.750f));
+            // band. Nothing inside is a fraction of the band any more, so leftover height is
+            // transparent rather than the old full-height dark rows plate that reserved five
+            // rows to show one job.
+            // ⚠ THE TWO ".42" / "0.420" FIGURES THIS COMMENT CARRIED ARE RETIRED (WO-1670,
+            // 2026-09-10). They named the ActionRail's bottom edge, which is authored 0.770 five
+            // lines above — the value went stale where it stood while the code beside it moved,
+            // and WO-1642 §6.1 caught it. The clearance is REAL either way (this band tops out at
+            // 0.750, one clearance gap under 0.770) but read it off the Add(HudArea.ActionRail)
+            // call, never off a sentence here. Same for the "318 ref px inside ~328" figure that
+            // used to follow: it described the pre-0.510 band and is deliberately not re-typed —
+            // HudUiRegression check 11 DERIVES the resting stack's depth from source instead.
+            // ⭐ WO-1670 — THE Y EDGES ARE NO LONGER AUTHORED HERE. They are
+            // HudLayoutBands.QueueStatusMount (DeNelle.Core.UI), because the Echoes chip in
+            // DeNelle.Village has to seat BELOW this band's floor and DeNelle.Village may not
+            // reference DeNelle.HUD (CLAUDE.md §5). The chip restated 0.475 as a centre it could
+            // not see, and its 112 px box reached 0.022 inside this mount on the owner's Seeker.
+            // Third time in this file (ThumbActionRowMinY WO-1436, MoveClusterMount WO-1464), one
+            // pattern: two literals in two assemblies is duplicated state; the band is shared DATA.
+            Add(HudArea.QueueStatus, HudLayoutBands.QueueStatusMount);
             // The Minimap mount now carries TWO exclusive bands: the square plate hanging from its
             // top-left, and the region STATUS LINE in its own band immediately below the plate -
             // never across it, never beside it competing with the Dock row.

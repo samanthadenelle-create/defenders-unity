@@ -332,6 +332,110 @@ namespace DeNelle.Core.UI
         /// </summary>
         public static readonly Rect RaidReadoutBand = Rect.MinMaxRect(0.780f, 0.510f, 0.995f, 0.870f);
 
+        // ── WO-1670 — THE RIGHT COLUMN'S QUEUE BAND AND THE ECHOES CHIP ────────
+        //
+        // ⭐ OWNER RULING 2026-09-10 12:16: the Echoes chip encroaches 0.022 of the canvas into
+        // the QueueStatus band — fix it via a HudLayoutBands seam. That ruling is what releases
+        // WO-1642 §4's explicit refusal to move a placement the owner felt-tested on 2026-07-24.
+        //
+        // WHY THE NUMBER LIVES HERE AND NOWHERE ELSE — the fourth time, identically shaped.
+        // ---------------------------------------------------------------------------------
+        // The two surfaces are in assemblies that cannot see each other:
+        //   * the QueueStatus band — HudAreasHost (DeNelle.HUD), area mount HudArea.QueueStatus,
+        //     occupied by the Collectors chip and the ATTACK REPORT chip;
+        //   * the Echoes chip      — EchoUnlockFeedback (DeNelle.Village), its own canvas.
+        // DeNelle.Village may not reference DeNelle.HUD (CLAUDE.md §5 — the one cross-assembly
+        // invariant asmdef actually enforces). So the chip restated a fraction it could not see,
+        // and EchoUnlockFeedback's own doc comment had already diagnosed itself: "⛔ DO NOT WRITE
+        // A MOUNT RECT INTO THIS FILE AGAIN. The only cure for the copy is deleting it." Same
+        // shape as ThumbActionRowMinY (WO-1436) and MoveClusterMount (WO-1464) above.
+        //
+        // ⭐ THE FIX IS TO AUTHOR THE CHIP'S TOP EDGE, NOT ITS CENTRE — AND THAT IS THE WHOLE
+        // POINT, MEASURED RATHER THAN PREFERRED. The chip is a FIXED 112 ref px box; a CENTRE
+        // fraction therefore yields a DIFFERENT top edge at every aspect, so no single centre
+        // value can be disjoint from a fractional band everywhere. At centre 0.475 the band read
+        // 0.4170..0.5330 at 2670x1200 and 0.4231..0.5269 at 1920x1080 — 0.0230 and 0.0169 INSIDE
+        // the mount's 0.510 floor. Hung from its TOP the edge is 0.500 at every resolution and
+        // the box hangs down: disjointness stops depending on the device. (This is the
+        // ResolveNightMarketCard idiom above — mounts are fractions, occupants are pixels.)
+        //
+        // ⚠ THE BANDS OVERLAPPED; THE INK DID NOT. WO-1642 measured the PLATES on
+        // Builds/device-frames/2026-09-10_0602_town.png (ATTACK REPORT ink ends at device row 545,
+        // the Echo plate's ink starts at 585) and correctly reported no pixel collision. That gap
+        // exists only because MedievalUiSkin's sprite ink occupies 0.145..0.736 of its band. The
+        // resting ATTACK REPORT chip's BAND bottoms out at y 0.5118 (2670x1200) / 0.5370
+        // (1920x1080) while the old Echo band's top was 0.5330 / 0.5269 — 0.0212 and 0.0101 of
+        // genuinely shared screen, on an identical 220 px right gutter. Both statements are true;
+        // the band overlap is the one an oracle can hold, and HudUiRegression check 11 holds it.
+        //
+        // ⛔ THE RAIL'S EXPANDED DEPTH IS NOT MODELLED HERE, AND THAT IS STATED, NOT HIDDEN.
+        // HudRailClearance (DeNelle.HUD) derives each rail chip's y from the laid-out resource
+        // panel and is explicitly allowed to hang a chip BELOW this mount ("a mount point, not a
+        // clip rect"). With the panel open at four rows the ATTACK REPORT chip derives to y
+        // 0.4667..0.3507 and crosses the Echo band. It crossed the OLD band too, so it is
+        // pre-existing, and NO authored fraction can close it — the depth is a runtime function
+        // of kinds.Length and the chip is on a canvas DeNelle.Village cannot reach. WO-1670 §8.1
+        // records the three options and that all three need the owner. Do not "fix" it by
+        // reserving the worst-case depth here: at six rows that pushes the Echoes chip to y 0.218
+        // and makes the DEFAULT screen worse for a transient state.
+
+        /// <summary>The Builders/Training/Collectors status band on the right column
+        /// (HudArea.QueueStatus). ⛔ THIS IS THE ONLY COPY — HudAreasHost reads it, it does not
+        /// author its own. Its FLOOR is what <see cref="EchoChipTopY"/> is derived from, so the
+        /// two can no longer drift apart by a hand edit.</summary>
+        public static readonly Rect QueueStatusMount = Rect.MinMaxRect(0.780f, 0.510f, 0.995f, 0.750f);
+
+        /// <summary>Echoes chip width in reference units. Canon: this is the SAME 220 as
+        /// HudKitController.RailChipWidthPx — three rail chips and this one share a single right
+        /// edge, and HudLabelFitRegression pins both. ⛔ Narrowing it is a forbidden route out of
+        /// any overlap (WO-1144: the fix for a tight label is fewer characters, never a smaller
+        /// box).</summary>
+        public const float EchoChipWidthPx = 220f;
+
+        /// <summary>Echoes chip height in reference units — <see cref="ElarionUiKit.MinTouchPx"/>
+        /// VERBATIM, so ClampMinTouch is a no-op on it. A sub-floor chip is grown symmetrically
+        /// about its CENTRE into its neighbour, which is how WO-868 pushed a corner button
+        /// off-screen; that route back into this overlap is closed by construction.</summary>
+        public const float EchoChipHeightPx = ElarionUiKit.MinTouchPx;
+
+        /// <summary>Right-edge inset for the Echoes chip, reference units. This expression is
+        /// <c>HudKitController.RailGutterPx</c> VERBATIM (that const is <c>ElarionUi.PadPanel * 3f</c>
+        /// and its own comment names this chip as the reason), so the whole right column keeps ONE
+        /// right edge. ⛔ Never a raw 54 — authored as a multiple of PadPanel (WO-779 spacing rule).
+        /// The measured justification is on EchoUnlockFeedback.BuildPetBoxButton: 54 ref px ~= 24 dp,
+        /// 1.5x the Material screen margin, clear of the rounded corner / cutout / gesture band.</summary>
+        public const float EchoChipEdgeInsetPx = ElarionUi.PadPanel * 3f;
+
+        /// <summary>
+        /// ⭐ THE ECHOES CHIP'S TOP EDGE, as a screen fraction — one clearance gap under the
+        /// QueueStatus mount's floor. A PURE FRACTION, so it is identical at every resolution
+        /// (0.500 today); only the 112 px box below it is pixels. The chip anchors here with
+        /// pivot (1,1) and hangs down.
+        /// <para>⛔ Derived, never typed. <see cref="ThumbBandClearanceGap"/> is REUSED rather
+        /// than a second clearance constant being minted — one number, so a band and its
+        /// neighbour cannot drift apart, which is the failure this whole file exists to end.</para>
+        /// </summary>
+        public static float EchoChipTopY
+        {
+            get { return QueueStatusMount.yMin - ThumbBandClearanceGap; }
+        }
+
+        /// <summary>
+        /// The Echoes chip's screen band, hung from <see cref="EchoChipTopY"/> at its fixed
+        /// reference size against the RIGHT screen edge. Pure arithmetic, so the Editor oracle
+        /// resolves the exact rect the runtime builds (HudUiRegression check 11).
+        /// </summary>
+        public static Rect ResolveEchoChip(float screenW, float screenH)
+        {
+            var refSize = CanvasReferenceSize(screenW, screenH);
+            float ux = refSize.x > 0f ? 1f / refSize.x : 0f;
+            float uy = refSize.y > 0f ? 1f / refSize.y : 0f;
+            float xMax = 1f - EchoChipEdgeInsetPx * ux;
+            float yMax = EchoChipTopY;
+            return Rect.MinMaxRect(xMax - EchoChipWidthPx * ux, yMax - EchoChipHeightPx * uy,
+                                   xMax, yMax);
+        }
+
         // ── THE ONE RESERVED TOAST ZONE ─────────────────────────────────────────
 
         /// <summary>
@@ -348,8 +452,42 @@ namespace DeNelle.Core.UI
         /// Verified clear of every HudAreasHost band at the owner's resolution: ActionBar tops out
         /// at y 0.150, MoveCluster ends at x 0.270, ActionRail and QueueStatus start at x 0.780,
         /// TargetInfo does not begin until y 0.660, and the whole left column ends at x 0.240.
+        ///
+        /// <para>⛔ THE ZONE'S HEIGHT IS A TOUCH-FLOOR FLOOR, NOT A LOOK (WO-1664, 2026-09-10).
+        /// Every control seated here inherits THIS rect's height, because
+        /// <see cref="ToastZoneSlice"/> slices X only (its from/to are "0..1 across the zone's
+        /// WIDTH"). So when the Seeker printed
+        /// <c>CLAMP FIRED HubRepairAffordance/HubRepairCanvas/ObsBtn_REPAIR ALL: authored
+        /// 386.6x101.4 -&gt; grown 386.6x112</c>, the 101.4 was NOT that call site's business:
+        /// HubRepairAffordance asks for <c>ToastZoneSlice(0f, 0.72f)</c> and 0.72 is its WIDTH
+        /// share (0.72 x 0.25 x 2148 ref px = 386.6, which is the logged width exactly). The
+        /// height was this constant's, whole: (0.308 - 0.203) x 965.4 = 101.3 ref px.
+        /// ⚠ WO-1664 §2B/§4B read 0.72 as a HEIGHT fraction and told the lane to raise it to
+        /// ~0.80. That would only have made the card WIDER and left the clamp firing — the
+        /// ticket's own §4B/§6 escape hatch ("if the zone itself cannot seat 112 px at any
+        /// fraction, the change belongs in HudLayoutBands and it moves for every toast") is the
+        /// branch that is true, and this is it.</para>
+        ///
+        /// <para>THE ARITHMETIC. refHeight is the CanvasScaler's post-scale height and the kit
+        /// scaler is referenceResolution (1080,1920) / MatchWidthOrHeight 0.5
+        /// (ElarionUiKit.cs:109-111), so refHeight = H / ((W/1080)^0.5 x (H/1920)^0.5):
+        /// 1080.0 at 1920x1080, 978.4 at 2340x1080, 965.4 at 2670x1200. 965.4 is the smallest,
+        /// so the zone is authored against it: it needs at least
+        /// ElarionUiKit.MinTouchPx / 965.4 = 0.1160 of screen height, against the old 0.105.
+        /// yMax 0.308 -&gt; 0.325 gives 0.122 x 965.4 = 117.8 ref px.</para>
+        ///
+        /// <para>IT GROWS UPWARD, and the headroom is measured, not assumed: the only band
+        /// sharing this zone's x range (0.375-0.625) is TargetInfo (x 0.280-0.720), whose floor
+        /// is y 0.660 — 0.335 of screen above the new top. Downward there is only the ActionBar,
+        /// topping out at 0.150, i.e. 0.053 under the UNCHANGED yMin, and the bottom edge is
+        /// deliberately left where it is so the thumb-reach edge of every toast stays put.</para>
+        ///
+        /// <para>⚠ EVERY CONSUMER GROWS WITH IT, by design — that is what "it moves in ONE place"
+        /// means: HudKitController's toast (ApplyToastZone, :561-562), BreakCaptureHarness's
+        /// FLAGGED acknowledgement (:749), WO-1236's dungeon-flag ack, and both faces of the
+        /// Repair All card (the button and its acknowledge close, which takes slice 0.76..1).</para>
         /// </summary>
-        public static readonly Rect ToastZone = Rect.MinMaxRect(0.375f, 0.203f, 0.625f, 0.308f);
+        public static readonly Rect ToastZone = Rect.MinMaxRect(0.375f, 0.203f, 0.625f, 0.325f);
 
         /// <summary>Seat a RectTransform in the reserved toast zone (anchors, full stretch).</summary>
         public static void ApplyToastZone(RectTransform rt)

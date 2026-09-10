@@ -283,6 +283,7 @@ namespace DeNelle.Editor
                 CheckHarvestChipClearsResourcePanel(modulesDir, failures, notes);   // WO-1435
                 CheckGearDrawerClearsNeighbours(failures, notes);                   // WO-1465
                 CheckStackBadgeInsideMedallion(failures, notes);                    // WO-1468
+                CheckRightColumnBandsDisjoint(modulesDir, failures, notes);         // WO-1670
             }
             catch (Exception ex)
             {
@@ -301,7 +302,9 @@ namespace DeNelle.Editor
                 // rendered pass; the classification lives in the marker line so a green log is
                 // self-describing without opening this file.
                 reason = "HUDUI_OK — MEASURED (real object in, real answer back): kit conformance by " +
-                         "reflection, safe-area math, gear-drawer clearance and stack-badge containment " +
+                         "reflection, safe-area math, gear-drawer clearance, stack-badge containment " +
+                         "and the right-column band disjointness (WO-1670: the Echoes chip vs the " +
+                         "QueueStatus mount, resolved off a constructed host at two aspects) " +
                          "off a live HudAreasHost. HYBRID (text finds it, a real artefact judges it): " +
                          "tofu glyphs vs the shipped font, Resources paths vs disk, atlas-page pixel " +
                          "sizes vs the PNG headers. SOURCE LINT (text only, cannot see the built tree): " +
@@ -940,13 +943,32 @@ namespace DeNelle.Editor
                                  "ToastCard. It landed in the ~7 ref-px seam between the HudAreasHost Vitals band " +
                                  "(0.800..0.985) and HeartStatus band (0.700..0.792), in no band at all, and its " +
                                  "accentLeft strip is the stray gold rule (WO-867). The count rides the chip.");
-                if (echoFeedback.IndexOf("ElarionUiKit.MinTouchPx", StringComparison.Ordinal) < 0)
-                    failures.Add("ECHO CHIP — EchoUnlockFeedback.cs no longer sizes the Echoes chip at " +
-                                 "ElarionUiKit.MinTouchPx; a sub-floor chip is grown symmetrically by ClampMinTouch " +
-                                 "and drifts out of its docked band (WO-867).");
-                if (echoFeedback.IndexOf("EchoChipBandCentreY", StringComparison.Ordinal) < 0)
-                    failures.Add("ECHO CHIP — EchoUnlockFeedback.cs no longer docks the chip on the named right-column " +
-                                 "band constant; it is free-floating again (WO-867).");
+                // ⭐ WO-1670 RE-POINT (owner ruling 2026-09-10 12:16). These two asserts named
+                // symbols that lived IN EchoUnlockFeedback.cs — `ElarionUiKit.MinTouchPx` and the
+                // private `EchoChipBandCentreY = 0.475f`. Both are DELETED: the copy was the bug
+                // (the chip restated a DeNelle.HUD band from DeNelle.Village, which cannot see it,
+                // and reached 0.022 inside the QueueStatus mount). The INVARIANTS are unchanged —
+                // the chip is sized at the touch floor, and it is docked on a NAMED band rather
+                // than free-floating — so they are re-pointed at the seam that now owns both,
+                // never deleted. ⛔ A literal `EchoChipBandCentreY` also survives in that file's
+                // WO-1670 tombstone COMMENT, so the old IndexOf would now pass on prose: another
+                // reason the assert had to move rather than be trusted.
+                if (echoFeedback.IndexOf("HudLayoutBands.EchoChipHeightPx", StringComparison.Ordinal) < 0)
+                    failures.Add("ECHO CHIP — EchoUnlockFeedback.cs no longer sizes the Echoes chip off " +
+                                 "HudLayoutBands.EchoChipHeightPx; a sub-floor chip is grown symmetrically by " +
+                                 "ClampMinTouch and drifts out of its docked band (WO-867/WO-1670).");
+                if (echoFeedback.IndexOf("HudLayoutBands.EchoChipTopY", StringComparison.Ordinal) < 0)
+                    failures.Add("ECHO CHIP — EchoUnlockFeedback.cs no longer docks the chip on the shared " +
+                                 "right-column band seam (HudLayoutBands.EchoChipTopY); it is free-floating, or it " +
+                                 "has gone back to a Village-local fraction that cannot see the QueueStatus mount " +
+                                 "it has to clear (WO-867/WO-1670).");
+                if (DeNelle.Core.UI.HudLayoutBands.EchoChipHeightPx != DeNelle.Core.UI.ElarionUiKit.MinTouchPx)
+                    failures.Add("ECHO CHIP — HudLayoutBands.EchoChipHeightPx (" +
+                                 DeNelle.Core.UI.HudLayoutBands.EchoChipHeightPx.ToString("0.#") +
+                                 ") is no longer ElarionUiKit.MinTouchPx (" +
+                                 DeNelle.Core.UI.ElarionUiKit.MinTouchPx.ToString("0.#") + "). The chip is off the " +
+                                 "touch floor, and ClampMinTouch will grow it about its CENTRE back into its " +
+                                 "neighbour — the second route into the WO-1670 overlap (WO-841/WO-868).");
             }
 
             notes.Add("combat hud composition: " + pagesPinned + " atlas page(s) pinned, " +
@@ -1430,8 +1452,13 @@ namespace DeNelle.Editor
         }
 
         /// <summary>Read an area mount's y band straight out of HudAreasHost.cs, e.g.
-        /// <c>Add(HudArea.QueueStatus, new Vector2(0.780f, 0.510f), new Vector2(0.995f, 0.750f));</c>
-        /// Returns false (and NOTES, never a silent default) if the authored form moved.</summary>
+        /// <c>Add(HudArea.ActionRail, new Vector2(0.780f, 0.770f), new Vector2(0.995f, 0.965f));</c>
+        /// Returns false (and NOTES, never a silent default) if the authored form moved.
+        /// <para>⚠ WO-1670: this now has exactly ONE caller (ActionRail). QueueStatus moved to
+        /// <c>HudLayoutBands.QueueStatusMount</c> and is read from the seam directly — see the note
+        /// at that call site for why parsing it here would have SKIPPED checks 7 and 8 in silence.
+        /// The example above was QueueStatus until that day; it is now a form this regex cannot
+        /// match, which is the whole point.</para></summary>
         private static bool ReadAreaBandY(string hostSrc, string area, out float y0, out float y1,
                                           List<string> notes)
         {
@@ -1554,9 +1581,20 @@ namespace DeNelle.Editor
                 return false;
             }
 
-            float arY0, arY1, qsY0, qsY1;
+            float arY0, arY1;
             if (!ReadAreaBandY(hostSrc, "ActionRail", out arY0, out arY1, notes)) return false;
-            if (!ReadAreaBandY(hostSrc, "QueueStatus", out qsY0, out qsY1, notes)) return false;
+
+            // ⭐ WO-1670 RE-POINT — AND IT IS THE HALF THAT WOULD HAVE GONE SILENT.
+            // QueueStatus is no longer a literal Vector2 pair in HudAreasHost.cs; it is
+            // HudLayoutBands.QueueStatusMount, because the Echoes chip in DeNelle.Village has to
+            // seat below its floor and cannot see DeNelle.HUD (CLAUDE.md §5). ReadAreaBandY's
+            // regex would MISS that form and return false — which, by its own documented
+            // contract, SKIPS the entire layout half of checks 7 and 8 with a note. WO-1435's
+            // Harvest-clearance geometry would have been retired by a comment, silently, with
+            // every marker still green. So the read moves to the seam in the SAME change that
+            // moved the authoring. DeNelle.EditorRegression.asmdef already references DeNelle.Core.
+            float qsY0 = DeNelle.Core.UI.HudLayoutBands.QueueStatusMount.yMin;
+            float qsY1 = DeNelle.Core.UI.HudLayoutBands.QueueStatusMount.yMax;
 
             // CanvasScaler as authored in HudAreasHost.Build: 1080x1920, MatchWidthOrHeight 0.5.
             const float screenW = 2670f, screenH = 1200f;
@@ -1754,8 +1792,9 @@ namespace DeNelle.Editor
             if (src.IndexOf("RailChipWidthPx = 220f", StringComparison.Ordinal) < 0)
                 failures.Add("HARVEST CLEARANCE — RailChipWidthPx is no longer 220. Narrowing the chip " +
                              "is a forbidden route out of this overlap: 220 == " +
-                             "EchoUnlockFeedback.EchoChipWidthPx and three rail chips share one right " +
-                             "edge. The 2026-08-22 fleet captured this chip reading \"Tap to collec\" in " +
+                             "HudLayoutBands.EchoChipWidthPx (WO-1670 moved it there from the private " +
+                             "EchoUnlockFeedback const this line used to name) and FOUR right-column faces " +
+                             "share one right edge. The 2026-08-22 fleet captured this chip reading \"Tap to collec\" in " +
                              "all 8 runs; the fix for a tight label is FEWER CHARACTERS, never a " +
                              "smaller box (WO-1144).");
             if (src.IndexOf("RailChipHeightPx = ElarionUiKit.MinTouchPx", StringComparison.Ordinal) < 0)
@@ -2047,6 +2086,325 @@ namespace DeNelle.Editor
                     "_Modules/HUD/Kit/HudKitController.cs"));
             }
             catch { return null; }
+        }
+
+        // =====================================================================
+        // CHECK 11  [right-column-bands]  THE ECHOES CHIP AND THE QUEUE-STATUS
+        //           BAND SHARE NO SCREEN AREA.        (WO-1670, 2026-09-10)
+        // ---------------------------------------------------------------------
+        // OWNER RULING 2026-09-10 12:16: the Echoes chip encroaches 0.022 of the canvas into the
+        // QueueStatus band — fix it via a HudLayoutBands seam.
+        //
+        // ⛔ THE ORACLE THAT ALREADY PASSES, AND WHY IT ALWAYS WOULD. The capture harness's
+        // geometry rule "no overlapping sibling buttons" is green on this defect and cannot ever
+        // catch it: the two controls are on DIFFERENT CANVASES (HudAreasHost's, sortingOrder 4000,
+        // and EchoUnlockFeedback's own) and are therefore not siblings. WO-1642 §6.4(ii) named
+        // this exact hole — "nothing models the THIRD element of the QueueStatus stack against the
+        // Echo chip's fractional band". It has to be band arithmetic, and this is it.
+        //
+        // ⛔ RED PROOF — the numbers this check produces against the PRE-FIX authoring
+        // (EchoUnlockFeedback's private `EchoChipBandCentreY = 0.475f`, a FIXED 112 ref px box
+        // CENTRED on that fraction). Derived from source, not quoted:
+        //     2670x1200 (canvas 2148.0 x 965.4)  Echo band y 0.4170..0.5330  vs mount floor 0.510
+        //                                        -> 0.0230 of overlap   (the owner's "0.022")
+        //     1920x1080 (canvas 1920.0 x 1080.0) Echo band y 0.4231..0.5269
+        //                                        -> 0.0169 of overlap
+        // ⭐ AND THE OVERLAP WAS NOT ONLY WITH THE MOUNT — it reached the LIVE chip inside it.
+        // The resting ATTACK REPORT chip's band bottoms out at y 0.5118 / 0.5370 (11b below
+        // derives this), so the two shared 0.0212 / 0.0101 of screen on an IDENTICAL 220 ref px
+        // right gutter. ⚠ WO-1642 measured the PLATES on the owner's device frame and correctly
+        // reported no pixel collision (ATTACK REPORT ink ends at device row 545, the Echo plate's
+        // ink starts at 585) — that gap exists only because MedievalUiSkin's sprite ink occupies
+        // 0.145..0.736 of its band. The INK missed; the BANDS did not. Both are true, and the band
+        // is the one an oracle can hold.
+        //
+        // ⛔ IT CANNOT BE SATISFIED BY A LUCKY CENTRE VALUE. The check runs at TWO aspects and the
+        // chip is a FIXED-pixel box, so a centre fraction resolves a different top edge at each —
+        // which is exactly why the fix authors the chip's TOP (HudLayoutBands.EchoChipTopY, a pure
+        // fraction, 0.500 everywhere) instead of its centre.
+        //
+        // ⚠ WHAT THIS IS NOT: it does NOT model the resource panel EXPANDED. HudRailClearance
+        // derives the rail chips' y from the laid-out panel and is explicitly allowed to hang a
+        // chip below this mount; at four rows the ATTACK REPORT chip reaches y 0.3507 and crosses
+        // the Echo band. It crossed the OLD band too — pre-existing, not introduced here — and no
+        // authored fraction can close it (the depth is a runtime function of kinds.Length and the
+        // chip is on a canvas DeNelle.Village cannot reach). WO-1670 §8.1 records the three
+        // options and that all three are the owner's call. It is NOTED with its numbers below,
+        // never silently dropped, and deliberately not failed.
+        //
+        // Invariants:
+        //   11a  HudLayoutBands.QueueStatusMount is the ONLY copy — the mount HudAreasHost
+        //        actually BUILDS equals it (read off the constructed host, not off source text).
+        //   11b  the RESTING rail stack (Collectors + ATTACK REPORT, RailGapPx apart, hung from
+        //        the mount's top) fits INSIDE the mount at both aspects — so 11c's mount-level
+        //        disjointness actually implies chip-level disjointness instead of assuming it.
+        //   11c  the resolved Echoes chip band shares no area with the QueueStatus mount, nor
+        //        with the ActionRail mount above it, at either aspect.
+        //   11d  the chip is still authored AT the touch floor and at the shared 220 px right
+        //        edge — shrinking it is a forbidden route out of any overlap (WO-1144/WO-841).
+        // =====================================================================
+        private static void CheckRightColumnBandsDisjoint(string modulesDir,
+            List<string> failures, List<string> notes)
+        {
+            const string Tag = "RIGHT COLUMN (WO-1670) —";
+            var aspects = new[]
+            {
+                new { N = "2670x1200 (the owner's Seeker)", W = 2670f, H = 1200f },
+                new { N = "1920x1080",                      W = 1920f, H = 1080f },
+            };
+
+            // ── 11d: the box is canon, checked before any geometry ─────────────────────────
+            // ⚠ Read into LOCALS first, deliberately. Every one of these is a `const float`, so
+            // comparing them inline folds to a constant condition and the failure body compiles
+            // as unreachable (CS0162) — a pin the compiler has already answered reads as noise in
+            // the console. Through a local the comparison is real code, and it still fires the
+            // moment either side is re-authored, which is the only day it matters.
+            float echoH = DeNelle.Core.UI.HudLayoutBands.EchoChipHeightPx;
+            float echoW = DeNelle.Core.UI.HudLayoutBands.EchoChipWidthPx;
+            float echoInset = DeNelle.Core.UI.HudLayoutBands.EchoChipEdgeInsetPx;
+            float touchFloor = DeNelle.Core.UI.ElarionUiKit.MinTouchPx;
+            float railGutter = DeNelle.Core.UI.ElarionUi.PadPanel * 3f;
+            if (echoH != touchFloor)
+                failures.Add(Tag + " HudLayoutBands.EchoChipHeightPx (" + echoH.ToString("0.#") +
+                             ") is no longer ElarionUiKit.MinTouchPx (" + touchFloor.ToString("0.#") +
+                             "). Shortening the chip to dodge a neighbour drops the tap target below the " +
+                             "touch floor, and ClampMinTouch then grows it back about its CENTRE into that " +
+                             "same neighbour (WO-841/WO-868).");
+            if (echoW != 220f)
+                failures.Add(Tag + " HudLayoutBands.EchoChipWidthPx is " + echoW.ToString("0.#") +
+                             ", not 220. That 220 is HudKitController.RailChipWidthPx — four right-column " +
+                             "faces share ONE right edge — and narrowing a chip is the forbidden route out " +
+                             "of an overlap (WO-1144: the fix for a tight label is fewer characters, never " +
+                             "a smaller box).");
+            if (echoInset != railGutter)
+                failures.Add(Tag + " HudLayoutBands.EchoChipEdgeInsetPx (" + echoInset.ToString("0.#") +
+                             ") is no longer ElarionUi.PadPanel * 3f (" + railGutter.ToString("0.#") +
+                             "). It has to remain the SAME expression as HudKitController.RailGutterPx or " +
+                             "the right column goes back to having two right edges (owner device review P2, " +
+                             "2026-08-05).");
+
+            // ── 11a: the REAL mount, off the constructed host ───────────────────────────────
+            DeNelle.HUD.Kit.HudAreasHost host = null;
+            try
+            {
+                host = DeNelle.HUD.Kit.HudAreasHost.Create(null);
+                if (host == null)
+                {
+                    // FIXTURE-ABSENT -> FAIL. HudAreasHost.Create constructs and returns
+                    // unconditionally, so a null is a real fault and every clearance below is
+                    // UNPROVEN — never a pass out of a null guard (CLAUDE.md §12).
+                    failures.Add(Tag + " HudAreasHost.Create(null) returned NULL without throwing. The area " +
+                                 "mount table does not exist this run, so the Echoes-chip clearance the owner " +
+                                 "ruled on at 12:16 is UNMEASURED — not clear.");
+                    return;
+                }
+
+                Rect queue = MountBand(host, DeNelle.HUD.Kit.HudArea.QueueStatus);
+                Rect rail = MountBand(host, DeNelle.HUD.Kit.HudArea.ActionRail);
+                if (queue.width <= 0f || queue.height <= 0f)
+                {
+                    failures.Add(Tag + " the QueueStatus mount resolved to a ZERO band " + R(queue) +
+                                 " — host.Mount(HudArea.QueueStatus) is null or its anchors are degenerate. " +
+                                 "MountBand reads ANCHORS, not laid-out rects, so this is not a headless " +
+                                 "limitation: the right column has no usable queue band.");
+                    return;
+                }
+
+                var seam = DeNelle.Core.UI.HudLayoutBands.QueueStatusMount;
+                if (!Mathf.Approximately(queue.yMin, seam.yMin) || !Mathf.Approximately(queue.yMax, seam.yMax) ||
+                    !Mathf.Approximately(queue.xMin, seam.xMin) || !Mathf.Approximately(queue.xMax, seam.xMax))
+                    failures.Add(Tag + " the QueueStatus mount HudAreasHost BUILDS " + R(queue) +
+                                 " is not HudLayoutBands.QueueStatusMount " + R(seam) +
+                                 ". The band has been re-authored locally again, so the Echoes chip in " +
+                                 "DeNelle.Village — which cannot see DeNelle.HUD (CLAUDE.md §5) — is once more " +
+                                 "clearing a fraction that no longer exists. That is the WO-1670 defect.");
+
+                // ── 11b: the RESTING rail stack fits inside its own mount ──────────────────
+                // Derived from HudKitController source the way check 8 does, so a change to the
+                // gap, the chip height or the number of live rail chips moves this with no second
+                // edit. Reading a hand-kept number here would be the very duplicated state the
+                // seam was cut to end.
+                string kitSrc = null;
+                try { kitSrc = File.ReadAllText(Path.Combine(modulesDir, "HUD", "Kit", "HudKitController.cs")); }
+                catch (Exception ex)
+                {
+                    notes.Add(Tag + " HudKitController.cs unreadable (" + ex.GetType().Name +
+                              ") — 11b (the resting rail stack fits its mount) was NOT checked; 11c below " +
+                              "still ran on the mount itself");
+                }
+                if (kitSrc != null)
+                {
+                    float railGap = ReadConstFloat(kitSrc, "RailGapPx", 6f, notes);
+                    float chipH = DeNelle.Core.UI.ElarionUiKit.MinTouchPx;
+                    // Live rail chips = the build calls that are NOT commented out. The Builders
+                    // chip is retired behind `// BuildQueueStatusChip(pool);` and SessionShapeRegression
+                    // pins that byte-exact retirement, so counting from source keeps this honest
+                    // through an un-retirement instead of hard-coding "two".
+                    int liveChips = Regex.Matches(kitSrc,
+                        @"^[ \t]*Build(?:CollectorsChip|DefenseReportChip|QueueStatusChip)\(pool\);",
+                        RegexOptions.Multiline).Count;
+                    if (liveChips <= 0)
+                        notes.Add(Tag + " no live rail-chip build call was matched in HudKitController.cs — " +
+                                  "11b modelled nothing; the mount-level clearance in 11c still holds");
+                    foreach (var a in aspects)
+                    {
+                        if (liveChips <= 0) break;
+                        float canvasH = CanvasRefHeight(a.W, a.H, 1080f, 1920f, 0.5f);
+                        // Resting = no live clearance source, so each band sits at its authored
+                        // base (0f) and they stack RailGapPx apart from the mount's top edge.
+                        float stackPx = liveChips * chipH + (liveChips - 1) * railGap;
+                        float bottomFrac = queue.yMax - stackPx / canvasH;
+                        if (bottomFrac < queue.yMin - DeNelle.Core.UI.HudLayoutBands.Epsilon)
+                            failures.Add(Tag + " at " + a.N + " the RESTING rail stack (" + liveChips +
+                                         " chips x " + chipH.ToString("0.#") + " ref px + " + (liveChips - 1) +
+                                         " x " + railGap.ToString("0.#") + " gap = " + stackPx.ToString("0.#") +
+                                         " ref px) bottoms out at y " + bottomFrac.ToString("0.0000") +
+                                         ", BELOW its own mount floor " + queue.yMin.ToString("0.0000") +
+                                         ". Mount-level disjointness then no longer implies chip-level " +
+                                         "disjointness, so the Echoes chip's band is not actually proven clear " +
+                                         "of a live chip. Re-split the right column in HudLayoutBands.");
+                        else
+                            notes.Add(Tag + " " + a.N + ": resting rail stack ends at y " +
+                                      bottomFrac.ToString("0.0000") + ", inside the mount floor " +
+                                      queue.yMin.ToString("0.0000") + " (canvas " + canvasH.ToString("0.#") +
+                                      " ref px tall)");
+                    }
+                }
+
+                // ── 11c: the chip's band shares no area with either right-column mount ─────
+                foreach (var a in aspects)
+                {
+                    Rect echo = DeNelle.Core.UI.HudLayoutBands.ResolveEchoChip(a.W, a.H);
+                    if (echo.width <= 0f || echo.height <= 0f)
+                    {
+                        failures.Add(Tag + " at " + a.N + " ResolveEchoChip returned a degenerate band " +
+                                     R(echo) + " — the chip's geometry cannot be modelled, so its clearance " +
+                                     "is UNPROVEN rather than clear.");
+                        continue;
+                    }
+                    if (DeNelle.Core.UI.HudLayoutBands.Intersects(echo, queue))
+                    {
+                        float overlap = Mathf.Min(echo.yMax, queue.yMax) - Mathf.Max(echo.yMin, queue.yMin);
+                        failures.Add(Tag + " at " + a.N + " the Echoes chip " + R(echo) +
+                                     " INTERSECTS the QueueStatus mount " + R(queue) + " by " +
+                                     overlap.ToString("0.0000") + " of screen height. That band holds the " +
+                                     "Collectors and ATTACK REPORT chips on the SAME 220 ref px right gutter, " +
+                                     "so this is shared screen, not a near miss. This is the owner's 12:16 " +
+                                     "ruling (WO-1670). Author the chip's TOP off HudLayoutBands.EchoChipTopY " +
+                                     "— a centre fraction on a fixed-pixel box resolves a different top edge " +
+                                     "at every aspect and cannot be disjoint everywhere.");
+                    }
+                    RequireClear(failures, Tag, a.N, "the Echoes chip", echo, "the ActionRail mount", rail);
+                    notes.Add(Tag + " " + a.N + ": Echoes chip " + R(echo) + ", QueueStatus " + R(queue) +
+                              " (chip top is the pure fraction HudLayoutBands.EchoChipTopY = " +
+                              DeNelle.Core.UI.HudLayoutBands.EchoChipTopY.ToString("0.0000") +
+                              ", identical at every resolution)");
+                }
+
+                // ── 11e: the EXPANDED-panel case, closed by the owner's 12:55 ruling ───────
+                // ⭐ OWNER RULING 2026-09-10 12:55, on WO-1670's open item: HIDE the ATTACK
+                // REPORT chip while the resource panel is expanded; it returns on collapse.
+                //
+                // WHY VISIBILITY AND NOT GEOMETRY, MEASURED: with the panel open, HudRailClearance
+                // derives that chip DOWN out of the QueueStatus mount (which is a mount point, not
+                // a clip rect - HudKitController's own words) to y 0.4667..0.3507 at four resource
+                // rows, 0.4139 at three and 0.2244 at six, straight through the Echoes chip's
+                // 0.384..0.500 band. NO authored fraction can close that: the depth is a runtime
+                // function of kinds.Length. Reserving the worst case in the seam would drop the
+                // Echoes chip to y ~0.218 and make the DEFAULT screen worse for a transient state.
+                //
+                // ⛔ THE INVARIANT THAT MATTERS IS "ONE WRITER", NOT "A HIDE EXISTS". WO-1515's
+                // own header says it: "a second object is how a widget ends up permanently off in
+                // exactly one posture". A hide written from SetResourcePanelOpen would race
+                // TickDefenseReportChip's next throttled tick (0.5 s) and the chip would flicker
+                // back on over the panel. So 11e-2 pins that the SetActive on _defenseChipBand is
+                // UNIQUE in the file, and 11e-1 pins that the panel state is an INPUT to that one
+                // writer rather than a second one.
+                //
+                // ⛔ RED PROOF, verifiable without Unity: on the pre-ruling tree the slice of
+                // TickDefenseReportChip contains no `_resChipsExpanded` at all and its SetActive
+                // argument is `snap.Visible`. 11e-1 fires twice and 11e-3 fires once. Confirmed by
+                // reading that method at HEAD this session.
+                if (kitSrc != null)
+                {
+                    // Slice the ONE method, so a `_resChipsExpanded` read somewhere else in this
+                    // 5,900-line file cannot satisfy the assert. A missing slice is a FAILURE, not
+                    // a note: the method is the subject of the ruling.
+                    int tickAt = kitSrc.IndexOf("private void TickDefenseReportChip()", StringComparison.Ordinal);
+                    int tickEnd = tickAt < 0 ? -1 : kitSrc.IndexOf("private static string FormatCollectorChip",
+                                                                   tickAt, StringComparison.Ordinal);
+                    if (tickAt < 0 || tickEnd < 0)
+                        failures.Add(Tag + " TickDefenseReportChip could not be sliced out of " +
+                                     "HudKitController.cs, so the owner's 12:55 ruling (hide the ATTACK " +
+                                     "REPORT chip while the resource panel is expanded) is UNCHECKED. That " +
+                                     "method is the ONE writer of the chip's visibility; if it has been " +
+                                     "renamed or moved, re-point this slice in the SAME change.");
+                    else
+                    {
+                        string tick = kitSrc.Substring(tickAt, tickEnd - tickAt);
+                        // 11e-1 — the panel state is an INPUT to the one writer.
+                        if (tick.IndexOf("_resChipsExpanded", StringComparison.Ordinal) < 0)
+                            failures.Add(Tag + " TickDefenseReportChip no longer reads _resChipsExpanded. " +
+                                         "The ATTACK REPORT chip is back on screen over the expanded resource " +
+                                         "panel, where HudRailClearance derives it to y 0.4667..0.3507 (four " +
+                                         "rows, 2670x1200) — through the Echoes chip's band. Owner ruling " +
+                                         "2026-09-10 12:55 (WO-1670b).");
+                        if (tick.IndexOf("_defenseChipBand.gameObject.SetActive(wantVisible)",
+                                         StringComparison.Ordinal) < 0)
+                            failures.Add(Tag + " TickDefenseReportChip's SetActive no longer takes the " +
+                                         "panel-gated `wantVisible`. Passing the model's raw snap.Visible " +
+                                         "ignores the resource panel and re-opens the WO-1670b overlap.");
+                        // The change detector must see the panel too, or the throttled early-out
+                        // holds the chip on screen forever: the model's Key does not move on a
+                        // panel toggle. This is the subtle half and it gets its own assert.
+                        if (tick.IndexOf("_defenseChipPanelWasOpen", StringComparison.Ordinal) < 0)
+                            failures.Add(Tag + " TickDefenseReportChip's change detector no longer folds in " +
+                                         "the panel state (_defenseChipPanelWasOpen). DefenseReportChipModel's " +
+                                         "Key does NOT move when the player toggles the resource panel, so the " +
+                                         "throttled early-return would never re-evaluate and the chip would " +
+                                         "stay on screen over the panel (WO-1670b).");
+                    }
+
+                    // 11e-2 — ONE WRITER. The structural half, and the one that cannot be faked.
+                    int writers = Regex.Matches(kitSrc,
+                        @"_defenseChipBand\.gameObject\.SetActive\(").Count;
+                    if (writers != 1)
+                        failures.Add(Tag + " there are " + writers + " writers of " +
+                                     "_defenseChipBand.gameObject.SetActive( in HudKitController.cs, not 1. " +
+                                     "WO-1515's own header states the rule: 'a second object is how a widget " +
+                                     "ends up permanently off in exactly one posture'. A hide written from " +
+                                     "SetResourcePanelOpen races TickDefenseReportChip's 0.5s throttle and the " +
+                                     "chip flickers back on over the panel. The panel state is an INPUT to the " +
+                                     "one writer, never a second writer (WO-1670b).");
+
+                    // 11e-3 — and the edge is RUNG, so the hide lands on the expand frame.
+                    int openAt = kitSrc.IndexOf("private void SetResourcePanelOpen(bool open)",
+                                                StringComparison.Ordinal);
+                    int openEnd = openAt < 0 ? -1 : kitSrc.IndexOf("private void ", openAt + 40,
+                                                                   StringComparison.Ordinal);
+                    if (openAt < 0 || openEnd < 0)
+                        notes.Add(Tag + " SetResourcePanelOpen could not be sliced — 11e-3 (the edge rings " +
+                                  "the chip's repaint) was not checked; 11e-1/2 above still ran");
+                    else if (kitSrc.Substring(openAt, openEnd - openAt)
+                                   .IndexOf("TickDefenseReportChip();", StringComparison.Ordinal) < 0)
+                        failures.Add(Tag + " SetResourcePanelOpen no longer rings TickDefenseReportChip() on " +
+                                     "the state edge. The hide then waits up to DefenseChipPollSeconds (0.5s) " +
+                                     "and the player sees the chip sitting on the freshly expanded panel " +
+                                     "before it goes — the same lag WO-1435 fixed for the chip's y, now on its " +
+                                     "visibility (WO-1670b).");
+
+                    notes.Add(Tag + " WO-1670b: the ATTACK REPORT chip is HIDDEN while the resource panel is " +
+                              "expanded (owner ruling 12:55) — one writer (TickDefenseReportChip), panel state " +
+                              "as an input, rung on the SetResourcePanelOpen edge. With the panel OPEN there is " +
+                              "no chip to overlap; with it CLOSED 11b proves the rail stack sits inside its " +
+                              "mount and 11c proves the Echoes band is clear of it.");
+                }
+            }
+            finally
+            {
+                if (host != null && host.gameObject != null)
+                    UnityEngine.Object.DestroyImmediate(host.gameObject);
+            }
         }
 
         // =====================================================================
