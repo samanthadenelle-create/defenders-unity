@@ -2710,6 +2710,33 @@ namespace DeNelle.HUD.Kit
             return _peacefulDockRoot;
         }
 
+        /// <summary>
+        /// WO-1695 — the same oracle seam as <see cref="BuildPeacefulDockProbe"/>, for the ACTIVE
+        /// COMBAT dock: builds it through the one live builder and hands the faces back so a suite
+        /// can read what the player would see out of the real tree. No live caller, no state, and
+        /// it must never grow one. (Reflection on the private array was the alternative and is
+        /// worse: a rename would silently turn the oracle off instead of failing to compile.)
+        /// </summary>
+        public ElarionUiKit.ActionSlotHandle[] BuildCombatDockProbe(Transform pool)
+        {
+            BuildAdaptiveCombatDock(pool);
+            return _adaptiveCombatSlots;
+        }
+
+        /// <summary>WO-1695 oracle seam: the PRIMARY (Q) face's art rule, exactly as
+        /// <c>OnAbilities</c> applies it. See <see cref="ApplyCombatPrimaryFaceArt"/>.</summary>
+        public static void ApplyCombatPrimaryFaceArtProbe(ElarionUiKit.ActionSlotHandle face, string iconKey)
+        {
+            ApplyCombatPrimaryFaceArt(face, iconKey);
+        }
+
+        /// <summary>WO-1695 oracle seam: the UNASSIGNED hot-swap face, exactly as
+        /// <c>OnAssignable</c> applies it. See <see cref="SetEmptyCombatDockFace"/>.</summary>
+        public static void SetEmptyCombatDockFaceProbe(ElarionUiKit.ActionSlotHandle face)
+        {
+            SetEmptyCombatDockFace(face);
+        }
+
         // WO-1319 — the peaceful dock's vertical band, named once and shared with the live
         // solver. (The horizontal 1/5 slicing that used to sit beside them is GONE: it is what
         // collapsed under ElarionUiKit's touch floor at a narrow aspect and printed the five
@@ -4287,8 +4314,26 @@ namespace DeNelle.HUD.Kit
             {
                 var primary = _adaptiveCombatSlots[0];
                 var q = a.Slots[0];
-                primary.SetLabel(null);
-                primary.SetIcon(string.IsNullOrEmpty(q.IconKey) ? null : UiStyle.Icon(q.IconKey));
+                // ⛔ WO-1695 — THE ART CONTRACT IS ONE CONTRACT, AND THIS FACE USED TO IGNORE HALF
+                // OF IT. These two lines were `SetLabel(null); SetIcon(UiStyle.Icon(q.IconKey));`,
+                // which silently DROPPED the in-band "text:" IconKey mode the RAIL honours earlier in
+                // this same method (its `IconKey.StartsWith("text:")` branch — deliberately named by
+                // shape, not by a line number, because a line number in a comment goes stale exactly
+                // the way CLAUDE.md §8 describes). AbilityLoadoutProducer forces `icon = "text:Dodge/\nAttack"` for
+                // `knight.q` (HudModelProducers.cs:617-621, owner placeholder 2026-07-11), so on the
+                // Knight this face asked UiStyle for the concept "text:Dodge/\nAttack", got null,
+                // and ActionSlotHandle.SetIcon substituted its never-blank backstop —
+                // ConceptIconResolver.DefaultSprite() = icons/icon_combat, the crossed sword+axe.
+                // EVIDENCE (owner Seeker frame Builds/device-frames/2026-09-10_1520_owner_icons.png,
+                // build 363866, arena, Knight "Grom Lv 2"): the ATTACK face wears icon_combat, NOT
+                // the build-time abilities/attack_sword and NOT the authored knight.q art — which is
+                // itself the proof this branch RAN, since an unbound face would still show the
+                // glowing attack_sword. The device log rules out every art-availability story:
+                // "[Flow:RpgUi] role 'abilities' indexed 6 sprite(s)" and no [Flow:Icon] miss-art
+                // line anywhere in the 732k-line capture. In hostile posture the actionRail area is
+                // EMPTY (hud-areas.json:242-249), so this dock is the ONLY place the owner's word
+                // placeholder could ever have rendered, and it rendered as a wrong glyph instead.
+                ApplyCombatPrimaryFaceArt(primary, q.IconKey);
                 primary.SetCaption(string.IsNullOrEmpty(q.Verb) ? "ATTACK" : q.Verb.ToUpperInvariant());
                 primary.SetCooldown(q.CooldownRemaining, q.CooldownTotal);
                 // ⭐ WO-1429: the ATTACK face is ALWAYS pressable — the HUD half of the dead-button
@@ -4352,6 +4397,60 @@ namespace DeNelle.HUD.Kit
             }
         }
 
+        /// <summary>
+        /// WO-1695 — the ONE art rule for the combat dock's primary (Q) face, so the rail branch in
+        /// <c>OnAbilities</c> and this dock can never again disagree about what an IconKey
+        /// means. An in-band <c>"text:"</c> prefix is a TEXT face (owner placeholder 2026-07-11:
+        /// "instead of the heroic leap image use word Dodge/Attack"); anything else is a concept id
+        /// resolved through <see cref="UiStyle.Icon(string, string[])"/>.
+        /// ⚠ The FlowTrace is the §12 net this defect existed for four months without: an IconKey
+        /// that resolves NOTHING is invisible in the pixels (SetIcon substitutes icon_combat, which
+        /// looks like a deliberate attack glyph) and was invisible in the log. It is
+        /// <see cref="FlowTrace.Once"/> per key — this runs on a 0.20 s producer cadence.
+        /// </summary>
+        private static void ApplyCombatPrimaryFaceArt(ElarionUiKit.ActionSlotHandle face, string iconKey)
+        {
+            if (face == null) return;
+            if (!string.IsNullOrEmpty(iconKey) &&
+                iconKey.StartsWith("text:", StringComparison.Ordinal))
+            {
+                face.SetLabel(iconKey.Substring(5));
+                return;
+            }
+            face.SetLabel(null);
+            Sprite art = string.IsNullOrEmpty(iconKey) ? null : UiStyle.Icon(iconKey);
+            if (art == null && !string.IsNullOrEmpty(iconKey))
+                FlowTrace.Once("Icon", "dock-primary-miss:" + iconKey,
+                    "combat dock PRIMARY face: concept '" + iconKey + "' resolved NO art — the face " +
+                    "falls to ConceptIconResolver.DefaultSprite() (icons/icon_combat). The player " +
+                    "sees a generic crossed-swords glyph where an authored ability icon belongs.");
+            face.SetIcon(art);
+        }
+
+        /// <summary>
+        /// WO-1695 — an UNASSIGNED hot-swap face on the combat dock. It used to call
+        /// <c>SetIcon(null)</c>, and <see cref="ElarionUiKit.ActionSlotHandle.SetIcon"/>'s
+        /// never-blank law then painted <c>icons/icon_combat</c> — so an EMPTY slot wore the same
+        /// crossed-swords glyph as a live attack (owner frame 2026-09-10_1520_owner_icons.png:
+        /// three of them in a row). The authored empty treatment already existed for the rail
+        /// (<see cref="SetEmptyMedallion"/>, WO-611 + WO-917 Phase B: "a dimmed '+' plate, not a
+        /// blank") and this dock simply never used it.
+        /// ⚠ ORDER IS LOAD-BEARING: <c>SetEmptyMedallion</c> ends with
+        /// <c>button.interactable = true</c> (it serves the rail, whose tap shows the "Add a skill"
+        /// toast), and <c>SetCooldown</c> re-asserts the same. The dock's tap is
+        /// <c>HudCommands.AssignableCast(i)</c>, so the interactable=false MUST come last or an
+        /// empty face starts dispatching casts. The word EMPTY is re-applied because the caption is
+        /// the hue-free channel that names the state (owner is red/green colourblind).
+        /// </summary>
+        private static void SetEmptyCombatDockFace(ElarionUiKit.ActionSlotHandle h)
+        {
+            if (h == null) return;
+            SetEmptyMedallion(h);
+            h.SetCooldown(0f, 0f);
+            h.SetCaption("EMPTY");
+            if (h.button != null) h.button.interactable = false;
+        }
+
         // WO-611 + WO-917 Phase B: an unassigned slot is a dimmed "+" plate, not a blank.
         // Its tap explains how to activate it; no cast is dispatched until the slot is equipped.
         private void OnAbilitySlotTapped(int slot)
@@ -4404,18 +4503,32 @@ namespace DeNelle.HUD.Kit
                     if (h == null) continue;
                     if (i >= a.Slots.Count)
                     {
-                        h.SetIcon(null);
-                        h.SetCaption("EMPTY");
-                        h.SetCooldown(0f, 0f);
-                        if (h.button != null) h.button.interactable = false;
+                        SetEmptyCombatDockFace(h);
                         continue;
                     }
                     var s = a.Slots[i];
                     bool equipped = s.Equipped;
-                    h.SetIcon(equipped && !string.IsNullOrEmpty(s.IconKey) ? UiStyle.Icon(s.IconKey) : null);
+                    if (!equipped)
+                    {
+                        // WO-1695: the dimmed "+" plate, not SetIcon(null) -> icon_combat.
+                        SetEmptyCombatDockFace(h);
+                        continue;
+                    }
+                    h.SetLabel(null);   // leave "+" text mode when the slot becomes assigned again
+                    h.SetIcon(string.IsNullOrEmpty(s.IconKey) ? null : UiStyle.Icon(s.IconKey));
+                    // Un-dim from the empty plate by ALPHA only — the frame's rgb is authored art
+                    // (StyleAsRoundMedallion) and the affordability pass below tints the same
+                    // channel, so forcing Color.white here would clobber both.
+                    if (h.frame != null)
+                    {
+                        var fc = h.frame.color;
+                        if (fc.a < 1f) h.frame.color = new Color(fc.r, fc.g, fc.b, 1f);
+                    }
+                    // ⛔ Pinned verbatim by CopyHygieneRegression.cs:95 — do not "simplify" the
+                    // `equipped &&` term away even though this branch is only reached when equipped.
                     h.SetCaption(equipped && !string.IsNullOrWhiteSpace(s.Name) ? s.Name : "EMPTY");
                     h.SetCooldown(s.CooldownRemaining, s.CooldownTotal);
-                    if (h.button != null) h.button.interactable = equipped;
+                    if (h.button != null) h.button.interactable = true;
                 }
             }
         }
