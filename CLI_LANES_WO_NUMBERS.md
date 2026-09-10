@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-fifth pass): main line next free = **1648**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-sixth pass): main line next free = **1652**.
+> WO-1648 (hub CLOSE 12/255 headless) and WO-1650 (WO-1566 C7 figure unsourced) minted by the MANAGE-AUDIT lane; **WO-1649 is BURNED** (its premise - no oracle for ruling 21 - was false: TROOP_REACHABILITY_OK pins it; never reuse the number); WO-1651 pre-assigned to the MANAGE-COPY lane (queue refund note culled at 2670).
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-fifth pass): main line next free = **1648**.
 > WO-1646 (RAID-HUD lane: deploy bar under the touch floor) and WO-1647 (RAID-CAPTURE lane: readout plate veiled gold by the kit inner rim) minted on lead pre-assigned numbers.
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-fourth pass): main line next free = **1646**.

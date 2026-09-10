@@ -1,6 +1,6 @@
 # WO-1566: the Manage conformance spec — the end-of-session definition of DONE
 
-**Status:** AUDITED 2026-09-10 - 50 pass / 4 fail / 12 unmeasured / 1 blocked-on-art / 1 superseded (68 rows), see RESULT — this is a **SPEC, not a lane.** It does not itself change code; it is the
+**Status:** AUDITED 2026-09-10 - 51 pass / 4 fail / 11 unmeasured / 1 blocked-on-art / 1 superseded (68 rows), see RESULT — this is a **SPEC, not a lane.** It does not itself change code; it is the
 acceptance every Manage lane is measured against before the session closes.
 **Silo:** none — it is the yardstick. Each row names the lane that owns the fix.
 **Source:** owner ask 2026-09-06: *"can you write the specs so the work at the end of CLI's session matches
@@ -34,6 +34,16 @@ screens.*** Read it first. This file does not repeat any of it.
 ---
 
 ## 1. ⛔ THE MEASUREMENT THAT DECIDES WHETHER THIS SESSION CAN CLOSE
+
+> ## ⚠ SUPERSEDED 2026-09-10 — THIS SECTION'S MEASUREMENT IS STALE. THE BLOCKER IS CLOSED.
+> The "5 of 26 resolve a portrait, 21 do not" reading below was true on 2026-09-06 and is **not true at
+> HEAD**. Re-measured 2026-09-10: `MANAGE_PORTRAIT_COVERAGE_OK 68 Manage portrait key(s) resolve; 0
+> dated art exemption(s) still genuinely absent` on `Builds/wave5-reg1` (`REGRESSION_OK 494/494 suites`),
+> with **56** PNGs in `Assets/Resources/Portraits/Buildings/`. **Panel 2 is no longer BLOCKED-ON-ART.**
+> Evidence and the full ledger:
+> `WorkOrders/WORK_ORDER_1566_manage_conformance_spec_end_of_session_definition_of_done.RESULT.md` §1a.
+> The body below is left intact as the dated record (CLAUDE.md §15) — **read the RESULT, not this.**
+
 
 **Of the 26 structures the BUILD grid offers, 5 resolve a portrait. 21 do not.** They fall through to a
 neutral hammer (`ManageScreenPanel.cs:3421-3425`) — the empty-ring tile the owner photographed.
@@ -169,6 +179,22 @@ another pass"*).
 ---
 
 ## 3. ASSET BINDING — which delivered file renders on which element
+
+> ## ⚠ SUPERSEDED 2026-09-10 — THE STATUS COLUMN BELOW IS STALE IN BOTH DIRECTIONS. ALL 12 ROWS RESOLVE.
+> Every row's asset was listed on disk under `Assets/Resources/` and matched to its key in
+> `Assets/_Modules/Core/Manage/ManageArt.cs` on 2026-09-10: **12/12 present and wired.** The rows marked
+> `⛔ delivered, NOT imported` (state badges, tile frames) are imported at `RpgUi/manage/`; every row
+> marked `❌ not in repo` — tab icons, filter icons, resource icons, stat icons, research school icons,
+> `icon-back`/`icon-close`/`icon-time`, `progress-track`/`progress-fill` — is present under
+> `Assets/Resources/UI/ElarionMedieval/Manage/`. C1 no longer renders the literal `<-`.
+> ⚠ **The FILENAME TRAP warning below still holds and is still live** — `ManageArt.BuildingPortraitKey`
+> (`ManageArt.cs:328`) keeps its *"DELIBERATELY DOES NOT SLUG THE ID"* note (`:306`). Do not relax it.
+> ⚠ **Still genuinely owed (NOT a row below):** the three hub card illustrations `hub-build.png`,
+> `hub-army.png`, `hub-research.png` — absent, so `LoadHubArt` (`ManageArt.cs:184`) paints the stand-ins
+> at `ManageArt.cs:166-170` by design. Full ledger:
+> `WorkOrders/WORK_ORDER_1566_manage_conformance_spec_end_of_session_definition_of_done.RESULT.md` §4.
+> Body left intact as the dated record (CLAUDE.md §15) — **read the RESULT, not this.**
+
 
 **This table is the missing link.** Until every row resolves, a panel cannot match no matter how the
 layout is built.

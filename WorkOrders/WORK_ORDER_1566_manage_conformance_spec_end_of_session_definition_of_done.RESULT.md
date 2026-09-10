@@ -3,6 +3,10 @@
 **Lane:** MANAGE-AUDIT (read-only). No code, no Unity run, no commit.
 **Worktree HEAD:** `ff42319de6b0a07a59269d74472f3dcc646b6487` (after `git merge --ff-only refs/heads/dev`).
 **Audited:** 2026-09-10, ~08:00.
+**⚠ CORRECTED 2026-09-10 after commit `2039e2c41`** — row 6.4 was published as NOT MEASURABLE on a grep
+scoped to a single file; widened, **ruling 21 IS pinned and green** (`TROOP_REACHABILITY_OK`). Row 6.4 is
+now PASS-O, the tally moves 50→**51 pass** / 9→**8 NM**, and the WO-1649 that was to be minted against it
+is **WITHDRAWN, not minted**. The error was the auditor's, not the code's.
 
 ---
 
@@ -13,7 +17,7 @@
 state of the spec that measures them. WO-1566 changes no code and can never be "DONE" by an owner frame
 match, so per the lane brief its `**Status:**` reads:
 
-> `AUDITED 2026-09-10 - 50 pass / 4 fail / 12 unmeasured / 1 blocked-on-art / 1 superseded (68 rows), see RESULT`
+> `AUDITED 2026-09-10 - 51 pass / 4 fail / 11 unmeasured / 1 blocked-on-art / 1 superseded (68 rows), see RESULT`
 
 ⛔ **NOTHING IN THIS FILE MARKS A PANEL DONE.** §2.0 is binding: a device screenshot judged by the owner
 at ≥95% on SIZE / FONT / STYLE / CONTEXT / IMAGES is the only verdict. Every `PASS` below is
@@ -172,7 +176,7 @@ verdict). **PASS-F** = measured off a fresh frame. **FAIL** = measured contrary 
 | 6.1 same layout as panel 5, still selectable | NM | No frame. |
 | 6.2 padlock + requirement in words | PASS-O | `[detail-requirement-row]` pins the padlock on the requirement line; `[research-tree-two-rows]` pins `RequirementText` + `LockReason` through the projection. |
 | 6.3 button reads `LOCKED`, visibly disabled | NM | No frame; no oracle case names the label. |
-| 6.4 the requirement is TRUE (reads the barracks **building tier**, ruling 21) | **NM** | `MANAGE_TRAIN_DOOR_OK` proves the door, not the tier. `grep 'ruling 21\|BarracksTier'` over `ManageTroopsTrainDoorRegression.cs` returns **nothing** — no oracle asserts ruling 21 at HEAD. |
+| 6.4 the requirement is TRUE (reads the barracks **building tier**, ruling 21) | **PASS-O** | ⚠ **CORRECTED 2026-09-10 after the first pass of this audit called it NM — that call was WRONG and the error was mine.** I grepped only `ManageTroopsTrainDoorRegression.cs` and reported the absence as a repo-wide absence. Widened, the pin is there and green: `TROOP_REACHABILITY_OK every authored troop unlocks at or below the barracks ladder ceiling (6) **and the barracks BUILDING tier is the gate that opens them**` (`Builds/wave5-reg1:10286`, registered `DataRegression.cs:1127`). The suite asks through the code path — `BarracksProgression.EffectiveBarracksLevelOf` (`Assets/_Modules/Village/Troops/BarracksProgression.cs:125`), whose doc comment quotes the ruling verbatim (`:104-105`: *"owner ruling 21, 2026-09-06: 'Merge them - the building tier gates troops.'"*) — and carries its own RED recipe at `TroopReachabilityRegression.cs:141`. The live read reaches it via `TroopUnlock.cs:30` → `BarracksService.BarracksLevel` (`BarracksService.cs:81`). |
 
 ### Panel 7 — RESEARCH
 
@@ -322,7 +326,7 @@ portrait is ever un-ruled, this frame is the starting evidence.
 | **F3** no frames for panels 2–8 | ⚠ **PARTIAL** — same ticket, WO-1567. It is the same run as F2. |
 | **F4** 21 rows not frame-ticked | ⚠ **PARTIAL** — same ticket, WO-1567 (it is the same capture run as F2/F3). |
 | `wave5-reg2` produced no marker (§5c, not a row failure) | ❌ **NO — worth minting** (low severity) | **Subject to mint:** *"`Builds/wave5-reg2` (07:55) and its runner.txt carry no `REGRESSION_` marker and no VERDICT — establish whether the run died or was killed, and make a marker-less regression run fail loudly rather than sit on disk between two green gates looking like a pass."* |
-| §2 6.4 ruling 21 unasserted (NM, not FAIL) | ❌ **NO — worth minting** | **Subject:** *"no oracle asserts ruling 21 (troop unlock reads the barracks BUILDING TIER); `grep 'ruling 21\|BarracksTier'` over `ManageTroopsTrainDoorRegression.cs` is empty."* |
+| §2 6.4 ruling 21 (WITHDRAWN — was never a finding) | n/a | ⛔ **This row was raised in the first pass and is WITHDRAWN: ruling 21 IS pinned** by `TroopReachabilityRegression` (`TROOP_REACHABILITY_OK`, green on `wave5-reg1`). Nothing to mint. The first call came from a grep scoped to one file — recorded here rather than deleted, because a withdrawn finding that leaves no trace is how the same wrong grep gets run again. |
 | §2 1.3 three hub illustrations owed | ⚠ **PARTIAL** — named in WO-1597's RESULT and in `ManageArt.HubArtStandIns`' own doc comment (`ManageArt.cs:160-161`: *"THESE ARE THE OWNER'S TO SWAP"*). An art-delivery ask, not a code defect. |
 | C7 the "110.4 px" figure | ❌ **NO — worth minting** | **Subject:** *"WO-1566 C7 cites 110.4 px on `ManageTabs/ObsBtn_*` / `ManageQueueDoor` / `ManageFilters/ObsBtn_*`; those widget names produce zero hits in a 494/494 regression log. Either measure the Manage tree with the touch oracle or retire the figure."* |
 
@@ -342,24 +346,24 @@ banner pointing at this RESULT rather than being rewritten in place.
 | Panel 3 | 7 | 7 | 0 | 0 | 0 | 0 | 0 |
 | Panel 4 | 4 | 3 | 0 | 1 | 0 | 0 | 0 |
 | Panel 5 | 5 | 3 | 0 | 1 | 1 (5.3) | 0 | 0 |
-| Panel 6 | 4 | 1 | 0 | 3 | 0 | 0 | 0 |
+| Panel 6 | 4 | 2 | 0 | 2 | 0 | 0 | 0 |
 | Panel 7 | 5 | 4 | 0 | 0 | 1 (7.5) | 0 | 0 |
 | Panel 8 | 6 | 6 | 0 | 0 | 0 | 0 | 0 |
-| **§2 subtotal** | **50** | **36** | **1** | **9** | **3** | **1** | **0** |
+| **§2 subtotal** | **50** | **37** | **1** | **8** | **3** | **1** | **0** |
 | §3 asset binding | 12 | 12 | 0 | 0 | 0 | 0 | 0 |
 | §4 the proof (§5b) | 5 | 2 | 3 | 0 | 0 | 0 | 0 |
 | §1 the measurement | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
-| **TOTAL** | **68** | **50** | **4** | **9** | **3** | **1** | **1** |
+| **TOTAL** | **68** | **51** | **4** | **8** | **3** | **1** | **1** |
 
-`50 + 4 + 9 + 3 + 1 + 1 = 68` ✓
+`51 + 4 + 8 + 3 + 1 + 1 = 68` ✓
 
 **PARTIAL rows are counted as unmeasured, not as passes** — in each the unproven half governs (C3: the
 pill is placed, the count badge is unproven; 5.3: the icons exist and are keyed, nothing proves they
-paint; 7.5: the cost is priced, the icons are unproven). So the headline reads **12 unmeasured**
-(9 NM + 3 PARTIAL).
+paint; 7.5: the cost is priced, the icons are unproven). So the headline reads **11 unmeasured**
+(8 NM + 3 PARTIAL).
 
 **Status line set on the WO:**
-`AUDITED 2026-09-10 - 50 pass / 4 fail / 12 unmeasured / 1 blocked-on-art / 1 superseded (68 rows), see RESULT`
+`AUDITED 2026-09-10 - 51 pass / 4 fail / 11 unmeasured / 1 blocked-on-art / 1 superseded (68 rows), see RESULT`
 
 **The four FAILs:** §2 1.2 (hub CLOSE at 12/255), §4 proof 2 (`MANAGE_FLOW_MAP_OK` never emitted),
 §4 proof 4 (no PNG to open for panels 2-8), §4 proof 5 (21 rows not frame-ticked).
