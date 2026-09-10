@@ -2230,29 +2230,93 @@ namespace DeNelle.Village
                 return seat;
             }
 
-            // Mount axes are the FOREARM SOCKET: +Z away from the arm (inner face flush), +Y along
-            // the forearm toward the wrist. Body-forward here was "face the camera" and is why a
-            // strapped heater spun off the limb.
             var frame = seat.Frame;
-            Vector3 socketOut, socketUp;
-            GearSeat.GetShieldAxes(animator, body, out socketOut, out socketUp);
-            Quaternion derivedShield = Quaternion.identity;
-            // Reads the frame measured above — STILL exactly one vertex walk per attach, and still
-            // the frame overload (the GameObject one would walk the mesh a second time).
-            bool ok = Guard.Try("Equip", $"derived shield seat for '{subject}' (WO-1123)",
-                () => WeaponOrientHelper.TryComputeShieldMountRotation(
-                          frame, subject, hand, socketOut, socketUp,
-                          out derivedShield, out string shieldWhyUnused),
-                false);
-            if (!ok) return seat;
+            // WO-1620: the three steps that used to be typed out here (GetShieldAxes ->
+            // TryComputeShieldMountRotation -> EnsureShieldOuterFaces) moved DOWN into
+            // TryDeriveShieldMountRotation, unchanged, so the Seating-Editor preview can execute
+            // the SAME instructions instead of deriving a rotation of its own. This method keeps
+            // its whole job — measure, gate on precedence, and WRITE — it just no longer owns a
+            // private copy of the derivation.
+            if (!TryDeriveShieldMountRotation(frame, hand, animator, body, subject,
+                                              out Quaternion derivedShield))
+                return seat;
 
-            derivedShield = GearSeat.EnsureShieldOuterFaces(
-                derivedShield, hand, socketOut, socketUp, frame, body);
             gripRoot.localRotation = derivedShield;
             seat.Derived = true;
             seat.Rule = ShieldRuleDerived;
             seat.MountLocal = derivedShield;
             return seat;
+        }
+
+        /// <summary>
+        /// WO-1620. THE shield mount rotation, COMPUTE-ONLY: the exact three steps
+        /// <see cref="SeatShieldMountRotation"/> has always run, lifted out of it and made callable
+        /// by anyone who needs the ANSWER rather than the write.
+        /// <para>
+        /// ⛔ WHY THIS EXISTS. Before this ticket the Seating-Editor preview
+        /// (<see cref="ApplySeatingPreview"/>) answered "where does a shield sit?" a SECOND time,
+        /// with its own reduced arithmetic: it called
+        /// <c>WeaponOrientHelper.ComputeShieldMountRotation</c> with RAW <c>body.forward</c> /
+        /// <c>body.up</c> — no <see cref="GearSeat.GetShieldAxes"/> (which projects the body's left
+        /// onto the plane perpendicular to the FOREARM, so the answer follows the arm) and no
+        /// <see cref="GearSeat.EnsureShieldOuterFaces"/> (the outer-face correction, which also
+        /// LOGS when the opening was aimed wrong). The two agreed only when the forearm happened to
+        /// lie along the body axes, so the owner dialled every shield nudge against a pose the game
+        /// does not render — the WO-994 class of WYSIWYG break, in her own tuning tool.
+        /// docs/ARCHITECTURE_PRINCIPLES.md §2b.1: one owner per concern.
+        /// </para>
+        /// <para>
+        /// ⛔ THE SPLIT IS WRITE-vs-COMPUTE, NOT A FORK. <see cref="SeatShieldMountRotation"/> writes
+        /// <c>gripRoot.localRotation</c>; the preview cannot use that, because it must COMPOSE the
+        /// owner's dialled euler onto the derived base and then decide the global-yaw question. So
+        /// the authority became a thin write-wrapper over this, WO-1616's own shape (it lifted the
+        /// hero's steps into public static entry points and made both callers execute them). Adding
+        /// a third derivation here — even "the same chain, inlined" — is the bug this exists to end.
+        /// </para>
+        /// <para>
+        /// FRAME OWNERSHIP (WO-1123, preserved deliberately): the frame is an INPUT, never measured
+        /// here. The attach path hands in the frame it measured at attach; the preview hands in the
+        /// one it re-measures against its own <c>NormalizeInto</c> seat, because for a NATIVE shield
+        /// the runtime seat is <c>SeatNative</c> and reusing the attach frame across that difference
+        /// would pose the preview off the wrong axis. One frame, one owner, per caller.
+        /// </para>
+        /// <para>
+        /// PRECEDENCE is the CALLER's, not this method's — it is pure math and derives whenever it
+        /// is asked. <see cref="SeatShieldMountRotation"/> short-circuits on <c>mayDerive</c> before
+        /// it gets here; the preview's equivalent gate is <c>_currentOffHandDerivable</c>, which is
+        /// assigned from the identical expression the attach path uses for <c>shieldMayDerive</c>
+        /// (<c>!fullOverride &amp;&amp; kind == Shield &amp;&amp; WeaponOrientHelper.MayDerive(...)</c>).
+        /// An owner-dialled seat therefore still wins in both places, unchanged.
+        /// </para>
+        /// </summary>
+        /// <returns>False when the frame is unmeasurable, the mount is missing, or the rotation
+        /// math declined — in which case the caller keeps whatever pose the prop arrived with. §12:
+        /// ambiguity FALLS BACK, it never guesses.</returns>
+        public static bool TryDeriveShieldMountRotation(
+            WeaponOrientHelper.ShieldFrame frame, Transform hand, Animator animator, Transform body,
+            string subject, out Quaternion mountLocal)
+        {
+            mountLocal = Quaternion.identity;
+            if (hand == null || !frame.Valid) return false;
+
+            // Mount axes are the FOREARM SOCKET: +Z away from the arm (inner face flush), +Y along
+            // the forearm toward the wrist. Body-forward here was "face the camera" and is why a
+            // strapped heater spun off the limb.
+            Vector3 socketOut, socketUp;
+            GearSeat.GetShieldAxes(animator, body, out socketOut, out socketUp);
+            Quaternion derived = Quaternion.identity;
+            // Reads the frame handed in — STILL exactly one vertex walk per attach, and still
+            // the frame overload (the GameObject one would walk the mesh a second time).
+            bool ok = Guard.Try("Equip", $"derived shield seat for '{subject}' (WO-1123)",
+                () => WeaponOrientHelper.TryComputeShieldMountRotation(
+                          frame, subject, hand, socketOut, socketUp,
+                          out derived, out string shieldWhyUnused),
+                false);
+            if (!ok) return false;
+
+            mountLocal = GearSeat.EnsureShieldOuterFaces(
+                derived, hand, socketOut, socketUp, frame, body);
+            return true;
         }
 
         /// <summary>
@@ -5179,13 +5243,56 @@ namespace DeNelle.Village
             // and withholds the global yaw, a preview still showing the preset euler + yaw would
             // render a shield the game does not ship, and the owner would dial a delta to cancel a
             // pose that does not exist at runtime — the exact WO-994 class of bug.
+            //
+            // ⛔ WO-1620 — THIS BRANCH NO LONGER DERIVES ANYTHING. It CALLS the one authority.
+            // It used to run `WeaponOrientHelper.ComputeShieldMountRotation(frame, grt.parent,
+            // body.forward, body.up)` — a second, REDUCED answer to the question
+            // `SeatShieldMountRotation` already owns, diverging from it in three named ways: raw
+            // body axes instead of GearSeat.GetShieldAxes (which projects onto the plane ⊥ the
+            // FOREARM, so the real seat follows the arm), no GearSeat.EnsureShieldOuterFaces (the
+            // outer-face correction AND its Warn), and no precedence gate. The two agreed only when
+            // the forearm happened to lie along the body axes, so every shield nudge the owner
+            // dialled was measured against a pose the game never renders — the WO-994 break, inside
+            // her own tuning tool. The comments at the bow branch above and in
+            // docs/WEAPON_ARMOR_ORIENT_LOGIC.md ("the Seating Editor preview shares the same method
+            // so the two can never disagree") were true for every slot EXCEPT this one.
+            //
+            // ⚠ BODY IS `transform`, NOT `_animator.transform` — a FOURTH divergence, found while
+            // joining and fixed here. The attach path passes `transform` (this component's own
+            // GameObject); `_animator` is resolved by GetComponentInChildren, so on any rig whose
+            // Animator sits on a child the two transforms carry DIFFERENT right/up/forward, and
+            // GetShieldAxes + EnsureShieldOuterFaces would read a different body from the one the
+            // game seats against. WYSIWYG means passing exactly what attach passes. (The bow branch
+            // above keeps `_animator.transform`; it is a different derivation with its own history
+            // and is explicitly out of scope — do not "align" it here without a ticket.)
             bool shieldPreview = offHand && !fullOverride && _currentOffHandDerivable &&
                                  _previewShieldFrame.Valid && grt.parent != null;
             if (shieldPreview)
             {
-                Transform shieldPreviewBody = _animator != null ? _animator.transform : transform;
-                baseRot = WeaponOrientHelper.ComputeShieldMountRotation(
-                    _previewShieldFrame, grt.parent, shieldPreviewBody.forward, shieldPreviewBody.up);
+                // The frame is the preview's OWN (re-measured at the mode flip above, WO-1123) —
+                // the authority takes it as an input and never re-measures, so there is still
+                // exactly one frame owner per caller.
+                if (TryDeriveShieldMountRotation(
+                        _previewShieldFrame, grt.parent, _animator, transform,
+                        (_currentOffHandMeshKey ?? "<unkeyed>") + " [seating-preview]",
+                        out Quaternion previewShieldRot))
+                {
+                    baseRot = previewShieldRot;
+                }
+                else
+                {
+                    // The derivation declined (unmeasurable frame / declined math). The attach path
+                    // in that case keeps the preset euler AND applies the global yaw
+                    // (`else if (!offHandDerivedSeat) … ApplyGlobalWeaponYaw`), so the preview must
+                    // do the same or it would show a yaw-less pose the game does not ship. Clearing
+                    // the flag is what routes the composition below down that identical branch.
+                    shieldPreview = false;
+                    FlowTrace.Warn("Offset",
+                        "seating-preview shield: the shared derivation DECLINED for key='" +
+                        (_currentOffHandMeshKey ?? "<unkeyed>") + "' — falling back to the preset " +
+                        "euler + global yaw, exactly as the attach path does when it cannot derive. " +
+                        "WO-1620: the preview no longer has a second derivation to fall back ON.");
+                }
             }
 
             grt.localPosition = gripPos + pos;

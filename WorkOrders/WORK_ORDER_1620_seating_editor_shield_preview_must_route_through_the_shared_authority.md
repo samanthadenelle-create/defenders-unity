@@ -1,6 +1,6 @@
 # WO-1620 - The Seating Editor's shield preview derives its own rotation: the last second decider for "where does a shield sit"
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate (lane SEAT-PREVIEW 2026-09-10)
 **Minted:** 2026-09-09 (CLI, main-line banner; bumped 1619 -> 1621 in the SAME edit)
 **Silo / Lane:** Hero + troop equipment seating (Hygiene silo)
 **Severity:** P2 process - not a crash and not (yet) a visible defect on the shipped hero. It is a

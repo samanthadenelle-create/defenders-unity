@@ -1994,6 +1994,7 @@ namespace DeNelle.Editor
             // WO-1373 (2026-09-09, lane RAID-3, owner ruling): one rough stone; only the top two raid
             // tiers drop it, at most one per UTC day; dungeons 5% off the rail, starter dungeons excluded.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-rough-stone suite", () => { if (!DeNelle.Editor.Regression.RaidRoughStoneDropRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-rough-stone] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "seating-preview-shield suite", () => { if (!DeNelle.Editor.Regression.SeatingPreviewShieldRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[seating-preview-shield] " + r); });
 
             // =====================================================================
             //  >>> REGISTERED ORACLE SUITES — END FENCE <<<  (new lines go ABOVE)
