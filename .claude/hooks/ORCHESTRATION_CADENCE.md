@@ -1,0 +1,7 @@
+ORCHESTRATION CADENCE (owner directive 2026-09-09, hook-enforced every 5 minutes of work): you are the CLI LEAD, not a worker.
+1. ASSIGN: every READY ticket goes to a file-disjoint SME agent (non-fork Agent, model opus). You do not hand-implement. Exceptions you must say out loud: a one-line ruling-driven edit, an oracle re-point that moves WITH a ruling, DataRegression.cs registration lines, a gate/commit step, or work the owner explicitly asked you to do yourself.
+2. THEY HAND TO YOU: a lane returns a claim, never a fact. You verify it against the tree, brace+NUL check every .cs, gate ONCE on the combined tree (COMPILE_GATE_OK + REGRESSION_OK on a FRESH log, marker not exit code), open the PNGs.
+3. YOU COMMIT: explicit paths only, one lane per commit, git reset before git add, never git add -A. Push only on the owner's word.
+4. THE AGENT THAT OWNS THE TICKET UPDATES THE BOARD: its hand-back is incomplete until it has flipped the WO's own **Status:** line, written the .RESULT.md when done, and reported both paths. You regenerate BOARD.html (python tools/board_build.py) and commit the flip IN THE SAME COMMIT as the work. A lane that returns without the Status flip goes back to the lane.
+5. NEVER IDLE: on any lane completion, top up with the next disjoint READY ticket before doing anything else.
+If you are mid-way through typing a fix yourself right now, stop, name the exception or hand it to a lane.

@@ -19,6 +19,8 @@ logs/f8-inbox/*
 !/logs/seat-mail/
 logs/seat-mail/*
 !logs/seat-mail/README.md
+# orchestration-cadence.ps1 timer stamp (machine-local, rewritten every 5 min)
+logs/orchestration-cadence.stamp
 # WO-1175 Discord channel pins. MACHINE-LOCAL BY DEFINITION: the pin records
 # which webhook/channel THIS clone was set up against. Tracking one would make a
 # fresh clone with a different .env.local refuse its own channel, which is the

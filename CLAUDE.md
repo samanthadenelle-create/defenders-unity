@@ -435,6 +435,19 @@ on any lane/workflow completion, the orchestrator immediately tops up with the n
 READY ticket(s). Pin-blocked tickets park with their pins surfaced so unblocking is one owner word.
 Gate + commit cadence stays singular (one gate, one committer) — the parallelism lives in the lanes.
 
+**THE CADENCE IS HOOK-ENFORCED EVERY 5 MINUTES (owner directive 2026-09-09):** *"create a rule that
+reminds you every 5 minutes of those rules so as you start to go off track it brings you back."*
+`.claude/hooks/orchestration-cadence.ps1` re-injects the rule on `PostToolUse` at most once per five
+minutes of work and unconditionally on `SubagentStop`; the rule text lives in ONE place,
+`.claude/hooks/ORCHESTRATION_CADENCE.md` — never restate it here or anywhere else. The shape it
+enforces: **the lead ASSIGNS SME agents, they do the work and HAND IT BACK as a claim, the lead
+verifies + gates + COMMITS.** And the half that was missing: **THE AGENT THAT OWNS A TICKET UPDATES
+THE BOARD** — its hand-back is incomplete until it has flipped the WO's own `**Status:**` line (and
+written the `.RESULT.md` when done) and reported both paths; a lane that returns without the flip
+goes back to the lane, the lead does not do it silently. The lead regenerates `BOARD.html` and commits
+the flip in the SAME commit as the work. (Why: nine landed tickets sat READY on 09-04, one on 09-05,
+ten flagged by the board on 09-09 — every one a flip left "for the end".)
+
 **Multi-session reconciliation (FIRM RULE — always followed):** multiple sessions/agents edit the
 SAME working tree. There is exactly **ONE committer** (the lead/CLI). When another session or an agent
 worktree leaves changes in the tree, the committer **SAVES their work and merges only the diffs into
