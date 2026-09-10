@@ -1,6 +1,14 @@
 # WORK ORDER 1096 — the party-shop preview misses a LOCAL gear address and renders a fallback
 
-**Status:** READY TO IMPLEMENT — **may be Editor-only; the discriminating check is step 1**
+**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane SHOP)
+
+> **⚠ THE STEP-1 EDITOR-ONLY HYPOTHESIS IS EXCLUDED AT SOURCE — do not run it.** The Addressables
+> request for `gear/weapon/Shield1h_03` was **never issued**, so no play-mode data builder could have
+> affected it. `PartyShopVM.WeaponLoadsViaAddressable` applied the retired ARMOR flag
+> (`FeatureFlags.BlinkArmor`) to any weapon id starting `blink_` and returned **before** reading the
+> row's own `loadVia`, routing the preview to the Resources/structure loader. Fixed 2026-09-09:
+> the branch is decided by the ROW. See the RESULT file.
+
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1096 → 1097 in the same edit)
 **Silo:** Content / Addressables · Shop UI
 **Severity:** P2 — cosmetic but player-facing: the shop shows a fallback instead of the item

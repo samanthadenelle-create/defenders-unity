@@ -458,27 +458,83 @@ namespace DeNelle.Village.Hero
             if (role == IconRoleArmor)
             {
                 var a = GearCatalog.FindArmor(id);
-                return new PartyShopPreviewModel(true, a?.prefabPath, ArmorLoadsViaAddressable(a));
+                bool armorAddr = ArmorLoadsViaAddressable(a);
+                // The branch + its reason are built as PLAIN LOCALS, never as nested literals inside
+                // an interpolation hole. CompileGate.BraceBalanced (Assets/Editor/CompileGate.cs:896)
+                // is a character scanner with no interpolation model: a `"` inside a `$"..."` hole
+                // ENDS the string for its state machine, so the following braces get counted as code
+                // and the gate goes RED on a file the compiler accepts. Keep interpolation holes to
+                // bare identifiers here.
+                string armorBranch = armorAddr ? "ADDRESSABLE" : "RESOURCES/fallback";
+                string armorWhy;
+                if (a == null) armorWhy = "no armor def";
+                else if (armorAddr) armorWhy = "the ROW declares loadVia=addressable or a gear/ path";
+                else if (!DeNelle.Core.FeatureFlags.BlinkArmor && a.id != null &&
+                         a.id.StartsWith("blink_", StringComparison.OrdinalIgnoreCase))
+                    armorWhy = "junked Blink ARMOR (ff.blinkarmor OFF)";
+                else armorWhy = "the row declares neither loadVia=addressable nor a gear/ path";
+                string armorLoadVia = a?.loadVia;
+                string armorPrefab = a?.prefabPath;
+                bool blinkArmorFlag = DeNelle.Core.FeatureFlags.BlinkArmor;
+                DeNelle.Core.Diagnostics.FlowTrace.Step("PartyShop",
+                    $"preview loader branch: id='{id}' role=armor -> {armorBranch} " +
+                    $"(loadVia='{armorLoadVia}' prefabPath='{armorPrefab}' ff.blinkarmor={blinkArmorFlag}) " +
+                    $"— reason: {armorWhy}");
+                return new PartyShopPreviewModel(true, a?.prefabPath, armorAddr);
             }
             var w = GearCatalog.FindWeapon(id);
-            return new PartyShopPreviewModel(true, w?.prefabPath, WeaponLoadsViaAddressable(w));
+            bool weaponAddr = WeaponLoadsViaAddressable(w);
+            string weaponBranch = weaponAddr ? "ADDRESSABLE" : "RESOURCES/fallback";
+            string weaponWhy;
+            if (w == null) weaponWhy = "no weapon def";
+            else if (weaponAddr) weaponWhy = "the ROW itself declares loadVia=addressable or a gear/ path";
+            else weaponWhy = "the row declares neither loadVia=addressable nor a gear/ path";
+            string weaponLoadVia = w?.loadVia;
+            string weaponPrefab = w?.prefabPath;
+            DeNelle.Core.Diagnostics.FlowTrace.Step("PartyShop",
+                $"preview loader branch: id='{id}' role=weapon -> {weaponBranch} " +
+                $"(loadVia='{weaponLoadVia}' prefabPath='{weaponPrefab}') " +
+                $"— reason: {weaponWhy}");
+            return new PartyShopPreviewModel(true, w?.prefabPath, weaponAddr);
         }
 
         // Mirror of EquipmentController.LoadsViaAddressable (replicated, NOT forked) — MOVED here from
         // PartyShopPanelMvvm so the def read leaves the View. Addressable when loadVia=="addressable"
-        // or prefabPath starts "gear/"; junked-Blink ids (ff.blinkarmor OFF) route to the 2D fallback.
-        private static bool WeaponLoadsViaAddressable(WeaponDef def)
+        // or prefabPath starts "gear/".
+        //
+        // ⛔ WO-1096 (2026-09-09): the `blink_` PREFIX VETO IS DELETED FROM THE WEAPON PATH, and it must
+        // never come back. It applied the ARMOR kill-switch (ff.blinkarmor, junked 2026-06-22) to any
+        // WEAPON id starting "blink_", and it returned BEFORE the row's own `loadVia` was read — so
+        // `blink_shield1h_03` (loadVia="addressable", prefabPath "gear/weapon/Shield1h_03", an address
+        // that EXISTS in the local Gear group) was routed to the Resources/structure loader and rendered
+        // the fallback (F8 capture seq=4968: "model not found via Addressables OR Resources:
+        // 'gear/weapon/Shield1h_03'", lastTransportUrl=(none) — the Addressables request was never
+        // issued). The veto also FORKED this from EquipmentController.LoadsViaAddressable
+        // (EquipmentController.cs:1100-1108), which has no such prefix test — so the shop previewed one
+        // loader and the equip path used another for the same row.
+        //
+        // CONTENT RULING it violated: the owner ratified all 65 blink_ WEAPON rows as shelf content
+        // (2026-08-14) and only Blink ARMOR stays excluded — see the `_excludeIdPrefixesNote` in
+        // Assets/Resources/Data/Canonical/vendors.json:42, pinned by ForgeShelfClassKindRegression case 3.
+        // THE ROW DECIDES, NOT THE ID PREFIX. The armor flag governs armor only (below).
+        // Pinned by Assets/Editor/Regression/PartyShopPreviewLoaderBranchRegression.cs.
+        /// <summary>TRUE when the shop preview must load this WEAPON row through Addressables.
+        /// Decided by the ROW (loadVia / "gear/" prefabPath) — never by its id prefix.
+        /// Public so the regression can pin the branch without constructing a whole VM.</summary>
+        public static bool WeaponLoadsViaAddressable(WeaponDef def)
         {
             if (def == null) return false;
-            if (!DeNelle.Core.FeatureFlags.BlinkArmor && def.id != null &&
-                def.id.StartsWith("blink_", StringComparison.OrdinalIgnoreCase)) return false;
             if (!string.IsNullOrEmpty(def.loadVia) &&
                 def.loadVia.Equals("addressable", StringComparison.OrdinalIgnoreCase)) return true;
             return !string.IsNullOrEmpty(def.prefabPath) &&
                    def.prefabPath.StartsWith("gear/", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static bool ArmorLoadsViaAddressable(ArmorDef def)
+        /// <summary>TRUE when the shop preview must load this ARMOR row through Addressables.
+        /// The `blink_` veto is CORRECT here and stays: Blink ARMOR is junked behind ff.blinkarmor
+        /// (pivot 2026-06-22, HeroArmorVisual.cs:105) — the flag governs ARMOR, and only armor.
+        /// Public so the regression can pin the branch without constructing a whole VM.</summary>
+        public static bool ArmorLoadsViaAddressable(ArmorDef def)
         {
             if (def == null) return false;
             if (!DeNelle.Core.FeatureFlags.BlinkArmor && def.id != null &&
