@@ -620,6 +620,11 @@ namespace DeNelle.Editor
                 // run away.
                 count += CaptureRaidSelection();     // the grid that was hard-refusing to open
                 count += CaptureRaidDeploy();        // the pre-raid deploy screen (never shot before)
+                // WO-1645: the two surfaces the player looks at DURING a raid. Both were named
+                // NOWHERE in this harness, so every audit inside RenderCanvasToPng was
+                // structurally blind to them and four visible defects shipped green (WO-1639 §1).
+                count += CaptureRaidHud();           // the LIVE in-raid readout column
+                count += CaptureRaidDeployHud();     // the LIVE in-raid command bar + status line
                 // WO-1286: the conditional Raids bar face is retired; Raids is a stable Journey
                 // card. Keep the legacy helper below for forensic comparison, but never emit it
                 // as current UI evidence.
@@ -6172,12 +6177,6 @@ namespace DeNelle.Editor
             // ---- RealmWorkspace_1920x1080 (1) ----
             "RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/Label|12 of 14",
             //   "THE NIGHT MARKET" at font 30 [30..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636
-            // ---- ManageWorkspace_2340x1080 (1) ----
-            "ManageWorkspace_2340x1080|ObsidianPanel/PanelContent/ManageCategoryLauncher/ManageCategoryGrid/ManageCard_ARMY/Label|11 of 14",
-            //   "BUILD A BARRACKS" at font 30 [30..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636 (nav capture)
-            // ---- ManageWorkspace_2670x1200 (1) ----
-            "ManageWorkspace_2670x1200|ObsidianPanel/PanelContent/ManageCategoryLauncher/ManageCategoryGrid/ManageCard_ARMY/Label|11 of 14",
-            //   "BUILD A BARRACKS" at font 30 [30..40, enabled=True] overflow=Ellipsis wrap=NoWrap -- WO-1636 (nav capture)
         };
 
         /// <summary>True when this exact finding was measured on the seeding run and is carried
@@ -6790,6 +6789,234 @@ namespace DeNelle.Editor
             catch (Exception e)
             {
                 Debug.LogWarning("[UICap-HL] " + what + " arbiter release failed (harmless): " + e.Message);
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        //  Panels: THE TWO IN-RAID HUD SURFACES (WO-1645).
+        //
+        //  ⛔ WHY THIS EXISTS, AND WHY ITS ABSENCE COST FOUR DEFECTS. Until this ticket
+        //  the raid block above shot only the PRE-raid screens (RaidSelectionScreen, and
+        //  RaidDeployScreen -- the STAGING screen you tap BEFORE the raid starts). The
+        //  two surfaces the player actually looks at DURING a raid -- RaidHudController's
+        //  right-hand readout column and RaidDeployController's bottom command bar --
+        //  were named NOWHERE in this harness, so AuditGeometry, the WO-1060 touch half
+        //  and the WO-1630 glyph oracle were all structurally blind to them. WO-1639 §1
+        //  measured four defects on those two canvases (an unreadable 0.42-alpha plate,
+        //  an ellipsised "DEPLOY ...", a buried HERO DOWN toast, an oversized objective
+        //  marker) and EVERY ONE of them was found by the owner's eyes -- the detector
+        //  CLAUDE.md §14 exists to never rely on.
+        //
+        //  ⚠ THIS ADDS NO ASSERTION OF ITS OWN (WO-1645 §5). It hands two more canvases
+        //  to the audits that already run inside RenderCanvasToPng. The only measurement
+        //  it contributes is the _settledProbe read below, which LOGS and never fails.
+        //
+        //  ⚠ NOT WRAPPED IN RaidTestFlagScope, deliberately -- and that is a measurement,
+        //  not a preference. That scope raises PlayerPrefs 'ff.raidtest' for the SELECTION
+        //  grid's readiness gate; `grep -n raidtest` over BOTH controllers returns nothing
+        //  (verified 2026-09-10). Raising it here would mutate the owner's PlayerPrefs for
+        //  a flag neither canvas reads.
+        //
+        //  ⚠ NO RAID SCENE IS LOADED, deliberately (WO-1645 §5). Both controllers build
+        //  their canvas from a code path with no scene dependency, so a RaidBase_* load
+        //  would add a shared-tree corruption risk for nothing.
+        // ---------------------------------------------------------------------
+        private static int CaptureRaidHud()
+        {
+            return ForEachTarget("RaidHud", CaptureRaidHudOnce);
+        }
+
+        private static int CaptureRaidHudOnce(CaptureTarget target)
+        {
+            int saved = 0;
+            GameObject tempEventSystem = null;
+            GameObject canvasGo = null;
+            GameObject hostGo = null;
+
+            try
+            {
+                if (UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+                {
+                    tempEventSystem = new GameObject("~UICapEventSystem");
+                    tempEventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
+                }
+
+                // The REAL component, built the REAL way. RaidHudController builds in Start()
+                // (RaidHudController.cs:121-124) and edit mode never runs Start, so BuildHud is
+                // driven directly -- the harness's own established reflection idiom, exactly as
+                // CaptureRaidDeployOnce reaches RaidDeployScreen._ui. No runtime file changes.
+                hostGo = new GameObject("~UICapRaidHud");
+                var hud = hostGo.AddComponent<RaidHudController>();
+                InvokePrivate(hud, "BuildHud");
+
+                canvasGo = GetPrivateGameObject(hud, "_ui");
+                if (canvasGo == null)
+                {
+                    Debug.LogWarning("[UICap-HL] RaidHudController._ui is null after BuildHud -- the in-raid " +
+                                     "readout did not build, so NOTHING about it was measured at " +
+                                     target.Tag + ". This is a FAILED case, not a skipped one.");
+                    return 0;
+                }
+
+                Debug.Log("[UICap-HL] the in-raid readout shot is the NO-SCORER state, and that is the " +
+                          "RIGHT state: BuildHud ends in Refresh(), which returns immediately while " +
+                          "RaidScoring.Instance is null (RaidHudController.cs:298-301), so the column " +
+                          "carries its AUTHORED placeholders -- 3:00 / SPIRE 100% / Razed 0% / three " +
+                          "diamonds + 0/3 / Troops 0/0. That is EXACTLY the state WO-1639 §1a measured " +
+                          "on the owner's device, so this frame is directly comparable to the frames the " +
+                          "defect was found in. It is NOT proof that a live scorer's longer numbers fit.");
+
+                if (RenderCanvasToPng(canvasGo, OutDir + "RaidHud_" + target.Tag + ".png",
+                    target.W, target.H)) saved++;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[UICap-HL] in-raid readout capture threw: " + e);
+            }
+            finally
+            {
+                // Canvas FIRST so RaidHudController.OnDestroy (:126-129) sees a dead _ui and never
+                // calls the runtime Destroy (edit-illegal) -- the shared teardown contract, same as
+                // CaptureRaidSelectionOnce's finally block above.
+                if (canvasGo != null) UnityEngine.Object.DestroyImmediate(canvasGo);
+                if (hostGo != null) UnityEngine.Object.DestroyImmediate(hostGo);
+                if (tempEventSystem != null) UnityEngine.Object.DestroyImmediate(tempEventSystem);
+            }
+
+            return saved;
+        }
+
+        private static int CaptureRaidDeployHud()
+        {
+            return ForEachTarget("RaidDeployHud", CaptureRaidDeployHudOnce);
+        }
+
+        private static int CaptureRaidDeployHudOnce(CaptureTarget target)
+        {
+            int saved = 0;
+            GameObject tempEventSystem = null;
+            GameObject canvasGo = null;
+            GameObject hostGo = null;
+
+            try
+            {
+                if (UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+                {
+                    tempEventSystem = new GameObject("~UICapEventSystem");
+                    tempEventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
+                }
+
+                // Same idiom as the readout above. RaidDeployController builds inside Start()
+                // behind a Guard.Try (RaidDeployController.cs:228-241); calling BuildHud directly
+                // skips the coroutine subscribers (which need a play loop) and builds the canvas
+                // only -- which is the whole of what is being photographed.
+                hostGo = new GameObject("~UICapRaidDeployHud");
+                var deploy = hostGo.AddComponent<RaidDeployController>();
+                InvokePrivate(deploy, "BuildHud");
+
+                canvasGo = GetPrivateGameObject(deploy, "_ui");
+                if (canvasGo == null)
+                {
+                    Debug.LogWarning("[UICap-HL] RaidDeployController._ui is null after BuildHud -- the " +
+                                     "in-raid command bar did not build, so NOTHING about it was measured " +
+                                     "at " + target.Tag + ". This is a FAILED case, not a skipped one.");
+                    return 0;
+                }
+
+                Debug.Log("[UICap-HL] the in-raid command bar shot is the EMPTY-TRAY layout. " +
+                          "BuildTrayTiles -> Army() reads GameStateService.Instance " +
+                          "(RaidDeployController.cs:1935-1939), which is null in edit mode, so defIds is " +
+                          "empty and the tray renders its 'No troops to deploy - train at the Barracks " +
+                          "first.' label instead of tiles. The three bar faces (Deploy All / Rally / " +
+                          "Retreat), the status band and the plate ARE the shipped ones and ARE measured. " +
+                          "⛔ A POPULATED tray's tile widths are NOT proven by this shot -- that needs a " +
+                          "GameStateService fixture and is WO-1645 §6's recorded residual, not this run's.");
+
+                // WO-1645 §3c: the panel-specific read, on the SAME settled camera-space layout the
+                // audits run on -- the one point in the run where a rect is in kit reference px.
+                // It LOGS ONLY (§5 forbids a new assertion here); the glyph oracle is what reds a
+                // truncated face. Numbers are shaped to match the runtime [wo1639-face] trace so a
+                // headless read and a device read are directly comparable.
+                _settledProbe = RaidFaceProbe;
+                if (RenderCanvasToPng(canvasGo, OutDir + "RaidDeployHud_" + target.Tag + ".png",
+                    target.W, target.H)) saved++;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[UICap-HL] in-raid command bar capture threw: " + e);
+            }
+            finally
+            {
+                _settledProbe = null;
+                // Canvas FIRST -- RaidDeployController.OnDestroy (:257-263) also calls the runtime
+                // Destroy on _ui, and TroopRally.Clear() (TroopRally.cs:35) is a static null-assign
+                // with no scene dependency, so the teardown is edit-safe in this order.
+                if (canvasGo != null) UnityEngine.Object.DestroyImmediate(canvasGo);
+                if (hostGo != null) UnityEngine.Object.DestroyImmediate(hostGo);
+                if (tempEventSystem != null) UnityEngine.Object.DestroyImmediate(tempEventSystem);
+            }
+
+            return saved;
+        }
+
+        /// <summary>WO-1645 §3c -- per-face fit numbers for the in-raid command bar, read off the
+        /// SETTLED layout. Reports resolved face width in reference px, the seated fontSize, the
+        /// drawn-vs-printable glyph counts and TMP's own isTextTruncated. LOG ONLY: it feeds no
+        /// marker and can fail no gate (WO-1645 §5 -- a new assertion needs its own red-first
+        /// ticket). The glyph oracle inside AuditGeometry is what actually reds a "DEPLOY ...".</summary>
+        private static void RaidFaceProbe(GameObject canvasGo, string label, int w, int h)
+        {
+            var root = canvasGo != null ? canvasGo.GetComponent<RectTransform>() : null;
+            if (root == null) return;
+
+            var buttons = canvasGo.GetComponentsInChildren<Button>(true);
+            if (buttons == null || buttons.Length == 0)
+            {
+                // NO SILENT FAILURE (§12): a bar with no faces is a finding, not an empty line.
+                Debug.LogError("[wo1645-face] " + label + ": ZERO Buttons under the command bar canvas -- " +
+                               "the three faces (Deploy All / Rally / Retreat) did not build, so this " +
+                               "frame measured NOTHING about their fit.");
+                return;
+            }
+
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                var b = buttons[i];
+                if (b == null) continue;
+                var t = b.GetComponentInChildren<TMP_Text>(true);
+                if (t == null)
+                {
+                    Debug.LogWarning("[wo1645-face] " + label + ": '" + PathOf(b.transform, canvasGo.transform) +
+                                     "' carries no TMP_Text -- an unlabelled face cannot be measured.");
+                    continue;
+                }
+
+                string faceRect = TryRectInRoot(b.transform as RectTransform, root, out Rect br)
+                    ? br.width.ToString("0.#") + "x" + br.height.ToString("0.#") + " ref px"
+                    : "UNRESOLVED (rect not expressible in root-canvas space)";
+
+                t.ForceMeshUpdate();
+                var info = t.textInfo;
+                int drawn = 0;
+                string drawnText = "UNMEASURED (no textInfo after ForceMeshUpdate)";
+                if (info != null && info.characterInfo != null)
+                {
+                    int count = Mathf.Min(info.characterCount, info.characterInfo.Length);
+                    for (int c = 0; c < count; c++)
+                        if (info.characterInfo[c].isVisible) drawn++;
+                    drawnText = drawn + " of " +
+                                DeNelle.Core.UI.LayoutOracle.PrintableCount(t.text, t.richText) +
+                                " printable glyphs drawn";
+                }
+
+                Debug.Log("[wo1645-face] " + label + " '" + PathOf(b.transform, canvasGo.transform) +
+                          "' (\"" + t.text + "\") face " + faceRect +
+                          ", font " + t.fontSize.ToString("0.#") +
+                          " [autosize " + t.fontSizeMin.ToString("0.#") + ".." +
+                          t.fontSizeMax.ToString("0.#") + ", enabled=" + t.enableAutoSizing + "]" +
+                          ", overflow=" + t.overflowMode +
+                          ", isTextTruncated=" + t.isTextTruncated +
+                          ", " + drawnText + ". (Log only -- the glyph oracle owns the assertion.)");
             }
         }
 

@@ -1,6 +1,6 @@
 # WO-1645 - Nothing renders the IN-RAID HUD in any gate, which is why four visible defects shipped green
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting WO-1646 for UI_GEOMETRY_OK
 **Minted:** 2026-09-10 (lane RAID-HUD, number **PRE-ASSIGNED by the lead** - `CLI_LANES_WO_NUMBERS.md`
 was **not** edited by this lane, per the lead's instruction. The banner bump is the lead's.)
 **Silo / Lane:** EDITOR - `Assets/Editor/UICaptureLaunch.cs` only. No runtime file changes.
@@ -247,3 +247,286 @@ This ticket is minted READY and **unassigned**. Its number was pre-assigned by t
 this file's `**Status:**` line and writing
 `WorkOrders/WORK_ORDER_1645_no_gate_renders_the_in_raid_hud.RESULT.md`; the lead regenerates
 `BOARD.html`.
+
+---
+
+## 9. HAND-BACK — RAID-CAPTURE lane, 2026-09-10 (worktree `agent-a64cca841b3bd61c1`, HEAD `0a7edc6b1`)
+
+**Status stays `READY TO IMPLEMENT` deliberately.** The code is written; what makes it DONE is a Unity
+run this lane **cannot** perform (no Unity on this seat). Acceptance §4.1-4.6 are all run-produced
+artefacts. Flip to DONE only when §9.3 has produced its markers on a FRESH log.
+
+### 9.1 The edit — one file, additive only
+
+`Assets/Editor/UICaptureLaunch.cs`, **+233 lines, 0 deletions** (`git diff --stat`, this worktree).
+
+| lines | what |
+|---|---|
+| `:623-627` | the registration. Comment at `:623-625`, then `count += CaptureRaidHud();` (`:626`) and `count += CaptureRaidDeployHud();` (`:627`), immediately after the existing `CaptureRaidDeploy()` at `:622` |
+| `:6794-6822` | the doc block: why the hole existed, why `RaidTestFlagScope` is NOT used, why no raid scene is loaded |
+| `:6823-6826` | `CaptureRaidHud()` -> `ForEachTarget("RaidHud", ...)` — all three `LandscapeTargets`, each a real build |
+| `:6828-6886` | `CaptureRaidHudOnce` — temp `EventSystem`, `AddComponent<RaidHudController>()`, `InvokePrivate(hud, "BuildHud")`, `GetPrivateGameObject(hud, "_ui")`, no-scorer log, `RenderCanvasToPng(... "RaidHud_" + target.Tag + ".png")`, canvas-first teardown in `finally` |
+| `:6888-6891` | `CaptureRaidDeployHud()` -> `ForEachTarget("RaidDeployHud", ...)` |
+| `:6893-6960` | `CaptureRaidDeployHudOnce` — same shape, plus `_settledProbe = RaidFaceProbe` before the render and `_settledProbe = null` in `finally` |
+| `:6961-7020` | `RaidFaceProbe` — §3c's per-face read. **LOG ONLY**, feeds no marker (§5) |
+
+**No runtime file was touched.** `git diff --stat` names exactly one path. The private members are
+reached through the harness's existing `InvokePrivate` (`:9641`) / `GetPrivateGameObject` (`:9634`) —
+nothing's accessibility was widened.
+
+Patch for the lead: **`WorkOrders/WORK_ORDER_1645_uicapturelaunch.patch`** (251 lines,
+`git diff HEAD -- Assets/Editor/UICaptureLaunch.cs`), plus the edited file in this worktree.
+
+### 9.2 ⛔ HOW THE LEAD MERGES THIS — DO **NOT** COPY THE FILE WHOLE
+
+The main tree carries an **uncommitted WO-1644 hunk** in `RunFrontDoorCaptureHeadless`
+(`ResetGlyphOracle` / `ReportGlyphOracle`, ~`:2218`/`:2222` pre-merge). Copying this lane's whole
+`UICaptureLaunch.cs` over the main tree **silently deletes it** — the exact failure memory
+`git-apply-3way-drops-hunks-silently-copy-lane-files` records. Apply the **patch**, then, before
+gating, prove BOTH survived in the main-tree file:
+
+```
+grep -c "CaptureRaidHud"   Assets/Editor/UICaptureLaunch.cs   # expect >= 3
+grep -c "ResetGlyphOracle" Assets/Editor/UICaptureLaunch.cs   # expect unchanged from pre-merge
+```
+
+⚠ **The 1644 hunk's line numbers MOVE.** This lane inserts 5 lines at `:623` and 228 at `:6793`, so
+every later line shifts. Diff by CONTENT, never by line number.
+
+### 9.3 THE RED-FIRST PROCEDURE — the exact commands, and what each proves
+
+⛔ **Do NOT hand-retype the pre-fix literals.** This worktree's HEAD (`0a7edc6b1` = `dev`) **IS** the
+pre-1639 state — proved at source in this worktree, 2026-09-10:
+`RaidHudController.cs:191` = `barImg.color = new Color(0.04f, 0.035f, 0.03f, 0.42f);` and
+`RaidDeployController.cs:1704` = `new Vector2(0.565f, 0.18f), new Vector2(0.695f, 0.82f), DeployAll);`.
+The WO-1639 edits exist only as **uncommitted changes in the lead's main tree**, so the revert is a
+stash, not an edit:
+
+```
+# 1. RED: park the WO-1639 fixes, restoring the exact pre-fix values from HEAD
+git stash push -- Assets/_Modules/Village/Troops/RaidHudController.cs \
+                  Assets/_Modules/Village/Troops/RaidDeployController.cs
+<run RunCaptureHeadless>            # expect UI_GLYPH_FAIL — see 9.4
+# 2. GREEN: restore them
+git stash pop
+<run RunCaptureHeadless>            # expect UI_GLYPH_OK and the six PNGs
+```
+
+### 9.4 ⛔ WHAT THE RED-FIRST ACTUALLY PROVES — and the half of §4.6 that it CANNOT
+
+§4.6 bundles Defect A (the 0.42 plate) with Defect B (the face band) as one red-first. **Only Defect B
+can red anything, and the lead must know that before running it.** Read at source this session:
+
+- `AuditGeometry` (`Assets/Editor/UICaptureLaunch.cs:5893-6060`) and
+  `LayoutOracle.Audit` (`Assets/_Modules/Core/UI/LayoutOracle.cs:244-400`) contain **no contrast rule
+  of any kind**. Every rule measures where a rect is, or whether glyphs drew. **Reverting the plate to
+  alpha 0.42 will red NOTHING**, and that is not a defect in this capture — it is the honest limit.
+  Defect A's coverage from this ticket is **the PNG, for eyes**, and nothing more.
+- **Defect C (the buried `HERO DOWN` toast) is likewise NOT covered.** The kit toast is a separate
+  canvas that `BuildHud` never creates, so it is not in either shot. Its ticket is §7's kit lane.
+- **Defect D (the objective marker) is world-space** and not on either canvas.
+
+**Defect B is the one that reds**, via Assert C. The expected line, as a template — the parts marked
+`<...>` are **NOT PROVEN** from this seat (no Unity run):
+
+```
+[glyph-oracle] TEXT TRUNCATED [RaidDeployHud_2670x1200 @2670x1200] '<path/to/Btn>' ("Deploy All")
+draws <n> of 9 printable glyphs. (x <..> .. y <..>) at font <f> [autosize 30..<FontBody>,
+enabled=True] overflow=Ellipsis wrap=NoWrap isTextTruncated=<bool> (corroborating only -- the glyph
+count is the assertion). ...
+```
+followed by the run marker `UI_GLYPH_FAIL x<n> NEW over <p> panels ...`
+(`UICaptureLaunch.cs:6366` — that is the marker string; there is no other).
+
+- **`9` IS proven**: `LayoutOracle.PrintableCount("Deploy All", richText)` counts non-whitespace =
+  `Deploy`(6) + `All`(3) = 9 (`LayoutOracle.cs:378-397`).
+- **Proven the label is even measurable by Assert C**: `ElarionUiKit.Button` (`ElarionUiKit.cs:1601`)
+  routes to `BuildObsidianButton` (`ElarionUiKitObsidian.cs:617`), which calls `FitSingleLine`
+  (`:644`), which sets `overflowMode = Ellipsis` (`ElarionUiKitObsidian.cs:3065`). Assert C skips
+  only `Overflow` (`LayoutOracle.cs:288`), so this label is inside the rule.
+- **NOT proven**: `<n>`, the widget path (it depends on which `BuildObsidianButton` mode resolves
+  headlessly — sprite-catalog presence was not measured from here), whether the kit uppercases the
+  caption, and **whether 1920x1080 / 2340x1080 also red**. Only 2670x1200 matches the device the
+  WO-1639 measurement came from. **One red at 2670x1200 satisfies §4.6.**
+- ⛔ **If the pre-1639 face band reds NOTHING at any of the three targets, the capture is decoration
+  and this ticket is NOT done** (§4.6's own words). Hand it back rather than shipping a green.
+
+### 9.5 What the GREEN run may also red — these are NEW TICKETS, not scope (§5)
+
+At the pre-fix state, and possibly after, two more labels on these canvases may trip Assert C for
+reasons unrelated to WO-1639:
+- `Troops 0/0` (`RaidHudController.cs:263-264`) — its own comment records it was one rounding error
+  from TMP culling the line at 0.130 of the panel.
+- the empty-tray label `"No troops to deploy - train at the Barracks first."`
+  (`RaidDeployController.cs:1736-1739`) — a 46-character sentence in 0.65 of the bar.
+
+⛔ **Do NOT fix either from this lane** (§5: *"Do not 'fix' what the capture reveals"*). Mint them.
+
+### 9.6 Zero-return traps that were checked at source (so the lead need not re-derive them)
+
+Acceptance §4.2 makes a body returning 0 a FAIL, so each null/throw path was read, not assumed:
+
+| trap | read at | verdict |
+|---|---|---|
+| canvas on a CHILD, so `RenderCanvasToPng:5716` skips | `ElarionUiKit.BuildModalCanvas` (`ElarionUiKit.cs:99-115`) | `Canvas` is on the **returned root** GO. Safe |
+| `Start()` fires and double-builds | `[DisallowMultipleComponent]`, no `ExecuteAlways` on either class (`RaidHudController.cs:45-46`, `RaidDeployController.cs:53-54`) | `Start` never runs in edit mode. `BuildHud` is the only build |
+| `BuildHud` NREs with no `GameStateService` | `Army()` (`RaidDeployController.cs:1935-1939`) nulls out into the empty-tray branch (`:1734-1740`); `RefreshTiles` (`:1864`) loops an empty `_tiles`; `RefreshRallyButton` (`:1912`) null-guards; `DeployBarBand`/`DeployStatusBand` (`:1623-1642`) are pure `HudLayoutBands` math | no NRE path found |
+| edit-illegal runtime `Destroy` in `OnDestroy` | `RaidHudController.cs:126-129`, `RaidDeployController.cs:257-263` | canvas is destroyed FIRST so `_ui` reads dead; `_rallyFlag` is null (only built by a rally tap, `:898`); `TroopRally.Clear()` is `Point = null` (`TroopRally.cs:35`) |
+| `ff.raidtest` needed | `grep -n raidtest` over both controllers | **no hits** — the scope is deliberately not used, and the code says so |
+
+### 9.7 Brace + NUL gate (§4.7 / CLAUDE.md §1) — run in this worktree, 2026-09-10
+
+```
+$ python tools/gate_brace.py Assets/Editor/UICaptureLaunch.cs
+GATE_BRACE_SUMMARY bad=0 of 1          (exit 0)
+
+$ NUL bytes: 0
+$ raw braces: 954 open / 954 close
+$ lines: 9721
+```
+Both counts agree, so the CLAUDE.md §1 interpolated-string divergence does not bite here.
+
+### 9.8 ⛔ NOT PROVEN by this lane, and it is the whole remainder
+
+⚠ **§9.8 IS SUPERSEDED BY §10 — the runs happened. Kept for the record, not as current state.**
+
+**No Unity ran.** Therefore: the six PNGs do not exist; `UI_CAPTURE_OK` was not observed to rise by 6;
+`UI_CAPTURE_STAMP`'s `canvases`/`glyphPanels`/`touchPanels` were not observed; `UI_GLYPH_OK`'s
+`labels=<n>` for the two new panels is unknown; and **the red-first has not been seen going red**. Every
+one of acceptance §4.1-§4.6 is open. The code compiles by inspection only — **that is not a compile
+proof**; `COMPILE_GATE_OK` is the lead's.
+
+---
+
+## 10. ACCEPTANCE, SETTLED AGAINST THE RUNS (RAID-CAPTURE lane, 2026-09-10)
+
+Logs read by this lane under `Builds/` (NUL-padded; read with `tr -d '\000' < <log> | grep -a`).
+Judged by the MARKER on a fresh log, never an exit code (CLAUDE.md §8).
+
+| run | log | head | what it is |
+|---|---|---|---|
+| baseline | `Builds/wave5-capture1` | `0a7edc6b1` | pre-WO-1645 |
+| **GREEN** | `Builds/wave5-capture2` | `ff42319de` | HEAD runtime files |
+| **RED** | `Builds/wave5-capture3red` | `ff42319de` | pre-1639 controllers restored |
+| compile | `Builds/wave5-compile2` | `ff42319de` | `COMPILE_GATE_OK :: scripts compiled clean` |
+
+### 4.1 The six PNGs — **MET**, with one caveat that matters
+
+All six exist in `Builds/ui-capture/` and all six were **OPENED by this lane**: `RaidHud_1920x1080.png`
+(70795 B), `RaidHud_2340x1080.png` (82148 B), `RaidHud_2670x1200.png` (97461 B),
+`RaidDeployHud_1920x1080.png` (117487 B), `RaidDeployHud_2340x1080.png` (139177 B),
+`RaidDeployHud_2670x1200.png` (169933 B). None blank — each carries the readout column or the command
+bar against black.
+
+⚠ **THE PNGs ON DISK ARE THE RED RUN, NOT THE GREEN ONE.** All six are timestamped **07:35**, which is
+`wave5-capture3red`; the 07:33 GREEN run wrote the same filenames and was overwritten. So the frames a
+reader opens today show the **pre-1639** state — which is why `DEPLOY ...` is visibly ellipsised in all
+three `RaidDeployHud_*.png`. That is excellent red-first evidence and **poor** post-fix evidence.
+**To photograph the shipped state, re-run the capture at HEAD** (no code change needed); the GREEN
+run's numbers below stand on the log regardless.
+
+### 4.2 +6 panels — **MET, exactly 6**
+
+`UI_CAPTURE_OK 91` (baseline) -> `UI_CAPTURE_OK 97` (green). The stamp moves on every axis by six:
+
+```
+baseline  UI_CAPTURE_STAMP head=0a7edc6b1 ... pngs=91 panelBuilds=76 canvases=91 ...
+green     UI_CAPTURE_STAMP head=ff42319de ... pngs=97 panelBuilds=82 canvases=97
+          touchPanels=97 touchClean=94 glyphPanels=97 glyphLabels=902
+```
+`canvases` 91->97, `glyphPanels` 91->97, `touchPanels` 91->97, `panelBuilds` 76->82. Both bodies logged
+their honest state **3x each** (`grep -c` on the two log sentences returns `3` and `3`), so no target
+fell through a `LogWarning` skip path.
+
+### 4.3 Glyph coverage with non-zero labels — **MET**
+
+Green: `UI_GLYPH_FAIL x1 NEW over 97 panels (96 clean, labels=902, baselined=2 of 3 found, unproved=0)`.
+`labels=902` over 97 panels, `unproved=0` — the §4.3 `labels=0` failure mode is not in play. The one NEW
+finding is **not on these panels**: it is
+`TEXT TRUNCATED [ManageWorkspace_2670x1200] '.../ManageCard_ARMY/Label' ("BUILD BARRACKS") draws 12 of 13`
+— an unrelated Manage surface, out of this lane's scope (§5).
+
+### 4.4 `UI_GEOMETRY_OK` — ⛔ **THE ONE OPEN ITEM. BLOCKED ON WO-1646.**
+
+Green emits `UI_GEOMETRY_FAIL x15 over 97 canvases` and `UI_TOUCH_FAIL x15 over 97 panels (94 clean)`.
+**All 15 are on `RaidDeployHud`, 5 per aspect**, and they are **real defects the new capture FOUND** —
+the first thing it did was catch two classes the source-text suites could not:
+
+- `SUB-TOUCH-FLOOR BAND` x3 per aspect — the three faces resolve **103.7 / 93.9 / 92.7 ref px** tall
+  against `ElarionUiKit.MinTouchPx (112)`, e.g. at 2670x1200:
+  `'Panel/ObsBtn_Deploy All' resolves 360.9x92.7 ref px -- shortest side 92.7 is 19.3 px UNDER ... (112)`.
+  The bar band is authored too short at every aspect and `ClampMinTouch` was silently papering over it.
+- `BUTTON OVER TEXT` x2 per aspect — `ObsBtn_Deploy All` and `ObsBtn_Rally` cover
+  `'Panel/Label' ("No troops to deploy - train at the Barracks f...")`, by **360.9x92.7** and
+  **22.6x92.7** ref px at 2670x1200. Visible in all three `RaidDeployHud_*.png`: the sentence runs
+  under the buttons and reads `...at the Barracks firs` before a face swallows it.
+
+Per §5 (*"Do not 'fix' what the capture reveals"*) this lane did **not** touch them. They are
+**WO-1646**, owned by the RAID-HUD lane. **`UI_GEOMETRY_OK` / `UI_TOUCH_OK` cannot go green until
+WO-1646 lands — and that is the capture working, not the capture failing.**
+
+### 4.5 Judged by markers on fresh logs — **MET.** Every line above is quoted off a log, never a runner
+exit code.
+
+### 4.6 THE RED-FIRST — **MET, and unambiguous**
+
+`Builds/wave5-capture3red`: `UI_GLYPH_FAIL x4 NEW over 97 panels (93 clean, labels=902, unproved=0)`.
+Three of the four are the reinstated Defect B, at **all three aspects**:
+
+```
+[glyph-oracle] TEXT TRUNCATED [RaidDeployHud_2670x1200 @2670x1200] 'Panel/ObsBtn_Deploy All/Label'
+("DEPLOY ALL") draws 7 of 9 printable glyphs. (x 384.8..564.6, y -302.2..-209.5) at font 30
+[autosize 30..44, enabled=True] overflow=Ellipsis wrap=NoWrap isTextTruncated=True
+```
+plus `[RaidDeployHud_1920x1080] ... draws 6 of 9` and `[RaidDeployHud_2340x1080] ... draws 7 of 9`.
+The fourth is the unrelated Manage ARMY card. **The `9` predicted in §9.4 is confirmed**, so is
+`isTextTruncated=True`, and the path resolved to `Panel/ObsBtn_Deploy All/Label` (the obsidian sprite
+mode). GREEN, same label: `9 of 9` at all three aspects
+(`[wo1645-face] ... ("DEPLOY ALL") face 360.9x92.7 ref px, font 44 ... isTextTruncated=False, 9 of 9`).
+**The oracle has now been watched going red AND green on the same canvas.** §3c's probe corroborated it
+independently: face width **195.5 -> 360.9** ref px, font **30 -> 44**, at 2670x1200.
+
+⚠ **§9.4's finding held: the plate-alpha half of §4.6 red NOTHING**, because no rule on this path
+measures contrast. Defect B carried the whole red-first, exactly as predicted.
+
+### 4.7 Brace + NUL — **MET** (§9.7), and `COMPILE_GATE_OK` on `Builds/wave5-compile2`.
+
+---
+
+## 11. NEW FINDING — the readout plate reads OLIVE, and `barImg.color` is not what paints it
+
+**The lead's eyes are right.** Measured off `Builds/ui-capture/RaidHud_2670x1200.png` by decoding the
+PNG and sampling five interior points clear of text — (2150,200), (2200,470), (2300,300), (2500,540),
+(2620,180) — **every one reads RGB (89, 72, 20)**, a dark olive/ochre, against (0,0,0) off-plate. Not
+near-black. The command bar's plate in `RaidDeployHud_*.png` is the same olive.
+
+**`ElarionUiKit.ObsidianFill = new Color(0.02f, 0.02f, 0.025f, 0.98f)`**
+(`Assets/_Modules/Core/UI/ElarionUiKit.cs:189`), and WO-1639 points the plate at it — at HEAD,
+`RaidHudController.cs:508` reads `barImg.color = ElarionUiKit.ObsidianFill;`.
+
+⛔ **BUT THE PLATE'S COLOUR DOES NOT COME FROM THAT IMAGE.** `ElarionUiKit.Panel` (`:145-152`) builds
+the fill and then calls **`AddInnerRim(p, AccentSoft)`** (`:150`), and `AddInnerRim` (`:2670-2683`) is
+**not a rim**: it creates a FULL-RECT child `Image` at anchors 0..1 with a 1 px inset and
+`color.a * 0.5f`. `AccentSoft` is `Gold` at alpha **0.30** (`UiStyle.cs:116`), so the child is
+**Gold at 0.15 across the whole plate**, drawn ON TOP of the host's face. `ElarionUi.Gold` is
+`(0.831, 0.686, 0.216)` (`ElarionUi.cs:58`). Composited in **linear** space and encoded back to sRGB
+that predicts **(92, 76, 18)** against the measured **(89, 72, 20)** — the veil IS the plate's colour,
+to within rounding. The kit's own doc block at `ElarionUiKit.cs:2657-2668` says so in its own words:
+*"IT IS NOT A RIM ... a FULL-RECT filled rounded quad ... on an ornate plate it VEILS the art rather
+than framing it."*
+
+**Consequence for WO-1639:** re-tinting `barImg` from `(0.04,0.035,0.03,0.42)` to `ObsidianFill`
+changes what sits **underneath** a 0.15-alpha gold veil. It cannot make the plate near-black on its
+own, and the contrast ratios WO-1639 was fixing are measured against **this olive**, not against
+ObsidianFill.
+
+⚠ **TWO THINGS NOT PROVEN, and they decide whether this ships:**
+1. **`AddInnerRim` returns early when `BlinkChromeActive`** (`:2672`). Headless with the Blink art
+   absent that flag is presumably false, so the veil draws. **Whether it draws on the owner's DEVICE is
+   NOT PROVEN from here** — if the shipping build has the art present, the olive may be a headless-only
+   artifact. One device frame settles it.
+2. The green run's PNG was overwritten (§4.1), so **HEAD's plate has not been seen rendered**. The
+   argument above is from construction, not from a HEAD pixel.
+
+**Not this lane's to fix** (§5). Recommended as its own ticket, with those two unknowns as its first
+two measurements.
