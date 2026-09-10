@@ -1,6 +1,13 @@
 # WORK ORDER 1666 — `HudLabelFitRegression` pins measure surfaces the game no longer draws
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED — awaiting gate (§6B parked on an owner call, per §11)
+> §3 Case 3 DELETED (the re-point already exists: `CheckMeasuredPeacefulDock` measures caption fit).
+> §4 Case 2 (a)+(b) DELETED with the no-caller proof quoted; the four canon keys deliberately KEPT.
+> §5 Case 15 gained machine-checked 15d, mutation-tested RED. §6A classified PLAIN — Body is correct,
+> left alone with the evidence recorded. §6B (RumorBoard runtime width) STOPPED AT THE REPORT: a
+> visible layout change is the owner's call. ⚠ NEW FINDING: `SessionShapeRegression Case7_OneDoor`'s
+> pin is satisfied by its own prose comment — needs a follow-on ticket. See
+> `WORK_ORDER_1666_hud_label_fit_pins_over_retired_surfaces.RESULT.md`.
 **Silo:** HUD / oracles — `Assets/Editor/Regression/HudLabelFitRegression.cs` primarily; one
 runtime file (`RumorBoardPanel.cs`) and one sibling suite (`InventoryArmoryRailRegression.cs`)
 in §6 only.

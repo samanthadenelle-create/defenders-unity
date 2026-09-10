@@ -311,10 +311,37 @@ namespace DeNelle.Editor.Regression
 
             // The retired Builders chip must stay retired: un-retiring it to host the ache would
             // quietly overturn an owner ruling to satisfy a stale sentence in an older WO.
-            if (view.IndexOf("// BuildQueueStatusChip(pool);", StringComparison.Ordinal) < 0)
+            //
+            // ⭐ WO-1667 (a) — THE ANCHOR IS THE FULL RETIREMENT LINE, AND THAT IS THE FIX.
+            // ---------------------------------------------------------------------
+            // This pin used to search for the SHORT form `// BuildQueueStatusChip(pool);`.
+            // That substring occurs TWICE in HudKitController.cs (counted at source 2026-09-10):
+            //   :811  the real retirement, inside Build()
+            //   :1932 a PROSE MENTION of it, inside BuildQueueStatusChip's own doc comment:
+            //         "// `// BuildQueueStatusChip(pool);` in Build(), so nothing here ever runs"
+            // So THE COMMENT THAT DOCUMENTS THIS PIN SATISFIED THIS PIN. Replace the real line at
+            // :811 with a LIVE call and the prose alone kept this case GREEN — the guard survived
+            // its own subject. Measured, not argued (WO-1667 a2, four-input mutation table).
+            //
+            // The full line below occurs exactly ONCE and cannot be satisfied by prose about it.
+            // ⚠ THREE SPACES before the second `//` — this was copied from the source line, not
+            // retyped, and it must be re-copied if the authoring is ever reflowed.
+            // ⛔ Do NOT "fix" a future failure here by deleting the :1932 prose: it is how a reader
+            // of BuildQueueStatusChip learns the method never runs. An oracle that forces useful
+            // comments to be deleted is a worse oracle.
+            // ⚠ SCOPE, deliberately: this catches the retirement line being REMOVED or EDITED. It
+            // does NOT catch a live BuildQueueStatusChip(pool) call added ELSEWHERE while this line
+            // stays intact — that is HudLabelFitRegression's 15d (WO-1666 §5), which walks every
+            // occurrence and asks whether its own line comments it out. The two are DISJOINT ON
+            // PURPOSE; widening this one to duplicate 15d would put two oracles on one fact.
+            const string RetirementLine =
+                "// BuildQueueStatusChip(pool);   // retired 2026-08-07 (owner)";
+            if (view.IndexOf(RetirementLine, StringComparison.Ordinal) < 0)
                 failures.Add("[one-queues-door] the Builders chip's retirement line is gone from " +
                              "HudKitController - the chip was retired by the owner on 2026-08-07 and " +
-                             "the bar's Manage face is the single Queues entry");
+                             "the bar's Manage face is the single Queues entry. Looked for the FULL " +
+                             "line ('" + RetirementLine + "'), because the short form is also present " +
+                             "in the prose at :1932 that describes this very pin (WO-1667a)");
 
             // The View paints the model's words and decides nothing.
             if (view.IndexOf("ApplyManageFaceTell", StringComparison.Ordinal) < 0)

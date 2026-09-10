@@ -80,6 +80,7 @@ namespace DeNelle.Editor
             {
                 CheckModelInvariants(failures, log);
                 CheckMeasuredPeacefulDock(failures, log);
+                CheckMeasuredOutsideDock(failures, log);
                 CheckViewPurity(failures, log);
                 CheckWiring(failures, log);
                 CheckDungeonFlagAcknowledgement(failures, log);
@@ -277,14 +278,37 @@ namespace DeNelle.Editor
             DeNelle.Core.UI.HudStrings.KeyNavManage,
         };
 
-        /// <summary>Shipping surfaces (w, h): the Seeker, a 16:9 desktop window, a tablet, and the
-        /// portrait reference. The dock solves in reference pixels, so the aspect is the variable.</summary>
+        /// <summary>Shipping surfaces (w, h): a tall-phone landscape, a 16:9 desktop window and a
+        /// tablet. The dock solves in reference pixels, so the aspect is the variable.
+        /// ⭐ WO-1667 (b, follow-up 2026-09-10) — THE 1080x1920 PORTRAIT ROW IS REMOVED, AND IT IS
+        /// AN OWNER RULING, NOT A CONVENIENCE.
+        /// ---------------------------------------------------------------------
+        /// The game is LANDSCAPE ONLY (owner ruling 2026-09-10, WO-1631). Proven at source, not
+        /// taken from a doc:
+        ///   * ProjectSettings/ProjectSettings.asset:63-64 — allowedAutorotateToPortrait: 0 and
+        ///     allowedAutorotateToPortraitUpsideDown: 0;
+        ///   * Assets/Editor/Regression/ScreenOrientationRegression.cs pins exactly that, and its
+        ///     CASE 2 [no-portrait-autorotate] FAILS the build if either flag returns to 1;
+        ///   * UICaptureLaunch.LandscapeTargets (:215-220) carries NO portrait row — 1920x1080,
+        ///     2340x1080, 2670x1200.
+        /// So this row asserted a presentation THE GAME REFUSES TO ENTER, and it was the only
+        /// surface that solved to tier 2 (slot pinned at the MinSlotPx 112 touch floor, box 98.6).
+        /// It failed chain 38 on 'JOURNEY' at 105.1 vs 98.6 — a RED over a screen no player can
+        /// reach, which is the same "pin over a retired surface" defect WO-1666 was written to
+        /// remove, one ticket later and in the opposite direction.
+        /// ⛔ Do NOT re-add a portrait row here to "cover the phone": the phone IS landscape.
+        /// ⚠ This list is PRIVATE to this suite (nothing else reads DockSurfaces), so removing the
+        /// row changes no other oracle. Other 1080x1920 literals in the tree are the CanvasScaler
+        /// REFERENCE resolution (HudDockLayout.CanvasLocalWidthPx's refW/refH default,
+        /// UICaptureLaunch's scaler setup) — a different axis entirely, and NOT to be touched.
+        /// ⚠ 2670x1200 (the Seeker's real surface, per LandscapeTargets) is deliberately NOT added
+        /// here by this change: adding a surface is a scope decision, and its numbers are reported
+        /// in the WO-1667 RESULT so the lead can rule on it.</summary>
         private static readonly float[][] DockSurfaces =
         {
             new[] { 2340f, 1080f },
             new[] { 1920f, 1080f },
             new[] { 2048f, 1536f },
-            new[] { 1080f, 1920f },
         };
 
         private static void CheckMeasuredPeacefulDock(List<string> failures, StringBuilder log)
@@ -343,6 +367,76 @@ namespace DeNelle.Editor
                     if (found == 0) { slotsWithoutOneCaption++; continue; }
                     captions.Add(word);
                     seeds.Add(child.anchorMin.x);
+
+                    // ── WO-1671: the caption's obsidian backing plate ─────────
+                    // RED-FIRST BY CONSTRUCTION: against HEAD before this ticket no slot carries a
+                    // "CaptionPlate" child at all, so this block emits
+                    //   "[dock-measured] face 'BUILD' has NO obsidian caption plate ..."
+                    // for all five faces. It cannot pass on the old tree.
+                    //
+                    // WHY THESE FOUR ASSERTIONS AND NOT "a plate exists". Each one is a way the
+                    // fix silently stops working while the object is still there:
+                    //  * COVERS the caption rect on both axes - a plate that is narrower than the
+                    //    word leaves the ends of "JOURNEY" back on the grass, which is exactly the
+                    //    defect, with a green test next to it;
+                    //  * DRAWS UNDER it (lower sibling index) - a plate above the caption hides the
+                    //    word completely, and a "plate exists" test would call that a fix;
+                    //  * IS THE KIT'S OBSIDIAN FILL BY VALUE - the owner ruled the kit idiom, never
+                    //    a hand-tinted colour, and she is red/green colourblind so a drifted hue is
+                    //    not something a felt-test will reliably catch;
+                    //  * TAKES NO TAPS - a raycasting plate over the bottom of the medallion would
+                    //    eat presses near the word.
+                    var plateRt = child.Find(DeNelle.Core.UI.ElarionUiKit.CaptionPlateObjectName) as RectTransform;
+                    var capRt = null as RectTransform;
+                    for (int c = 0; c < child.childCount; c++)
+                    {
+                        var kid = child.GetChild(c) as RectTransform;
+                        if (kid == null) continue;
+                        var t = kid.GetComponent<TMP_Text>();
+                        if (t != null && !string.IsNullOrEmpty(t.text) && t.text.Trim() == word)
+                        { capRt = kid; break; }
+                    }
+                    if (plateRt == null)
+                    {
+                        failures.Add(Tag + " face '" + word + "' has NO obsidian caption plate (no '" +
+                                     DeNelle.Core.UI.ElarionUiKit.CaptionPlateObjectName + "' child) — the " +
+                                     "owner's device frames measure this caption band at 1.87–2.97:1 " +
+                                     "against the terrain it draws over, under the 3:1 floor, and the word " +
+                                     "is the only colour-free carrier of the face's meaning (WO-1671)");
+                    }
+                    else if (capRt != null)
+                    {
+                        if (plateRt.anchorMin.x > capRt.anchorMin.x + 1e-4f ||
+                            plateRt.anchorMin.y > capRt.anchorMin.y + 1e-4f ||
+                            plateRt.anchorMax.x < capRt.anchorMax.x - 1e-4f ||
+                            plateRt.anchorMax.y < capRt.anchorMax.y - 1e-4f)
+                            failures.Add(Tag + " face '" + word + "': the caption plate " +
+                                         plateRt.anchorMin + ".." + plateRt.anchorMax +
+                                         " does NOT cover the caption rect " + capRt.anchorMin + ".." +
+                                         capRt.anchorMax + " — part of the word still reads against the world");
+                        if (plateRt.GetSiblingIndex() >= capRt.GetSiblingIndex())
+                            failures.Add(Tag + " face '" + word + "': the caption plate draws at sibling " +
+                                         plateRt.GetSiblingIndex() + ", at or ABOVE the caption (" +
+                                         capRt.GetSiblingIndex() + ") — it would cover the word instead of " +
+                                         "backing it");
+                        var plateImg = plateRt.GetComponent<UnityEngine.UI.Image>();
+                        if (plateImg == null)
+                            failures.Add(Tag + " face '" + word + "': the caption plate carries no Image — " +
+                                         "nothing is drawn behind the word");
+                        else
+                        {
+                            var want = DeNelle.Core.UI.ElarionUiKit.ObsidianFill;
+                            var got = plateImg.color;
+                            if (Mathf.Abs(got.r - want.r) > 0.01f || Mathf.Abs(got.g - want.g) > 0.01f ||
+                                Mathf.Abs(got.b - want.b) > 0.01f || Mathf.Abs(got.a - want.a) > 0.01f)
+                                failures.Add(Tag + " face '" + word + "': the caption plate is " + got +
+                                             ", not the kit's ObsidianFill " + want + " — the owner ruled the " +
+                                             "kit's obsidian idiom, never a hand-tinted colour");
+                            if (plateImg.raycastTarget)
+                                failures.Add(Tag + " face '" + word + "': the caption plate takes raycasts — " +
+                                             "it would swallow taps aimed at the medallion");
+                        }
+                    }
                 }
 
                 if (slotsWithoutOneCaption > 0)
@@ -397,24 +491,68 @@ namespace DeNelle.Editor
 
                     if (!sol.ShowCaptions) continue;   // icon-only tier: no word to fit
                     float boxW = sol.SlotWidthPx * CaptionInset;
+
+                    // ⭐ WO-1667 (b) — THE CAPTION IS DRAWN BOLD, SO IT IS CHARGED FOR THE WEIGHT.
+                    // ---------------------------------------------------------------------
+                    // MeasureLineWidthPx sums REGULAR-weight advances and says so in its own docs
+                    // (ElarionUiKitObsidian.cs:2896-2897). This caption is bold, so measuring it
+                    // raw under-reported the shipped bar. Traced at source 2026-09-10:
+                    //   ActionSlotHandle.SetCaption (ElarionUiKitObsidian.cs:1095) builds it with
+                    //   Label(..., bold: true) and then EnsureFont(caption, FontRole.Body), and
+                    //   ElarionUiKit.Label (:1905-1923) does `if (bold) t.fontStyle = FontStyles.Bold`.
+                    //
+                    // ⛔ THE ROLE STAYS Body, AND THAT IS DELIBERATE. EnsureFont installs Body on
+                    // this caption EXPLICITLY; nothing on the dock path calls
+                    // MedievalUiSkin.ApplyButton or EnsureFont(..., FontRole.Title). So this is
+                    // NOT an obsidian face: do NOT re-point it to HudLabelFitRegression's
+                    // MeasureFacePx / SkinnedFaceRole, which carry Title AND a characterSpacing-2
+                    // allowance this caption does not earn (Label leaves spacing at 0 — SetCaption
+                    // never passes one). Re-pointing to Title would make the LIVE-bar oracle
+                    // falsely pessimistic, the hazard WO-1663 §7 kept three sites clear of.
+                    //
+                    // ONE constant, shared, not a third copy: see the reasoning at its declaration,
+                    // HudLabelFitRegression.BoldOnlyWidthSlack (same assembly, internal).
+                    const float bold = DeNelle.Editor.Regression.HudLabelFitRegression.BoldOnlyWidthSlack;
                     foreach (string word in measured)
                     {
-                        float w = DeNelle.Core.UI.ElarionUiKit.MeasureLineWidthPx(
+                        float raw = DeNelle.Core.UI.ElarionUiKit.MeasureLineWidthPx(
                             DeNelle.Core.UI.ElarionUiKit.FontRole.Body, word,
                             DeNelle.Core.UI.ElarionUiKit.FontHardFloor, out string detail);
-                        if (w < 0f)
+                        if (raw < 0f)
                         {
                             // -1 means NO font was resolvable, never "it fits". Say so rather than
                             // letting an unmeasurable caption read as a pass.
+                            // ⛔ The slack is applied BELOW this branch on purpose: multiplying the
+                            // sentinel would turn -1 into -1.1 and quietly break the "< 0" test
+                            // every caller of MeasureLineWidthPx relies on.
                             log.AppendLine("  " + Tag + " caption '" + word + "' NOT MEASURED (" +
                                            detail + ") - label fit asserted nothing this run");
                             continue;
                         }
+                        float w = raw * bold;
+
+                        // PROOF-OF-TAKE (WO-1667 b4). This half is not expected to red — English
+                        // captions fit even charged — so the evidence that the change took is the
+                        // NUMBERS MOVING, printed per surface and per caption. A reader comparing
+                        // two gate logs must be able to see raw -> charged and the box they ran at.
+                        log.AppendLine("  " + Tag + " caption '" + word + "'" + at + ": raw " +
+                                       raw.ToString("0.0") + " -> charged " + w.ToString("0.0") +
+                                       " px (x" + bold.ToString("0.00") + " bold weight) in a " +
+                                       boxW.ToString("0.0") + " px face (slot " +
+                                       sol.SlotWidthPx.ToString("0.0") + " x inset " +
+                                       CaptionInset.ToString("0.00") + ")");
+
                         if (w > boxW)
                             failures.Add(Tag + " the caption '" + word + "' MEASURES " + w.ToString("0.0") +
-                                         " px at the hard font floor against a " + boxW.ToString("0.0") +
+                                         " px at the hard font floor (regular advances " +
+                                         raw.ToString("0.0") + " x" + bold.ToString("0.00") +
+                                         " for the bold weight it is DRAWN at) against a " +
+                                         boxW.ToString("0.0") +
                                          " px face" + at + " (" + detail + ") — it can only render " +
-                                         "elided");
+                                         "elided. ⛔ The remedy is FEWER CHARACTERS in the hud.nav.* " +
+                                         "canon copy, or more room from the dock solver — never a " +
+                                         "lower FontHardFloor, never a smaller CaptionInset, and " +
+                                         "never weakening the weight term to make this pass");
                     }
                 }
 
@@ -439,6 +577,173 @@ namespace DeNelle.Editor
         /// <summary>The caption strip is inset from the medallion rim (ActionSlotHandle.SetCaption
         /// authors it at x 0.06..0.94), so the word's box is not the whole face.</summary>
         private const float CaptionInset = 0.88f;
+
+        // =====================================================================
+        //  1c. THE MEASURED OUTSIDE DOCK (WO-1672) — the bar past the walls
+        // =====================================================================
+        // OWNER RULING 2026-09-10: "when you are outside the castle should not be the peaceful UI,
+        // not combat, but should not be able to build or talk but can use items still."
+        //
+        // WHY THIS IS MEASURED THE SAME WAY, AND NOT LINTED. The whole point of the ruling is a
+        // SET DIFFERENCE — two faces gone, one face added — and a set difference is precisely what
+        // source text cannot prove: BuildAdaptiveOutsideDock could keep every literal in place and
+        // still construct BUILD by copy-paste, or lose ITEM to an early return, with every lint
+        // green. So this builds the real dock through BuildOutsideDockProbe (the twin of
+        // BuildPeacefulDockProbe) and reads the faces out of the tree.
+        //
+        // ⛔ AND THE ONE TRAP THAT DECIDED THE IMPLEMENTATION. The face walk below is
+        // GetComponentInChildren<Button>(true) — INCLUDE-INACTIVE, deliberately, because Register()
+        // deactivates the dock root and an active-only walk would read zero faces and RED for
+        // entirely the wrong reason. The consequence is that this oracle CANNOT distinguish a
+        // SetActive(false) BUILD face from a live one. That is why the ruling is implemented as
+        // ABSENT (never constructed) rather than disabled: "absent" is the only form of "the player
+        // cannot build out here" that a test can hold on to. If the owner later rules
+        // present-but-dead, this case must be rewritten to assert interactable/dim copy instead —
+        // do not weaken it to "a BUILD face may exist".
+        private static void CheckMeasuredOutsideDock(List<string> failures, StringBuilder log)
+        {
+            const string Tag = "[dock-outside]";
+            GameObject probeGo = null;
+            try
+            {
+                probeGo = new GameObject("WO1672_OutsideDockProbe", typeof(RectTransform));
+                var kit = probeGo.AddComponent<DeNelle.HUD.Kit.HudKitController>();
+                var pool = new GameObject("Pool", typeof(RectTransform));
+                pool.transform.SetParent(probeGo.transform, false);
+
+                GameObject dock = kit.BuildOutsideDockProbe(pool.transform);
+                if (dock == null)
+                {
+                    failures.Add(Tag + " BuildOutsideDockProbe built no dock root — the bar the " +
+                                 "player gets outside the walls did not construct");
+                    return;
+                }
+
+                var captions = new List<string>();
+                var seeds = new List<float>();
+                var dockRt = (RectTransform)dock.transform;
+                for (int i = 0; i < dockRt.childCount; i++)
+                {
+                    var child = dockRt.GetChild(i) as RectTransform;
+                    if (child == null) continue;
+                    if (child.GetComponentInChildren<UnityEngine.UI.Button>(true) == null) continue;
+                    string word = null;
+                    float bestBand = float.MaxValue;
+                    for (int c = 0; c < child.childCount; c++)
+                    {
+                        var kid = child.GetChild(c) as RectTransform;
+                        if (kid == null) continue;
+                        var t = kid.GetComponent<TMP_Text>();
+                        if (t == null || string.IsNullOrEmpty(t.text) || t.text.Trim().Length == 0) continue;
+                        if (kid.anchorMax.y >= bestBand) continue;
+                        bestBand = kid.anchorMax.y;
+                        word = t.text.Trim();
+                    }
+                    if (word == null)
+                    {
+                        failures.Add(Tag + " an outside-dock face carries NO caption — the word is " +
+                                     "the colour-free carrier of the face's meaning");
+                        continue;
+                    }
+                    captions.Add(word);
+                    seeds.Add(child.anchorMin.x);
+
+                    // WO-1671 travels with the face: this dock's captions sit in the same band over
+                    // the same terrain, so a plateless face here is the same defect one posture over.
+                    if (child.Find(DeNelle.Core.UI.ElarionUiKit.CaptionPlateObjectName) == null)
+                        failures.Add(Tag + " outside face '" + word + "' has NO obsidian caption " +
+                                     "plate — outside the walls the ground behind the dock is the " +
+                                     "same terrain that measured 1.87–2.97:1 in town (WO-1671)");
+                }
+
+                var order = Enumerable.Range(0, captions.Count).ToList();
+                order.Sort((a, b) => seeds[a].CompareTo(seeds[b]));
+                var measured = order.Select(i => captions[i]).ToList();
+
+                // THE RULED SET. BUILD and TALK must be gone; ITEM must be there. HERO/JOURNEY/
+                // MANAGE are UNRULED and are asserted as CARRIED OVER from the calm dock — if the
+                // owner rules on them, change this array and this comment together.
+                string[] expected =
+                {
+                    DeNelle.Core.UI.HudStrings.Get(DeNelle.Core.UI.HudStrings.KeyNavHero),
+                    DeNelle.Core.UI.HudStrings.Get(DeNelle.Core.UI.HudStrings.KeyNavJourney),
+                    DeNelle.Core.UI.HudStrings.Get(DeNelle.Core.UI.HudStrings.KeyNavManage),
+                    "ITEM",
+                };
+                if (measured.Count != expected.Length ||
+                    !measured.SequenceEqual(expected, System.StringComparer.Ordinal))
+                    failures.Add(Tag + " the outside dock builds [" + string.Join(" ", measured) +
+                                 "], expected [" + string.Join(" ", expected) + "]");
+
+                // The ruling, stated as the two things it forbids — held separately from the set
+                // above so a future re-order cannot make this pass by accident.
+                string build = DeNelle.Core.UI.HudStrings.Get(DeNelle.Core.UI.HudStrings.KeyNavBuild);
+                string talk = DeNelle.Core.UI.HudStrings.Get(DeNelle.Core.UI.HudStrings.KeyNavTalk);
+                if (measured.Contains(build))
+                    failures.Add(Tag + " the outside dock still carries a '" + build + "' face — the " +
+                                 "owner ruled the player cannot build outside the castle");
+                if (measured.Contains(talk))
+                    failures.Add(Tag + " the outside dock still carries a '" + talk + "' face — the " +
+                                 "owner ruled the player cannot talk outside the castle");
+                if (!measured.Contains("ITEM"))
+                    failures.Add(Tag + " the outside dock has NO ITEM face — the owner ruled the " +
+                                 "player 'can use items still'");
+
+                // Geometry, re-derived from the count FOUND, exactly as the calm case does.
+                int n = measured.Count > 0 ? measured.Count : expected.Length;
+                float headroom = DeNelle.HUD.Kit.HudAreasHost.ActionBarRightHeadroomRatio;
+                float mountFrac = DeNelle.HUD.Kit.HudAreasHost.ActionBarMaxX -
+                                  DeNelle.HUD.Kit.HudAreasHost.ActionBarMinX;
+                foreach (var s in DockSurfaces)
+                {
+                    float mount = DeNelle.Core.UI.HudDockLayout.CanvasLocalWidthPx(s[0], s[1]) * mountFrac;
+                    var sol = DeNelle.Core.UI.HudDockLayout.Solve(n, mount, mount * (1f + headroom));
+                    string at = " at " + s[0].ToString("0") + "x" + s[1].ToString("0");
+                    if (sol.Overflowed)
+                        failures.Add(Tag + " the outside dock OVERFLOWS" + at + " with " + n + " faces");
+                    else if (sol.SlotWidthPx < DeNelle.Core.UI.HudDockLayout.MinSlotPx - 0.01f)
+                        failures.Add(Tag + " an outside face solves to " + sol.SlotWidthPx.ToString("0.#") +
+                                     " px" + at + ", under the touch floor (" +
+                                     DeNelle.Core.UI.HudDockLayout.MinSlotPx.ToString("0") + " px)");
+                }
+
+                // THE LAST HOP, and the one that was actually missing before this ticket: the HUD
+                // already knew the hero was outside (HudContextEvaluator.IsInTownRing ->
+                // HudContext.Overworld -> HudPosture.CalmExplore), but hud-areas.json listed the
+                // SAME peacefulDock under calm(town) AND calm(explore), so the dock was identical
+                // on both sides of the boundary. Assert the explore row now names this dock — a
+                // perfectly-built outside dock that no posture row mounts is invisible.
+                string resJson = Path.Combine(Application.dataPath, "Resources/Data/Canonical/hud-areas.json");
+                string samJson = Path.Combine(Application.dataPath, "StreamingAssets/Data/Canonical/hud-areas.json");
+                foreach (var p in new[] { resJson, samJson })
+                {
+                    if (!File.Exists(p)) continue;   // the calm case already fails a missing file
+                    string json = File.ReadAllText(p);
+                    int explore = json.IndexOf("calm(explore)", System.StringComparison.Ordinal);
+                    if (explore < 0) { failures.Add(Tag + " hud-areas.json has no calm(explore) posture row: " + p); continue; }
+                    // The row ends where the next posture begins.
+                    int next = json.IndexOf("\"posture\"", explore, System.StringComparison.Ordinal);
+                    string row = next > explore ? json.Substring(explore, next - explore) : json.Substring(explore);
+                    if (row.IndexOf("\"outsideDock\"", System.StringComparison.Ordinal) < 0)
+                        failures.Add(Tag + " hud-areas.json calm(explore) does not mount \"outsideDock\" — " +
+                                     "the outside dock builds but no posture ever shows it: " + p);
+                    if (row.IndexOf("\"peacefulDock\"", System.StringComparison.Ordinal) >= 0)
+                        failures.Add(Tag + " hud-areas.json calm(explore) still mounts \"peacefulDock\" — " +
+                                     "the player would get BUILD and TALK outside the castle: " + p);
+                }
+
+                log.AppendLine("  measured outside dock: [" + string.Join(" ", measured) + "] built live; " +
+                               "BUILD/TALK absent by construction, ITEM present, calm(explore) mounts it");
+            }
+            catch (System.Exception ex)
+            {
+                failures.Add(Tag + " building the outside dock THREW " + ex.GetType().Name + ": " + ex.Message);
+            }
+            finally
+            {
+                if (probeGo != null) UnityEngine.Object.DestroyImmediate(probeGo);
+            }
+        }
 
         // ── 2. View purity (source oracle — the WO-835 architecture law) ──────
         private static void CheckViewPurity(List<string> failures, StringBuilder log)

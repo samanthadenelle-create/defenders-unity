@@ -196,7 +196,9 @@ namespace DeNelle.Editor.Regression
                 Case(failures, "boxes-pinned",     () => Case0_BoxesStillAuthored(failures, notes));
                 Case(failures, "canon-parity",     () => Case1_CanonParity(failures, notes));
                 Case(failures, "collector-chip",   () => Case2_CollectorChip(failures, notes));
-                Case(failures, "manage-face",      () => Case3_ManageFace(failures, notes));
+                // Case 3 [manage-face] DELETED — WO-1666 §3. It measured the retired legacy bar;
+                // HudActionBarRegression.CheckMeasuredPeacefulDock measures the live dock's
+                // caption fit instead. See the tombstone below Case 2 for the quoted proof.
                 Case(failures, "wave-band",        () => Case4_WaveBand(failures, notes));
                 Case(failures, "tier-stamp",       () => Case5_TierStamp(failures, notes));
                 Case(failures, "deck-card-labels", () => Case6_DeckCardSingleProducer(failures, notes));
@@ -412,7 +414,10 @@ namespace DeNelle.Editor.Regression
                 }
 
                 RequireMountWidth(failures, notes, host, DeNelle.HUD.Kit.HudArea.ActionBar,
-                    ActionBarZoneFrac, "Case 3 divides the action bar into per-face slots across it");
+                    ActionBarZoneFrac, "the ActionBar mount the LIVE peaceful dock is solved across " +
+                    "(HudActionBarRegression.CheckMeasuredPeacefulDock). ⚠ WO-1666 §3: this reason used to " +
+                    "read 'Case 3 divides the action bar into per-face slots across it' — Case 3 is deleted, " +
+                    "the mount is not");
                 RequireMountWidth(failures, notes, host, DeNelle.HUD.Kit.HudArea.Status,
                     StatusZoneFrac, "Case 4 fits the wave lines and the Start Now CTA inside it");
 
@@ -514,177 +519,113 @@ namespace DeNelle.Editor.Regression
         // =====================================================================
         //  CASE 2 - the Collectors chip: "Tap to collec" can never come back
         // =====================================================================
-        // The chip is 220 x 112 ref px with a 0.92 label inset, so the label rect is
-        // ~202 x 112. Line 1 ("Collectors N/M full") WRAPS - which is fine, the chip is
-        // two lines tall by design - so the real assertions are:
-        //   (a) every ACTION line fits on ONE line of ~202 px at the floor  <- defect 1
-        //   (b) the whole block still seats in 112 px of height once line 1 has wrapped
+        // The chip is 220 x 112 ref px with a 0.92 label inset, so the label rect is ~202 x 112.
         //
-        // ⭐ WO-1663 — the ROLE is fixed here (Body -> Title + slack; the chip is an obsidian face,
-        // HudKitController.BuildRailChip:2287 calls MedievalUiSkin.ApplyButton). TWO findings came
-        // out of that re-point and are RECORDED, NOT ACTED ON, pending a lead/owner ruling:
+        // ⭐ WO-1663 fixed the ROLE (Body -> Title + slack; the chip is an obsidian face —
+        // HudKitController.BuildRailChip:2287 calls MedievalUiSkin.ApplyButton).
+        // ⭐ WO-1666 §4 then removed the two branches that measured strings this chip NO LONGER
+        // DRAWS. What survives is the one assertion that is still about a real render: the word
+        // the chip actually paints fits the box it actually has.
         //
-        // ⚠ 1. THE THREE ACTION LINES ARE NO LONGER DRAWN ON THIS CHIP. FormatCollectorChip
-        //    (HudKitController.cs:2239-2246) returns HudStrings.Get(KeyCollectorsTitle) and
-        //    NOTHING else — WO-1194 moved the storage state onto the three resource rows. The
-        //    runtime assignments are `_collectorsChipLabel.text = FormatCollectorChip(cs)`
-        //    (:5373) and `= HudStrings.Get(KeyCollectorsTitle)` (:2749). So KeyCollectorsFullLine
-        //    / NearlyLine / WaitingLine are measured here against a surface that does not paint
-        //    them. Coverage over a dormant string is not coverage; retiring them from this case
-        //    is a COPY decision, so it waits for a ruling rather than being done quietly.
+        // ⛔ BRANCHES (a) AND (b) ARE DELETED. THE NO-CALLER PROOF, read at source 2026-09-10:
+        //    FormatCollectorChip (HudKitController.cs:2239-2246) is, in its entirety:
+        //        return HudStrings.Get(HudStrings.KeyCollectorsTitle);
+        //    and the chip's only two runtime text assignments are
+        //        _collectorsChipLabel.text = FormatCollectorChip(cs);                    (:5373)
+        //        _collectorsChipLabel.text = HudStrings.Get(KeyCollectorsTitle);         (:2749)
+        //    WO-1194 moved the storage state onto the three resource rows, so:
+        //      (a) measured KeyCollectorsFullLine / NearlyLine / WaitingLine — three ACTION lines
+        //          with no drawing caller anywhere in Assets/ (every other reference is HudStrings'
+        //          own key table, this suite, or CollectorTellRegression's copy-law check);
+        //      (b) wrapped KeyCollectorsCount for a HEIGHT budget — same story, no drawing caller.
+        //    A pin over a string nobody paints cannot ever red, yet it reads in the gate log as
+        //    coverage of this chip. That is not coverage (lead ruling, WO-1666 §1-2).
         //
-        // ⚠ 2. THE DRAWN CASE IS THE AUTHORED CASE, NOT UPPER. ApplyButton:86 upper-cases the
-        //    label VALUE once at apply time and never sets FontStyles.UpperCase, and both
-        //    assignments above run AFTER it — so the chip draws "Harvest", not "HARVEST". These
-        //    measurements therefore pass the authored string, deliberately. Measuring the upper
-        //    form here would model a render that does not happen (that is this file's own root
-        //    cause, one step to the other side).
+        // ⚠ THE FOUR CANON KEYS THEMSELVES ARE DELIBERATELY LEFT IN canon-strings.json AND ITS
+        // 12 LOCALE TWINS. They are still owned and asserted elsewhere —
+        // CollectorTellRegression.cs:231-235 reads all four for the WO-857 "never say Storage"
+        // copy law, SmartArgumentRegression and LocalizationSmartStringPackageTests read
+        // KeyCollectorsCount — so removing the rows would red three other suites for no gain.
+        // Retiring canon copy is a COPY decision and it was NOT taken here.
         //
-        // THE PROOF THAT THE RE-POINT IS RIGHT is the historic cut, re-measured 2026-09-10 from
-        // the committed font assets: "Tap to collect" @30 is 182.7 px in Body — INSIDE the 202.4
-        // px rect, i.e. Body said it FITS — yet all 8 runs of the 2026-08-22 fleet captured it cut
-        // to "Tap to collec". At the drawn face it is 201.9 x 1.15 = 232.2 px, which reds. Body
-        // could not have caught the very defect this case exists for; the skinned measurement can.
+        // ⚠ CASE: the chip draws the AUTHORED case, not upper. ApplyButton:86 upper-cases the
+        // label VALUE once at apply time and never sets FontStyles.UpperCase, and BOTH assignments
+        // above run after it — so the chip draws "Harvest", never "HARVEST". Measuring the upper
+        // form would model a render that does not happen.
+        //
+        // THE PROOF THAT THE ROLE RE-POINT IS RIGHT is the historic cut, re-measured 2026-09-10
+        // from the committed font assets: "Tap to collect" @30 is 182.7 px in Body — INSIDE the
+        // 202.4 px rect, i.e. Body said it FITS — yet all 8 runs of the 2026-08-22 fleet captured
+        // it cut to "Tap to collec". At the drawn face it is 201.9 x 1.15 = 232.2 px, which reds.
         private static void Case2_CollectorChip(List<string> failures, List<string> notes)
         {
             float boxW = RailChipWidthPx * ButtonLabelInset;
             float boxH = RailChipHeightPx;
             float floor = ElarionUiKit.FontFloor;
 
-            // Worst realistic counts: two digits each side, and a two-digit percentage.
-            string count = Copy(failures, notes, HudStrings.KeyCollectorsCount, 12, 12);
-            string[] actionLines =
-            {
-                Copy(failures, notes, HudStrings.KeyCollectorsFullLine),
-                Copy(failures, notes, HudStrings.KeyCollectorsNearlyLine, 99),
-                Copy(failures, notes, HudStrings.KeyCollectorsWaitingLine, 99),
-            };
-
-            foreach (string action in actionLines)
-            {
-                string detail;
-                float w = MeasureFacePx(SkinnedFaceRole, action, floor, out detail);
-                if (w < 0f)
-                {
-                    failures.Add("[collector-chip] cannot measure '" + action + "': " + detail);
-                    continue;
-                }
-                if (w > boxW)
-                    failures.Add("[collector-chip] the action line '" + action + "' MEASURES " +
-                                 w.ToString("0.0") + " ref px at the " + floor + "px legibility floor " +
-                                 SkinnedFaceWhy() + " but the " +
-                                 "chip label rect is only " + boxW.ToString("0.0") + " px (" + detail +
-                                 "). There is no legible size at which it fits, so TMP cuts it - that is the " +
-                                 "captured 'Tap to collec' exactly. Shorten the WORDS in canon-strings.json; " +
-                                 "do NOT drop the font and do NOT widen the chip (three rail chips share one edge)");
-
-                // (b) height: line 1 wraps, then the action line. Measured wrap, not assumed.
-                int lines = WrappedLineCount(count, boxW, floor, SkinnedFaceRole) + 1;
-                float needed = lines * floor * LineHeightFactor;
-                if (needed > boxH)
-                    failures.Add("[collector-chip] '" + count + "' + '" + action + "' needs " + lines +
-                                 " wrapped lines = " + needed.ToString("0.0") + " ref px of height at the floor, " +
-                                 "but the chip is only " + boxH.ToString("0.0") + " px tall - the bottom line " +
-                                 "would be truncated away");
-            }
-
             string d2;
             string title = Copy(failures, notes, HudStrings.KeyCollectorsTitle);
             float cw = MeasureFacePx(SkinnedFaceRole, title, floor, out d2);
-            if (cw > boxW)
-                failures.Add("[collector-chip] even the bare title '" + title + "' MEASURES " + cw.ToString("0.0") +
-                             " px " + SkinnedFaceWhy() + " against a " + boxW.ToString("0.0") +
-                             " px rect (" + d2 + ")");
-            notes.Add("collector chip rect " + boxW.ToString("0") + "x" + boxH.ToString("0") +
-                      " ref px; longest action line " +
-                      LongestOf(actionLines, floor, SkinnedFaceRole).ToString("0.0") + " px " + SkinnedFaceWhy());
+            // -1 is "no font resolvable", never "it fits" — a stated skip, as everywhere else here.
+            if (cw < 0f)
+                notes.Add("[collector-chip] '" + title + "' not measurable headlessly (" + d2 +
+                          ") - the chip's label fit asserted NOTHING this run");
+            else if (cw > boxW)
+                failures.Add("[collector-chip] the chip's ONLY drawn word '" + title + "' MEASURES " +
+                             cw.ToString("0.0") + " px " + SkinnedFaceWhy() + " against a " +
+                             boxW.ToString("0.0") + " px rect (" + d2 + "). This is the surface that " +
+                             "shipped 'Tap to collec'. Shorten the WORD in canon-strings.json; do NOT " +
+                             "drop the font (FontFloor is a floor) and do NOT widen the chip (three rail " +
+                             "chips share one right edge, RailChipWidthPx is pinned by HudUiRegression 8d)");
+            else
+                notes.Add("collector chip rect " + boxW.ToString("0") + "x" + boxH.ToString("0") +
+                          " ref px; its one drawn word '" + title + "' measures " + cw.ToString("0.0") +
+                          " px " + SkinnedFaceWhy());
         }
 
         // =====================================================================
-        //  CASE 3 - the Manage bar face: "Manag..." can never come back
+        //  CASE 3 - THE MANAGE BAR FACE - DELETED (WO-1666 sec.3, 2026-09-10)
         // =====================================================================
-        // A face is one MaxVisibleFaces-th of the ActionBar zone, which is a fraction of
-        // the CANVAS - so it is aspect-dependent and has to be measured at both. The
-        // captured sentence "Manage - 2 of 3 idle" was roughly four times its box; the
-        // face now paints ManageBaseLabel plus a canon BADGE on a second line.
+        // This case measured HudActionBarModel.ManageBaseLabel + two canon badge lines against
+        // one MaxVisibleFaces-th of the ActionBar zone. IT MEASURED A SURFACE THE GAME DOES NOT
+        // BUILD, and WO-1663 only made it measure that dead surface in the right font.
         //
-        // ⭐ WO-1663 §5 — THE ROLE IS FIXED HERE; THE SURFACE ITSELF IS AN OPEN QUESTION, RAISED
-        // AND DELIBERATELY NOT ANSWERED BY THIS LANE. This case sizes its box from
-        // HudActionBarModel.MaxVisibleFaces (= 4, HudActionBarModel.cs:139). Read at source
-        // 2026-09-10: HudKitController.BindActionBar (:3473) opens with
-        //     if (_peacefulDockRoot != null) { ...SetActive(false) on every _barButtons[i]...
-        //       FlowTrace.Step("HudKit", "adaptive peaceful dock owns the actionBar; legacy
-        //       repacker retired"); return; }
-        // at :3480-3486 — so whenever the peaceful dock exists the legacy faces are disabled and
-        // the model is never subscribed. That matches CLAUDE.md §7 ("no reasoning about the
-        // shipped bar may start from that constant"), and it means this case measures a RETIRED
-        // geometry. Re-pointing its role only turns a green oracle over a dead surface into a red
-        // one over a dead surface; neither is coverage. The live authority for the shipped bar is
-        // HudActionBarRegression.CheckMeasuredPeacefulDock, which BUILDS the real dock.
-        // ⛔ Do not delete, re-point or "fix" this case on a lane's own judgement — the ruling is
-        // the owner's: retire it, or re-point it at the dock's measured slots. WO-1663 §5.
-        private static void Case3_ManageFace(List<string> failures, List<string> notes)
-        {
-            float floor = ElarionUiKit.FontFloor;
-            float slotFrac = (1f - BarGap * (HudActionBarModel.MaxVisibleFaces - 1)) /
-                             HudActionBarModel.MaxVisibleFaces;
-
-            string[] faceLines =
-            {
-                HudActionBarModel.ManageBaseLabel,
-                Copy(failures, notes, HudStrings.KeyManageIdleAll, 3),
-                Copy(failures, notes, HudStrings.KeyManageIdleSome, 2, 3),
-            };
-
-            foreach (var a in Aspects)
-            {
-                float canvasW = a.W / ScaleFactor(a.W, a.H);
-                float faceW = canvasW * ActionBarZoneFrac * slotFrac;
-                float boxW = faceW * ButtonLabelInset;
-
-                foreach (string line in faceLines)
-                {
-                    string detail;
-                    float w = MeasureFacePx(SkinnedFaceRole, line, floor, out detail);
-                    if (w < 0f) { failures.Add("[manage-face] cannot measure '" + line + "': " + detail); continue; }
-                    if (w > boxW)
-                        failures.Add("[manage-face] at " + a.Name + " the face line '" + line + "' MEASURES " +
-                                     w.ToString("0.0") + " ref px at the " + floor + "px floor " + SkinnedFaceWhy() +
-                                     " but a bar face's " +
-                                     "label rect is only " + boxW.ToString("0.0") + " px (" + detail +
-                                     "). TMP ellipsises past the floor - that is the captured 'Manag...'. Put " +
-                                     "FEWER WORDS on the face (HudStrings/ManageFaceBadge); the one-line " +
-                                     "sentence belongs in HudActionBarModel.ManageFaceLabel, which nothing paints");
-                }
-
-                // Two lines have to seat in the face's height as well.
-                float barZoneH = (a.H / ScaleFactor(a.W, a.H)) * (0.150f - 0.015f);
-                float faceH = barZoneH * (0.95f - 0.10f);
-                float needed = 2f * floor * LineHeightFactor;
-                if (needed > faceH)
-                    failures.Add("[manage-face] at " + a.Name + " a two-line face needs " +
-                                 needed.ToString("0.0") + " ref px but the face is only " + faceH.ToString("0.0") +
-                                 " px tall - the badge line would be culled, which is worse than the ellipsis " +
-                                 "(a culled line says nothing at all)");
-                notes.Add("manage face at " + a.Name + ": " + boxW.ToString("0") + "x" + faceH.ToString("0") +
-                          " ref px of label rect");
-            }
-
-            // The View must still paint the BADGE, not the sentence, or the box math above is moot.
-            string src = ReadSrc(HudSrc);
-            if (src != null)
-            {
-                if (src.IndexOf("ManageFaceBadge", StringComparison.Ordinal) < 0)
-                    failures.Add("[manage-face] HudKitController no longer reads HudActionBarModel." +
-                                 "ManageFaceBadge - if it went back to painting ManageFaceLabel, the face is " +
-                                 "carrying a sentence again and every measurement above is measuring the wrong " +
-                                 "string");
-                if (src.IndexOf("ElarionUiKit.FitBlock(_manageButtonLabel)", StringComparison.Ordinal) < 0)
-                    failures.Add("[manage-face] the Manage face label is no longer re-armed with FitBlock - " +
-                                 "BuildObsidianButton arms FitSingleLine (no-wrap + ellipsis), so a second line " +
-                                 "cannot render and the badge is silently ellipsised away");
-            }
-        }
+        // THE NO-CALLER PROOF, quoted from HudKitController.BindActionBar (:3473), lines
+        // :3480-3486, read at source 2026-09-10:
+        //
+        //     if (_peacefulDockRoot != null)
+        //     {
+        //         for (int i = 0; i < _barButtons.Length; i++)
+        //             if (_barButtons[i] != null) _barButtons[i].SetActive(false);
+        //         FlowTrace.Step("HudKit", "adaptive peaceful dock owns the actionBar; legacy repacker retired");
+        //         return;
+        //     }
+        //
+        // Whenever the peaceful dock exists, every legacy bar face is DISABLED and the model is
+        // never subscribed at all. CLAUDE.md s7 states the same rule and forbids reasoning about
+        // the shipped bar from MaxVisibleFaces.
+        //
+        // ⛔ IT WAS DELETED, NOT RE-POINTED, AND THE REASON IS THAT THE RE-POINT ALREADY EXISTS.
+        // HudActionBarRegression.CheckMeasuredPeacefulDock (HudActionBarRegression.cs:290) BUILDS
+        // the real dock through kit.BuildPeacefulDockProbe, reads each caption out of the built
+        // tree, solves the slot width with DeNelle.Core.UI.HudDockLayout.Solve, and measures every
+        // caption against `sol.SlotWidthPx * CaptionInset` at the hard font floor (:395-415),
+        // failing with "it can only render elided". Adding a second caption-fit measurement here
+        // would be the duplicated state CLAUDE.md s2/s5/s16 each describe - two oracles over one
+        // face, drifting apart, which is how this file shipped "Tap to collec" green in the first
+        // place. ⛔ Do NOT re-add a Manage-face fit pin here: extend that one instead.
+        //
+        // ⚠ ONE OPEN QUESTION HANDED ON, deliberately NOT fixed by WO-1666 (out of its scope, and
+        // the face class is unverified): CheckMeasuredPeacefulDock measures its captions at
+        // FontRole.Body (HudActionBarRegression.cs:397-399). Whether a dock medallion caption is
+        // a skinned obsidian face (Title/Bold/spacing 2, and therefore owed MeasureFacePx) or a
+        // plain ElarionUiKit label was NOT established. If it is skinned, that oracle carries the
+        // exact WO-1663 blind spot this file just closed. Classify the face BEFORE changing it -
+        // re-pointing a plain face to Title makes a working screen red (WO-1663 sec.7).
+        //
+        // Symbols kept alive on purpose: ActionBarZoneFrac and BarGap still back the
+        // [boxes-pinned] mount-width and source-literal checks in Case 1, which guard the mount
+        // the LIVE dock is solved across. They are no longer "Case 3's" numbers.
 
         // =====================================================================
         //  CASE 4 - the wave block owns a band the compass cannot enter
@@ -1218,44 +1159,18 @@ namespace DeNelle.Editor.Regression
             return Mathf.Pow(screenW / 1080f, 0.5f) * Mathf.Pow(screenH / 1920f, 0.5f);
         }
 
-        /// <summary>Greedy word wrap using the SAME measured advances, so the line count this
-        /// suite asserts against is the line count TMP would produce - not a guess at one.
-        /// ⭐ WO-1663: <paramref name="role"/> IS A PARAMETER, NOT A CONSTANT. This helper is
-        /// shared, and its callers do not all draw the same face — an obsidian caller passes
-        /// <see cref="SkinnedFaceRole"/> (and is charged the slack by <see cref="MeasureFacePx"/>),
-        /// a plain ElarionUiKit.Label caller passes Body. Hardcoding either one here is how the
-        /// helper silently reported on a font its caller does not draw.</summary>
-        private static int WrappedLineCount(string text, float boxW, float fontSize,
-                                            ElarionUiKit.FontRole role)
-        {
-            if (string.IsNullOrEmpty(text)) return 0;
-            string[] words = text.Split(' ');
-            int lines = 1;
-            string current = "";
-            foreach (string word in words)
-            {
-                string candidate = current.Length == 0 ? word : current + " " + word;
-                string detail;
-                float w = MeasureFacePx(role, candidate, fontSize, out detail);
-                if (w > boxW && current.Length > 0) { lines++; current = word; }
-                else current = candidate;
-            }
-            return lines;
-        }
-
-        /// <summary>The widest of <paramref name="lines"/> at <paramref name="fontSize"/>, measured
-        /// in the face the caller actually draws (WO-1663 — see <see cref="WrappedLineCount"/>).</summary>
-        private static float LongestOf(string[] lines, float fontSize, ElarionUiKit.FontRole role)
-        {
-            float max = 0f;
-            foreach (string s in lines)
-            {
-                string detail;
-                float w = MeasureFacePx(role, s, fontSize, out detail);
-                if (w > max) max = w;
-            }
-            return max;
-        }
+        // ⭐ WO-1666 §4 — `WrappedLineCount` AND `LongestOf` ARE DELETED, and the reason is that
+        // their ONLY callers were Case 2's dormant branches (a) and (b), removed in the same
+        // change. WO-1663 had just given both a role PARAMETER so an obsidian caller and a plain
+        // caller could share them; with the callers gone, that parameter was unexercised and the
+        // two methods were dead code inside the very file this ticket exists to stop reporting on
+        // things that are not there.
+        //
+        // ⛔ IF WRAPPING IS NEEDED AGAIN, DO NOT RE-ADD THESE. `TryWrapLines` (WO-1662, further
+        // down this file) is the live wrapper: it measures through `MeasureFacePx`, charges the
+        // skinned slack, and — unlike the two deleted here — returns a STATED SKIP when the font
+        // is not measurable headlessly instead of silently treating an unmeasurable line as a fit.
+        // A one-line width is `MeasureFacePx(role, text, sizePx, out detail)` directly.
 
         // =====================================================================
         //  CASE 8 - the action bar's five faces (WO-1359)
@@ -1286,6 +1201,15 @@ namespace DeNelle.Editor.Regression
                             StringComparison.Ordinal) < 0)
                 failures.Add("[bar-face-icons] BuildPeacefulDockSlot must receive separate stable icon " +
                              "and localized label keys; deriving art from translated copy breaks icons");
+            // WO-1672 — the icon/label separation now lives in the SHARED builder the outside dock
+            // uses too (BuildPeacefulDockSlot became a thin wrapper over it). Pin BOTH signatures:
+            // the wrapper alone would let the real builder start deriving art from translated copy
+            // with this case still green.
+            if (src.IndexOf("int index, int count, string iconKey, string labelKey, string literalCaption,",
+                            StringComparison.Ordinal) < 0)
+                failures.Add("[bar-face-icons] the shared dock slot builder no longer receives separate " +
+                             "stable icon and localized label keys; deriving art from translated copy " +
+                             "breaks every icon the moment a locale changes");
             if (src.IndexOf("string iconKey = (caption ?? string.Empty).ToLowerInvariant();",
                             StringComparison.Ordinal) >= 0)
                 failures.Add("[bar-face-icons] translated caption is still used as an icon identity");
@@ -1332,9 +1256,19 @@ namespace DeNelle.Editor.Regression
             // ---- 8c  the caption is STILL live text -----------------------------------------
             // If this ever stops being true the art becomes the only producer of the word, and
             // then a baked word is not a duplicate - it is the whole label, un-localisable.
+            // ⚠ WO-1672 RE-POINT (chain 39 red). This needle was
+            // `string caption = HudStrings.Get(labelKey);` and it stopped matching when the calm
+            // dock's slot builder was hoisted into the shared `BuildDockSlot` that the outside dock
+            // also uses - `BuildPeacefulDockSlot` is now a three-line wrapper. The law is NOT
+            // weakened: the needle below still proves the word is resolved FROM A LOCALIZATION KEY
+            // at runtime, and it additionally pins that the ONE non-localized path is the
+            // explicitly-named `literalCaption` parameter, sitting SECOND in the `??` (the ITEM
+            // face, which has no HudStrings key yet - WO-1672 §4). A seat that made literals the
+            // default would flip those operands and red here.
             if (src.IndexOf("slot.SetCaption(caption);", StringComparison.Ordinal) < 0 ||
-                src.IndexOf("string caption = HudStrings.Get(labelKey);", StringComparison.Ordinal) < 0)
-                failures.Add("[bar-face-icons] BuildPeacefulDockSlot no longer resolves and paints its label key - " +
+                src.IndexOf("string caption = literalCaption ?? HudStrings.Get(labelKey);",
+                            StringComparison.Ordinal) < 0)
+                failures.Add("[bar-face-icons] BuildDockSlot no longer resolves and paints its label key - " +
                              "the face's word must stay LIVE text; art must never become its only producer");
             if (src.IndexOf("LocalText.Changed += RefreshLocalizedHudCopy;", StringComparison.Ordinal) < 0 ||
                 src.IndexOf("LocalText.Changed -= RefreshLocalizedHudCopy", StringComparison.Ordinal) < 0)
@@ -1914,6 +1848,47 @@ namespace DeNelle.Editor.Regression
         /// <summary>The role <see cref="MedievalUiSkin"/> installs on every obsidian face
         /// (MedievalUiSkin.cs:91). Every measurement of such a label reads THIS, never Body.</summary>
         private const ElarionUiKit.FontRole SkinnedFaceRole = ElarionUiKit.FontRole.Title;
+
+        // ⭐ WO-1667 (b) — THE WEIGHT TERM ON ITS OWN, FOR A FACE THAT IS BOLD BUT NOT SKINNED.
+        // ---------------------------------------------------------------------
+        // ⛔ THIS IS NOT A SECOND COPY OF SkinnedFaceWidthSlack — IT IS A DIFFERENT TERM, AND
+        // CONFLATING THEM WOULD BE THE BUG. That constant covers bold weight PLUS
+        // characterSpacing 2, because MedievalUiSkin.ApplyButton sets both (:88-89). A face that
+        // is merely drawn bold has NO spacing term: charging it 1.15 would over-report it, and
+        // charging a skinned face 1.10 would under-report it. Two allowances, two facts.
+        // ⛔ And do NOT "derive" one from the other — how TMP scales boldSpacing and
+        // characterSpacing is not asserted anywhere in this repo and must not start being
+        // asserted here (WO-1662's own rule, CLAUDE.md §11B).
+        //
+        // WHY 1.10 AND NOT A NEW NUMBER: the repo already chose this value for exactly this term.
+        // RumorBoardPanel.PageButtonBoldSlack (Assets/_Modules/Village/Hero/RumorBoardPanel.cs:128)
+        // is 1.10f, and its doc comment states the same reasoning verbatim — "MeasureLineWidthPx
+        // sums regular-weight advances; the button is bold. 10% slack so the bold face cannot push
+        // a glyph into ellipsis." Inventing a second number for one physical fact is how the two
+        // would drift.
+        //
+        // ⭐ WHERE IT LIVES, AND WHY HERE (WO-1667 asked for the choice to be stated):
+        // Both suites are in the SAME assembly — Assets/Editor/Regression/DeNelle.EditorRegression.asmdef
+        // — so `internal` reaches HudActionBarRegression (namespace DeNelle.Editor) from here
+        // (namespace DeNelle.Editor.Regression) with no asmdef change.
+        //   * REJECTED: referencing RumorBoardPanel.PageButtonBoldSlack directly. It IS reachable
+        //     (that asmdef lists DeNelle.Village), so this is a choice, not a limitation. But it
+        //     would couple the SHIPPED DOCK ORACLE's strictness to a rumor-board page-button
+        //     constant: retune one screen and an unrelated oracle silently changes. It also points
+        //     the dependency the wrong way — an editor oracle importing a presentation class's
+        //     layout constant — and that constant's doc names it for THAT button, so it would have
+        //     to be reworded to serve two masters. WO-1667 also lists RumorBoardPanel as not-to-touch.
+        //   * REJECTED: a new shared static class for slacks. It would leave SkinnedFaceWidthSlack
+        //     behind (WO-1667 forbids touching it), producing exactly the split it was meant to
+        //     prevent — one allowance in a new file, its sibling still here.
+        //   * CHOSEN: next to SkinnedFaceWidthSlack, so BOTH allowances are read in one place and
+        //     a reader comparing them sees why they differ. HudActionBarRegression references it.
+        //
+        // ⚠ RESIDUAL, STATED: RumorBoardPanel still holds its own 1.10 and is untouched, so the
+        // repo has ONE editor-side home and ONE runtime copy. Collapsing those needs the kit-side
+        // measurer WO-1663 §9 describes (a boldSlack-parameterised MeasureLineWidthPx in
+        // ElarionUiKit, serving oracle and runtime alike) — deliberately NOT this ticket.
+        internal const float BoldOnlyWidthSlack = 1.10f;
 
         // ⭐ WO-1663 — THE ONE MEASUREMENT EVERY CASE IN THIS FILE GOES THROUGH.
         // ---------------------------------------------------------------------
@@ -2570,9 +2545,13 @@ namespace DeNelle.Editor.Regression
         //   15b  the View relays the Core words (BuildersChipCopy.Format in HudSrc) and the chip
         //        is not hidden on an idle queue (no SetActive keyed on BuilderBusy);
         //   15c  "Builders idle 2" MEASURES inside the chip's label rect at the chip's own floor
-        //        (BuildRailChip fits 22..30).
+        //        (BuildRailChip fits 22..30), in the face it is DRAWN in (WO-1663);
+        //   15d  the chip's build call is still RETIRED, so 15c is named a pre-emptive pin rather
+        //        than mistaken for live coverage - and the day it is un-retired, this REDS and
+        //        says to re-read 15c's box (WO-1666 §5).
         // RED, one line each: return "Builders 0/2" for the idle case (15a); gate the chip root
-        // on s.BuilderBusy > 0 (15b); make the idle word "Builders standing idle: 2" (15c).
+        // on s.BuilderBusy > 0 (15b); make the idle word "Builders standing idle: 2" (15c);
+        // un-comment `BuildQueueStatusChip(pool);` in Build() (15d).
         // =====================================================================
         private static void Case15_BuildersChipIdle(List<string> failures, List<string> notes)
         {
@@ -2599,6 +2578,55 @@ namespace DeNelle.Editor.Regression
             {
                 RequirePin(failures, tag, hud, "BuildersChipCopy.Format(",
                     "the chip's words come from Core so this suite can drive them");
+
+                // ⭐ WO-1666 §5 — 15d: IS THIS CHIP STILL DORMANT? MACHINE-CHECKED, NOT NARRATED.
+                // The chip's build call is retired: `// BuildQueueStatusChip(pool);   // retired
+                // 2026-08-07 (owner)` at HudKitController.cs:811, and the method's own header
+                // (:1930-1936) says the wiring is kept on purpose ("two lines from returning").
+                // 15c is therefore a PRE-EMPTIVE fit pin, not live coverage — and the moment the
+                // chip is un-retired that flips, which is a fact a comment cannot notice.
+                //
+                // ⚠ ONLY THE MISSING HALF IS ASSERTED HERE — but the missing half is BIGGER than it
+                // looked, and this was MEASURED, not assumed (WO-1666, mutation-tested 2026-09-10).
+                // SessionShapeRegression Case7_OneDoor (SessionShapeRegression.cs:314-318) asserts
+                // `hud.IndexOf("// BuildQueueStatusChip(pool);") >= 0`. That substring occurs
+                // TWICE in HudKitController: the REAL retirement at :811, and a PROSE MENTION of it
+                // inside BuildQueueStatusChip's own doc comment at :1932. So the prose alone
+                // satisfies that pin. Replaying three mutations through this exact state machine:
+                //   * retirement line at :811 replaced with a LIVE call -> 15d FAILS, Case7 GREEN
+                //   * a LIVE call added elsewhere, comment left intact  -> 15d FAILS, Case7 GREEN
+                //   * every mention of the token deleted                -> 15d notes, Case7 RED
+                // i.e. Case7 catches only the total-erasure case, and 15d is the ONLY thing that
+                // catches an actual un-retirement. Not duplicated state — disjoint coverage.
+                // ⚠ That weakness in Case7's pin is REPORTED, NOT FIXED here: SessionShapeRegression
+                // is outside WO-1666's silo, and tightening someone else's pin without a ticket is
+                // how two oracles start drifting. See the WO-1666 RESULT.
+                bool commentedOut = hud.IndexOf("// BuildQueueStatusChip(pool);", StringComparison.Ordinal) >= 0;
+                int firstCall = hud.IndexOf("BuildQueueStatusChip(pool);", StringComparison.Ordinal);
+                bool liveCall = false;
+                while (firstCall >= 0)
+                {
+                    // A call is LIVE unless the same line comments it out. Walk back to the line
+                    // start rather than trusting a fixed offset, so re-indentation cannot fool it.
+                    int lineStart = hud.LastIndexOf('\n', firstCall) + 1;
+                    string before = hud.Substring(lineStart, firstCall - lineStart);
+                    if (before.IndexOf("//", StringComparison.Ordinal) < 0) { liveCall = true; break; }
+                    firstCall = hud.IndexOf("BuildQueueStatusChip(pool);", firstCall + 1, StringComparison.Ordinal);
+                }
+                if (liveCall)
+                    failures.Add(tag + " 15d: BuildQueueStatusChip(pool) IS BEING CALLED LIVE in " + HudSrc +
+                                 " - the Builders chip was un-retired (it was retired by the owner 2026-08-07). " +
+                                 "That is not a defect in itself, but 15c stops being a pre-emptive pin and " +
+                                 "becomes LIVE coverage of a shipped surface: re-read its box against what the " +
+                                 "chip is actually built with, and update this case's note in the same change " +
+                                 "(WO-1666 §5). SessionShapeRegression Case7_OneDoor owns the other half.");
+                else if (!commentedOut)
+                    notes.Add(tag + " 15d: neither a live nor a commented BuildQueueStatusChip(pool) found in " +
+                              HudSrc + " - the chip may have been removed outright. Case7_OneDoor owns that " +
+                              "assertion; this case only reports that 15c's surface is still not built.");
+                else
+                    notes.Add(tag + " 15d: chip DORMANT (build call retired at HudKitController.cs:811) - " +
+                              "15c below is a PRE-EMPTIVE fit pin, NOT live coverage of a shipped screen");
                 string chipPoll = Between(hud, "var qs = ObsidianQueueGate.Status;", "RepaintHeartfire(force: false);");
                 if (chipPoll != null && chipPoll.IndexOf("SetActive(", StringComparison.Ordinal) >= 0 &&
                     chipPoll.IndexOf("BuilderBusy", StringComparison.Ordinal) >= 0)
@@ -2608,14 +2636,16 @@ namespace DeNelle.Editor.Regression
 
             // 15c - the idle word fits the chip at the chip's floor.
             // ⭐ WO-1663 — role fixed (Body -> Title + slack; BuildRailChip is an obsidian face).
-            // ⚠ SURFACED, NOT FIXED: THIS CHIP DOES NOT BUILD TODAY. Its call site is retired at
+            // ⭐ WO-1666 §5 — THE DORMANCY IS NOW MACHINE-CHECKED BY 15d ABOVE, not asserted by
+            // this comment. THIS CHIP DOES NOT BUILD TODAY: its call site is retired at
             // HudKitController.cs:811 — `// BuildQueueStatusChip(pool);   // retired 2026-08-07
             // (owner)` — and the method's own header (:1930-1936) says the wiring is kept
             // DELIBERATELY because the chip is "two lines from returning", with
             // SessionShapeRegression Case7_OneDoor failing the build if that retirement line
             // disappears. So 15c is a PRE-EMPTIVE pin on a dormant surface, which is legitimate
             // and worth keeping — but it can never red on a shipped screen, and a reader must not
-            // mistake its green for the live bar being measured. Case model as in Case 2: the
+            // mistake its green for the live bar being measured; 15d says so in the gate log every
+            // run, and REDS if the chip is ever un-retired. Case model as in Case 2: the
             // chip's text is assigned at runtime (:5348, FormatQueueChip) AFTER ApplyButton
             // upper-cased the build-time word, so the drawn glyphs are "Builders idle 2", not
             // "BUILDERS IDLE 2". Measured 2026-09-10: 157.1 x 1.15 = 180.6 px in a 202.4 px rect.
@@ -2630,7 +2660,7 @@ namespace DeNelle.Editor.Regression
                              boxW.ToString("0.0") + " px (" + detail +
                              ") - it would ellipsise the count, the one number that carries the state");
             else notes.Add("builders idle chip '" + idleText + "' " + w.ToString("0.0") + " px " + SkinnedFaceWhy() +
-                           " in " + boxW.ToString("0") + " px");
+                           " in " + boxW.ToString("0") + " px (DORMANT SURFACE, pre-emptive pin - see 15d)");
         }
 
         private static void RequirePin(List<string> failures, string tag, string src, string literal, string why)

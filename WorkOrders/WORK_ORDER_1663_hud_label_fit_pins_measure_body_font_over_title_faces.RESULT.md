@@ -1,5 +1,26 @@
 # WORK ORDER 1663 — RESULT
 
+> ## ⚠ CORRECTION APPENDED 2026-09-10 (WO-1667 §C) — THE "PRE (Body)" COLUMN BELOW IS WRONG
+>
+> This ledger's Body figures were measured from `Assets/Resources/RpgUi/font/font_body.asset`.
+> **The live measurer never loads that asset.** `FontFor(FontRole.Body)` runs the numeral-legibility
+> gate, `font_body` **FAILS** it (`[Flow:UI] role font 'font_body' REJECTED - its numeral 1 is a bare
+> stroke`, `Builds/wave8-reg1`), so it falls through to `ResolveDefaultFont()` =
+> **`ElarionLocaleFallback`**, which is WIDER. Every measurement in that whole gate log names that one
+> asset.
+>
+> **What survives:** the `Title` column and every charged/post number — `font_title` is **accepted**
+> by the same gate, so those were measured from the asset that really draws. **Every conclusion in
+> this ledger stands**, and §2's headline gets stronger: re-measured with the REAL Body font,
+> `"Tap to collect"` @30 is **178.4** px in a 202.4 px box — even further inside than the 182.7
+> reported below — and it still shipped cut, while `Title x1.15 = 232.2` reds.
+>
+> **What to distrust:** any "PRE (Body)" number in §3's table. The re-measured values are in the
+> WO-1667 RESULT §C1. Per CLAUDE.md §15 this dated ledger's body is NOT rewritten — this banner
+> supersedes the column.
+
+
+
 **Status:** PARTIALLY IMPLEMENTED — awaiting gate + three rulings
 **Lane:** LABEL-PINS
 **Date:** 2026-09-10
