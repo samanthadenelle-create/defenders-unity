@@ -223,6 +223,15 @@ wording "Not yet upgraded . 4 levels", ruling 14; item A = ruling 13); WO-1658 (
 well anchors, Manage hub cost band). WO-1659 CLOSED no live defect (`bf6ac69d9`). Next: APK #5, a device session to retire the allowlist
 entries (six harvest lines need the non-overflow path), push.
 
+Seventh wave COMMITTED (11:03, gate chain 35: `wave7-compile1` COMPILE_GATE_OK, `wave7-reg1` REGRESSION_OK 496/496, `wave7-capture1`
+UI_CAPTURE_OK 106 (+9 HUD panel builds) + UI_TOUCH_OK 106/106 + UI_GEOMETRY_OK 106, `wave7-navcapture1` 15 all-OK, `wave7-manageflow1` 20
+all-OK): `af182d2d4` WO-1661 (ARMY tiles: short badge word behind UpgradeAffordableGridWordProvisional = "UPGRADE", ruling 15; the four silent
+fit returns instrumented; the ARMY flow-map frame now shows UPGRADE on four tiles - PNG opened); `a89603a7a` WO-1660 (gold chip authored at
+MinTouchPx; HUD canvas joins RunCaptureHeadless; red-first PROVEN on `wave7-capture1red` with the pre-fix file: 104.9 / 103.5 px). The newly
+judged HUD canvas exposed the Night Market HUD card title cut (12 of 14 at every aspect, UI_GLYPH_FAIL x6 NEW) = WO-1662, with the HUD-CHIP
+lane. Note: every Unity log this session carries a `Lifecycle ERROR ... NullReferenceException` at startup (pre-deserialization code-reload
+scope) - present since at least wave5-reg1, harmless to the markers, not investigated.
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).

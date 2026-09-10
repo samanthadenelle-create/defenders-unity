@@ -189,7 +189,13 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-fiftieth pass): main line next free = **1662**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-fifty-second pass): main line next free = **1664**.
+> WO-1663 (HudLabelFit pins measure the Body font over Title faces - 9 sites) minted by the HUD-CHIP lane on a lead pre-assigned number.
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-first pass): main line next free = **1663**.
+> WO-1662 (Night Market HUD card title cuts at every aspect) minted by the HUD-CHIP lane on a lead pre-assigned number.
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fiftieth pass): main line next free = **1662**.
 > WO-1658 (eight label bands, FIT-GUARD/BAND-HEIGHTS), WO-1659 (locked founding rail - CLOSED no live defect), WO-1660 (gold chip touch band under 112 px), WO-1661 (ARMY tile UPGRADE A... chip on device) minted on lead pre-assigned numbers.
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-ninth pass): main line next free = **1658**.
