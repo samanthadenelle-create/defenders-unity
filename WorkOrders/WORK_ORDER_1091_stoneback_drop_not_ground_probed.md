@@ -1,6 +1,7 @@
 # WORK ORDER 1091 — the Stoneback biome drop is handed to the seam 17 m in the air, and the hero's own clamp reverts the warp
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - 6a5c7a36d on HEAD 2026-09-09 (was READY); owner felt-test closes
+PRIOR STATUS: READY TO IMPLEMENT
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1089 → 1095 in the same edit)
 **Silo:** World / seams
 **Severity:** P1 — a biome road door does not deliver the player
@@ -9,6 +10,10 @@
 > ⚠ **UNTRUSTED WORKING-TREE EDIT EXISTS** in `HollowRoadsDropInjector.cs` — a UI-seat agent was
 > stopped mid-rework. Braces balanced, 0 NUL bytes, **logic incomplete**. See
 > `WO_1089_1094_WORKING_TREE_NOTE.md`.
+>
+> **REVIEWED 2026-09-09 (SILO 0B):** `git diff f4e4630e3 6a5c7a36d -- HollowRoadsDropInjector.cs`
+> read in full and judged COMPLETE and COHERENT - the "logic incomplete" call above is SUPERSEDED.
+> See `WORK_ORDER_1091_stoneback_drop_not_ground_probed.RESULT.md`.
 
 ---
 

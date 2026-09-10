@@ -1,6 +1,7 @@
 # WORK ORDER 1093 — `_stung` is a one-way latch, so a rep-chase re-stamps a pursuit one frame after ClearPursuits and the battle-lock never releases
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - 6a5c7a36d on HEAD 2026-09-09 (was READY); owner felt-test closes
+PRIOR STATUS: READY TO IMPLEMENT
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1089 → 1095 in the same edit)
 **Silo:** Combat / AI
 **Severity:** P1 — felt softlock: the player wins an arena fight and town stays in combat state
@@ -12,6 +13,10 @@
 > stopped mid-edit. **It is still an untrusted UI-seat edit and CLI decides whether to keep, review
 > or discard it.** The spec below stands on its own so the ticket can be implemented from scratch.
 > See `WO_1089_1094_WORKING_TREE_NOTE.md`.
+>
+> **REVIEWED 2026-09-09 (SILO 0B):** `git diff f4e4630e3 6a5c7a36d -- OverworldEncounterSpawner.cs`
+> read in full and judged COMPLETE and COHERENT. The banner above is superseded for this file - see
+> `WORK_ORDER_1093_rep_chase_latch_holds_battle_lock.RESULT.md`.
 
 ---
 

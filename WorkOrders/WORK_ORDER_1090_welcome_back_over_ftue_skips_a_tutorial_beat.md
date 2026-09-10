@@ -1,6 +1,7 @@
 # WORK ORDER 1090 — the welcome-back modal opens over the FTUE, blocks Skip, and gets a tutorial beat rescue-skipped
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - 6a5c7a36d on HEAD 2026-09-09 (was READY); owner felt-test closes
+PRIOR STATUS: READY TO IMPLEMENT
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1089 → 1095 in the same edit)
 **Silo:** Onboarding / UI layering
 **Severity:** P1 — first-run experience, silent
@@ -10,6 +11,10 @@
 > `OfflineHarvestService.cs`, `WelcomeBackPopup.cs` and `TutorialFlow.cs`. All three are dirty,
 > braces balanced, 0 NUL bytes, **logic half-written — do not trust it.** See
 > `WO_1089_1094_WORKING_TREE_NOTE.md`.
+>
+> **REVIEWED 2026-09-09 (SILO 0B):** `git diff f4e4630e3 6a5c7a36d` read in full across all three
+> files and judged COMPLETE and COHERENT - the "half-written" call above is SUPERSEDED. See
+> `WORK_ORDER_1090_welcome_back_over_ftue_skips_a_tutorial_beat.RESULT.md`.
 
 ---
 
