@@ -1,3 +1,9 @@
+> **2026-09-10 OVERNIGHT (owner asleep; CLI lead Fable): READ `docs/HANDOVER_2026-09-10_overnight.md` FIRST.**
+> 30+ commits on `dev`, every one gated on fresh logs (last: `Builds/wave2-compile7` / `Builds/wave2-reg7`).
+> Builds: Windows release exe, production APK `2026.09.10.363195` installed on the Seeker, WebGL
+> PREVIEW public at https://defenders-of-the-realm-v2-amfcywh6x.vercel.app (never the site, never --prod).
+> Ten owner rulings queued in that doc's section 3. NOT pushed - the owner did not authorise a push.
+
 > **2026-09-09 RAID HOLD-POST APK ON SEEKER:** `adb dumpsys` `SM02G4061955851`
 > `versionName=2026.09.09.362346` (prove from dumpsys this install). Markers:
 > `SCHEMA_PARITY_OK`, `[AndroidBuild] SUCCEEDED`, `APK_OK 444MB`,
