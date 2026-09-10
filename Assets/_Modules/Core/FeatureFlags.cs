@@ -1017,6 +1017,47 @@ namespace DeNelle.Core
         public static bool StakingPolishBonus => Get("stakingpolishbonus", defaultOn: false);
 #endif
 
+        /// <summary>WO-1679 / HEART-006 — the passive benefit ladder's distribution gate.
+        /// Read in EXACTLY ONE PLACE: <c>HeartboundBonuses.Active</c>
+        /// (Assets/_Modules/Core/Catalog/HeartboundBenefits.cs), which returns the zero
+        /// provider whenever this is off, so no call site anywhere carries a distribution
+        /// check.</summary>
+        /// <remarks>
+        /// ⚠ A SEPARATE FLAG FROM <see cref="StakingPolishBonus"/>, ON PURPOSE, even though the
+        /// owner's Q-LADDER ruling (2026-09-10 13:12) MERGED the two ladders. The ladder is one;
+        /// the GRANT CLASSES are two, and they carry different risk. StakingPolishBonus grants
+        /// extra ATTEMPTS at an existing table — a fairness-neutral perk. This one grants
+        /// RECURRING ECONOMIC ACCELERATION, bounded by a ceiling that is a design guardrail and
+        /// not an anti-cheat control (Q-CLIENTECON).
+        ///
+        /// ⛔ BUT BE PRECISE ABOUT WHAT THE SEPARATION ACTUALLY BUYS — IT IS ONE-DIRECTIONAL, NOT
+        /// TWO. Since the merge, NativeSkrPolishBonus reads its grant AMOUNTS through
+        /// HeartboundBonuses, which reads THIS flag. So:
+        ///   • turning StakingPolishBonus OFF kills the polish perk and leaves the economy — ✅;
+        ///   • turning HeartboundPassives OFF kills the economy AND the polish perk — it is the
+        ///     upstream switch, not an independent one.
+        /// That is a consequence of there being one ladder, and it is the correct shape: the
+        /// perk's amounts come from the tier, so a build that may not read a tier cannot grant
+        /// them either. What the second flag buys is the ability to kill the perk WITHOUT killing
+        /// the economy, which is the direction that actually gets used. Do not describe these as
+        /// two independent kill switches; they are a switch and a sub-switch.
+        ///
+        /// ⛔ NOT `defaultOn: true` OUTSIDE DAPP_STORE, for the reason spelled out at length above
+        /// StakingPolishBonus: the compliance property has to survive a build target we have not
+        /// made yet, and `DAPP_STORE` is the DISTRIBUTION define — the only one that answers
+        /// "is this binary going somewhere that permits gating gameplay on a holding". Heartbound
+        /// is Seeker-only by owner ruling (2026-09-10 13:10, Q3: "Seeker only; Play never shows it").
+        ///
+        /// ⚠ ON BY DEFAULT ON THE dApp-store artifact is SAFE BEFORE THE FEATURE IS WIRED: with no
+        /// backend answer accepted, every reader sees the zero provider — tier 0, no bonus, no
+        /// attempts, no events. There is no default that pays.
+        /// </remarks>
+#if DAPP_STORE
+        public static bool HeartboundPassives => Get("heartboundpassives", defaultOn: true);
+#else
+        public static bool HeartboundPassives => Get("heartboundpassives", defaultOn: false);
+#endif
+
         /// <summary>WO-991 (owner ruling 2026-08-15) — KILL SWITCH for the Healing Caravan's mobile
         /// shell (HealingCaravanMobility: slow follow-the-hero crawl + glass HP + the status chip).
         /// Default ON: the shell SHIPPED 2026-08-15 and this flag exists so a felt-test regression

@@ -61,6 +61,68 @@
 
 const generated = require('./tunable-manifest.generated.json');
 const { TUNABLE_KEYS } = require('./tunables');
+const vfxPickOptions = require('./vfx-pick-options.generated.json');
+
+// -----------------------------------------------------------------------------
+// WO-1348 - THE VFX PICK OPTION POOL, and why it is required rather than typed.
+// -----------------------------------------------------------------------------
+// A realm.vfx.* knob is not an ordinary number: its value is a STABLE OPTION ID
+// naming an effect the build already carries. The page has to render those ids as
+// NAMES - "Aura_Nature", not "13" - or the owner is back to being a rocket
+// scientist, which is the exact sentence this whole surface exists to answer.
+//
+// The pool is GENERATED from her own tag file by tools/gen-vfx-pick-options.mjs
+// into two byte-identical copies, one here and one in Assets/Resources/VFX/, and
+// test/vfx-pick-options.test.js pins them together. Hand-typing the option count
+// into the safe range below would have been a sixth copy of the very thing this
+// file's header refuses to copy - so max is COMPUTED from the pool and the range
+// simply grows the day she tags another effect.
+// -----------------------------------------------------------------------------
+
+/**
+ * OFFERABLE options, in id order. Two kinds are held back and neither id is ever reused:
+ *   retired    - the key left the owner's tag file.
+ *   unresolved - the key is still tagged but THIS BUILD's HovlVfxCatalog cannot resolve it
+ *                (a gitignored art pack that was not imported when the catalog was baked).
+ * Offering an unresolved option would let her pick an effect that renders nothing with no
+ * error on screen - CLAUDE.md section 16 - so it is held back rather than shown greyed.
+ */
+const VFX_PICK_OPTIONS = (Array.isArray(vfxPickOptions.options) ? vfxPickOptions.options : [])
+    .filter((o) => o && Number.isInteger(o.id) && o.id > 0 && !o.retired && !o.unresolved)
+    .map((o) => ({ id: o.id, key: o.key, prefab: o.prefab, isLoop: o.isLoop === true }))
+    .sort((a, b) => a.id - b.id);
+
+/** Highest id the pool can ever hand out, INCLUDING reserved retired ids. */
+const VFX_PICK_MAX_ID = (Array.isArray(vfxPickOptions.options) ? vfxPickOptions.options : [])
+    .reduce((max, o) => (o && Number.isInteger(o.id) && o.id > max ? o.id : max), 0);
+
+/** Said under every VFX pick card, in words, because the owner is red/green colourblind. */
+const VFX_PICK_TIMING_NOTE =
+    'Takes effect on the NEXT TOWN LOAD - leave town and come back, or restart the game. ' +
+    'Nothing already on screen changes. Setting it back to 0 restores the effect the game ships with.';
+
+/**
+ * One VFX pick card. Every one of them shares the same control, the same pool and
+ * the same timing sentence - only the label and the "what" differ, so writing them
+ * out four times would have been four chances to drift.
+ */
+function vfxPick(label, what, risk) {
+    return {
+        area: 'spells',
+        label: label,
+        what: what + ' ' + VFX_PICK_TIMING_NOTE,
+        min: 0,
+        max: VFX_PICK_MAX_ID,
+        risk: risk,
+        options: VFX_PICK_OPTIONS,
+        optionsNote:
+            'You are choosing from effects this build ALREADY carries. Adding a new effect to ' +
+            'this list is still a rebuild - this changes WHICH shipped effect a thing uses, ' +
+            'never WHICH effects exist. If a pick cannot be used (it is missing from this ' +
+            'build, or it loops when the slot needs a one-shot), the game keeps the shipped ' +
+            'effect and writes the reason into the log rather than showing nothing.',
+    };
+}
 
 /**
  * The owner's four areas, in the order she named them, and what each one is FOR.
@@ -785,6 +847,51 @@ const PRESENTATION = {
         risk: 'Only the SUCCESS narration dims. Warnings and failures are always logged ' +
               'and cannot be turned off.',
     },
+
+    // -- WO-1348. THE FOUR VFX PICKS. Her ask, verbatim: "is it possible to tag those
+    //    from the command center? and then change pointer on next town load?" These
+    //    are the four tags she could not correct on 2026-09-03 without a rebuild.
+    // ⛔ EACH CARD SAYS, IN WORDS, WHETHER THE GAME ACTUALLY PLAYS THAT SLOT TODAY.
+    // Three of these four do NOT, and every one of those three was checked at source on
+    // 2026-09-10 rather than assumed. A card that reads "which effect plays when X" for a
+    // slot nothing calls would let her pick, look, see no change, and conclude the whole
+    // feature is broken - which is acceptance criterion 3 of WO-1348 ("the UI never implies
+    // a pick applied when it did not") failing on its first use.
+    'realm.vfx.atfootprintoftree_Aura': vfxPick(
+        'World tree: the glow at its foot',
+        'Which effect sits glowing at the base of the world tree. 0 is the tag you were not ' +
+        'happy with. NOTE - THIS SLOT IS SWITCHED OFF IN THE GAME RIGHT NOW: you turned the ' +
+        'tree-foot glow off on 2026-09-07 because it drifted upward over the town, so the tree ' +
+        'foot shows nothing whatever you pick here. Your pick is saved and will be what plays ' +
+        'the moment the slot is switched back on, which is a code change.',
+        'The slot runs CONTINUOUSLY, so pick from the entries marked continuous. A one-shot is ' +
+        'refused and the game keeps the shipped effect - it will not leave the tree bare.'),
+
+    'realm.vfx.atfootprintoftree_Impact': vfxPick(
+        'World tree: the burst at its foot',
+        'A burst at the base of the world tree. NOTHING IN THE GAME PLAYS THIS SLOT TODAY - ' +
+        'there is no effect tagged for it and no code that calls it, so a pick here will not ' +
+        'be visible until that call is wired, which is a code change. It is offered because ' +
+        'the slot is the one you asked to be able to create rather than only replace.',
+        'Picking here creates a tag rather than replacing one, and you will not see it yet. ' +
+        'That is not a fault - it is what the game does today.'),
+
+    'realm.vfx.EliteDeath_Impact': vfxPick(
+        'Elite death burst (not wired yet)',
+        'A separate burst for an elite death. NOTHING IN THE GAME PLAYS THIS SLOT TODAY: an ' +
+        'elite dying uses the BOSS death slot below, which is what you asked for - "both get ' +
+        'Elite_Death". A pick here will not be visible until an elite is given its own call, ' +
+        'which is a code change. To change what an elite death looks like NOW, use the boss ' +
+        'death card below.',
+        'Offered so the slot is ready the day elite and boss deaths are pulled apart. Until ' +
+        'then it changes nothing on screen.'),
+
+    'realm.vfx.BossDeath_Impact': vfxPick(
+        'Boss death burst',
+        'Which effect plays when a boss dies. 0 is the one the game ships with. THIS IS THE ' +
+        'ONE OF THE FOUR THAT IS LIVE - set it, load the town, kill a boss and look.',
+        'Covers bosses that use the normal enemy path. The dragon, Syndrath the Devourer, has ' +
+        'its own death effect and is NOT changed by this card.'),
 };
 
 /** The verbatim boundary sentence. Printed on the page; asserted by the oracle. */
@@ -807,6 +914,95 @@ function allowlistMap() {
     return m;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐ SERVER-ONLY ROWS - Q-CONFIG (RULED 2026-09-10 13:36, owner): "Command Center,
+//    server-only rows - teach tunable-manifest a serverOnly marker honoured by
+//    build(); the client registry never carries the ladder."
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// THE PROBLEM THE MARKER SOLVES. This manifest is a THREE-WAY JOIN over
+// RemoteTunables.Registry (the BUILD's knob list), TUNABLE_KEYS (the server write
+// allowlist) and PRESENTATION (owner-facing prose). The join is deliberately
+// unforgiving: a PRESENTATION row with no registry entry is reported as "the page
+// would show a lever that moves nothing", which is exactly right for a CLIENT knob.
+//
+// But Heartbound's knobs are read by the BACKEND ONLY. Putting a tier threshold or
+// an economic ceiling into RemoteTunables.cs to satisfy the join would hand the
+// Unity client a readable copy of the ladder - a SECOND AUTHORITY on a number
+// product rule 6 (spec :21) makes the server's, and precisely the duplicated-state
+// failure CLAUDE.md §2/§5/§8/§16 each record a scar from. The knob would be
+// visible in the Command Center and wrong in the game.
+//
+// So a row may declare `serverOnly: true`, which means:
+//   * it is EXEMPT from the two registry-agreement defects, and from them only;
+//   * every other check still applies - area, safe range, label, prose, ASCII;
+//   * `build()` emits it carrying `serverOnly: true` so the page can render it
+//     without pretending a build reads it.
+//
+// ⛔ AND `def` FOR SUCH A ROW IS REFERENCED, NEVER TYPED. A server-only knob's
+// shipping value lives in the backend module that reads it (e.g.
+// api/_lib/heartbound-tiers-config.json). A row must therefore carry `def` as a
+// value pulled from that module at require time - `require(...).some.path` - which
+// is a REFERENCE and not the copy this file spends its header forbidding. A row
+// that hardcodes a number here recreates the exact defect the marker exists to
+// avoid, one line lower down.
+//
+// ⚠ AS SHIPPED THERE ARE ZERO serverOnly ROWS, AND THAT IS DELIBERATE, NOT AN
+// OVERSIGHT. The mechanism lands with WO-1682 D3; the Heartbound rows themselves
+// need two things this lane does not own - a key in TUNABLE_KEYS (api/_lib/
+// tunables.js, the write rail) and a card on the served page (api/admin/console.js)
+// - or the owner would be shown a lever that genuinely could not move, which is the
+// one defect this whole join exists to catch. See
+// WorkOrders/WORK_ORDER_1682_passive_economy_guardrails.RESULT.md, "what was NOT
+// done and why". The behaviour is proven by injection in
+// test/tunables-manifest.test.js rather than by a live row.
+
+/** True when a PRESENTATION row declares itself backend-read. */
+function isServerOnly(pres) {
+    return !!(pres && pres.serverOnly === true);
+}
+
+/**
+ * The checks that are about the PRESENTATION ROW ITSELF - area, safe range, prose,
+ * and whether the shipping value is inside the range the page will offer.
+ *
+ * ⛔ EXTRACTED SO A serverOnly ROW GETS THE SAME SCRUTINY. Before this existed, all
+ * of these lived inside the loop over the BUILD REGISTRY, so a row with no registry
+ * entry was never reached by any of them. Marking such a row `serverOnly` would then
+ * have exempted it not from ONE defect but from EVERY defect - a backend knob with a
+ * broken range, no label and a nonexistent area would have joined cleanly and shown
+ * up on the owner's page as a lever she could not use. Caught by
+ * test/tunables-manifest.test.js's "the serverOnly exemption is EXACTLY ONE DEFECT
+ * WIDE" case before it shipped, which is the case that exists to catch exactly this.
+ *
+ * @param {string} key
+ * @param {object} pres the presentation row
+ * @param {string} kind 'bool' | 'int'
+ * @param {number|undefined} shippingDefault the value the knob ships at, if known
+ * @param {string[]} out defects are appended here
+ */
+function checkPresentationRow(key, pres, kind, shippingDefault, out) {
+    const areaIds = new Set(AREAS.map((a) => a.id));
+    if (!areaIds.has(pres.area)) {
+        out.push('CONSOLE MANIFEST: "' + key + '" claims area "' + pres.area +
+                 '", which is not one of ' + AREAS.map((a) => a.id).join(' / ') + '.');
+    }
+    if (!(typeof pres.min === 'number') || !(typeof pres.max === 'number') || pres.min > pres.max) {
+        out.push('CONSOLE MANIFEST: "' + key + '" has no usable safe range.');
+    } else if (typeof shippingDefault === 'number' &&
+               (shippingDefault < pres.min || shippingDefault > pres.max)) {
+        out.push('BUILD REGISTRY vs CONSOLE MANIFEST: "' + key + '" ships at ' + shippingDefault +
+                 ' but the manifest safe range is ' + pres.min + '..' + pres.max +
+                 ' - the page could not offer the value the game actually ships with.');
+    }
+    if (kind === 'bool' && (pres.min !== 0 || pres.max !== 1)) {
+        out.push('CONSOLE MANIFEST: "' + key + '" is a bool but its safe range is not 0..1.');
+    }
+    if (!pres.label || !pres.what) {
+        out.push('CONSOLE MANIFEST: "' + key + '" has no label or no plain-English description.');
+    }
+}
+
 /**
  * Every way the three sources can disagree, as a list of plain-English defects.
  * EMPTY MEANS AGREEMENT. Each string NAMES THE TWO SOURCES, because "the manifest
@@ -815,7 +1011,7 @@ function allowlistMap() {
  *
  * @returns {string[]}
  */
-function mismatches() {
+function mismatches(presentation = PRESENTATION) {
     const out = [];
     const allow = allowlistMap();
     const spine = Array.isArray(generated.knobs) ? generated.knobs : null;
@@ -826,7 +1022,6 @@ function mismatches() {
         return out;
     }
 
-    const areaIds = new Set(AREAS.map((a) => a.id));
     const seen = new Set();
 
     for (const knob of spine) {
@@ -845,33 +1040,20 @@ function mismatches() {
                      ' in TUNABLE_KEYS (api/_lib/tunables.js).');
         }
 
-        const pres = PRESENTATION[key];
+        const pres = presentation[key];
         if (!pres) {
             out.push('BUILD REGISTRY vs CONSOLE MANIFEST: RemoteTunables.Registry has "' + key +
                      '" but PRESENTATION in api/_lib/tunable-manifest.js does not - the knob ' +
                      'would be INVISIBLE in the Command Center.');
             continue;
         }
-        if (!areaIds.has(pres.area)) {
-            out.push('CONSOLE MANIFEST: "' + key + '" claims area "' + pres.area +
-                     '", which is not one of ' + AREAS.map((a) => a.id).join(' / ') + '.');
-        }
-        if (!(typeof pres.min === 'number') || !(typeof pres.max === 'number') || pres.min > pres.max) {
-            out.push('CONSOLE MANIFEST: "' + key + '" has no usable safe range.');
-        } else if (knob.default < pres.min || knob.default > pres.max) {
-            out.push('BUILD REGISTRY vs CONSOLE MANIFEST: "' + key + '" ships at ' + knob.default +
-                     ' but the manifest safe range is ' + pres.min + '..' + pres.max +
-                     ' - the page could not offer the value the game actually ships with.');
-        }
-        if (knob.kind === 'bool' && (pres.min !== 0 || pres.max !== 1)) {
-            out.push('CONSOLE MANIFEST: "' + key + '" is a bool but its safe range is not 0..1.');
-        }
-        if (!pres.label || !pres.what) {
-            out.push('CONSOLE MANIFEST: "' + key + '" has no label or no plain-English description.');
-        }
+        checkPresentationRow(key, pres, knob.kind, knob.default, out);
     }
 
     for (const spec of TUNABLE_KEYS) {
+        // A serverOnly key is written from the console and read by a BACKEND module.
+        // No build registers it, and that is the whole point of the marker.
+        if (isServerOnly(presentation[spec.key])) continue;
         if (!seen.has(spec.key)) {
             out.push('SERVER ALLOWLIST vs BUILD REGISTRY: TUNABLE_KEYS in api/_lib/tunables.js ' +
                      'has "' + spec.key + '" but RemoteTunables.Registry does not - no build ' +
@@ -879,7 +1061,25 @@ function mismatches() {
         }
     }
 
-    for (const key of Object.keys(PRESENTATION)) {
+    for (const key of Object.keys(presentation)) {
+        // ⭐ THE serverOnly EXEMPTION, and it is EXACTLY ONE DEFECT WIDE. A
+        // backend-read knob has no client registry entry BY DESIGN (Q-CONFIG) - so
+        // it skips the registry-agreement defect below and NOTHING ELSE. Its row is
+        // validated here instead, because the loop that normally does it iterates the
+        // registry and would never reach a row that is not in it.
+        if (isServerOnly(presentation[key])) {
+            const pres = presentation[key];
+            const spec = allow.get(key);
+            checkPresentationRow(key, pres, spec ? spec.kind : 'int', pres.def, out);
+            if (!spec) {
+                out.push('SERVER-ONLY ROW vs SERVER ALLOWLIST: "' + key + '" is marked ' +
+                         'serverOnly but TUNABLE_KEYS in api/_lib/tunables.js does not carry ' +
+                         'it - the console could show the lever and the server would REFUSE ' +
+                         'every write to it. serverOnly exempts a row from needing a BUILD, ' +
+                         'never from needing to be writable.');
+            }
+            continue;
+        }
         if (!seen.has(key)) {
             out.push('CONSOLE MANIFEST vs BUILD REGISTRY: PRESENTATION in ' +
                      'api/_lib/tunable-manifest.js has "' + key + '" but ' +
@@ -902,15 +1102,16 @@ function mismatches() {
  *
  * @returns {{version:number, areas:Array, defects:string[], notices:object}}
  */
-function build() {
-    const defects = mismatches();
+function build(presentation = PRESENTATION) {
+    const defects = mismatches(presentation);
     const allow = allowlistMap();
     const spine = Array.isArray(generated.knobs) ? generated.knobs : [];
 
     const byArea = new Map(AREAS.map((a) => [a.id, []]));
     for (const knob of spine) {
-        const pres = knob && PRESENTATION[knob.key];
+        const pres = knob && presentation[knob.key];
         if (!pres) continue;
+        if (isServerOnly(pres)) continue;            // emitted below, from its own row
         if (!byArea.has(pres.area)) continue;
         if (!allow.has(knob.key)) continue;          // not writable => not offered
         byArea.get(pres.area).push({
@@ -922,6 +1123,37 @@ function build() {
             min: pres.min,
             max: pres.max,
             risk: pres.risk || null,
+            // WO-1348: present ONLY on a knob whose value names a thing rather than measures
+            // one. The page renders a named picker for these and a number field for everything
+            // else - "13" is not a choice anybody can make about how the game looks.
+            options: Array.isArray(pres.options) ? pres.options : null,
+            optionsNote: pres.optionsNote || null,
+        });
+    }
+
+    // ⭐ SERVER-ONLY ROWS. They have no spine entry by design, so their kind and
+    // shipping default come from the row itself - where `def` must be a REFERENCE
+    // into the backend module that reads the knob, never a retyped number (see the
+    // serverOnly header above). They still have to be WRITABLE to be offered: a row
+    // the server allowlist would refuse is "a lever that moves nothing", the exact
+    // defect this join exists to catch, so it is dropped here the same as any other.
+    for (const key of Object.keys(presentation)) {
+        const pres = presentation[key];
+        if (!isServerOnly(pres)) continue;
+        if (!byArea.has(pres.area)) continue;
+        if (!allow.has(key)) continue;
+        byArea.get(pres.area).push({
+            key: key,
+            kind: allow.get(key).kind,
+            def: pres.def,
+            label: pres.label,
+            what: pres.what,
+            min: pres.min,
+            max: pres.max,
+            risk: pres.risk || null,
+            // The page needs to know NOT to describe this as a value the installed
+            // game ships with - no build reads it. Saying so is the honest render.
+            serverOnly: true,
         });
     }
 
@@ -945,8 +1177,11 @@ function build() {
 module.exports = {
     AREAS,
     PRESENTATION,
+    VFX_PICK_OPTIONS,
+    VFX_PICK_MAX_ID,
     OUT_OF_SCOPE_NOTICE,
     CLEAR_IS_NOT_ZERO_NOTICE,
+    isServerOnly,
     mismatches,
     build,
 };

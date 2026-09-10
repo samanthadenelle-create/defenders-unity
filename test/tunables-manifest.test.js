@@ -111,7 +111,11 @@ test('THE ORACLE: build registry, server allowlist and console manifest all agre
 
 test('the key domain is identical in the build registry and the server allowlist', () => {
     const spine = generated.knobs.map((k) => k.key).slice().sort();
-    const allow = TUNABLE_KEYS.map((k) => k.key).slice().sort();
+    // serverOnly keys are writable but not registered in any build (WO-1682 D3) -
+    // see the note on the area-placement test above. Every other key must match.
+    const allow = TUNABLE_KEYS.map((k) => k.key)
+        .filter((k) => !manifestLib.isServerOnly(manifestLib.PRESENTATION[k]))
+        .slice().sort();
     assert.deepEqual(spine, allow,
         'BUILD REGISTRY vs SERVER ALLOWLIST: RemoteTunables.Registry and TUNABLE_KEYS ' +
         'in api/_lib/tunables.js name different knobs. The server refuses to write a key ' +
@@ -122,7 +126,12 @@ test('the key domain is identical in the build registry and the server allowlist
 test('every knob the build registers is reachable in exactly one owner-facing area', () => {
     const m = manifestLib.build();
     const placed = [];
-    for (const a of m.areas) for (const k of a.knobs) placed.push(k.key);
+    // ⚠ serverOnly rows are EXCLUDED from this comparison on purpose (WO-1682 D3,
+    // Q-CONFIG). They have no entry in the build registry BY DESIGN - a backend-read
+    // knob written into RemoteTunables.cs would hand the client a readable copy of a
+    // number the server is authoritative for. Everything the build DOES register
+    // still has to be here, which is what this test protects.
+    for (const a of m.areas) for (const k of a.knobs) if (!k.serverOnly) placed.push(k.key);
     assert.deepEqual(placed.slice().sort(), generated.knobs.map((k) => k.key).slice().sort(),
         'BUILD REGISTRY vs CONSOLE MANIFEST: a knob the build has is not on the page, or ' +
         'the page has one the build does not. A lever the owner cannot see is a lever she ' +
@@ -162,6 +171,104 @@ test('the human contract document names every knob the build registers', () => {
             'BUILD REGISTRY vs ' + DOC + ': the doc does not mention "' + k.key + '". ' +
             'CLAUDE.md section 15 - canon moves in the same commit as the fact.');
     }
+});
+
+// -- 2b. SERVER-ONLY ROWS (WO-1682 D3; Q-CONFIG, owner 2026-09-10 13:36) ------
+//
+// "Command Center, server-only rows - teach tunable-manifest a serverOnly marker
+// honoured by build(); the client registry never carries the ladder."
+//
+// The behaviour is proven BY INJECTION rather than by a live row, because there
+// are deliberately none yet (a Heartbound row also needs a TUNABLE_KEYS entry and
+// a card on api/admin/console.js, neither of which WO-1682 owns). Injection is
+// also the stronger proof: it exercises the mechanism without making any claim
+// about today's contents, so these cases keep working when the rows do land.
+
+const SERVER_ONLY_ROW = {
+    'heartbound.productionRateCeiling': {
+        area: 'misc',
+        label: 'Heartbound economic ceiling',
+        what: 'The most combined passive resource-rate boost the Heartbound tiers may ' +
+              'add up to, as a fraction. Read by the backend only.',
+        min: 0,
+        max: 1,
+        // A REFERENCE into the module that reads it, never a retyped number.
+        def: require('../api/_lib/heartbound-tiers-config.json').economicCeiling.productionRateCeiling,
+        serverOnly: true,
+    },
+};
+
+test('the marker exempts a backend-only row from the BUILD REGISTRY defect, and from that alone', () => {
+    const KEY = 'heartbound.productionRateCeiling';
+
+    // WITHOUT the marker: the row is judged as a client knob and reported as a lever
+    // that moves nothing, which is the correct answer for a client knob.
+    const withoutMarker = Object.assign({}, manifestLib.PRESENTATION, {
+        [KEY]: Object.assign({}, SERVER_ONLY_ROW[KEY], { serverOnly: false }),
+    });
+    const before = manifestLib.mismatches(withoutMarker).filter((d) => d.indexOf(KEY) >= 0);
+    assert.equal(before.length, 1);
+    assert.match(before[0], /CONSOLE MANIFEST vs BUILD REGISTRY/);
+    assert.match(before[0], /a lever that moves nothing/);
+
+    // WITH the marker: the BUILD REGISTRY defect is gone. What remains is the
+    // allowlist defect, because this key is genuinely not writable yet - and that
+    // is the point: serverOnly buys an exemption from needing a BUILD, never from
+    // needing to be WRITABLE.
+    const withMarker = Object.assign({}, manifestLib.PRESENTATION, SERVER_ONLY_ROW);
+    const after = manifestLib.mismatches(withMarker).filter((d) => d.indexOf(KEY) >= 0);
+    assert.equal(after.length, 1);
+    assert.match(after[0], /SERVER-ONLY ROW vs SERVER ALLOWLIST/);
+    assert.doesNotMatch(after[0], /BUILD REGISTRY/);
+
+    // And it perturbs nothing else in the manifest.
+    assert.deepEqual(manifestLib.mismatches(withMarker).filter((d) => d.indexOf(KEY) < 0), []);
+});
+
+test('the serverOnly exemption is EXACTLY ONE DEFECT WIDE - every other check still bites', () => {
+    // ⛔ THE CASE THAT CAUGHT A REAL GAP. Every row check used to live inside the loop
+    // over the BUILD REGISTRY, so a row with no registry entry was reached by NONE of
+    // them - and marking it serverOnly would have exempted it from every defect
+    // rather than from one. checkPresentationRow exists because this went red.
+    const bad = {
+        'heartbound.broken': {
+            area: 'nowhere', label: '', what: '', min: 5, max: 1, def: 0, serverOnly: true,
+        },
+    };
+    const defects = manifestLib.mismatches(Object.assign({}, manifestLib.PRESENTATION, bad));
+    const mine = defects.filter((d) => d.indexOf('heartbound.broken') >= 0);
+    assert.ok(mine.some((d) => /is not one of/.test(d)), 'a bad area must still be caught');
+    assert.ok(mine.some((d) => /no usable safe range/.test(d)), 'an inverted range must still be caught');
+    assert.ok(mine.some((d) => /no label or no plain-English description/.test(d)),
+        'missing prose must still be caught');
+    assert.ok(mine.some((d) => /SERVER-ONLY ROW vs SERVER ALLOWLIST/.test(d)),
+        'an unwritable server-only row must still be caught');
+    // And it did NOT get the registry-agreement defect, which is the one exemption.
+    assert.ok(!mine.some((d) => /BUILD REGISTRY/.test(d)));
+});
+
+test('build() offers a serverOnly row only when the server would actually accept a write', () => {
+    const pres = Object.assign({}, manifestLib.PRESENTATION, SERVER_ONLY_ROW);
+
+    // Not in TUNABLE_KEYS today => the page must NOT offer it. "A lever that moves
+    // nothing" is the defect this join exists to catch, and serverOnly does not
+    // buy an exemption from it.
+    const m = manifestLib.build(pres);
+    const placed = [];
+    for (const a of m.areas) for (const k of a.knobs) placed.push(k.key);
+    assert.equal(placed.indexOf('heartbound.productionRateCeiling'), -1,
+        'a serverOnly row the server allowlist does not carry must not be offered');
+});
+
+test('the shipped manifest carries ZERO serverOnly rows, and that is deliberate', () => {
+    for (const key of Object.keys(manifestLib.PRESENTATION)) {
+        assert.equal(manifestLib.isServerOnly(manifestLib.PRESENTATION[key]), false,
+            key + ' is marked serverOnly. WO-1682 D3 landed the MECHANISM only; a live ' +
+            'row also needs a TUNABLE_KEYS entry and a card on api/admin/console.js. ' +
+            'If you are adding the first one, update this test in the same commit.');
+    }
+    // ...so today's manifest is byte-for-byte what it was before the marker existed.
+    assert.deepEqual(manifestLib.mismatches(), []);
 });
 
 // -- 3. THE BOUNDARY THAT CAN NEVER MOVE -------------------------------------

@@ -92,15 +92,57 @@ namespace DeNelle.Core.Catalog
     /// an odds-shaped member). WO-1674 moved WHERE the input comes from and nothing else; widening
     /// the grant is a separate decision the owner has not made (WO-1673 D6 adjacency).
     /// </remarks>
+    /// <remarks>
+    /// ⛔⛔ RE-POINTED AGAIN 2026-09-10 (WO-1679 / HEART-006, owner ruling Q-LADDER 13:12:
+    /// "merge — the Heartbound tier drives polish attempts (the polish mapping becomes a benefit
+    /// row)"). THE GRANT AMOUNTS NOW COME FROM THE SERVER, VIA <see cref="HeartboundBonuses"/>.
+    ///
+    /// WHY THE MERGE HAD TO HAPPEN HERE. Before it, two ladders read the same wallet: this
+    /// provider's has-a-stake / 10,000-SKR thresholds, and Heartbound's ten tiers. The player
+    /// would have seen TWO TIER NUMBERS FOR ONE POSITION, and the two would have drifted the
+    /// first time either was retuned. There is now ONE ladder, it lives in
+    /// api/_lib/heartbound-tiers-config.json, and the two grants below are rows in it.
+    ///
+    /// ⭐ THE OLD THRESHOLDS ARE PRESERVED, NOT DISCARDED. The benefit table places the weekly
+    /// re-roll at Tier I (the minimum Heartbound stake) and the roll cap at Tier V, because
+    /// 10,000 SKR at zero tenure scores into Tier V. That mapping is MEASURED against the live
+    /// ladder by test/heartbound-tiers.test.js rather than asserted, so a retune of the curve
+    /// that would silently move a shipped perk goes RED instead.
+    ///
+    /// ⛔ AND THE VERIFIED-STAKE GATE STAYS. <see cref="VerifiedStakeSnapshot"/> still decides
+    /// whether ANYTHING is granted; the tier decides HOW MUCH. That is not belt-and-braces: the
+    /// server-told tier can be an older answer than the stake snapshot (they arrive in the same
+    /// response but are held in different statics, and a later failed refresh holds the previous
+    /// benefits by design). Gating on the snapshot keeps "no reward is ever paid on an unverified
+    /// state" true for this grant, which is the property WO-1674 §A3 exists to defend — a tier
+    /// alone could not.
+    ///
+    /// ⛔ STILL ATTEMPTS, NEVER ODDS. Both members below read attempt counts the SERVER computed
+    /// and the economic meter has already classified as not-a-rate. No odds entered this class,
+    /// and none may (file header; DungeonGemExclusivityRegression).
+    ///
+    /// ⚠ THE CLASS NAME IS UNCHANGED DELIBERATELY. There is exactly ONE
+    /// [RuntimeInitializeOnLoadMethod] installer for this seam; adding a second provider class
+    /// with its own bootstrap would race two BeforeSceneLoad installers with undefined last-wins
+    /// ordering. One class, one bootstrap, one installed provider.
+    /// </remarks>
     public sealed class NativeSkrPolishBonus : IPolishBonusProvider
     {
+        /// <summary>⚠ RETAINED FOR THE ORACLE, NOT USED AS A THRESHOLD ANY MORE. The merged
+        /// ladder's roll-cap row is placed against this number and
+        /// test/heartbound-tiers.test.js proves the placement still holds; keeping the constant
+        /// is what lets a reader see WHICH shipped threshold the tier row is standing in for.</summary>
         public const long ExpandedRollCapStake = 10_000L;
 
+        /// <summary>The backend-verified stake. Gates entitlement; no longer sets the amounts.</summary>
         private static StakeStanding Standing =>
             StakeRewardsResolver.Resolve(VerifiedStakeSnapshot.RewardBearingStakeSkr);
 
-        public int ExtraWeeklyRerolls => Standing.HasStake ? 1 : 0;
-        public int RollCapDelta => Standing.HasStake && Standing.ActiveStake >= ExpandedRollCapStake ? 1 : 0;
+        public int ExtraWeeklyRerolls =>
+            Standing.HasStake ? HeartboundBonuses.ExtraWeeklyRerolls : 0;
+
+        public int RollCapDelta =>
+            Standing.HasStake ? HeartboundBonuses.RollCapDelta : 0;
     }
 
     /// <summary>

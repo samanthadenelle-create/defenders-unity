@@ -1,6 +1,6 @@
 # WORK ORDER 1682 — HEART-009: Passive economy guardrails
 
-**Status:** SPEC
+**Status:** IMPLEMENTED (2026-09-10) — the 10% ceiling now has a real METER (pure function, Q-METER as data), measured 0.06/0.10 with red-before-green by injection; `tunable-manifest` learned `serverOnly` and a real exemption-too-wide gap was closed. `api/heartbound/status.js` extended in-lane — the wire now carries `benefits` + a scalar `nextTierAt`, proven by a 5/5 suite driving the real handler; `heartbound-tiers + skr-staking` 52/52. D2 covenant sweep deliberately NOT extended (no event table exists yet) — see `.RESULT.md`. Not gated, not committed.
 **Silo:** Economy policy + one build gate. No gameplay retune, no scene files.
 **Raised by:** HEARTBOUND-TRIAGE lane, 2026-09-10.
 **Number:** PRE-ASSIGNED by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately **NOT** edited by this lane.

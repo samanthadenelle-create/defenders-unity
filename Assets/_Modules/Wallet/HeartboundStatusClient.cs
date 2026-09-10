@@ -36,6 +36,7 @@
 using System;
 using System.Globalization;
 using Cysharp.Threading.Tasks;
+using DeNelle.Core.Catalog;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Platform;
 using DeNelle.Core.Web3;
@@ -101,6 +102,11 @@ namespace DeNelle.Wallet
             {
                 VerifiedStakeSnapshot.AcceptServerVerification(
                     "WALLET_NOT_LINKED", 0L, 0L, false, 0L, 0L, 0L);
+                // ⚠ A DEFINITIVE ZERO, NOT A HELD ANSWER. Everywhere else an absent answer
+                // holds the previous one, because "we could not ask" is not "you have
+                // nothing". Here we CAN answer: this rail has no wallet and no mechanism to
+                // attach one, so the player is tier 0 as a matter of fact, not of ignorance.
+                HeartboundBonuses.AcceptServerBenefits(0, 0f, 0, 0, new string[0]);
                 return false;
             }
 
@@ -203,7 +209,78 @@ namespace DeNelle.Wallet
             VerifiedStakeSnapshot.AcceptServerVerification(
                 status, activeRaw, unstakingRaw, unstakingReady,
                 verifiedAtMs, ageSeconds, graceSeconds);
+
+            AcceptBenefits(root);
             return true;
+        }
+
+        /// <summary>
+        /// Install the server's PASSIVE BENEFIT block (WO-1679 / HEART-006) into
+        /// <see cref="HeartboundBonuses"/>.
+        ///
+        /// ⛔ THIS METHOD DERIVES NOTHING. It reads the numbers the server sent and hands
+        /// them over verbatim. There is no tier ladder here, no threshold, no percentage
+        /// table and no arithmetic that turns a stake into a tier — the backend owns all of
+        /// that (api/_lib/heartbound-tiers.js), because product rule 6 makes it the
+        /// authority and a client-side copy would be a second one.
+        ///
+        /// ⚠ AN ABSENT `benefits` BLOCK IS NOT AN ERROR AND IS NOT A ZERO. A backend that
+        /// has not yet been taught to send it (the block lands with the HEART-002 status
+        /// wiring) leaves the previous answer standing, exactly as a failed refresh does.
+        /// Overwriting with zeros here would take a player's passives away every time an
+        /// older endpoint answered — which is the same fail-to-zero mistake
+        /// VerifiedStakeSnapshot's header spends a paragraph refusing.
+        ///
+        /// ⚠ AND IT IS A SEPARATE CALL FROM AcceptServerVerification, DELIBERATELY. That
+        /// method keeps its "exactly one caller" property (StakingComplianceRegression §A4)
+        /// untouched: this is a different method on a different type, invoked from the same
+        /// single client, immediately after.
+        /// </summary>
+        private static void AcceptBenefits(JObject root)
+        {
+            JObject block = root["benefits"] as JObject;
+            if (block == null)
+            {
+                // ⚠ ONCE, NOT Warn-PER-REFRESH. This is the EXPECTED shape until HEART-002 wires
+                // readHeartboundStatus into the endpoint, so it fires on EVERY successful refresh
+                // on every device — at the Driver's cadence. A Warn here would be a firehose that
+                // evicts the boot window out of the logcat ring and destroys the evidence the
+                // instrumentation exists to preserve (CLAUDE.md §12; memory
+                // `logcat-ring-buffer-destroys-evidence`). NoteAttemptFailed stays for a GENUINE
+                // failure, which this is not: the previous answer is held either way.
+                FlowTrace.Once(Sys, "benefits-block-absent",
+                                    "the status response carried no benefits block - this endpoint " +
+                                    "predates HEART-006's benefits wiring. Holding the previous " +
+                                    "answer; nothing was zeroed. Expected until the status route " +
+                                    "calls readHeartboundStatus with a tier resolver.");
+                return;
+            }
+
+            int tier = (int?)block["tier"] ?? 0;
+            float rate = (float?)block["productionRateSum"] ?? 0f;
+
+            int rerolls = 0;
+            int rollCap = 0;
+            JObject polish = block["polish"] as JObject;
+            if (polish != null)
+            {
+                rerolls = (int?)polish["extraWeeklyRerolls"] ?? 0;
+                rollCap = (int?)polish["rollCapDelta"] ?? 0;
+            }
+
+            string[] events;
+            JArray unlocked = block["unlockedEvents"] as JArray;
+            if (unlocked == null)
+            {
+                events = new string[0];
+            }
+            else
+            {
+                events = new string[unlocked.Count];
+                for (int i = 0; i < unlocked.Count; i++) events[i] = (string)unlocked[i] ?? string.Empty;
+            }
+
+            HeartboundBonuses.AcceptServerBenefits(tier, rate, rerolls, rollCap, events);
         }
 
         /// <summary>

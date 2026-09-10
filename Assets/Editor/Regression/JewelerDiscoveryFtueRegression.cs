@@ -119,13 +119,37 @@ namespace DeNelle.Editor.Regression
                 !nativeStake.Contains("GetAccountInfoAsync") ||
                 !nativeStake.Contains("no signature requested"))
                 f.Add("logged-in wallet address is not resolved read-only against the official native SKR staking program");
+            // ⭐ RE-POINTED 2026-09-10 (WO-1679 / HEART-006, owner ruling Q-LADDER 13:12: "merge -
+            //    the Heartbound tier drives polish attempts (the polish mapping becomes a benefit
+            //    row)"). This assertion used to require the literal `Standing.HasStake ? 1 : 0` -
+            //    the grant AMOUNT derived from the stake. The ruling moved that authority to the
+            //    tier, so the old string is gone and the check moves WITH the ruling.
+            //
+            // ⛔ IT IS NOW STRICTER, NOT LOOSER: it pins BOTH halves of the merge, where the old
+            //    line pinned one. The amount must come from the merged ladder, AND the grant must
+            //    still be gated on a backend-VERIFIED stake - a tier alone must never pay, because
+            //    the tier and the stake snapshot are held in different statics and a later failed
+            //    refresh deliberately holds the previous benefits (WO-1674 §A3).
+            //
+            // ⚠ WHY NOT "GRANT TIER I WHENEVER A STAKE IS VERIFIED", which was the other candidate
+            //    fix: MEASURED, IT IS FALSE. The minimum Heartbound stake is 100 SKR; activation
+            //    seats effective stake at 25% of it, and resonanceScore(25, 0) = 41 against Tier I's
+            //    threshold of 300 - Tier 0. Even at FULL effective stake, 100 SKR scores 146, still
+            //    Tier 0. A client-side "verified stake implies Tier I" floor would therefore grant
+            //    the weekly attempt to players who are genuinely Tier 0: a client fabricating an
+            //    entitlement the server never issued, which is product rule 7's exact shape, and it
+            //    would reinstate the second ladder Q-LADDER was ruled to remove.
             if (!bonus.Contains("class NativeSkrPolishBonus") ||
-                !bonus.Contains("Standing.HasStake ? 1 : 0") ||
+                !bonus.Contains("Standing.HasStake ?") ||
+                !bonus.Contains("HeartboundBonuses.ExtraWeeklyRerolls") ||
+                !bonus.Contains("HeartboundBonuses.RollCapDelta") ||
                 !bonus.Contains("WeeklyRerollsRemaining") ||
                 !bonus.Contains("TryConsumeWeeklyReroll") ||
                 !polish.Contains("useWeeklyStakeReroll") ||
                 !polish.Contains("PolishBonuses.TryConsumeWeeklyReroll()"))
-                f.Add("verified native SKR stake does not grant and consume the one weekly bonus attempt");
+                f.Add("the merged Heartbound ladder does not grant and consume the one weekly bonus " +
+                      "attempt against a backend-verified stake (Q-LADDER: the TIER supplies the " +
+                      "amount, the VERIFIED STAKE gates whether anything is granted at all)");
             if (!stakeResolver.Contains("StakeChanged") || !ftue.Contains("StakeRewardsResolver.StakeChanged += OnStakeChanged"))
                 f.Add("asynchronous native stake result cannot refresh an already-open FTUE card");
             if (ftue.Contains("...')") || ftue.Contains("…")) f.Add("FTUE contains forbidden ellipsis");

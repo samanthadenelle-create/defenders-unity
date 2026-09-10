@@ -1,0 +1,182 @@
+{
+  "_comment": [
+    "WO-1679 / HEART-006 + WO-1682 / HEART-009 - THE ONE AUTHORED BENEFIT TABLE.",
+    "",
+    "Spec: docs/specs/HEARTBOUND_SKR_RESONANCE_WORK_ORDERS_2026-09-10.md:617-748 (HEART-006)",
+    "and :899-952 (HEART-009).",
+    "",
+    "⛔ THIS FILE HOLDS NO TIER THRESHOLDS. The ladder - which score reaches which tier -",
+    "lives in api/_lib/heartbound-resonance-config.json and NOWHERE ELSE. This table is",
+    "keyed by tier NUMBER and says only what that tier GRANTS. A threshold copied here",
+    "would be the duplicated-state failure CLAUDE.md §2/§5/§8/§16 each record a scar from,",
+    "and api/_lib/heartbound-tiers.js therefore resolves every tier by CALLING",
+    "heartbound-resonance.js rather than by reading anything below.",
+    "",
+    "⛔ AND THERE IS DELIBERATELY NO CANONICAL TWIN UNDER Assets/. Spec :1274 - 'UI",
+    "contains no staking calculations'. The client is TOLD its benefits by the backend;",
+    "it never derives them from a tier number it holds. HeartboundBenefitsRegression",
+    "fails if any file under Assets/ grows a per-tier benefit table.",
+    "",
+    "⚠ Q-CONFIG (RULED 2026-09-10 13:36): these knobs belong on the Command Center as",
+    "SERVER-ONLY rows. api/_lib/tunable-manifest.js now understands a serverOnly marker",
+    "(WO-1682 D3); the rows themselves land when the console page can render one - see",
+    "WORK_ORDER_1682_...RESULT.md, 'what was NOT done'."
+  ],
+
+  "version": 1,
+
+  "economicCeiling": {
+    "_comment": [
+      "HEART-009 spec :903-910: 'Direct recurring production modifiers from Heartbound",
+      "should initially remain below 10% combined effective economic acceleration.'",
+      "",
+      "⛔ Q-METER (RULED 2026-09-10 13:36, owner): 'production-rate modifiers only - the",
+      "10% ceiling is the sum of the passive tier percentage boosts to resource yield;",
+      "TIMERS AND EVENT DROPS ARE NOT COUNTED.' So the meter in heartbound-tiers.js sums",
+      "EXACTLY the benefit rows whose kind is 'productionRate' and nothing else. Rows of",
+      "kind eventUnlock / information / polishAttempts / presentation are EXCLUDED BY THE",
+      "RULING, not by oversight, and the meter reports them in `excluded` so the exclusion",
+      "is visible rather than silent.",
+      "",
+      "⛔ AND THE SUM IS CUMULATIVE OVER THE WHOLE LADDER. A Tier X player holds every",
+      "lower tier's passive too, so the number that must stay under the ceiling is the sum",
+      "across ALL tiers - which is what test/heartbound-tiers.test.js measures.",
+      "",
+      "⚠ Q-CLIENTECON (RULED 2026-09-10 13:32): THIS CEILING IS A DESIGN GUARDRAIL, NOT AN",
+      "ANTI-CHEAT CONTROL. The modifiers are applied client-side (api/game/save.js:410-421:",
+      "farming/raiding/dungeons/arena 'are simulated entirely on the client'), so a modified",
+      "client can ignore it. That is the same honest posture api/game/save.js:70-72 already",
+      "takes for soft currency ('anti-grief / anti-corruption ceilings, NOT a",
+      "server-authoritative economy'). Rate modifiers stay; the cap bounds the DESIGN."
+    ],
+    "productionRateCeiling": 0.10
+  },
+
+  "_authoringNotes": [
+    "WHERE EACH NUMBER CAME FROM, so the next seat does not have to guess:",
+    "",
+    "  +0.02 at Tier I is THE SPEC'S OWN NUMBER (:636, '+2% offline gathering",
+    "  efficiency'). It is the only economic value HEART-006 actually states.",
+    "",
+    "  ⚠ +0.02 at Tier II and Tier VII are CHOSEN, NOT RULED, and this line is here so",
+    "  nobody later mistakes them for owner-authored balance. Q-ECHOFIG (RULED 13:20)",
+    "  says Tier II Echo Labor and Tier VII Echo Worker Manifestations are 'modifiers",
+    "  only - no new world actors, EchoWorldPresence stays the one owner'. The ruling",
+    "  says they MOVE NUMBERS; it does not say which numbers. The spec's own reading of",
+    "  Tier II is construction acceleration, and WO-1679 §0c proves THERE IS NO",
+    "  BUILD-TIME MODIFIER SEAM IN THIS REPO to land it on - and Q-METER excludes timers",
+    "  from the ceiling anyway. So both land as production-rate terms at the same",
+    "  magnitude as the spec's one stated value. Retune freely; the meter is the gate.",
+    "",
+    "  ⛔ TIER III IS EMPTY ON PURPOSE. Q-STONE (RULED 13:12): 'drop the Rough Stone",
+    "  Discovery event.' The spec's Tier III row (:656-666) is the dropped event, and",
+    "  nothing was invented to replace it. An empty tier is the honest record of a",
+    "  ruling; a substitute benefit would be this lane making a design decision.",
+    "",
+    "  ⛔ NO ROW ANYWHERE GRANTS COMBAT POWER. Q-P2W (RULED 13:10): 'economic",
+    "  acceleration is allowed; combat power stays off the table.' Spec rule 10 (:25)",
+    "  and the owner's standing ruling (whale tier = prestige, never a better army).",
+    "",
+    "  ⭐ Q-LADDER (RULED 13:12): 'merge - the Heartbound tier drives polish attempts",
+    "  (the polish mapping becomes a benefit row).' The two polishAttempts rows below",
+    "  ARE that merge. They are placed to preserve the shipped thresholds as closely as",
+    "  the merged ladder allows: NativeSkrPolishBonus granted +1 weekly re-roll at any",
+    "  stake (minimum Heartbound stake is 100 SKR => Tier I) and +1 roll cap at 10,000",
+    "  SKR. stakePower(10000) at zero tenure lands on Tier V - and that is MEASURED by",
+    "  test/heartbound-tiers.test.js against the live ladder rather than written down",
+    "  here, because a threshold copied into this file would be the second copy the",
+    "  whole design forbids. Hence reroll at I, cap at V. ⚠ THAT MAPPING IS CHOSEN,",
+    "  NOT RULED - the owner ruled the MERGE, not the two tier numbers.",
+    "",
+    "  ⛔ AND THE POLISH ROWS GRANT ATTEMPTS, NEVER ODDS. PolishBonusProvider.cs:20-23:",
+    "  'There is deliberately no member for odds, weights, luck, tier bias or a bonus",
+    "  table, and adding one would break the property the whole economy rests on.' A",
+    "  benefit row of kind polishAttempts may only carry grant extraWeeklyRerolls or",
+    "  rollCapDelta - heartbound-tiers.js REFUSES any other, and its test proves it."
+  ],
+
+  "benefitKinds": {
+    "_comment": [
+      "The closed vocabulary. heartbound-tiers.js throws on a kind not in this list, so a",
+      "future seat cannot smuggle in a 'multiplier' bag the meter would not see.",
+      "countsTowardCeiling is the Q-METER ruling expressed as data rather than as an if."
+    ],
+    "productionRate": { "countsTowardCeiling": true, "what": "a recurring percentage boost to resource yield" },
+    "eventUnlock": { "countsTowardCeiling": false, "what": "adds a row to the Heart Pulse event pool" },
+    "information": { "countsTowardCeiling": false, "what": "surfaces information the player could already earn" },
+    "polishAttempts": { "countsTowardCeiling": false, "what": "extra ATTEMPTS at the polish table - never odds" },
+    "presentation": { "countsTowardCeiling": false, "what": "cosmetic / world reaction only" }
+  },
+
+  "polishGrants": {
+    "_comment": ["The only two grant names a polishAttempts row may carry. Mirrors IPolishBonusProvider's two members."],
+    "allowed": ["extraWeeklyRerolls", "rollCapDelta"]
+  },
+
+  "tiers": [
+    { "tier": 0, "benefits": [] },
+
+    { "tier": 1, "benefits": [
+      { "id": "offline_gathering", "kind": "productionRate", "value": 0.02,
+        "seam": "OfflineClaimCoordinator",
+        "note": "Spec :636. OFFLINE gathering, so it lands on the offline claim path, not on the live EchoService rate. Stacks BESIDE EchoBonusCalculator.LaneContribution, never inside it (WO-1679 §6)." },
+      { "id": "weekly_polish_reroll", "kind": "polishAttempts", "grant": "extraWeeklyRerolls", "value": 1,
+        "seam": "IPolishBonusProvider",
+        "note": "Q-LADDER merge. Replaces NativeSkrPolishBonus's has-any-stake test with a tier test." }
+    ] },
+
+    { "tier": 2, "benefits": [
+      { "id": "echo_labor", "kind": "productionRate", "value": 0.02,
+        "seam": "OfflineClaimCoordinator",
+        "note": "Q-ECHOFIG: modifiers only, no world actor. Value chosen, not ruled - see _authoringNotes." }
+    ] },
+
+    { "tier": 3, "benefits": [] },
+
+    { "tier": 4, "benefits": [
+      { "id": "scouts_whisper", "kind": "information",
+        "seam": "RaidDeployVM.ScoutReport",
+        "note": "Q-SCOUT (RULED 13:36): 'existing report, earlier' - stakers see the EXISTING report before committing troops. The information itself stays equal for everyone; no new intel. Applied by the raid lane, not here." }
+    ] },
+
+    { "tier": 5, "benefits": [
+      { "id": "crafting_inspiration", "kind": "eventUnlock",
+        "seam": "heartbound event pool",
+        "note": "Spec :684, 'small crafting convenience events become available' - an EVENT-POOL row, which is why it is not a rate. Q-METER excludes event drops from the ceiling." },
+      { "id": "polish_roll_cap", "kind": "polishAttempts", "grant": "rollCapDelta", "value": 1,
+        "seam": "IPolishBonusProvider",
+        "note": "Q-LADDER merge. Tier V is the closest tier to the shipped 10,000 SKR threshold - see _authoringNotes." }
+    ] },
+
+    { "tier": 6, "benefits": [
+      { "id": "heartfire_spark", "kind": "eventUnlock",
+        "seam": "heartbound event pool",
+        "note": "Q-HEARTFIRE (RULED 13:12): a SECOND Heartfire source is allowed for stakers and the single-source lint is re-pointed to permit exactly this. Re-pointing HeartfireRegression is WO-1678's lane, not this one." }
+    ] },
+
+    { "tier": 7, "benefits": [
+      { "id": "echo_workers", "kind": "productionRate", "value": 0.02,
+        "seam": "OfflineClaimCoordinator",
+        "note": "Q-ECHOFIG: modifiers only. Spec :700-706 says 'temporary Echo figures can appear in the settlement'; the ruling says numbers, not figures, and EchoWorldPresence stays the single appearance owner (CLAUDE.md §7). Value chosen, not ruled." }
+    ] },
+
+    { "tier": 8, "benefits": [
+      { "id": "echo_bloom", "kind": "presentation",
+        "seam": "WO-1680",
+        "note": "Spec :710-714. Greenfield visual; this row exists so the panel can name the tier's identity." }
+    ] },
+
+    { "tier": 9, "benefits": [
+      { "id": "ancient_echo", "kind": "eventUnlock", "seam": "heartbound event pool",
+        "note": "Spec :718-722, rare narrative/cosmetic encounters." },
+      { "id": "kingdom_resonance", "kind": "presentation", "seam": "WO-1680" }
+    ] },
+
+    { "tier": 10, "benefits": [
+      { "id": "heartbound_kingdom", "kind": "presentation", "seam": "WO-1680",
+        "note": "Spec :728-744: maximum resonance appearance, settlement aura, banner/crest. Spec :746: 'Tier X should feel prestigious rather than economically mandatory' - which is why the ladder's LAST tier adds NO production rate at all." },
+      { "id": "event_choice", "kind": "eventUnlock", "seam": "heartbound event pool",
+        "note": "Spec :740-742, 'choose one of three Echo manifestations'. A CHOICE mechanic, not a larger reward." }
+    ] }
+  ]
+}

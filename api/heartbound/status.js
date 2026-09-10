@@ -58,6 +58,79 @@ const { AuthCode, authenticate, isWalletId } = require('../_lib/wallet-auth');
 const { applyCors, newRef, quietFail } = require('../_lib/http');
 const { logAuthReject, logApiEvent } = require('../_lib/audit');
 const skr = require('../_lib/skr-staking');
+const heartboundState = require('../_lib/heartbound-state');
+const tiers = require('../_lib/heartbound-tiers');
+
+// =============================================================================
+//  THE TIER BLOCK (WO-1679 / HEART-006 + WO-1682 / HEART-009)
+// -----------------------------------------------------------------------------
+// ⛔ THE CLIENT IS TOLD ITS TIER AND ITS BENEFITS. IT NEVER DERIVES EITHER.
+// Product rule 6 (spec :21) makes the backend authoritative, and spec :1274 —
+// "UI contains no staking calculations" — says it again for the UI. A Unity build
+// that could compute a tier would be a SECOND authority on a number the server
+// owns, which is the duplicated-state failure CLAUDE.md §2/§5/§8/§16 each record
+// a separate scar from. So the wire carries the ANSWERS: which tier, how far to
+// the next one, and exactly which modifiers apply.
+//
+// ⭐ AND NOTHING HERE HOLDS THE LADDER EITHER. api/_lib/heartbound-state.js takes
+// an INJECTED `resolveTier` for precisely this reason (its :378-382 says so), and
+// `tiers.resolveTier` is what gets injected. The thresholds live in ONE file,
+// api/_lib/heartbound-resonance-config.json, and neither this route nor the state
+// module nor the client carries a copy.
+//
+// ⚠ nextTierAt IS A SCALAR ON THE WIRE, AND THAT IS LOAD-BEARING.
+// heartbound-state.js:405-408 does `String(resolved.nextTierAt)`, while
+// heartbound-resonance.js's own `nextTierAt()` returns an OBJECT. Injecting the
+// resonance function directly would have serialised "[object Object]" onto the
+// wire with no error anywhere — a silent, plausible-looking wrong answer.
+// `tiers.resolveTier` returns the next threshold as a NUMBER and keeps the richer
+// object on a separate key; test/heartbound-tiers.test.js pins the two contracts
+// in step.
+// =============================================================================
+
+/**
+ * The `{ nextTierAt, benefits }` block, or NULL when it cannot be determined.
+ *
+ * ⛔ NULL IS NOT ZERO, AND THE DIFFERENCE IS THE WHOLE POINT. A missing table, an
+ * unreadable row or a thrown resolver means WE DO NOT KNOW — and the client, on
+ * seeing no block, HOLDS ITS PREVIOUS ANSWER rather than standing every passive
+ * down (HeartboundStatusClient.AcceptBenefits). Emitting a tier-0 block here on an
+ * error would zero a paying player's benefits on a transient database blip, which
+ * is exactly the fail-to-zero mistake the owner's Q2 ruling ("fail to last-known
+ * verified state") exists to forbid, one layer up.
+ *
+ * ⚠ IT NEVER THROWS AND NEVER 500s THE ROUTE. The stake answer is useful on its
+ * own; a Heartbound read that fails must degrade this response, not deny it — the
+ * same posture the snapshot read below already takes for a missing table.
+ */
+async function heartboundBlock(sql, playerId, nowMs) {
+    try {
+        const status = await heartboundState.readHeartboundStatus(sql, playerId, {
+            resolveTier: tiers.resolveTier,
+            nowMs: nowMs,
+        });
+        // `exists === false` is a real answer, not a failure: this wallet has no
+        // Heartbound row, so it is tier 0 and the ZERO benefit payload is correct.
+        const tier = status.state ? (Number(status.state.resonanceTier) || 0) : 0;
+        return {
+            heartboundStatus: status.status,
+            nextTierAt: status.nextTierAt,
+            benefits: tiers.statusBenefitsPayload(tier),
+        };
+    } catch (err) {
+        console.warn('[heartbound/status] tier block unavailable:', err && err.message);
+        return null;
+    }
+}
+
+/** The zero block — used ONLY where tier 0 is a FACT, never where it is ignorance. */
+function silentHeartboundBlock() {
+    return {
+        heartboundStatus: 'DORMANT',
+        nextTierAt: null,
+        benefits: tiers.statusBenefitsPayload(0),
+    };
+}
 
 /** TIMESTAMPTZ -> unix SECONDS, tolerating both shapes the Neon driver returns. */
 function toUnixSeconds(ts) {
@@ -263,6 +336,10 @@ module.exports = async (req, res) => {
             success: true,
             serverNowMs: Date.now(),
             mode: auth.mode,
+            // A rail with no wallet is tier 0 as a matter of FACT, not of ignorance —
+            // there is no wallet and no mechanism to attach one — so the zero block is
+            // the honest answer here and the client may safely stand everything down.
+            ...silentHeartboundBlock(),
             snapshot: toWire({
                 walletAddress: null,
                 guardianPool: skr.GUARDIAN_POOL,
@@ -299,11 +376,18 @@ module.exports = async (req, res) => {
     // or when a manual refresh is inside its 60-second cooldown.
     if (stored && ((cacheFresh && !wantsRefresh) || cooldownBlocks)) {
         const age = stored.verifiedAtSeconds ? nowSeconds - stored.verifiedAtSeconds : null;
+        // ⚠ THE TIER BLOCK IS SERVED ON THE CACHED PATH TOO. The cache being fresh is a
+        // statement about the CHAIN read, not about the tier: the Heartbound row moves on
+        // its own cadence (the daily pulse), so omitting the block here would leave a
+        // player's benefits frozen behind a five-minute stake cache for no reason. It is a
+        // local database read; it spends no RPC.
+        const cachedTier = await heartboundBlock(sql, identity, Date.now());
         return res.status(200).json({
             ok: true,
             success: true,
             serverNowMs: Date.now(),
             mode: auth.mode,
+            ...(cachedTier || {}),
             snapshot: toWire(stored, {
                 verifiedAtMs: stored.verifiedAtSeconds ? stored.verifiedAtSeconds * 1000 : null,
                 ageSeconds: age,
@@ -368,6 +452,8 @@ module.exports = async (req, res) => {
         ? (stored ? stored.verifiedAtSeconds : null)
         : (succeeded ? nowSeconds : (stored ? stored.verifiedAtSeconds : null));
 
+    const freshTier = await heartboundBlock(sql, identity, Date.now());
+
     return res.status(200).json({
         ok: true,
         success: true,
@@ -375,6 +461,10 @@ module.exports = async (req, res) => {
         // "clock manipulation has no effect" rides on this being present.
         serverNowMs: Date.now(),
         mode: auth.mode,
+        // ⛔ SPREAD, NOT ASSIGNED, AND ABSENT WHEN UNKNOWN. When heartboundBlock returns
+        // null the response simply carries NO `benefits` key, and the client holds its
+        // previous answer. A `benefits: null` would read as "you have none".
+        ...(freshTier || {}),
         snapshot: toWire(served, {
             verifiedAtMs: verifiedAtSeconds ? verifiedAtSeconds * 1000 : null,
             ageSeconds: resolution.ageSeconds,

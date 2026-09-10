@@ -1,6 +1,6 @@
 # WORK ORDER 1679 — HEART-006: Ten-tier passive benefit system
 
-**Status:** SPEC
+**Status:** IMPLEMENTED (2026-09-10) — ten-tier benefit table + `IHeartboundBonusProvider` (five members, one flag read, token-free in `DeNelle.Core`) + Q-LADDER polish merge; ceiling measured 0.06/0.10, node 26/26. Offline application deferred (no single accrual point). ✅ Ship-order hazard found and CLOSED in-lane (`api/heartbound/status.js` extended here, so endpoint + provider land together — keep them in ONE commit). Chain 47 CS1061 in `HeartboundBenefitsRegression.cs` fixed (`Regex.Matches` → `MatchCollection` is non-generic, so `var` inferred `object`); whole file swept, every regex result and dereferenced local now explicitly typed — `.RESULT.md` §7. Chain 48: both reds fixed — the "second writer" was a DOC COMMENT tripping a substring lint (no call existed), and the Jeweler red was a SOURCE LINT pinning the pre-merge grant expression, re-pointed with the ruling and made stricter (the tier-1-floor alternative is false on the numbers: a 100 SKR stake measures Tier 0). `.RESULT.md` §8. Not gated, not committed.
 **Silo:** Gameplay modifier plumbing (`DeNelle.Core` provider + host wiring). No scene files, no economy retune.
 **Raised by:** HEARTBOUND-TRIAGE lane, 2026-09-10.
 **Number:** PRE-ASSIGNED by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately **NOT** edited by this lane.

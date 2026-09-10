@@ -261,6 +261,26 @@
             "key": "dungeon.roughStoneDropPct",
             "kind": "int",
             "default": 5
+        },
+        {
+            "key": "realm.vfx.atfootprintoftree_Aura",
+            "kind": "int",
+            "default": 0
+        },
+        {
+            "key": "realm.vfx.atfootprintoftree_Impact",
+            "kind": "int",
+            "default": 0
+        },
+        {
+            "key": "realm.vfx.EliteDeath_Impact",
+            "kind": "int",
+            "default": 0
+        },
+        {
+            "key": "realm.vfx.BossDeath_Impact",
+            "kind": "int",
+            "default": 0
         }
     ]
 }
