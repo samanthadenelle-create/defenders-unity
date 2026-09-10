@@ -70,9 +70,15 @@ namespace DeNelle.Village
         [JsonProperty("baseContributionPerEcho")] public float BaseContributionPerEcho = 0.15f;
         /// <summary>Flat global Harvest bonus when all 6 spirits are owned (the set bonus).</summary>
         [JsonProperty("sixSetBonusGlobalHarvest")] public float SixSetBonusGlobalHarvest = 0.20f;
-        /// <summary>Level curve kind ("linear" today; reserved for future curves).</summary>
-        [JsonProperty("levelCurve")] public string LevelCurve = "linear";
-        /// <summary>Per-level bonus increment (linear curve).</summary>
+        // RETIRED 2026-09-10 by owner ruling on WO-1430 (fields 3-5): the levelCurve member and
+        // the echoes-balance.json key it bound were DROPPED. It authored the name of a curve
+        // EchoBonusCalculator never asked for, so authoring a second name would have changed
+        // nothing and said nothing -- an unkept promise, not a knob. The per-level term is
+        // linear by construction in PerLevelBonus below; if a second curve is ever wanted,
+        // re-add the field IN THE SAME CHANGE as the formula that honours it. Its absence is
+        // pinned by AuthoredFieldReaderRegression case [retired-field-stays-retired], which
+        // REDS if either the declaration or the json key comes back.
+        /// <summary>Per-level bonus increment (the per-level term is linear by construction).</summary>
         [JsonProperty("perLevelBonus")] public float PerLevelBonus = 0.05f;
         /// <summary>Per-echo base contribution rate, keyed by echo id ("echo-frosthowl").</summary>
         [JsonProperty("perEchoBaseRate")] public Dictionary<string, float> PerEchoBaseRate = new Dictionary<string, float>();

@@ -41,7 +41,13 @@ namespace DeNelle.Core
         [JsonProperty("itemId")] public string ItemId = "";
         [JsonProperty("order")] public int Order;
         [JsonProperty("badge")] public string Badge = "";
-        [JsonProperty("visibilityRule")] public string VisibilityRule = "";
+        // RETIRED 2026-09-10 by owner ruling on WO-1430 (fields 3-5): the visibilityRule member
+        // was DROPPED. It declared a show/hide rule as a bare string while the server emits a
+        // visibility OBJECT (see CardCollectionApiItem.Visibility below) -- two shapes that never
+        // agreed -- and it was authored on ZERO rows of card-collections.json in either canonical
+        // twin. Re-add it only in the same change as the code that applies it, and in the shape
+        // the server actually sends. Absence pinned by AuthoredFieldReaderRegression case
+        // [retired-field-stays-retired].
         [JsonProperty("asset")] public CardAssetPointer Asset;
     }
 
@@ -104,7 +110,18 @@ namespace DeNelle.Core
         [JsonProperty("definition")] public JObject Definition;
         [JsonProperty("packaged_fallback_key")] public string PackagedFallbackKey;
         [JsonProperty("fallback_sku")] public string FallbackSku;
-        [JsonProperty("expiry_behavior")] public string ExpiryBehavior;
+        // RETIRED 2026-09-10 by owner ruling on WO-1430 (fields 3-5): the CLIENT-side
+        // expiry_behavior member was DROPPED. It was parse-and-discard -- nothing under
+        // Assets/ ever named it, so every expiry behaved identically whatever the server said.
+        // ⚠ THE SERVER SIDE IS UNTOUCHED AND STILL LIVE: api/schema.sql:1621 constrains the
+        // column to (hide|lock|fallback), api/_lib/catalog-read.js:87 rejects a row whose value
+        // is not one of them and :106 emits it, and api/admin/showcase-finalize.js:83 filters on
+        // it. So live responses STILL carry the key; it is now an unknown member, which the
+        // plain JsonConvert.DeserializeObject call below (no JsonSerializerSettings, so
+        // Newtonsoft's default MissingMemberHandling.Ignore) discards without error. The
+        // CardCollectionFoundationRegression API fixture deliberately KEEPS the key for exactly
+        // that reason: it is now the proof the parser tolerates it. Absence of the client member
+        // is pinned by AuthoredFieldReaderRegression case [retired-field-stays-retired].
         [JsonProperty("asset")] public CardCollectionApiAsset Asset;
         [JsonProperty("display_order")] public int DisplayOrder;
         [JsonProperty("badge")] public string Badge;

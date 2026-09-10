@@ -50,6 +50,10 @@
 //           production reader may not GROW. New unread fields fail by name. This
 //           is discovery without judgement -- it cannot say a new field matters,
 //           only that nobody wired it and nobody said so.
+//   CASE E  the INVERSE of Case B, added 2026-09-10: fields an owner RETIRED must
+//           stay retired -- no declaration under Assets/_Modules, no key in either
+//           canonical json twin. Cases B/C/D all reason about fields that EXIST, so
+//           a retired field walking back in is invisible to every one of them.
 //
 // It does NOT prove:
 //   * that a field with a reader is read CORRECTLY, or read on the path the
@@ -69,9 +73,14 @@
 // a gate that blocks a ship.
 //
 // Marker: AUTHORED_FIELD_READER_OK / AUTHORED_FIELD_READER_FAIL <case>.
-// EXPECTED ON ARRIVAL: **RED** on the five curated fields in Case B. Two of those
-// five were WIRED on 2026-09-09 (WO-1430 lane FIELDS) and their exemptions deleted;
-// three remain parked pending an owner ruling. See ParkedClaims below.
+// STATE 2026-09-10: the five curated Case B fields the suite arrived RED on are all
+// resolved. Two were WIRED on 2026-09-09 (WO-1430 lane FIELDS, commit 4f2698b86) and
+// their exemptions deleted. The other three -- levelCurve, visibilityRule,
+// expiry_behavior -- were RETIRED on 2026-09-10 by owner ruling on WO-1430 fields 3-5
+// ("Drop them - remove the dead fields from the catalog; re-add each when a system
+// needs it"). ParkedClaims is therefore EMPTY, and Case E below turns the question
+// inside out for those three: it no longer asks "does it have a reader", it asserts
+// they STAY GONE -- from the declarations AND from the canonical json.
 //
 // Wire (DataRegression.RunAll):
 //   DeNelle.Core.Diagnostics.Guard.Try("Regression", "authored-field-reader suite", () => { if (!DeNelle.Editor.AuthoredFieldReaderRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[authored-field-reader] " + r); });
@@ -100,9 +109,9 @@ namespace DeNelle.Editor
         // for the CLI seat to triage, NOT exceptions.
         // =====================================================================
         // =====================================================================
-        // PARKED 2026-09-06 by the CLI seat (five then, THREE now). Each IS a real finding -
-        // an authored promise no code keeps - and each is written up, with the
-        // decision owed, in:
+        // PARKED 2026-09-06 by the CLI seat (five then, THREE on 2026-09-09, ZERO now).
+        // Each WAS a real finding - an authored promise no code keeps - and each is
+        // written up, with the decision owed, in:
         //   WorkOrders/WORK_ORDER_1430_seam_oracle_findings_three_doorless_panels_and_five_unread_fields.md
         //
         // ⚠ RATCHET, NOT AMNESTY. Case B still FAILS on any mechanical-claim field
@@ -124,14 +133,64 @@ namespace DeNelle.Editor
         // UnreadBaseline rows below were deleted in the SAME change: Case C
         // `continue`s on a read field BEFORE consulting the baseline, so a stale
         // baseline row is silently tolerated and nothing would ever remind us.
-        // The remaining three each need an OWNER RULING - recorded in the WO's
-        // RESULT file, not guessed at here.
+        //
+        // ---------------------------------------------------------------------
+        // 2026-09-10 (WO-1430 lane FIELDS-DROP): THE REMAINING THREE ARE RETIRED,
+        // NOT WIRED. Owner ruling, verbatim: "Drop them - remove the dead fields
+        // from the catalog; re-add each when a system needs it." levelCurve,
+        // visibilityRule and expiry_behavior no longer exist as authored client
+        // fields, so their MechanicalClaims entries and their UnreadBaseline rows
+        // were deleted in the SAME change (Case D would otherwise fire on ghost
+        // baseline rows, which is the suite working as designed).
+        //
+        // ParkedClaims is now EMPTY and stays declared on purpose. The `parked`
+        // branch in Case B is the mechanism for the NEXT field that needs an owner
+        // ruling; ripping it out would mean rebuilding it from scratch, and an
+        // empty set is honest about the current state in a way a deleted one is not.
         // =====================================================================
         private static readonly HashSet<string> ParkedClaims = new HashSet<string>(StringComparer.Ordinal)
         {
-            "LevelCurve|levelCurve|Village/Harvest/EchoBalanceCatalog.cs",
-            "VisibilityRule|visibilityRule|Core/Data/CardCollectionCatalog.cs",
-            "ExpiryBehavior|expiry_behavior|Core/Data/CardCollectionCatalog.cs",
+            // EMPTY 2026-09-10 -- see the block above. Add a key here ONLY alongside a
+            // written-up finding in a WO, never to quiet a failure.
+        };
+
+        // =====================================================================
+        // CASE E REGISTRY -- fields RETIRED by an owner ruling. The inverse of Case
+        // B: these must have NO declaration and NO authored row anywhere. A retired
+        // field that comes back is a promise re-made with nothing behind it, and it
+        // would come back SILENTLY -- Case C only ratchets fields that are unread,
+        // and a re-added field with a reader would sail past every other case here.
+        //
+        // Entry shape: "<jsonKey>|<why it was retired, and what re-adding it costs>".
+        // Matched on the JSON KEY, not on Member|key|path: a re-add under a renamed
+        // member, in a different file, or in a different catalog must still fire.
+        // =====================================================================
+        private static readonly string[][] RetiredFields =
+        {
+            new[]
+            {
+                "levelCurve",
+                "retired 2026-09-10 (owner ruling, WO-1430 fields 3-5). It named a curve " +
+                "EchoBonusCalculator never asked for, so authoring a second name changed nothing. " +
+                "Re-adding it re-creates that unkept promise unless the formula that honours it " +
+                "lands in the SAME change"
+            },
+            new[]
+            {
+                "visibilityRule",
+                "retired 2026-09-10 (owner ruling, WO-1430 fields 3-5). The client declared a bare " +
+                "string while the server emits a visibility OBJECT, and it was authored on ZERO rows. " +
+                "Re-adding it re-opens a shape disagreement between the two sides of one seam"
+            },
+            new[]
+            {
+                "expiry_behavior",
+                "the CLIENT member was retired 2026-09-10 (owner ruling, WO-1430 fields 3-5): it was " +
+                "parse-and-discard, so every expiry behaved the same way whatever the server said. " +
+                "⚠ THE SERVER SIDE IS DELIBERATELY UNTOUCHED (api/schema.sql, api/_lib/catalog-read.js, " +
+                "api/admin/showcase-finalize.js) and live responses STILL carry the key - it is now an " +
+                "ignored unknown member. This case scans Assets/ ONLY; it is not a claim about api/"
+            },
         };
 
         private static readonly string[][] MechanicalClaims =
@@ -150,13 +209,11 @@ namespace DeNelle.Editor
                 "If this case fires again, the GATE was deleted and any milestone caller can hand out " +
                 "a purchase-only cosmetic free"
             },
-            new[]
-            {
-                "LevelCurve|levelCurve|Village/Harvest/EchoBalanceCatalog.cs",
-                "echoes-balance.json authors levelCurve: \"linear\" (read 2026-09-06). A curve NAME is " +
-                "a claim about how the per-level term scales. EchoBonusCalculator never asks for it, " +
-                "so authoring \"exponential\" tomorrow would change nothing and say nothing"
-            },
+            // "LevelCurve|..." DELETED 2026-09-10 (WO-1430 lane FIELDS-DROP) - RETIRED by owner
+            // ruling, not wired. Case B asks "does this field have a reader"; a field that no
+            // longer exists cannot be asked that, and leaving the entry would have fired
+            // [mechanical-claim-registry-stale] instead. The question it used to ask is now
+            // asked in reverse by Case E.
             new[]
             {
                 "RequiresHero|requiresHero|Core/Quests/DailyQuests.cs",
@@ -169,21 +226,9 @@ namespace DeNelle.Editor
                 "CLOSED and warns on an unrecognised hero name. If this case fires again the gate was " +
                 "removed and daily-quests.json can once more make a promise the roller ignores"
             },
-            new[]
-            {
-                "VisibilityRule|visibilityRule|Core/Data/CardCollectionCatalog.cs",
-                "a rule that decides whether a card is SHOWN, with no reader. A collection row can " +
-                "carry a visibility rule the client cannot apply, so the server's intent and the " +
-                "client's behaviour diverge with nothing reporting it"
-            },
-            new[]
-            {
-                "ExpiryBehavior|expiry_behavior|Core/Data/CardCollectionCatalog.cs",
-                "authored as \"fallback\" in the CardCollectionFoundationRegression API fixture " +
-                "(CardCollectionFoundationRegression.cs:55). It names what the client should DO when " +
-                "an item expires. Nothing reads it, so every expiry behaves the same way whatever the " +
-                "server says"
-            },
+            // "VisibilityRule|..." and "ExpiryBehavior|..." DELETED 2026-09-10 (WO-1430 lane
+            // FIELDS-DROP) - both RETIRED by owner ruling. Same reasoning as the LevelCurve
+            // tombstone above; both are now asserted ABSENT by Case E.
         };
 
         // =====================================================================
@@ -207,7 +252,9 @@ namespace DeNelle.Editor
             "EndUtc|endUtc|Wallet/BattleMonthlyCatalog.cs",
             "EventDisplayText|eventDisplayText|Core/State/ServerConfig.cs",
             "EventName|eventName|Core/Analytics/EventTracker.cs",
-            "ExpiryBehavior|expiry_behavior|Core/Data/CardCollectionCatalog.cs",
+            // "ExpiryBehavior|..." DELETED 2026-09-10 (WO-1430 lane FIELDS-DROP) - the client
+            // member was RETIRED, so Case D would fire on this row as a ghost. Case E asserts it
+            // stays gone.
             "ExplorerNote|explorerNote|Wallet/WalletRegistry.cs",
             "ExportedAt|exportedAt|Core/State/SaveSchema.cs",
             "FallbackCollectionId|fallbackCollectionId|Core/Data/CardCollectionCatalog.cs",
@@ -220,7 +267,7 @@ namespace DeNelle.Editor
             "Holder|holder|Wallet/WalletRegistry.cs",
             "IconCdnUrl|iconCdnUrl|Core/Data/CardCollectionCatalog.cs",
             "IconSha256|iconSha256|Core/Data/CardCollectionCatalog.cs",
-            "LevelCurve|levelCurve|Village/Harvest/EchoBalanceCatalog.cs",
+            // "LevelCurve|..." DELETED 2026-09-10 (WO-1430 lane FIELDS-DROP) - RETIRED, see above.
             "Lighting|lighting|Core/Data/GarrisonRecipe.cs",
             "MaintenanceMessage|maintenanceMessage|Core/State/ServerConfig.cs",
             "Mint|mint|Wallet/PurchaseQuoteService.cs",
@@ -251,7 +298,7 @@ namespace DeNelle.Editor
             // IsAchievementUnlock reads it and GrantAchievement gates on it. Same reasoning
             // as the RequiresHero row above: a read field never reaches the baseline check.
             "UpgradeType|upgradeType|Village/Buildings/BuildingCatalog.cs",
-            "VisibilityRule|visibilityRule|Core/Data/CardCollectionCatalog.cs",
+            // "VisibilityRule|..." DELETED 2026-09-10 (WO-1430 lane FIELDS-DROP) - RETIRED, see above.
             "archetype|archetype|Dungeons/RoomForge/DungeonComposeLayout.cs",
             "dungeonId|dungeonId|Dungeons/RoomForge/DungeonComposeLayout.cs",
             "facing|facing|Dungeons/RoomForge/DungeonComposeLayout.cs",
@@ -470,6 +517,31 @@ namespace DeNelle.Editor
                              "removed the field");
             }
 
+            // ---- 5b. CASE E: a RETIRED field stays retired -------------------
+            // THE INVERSE QUESTION, and the one nothing else here asks. Cases B, C
+            // and D all reason about fields that EXIST; a field an owner deliberately
+            // DROPPED could walk back in - declaration re-added, key re-authored -
+            // and every one of them would stay silent, because a re-added field WITH
+            // a reader is indistinguishable from a healthy field. That is exactly the
+            // duplicated-state failure CLAUDE.md §2/§5/§16 each describe: the ruling
+            // lives in a WO, the code has no memory of it.
+            //
+            // Owner ruling 2026-09-10 (WO-1430 fields 3-5), verbatim: "Drop them -
+            // remove the dead fields from the catalog; re-add each when a system needs
+            // it." The second half is the point: a re-add is LEGITIMATE, but only in
+            // the same change as the system that reads it. This case does not forbid
+            // the re-add - it forbids the re-add happening QUIETLY. Delete the entry
+            // here in the same change and the case goes green by construction.
+            //
+            // Matched on the JSON KEY, not on the Member|key|path triple, so a re-add
+            // under a renamed member or in a different catalog file still fires.
+            //
+            // REVERT RECIPE (RED): put `[JsonProperty("levelCurve")] public string
+            // LevelCurve = "linear";` back into EchoBalanceCatalog.EchoBalanceData, or
+            // restore the `"levelCurve": "linear",` line to
+            // Assets/Resources/Data/Canonical/echoes-balance.json. Either half fires.
+            CheckRetiredFieldsStayRetired(failures, assets, declSources);
+
             // ---- 6. PRESENCE, so the absence assertions cannot pass vacuously
             // The baseline itself must still be REACHED by the scan. If the corpus
             // suddenly contained none of it, cases C and D would both go quiet.
@@ -488,6 +560,78 @@ namespace DeNelle.Editor
                            " (of which editor/test-only readers: " + editorOnly + ")" +
                            "  new since baseline: " + newlyUnread +
                            "  baseline entries resolved: " + baselineSeen + "/" + UnreadBaseline.Length);
+        }
+
+        /// <summary>
+        /// CASE E. Every RetiredFields key must be absent from BOTH sides of the seam:
+        /// no [JsonProperty("key")] declaration under Assets/_Modules, and no "key" in
+        /// either canonical json twin (Resources AND StreamingAssets - the twins are
+        /// kept byte-identical, and checking only one would miss a half-revert).
+        /// </summary>
+        private static void CheckRetiredFieldsStayRetired(
+            List<string> failures, string assets, Dictionary<string, string> declSources)
+        {
+            // ---- the json corpus, read ONCE ---------------------------------
+            var jsonBodies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var rel in new[] { "/Resources/Data/Canonical", "/StreamingAssets/Data/Canonical" })
+            {
+                string dir = assets + rel;
+                if (!Directory.Exists(dir)) continue;
+                foreach (var f in Directory.GetFiles(dir, "*.json", SearchOption.AllDirectories))
+                    jsonBodies[f.Replace('\\', '/')] = SafeRead(f);
+            }
+
+            // ANTI-VACUITY FLOOR, fail-not-skip. Without it a moved/renamed catalog
+            // directory would make every absence assertion below pass on an EMPTY
+            // corpus - the detector reporting a perfect green because it read nothing.
+            // REVERT RECIPE (RED): point the two rel paths at "/Resources/Data/Nowhere".
+            const int JsonCorpusFloor = 20;
+            if (jsonBodies.Count < JsonCorpusFloor)
+            {
+                failures.Add(Tag + " [retired-field-stays-retired] only " + jsonBodies.Count +
+                             " canonical json files were read under Assets/Resources/Data/Canonical + " +
+                             "Assets/StreamingAssets/Data/Canonical (floor " + JsonCorpusFloor + "). The " +
+                             "authored side of this case cannot be judged, so a green would mean nothing. " +
+                             "FAIL, not a skip");
+                return;
+            }
+
+            foreach (var entry in RetiredFields)
+            {
+                string key = entry[0];
+                string why = entry[1];
+
+                // (a) the DECLARATION side. Raw source, same reason declRx is raw: the
+                // key lives inside a string literal.
+                // ⚠ DELIBERATELY LOOSER THAN THE INVENTORY'S declRx: no `)]` tail and no
+                // `public string` requirement. For an ABSENCE assertion, OVER-matching is
+                // the safe direction - a re-add as
+                // `[JsonProperty("levelCurve", Required = Required.Default)]`, or as a
+                // non-string member, must still fire. The inventory regex may under-report
+                // (its false negatives are safe there); this one may not.
+                var declRx = new Regex("\\[JsonProperty\\(\\s*\"" + Regex.Escape(key) + "\"",
+                                       RegexOptions.Compiled);
+                foreach (var kv in declSources)
+                {
+                    if (!declRx.IsMatch(kv.Value)) continue;
+                    failures.Add(Tag + " [retired-field-stays-retired] '" + key + "' is declared again in " +
+                                 kv.Key + ", but it was " + why + ". If a system now NEEDS it, the owner's " +
+                                 "ruling allows the re-add - land the reader in the SAME change and delete " +
+                                 "this key from RetiredFields, so the re-add is recorded rather than silent");
+                }
+
+                // (b) the AUTHORED side. A key can come back in the data with no
+                // declaration at all (a hand-edited catalog row), and that is just as
+                // much a promise nothing keeps.
+                var jsonRx = new Regex("\"" + Regex.Escape(key) + "\"\\s*:", RegexOptions.Compiled);
+                foreach (var kv in jsonBodies)
+                {
+                    if (!jsonRx.IsMatch(kv.Value)) continue;
+                    failures.Add(Tag + " [retired-field-stays-retired] '" + key + "' is authored again in " +
+                                 kv.Key + ", but it was " + why + ". An authored key with no member and no " +
+                                 "reader is the WO-1038 shape: authored content, no code, no error");
+                }
+            }
         }
 
         // =====================================================================

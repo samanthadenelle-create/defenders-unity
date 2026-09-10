@@ -5,7 +5,6 @@
   "preferredLaneMatchBonus": 0.03,
   "baseContributionPerEcho": 0.02,
   "sixSetBonusGlobalHarvest": 0.20,
-  "levelCurve": "linear",
   "perLevelBonus": 0.01,
   "perEchoBaseRate": {
     "echo-frosthowl": 1.0,

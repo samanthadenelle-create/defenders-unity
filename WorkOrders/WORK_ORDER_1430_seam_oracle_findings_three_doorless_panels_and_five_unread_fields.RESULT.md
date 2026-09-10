@@ -218,3 +218,171 @@ DeNelle.Core.Diagnostics.Guard.Try("Regression", "authored-field-gate suite", ()
   `DailyQuests.cs` as 425L and calls the `requiresFeature` filter *"currently vacuous (dead gate)"* — already
   false before this lane (the `"raids"` branch reads `PostureSignals.RaidCapable`), and now missing
   `HeroRequirementMet` / `CurrentHeroClass` entirely. Out of this lane's file ownership.
+
+---
+
+# 2026-09-10 — lane FIELDS-DROP: fields 3-5 RETIRED per owner ruling
+
+**Owner ruling (AskUserQuestion, 2026-09-10 morning), verbatim:** *"Drop them - remove the dead fields
+from the catalog; re-add each when a system needs it."* — closing §3.1, §3.2 and §3.3 above by
+RETIREMENT rather than by wiring. Those three sections are frozen point-in-time findings (CLAUDE.md
+§15) and are **not** rewritten; this section supersedes their "one question" lines.
+
+Lane constraints honoured: **EDIT ONLY** — no Unity run, no gate, no commit. Base `3da5e5360`
+(fast-forwarded mid-lane from `b877e633c` to pick up the RULINGS-PM commit; the ruling block in the
+WO `.md` was **not** touched by this lane, only the first `**Status:**` line).
+
+## A. Per-field row counts — what lost what
+
+| Field | Authored JSON rows removed | DTO members removed | Regression rows retired |
+|---|---|---|---|
+| `levelCurve` | **2** — one top-level key in each `echoes-balance.json` twin (`Assets/Resources/Data/Canonical/` + `Assets/StreamingAssets/Data/Canonical/`, both at the file's line 8) | **1** — `EchoBalanceData.LevelCurve` (`Assets/_Modules/Village/Harvest/EchoBalanceCatalog.cs`, was `:74`) | **3** — `ParkedClaims`, `MechanicalClaims`, `UnreadBaseline` |
+| `visibilityRule` | **0** — authored on zero rows; `grep -c` over `card-collections.json` returned `0` | **1** — `CardCollectionItemPointer.VisibilityRule` (`Assets/_Modules/Core/Data/CardCollectionCatalog.cs`, was `:44`) | **3** — same three registries |
+| `expiry_behavior` | **0** in `Assets/` canonical json | **1** — `CardCollectionApiItem.ExpiryBehavior` (same file, was `:107`) | **3** — same three registries |
+| **totals** | **2 JSON rows** | **3 DTO members** | **9 registry rows** |
+
+Note the shape: this was **not** a mass catalog edit. `levelCurve` was the only one of the three ever
+authored in data at all, and it is a **top-level knob**, not a per-row field — so no catalog *row*
+lost a field. The other two were declaration-only, which is precisely why they were dead.
+
+## B. ⚠ FINDING — `expiry_behavior` HAS a reader, on the SERVER. Scope stated explicitly.
+
+The lane brief said to STOP on any field that turns out to have a reader. Stating it plainly rather
+than as a footnote:
+
+- **Client reader: NONE.** `grep -rn "ExpiryBehavior" --include=*.cs Assets/` (this session) returned
+  only the declaration and the three regression registry rows. Nothing under `Assets/` ever read it.
+  It was parse-and-discard, exactly as §3.3 recorded before the ruling.
+- **Server readers: LIVE, and deliberately untouched.** `api/schema.sql:1621-1622` constrains the
+  column to `('hide','lock','fallback')`; `api/_lib/catalog-read.js:87` REJECTS a row whose value is
+  not one of them and `:106` emits it in the payload; `api/admin/showcase-finalize.js:77,83` projects
+  and filters on it. **`api/` was not edited by this lane and the server contract is unchanged.**
+- **Consequence, and why it is safe:** live responses still carry `expiry_behavior`, which is now an
+  *unknown member* on the client. `CardCollectionCatalog.cs:212` and `:272` call
+  `JsonConvert.DeserializeObject<T>(json)` with **no `JsonSerializerSettings`**, so Newtonsoft's
+  default `MissingMemberHandling.Ignore` applies and the key is discarded without error. Verified at
+  source this session by grepping those two call sites for a settings object — there is none.
+- **The `CardCollectionFoundationRegression.cs:55` fixture KEEPS the key on purpose.** It models a
+  server response, the server still sends it, and the fixture is now the standing proof that the
+  parser tolerates the extra member. Removing it would have deleted that proof.
+
+The ruling's premise ("no reader") holds for the client catalog, which is what it scoped. Recorded
+here so nobody later reads "expiry_behavior was dead" and deletes the server column.
+
+## C. The pin was INVERTED, not deleted — `[retired-field-stays-retired]` (Case E)
+
+`AuthoredFieldReaderRegression` previously asserted *"this authored field has a reader"* for all
+three. That question is meaningless once the field is gone, and simply deleting the rows would have
+left the ruling recorded **only in a WO** — the duplicated-state failure CLAUDE.md §2/§5/§16 each
+describe. So the question was turned inside out:
+
+- New `RetiredFields` registry + `CheckRetiredFieldsStayRetired`, wired as **Case E** inside
+  `CheckAuthoredFieldsHaveReaders`.
+- It REDS on **either** side of the seam: a `[JsonProperty("<key>")]` declaration anywhere under
+  `Assets/_Modules`, **or** a `"<key>":` in **either** canonical json twin (both are scanned — the
+  twins are kept byte-identical, and checking one would miss a half-revert).
+- Matched on the **JSON key**, not the `Member|key|path` triple, so a re-add under a renamed member
+  or in a different catalog file still fires.
+- **Anti-vacuity floor, fail-not-skip:** the json corpus must reach 20 files, else the case FAILS
+  rather than passing on an empty read.
+- It does **not** forbid a re-add — the owner explicitly allowed one *"when a system needs it"*. It
+  forbids a **silent** one: land the reader, delete the key from `RetiredFields` in the same change.
+- Cases B/C/D could not have caught this. All three reason about fields that EXIST; a re-added field
+  *with* a reader is indistinguishable from a healthy one.
+
+`ParkedClaims` is now **empty and still declared**, with a tombstone. The `parked` branch in Case B
+is the mechanism for the next field that needs an owner ruling; deleting it would mean rebuilding it.
+
+## D. Evidence captured this session (EDIT-ONLY — no Unity available to this lane)
+
+**RED-first, via a Python port of Case E's exact two regexes run over the same two corpora:**
+
+```
+[head] decl corpus=1364 .cs   json corpus=221 (floor 20)
+  RED decl 'levelCurve'      -> Assets/_Modules/Village/Harvest/EchoBalanceCatalog.cs
+  RED json 'levelCurve'      -> Assets/Resources/Data/Canonical/echoes-balance.json
+  RED json 'levelCurve'      -> Assets/StreamingAssets/Data/Canonical/echoes-balance.json
+  RED decl 'visibilityRule'  -> Assets/_Modules/Core/Data/CardCollectionCatalog.cs
+  RED decl 'expiry_behavior' -> Assets/_Modules/Core/Data/CardCollectionCatalog.cs
+[head] case-E failures = 5
+-----
+[tree] decl corpus=1364 .cs   json corpus=221 (floor 20)
+[tree] case-E failures = 0
+```
+
+`head` reads every path through `git show HEAD:<path>`, so it is the pre-edit tree, not a memory.
+**5 → 0.** The case is proven to fire on exactly the state this lane removed, and to be quiet on the
+state it left. It has **not** been run inside Unity — that is the gating seat's step.
+
+**Binary-safe JSON edit proof.** Both twins are CRLF, so "LF count unchanged" is impossible when a
+line is removed; the invariants actually proven are CR==LF preserved, a byte delta of exactly the
+removed line, `json.load` success, and the twins still byte-identical:
+
+| | before | after |
+|---|---|---|
+| bytes (each twin) | 6142 | 6115 (−27 = `len('  "levelCurve": "linear",\r\n')`) |
+| LF / CR | 26 / 26 | 25 / 25 (paired) |
+| md5 (both twins) | `1afe0556f6e11c0a62cc2aa183b03bc1` | `128a51d1fd9160faf4d603039ee56e3f` |
+| `json.load` | ok | ok, 12 top-level keys, `levelCurve` absent, `perLevelBonus` still `0.01` |
+
+The edit was done in Python **bytes** with `assert data.count(needle) == 1` before a single
+`replace(..., 1)` — never a text-mode rewrite (memory `canonical-json-edits-binary-only`).
+
+**C# quality gate:** `python tools/gate_brace.py` on all three touched files →
+`GATE_BRACE_SUMMARY bad=0 of 3`, exit 0. NUL scan → `NUL=0` on all three; raw braces balanced
+56/56, 58/58, 42/42.
+
+## E. Canon updated in the same breath (§15)
+
+- `docs/MASTER_CATALOG/core.md` — the "Three authored fields remain STOPPED on owner rulings"
+  sentence was **live and now wrong**; replaced with the retirement, the server-side caveat, and the
+  pin that enforces it.
+- `docs/reference/DATA_CLASS_MAP.md` — claimed `echoes-balance.json`'s *"only strings are
+  `levelCurve: "linear"` and echo ids"*; corrected with a dated note.
+
+## F. Owed outside this lane
+
+- **The gate has not run.** `COMPILE_GATE_OK` + `REGRESSION_OK <n>/<n>` on a fresh log are the
+  gating seat's, and the `AUTHORED_FIELD_READER_OK` line is the marker to look for in the suite log.
+  This lane's Case E evidence is a Python port, not the C# case executing.
+- **`api/` untouched by design** (§B). If the server ever stops sending `expiry_behavior`, nothing
+  client-side needs to change — that is the point of the removal.
+
+## G. Blast-radius checks run before hand-back (each grep executed this session)
+
+Removing an authored key can red a suite that never *names* the key — a key-count, a golden hash or
+a byte-length assertion. All four suites that touch `echoes-balance.json` were read with context:
+
+- `EchoSpecializationRegression.cs` is the only one that asserts on the file's shape, and every
+  assertion survives: `:244` `Version == 1`, `:245` `MaxLevel == 8`, `:316` the two twins are
+  **byte-identical**, `:321` the file still AUTHORS `repairFractionPerHour`. **No key-count, no hash,
+  no length assertion.** Verified after the edit: both twins md5 `128a51d1fd9160faf4d603039ee56e3f`
+  (identical), and `grep -c repairFractionPerHour` returns `2` in each.
+- `RemoteCatalogSeamRegression.cs:114` / `:354` only name the file as a **path** in the WO-1331
+  remote allowlist — no field-level claim.
+- `CrystalProductionRegression.cs:396` and `OfflineClaimFanOutRegression.cs:152` name it only in
+  comment prose.
+- `grep -rn "levelCurve\|visibilityRule\|expiry_behavior" tools/` → **no hits**.
+- `grep -rln "echoes-balance" Assets/Data/` → **no hits** (no EditMode test reads it).
+
+**The `CardCollectionFoundationRegression.cs:55` fixture claim is verified, not assumed.** The
+fixture string is fed to `catalog.ResolveApiEnvelope(api, "build-defenses", ...)` at `:56` — the
+**production** path, which is the `JsonConvert.DeserializeObject<CardCollectionApiEnvelope>` call at
+`CardCollectionCatalog.cs:212` — and `:57-59` assert on the parsed result (`Cards.Count == 2`,
+`Cards[0].StableId`, `Cards[0].Title`). So the fixture genuinely exercises the parser with the
+now-unknown `expiry_behavior` key present, and a green there is real evidence the key is tolerated.
+
+## H. Case E regex is deliberately LOOSER than the inventory's
+
+`declRx` in Case E matches `[JsonProperty("<key>"` with **no `)]` tail and no `public string`
+requirement — unlike the inventory `declRx`, which needs both. For an **absence** assertion,
+over-matching is the safe direction: a re-add as
+`[JsonProperty("levelCurve", Required = Required.Default)]`, or as a non-string member, must still
+fire. The inventory regex is allowed false negatives (it under-reports on purpose, see the header);
+this one is not. Both RED-first runs above were re-executed with the hardened pattern and still read
+**5 → 0**.
+
+## I. Also owed outside this lane (added at hand-back)
+
+- **`docs/HANDOVER_2026-09-10_overnight.md`** was updated by the RULINGS-PM commit `3da5e5360` and
+  records fields 3-5 as READY. It is a dated handover the lead owns; **not edited here**, flagged.
