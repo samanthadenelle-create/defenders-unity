@@ -17,6 +17,17 @@ Village → Cosmetics stays a reflection bridge (Enemy.cs:2578-2609 Glimmer).
 
 ---
 
+## DELTA 2026-09-09 — raid-stranding watchdog clock-aligned, honor-star snuff cascade, raid-loot cache + retention, rough-stone faucet, and siege-machine asset decider
+
+Five work order results landed on 2026-09-09 across five lanes. All read-verified from RESULT files:
+
+- **RAID (WO-1095 + WO-1594 RESULTS):** `RaidDeployController.ClassifyStranding / StrandingArm` (stranding watchdog measures ENGAGED time like the raid clock, never scene age). `RaidScoring.ComputeHonorStars / PresentationStars` (honor stars light at engagement, snuff by time/destruction milestones). `RaidHudController` star shape (lit vs snuffed carries silhouette + motion, never colour).
+- **SPOILS (WO-1461 RESULT § 2):** `RaidClaimService` raid cache seams — `Cached(BankResource)` / `CacheRoomFor(...)` / `RetainOverflow(configId, loot, credited)` / `ConsumeCached(BankResource, applied)`. `RaidVictoryController.RetainOverflow` called at settle, step 3.5b (after `GrantLoot`, before army settle).
+- **RAID-3 (WO-1373 RESULT § 2):** Rough stone drop (top two raid tiers, global 1 per UTC day), day ledger in PlayerPrefs (`dotr-raid-stoneday` / `dotr-raid-stonecount`, no schema bump). `Village2RaidController` cycle read.
+- **BALLISTA (WO-1617 RESULT § 1):** `RaidBaseGenerator.IsAuthoredSiegeMachine + ResolveSpireArtId` (these live under `Assets/Editor/WallTools/`, NOT `Camps/`). Siege spire placement correction.
+
+---
+
 ## DELTA 2026-08-21 — the PvE SIEGE cluster, the per-camp raid COOLDOWN, map PIN producers, and the crate that became a CHEST
 
 Read from source on 2026-08-21 (branch `wip/village2-and-f8-tickets`), not from headers or a summary.

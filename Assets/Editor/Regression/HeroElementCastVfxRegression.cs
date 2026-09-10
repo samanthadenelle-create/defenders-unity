@@ -66,7 +66,11 @@ namespace DeNelle.Editor
                 "SpellVfxFactory.PlayCast(def.EffectEnum, _heroClass, def.UnityColor, origin);",
                 resolved,
                 StringComparison.Ordinal);
-            int registry = source.IndexOf("PlayCastVfxKey(def, origin, castVariant);", resolved,
+            // WO-1614 (f4e4630e3, 2026-09-09): the registry beat now receives the RESOLVED
+            // animVariant, not the pressed-slot castVariant - that rename IS the fix for "VFX
+            // followed the hotbar seat". Re-pointed 2026-09-09 by the lead with that ruling; the
+            // order this pins (flash -> registry beat -> effect) is unchanged at the producer.
+            int registry = source.IndexOf("PlayCastVfxKey(def, origin, animVariant);", resolved,
                 StringComparison.Ordinal);
             int effect = source.IndexOf("ResolveEffect(def, origin);", resolved,
                 StringComparison.Ordinal);

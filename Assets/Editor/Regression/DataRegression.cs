@@ -1927,6 +1927,74 @@ namespace DeNelle.Editor
             // in the api lane (test/game.save.reset-epoch.test.js).
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "reset-epoch suite", () => { if (!DeNelle.Editor.Regression.ResetEpochRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[reset-epoch] " + r); });
 
+            // WO-1096 (2026-09-09, lane SHOP): the shop preview loader branch is decided by the row's
+            // own loadVia, never by a "blink_" id prefix; the armor flag governs armor only.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "shop-preview-loader-branch suite", () => { if (!DeNelle.Editor.PartyShopPreviewLoaderBranchRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[shop-preview-loader-branch] " + r); });
+
+            // WO-1094 (2026-09-09, lane LOCOMOTION): the playable bound is measured from the world
+            // authority, never a literal; the teleport guard spans the warp frame and the next Update.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "hero-playable-bounds suite", () => { if (!DeNelle.Editor.Regression.HeroPlayableBoundsRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[hero-playable-bounds] " + r); });
+
+            // WO-1431 (2026-09-09, lane HERO-GRIP): the staff grip is DERIVED (0.75 up) on the live
+            // melee attach path, not only measured; swords keep the lower-hilt rule.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "staff-grip-seat suite", () => { if (!DeNelle.Editor.Regression.StaffGripSeatRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[staff-grip-seat] " + r); });
+
+            // WO-1095 + WO-1594 (2026-09-09, lane RAID): the stranding watchdog measures ENGAGED time
+            // like the clock, never scene age; honor stars degrade by a pure ComputeHonorStars.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-watchdog-honor suite", () => { if (!DeNelle.Editor.Regression.RaidWatchdogHonorRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-watchdog-honor] " + r); });
+
+            // WO-1092 (2026-09-09, lane CACHE): an abandoned Addressables cache transaction (lock-only
+            // version dir) is repaired before the pull; chunks are planned by UNIQUE bundle; verifier unchanged.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "offline-cache-repair suite", () => { if (!DeNelle.Editor.Regression.OfflineCacheRepairRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[offline-cache-repair] " + r); });
+
+            // WO-1099 (2026-09-09, lane HARVEST-COPY): the over-cap harvest result exposes banked /
+            // pending / over-cap truthfully and its footer leads with the SPEND recovery, never a reassurance.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "harvest-overcap-copy suite", () => { if (!DeNelle.Editor.Regression.HarvestOverCapCopyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[harvest-overcap-copy] " + r); });
+
+            // WO-1412 (2026-09-09, lane STORE-RETURN): the store close returns through the opener
+            // arbiter to the SAME Manage tab; the return door is set, held through the grace frame, consumed.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "store-return-to-manage suite", () => { if (!DeNelle.Editor.Regression.StoreReturnToManageRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[store-return-to-manage] " + r); });
+
+            // WO-1090 / WO-1091 / WO-1093 (2026-09-09, lane PINS): the three checkpoint-landed fixes
+            // get their first oracles - modal deferral off the step clock, the grounded biome drop, the
+            // pursuit ring that clears on deaggro.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "ftue-modal-deferral suite", () => { if (!DeNelle.Editor.Regression.FtueModalDeferralRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[ftue-modal-deferral] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "biome-drop-ground-probe suite", () => { if (!DeNelle.Editor.Regression.BiomeDropGroundProbeRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[biome-drop-ground-probe] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "rep-chase-leash suite", () => { if (!DeNelle.Editor.Regression.RepChaseLeashRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[rep-chase-leash] " + r); });
+
+            // WO-1097 item 4 (2026-09-09, lane LOADER): a Component-typed request against a GameObject
+            // address is REFUSED and traced (null, never a throw); the doc example is the working shape.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "enemy-asset-type-screen suite", () => { if (!DeNelle.Editor.Regression.EnemyAssetTypeScreenRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[enemy-asset-type-screen] " + r); });
+
+            // WO-1615 (2026-09-09, lane PLACE): the PLACE chip traces before it invokes, the over-UI
+            // suppression names the raycast owner, and only the UI latch commits a move.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "place-latch-trace suite", () => { if (!DeNelle.Editor.BuildPlaceLatchTraceRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[place-latch-trace] " + r); });
+
+            // WO-1377 (2026-09-09, lane META, owner ruling "move only what is safe"): the Jupiter swap
+            // surface is compiled out under GOOGLE_PLAY; PaymentChannel / SkinAuthMode stay (name-bound,
+            // one Arena code path). Source-level; the physical metadata scan stays a ship-chain step.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "play-metadata-identifiers suite", () => { if (!DeNelle.Editor.Regression.PlayMetadataIdentifierRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[play-metadata-identifiers] " + r); });
+
+            // WO-1461 (2026-09-09, lane SPOILS): quoted == banked + pending; spoils above cap are RETAINED
+            // in the raid cache, never burned; the repeat-clear share is the ruled 60% off the rail.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "spoils-bankable suite", () => { if (!DeNelle.Editor.Regression.SpoilsAreBankableRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[spoils-bankable] " + r); });
+
+            // WO-1617 (2026-09-09, lane BALLISTA): ONE siege-machine decider shared by PlaceSpire,
+            // PlaceTowerProp and the dresser's art resolver; a siege id in the spire slot never stands on edge.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-spire-siege suite", () => { if (!DeNelle.Editor.Regression.RaidSpireSiegeRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-spire-siege] " + r); });
+
+            // WO-1616 (2026-09-09, lane NPC-SHIELD): the troop off-hand shield seats through the hero's
+            // shield authority (one owner), never a hard-coded triple; control case proves the old seat was wrong.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "troop-shield-seat suite", () => { if (!DeNelle.Editor.Regression.TroopShieldSeatRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[troop-shield-seat] " + r); });
+
+            // WO-1430 Group B (2026-09-09, lane FIELDS): unlockMethod gates achievement grants and
+            // requiresHero gates daily-quest templates - the authored fields now have a production reader.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "authored-field-gate suite", () => { if (!DeNelle.Editor.AuthoredFieldGateRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[authored-field-gate] " + r); });
+
+            // WO-1373 (2026-09-09, lane RAID-3, owner ruling): one rough stone; only the top two raid
+            // tiers drop it, at most one per UTC day; dungeons 5% off the rail, starter dungeons excluded.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-rough-stone suite", () => { if (!DeNelle.Editor.Regression.RaidRoughStoneDropRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-rough-stone] " + r); });
+
             // =====================================================================
             //  >>> REGISTERED ORACLE SUITES — END FENCE <<<  (new lines go ABOVE)
             // =====================================================================

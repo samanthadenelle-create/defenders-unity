@@ -37,10 +37,14 @@ if (-not (Test-Path $WoDir)) { exit 0 }
 # counts; it applies nuances this cheap scan does not (partials, supersedes, RESULT pairing), so
 # the two numbers can differ. That is fine and deliberate -- this hook exists to make the queue
 # VISIBLE, not to be the ledger. Read the board before quoting a number to the owner.
+# 2026-09-09: match the FIRST `**Status:**` line per file and test THAT for READY. The old pattern
+# matched ANY line starting `**Status:** READY`, so a CLOSED ticket whose body quotes an old status
+# (WO-1356:120) counted as READY and a lane was dispatched at a closed ticket. The board is the
+# ledger; this must at least read the same line the board reads.
 $ready = @(
     Select-String -Path (Join-Path $WoDir 'WORK_ORDER_*.md') `
-                  -Pattern '^\*\*Status:\*\*\s*READY' -List -ErrorAction SilentlyContinue |
-        Where-Object { $_.Path -notlike '*.RESULT.md' } |
+                  -Pattern '^\*\*Status:\*\*' -List -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -notlike '*.RESULT.md' -and $_.Line -match '^\*\*Status:\*\*\s*READY' } |
         ForEach-Object {
             [pscustomobject]@{
                 Name = [IO.Path]::GetFileNameWithoutExtension($_.Path)

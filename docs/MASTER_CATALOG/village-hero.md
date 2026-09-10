@@ -12,6 +12,15 @@ realm map (WO-826), vendor shops, inventory/equip screens. **Assembly:** `DeNell
 (`DeNelle.Village.asmdef`). Namespace split: gameplay components = `DeNelle.Village`; the
 MVVM UI cluster (shops/inventory/raid/rumor/realm-map/barracks VMs + views) = `DeNelle.Village.Hero`.
 
+## DELTA 2026-09-09 — staff grip is DERIVED at attach, off-hand shield seats through hero authority, playable bound measured, and shop loader branch by row
+
+Four work order results landed on 2026-09-09 across four lanes. All read-verified from RESULT files:
+
+- **HERO-GRIP (WO-1431 RESULT § 2):** `EquipmentController.SeatMeleeGripPoint` dispatcher + `MeleeGripSeat` struct (public static, shipped dispatch). Staff grip 0.75 derived at attach; non-native melee props seat by archetype.
+- **NPC-SHIELD (WO-1616 RESULT § 2–3):** `EquipmentController.SeatShieldMountRotation / SeatShieldPlateOnSocket` public statics shared with `TroopGearApplier`. One authority for shield seating (hero steps lifted to public entry points).
+- **LOCOMOTION (WO-1094 RESULT § 1):** `HeroLocomotion` measured bound from `BiomeRoads.TryMeasureWorldBounds`, no typed fallback; `RemoteTunables.KeyHeroPlayableFallbackHalf` (50 m) is the scene-less fallback, no `PlayableHalf` const.
+- **SHOP (WO-1096 RESULT § 2):** `PartyShopVM` loader branch decided by row `loadVia`, never by `"blink_"` id prefix; armor flag governs armor only.
+
 ## DELTA 2026-08-21 — sheathe orientation is DERIVED PER MESH, not decided by one global sign
 
 Read from source 2026-08-21 (`EquipmentController.cs`, now **4,453 lines**;

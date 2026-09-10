@@ -16,6 +16,31 @@ or writes only reports/markers.
 
 ---
 
+## DELTA 2026-09-09 — 18 new suites registered in DataRegression.RunAll
+
+Eighteen new regression suites registered on 2026-09-09, landing across two major gates (COMPILE_GATE_OK + REGRESSION_OK) and several orchestration lanes. All are edit-mode, read-verified from RESULT files, registered once in `DataRegression.RunAll` (line 1930+). All emit their own `_OK` / `_FAIL` markers (read from log, never from this line). Tags in commit order:
+
+- [shop-preview-loader-branch] (WO-1096, SHOP) — `PartyShopPreviewLoaderBranchRegression`
+- [hero-playable-bounds] (WO-1094, LOCOMOTION) — `HeroPlayableBoundsRegression`
+- [staff-grip-seat] (WO-1431, HERO-GRIP) — `StaffGripSeatRegression`
+- [raid-watchdog-honor] (WO-1095 + WO-1594, RAID) — `RaidWatchdogHonorRegression`
+- [offline-cache-repair] (WO-1092, CACHE) — `OfflineCacheRepairRegression`
+- [harvest-overcap-copy] (WO-1099, HARVEST-COPY) — `HarvestOverCapCopyRegression`
+- [store-return-to-manage] (WO-1412, STORE-RETURN) — `StoreReturnToManageRegression`
+- [ftue-modal-deferral] (WO-1090, PINS) — `FtueModalDeferralRegression`
+- [biome-drop-ground-probe] (WO-1091, PINS) — `BiomeDropGroundProbeRegression`
+- [rep-chase-leash] (WO-1093, PINS) — `RepChaseLeashRegression`
+- [enemy-asset-type-screen] (WO-1097, LOADER) — `EnemyAssetTypeScreenRegression`
+- [place-latch-trace] (WO-1615, PLACE) — `BuildPlaceLatchTraceRegression`
+- [play-metadata-identifiers] (WO-1377, META) — `PlayMetadataIdentifierRegression`
+- [spoils-bankable] (WO-1461, SPOILS) — `SpoilsAreBankableRegression`
+- [raid-spire-siege] (WO-1617, BALLISTA) — `RaidSpireSiegeRegression`
+- [troop-shield-seat] (WO-1616, NPC-SHIELD) — `TroopShieldSeatRegression`
+- [authored-field-gate] (WO-1430 Group B, FIELDS) — `AuthoredFieldGateRegression`
+- [raid-rough-stone] (WO-1373, RAID-3) — `RaidRoughStoneDropRegression`
+
+---
+
 ## DELTA 2026-08-21 — 11 new oracles + 2 new shared harness helpers under `Assets/Editor/Regression/`
 
 Read from source 2026-08-21. All are edit-mode, `NEVER throws`, registered ONCE in

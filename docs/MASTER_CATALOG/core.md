@@ -22,6 +22,18 @@ hero warp (→Village HeroLocomotion, `SceneRouter.cs:350,383`).
 
 ---
 
+## DELTA 2026-09-09 — authored-field gates, cached bundle repair, and Jupiter compile-out
+
+Five work order results landed on 2026-09-09 across four distinct lanes (FIELDS / LOADER / CACHE / META). 
+All are read-verified from RESULT files:
+
+- **FIELDS (WO-1430 RESULT § §2.1–2.2):** `CosmeticCatalog.IsAchievementUnlock` (file:line `Assets/_Modules/Cosmetics/CosmeticCatalog.cs:48-51`) is the one definition; `CosmeticOwnershipService.GrantAchievement` now refuses non-achievement rows. `DailyQuestService.HeroRequirementMet` (`Assets/_Modules/Core/Quests/DailyQuests.cs:80-86`) gates requiresHero. Three authored fields remain STOPPED on owner rulings (levelCurve / visibilityRule / expiry_behavior); see the RESULT file §3 for the open questions per field.
+- **LOADER (WO-1097 RESULT § 2026-09-09 pins):** `EnemyAssetLoader` type screen and the doc-example shape; residual acceptance item 4 (doc fix + type screen) is a follow-up. `ApexDragonSpawnRegression` already pins acceptance items 3 + 5.
+- **CACHE (WO-1092 RESULT § §2):** `OfflineContentService` cache repair + unique-bundle chunking; new suite `OfflineCacheRepairRegression.cs`.
+- **META (WO-1377 RESULT § §2):** `IJupiterService` / `CoreServices.Jupiter` / `FeatureFlags.JupiterSwap` compiled out under GOOGLE_PLAY via `#if !GOOGLE_PLAY` wraps.
+
+---
+
 ## DELTA 2026-09-02 — the REMOTE rails (tunables + catalogs) and the ONE over-time engine
 
 Three new Core clusters landed on 2026-09-02. All three are read-verified at source, and all three
@@ -557,7 +569,7 @@ Player copy = "Builders"/"Training"/"Research"; "Obsidian" never surfaces in UI 
 | Type | Path | Verified essentials |
 |---|---|---|
 | `DailyQuestCatalog` (static) + DTOs | `Quests/DailyQuests.cs` (425L) | Loader over `Data/Canonical/daily-quests.json` (`:75`) via CanonicalJson (WebGL-safe, `:109–115`). DTOs: template (id/slot/target/weight/requiresHero/requiresFeature/`day1Guaranteed :44`), slot rewards, knobs (slotCount 3, 1 free reroll, 50-crystal reroll, max 3). |
-| `DailyQuestService` (MonoBehaviour singleton) | same file | 3-slot daily roll, PlayerPrefs per-day (`dotr-daily-quests-v1`), `Report/Reroll/ForceRollToday`, `QuestCompleted` event; Day-1 guaranteed build-towers force-select (`:341–346`). **`FeatureShipped` (`:382–394`) now returns `true` for EVERY branch including `_ =>` — the FLAG-6 stale gate was fixed; the `requiresFeature` filter is currently vacuous (dead gate).** Bootstrap `[RuntimeInitializeOnLoadMethod(BeforeSceneLoad)]`. |
+| `DailyQuestService` (MonoBehaviour singleton) | same file | **STALE (2026-09-09 WO-1430 RESULT § 7): the "five unread fields" claim is partly stale; `HeroRequirementMet` was added 2026-09-09 and gates `requiresHero`.** 3-slot daily roll, PlayerPrefs per-day (`dotr-daily-quests-v1`), `Report/Reroll/ForceRollToday`, `QuestCompleted` event; Day-1 guaranteed build-towers force-select (`:341–346`). **`FeatureShipped` (`:382–394`) now returns `true` for EVERY branch including `_ =>` — the FLAG-6 stale gate was fixed; the `requiresFeature` filter reads `PostureSignals.RaidCapable` (not dead).** Bootstrap `[RuntimeInitializeOnLoadMethod(BeforeSceneLoad)]`. |
 | `QuestService` (MonoBehaviour singleton) | `Quests/QuestService.cs` | Story quests → `GameState.Quests` (save-synced). `StartQuest/AdvanceQuest/CompleteQuest/GetStage/SetFlag/HasFlag/GiveKeystone`, `RewardEarned` event. BeforeSceneLoad bootstrap. |
 | `QuestCatalog` (static) + DTOs | `Quests/QuestCatalog.cs` | `quests.json` loader via CanonicalJson. `Quests/FindQuest/Stages/Reload`. |
 
