@@ -1985,5 +1985,150 @@ CREATE TABLE IF NOT EXISTS client_tunables (
 );
 
 -- =============================================================================
+-- skr_stake_snapshots - WO-1674 / HEART-001. THE BACKEND-AUTHORITATIVE NATIVE
+-- SKR STAKE. Applied by api/migrations/20260910_0024_skr_stake_snapshots.sql,
+-- whose header carries the full reasoning; this block is a DESCRIPTION.
+--
+--   Product rule 7 (docs/specs/HEARTBOUND_SKR_RESONANCE_WORK_ORDERS_2026-09-10.md:22):
+--     "The Unity client must never be trusted to report the amount of SKR staked."
+--
+--   Until WO-1674 it was trusted: Assets/_Modules/Wallet/NativeSkrStakeQuery.cs
+--   computed the amount ON THE DEVICE and StakeRewardsResolver.Query is a public
+--   settable property, so a patched build could report any number. That bought
+--   only extra Jeweler ATTEMPTS, which is why it was tolerable. HEART-005 makes it
+--   buy resources, so it stopped being tolerable. This table is where the value
+--   the server itself read off mainnet lives.
+--
+--   Written by : api/heartbound/status.js (the ONLY writer).
+--   Read by    : api/heartbound/status.js; every later Heartbound route.
+--   Verifier   : api/_lib/skr-staking.js (PDA + Anchor decode + share math).
+--
+-- IT IS ALSO THE CACHE. There is no KV/Redis in this project (grep for
+--   @vercel/kv|upstash|edge-config|redis under api/ returns nothing), and the only
+--   in-repo server-side cache is a module-scope `let jwksCache` in
+--   api/_lib/google-identity.js:64-68 which does NOT survive across warm
+--   instances and so cannot honestly implement a 5-minute TTL or a 60-second
+--   cooldown. The row's own verified_at IS the cache clock. No dependency added.
+--
+-- THE TWO TIMESTAMPS ARE NOT REDUNDANT. verified_at is the last SUCCESSFUL chain
+--   read and the amounts belong to it; last_attempt_at moves on every try. The
+--   owner's 2026-09-10 13:10 ruling serves last-known state through an RPC outage
+--   within a bounded grace window, and that window is measured from the last
+--   SUCCESS - stamp one column on failures and an outage renews its own grace
+--   forever.
+--
+-- NULL AMOUNTS MEAN UNKNOWN, NEVER ZERO. Same rule, and the same scar, as
+--   player_data.schema_version (migration 0022, the WO-1457 corruption) and
+--   player_data.reset_epoch (migration 0023). A DEFAULT 0 would turn "never
+--   verified" into "verified to hold nothing".
+--
+-- NUMERIC(39,0) because shares and share_price are u128 on chain and do not fit a
+--   BIGINT; exact integers, never floats, because these decide rewards.
+--
+-- PRIMARY KEY (player_id) is acceptance criterion 6: reconnecting the same
+--   authenticated wallet UPSERTS and cannot create a second Heartbound account.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS skr_stake_snapshots (
+    player_id            TEXT        PRIMARY KEY,   -- = the wallet (schema.sql:60)
+    wallet_address       TEXT        NOT NULL,
+    guardian_pool        TEXT        NOT NULL,
+    user_stake_address   TEXT,
+    shares_raw           NUMERIC(39,0),             -- u128, NULL = never verified
+    share_price_raw      NUMERIC(39,0),             -- u128, scaled 1e9
+    active_staked_raw    NUMERIC(39,0),             -- SKR base units (6 decimals)
+    unstaking_raw        NUMERIC(39,0),             -- token amount, NOT shares
+    unstake_timestamp    BIGINT,                    -- i64 unix, unstake INITIATED
+    cooldown_seconds     BIGINT,                    -- read from StakeConfig, never hardcoded
+    unstaking_ready      BOOLEAN     NOT NULL DEFAULT FALSE,
+    source_slot          BIGINT,
+    verification_status  TEXT        NOT NULL
+        CHECK (verification_status IN (
+            'VERIFIED', 'NO_STAKE', 'RPC_UNAVAILABLE', 'ACCOUNT_NOT_FOUND',
+            'WALLET_NOT_LINKED', 'INVALID_RESPONSE', 'STALE')),
+    error_code           TEXT,
+    verified_at          TIMESTAMPTZ,               -- last SUCCESS; the grace clock
+    last_attempt_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_skr_stake_snapshots_status_verified
+    ON skr_stake_snapshots (verification_status, verified_at DESC);
+-- 23. heartbound_state  — the backend-owned SKR Heartbound record (WO-1675, HEART-002).
+-- -----------------------------------------------------------------------------
+-- Endpoint : GET /api/heartbound/status              (panel lane, not yet built)
+-- Written by: api/_lib/heartbound-state.js           (the ONE data-access seam)
+-- Applyable copy: api/migrations/20260910_0025_heartbound_state.sql
+--
+-- ⛔ THIS FILE IS A DESCRIPTION AND IS NEVER APPLIED (see the note above player_data
+--    at :105-107). The CREATE TABLE body below is CHARACTER-IDENTICAL to migration
+--    0024's, deliberately: tools/schema-parity.mjs compares the DEPLOYED database
+--    against THIS body, so the two disagreeing is the gate lying.
+--
+-- ⛔ WHY NOT IN THE SAVE. api/game/save.js:70-72 calls its own guards "anti-grief /
+--    anti-corruption ceilings, NOT a server-authoritative economy", and :410-421
+--    records that the simulated systems reach this backend "only inside the opaque
+--    save blob… a RECORD, NOT A CONTROL". Heartbound decides who a Heart Pulse pays,
+--    and HEART-004 requires that a pulse can never pay the same player twice — an
+--    invariant a replayed client blob could rewrite. So the state is backend-owned and
+--    Assets/_Modules/Core/State/SaveSchema.cs's CurrentVersion DOES NOT BUMP.
+--
+-- ⛔ THE KEY IS THE WALLET (schema.sql:60; api/_lib/wallet-auth.js:27-29). RULED
+--    2026-09-10: ONE WALLET = ONE REALM, no re-binding, NO LINKAGE TABLE. The spec's
+--    separate walletAddress field is deliberately absent (it would be a second copy of
+--    the primary key) and its "Wallet Change" section is dropped, not built.
+--
+--   player_id                    — the wallet (= player_data.player_id). NOT FK'd,
+--                                  matching achievement_grants (:965-984).
+--   status                       — the six spec states, CHECK-constrained.
+--   activated_at_utc             — set ONCE. The floor every pulse query filters on
+--                                  ("Do NOT retroactively award historical pulses").
+--   last_verified_at_utc         — last SUCCESSFUL chain read; the grace window is
+--   last_actual_stake              measured from it. A FAILED verification never
+--   effective_resonating_stake     touches these three (fail to last-known, never 0).
+--   last_verification_*          — the failure path's own columns.
+--   stale_since_utc              — when the CURRENT outage began, not the last retry.
+--   *_pulse_id / last_echo_event_id — nullable TEXT: WO-1677/1678 have not designed
+--                                  their id shape, and a guessed BIGINT would need an
+--                                  ALTER COLUMN (memory: idempotent-ddl-hides-a-stale-table).
+--   resonance_tier               — may fall.
+--   highest_lifetime_tier        — monotonic; written with GREATEST() in SQL so a
+--                                  caller cannot lower it even by mistake.
+--   version                      — THIS ROW's generation, for optimistic concurrency.
+--                                  NOT SaveSchema.CurrentVersion, which is untouched.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS heartbound_state (
+    player_id                        TEXT PRIMARY KEY,
+    status                           TEXT NOT NULL DEFAULT 'DORMANT' CHECK (status IN ('DORMANT','ACTIVE','STALE','UNSTAKING','DISCONNECTED','SUSPENDED')),
+    activated_at_utc                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_verified_at_utc             TIMESTAMPTZ,
+    last_actual_stake                NUMERIC(39,0) NOT NULL DEFAULT 0,
+    effective_resonating_stake       NUMERIC(39,0) NOT NULL DEFAULT 0,
+    last_verification_attempt_at_utc TIMESTAMPTZ,
+    last_verification_code           TEXT,
+    stale_since_utc                  TIMESTAMPTZ,
+    continuous_pulse_count           INTEGER NOT NULL DEFAULT 0,
+    total_lifetime_pulses            INTEGER NOT NULL DEFAULT 0,
+    last_global_pulse_id             TEXT,
+    last_player_pulse_id             TEXT,
+    resonance_score                  NUMERIC(39,6) NOT NULL DEFAULT 0,
+    resonance_tier                   INTEGER NOT NULL DEFAULT 0,
+    highest_lifetime_tier            INTEGER NOT NULL DEFAULT 0,
+    current_tree_resonance_stage     INTEGER NOT NULL DEFAULT 0,
+    pending_echo_events              JSONB NOT NULL DEFAULT '[]',
+    last_echo_event_id               TEXT,
+    version                          INTEGER NOT NULL DEFAULT 1,
+    created_at                       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- The pulse cron's working set: every ACTIVE row, oldest verification first.
+CREATE INDEX IF NOT EXISTS idx_heartbound_state_status_verified
+    ON heartbound_state (status, last_verified_at_utc);
+
+-- Staleness sweep: the rows sitting inside (or past) the grace window.
+CREATE INDEX IF NOT EXISTS idx_heartbound_state_stale_since
+    ON heartbound_state (stale_since_utc);
+
+-- =============================================================================
 -- END OF SCHEMA
 -- =============================================================================

@@ -1,6 +1,6 @@
 # WORK ORDER 1675 — HEART-002: Heartbound state and persistence
 
-**Status:** SPEC
+**Status:** IMPLEMENTED 2026-09-10 — backend-owned `heartbound_state` table (migration 0024 + the schema.sql description), the `api/_lib/heartbound-state.js` data-access seam with the last-known-verified grace fields and a served `nextTierAt`, and 24/24 node:test cases. D3 (Wallet Change) DROPPED as ruled; D4 (client cache) NOT DONE — it is `.cs`, outside this lane. `SaveSchema.CurrentVersion` untouched.
 **Silo:** Backend (Neon table + migration). One read-only client snapshot cache. No gameplay, no economy, no scene files.
 **Raised by:** HEARTBOUND-TRIAGE lane, 2026-09-10.
 **Number:** PRE-ASSIGNED by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately **NOT** edited by this lane.
