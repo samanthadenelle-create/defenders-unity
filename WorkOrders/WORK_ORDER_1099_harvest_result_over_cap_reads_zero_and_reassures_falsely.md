@@ -1,6 +1,6 @@
 # WORK ORDER 1099 — the Harvest Result panel banks 0, sits 21× over the storage ceiling, and tells the player nothing was lost
 
-**Status:** AWAITING OWNER RULING - the 13:06 screenshot was sent to the owner 2026-09-09 22:xx for the "here" question; the presentation fix is IMPLEMENTED - awaiting gate (2026-09-09 lane HARVEST-COPY); her one-line answer closes or bounces
+**Status:** CLOSED 2026-09-10 - owner ruling: close (not reproducible / not enough context on the 13:06 frame); the over-cap copy fix landed `5354a7238` and stays. PRIOR STATUS: AWAITING OWNER RULING - the 13:06 screenshot was sent to the owner 2026-09-09 22:xx for the "here" question; the presentation fix is IMPLEMENTED - awaiting gate (2026-09-09 lane HARVEST-COPY); her one-line answer closes or bounces
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1099 → 1100 in the same edit)
 **Silo:** Economy · UI copy
 **Severity:** P2 — nothing breaks, but the panel reassures the player in exactly the state where the
@@ -8,6 +8,27 @@ truth matters
 **Source:** F8 capture seq=4974 — an **owner F8 flag**, note: *"here"*
 **Primary evidence:** `docs/ui-evidence/harvest-result-2026-09-09/flag-seq4974-harvest-result.png`
 (copied out of `LocalLow/.../flag_20260909-180035_00.png`, which is session-volatile)
+
+---
+
+### OWNER RULING 2026-09-10 (morning)
+
+> **"Close it"** — the owner's answer, given via AskUserQuestion ~03:40 on 2026-09-10, to the open
+> question this ticket was parked on (the 13:06 frame: stuck-open panel vs. nonsense numbers).
+
+**Recorded by the CLI lead** (the reason below is the lead's relay of the routing, NOT owner prose):
+the frame is not reproducible and does not carry enough context to separate the two readings, so the
+ticket closes rather than bouncing back for another capture.
+
+**What survives the close:** the over-cap presentation fix is NOT reverted. It landed in
+`5354a7238` — *"fix(harvest): WO-1099 over-cap result exposes banked/pending/over-cap and leads with
+the spend recovery"* (verified `git log --oneline -1 5354a7238` and `git branch --contains 5354a7238`
+→ `dev`, both run 2026-09-10). That copy change stays as the shipped shape.
+
+**Status flipped in this same edit** — `AWAITING OWNER RULING …` → `CLOSED 2026-09-10 …`, with the
+prior text preserved after a `PRIOR STATUS:` marker so the board's finished-verdict lint reads only
+the live verdict (`tools/board_build.py:296` lists `AWAITING OWNER RULING` as a contradiction phrase;
+`:338-339` is the `PRIOR STATUS:` split).
 
 ---
 

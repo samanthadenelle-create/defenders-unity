@@ -17,6 +17,27 @@ file-disjoint. See sec.7.
 
 ---
 
+### OWNER RULING 2026-09-10 (morning)
+
+> **"Intended"** — the owner's answer, given via AskUserQuestion ~03:40 on 2026-09-10, to the
+> question raised as item 11 of `docs/HANDOVER_2026-09-10_overnight.md`: on the eight-card Build
+> Collections frame (`Builds/ui-capture/BuildCollections_2670x1200.png`, 03:07) the eighth card —
+> **Manage Placed** — draws its art as a **wide thin strip**, unlike the seven category icons. Asked
+> whether that was intended or a placeholder needing its own icon, she ruled it **intended**.
+
+**Consequence:** no art work is owed on this card. The thin strip is the shipped shape; nobody should
+open a follow-up to "fix" it, and a future capture showing the strip is CORRECT, not a regression.
+
+**Scope note — this ruling does NOT reopen this ticket.** WO-1629's own subject is the *caption*
+(the 45-character copy authored as a fraction of the card), which was ruled separately ("shorten the
+copy") and is FIXED. **Status is unchanged: FIXED 2026-09-10.** This block is recorded here because
+this is the card's ticket, not because anything is outstanding.
+
+Struck in the handover in the same pass: `docs/HANDOVER_2026-09-10_overnight.md` item 11 now carries
+`RULED: intended`.
+
+---
+
 ## 1. What was measured (every line below opened at source 2026-09-10, in the current tree)
 
 ### 1a. The caption is still authored as a fraction of the card, and it is the ONLY one left

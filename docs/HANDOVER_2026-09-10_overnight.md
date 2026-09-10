@@ -150,7 +150,7 @@ lines, 0 status contradictions`.
    day GLOBAL across raids"*. Recorded in `WorkOrders/WORK_ORDER_1373_raid_rewards_and_rough_stone_chain.md`;
    Status flipped to FIXED. ⚠ The **star-to-polish-grade mapping** was NOT part of this ruling - the
    shipped default stands and that clause stays open.
-3. **WO-1099:** your one line on the 13:06 frame I sent (stuck open vs nonsense numbers) closes it.
+3. **WO-1099:** your one line on the 13:06 frame I sent (stuck open vs nonsense numbers) closes it. **RULED 2026-09-10:** *"Close it"* - RULED: close (not reproducible / not enough context on the 13:06 frame); the over-cap copy fix landed `5354a7238` and stays. Recorded in `WorkOrders/WORK_ORDER_1099_harvest_result_over_cap_reads_zero_and_reassures_falsely.md`; Status flipped to CLOSED.
 4. **WO-1412 item 2:** the busy-only label cannot show an honest SKR amount from the Village assembly
    (the quote lives in Wallet, which Village may not reference). USD-only, or a Core DTO for the quote?
    **RULED 2026-09-10:** *"USD only - the busy label shows the USD price; SKR only where Wallet already
@@ -171,12 +171,33 @@ lines, 0 status contradictions`.
    (`Assets/Resources/Portraits/Troops/`) - corrected in the WO; the key is built at `ManageScreenVM.cs:4610`
    as `"RpgUi/troop/" + IconId`. Please drop the nine rectangular paintings under the EXISTING filenames in
    `Assets/Resources/RpgUi/troop/`; was the 09-06 drop meant to be that delivery (it re-exported the medallions)?
+   **RULED 2026-09-10:** *"The 09-06 drop WAS the delivery - the medallions are final; the detail-card crop
+   workaround stays and the ticket closes"* - RULED: medallions are final, closed. No art is owed; the crop
+   (`ManageWorkspacePanel.cs:1559-1561` `artFrac` / `SquarePortrait`) and its pin `[detail-art-crops-the-ring]`
+   (`ManageMockupConformanceRegression.cs:1184`, `:1193`) are the shipped shape. Recorded in
+   `WorkOrders/WORK_ORDER_1574_troop_portraits_carry_baked_gilt_ring_detail_card_crops_by_zone_shape.md`;
+   Status flipped to CLOSED.
 10. **Portrait town HUD (WO-1621 + tonight's three device frames):** the Seeker autorotates to portrait (all four
     flags on) and every frame I sent tonight is portrait with truncations. Is the TOWN HUD expected to be playable
     in portrait? YES = the WO-1621 portrait row goes in and its Case 3/4/13 reds become real tickets; NO = the
     autorotate flags are the defect and the fix is landscape-only. Until you answer, the portrait row is held out
     of the suite so the gate stays green.
+    **RULED: landscape only.** (Owner, 2026-09-10 morning, via AskUserQuestion; answer = NO.) The
+    autorotate flags ARE the defect. Ticketed as **WO-1631** -
+    `WorkOrders/WORK_ORDER_1631_player_build_autorotates_to_portrait_game_is_landscape_only.md`, which
+    carries the evidence (all nine of tonight's device frames decode 1200x2670 PORTRAIT from their PNG
+    IHDR), the enum proof (`defaultScreenOrientation: 4` = `UnityEditor.UIOrientation.AutoRotation`,
+    reflected out of the 6000.4.8f1 editor install), the one-line fix (`ProjectSettings.asset:63-64`
+    portrait flags 1 -> 0, `:11` stays 4 and `:65-66` stay 1 so BOTH landscape directions survive), and
+    a new pin `Assets/Editor/Regression/ScreenOrientationRegression.cs` (LANDSCAPE_ONLY_OK/_FAIL, RED at
+    HEAD by construction). The WO-1621 portrait Aspects row therefore stays OUT permanently, and its
+    Case 3/4/13 reds do NOT become tickets. WO-1621 is reduced to one question: does PLAY INTRO fit in
+    LANDSCAPE on the device? A landscape device frame is the proof, and there is none yet.
 11. **Manage Placed card art:** on the eight-card Build Collections frame (`Builds/ui-capture/BuildCollections_2670x1200.png`, 03:07) the eighth card's art is a wide thin strip, unlike the seven category icons. Intended, or a placeholder that needs an icon? (Its caption truncation is WO-1629, in flight.)
+    **RULED 2026-09-10:** *"Intended"* - RULED: intended. The wide thin art strip on the Manage Placed card is the
+    shipped shape; no icon is owed. Recorded in
+    `WorkOrders/WORK_ORDER_1629_manage_placed_card_caption_is_still_a_fraction_and_has_never_been_rendered_in_any_capture.md`
+    (Status unchanged: FIXED).
 12. **WO-1629 layout ruling (Manage Placed caption, 45 chars):** measured on the eight-card frame it needs 72-96 px
     of band; the card's `.21f` caption ceiling allows 55-69 px, so NO band constant can fit it and the lane stopped
     (correctly) rather than ship a still-cut caption. Which neighbour yields? (a) shorten the copy (e.g. "Move,

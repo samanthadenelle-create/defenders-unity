@@ -1,9 +1,45 @@
 # WO-1574: Troop portraits carry baked gilt ring; detail card crops by zone shape
 
-**Status:** BLOCKED - owner art not delivered: all nine troop PNGs measured 2026-09-10 as 1254x1254 gilt medallions on transparency (all four edges + corners alpha 0, gold at the disc rim), so removing the crop would put the ring back on the detail card and turn `ManageMockupConformanceRegression.cs:1167` red.
+**Status:** CLOSED 2026-09-10 - owner ruling: the 09-06 medallions are the final art; the detail-card crop (`ManageWorkspacePanel.cs` `artFrac` / `SquarePortrait`) stays as the shipped shape and its pin `[detail-art-crops-the-ring]` stays; the WO's rectangular-painting premise is retired. PRIOR STATUS: BLOCKED - owner art not delivered: all nine troop PNGs measured 2026-09-10 as 1254x1254 gilt medallions on transparency (all four edges + corners alpha 0, gold at the disc rim), so removing the crop would put the ring back on the detail card and turn the `[detail-art-crops-the-ring]` pin red.
 **Silo:** Art + UI wiring - `Assets/Resources/RpgUi/troop/` + detail card panel.
 **Source:** Manage pass-three lane handback 2026-09-07. Minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1574 -> 1575 in the same edit).
+
+---
+
+### OWNER RULING 2026-09-10 (morning)
+
+> **"The 09-06 drop WAS the delivery - the medallions are final; the detail-card crop workaround stays
+> and the ticket closes"** — the owner's answer, given via AskUserQuestion ~03:40 on 2026-09-10, to
+> the question raised as item 9 of `docs/HANDOVER_2026-09-10_overnight.md` ("was the 09-06 drop meant
+> to be that delivery (it re-exported the medallions)?").
+
+**⛔ THIS RETIRES THE TICKET'S PREMISE.** WO-1574 was written on the assumption that nine
+*rectangular paintings* were coming and that the detail card's crop was a temporary workaround
+holding the line until they arrived. That assumption is now false: the **1254x1254 gilt medallions on
+transparency** under `Assets/Resources/RpgUi/troop/troop-*.png` are the **final art**. Read every
+section below as history, not as work owed. **There is no art delivery pending and this ticket is
+NOT blocked** — it is closed.
+
+**What stays, verified at source 2026-09-10:**
+
+| Thing | Where | Verdict |
+|---|---|---|
+| the detail card's art fraction | `Assets/_Modules/Core/Manage/ManageWorkspacePanel.cs:1559` — `float artFrac = Mathf.Min(0.40f, Mathf.Max(0.28f, (cardH * 0.90f) / Mathf.Max(1f, cardW)));` | **STAYS** — it is the shipped shape, not a workaround |
+| the full-height art zone it feeds | `ManageWorkspacePanel.cs:1561` — `new Vector2(0.015f, 0.02f), new Vector2(0.015f + artFrac, 0.98f)` | **STAYS** |
+| the envelope-crop portrait call | `SquarePortrait(...)`, `ManageWorkspacePanel.cs:507`, `:1298` (rationale at `:473`, `:1271`, `:1297`, `:1530`, `:1542`) | **STAYS** |
+| the regression pin | `[detail-art-crops-the-ring]`, `Assets/Editor/Regression/ManageMockupConformanceRegression.cs:1184` and `:1193` | **STAYS — do not relax or delete it.** It is now pinning the intended shape rather than guarding a temporary one |
+
+⚠ **The `:1167` line number this file's Status carried until today was WRONG.** The
+`[detail-art-crops-the-ring]` failures are raised at `ManageMockupConformanceRegression.cs:1184` and
+`:1193` (both opened 2026-09-10); `:1167` sits inside the unrelated `[research-tree-rows-take-the-band]`
+block. Corrected here so the next seat greps the right lines. `Assets/_Modules/Core/Manage/` is also
+the real home of `ManageWorkspacePanel.cs` (`find Assets -name ManageWorkspacePanel.cs`, 2026-09-10).
+
+Struck in the handover in the same pass: `docs/HANDOVER_2026-09-10_overnight.md` item 9 now carries
+`RULED: medallions are final, closed`.
+
+---
 
 ## 1. EVIDENCE (re-read at source 2026-09-07)
 
