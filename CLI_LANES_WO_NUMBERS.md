@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-first pass): main line next free = **1643**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-second pass): main line next free = **1644**.
+> 1643 = the Journey RAIDS deck card composes its subtitle from RosterSlots / CapSlots while the raid gate judged (Deployable + Queued) >= RequiredSlots - ALL THREE terms differ - and its remedy clause "train to open a camp" is selected on openCamps == 0, with no army input, so it reads as an army remedy. Device frame 2026-09-10_0603_journey_deck.png shows "Army 8 / 10 . train to open a camp" at an instant the logcat proves was required=3, ready=True (raid door OPEN). Second surface of the WO-1641 family, different producer; SEEN by the DEVICE-RAID lane, minted by HEART-COPY at the lead's instruction. Bumped 1643 -> 1644 in this SAME edit.
+
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-first pass): main line next free = **1643**.
 > 1637-1642 = the DEVICE-RAID lane's six device-frame findings on build 363529 (CLI minting lane, block pre-assigned by the lead): 1637 raid arena reads flat (ring/spire/sky one pale tan) - 1638 gatehouse banners read as untextured green placeholders (the "these are the gates" premise is FALSIFIED in the ticket) - 1639 in-raid HUD readout illegible at 1.1:1, DEPLOY ellipsised, HERO DOWN buried, objective marker unclamped - 1640 staging SPOILS breaks mid-word + the outmatch two-tap confirm draws behind the panel (the "needs two taps" premise is CORRECTED: the step is owner-ruled WO-1542, its toast is invisible) - 1641 Heart plate says "Train 2 troops to unlock Raids" after a raid (everCompletedRaid flips the bar 3 -> cap 10, proven in the device logcat) - 1642 RAIDS deck card white corners + ATTACK REPORT chip off its own plate. Bumped 1637 -> 1643 in this SAME edit.
 
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fortieth pass): main line next free = **1637**.
