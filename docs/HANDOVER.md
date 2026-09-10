@@ -1,4 +1,5 @@
-> **2026-09-10 OVERNIGHT (owner asleep; CLI lead Fable): READ `docs/HANDOVER_2026-09-10_overnight.md` FIRST.**
+> **2026-09-10 (CLI lead Fable, two sessions: overnight + day): READ `docs/HANDOVER_2026-09-10_overnight.md` FIRST - its section 7 (wrap-down record) names HEAD, the six open owner rulings, what is device-proven (nothing in wave 10 yet) and the READY-not-dispatched tickets WO-1697 / WO-1698.**
+> *(earlier banner)* **2026-09-10 OVERNIGHT (owner asleep; CLI lead Fable): READ `docs/HANDOVER_2026-09-10_overnight.md` FIRST.**
 > 30+ commits on `dev`, every one gated on fresh logs (last: `Builds/wave2-compile7` / `Builds/wave2-reg7`).
 > Builds: Windows release exe, production APK `2026.09.10.363195` installed on the Seeker, WebGL
 > PREVIEW public at https://defenders-of-the-realm-v2-amfcywh6x.vercel.app (never the site, never --prod).

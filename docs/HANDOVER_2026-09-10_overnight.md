@@ -474,7 +474,7 @@ Merged and awaiting the gate: 1664 (six touch floors + front-door/welcome-back t
 - **WO-1628 step 1 (lane SUBTITLE, applied, in the gate + capture chain):** the card-subtitle trace moved post-layout
   (`ReportSubtitleFit`, one `[Flow:Build] collection=... subtitle=... bandPx= cardPx= gridPx= fontSize= rendered=<lines>,
   <chars> sourceLen= truncated= preferredHeightPx=` line per card per aspect). Read it with
-  `tr -d ' ' < Builds/wave2-capture3 | grep -a "Flow:Build" | grep -a subtitle` (must be 21 lines; 42 = the in-loop
+  `tr -d '\000' < Builds/wave2-capture3 | grep -a "Flow:Build" | grep -a subtitle` (must be 21 lines; 42 = the in-loop
   twin came back; `0x0` = measured before layout). The WO's `## INSTRUMENTED` section says which step-2 branch each
   number pattern licenses (`characterCount < sourceLen` + `truncated=True` is the cut).
 - **WO-1459 DEVICE CAPTURE (committed `aff7f8daf`, read-only lane on the Seeker, build 363195):** Title 60 fps /
@@ -633,6 +633,13 @@ push: chain 50 after the three lanes return, commit 1692/1695/1696 + docs/board,
 r2-ship + vercel alias defenders-pi.vercel.app, git lfs push --all origin dev, git push origin dev. Owner rulings still open (in the WOs):
 WO-1695 "Dodge/Attack" vs charge_knight icon + Knight W/E/R have no combat face; WO-1694 Resume-at-Resolve residual; WO-1696 no arena
 stow (recommended none); WO-1692 the town "roads/floor coverings" report is a DIFFERENT defect (hub dressing) - no ticket yet.
+**16:35 FINAL GATE + SHIP.** Chain 50 (Builds/wave10i-*): COMPILE_GATE_OK, REGRESSION_OK 506/506, UI_CAPTURE_OK 106, NAVIGATION 15/15,
+MANAGE_FLOW_MAP 20, FRONT_DOOR 6/6 + confirm 1/1, WELCOME_BACK 6/6. Commits: 2f0ad7d99 (1692 roads: hub-side grounding, WO-1091 contracts
+restored), e8ec70f3f + 2f041301e (1695 combat dock icon keys + oracle re-point), fb2e59f6f (1696 Echo waits off the arena stage),
+b84eee76f + 4358b02c5 (docs/board; WO-1697 + WO-1698 minted READY), 1b295789c (stamp 364108). APK #7 = 2026.09.10.364108:
+SCHEMA_PARITY_OK 47, R2_PUSH_OK, R2_PARITY_OK objects=279, installed on the Seeker (Success). Build chain 10 running: exe
+(Builds/Windows wiped + build-windows.ps1 -Release), WebGL, r2-ship; then vercel deploy on the repo-linked project + alias
+defenders-pi.vercel.app, then git lfs push --all origin dev + git push origin dev. Open owner rulings are listed in the WOs named above.
 
 WO-1673 (Play disclosures) minted: six live RNG mechanics, none purchasable with real money or hard currency; the daily chest, every
 rewarded ad and packs.json have NO RNG. Two things for the owner before any questionnaire: the dormant Arena wager stakes REAL purchasable
@@ -715,3 +722,45 @@ found: JewelPolishRegression does not exist, and jewel-polish.json still says th
 3. Next wave: WO-1619 (spire height) and WO-1620 (Seating Editor shield preview) are READY and were
    held only because the builds were running; WO-1618 is READY (instrument first).
 4. Every visual ticket gets a device frame sent to the owner (`adb screencap`), not a headless PNG.
+
+## 7. Wrap-down record (2026-09-10 16:40, owner near her weekly token limit; next seat is ~a week out)
+
+**Read this section, then section 3's rulings, before anything else.** HEAD at the time of writing: `1b295789c` (stamp 364108);
+the final docs commit that carries this section sits on top of it.
+
+- **DAPP_STORE-guarded Heartbound client code DID compile in APK #7.** Proof: `Builds/apk-build.log:514`
+  `[AndroidBuild] Extra scripting defines: DAPP_STORE` and `:5474` lists `DAPP_STORE` in the define set. The runner line
+  `STORE-shaped build ... defines: ''` is the TESTER_BUILD axis only, not the store define. The editor gate never compiles those
+  bodies (the editor define list has no DAPP_STORE), so the APK build is the only compile proof they have, and it is green.
+- **Nothing in wave 10 is device-proven.** APK #7 (2026.09.10.364108) is installed on the Seeker and nobody has played it.
+  WO-1692 (four Rootways drops), WO-1694 (arena in-scene suspension), WO-1695 (Knight combat dock icons), WO-1696 (Echo stays off
+  the arena stage) are IMPLEMENTED and gated, not felt-verified. The owner's next Seeker session is the proof: win an arena fight
+  then walk home (1694/1696), walk the four Rootways arms (1692), open the Knight combat dock (1695).
+- **Four wave-10 commit messages cite `Builds/wave10h-reg1 REGRESSION_OK` while that log read 503/506** (974906e62, a65c4959a,
+  8af93968b, 29f73c677); the three reds were isolated to other lanes and chain 50 (`Builds/wave10i-reg1`) is 506/506 on the tree
+  those commits are part of. History was not amended.
+- **WO-1244 does NOT close on the Pi deploy.** Its rule is "next PROD deploy"; the Pi surface (defenders-pi.vercel.app) is a preview alias.
+- **Open owner rulings (six), each one word or one line:**
+  1. WO-1695: keep the "Dodge/Attack" text face for knight.q, or switch to the authored charge_knight icon? And Knight W/E/R have
+     no combat face anywhere (dock = ATTACK, BLOCK, 3 hot-swap, ITEM). Intended?
+  2. WO-1694: the Resume-at-Resolve residual (see the WO's RESULT) - fix now or accept?
+  3. WO-1696: no arena-entry stow was added (the Echo waits in town). Accept?
+  4. WO-1692: the town "roads / floor coverings disappeared" remark is a DIFFERENT defect (hub dressing, name collision with the
+     Rootways tunnel arms). No ticket minted (wrap-down). Mint it?
+  5. WO-1698: Q1 accept a wallet address in the same lookup field? Q2 echo a display name back (nothing is stored today)?
+  6. Q-VFX (Heartbound triage): the VFX tags. Every other Heartbound question, Tiers 1-4, is RULED in
+     `docs/specs/HEARTBOUND_TRIAGE_2026-09-10.md`.
+- **READY, not dispatched (owner: "but thats all"):** WO-1697 (skill-tree pip labels relaxed under the 30 px floor; evidence
+  pasted into the WO body, section 6), WO-1698 (Command Center: bind a promo code by Google email; migration 0027 planned, raw
+  emails never stored).
+- **Database:** migrations 0024/0025/0026 applied by the owner in Neon; `tools/run-migrations.mjs` ledger MIGRATIONS_OK
+  applied=5 skipped=21; SCHEMA_PARITY_OK 47 on the APK #7 run. DATABASE_URL lives in `.env.local` only.
+- **Ship record for this wrap (filled as each marker landed):**
+  Build chain 10 (`Builds/wave10-build-chain.txt`): EXE_STEP_DONE 15:37 (`build-windows.ps1 -Release`, Builds/Windows wiped first,
+  `[build] SUCCESS -> Builds/Windows/DefendersOfTheRealm.exe`, 2.0 GB on disk); WEBGL_STEP_DONE 15:58 (`[webgl] SUCCESS ->
+  Builds/WebGL/index.html`, 182.7 MB, Brotli, 0 `error CS`); R2_STEP_DONE 15:58 (`R2_PUSH_OK 4 uploaded (0.3 MB), 926 unchanged`,
+  `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=279`, `Builds/r2-parity.log` 15:58 postdates ServerData).
+  Vercel: `vercel deploy --yes` on the repo-linked project defenders-of-the-realm-v2 (never --prod) ->
+  https://defenders-of-the-realm-v2-8q89z37rx.vercel.app; alias `defenders-pi.vercel.app` -> that deployment (Success, 270 ms);
+  curl of the alias: HTTP 200, 40639 bytes, page carries `2026.09.10.364108`. ProjectSettings diff after the two builds: EMPTY
+  (no second stamp needed). Then `git lfs push --all origin dev` + `git push origin dev` (result recorded in the final message).

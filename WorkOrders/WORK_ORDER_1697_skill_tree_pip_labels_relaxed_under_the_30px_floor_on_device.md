@@ -20,3 +20,13 @@ The skill-tree node pips (the small count label on each node) are authored as a 
 
 ## 4. Note for the lead
 The chain-48 red on `[fitguard-relax-allowlist]` is THIS finding scanning the lead's ad-hoc logcat snapshot in `Builds/device-frames/`; the snapshot is moved to the session scratchpad after the arena lanes that grep it (WO-1694/1695/1696) hand back, and the finding survives here.
+
+## 6. Captured evidence (verbatim relaxKey lines from the 2026-09-10 15:20 Seeker logcat, build 363866)
+```
+relaxKey=Viewport/GraphContent/Node_knight.b1n1/Pip/Label floorFrom=30 floorTo=26 finalSize=28
+relaxKey=Viewport/GraphContent/Node_knight.s1n1/Pip/Label floorFrom=30 floorTo=26 finalSize=28
+relaxKey=Viewport/GraphContent/Node_knight.t1n2/Pip/Label floorFrom=30 floorTo=26 finalSize=28
+relaxKey=Viewport/GraphContent/Node_shared.n10/Pip/Label floorFrom=30 floorTo=26 finalSize=28
+relaxKey=Viewport/GraphContent/Node_shared.n11/Pip/Label floorFrom=30 floorTo=26 finalSize=28
+relaxKey=Viewport/GraphContent/Node_shared.n9/Pip/Label floorFrom=30 floorTo=26 finalSize=28
+```

@@ -1,5 +1,5 @@
 <!DOCTYPE html><html><head><meta charset="utf-8">
-<title>EoA Board - 2026-09-10 15:28</title>
+<title>EoA Board - 2026-09-10 16:00</title>
 <style>
  body{background:#14151a;color:#ddd;font:14px/1.5 'Segoe UI',sans-serif;margin:0;padding:24px}
  h1{color:#e0b341;font-size:22px;margin:0 0 4px}
@@ -60,7 +60,7 @@
 </style></head><body>
 <h1>Echoes of Elarion — Work Order Board</h1>
 <p style="margin:6px 0 16px"><a href="PROOF.html" style="color:#e0b341;font-weight:600">&#9654; PROOF &mdash; screenshots and gate evidence for every completed item</a></p>
-<div class="sub">Generated <b>2026-09-10 15:28</b> from the repo (WorkOrders/*.md) — the repo is the source of
+<div class="sub">Generated <b>2026-09-10 16:00</b> from the repo (WorkOrders/*.md) — the repo is the source of
  truth, this page is a view. Regenerate: <b>python tools/board_build.py</b>
  &nbsp;|&nbsp; Next mint &mdash; CLI: <b>1699</b>, UI seat: <b>1100</b></div>
 <div class="canon"><a href="SESSION_CANON_LOADER.md">Canon loader</a><a href="docs/HANDOVER.md">Handover</a><a href="docs/MASTER_CATALOG.md">Master catalog</a><a href="PIPELINE_STATE.md">Pipeline state</a><a href="CLI_LANES_WO_NUMBERS.md">WO numbers (authority)</a><a href="KEY_FACTS.md">Key facts</a><a href="docs/README.md">Docs index</a><a href="PROJECT_INDEX.md">Project index</a></div>
@@ -76,8 +76,8 @@
  mark that is still sitting in this browser. Those are counted on their own line underneath it.
  <br>What your verdict does on the next board build: <b>Pass + Validated</b> flips the ticket from
  Fixed to <b>CLOSED</b> (WO-1355); <b>Fail</b> or <b>Needs Work</b> sends it back to <b>READY</b>
- carrying your note into the ticket (WO-1356). Current APK <b>2026.09.10.363866</b>
- &middot; source commit <b>8470a9b18e2b</b> is recorded as provenance on each mark.
+ carrying your note into the ticket (WO-1356). Current APK <b>2026.09.10.364108</b>
+ &middot; source commit <b>2f041301e586</b> is recorded as provenance on each mark.
 </div>
 <div class="vtoolbar"><span id="vprogress">0 / 35 verified</span><button id="needsFelt" type="button">Needs Felt-Test</button></div>
 <div class="vtoolbar"><button id="vsubmit" type="button">Submit marks to the CLI</button></div>
@@ -1790,7 +1790,7 @@ document.querySelectorAll('.abtn').forEach(b=>b.addEventListener('click',()=>{
    was losing her work hourly. Never put a build id or a sha back into this key.
    Provenance lives INSIDE each entry ('at' + 'build'), where it costs nothing. */
 const validationKey='eoa-owner-validation';
-const buildId="2026.09.10.363866";
+const buildId="2026.09.10.364108";
 const disk={};
 document.querySelectorAll('.vitem').forEach(i=>{try{disk[i.dataset.ticket]=JSON.parse(i.dataset.disk||'{}')}catch(_e){disk[i.dataset.ticket]={}}});
 let validation={}; try{validation=JSON.parse(localStorage.getItem(validationKey)||'{}')}catch(_e){validation={}}
