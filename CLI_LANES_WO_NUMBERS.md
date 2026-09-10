@@ -189,7 +189,22 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-fifty-fifth pass): main line next free = **1692**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-sixtieth pass): main line next free = **1699**.
+> Lead minted **WO-1698** = Command Center: look a Google-account player up by email and bind a promo code (owner request 16:30; READY, not dispatched - wrap-down).
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-ninth pass): main line next free = **1698**.
+> Lead minted **WO-1697** = skill-tree pip labels relaxed 30 -> 26 on the Seeker (fit-guard allowlist CASE D on 2026-09-10_1520_logcat.txt; READY, not dispatched - owner wrap-down).
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-eighth pass): main line next free = **1697**.
+> Lead pre-assigned from the owner's 15:20 arena session (build 363866, F8 seq 5009/5010 + device frame 2026-09-10_1520_owner_icons.png): **WO-1694** arena win leaves the battle-lock held (wave loop latched Active, 4 live enemies); **WO-1695** Knight ability faces read EMPTY with default sword glyphs in the arena; **WO-1696** the Echo wolf is present inside the battle arena.
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-seventh pass): main line next free = **1694**.
+> Lead pre-assigned: **WO-1693** = Heartbound pulse <-> state stake-unit contract (fractional effective SKR throws in toRawAmountText; HEART-011 finding).
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-sixth pass): main line next free = **1693**.
+> Lead pre-assigned: **WO-1692** = Hollow Roads biome drops refuse to seat (F8 device seq 5003-5007 on build 363866, BIOME-ROADS lane).
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-fifth pass): main line next free = **1692**.
 > Lead pre-assigned: **WO-1691** = Wandering Merchant visiting-NPC lifecycle (owner ruling 13:36 Q-MERCHANT: its own ticket; HEART-005 ships without it), written by the HEART-005 lane as SPEC.
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-fourth pass): main line next free = **1691**.

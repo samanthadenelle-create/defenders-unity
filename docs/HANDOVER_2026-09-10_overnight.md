@@ -582,6 +582,57 @@ DDL in api/_lib/heartbound-pulse-schema.sql (must be folded into schema.sql / a 
 the real resonance exports, not merged yet. Lanes running: HEART-005 (WO-1678 + WO-1691 merchant SPEC), HEART-006/009 (WO-1679+1682),
 VFX-TUNABLES (WO-1348). Pre-existing red, not this wave: node test "WebGL hides and runtime-blocks the app offline-download flow" fails
 at c96030b5c too (test/webgl-offline-content-surface.test.js) - triage with WO-1314. Banner: next free = 1692.
+**14:00-14:30.** Wave-9 tail committed: eec48eb47 (1690 + 1690b/c confirm-modal fix, CaseF), 0d3d9a2be (1671/1672), 6340fae5a (1674 HEART-001,
+Status re-worded to IMPLEMENTED with the unproven items named), c1cd862e8 (1675 HEART-002, migration renumbered 0025), 405d213a0 (1677
+HEART-004, DDL copied to migration 0026), 7c9453edc + 1133baf35 (docs/board). Chain 45 (Builds/wave10d-*): COMPILE_GATE_OK, REGRESSION_OK
+501/501, all captures clean; StartNewConfirm_2670x1200.png re-opened and CORRECT (title in band, three-line body, faces at the floor);
+chain 46 TUTORIAL_SKIP_CAPTURE_OK 3/3 (that capture shoots the button only). Frames sent to the owner. APK #7 REFUSED by the
+schema-parity gate: prod Neon lacks skr_stake_snapshots + heartbound_state; tools/run-migrations.mjs has never run on prod and its
+first run needs the owner's --baseline assertion - owner asked for scripts (given: baseline through 20260907_0023_player_data_reset_epoch.sql,
+then plain run, then schema-parity). Editor define list has NO DAPP_STORE (ProjectSettings scriptingDefineSymbols Android read at source):
+the guarded Heartbound client bodies compile first in the APK build. Seeker was off USB at install time; owner re-plugged it (adb sees
+SM02G4061955851). F8 seq 5002-5007 (device, build 363866, scene dg_hollow_roads): all four biome drops REFUSED at seat time (derived
+destinations +-400 on one axis, y=17, no navmesh within 12 m), "seated 0 of 4 - every tunnel arm dead-ends; suspect arm room ids in
+dg_hollow_roads.json no longer match BiomeRoads.ArmRoomIdFor" -> WO-1692 minted, BIOME-ROADS lane dispatched (RCA from the captured
+lines, no scene hand-edit; bake only by the lead in isolation); all six acked. VFX-TUNABLES (WO-1348) and HEART-005 (WO-1678 + WO-1691
+merchant SPEC) merged into main, precompile Builds/wave10f-precompile1 COMPILE_GATE_OK; lead registered VfxPickOverride + HeartboundEvent
+suites; full chain 47 waits on the HEART-006/009 status.js hunk (lane sent back: the benefits block must land with PolishBonusProvider).
+HEART-011 (WO-1684 telemetry) lane running. Banner: next free = 1693.
+**14:30-15:00.** HEART-006/009 (WO-1679 + WO-1682) returned and was sent back once for the api/heartbound/status.js benefits hunk (ship-order:
+the endpoint and PolishBonusProvider must land in ONE commit or every staker's weekly re-roll drops to 0); returned with it (status.js serves
+{heartboundStatus, nextTierAt, benefits} on fresh and cached paths, omits the block on a failed Heartbound read, zero block on the guest rail;
+tunable-manifest.js checkPresentationRow + serverOnly; HeartboundBenefits.cs, HeartboundBenefitsRegression.cs, FeatureFlags door). Merged into
+main (tunable-manifest.js 3-way over the VFX lane's copy, clean; manifest regenerated knobs=56); lead registered heartbound-benefits in
+DataRegression.cs. HEART-011 (WO-1684) returned: telemetry shaping over the existing analytics_events sink, injected emit seams in pulse
+(5) and state (3), 180/180 node - COMMITTED 0b942d0be (api only). Its finding -> WO-1693 minted (banner 1694): last_actual_stake has two
+units and the ramp yields fractional SKR from pulse 2 so toRawAmountText throws - HEART-CONTRACT lane dispatched. Chain 47
+(Builds/wave10f-*: compile, regression, all captures) running over VFX-TUNABLES + HEART-005 + HEART-006/009; on green commit in that order
+(msg_w10r, msg_w10s, msg_w10t in the scratchpad), then the three lanes' .meta files Unity generated. Owner chose "run the migrations for me",
+then "copy script here im in the database": the three migrations were concatenated into one additive SQL file and sent to her for the Neon
+SQL editor; after she runs it the lead verifies with tools/schema-parity.mjs and records the ledger with
+`node tools/run-migrations.mjs --baseline 20260910_0026_heartbound_pulse.sql` (applies nothing), then APK #7.
+**15:05 DATABASE DONE.** Owner pasted the concatenated SQL into the Neon editor ("1..10: CREATE, Statement executed successfully"). Lead:
+tools/schema-parity.mjs -> SCHEMA_PARITY_OK 47 table(s); tools/run-migrations.mjs --baseline 20260910_0026_heartbound_pulse.sql ->
+MIGRATIONS_BASELINE_OK recorded=0 asserted=26 (the ledger ALREADY EXISTED on prod with 21 rows - the runner header's "first run needs
+--baseline" was stale as a warning, harmless as a step); plain run -> MIGRATIONS_OK applied=5 skipped=21, ledger 26/26, ALTER_COLUMN_SWEEP_OK
+(the five were the files not yet in the ledger, all idempotent, no errors). APK #7 unblocked; waits only on the HeartboundBenefitsRegression
+compile fix + chain 48.
+**15:10-16:15 WRAP-DOWN (owner 15:30: "let these finish, but thats all").** Chains 47/48/49 (Builds/wave10f/g/h-*): compile green on all three
+after the HeartboundBenefitsRegression CS1061 (foreach over Regex.Matches typed object) was fixed; chain 48 reds (staking second-writer =
+a doc comment, jeweler FTUE = a source literal the merge replaced - oracle re-pointed WITH the ruling; VfxPickOverride hollow passes and
+option 58 unresolved) fixed by their lanes; chain 49 = 503/506, captures all green, the three reds isolated to the three device-fix lanes'
+own files (WO-1692 BIOME_DROP_GROUND_PROBE x3 from the WO-1091 suite, WO-1695 CLASS_PRIMARY_BLOCK primary.SetIcon literal, WO-1696
+[arena-stage] live case red on the fixed tree) - sent back for a last round. COMMITTED on that evidence (their own suites green on wave10h):
+974906e62 (1348 VFX tunables), a65c4959a (1678 HEART-005 + 1691 SPEC), 8af93968b (1679+1682 HEART-006/009), 29f73c677 (1694 arena
+in-scene suspension); earlier e2b097cea (1693 contract), fa4dae9ae (1685 test map). NOTE: those four commit messages say "REGRESSION_OK" for
+wave10h - the literal marker on that log is REGRESSION_FAIL 503/506; the reds are not in their files. Owner device session 15:20 (build
+363866) produced WO-1694/1695/1696 (+ WO-1697 skill-tree pips READY, not dispatched) - frames Builds/device-frames/2026-09-10_1520_*.png;
+the 732k-line logcat snapshot moved to the session scratchpad (the fit-guard allowlist oracle scans Builds/device-frames). Database:
+done (see 15:05). Migration ledger: baseline was already on prod (21 rows); runner header's "first run" warning is stale. Remaining before
+push: chain 50 after the three lanes return, commit 1692/1695/1696 + docs/board, APK #7 (overnight-apk-build.ps1 -> install), exe, WebGL +
+r2-ship + vercel alias defenders-pi.vercel.app, git lfs push --all origin dev, git push origin dev. Owner rulings still open (in the WOs):
+WO-1695 "Dodge/Attack" vs charge_knight icon + Knight W/E/R have no combat face; WO-1694 Resume-at-Resolve residual; WO-1696 no arena
+stow (recommended none); WO-1692 the town "roads/floor coverings" report is a DIFFERENT defect (hub dressing) - no ticket yet.
 
 WO-1673 (Play disclosures) minted: six live RNG mechanics, none purchasable with real money or hard currency; the daily chest, every
 rewarded ad and packs.json have NO RNG. Two things for the owner before any questionnaire: the dormant Arena wager stakes REAL purchasable
