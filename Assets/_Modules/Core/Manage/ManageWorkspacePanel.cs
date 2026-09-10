@@ -859,7 +859,10 @@ namespace DeNelle.Core.Manage
                 if (string.IsNullOrEmpty(w)) continue;
                 if (w.Length > widestState.Length) widestState = w;
             }
-            float stateFontPx = ResolveStateWordFont(widestState, cellW);
+            // WO-1665 Part A: contentRt is handed in ONLY so the probe can be re-measured under a
+            // REAL canvas for the read-back (hypothesis A1). It does not participate in the
+            // returned size and the resolver falls back to the detached measurement when it is null.
+            float stateFontPx = ResolveStateWordFont(widestState, cellW, contentRt);
             for (int i = 0; i < tiles.Count; i++)
             {
                 if (asRows) BuildListRow(contentRt, tiles[i], cellH, cellW);
@@ -1110,7 +1113,7 @@ namespace DeNelle.Core.Manage
         /// <para>Returns the ceiling; the caller still passes it through FitSingleLine, so a word
         /// SHORTER than the widest is never blown up past it.</para>
         /// </summary>
-        private float ResolveStateWordFont(string widest, float cellW)
+        private float ResolveStateWordFont(string widest, float cellW, RectTransform canvasHost = null)
         {
             const float Ceiling = 26f;                 // the band's authored maximum
             // ⭐ WO-1661 section 4A - EVERY RETURN NOW NAMES ITSELF, because the four that did not
@@ -1169,6 +1172,17 @@ namespace DeNelle.Core.Manage
                 text.fontStyle = FontStyles.Bold;
                 text.enableAutoSizing = false;
                 float wantPx = text.GetPreferredValues(widest, 0f, 0f).x;
+                // ⭐ WO-1665 PART A - THE READ-BACK, AND IT RUNS AFTER THE REAL MEASUREMENT ON
+                // PURPOSE. wantPx above is byte-for-byte the value it was before this ticket
+                // (same call, same `widest`, same order), so every branch and every return below
+                // is unchanged - WO-1665 section C. The read-back may MUTATE the throwaway probe
+                // (wrap mode, parent); it can never mutate wantPx.
+                // ⛔ IT ALSO CANNOT THROW OUT OF THIS BRANCH. The method's outer catch returns
+                // Ceiling through a DIFFERENT line, so a diagnostic that throws would silently
+                // move the branch and lose the very read-back it exists to print - the failure
+                // mode this ticket was raised about. StateWordProbeReadBack swallows its own
+                // exceptions per field and reports them as <threw:...> instead.
+                string probeRb = StateWordProbeReadBack(text, face, probe, canvasHost, widest, wantPx);
                 if (wantPx <= 1f)
                 {
                     // The probe answered nothing. A zero preferred width means the face never
@@ -1179,7 +1193,7 @@ namespace DeNelle.Core.Manage
                         Ceiling.ToString("0") + "px type (face=" +
                         (text.font != null ? text.font.name : "<null>") + "), plate offers " +
                         availablePx.ToString("0") + "px, returning the authored ceiling " +
-                        Ceiling.ToString("0") + "px");
+                        Ceiling.ToString("0") + "px | " + probeRb);
                     return Ceiling;
                 }
                 if (wantPx <= availablePx)
@@ -1194,7 +1208,7 @@ namespace DeNelle.Core.Manage
                         Ceiling.ToString("0") + "px type and the plate offers " +
                         availablePx.ToString("0") + "px (cellW=" + cellW.ToString("0.##") +
                         ", slack " + (availablePx - wantPx).ToString("0") + "px), so it paints at the ceiling " +
-                        Ceiling.ToString("0") + "px");
+                        Ceiling.ToString("0") + "px | " + probeRb);
                     return Ceiling;                            // already fits, nothing to do
                 }
 
@@ -1228,6 +1242,223 @@ namespace DeNelle.Core.Manage
                 if (Application.isPlaying) UnityEngine.Object.Destroy(probe);
                 else UnityEngine.Object.DestroyImmediate(probe);
             }
+        }
+
+        /// <summary>
+        /// ⭐ WO-1665 PART A - THE DISCRIMINATING READ-BACK for the state-word probe. REPORTS ONLY:
+        /// it returns a string, changes no return value of <see cref="ResolveStateWordFont"/>, and
+        /// touches nothing but the throwaway probe that is destroyed on the next line.
+        ///
+        /// <para>⛔ WHY IT EXISTS. On device (APK 2026.09.10.363866,
+        /// Builds/device-frames/2026-09-10_1137_363866_logcat.txt, 11:36:27.907 and 11:36:44.744)
+        /// the [already-fits] branch printed <c>widest='UPGRADE' wants 20px at 26px type</c>.
+        /// Seven capital glyphs at 26px bold cannot occupy 20px - that is ~2.9px per glyph, nine
+        /// times narrower than the type is tall - and the device frame
+        /// (2026-09-10_1137_363866_army_badge_crop.png) shows the word occupying a large fraction
+        /// of its plate. The OUTCOME is right (wantPx &lt;= availablePx either way, so the ceiling
+        /// is returned and "UPGRADE" paints whole); the NUMBER is not, and CLAUDE.md section 11B
+        /// forbids reasoning from a measurement that does not measure what it claims.</para>
+        ///
+        /// <para>THE THREE HYPOTHESES, and the field that kills each:</para>
+        /// <para>A1 - the probe is measured DETACHED (no Canvas ancestor, no CanvasScaler), so
+        /// GetPreferredValues answers in a different unit system from <c>cellW</c>, which is
+        /// reference px. Killed or confirmed by <c>parentNull</c> / <c>canvasScale</c> /
+        /// <c>parented</c>: if the re-measure under the grid's own canvas host is materially wider
+        /// than <c>raw</c>, A1 is the cause.</para>
+        /// <para>A2 - the face never really resolved, or resolved to something whose atlas/face
+        /// info is not loaded, so the width is degenerate-but-nonzero and slips past the
+        /// <c>probe-measured-nothing</c> guard (which only catches <c>&lt;= 1f</c>). Killed or
+        /// confirmed by <c>face</c> / <c>pointSize</c> / <c>faceScale</c> / <c>atlasMode</c> /
+        /// <c>glyphsMatched</c> (how many of the word's characters the face's own lookup table
+        /// actually resolved).</para>
+        /// <para>A3 - the candidate this lane adds, and the one the arithmetic points at:
+        /// <c>GetPreferredValues(widest, 0f, 0f)</c> passes a ZERO margin width, and the probe
+        /// never sets a wrapping mode, so TMP's default Normal wrap may wrap the word at a
+        /// zero-width margin - one glyph per line - and hand back the width of the WIDEST SINGLE
+        /// GLYPH. Killed or confirmed by <c>wideMargin</c> / <c>noWrap</c> / <c>oneGlyph</c> /
+        /// <c>allGlyphs</c>: if <c>raw</c> lands on <c>oneGlyph</c> while <c>allGlyphs</c>,
+        /// <c>wideMargin</c> and <c>noWrap</c> land near seven times it, A3 is the cause and
+        /// neither A1 nor A2 is.</para>
+        ///
+        /// <para>⛔ EVERY FIELD IS INDIVIDUALLY GUARDED. A diagnostic that throws would escape into
+        /// the method's outer catch, which returns the ceiling through a DIFFERENT log line - so
+        /// the branch would move and the read-back would be lost, which is the exact class of
+        /// silently-wrong instrument this ticket was raised about. A field that throws prints
+        /// <c>&lt;threw:Name&gt;</c> and the rest still print.</para>
+        ///
+        /// <para>Grep token: <c>probeRB:</c></para>
+        /// </summary>
+        private static string StateWordProbeReadBack(TextMeshProUGUI text, TMP_FontAsset face,
+                                                     GameObject probe, RectTransform canvasHost,
+                                                     string widest, float rawWantPx)
+        {
+            string raw = "<none>";
+            string faceName = "<none>";
+            string pointSize = "<none>";
+            string faceScale = "<none>";
+            string atlasMode = "<none>";
+            string allGlyphs = "<none>";
+            string glyphsMatched = "<none>";
+            string parentNull = "<none>";
+            string probeRect = "<none>";
+            string lossyScale = "<none>";
+            string wideMargin = "<none>";
+            string noWrap = "<none>";
+            string oneGlyph = "<none>";
+            string parented = "<not-measured>";
+            string canvasScale = "<not-measured>";
+            string hostName = "<null>";
+
+            try { raw = rawWantPx.ToString("0.##"); } catch (Exception ex) { raw = "<threw:" + ex.GetType().Name + ">"; }
+
+            try
+            {
+                var f = text != null ? text.font : null;
+                faceName = f != null ? f.name : "<null>";
+                if (f != null)
+                {
+                    pointSize = f.faceInfo.pointSize.ToString("0.##");
+                    faceScale = f.faceInfo.scale.ToString("0.###");
+                    atlasMode = f.atlasPopulationMode.ToString();
+                }
+            }
+            catch (Exception ex) { faceName = "<threw:" + ex.GetType().Name + ">"; }
+
+            // The resolver's OWN view of the face, separate from what landed on the probe: if these
+            // two disagree the assignment is the defect, not the measurement.
+            string resolverFace = "<none>";
+            try { resolverFace = face != null ? face.name : "<null>"; }
+            catch (Exception ex) { resolverFace = "<threw:" + ex.GetType().Name + ">"; }
+
+            try
+            {
+                parentNull = (probe != null && probe.transform.parent == null) ? "True" : "False";
+                if (text != null)
+                {
+                    var rt = text.rectTransform;
+                    probeRect = rt.rect.width.ToString("0.##") + "x" + rt.rect.height.ToString("0.##");
+                    lossyScale = rt.lossyScale.x.ToString("0.###");
+                }
+            }
+            catch (Exception ex) { parentNull = "<threw:" + ex.GetType().Name + ">"; }
+
+            // A3's two measurements. Order matters: wideMargin first (wrap mode still whatever the
+            // probe was built with, so it isolates the MARGIN), then NoWrap (isolates the WRAP).
+            try
+            {
+                if (text != null) wideMargin = text.GetPreferredValues(widest, 100000f, 0f).x.ToString("0.##");
+            }
+            catch (Exception ex) { wideMargin = "<threw:" + ex.GetType().Name + ">"; }
+
+            string wrapWas = "<none>";
+            try
+            {
+                if (text != null)
+                {
+                    var priorWrap = text.textWrappingMode;
+                    wrapWas = priorWrap.ToString();
+                    text.textWrappingMode = TextWrappingModes.NoWrap;
+                    noWrap = text.GetPreferredValues(widest, 0f, 0f).x.ToString("0.##");
+                    // ⛔ RESTORED. The parented re-measure below must isolate the CANVAS (A1); if it
+                    // inherited this NoWrap it would silently test A3 twice and never test A1 at all.
+                    text.textWrappingMode = priorWrap;
+                }
+            }
+            catch (Exception ex) { noWrap = "<threw:" + ex.GetType().Name + ">"; }
+
+            // ⭐ THE GROUND TRUTH, from the face's OWN glyph metrics rather than a guessed ratio
+            // (CLAUDE.md section 12). Same shape already proven in the repo at
+            // EndStateView.cs:498-528. `allGlyphs` is what 'UPGRADE' MUST measure if the probe is
+            // honest; `oneGlyph` is what A3 predicts `raw` will land on instead. The pair is the
+            // single most decisive thing on this line: raw ~= oneGlyph while allGlyphs ~= 7x is
+            // A3 and nothing else.
+            try
+            {
+                var f = text != null ? text.font : null;
+                if (f != null && !string.IsNullOrEmpty(widest) && f.faceInfo.pointSize > 0f)
+                {
+                    var table = f.characterLookupTable;
+                    if (table == null) { oneGlyph = "<no-lookup>"; allGlyphs = "<no-lookup>"; }
+                    else
+                    {
+                        // ⛔ READ OFF THE PROBE, NEVER RE-TYPED. `Ceiling` is 26f a hundred lines up;
+                        // a literal here would be a copied constant that goes stale the day the
+                        // ceiling moves - the exact duplicated-state failure CLAUDE.md sections 2, 5
+                        // and 8 each describe. text.fontSize IS the value the caller set.
+                        float perPoint = text.fontSize / f.faceInfo.pointSize;
+                        float sum = 0f;
+                        int matched = 0;
+                        float first = -1f;
+                        for (int i = 0; i < widest.Length; i++)
+                        {
+                            if (table.TryGetValue(widest[i], out var ch) && ch != null && ch.glyph != null)
+                            {
+                                float adv = ch.glyph.metrics.horizontalAdvance;
+                                sum += adv;
+                                matched++;
+                                if (first < 0f) first = adv;
+                            }
+                        }
+                        glyphsMatched = matched.ToString() + "/" + widest.Length.ToString();
+                        if (matched > 0)
+                        {
+                            oneGlyph = (first * perPoint * f.faceInfo.scale).ToString("0.##");
+                            allGlyphs = (sum * perPoint * f.faceInfo.scale).ToString("0.##");
+                        }
+                        else { oneGlyph = "<no-glyphs>"; allGlyphs = "<no-glyphs>"; }
+                    }
+                }
+            }
+            catch (Exception ex) { oneGlyph = "<threw:" + ex.GetType().Name + ">"; }
+
+            // A1's kill shot: the SAME string, the SAME font, measured under the grid's real canvas.
+            // ⛔ The probe is DETACHED AGAIN before this returns. Destroy() is deferred to end-of-frame
+            // in play mode, so a probe left parented to the live grid would paint a stray word into
+            // the player's tile for a frame - and WO-1665 forbids changing what the screen looks like.
+            try
+            {
+                if (text != null && canvasHost != null)
+                {
+                    hostName = canvasHost.name;
+                    // ⛔ WALKED BY HAND, NOT GetComponentInParent<Canvas>(). ManageDumbViewRegression's
+                    // [service-locator-reach] shape bans that call BY NAME in THIS file (canon 9: the
+                    // renderer is handed what it renders and never goes looking for a collaborator).
+                    // A diagnostic is not an exemption from the oracle, so the walk is explicit.
+                    Canvas canvas = null;
+                    // Starts at canvasHost ITSELF - a nested Canvas on scroll content is the one
+                    // whose scaleFactor actually applies, and starting at .parent would miss it.
+                    // Typed Transform, not var: `up = up.parent` returns Transform, so inferring
+                    // RectTransform from the seed would not compile.
+                    Transform up = canvasHost;
+                    int hops = 0;
+                    while (up != null && canvas == null && hops++ < 12)
+                    {
+                        canvas = up.GetComponent<Canvas>();
+                        up = up.parent;
+                    }
+                    canvasScale = canvas != null ? canvas.scaleFactor.ToString("0.###") : "<no-canvas>";
+                    try
+                    {
+                        probe.transform.SetParent(canvasHost, false);
+                        parented = text.GetPreferredValues(widest, 0f, 0f).x.ToString("0.##");
+                    }
+                    finally
+                    {
+                        probe.transform.SetParent(null, false);
+                    }
+                }
+            }
+            catch (Exception ex) { parented = "<threw:" + ex.GetType().Name + ">"; }
+
+            return "probeRB: raw=" + raw + " wideMargin=" + wideMargin + " noWrap=" + noWrap +
+                   " oneGlyph=" + oneGlyph + " allGlyphs=" + allGlyphs +
+                   " glyphsMatched=" + glyphsMatched + " parented=" + parented +
+                   " face=" + faceName + " resolverFace=" + resolverFace +
+                   " pointSize=" + pointSize + " faceScale=" + faceScale +
+                   " atlasMode=" + atlasMode +
+                   " parentNull=" + parentNull + " probeRect=" + probeRect +
+                   " lossyScale=" + lossyScale + " canvasScale=" + canvasScale +
+                   " wrapWas=" + wrapWas + " host=" + hostName;
         }
 
         /// <summary>

@@ -1,6 +1,6 @@
 # WORK ORDER 1665 — The state-word probe reports 20px for seven glyphs, and PartyNameplate stands down carrying live text
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY TO IMPLEMENT — INSTRUMENTED 2026-09-10 (PROBE-READBACK lane), awaiting a device log
 **Silo:** UI instrumentation truthfulness (`ManageWorkspacePanel` probe + `ElarionUiKitObsidian` fit guard). **No layout change is being asked for — both surfaces render CORRECTLY today.**
 **Raised by:** DEVICE-FRAMES-4 lane, 2026-09-10, from a live Seeker capture.
 **Number:** pre-assigned by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately NOT edited by this lane.
@@ -238,6 +238,133 @@ depth before assuming a rename is enough to disambiguate.
    "Train N troops for the next raid".
 5. `**Status:**` flipped in this file in the same commit as the work, `.RESULT.md` written, both paths
    reported.
+
+## F. PROBE-READBACK lane — instrumentation landed 2026-09-10, no fix, no Unity, no commit
+
+Both read-backs are in. **No behaviour changed, no return value changed, no string the player sees
+changed.** The two source files are `Assets/_Modules/Core/Manage/ManageWorkspacePanel.cs` and
+`Assets/_Modules/Core/UI/ElarionUiKitObsidian.cs`. `gate_brace` = `GATE_BRACE_SUMMARY bad=0 of 2`,
+no NUL bytes, braces 306→321 balanced (Obsidian) and 116→122 balanced (Manage).
+
+### F1. PART A — read-back added, verdict deferred to the device (as §A5 requires)
+
+New grep token **`probeRB:`**, appended to the `[already-fits]` line **and** to the
+`[probe-measured-nothing]` line. Built by `StateWordProbeReadBack` (new, private, static, pure
+report). **The original `float wantPx = text.GetPreferredValues(widest, 0f, 0f).x;` is byte-for-byte
+untouched and still runs FIRST**, before any diagnostic — so the branch and the return cannot move.
+Every field is individually `try`-guarded and prints `<threw:Name>` on failure, because the method's
+outer `catch` returns the ceiling through a *different* log line: a diagnostic that threw would have
+silently moved the branch and lost the read-back, which is the exact defect class this ticket exists
+for.
+
+Fields: `raw` `wideMargin` `noWrap` `oneGlyph` `allGlyphs` `glyphsMatched` `parented` `face`
+`resolverFace` `pointSize` `faceScale` `atlasMode` `parentNull` `probeRect` `lossyScale`
+`canvasScale` `wrapWas` `host`.
+
+**A THIRD hypothesis is now on the table alongside the ticket's A1/A2, and the arithmetic points at
+it.** `GetPreferredValues(widest, 0f, 0f)` passes a **zero margin width**, and the probe never sets a
+wrapping mode — so TMP's default `Normal` wrap may wrap at a zero-width margin, one glyph per line,
+and return the width of the **widest single glyph**. 20px for one capital at 26px bold is ~0.77em,
+which is an ordinary advance; 20px for seven of them is not. `oneGlyph` vs `allGlyphs` (both computed
+from the face's own `characterLookupTable` metrics, the shape already proven at
+`Assets/_Modules/Village/UI/EndState/EndStateView.cs:498-528`) decide it in one read.
+
+Reading the fresh line:
+- `raw ≈ oneGlyph` and `allGlyphs ≈ wideMargin ≈ noWrap ≈ 7 × raw` → **A3, the zero margin**. Fix:
+  set `text.textWrappingMode = TextWrappingModes.NoWrap` on the probe and/or pass a wide margin.
+- `parented` materially larger than `raw`, wrap fields flat → **A1, the detached measurement**.
+- `face`/`resolverFace` null-or-fallback, `glyphsMatched` short of the word length, everything else
+  flat → **A2, the face never resolved**.
+
+`ResolveStateWordFont` gained one **optional** parameter (`RectTransform canvasHost = null`), passed
+`contentRt` at its single call site, used *only* for the `parented`/`canvasScale` fields. Its name is
+still present for `ManageProgressiveDisclosureRegression.cs:71`, which pins presence, not signature.
+
+⚠ **One oracle trap hit and avoided, recorded so the next seat does not re-step it:**
+`ManageDumbViewRegression`'s `[service-locator-reach]` shape bans `GetComponentInParent<` **by name in
+this file** (`Assets/Editor/Regression/ManageDumbViewRegression.cs:283-288`). The canvas is therefore
+walked by hand with `GetComponent<Canvas>()` up a bounded parent chain. A diagnostic is not an
+exemption from the oracle.
+
+### F2. PART B — **B1 is PROVEN from source plus the EXISTING log. No rerun needed to reach the verdict.**
+
+The brief's two lifecycle questions are both answered NO at source, so neither is the cause:
+
+- **"Is a second guard armed on the same GameObject?"** — impossible. `ArmFitGuard` does
+  `GetComponent<UiKitTextFitGuard>()` then `AddComponent` only if null
+  (`ElarionUiKitObsidian.cs:3210-3211`). One guard per GameObject, always.
+- **"Does the first hold a stale `_t`?"** — impossible. `_t = GetComponent<TMP_Text>()` in `Awake`
+  on its own GameObject (`:3241`); it can only become null-after-destroy, and null takes the
+  `enabled = false; return` door (`:3248`).
+
+**What actually happened**, every step measured:
+
+1. `ElarionUiKit.Label` names **every** label it builds the literal `"Label"`
+   (`Assets/_Modules/Core/UI/ElarionUiKit.cs:1909`), and `PathOf` walks only four parents
+   (`ElarionUiKitObsidian.cs:3518`) — so the path is exactly five segments and cannot disambiguate.
+2. **Four** labels hang off the one `PartyNameplate` root (`ElarionUiKitNameplate.cs:96`): NameLabel
+   (`ElarionUiKitNameplate.cs:140`), objective (`HudKitController.cs:2528`), heartfire (`:2558`),
+   heartfire-rekindle (`:2564`). All four render
+   `Area_HeartStatus/Widget_heartStatus/HeartStatus/PartyNameplate/Label`.
+3. At 11:33:35.642 the log reads
+   `[Flow:HudKit] heartfire painted -> [*] [*] [*] 'Heartfire 3/3 (raids)' (3/3), rekindle row ''`.
+   `HeartfireCharges.PlateRekindle` returns `string.Empty` when `charges >= maxCharges`
+   (`Assets/_Modules/Core/State/HeartfireCharges.cs:405`) — so with Heartfire **full**, the rekindle
+   label is **empty BY DESIGN**, and it is the *only* one of the four that is empty (name = player
+   name, objective = the train sentence, heartfire = "Heartfire 3/3 (raids)").
+   **One empty sibling, and exactly one stand-down line on that path in the whole log.** The
+   accounting closes with nothing left over.
+4. The objective label's guard cannot be the one that stood down: its working half ran at 11:34:14
+   (the band-grow warn carries its live text) and every path through that half ends `enabled = false`
+   (`ElarionUiKitObsidian.cs:3405`), and **nothing re-arms it** — `RepaintHeartObjective`
+   (`HudKitController.cs:5530-5557`) and `RepaintHeartfire` (`:5396-5436`) set `.text` only and never
+   call `FitSingleLine`, whose only call for that label is at build (`:2533`). Re-checked for the
+   escape hatch: **zero Unity exceptions** in the 11:34:14–11:34:55 window of
+   `Builds/device-frames/2026-09-10_1137_363866_logcat.txt` (the only `E` lines are Android
+   `serviceDiscovery`/`ActivityManager` noise from other PIDs).
+
+**Verdict: B1. There is no bug in the fit guard and no bug in the producer.** The defect is that the
+diagnostic cannot name which of four identically-named objects it means — which is exactly what made
+this sequence read as a contradiction. §B2's "the objective label really cleared" is **refuted**.
+
+**Proposed fix — NOT implemented, this lane is instrument-only.** Give the four labels distinct
+GameObject names at construction: `HudKitController.cs:2528/2558/2564` → `Label_HeartObjective` /
+`Label_Heartfire` / `Label_HeartfireRekindle`, and `ElarionUiKitNameplate.cs:140` → `Label_Name`.
+⚠ **Before that lands, check the rename against `FitGuardRelaxAllowlistRegression`** — `PathOf`'s
+output is the `relaxKey` that suite matches against an authored allowlist
+(`Assets/Editor/Regression/FitGuardRelaxAllowlistRegression.cs:265-272`), so any allowlisted key ending
+`/Label` under a renamed parent must be updated in the same commit or the suite reds.
+
+**The read-back added anyway** (the ticket asks for it, and it makes the *next* ambiguity self-solving
+without a rename): new grep token **`guardRB:`**, appended to **both** the band-grow warn and the
+stand-down line — both, because an id on one line alone proves nothing. Fields: `goId` (the
+GameObject instance id — different ids on the two lines is the whole answer), `sib` (sibling
+index/childCount), `sameName` (how many siblings share the name — the ambiguity, measured),
+`guardsOnGo` (an **invariant check**: source says always 1; a 2 would overturn the lifecycle read),
+`textLen`, `frames`, `active`.
+
+⛔ `FitGuardStandDownMessage` is **byte-for-byte untouched** (pinned by
+`TextFitGuardArmRegression.cs:328-370`, and on §C's do-not-touch list) and `PathOf` is **untouched**
+(its output is the `relaxKey`). Both read-backs are **appended after** the existing lines with `" | "`,
+so every existing prefix/substring match still holds. `HudLabelFitRegression.cs` was not opened — it
+belongs to another lane.
+
+### F3. The greps the next device run should use
+
+```
+grep -n "probeRB:" <logcat>          # Part A — the widened already-fits line
+grep -n "state word font" <logcat>   # Part A — all branches, entry line included
+grep -n "guardRB:" <logcat>          # Part B — both fit-guard lines, with object identity
+grep -n "PartyNameplate/Label" <logcat>
+grep -n "TextFitGuard CENSUS" <logcat>   # acceptance 3: relaxed=0 must still hold
+grep -n "heartfire painted" <logcat>     # confirms lit==max, i.e. the rekindle row is '' by design
+```
+
+Expected under the standing verdicts: the two `PartyNameplate/Label` lines carry **different `goId`**
+and `sameName>=4`, `guardsOnGo=1` on both (>=4, not =4: `ElarionUiKitNameplate.cs:234` parents a FIFTH `Label` to the same root, `h.XpGainLabel`, conditionally); and `probeRB:` shows `allGlyphs` roughly seven times `raw`.
+Neither is claimed as fact until that log exists.
+
+---
 
 ## E. Evidence index
 
