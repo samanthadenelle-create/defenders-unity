@@ -98,6 +98,39 @@ UI_CAPTURE_OK 91 + UI_GEOMETRY_OK 91 + UI_GLYPH_OK 91/91, `wave3-navcapture5` UI
 `9e44ad076` glyph oracle + baseline + WO-1636 (1630 FIXED, 1636 PARTIAL) | `9c7855902` RumorBoard 21 | `d5ccb24ed` deck cards 16 |
 `28b0719f2` HeroSelect 5 + Manage ARMY partial | `3c2302534` arena boundary ring (1632 FIXED) | `b10cd6783` courtyard cover props (1633 FIXED,
 1634 READY, 1635 PARTIAL) | `16e7da66b` Forsaken Camp tower base + raid-only catalog row + fallback regen | `2e66a552e` the re-bake (4 scenes + navmesh).
+LANDED 05:45 (chain 19 green: `wave3-compile10`, `wave3-reg10` 494/494, `wave3-capture10` UI_GLYPH_OK 91/91 baselined=4,
+`wave3-navcapture6`): `e71359283` NightMarket 21 (v3: reference-width reads; v2 had collapsed the CTA at 800x360) | `02fb42ba6`
+BuildMenu two-line info band. WO-1636 = 64 of 68 cleared; the 4 left are Manage ARMY x2 (copy ruling: "BUILD BARRACKS" fits),
+EndStateWaveClear x1 (stale capture fixture), Realm DeckCard_The Night Market x1. GlyphBaseline shrink to 4 in flight (lane).
+BUILDS DONE (morning): exe `Builds/build.log` DesktopBuild SUCCEEDED 2010 MB 05:47 (release, 234 DLLs, no DevTools, sha of
+DeNelle.Village.dll 7683c6da2d17e84f...); APK `Builds/overnight-apk-status.txt` APK_OK 444MB 05:54 + R2_PARITY_OK objects=278;
+Seeker install Success, device versionName=2026.09.10.363529 (stamp committed on its own). WebGL building from 05:55.
+REGRESSION CAUGHT 05:58: the build chain rewrote ProjectSettings' portrait autorotate flags back to 1 - the writer is
+`Assets/Editor/AndroidBuild.cs:327-329` (`PlayerSettings.allowedAutorotateToPortrait = true` inside the Seeker build setup),
+so the APK 363529 on the Seeker has portrait ON despite the ruling; my version-stamp commit `fbae77297` carried the flip and
+`a96bfe332` reverts it. Lane ORIENT-SCRIPT fixes the writer + pins it in ScreenOrientationRegression; a NEW APK follows.
+Lesson for memory: a ruling edit to ProjectSettings is not durable while a build script writes PlayerSettings.
+WEBGL SHIPPED 06:15: `[webgl] SUCCESS` 182.2 MB (06:14), legal pages staged (WEB_STAGE_OK), `vercel deploy --yes` preview
+https://defenders-of-the-realm-v2-ib8yl8uq4.vercel.app, `tools/r2-ship.ps1` -> R2_PARITY_OK objects=279 with
+`WebGL/catalog_2026.09.10.363529` hosted (run AFTER the deploy - order slip, harmless because the client fetches the catalog
+from R2 at runtime), alias moved: https://defenders-pi.vercel.app -> the new deploy (HTTP 200, serves the new loader
+6a7459032dfda91b9c9bf1ec181c00f4.loader.js). DEVICE FRAMES of a full Forsaken Camp raid on APK 363529 (all landscape) are
+under Builds/device-frames/2026-09-10_06*; two sent to the owner; WO-1618's blocked capture landed (64 clock ticks, one
+scorer, clock starts at engagement 105 s after load, tracks 1:1 to 180 s - the RAID-CLOCK lane rules it); six raid-polish
+tickets (1637-1642) minting from the frames.
+CHAIN 21 GREEN 06:38 (`wave4-compile2` COMPILE_GATE_OK, `wave4-bake2` props 33/31/27 with courtyard 25/22/19 - the WO-1634
+gaps placed: firepit, spit roaster, haybales, torches on Easy; racks, broken wall, catapult + ballista props on Hard; banners +
+torches moved into Extreme's courtyard - `wave4-navbake2` 4/4, `wave4-reg2` REGRESSION_OK 494/494 incl. CaseSinglePropAuthority,
+CaseAuthoredPropGaps, ScreenOrientation case 5 on the build script, the BUILD BARRACKS pin). Chain 20 before it had caught my
+SECOND silent apply drop (the prop-gaps Resources twin) - the lane's twins copied in whole. Chain 22 (compile + both captures)
+proves the Manage copy and the 4-entry baseline; then commits, then the APK rebuild + reinstall.
+PUSHED 06:48 on the owner's word ("push dev and reinstall the apk when it's done"): dev -> origin/dev at d8672e1f0 (after
+`git lfs push --all` for the new FBX). The held wave (1634, 1635 code, baseline shrink, 1631 build-script writer, 1618 edge-4 +
+ruling, BUILD BARRACKS) commits after chain 22, then the APK rebuild + Seeker reinstall, then a second push.
+BUILD CHAIN launched 05:45 (`Builds/wave3-build-chain.txt` step stamps; runners `wave3-exe` / `wave3-apk` / `wave3-install` /
+`wave3-webgl`): Windows release exe -> production APK (overnight-apk-build, r2-ship inside) -> Seeker install -> WebGL. After it:
+r2-ship for WebGL, `vercel deploy --yes` preview, re-alias `defenders-pi.vercel.app`, then device frames of a raid to the owner.
+NOT pushed since c10e4f5d1 (her "push dev now" was for that moment; 22 commits since wait for her word).
 Still gating (chain 19): the NightMarket CTA seat v3 (21 findings; v2 collapsed the CTA at the narrow aspects) and the BuildMenu two-line
 info band (1 finding). Then the three builds.
 Raid wave evidence (chain 16, 04:45-05:03): `Builds/wave3-compile7` COMPILE_GATE_OK; `wave3-mark5` STRUCTURE_MARK_OK 36;
@@ -245,6 +278,17 @@ banner set to 1636 by the lead; rule recorded in memory (the lead pre-assigns nu
     upgrade or sell what you built" is still 32 chars - it needs to be ~22 to match the others), (b) let that card's
     art strip give up ~30 px (its art is already a thin strip, see item 11), (c) three-line band with the title moved
     up. My recommendation: (a) + (b) together - a card caption that needs three lines is copy, not layout.
+13. RULED: BUILD BARRACKS (lane MANAGE-COPY). **Manage ARMY card copy (WO-1636, 2 findings left):** "BUILD A BARRACKS" cannot fit its face at 2340x1080 / 2670x1200 -
+    the words are pinned by WO-1406's launcher regression and the cell by HubCardAspect. "BUILD BARRACKS" measures ~293 px and
+    fits. Approve that copy, or name another.
+14. RULED: keep the cook fire. **Easy camp cook fire (WO-1634):** the lane authored Synty's camp firepit + spit roaster on the hexagon-green Forsaken Camp
+    (WO-1607 section 4 names Synty tents/spikes as Easy extras; WO-1609 named only KayKit fallbacks). Keep, or drop to the
+    spec's haybale + torch only (a two-row data edit, no test change).
+
+15. **FYI, not a question unless you disagree:** the portrait flags the build script forced on came from WO-1255 (2026-09-08,
+    "Play Console large-screen / foldable readiness"). Your landscape-only ruling now overrides it in AndroidBuild.cs with that
+    rationale kept as prose; GooglePlayPackagingRegression (which had pinned the portrait writer) now pins landscape-only.
+
 8. **WO-1215 / WO-1459:** both need a PLAYED device session (a shield-equip capture; a raid profile
    with controlled thermals). WO-1484 / WO-1314: a Pi Browser session ON the Seeker, per your ruling.
 
