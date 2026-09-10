@@ -1,6 +1,11 @@
 # WO-1461: raid loot settles to a Raid Cache, never LOST; repeat clears pay 60%
 
-**Status:** READY TO IMPLEMENT - carries owner rulings 2026-09-06 20:33
+**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane SPOILS)
+**Prior status:** READY TO IMPLEMENT - carries owner rulings 2026-09-06 20:33
+**RESULT:** `WorkOrders/WORK_ORDER_1461_three_star_raid_clear_banks_25_of_1800_wood.RESULT.md`
+⚠ **Two acceptance items are NOT delivered and are named in the RESULT:** the cache CLAIM door
+(`PanelId`) and the one-line settle wiring in `RaidVictoryController.cs`, both outside this lane's
+files. `SpoilsAreBankableRegression` is deliberately **RED** on the settle wiring until that line lands.
 **Silo:** raid reward settle + `RaidDeployScreen` spoils line + Core/Economy bank, beside the WO-1434
 pending-retention stores.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner

@@ -184,6 +184,63 @@ namespace DeNelle.Village.Hero
         /// <summary>Prefix of every spoils line; the oracle asserts on it.</summary>
         public const string SpoilsPrefix = "Spoils: ";
 
+        // =====================================================================
+        //  WO-1461 - THE CARD QUOTES WHAT WILL ACTUALLY ARRIVE
+        // =====================================================================
+        //  EVIDENCE (troop-ai-blind-2026-09-06.log, 14:37:40): the card read
+        //  "Spoils: ~1800 wood, ~1100 iron" and 25 wood banked. Two subtractions
+        //  sat between the promise and the bank and the card knew about neither -
+        //  the repeat-clear multiplier (1800 -> 450) and the town bank's headroom
+        //  (450 -> 25). So the quote is now the SCALED estimate, and the part the
+        //  bank has no room for is NAMED as going to the Raid Cache rather than
+        //  silently missing.
+        //
+        //  THE LAW, and it is the one SpoilsAreBankableRegression pins:
+        //      quoted == banked + cached
+        //  Presentation only. This re-authors NO number: the multiplier is
+        //  RaidClaimService's, the headroom is TownBankCapacity's, and the split
+        //  is RaidClaimService.SplitAxis - the SAME method the settle path uses,
+        //  so the card and the bank cannot derive two different answers.
+        // =====================================================================
+
+        /// <summary>Opening of the Raid Cache notice - the owner's "progression prompt"
+        /// framing (2026-09-06 20:33), in WORDS because she is red/green colourblind.</summary>
+        public const string CacheNoticePrefix = "Storage full - ";
+        /// <summary>Closing of the Raid Cache notice.</summary>
+        public const string CacheNoticeSuffix = " waits in the Raid Cache";
+
+        /// <summary>
+        /// WO-1461 - IS A CLEAR OF THIS CAMP A REPEAT INSIDE ITS COOLDOWN CYCLE? Wired in
+        /// <c>RaidSelectionScreen.OpenInternal</c> to
+        /// <c>RaidClaimService.IsRepeatClearInCycle</c>, and to NOTHING ELSE.
+        ///
+        /// <para>STOP - NEVER A SECOND REPEAT PREDICATE, for the same reason
+        /// <see cref="ClaimedProvider"/> carries that warning. This is deliberately NOT
+        /// <c>ClaimedProvider</c>: a claim is permanent, a cooldown cycle is not, and the
+        /// owner's ruling resets the share to 100% when the cooldown expires. Deriving
+        /// "repeat" from the cleared flag here would quote 60% forever on a camp that is
+        /// about to pay full.</para>
+        ///
+        /// <para>Unwired / null / throwing = NOT a repeat, so the card quotes the FULL
+        /// payout. That is the forgiving direction for a promise the settle can still keep;
+        /// under-quoting a payout that arrives larger is a pleasant surprise, over-quoting
+        /// one that arrives smaller is the defect this ticket is.</para>
+        /// </summary>
+        public static Func<string, bool> RepeatInCycleProvider;
+
+        /// <summary>
+        /// WO-1461 - HOW MUCH ROOM DOES THE TOWN BANK HAVE for one resource, right now?
+        /// Wired in <c>RaidSelectionScreen.OpenInternal</c> to
+        /// <c>TownBankCapacity.RoomFor</c>, the ONE capacity authority (its own
+        /// [one-reader] guard exists so this arithmetic cannot be re-derived elsewhere and
+        /// disagree).
+        ///
+        /// <para>Unwired / null / throwing = UNLIMITED room, so the card paints no cache
+        /// notice at all. A headless or pre-state frame must never tell the player their
+        /// storage is full when it cannot read the storage.</para>
+        /// </summary>
+        public static Func<DeNelle.Core.Economy.BankResource, int> BankRoomProvider;
+
         private readonly List<SceneConfigDef> _defs = new List<SceneConfigDef>();
         private readonly List<ItemVM> _raids = new List<ItemVM>();
         private readonly Dictionary<string, SceneConfigDef> _byId =
@@ -201,6 +258,11 @@ namespace DeNelle.Village.Hero
         private readonly Func<string, bool> _sceneAvailable;
         private readonly Func<string, int> _bestStars;
         private readonly Func<string, bool> _claimed;
+        private readonly Func<string, bool> _repeatInCycle;
+        private readonly Func<DeNelle.Core.Economy.BankResource, int> _bankRoom;
+        /// <summary>WO-1461: per-camp Raid Cache notice, resolved once per <see cref="Rebuild"/>.</summary>
+        private readonly Dictionary<string, string> _cacheNoticeById =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private bool _showStarPips;
         private bool _disposed;
 
@@ -295,6 +357,68 @@ namespace DeNelle.Village.Hero
             id != null && _spoilsById.TryGetValue(id, out var s) ? s : null;
 
         /// <summary>
+        /// WO-1461 - the row's Raid Cache notice, or null when the town bank has room for the
+        /// whole quote. Computed once per row in <see cref="Rebuild"/>; the View only renders it.
+        /// </summary>
+        public string CacheNoticeLineFor(string id) =>
+            id != null && _cacheNoticeById.TryGetValue(id, out var s) ? s : null;
+
+        /// <summary>
+        /// WO-1461 - is a clear of this camp a repeat inside its cooldown cycle? Guarded, and a
+        /// fault resolves FALSE (quote the full payout) with a log, never a swallow.
+        /// </summary>
+        private bool ResolveRepeatInCycle(string id)
+        {
+            if (string.IsNullOrEmpty(id) || _repeatInCycle == null) return false;
+            try { return _repeatInCycle(id); }
+            catch (Exception ex)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                    "RaidSelectionVM: RepeatInCycleProvider threw for '" + id + "' (" +
+                    ex.GetType().Name + ": " + ex.Message + ") - the row quotes the FULL payout. " +
+                    "Under-quoting a payout that arrives larger is the forgiving direction.");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// WO-1461 - headroom in the town bank for one resource. Unwired / throwing resolves
+        /// UNLIMITED, so a headless or pre-state frame paints no cache notice at all rather
+        /// than telling the player their storage is full when it cannot read the storage.
+        /// </summary>
+        private int ResolveBankRoom(DeNelle.Core.Economy.BankResource r)
+        {
+            if (_bankRoom == null) return int.MaxValue;
+            try { return _bankRoom(r); }
+            catch (Exception ex)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                    "RaidSelectionVM: BankRoomProvider threw for " + r + " (" + ex.GetType().Name +
+                    ": " + ex.Message + ") - treating the bank as UNLIMITED, so no cache notice " +
+                    "is painted on any row.");
+                return int.MaxValue;
+            }
+        }
+
+        /// <summary>
+        /// WO-1461 - room left in the Raid Cache, per resource. Read off the ONE cache
+        /// authority. Guarded: a fault resolves ZERO room, so the notice under-promises rather
+        /// than telling the player a full cache will hold their haul.
+        /// </summary>
+        private static int ResolveCacheRoom(DeNelle.Core.Economy.BankResource r)
+        {
+            try { return DeNelle.Village.World.Camps.RaidClaimService.CacheRoomFor(r); }
+            catch (Exception ex)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                    "RaidSelectionVM: the Raid Cache would not report its room for " + r + " (" +
+                    ex.GetType().Name + ": " + ex.Message + ") - quoting ZERO cache room, which " +
+                    "under-promises rather than promising a hold that may not exist.");
+                return 0;
+            }
+        }
+
+        /// <summary>
         /// The ESTIMATE behind the spoils line - the settle payout's own formula
         /// (<c>RaidScoring.EstimateSpoils</c> -> <c>ProjectLoot</c> -> <c>ComputeLoot</c>, the
         /// same chain <c>RaidScoring.LootFor</c> pays through at settle), quoted at a clean
@@ -321,6 +445,64 @@ namespace DeNelle.Village.Hero
             if (est.Iron > 0) parts.Add("~" + Approx(est.Iron) + " iron");
             if (est.Coins > 0) parts.Add("~" + Approx(est.Coins) + " gold");
             return parts.Count == 0 ? null : SpoilsPrefix + string.Join(", ", parts);
+        }
+
+        /// <summary>
+        /// WO-1461 - the estimate AFTER the repeat-clear share, which is the figure the card
+        /// must quote. Pure and static: it delegates to <c>RaidClaimService.ScaleLootForClear</c>,
+        /// the SAME method <c>RaidVictoryController.ApplyFirstClearGate</c> pays through, so
+        /// the card cannot advertise a rate the settle does not pay.
+        ///
+        /// <para><c>crystalsAlreadyPaidToday</c> is passed FALSE deliberately. The card is a
+        /// pre-raid quote and the crystal day-stamp is decided at settle; quoting zero crystals
+        /// because the player already raided today would be correct only until UTC midnight,
+        /// and the spoils line does not render crystals at all (see <see cref="FormatSpoils"/>,
+        /// wood / iron / gold only). Recorded rather than left as an unexplained literal.</para>
+        /// </summary>
+        public static DeNelle.Village.ResourceCost RepeatScaled(DeNelle.Village.ResourceCost est,
+                                                                bool repeatInCycle)
+            => DeNelle.Village.World.Camps.RaidClaimService.ScaleLootForClear(est, repeatInCycle, false);
+
+        /// <summary>
+        /// WO-1461 - the Raid Cache notice under the spoils line:
+        /// <c>Storage full - ~1075 wood, ~275 iron waits in the Raid Cache</c>, or null when
+        /// the bank has room for the whole quote (the common case, and the card then says
+        /// nothing rather than teaching a worry the player does not have).
+        ///
+        /// <para>Pure and static - every ceiling arrives as an int, so the oracle asserts the
+        /// exact grammar and the exact split with no scene, no save and no bank loaded. The
+        /// split itself is <c>RaidClaimService.SplitAxis</c>, the settle path's own method.</para>
+        ///
+        /// <para>Rooms are per resource; <c>int.MaxValue</c> means "no ceiling", which is what
+        /// an unwired <see cref="BankRoomProvider"/> supplies.</para>
+        ///
+        /// <para>⚠ THIS LINE CARRIES EXACT NUMBERS WHILE THE SPOILS LINE ABOVE IT CARRIES "~"
+        /// ROUNDED ONES, AND THAT IS DELIBERATE, NOT AN INCONSISTENCY. The owner's own example
+        /// message is exact - <i>"1,775 Wood held in Raid Cache - storage full"</i> - and the
+        /// point of the line is that a specific quantity is WAITING for the player, which a
+        /// number rounded to the nearest hundred stops meaning. The "~" on the spoils line is
+        /// WO-1402's separate ruling about a payout nobody can predict, and it is untouched.
+        /// The consequence to know: <c>quoted == banked + cached</c> holds EXACTLY on the
+        /// numbers (<c>RaidClaimService.SplitAxis</c>, which is what
+        /// <c>SpoilsAreBankableRegression</c> asserts) and only approximately on the two
+        /// rendered strings, because one of them is rounded on purpose.</para>
+        /// </summary>
+        public static string CacheNotice(DeNelle.Village.ResourceCost scaled,
+                                         int woodRoom, int ironRoom, int foodRoom,
+                                         int woodCacheRoom, int ironCacheRoom, int foodCacheRoom)
+        {
+            var parts = new List<string>(3);
+            AppendCachePart(parts, scaled.Wood, woodRoom, woodCacheRoom, "wood");
+            AppendCachePart(parts, scaled.Iron, ironRoom, ironCacheRoom, "iron");
+            AppendCachePart(parts, scaled.Food, foodRoom, foodCacheRoom, "stone");
+            return parts.Count == 0 ? null : CacheNoticePrefix + string.Join(", ", parts) + CacheNoticeSuffix;
+        }
+
+        private static void AppendCachePart(List<string> parts, int amount, int bankRoom,
+                                            int cacheRoom, string word)
+        {
+            var d = DeNelle.Village.World.Camps.RaidClaimService.SplitAxis(amount, bankRoom, cacheRoom);
+            if (d.Cached > 0) parts.Add(d.Cached + " " + word);
         }
 
         /// <summary>
@@ -651,13 +833,16 @@ namespace DeNelle.Village.Hero
             }
 
             return new RaidSelectionVM(list, onClose, victories, SceneAvailableProvider,
-                                       deployable, BestStarsProvider, ClaimedProvider);
+                                       deployable, BestStarsProvider, ClaimedProvider,
+                                       RepeatInCycleProvider, BankRoomProvider);
         }
 
         public RaidSelectionVM(IReadOnlyList<SceneConfigDef> defs, Action onClose,
                                int victories = 0, Func<string, bool> sceneAvailable = null,
                                int deployableTroops = Unknown, Func<string, int> bestStars = null,
-                               Func<string, bool> claimed = null)
+                               Func<string, bool> claimed = null,
+                               Func<string, bool> repeatInCycle = null,
+                               Func<DeNelle.Core.Economy.BankResource, int> bankRoom = null)
         {
             _onClose = onClose;
             _victories = victories < 0 ? 0 : victories;
@@ -665,6 +850,8 @@ namespace DeNelle.Village.Hero
             _deployableTroops = deployableTroops < 0 ? Unknown : deployableTroops;
             _bestStars = bestStars;
             _claimed = claimed;
+            _repeatInCycle = repeatInCycle;
+            _bankRoom = bankRoom;
             if (defs != null)
                 foreach (var d in defs)
                 {
@@ -752,6 +939,7 @@ namespace DeNelle.Village.Hero
             _spoilsById.Clear();
             _starsById.Clear();
             _clearedById.Clear();
+            _cacheNoticeById.Clear();
 
             // WO-1562 - the CLEARED flag, resolved once per row from the ONE claim authority.
             // Guarded: a provider fault must never blank the grid and must never be swallowed
@@ -826,15 +1014,36 @@ namespace DeNelle.Village.Hero
 
                 // WO-1402 - the spoils ESTIMATE, once per row, from the settle payout's own
                 // formula. A null line is not silent: the trace below names the row.
+                // WO-1461 - and then the two subtractions the card used to be blind to: the
+                // repeat-clear share, and the town bank's headroom. The quote is the SCALED
+                // figure; whatever the bank cannot take is NAMED as going to the Raid Cache.
                 var est = EstimateSpoils(d);
-                string spoils = FormatSpoils(est);
-                if (!string.IsNullOrEmpty(d.id)) _spoilsById[d.id] = spoils;
+                bool repeat = ResolveRepeatInCycle(d.id);
+                var scaled = RepeatScaled(est, repeat);
+                string spoils = FormatSpoils(scaled);
+                string cacheNotice = CacheNotice(scaled,
+                                                 ResolveBankRoom(DeNelle.Core.Economy.BankResource.Wood),
+                                                 ResolveBankRoom(DeNelle.Core.Economy.BankResource.Iron),
+                                                 ResolveBankRoom(DeNelle.Core.Economy.BankResource.Food),
+                                                 ResolveCacheRoom(DeNelle.Core.Economy.BankResource.Wood),
+                                                 ResolveCacheRoom(DeNelle.Core.Economy.BankResource.Iron),
+                                                 ResolveCacheRoom(DeNelle.Core.Economy.BankResource.Food));
+                if (!string.IsNullOrEmpty(d.id))
+                {
+                    _spoilsById[d.id] = spoils;
+                    _cacheNoticeById[d.id] = cacheNotice;
+                }
                 string armyWord = ArmyWarnWord(d, _deployableTroops);
                 string clearedWord = ClearedWordFor(d.id);
 
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                     "row '" + d.id + "' spoils est=" + est.Wood + "w/" + est.Iron + "i/" + est.Coins +
-                    "g x" + d.rewardMultiplier.ToString("0.##") + " text=" +
+                    "g x" + d.rewardMultiplier.ToString("0.##") +
+                    " repeatInCycle=" + repeat + " (share " +
+                    DeNelle.Village.World.Camps.RaidClaimService.RepeatClearPct + "%) quoted=" +
+                    scaled.Wood + "w/" + scaled.Iron + "i/" + scaled.Coins + "g cache=" +
+                    (cacheNotice != null ? "\"" + cacheNotice + "\"" : "<none - the bank has room>") +
+                    " text=" +
                     (spoils != null ? "\"" + spoils + "\"" : "<none - estimate all zero>") +
                     " pips=" + (_showStarPips ? "shown" : "hidden") +
                     " lock=" + (lockReason != null ? "escalation" : armyWord != null ? "\"" + armyWord + "\"" : "none") +

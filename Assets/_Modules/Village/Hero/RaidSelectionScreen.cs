@@ -473,6 +473,25 @@ namespace DeNelle.Village.Hero
             //     (WO-1521: "ONE rule, TWO surfaces... the drift is the actual defect").
             RaidSelectionVM.ClaimedProvider =
                 DeNelle.Village.World.Camps.RaidClaimService.IsClaimed;
+            // (f) WO-1461 - IS A RE-CLEAR OF THIS CAMP INSIDE ITS COOLDOWN CYCLE? Deliberately
+            //     NOT ClaimedProvider above, and the difference is the owner's ruling of
+            //     2026-09-06 20:33: a claim is PERMANENT, a cooldown cycle is not, and the
+            //     share resets to 100% "when the camp's cooldown expires". Reusing the claim
+            //     flag here would quote the reduced share forever on a camp about to pay full.
+            //     ⛔ THIS IS A READ, NOT A GATE. RaidCooldownService was retired as a gate by
+            //     WO-1379 (Heartfire is the one door); nothing here refuses a raid, paints
+            //     "Recovering", or adds a second lockout - HeartfireRegression PIN F reds this
+            //     file for a reference to that service, which is why the read is routed through
+            //     RaidClaimService instead of reached for directly.
+            RaidSelectionVM.RepeatInCycleProvider =
+                DeNelle.Village.World.Camps.RaidClaimService.IsRepeatClearInCycle;
+            // (g) WO-1461 - HOW MUCH ROOM IS LEFT IN THE TOWN BANK? The card promised ~1800 wood
+            //     and 25 arrived (troop-ai-blind-2026-09-06.log 14:37:40) because it could see
+            //     neither the repeat share nor the bank's headroom. Points at the ONE capacity
+            //     authority; TownBankCapacity's own [one-reader] guard exists so this arithmetic
+            //     is never re-derived here.
+            RaidSelectionVM.BankRoomProvider = r =>
+                DeNelle.Core.Economy.TownBankCapacity.RoomFor(r);
             _vm = RaidSelectionVM.CreateDefault(Close);
 
             // Modal canvas + tap-outside scrim, both from the shared kit. Pin
@@ -1021,11 +1040,21 @@ namespace DeNelle.Village.Hero
             // UNCHANGED - OnCardTapped still refuses on exactly the escalation lock and Heartfire,
             // and no readiness check was added anywhere (WO-1379 / HeartfireRegression PIN F).
             string armyWord = _vm.ArmyWarnWordFor(id);
+            // WO-1461 - THE RAID CACHE NOTICE TAKES THE THIRD SLOT OF THIS ROW, and it takes it
+            // from RewardHint, the least informative of the four. It does NOT get a band of its
+            // own: the card's five bands are measured and pinned (HudDrawOrderAndRectRegression),
+            // and buying disclosure with a rect change that another lane owns is the wrong
+            // trade. Precedence is unchanged where it matters - the escalation lock still speaks
+            // first because the door refuses on it first, and the army warning still outranks
+            // this, because "you may lose" outranks "your storage is full".
+            string cacheNotice = _vm.CacheNoticeLineFor(id);
             string bottomLine = locked
                 ? lockCopy
                 : !string.IsNullOrEmpty(armyWord)
                     ? armyWord
-                    : RewardHint(_vm.RewardMultiplierFor(id), _vm.ShardChanceFor(id));
+                    : !string.IsNullOrEmpty(cacheNotice)
+                        ? cacheNotice
+                        : RewardHint(_vm.RewardMultiplierFor(id), _vm.ShardChanceFor(id));
             // WO-1542: an OUTMATCHED card keeps FULL BRIGHTNESS on purpose, and that is now the
             // correct reading rather than the second half of the defect. `dimmed` is bound to the
             // ESCALATION lock alone; dimming a camp the player may march on today would say
@@ -1056,6 +1085,9 @@ namespace DeNelle.Village.Hero
                 "row '" + id + "' built: spoils=" + (hasSpoils ? "\"" + spoilsLine + "\"" : "<none>") +
                 " pips=" + (showPips ? "shown" : "hidden") +
                 " lock=" + (locked ? "escalation" : armyOutmatched ? "\"" + armyWord + "\"" : "none") +
+                " cache=" + (!string.IsNullOrEmpty(cacheNotice)
+                    ? "\"" + cacheNotice + "\"" + (locked || armyOutmatched ? " (outranked - not painted)" : " (painted)")
+                    : "<none - the bank has room for the quote>") +
                 " cleared=" + (cleared ? "\"" + clearedWord + "\"" : "no") +
                 " | bands px (card " + CardHeightPx.ToString("0") + "): title " +
                 BandPx(TitleBandY0, TitleBandY1).ToString("0") + "/" + NeedPx(TitleFontPt).ToString("0") +
