@@ -3043,6 +3043,218 @@ namespace DeNelle.Core.UI
         /// floor of the relaxation range, not the goal.</summary>
         public const float FontHardFloor = 20f;
 
+        // ── WO-1690: AUTHOR A BAND THAT SEATS THE FLOOR, INSTEAD OF LETTING THE GUARD SHRINK ──
+        // The §1.14 guard computes minBand = (FontHardFloor + 1) * lineFactor + 2, i.e. the
+        // height that seats the LAST-RESORT 20 px line. That is the guard's rescue threshold,
+        // NOT the authoring target. The pair below is the same arithmetic at FontFloor(30), so a
+        // caller can author a band the owner's floor actually fits in and the guard never has to
+        // relax anything. ⛔ Neither floor is written here — both are read.
+        //
+        // WHY THE FACTOR IS MEASURED PER LABEL AND NEVER HARDCODED (WO-1690, proven on
+        // Builds/device-frames/2026-09-10_1235_363866_raid_logcat.txt): ONE confirm modal logged
+        // TWO line factors, 1.15 and 1.26, because MedievalUiSkin.ApplyShell uppercases the TITLE
+        // only (:40) and the skinned title resolves a DIFFERENT font asset from its drop-shadow.
+        // A single hardcoded 1.1499 would under-serve the 1.26 label by ~5 px — which is the whole
+        // defect, re-introduced as a constant.
+
+        /// <summary>WO-1690: the band height in reference px that seats a <see cref="FontFloor"/>
+        /// line of THIS label, measured from its own font asset (never a hardcoded line factor —
+        /// see the note above). Falls back to the guard's own 1.3 default when no font resolved.</summary>
+        public static float MinBandPxForFloor(TMP_Text t)
+        {
+            float factor = 1.3f;
+            var f = t != null ? t.font : null;
+            if (f != null && f.faceInfo.pointSize > 0f)
+                factor = Mathf.Max(1.05f, f.faceInfo.lineHeight / f.faceInfo.pointSize);
+            return (FontFloor + 1f) * factor + 2f;
+        }
+
+        /// <summary>
+        /// WO-1690: re-seat a panel's HEADER BAND in reference PIXELS so it can seat the
+        /// <see cref="FontFloor"/> line, and move the gilt rule with it.
+        /// <para/>
+        /// ⚠ WHY PIXELS AND NOT A FRACTION. <c>BuildObsidianPanel</c> authors the header at
+        /// y 0.92..0.98 — SIX PERCENT of the panel. On a big screen that is plenty; on the
+        /// confirm modal (0.34..0.66, i.e. 0.32 of the canvas) it resolves to 26-28 px and the
+        /// guard shrank the title to 23 px on the FIRST modal a new player sees. A fraction
+        /// cannot be right for both, and no fraction exists that is: 6% would have to become
+        /// ~63% of the small modal. The band has to stop being a fraction. This is the same
+        /// "band authored as a fraction of panel height" root cause the guard's own minBand
+        /// comment already names.
+        /// <para/>
+        /// Top-anchored with a fixed pixel height, so it is resolution-independent in reference
+        /// px and does not depend on measuring a parent whose layout has not run yet. Grows
+        /// DOWNWARD from the panel top (the band already sits at 0.98, so there is no room
+        /// upward). The rule follows the band's new bottom edge.
+        /// <para/>
+        /// Call AFTER the panel is built and BEFORE any other content is added to
+        /// <c>chrome.content</c> — the shadow twin is found as the header's sibling label.
+        /// </summary>
+        public static float SeatHeaderBandInPixels(PanelChrome chrome)
+        {
+            if (chrome == null || chrome.title == null || chrome.content == null) return 0f;
+
+            var contentRt = chrome.content.transform;
+            float needPx = MinBandPxForFloor(chrome.title);
+
+            // The drop-shadow twin: the other direct-child label of the fill. Header builds the
+            // pair together, so at this point they are the only two.
+            TMP_Text shadow = null;
+            for (int i = 0; i < contentRt.childCount; i++)
+            {
+                var child = contentRt.GetChild(i);
+                var t = child.GetComponent<TMP_Text>();
+                if (t == null || t == chrome.title) continue;
+                shadow = t;
+                needPx = Mathf.Max(needPx, MinBandPxForFloor(t));   // the TALLER of the pair wins
+                break;
+            }
+
+            SeatOneHeaderLabel(chrome.title, needPx);
+            if (shadow != null)
+            {
+                SeatOneHeaderLabel(shadow, needPx);
+                // Header offsets the shadow by (1.5, -1.5) after building; re-apply it, because
+                // SeatOneHeaderLabel rewrites anchoredPosition.
+                shadow.rectTransform.anchoredPosition += new Vector2(1.5f, -1.5f);
+            }
+
+            // The gilt rule hugged the OLD band's bottom edge; follow the new one or it bisects
+            // the title. Same top-anchored pixel space so the two can never drift apart again.
+            var rule = contentRt.Find("Rule") as RectTransform;
+            if (rule != null)
+            {
+                rule.anchorMin = new Vector2(rule.anchorMin.x, 1f);
+                rule.anchorMax = new Vector2(rule.anchorMax.x, 1f);
+                rule.pivot = new Vector2(rule.pivot.x, 1f);
+                float ruleH = Mathf.Max(1f, rule.rect.height);
+                rule.sizeDelta = new Vector2(rule.sizeDelta.x, ruleH);
+                rule.anchoredPosition = new Vector2(rule.anchoredPosition.x, -(HeaderTopInsetPx + needPx));
+            }
+
+            string needStr = needPx.ToString("F1");
+            FlowTrace.Step("UI", "SeatHeaderBandInPixels '" + chrome.title.text + "': header band re-seated to " +
+                needStr + " px (top-anchored), so a FontFloor(" + FontFloor.ToString("F0") +
+                ") line seats without the fit guard relaxing it (WO-1690)");
+            return needPx;
+        }
+
+        /// <summary>Reference-px inset from the panel's top edge to the header band (WO-1690).</summary>
+        private const float HeaderTopInsetPx = 6f;
+
+        /// <summary>Reference-px inset from the panel's bottom edge to the action faces (WO-1690b).</summary>
+        private const float FaceBottomInsetPx = 22f;
+
+        /// <summary>
+        /// WO-1690b: seat a confirm modal's ACTION FACES at <see cref="MinTouchPx"/> in reference
+        /// pixels, and lift the message clear of them.
+        /// <para/>
+        /// MEASURED (Builds/wave9-frontdoor1, the WO-1688 START NEW confirm at 2670x1200): both
+        /// faces resolved <c>356.9x48.5</c> ref px -- the shortest side **63.5 px UNDER
+        /// MinTouchPx(112)**, and the touch oracle's own words are *"ClampMinTouch will grow it
+        /// SYMMETRICALLY about its centre at runtime and spill it into both neighbours. Author the
+        /// band AT the floor."* Relying on the clamp is what produced overlapping faces.
+        /// <para/>
+        /// ⚠ SAME ROOT CAUSE AS THE HEADER (SeatHeaderBandInPixels): the faces were authored as a
+        /// FRACTION (y 0.10..0.26 = 16% of the panel) and this modal's PanelFill is only 302.9 ref
+        /// px tall, so 16% is 48.5 px. The oracle says it outright: the floor is 0.37 of THIS
+        /// host's height, *"author it in px, not as that fraction"* -- a fraction that is right
+        /// here is wrong on the next panel size.
+        /// <para/>
+        /// The message band moves with them: a 112 px face rising from the 0.10 band would have
+        /// topped out around 0.47 and collided with the message's authored 0.40 floor.
+        /// </summary>
+        public static void SeatConfirmFacesAtTouchFloor(Transform content, Button cancel, Button confirm)
+        {
+            if (content == null) return;
+
+            SeatOneFace(cancel);
+            SeatOneFace(confirm);
+
+            string floorStr = MinTouchPx.ToString("F0");
+            FlowTrace.Step("UI", "SeatConfirmFacesAtTouchFloor: both confirm faces seated at " + floorStr +
+                " ref px (bottom-anchored) instead of a 16%-of-panel fraction, so ClampMinTouch never has to " +
+                "grow them into their neighbours (WO-1690b)");
+        }
+
+        /// <summary>Reference-px breathing gap between the confirm modal's three bands (WO-1690c).</summary>
+        private const float BandGapPx = 8f;
+
+        /// <summary>
+        /// WO-1690c: seat a confirm modal's MESSAGE strictly between the header band's bottom and
+        /// the face band's top, in reference px, and BOUND it so it can never spill again.
+        /// <para/>
+        /// ⛔ THE DEFECT THIS ENDS, seen in Builds/ui-capture/StartNewConfirm_2670x1200.png: the
+        /// message's first line was drawn OVER the gold title (and above the panel's frame
+        /// entirely) while its last line was cut behind the two faces. Cause, read at source: the
+        /// message was built with a bare <c>Label(...)</c> and **never fit-protected** — no
+        /// FitBlock, no FitSingleLine — so TMP laid four lines out CENTRED on a band too short to
+        /// hold them and spilled symmetrically out of both ends. A band that is merely moved does
+        /// not fix that; an unbounded label spills out of any band.
+        /// <para/>
+        /// ⚠ AND NO ORACLE SAW IT. The glyph oracle counts characters PER LABEL (all four lines
+        /// rendered, so the count was clean) and the geometry oracle checks a label against ITS OWN
+        /// plate, not against a sibling. Both passed 7/7 on the frame above. Label-vs-label
+        /// overlap had no rule at all — see TextFitGuardArmRegression CaseF.
+        /// <para/>
+        /// <c>FitBlock</c> is the second half and the load-bearing one: with the band bounded, a
+        /// copy too long for the modal now WRAPS and TRUNCATES inside it — which the glyph oracle
+        /// DOES see — instead of silently painting over the title, which nothing saw.
+        /// </summary>
+        public static void SeatConfirmBodyBetweenBands(TMP_Text message, float headerBandPx)
+        {
+            if (message == null) return;
+
+            var rt = message.rectTransform;
+            rt.anchorMin = new Vector2(rt.anchorMin.x, 0f);
+            rt.anchorMax = new Vector2(rt.anchorMax.x, 1f);
+            float topReserved = HeaderTopInsetPx + headerBandPx + BandGapPx;
+            float bottomReserved = FaceBottomInsetPx + MinTouchPx + BandGapPx;
+            rt.offsetMin = new Vector2(rt.offsetMin.x, bottomReserved);
+            rt.offsetMax = new Vector2(rt.offsetMax.x, -topReserved);
+
+            // §1.14: wrap + bounded auto-size + truncate INSIDE the band. Never unbounded again.
+            FitBlock(message);
+
+            string topStr = topReserved.ToString("F1");
+            string botStr = bottomReserved.ToString("F1");
+            FlowTrace.Step("UI", "SeatConfirmBodyBetweenBands: message seated strictly between the header band " +
+                "(" + topStr + " px reserved at top) and the face band (" + botStr + " px reserved at bottom), " +
+                "and FitBlock-bounded so it can no longer spill over the title or behind the faces (WO-1690c)");
+        }
+
+        private static void SeatOneFace(Button b)
+        {
+            if (b == null) return;
+            var rt = (RectTransform)b.transform;
+            rt.anchorMin = new Vector2(rt.anchorMin.x, 0f);
+            rt.anchorMax = new Vector2(rt.anchorMax.x, 0f);
+            rt.pivot = new Vector2(rt.pivot.x, 0f);
+            rt.sizeDelta = new Vector2(rt.sizeDelta.x, MinTouchPx);
+            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, FaceBottomInsetPx);
+
+            // The caption band inside the face: with the face at 112 px there is room for the
+            // FontFloor line with margin, so give the label the whole face minus a small inset
+            // rather than whatever fraction it inherited.
+            var label = b.GetComponentInChildren<TMP_Text>(true);
+            if (label == null) return;
+            var lrt = label.rectTransform;
+            lrt.anchorMin = new Vector2(lrt.anchorMin.x, 0f);
+            lrt.anchorMax = new Vector2(lrt.anchorMax.x, 1f);
+            lrt.offsetMin = new Vector2(lrt.offsetMin.x, 6f);
+            lrt.offsetMax = new Vector2(lrt.offsetMax.x, -6f);
+        }
+
+        private static void SeatOneHeaderLabel(TMP_Text t, float bandPx)
+        {
+            var rt = t.rectTransform;
+            rt.anchorMin = new Vector2(rt.anchorMin.x, 1f);
+            rt.anchorMax = new Vector2(rt.anchorMax.x, 1f);
+            rt.pivot = new Vector2(rt.pivot.x, 1f);
+            rt.sizeDelta = new Vector2(rt.sizeDelta.x, bandPx);
+            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, -HeaderTopInsetPx);
+        }
+
         /// <summary>
         /// Overflow-protect a SINGLE-LINE label (tab / button / row name / title / price):
         /// no wrap, bounded TMP auto-size [minSize..maxSize], then Ellipsis. Defaults:
@@ -3271,6 +3483,12 @@ namespace DeNelle.Core.UI
                         // strips untraceable. A stand-down is itself a finding: log it.
                         // WO-1656: the EMPTY half no longer asserts a bug — see
                         // ElarionUiKit.FitGuardStandDownMessage for the measurement that changed it.
+                        // ⭐ WO-1665 PART B: the read-back is APPENDED, never folded into
+                        // FitGuardStandDownMessage - that builder's exact wording is pinned by
+                        // TextFitGuardArmRegression CaseD (WO-1656) and is on this ticket's
+                        // do-not-touch list. Same for PathOf: its output is the relaxKey
+                        // FitGuardRelaxAllowlistRegression matches against an allowlist, so the
+                        // discriminator goes AFTER the line, not inside the path.
                         FlowTrace.Warn("UI", FitGuardStandDownMessage(PathOf(_t.transform),
                                                                      string.IsNullOrEmpty(_t.text)));
                         enabled = false;
@@ -3409,6 +3627,105 @@ namespace DeNelle.Core.UI
             }
 
             /// <summary>Short hierarchy path for log lines (panel/strip/button/label).</summary>
+            /// <summary>
+            /// ⭐ WO-1665 PART B - THE OBJECT IDENTITY THE PATH CANNOT CARRY. Pure report: reads
+            /// state, changes none, and is appended to two existing lines rather than folded into
+            /// either builder (both of those are pinned by regressions and on the ticket's
+            /// do-not-touch list).
+            ///
+            /// <para>⛔ WHY. On APK 2026.09.10.363866
+            /// (Builds/device-frames/2026-09-10_1137_363866_logcat.txt) the IDENTICAL path
+            /// <c>Area_HeartStatus/Widget_heartStatus/HeartStatus/PartyNameplate/Label</c> warned
+            /// at 11:34:14.783 carrying the live sentence "Train 2 troops for the next raid" - a
+            /// sentence the 11:34 town frame shows on screen - and then, 41 s later at 11:34:55.626,
+            /// stood down as <c>text EMPTY</c>. Read as one object that is a contradiction, and it
+            /// cost a lane a flagged anomaly. It is not one object: <see cref="ElarionUiKit.Label"/>
+            /// names EVERY label it builds the literal string "Label"
+            /// (ElarionUiKit.cs:1909), <c>PathOf</c> below walks only four parents, and FOUR labels
+            /// are parented to one PartyNameplate root - the nameplate's own NameLabel
+            /// (ElarionUiKitNameplate.cs:140) plus HudKitController's objective (:2528), heartfire
+            /// (:2558) and heartfire-rekindle (:2564) rows. All four render the same five-segment
+            /// path and the diagnostic cannot say which one it means.</para>
+            ///
+            /// <para>The fields, and what each one settles:</para>
+            /// <para><c>goId</c> - the GameObject instance id, printed on BOTH the grow warn and the
+            /// stand-down. Different ids on the two lines is the whole answer; one id on both would
+            /// mean a single object really did go from live text to empty.</para>
+            /// <para><c>sib</c> / <c>sameName</c> - this label's sibling index and how many of its
+            /// siblings share its name, so the ambiguity is measured rather than argued.</para>
+            /// <para><c>guardsOnGo</c> - an INVARIANT CHECK, not a variable. ArmFitGuard does
+            /// GetComponent-then-AddComponent-if-null (see above), so this must always read 1; a 2
+            /// would mean two guards race one label and the lifecycle theory is wrong.</para>
+            /// <para><c>textLen</c> / <c>frames</c> - the state at the moment the line was written,
+            /// so "empty" is a measured length rather than an inference from the message.</para>
+            ///
+            /// <para>⛔ Every field is guarded: a diagnostic that throws inside LateUpdate would
+            /// abort the guard's own pass, which is worse than the ambiguity it is here to remove.</para>
+            ///
+            /// <para>Grep token: <c>guardRB:</c></para>
+            /// </summary>
+            private static string GuardReadBack(TMP_Text t, int frames)
+            {
+                string goId = "<none>";
+                string sib = "<none>";
+                string sameName = "<none>";
+                string guardsOnGo = "<none>";
+                string textLen = "<none>";
+                string frameCount = "<none>";
+                string activeInHierarchy = "<none>";
+
+                try { frameCount = frames.ToString(); }
+                catch (Exception ex) { frameCount = "<threw:" + ex.GetType().Name + ">"; }
+
+                try
+                {
+                    if (t != null)
+                    {
+                        goId = t.gameObject.GetInstanceID().ToString();
+                        activeInHierarchy = t.gameObject.activeInHierarchy ? "True" : "False";
+                        textLen = (t.text == null ? -1 : t.text.Length).ToString();
+                    }
+                }
+                catch (Exception ex) { goId = "<threw:" + ex.GetType().Name + ">"; }
+
+                try
+                {
+                    if (t != null)
+                    {
+                        var self = t.transform;
+                        var parent = self.parent;
+                        if (parent == null) { sib = "<no-parent>"; sameName = "<no-parent>"; }
+                        else
+                        {
+                            sib = self.GetSiblingIndex().ToString() + "/" + parent.childCount.ToString();
+                            int shared = 0;
+                            string myName = self.name;
+                            for (int i = 0; i < parent.childCount; i++)
+                            {
+                                var c = parent.GetChild(i);
+                                if (c != null && c.name == myName) shared++;
+                            }
+                            sameName = shared.ToString();
+                        }
+                    }
+                }
+                catch (Exception ex) { sib = "<threw:" + ex.GetType().Name + ">"; }
+
+                try
+                {
+                    if (t != null)
+                    {
+                        var guards = t.GetComponents<UiKitTextFitGuard>();
+                        guardsOnGo = (guards == null ? -1 : guards.Length).ToString();
+                    }
+                }
+                catch (Exception ex) { guardsOnGo = "<threw:" + ex.GetType().Name + ">"; }
+
+                return "guardRB: goId=" + goId + " sib=" + sib + " sameName=" + sameName +
+                       " guardsOnGo=" + guardsOnGo + " textLen=" + textLen +
+                       " frames=" + frameCount + " active=" + activeInHierarchy;
+            }
+
             private static string PathOf(Transform t)
             {
                 string s = t != null ? t.name : "?";

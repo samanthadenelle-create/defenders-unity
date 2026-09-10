@@ -90,9 +90,16 @@ namespace DeNelle.Editor.Regression
         private const string Tag = "[fitguard-relax-allowlist]";
 
         /// <summary>
-        /// EMPTY, AND THAT IS THE PASSING STATE (WO-1658, closed 2026-09-10).
+        /// FIVE LEASHED ENTRIES, ALL TICKETED TO WO-1690 (2026-09-10).
         /// <para/>
-        /// This array held THE EIGHT: every floor relaxation observed on APK 363722 (PID 5095),
+        /// ⚠ THE MECHANISM WORKED, AND THIS IS WHAT THAT LOOKS LIKE. WO-1658 emptied this array on
+        /// 2026-09-10; hours later the DEVICE-RAID lane walked a path nobody had ever measured
+        /// (title -> new game -> skip-tutorial confirm -> dialogue -> wave end-state) and CASE D
+        /// went RED on its first sight of it. An allowlist that never grows is an allowlist nobody
+        /// is feeding real data. Entries are added when TICKETED and removed when a device log
+        /// proves the band fixed -- never to quiet the suite.
+        /// <para/>
+        /// This array previously held THE EIGHT: every floor relaxation observed on APK 363722 (PID 5095),
         /// Builds/device-frames/2026-09-10_0929_363722_logcat.txt. All eight bands were re-authored
         /// under WO-1658 and the next device session -- APK 2026.09.10.363786, PID 8062,
         /// Builds/device-frames/2026-09-10_1019_363786_logcat.txt -- carried
@@ -100,20 +107,48 @@ namespace DeNelle.Editor.Regression
         /// [Flow: lines. Per WO-1658 SS5.1 an entry leaves only on a fresh device log; that log is
         /// the warrant for all eight leaving at once.
         /// <para/>
-        /// ⛔ AN EMPTY LEASH IS STILL A LEASH -- do not delete the array or the suite. Judge()
-        /// reports ANY parsed relaxation as NEW, so the next band authored under FontFloor(30) reds
-        /// on its first device log instead of shrinking text silently for months the way these eight
-        /// did. Re-adding an entry means re-accepting a sub-floor label and needs the owner's word.
+        /// ⛔ A LEASH IS NOT AN APPROVAL. Judge() reports ANY parsed relaxation as NEW, so the next
+        /// band authored under FontFloor(30) reds on its first device log instead of shrinking text
+        /// silently for months the way the eight did. An entry buys a ticket, not a pass.
         /// <para/>
-        /// Keys are UiKitTextFitGuard.PathOf output: the label's own name plus up to FOUR parents --
-        /// a truncated address, not a unique one (see the header's PathOf note).
+        /// ⚠ Keys are UiKitTextFitGuard.PathOf output: the label's own name plus up to FOUR parents --
+        /// a truncated address, not a unique one (see the header's PathOf note). WO-1690 entry #1 is
+        /// TWO labels (a title and its drop-shadow, both named "Label") sharing one key, which is why
+        /// one modal logged two different rects.
         /// </summary>
-        // An entry may be added ONLY with an owner ruling, and leaves only when a fresh device
-        // logcat no longer carries its relaxKey. Deleting one to go green is forbidden (WO-1658
-        // SS5.1); the eight left because a device log proved them fixed, which is the only warrant.
-        // WO-1658, origin 2026-09-10, remove-by 2026-12-10 - CLOSED: the eight bands authored under
-        // the 30 px floor are re-authored; the remove-by forces a re-read if entries ever come back.
-        private static readonly RelaxEntry[] Allowlist = new RelaxEntry[0];
+        // An entry is added ONLY with a ticket, and leaves only when a fresh device logcat no longer
+        // carries its relaxKey. Deleting one to go green is forbidden (WO-1658 SS5.1); the previous
+        // eight left because a device log proved them fixed, which is the only warrant there is.
+        // WO-1690, origin 2026-09-10, remove-by 2026-12-10 - five sub-floor bands on the FTUE /
+        // dialogue path, measured on APK 2026.09.10.363866 (WO-1658's eight are CLOSED and gone).
+        private static readonly RelaxEntry[] Allowlist =
+        {
+            // ── WO-1690, all five measured in Builds/device-frames/2026-09-10_1235_363866_raid_logcat.txt
+            //    (29,206,423 bytes; 24,403 live [Flow: lines). 15 relaxation LINES, 5 distinct keys --
+            //    a modal re-arms the guard every time it reopens, so line count is not label count.
+            //    FinalSize is what the PLAYER SEES; floorTo is only where the minimum moved to.
+            new RelaxEntry("SkipTutorialConfirm/ObsidianPanel/PanelFill/Label", 21f, 23f,
+                           "WORST, and a REPEAT OFFENDER: the confirm-modal title renders at 23 px -- 7 px " +
+                           "under the floor, 3 px off FontHardFloor, on the FIRST modal a new player sees. " +
+                           "The guard's own minBand comment names this very screen as the F8 2026-07-08 case. " +
+                           "Band lives in the KIT (ElarionUiKit.BuildConfirmModal :1549/:1555, fit :1568-1569), " +
+                           "so it must be fixed there -- two callers, TutorialSkipUi and ObjectiveBannerUi"),
+            new RelaxEntry("Widget_targetFrame/TargetNameplate/StatBars/HealthBackground/Label", 25f, 27f,
+                           "combat target nameplate '53/53' renders at 27 px in a 704x30 band -- a real but " +
+                           "mild shrink (ElarionUiKitNameplate)"),
+            new RelaxEntry("DialogueViewUI/ObsidianPanel/PanelContent/Zone_Header/Affiliation", 25f, 26f,
+                           "⚠ DIFFERENT CLASS - floorFrom is 26, NOT 30: DialogueView.cs:355 AUTHORS this " +
+                           "label at 26 and FitSingleLine clamps its 30 px minSize down to the authored max. " +
+                           "The guard did not drag it under the floor; the author placed it there, apparently " +
+                           "deliberately (see the comment block at :345-352). NEEDS A RULING before anyone " +
+                           "raises it -- WO-1690 SS4"),
+            new RelaxEntry("BodyWell/ScrollZone/Viewport/Content/Body", 28f, 30f,
+                           "dialogue body: floor moved 30->28 but it RENDERS AT 30 -- nothing shrank. Same " +
+                           "benign class as WO-1658's '250 Crystals'; may need no edit at all"),
+            new RelaxEntry("EndState/ObsidianPanel/PanelContent/Zone_Header/Label", 29f, 31f,
+                           "'WAVE 1 CLEARED' RENDERS AT 31 px, above the floor -- nothing shrank; only the " +
+                           "minimum moved. Listed for completeness, not because it is broken"),
+        };
 
         private sealed class RelaxEntry
         {
@@ -170,8 +205,8 @@ namespace DeNelle.Editor.Regression
                 return false;
             }
 
-            reason = Tag + " OK - allowlist holds " + Allowlist.Length + " leashed relaxation(s) (WO-1658 emptied " +
-                     "it on a fresh device log); no NEW relaxation, none under the hard floor.\n"
+            reason = Tag + " OK - allowlist holds " + Allowlist.Length + " leashed relaxation(s), each carrying a " +
+                     "ticket; no NEW relaxation, none under the hard floor.\n"
                      + log.ToString();
             return true;
         }
@@ -298,16 +333,19 @@ namespace DeNelle.Editor.Regression
             if (violations.Count != HistoricalRelaxationCount)
             {
                 failures.Add(Tag + " CASE C: " + violations.Count + " of " + HistoricalRelaxationCount +
-                             " historical relaxations were rejected as NEW. WO-1658 re-authored all eight bands " +
-                             "and emptied the allowlist (proven on 2026-09-10_1019_363786_logcat.txt: relaxed=0, " +
-                             "zero relaxKey lines), so a line that still passes judgement means an entry came " +
-                             "back — which is re-accepting a sub-floor label and needs the owner's word.");
+                             " historical relaxations were rejected as NEW. WO-1658 re-authored all eight of " +
+                             "those bands and retired their entries (proven on 2026-09-10_1019_363786_logcat.txt: " +
+                             "relaxed=0, zero relaxKey lines), so one of them passing judgement means a RETIRED " +
+                             "entry came back — which is re-accepting a sub-floor label and needs the owner's " +
+                             "word. Note this is about the WO-1658 EIGHT specifically: other tickets' entries " +
+                             "may legitimately be on the list at the same time.");
                 return;
             }
 
             log.AppendLine("  [green-C] all " + hits.Count + " historical relaxation lines still PARSE (the " +
-                           "shipped prose form is readable) and all " + violations.Count + " are now judged NEW, " +
-                           "i.e. the allowlist is genuinely empty. Live allowlist size: " + Allowlist.Length + ".");
+                           "shipped prose form is readable) and all " + violations.Count + " are judged NEW, " +
+                           "i.e. the WO-1658 eight stayed retired. Live allowlist size: " + Allowlist.Length +
+                           " (other tickets' leashed entries).");
         }
 
         // -----------------------------------------------------------------

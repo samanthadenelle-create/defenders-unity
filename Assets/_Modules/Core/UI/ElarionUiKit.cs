@@ -1496,9 +1496,29 @@ namespace DeNelle.Core.UI
             string confirmLabel, string cancelLabel, Action onConfirm, Action onCancel,
             ButtonKind confirmKind = ButtonKind.Confirm, int sortingOrder = 32000)
         {
+            // WO-1690c — SIZED TO ITS CONTENT, measured off
+            // Builds/ui-capture/StartNewConfirm_2670x1200.png (opened at source 2026-09-10):
+            //   header inset 6 + header band 37.7 + gap 8      =  51.7
+            //   body, 4 wrapped lines at FontFloor(30) x 1.15  = 138.0
+            //   gap 8 + face band 112 + face inset 22          = 142.0
+            //                                             TOTAL 331.7 ref px
+            // PanelFill measured 302.9 ref px at 0.34..0.66, so the modal was ~29 px SHORT of the
+            // content it is asked to hold and the body had nowhere to go. 0.32 * (331.7/302.9) =
+            // 0.350 -> 0.325..0.675. ⚠ The height alone is not the fix: the body is now bounded
+            // (SeatConfirmBodyBetweenBands) so a longer copy truncates VISIBLY instead of painting
+            // over the title. Both halves, or this returns the first time the copy grows.
             var modal = BuildObsidianModal(name, title,
-                new Vector2(0.28f, 0.34f), new Vector2(0.72f, 0.66f),
+                new Vector2(0.28f, 0.325f), new Vector2(0.72f, 0.675f),
                 onCancel ?? onConfirm, sortingOrder);
+
+            // WO-1690: this modal is only 0.32 of the canvas, so BuildObsidianPanel's 6%-of-panel
+            // header band resolved to 26-28 px and the §1.14 guard shrank the title to 23 px —
+            // 7 px under the owner's floor, on the FIRST modal a new player sees, and measured on
+            // APK 2026.09.10.363866. Re-seat the band in reference PIXELS (see
+            // ElarionUiKit.SeatHeaderBandInPixels for why a fraction cannot be right for both a
+            // full-screen panel and this one). Must run BEFORE any other content is added below.
+            float headerBandPx = SeatHeaderBandInPixels(modal.chrome);
+
             var content = modal.chrome.content.transform;
 
             // A confirm popup's Cancel button IS the close (Close + Cancel share onCancel), and the shared
@@ -1521,6 +1541,19 @@ namespace DeNelle.Core.UI
                                  hasCancel ? new Vector2(0.52f, 0.10f) : new Vector2(0.32f, 0.10f),
                                  hasCancel ? new Vector2(0.90f, 0.26f) : new Vector2(0.68f, 0.26f),
                                  () => { if (onConfirm != null) onConfirm(); });
+
+            // WO-1690b: the faces were authored as 16% of the panel and resolved 356.9x48.5 ref px
+            // on the WO-1688 START NEW confirm -- 63.5 px UNDER MinTouchPx(112), which the touch
+            // oracle flagged with "author the band AT the floor" rather than leaving ClampMinTouch
+            // to grow them into each other at runtime. Seat them in px.
+            SeatConfirmFacesAtTouchFloor(content, cancel, confirm);
+
+            // WO-1690c: LAST, because it reserves against both bands above. The message was built
+            // by a bare Label() and had never been fit-protected, so it laid four lines out centred
+            // on a band too short for them and spilled over the title AND behind the faces
+            // (Builds/ui-capture/StartNewConfirm_2670x1200.png). Seat it strictly between the two
+            // bands and bound it.
+            SeatConfirmBodyBetweenBands(msg, headerBandPx);
 
             return new ConfirmModal { canvas = modal.canvas, chrome = modal.chrome, confirm = confirm, cancel = cancel, message = msg };
         }
@@ -1550,6 +1583,15 @@ namespace DeNelle.Core.UI
                                new Color(0f, 0f, 0f, 0.55f), ElarionUi.FontTitle,
                                TextAlignmentOptions.Center, x0, x1, spacing: 6f, bold: true);
                 shadow.GetComponent<RectTransform>().anchoredPosition += new Vector2(1.5f, -1.5f);
+                // WO-1690: the twin was ALSO named "Label", so the fit guard's PathOf key was
+                // identical for both and one modal logged two relaxations under one relaxKey —
+                // unattributable. A distinct name makes the pair separable in every trace.
+                // ⚠ It also disproves the claim two comments below: MedievalUiSkin.ApplyShell
+                // uppercases chrome.title ONLY (:40), AFTER this method runs, so the pair is no
+                // longer text-identical and resolved TWO different fonts on device (line factors
+                // 1.15 vs 1.26, rects 826x26 vs 826x28). "Identical inputs" has not held since
+                // ApplyShell was introduced.
+                shadow.gameObject.name = "LabelShadow";
             }
 
             var title = Label(parent, ElarionUi.CrestGlyph + "  " + text, y0, y1,
@@ -3923,6 +3965,88 @@ namespace DeNelle.Core.UI
             var img = tr.GetComponent<Image>();
             if (img != null) img.enabled = false;
         }
+
+        // ═══ WO-1671 — THE CAPTION BAND GETS AN OBSIDIAN BACKING PLATE ════════════
+        //
+        // MEASURED EVIDENCE (owner device frames, 2670x1200, read with PIL 12.3.0 on
+        // 2026-09-10, not inferred):
+        //   Builds/device-frames/2026-09-10_0814_363660_town_dock.png  and  ..._1134_363866_town.png
+        //   The five calm-dock captions render in the band y 1138..1162 px, which falls BELOW the
+        //   authored housing art, straight onto the town terrain. WCAG contrast of the parchment
+        //   glyphs against the pixels actually behind them:
+        //       BUILD 2.12:1   TALK 2.73:1   HERO 2.97:1   JOURNEY 1.87:1   MANAGE 2.16:1
+        //   (second frame: 2.17 / 2.57 / 2.94 / 1.90 / 2.16). Every face is UNDER the 3:1 floor
+        //   WCAG allows even for large text, and JOURNEY - the longest word, over the brightest
+        //   grass - is the worst. This is not a taste call: the word is the only thing that makes
+        //   the face readable without colour (the owner is red/green colourblind), so a caption
+        //   the terrain can swallow is a functional defect.
+        //
+        // WHY A KIT PLATE AND NOT A TINT. ⛔ Never hand-tint a caption to "lift" it: a hue picked
+        // against grass loses again over stone, water or a night sky, and it moves meaning onto
+        // colour. The kit already owns the answer - the obsidian idiom (near-black fill + gold
+        // trim, WO-562) that every other surface in this game sits on. The caption gets the SAME
+        // fill every panel body gets, by REFERENCE (ObsidianFill), so a future reskin carries it.
+        //
+        // PREDICTED after-ratio against ObsidianFill: ~16.7:1 for all five. That is arithmetic
+        // from the token, NOT a measurement - it must be re-measured off a device frame once this
+        // ships (§11B).
+        //
+        // ⛔ SHAPE CONSTRAINTS THAT ARE NOT NEGOTIABLE, each one a way this could have gone wrong:
+        //  * The plate is a SIBLING of the caption inside the slot root, never a wrapper.
+        //    HudActionBarRegression.CheckMeasuredPeacefulDock finds a face's caption by walking the
+        //    slot root's DIRECT children for a non-empty TMP_Text; reparenting the caption under a
+        //    plate would red the oracle with "carries NO caption" - a true-looking failure about
+        //    entirely the wrong thing.
+        //  * It is inserted AT the caption's sibling index, so the caption slides one later and
+        //    draws ON TOP. (SetCaption itself re-seats the caption under cdText, so a plate built
+        //    BEFORE the caption would end up over the word.)
+        //  * It is BIGGER than the caption rect on both axes and the caption rect is NOT touched.
+        //    The oracle's CaptionInset(0.88) encodes SetCaption's authored x 0.06..0.94; shrinking
+        //    the word to fit a padded plate would silently invalidate its label-fit case.
+        //  * raycastTarget = false - the plate must never eat a tap meant for the medallion.
+        // Idempotent: a second call finds the existing plate and returns it.
+        /// <summary>
+        /// WO-1671 — seat a dark obsidian backing band under a slot's caption strip so the word
+        /// reads against ANY world behind the dock. Returns the plate (or null if the slot has no
+        /// caption yet - build the caption first). Safe to call twice.
+        /// </summary>
+        public static GameObject AddCaptionPlate(ActionSlotHandle slot)
+        {
+            if (slot == null || slot.root == null || slot.caption == null) return null;
+            var existing = slot.root.transform.Find(CaptionPlateObjectName);
+            if (existing != null) return existing.gameObject;
+
+            var capRt = (RectTransform)slot.caption.transform;
+            // Pad OUTWARD from the authored caption rect on both axes. The pad is a fraction of the
+            // slot, because the slot's pixel width is solved per surface by HudDockLayout - a fixed
+            // px inset would be right at exactly one aspect (the WO-1468 lesson, one seam over).
+            var min = new Vector2(Mathf.Max(0f, capRt.anchorMin.x - CaptionPlatePadX),
+                                  Mathf.Max(0f, capRt.anchorMin.y - CaptionPlatePadY));
+            var max = new Vector2(Mathf.Min(1f, capRt.anchorMax.x + CaptionPlatePadX),
+                                  Mathf.Min(1f, capRt.anchorMax.y + CaptionPlatePadY));
+
+            var go = AddImage(slot.root.transform, CaptionPlateObjectName, min, max,
+                              ObsidianFill, rounded: true);
+            var img = go.GetComponent<Image>();
+            if (img != null) img.raycastTarget = false;
+            go.transform.SetSiblingIndex(slot.caption.transform.GetSiblingIndex());
+            FlowTrace.Once("HudKit", "caption-plate:" + slot.root.name,
+                "WO-1671: obsidian caption plate seated under '" + slot.caption.text +
+                "' (anchors " + min + ".." + max + ", caption " + capRt.anchorMin + ".." +
+                capRt.anchorMax + ") - the word no longer reads against the terrain");
+            return go;
+        }
+
+        /// <summary>WO-1671 — the caption plate's object name. Named ONCE here; the dock builder
+        /// and the oracle both read this const rather than re-typing the literal (the
+        /// StackBadgeObjectName pattern).</summary>
+        public const string CaptionPlateObjectName = "CaptionPlate";
+        /// <summary>How far the plate extends past the caption rect, as a fraction of the SLOT.
+        /// x: 0.06 -> 0.04 outward on each side (SetCaption authors the word at 0.06..0.94);
+        /// y: 0.02 -> the band reaches the slot's bottom edge and a little above the word.</summary>
+        public const float CaptionPlatePadX = 0.04f;
+        /// <summary>See <see cref="CaptionPlatePadX"/>.</summary>
+        public const float CaptionPlatePadY = 0.04f;
 
         /// <summary>
         /// WO-867 TOUCH FLOOR for a slot whose VISUAL size is owned by an external layout pass.

@@ -134,6 +134,8 @@ namespace DeNelle.Editor.Regression
                 CaseB_ArmDeclineSpeaks(sink, failures, log);
                 CaseC_CensusCarriesCounts(sink, failures, log);
                 CaseD_StandDownDoesNotAccuseTheProducer(failures, log);
+                CaseE_ConfirmModalTitleBandSeatsTheFloor(failures, log);
+                CaseF_ConfirmModalBodyStaysBetweenHeaderAndFaces(failures, log);
                 MeasureOnly_GuardAttachAndEval(label, sink, log);
             }
             catch (Exception ex)
@@ -366,6 +368,249 @@ namespace DeNelle.Editor.Regression
                              "is a defect with no 'by design' reading, and silencing it would be a regression of " +
                              "the detector, not a pass (WO-1656 acceptance 4).");
             }
+        }
+
+        // -----------------------------------------------------------------
+        //  CASE E -- WO-1690. THE CONFIRM MODAL'S TITLE BAND MUST SEAT THE FLOOR.
+        //
+        //  MEASURED (Builds/device-frames/2026-09-10_1235_363866_raid_logcat.txt, APK
+        //  2026.09.10.363866): the Skip-Tutorial confirm's title logged
+        //  `rect 826x26 ... floor 30 -> 21 ... fontSize now 23` -- 7 px under the
+        //  owner's floor, 3 px off FontHardFloor, on the FIRST modal a new player
+        //  sees. Cause: BuildObsidianPanel authors the header at 6% OF THE PANEL, and
+        //  this modal is only 0.32 of the canvas. WO-1690 re-seats that band in
+        //  reference PIXELS (ElarionUiKit.SeatHeaderBandInPixels).
+        //
+        //  RED-FIRST: on the pre-WO-1690 tree the band measures ~26 px against a
+        //  ~37 px need and this case FAILS.
+        //
+        //  ⚠ WORLD-SPACE CANVAS, deliberately. BuildObsidianModal makes its own
+        //  ScreenSpace canvas, and in an edit-mode batchmode call that reports the
+        //  editor's own 640x480 -- every number would be fiction (the same trap
+        //  CostRowFitRegression's header documents). The canvas is converted and
+        //  sized to the reference-px extent before measuring.
+        // -----------------------------------------------------------------
+        private static void CaseE_ConfirmModalTitleBandSeatsTheFloor(List<string> failures, StringBuilder log)
+        {
+            GameObject canvasGo = null;
+            try
+            {
+                var modal = ElarionUiKit.BuildConfirmModal(
+                    "SkipTutorialConfirm", "Skip Tutorial",
+                    "Skip the walkthrough? Your progress is saved.",
+                    "Skip", "Keep Playing", null, null);
+
+                if (modal == null || modal.canvas == null || modal.chrome == null || modal.chrome.title == null)
+                {
+                    failures.Add(Tag + " CASE E: BuildConfirmModal returned no title, so the band this case " +
+                                 "pins could not be measured at all. A vacuous check reads green forever.");
+                    return;
+                }
+                canvasGo = modal.canvas;
+
+                // The measurement is fiction on a ScreenSpace canvas in batchmode -- convert first.
+                var canvas = canvasGo.GetComponent<Canvas>();
+                if (canvas != null) canvas.renderMode = RenderMode.WorldSpace;
+                var canvasRt = (RectTransform)canvasGo.transform;
+                float sf = ScaleFactor(ProbeW, ProbeH);
+                canvasRt.sizeDelta = new Vector2(ProbeW / sf, ProbeH / sf);
+                canvasRt.position = Vector3.zero;
+                canvasRt.localScale = Vector3.one;
+                Settle(canvasGo);
+
+                // ── WO-1690b: the ACTION FACES must be authored AT the touch floor ──
+                // Measured on Builds/wave9-frontdoor1 (the WO-1688 START NEW confirm at
+                // 2670x1200): both faces resolved 356.9x48.5 ref px, i.e. 63.5 px UNDER
+                // MinTouchPx(112). The touch oracle's own instruction is "Author the band AT the
+                // floor" -- ClampMinTouch growing them symmetrically at runtime spills them into
+                // their neighbours, which is a defect, not a rescue. RED on the pre-fix tree.
+                CheckFace(modal.confirm, "confirm", failures, log);
+                CheckFace(modal.cancel, "cancel", failures, log);
+
+                var title = modal.chrome.title;
+                float bandPx = title.rectTransform.rect.height;
+                float needPx = ElarionUiKit.MinBandPxForFloor(title);
+
+                log.AppendLine("  [confirm-band] title band " + bandPx.ToString("0.#") + " px vs need " +
+                               needPx.ToString("0.#") + " px (FontFloor " + ElarionUiKit.FontFloor.ToString("F0") +
+                               ", font " + (title.font != null ? title.font.name : "<null>") + ").");
+
+                if (bandPx + 0.5f < needPx)
+                {
+                    failures.Add(Tag + " CASE E (WO-1690, RED-first): the confirm modal's title band measures " +
+                                 bandPx.ToString("0.#") + " px but a FontFloor(" +
+                                 ElarionUiKit.FontFloor.ToString("F0") + ") line needs " + needPx.ToString("0.#") +
+                                 " px. The §1.14 guard will relax the title instead - on device it shrank to " +
+                                 "23 px, on the first modal a new player sees. Author the band, do not lower " +
+                                 "the floor: ElarionUiKit.SeatHeaderBandInPixels is the seam.");
+                }
+            }
+            catch (Exception ex)
+            {
+                failures.Add(Tag + " CASE E threw: " + ex.GetType().Name + " " + ex.Message);
+            }
+            finally { Kill(canvasGo); }
+        }
+
+        // -----------------------------------------------------------------
+        //  CASE F -- WO-1690c. THE BODY MUST STAY BETWEEN THE HEADER AND THE FACES.
+        //
+        //  ⚠ THE FRAME EVERY ORACLE PASSED. Builds/ui-capture/StartNewConfirm_2670x1200.png
+        //  (opened at source 2026-09-10) shows the body's FIRST line drawn over the gold
+        //  title -- and above the panel's frame entirely -- while its LAST line is cut
+        //  behind the two 112 px faces. Chain 43 reported UI_TOUCH_OK 7/7 and
+        //  UI_GLYPH_OK 7/7 on that same frame.
+        //
+        //  WHY THEY ALL MISSED IT, and it is a coverage hole, not bad luck:
+        //    * the glyph oracle counts characters PER LABEL -- all four lines rendered,
+        //      so the count was clean;
+        //    * the geometry oracle checks a label against ITS OWN plate, not a sibling;
+        //    * the fit guard only speaks when a label is culled or relaxed -- an
+        //      unbounded label that spills is neither.
+        //  LABEL-VS-LABEL OVERLAP HAD NO RULE AT ALL. This case is that rule.
+        //
+        //  Three assertions, weakest to strongest. The THIRD is the one that catches the
+        //  worst version of this frame, because a rect that escapes the panel entirely is
+        //  not overlapping any sibling -- it is simply gone.
+        // -----------------------------------------------------------------
+        private static void CaseF_ConfirmModalBodyStaysBetweenHeaderAndFaces(List<string> failures, StringBuilder log)
+        {
+            GameObject canvasGo = null;
+            try
+            {
+                var modal = ElarionUiKit.BuildConfirmModal(
+                    "StartNewConfirm", "Erase this realm?",
+                    "Starting a new game erases your current realm — your town, your hero and " +
+                    "everything you have built. This cannot be undone.",
+                    "Erase", "Keep", null, null);
+
+                if (modal == null || modal.canvas == null || modal.chrome == null ||
+                    modal.chrome.title == null || modal.message == null || modal.confirm == null)
+                {
+                    failures.Add(Tag + " CASE F: the confirm modal did not return title + message + face, so " +
+                                 "the overlap this case pins could not be measured. A vacuous check reads green.");
+                    return;
+                }
+                canvasGo = modal.canvas;
+
+                var canvas = canvasGo.GetComponent<Canvas>();
+                if (canvas != null) canvas.renderMode = RenderMode.WorldSpace;
+                var canvasRt = (RectTransform)canvasGo.transform;
+                float sf = ScaleFactor(ProbeW, ProbeH);
+                canvasRt.sizeDelta = new Vector2(ProbeW / sf, ProbeH / sf);
+                canvasRt.position = Vector3.zero;
+                canvasRt.localScale = Vector3.one;
+                Settle(canvasGo);
+
+                float titleBottom = WorldBottom(modal.chrome.title.rectTransform);
+                float bodyTop = WorldTop(modal.message.rectTransform);
+                float bodyBottom = WorldBottom(modal.message.rectTransform);
+                float faceTop = WorldTop((RectTransform)modal.confirm.transform);
+                var fillRt = (RectTransform)modal.chrome.content.transform;
+                float panelTop = WorldTop(fillRt), panelBottom = WorldBottom(fillRt);
+
+                log.AppendLine("  [confirm-stack] panel [" + panelBottom.ToString("0.#") + ".." + panelTop.ToString("0.#") +
+                               "]  titleBottom " + titleBottom.ToString("0.#") +
+                               "  body [" + bodyBottom.ToString("0.#") + ".." + bodyTop.ToString("0.#") +
+                               "]  faceTop " + faceTop.ToString("0.#") + ".");
+
+                const float Eps = 0.5f;
+
+                // 1. The body must not reach up into the title.
+                if (bodyTop > titleBottom + Eps)
+                    failures.Add(Tag + " CASE F (WO-1690c, RED-first): the confirm body's top (" +
+                                 bodyTop.ToString("0.#") + ") is ABOVE the title's bottom (" +
+                                 titleBottom.ToString("0.#") + ") - the two labels overlap and the player reads " +
+                                 "the body printed over the gold title. Seat the body between the bands " +
+                                 "(ElarionUiKit.SeatConfirmBodyBetweenBands) and bound it with FitBlock.");
+
+                // 2. ...nor down behind the faces.
+                if (bodyBottom < faceTop - Eps)
+                    failures.Add(Tag + " CASE F (WO-1690c, RED-first): the confirm body's bottom (" +
+                                 bodyBottom.ToString("0.#") + ") is BELOW the face band's top (" +
+                                 faceTop.ToString("0.#") + ") - its last line is cut behind the buttons. On this " +
+                                 "screen that line is 'This cannot be undone.', which is the entire point of the " +
+                                 "modal.");
+
+                // 3. ...and it must not escape the panel at all. THE STRONGEST ONE: a rect that
+                //    leaves the plate overlaps no sibling, so rules 1-2 can both read clean while
+                //    the text floats outside the frame - which is exactly what shipped.
+                if (bodyTop > panelTop + Eps || bodyBottom < panelBottom - Eps)
+                    failures.Add(Tag + " CASE F (WO-1690c): the confirm body [" + bodyBottom.ToString("0.#") +
+                                 ".." + bodyTop.ToString("0.#") + "] escapes its own PanelFill [" +
+                                 panelBottom.ToString("0.#") + ".." + panelTop.ToString("0.#") + "]. An unbounded " +
+                                 "label spills out of ANY band; the cure is FitBlock, not a taller band.");
+            }
+            catch (Exception ex)
+            {
+                failures.Add(Tag + " CASE F threw: " + ex.GetType().Name + " " + ex.Message);
+            }
+            finally { Kill(canvasGo); }
+        }
+
+        private static float WorldTop(RectTransform rt)
+        {
+            var c = new Vector3[4];
+            rt.GetWorldCorners(c);
+            return Mathf.Max(Mathf.Max(c[0].y, c[1].y), Mathf.Max(c[2].y, c[3].y));
+        }
+
+        private static float WorldBottom(RectTransform rt)
+        {
+            var c = new Vector3[4];
+            rt.GetWorldCorners(c);
+            return Mathf.Min(Mathf.Min(c[0].y, c[1].y), Mathf.Min(c[2].y, c[3].y));
+        }
+
+        /// <summary>WO-1690b: one confirm face must be authored at MinTouchPx, and its caption band
+        /// must seat the FontFloor line. Both are AUTHORING assertions — passing because
+        /// ClampMinTouch would have grown it at runtime is exactly what the touch oracle rejects.</summary>
+        private static void CheckFace(UnityEngine.UI.Button face, string which, List<string> failures, StringBuilder log)
+        {
+            if (face == null)
+            {
+                // A confirm modal built without a cancel is legitimate (BuildConfirmModal takes an
+                // empty cancelLabel); this fixture asks for one, so its absence is a fixture fault.
+                if (which == "cancel")
+                    failures.Add(Tag + " CASE E: the fixture asked for a cancel face and got none, so the " +
+                                 "touch-floor assertion below covers one face instead of two.");
+                return;
+            }
+
+            var rt = (RectTransform)face.transform;
+            float w = rt.rect.width, h = rt.rect.height;
+            float shortest = Mathf.Min(w, h);
+            log.AppendLine("  [face/" + which + "] " + w.ToString("0.#") + "x" + h.ToString("0.#") +
+                           " ref px, floor " + ElarionUiKit.MinTouchPx.ToString("F0") + ".");
+
+            if (shortest + 0.5f < ElarionUiKit.MinTouchPx)
+            {
+                failures.Add(Tag + " CASE E (WO-1690b, RED-first): the confirm modal's " + which + " face " +
+                             "resolves " + w.ToString("0.#") + "x" + h.ToString("0.#") + " ref px - shortest " +
+                             "side " + shortest.ToString("0.#") + " is " +
+                             (ElarionUiKit.MinTouchPx - shortest).ToString("0.#") + " px UNDER MinTouchPx(" +
+                             ElarionUiKit.MinTouchPx.ToString("F0") + "). ClampMinTouch would grow it " +
+                             "symmetrically at runtime and spill it into both neighbours; author the band AT " +
+                             "the floor instead (ElarionUiKit.SeatConfirmFacesAtTouchFloor).");
+                return;
+            }
+
+            var label = face.GetComponentInChildren<TMP_Text>(true);
+            if (label == null)
+            {
+                failures.Add(Tag + " CASE E: the " + which + " face carries no label, so its caption band " +
+                             "could not be measured and the glyph assertion below proves nothing.");
+                return;
+            }
+
+            float band = label.rectTransform.rect.height;
+            float need = ElarionUiKit.MinBandPxForFloor(label);
+            log.AppendLine("    caption band " + band.ToString("0.#") + " px vs need " + need.ToString("0.#") + " px.");
+            if (band + 0.5f < need)
+                failures.Add(Tag + " CASE E (WO-1690b): the " + which + " face's caption band is " +
+                             band.ToString("0.#") + " px but a FontFloor(" + ElarionUiKit.FontFloor.ToString("F0") +
+                             ") line needs " + need.ToString("0.#") + " px - the fit guard will shrink the " +
+                             "caption rather than the face growing to hold it.");
         }
 
         private static string FindLine(CapturingSink sink, string token)

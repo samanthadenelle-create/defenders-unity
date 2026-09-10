@@ -308,10 +308,21 @@ namespace DeNelle.HUD
             // never overlap. These are THIS panel's own per-instance zones (Zone()/MakeZone each mint
             // a fresh RectTransform), so no other FrameCore screen is affected. Absolute anchors keep
             // the fix identical on the frame-art path and the procedural fallback path.
-            headerZone.anchorMin = new Vector2(headerZone.anchorMin.x, 0.790f);   // was ~0.900
+            // ── WO-1690 (OWNER RULING 2026-09-10 13:02: "the dialogue Affiliation line goes UP
+            //    to the 30 px floor"). The 0.790 band above was sized for a 26 px affiliation and
+            //    resolved to 66.7 ref px on device (measured: the Affiliation's 0.45 share logged
+            //    rect 1264x30 in Builds/device-frames/2026-09-10_1235_363866_raid_logcat.txt).
+            //    A 30 px line needs (30+1)*1.1499+2 = 37.65 px, so the 0.45 share needs 37.65 and
+            //    the ZONE needs 37.65/0.45 = 83.7 px = 0.195 * (83.7/66.7) = 0.2447 of the panel.
+            //    ⛔ THE 0.45/0.55 SPLIT IS DELIBERATELY UNCHANGED: re-splitting would seat the tag
+            //    by MOVING THE SPEAKER NAME, which the ruling forbids. The band grows DOWN into
+            //    the body instead — the body is a scroll zone, so it loses height, not content.
+            //    Speaker's 0.55 share becomes ~46 px, which seats its authored 36 (needs ~44.6);
+            //    it was ~36.7 px before and had not relaxed only because fitMin landed exactly on 30.
+            headerZone.anchorMin = new Vector2(headerZone.anchorMin.x, 0.740f);   // was 0.790 (WO-1690), ~0.900 originally
             headerZone.anchorMax = new Vector2(headerZone.anchorMax.x, 0.985f);   // was ~0.972
-            if (bodyZone.anchorMax.y > 0.780f)                                    // keep body top clear of the band
-                bodyZone.anchorMax = new Vector2(bodyZone.anchorMax.x, 0.780f);
+            if (bodyZone.anchorMax.y > 0.730f)                                    // keep body top clear of the taller band
+                bodyZone.anchorMax = new Vector2(bodyZone.anchorMax.x, 0.730f);
 
             // Content-fit hooks: cache the zone rects so ResizeToContent can re-pin them to
             // fixed-pixel bands (decoupling them from the now-variable panel height).
@@ -345,15 +356,24 @@ namespace DeNelle.HUD
             // FrameCore's header band is thin (~7% of the panel) — FitSingleLine bounds both
             // lines (auto-size + ellipsis, §1.14) so they can never clip in the band.
             // Authored on the mobile ladder (owner F8 2026-07-08 "text too small to read on
-            // mobile"): Speaker 36 / Affiliation 26 — was 24/13, BELOW the 30px mobile floor, so
+            // mobile"): Speaker 36 / Affiliation 30 — was 24/13, BELOW the 30px mobile floor, so
             // FitSingleLine's minSize clamped DOWN to the authored max and the guard then shrank
             // them to 13/12 in the thin header band. Authoring on the ladder lets auto-size use
             // the room; the guard's FontHardFloor(20) is now the readable last resort, never 12.
+            //
+            // ⚠ THE AFFILIATION WAS 26 UNTIL 2026-09-10 AND THAT WAS NOT A TYPO — it was an
+            // authored ladder choice, and it is why this label was the ONE entry in WO-1690 whose
+            // relaxation had floorFrom=26 instead of 30: FitSingleLine takes maxSize = the label's
+            // CURRENT fontSize, so a 26 px authoring silently clamps its own 30 px minSize down to
+            // 26. The guard did not drag it under the floor; the author placed it there. The
+            // OWNER RULED at 2026-09-10 13:02 that it goes UP to the floor — verbatim: "the
+            // dialogue Affiliation line goes UP to the 30 px floor". The band above was re-authored
+            // in the same change so 30 seats without cutting and without moving the speaker name.
             _speaker = MakeLabel(headerZone, "Speaker", new Vector2(0f, 0.45f), Vector2.one,
                 36, ElarionUi.Gilt, TMPro.FontStyles.Bold, TMPro.TextAlignmentOptions.Bottom);
             ElarionUiKit.FitSingleLine(_speaker);
             _affiliation = MakeLabel(headerZone, "Affiliation", Vector2.zero, new Vector2(1f, 0.45f),
-                26, ElarionUi.ParchmentDim, TMPro.FontStyles.Italic, TMPro.TextAlignmentOptions.Top);
+                30, ElarionUi.ParchmentDim, TMPro.FontStyles.Italic, TMPro.TextAlignmentOptions.Top);
             ElarionUiKit.FitSingleLine(_affiliation);
             // SCROLLABLE BODY (owner 2026-07-06: "in case there is more text, scrollable"):
             // the body zone hosts the §1.14 kit scroll zone (vertical, clamped, auto-hide

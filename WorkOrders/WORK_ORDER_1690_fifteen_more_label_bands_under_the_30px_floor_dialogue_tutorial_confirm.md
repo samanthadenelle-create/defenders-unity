@@ -1,6 +1,26 @@
 # WORK ORDER 1690 — More sub-floor label bands, found by the WO-1652 leash on the FTUE/dialogue path
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate + a fresh device log. 2026-09-10, lane FIT-GUARD.
+**#1 (Skip-Tutorial confirm) and #3 (Affiliation, per the owner's 13:02 ruling) are AUTHORED. #2 is NOT a code fix — it is a PREFAB band (proven, §3b). #4/#5 are recorded no-ops with their numbers.**
+RESULT: `WORK_ORDER_1690_fifteen_more_label_bands_under_the_30px_floor_dialogue_tutorial_confirm.RESULT.md`.
+Not gated — this lane holds no Unity.
+
+> ### ⚠ OWNER RULING 2026-09-10 13:02 — §4's "needs a ruling" is ANSWERED
+> Verbatim: ***"the dialogue Affiliation line goes UP to the 30 px floor."*** So entry #3 is IN
+> scope, `DialogueView.cs:355` is now `30`, and its band was re-authored in the same change. The
+> ruling's constraint — *never shorten the tag, and if the band cannot seat 30 without moving the
+> speaker name, re-author the band* — was honoured: the 0.45/0.55 split is **unchanged** and the
+> header zone grew DOWN into the (scrolling) body instead.
+>
+> ### ⚠ §3's "two rects = two callers" reading is WRONG — it is the title and its drop-shadow
+> Both call sites pass the **identical** title `"Skip Tutorial"` (`TutorialSkipUi.cs:259`,
+> `ObjectiveBannerUi.cs:414`). The divergence is **`MedievalUiSkin.ApplyShell:40`, which uppercases
+> `chrome.title` ONLY** — after `Header` has built the pair. So the title became `'*  SKIP TUTORIAL'`
+> and resolved a **different font** (line factor 1.26, rect 826x28) while its shadow stayed
+> `'*  Skip Tutorial'` at 1.15 / 826x26. **That disproves the `DOUBLE-DRAWN TITLE FIX` comment at
+> `ElarionUiKit.cs:1559-1567`**, which claims the pair is built "from identical rect / text / font /
+> spacing inputs, so the pair can never resolve to different sizes again". It has not been true since
+> `ApplyShell` was introduced. Recorded in-code at the shadow-rename hunk.
 **Minted:** 2026-09-10 (lane FIT-GUARD; number **PRE-ASSIGNED by the lead** — this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo / Lane:** UI authoring — band heights only. Same shape as WO-1658; no kit mechanism changes.
 **Type:** EXISTING.
@@ -123,7 +143,3 @@ should be recorded and the entry stays leashed as accepted), or the ladder is wr
   skip-tutorial confirm → dialogue → wave end-state). Screens not visited cannot report. Expect the
   allowlist to grow again as new paths are walked — **that is the leash working, not a regression.**
 - **Which rect owns each band** (§3 locates producers by name; none of the five heights was probed).
-
-## OWNER RULING (2026-09-10 13:02)
-
-The dialogue Affiliation tag authored at 26 (DialogueView.cs:355) goes UP to the 30 px floor - in scope for this ticket, not an exception.
