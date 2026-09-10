@@ -1,6 +1,6 @@
 # WORK ORDER 1377 - The crypto tokens that survive every string guard: IL2CPP ships TYPE NAMES
 
-**Status:** READY TO IMPLEMENT - ⛔ **BLOCKED on an owner ruling** (§4, the save-serialisation risk)
+**Status:** IMPLEMENTED (safe set) - awaiting gate (2026-09-09 lane META); residual identifiers accepted per owner ruling
 **Silo / Lane:** Core assembly boundaries - `Assets/_Modules/Core/Web3/` -> `DeNelle.Web3`
 **Type:** EXISTING architecture, Play-variant blocker
 **Minted:** 2026-09-04 (CLI), surfaced by the WO-1363 purge
@@ -55,6 +55,59 @@ is a Play artifact that contains the *type name* `IJupiterService` - with no rea
 string copy and no UI - actually a policy problem? **That is a judgement call about what a reviewer
 would object to, and it is hers.** A dead type name in a metadata blob is a very different thing from
 "Powered with SKR" on a screen. ⛔ Do not assume either answer.
+
+## §4b. ⭐ THE RULING, AND THE ANSWER TO §4 — 2026-09-09 (lane META)
+
+**Owner ruling, verbatim:** ***"Prove persistence first; move only what is safe, accept the rest with
+a recorded reason."***
+
+**§4 IS ANSWERED. NEITHER ENUM IS PERSISTED.** `grep PaymentChannel|SkinAuthMode` over
+`Assets/_Modules/Core/State/` → **0 hits**; no field of either type exists outside the live
+resolver/provider seam; no `PlayerPrefs` writer; no `ToString()`/`Enum.Parse` round-trip to storage.
+`SaveSchema.CurrentVersion = 41` (`Assets/_Modules/Core/State/SaveSchema.cs:41`) is untouched, and
+**no schema bump was needed**. Full per-identifier evidence table:
+`WORK_ORDER_1377_crypto_identifiers_in_il2cpp_metadata.RESULT.md` §1.
+
+**MOVED (compiled out at TYPE / MEMBER level under `#if !GOOGLE_PLAY`, never a runtime guard):**
+`IJupiterService`, `SwapQuote`, `SwapInputToken`, `SwapInputToken.USDC`, `CoreServices.Jupiter` /
+`RegisterJupiter` / `UnregisterJupiter`, `FeatureFlags.JupiterSwap` + its editor menu. **Proven safe
+because they have ZERO consumers in any assembly that ships under GOOGLE_PLAY** — every implementation
+lives in `DeNelle.Web3` (`DeNelle.Web3.asmdef:17` `"!GOOGLE_PLAY"`) and the only test lives in
+`DeNelle.Tests.EditMode` (`UNITY_INCLUDE_TESTS`, Editor-only).
+
+⚠ **The WO's `SwapToken.USDC` DOES NOT EXIST.** `grep -rn "SwapToken"` → 0 hits. The real identifier
+is **`SwapInputToken.USDC`** (`Core/Web3/IJupiterService.cs`). A seat hunting the WO's name finds
+nothing and wrongly concludes it is already gone.
+
+**ACCEPTED AS RESIDUAL, with the reason recorded (this is the half the owner accepted):**
+
+- **`PaymentChannel.SolanaDappStore` STAYS.** It is a live, un-`#if`'d `switch` case *inside*
+  `DeNelle.Core`: `CurrencySkinResolver.ResolveWagerCurrency` (`Core/Platform/CurrencySkinResolver.cs:310`),
+  which compiles into the Play build. It cannot be `#if`'d there either — the owner's Arena ruling is
+  recorded in that file's own comment at `:266-272`: *"ONE Arena, ONE code path; the CURRENCY is the
+  only thing that varies by channel, and it is resolved HERE … **never by a `#if GOOGLE_PLAY` inside
+  the Arena module**."* Hiding the token would fork the code path the owner ruled must not fork.
+  Not persisted; explicit value `= 1`. ⛔ **Never rename, never reorder.**
+- **`SkinAuthMode.SolanaWallet` STAYS.** It is bound **by NAME** to shipped canonical data:
+  `CurrencySkinResolver.ParseAuth:501` matches the literal `"SolanaWallet"` against
+  `Assets/Resources/Data/Canonical/skin.json:30` `"authMode": "SolanaWallet"` (+ the `StreamingAssets`
+  byte-twin), with live shipping references at `CurrencySkin.cs:143` and `PiSignInController.cs:501`.
+  Compiling it out breaks the skin table in **every** build, not just Play. Not a save field — so a
+  rename is not save data-loss — but it **is** a code↔data contract. ⛔ **Never rename, never reorder.**
+
+**So the Play artifact will still contain the type name `PaymentChannel` and the member names
+`SolanaDappStore` / `SolanaWallet` in `global-metadata.dat`, with no reachable crypto code, no string
+copy and no UI. That is the accepted residual.** The `jupiter` and `usdc` identifier families are gone
+from the Play variant's `DeNelle.Core` source.
+
+**Pinned by:** `Assets/Editor/Regression/PlayMetadataIdentifierRegression.cs` — **two-sided** (absent
+with `GOOGLE_PLAY`, present without it, so a *deletion* also goes red) + the `DeNelle.Web3.asmdef`
+`"!GOOGLE_PLAY"` assertion. ⛔ **It is SOURCE-level. The physical `global-metadata.dat` scan stays a
+SHIP-CHAIN step** and is the only thing that proves the shipped bytes.
+
+⛔ **STILL OPEN, not ticked:** both-variant compiles, the metadata before/after counts, the save
+round-trip, and the one-line registration in `DataRegression.RunAll` (RESULT §4) — **the tree is RED
+on `RegressionMarkerRegression` RULE 3 until that line lands.**
 
 ## ACCEPTANCE
 

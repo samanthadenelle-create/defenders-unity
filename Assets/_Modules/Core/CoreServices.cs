@@ -148,6 +148,15 @@ namespace DeNelle.Core
         public static void UnregisterAudio(IAudioService audio) { if (ReferenceEquals(Audio, audio)) Audio = null; }
 
         // ── Jupiter swap service (WO-43) ─────────────────────────────────────
+        // WO-1377 (2026-09-09): the SLOT ITSELF is compiled out under GOOGLE_PLAY, not
+        // just its message text. IL2CPP ships member names, so `Jupiter`,
+        // `RegisterJupiter` and `UnregisterJupiter` land in the Play AAB's
+        // global-metadata.dat as identifiers even though the only registrant
+        // (JupiterSwapService, DeNelle.Web3) is excluded by that assembly's
+        // "!GOOGLE_PLAY" constraint. There is no caller of this slot in any assembly
+        // that ships on Play, so removing it there costs nothing.
+        // ⛔ NOT deleted — on the dApp/Seeker variant this slot is live and required.
+#if !GOOGLE_PLAY
         /// <summary>
         /// The active Jupiter swap service, or null when no swap host is present
         /// in the loaded scenes. Always null-check before use.
@@ -158,14 +167,12 @@ namespace DeNelle.Core
         public static void RegisterJupiter(IJupiterService svc)
         {
             if (Jupiter != null && Jupiter != svc)
-                // WO-1363: the swap-service name is a gate token; the Play artifact never has a
-                // swap host to register (DeNelle.Web3 is !GOOGLE_PLAY-constrained), so the message
-                // there is channel-neutral. NOT a silent catch - both branches still warn (§12).
-#if GOOGLE_PLAY
-                Debug.LogWarning("[CoreServices] Replacing existing swap-service registration.");
-#else
+                // WO-1363 added a channel-neutral GOOGLE_PLAY arm here so the swap-service
+                // NAME would not appear in the Play artifact's log strings. WO-1377 makes
+                // that arm unreachable by removing the whole slot on Play, so the single
+                // remaining branch is the dApp-lane one. Still warns — never a silent
+                // replace (§12).
                 Debug.LogWarning("[CoreServices] Replacing existing IJupiterService registration.");
-#endif
             Jupiter = svc;
         }
 
@@ -174,6 +181,7 @@ namespace DeNelle.Core
         {
             if (Jupiter == svc) Jupiter = null;
         }
+#endif  // !GOOGLE_PLAY  (WO-1377 — the Jupiter slot, member names and all)
 
         // ── Wallet signer (WO-121 backend save-auth) ─────────────────────────
         /// <summary>

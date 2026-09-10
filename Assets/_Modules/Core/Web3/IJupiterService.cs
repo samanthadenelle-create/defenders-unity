@@ -13,8 +13,36 @@
 // TODO where real wallet signing must be wired before going live.
 // =============================================================================
 
+// -----------------------------------------------------------------------------
+// WO-1377 (2026-09-09) — TYPE-LEVEL COMPILE-OUT UNDER GOOGLE_PLAY.
+//
+// IL2CPP's global-metadata.dat carries TYPE AND MEMBER NAMES, not just string
+// literals, so a runtime `#if` INSIDE a method removes nothing: `IJupiterService`,
+// `SwapQuote`, `SwapInputToken` and `USDC` all ship as identifiers in the Google
+// Play AAB unless the TYPES themselves are compiled out. This whole namespace body
+// is therefore wrapped, not guarded.
+//
+// PROVEN SAFE (Phase 1, quoted in the WO): these types have ZERO consumers in any
+// assembly that ships under GOOGLE_PLAY. Their only references are
+//   * CoreServices.Jupiter / RegisterJupiter / UnregisterJupiter — wrapped in the
+//     same `#if !GOOGLE_PLAY` in the same change;
+//   * Assets/_Modules/Web3/* (JupiterSwapService, JupiterSwapBootstrap, SwapVM) —
+//     the DeNelle.Web3 assembly, already `"!GOOGLE_PLAY"`-constrained at
+//     DeNelle.Web3.asmdef:17, so it is not compiled into a Play build at all;
+//   * Assets/Tests/EditMode/SwapVMTests.cs — DeNelle.Tests.EditMode, which is
+//     `UNITY_INCLUDE_TESTS`-constrained and never compiled into a player build.
+// None of these types is persisted: no field of them exists in Core/State, no
+// PlayerPrefs writer, no ToString()/Enum.Parse round-trip. Nothing is renamed and
+// nothing is reordered — SwapInputToken keeps USDC = 0, SOL = 1.
+//
+// ⛔ DO NOT DELETE. Jupiter swap is a real dApp-lane feature; it is only ABSENT on
+// Play. The oracle PlayMetadataIdentifierRegression FAILS BOTH WAYS — if these
+// identifiers survive under GOOGLE_PLAY, and if they stop existing without it.
+// -----------------------------------------------------------------------------
+
 using System.Threading.Tasks;
 
+#if !GOOGLE_PLAY
 namespace DeNelle.Core.Web3
 {
     /// <summary>
@@ -69,3 +97,4 @@ namespace DeNelle.Core.Web3
         SOL = 1
     }
 }
+#endif  // !GOOGLE_PLAY  (WO-1377 — type-level compile-out, see the header)

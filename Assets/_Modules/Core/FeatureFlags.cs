@@ -1303,7 +1303,19 @@ namespace DeNelle.Core
         /// Defenders/Debug menu. NOT URL-activatable (monetization surface — excluded from the
         /// allow-list, same as RealmStorePurchase).
         /// </para></summary>
+        /// <para>
+        /// WO-1377 (2026-09-09): compiled out entirely under GOOGLE_PLAY. The property NAME
+        /// <c>JupiterSwap</c> and the key literal <c>"jupiterswap"</c> both land in IL2CPP's
+        /// global-metadata.dat as shipped identifiers, and its only runtime caller
+        /// (<c>JupiterSwapBootstrap</c>) lives in DeNelle.Web3, which is already excluded on
+        /// Play by <c>DeNelle.Web3.asmdef:17</c> <c>"!GOOGLE_PLAY"</c>. So on Play the flag
+        /// gates nothing and only contributes a token. ⛔ NOT deleted — the dApp lane still
+        /// reads it, and <c>ShippedSurfaceGateRegression</c> Case 3 FAILS if the declaration
+        /// disappears from this file's source.
+        /// </para>
+#if !GOOGLE_PLAY
         public static bool JupiterSwap => Get("jupiterswap", defaultOn: false);
+#endif
 
         /// <summary>SECURITY (store-hardening Path A): TRUE in the Editor or any Development build,
         /// FALSE in a release/store build (BuildOptions.None → Debug.isDebugBuild is false). Dev-only
@@ -1601,6 +1613,10 @@ namespace DeNelle.Core
 
         // Jupiter swap panel — the WO-43 crypto swap CTA host. OFF by default (store-hardening
         // Path A: the shipping build carries no crypto surface).
+        // WO-1377: nested inside the enclosing #if UNITY_EDITOR because the property it toggles
+        // no longer exists under GOOGLE_PLAY. An editor compile carrying -ExtraScriptingDefines
+        // GOOGLE_PLAY would otherwise fail here.
+#if !GOOGLE_PLAY
         private const string JupiterSwapMenu = "Defenders/Debug/Jupiter Swap Panel (crypto CTA)";
 
         [UnityEditor.MenuItem(JupiterSwapMenu, priority = 207)]
@@ -1620,6 +1636,7 @@ namespace DeNelle.Core
             UnityEditor.Menu.SetChecked(JupiterSwapMenu, JupiterSwap);
             return true;
         }
+#endif  // !GOOGLE_PLAY  (WO-1377 — the Jupiter debug menu follows its property)
 #endif
     }
 }
