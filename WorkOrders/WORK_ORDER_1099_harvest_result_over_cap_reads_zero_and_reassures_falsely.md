@@ -1,6 +1,6 @@
 # WORK ORDER 1099 — the Harvest Result panel banks 0, sits 21× over the storage ceiling, and tells the player nothing was lost
 
-**Status:** READY TO IMPLEMENT — **one owner question open (see "What 'here' meant")**
+**Status:** AWAITING OWNER RULING - the 13:06 screenshot was sent to the owner 2026-09-09 22:xx for the "here" question; the presentation fix is IMPLEMENTED - awaiting gate (2026-09-09 lane HARVEST-COPY); her one-line answer closes or bounces
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1099 → 1100 in the same edit)
 **Silo:** Economy · UI copy
 **Severity:** P2 — nothing breaks, but the panel reassures the player in exactly the state where the

@@ -47,12 +47,44 @@
 // ASCII ONLY - every string below reaches a mobile font atlas, and the figures are
 // formatted with the invariant culture so a device locale cannot inject a
 // non-ASCII group separator.
+//
+// =============================================================================
+//  (!) WO-1099 - AND ABOVE THE CAP, THE REASSURANCE IS ITSELF THE LIE.
+// =============================================================================
+// THE MEASURED DEFECT (owner F8 seq=4974, 2026-09-09 13:06:17, frame
+// docs/ui-evidence/harvest-result-2026-09-09/flag-seq4974-harvest-result.png):
+//
+//     Wood   0    732,031 / 34,000  OVER    4,213 waiting, safe
+//     Iron   0    639,336 / 34,000  OVER    2,031 waiting, safe
+//     Stone  0    411,480 / 34,000  OVER    4,441 waiting, safe
+//     "Nothing was lost - every waiting unit banks as soon as there is room."
+//
+// The block above says the reassurance is source-aware; it was not CAP-aware. At a
+// FULL bank "as soon as there is room" is true - room arrives by spending or by
+// upgrading, and those rows carry the door. ABOVE the cap it is a promise the game
+// cannot keep: 34,000 is the L6 ceiling (TownBankCapacity's own words), so 732,031
+// is 21x the most storage that can ever exist and no build makes room. Under a
+// banked column of 0 the screen read: you collected nothing, and nothing is wrong.
+//
+// So the footer gained a THIRD branch, above the reassurance and below the burn:
+// over cap leads with the ACTION (spend), names the container as the ceiling the
+// player is above, states how far over they are, and keeps WO-1434's safety
+// promise in the tail instead of at the front. The three amounts - banked, pending,
+// over-by - are now exposed as NUMBERS on every row (see HarvestResultRow), all of
+// them lifted off the same BankOverflowStatus the bank published.
+//
+// !! ORIGIN OF THE 21x BALANCE IS NOT THIS FILE'S BUSINESS AND IS NOT CLAIMED HERE.
+// docs/READY_RCA_2026-09-09.md row 1099 established it arrived via tester/dev codes,
+// so normal accrual is not proven broken. This change is the PRESENTATION half, which
+// is a defect either way: the copy was false in this state regardless of how the
+// state was reached.
 // =============================================================================
 
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Economy;
 
 namespace DeNelle.Core.UI
@@ -133,6 +165,52 @@ namespace DeNelle.Core.UI
 
         /// <summary>"collectors" / "silo" / "burned" / "clean" - the trace word.</summary>
         public string TraceKind = "clean";
+
+        // =====================================================================
+        //  (!) WO-1099 - THE THREE AMOUNTS, AS NUMBERS, TRUTHFULLY.
+        // =====================================================================
+        // The owner's F8 seq=4974 frame showed a banked column of `0` under a bar
+        // reading `732,031 / 34,000  OVER`, with a footer promising the waiting units
+        // would bank "as soon as there is room". Read together that is: you collected
+        // nothing, and nothing is wrong. Each half was individually defensible and the
+        // pair misled.
+        //
+        // The banked `0` is COMPUTED, not defaulted: TownBankCapacity's over-cap branch
+        // logs "earned {requested}, added 0" by design (TownBankCapacity.cs:781-785), so
+        // `Granted == 0` above the cap is the bank's own answer. What was missing was
+        // the THIRD number - how far above the ceiling the store actually sits - and any
+        // instruction about what to do with it.
+        //
+        // !! ALL THREE COME OFF THE SAME BankOverflowStatus THE BANK PUBLISHED. There is
+        // no second arithmetic and no second reader: `Granted`, `Lost` (split into
+        // Waiting/Burned by Merge) and `Current`/`Max` are the exact figures the clamp
+        // weighed. The over-by is the bank's own subtraction - the same `{current - max}
+        // above capacity` it prints at TownBankCapacity.cs:783. The VM never calls
+        // TownBankCapacity.MaxOf; that would be the second opinion this seam exists to
+        // prevent.
+
+        /// <summary>WHAT BANKED, as a number (the figure behind <see cref="BankedText"/>).
+        /// Zero above the cap, and that zero is the bank's computed answer, not a default.</summary>
+        public int BankedUnits;
+
+        /// <summary>WHAT IS PENDING - the units a producer still holds. Alias of
+        /// <see cref="WaitingUnits"/>, named the way WO-1099 asks for it so an oracle can read
+        /// "pending" without knowing the older field name.</summary>
+        public int PendingUnits;
+
+        /// <summary>HOW FAR ABOVE THE CEILING the store sits after this collect
+        /// (<c>After - Max</c>, floored at zero). The number the OVER bar never spelled out.</summary>
+        public int OverCapUnits;
+
+        /// <summary>"698,031 over cap" - <see cref="OverCapUnits"/> as an ASCII figure, or empty
+        /// when the store is not above its ceiling. Exposed for the oracle and folded into the
+        /// footer; NOT part of <see cref="HarvestResultVM.AllText"/>, because the modal does not
+        /// draw it as its own field and AllText may only carry what is actually drawn.</summary>
+        public string OverCapText = string.Empty;
+
+        /// <summary>True when this row's store is ABOVE its cap - the state in which more
+        /// storage is not the fix and the door reads SPEND.</summary>
+        public bool OverCap;
     }
 
     /// <summary>
@@ -184,6 +262,18 @@ namespace DeNelle.Core.UI
         /// <summary>True when the footer is the WO-1434 reassurance (every row retained).</summary>
         public bool FooterReassures;
 
+        /// <summary>True when the footer is the WO-1099 over-cap instruction - the store is above
+        /// its ceiling, so the screen names the ONE thing that unblocks it instead of promising
+        /// room that cannot arrive on its own.</summary>
+        public bool FooterOverCap;
+
+        /// <summary>The totals the footer speaks for, summed across EVERY merged resource (not
+        /// just the drawn <see cref="MaxRows"/>), so the one sentence is true about the whole
+        /// harvest. Each is the bank's own figure - see the WO-1099 block on HarvestResultRow.</summary>
+        public int TotalBanked;
+        public int TotalPending;
+        public int TotalOverCap;
+
         /// <summary>The one trace line the modal emits per open.</summary>
         public string TraceLine
         {
@@ -198,10 +288,15 @@ namespace DeNelle.Core.UI
                     if (r.Burned) burned++;
                     if (r.HasAction) doors++;
                 }
+                string footerWord = FooterReassures
+                    ? "reassure"
+                    : (FooterOverCap ? "overcap" : (string.IsNullOrEmpty(FooterLine) ? "none" : "loss"));
                 return "statuses=" + SourceStatusCount + " merged=" + TotalRowCount +
                        " shown=" + Rows.Count + " waiting=" + waiting +
                        " burned=" + burned + " doors=" + doors +
-                       " footer='" + (FooterReassures ? "reassure" : (string.IsNullOrEmpty(FooterLine) ? "none" : "loss")) + "'";
+                       " banked=" + TotalBanked + " pending=" + TotalPending +
+                       " overBy=" + TotalOverCap +
+                       " footer='" + footerWord + "'";
             }
         }
 
@@ -242,13 +337,15 @@ namespace DeNelle.Core.UI
 
             bool anyRefused = false;
             bool anyBurned = false;
+            bool anyOverCap = false;
+            var overCapNames = new List<string>();
+            var overCapContainers = new List<string>();
 
             for (int i = 0; i < merged.Count; i++)
             {
                 var s = merged[i];
                 if (s.Waiting > 0 || s.Burned > 0) anyRefused = true;
                 if (s.Burned > 0) anyBurned = true;
-                if (vm.Rows.Count >= MaxRows) continue;
 
                 string name = string.IsNullOrEmpty(s.ResourceName) ? "Resource" : s.ResourceName;
                 string container = string.IsNullOrEmpty(s.ContainerName) ? "Storehouse" : s.ContainerName;
@@ -263,6 +360,27 @@ namespace DeNelle.Core.UI
                 int after = after64 > int.MaxValue ? int.MaxValue : (int)after64;
                 int max = s.Max;
 
+                // WO-1099 - THE THIRD NUMBER. The bank's own subtraction (TownBankCapacity.cs:786
+                // prints "{current - max} above capacity"), never a second reader of the caps.
+                long over64 = max > 0 ? (long)after - max : 0L;
+                int overBy = over64 > 0 ? (over64 > int.MaxValue ? int.MaxValue : (int)over64) : 0;
+
+                // (!) THE FOOTER SPEAKS FOR THE WHOLE HARVEST, so its totals are accumulated over
+                // EVERY merged resource - before the MaxRows cut, not after. A number that changed
+                // depending on how many plates fit on screen would be the same class of lie this
+                // ticket is about.
+                vm.TotalBanked += granted;
+                vm.TotalPending += s.Waiting > 0 ? s.Waiting : 0;
+                if (s.OverCap)
+                {
+                    anyOverCap = true;
+                    vm.TotalOverCap += overBy;
+                    if (!overCapNames.Contains(name)) overCapNames.Add(name);
+                    if (!overCapContainers.Contains(container)) overCapContainers.Add(container);
+                }
+
+                if (vm.Rows.Count >= MaxRows) continue;
+
                 var row = new HarvestResultRow
                 {
                     ResourceName = name,
@@ -276,6 +394,12 @@ namespace DeNelle.Core.UI
                     BurnedUnits = s.Burned,
                     MergedSources = s.Sources,
                     TraceKind = s.TraceKind,
+                    // WO-1099 - the three amounts as NUMBERS, straight off the clamp event.
+                    BankedUnits = granted,
+                    PendingUnits = s.Waiting > 0 ? s.Waiting : 0,
+                    OverCapUnits = s.OverCap ? overBy : 0,
+                    OverCapText = s.OverCap && overBy > 0 ? N(overBy) + " over cap" : string.Empty,
+                    OverCap = s.OverCap,
                 };
 
                 // THE SECOND NUMBER. The law word rides WITH the figure, so a player who reads
@@ -331,7 +455,53 @@ namespace DeNelle.Core.UI
             // WO-1434 law sentence and it is only true when every producer on this screen retained.
             if (anyRefused)
             {
-                if (!anyBurned)
+                // (!) `vm.TotalOverCap > 0` IS NOT BELT-AND-BRACES. Merge takes the MINIMUM Current
+                // and the MAXIMUM Max across a resource's producers, so a status flagged OverCap by
+                // one producer can still land at or under the merged ceiling. In that case the
+                // player is NOT above the cap after this collect, "storage is 0 over" would be
+                // nonsense, and the ordinary reassurance is the true sentence - so fall through.
+                if (!anyBurned && anyOverCap && vm.TotalOverCap > 0)
+                {
+                    // =========================================================
+                    //  (!) WO-1099 - ABOVE THE CAP, THE REASSURANCE IS A PROMISE
+                    //      THE GAME CANNOT KEEP, SO IT IS NOT SAID.
+                    // =========================================================
+                    // "every waiting unit banks as soon as there is room" is TRUE at a
+                    // FULL bank - room arrives by spending OR by upgrading, and those
+                    // rows carry an UPGRADE/BUILD door. It is FALSE above the cap: on
+                    // the owner's F8 seq=4974 frame the store sat at 732,031 against
+                    // the L6 ceiling of 34,000, so no amount of storage the game can
+                    // ever build makes room. Room only arrives by SPENDING.
+                    //
+                    // !! AND THAT IS WHY THE VERB HERE IS SPEND, NOT "SPEND OR UPGRADE".
+                    // BankOverflowStatus.OverCap (TownBankCapacity.cs) spends a paragraph
+                    // on over-cap being a DIFFERENT situation from a full bank, the bank's
+                    // own over-cap Warn deliberately drops the "build or upgrade a
+                    // {container}" clause it prints when merely full, and
+                    // HarvestResultShapeRegression [overcap-spends] fails the build if the
+                    // door reads anything but SPEND. Offering an upgrade here would be the
+                    // false reassurance again in a new costume - it would sell the player a
+                    // container that cannot help.
+                    //
+                    // The container is still NAMED, as the ceiling they are above rather
+                    // than as a thing to buy, because "your Lumberyard cap" is the phrase
+                    // that lets the player find the number they are fighting.
+                    //
+                    // WO-1434 law is preserved in the tail: the pending units ARE safe, and
+                    // the screen still says so - it just no longer says so FIRST, and no
+                    // longer claims they will bank on their own.
+                    vm.FooterReassures = false;
+                    vm.FooterOverCap = true;
+                    string spendList = JoinWords(overCapNames, "or");
+                    string capList = JoinWords(overCapContainers, "and");
+                    string capWord = overCapContainers.Count > 1 ? " caps" : " cap";
+                    vm.FooterLine =
+                        "Spend " + (spendList.Length > 0 ? spendList : "resources") +
+                        " to get back under your " + (capList.Length > 0 ? capList + capWord : "storage cap") +
+                        " - storage is " + N(vm.TotalOverCap) + " over, so nothing banks yet. " +
+                        N(vm.TotalPending) + " waiting stays safe until it does.";
+                }
+                else if (!anyBurned)
                 {
                     vm.FooterReassures = true;
                     vm.FooterLine = "Nothing was lost - every waiting unit banks as soon as there is room.";
@@ -349,7 +519,31 @@ namespace DeNelle.Core.UI
                 }
             }
 
+            // CLAUDE.md section 12 - the amounts, named, at the seam that decided them. The modal
+            // traces TraceLine too (HarvestOverflowModal.cs:146), but the modal is not the only
+            // caller of this seam and a headless run must be able to prove the numbers without a
+            // canvas. One Step per build; TraceLine now carries banked/pending/overBy.
+            FlowTrace.Step("Bank", "harvest-result vm: " + vm.TraceLine);
+
             return vm;
+        }
+
+        /// <summary>
+        /// "Wood", "Wood or Iron", "Wood, Iron or Stone" - ASCII, no Oxford comma, and the
+        /// conjunction is the caller's ("or" for a choice of things to spend, "and" for the set of
+        /// caps they are above). Empty list yields an empty string so the caller can substitute.
+        /// </summary>
+        private static string JoinWords(List<string> words, string conjunction)
+        {
+            if (words == null || words.Count == 0) return string.Empty;
+            if (words.Count == 1) return words[0];
+            var sb = new StringBuilder();
+            for (int i = 0; i < words.Count; i++)
+            {
+                if (i > 0) sb.Append(i == words.Count - 1 ? " " + conjunction + " " : ", ");
+                sb.Append(words[i]);
+            }
+            return sb.ToString();
         }
 
         // =====================================================================
