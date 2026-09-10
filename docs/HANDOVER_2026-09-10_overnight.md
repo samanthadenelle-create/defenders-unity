@@ -151,6 +151,15 @@ battle arena" + "i have mentioned it in testing that it feels incomplete and not
 Number collision this morning: three worktree lanes each read next-free 1631; resolved 1631 LANDSCAPE / 1632 ARENA / 1633-1635 POLISH,
 banner set to 1636 by the lead; rule recorded in memory (the lead pre-assigns number blocks to parallel minting lanes).
 
+Second raid wave COMMITTED (06:50, all on wave4-compile2 COMPILE_GATE_OK / wave4-reg2 REGRESSION_OK 494/494 / wave4-bake2 + wave4-navbake2 4/4 / wave4-capture3 UI_CAPTURE_OK 91 + UI_GEOMETRY_OK 91):
+`b4613489d` WO-1634 prop gaps + WO-1635 code half (FIXED); `e1558e6a0` WO-1631 build-script portrait writer fixed + Case 5 lint (FIXED; the
+APK rebuilt after it is the first landscape-only APK); `969b57186` WO-1618 ruled on the device capture + edge-4 ramp trace + GlyphBaseline 68 -> 4;
+`fdbbba52a` re-bake (props 33 / 31 / 27); `f33451b11` board + handover. HELD out of every commit: `ManageScreenPanel.cs` +
+`ManageApprovedLauncherRegression.cs` + WO-1406 (BUILD BARRACKS still draws 12 of 13 glyphs at 2340x1080 / 2670x1200, `wave4-capture3`
+UI_GLYPH_FAIL x2 NEW, back with the MANAGE-COPY lane) and the TMP fallback font asset. Lanes in flight: RAID-HUD 1639, RAID-STAGING 1640,
+HEART-COPY 1641, TOWN-CHROME 1642, MANAGE-COPY. APK rebuild + Seeker reinstall chain launched 06:50 (`Builds/wave4-apk-chain.txt`,
+`Builds/overnight-apk-status.txt`, `Builds/wave4-install.runner.txt`) on the owner's "push dev and reinstall the apk when it's done".
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
@@ -165,6 +174,12 @@ banner set to 1636 by the lead; rule recorded in memory (the lead pre-assigns nu
   `Android/catalog_2026.09.10.363195.bin/.hash` (the APK) and `StandaloneWindows64/catalog_2026.09.09.362725`
   (the exe) as present on the CDN - the CLAUDE.md s16 proof for both artifacts. Scripting define
   `DAPP_STORE`, no `TESTER_BUILD` (production shape).
+- **Android production APK, second build (landscape-only):** `Builds/overnight-apk-status.txt` -> `APK_START 06:50`,
+  `SCHEMA_PARITY_OK`, `APK_OK 06:56 size=444MB`, `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=279`, `APK_DONE`.
+  Version `2026.09.10.363591`, built AFTER `e1558e6a0` (the portrait writer fix); `ProjectSettings.asset` diff after the chain
+  = the two version lines only, `allowedAutorotateToPortrait: 0` / `...UpsideDown: 0` held. Seeker install
+  `Builds/wave4-install.runner.txt` -> `Performing Streamed Install / Success` (06:57); `dumpsys` on `SM02G4061955851` reads
+  `versionName=2026.09.10.363591`. Device frames of a raid on this build are the WO-1631 felt-test closer.
 - **Seeker install:** `install-apk-to-seeker.ps1 -Build:$false -Install:$true` -> `Performing Streamed
   Install / Success` on `SM02G4061955851` (00:23). Device frames under `Builds/device-frames/` and sent
   to the owner as they were taken.
