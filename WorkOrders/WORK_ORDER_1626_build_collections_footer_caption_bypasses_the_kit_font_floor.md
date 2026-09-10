@@ -1,6 +1,6 @@
 # WO-1626 - Build Collections footer caption writes fontSizeMin straight onto TMP, bypassing the kit's font floor
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate (lane FOOTER-FONT 2026-09-10)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1625 -> 1628 in the SAME edit)
 **Silo / Lane:** Village / BuildMode UI (`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
 **Severity:** P2 legibility. Currently **DORMANT, not shipping** - see sec.2. This is a

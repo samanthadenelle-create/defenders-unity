@@ -156,6 +156,25 @@ namespace DeNelle.Editor.Regression
                 return Fail("the Manage > Defense door left the collection browser: no footer link, or it no longer opens the placed-defense upgrade destination", out reason);
             if (browser.Contains("\"Upgrade Defenses\""))
                 return Fail("the retired 8th 'Upgrade Defenses' category card is back in the build grid (ruling section 2 #13 says footer link, not card)", out reason);
+            // WO-1626 ADDED 2026-09-10. The footer caption used to write its own font floor onto
+            // TMP -- a raw minimum BELOW ElarionUiKit.FontHardFloor (20, ElarionUiKitObsidian.cs
+            // :3044). A literal written straight onto the component never enters FitSingleLine, so
+            // the factory's clamp at ElarionUiKitObsidian.cs:3062 -- whose own comment says "no
+            // caller may auto-shrink text below the FontHardFloor readability floor" -- could not
+            // see it. One owner per concern: the kit decides the floor, the wrap mode and the
+            // post-layout fit guard (ArmFitGuard, :3069) that the raw path never armed.
+            //
+            // WHY THE LITERAL IS "FitSingleLine(label," AND NOT THE BARE METHOD NAME: this same
+            // file already calls ElarionUiKit.FitSingleLine(guidanceLabel, 22f, 28f) for the
+            // subtitle, so a pin on "FitSingleLine(" alone is GREEN BEFORE THE FIX and proves
+            // nothing. WHY THE NEGATIVE PIN IS "fontSizeMin = 16f" AND NOT "fontSizeMin": the
+            // screen has other, in-scope-elsewhere font minima; 16f was this caption's, and the
+            // only other 16f in the file is FooterLinkGridGapPx, a px gap, not a font size.
+            // RED PROOF: restore `label.fontSizeMin = 16f;` at the footer-link label site (and
+            // drop the FitSingleLine call) -- either half alone reds this pin.
+            if (!browser.Contains("FitSingleLine(label,") ||
+                browser.Contains("fontSizeMin = 16f"))
+                return Fail("the Manage > Defense footer caption sets its own font floor instead of the kit's: a sub-floor fontSizeMin literal is back, or the label no longer routes through ElarionUiKit.FitSingleLine", out reason);
             string managePanel = File.ReadAllText("Assets/_Modules/Village/UI/Manage/ManageScreenPanel.cs");
             string manageVm = File.ReadAllText("Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs");
             // -- WO-1422 ruling 3.4 --------------------------------------------

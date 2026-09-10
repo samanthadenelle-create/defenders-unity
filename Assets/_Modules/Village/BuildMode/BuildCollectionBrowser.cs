@@ -300,18 +300,14 @@ namespace DeNelle.Village
                 var label = link.GetComponentInChildren<TextMeshProUGUI>();
                 if (label != null)
                 {
-                    label.enableWordWrapping = false;
-                    label.enableAutoSizing = true;
-                    // ⚠ WO-1623 LEFT THIS 16f ALONE, DELIBERATELY — it is BELOW the kit's own
-                    // ElarionUiKit.FontHardFloor (20, ElarionUiKitObsidian.cs:3044), which is a
-                    // real finding, but the caption is out of this ticket's scope (WO-1623 §7)
-                    // and changing it is a legibility ruling, not a geometry one. With the band
-                    // now a full 112 px tall the autosizer has room to sit at fontSizeMax, so
-                    // the sub-floor minimum is DORMANT rather than load-bearing. Recorded in the
-                    // RESULT as a follow-up; do not "tidy" it here without a ticket.
-                    label.fontSizeMin = 16f;
-                    label.fontSizeMax = 24f;
-                    label.overflowMode = TextOverflowModes.Overflow;
+                    // WO-1626: the caption's floor, wrap mode, overflow mode and post-layout fit
+                    // guard are ALL the kit's to decide — one owner per concern. The retired
+                    // WO-1623 note here guarded a raw sub-floor minimum written straight onto TMP,
+                    // below ElarionUiKit.FontHardFloor (20, ElarionUiKitObsidian.cs:3044). Routing
+                    // through the factory (ElarionUiKitObsidian.cs:3054-3069) clamps the floor,
+                    // sets NoWrap, and arms the fit guard the raw path never armed. 24f preserves
+                    // the previous fontSizeMax exactly. Same call shape as :461 on this screen.
+                    ElarionUiKit.FitSingleLine(label, 20f, 24f);
                 }
                 FlowTrace.Step("BuildCollections",
                     "WO-1623 footer band authored in px: inset " +
