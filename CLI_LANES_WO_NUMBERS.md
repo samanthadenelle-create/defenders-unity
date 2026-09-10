@@ -189,7 +189,9 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-sixtieth pass): main line next free = **1699**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-sixty-first pass): main line next free = **1700**.
+
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-sixtieth pass): main line next free = **1699**.
 > Lead minted **WO-1698** = Command Center: look a Google-account player up by email and bind a promo code (owner request 16:30; READY, not dispatched - wrap-down).
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fifty-ninth pass): main line next free = **1698**.

@@ -105,6 +105,27 @@ var PiBridgeLib = {
     try {
       var ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
       if (/pibrowser/i.test(ua)) return 1;
+      // WO-1699 (owner in Pi Desktop App Studio, 2026-09-10): the desktop host is Electron and its
+      // UA carries "PiNetwork/0.6.3", never "PiBrowser". Captured fingerprints, both framed inside
+      // https://app-cdn.minepi.com/ with window.Pi present:
+      //   phone   "... Mobile Safari/537.36 PiBrowser/1.17.1"
+      //   desktop "... PiNetwork/0.6.3 Chrome/134.0.6998.205 Electron/35.2.0 Safari/537.36"
+      // The desktop UA token is the second signal.
+      if (/pinetwork\//i.test(ua)) return 1;
+      // The third signal is the one the Pi SDK itself uses: pi-sdk.js resolves its host platform
+      // from document.referrer (getHostPlatformURL) and talks to it over window.parent.postMessage,
+      // i.e. a Pi host always frames the app and the referrer names the Pi CDN. Same host-suffix
+      // matching as pinet.com below: exact host or dotted suffix, never a substring.
+      var ref = '';
+      try { ref = (typeof document !== 'undefined' && document.referrer) ? document.referrer : ''; } catch (e) { ref = ''; }
+      var refHost = '';
+      var m = /^https?:\/\/([^\/:?#]+)/i.exec(ref);
+      if (m) refHost = m[1].toLowerCase();
+      var piSuffix = '.minepi.com';
+      var framed = false;
+      try { framed = (typeof window !== 'undefined') && (window.top !== window.self); } catch (e) { framed = true; }
+      if (framed && refHost.length > piSuffix.length &&
+          refHost.indexOf(piSuffix, refHost.length - piSuffix.length) !== -1) return 1;
       var host = (typeof location !== 'undefined' && location.hostname) ? location.hostname : '';
       host = host.toLowerCase();
       var suffix = '.pinet.com';
