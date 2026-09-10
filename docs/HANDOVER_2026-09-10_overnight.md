@@ -280,6 +280,10 @@ scope) - present since at least wave5-reg1, harmless to the markers, not investi
   `Builds/wave6-webgl.runner.txt` -> `[webgl] SUCCESS` (10:30); `tools/r2-ship.ps1` -> `R2_PARITY_OK objects=279` (10:30). Vercel preview
   `https://defenders-of-the-realm-v2-gky2hg3pk.vercel.app`, alias `https://defenders-pi.vercel.app` moved to it (HTTP 200, loader
   `2805beb6371223cebb37b9a84265c0b7.loader.js` = `Builds/WebGL/Build/`).
+- **Android production APK, sixth build (seventh wave):** `Builds/overnight-apk-status.txt` -> `APK_OK 11:31 size=444MB`,
+  `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=279`, `APK_DONE`; install `Success` (`Builds/wave7-install.runner.txt`,
+  11:31); `dumpsys versionName=2026.09.10.363866`; portrait flags still 0. Carries WO-1660 (gold chip at the floor, HUD seats ~4 px lower),
+  WO-1661 (ARMY UPGRADE badge, provisional word), WO-1662 (Night Market HUD title on two lines). Device proofs owed on it.
 - **Seeker install:** `install-apk-to-seeker.ps1 -Build:$false -Install:$true` -> `Performing Streamed
   Install / Success` on `SM02G4061955851` (00:23). Device frames under `Builds/device-frames/` and sent
   to the owner as they were taken.
