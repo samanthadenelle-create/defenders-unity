@@ -486,6 +486,9 @@ so WO-1653's "Crystals / wave" is proven headless only. Pushed: dev = `26c58799c
     chips-over-grid?
 12. **Locked ARMY CTA copy** (row 6.3) - it reads "VIEW BARRACKS" instead of a disabled "LOCKED". Keep as shipped?
 
+13. **Upgrade cost basket** (WO-1657) - the placed Quarry card charges Wood + Gold on upgrade: `building-tiers.json` CostGold, pinned by
+    BuildingUpgradeRegression:593, while WO-947 says regular = wood + iron. Does WO-947 govern upgrades (CostGold -> 0) or build cost only?
+
 ## 4. Findings the next seat must not re-derive
 
 - The compile gate's brace scanner has no interpolated-string model; `tools/gate_brace.py` is its port

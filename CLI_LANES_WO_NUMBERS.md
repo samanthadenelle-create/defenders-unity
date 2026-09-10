@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-eighth pass): main line next free = **1656**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-ninth pass): main line next free = **1658**.
+> WO-1656 (Manage Band_Notice / WorkspaceBack labels never receive text - likely a guard false positive) and WO-1657 (Quarry upgrade cost shows Gold; Level 0 of 4 while READY) minted by the DEVICE-FRAMES-2 lane on lead pre-assigned numbers.
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-eighth pass): main line next free = **1656**.
 > WO-1653 (placed resource building detail loses its production table), WO-1654 (troop stat rows: no icon channel, Damage -> Attack), WO-1655 (gate has no display name in either catalog) minted by the MANAGE-AUDIT lane on lead pre-assigned numbers.
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-seventh pass): main line next free = **1653**.
