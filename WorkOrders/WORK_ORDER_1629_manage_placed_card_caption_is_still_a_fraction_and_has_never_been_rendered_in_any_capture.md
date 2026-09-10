@@ -1,6 +1,6 @@
 # WO-1629 - Build Collections: the Manage Placed card's caption is still authored as a fraction of the card, and no capture has ever rendered it
 
-**Status:** BLOCKED - awaiting the eight-card capture; INSTRUMENTED step 1 (lane PLACED-CARD 2026-09-10)
+**Status:** BLOCKED - Step 2 needs a layout ruling; measured requirement exceeds the .21f ceiling at every aspect (lane PLACED-CARD 2026-09-10)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1629 -> 1631 in the SAME edit, with WO-1630)
 **Silo / Lane:** Village / BuildMode UI (`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
 **Severity:** P2 felt-legibility, with a P2 evidence defect attached. The caption carries the longest
@@ -468,3 +468,87 @@ instruction because Step 1 alone does not close the ticket — begin once the 24
 WO-1630 edits `UICaptureLaunch.cs:5825-5975` and is sequenced AFTER this lane; it must state which commit
 it rebased onto and re-confirm its own line numbers, since this lane added ~24 lines at `:8952-9005`,
 below its region.
+
+---
+
+## STEP 2 BLOCKED 2026-09-10 — the measured requirement does not fit under `.21f` at ANY aspect
+
+**Step 2 was NOT authored and Step 3 was NOT applied.** Step 1's numbers came back and they do not
+license the fix this ticket describes. sec.4 Step 2 anticipated this exact outcome and says what to do:
+*"If the measured requirement does not fit between `.21f` and the card's bottom, say so with the numbers
+rather than moving the title."* This section is that report.
+
+### 1. The three Manage Placed lines, verbatim from `Builds/wave2-capture5` (read this session)
+
+    [Flow:Build] collection=manage-placed card=ManagePlacedCard subtitle='Move, upgrade or sell anything already built.' bandPx=140.8x52.2 cardPx=167.6x326.2 gridPx=1454.7x342.2 fontSize=20 floor 20 ceiling 21 rendered=2 lines, 32 chars sourceLen=45 truncated=True preferredHeightPx=95.9 modes=Truncate / Normal
+    [Flow:Build] collection=manage-placed card=ManagePlacedCard subtitle='Move, upgrade or sell anything already built.' bandPx=156.7x43.2 cardPx=186.6x270.1 gridPx=1606.5x286.1 fontSize=20 floor 20 ceiling 21 rendered=1 lines, 16 chars sourceLen=45 truncated=True preferredHeightPx=71.8 modes=Truncate / Normal
+    [Flow:Build] collection=manage-placed card=ManagePlacedCard subtitle='Move, upgrade or sell anything already built.' bandPx=159x42.1 cardPx=189.3x263 gridPx=1628.1x279 fontSize=20 floor 20 ceiling 21 rendered=1 lines, 18 chars sourceLen=45 truncated=True preferredHeightPx=71.8 modes=Truncate / Normal
+
+The caption is **cut at all three aspects** — 32 / 16 / 18 of 45 characters — and the fitter has already
+been driven **onto the kit floor** (`fontSize=20`, `floor 20 ceiling 21`), so it has no shrink room left
+to spend. sec.2's "not proven that this caption truncates" is now closed: it truncates, everywhere.
+
+### 2. THE BLOCKER — the requirement exceeds the space the `.21f` top edge leaves, at every aspect
+
+The band can only hang **downward from `.21f`**, so its absolute ceiling is `.21 x cardHeight`. That
+ceiling already INCLUDES the `.05f` empty margin below today's caption — the margin is inside the number,
+not additional to it.
+
+| aspect | measured need (preferredHeightPx @ fontSize 20) | max band below `.21f` = `.21 x cardH` | short by AT LEAST |
+|---|---|---|---|
+| 1920x1080 | **95.9** | `.21 x 326.2` = **68.5** | **27.4 px** |
+| 2340x1080 | **71.8** | `.21 x 270.1` = **56.7** | **15.1 px** |
+| 2670x1200 | **71.8** | `.21 x 263.0` = **55.2** | **16.6 px** |
+
+**Those deficits are a LOWER BOUND, and the acceptance criterion makes them worse.** `preferredHeight`
+was computed at fontSize **20** — the floor the fitter was already driven to. The pass criterion is
+`fontSize=21`, and larger glyphs at the same width need at least as much height, never less. Scaling by
+21/20 with the line count held (an ESTIMATE, not a measurement — the probe never ran at 21) puts the need
+near **100.7 / 75.4 / 75.4**, i.e. short by roughly **32 / 19 / 20 px**. At 1920x1080 the line count may
+also go 4 -> 5, since that aspect has the NARROWEST band (140.8) and already needs one more line than the
+other two.
+
+**No band constant authored below `.21f` can clear this.** Authoring one to the maximum the geometry
+allows would still ship a truncated caption while claiming a fix, which is the failure CLAUDE.md sec.11B
+names. So nothing was authored.
+
+### 3. Every lever this ticket leaves open, and what forbids each
+
+- **(a) Move the title up** (`:530-538`, `.22f`-`.34f`). The only free vertical space on the card. sec.4
+  Step 2 explicitly says to REPORT rather than move it. **Needs a ruling.**
+- **(b) Shorten the copy** (`:514-516`). Forbidden by name, sec.6: *"Do not shorten, re-word or
+  abbreviate it to buy room."*
+- **(c) Lower the font floor.** Forbidden by name, sec.6 — `ElarionUiKit` / `ElarionUiKitObsidian` are
+  READ-ONLY and *"lowering a kit constant so one caption fits is the inverse of this fix."* The label is
+  already ON the floor regardless.
+- **(d) Shrink the artwork** (`:504-512`, `.38f`-`.91f`) or the divider (`.35f`-`.355f`) to give the lower
+  half of the card more room. Blocked by acceptance criterion 4, *"No neighbour moved."* **Needs a ruling.**
+- **(e) Widen the caption's x fractions** (`.08f`/`.92f`). sec.6 permits this *"unless Step 1 proves width
+  is implicated"* — and here it **is** implicated: the narrowest band (140.8) needs one more line than
+  156.7 / 159 do. But widening alone is **ESTIMATED insufficient**, and this is arithmetic, not a
+  measurement: the category cards render 2 lines at 47.6 px at fontSize 21, giving ~23.8 px per line, so
+  three lines cost ~71.4 px — already past the 68.5 px ceiling at 1920x1080 **even at full card width with
+  zero side margins**, which is not an acceptable layout anyway. Only a re-measure can settle it.
+
+### 4. What this needs
+
+**A layout ruling on which neighbour yields.** The deficit is roughly **15-30 px of vertical real estate**
+on a card whose lower `.21` is fully spoken for — not a rounding error a constant can absorb. The caption
+needs about three lines at fontSize 21 (~71-76 px) against the 55.2-68.5 px the card gives below `.21f`.
+
+### 5. Step 3 was deliberately NOT applied
+
+`BuildCollectionPlayerRegression.cs:205-209` counts the retired `new Vector2(.08f, .05f)` pair to **one**
+*because* the Manage Placed caption legitimately still carries it. On this tree it still does (`:514`,
+verified this session — exactly one occurrence). Tightening the clause to zero now would **red that pin on
+the very next gate**. The tightening belongs in the same change as the re-point, exactly as the pin's own
+comment says, and the re-point is what is blocked.
+
+### 6. WO-1628's acceptance IS re-asserted on the eight-card grid — it HOLDS
+
+Read from the same log, all **24** lines present (8 cards x 3 aspects, the count sec.4 requires). All 21
+category lines read `fontSize=21 floor 20 ceiling 21`, `rendered=2 lines, 22 chars`, `sourceLen=22`,
+`truncated=False`, `bandPx` height **50**, `preferredHeightPx=47.6` — on card widths **167.6 / 186.6 /
+189.3**. So `CaptionBandPx = 50f` still clears its 47.6 px requirement on the narrower eight-card grid,
+with the same 2.4 px of headroom. **sec.5.3 is satisfied and WO-1628 does NOT re-open.** The risk sec.2
+flagged did not materialise.
