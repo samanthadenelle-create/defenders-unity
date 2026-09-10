@@ -187,6 +187,11 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
   .knob-controls input{min-height:var(--bigtap);font-size:26px;text-align:center;flex:1 1 150px;width:auto}
   .knob-controls button{min-height:var(--bigtap);flex:1 1 150px;font-size:17px;font-weight:700}
   .knob-controls .bump{flex:0 0 84px;font-size:30px}
+  /* WO-1348: the VFX pick control. Full-width because an effect NAME is long and must
+     never be truncated on a phone, and >= --bigtap because this is a thumb target. */
+  .knob-controls select{min-height:var(--bigtap);font-size:18px;flex:1 1 100%;width:100%;
+    padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
+    color:var(--text)}
   .knob-clear{border-color:var(--accent)}
   .knob-note{color:var(--dim);font-size:12px;margin:9px 0 0;overflow-wrap:anywhere}
   .bool-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
@@ -1187,10 +1192,33 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
 
   function boolWord(v){ return v ? 'ON' : 'OFF'; }
 
+  /* WO-1348: a knob whose value NAMES a thing rather than measures one. The manifest
+     carries the option pool; the page renders it as a named picker, because "13" is not
+     a choice anybody can make about how the game looks. */
+  function optionsOf(k){ return (k.options && k.options.length) ? k.options : null; }
+
+  /* The words for one option id. 0 is always "the effect the game ships with", and an id
+     the pool does not carry says so IN WORDS rather than being drawn as a plain number -
+     an unresolvable pick is the one state that must never look like a working one. */
+  function optionWord(k, id){
+    if (id === 0) return 'The effect the game ships with';
+    var opts = optionsOf(k);
+    if (opts){
+      for (var i = 0; i < opts.length; i++){
+        if (opts[i].id === id){
+          return opts[i].prefab + ' (from ' + opts[i].key + ')' +
+                 (opts[i].isLoop ? ' - continuous' : ' - one-shot');
+        }
+      }
+    }
+    return 'Number ' + id + ' - NOT IN THIS BUILD, so the game is using the shipped effect';
+  }
+
   function renderKnob(k){
     var now = knobNow(k);
     var isBool = k.kind === 'bool';
-    var shipped = isBool ? boolWord(k.def) : String(k.def);
+    var opts = optionsOf(k);
+    var shipped = isBool ? boolWord(k.def) : (opts ? optionWord(k, k.def) : String(k.def));
 
     var numTxt, stateTxt, stateCls;
     if (!now.known){
@@ -1203,7 +1231,7 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
                  '. Reset it.';
       stateCls = ' overridden';
     } else {
-      numTxt = isBool ? boolWord(now.value) : String(now.value);
+      numTxt = isBool ? boolWord(now.value) : (opts ? esc(optionWord(k, now.value)) : String(now.value));
       stateTxt = now.overridden
         ? ('OVERRIDDEN (the installed game ships with ' + shipped + ')')
         : 'Shipped default - nothing is overriding it';
@@ -1226,6 +1254,36 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
         '" data-shipped="' + esc(shipped) + '">Reset to shipped (' + esc(shipped) + ')</button></div>' +
         '<p class="knob-note">Reset REMOVES the override so the knob answers the installed ' +
         'game. That is not the same as turning it off.</p>';
+    } else if (opts){
+      // WO-1348 - THE VFX PICKER. Everything it offers is already in the build: an option
+      // names a key the owner ALREADY tagged, so a pick can never point at art that was
+      // never shipped. That limit is CLAUDE.md section 16's lesson - unshipped art fails
+      // with NO ERROR ON SCREEN, and the picker must not be able to reproduce it.
+      var startId = (now.known && now.value !== null) ? now.value : k.def;
+      var sel = '<select class="knob-select" data-key="' + esc(k.key) + '">' +
+        '<option value="0"' + (startId === 0 ? ' selected' : '') + '>' +
+        esc(optionWord(k, 0)) + '</option>';
+      for (var oi = 0; oi < opts.length; oi++){
+        var o = opts[oi];
+        sel += '<option value="' + o.id + '"' + (o.id === startId ? ' selected' : '') + '>' +
+          esc(o.prefab + ' (from ' + o.key + ')' + (o.isLoop ? ' - continuous' : ' - one-shot')) +
+          '</option>';
+      }
+      // An id the pool does not carry must still be SELECTABLE-VISIBLE rather than silently
+      // snapping the control to something else, or the page would imply a pick applied that
+      // did not. It says, in words, that the game is using the shipped effect.
+      if (startId !== 0 && optionWord(k, startId).indexOf('NOT IN THIS BUILD') >= 0){
+        sel += '<option value="' + startId + '" selected>' + esc(optionWord(k, startId)) + '</option>';
+      }
+      sel += '</select>';
+
+      h += '<div class="knob-controls">' + sel + '</div>' +
+        '<div class="knob-controls">' +
+        '<button class="primary knob-save-select" data-key="' + esc(k.key) + '">Save this pick</button>' +
+        '<button class="knob-clear" data-key="' + esc(k.key) + '" data-shipped="0">' +
+          'Reset to the shipped effect</button>' +
+        '</div>' +
+        (k.optionsNote ? '<p class="knob-note">' + esc(k.optionsNote) + '</p>' : '');
     } else {
       var st = step(k);
       var startVal = (now.known && now.value !== null) ? now.value : k.def;
@@ -1636,6 +1694,27 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
           'with ' + sspec.def + '. Players in a running game pick this up in about 40 seconds.')) return;
       save.disabled = true;
       writeKnob(sk, String(want), sspec.label + ' set to ' + want + '.');
+      return;
+    }
+    // WO-1348 - THE VFX PICK. Same one writer as every other knob (writeKnob); only the
+    // control differs, because the value is a NAME and not a measurement.
+    var savePick = e.target.closest('.knob-save-select');
+    if (savePick){
+      var pk = savePick.getAttribute('data-key');
+      var pspec = knobSpec(pk);
+      var psel = $('body').querySelector('.knob-select[data-key="' + pk + '"]');
+      if (!pspec || !psel) return;
+      var pid = parseInt(String(psel.value).trim(), 10);
+      if (!isFinite(pid)){ flash('REFUSED: no pick was chosen.', true); return; }
+      var pword = optionWord(pspec, pid);
+      // The timing is said BEFORE the write, in the confirm, because "I changed it and
+      // nothing happened" is the whole failure mode this feature has to avoid.
+      if (!window.confirm('Set "' + pspec.label + '" to: ' + pword +
+          '? This takes effect on the NEXT TOWN LOAD - leave town and come back, or restart ' +
+          'the game. Nothing already on screen changes.')) return;
+      savePick.disabled = true;
+      writeKnob(pk, String(pid), pspec.label + ' set to ' + pword +
+        '. It applies on the next town load, not right now.');
       return;
     }
     var on = e.target.closest('.knob-on, .knob-off');

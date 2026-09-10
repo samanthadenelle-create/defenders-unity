@@ -274,6 +274,61 @@ namespace DeNelle.Village
             });
         }
 
+        /// <summary>
+        /// WO-1348: the Command Center re-pointed one or more VFX keys, and the new picks are
+        /// standing as of this town load. Drop the IDLE pooled bodies for exactly those keys so
+        /// the next play instantiates from the NEW prefab.
+        /// <para>
+        /// ⛔ THIS IS NOT LIVE HOT-SWAPPING, which the work order forbids by name: nothing that is
+        /// currently PLAYING is touched, re-parented or stopped. Only bodies sitting idle in the
+        /// free queue are destroyed, and only for keys whose answer actually changed.
+        /// </para>
+        /// <para>
+        /// Without it the change would silently not take: this manager is DontDestroyOnLoad and
+        /// its pools are keyed by VFX key, so a key played before the re-pick would keep handing
+        /// out bodies built from the OLD prefab for the rest of the session - the exact
+        /// "I picked it and nothing happened" the owner cannot debug from a phone.
+        /// </para>
+        /// Guarded (§12): a flush failure degrades to "the old bodies stay pooled", never a throw
+        /// into a scene-load path.
+        /// </summary>
+        private void OnVfxPickSnapshotChanged(IReadOnlyList<string> changedKeys)
+        {
+            if (changedKeys == null || changedKeys.Count == 0) return;
+
+            Guard.Try("VFXManager", "flush idle hovl pools for re-picked VFX keys", () =>
+            {
+                int destroyed = 0, keysTouched = 0;
+                for (int i = 0; i < changedKeys.Count; i++)
+                {
+                    string key = changedKeys[i];
+                    if (string.IsNullOrEmpty(key)) continue;
+
+                    _hovlWarmedKeys.Remove(key);   // let the next play re-warm from the NEW prefab
+                    if (!_hovlPools.TryGetValue(key, out var q) || q == null) continue;
+
+                    keysTouched++;
+                    while (q.Count > 0)
+                    {
+                        var go = q.Dequeue();
+                        if (go == null) continue;
+                        _hovlKeyOf.Remove(go);
+                        Destroy(go);
+                        destroyed++;
+                    }
+                }
+
+                _hovlWarmedInstances -= destroyed;
+                if (_hovlWarmedInstances < 0) _hovlWarmedInstances = 0;
+
+                FlowTrace.Warn("VFXManager",
+                    $"VFX PICK FLUSH: {changedKeys.Count} key(s) were re-pointed from the Command Center " +
+                    $"({string.Join(",", changedKeys)}); destroyed {destroyed} IDLE pooled body(ies) across " +
+                    $"{keysTouched} warmed key(s) so the next play builds from the NEW prefab. Nothing " +
+                    "currently playing was touched - this is a pool flush, not a hot-swap.");
+            });
+        }
+
         /// <summary>Pooled Hovl instances built so far this session (WO-1113 regression hook).
         /// 0 immediately after boot when the warm is demand-driven.</summary>
         public int HovlWarmedInstanceCount => _hovlWarmedInstances;

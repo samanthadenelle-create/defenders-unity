@@ -70,3 +70,15 @@ Assets/Firebase/**/*.exe filter=lfs diff=lfs merge=lfs -text
 # Google Sign-In plugin native lib -> LFS
 Assets/GoogleSignIn/**/*.srcaar filter=lfs diff=lfs merge=lfs -text
 Assets/GoogleSignIn/**/*.aar filter=lfs diff=lfs merge=lfs -text
+
+# WO-1348 - the GENERATED VFX pick option pool ships as TWO byte-identical copies (the
+# Command Center reads one, the build reads the other) and test/vfx-pick-options.test.js
+# pins them LF-only. core.autocrlf is true on this machine and .gitattributes carries no
+# *.json rule, so without these two lines a FRESH CLONE would check both files out as CRLF
+# and that oracle would go red on a defect that is git configuration, not content.
+api/_lib/vfx-pick-options.generated.json text eol=lf
+# ... and the SAME hazard for the older generated spine, PROVEN not theorised: a stash pop
+# on 2026-09-10 re-checked it out as CRLF and turned test/tunables-manifest.test.js red on
+# content that had not changed at all.
+api/_lib/tunable-manifest.generated.json text eol=lf
+Assets/Resources/VFX/vfx-pick-options.generated.json text eol=lf

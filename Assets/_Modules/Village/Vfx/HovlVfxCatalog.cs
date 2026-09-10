@@ -23,6 +23,7 @@
 // =============================================================================
 
 using System.Collections.Generic;
+using DeNelle.Core.Vfx;   // WO-1348 - the Command Center pick override layer
 using UnityEngine;
 
 namespace DeNelle.Village
@@ -87,11 +88,71 @@ namespace DeNelle.Village
         /// <summary>
         /// Try to get the row for a given key. Returns false when the key is not in the
         /// catalog (caller no-ops).
+        /// <para>
+        /// ⭐ WO-1348: THIS IS THE ONE PLACE EVERY VFX KEY BECOMES A PREFAB, so it is the one
+        /// place the Command Center's remote pick is applied. Every consumer of this catalog -
+        /// VFXManager.PlayKey, towers, enemies, auras, abilities - therefore resolves through
+        /// the override layer without a single call-site edit.
+        /// </para>
+        /// <para>
+        /// ⛔ THE INVARIANT: no row, no network, no parse, no option pool => the build-time pick,
+        /// BYTE FOR BYTE. <see cref="VfxPickOverrides.Resolve"/> answers "no override" for every
+        /// failure it can have, so the two lines below are pure additions in front of the
+        /// existing lookup and cannot change today's answer when the table is empty.
+        /// </para>
+        /// <para>
+        /// An override BORROWS the prefab of another tagged key. It deliberately does NOT borrow
+        /// that key's loop-ness when this key already has a row: a call site that asked for a
+        /// oneshot and received a loop would never see the effect returned to the pool. A
+        /// loop/oneshot mismatch is REFUSED and traced rather than papered over.
+        /// </para>
         /// </summary>
         public bool TryGet(string key, out Row row)
         {
             if (_map == null) BuildLookup();
-            return _map.TryGetValue(key, out row);
+            bool haveBase = _map.TryGetValue(key, out row);
+
+            var pick = VfxPickOverrides.Resolve(key);
+            if (!pick.HasOverride) return haveBase;
+
+            if (!_map.TryGetValue(pick.SourceKey, out var source) || source.Prefab == null)
+            {
+                // The option named a key this BUILD's catalog cannot resolve. Fall back and SAY SO -
+                // CLAUDE.md section 16: art that is picked but never shipped fails with no error on
+                // screen, and that silence has cost this project three separate incidents.
+                // Throttled, not Warn-per-call: TryGet runs on EVERY play, and a Warn on a hot path
+                // floods the device logcat ring and evicts the boot window - destroying the very
+                // evidence the trace exists to capture. 30 s matches RemoteTunables' bad-row line.
+                DeNelle.Core.Diagnostics.FlowTrace.Throttle(VfxPickOverrides.Sys,
+                    "fallback-nosource:" + key + "=" + pick.OptionId, 30f,
+                    $"FELL BACK for key '{key}': option id {pick.OptionId} names catalog key " +
+                    $"'{pick.SourceKey}', which has no row or no prefab in THIS build's HovlVfxCatalog. " +
+                    $"source={pick.Source} || the build-time pick is rendering, unchanged. Adding a prefab " +
+                    "to the pool is still a build - this feature changes WHICH shipped effect is used, " +
+                    "never WHICH effects exist.");
+                return haveBase;
+            }
+
+            if (haveBase && source.IsLoop != row.IsLoop)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Throttle(VfxPickOverrides.Sys,
+                    "fallback-loopmismatch:" + key + "=" + pick.OptionId, 30f,
+                    $"FELL BACK for key '{key}': option id {pick.OptionId} ('{pick.SourceKey}') is " +
+                    $"{(source.IsLoop ? "a LOOP" : "a ONESHOT")} and '{key}' is consumed as " +
+                    $"{(row.IsLoop ? "a LOOP" : "a ONESHOT")}. source={pick.Source} || honouring it would " +
+                    "hand the call site an effect it cannot stop or cannot return to the pool, so the " +
+                    "build-time pick is rendering, unchanged. Pick an option with matching loop-ness.");
+                return haveBase;
+            }
+
+            var picked = haveBase ? row : source;   // creation case inherits the option's whole shape
+            picked.Key = key;
+            picked.Prefab = source.Prefab;
+            if (!haveBase) picked.IsLoop = source.IsLoop;
+            row = picked;
+
+            VfxPickOverrides.TraceApplied(key, pick, source.Prefab.name, created: !haveBase);
+            return true;
         }
 
         private void OnEnable() => BuildLookup();

@@ -1,0 +1,1223 @@
+{
+    "_generated": "DO NOT HAND-EDIT. Produced by tools/gen-vfx-pick-options.mjs from Assets/Editor/VfxManualPicks.json. Two byte-identical copies exist on purpose - api/_lib/vfx-pick-options.generated.json is read by the Command Center and Assets/Resources/VFX/vfx-pick-options.generated.json is read by the build; the server cannot read a Unity asset and the build cannot reach api/_lib/. IDS ARE STABLE AND APPEND-ONLY: an id, once assigned, is never reassigned, and a key that leaves the tag file keeps its id reserved (retired:true) rather than freeing it, because a freed id would silently re-point a row the owner already set. An entry with unresolved:true is TAGGED BY THE OWNER but has no resolvable row in Assets/Resources/VFX/HovlVfxCatalog.asset (usually a gitignored art pack that was not imported when the catalog was baked); it is NOT offered as a pick and its tag is never deleted, so importing the pack and rebaking makes the SAME id offerable again. test/vfx-pick-options.test.js pins both copies byte-for-byte.",
+    "source": "Assets/Editor/VfxManualPicks.json",
+    "catalog": "Assets/Resources/VFX/HovlVfxCatalog.asset",
+    "options": [
+        {
+            "id": 1,
+            "key": "Aegis_Cast",
+            "prefab": "Magic shield holy",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 2,
+            "key": "Arcane_Cast",
+            "prefab": "Flash 16 fire",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 3,
+            "key": "Arcane_Impact",
+            "prefab": "PlasmaExplosionEffect",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 4,
+            "key": "Arcane_Projectile",
+            "prefab": "Buff orange shot",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 5,
+            "key": "ArcaneTower-Baselevel_Projectile",
+            "prefab": "2D Projectile 7 pink",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 6,
+            "key": "ArcaneTower_Aura",
+            "prefab": "Fog_electric",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 7,
+            "key": "ARcaneTower_Projectile",
+            "prefab": "Buff orange shot",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 8,
+            "key": "ArcherTower-Fire_Projectile",
+            "prefab": "Projectile 16 fire",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 9,
+            "key": "ArcherTower-Ice_Projectile",
+            "prefab": "Projectile 14 blue rapid",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 10,
+            "key": "ArcherTower_Projectile",
+            "prefab": "Projectile 13 red laser",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 11,
+            "key": "ArcherTowerLevel1_Projectile",
+            "prefab": "2D Projectile 21 red arrow",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 12,
+            "key": "ArcherTowerLevel2_Projectile",
+            "prefab": "2D Projectile 20 pink arrow",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 13,
+            "key": "atfootprintoftree_Aura",
+            "prefab": "Aura_Nature",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 14,
+            "key": "AuraOverArcaneTower_Aura",
+            "prefab": "2D Projectile 18 nova orange",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 15,
+            "key": "BossDeath_Impact",
+            "prefab": "Elite_Death",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 16,
+            "key": "BurningStructure_Aura",
+            "prefab": "pf_vfx-ult_demo_psys_loop_fire",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 17,
+            "key": "BurningStructure_Impact",
+            "prefab": "pf_vfx-ult_demo_psys_loop_fire",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 18,
+            "key": "Cathedral_Aura",
+            "prefab": "Magic circle electro loop",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 19,
+            "key": "Cleave_Impact",
+            "prefab": "Energy explosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 20,
+            "key": "DailyChestCollect_Aura",
+            "prefab": "backlight_coin",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 21,
+            "key": "DangercastAOERange_Cast",
+            "prefab": "Marker 7 Danger zone Loop",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 22,
+            "key": "DefenseUp-Offhand(Shield)_Aura",
+            "prefab": "Magic shield holy",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 23,
+            "key": "DragonFire_Cast",
+            "prefab": "Flamethrower",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 24,
+            "key": "DragonFire_Impact",
+            "prefab": "Hit 20 pink arrow",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 25,
+            "key": "Electricityimpact_Impact",
+            "prefab": "Projectile 2 electro",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 26,
+            "key": "ElectricitySpell_Cast",
+            "prefab": "Projectile 2 electro",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 27,
+            "key": "ElectricitySpell_Impact",
+            "prefab": "Projectile 2 electro",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 28,
+            "key": "EliteDeath_Impact",
+            "prefab": "Elite_Death",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 29,
+            "key": "EndGameCAstingAnimation_Impact",
+            "prefab": "Hit_light",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 30,
+            "key": "EnemyCast_Cast",
+            "prefab": "Casting_Dark_3",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 31,
+            "key": "EnhamcingBuff_Cast",
+            "prefab": "Projectile dragon punch",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 32,
+            "key": "Explosion_Impact",
+            "prefab": "BigExplosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 33,
+            "key": "Fire_Cast",
+            "prefab": "Hit 16 fire",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 34,
+            "key": "Fireball_Cast",
+            "prefab": "Hit 16 fire",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 35,
+            "key": "Fireball_Impact",
+            "prefab": "Hit 25 orange explosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 36,
+            "key": "Fireball_Projectile",
+            "prefab": "Projectile 25 orange explosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 37,
+            "key": "FireballImpact_Impact",
+            "prefab": "Projectile 25 orange explosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 38,
+            "key": "FireballTower_Projectile",
+            "prefab": "Projectile 25 orange explosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 39,
+            "key": "FireFromTower-ArcaneTowerLevel3_Aura",
+            "prefab": "Buff orange shot",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 40,
+            "key": "FireImpact_Impact",
+            "prefab": "Hit 25 orange explosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 41,
+            "key": "firespell_Cast",
+            "prefab": "Spell_Fire_9",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 42,
+            "key": "Fountain_Heal_Aura",
+            "prefab": "Druid aura",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 43,
+            "key": "Freezing_Impact",
+            "prefab": "Projectile dragon punch",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 44,
+            "key": "Freezing_Projectile",
+            "prefab": "Flash 10 blue laser",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 45,
+            "key": "Frost_Impact",
+            "prefab": "Projectile dragon punch",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 46,
+            "key": "Frost_Projectile",
+            "prefab": "Projectile 14 blue rapid",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 47,
+            "key": "FTUEPointerofwheretogo_Aura",
+            "prefab": "Marker 1 arrows Loop",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 48,
+            "key": "Haste_Cast",
+            "prefab": "Aura_acceleration",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 49,
+            "key": "Heal_Aura",
+            "prefab": "Buff palladin",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 50,
+            "key": "Heal_Cast",
+            "prefab": "Buff white twist",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 51,
+            "key": "HealingFountain_Aura",
+            "prefab": "Druid aura",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 52,
+            "key": "Holy_Aura",
+            "prefab": "Magic circle dark star",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 53,
+            "key": "Holy_Impact",
+            "prefab": "Hit_light",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 54,
+            "key": "icebasedprojectile_Projectile",
+            "prefab": "IceLance",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 55,
+            "key": "IceWeaponAura_Aura",
+            "prefab": "Explosion_Ice",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 56,
+            "key": "Junk-DoNotuse_Cast",
+            "prefab": "Projectile 16 fire",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 57,
+            "key": "KnightShieldBash_Impact",
+            "prefab": "Dragon punch flash",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 58,
+            "key": "KnightShieldBuff_Aura",
+            "prefab": "Buff_Light",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": true
+        },
+        {
+            "id": 59,
+            "key": "KnightThrust_Impact",
+            "prefab": "Dragon punch",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 60,
+            "key": "KnightWeaponskill_Impact",
+            "prefab": "Energy explosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 61,
+            "key": "lighteningOnSpellLand_Impact",
+            "prefab": "Electro splash",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 62,
+            "key": "Lightningspellmaybe_Cast",
+            "prefab": "Lightning strike",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 63,
+            "key": "LongCastSpell_Cast",
+            "prefab": "Buff chain",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 64,
+            "key": "MageMeoteorAOE_Cast",
+            "prefab": "top_down_stone_line",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 65,
+            "key": "Melee_Impact",
+            "prefab": "2D Projectile 24 green explosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 66,
+            "key": "Melee_Slash",
+            "prefab": "Dragon punch",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 67,
+            "key": "NightStoreoption_Aura",
+            "prefab": "top_down_starfall_line_blue",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 68,
+            "key": "Node_Aura",
+            "prefab": "Aura_TalentNode",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 69,
+            "key": "NoneMageHealingCast_Cast",
+            "prefab": "Buff white twist",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 70,
+            "key": "onweaponskillmaybe_Impact",
+            "prefab": "Hit 20 pink arrow",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 71,
+            "key": "portal(rotate)_Aura",
+            "prefab": "Magic circle dark star",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 72,
+            "key": "Portal_Threshold_Aura",
+            "prefab": "pf_vfx-ult_demo_psys_loop_portalBlue",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 73,
+            "key": "Posion_Cast",
+            "prefab": "Spell_Nature_2_Green Variant",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 74,
+            "key": "PosionCloud_Cast",
+            "prefab": "Hit 24 green explosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 75,
+            "key": "PP_BigExplosion",
+            "prefab": "BigExplosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 76,
+            "key": "PP_BigSplash",
+            "prefab": "BigSplash",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 77,
+            "key": "PP_Candles",
+            "prefab": "Candles",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 78,
+            "key": "PP_Dissolve",
+            "prefab": "Dissolve",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 79,
+            "key": "PP_DissolveSolidHorizontal",
+            "prefab": "DissolveSolidHorizontal",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 80,
+            "key": "PP_DustExplosion",
+            "prefab": "DustExplosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 81,
+            "key": "PP_DustMotesEffect",
+            "prefab": "DustMotesEffect",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 82,
+            "key": "PP_DustStorm",
+            "prefab": "DustStorm",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 83,
+            "key": "PP_EarthShatter",
+            "prefab": "EarthShatter",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 84,
+            "key": "PP_ElectricalSparks",
+            "prefab": "ElectricalSparks",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 85,
+            "key": "PP_ElectricalSparksEffect",
+            "prefab": "ElectricalSparksEffect",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 86,
+            "key": "PP_EllenDissolve",
+            "prefab": "EllenDissolve",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 87,
+            "key": "PP_EllenRespawn",
+            "prefab": "EllenRespawn",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 88,
+            "key": "PP_EnergyExplosion",
+            "prefab": "EnergyExplosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 89,
+            "key": "PP_FireBall",
+            "prefab": "FireBall",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 90,
+            "key": "PP_FireFlies",
+            "prefab": "FireFlies",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 91,
+            "key": "PP_FlameStream",
+            "prefab": "FlameStream",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 92,
+            "key": "PP_FlameThrower",
+            "prefab": "FlameThrower",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 93,
+            "key": "PP_FleshImpacts",
+            "prefab": "FleshImpacts",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 94,
+            "key": "PP_GoopSpray",
+            "prefab": "GoopSpray",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 95,
+            "key": "PP_GoopSprayEffect",
+            "prefab": "GoopSprayEffect",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 96,
+            "key": "PP_GoopStreamEffect",
+            "prefab": "GoopStreamEffect",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 97,
+            "key": "PP_GroundFog",
+            "prefab": "GroundFog",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 98,
+            "key": "PP_HeatDistortion",
+            "prefab": "HeatDistortion",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 99,
+            "key": "PP_IceLance",
+            "prefab": "IceLance",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 100,
+            "key": "PP_LargeFlames",
+            "prefab": "LargeFlames",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 101,
+            "key": "PP_LightnigStormCloud",
+            "prefab": "LightnigStormCloud",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 102,
+            "key": "PP_MediumFlames",
+            "prefab": "MediumFlames",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 103,
+            "key": "PP_MetalImpacts",
+            "prefab": "MetalImpacts",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 104,
+            "key": "PP_MuzzleFlash",
+            "prefab": "MuzzleFlash",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 105,
+            "key": "PP_PlasmaExplosionEffect",
+            "prefab": "PlasmaExplosionEffect",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 106,
+            "key": "PP_PoisonGas",
+            "prefab": "PoisonGas",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 107,
+            "key": "PP_PressurisedSteam",
+            "prefab": "PressurisedSteam",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 108,
+            "key": "PP_RainEffect",
+            "prefab": "RainEffect",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 109,
+            "key": "PP_Respawn",
+            "prefab": "Respawn",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 110,
+            "key": "PP_RisingSteam",
+            "prefab": "RisingSteam",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 111,
+            "key": "PP_RocketTrail",
+            "prefab": "RocketTrail",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 112,
+            "key": "PP_SandImpacts",
+            "prefab": "SandImpacts",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 113,
+            "key": "PP_SandSwirlsEffect",
+            "prefab": "SandSwirlsEffect",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 114,
+            "key": "PP_Shower",
+            "prefab": "Shower",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 115,
+            "key": "PP_SmallExplosion",
+            "prefab": "SmallExplosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 116,
+            "key": "PP_SmokeEffect",
+            "prefab": "SmokeEffect",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 117,
+            "key": "PP_SparksEffect",
+            "prefab": "SparksEffect",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 118,
+            "key": "PP_Steam",
+            "prefab": "Steam",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 119,
+            "key": "PP_StoneImpacts",
+            "prefab": "StoneImpacts",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 120,
+            "key": "PP_TinyExplosion",
+            "prefab": "TinyExplosion",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 121,
+            "key": "PP_TinyFlames",
+            "prefab": "TinyFlames",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 122,
+            "key": "PP_WaterFall",
+            "prefab": "WaterFall",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 123,
+            "key": "PP_WaterLeak",
+            "prefab": "WaterLeak",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 124,
+            "key": "PP_WildFire",
+            "prefab": "WildFire",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 125,
+            "key": "PP_WoodImpacts",
+            "prefab": "WoodImpacts",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 126,
+            "key": "RangedAttack-DaggerThrow_Projectile",
+            "prefab": "2D Projectile 8 dagger",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 127,
+            "key": "RangedSpell-Powerful(Longcast)_Cast",
+            "prefab": "2D Projectile 17 nova violet",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 128,
+            "key": "RangerTowerBaseProjectile_Projectile",
+            "prefab": "2D Projectile 1 nature arrow",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 129,
+            "key": "RangerTowerlevel2Projectile_Projectile",
+            "prefab": "2D Projectile 14 blue rapid",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 130,
+            "key": "RangerTowerUpgraded_Projectile",
+            "prefab": "Projectile 7 pink",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 131,
+            "key": "ShieldBuff_Aura",
+            "prefab": "Shield_gold",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 132,
+            "key": "ShieldBuff_Cast",
+            "prefab": "Casting_Arcane",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 133,
+            "key": "SimpleCast_Cast",
+            "prefab": "Flash 16 fire",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 134,
+            "key": "SimpleCast_Projectile",
+            "prefab": "Flash 10 blue laser",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 135,
+            "key": "Sleep_Impact",
+            "prefab": "Character_status_sleep",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 136,
+            "key": "softhealingaura_Aura",
+            "prefab": "Buff palladin",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 137,
+            "key": "Spear_Projectile",
+            "prefab": "2D Projectile 1 nature arrow",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 138,
+            "key": "SpecialAbilityMage_Cast",
+            "prefab": "top_down_starfall_line_blue",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 139,
+            "key": "Store_Aura",
+            "prefab": "Loot_flicker",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 140,
+            "key": "subtleHealinginarea(EnemySkill-Mage)_Cast",
+            "prefab": "Buff orange circle",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 141,
+            "key": "targetforSpell_Impact",
+            "prefab": "Marker 2 Pointer Loop",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 142,
+            "key": "Thunderbolt_Cast",
+            "prefab": "Projectile 2 electro",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 143,
+            "key": "Thunderbolt_Impact",
+            "prefab": "Projectile 2 electro",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 144,
+            "key": "Thunderbolt_Projectile",
+            "prefab": "Projectile 2 electro",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 145,
+            "key": "thundercast_Cast",
+            "prefab": "Projectile 2 electro",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 146,
+            "key": "thundercast_Projectile",
+            "prefab": "Projectile 2 electro",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 147,
+            "key": "Treasure_Aura",
+            "prefab": "Loot_iddle",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 148,
+            "key": "TreeofLifeAura_Aura",
+            "prefab": "FireFlies",
+            "isLoop": true,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 149,
+            "key": "UpgradeStructureComplete_Aura",
+            "prefab": "Fireworks",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 150,
+            "key": "UpgradeVisual_Aura",
+            "prefab": "Orbs_fire",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 151,
+            "key": "Water_Projectile",
+            "prefab": "Projectile 9 water",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        },
+        {
+            "id": 152,
+            "key": "Weaponskillsword_Impact",
+            "prefab": "Hit 5 red",
+            "isLoop": false,
+            "retired": false,
+            "unresolved": false
+        }
+    ]
+}

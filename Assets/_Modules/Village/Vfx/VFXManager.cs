@@ -106,6 +106,14 @@ namespace DeNelle.Village
             // moment the owner actually flags "random vfx stuck around" — she presses F8 and moves
             // on, and the table is already in the log.
             BreakCaptureHarness.CaptureSnapshotRequested += DumpLiveLoops;
+
+            // WO-1348: this singleton is DontDestroyOnLoad and its Hovl pools are keyed by VFX key,
+            // so an IDLE pooled body built from the OLD prefab would outlive a town load and keep
+            // being handed out after the owner re-picked that key from the Command Center - the
+            // change would "not work" for no visible reason. Dropping IDLE bodies for exactly the
+            // keys whose pick changed is NOT the live hot-swap the work order forbids: nothing that
+            // is currently playing is touched, re-parented, or stopped.
+            DeNelle.Core.Vfx.VfxPickOverrides.SnapshotChanged += OnVfxPickSnapshotChanged;
         }
 
         // WO-504: the VFXCatalog is a ScriptableObject asset (VFXType -> authored prefab).
@@ -138,6 +146,9 @@ namespace DeNelle.Village
             // WO-1057: a static event holding a destroyed MonoBehaviour would dump against a dead
             // manager on the next capture (and leak it across an editor domain reload).
             BreakCaptureHarness.CaptureSnapshotRequested -= DumpLiveLoops;
+            // WO-1348: same reason - a static event holding a destroyed manager would flush pools
+            // on a dead instance and leak it across an editor domain reload.
+            DeNelle.Core.Vfx.VfxPickOverrides.SnapshotChanged -= OnVfxPickSnapshotChanged;
             if (Instance == this) Instance = null;
         }
 

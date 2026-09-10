@@ -1,6 +1,16 @@
 # WORK ORDER 1348 - Tag VFX from the Command Center, and see it on the next town load
 
-**Status:** READY TO IMPLEMENT - ⛔ **DISPATCH HELD** until the WO-1343/1344/1345/1346/1347 agents land
+**Status:** IMPLEMENTED 2026-09-10 - the `realm.vfx.<key>` override layer is built end to end
+(stable append-only option ids over the owner's own tagged picks, resolved at scene load through the
+ONE seam `HovlVfxCatalog.TryGet`, four knobs registered across all five join sources, a named picker
+in the Command Center) and pinned by a new node oracle + a new editor regression. NOT gated, NOT
+committed - handed to the lead. Owner still felt-verifies on her phone and CLOSES.
+
+> ⚠ THE ORIGINAL STATUS LINE IS KEPT BELOW VERBATIM AS HISTORY (CLAUDE.md section 15 - flag, do
+> not silently overwrite). Its DISPATCH HELD condition was already released by the 2026-09-09 banner
+> that follows it.
+
+**Status (superseded, minted 2026-09-03):** READY TO IMPLEMENT - ⛔ **DISPATCH HELD** until the WO-1343/1344/1345/1346/1347 agents land
 and the tree is gated. Three of them are already authoring tunables; a sixth agent in the same registry
 is the exact collision each of them was warned about. Release after the gate.
 

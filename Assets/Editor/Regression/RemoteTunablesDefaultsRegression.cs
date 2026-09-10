@@ -134,7 +134,11 @@ namespace DeNelle.Editor.Regression
         // every lane must land on is 46, not 44.
         // WO-1594 (owner ruling 2026-09-09, "Tunables with those defaults") adds the 47th, 48th
         // and 49th - the three raid HONOR MILESTONES - taking the count to 49.
-        private const int ExpectedKnobCount = 52;
+        // WO-1348 adds the 53rd, 54th, 55th and 56th - the four realm.vfx.* PICKS - taking the
+        // count to 56. Measured, not guessed: `node tools/gen-tunable-manifest.mjs` re-parsed
+        // RemoteTunables.Registry on 2026-09-10 and printed
+        // "TUNABLE_MANIFEST_GEN_OK knobs=56".
+        private const int ExpectedKnobCount = 56;
 
         /// <summary>
         /// ⭐ THE CONTRACT, STATED INDEPENDENTLY OF THE CODE.
@@ -311,6 +315,16 @@ namespace DeNelle.Editor.Regression
             // const DungeonController.PostFirstRoughStoneDropRate = 0.15f. The owner ruled 5.
             // A row of 15 restores the previous rate exactly.
             new KeyValuePair<string, int>("dungeon.roughStoneDropPct", 5),
+            // WO-1348 - THE FOUR VFX PICKS. Every one of them MUST ship at 0, and 0 is not an
+            // arbitrary zero: it is the sentinel meaning "use the pick this build baked from
+            // Assets/Editor/VfxManualPicks.json". Any other default here would make an EMPTY
+            // client_tunables table change what an offline player sees - the one thing
+            // RemoteTunables.cs forbids in capitals - and it would do it INVISIBLY, because a
+            // wrong VFX pick renders a real effect rather than an error.
+            new KeyValuePair<string, int>("realm.vfx.atfootprintoftree_Aura", 0),
+            new KeyValuePair<string, int>("realm.vfx.atfootprintoftree_Impact", 0),
+            new KeyValuePair<string, int>("realm.vfx.EliteDeath_Impact", 0),
+            new KeyValuePair<string, int>("realm.vfx.BossDeath_Impact", 0),
         };
 
         /// <summary>The two knobs whose resolved value is readable from the CONSUMER, so

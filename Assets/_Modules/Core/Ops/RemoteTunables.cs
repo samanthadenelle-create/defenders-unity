@@ -804,6 +804,88 @@ namespace DeNelle.Core.Ops
         //  the narration - and every level below still emits Warn and Fail in full.
         // ---------------------------------------------------------------------
 
+        // ---------------------------------------------------------------------
+        //  WO-1348 - TAG A VFX FROM THE COMMAND CENTER, SEE IT ON THE NEXT TOWN LOAD.
+        //
+        //  Owner ask 2026-09-03, verbatim: "is it possible to tag those from the
+        //  command center? and then change pointer on next town load?" /
+        //  "realm.vfx(set)" / "that idea". Her namespace proposal is adopted as the
+        //  key shape VERBATIM - realm.vfx.<the VFX catalog key> - and the VFX key
+        //  keeps its own casing and underscores, because inventing a second spelling
+        //  of a key that already exists is how a join silently misses.
+        //
+        //  (!) THE VALUE IS A STABLE OPTION ID, NOT A PREFAB PATH AND NOT A SORTED
+        //  POSITION. This rail is Int-only (TunableKind above is Bool|Int), so the
+        //  row carries an integer naming an entry in the SHIPPED option pool,
+        //  Assets/Resources/VFX/vfx-pick-options.generated.json, produced from her
+        //  own tag file by tools/gen-vfx-pick-options.mjs. Ids are assigned once and
+        //  NEVER reassigned: a sorted position would shift the day anybody tags a new
+        //  key and would silently re-point a row she set last week while the trace
+        //  still said "override applied" - a lying trace, which is the one thing the
+        //  work order's instrumentation section forbids by name.
+        //
+        //  (!) 0 IS "THE BUILD-TIME PICK", so an empty client_tunables table renders
+        //  EXACTLY what Assets/Editor/VfxManualPicks.json renders today. That file
+        //  stays the default and the record; nothing here deletes or bypasses it.
+        //
+        //  (!) AN OPTION IS SHIPPED BY CONSTRUCTION. Choosing option N for key K means
+        //  "render K with the prefab key <N> already renders with" - so the picker
+        //  cannot offer a prefab that was never built. That is CLAUDE.md section 16's
+        //  lesson applied one layer up: art picked but never shipped fails with NO
+        //  ERROR ON SCREEN, and that silence has cost this project three incidents.
+        //  Adding a NEW prefab to the pool is still a build.
+        //
+        //  The consumer is DeNelle.Core.Vfx.VfxPickOverrides, which snapshots these on
+        //  scene load and is the ONLY reader. Four keys are registered - the four the
+        //  owner could not fix without a rebuild on 09-03.
+        //
+        //  (!) ONLY ONE OF THE FOUR IS PLAYED BY THE GAME TODAY, and it is stated here
+        //  rather than discovered on a phone. Every line below was checked at SOURCE on
+        //  2026-09-10 by grepping the tree for the key, not inferred from the ticket:
+        //    - BossDeath_Impact         LIVE. EliteVFXController.cs:326 plays it through
+        //                               HeldVfxKeys.BossDeath, gated on isBoss. DragonBoss
+        //                               has its own Die() and does NOT route through it.
+        //    - atfootprintoftree_Aura   HAS a caller (HeartAuraController.cs:323, through
+        //                               HeldVfxKeys.TreeOfLifeFootAura) but the SITE IS
+        //                               WITHHELD: AmbientAuraPolicy.WithholdTreeFootAura is
+        //                               true (AmbientAuraPolicy.cs:129, owner ruling
+        //                               2026-09-07 / WO-1476 - the aura drifted up the Y
+        //                               axis over the town), so nothing spawns whatever the
+        //                               row says. The pick STANDS and takes effect the day
+        //                               that flag flips.
+        //    - atfootprintoftree_Impact NO CALLER ANYWHERE, and absent from the tag file -
+        //                               this is the CREATION case the ticket demands. A
+        //                               pick is invisible until a call site is wired.
+        //    - EliteDeath_Impact        NO CALLER ANYWHERE. An elite death plays the BOSS
+        //                               key, which is her own ruling ("both get Elite_Death,
+        //                               name it BossDeath_Impact"). Registered so the slot
+        //                               is ready the day the two are pulled apart; it
+        //                               changes nothing on screen today.
+        //
+        //  ⛔ DO NOT "FIX" THE THREE BY RE-POINTING THEM AT LIVE KEYS. The work order names
+        //  these four, VFX keys map owner tags to hooks VERBATIM, and the CLI never makes a
+        //  creative pick. The honest fix is the one taken: each Command Center card SAYS IN
+        //  WORDS that its slot is not wired yet, so a pick that changes nothing on screen
+        //  can never read as a broken feature.
+        //  A fifth VFX key becomes tunable by adding a const + a spec here and one
+        //  row in each of the other four sources; nothing else changes.
+        // ---------------------------------------------------------------------
+
+        /// <summary>Every realm.vfx.* knob ships at 0 = USE THE BUILD-TIME PICK. Never edit this.</summary>
+        public const int VfxPickBuildDefaultId = 0;
+
+        /// <summary>Int option id. The aura at the foot of the world tree.</summary>
+        public const string KeyRealmVfxTreeFootprintAura = "realm.vfx.atfootprintoftree_Aura";
+
+        /// <summary>Int option id. The impact at the foot of the world tree - NO build-time entry.</summary>
+        public const string KeyRealmVfxTreeFootprintImpact = "realm.vfx.atfootprintoftree_Impact";
+
+        /// <summary>Int option id. The elite-death burst.</summary>
+        public const string KeyRealmVfxEliteDeathImpact = "realm.vfx.EliteDeath_Impact";
+
+        /// <summary>Int option id. The boss-death burst.</summary>
+        public const string KeyRealmVfxBossDeathImpact = "realm.vfx.BossDeath_Impact";
+
         /// <summary>Failures and warnings only. No Step narration.</summary>
         public const int VerbosityQuiet = 0;
 
@@ -1350,6 +1432,56 @@ namespace DeNelle.Core.Ops
                 "that decides whether a delve reads as worth the lantern oil. Kept on its own row " +
                 "from the raid cap so 'should dungeons still be the better source' stays a " +
                 "question she can answer by moving one value."),
+
+            // -- WO-1348. THE VFX PICKS. See the block above the key consts for why the
+            //    value is a STABLE OPTION ID and why 0 must stay "the build-time pick".
+            new TunableSpec(KeyRealmVfxTreeFootprintAura, TunableKind.Int, VfxPickBuildDefaultId,
+                "OPTION ID for the looping aura at the foot of the world tree. 0 = the build-time " +
+                "pick from Assets/Editor/VfxManualPicks.json, i.e. today's behaviour exactly. Any " +
+                "other value names an entry in the shipped option pool " +
+                "(Assets/Resources/VFX/vfx-pick-options.generated.json) and means 'render this key " +
+                "with the prefab THAT key already renders with'. An id the build does not carry, or " +
+                "one whose loop-ness does not match, FALLS BACK to the build-time pick and says so " +
+                "in the trace. Applies on the next TOWN LOAD; nothing already spawned is touched. " +
+                "⚠ THE SITE IS CURRENTLY WITHHELD (AmbientAuraPolicy.WithholdTreeFootAura, " +
+                "AmbientAuraPolicy.cs:129, her 2026-09-07 ruling), so nothing spawns at the tree " +
+                "foot whatever this row says - the pick simply STANDS until that flag flips.",
+                "NOT a PROD-022 hypothesis - the first of the four tags the owner could not correct " +
+                "on 2026-09-03 without a thirty-minute rebuild. This is the knob that turns a retag " +
+                "from a rebuild into a forty-second edit."),
+
+            new TunableSpec(KeyRealmVfxTreeFootprintImpact, TunableKind.Int, VfxPickBuildDefaultId,
+                "OPTION ID for the impact burst at the foot of the world tree. THIS KEY HAS NO " +
+                "BUILD-TIME ENTRY - it is absent from Assets/Editor/VfxManualPicks.json, so at 0 it " +
+                "renders NOTHING, exactly as it does today. Setting an id CREATES the pick, " +
+                "borrowing the option's prefab, loop-ness, scale and lifetime. Key CREATION, not " +
+                "only key override, is a stated acceptance criterion of WO-1348. ⛔ NO CODE CALLS " +
+                "THIS KEY EITHER (verified 2026-09-10: zero call sites), so a pick is not visible " +
+                "until a call site is wired - the Command Center card says exactly that.",
+                "NOT a PROD-022 hypothesis - the proof that the feature can give her a tag she does " +
+                "NOT already have. A design that could only override an existing key would lose " +
+                "half the reason this exists."),
+
+            new TunableSpec(KeyRealmVfxEliteDeathImpact, TunableKind.Int, VfxPickBuildDefaultId,
+                "OPTION ID for the elite-death burst. 0 = the build-time pick, unchanged. ⛔ NO CODE " +
+                "PLAYS THIS KEY TODAY (verified 2026-09-10: zero call sites in Assets/_Modules) - an " +
+                "elite death goes through HeldVfxKeys.BossDeath, per her own ruling 'both get " +
+                "Elite_Death, name it BossDeath_Impact'. A row here therefore changes NOTHING on " +
+                "screen until an elite is given its own call, and the Command Center card says so in " +
+                "words. Same pool and same next-town-load timing as the other three.",
+                "NOT a PROD-022 hypothesis - the slot kept READY for the day elite and boss deaths " +
+                "are pulled apart. Registered rather than omitted because the WO names it; NOT " +
+                "re-pointed at a live key, because the CLI never makes a creative pick."),
+
+            new TunableSpec(KeyRealmVfxBossDeathImpact, TunableKind.Int, VfxPickBuildDefaultId,
+                "OPTION ID for the boss-death burst. 0 = the build-time pick, unchanged. Same " +
+                "shipped-by-construction pool and same next-town-load timing as the other three. " +
+                "⭐ THE ONE OF THE FOUR THAT IS LIVE: EliteVFXController.cs:326 plays it through " +
+                "HeldVfxKeys.BossDeath on every isBoss death, so a row here IS visible on the next " +
+                "town load. DragonBoss (Syndrath) has its own Die() and is NOT covered.",
+                "NOT a PROD-022 hypothesis - the boss death she was still hunting a tag for when " +
+                "the evening ran out. A creative loop whose iteration cost is thirty minutes is a " +
+                "creative loop she stops running."),
         };
 
         // Swapped atomically by ApplyPayload. Never mutated in place.

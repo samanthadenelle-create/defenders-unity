@@ -90,9 +90,43 @@ never blocks or delays boot.
 | 51 | `raid.roughStonePerDayCap` | int | `1` | How many rough stones **every raid together** may pay inside one UTC day (WO-1373). **GLOBAL, not per camp**: clearing both eligible camps on the same day pays one stone, not two. `0` turns the raid drop off without touching #50. The ledger is a UTC day key plus a count in PlayerPrefs (`dotr-raid-stoneday` / `dotr-raid-stonecount`), so it self-expires exactly like the crystal day-stamp and needs **no save-schema bump**. Clamped `0..99` at `RaidScoring.RoughStonePerDayCap`. | **Not a PROD-022 hypothesis - the FAUCET BOUND on the only material the Jeweler chain consumes,** and the owner's ruling 2026-09-09: *"no more than 1 per day"*. ⚠ Like #50 this opens a faucet that **did not exist before this ticket** - no raid path granted the stone - so it has no "today's behaviour" to reproduce, and that is stated rather than hidden. How fast the ring ladder climbs is this number. |
 | 52 | `dungeon.roughStoneDropPct` | int | `5` | **Percent** chance a completed, **non-starter** dungeon run pays a rough stone once the player has already earned their first (WO-1373). Starter dungeons are excluded by a separate **layout `tier` gate** (`Assets/Resources/Data/Canonical/dungeon-layouts/<id>.json`, field `"tier"`; tier 1 = starter), not by this number, and the **guaranteed first stone is not on this axis** and cannot be rolled away. Clamped `0..100` at `DungeonController.PostFirstRoughStoneDropPct`. | **Not a PROD-022 hypothesis - and ⚠ A DELIBERATE DEPARTURE from "the default is today's behaviour", stated not hidden.** The build shipped **15**, as the compiled const `DungeonController.PostFirstRoughStoneDropRate = 0.15f`; the owner ruled `5` on 2026-09-09 (*"5% drop rate in dungeons not included the starter dungeons"*). **A row of `15` restores the previous rate exactly.** Whether a delve still pays for its lantern oil at 5% is the felt question this row answers. |
 
+| 53 | `realm.vfx.atfootprintoftree_Aura` | int | `0` (= the build-time pick) | **OPTION ID** for the looping aura at the foot of the world tree (WO-1348). `0` means "use the pick baked from `Assets/Editor/VfxManualPicks.json`", i.e. today's behaviour byte for byte. Any other value names an entry in the **shipped option pool**, `Assets/Resources/VFX/vfx-pick-options.generated.json`, and means *render this key with the prefab THAT key already renders with*. Resolved by `DeNelle.Core.Vfx.VfxPickOverrides` on **scene load** and nowhere else - already-spawned particle systems are never re-parented. | **Not a PROD-022 hypothesis - the OWNER'S CREATIVE LOOP,** and her ask verbatim: *"is it possible to tag those from the command center? and then change pointer on next town load?"* / *"realm.vfx(set)"*. She tagged nine VFX keys on 2026-09-03 and **four came out wrong**; every retag cost a ~30-minute rebuild, because the tag file is read by **editor-time** tooling. This row is the difference between a rebuild and a ~40-second edit. **WIRED? THE SITE IS WITHHELD.** `HeartAuraController.cs:323` calls it through `HeldVfxKeys.TreeOfLifeFootAura`, but `AmbientAuraPolicy.WithholdTreeFootAura` is `true` (`AmbientAuraPolicy.cs:129`, owner ruling 2026-09-07 / WO-1476 - the aura drifted up the Y axis over the town), so **nothing spawns at the tree foot whatever this row says.** The pick STANDS and takes effect the day that flag flips. The Command Center card says exactly this, in words. |
+| 54 | `realm.vfx.atfootprintoftree_Impact` | int | `0` (= nothing renders) | **OPTION ID** for the impact burst at the foot of the world tree. ⚠ **This key has NO build-time entry** - it is absent from `VfxManualPicks.json` - so at `0` it renders **nothing**, exactly as the build does today. Setting an id **CREATES** the pick, borrowing that option's prefab, loop-ness, scale and lifetime. | **Not a PROD-022 hypothesis - the KEY-CREATION case, and it is a stated acceptance criterion of WO-1348:** *"If the design can only override an EXISTING key, it cannot create the boss-death tag she still needs, and half the motivation is lost."* **WIRED? NO - zero call sites in `Assets/_Modules` (grepped 2026-09-10).** A pick here is invisible until a call site is wired, which is a code change. The card says so rather than letting her discover it by looking. |
+| 55 | `realm.vfx.EliteDeath_Impact` | int | `0` (= the build-time pick) | **OPTION ID** for the elite-death burst. Same pool, same next-town-load timing, same `0` = today. | **Not a PROD-022 hypothesis** - one of the four bad tags from 2026-09-03. It currently shares its prefab with the boss death, which is precisely the pair she wanted to be able to pull apart from a phone. **WIRED? NO - zero call sites (grepped 2026-09-10).** An elite death plays the BOSS key, per her own ruling *"both get Elite_Death, name it BossDeath_Impact"*. Registered so the slot is READY the day the two are pulled apart; it changes nothing on screen today, and the card says so. DO NOT "fix" it by re-pointing it at a live key - VFX keys map owner tags to hooks VERBATIM. |
+| 56 | `realm.vfx.BossDeath_Impact` | int | `0` (= the build-time pick) | **OPTION ID** for the boss-death burst. Same pool, same next-town-load timing, same `0` = today. | **Not a PROD-022 hypothesis** - the boss death she was still hunting a tag for when the evening ran out. **WIRED? YES - THE ONE OF THE FOUR THAT IS LIVE.** `EliteVFXController.cs:326` plays it through `HeldVfxKeys.BossDeath` on every `isBoss` death. DragonBoss (Syndrath the Devourer) has its OWN `Die()` and its own death VFX and is **not** covered by this row. |
+
 **⛔ `Warn` and `Fail` are emitted at every verbosity level and cannot be turned off.** CLAUDE.md §12
 is binding: instrumentation is permanent, and a failure line that stops being logged turns a logged
 failure back into a silent one. Only the success narration is dimmable.
+
+
+### The `realm.vfx.*` family - what it can and cannot do
+
+⛔ **It changes WHICH SHIPPED EFFECT A KEY USES. It cannot change WHICH EFFECTS EXIST.** Adding a new
+prefab to the pool is still a build, and the Command Center says so on the card.
+
+That limit is not squeamishness, it is CLAUDE.md §16's lesson applied one layer up: art with **no local
+fallback** produces a build that installs, launches and plays with tinted capsules and **no error on
+screen**, and that silence has cost this project **three separate incidents**. A picker that could offer
+an unshipped prefab would rebuild that failure mode in a new place - she picks, nothing appears, nothing
+says why.
+
+So the option pool is **her own already-tagged keys**, generated from `Assets/Editor/VfxManualPicks.json`
+by `node tools/gen-vfx-pick-options.mjs` into **two byte-identical copies** - `api/_lib/vfx-pick-options.generated.json`
+for the console and `Assets/Resources/VFX/vfx-pick-options.generated.json` for the build. Option *N* is
+**shipped by construction**: the catalog generator already resolved it into `HovlVfxCatalog.asset`.
+
+⚠ **THE VALUE IS A STABLE, APPEND-ONLY ID - NEVER A SORTED POSITION.** An id, once assigned, is never
+reassigned, and a key that leaves the tag file keeps its id **reserved** (`retired: true`) rather than
+freeing it. A sorted position would shift the day anybody tags a new effect and would silently re-point a
+row she set last week **while the trace still said "override applied"** - a lying trace, which is the one
+thing this ticket's instrumentation section forbids by name.
+
+**Three ways a row is declined, and every one of them is traced with its reason** (`[Flow:VfxPicks]`):
+an id the build does not carry; an id whose option is retired or names the key itself; and a **loop/one-shot
+mismatch** - honouring that would hand a call site an effect it cannot stop or cannot return to the pool.
+In all three the build-time pick renders, unchanged. `VfxManualPicks.json` remains the default **and the
+record**; nothing in this family deletes, bypasses or writes to it.
 
 ### Independence
 
