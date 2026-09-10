@@ -72,6 +72,16 @@ namespace DeNelle.Village
         public string token;
         public int count = 1;
         public string zone;
+
+        /// <summary>
+        /// WO-1633 - COVER, not decor. When true the bake KEEPS this prop's colliders (and fits
+        /// one when the source mesh ships without any), so troops and arrows are actually stopped
+        /// by it. WO-1607 section 6 "Cover stacks": "Troops can stand behind something ... with
+        /// colliders"; WO-1609:104 "Colliders on"; WO-1610:112 "collider stays".
+        /// Leave FALSE for soft dressing - banners, flags, torches, floor tiles - which must not
+        /// block a body. Default false is deliberate: a prop only becomes cover when authored so.
+        /// </summary>
+        public bool cover;
     }
 
     /// <summary>

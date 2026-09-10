@@ -45,6 +45,17 @@ Measured from the baker + the three live configs, not from a screenshot this ses
 
 1. **One primitive: a square ring of wall panels.** `BuildRing` tiles `WallTierData.SegmentPrefabPath` panels (`RaidBaseGenerator.cs:1150`) at `SegSize = (1.5, 3.0, 1.5)` (`:92`). A gate is a **missing panel** (`outerGates` bools, `:333-338`), not a gatehouse. Easy + Hard have **zero** inner keep (`interiorWallLayers: 0`). Extreme has one concentric keep ring at 45% radius (`:340-352`) — still a square, just smaller.
 2. **`props` is authored empty and unread.** Every raid row has `"props": { "set": [], "count": 0 }`. Generator header `:35` says so: *“Still dead and DELIBERATELY not faked: `props` (no prop dresser for raid bases yet).”* No tents, barrels, banners, barracks, rubble, or camp life.
+
+   > ⚠ **CORRECTED 2026-09-10 (WO-1635, lane PROPS-CANON) — item 2 above was TRUE AT MINT (2026-09-09) AND IS NOW FALSE. Body left intact per CLAUDE.md §15 (frozen dated WO gets a banner, not a rewrite).**
+   > Props are **authored** and **read**, proven at base sha `3da5e5360`:
+   > - **Authored:** `Assets/Resources/Data/Canonical/scene-configs.json` `raidDress.props` — `raider_camp_small` 10 entries / **27** instances, `fortified_garrison` 9 / **25**, `mage_enclave` 8 / **27** (counted from the file this session).
+   > - **Read:** `RaidBaseDresser.ScatterProps` consumes `def.raidDress.props` (`Assets/Editor/WallTools/RaidBaseDresser.cs:535-539` at `3da5e5360`; the **method name is the durable anchor** — the main tree has already moved it to `:616-619`).
+   > - **Called:** `RaidBaseDresser.Dress(...)` at `Assets/Editor/WallTools/RaidBaseGenerator.cs:424`.
+   > - The quoted generator header at `:35` is **also already corrected** and now reads *“WO-1608: `props` + `raidDress` are LIVE — RaidBaseDresser consumes them at bake time.”* (`RaidBaseGenerator.cs:35`, read at `3da5e5360`).
+   > - Baked proof: `Builds/wave3-bake7:503` `dressed 'raider_camp_small' kit=hexagon-green placed=314 missing=0`.
+   >
+   > ⚠ Still true, and the reason WO-1635 exists: the **legacy `props.set` fallback survives** at `ScatterProps` (`:540-552` at `3da5e5360`) as a second authority, and `fortified_garrison` still authors `"barracks"` in BOTH schemas. That is WO-1635 acceptance #1 and is **not** closed by this banner.
+
 3. **Towers are catalog turrets on a circle.** Easy: 3 archer + 1 mage, Cardinal (all on the wall line). Hard: 5+2 OverlappingFire. Extreme: 7+3 OverlappingFire. Fallback art is `Structures/Tower_Medieval_Wood` (`:112`); if that Resources path misses, `BuildFallbackTurret` is a **cylinder + cube cap** (`:916-932`) — the pillar the owner named. Easy’s `towers[]` palette is `tower_catapult` x2, which is a siege machine, not a watchtower with a fighting top.
 4. **Ground is the RaidNavBake 140 m plane.** No floor tiles, no dirt, no cobble, no dungeon stone.
 5. **Garrison is a ring, not a defense.** Guards stand at 0.5 × radius regardless of gate, courtyard, or keep. There is no “this is the gate watch” vs “this is the inner guard.”

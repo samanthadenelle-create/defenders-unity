@@ -7,6 +7,20 @@
 **Config id:** `fortified_garrison` → scene `RaidBase_fortified_garrison`  
 **Do not retune:** garrison (4 troll + 2 ogre + 6 berserker + 3 shaman + necromancer + 1 elite), spire HP 2200, tower DPS budget 16, `entranceCount: 1`, OverlappingFire, 180 s clock.
 
+> ⚠ **COUNT CORRECTED 2026-09-10 (WO-1635, lane PROPS-CANON).** The Status line above says **531 dress
+> pieces**. That was the 2026-09-09 bake and is **stale**; the Status line is **deliberately left as
+> authored** (CLAUDE.md §15 — a dated WO header is frozen, it gets a banner, not a rewrite). The current
+> bake reads **placed=489**:
+> `Builds/wave3-bake7:640` — `[Flow:RaidBase] dressed 'fortified_garrison' kit=synty-castle placed=489 missing=0 gateW=8.72 zones=Approach,Gatehouse,Courtyard,Choke,Keep`.
+> ⛔ **Do not "refresh" this number again** — the authority is the newest `[Flow:RaidBase] dressed
+> 'fortified_garrison' ... placed=` line on a FRESH bake log, never a number in a doc.
+> ⚠ Related and still OPEN: this config is the one that authors `"barracks"` in **both** prop schemas —
+> `"props": { "set": ["barracks"], "count": 1 }` **and** as the first `raidDress.props` entry
+> (`Assets/Resources/Data/Canonical/scene-configs.json`, read at `3da5e5360`). WO-1635 acceptance #1 owns
+> that; it is **not** closed by this banner.
+> *(WO-1635 §2 cites `Builds/wave2-bake2`; only `Builds/wave2-bake2.runner.txt` exists in `Builds/`, so
+> `Builds/wave3-bake7` is the citation actually read.)*
+
 ---
 
 ## 1. What it is today (proven)

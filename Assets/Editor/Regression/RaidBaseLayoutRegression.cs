@@ -8,6 +8,8 @@
 //     Resources/Structures (the cylinder-turret miss)
 //   * Spawner prefers GarrisonSlot_* when present
 //   * Gate width floor is 3.5 m
+//   * WO-1633: courtyard props are authored COVER (colliders kept) and placed as
+//     clusters on concentric cover rings, and the bake states a per-config props count
 // =============================================================================
 using System;
 using System.Collections.Generic;
@@ -45,6 +47,7 @@ namespace DeNelle.Editor.Regression
                 CaseSpawnerSlots(failures, notes);
                 CaseGateWidth(failures, notes);
                 CaseGarrisonWipeWins(failures, notes);
+                CaseCourtyardCoverRings(failures, notes);
             }
             catch (Exception ex)
             {
@@ -213,6 +216,85 @@ namespace DeNelle.Editor.Regression
             if (scoring.IndexOf("_spawner != null && _spawner.Cleared", StringComparison.Ordinal) < 0)
                 failures.Add("RaidScoring.RaidWon no longer treats a wiped garrison as a win.");
             notes.Add("garrison wipe wins");
+        }
+
+        // =====================================================================
+        //  WO-1633 - the courtyard is COVER on RINGS, not decor on a circle.
+        //
+        //  Owner, 2026-09-10, verbatim: "i have mentioned it in testing that it feels
+        //  incomplete and not polished" (raid arena / bases), and on the fix shape:
+        //  "similar strategy as we used in battle arena".
+        //
+        //  RED-FIRST, and it really was red on the tree this was written against:
+        //   * no raid row authored `cover` at all - the field did not exist, so every
+        //     prop in every camp shipped with `stripColliders: true` (RaidBaseDresser
+        //     :567 as it stood), against WO-1609:104 "Colliders on" and WO-1610:112
+        //     "collider stays";
+        //   * the dresser had no CoverRingPlacer call - courtyard props sat on ONE
+        //     annulus with no jitter and no scale variance, against WO-1609:99
+        //     "Place as clusters, not a ring of singles";
+        //   * no bake log had ever stated a props count, because the only dresser line
+        //     is an aggregate that also counts clad panels, floor tiles and the gate.
+        //
+        //  DELIBERATELY NOT ASSERTED: a courtyard DENSITY floor. WO-1611:96 makes the
+        //  Extreme enclave "spare on purpose" - a blanket density rule would red a
+        //  camp that is correct by its own spec. Hard's thin census is WO-1634's.
+        // =====================================================================
+        private static void CaseCourtyardCoverRings(List<string> failures, List<string> notes)
+        {
+            var root = LoadConfigs(failures);
+            if (root == null) return;
+
+            string[] raidIds = { "raider_camp_small", "fortified_garrison", "mage_enclave" };
+            int coverRows = 0;
+            for (int i = 0; i < raidIds.Length; i++)
+            {
+                var row = Row(root, raidIds[i]);
+                if (row == null) { failures.Add("no " + raidIds[i] + " row"); continue; }
+                var dress = row["raidDress"] as JObject;
+                var props = dress != null ? dress["props"] as JArray : null;
+                if (props == null || props.Count == 0)
+                {
+                    failures.Add(raidIds[i] + " authors no raidDress.props - the courtyard would be empty dirt.");
+                    continue;
+                }
+
+                int cover = 0;
+                foreach (var p in props)
+                    if (p["cover"] != null && (bool)p["cover"]) cover++;
+                if (cover == 0)
+                    failures.Add(raidIds[i] + " authors " + props.Count + " prop row(s) but NONE with cover:true - " +
+                                 "every crate and barrel in that camp is walk-through scenery, not cover " +
+                                 "(WO-1607 section 6 'Cover stacks ... with colliders').");
+                coverRows += cover;
+            }
+
+            string dresser = TryRead(DresserSrc);
+            if (string.IsNullOrEmpty(dresser))
+            {
+                failures.Add("cannot read " + DresserSrc);
+                return;
+            }
+
+            if (!dresser.Contains("CoverRingPlacer."))
+                failures.Add("RaidBaseDresser does not call CoverRingPlacer - courtyard props are still " +
+                             "evenly spaced on one annulus with no jitter (WO-1609:99 'clusters, not a ring of singles').");
+
+            if (!dresser.Contains("stripColliders: !p.cover"))
+                failures.Add("RaidBaseDresser does not gate stripColliders on the authored cover flag - " +
+                             "props are still stripped unconditionally.");
+
+            if (!dresser.Contains("[RaidBaseDresser] props '"))
+                failures.Add("RaidBaseDresser emits no per-config props count line - the only dresser log is the " +
+                             "aggregate that also counts clad panels and floor tiles, so a courtyard that placed " +
+                             "ZERO props reads identically to one that worked.");
+
+            if (!dresser.Contains("StagingMarkerName") || !dresser.Contains("DefenseTower"))
+                failures.Add("RaidBaseDresser does not read the staging marker and the turrets out of the built tree - " +
+                             "prop exclusions would be hardcoded radii, and staging is on the SOUTH-WEST diagonal " +
+                             "for two of the three camps.");
+
+            notes.Add("courtyard cover rows=" + coverRows);
         }
 
         private static string TryRead(string path)

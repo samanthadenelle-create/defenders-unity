@@ -7,6 +7,17 @@
 **Config id:** `raider_camp_small` → scene `RaidBase_raider_camp_small`  
 **Do not retune:** garrison composition (7 berserker + 2 shaman + necromancer boss), spire HP 1200, tower DPS budget, 180 s clock, `entranceCount: 2`.
 
+> ⚠ **COUNT CORRECTED 2026-09-10 (WO-1635, lane PROPS-CANON).** The Status line above says **251 dress
+> pieces**. That was the 2026-09-09 bake and is **stale**, not wrong-at-the-time; the Status line is
+> **deliberately left as authored** (CLAUDE.md §15 — a dated WO header is frozen, it gets a banner, not a
+> rewrite). The current bake reads **placed=314**:
+> `Builds/wave3-bake7:503` — `[Flow:RaidBase] dressed 'raider_camp_small' kit=hexagon-green placed=314 missing=0 gateW=8.55 zones=Approach,Gatehouse,Courtyard`.
+> ⛔ **Do not "refresh" this number again.** A hand-copied count tracking a live bake rots on the next
+> bake — that is the whole defect WO-1635 was minted for. The authority is the newest
+> `[Flow:RaidBase] dressed '<config id>' ... placed=` line on a FRESH bake log, never a number in a doc.
+> *(WO-1635 §2 cites `Builds/wave2-bake2` for these counts; only `Builds/wave2-bake2.runner.txt` exists in
+> `Builds/` — the log body is not on disk — so `Builds/wave3-bake7` is the citation actually read.)*
+
 ---
 
 ## 1. What it is today (proven)

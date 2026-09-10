@@ -7,6 +7,20 @@
 **Depends on:** nothing in this program (this IS the engine). WO-1520 staging must remain.  
 **Do not touch:** `RaidHudController`, `TroopController`, `RaidScoring` star rules, `FeatureFlags.cs`, `.asmdef`, Village2, Iron Bastion.
 
+> ⚠ **"`props` IS DEAD" IS SPEC-TIME STATE, NOT CURRENT — corrected 2026-09-10 (WO-1635, lane
+> PROPS-CANON).** This WO says *"`props` is dead (`:35`)"* (§1) and heads §4 *"Consume `props` (currently
+> dead)"* with *"Raid rows all ship `set: []`, `count: 0`"*. Those described the tree **at mint
+> (2026-09-09)** and were the *reason* for this ticket — **this WO is the change that made them false.**
+> Body left intact per CLAUDE.md §15. Proven at base sha `3da5e5360`: `RaidBaseGenerator.cs:35` now reads
+> *"WO-1608: `props` + `raidDress` are LIVE — RaidBaseDresser consumes them at bake time"*;
+> `RaidBaseDresser.Dress(...)` is called at `RaidBaseGenerator.cs:424`; `RaidBaseDresser.ScatterProps`
+> reads `def.raidDress.props` (`RaidBaseDresser.cs:535-539` at `3da5e5360` — method name is the durable
+> anchor, main tree has moved it to `:616-619`); and `scene-configs.json` authors 10 / 9 / 8 `raidDress.props`
+> entries (27 / 25 / 27 instances) on `raider_camp_small` / `fortified_garrison` / `mage_enclave`.
+> ⚠ Note the §4 design DID land as **two** readers, and that is the open defect: `raidDress.props` first,
+> the legacy `props.set` shape second (`ScatterProps` `:540-552`). **WO-1635 acceptance #1 owns collapsing
+> that to one authority** — still open at this base sha.
+
 ---
 
 ## 1. Problem (proven)

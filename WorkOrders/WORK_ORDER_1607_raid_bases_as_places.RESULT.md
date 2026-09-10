@@ -21,6 +21,18 @@ It is the commit that introduced `Assets/Editor/Regression/RaidBaseLayoutRegress
 | 1610 Hard | `IMPLEMENTED - baked 2026-09-09 (synty-castle, keep layer, 531 dress pieces)` |
 | 1611 Extreme | `IMPLEMENTED - baked 2026-09-09 (dungeon-stone keep, 668 dress pieces)` |
 
+> ⚠ **SUPERSEDED COUNTS 2026-09-10 (WO-1635, lane PROPS-CANON).** The three dress-piece counts quoted in
+> the table above (251 / 531 / 668) are **the 2026-09-09 Status lines as authored** and are now stale.
+> This is a frozen RESULT file, so the table is **left exactly as written** (CLAUDE.md §15). Current bake,
+> `Builds/wave3-bake7`:
+> - `:503` `dressed 'raider_camp_small' kit=hexagon-green placed=314 missing=0`
+> - `:640` `dressed 'fortified_garrison' kit=synty-castle placed=489 missing=0`
+> - `:671` `dressed 'mage_enclave' kit=dungeon-stone placed=590 missing=0`
+>
+> ⛔ This file is now the **fourth** place these three numbers were hand-copied (1609/1610/1611 headers +
+> here). That is the duplicated-state defect WO-1635 was minted for. The authority is the newest
+> `[Flow:RaidBase] dressed '<config id>' ... placed=` line on a FRESH bake log — never a doc.
+
 ## 2. Proof at HEAD, file:line
 
 - `Assets/Editor/Regression/RaidBaseLayoutRegression.cs:1-11` - suite header, marker

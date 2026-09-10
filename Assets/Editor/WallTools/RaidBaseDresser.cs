@@ -27,6 +27,65 @@ namespace DeNelle.Editor
         public const string Sys = "RaidBase";
         public const float MinGateWidth = 3.5f;
 
+        // -- WO-1633 courtyard cover rings ------------------------------------
+        // Owner 2026-09-10, verbatim: "i have mentioned it in testing that it feels
+        // incomplete and not polished" / "similar strategy as we used in battle arena".
+        // The band these knobs describe replaces the single annulus the old PropSlot
+        // courtyard branch used (Lerp(inner+4, radius-6, 0.45..0.75)), which put every
+        // courtyard prop of every camp on ONE circle with no jitter - WO-1633 §2.2.
+
+        /// <summary>Clear air kept around the spire so props never crowd the objective.</summary>
+        private const float CourtyardSpirePad = 9f;
+
+        /// <summary>Clear air kept outside an inner keep ring before the courtyard band starts.</summary>
+        private const float CourtyardInnerPad = 3.5f;
+
+        /// <summary>Clear air kept inside the wall line, so props do not fight the wall-band turrets.</summary>
+        private const float CourtyardWallPad = 5.5f;
+
+        /// <summary>Target metres between concentric cover rings inside the courtyard band.</summary>
+        private const float CourtyardRingSpacing = 7f;
+
+        /// <summary>Ceiling on concentric courtyard rings - three reads as a place, more reads as a car park.</summary>
+        private const int CourtyardMaxRings = 3;
+
+        /// <summary>Base cluster spread in metres; grows with the entry's instance count.</summary>
+        private const float ClusterSpreadBase = 1.8f;
+
+        /// <summary>Scale roll for props. Deliberately tighter than the arena's 0.9-1.6 - a crate
+        /// at 1.6x reads as a bug, where a boulder does not.</summary>
+        private const float PropScaleMin = 0.92f;
+        private const float PropScaleMax = 1.12f;
+
+        /// <summary>Metres of clear air kept around each placed turret so props never bury one.</summary>
+        private const float TurretClearPad = 3.5f;
+
+        /// <summary>Metres of clear air kept around the staging marker (WO-1520).</summary>
+        private const float StagingClearPad = 10f;
+
+        /// <summary>
+        /// The staging marker's object name. MIRRORS <c>RaidBaseGenerator.StagingPointName</c>
+        /// (`RaidBaseGenerator.cs:189`), which is private - this dresser reads the marker OUT OF
+        /// THE BUILT TREE rather than recomputing a radius, because staging is NOT on the south
+        /// axis for every camp: Builds/wave2-bake2 records both `fortified_garrison` and
+        /// `mage_enclave` moved to the SOUTH-WEST diagonal.
+        /// </summary>
+        private const string StagingMarkerName = "RaidStagingPoint";
+
+        /// <summary>
+        /// Where props may NOT go, all of it measured off the tree the generator just built
+        /// rather than off hardcoded radii. WO-1633 acceptance 3 + 4.
+        /// </summary>
+        private struct PropKeepout
+        {
+            /// <summary>Half-width of the gate -> spire assault corridor (the x ~ 0 lane).</summary>
+            public float LaneHalf;
+            public float SpireClear;
+            public List<Vector3> Turrets;
+            public Vector3 Staging;
+            public bool HasStaging;
+        }
+
         public struct LayoutContext
         {
             public float Radius;
@@ -101,7 +160,10 @@ namespace DeNelle.Editor
             DressGateMouth(approach, gatehouse, kit, ctx);
 
             ReskinCombatArt(root, towerTok, def);
-            ScatterProps(def, kit, approach, gatehouse, courtyard, choke, keep, ctx);
+            // WO-1633: the keepout is gathered AFTER the generator has placed turrets, the spire
+            // and the staging marker (RaidBaseGenerator.cs:403 / :401 / :422 all run before :424
+            // calls Dress), so every exclusion below is read out of the built tree.
+            ScatterProps(def, kit, approach, gatehouse, courtyard, choke, keep, ctx, BuildKeepout(root, ctx));
             PlaceGarrisonSlots(root, def, ctx);
             if (ctx.InnerLayers > 0)
                 RaiseKeep(keep != null ? keep : root, kit, ctx);
@@ -495,6 +557,25 @@ namespace DeNelle.Editor
         {
             if (string.IsNullOrEmpty(catalogId)) return "ArcaneSpire_1";
             catalogId = RaidBaseGenerator.ResolveSpireArtId(catalogId);
+
+            // CATALOG FIRST (WO-1619, 2026-09-10). The substring table below answered exactly
+            // four ids; anything else fell through to the RAW id, which LoadVisual could not
+            // resolve, so the caller's null-fallback quietly reskinned the spire back to
+            // ArcaneSpire_1 - the dresser undoing the model the generator had just measured and
+            // fitted. That is what happened to the owner's ruled Forsaken Camp art
+            // ('tower_ruined_watchtower'). The catalog already answers this question for the
+            // generator (PlaceSpire reads entry.visualPrefabPath); asking it here too means the
+            // two halves cannot disagree and a new spire id needs NO edit in this file.
+            //
+            // Behaviour for every id that was already live is UNCHANGED, by construction:
+            // tower_arcane_spire authors "Structures/ArcaneSpire_1" and tower_ground_archer
+            // authors "Structures/Tower_Wooden_Watchtower" - the same two tokens the branches
+            // below return - and the siege/catapult ids never reach here because
+            // ResolveSpireArtId substitutes them one line above. LoadVisual strips the
+            // "Structures/" prefix itself.
+            string catalogPath = RaidBaseGenerator.CatalogArtPath(catalogId);
+            if (!string.IsNullOrEmpty(catalogPath)) return catalogPath;
+
             if (catalogId.IndexOf("siege", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 return "Ballista";
             if (catalogId.IndexOf("catapult", System.StringComparison.OrdinalIgnoreCase) >= 0)
@@ -529,7 +610,7 @@ namespace DeNelle.Editor
 
         private static void ScatterProps(SceneConfigDef def, string kit, Transform approach,
                                          Transform gatehouse, Transform courtyard, Transform choke,
-                                         Transform keep, LayoutContext ctx)
+                                         Transform keep, LayoutContext ctx, PropKeepout keepout)
         {
             var list = new List<RaidDressPropDef>();
             if (def.raidDress != null && def.raidDress.props != null)
@@ -553,49 +634,296 @@ namespace DeNelle.Editor
             if (list.Count == 0) list.AddRange(DefaultProps(kit));
 
             int seed = StableHash(def.id);
+            // Seeded, so a re-bake reproduces the identical courtyard (the arena's contract,
+            // ProceduralSiegeArenaBuilder.cs:89 "Deterministic jitter so a rebuild reproduces
+            // the same venue layout").
+            var rng = new System.Random(seed);
+
+            // The courtyard BAND: everything between the inner boundary (keep ring, or a clear
+            // ring around the spire when there is no keep) and the wall line, minus the pads.
+            float inner = ctx.InnerLayers > 0
+                ? ctx.Innermost + CourtyardInnerPad
+                : CourtyardSpirePad;
+            float outer = Mathf.Max(inner + 4f, ctx.Radius - CourtyardWallPad);
+            int rings = CoverRingPlacer.RingCount(inner, outer, CourtyardRingSpacing, CourtyardMaxRings);
+
+            int placedProps = 0;
+            int courtyardProps = 0;
+            var tokens = new List<string>();
+
+            // Cluster anchors must be spread over the COURTYARD entries, not over the whole prop
+            // list. Indexing by the full list leaves whole quadrants bare - on the authored rows
+            // that put every Extreme cluster on the east side and left Easy empty from 145 to 323
+            // degrees, which is the same "empty dirt" this ticket exists to remove.
+            int courtyardCount = 0;
+            for (int i = 0; i < list.Count; i++)
+                if (ZoneOf(list[i].zone, approach, gatehouse, courtyard, choke, keep) == courtyard)
+                    courtyardCount++;
+            int courtyardIndex = 0;
+
             for (int i = 0; i < list.Count; i++)
             {
                 var p = list[i];
                 int n = Mathf.Clamp(p.count, 1, 16);
                 var zone = ZoneOf(p.zone, approach, gatehouse, courtyard, choke, keep);
                 var model = LoadVisual(p.token);
-                if (model == null) { WarnMissing(p.token); continue; }
-                for (int k = 0; k < n; k++)
+                if (model == null)
                 {
-                    Vector3 pos = PropSlot(p.zone, ctx, seed + i * 17 + k * 31, k, n);
-                    if (IsSouthLane(pos, ctx)) pos.x += 6f * ((k & 1) == 0 ? 1f : -1f);
-                    InstantiateVisual(model, zone, "Prop_" + p.token, pos, Quaternion.Euler(0f, (seed + k * 40) % 360, 0f), true);
+                    // Keep the courtyard cursor moving even when the art is missing, so a missing
+                    // pack does not bunch every surviving cluster into one arc.
+                    if (zone == courtyard) courtyardIndex++;
+                    WarnMissing(p.token);
+                    continue;
                 }
+
+                int got;
+                if (zone == courtyard)
+                {
+                    got = PlaceCourtyardCluster(model, zone, p, n, rng, inner, outer, rings,
+                                                courtyardIndex, courtyardCount, keepout);
+                    courtyardIndex++;
+                    courtyardProps += got;
+                }
+                else
+                {
+                    got = PlaceZoneProps(model, zone, p, n, ctx, seed, i, keepout);
+                }
+
+                placedProps += got;
+                if (got > 0) tokens.Add(p.token + "x" + got + (p.cover ? "*" : string.Empty));
             }
+
+            // WO-1633 §2.4: the aggregate `dressed ... placed=N` line counts clad panels, floor
+            // tiles, the gatehouse and the gate mouth too, so no bake log has ever stated a PROPS
+            // count. This is that line. '*' marks a cover-class prop (colliders kept).
+            Debug.Log($"[RaidBaseDresser] props '{def.id}': {placedProps} placed " +
+                      $"(set={string.Join(", ", tokens)})");
+            FlowTrace.Step(Sys,
+                $"props '{def.id}' total={placedProps} courtyard={courtyardProps} " +
+                $"rings={rings} band={inner:F1}-{outer:F1}m laneHalf={keepout.LaneHalf:F1}m " +
+                $"turretsAvoided={(keepout.Turrets != null ? keepout.Turrets.Count : 0)}");
         }
 
+        /// <summary>
+        /// Gather every no-go region from the tree the generator just built. Nothing here is a
+        /// hardcoded radius: turrets come from their <see cref="DefenseTower"/> components and
+        /// staging from the marker's own transform, because both move per config.
+        /// </summary>
+        private static PropKeepout BuildKeepout(Transform root, LayoutContext ctx)
+        {
+            var k = new PropKeepout
+            {
+                // The gate mouths and the march they feed are all on the x ~ 0 axis (south gate at
+                // -Radius, north gate at +Radius, inner keep gate north), so ONE corridor test
+                // covers every lane. Width tracks the gate the player walks through, and clears
+                // the WO-1609:110 (>= 4 m) / WO-1610:114 (>= 5 m) floors by a margin.
+                LaneHalf = Mathf.Max(2.5f, ctx.GateWidth * 0.5f) + 1.0f,
+                SpireClear = CourtyardSpirePad * 0.66f,
+                Turrets = new List<Vector3>(),
+                Staging = Vector3.zero,
+                HasStaging = false,
+            };
+
+            Guard.Try(Sys, "keepout scan", () =>
+            {
+                var towers = root.GetComponentsInChildren<DefenseTower>(true);
+                for (int i = 0; i < towers.Length; i++)
+                    if (towers[i] != null) k.Turrets.Add(towers[i].transform.position);
+
+                var staging = root.Find(StagingMarkerName);
+                if (staging != null)
+                {
+                    k.Staging = staging.position;
+                    k.HasStaging = true;
+                }
+            });
+
+            return k;
+        }
+
+        /// <summary>True when a candidate slot is clear of the assault lane, the spire, every
+        /// turret footprint and the staging pocket.</summary>
+        private static bool AcceptPropSlot(Vector3 pos, PropKeepout k)
+        {
+            if (Mathf.Abs(pos.x) < k.LaneHalf) return false;
+            if (new Vector2(pos.x, pos.z).magnitude < k.SpireClear) return false;
+
+            if (k.Turrets != null)
+            {
+                for (int i = 0; i < k.Turrets.Count; i++)
+                {
+                    float dx = k.Turrets[i].x - pos.x;
+                    float dz = k.Turrets[i].z - pos.z;
+                    if (dx * dx + dz * dz < TurretClearPad * TurretClearPad) return false;
+                }
+            }
+
+            if (k.HasStaging)
+            {
+                float sx = k.Staging.x - pos.x;
+                float sz = k.Staging.z - pos.z;
+                if (sx * sx + sz * sz < StagingClearPad * StagingClearPad) return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// A cluster anchor that lands in the assault corridor is PUSHED to the corridor edge,
+        /// not dropped. WO-1610:111 wants cover "along the SIDES of the south->north march, not
+        /// on it", and WO-1610:46 wants the courtyard to be "a fight, not a runway" - dropping
+        /// the cluster would satisfy the first and break the second.
+        /// </summary>
+        private static Vector3 PushOutOfLane(Vector3 pos, PropKeepout k)
+        {
+            if (Mathf.Abs(pos.x) >= k.LaneHalf) return pos;
+            float side = pos.x >= 0f ? 1f : -1f;
+            pos.x = side * (k.LaneHalf + 0.6f);
+            return pos;
+        }
+
+        /// <summary>
+        /// Place one authored entry as a CLUSTER on one of the concentric courtyard cover rings,
+        /// using the arena's jitter + scale vocabulary through <see cref="CoverRingPlacer"/>.
+        /// </summary>
+        private static int PlaceCourtyardCluster(GameObject model, Transform zone, RaidDressPropDef p,
+                                                 int n, System.Random rng, float inner, float outer,
+                                                 int rings, int entryIndex, int entryCount,
+                                                 PropKeepout keepout)
+        {
+            float ringR = CoverRingPlacer.BandRadius(inner, outer, entryIndex % rings, rings);
+            float anchorAng = CoverRingPlacer.ClusterAnchorAngle(rng, entryIndex, entryCount, 0.42f);
+            var anchor = PushOutOfLane(CoverRingPlacer.PolarPoint(ringR, anchorAng), keepout);
+
+            float spread = ClusterSpreadBase + 0.35f * n;
+            int placed = 0;
+
+            for (int k = 0; k < n; k++)
+            {
+                var slot = CoverRingPlacer.Jittered(rng, anchor, spread, PropScaleMin, PropScaleMax);
+                slot.Position = PushOutOfLane(slot.Position, keepout);
+
+                // Re-roll a few times before giving a slot up, so a cluster near a turret thins
+                // rather than vanishes.
+                for (int attempt = 0; attempt < 5 && !AcceptPropSlot(slot.Position, keepout); attempt++)
+                {
+                    slot = CoverRingPlacer.Jittered(rng, anchor, spread * 1.4f, PropScaleMin, PropScaleMax);
+                    slot.Position = PushOutOfLane(slot.Position, keepout);
+                }
+                if (!AcceptPropSlot(slot.Position, keepout)) continue;
+
+                var go = InstantiateVisual(model, zone, "Prop_" + p.token, slot.Position,
+                                           slot.Rotation, stripColliders: !p.cover);
+                if (go == null) continue;
+
+                // Scale AFTER instantiate (which already seated it), then re-seat: a scaled prop
+                // that is not re-seated floats or sinks by its own bounds delta.
+                go.transform.localScale *= slot.Scale;
+                SeatOnGround(go);
+                if (p.cover) EnsureCoverCollider(go);
+                placed++;
+            }
+
+            return placed;
+        }
+
+        /// <summary>
+        /// Approach / Gatehouse / Choke / Keep keep their authored, deliberate placement
+        /// (<see cref="PropSlot"/>) - a gatehouse flank prop is SUPPOSED to sit beside the gate,
+        /// so the courtyard's lane push must not apply here. The staging pocket is still honoured,
+        /// because Approach props are the only ones that reach out towards it.
+        /// </summary>
+        private static int PlaceZoneProps(GameObject model, Transform zone, RaidDressPropDef p, int n,
+                                          LayoutContext ctx, int seed, int entryIndex, PropKeepout keepout)
+        {
+            int placed = 0;
+            for (int k = 0; k < n; k++)
+            {
+                Vector3 pos = PropSlot(p.zone, ctx, seed + entryIndex * 17 + k * 31, k, n);
+                if (IsSouthLane(pos, ctx)) pos.x += 6f * ((k & 1) == 0 ? 1f : -1f);
+
+                if (keepout.HasStaging)
+                {
+                    float sx = keepout.Staging.x - pos.x;
+                    float sz = keepout.Staging.z - pos.z;
+                    if (sx * sx + sz * sz < StagingClearPad * StagingClearPad) continue;
+                }
+
+                var go = InstantiateVisual(model, zone, "Prop_" + p.token, pos,
+                                           Quaternion.Euler(0f, (seed + k * 40) % 360, 0f),
+                                           stripColliders: !p.cover);
+                if (go == null) continue;
+                if (p.cover) EnsureCoverCollider(go);
+                placed++;
+            }
+            return placed;
+        }
+
+        /// <summary>
+        /// A cover prop has to actually stop a body and an arrow. WO-1607 §6 "Cover stacks":
+        /// "Troops can stand behind something ... with colliders"; WO-1609:104 "Colliders on";
+        /// WO-1610:112 "collider stays". Keeping the prefab's own colliders is enough when it
+        /// HAS any - many KayKit FBX do not, so fit an axis-aligned box to the renderer bounds.
+        /// The box is a touch generous on a yawed mesh (an AABB of a rotated bound), which is the
+        /// right way to err for cover.
+        /// </summary>
+        private static void EnsureCoverCollider(GameObject go)
+        {
+            if (go == null) return;
+            var existing = go.GetComponentsInChildren<Collider>(true);
+            if (existing != null && existing.Length > 0) return;
+
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            if (rends == null || rends.Length == 0) return;
+
+            Guard.Try(Sys, "cover collider " + go.name, () =>
+            {
+                var b = rends[0].bounds;
+                for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+
+                var box = go.AddComponent<BoxCollider>();
+                var lossy = go.transform.lossyScale;
+                float sx = Mathf.Max(0.0001f, Mathf.Abs(lossy.x));
+                float sy = Mathf.Max(0.0001f, Mathf.Abs(lossy.y));
+                float sz = Mathf.Max(0.0001f, Mathf.Abs(lossy.z));
+
+                box.center = go.transform.InverseTransformPoint(b.center);
+                box.size = new Vector3(b.size.x / sx, b.size.y / sy, b.size.z / sz);
+            });
+        }
+
+        // ⚠ TGVRU EMERGENCY SET ONLY - `scene-configs.json` raidDress.props IS THE AUTHORITY.
+        // This list is reached only when a config authors NO props at all (a new camp, or a row
+        // mid-edit). It has already drifted from the shipped JSON once and must never be treated
+        // as the content: WO-1635 owns retiring it. `cover` mirrors the authored intent so the
+        // fallback still yields cover rather than scenery.
         private static List<RaidDressPropDef> DefaultProps(string kit)
         {
             var list = new List<RaidDressPropDef>();
             if (kit == "hexagon-green")
             {
-                list.Add(new RaidDressPropDef { token = "building_tent_green", count = 4, zone = "Courtyard" });
-                list.Add(new RaidDressPropDef { token = "barrel_large", count = 4, zone = "Courtyard" });
-                list.Add(new RaidDressPropDef { token = "crate_large", count = 4, zone = "Courtyard" });
+                list.Add(new RaidDressPropDef { token = "building_tent_green", count = 4, zone = "Courtyard", cover = true });
+                list.Add(new RaidDressPropDef { token = "barrel_large", count = 4, zone = "Courtyard", cover = true });
+                list.Add(new RaidDressPropDef { token = "crate_large", count = 4, zone = "Courtyard", cover = true });
                 list.Add(new RaidDressPropDef { token = "banner_green", count = 2, zone = "Approach" });
-                list.Add(new RaidDressPropDef { token = "rubble_large", count = 3, zone = "Courtyard" });
-                list.Add(new RaidDressPropDef { token = "weaponrack", count = 2, zone = "Courtyard" });
+                list.Add(new RaidDressPropDef { token = "rubble_large", count = 3, zone = "Courtyard", cover = true });
+                list.Add(new RaidDressPropDef { token = "weaponrack", count = 2, zone = "Courtyard", cover = true });
             }
             else if (kit == "synty-castle")
             {
-                list.Add(new RaidDressPropDef { token = "barracks", count = 1, zone = "Courtyard" });
-                list.Add(new RaidDressPropDef { token = "SM_Prop_Spike_Fortification_01", count = 3, zone = "Approach" });
-                list.Add(new RaidDressPropDef { token = "barrel_large", count = 4, zone = "Courtyard" });
-                list.Add(new RaidDressPropDef { token = "crate_large", count = 4, zone = "Courtyard" });
-                list.Add(new RaidDressPropDef { token = "weaponrack", count = 3, zone = "Courtyard" });
+                list.Add(new RaidDressPropDef { token = "barracks", count = 1, zone = "Courtyard", cover = true });
+                list.Add(new RaidDressPropDef { token = "SM_Prop_Spike_Fortification_01", count = 3, zone = "Approach", cover = true });
+                list.Add(new RaidDressPropDef { token = "barrel_large", count = 4, zone = "Courtyard", cover = true });
+                list.Add(new RaidDressPropDef { token = "crate_large", count = 4, zone = "Courtyard", cover = true });
+                list.Add(new RaidDressPropDef { token = "weaponrack", count = 3, zone = "Courtyard", cover = true });
             }
             else
             {
-                list.Add(new RaidDressPropDef { token = "pillar_decorated", count = 6, zone = "Courtyard" });
+                list.Add(new RaidDressPropDef { token = "pillar_decorated", count = 6, zone = "Courtyard", cover = true });
                 list.Add(new RaidDressPropDef { token = "banner_white", count = 4, zone = "Keep" });
                 list.Add(new RaidDressPropDef { token = "torch_mounted", count = 6, zone = "Keep" });
-                list.Add(new RaidDressPropDef { token = "chest_gold", count = 2, zone = "Keep" });
-                list.Add(new RaidDressPropDef { token = "rubble_large", count = 3, zone = "Courtyard" });
+                list.Add(new RaidDressPropDef { token = "chest_gold", count = 2, zone = "Keep", cover = true });
+                list.Add(new RaidDressPropDef { token = "rubble_large", count = 3, zone = "Courtyard", cover = true });
             }
             return list;
         }

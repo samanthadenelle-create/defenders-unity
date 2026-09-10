@@ -7,6 +7,16 @@
 **Config id:** `mage_enclave` → scene `RaidBase_mage_enclave`  
 **Do not retune:** garrison (7 hollow-acolyte + 5 orc-shaman + 7 hollow-warrior + necromancer boss + 3 elites), spire HP 3500, tower DPS budget 20, `entranceCount: 1`, `interiorWallLayers: 1` (already), OverlappingFire 7+3 turrets, `shardDropChance: 0.2`, `unlockVictories: 10`.
 
+> ⚠ **COUNT CORRECTED 2026-09-10 (WO-1635, lane PROPS-CANON).** The Status line above says **668 dress
+> pieces**. That was the 2026-09-09 bake and is **stale**; the Status line is **deliberately left as
+> authored** (CLAUDE.md §15 — a dated WO header is frozen, it gets a banner, not a rewrite). The current
+> bake reads **placed=590**:
+> `Builds/wave3-bake7:671` — `[Flow:RaidBase] dressed 'mage_enclave' kit=dungeon-stone placed=590 missing=0 gateW=8.58 zones=Approach,Gatehouse,Courtyard,Choke,Keep`.
+> ⛔ **Do not "refresh" this number again** — the authority is the newest `[Flow:RaidBase] dressed
+> 'mage_enclave' ... placed=` line on a FRESH bake log, never a number in a doc.
+> *(WO-1635 §2 cites `Builds/wave2-bake2`; only `Builds/wave2-bake2.runner.txt` exists in `Builds/`, so
+> `Builds/wave3-bake7` is the citation actually read.)*
+
 ---
 
 ## 1. What it is today (proven)

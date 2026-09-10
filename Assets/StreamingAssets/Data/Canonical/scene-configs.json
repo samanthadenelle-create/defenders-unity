@@ -73,7 +73,7 @@
       "wallTier": "Wood",
       "baseRadius": 31,
       "wallSegmentsPerSide": 9,
-      "centralBuilding": "tower_siege_tower",
+      "centralBuilding": "tower_ruined_watchtower",
       "towers": [
         {
           "type": "tower_catapult",
@@ -91,16 +91,16 @@
         "floor": "floor_dirt_large",
         "towersVisual": "building_watchtower_green",
         "props": [
-          { "token": "building_tent_green", "count": 4, "zone": "Courtyard" },
-          { "token": "barrel_large", "count": 4, "zone": "Courtyard" },
-          { "token": "crate_large", "count": 4, "zone": "Courtyard" },
-          { "token": "crates_stacked", "count": 2, "zone": "Courtyard" },
-          { "token": "weaponrack", "count": 2, "zone": "Courtyard" },
+          { "token": "building_tent_green", "count": 4, "zone": "Courtyard", "cover": true },
+          { "token": "barrel_large", "count": 4, "zone": "Courtyard", "cover": true },
+          { "token": "crate_large", "count": 4, "zone": "Courtyard", "cover": true },
+          { "token": "crates_stacked", "count": 2, "zone": "Courtyard", "cover": true },
+          { "token": "weaponrack", "count": 2, "zone": "Courtyard", "cover": true },
           { "token": "banner_green", "count": 2, "zone": "Approach" },
           { "token": "flag_green", "count": 2, "zone": "Gatehouse" },
-          { "token": "crate_large", "count": 2, "zone": "Gatehouse" },
-          { "token": "rubble_large", "count": 2, "zone": "Gatehouse" },
-          { "token": "rubble_large", "count": 3, "zone": "Courtyard" }
+          { "token": "crate_large", "count": 2, "zone": "Gatehouse", "cover": true },
+          { "token": "rubble_large", "count": 2, "zone": "Gatehouse", "cover": true },
+          { "token": "rubble_large", "count": 3, "zone": "Courtyard", "cover": true }
         ]
       },
       "garrison": {
@@ -167,15 +167,15 @@
         "floor": "floor_tile_large",
         "towersVisual": "SM_Bld_Castle_Wall_Tower_M_01",
         "props": [
-          { "token": "barracks", "count": 1, "zone": "Courtyard" },
-          { "token": "House_Medieval_Medium", "count": 1, "zone": "Courtyard" },
-          { "token": "SM_Prop_Spike_Fortification_01", "count": 3, "zone": "Approach" },
-          { "token": "SM_Prop_Spike_Fortification_01", "count": 4, "zone": "Gatehouse" },
-          { "token": "crate_large", "count": 2, "zone": "Gatehouse" },
-          { "token": "barrel_large", "count": 4, "zone": "Courtyard" },
-          { "token": "crate_large", "count": 4, "zone": "Courtyard" },
-          { "token": "weaponrack", "count": 3, "zone": "Courtyard" },
-          { "token": "rubble_large", "count": 3, "zone": "Courtyard" }
+          { "token": "barracks", "count": 1, "zone": "Courtyard", "cover": true },
+          { "token": "House_Medieval_Medium", "count": 1, "zone": "Courtyard", "cover": true },
+          { "token": "SM_Prop_Spike_Fortification_01", "count": 3, "zone": "Approach", "cover": true },
+          { "token": "SM_Prop_Spike_Fortification_01", "count": 4, "zone": "Gatehouse", "cover": true },
+          { "token": "crate_large", "count": 2, "zone": "Gatehouse", "cover": true },
+          { "token": "barrel_large", "count": 4, "zone": "Courtyard", "cover": true },
+          { "token": "crate_large", "count": 4, "zone": "Courtyard", "cover": true },
+          { "token": "weaponrack", "count": 3, "zone": "Courtyard", "cover": true },
+          { "token": "rubble_large", "count": 3, "zone": "Courtyard", "cover": true }
         ]
       },
       "garrison": {
@@ -246,14 +246,14 @@
         "floor": "floor_tile_large",
         "towersVisual": "Tower_Castle_Square",
         "props": [
-          { "token": "pillar_decorated", "count": 6, "zone": "Courtyard" },
+          { "token": "pillar_decorated", "count": 6, "zone": "Courtyard", "cover": true },
           { "token": "banner_white", "count": 4, "zone": "Keep" },
           { "token": "torch_mounted", "count": 6, "zone": "Keep" },
-          { "token": "chest_gold", "count": 2, "zone": "Keep" },
+          { "token": "chest_gold", "count": 2, "zone": "Keep", "cover": true },
           { "token": "floor_tile_big_spikes", "count": 2, "zone": "Choke" },
-          { "token": "rubble_large", "count": 2, "zone": "Gatehouse" },
-          { "token": "crate_large", "count": 2, "zone": "Gatehouse" },
-          { "token": "rubble_large", "count": 3, "zone": "Courtyard" }
+          { "token": "rubble_large", "count": 2, "zone": "Gatehouse", "cover": true },
+          { "token": "crate_large", "count": 2, "zone": "Gatehouse", "cover": true },
+          { "token": "rubble_large", "count": 3, "zone": "Courtyard", "cover": true }
         ]
       },
       "garrison": {

@@ -114,7 +114,17 @@ mirroring the RaidBase_* victory path. Enemy-owned per `scene-configs.json` → 
 Baked by **`RaidBaseGenerator`** (`Assets/Editor/WallTools/RaidBaseGenerator.cs`) from
 `scene-configs.json` (`BuildAllRaidScenes` / `BuildSceneFor(id)` → `RaidBase_<id>.unity`); the
 "Iron Bastion" concentric layout is the template (`BuildIronBastion`, root `RaidBase_IronBastion`).
-Nav re-baked by `RaidNavBake` (`Assets/Editor/RaidNavBake.cs:36` includes IronBastion).
+Nav re-baked by `RaidNavBake` (`Assets/Editor/RaidNavBake.cs:36` includes IronBastion) — note it
+marks **every Renderer** NavigationStatic and runs the LEGACY `NavMeshBuilder.BuildNavMesh()`
+(`:55-70`), so nav carve comes from render meshes, not colliders.
+Dressed by **`RaidBaseDresser`** (`Assets/Editor/WallTools/RaidBaseDresser.cs`), called from
+`RaidBaseGenerator.cs:424` AFTER rings/turrets/spire/staging exist: zones, wall clad, gatehouse,
+floors, and the `raidDress.props` set. ⚠ `RaidBaseGenerator.cs:35` still says prop dressing is
+"still dead" — **that comment is STALE**, the props are authored and read (WO-1635 retires it).
+Its courtyard cover-ring / cluster math lives in **`CoverRingPlacer`**
+(`Assets/Editor/WallTools/CoverRingPlacer.cs`, WO-1633) — the reusable half of
+`ProceduralSiegeArenaBuilder.PlaceCoverRing`, extracted so the arena can adopt it without a
+third copy; props authored `cover: true` keep their colliders and are real cover.
 Entry: `SceneRouter.GoRaid(sceneName)` (`SceneRouter.cs:456`) with one of the three consts
 (`SceneRouter.cs:173-177`). On the far side: `RaidGarrisonSpawner` (on the baked root; carries
 the STORED config id — the scene name `RaidBase_<id>` does NOT match the config's sceneName,
