@@ -72,6 +72,25 @@ const HEARTBOUND_STATUSES = Object.freeze([
 //    argument, written once, in the module that also does the arithmetic.
 const { toBigInt } = require('./heartbound-resonance');
 
+// ⭐ HEART-011 / WO-1684 — THE INSTRUMENT, injected and defaulting to a no-op.
+// heartbound-telemetry.js is PURE (no DB, no network), so this require adds
+// nothing to the module's I/O surface, and with no `emit` passed every function
+// below behaves exactly as it did before WO-1684.
+//
+// ⛔ READ THIS BEFORE WIRING THE TWO VERIFICATION SEAMS. `skr_verification_success`
+//    and `skr_verification_failed` ARE ALREADY BEING EMITTED IN PRODUCTION by
+//    api/heartbound/status.js:258 and :350 — that endpoint does the chain read and
+//    logs the outcome itself. WO-1684 D1: "Do not emit the same event from both
+//    sides — a double-counted funnel is worse than a missing one." So:
+//      • wire `emit` on recordVerifiedStake / recordVerificationFailure ONLY for a
+//        caller that does NOT go through /api/heartbound/status (the pulse cron is
+//        the case this exists for);
+//      • never wire it inside status.js's own request path.
+//    The seam is here because the write is the moment the state actually changes;
+//    the guard is here because the endpoint got there first.
+const telemetry = require('./heartbound-telemetry.js');
+const TE = telemetry.HEARTBOUND_EVENTS;
+
 /**
  * u128 ceiling — the on-chain width of a raw SKR amount, and the reason the columns
  * are NUMERIC(39,0) rather than BIGINT (u128 max ≈ 3.4e38; BIGINT tops out ≈ 9.2e18).
@@ -219,7 +238,7 @@ async function readHeartboundState(sql, playerId, options = {}) {
  *    a self-assignment rather than left out of the UPDATE list (leaving it out is
  *    correct too, but says nothing to the next reader).
  */
-async function activateHeartbound(sql, playerId, { status = 'ACTIVE' } = {}) {
+async function activateHeartbound(sql, playerId, { status = 'ACTIVE', emit = telemetry.noopEmit, nowMs = Date.now() } = {}) {
     requireSql(sql);
     requirePlayerId(playerId);
     requireStatus(status);
@@ -237,7 +256,26 @@ async function activateHeartbound(sql, playerId, { status = 'ACTIVE' } = {}) {
                   resonance_score::text              AS resonance_score,
                   resonance_tier, highest_lifetime_tier, current_tree_resonance_stage,
                   pending_echo_events, last_echo_event_id, version`;
-    return toSnapshot(rows && rows[0] ? rows[0] : null);
+    const snapshot = toSnapshot(rows && rows[0] ? rows[0] : null);
+
+    // ⭐ HEART-011: `heartbound_activated`. Emitted on every successful call — the
+    // statement is idempotent by PK, and telling a fresh INSERT from an absorbed
+    // ON CONFLICT would take a second query or an xmax column, i.e. changing a
+    // statement this lane must not change. The dedupe is one line in the query
+    // (MIN(received_at) GROUP BY player_id) and is written down in
+    // heartbound-telemetry.js's EVENT_OWNERS so nobody reads the raw count as
+    // "activations per day".
+    if (snapshot) {
+        await telemetry.safeEmit(emit, telemetry.buildEvent(TE.HEARTBOUND_ACTIVATED, {
+            playerId: snapshot.playerId,
+            atMs: nowMs,
+            status: snapshot.status,
+            tier: snapshot.resonanceTier,
+            continuousPulseCount: snapshot.continuousPulseCount,
+            extra: { activatedAtMs: snapshot.activatedAtMs, version: snapshot.version },
+        }));
+    }
+    return snapshot;
 }
 
 /**
@@ -265,6 +303,8 @@ async function recordVerifiedStake(sql, playerId, {
     currentTreeResonanceStage = 0,
     status = 'ACTIVE',
     verifiedAtUtc = null,
+    emit = telemetry.noopEmit,
+    nowMs = Date.now(),
 } = {}) {
     requireSql(sql);
     requirePlayerId(playerId);
@@ -312,7 +352,47 @@ async function recordVerifiedStake(sql, playerId, {
                   resonance_score::text              AS resonance_score,
                   resonance_tier, highest_lifetime_tier, current_tree_resonance_stage,
                   pending_echo_events, last_echo_event_id, version`;
-    return toSnapshot(rows && rows[0] ? rows[0] : null);
+    const snapshot = toSnapshot(rows && rows[0] ? rows[0] : null);
+
+    // ⭐ HEART-011: `skr_verification_success` — SEAM ONLY, UNWIRED BY DEFAULT.
+    // Read the ⛔ block at the top of this file before switching it on: the same
+    // name is already emitted in production by api/heartbound/status.js:350, and
+    // wiring both for one caller is the double-counted funnel WO-1684 D1 forbids.
+    // ⚠ The stake figures ride as BUCKETS (buildEvent does the bucketing) — the
+    // exact numbers are already in this very row and in player_pulse_grant.
+    if (snapshot) {
+        await telemetry.safeEmit(emit, telemetry.buildEvent(TE.SKR_VERIFICATION_SUCCESS, {
+            playerId: snapshot.playerId,
+            atMs: nowMs,
+            status: snapshot.status,
+            tier: snapshot.resonanceTier,
+            resonanceScore: Number(snapshot.resonanceScore),
+            // ⛔ NO STAKE BUCKET ON THIS EVENT, DELIBERATELY, AND THIS IS A FINDING.
+            //    The unit of `last_actual_stake` is AMBIGUOUS ACROSS ITS TWO
+            //    CALLERS at HEAD: this module coerces through toRawAmountText, whose
+            //    ceiling is u128 and whose whole reason for NUMERIC(39,0) is CHAIN
+            //    BASE UNITS (see MAX_RAW_AMOUNT above) — while
+            //    heartbound-pulse.js:514-525 hands persistPlayerState
+            //    `nextState.actualSkr`, which heartbound-resonance.js works in as
+            //    WHOLE SKR. 1e6 apart. A bucket taken over both would file every
+            //    base-unit row as "1m+" and read as a realm of whales — an
+            //    instrument that manufactures the exact signal WO-1682's ceiling
+            //    is meant to test. So this event carries the tier and the score
+            //    (unambiguous) and no amount, until the unit is settled.
+            //    ⛔ AND THE MISMATCH THROWS, IT DOES NOT MERELY MIS-BUCKET. The ramp
+            //    yields FRACTIONS from the second pulse on — measured 2026-09-10:
+            //    activate(4000) then applyPulse x3 gives 1750, 2312.5, 2734.375 —
+            //    and `toRawAmountText('2734.375')` raises
+            //    "expected a non-negative integer string". So the first caller to
+            //    wire heartbound-pulse's persistPlayerState into recordVerifiedStake
+            //    kills the daily cron for every staked player.
+            //    ⚠ NOT THIS LANE'S TO SETTLE: it is a cross-lane contract between
+            //    WO-1675 and WO-1677. Raised in WORK_ORDER_1684_....RESULT.md.
+            continuousPulseCount: snapshot.continuousPulseCount,
+            extra: { source: 'heartbound-state.recordVerifiedStake' },
+        }));
+    }
+    return snapshot;
 }
 
 /**
@@ -337,7 +417,13 @@ async function recordVerifiedStake(sql, playerId, {
  * began, not from the latest retry — otherwise a client that retries forever never
  * leaves the window.
  */
-async function recordVerificationFailure(sql, playerId, { code, status = 'STALE', attemptedAtUtc = null } = {}) {
+async function recordVerificationFailure(sql, playerId, {
+    code,
+    status = 'STALE',
+    attemptedAtUtc = null,
+    emit = telemetry.noopEmit,
+    nowMs = Date.now(),
+} = {}) {
     requireSql(sql);
     requirePlayerId(playerId);
     requireStatus(status);
@@ -362,7 +448,26 @@ async function recordVerificationFailure(sql, playerId, { code, status = 'STALE'
                   resonance_score::text              AS resonance_score,
                   resonance_tier, highest_lifetime_tier, current_tree_resonance_stage,
                   pending_echo_events, last_echo_event_id, version`;
-    return toSnapshot(rows && rows[0] ? rows[0] : null);
+    const snapshot = toSnapshot(rows && rows[0] ? rows[0] : null);
+
+    // ⭐ HEART-011: `skr_verification_failed` — SEAM ONLY, UNWIRED BY DEFAULT (same
+    // ⛔ block at the top of this file: status.js:258,350 is the live emitter).
+    //
+    // ⛔ IT EMITS EVEN WHEN ZERO ROWS WERE UPDATED, and that is the point. A
+    // failure against a player who has no row is the honest record of an attempt
+    // that found nothing — suppressing it would make "verification is failing for
+    // players we have never verified" invisible, which is the silent failure
+    // CLAUDE.md §12 forbids. `matched` says which case it was.
+    await telemetry.safeEmit(emit, telemetry.buildEvent(TE.SKR_VERIFICATION_FAILED, {
+        playerId,
+        atMs: nowMs,
+        status,
+        reason: code,
+        tier: snapshot ? snapshot.resonanceTier : undefined,
+        continuousPulseCount: snapshot ? snapshot.continuousPulseCount : undefined,
+        extra: { matched: !!snapshot, source: 'heartbound-state.recordVerificationFailure' },
+    }));
+    return snapshot;
 }
 
 /**

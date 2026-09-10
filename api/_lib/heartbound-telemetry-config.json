@@ -1,0 +1,99 @@
+{
+  "_comment": [
+    "WO-1684 / HEART-011 — THE ONE AUTHORED TABLE FOR HEARTBOUND TELEMETRY BUCKETS.",
+    "",
+    "WO-1684 acceptance 4: 'Amounts are bucketed, and the bucket edges live in config.'",
+    "Spec :1084: 'Do not put unnecessary wallet addresses into general analytics.' The",
+    "same reasoning applies to exact staked balances — an exact balance keyed by a named",
+    "player is a financial detail about that person, and NOT ONE of the spec's ten",
+    "questions (:1096-1100) needs it. Every one of them is distributional.",
+    "",
+    "⚠ THE LADDER BELOW IS DELIBERATELY IDENTICAL TO api/heartbound/status.js:400-408",
+    "(bucketOf, read at source 2026-09-10). That endpoint shipped its own private copy",
+    "of this ladder before this module existed, and it is the LIVE emitter of",
+    "skr_verification_success / skr_verification_failed. Two ladders over one axis would",
+    "put two different bucket vocabularies in one column of one table, so every chart",
+    "would need to know which seam wrote the row — the duplicated-state failure",
+    "CLAUDE.md §2/§5/§8/§16 each carry a scar from.",
+    "⛔ THIS LANE DID NOT EDIT status.js (out of its brief's file list). The labels are",
+    "matched instead, and re-pointing status.js's bucketOf at stakeBucket() here is",
+    "named in WORK_ORDER_1684_....RESULT.md as the one follow-up that closes the copy.",
+    "",
+    "⚠ ONE DIFFERENCE OF UNIT, STATED SO NOBODY 'FIXES' IT: status.js buckets a u128 in",
+    "CHAIN BASE UNITS and divides by SKR_BASE_UNITS itself; this module buckets WHOLE SKR",
+    "as a Number, because that is the unit heartbound-resonance.js works in",
+    "(isEligible(actualSkr), applyPulse(state, actualSkr)) and the unit the pulse loop",
+    "already holds by the time it emits. The LABELS are the same; the input unit is not.",
+    "",
+    "⚠ INTERIM HOME, exactly like api/_lib/heartbound-resonance-config.json says of",
+    "itself: Q-CONFIG (owner-ruled 2026-09-10) puts backend-only Heartbound knobs on the",
+    "Command Center rail as serverOnly rows — teaching api/_lib/tunable-manifest.js that",
+    "marker is explicitly forbidden to this lane, so this file is the honest interim, and",
+    "it is ONE file so lifting it later is a data move.",
+    "",
+    "Ships to Vercel: .vercelignore re-includes /api wholesale (the precedent this",
+    "folder's heartbound-resonance-config.json and dungeon-manifest.json already rely on).",
+    "",
+    "Every number here is pinned by test/heartbound-telemetry.test.js."
+  ],
+
+  "version": 1,
+
+  "playerHashSalt": "dotr-heartbound-telemetry:v1:4c9e21",
+
+  "playerHashLength": 16,
+
+  "stakeBuckets": {
+    "_comment": [
+      "Whole SKR. `belowMax` is EXCLUSIVE (skr < belowMax), walked in order; the first",
+      "row that matches wins, and `overflow` is everything above the last row. A null or",
+      "non-finite amount is `unknown` — never 0, which would be a claim nobody measured."
+    ],
+    "unknown": "unknown",
+    "zero": "0",
+    "rows": [
+      { "belowMax": 100, "label": "1-99" },
+      { "belowMax": 1000, "label": "100-999" },
+      { "belowMax": 10000, "label": "1k-9k" },
+      { "belowMax": 100000, "label": "10k-99k" },
+      { "belowMax": 1000000, "label": "100k-999k" }
+    ],
+    "overflow": "1m+"
+  },
+
+  "streakBuckets": {
+    "_comment": [
+      "continuousPulseCount. At one pulse per UTC day (Q-CADENCE, MAX_PULSES_PER_UTC_DAY",
+      "= 1 in heartbound-pulse.js:104) these read as days: a week, a month, a quarter, and",
+      "beyond. Spec question 7 — 'does staking duration correlate with retention' — is a",
+      "join of this bucket against the existing session events, which is why the edges are",
+      "calendar-shaped rather than round numbers."
+    ],
+    "unknown": "unknown",
+    "zero": "0",
+    "rows": [
+      { "belowMax": 7, "label": "1-6" },
+      { "belowMax": 30, "label": "7-29" },
+      { "belowMax": 90, "label": "30-89" },
+      { "belowMax": 365, "label": "90-364" }
+    ],
+    "overflow": "365+"
+  },
+
+  "latencyBuckets": {
+    "_comment": [
+      "Milliseconds. Spec :1082 asks for 'RPC latency' and 'processing duration' as",
+      "properties; a bucket keeps the column groupable and stops a per-row millisecond",
+      "figure from being read as a benchmark it is not."
+    ],
+    "unknown": "unknown",
+    "zero": "0",
+    "rows": [
+      { "belowMax": 100, "label": "<100ms" },
+      { "belowMax": 500, "label": "100-499ms" },
+      { "belowMax": 2000, "label": "500ms-2s" },
+      { "belowMax": 10000, "label": "2-10s" }
+    ],
+    "overflow": "10s+"
+  }
+}

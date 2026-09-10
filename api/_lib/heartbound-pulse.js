@@ -161,6 +161,24 @@ const defaultPersistPlayerState = seamMissing('HEART-002', 'persistPlayerState(s
 // drive an alternate table.
 const resonanceModule = require('./heartbound-resonance.js');
 
+// ⭐ HEART-011 / WO-1684 — THE INSTRUMENT. `heartbound-telemetry.js` is a PURE
+// event-shaping module (no DB, no network), so requiring it at top level is safe
+// here for exactly the reason the resonance require above is.
+//
+// ⛔ IT CHANGES NOTHING. Every emit below goes through an INJECTED `deps.emit`
+// that DEFAULTS TO A NO-OP, and every call is wrapped in `safeEmit`, which
+// swallows a throwing sink into one console line. So with no emitter wired — which
+// is the state of api/cron/heart-pulse.js today — this file's return values, SQL
+// statements and ordering are byte for byte what they were before WO-1684.
+// CLAUDE.md §12 requires the instrument to go in first; it does not license the
+// instrument moving the thing it measures.
+//
+// Wiring it is ONE line in the cron shell:
+//     const { createAnalyticsEmitter } = require('../_lib/heartbound-telemetry.js');
+//     runHeartPulseDetector({ sql, now: Date.now(), emit: createAnalyticsEmitter({ sql }) })
+const telemetry = require('./heartbound-telemetry.js');
+const TE = telemetry.HEARTBOUND_EVENTS;
+
 /**
  * ⛔ THE UNIT BOUNDARY, IN EXACTLY ONE PLACE.
  * HEART-003 works in WHOLE SKR as a Number (`isEligible(actualSkr)`,
@@ -227,6 +245,7 @@ async function detectPulse(deps) {
         sql,
         readSharePrice = defaultReadSharePrice,
         now = Date.now(),
+        emit = telemetry.noopEmit,
     } = deps;
 
     const lastRows = await sql`
@@ -307,6 +326,24 @@ async function detectPulse(deps) {
         // api/referral/install-brag.js:118-133.
         return { minted: false, reason: SKIP.NO_ADVANCEMENT, raced: true };
     }
+
+    // ⭐ HEART-011: `heart_pulse_global_detected` — and ONLY here. Not on the
+    // BASELINE row (bookkeeping, not a pulse), not on NO_ADVANCEMENT, and not on
+    // the losing side of the ON CONFLICT race above, all three of which return
+    // before this line. A global pulse is a property of the WHOLE realm, so it
+    // carries no player: `identity` is null, which audit.js:120 stores as
+    // 'anonymous'. The share prices are deliberately absent — a u128 chain figure
+    // is not one of the ten questions and would ride through JSON as a lossy
+    // double anyway; `global_heart_pulse` already holds them exactly.
+    await telemetry.safeEmit(emit, telemetry.buildEvent(TE.HEART_PULSE_GLOBAL_DETECTED, {
+        playerId: null,
+        atMs: now,
+        pulseId: inserted[0].pulse_id,
+        sequenceNumber: inserted[0].sequence_number,
+        status: inserted[0].status,
+        extra: { sourceSlot: observed.sourceSlot ?? null },
+    }));
+
     return { minted: true, pulse: inserted[0] };
 }
 
@@ -335,6 +372,7 @@ async function processPlayerForPulse(deps) {
         persistPlayerState = defaultPersistPlayerState,
         now = Date.now(),
         staleGraceMs = STALE_GRACE_MS,
+        emit = telemetry.noopEmit,
     } = deps;
 
     const res = resonance;
@@ -377,6 +415,26 @@ async function processPlayerForPulse(deps) {
                     ${stale ? 'STALE' : 'RPC_UNAVAILABLE'}, ${new Date(now).toISOString()})
             ON CONFLICT (player_id, global_pulse_id) DO NOTHING
         `;
+        // ⭐ HEART-011: `heart_pulse_player_deferred`. THIS is the deferral the
+        // spec names — one player whose reading could not be verified, so their
+        // pulse is owed rather than paid. ⚠ It is NOT the run summary's
+        // `deferred` count, which is the OVER-CAP catch-up figure from
+        // selectCatchupPulses; those are different facts and giving them one
+        // event name would make the deferral chart unreadable. The over-cap
+        // figure stays a count on the summary, where it already is.
+        await telemetry.safeEmit(emit, telemetry.buildEvent(TE.HEART_PULSE_PLAYER_DEFERRED, {
+            playerId: state.playerId,
+            atMs: now,
+            pulseId: pulse.pulse_id,
+            sequenceNumber: pulse.sequence_number,
+            reason,
+            status: GRANT_STATUS.PENDING,
+            continuousPulseCount: Number(state.continuousPulseCount || 0),
+            // The failure message is a SHAPE, never a payload: it can carry an
+            // RPC endpoint or a wallet echoed back by a provider, and buildEvent's
+            // leak guard would (correctly) refuse the whole event for it.
+            extra: { errorKind: verifyError ? 'read_failed' : 'no_reading' },
+        }));
         return { granted: false, reason, playerId: state.playerId, error: verifyError };
     }
 
@@ -399,6 +457,14 @@ async function processPlayerForPulse(deps) {
     };
     const nextState = res.applyPulse(priorState, actualSkr, cfg);
     const view = res.evaluate(nextState, cfg);
+    // ⭐ HEART-011: the BEFORE half of the transition, derived from the SAME
+    // arithmetic as the after half rather than read off the state row.
+    // `state.resonanceTier` is not in this function's stated state contract
+    // (see the doc comment above), so a fixture or a HEART-002 row that omits it
+    // would silently report every player as a tier-up from 0 — an instrument that
+    // manufactures its own signal is worse than none. `evaluate` is pure and
+    // allocation-cheap, and it cannot disagree with the value it is compared to.
+    const priorView = res.evaluate(priorState, cfg);
     const effectiveStake = nextState.effectiveSkr;
     const continuousPulseCount = nextState.continuousPulseCount;
     const totalLifetimePulses = Number(state.totalLifetimePulses || 0) + 1;
@@ -457,6 +523,53 @@ async function processPlayerForPulse(deps) {
         resonanceScore: score,
         resonanceTier: tier,
     });
+
+    // ⭐ HEART-011, and ONLY on this path: every `return` above this line either
+    // lost the ON CONFLICT gate or never reached it, so a duplicate background
+    // run emits nothing. Three facts, three events, none of them redundant:
+    //
+    //   heart_pulse_player_processed — the grant happened (funnel denominator).
+    //   resonance_score_changed      — only when the FLOORED score actually moved.
+    //   resonance_tier_up / _down    — only on a real tier transition.
+    //
+    // ⚠ tier up/down are SERVER events here, departing from WO-1684 D1's "as
+    // seen" phrasing. The client never computes a tier (product rule 6;
+    // heartbound-resonance.js:19-26) and cannot observe a transition that happened
+    // during a daily cron while it was closed. See heartbound-telemetry.js's
+    // header, departure 1 — it needs the lead's nod, and it is the only place the
+    // transition is a fact rather than a repaint.
+    const teBase = {
+        playerId: state.playerId,
+        atMs: now,
+        pulseId: pulse.pulse_id,
+        sequenceNumber: pulse.sequence_number,
+        tier,
+        tierName: view.tierName,
+        resonanceScore: score,
+        effectiveSkr: effectiveStake,
+        actualSkr: nextState.actualSkr,
+        continuousPulseCount,
+    };
+    await telemetry.safeEmit(emit, telemetry.buildEvent(TE.HEART_PULSE_PLAYER_PROCESSED, {
+        ...teBase,
+        status: GRANT_STATUS.GRANTED,
+        extra: { totalLifetimePulses, highestLifetimeTier: nextState.highestLifetimeTier },
+    }));
+    if (priorView.resonanceScore !== score) {
+        await telemetry.safeEmit(emit, telemetry.buildEvent(TE.RESONANCE_SCORE_CHANGED, {
+            ...teBase,
+            previousScore: priorView.resonanceScore,
+            previousTier: priorView.tier,
+        }));
+    }
+    if (tier !== priorView.tier) {
+        await telemetry.safeEmit(emit, telemetry.buildEvent(
+            tier > priorView.tier ? TE.RESONANCE_TIER_UP : TE.RESONANCE_TIER_DOWN, {
+                ...teBase,
+                previousTier: priorView.tier,
+                previousScore: priorView.resonanceScore,
+            }));
+    }
 
     return {
         granted: true,
