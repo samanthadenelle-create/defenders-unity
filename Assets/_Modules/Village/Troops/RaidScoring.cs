@@ -284,6 +284,48 @@ namespace DeNelle.Village
         /// <summary>How often the passive engagement detector sweeps while the raid is staging.</summary>
         private const float EngagementScanInterval = 0.2f;
 
+        // ── WO-1618: THE DISCRIMINATING CLOCK TRACE (instrumentation only) ────
+        // The measured defect: a raid scene lived ~510s (stranding watchdog, F8 seq 4980) while
+        // this clock settled at 50.2s. Three mechanisms produce that exact shape and the log
+        // could not tell them apart:
+        //   1. Time.deltaTime is the SCALED delta, so any slow/zero world clock starves _elapsed
+        //      while Time.unscaledTime (what the watchdog reads) keeps running.
+        //   2. Engagement never latching / a SECOND scorer instance owning the clock.
+        //   3. Update not running on this instance at all (disabled, unloaded, destroyed).
+        // These fields exist so ONE line names all three axes with no cross-source correlation.
+        // ⛔ Instrumentation is PERMANENT (CLAUDE.md §12) - never strip these, flag them off.
+        // Every accumulator below is unscaled-referenced, because a scaled reference cannot
+        // measure a scaled defect.
+        private float _sceneStartUnscaled;      // Time.unscaledTime at Awake - the scene-age origin
+        private int _sceneStartFrame;           // Time.frameCount at Awake - the Update-liveness origin
+        private float _scaledSumTotal;          // sum of Time.deltaTime seen in Update since Awake
+        private float _unscaledSumTotal;        // sum of Time.unscaledDeltaTime seen in Update since Awake
+        private float _scaledSumWindow;         // same, since the last emitted tick line
+        private float _unscaledSumWindow;       // same, since the last emitted tick line
+        private int _lastTickFrame;             // Time.frameCount of the last emitted tick line
+        private float _nextTickAtUnscaled;      // gate for the tick line - unscaled, so a frozen clock still ticks
+        private bool _everEngaged;              // latch, so a true->false engagement drop is detectable
+        private int _lastHoldCount = -1;        // last observed WorldHold.Count (edge detector)
+        private float _lastEffectiveScale = -1f;// last observed WorldHold.EffectiveScale (edge detector)
+        private bool _lastScaleWasNormal = true;// last observed "Time.timeScale ~= 1" verdict (edge detector)
+        private float _scaleLeftNormalAtUnscaled;// unscaled time the clock last left ~1.00 (0 = it is at ~1.00)
+        private bool _scaleLeaveWarned;         // true once THIS departure from ~1.00 has been reported
+        private int _dipsWindow;                // transitions away from ~1.00 since the last tick line
+        private string _tickKey;                // per-INSTANCE FlowTrace.Throttle key (see Awake)
+
+        /// <summary>WO-1618 - how long, in UNSCALED seconds, the world clock must stay away from 1.00
+        /// before the departure is worth a line. The longest DELIBERATE dip in the tree is 1.2s
+        /// (WorldHold.cs:757 names it while refusing to restore a stale baseline), so anything that
+        /// outlives this is not a cosmetic beat. Warning on every hit-stop instead would put two
+        /// ~450-byte lines on every hit and evict the boot window out of the 256 KiB device logcat
+        /// ring - destroying the evidence this ticket exists to capture.</summary>
+        private const float ScaleDepartureReportSeconds = 1.5f;
+
+        /// <summary>How often the WO-1618 clock tick line is emitted, in UNSCALED seconds.
+        /// A per-frame line would evict the boot window out of the device logcat ring and destroy
+        /// the very evidence it was added to capture (FlowTrace.cs:293-300).</summary>
+        private const float ClockTickSeconds = 5f;
+
         // ── Runtime ───────────────────────────────────────────────────────────
         private float _elapsed;
         private bool _finalized;
@@ -1123,11 +1165,67 @@ namespace DeNelle.Village
         private void Awake()
         {
             Instance = this;
+
+            // WO-1618: the UNSCALED origin for scene age and Update liveness. Both are taken here
+            // rather than in Start, because a scorer that never reaches Start is itself one of the
+            // answers this trace exists to give.
+            _sceneStartUnscaled = Time.unscaledTime;
+            _sceneStartFrame = Time.frameCount;
+            _lastTickFrame = _sceneStartFrame;
+            _nextTickAtUnscaled = 0f;
+
+            // ⛔ THE THROTTLE KEY IS PER-INSTANCE, and that is the whole point of it. FlowTrace's
+            // throttle state is a STATIC dictionary keyed system/key (FlowTrace.cs:205-221), so a
+            // shared key would let one scorer's line suppress another's - silently hiding the
+            // SECOND-SCORER case that inst= and isInstance= were added to detect. Built once here,
+            // never on the hot path.
+            _tickKey = "clock-tick/" + GetInstanceID();
+            FlowTrace.Step("Raid",
+                $"clock origin armed: inst={GetInstanceID()} unscaledTime={_sceneStartUnscaled:F1}s " +
+                $"frame={_sceneStartFrame} timeScale={Time.timeScale:F2} " +
+                $"holds={DeNelle.Core.UI.WorldHold.Count}. Every WO-1618 clock tick line is measured " +
+                "against THIS origin, so a second scorer shows a second origin and is never mistaken " +
+                "for a frozen first one.");
         }
 
         private void OnDestroy()
         {
+            // WO-1618 mechanism 3 - the moment Update STOPS, not a sample taken after it stopped.
+            // An unfinalized scorer being destroyed means the clock died with seconds unbilled;
+            // the ABSENCE of tick lines after this line is then proof, not a gap in the capture.
+            //
+            // Play-mode ONLY. The EDIT-mode regression suites build a scorer, tick it and
+            // DestroyImmediate it without ever finalizing (RaidTerminalStateRegression Case A does
+            // exactly that), which is a correct harness lifecycle and not the defect. Warning there
+            // would put a false "the clock died" line in every gate log - noise in the instrument
+            // this ticket exists to sharpen. Headless batchmode PLAY sessions still report, so the
+            // capture path is untouched.
+            if (!_finalized && Application.isPlaying)
+                FlowTrace.Warn("Raid",
+                    $"clock owner DESTROYED before finalize: inst={GetInstanceID()} " +
+                    $"elapsed={_elapsed:F1}s/{_clockSeconds:F1}s engaged={_engaged} everEngaged={_everEngaged} " +
+                    $"scene={Mathf.Max(0f, Time.unscaledTime - _sceneStartUnscaled):F1}s " +
+                    $"isInstance={Instance == this}. No clock tick line can follow this one from this " +
+                    "instance; if ticks continue, another scorer owns the clock.");
+
             if (Instance == this) Instance = null;
+        }
+
+        /// <summary>
+        /// WO-1618 - instrumentation only. A scorer whose Update stops being pumped stops billing
+        /// the raid, and that is one of the three mechanisms that produce a 50s clock in a 510s
+        /// scene. Unity gives no notification for it, so the disable edge IS the notification.
+        /// </summary>
+        private void OnDisable()
+        {
+            // Play-mode only, for the same reason OnDestroy is - see the note there.
+            if (_finalized || !Application.isPlaying) return;
+            FlowTrace.Warn("Raid",
+                $"clock owner DISABLED before finalize: inst={GetInstanceID()} " +
+                $"elapsed={_elapsed:F1}s/{_clockSeconds:F1}s engaged={_engaged} everEngaged={_everEngaged} " +
+                $"scene={Mathf.Max(0f, Time.unscaledTime - _sceneStartUnscaled):F1}s " +
+                $"activeSelf={gameObject.activeSelf} isInstance={Instance == this}. " +
+                "Update is no longer pumped on this instance - every second from here is unbilled.");
         }
 
         private void Start()
@@ -1215,6 +1313,12 @@ namespace DeNelle.Village
 
         private void Update()
         {
+            // ⛔ WO-1618 - THE DISCRIMINATING TRACE, and it runs BEFORE the _finalized early return
+            // ON PURPOSE. "finalized flipped early" is itself a candidate answer, and a probe that
+            // returns before it can say so cannot rule it out. Instrumentation only: it reads state
+            // and writes nothing the scoring depends on.
+            TraceClockTick();
+
             if (_finalized) return;
 
             // Track the peak garrison total (it grows as the staggered spawn lands,
@@ -1251,6 +1355,183 @@ namespace DeNelle.Village
                 FlowTrace.Step("Raid", $"raid clock expired at {_elapsed:0.0}s (destruction {DestructionPct * 100f:0}%). Ending the raid.");
                 OnTimeExpired?.Invoke();
             }
+        }
+
+        /// <summary>
+        /// WO-1618 - THE DISCRIMINATING TRACE. Instrumentation ONLY: this method reads state and
+        /// changes none of it, so the clock's behaviour is exactly what it was before the ticket.
+        ///
+        /// <para>WHAT IT IS FOR. F8 seq 4980 measured a raid scene that lived ~510s (the stranding
+        /// watchdog's own text) settling on a 50.2s clock, with live combat VFX aged 455-469s. WO-1618
+        /// §3 named two mechanisms that produce that identical shape, and §4 named a third; the log
+        /// could not tell them apart, so no behavioural edit had been earned (CLAUDE.md §12).
+        /// This emits ONE line naming every axis at once, so the answer needs no correlation across
+        /// break-log, Player.log and the VFX census.</para>
+        ///
+        /// <para>THE LOAD-BEARING NUMBER IS <c>avgScaleWin</c>. The single advance in Update adds
+        /// <c>Time.deltaTime</c> to the clock - the SCALED delta - so the ratio of scaled to unscaled
+        /// seconds accumulated in this very method IS the fraction of real time the clock was
+        /// allowed to bill. A single <c>timeScale</c> SAMPLE cannot see this: a world held at 0.11
+        /// and a world that ran at 1.00 for 50s then froze both sample as whatever the last frame
+        /// happened to be. 50.2s billed out of ~455s engaged is a mean scale of ~0.11, which is why
+        /// the mean, not the sample, is the discriminator. Both are logged.</para>
+        ///
+        /// <para>WHY NOT A PER-FRAME LINE. A hot per-frame trace evicts the boot window out of the
+        /// device logcat ring and destroys the evidence it was added to capture
+        /// (FlowTrace.cs:293-300; memory <c>logcat-ring-buffer-destroys-evidence</c>). The gate is
+        /// UNSCALED - <c>Time.unscaledTime</c> - because a scaled gate on a frozen clock would never
+        /// fire, and silence from a frozen clock is exactly the case that must not go unrecorded.
+        /// The string is built INSIDE the gate: <c>FlowTrace.Throttle</c> interpolates its message
+        /// before deciding to drop it, which would be a per-frame allocation on the 22 fps device
+        /// the WO-1373 lane already paid to keep allocation-free.</para>
+        ///
+        /// <para>WHY <c>WorldHold</c> IS NOT EDITED. It already traces every acquire and release with
+        /// its reason (WorldHold.cs:552, :564, :713, :722), but under the <c>Pause</c> tag, whose
+        /// presence in a device capture is not proven. The <c>Raid</c> tag IS proven present in seq
+        /// 4980. So the hold state is quoted INTO this line instead, and the ticket stays inside one
+        /// file and one lane.</para>
+        /// </summary>
+        private void TraceClockTick()
+        {
+            // Accumulate EVERY frame (two float adds), emit rarely. The sums are the measurement;
+            // the line is only its report.
+            float dtScaled = Time.deltaTime;
+            float dtUnscaled = Time.unscaledDeltaTime;
+            _scaledSumTotal += dtScaled;
+            _unscaledSumTotal += dtUnscaled;
+            _scaledSumWindow += dtScaled;
+            _unscaledSumWindow += dtUnscaled;
+
+            int holdCount = DeNelle.Core.UI.WorldHold.Count;
+            float holdScale = DeNelle.Core.UI.WorldHold.EffectiveScale;
+            float timeScale = Time.timeScale;
+            bool scaleIsNormal = Mathf.Abs(timeScale - 1f) <= 0.01f;
+
+            // ── EDGE 1: engagement dropped. WO-1618 §4 asks for a line at the MOMENT the clock
+            // stops. Read at source this session, `_engaged` has exactly ONE write in this file - a
+            // single assignment of TRUE, inside NotifyEngagement - so on this tree a drop is
+            // UNREACHABLE and this line should never print. That is the point: if it ever does, the
+            // single-writer invariant has been broken by a later edit and the capture says so
+            // instead of the next investigation re-deriving it.
+            //
+            // ⛔ AND THAT IS WHY THIS COMMENT SPELLS THE ASSIGNMENT OUT IN WORDS. The invariant is
+            // pinned by a SOURCE-TEXT scanner - RaidStagingMarkerRegression.Case5, which counts
+            // regex matches of the assignment shapes across the whole file WITHOUT a comment model
+            // (`Assets/Editor/Regression/RaidStagingMarkerRegression.cs:376-387`). Quoting the
+            // literal shape in a comment or a trace string therefore reads to it as a SECOND
+            // WRITER and turns the gate red. Never write those shapes here; name a value into a
+            // local and format the local instead.
+            if (_everEngaged && !_engaged)
+                FlowTrace.Warn("Raid",
+                    $"clock ENGAGEMENT DROPPED true->false: inst={GetInstanceID()} " +
+                    $"elapsed={_elapsed:F1}s reason={EngagedReason} " +
+                    $"scene={Mathf.Max(0f, Time.unscaledTime - _sceneStartUnscaled):F1}s. " +
+                    "The clock has fallen back into the WO-1520 staging arm and stopped billing. " +
+                    "_engaged had exactly one writer when WO-1618 was instrumented - something added " +
+                    "a second one.");
+            // Re-arm, so this is EDGE-triggered: one line per drop, not one line per frame for the
+            // rest of the raid. A trace that floods is a trace that destroys the capture.
+            if (_everEngaged && !_engaged) _everEngaged = false;
+            if (_engaged) _everEngaged = true;
+
+            // ── EDGE 2: the hold set changed. Describe() walks the hold list, so it is called ONLY
+            // inside the edge, never per frame.
+            if (holdCount != _lastHoldCount || !Mathf.Approximately(holdScale, _lastEffectiveScale))
+            {
+                if (_lastHoldCount >= 0)
+                {
+                    string holdWho = DeNelle.Core.UI.WorldHold.Describe();
+                    FlowTrace.Warn("Raid",
+                        $"world hold CHANGED under a live raid clock: holds {_lastHoldCount}->{holdCount} " +
+                        $"effectiveScale {_lastEffectiveScale:F2}->{holdScale:F2} reasons=[{holdWho}] " +
+                        $"timeScale={timeScale:F2} elapsed={_elapsed:F1}s engaged={_engaged} " +
+                        $"scene={Mathf.Max(0f, Time.unscaledTime - _sceneStartUnscaled):F1}s. " +
+                        "Every second this sits below 1.00 is a second the raid clock does not bill, " +
+                        "because the single advance uses the SCALED delta.");
+                }
+                _lastHoldCount = holdCount;
+                _lastEffectiveScale = holdScale;
+            }
+
+            // ── EDGE 3: the clock left 1.00 with NOBODY holding it. This is the interesting case:
+            // WorldHold is the only shipping owner of a freeze, so a non-1 scale with zero holds
+            // names a writer outside it. WorldHold's own comment lists the candidates that write a
+            // non-1 scale - HitStopManager, CombatFeedbackManager (hit stop 0.05 / kill slow-mo
+            // 0.30), WaveCelebrationManager (0.28), HeroHitReaction (death 0.30), ArenaDeathCam -
+            // and the seq-4980 settle line carries heroDied=True, which is why this edge is armed
+            // rather than assumed away.
+            //
+            // ⛔ IT IS GATED ON PERSISTENCE, NOT ON THE TRANSITION. A hit-stop is a legitimate,
+            // frequent departure from 1.00; warning on each one would put two lines on every hit and
+            // evict the boot window out of the device logcat ring. What this ticket is hunting is a
+            // clock held LOW for minutes (50.2s billed out of ~455s is a mean of ~0.11), which no
+            // cosmetic beat can be - the longest deliberate dip in the tree is 1.2s. So a departure
+            // is reported only once it OUTLIVES ScaleDepartureReportSeconds, and the brief ones are
+            // still counted into the tick line's dips= term so they leave evidence without volume.
+            float unscaledNow = Time.unscaledTime;
+            if (scaleIsNormal != _lastScaleWasNormal)
+            {
+                if (!scaleIsNormal)
+                {
+                    _scaleLeftNormalAtUnscaled = unscaledNow;
+                    _scaleLeaveWarned = false;
+                    _dipsWindow++;
+                }
+                else if (_scaleLeaveWarned)
+                {
+                    FlowTrace.Warn("Raid",
+                        $"world timeScale REJOINED 1.00 after a reported departure: timeScale={timeScale:F2} " +
+                        $"heldLowFor={Mathf.Max(0f, unscaledNow - _scaleLeftNormalAtUnscaled):F1}s unscaled " +
+                        $"holds={holdCount} elapsed={_elapsed:F1}s " +
+                        $"scene={Mathf.Max(0f, unscaledNow - _sceneStartUnscaled):F1}s. " +
+                        "The seconds between the LEFT line and this one are seconds the raid clock " +
+                        "under-billed, because the single advance uses the SCALED delta.");
+                    _scaleLeaveWarned = false;
+                }
+                _lastScaleWasNormal = scaleIsNormal;
+            }
+            else if (!scaleIsNormal && !_scaleLeaveWarned &&
+                     unscaledNow - _scaleLeftNormalAtUnscaled >= ScaleDepartureReportSeconds)
+            {
+                _scaleLeaveWarned = true;
+                FlowTrace.Warn("Raid",
+                    $"world timeScale LEFT 1.00 and STAYED there under a live raid clock: " +
+                    $"timeScale={timeScale:F2} for {unscaledNow - _scaleLeftNormalAtUnscaled:F1}s unscaled " +
+                    $"holds={holdCount} holdScale={holdScale:F2} elapsed={_elapsed:F1}s engaged={_engaged} " +
+                    $"scene={Mathf.Max(0f, unscaledNow - _sceneStartUnscaled):F1}s. " +
+                    $"This has outlived the {ScaleDepartureReportSeconds:F1}s shelf life of every " +
+                    "deliberate dip in the tree, so it is NOT a cosmetic beat. With holds=0 it is a " +
+                    "scale written by somebody WorldHold does not own - read HitStopManager, " +
+                    "CombatFeedbackManager, WaveCelebrationManager, HeroHitReaction, ArenaDeathCam " +
+                    "before anything else.");
+            }
+
+            // ── THE SAMPLE LINE, gated on UNSCALED time so a frozen world still reports. ──────
+            if (unscaledNow < _nextTickAtUnscaled) return;
+            _nextTickAtUnscaled = unscaledNow + ClockTickSeconds;
+
+            float sceneAge = Mathf.Max(0f, unscaledNow - _sceneStartUnscaled);
+            float avgWin = _unscaledSumWindow > 0.0001f ? _scaledSumWindow / _unscaledSumWindow : -1f;
+            float avgTotal = _unscaledSumTotal > 0.0001f ? _scaledSumTotal / _unscaledSumTotal : -1f;
+            int frames = Time.frameCount - _lastTickFrame;
+            float fps = _unscaledSumWindow > 0.0001f ? frames / _unscaledSumWindow : -1f;
+            string reason = string.IsNullOrEmpty(EngagedReason) ? "none" : EngagedReason;
+            string holds = holdCount > 0 ? DeNelle.Core.UI.WorldHold.Describe() : "none";
+
+            // Throttle, per WO-1618 §4 - deliberately at HALF the outer interval so the two gates
+            // can never phase against each other and eat a line, while the FlowTrace-side cap still
+            // stands if a later edit breaks the outer one.
+            FlowTrace.Throttle("Raid", _tickKey ?? "clock-tick", ClockTickSeconds * 0.5f,
+                $"clock tick: timeScale={timeScale:F2} dt={dtScaled:F3} avgScaleWin={avgWin:F3} " +
+                $"avgScaleTotal={avgTotal:F3} dips={_dipsWindow} engaged={_engaged} reason={reason} " +
+                $"finalized={_finalized} holds={holdCount} holdScale={holdScale:F2} hold=[{holds}] " +
+                $"elapsed={_elapsed:F1}s/{_clockSeconds:F1}s scene={sceneAge:F1}s " +
+                $"frames={frames} fps={fps:F1} inst={GetInstanceID()} isInstance={Instance == this}");
+
+            _scaledSumWindow = 0f;
+            _unscaledSumWindow = 0f;
+            _dipsWindow = 0;
+            _lastTickFrame = Time.frameCount;
         }
 
         /// <summary>
