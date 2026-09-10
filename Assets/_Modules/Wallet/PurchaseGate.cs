@@ -177,7 +177,26 @@ namespace DeNelle.Wallet
         /// $49.99 entitlement to a key the backend will 401.</para>
         /// </summary>
         public static bool HasDurableIdentity =>
-            GameStateService.Instance?.HasAttestedWalletIdentity ?? false;
+            (GameStateService.Instance?.HasAttestedWalletIdentity ?? false)
+            || HasVerifiedPiIdentity;
+
+        /// <summary>
+        /// WO-1700 (owner on the Seeker in Pi Browser, 2026-09-10): on the Pi channel the durable
+        /// key is the SERVER-VERIFIED Pi uid, not a Solana pubkey. WO-1386 made every Pi price
+        /// require an attested identity nine hours after WO-1318's felt-test pass, and the only
+        /// identity test it consulted was <see cref="GameStateService.HasAttestedWalletIdentity"/>,
+        /// which needs a base58 pubkey a signing wallet vouched for - a shape a Pi uid can never
+        /// take. Captured 21:46:36Z: "Signed in as samanthadenelle" then, on every card,
+        /// "this save has NO attested wallet identity". Nothing had been buyable on Pi since 09-04.
+        /// <para><see cref="DeNelle.Core.Platform.PiSignInController.IsSignedIn"/> is true ONLY after
+        /// <c>/api/pi/verify</c> validated the access token against api.minepi.com and returned the
+        /// uid (PiSignInController.cs, VerifyWithBackend) - the same bar the wallet path sets. Off
+        /// WebGL the controller is the inert stub and this is false, so the SKR / Play rails are
+        /// byte-identical. Channel-gated so a Pi sign-in can never unlock a Solana-rail price.</para>
+        /// </summary>
+        public static bool HasVerifiedPiIdentity =>
+            PaymentChannelResolver.Current == PaymentChannel.PiBrowser
+            && DeNelle.Core.Platform.PiSignInController.IsSignedIn;
 
         // =====================================================================
         //  The gate
