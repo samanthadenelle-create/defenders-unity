@@ -1,6 +1,9 @@
 # WO-1644 - The FRONT-DOOR capture measures Title + Login through the glyph oracle and reports NO marker
 
-**Status:** READY TO IMPLEMENT
+**Status:** FIXED - 2026-09-10. Proven by the marker on a FRESH log, `Builds/wave5-frontdoor1`
+(07:26): `UI_GLYPH_OK 6/6 panels labels=18 baselined=0 unproved=0` followed by
+`FRONT_DOOR_CAPTURE_OK 6/6`. Zero findings, zero baseline entries added. RESULT:
+`WorkOrders/WORK_ORDER_1644_front_door_capture_never_reports_the_glyph_oracle.RESULT.md`
 **Minted:** 2026-09-10 by the TITLE-CAPTION lane. **Number PRE-ASSIGNED by the lead** - this lane did
 NOT edit `CLI_LANES_WO_NUMBERS.md`; the lead bumps its own banner row (CLAUDE.md sec.2).
 **Silo / Lane:** Editor / headless UI capture oracles (`Assets/Editor/UICaptureLaunch.cs`)
@@ -112,21 +115,21 @@ baseline honestly reflects what it found.
 
 ## 4. Acceptance criteria
 
-- [ ] `RunFrontDoorCaptureHeadless` calls `ResetGlyphOracle()` before the captures and
+- [x] `RunFrontDoorCaptureHeadless` calls `ResetGlyphOracle()` before the captures and
       `ReportGlyphOracle()` after them.
-- [ ] A **fresh** front-door log carries a `UI_GLYPH_OK` line whose `<clean>/<checked>` counts
+- [x] A **fresh** front-door log carries a `UI_GLYPH_OK` line whose `<clean>/<checked>` counts
       **6 panel builds** (3 Title + 3 Login targets) and whose `labels=` field is **> 0**.
       *(`<clean>/<checked>` counts PANEL BUILDS, not distinct panels - the OK line says so itself at
       `:6340-6347`.)*
-- [ ] ⚠ **THE LEAD'S PHRASING NEEDS ONE CORRECTION, AND IT IS DELIBERATE:** the brief asked for the
+- [x] ⚠ **THE LEAD'S PHRASING NEEDS ONE CORRECTION, AND IT IS DELIBERATE:** the brief asked for the
       marker *"with the Title row named"*. **On a CLEAN run no panel is named** - the per-panel tally
       lines (`:6332-6333`) are printed only for panels that HAVE findings, and a baselined finding is
       deliberately never printed. So "Title named" is achievable only by a run that reds. The
       provable acceptance is the count above (6 panel builds, labels > 0), plus the `Title_*` PNGs
       existing in `OutDir` for the same run. If the run does red on Title, the tally line naming it
       goes in the RESULT verbatim.
-- [ ] The number in `panels=` is stated in the RESULT **from the log**, never from this document.
-- [ ] If nothing reds: say so with the marker quoted, and record that `Title_*` / `Login_*` are now
+- [x] The number in `panels=` is stated in the RESULT **from the log**, never from this document.
+- [x] If nothing reds: say so with the marker quoted, and record that `Title_*` / `Login_*` are now
       MEASURED-clean rather than unmeasured - the distinction this whole ticket is about.
 
 ## 5. Files to edit
@@ -167,3 +170,135 @@ gate ladder (CLAUDE.md sec.8) and turning four more oracles on for a never-repor
   Unity lock and is the sole committer. *(If the Unity seat is busy, the edit may ship alone and the
   RUN handed back as the outstanding half - but then the ticket stays open, because an unrun wiring
   proves nothing.)*
+
+---
+
+## 7. Step 1 hand-back - the wiring is IN, the RUN is OUTSTANDING
+
+**Lane:** FRONT-DOOR-GLYPH. **Worktree HEAD:** `a06542478` (fast-forwarded from `f5d39acd1` to
+`refs/heads/dev` at lane start; `git log -1` confirms the sha).
+Ticket **status stays READY TO IMPLEMENT** - deliberately. Acceptance criteria 2-5 (sec.4) all require a
+marker on a fresh log, and this lane cannot run Unity (single seat busy, lead holds the lock).
+Per sec.6's own closing rule: *"an unrun wiring proves nothing."*
+
+### 7a. What was edited - one method, seven added lines, nothing else
+
+`Assets/Editor/UICaptureLaunch.cs`, `RunFrontDoorCaptureHeadless` only. `git diff --stat` on this
+worktree: `1 file changed, 7 insertions(+)`, zero deletions. Exact diff:
+
+```
+@@ -2215,9 +2215,16 @@ namespace DeNelle.Editor
+         public static void RunFrontDoorCaptureHeadless()
+         {
+             Directory.CreateDirectory(OutDir);
++            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
+             _loginCaptureStem = "Login";
+             int count = ForEachTarget("Title", CaptureTitleOnce) +
+                         ForEachTarget("Login", CaptureLoginOnce);
++            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
++                                   // table and at its one emit site -- never copied here. Wired at
++                                   // EVERY site that emits the touch marker: one path missing it
++                                   // prints marker-absent there, read here as a FAILURE not an unknown.
++                                   // WO-1644: this path was the odd one out -- Title/Login were
++                                   // measured by AuditGeometry and the verdict thrown away.
+             if (count == 6) Debug.Log("FRONT_DOOR_CAPTURE_OK 6/6");
+             else Debug.LogError("FRONT_DOOR_CAPTURE_FAIL " + count + "/6");
+         }
+```
+
+Post-edit line numbers: `ResetGlyphOracle()` at **`:2218`**, `ReportGlyphOracle()` at **`:2222`**,
+inside `RunFrontDoorCaptureHeadless` (`:2215-2230` after the edit).
+
+### 7b. The placement mirrors the GooglePlay path exactly - both sides cited, read at source today
+
+| | GooglePlay (`RunGooglePlayLoginCaptureHeadless`) | Front door (after this edit) |
+|---|---|---|
+| Reset | `:2250` `ResetGlyphOracle();` - after `Directory.CreateDirectory(OutDir)` (`:2239`), **before** any `ForEachTarget` capture | `:2218` - after `Directory.CreateDirectory(OutDir)` (`:2217`), **before** both `ForEachTarget` calls |
+| Report | `:2281` `ReportGlyphOracle();` - **after** `count = ForEachTarget(...)`, **before** the `GOOGLE_PLAY_LOGIN_CAPTURE_OK/FAIL` emit (`:2295` / `:2297`) | `:2222` - after the two `ForEachTarget` calls (`:2220-2221`), **before** the `FRONT_DOOR_CAPTURE_OK/FAIL` emit (`:2228-2229`) |
+
+*(GooglePlay line numbers shifted +7 from the ticket's `:2243` / `:2274` because this edit inserted
+seven lines above that method in the same file. The ticket's numbers were read on `f33451b11`; the
+numbers in this table were read on the edited working tree at `a06542478`.)*
+
+The comment text on both added lines is **copied verbatim from the GooglePlay site** so the two
+cannot drift, plus two trailing lines naming this WO. **What was deliberately NOT copied**, per
+sec.3.1: the presentation-override machinery, `ProveGeometryMoves()`, `ReportFidelity()`,
+`ReportGeometry()`, `ReportTouchOracle()`, the `_fidelity*` / `_geo*` / `_touch*` resets, and the
+composite `clean` verdict. The front door's `count == 6` verdict is untouched - the glyph marker is
+an **independent** line, exactly as it is in every other entry point.
+
+Why the report sits **before** the capture verdict and not after: `ResetGlyphOracle`'s own doc
+comment (`:6289-6294`, opened this session) states every entry point READS the tallies AFTER its
+`Report*` calls, which is why the reporter does not self-clear. Placing the call anywhere else
+would have been a change of shape, not a mirror.
+
+### 7c. Scope compliance - what this lane did NOT touch
+
+- `GlyphBaseline` (`:6167-6181` after the edit; the four entries at `:6170`, `:6173`, `:6176`, `:6179`): **zero entries added, reordered or edited.** No run
+  has produced a finding, so per sec.6 there is nothing that may legitimately be baselined yet.
+- `LandscapeTargets`, `AuditGeometry`, `IsGlyphBaselined`, `ReportGlyphOracle`, `ResetGlyphOracle`,
+  `RenderCanvasToPng`'s audit call and its rebuild passes: untouched.
+- `TitleController.cs`, `LoginPanelController.cs`, any kit fit code: untouched.
+- `DataRegression.cs`: untouched, nothing registered.
+- No other capture path in `UICaptureLaunch.cs` was modified - the diff is confined to one hunk.
+- No gate run, no commit, no push from this lane.
+
+### 7d. Checks this lane CAN run, with their outputs verbatim
+
+```
+$ python tools/gate_brace.py Assets/Editor/UICaptureLaunch.cs
+GATE_BRACE_SUMMARY bad=0 of 1
+(exit 0)
+```
+
+NUL-byte guard + raw brace count (CLAUDE.md sec.1, both halves):
+
+```
+NUL bytes: 0
+raw braces: 935 935
+```
+
+Both counters agree, so the gate's comment/string-aware scanner and the naive count give the same
+verdict - the interpolated-string trap named in CLAUDE.md sec.1 is not in play here (the added lines
+contain no string literal at all).
+
+⛔ **NOT PROVEN by this lane, and stated as unproven per CLAUDE.md sec.11B:** that the file compiles
+(no `COMPILE_GATE_OK` was run - no Unity), that the marker emits, what it says, whether the front
+door reds, and whether `Title_*` / `Login_*` are clean. A brace check is not a compile.
+
+### 7e. What the lead's run must produce, and how to read it
+
+Run `DeNelle.Editor.UICaptureLaunch.RunFrontDoorCaptureHeadless` headless and hand this lane the
+**fresh** log. Read the marker, never the exit code. The four outcomes, all four from
+`ReportGlyphOracle`'s own branches, read at source this session:
+
+1. `UI_GLYPH_OK <clean>/<checked> panels labels=<n> baselined=<n> unproved=<n>` (`:6347`) with
+   **checked = 6** and **labels > 0** -> acceptance criteria met; `Title_*` / `Login_*` become
+   MEASURED-clean. No panel is named on a clean run and that is correct (sec.4's own correction).
+2. `UI_GLYPH_FAIL x0 -- ZERO panels were measured` (`:6312`) -> the wiring reached the reporter
+   but no panel got audited. Report it; do not baseline.
+3. `UI_GLYPH_FAIL x0 labels` (`:6324` / `:6329`) -> either no font resolved in batchmode
+   (`_glyphUnmeasuredCount > 0`) or Assert C's predicate excludes every front-door control. The
+   branch separates the two causes itself. **Different bug, different ticket** (sec.3.3).
+4. `[glyph-oracle] <panel tally>` warning lines + `UI_GLYPH_FAIL` with per-finding lines
+   (`:6339-6340` tally, `:6359` findings) -> real findings. This lane triages them per finding on the follow-up hand-back:
+   a genuine caption cut is **fixed in the panel** in a separate hand-back (never baselined), and
+   only known accepted debt earns a `GlyphBaseline` entry in the enforced
+   `panelBuild|hierarchy/path|<drawn> of <printable>` format with this WO number in its comment.
+   A `Title_*` finding at `2670x1200` contradicts WO-1621 RESULT sec.1 and must be understood before
+   either side is trusted.
+
+Marker ABSENT on a fresh log = **FAILURE**, not unknown (CLAUDE.md sec.11B).
+
+### 7f. RAISED, NOT TAKEN - lead ruling wanted (sec.5's "Raise, do not take")
+
+`RunFrontDoorCaptureHeadless` still calls **none** of `ProveGeometryMoves()`, `ReportFidelity()`,
+`ReportGeometry()`, `ReportTouchOracle()` - compare the GooglePlay path at `:2253`
+(`ProveGeometryMoves()`) and `:2278-2280` (the three reporters). It is the same omission in four
+more voices and looks like the same one-line-each fix, but each of those markers feeds the pre-ship
+gate ladder (CLAUDE.md sec.8), so turning four more oracles on for a path that has never reported is
+a **scope decision for the lead**, not this lane's. This lane did not touch them.
+
+Also unproven and deliberately not asserted (sec.1d): whether the sibling oracles leak between entry
+points. Every reporting entry point resets at its own start, so residue is bounded *in principle* -
+this lane ran nothing and asserts nothing.

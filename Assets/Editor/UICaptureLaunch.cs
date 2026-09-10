@@ -2215,9 +2215,16 @@ namespace DeNelle.Editor
         public static void RunFrontDoorCaptureHeadless()
         {
             Directory.CreateDirectory(OutDir);
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
             _loginCaptureStem = "Login";
             int count = ForEachTarget("Title", CaptureTitleOnce) +
                         ForEachTarget("Login", CaptureLoginOnce);
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here. Wired at
+                                   // EVERY site that emits the touch marker: one path missing it
+                                   // prints marker-absent there, read here as a FAILURE not an unknown.
+                                   // WO-1644: this path was the odd one out -- Title/Login were
+                                   // measured by AuditGeometry and the verdict thrown away.
             if (count == 6) Debug.Log("FRONT_DOOR_CAPTURE_OK 6/6");
             else Debug.LogError("FRONT_DOOR_CAPTURE_FAIL " + count + "/6");
         }
