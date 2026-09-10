@@ -195,3 +195,7 @@ time). This lane re-points the two that own the captured defect and names the re
 - **The `ArmFitGuard` interplay.** `FitBlock` arms the same guard as `FitSingleLine`
   (`ElarionUiKitObsidian.cs:3090`); the device-side `TextFitGuard` behaviour on the new two-line band
   is unmeasured until a logcat.
+
+## Device evidence (lead, 2026-09-10 11:34, APK 2026.09.10.363866)
+
+`Builds/device-frames/2026-09-10_1134_363866_nightmarket_crop.png`: the card reads THE NIGHT / MARKET whole on two lines (363786: "THE NIGHT MAR..."). Acceptance closes; owner felt-verify.

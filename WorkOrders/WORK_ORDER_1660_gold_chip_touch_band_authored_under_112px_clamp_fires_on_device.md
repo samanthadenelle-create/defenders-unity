@@ -124,3 +124,7 @@ Add to an existing HUD regression (`Assets/Editor/Regression/HudUiRegression.cs`
 - I did **not** measure whether the ActionRail band itself is authored short or whether 0.55 of a correct band is simply too small — both produce 103.5 px and the log prints only the child's rect. The implementer should print the host rect first (`LayoutOracle.cs:225-232` already composes exactly that sentence when the finding fires headlessly).
 - I did **not** run `RunAdaptiveHudCaptureHeadless` to confirm it *would* red on this chip. That is a one-command check and should be step 1 of the lane, because it decides whether §4B is "wire an existing green oracle into the gate" or "the oracle misses it there too".
 - No other aspect ratio was measured. 103.5 is the 2670x1200 number only.
+
+## Device evidence (lead, 2026-09-10 11:34, APK 2026.09.10.363866, PID 10705)
+
+`Builds/device-frames/2026-09-10_1137_363866_logcat.txt`: `CurrencyChip_Gold` CLAMP FIRED lines = 0 (the 363786 log had exactly one: authored 398.1x103.5 -> grown 398.1x112); the other five CLAMP FIRED lines (title ObsBtn_Continue/Start New/Play Intro 399.5x69.5, REPAIR ALL 386.6x101.4, WelcomeBack COLLECT 357.4x89.2) are byte-identical in both logs = pre-existing, WO-1664. Chip plate now y 60-159 (was 52-153), +N hint y 194-216 (was 189-210) ~4 ref px lower as predicted. Acceptance 1 closes.

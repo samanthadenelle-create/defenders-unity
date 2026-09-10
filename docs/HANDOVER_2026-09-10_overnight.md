@@ -232,6 +232,12 @@ judged HUD canvas exposed the Night Market HUD card title cut (12 of 14 at every
 lane. Note: every Unity log this session carries a `Lifecycle ERROR ... NullReferenceException` at startup (pre-deserialization code-reload
 scope) - present since at least wave5-reg1, harmless to the markers, not investigated.
 
+DEVICE-FRAMES-4 on 363866 (11:34-11:37, `Builds/device-frames/2026-09-10_113*_363866_*`): WO-1660 closes (CurrencyChip_Gold clamp line
+0, was 1; chip + hint ~4 ref px lower as predicted), WO-1662 closes (THE NIGHT / MARKET whole on two lines), WO-1661 closes on the badge
+("UPGRADE" whole; word still ruling 15); census relaxed=0. Five pre-existing CLAMP FIRED lines (title row 69.5 px, REPAIR ALL 101.4,
+COLLECT 89.2) -> WO-1664; the state-word probe reporting 20 px for seven glyphs + PartyNameplate standing down 40 s after live text ->
+WO-1665 (both minting). Pushed: dev = `bee7a2261` (11:32).
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
