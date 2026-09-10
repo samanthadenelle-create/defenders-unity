@@ -1,6 +1,6 @@
 # WO-1652 - `UiKitTextFitGuard` NEVER fires in a headless capture: every PNG we gate on measures the UN-GUARDED layout
 
-**Status:** INSTRUMENTED - awaiting a capture log + a play-mode log
+**Status:** READY TO IMPLEMENT - INSTRUMENTED 2026-09-10 (a5f3b45e4): capture log read (wave5-manageflow3: armCalls=963 armed=0), play-mode log still owed, remedy A/B/C tabled
 
 > **2026-09-10, lane FIT-GUARD (worktree `agent-a9e001ddb25631dda`, branched from dev `736b6b4b9`).**
 > §4 (instrument-first) is DONE and nothing else was touched. **No remedy was chosen — §6 options
