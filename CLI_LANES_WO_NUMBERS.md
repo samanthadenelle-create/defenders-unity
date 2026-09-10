@@ -189,7 +189,42 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-thirty-fifth pass): main line next free = **1628**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-thirty-sixth pass): main line next free = **1629**.
+> *(CLI minting lane minted **WO-1628** - a VIEWABLE defect, evidence-first: on the fresh headless
+> capture written 2026-09-10 01:34, all SEVEN Build Collections category cards print their
+> affordability sub-caption as `nothing affordable y` - the word `yet` cut after one letter -
+> at `BuildCollections_2670x1200.png` AND `BuildCollections_2340x1080.png`, while
+> `BuildCollections_1920x1080.png` renders it correctly on two lines. The SOURCE text is proven
+> intact: `Builds/wave2-capture:2935-2944` and `:3000-3006` print `subtitle='nothing affordable yet'`
+> for every card, so the loss is at RENDER, not in the VM. Authored at
+> `StructureCardVM.cs:418` (pinned by `BuildAffordabilityWordsRegression.cs:59-60`), built at
+> `BuildCollectionBrowser.cs:236-240` into a band authored as a FRACTION of card height
+> (`.05f`-`.21f`) - the same pattern WO-1623 retired for the footer in this same file - and fitted by
+> `ElarionUiKit.FitBlock`, which is wrap Normal + `TextOverflowModes.Truncate` + auto-size [20,21]
+> (`ElarionUiKitObsidian.cs:3083-3089`; the call site's `18f` is clamped UP to `FontHardFloor` at
+> `:3083`). It clips rather than ellipsises BY DESIGN - `FitBlock` picks Truncate (`:3086`) where
+> `FitSingleLine` picks Ellipsis (`:3065`) - and Ellipsis would lose `yet` anyway, so the room is the
+> defect, not the terminator. **THE MID-WORD CUT IS UNPROVEN AND THE TICKET SAYS SO** (CLAUDE.md
+> sec.11B): wrap-then-vertical-truncate does not account for a line ending after the `y`, and it
+> cannot be settled by reading source, so sec.4 Step 1 is an INSTRUMENT step (band px, fontSize,
+> lineCount, characterCount vs Length, isTextTruncated) and no layout edit is authorised before that
+> log is read. **Why every gate stayed green on this frame:** the geometry oracle passed 91 canvases
+> on this same log (`:3079`), and correctly - `LayoutOracle.cs:56-64` declares exactly three finding
+> kinds (`ButtonsOverlap`, `ButtonOverText`, `SubTouchFloorBand`), and the harness's fourth rule
+> `RULE 1 [text-off-plate]` (`UICaptureLaunch.cs:5851-5872`) measures whether the text RECT escapes
+> its plate. Every assert measures WHERE a rect is; NOTHING measures whether the glyphs inside it
+> survived. The kit's own runtime rescue could not have fired either: `ArmFitGuard` returns at
+> `ElarionUiKitObsidian.cs:3096` when `!Application.isPlaying`, the capture is the edit-mode
+> `RunCaptureHeadless` (`UICaptureLaunch.cs:532`, documented `:525-531`), and the log carries ZERO
+> `TextFitGuard` lines - and even when it does run its only assert is ZERO glyphs (`:3218-3226`), so
+> 20-of-22 characters passes it. A glyph-survival oracle assert is the right long-term answer but is
+> deliberately SCOPED OUT to its own ticket, because `LayoutOracle.cs:17-20` requires a new rule be
+> seen RED on a synthetic canvas before it is trusted. **SEQUENCED BEHIND WO-1626**, which is editing
+> `BuildManageDefensesFooterLink()` (`:299-316`) in the SAME file in a worktree; 1628 rebases onto it
+> and touches `:235-242` only.
+> Bumped 1628 -> 1629 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-thirty-fifth pass): main line next free = **1628**.
 > *(CLI minting lane minted **WO-1625 through WO-1627** - three lane findings handed back by the
 > WO-1620 / WO-1623 / WO-1624 RESULT files, none owner-reported, each re-proven at source this
 > session rather than carried from the RESULT that raised it:
