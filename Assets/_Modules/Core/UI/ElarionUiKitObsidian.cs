@@ -3090,12 +3090,96 @@ namespace DeNelle.Core.UI
             ArmFitGuard(t);
         }
 
+        // ── WO-1652 §4: INSTRUMENT-FIRST COUNTERS FOR THE §1.14 GUARD ────────────────
+        // MEASURED, NOT ASSUMED: `grep TextFitGuard` over every wave5-*/wave3-capture*
+        // log returns ZERO lines, while a Manage refund note drew 0 of 33 glyphs — the
+        // exact event the render assert at the bottom of LateUpdate exists to Fail on.
+        // Two locks were proven at source (WO-1652 §2): the headless capture entry
+        // (UICaptureLaunch.RunManageFlowMapCaptureHeadless) never enters Play mode, so
+        // ArmFitGuard's `!Application.isPlaying` early-out took EVERY call SILENTLY; and
+        // nothing ticks LateUpdate between build and DestroyImmediate teardown anyway.
+        // A guard that declines to arm must SAY it declined — a silent early-out is the
+        // whole bug, and it made "the guard ran and everything was fine" indistinguishable
+        // from "the guard never ran".
+        //
+        // COST DISCIPLINE (FlowTrace.cs:293-300, memory logcat-ring-buffer-destroys-evidence):
+        // there are HUNDREDS of policed labels per screen. A per-label Step would be a
+        // firehose that evicts the boot window out of the device logcat ring — destroying
+        // the very evidence this trace exists to produce. So: ONE Once() line per BRANCH
+        // per session (proves which door was taken, and the isPlaying value), plus a
+        // Throttled rollup carrying the cumulative counts. The counters are the answer to
+        // WO-1652 acceptance §3 ("how many labels arm and how many relax"); the LAST
+        // rollup line on a log is the count, and it is a FLOOR (Throttle is pull-based —
+        // it only emits when another label arms, so the final window may not flush).
+        //
+        // ⚠ These are permanent (§12: instrumentation is NEVER stripped). No behaviour
+        // changes here — no remedy is chosen; WO-1652 §6 options A/B/C stay tabled.
+        private static int s_fitGuardArmCalls;          // every ArmFitGuard() entry
+        private static int s_fitGuardArmed;             // reached g.Arm() — the net is in the water
+        private static int s_fitGuardDeclinedEditMode;  // the !Application.isPlaying door in ArmFitGuard
+        private static int s_fitGuardDeclinedNullText;  // null TMP_Text door
+        private static int s_fitGuardEvaluated;         // LateUpdate reached its working half
+        private static int s_fitGuardRelaxed;           // ...and relaxed the floor
+        private static int s_fitGuardStillBlank;        // ...and STILL rendered zero glyphs
+
+        /// <summary>WO-1652: one greppable rollup line, at most once per second, carrying the
+        /// arm/evaluate census. Token `TextFitGuard CENSUS` is what the lead greps a capture log
+        /// and a device logcat for.</summary>
+        private static void FitGuardCensus()
+        {
+            string armCalls = s_fitGuardArmCalls.ToString();
+            string armed = s_fitGuardArmed.ToString();
+            string declinedEdit = s_fitGuardDeclinedEditMode.ToString();
+            string declinedNull = s_fitGuardDeclinedNullText.ToString();
+            string evaluated = s_fitGuardEvaluated.ToString();
+            string relaxed = s_fitGuardRelaxed.ToString();
+            string blank = s_fitGuardStillBlank.ToString();
+            FlowTrace.Throttle("UI", "TextFitGuard.census", 1f,
+                "TextFitGuard CENSUS armCalls=" + armCalls + " armed=" + armed +
+                " declinedNotPlaying=" + declinedEdit + " declinedNullText=" + declinedNull +
+                " evaluated=" + evaluated + " relaxed=" + relaxed + " stillBlank=" + blank);
+        }
+
         /// <summary>Attach (or re-arm) the §1.14 post-layout guard on a fitted label.</summary>
         private static void ArmFitGuard(TMP_Text t)
         {
-            if (t == null || !Application.isPlaying) return;
+            // WO-1652 §4 instrument-first: log the ARM decision INCLUDING the early-out branch.
+            s_fitGuardArmCalls++;
+            bool playing = Application.isPlaying;
+            string playingStr = playing ? "True" : "False";
+
+            if (t == null)
+            {
+                s_fitGuardDeclinedNullText++;
+                FlowTrace.Once("UI", "TextFitGuard.arm.nullText",
+                    "TextFitGuard ARM branch=null-text isPlaying=" + playingStr +
+                    " label=<null> — declined (no component attached, guard will never evaluate)");
+                FitGuardCensus();
+                return;
+            }
+
+            string label = t.name;
+            if (!playing)
+            {
+                s_fitGuardDeclinedEditMode++;
+                FlowTrace.Once("UI", "TextFitGuard.arm.notPlaying",
+                    "TextFitGuard ARM branch=not-playing isPlaying=" + playingStr +
+                    " label='" + label + "' — DECLINED at the Application.isPlaying door: no " +
+                    "UiKitTextFitGuard is attached, so no rescue, no relaxation and no render " +
+                    "assert happens for ANY label on this run (WO-1652). An edit-mode/headless " +
+                    "capture measures the UN-GUARDED authored layout.");
+                FitGuardCensus();
+                return;
+            }
+
             var g = t.GetComponent<UiKitTextFitGuard>();
             if (g == null) g = t.gameObject.AddComponent<UiKitTextFitGuard>();
+            s_fitGuardArmed++;
+            FlowTrace.Once("UI", "TextFitGuard.arm.armed",
+                "TextFitGuard ARM branch=armed isPlaying=" + playingStr +
+                " label='" + label + "' — guard attached and armed; it evaluates on the 2nd " +
+                "LateUpdate tick after layout sizes the rect");
+            FitGuardCensus();
             g.Arm();
         }
 
@@ -3128,6 +3212,21 @@ namespace DeNelle.Core.UI
             {
                 if (_t == null) { enabled = false; return; }
                 if (_frames++ < 1) return;                        // let the first layout pass size the rect
+
+                // WO-1652 §4: EVALUATE-side proof-of-life. Once per session only — this is
+                // the line whose ABSENCE proves nothing ticked (a headless capture never
+                // enters Play mode, so LateUpdate is never called at all; see ArmFitGuard).
+                // Deliberately BEFORE the empty-text/zero-height stand-down so "reached the
+                // working half" is separable from "stood down"; counters are incremented at
+                // the BOTTOM only, because that stand-down returns every frame for up to 600
+                // frames per idle label and a counter here would inflate 600x.
+                FlowTrace.Once("UI", "TextFitGuard.eval.reached",
+                    "TextFitGuard EVAL reached (first this session) label='" + _t.name +
+                    "' frames=" + _frames.ToString() +
+                    " rect " + ((int)_t.rectTransform.rect.width).ToString() + "x" +
+                    ((int)_t.rectTransform.rect.height).ToString() +
+                    " — LateUpdate IS ticking, so the guard is live on this run");
+
                 if (string.IsNullOrEmpty(_t.text) || _t.rectTransform.rect.height <= 0f)
                 {
                     if (_frames > 600)
@@ -3216,12 +3315,35 @@ namespace DeNelle.Core.UI
                         ", chars " + (_t.textInfo != null ? _t.textInfo.characterCount : -1));
 
                 // Render assert (the DumpZoneLayout-style oracle): a fitted label MUST draw glyphs.
-                if (Blank(_t))
+                bool stillBlank = Blank(_t);
+                if (stillBlank)
                     FlowTrace.Fail("UI", "TextFitGuard '" + _t.text + "' [" + PathOf(_t.transform) + "]: STILL renders 0 visible glyphs (rect " +
                         ((int)_t.rectTransform.rect.width) + "x" + ((int)h) +
                         ", fontSize " + _t.fontSize.ToString("F0") +
                         ", min " + _t.fontSizeMin.ToString("F0") + ", max " + _t.fontSizeMax.ToString("F0") +
                         ", overflow " + _t.overflowMode + ") — dead-button law violated, needs a layout fix");
+
+                // WO-1652 §4: EVALUATE COMPLETE. Until now ONLY the relaxed and blank paths
+                // spoke, so "the guard ran and everything was fine" produced NO line and was
+                // indistinguishable from "the guard never ran" — which is exactly how a
+                // capture log carrying zero TextFitGuard lines read as normal for weeks.
+                // Once() carries the full first evaluation (label, rect, factor, relaxed);
+                // the census carries the counts. No per-label Step: hundreds of labels per
+                // screen would flood the logcat ring.
+                s_fitGuardEvaluated++;
+                if (relaxed) s_fitGuardRelaxed++;
+                if (stillBlank) s_fitGuardStillBlank++;
+                string evalRelaxed = relaxed ? "True" : "False";
+                string evalBlank = stillBlank ? "True" : "False";
+                FlowTrace.Once("UI", "TextFitGuard.eval.done",
+                    "TextFitGuard EVAL done (first this session) label='" + _t.name +
+                    "' rect " + ((int)_t.rectTransform.rect.width).ToString() + "x" +
+                    ((int)h).ToString() +
+                    " lineFactor " + factor.ToString("F2") +
+                    " floor " + oldMin.ToString("F0") + "->" + _t.fontSizeMin.ToString("F0") +
+                    " relaxed=" + evalRelaxed + " stillBlank=" + evalBlank);
+                FitGuardCensus();
+
                 enabled = false;
             }
 

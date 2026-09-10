@@ -1,6 +1,27 @@
 # WO-1652 - `UiKitTextFitGuard` NEVER fires in a headless capture: every PNG we gate on measures the UN-GUARDED layout
 
-**Status:** READY TO IMPLEMENT
+**Status:** INSTRUMENTED - awaiting a capture log + a play-mode log
+
+> **2026-09-10, lane FIT-GUARD (worktree `agent-a9e001ddb25631dda`, branched from dev `736b6b4b9`).**
+> §4 (instrument-first) is DONE and nothing else was touched. **No remedy was chosen — §6 options
+> A/B/C remain TABLED pending the owner's ruling**, and the §7.1 RED-first fixture is deliberately
+> remedy-NEUTRAL (it pins the trace contract, not whether the guard should run in captures).
+>
+> **Not run.** This lane holds no Unity. `gate_brace.py` + a NUL scan are clean on both `.cs` files;
+> the compile gate, the regression run, the capture and the play-mode session are the lead's.
+>
+> **Landed:**
+> - `Assets/_Modules/Core/UI/ElarionUiKitObsidian.cs` — ARM trace on all three branches
+>   (`null-text` / `not-playing` / `armed`), each `FlowTrace.Once` + a 1 Hz `FlowTrace.Throttle`
+>   census; EVALUATE trace after the `_frames` gate and again on completion, so "ran and was fine"
+>   is now distinguishable from "never ran". Behaviour unchanged.
+> - `Assets/Editor/Regression/TextFitGuardArmRegression.cs` (new, no other lane owns it) —
+>   RED-first: on the pre-instrumentation tree Cases B and C fail for want of any guard line.
+>   **Registration in `DataRegression.cs` is the lead's line** (given in the hand-back), not edited here.
+>
+> **Measured this session at HEAD 736b6b4b9** (`Builds/wave5-manageflow1`): `TextFitGuard` = **0**
+> lines, `[Flow:UI]` = **64** lines. That pair is the proof the guard's silence is the guard's own
+> and not the trace channel's — the `"UI"` system prints fine in a headless capture.
 **Minted:** 2026-09-10 (lane UI-KIT-GUARD; number **PRE-ASSIGNED by the lead** - this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo / Lane:** Core UI kit + capture harness. Diagnosis and instrumentation FIRST; the remedy needs a ruling (sec.6).
 **Severity:** P2 **process**, not a screen. It does not break a pixel - it breaks what our screenshots MEAN, in both directions.
