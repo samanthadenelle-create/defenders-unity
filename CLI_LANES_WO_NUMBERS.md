@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-second pass): main line next free = **1644**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-third pass): main line next free = **1645**.
+> WO-1644 minted by the TITLE-CAPTION lane on a lead pre-assigned number (front-door capture never reports the glyph oracle).
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-second pass): main line next free = **1644**.
 > 1643 = the Journey RAIDS deck card composes its subtitle from RosterSlots / CapSlots while the raid gate judged (Deployable + Queued) >= RequiredSlots - ALL THREE terms differ - and its remedy clause "train to open a camp" is selected on openCamps == 0, with no army input, so it reads as an army remedy. Device frame 2026-09-10_0603_journey_deck.png shows "Army 8 / 10 . train to open a camp" at an instant the logcat proves was required=3, ready=True (raid door OPEN). Second surface of the WO-1641 family, different producer; SEEN by the DEVICE-RAID lane, minted by HEART-COPY at the lead's instruction. Bumped 1643 -> 1644 in this SAME edit.
 
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-first pass): main line next free = **1643**.
