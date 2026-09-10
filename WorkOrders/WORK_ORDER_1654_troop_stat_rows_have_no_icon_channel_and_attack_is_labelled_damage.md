@@ -112,3 +112,7 @@ delivered, but **do not treat it as a regression hunt**; there is nothing to un-
 - ⛔ **The BUILDING stat rows** (`BuildingStatRows`, `:5583`) — a different row (3.3) and a different
   ticket (**WO-1653**). Do not fold them together.
 - ⛔ Do not touch `ManageArt.BuildingPortraitKey` or its verbatim-id rule (`ManageArt.cs:306`, `:328`).
+
+## Device evidence (lead, 2026-09-10 09:13, APK 2026.09.10.363722)
+
+`Builds/device-frames/2026-09-10_0913b_363722_army_detail_footman.png` and `_0919_363722_army_detail_archer.png`: four icons left of Health / Attack / Range / Speed, label reads "Attack"; greyscale crop `_0915d_363722_army_stat_icons_greyscale.png` keeps every label and icon identifiable (acceptance 3). Outrider half unreachable (LOCKED on this save).

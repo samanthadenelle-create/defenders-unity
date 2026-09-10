@@ -119,3 +119,7 @@ of which `mine_crystal` satisfies — it never gets called.
 - ⛔ Do not touch the Defense rail itself (`MANAGE_DEFENSE_CARD_OK` is green), only what the DETAIL
   composer does with a Defense choice.
 - ⛔ No renderer edits. `ManageDumbViewRegression` pins the view's shape.
+
+## Device note (lead, 2026-09-10 09:15, APK 2026.09.10.363722)
+
+No placed crystal mine on the owner save (`_0914c_363722_build_economy_grid.png`: Crystal Mine NOT BUILT), so "Crystals / wave" is proven on the headless frame only (ManageFlow_BUILD_action_2670x1200.png, opened by the lead: `Crystals / wave 2 -> 4`, Placed, Next level). The placed Quarry card renders `Production / hr 1,872 -> 2,016` (`_0915b_363722_build_detail_quarry_placed.png`).

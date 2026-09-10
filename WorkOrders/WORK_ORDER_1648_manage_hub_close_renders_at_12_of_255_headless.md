@@ -290,3 +290,7 @@ delete the only detector this ticket built.
 - Acceptance **4, 5, 6** untouched — no gate, no capture, no commit from this lane.
 - The fix itself is deliberately **not written**. One read-back line decides which of §7.2's rows it
   is, and the two rows have different fixes in different places.
+
+## Device evidence (lead, 2026-09-10 09:12, APK 2026.09.10.363722)
+
+`Builds/device-frames/2026-09-10_0912c_363722_manage_hub.png`: CLOSE plate box (1119,975,1553,1079) max Rec.709 luma **254.4/255** (mean 38.2) vs BUILD label box (828,700,1020,765) 174.3/255 - was 13/255 on 363660; tapping the plate closed the hub (`_0920_363722_town_after_hub_close.png`). Acceptance 1 re-measured green; acceptance 6 stays AWAITING OWNER MATCH.

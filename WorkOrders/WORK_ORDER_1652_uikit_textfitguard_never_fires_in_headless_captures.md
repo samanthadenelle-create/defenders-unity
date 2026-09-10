@@ -172,3 +172,7 @@ that out loud when the ruling is asked for.
    that is a REGRESSION of the detector, not a pass.
 6. The `docs/INSTRUMENTATION_STANDARD.md` note for §1.4 is updated in the SAME commit if the guard's
    contract changes (§15).
+
+## Play-mode measurement (lead, 2026-09-10 09:15, APK 2026.09.10.363722, PID 5095)
+
+`Builds/device-frames/2026-09-10_0929_363722_logcat.txt`: `[Flow:` = 9,925 lines (channel live). `TextFitGuard ARM branch=armed isPlaying=True` (Once). Last census: `TextFitGuard CENSUS armCalls=503 armed=503 declinedNotPlaying=0 declinedNullText=0 evaluated=172 relaxed=8 stillBlank=0`. The 8 relaxations: six harvest-modal labels (floor 30 -> 22 / 26), the gold chip `+4` (30 -> 21, fontSize 23), `250 Crystals` on the Manage hub (30 -> 28). Two TEXT-NEVER-SET stand-downs: `Band_Notice/Label` and `ManageHeaderActions/ManageWorkspaceBack/Label` (armed, text still EMPTY after 600 frames). Both logs now exist (capture: wave5-manageflow3 armed=0; play: armed=503 relaxed=8); the remedy decision is next.

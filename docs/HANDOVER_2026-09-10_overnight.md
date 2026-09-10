@@ -209,6 +209,13 @@ PNG opened); `abaa19831` WO-1654 (stat icons + Attack, archer card PNG opened); 
 WO-1650 DONE + WO-1566 re-tick (56/9/2 of 69, then 5.4 withdrawn as the WO-1387 ruling); `736b6b4b9` 1648/1650 mints, 1649 BURNED.
 Banner 1656. APK rebuild #4 launched 09:02 (`Builds/wave6-apk-chain.txt`).
 
+DEVICE-FRAMES-2 on 363722 (09:09-09:20, `Builds/device-frames/2026-09-10_09*_363722_*`): WO-1648 CLOSE plate 254.4/255 (was 13) and
+tapping it closes the hub; WO-1654 icons + "Attack" on Footman and Archer, greyscale crop keeps every label; WO-1652 play-mode census
+`armCalls=503 armed=503 evaluated=172 relaxed=8` (six harvest-modal labels 30 -> 22/26, gold chip '+4' 30 -> 21, '250 Crystals' 30 -> 28)
+- the player build relaxes floors the capture never sees; two TEXT-NEVER-SET stand-downs (Band_Notice/Label, ManageWorkspaceBack/Label)
+and a Quarry card showing Wood + Gold cost and "Level 0 of 4" while READY -> minting 1656/1657. No placed crystal mine on the owner save,
+so WO-1653's "Crystals / wave" is proven headless only. Pushed: dev = `26c58799c` (09:09).
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
