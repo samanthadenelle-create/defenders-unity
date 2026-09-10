@@ -171,12 +171,27 @@ namespace DeNelle.Village.Hero
         /// <summary>Title band top inset. Clears the tag plate, which hangs from
         /// +TypeTagOverhangPx down to TypeTagPx - TypeTagOverhangPx (60 px) below the top.</summary>
         public const float TitleTopPx = 92f;
-        /// <summary>TWO FontBody(50) line boxes (2 x 62.5 = 125) plus slack.</summary>
-        public const float TitleBandPx = 130f;
+        /// <summary>The LARGEST size the poster title may render at. It is the ceiling handed to
+        /// <c>ElarionUiKit.FitBlock</c> at the title's build site, declared as a const so this band
+        /// and RumorBoardLayoutRegression budget against the size that ACTUALLY draws.
+        /// WO-1636: this band's doc used to read "TWO FontBody(50) line boxes (2 x 62.5 = 125)"
+        /// while the fit call capped the title at 40 - the band reserved 25 px for a size the title
+        /// can never reach, and the regression pinned it against FontBody for the same reason.
+        /// Those 25 px are what the two-line hook below is funded from.</summary>
+        public const float TitleFontMaxPx = 40f;
+        /// <summary>TWO TitleFontMaxPx(40) line boxes (2 x 50 = 100) plus 4 px of slack.</summary>
+        public const float TitleBandPx = 104f;
         /// <summary>Hook band top inset (title floor + an 8 px breath).</summary>
         public const float HookTopPx = TitleTopPx + TitleBandPx + 8f;
-        /// <summary>ONE FontMicro(32) line box (40) plus slack.</summary>
-        public const float HookBandPx = 46f;
+        /// <summary>TWO FontMicro(32) line boxes (2 x 40 = 80) plus 2 px of slack.
+        /// WO-1636 (the first glyph-oracle run, Builds/wave3-capture2): the hook was ONE line in a
+        /// 46 px band and that run MEASURED IT ELLIPSIZING ON EIGHTEEN LABELS - "Carry the sealed
+        /// ledger past the flooded stai..." drew 27 of 62 printable glyphs at 1920x1080. The band
+        /// is 451.2 ref px WIDE at that aspect and the poster row is three owner-approved columns,
+        /// so WIDTH cannot grow; the honest fix is the band's HEIGHT. Two lines at the widest
+        /// measured advance (15.04 px/char, from "Done: Clear 3 waves at the western gate." drawing
+        /// 30 chars in 451.2 px) hold ~60 chars, which is why RumorBoardVM.HookMaxChars cuts at 52.</summary>
+        public const float HookBandPx = 82f;
         /// <summary>"Read the letter &gt;" band top inset (hook floor + a 12 px breath).</summary>
         public const float ReadTopPx = HookTopPx + HookBandPx + 12f;
         /// <summary>The letter link is a REAL tap target, so it is authored AT the touch floor.
@@ -185,13 +200,19 @@ namespace DeNelle.Village.Hero
 
         /// <summary>Accept's band, bottom-hung.</summary>
         public const float AcceptBottomPx = 20f;
-        /// <summary>Accept's height. Above the touch floor with margin (the mockup asks 140
-        /// screen px, which is ~113 ref px at 2670x1200).</summary>
-        public const float AcceptBandPx = 120f;
+        /// <summary>Accept's height, AUTHORED AT the kit touch floor and READ FROM its one owner
+        /// so the two can never drift (the WO-1623 idiom). WO-1636 took the 8 px of margin this
+        /// band carried over the floor and spent it on the two-line hook: a caption the player
+        /// cannot finish reading costs more than 8 px of thumb comfort on a face that already
+        /// meets the floor. The mockup's 140 screen px resolves to ~113 ref px at 2670x1200,
+        /// so 112 is still the mockup's own number to within a pixel.</summary>
+        public const float AcceptBandPx = ElarionUiKit.MinTouchPx;
         /// <summary>Reward chip row, bottom-hung above Accept.</summary>
         public const float RewardBottomPx = AcceptBottomPx + AcceptBandPx + 18f;
-        /// <summary>One FontMicro line box (40) plus the chip's own border inset.</summary>
-        public const float RewardBandPx = 60f;
+        /// <summary>The chip it has to seat, exactly: <see cref="ChipHeightPx"/> (52), which is
+        /// itself above one FontMicro line box (40). WO-1636 spent the 8 px this band carried
+        /// above the chip on the two-line hook band.</summary>
+        public const float RewardBandPx = ChipHeightPx;
         /// <summary>Gilt hairline above the reward row.</summary>
         public const float RulePx = 2f;
         /// <summary>Hairline bottom inset.</summary>
@@ -217,7 +238,10 @@ namespace DeNelle.Village.Hero
         /// <summary>Chip metrics - measured label + padding, never a per-character guess.</summary>
         private const float ChipPadPx = 18f;
         private const float ChipSpacingPx = 8f;
-        private const float ChipHeightPx = 52f;
+        /// <summary>The reward chip's own height. PUBLIC since WO-1636 because RewardBandPx is
+        /// now authored AS this number and RumorBoardLayoutRegression pins that it seats it -
+        /// a band that must hold a chip should be budgeted from the chip, not from a literal.</summary>
+        public const float ChipHeightPx = 52f;
         // Reward chips are secondary metadata in a dense four-chip row. A 24px floor
         // remains comfortably legible at the supported physical resolutions and avoids
         // replacing authoritative XP / MORE words with ellipses.
@@ -676,7 +700,8 @@ namespace DeNelle.Village.Hero
         }
 
         /// <summary>ONE self-contained rumor poster: overhanging TYPE TAG, optional NEW chip,
-        /// a two-line title, a one-line hook, the letter link, a reward chip row and its OWN
+        /// a two-line title, a TWO-LINE hook (one line until WO-1636 measured it ellipsizing),
+        /// the letter link, a reward chip row and its OWN
         /// Accept. No selection step exists anywhere on this board - the card the player reads
         /// is the card the player accepts.</summary>
         private void BuildPoster(int index, string id, string title)
@@ -733,8 +758,10 @@ namespace DeNelle.Village.Hero
             titleLabel.textWrappingMode = TMPro.TextWrappingModes.Normal;
             titleLabel.alignment = TMPro.TextAlignmentOptions.Center;
             // TWO lines, fitted as a block: a title too long for two lines shrinks INSIDE its
-            // band. It never clips a descender and it never runs into the hook.
-            ElarionUiKit.FitBlock(titleLabel, ElarionUi.FontFloorMobile, 40f);
+            // band. It never clips a descender and it never runs into the hook. The ceiling is
+            // TitleFontMaxPx, not a literal - TitleBandPx is budgeted from that same const, so the
+            // band and the size that draws in it can no longer disagree (WO-1636).
+            ElarionUiKit.FitBlock(titleLabel, ElarionUi.FontFloorMobile, TitleFontMaxPx);
 
             // WO-1521: the hook band carries the row's OBJECTIVE. For an offer that IS the
             // letter's hook (unchanged); for an ACTIVE quest it is the current stage's objective
@@ -745,11 +772,17 @@ namespace DeNelle.Village.Hero
                 CardSideFrac, 1f - CardSideFrac);
             hookLabel.gameObject.name = "PosterHook";
             HangTop((RectTransform)hookLabel.transform, HookTopPx, HookBandPx);
-            hookLabel.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+            // WO-1636 - TWO LINES, WRAPPED, FITTED AS A BLOCK. This was NoWrap + FitSingleLine
+            // until the first glyph-oracle run (Builds/wave3-capture2) measured TMP swapping the
+            // tail of eighteen hooks for an ellipsis: 27 of 62 printable glyphs at 1920x1080,
+            // where the band is 451.2 ref px wide. The VM's word-boundary cut was never the
+            // problem - the ONE-LINE budget was, and a single line of this band holds ~30 chars
+            // against a 72-char cut. The only cut a player now sees is the VM's, on a word.
+            hookLabel.textWrappingMode = TMPro.TextWrappingModes.Normal;
             // The VM already cut the hook at a SENTENCE or a WORD boundary, so this fit only
             // ever has to close a rounding gap. A hook can no longer end mid-word - which is
             // the one thing both failing captures did ("begun to sin", "lantern eels. Sh").
-            ElarionUiKit.FitSingleLine(hookLabel, ElarionUi.FontFloorMobile, ElarionUi.FontMicro);
+            ElarionUiKit.FitBlock(hookLabel, ElarionUi.FontFloorMobile, ElarionUi.FontMicro);
 
             string questId = id;
             var readHost = new GameObject("ReadHost", typeof(RectTransform));
@@ -1016,7 +1049,22 @@ namespace DeNelle.Village.Hero
                 ElarionUi.Parchment, ElarionUi.FontMicro, TMPro.TextAlignmentOptions.Center, 0f, 1f);
             lbl.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
 
-            le.preferredWidth = 0f;
+            // WO-1636 - THE CHIP CLAIMS THE WIDTH ITS OWN WORD NEEDS.
+            // This line read `le.preferredWidth = 0f;` and that ZERO is the proven cause of the
+            // first glyph-oracle run's reward finding: "A found item" drew 4 of 10 printable
+            // glyphs in a 73 ref px label at 1920x1080 (Builds/wave3-capture2). A currency chip
+            // in the SAME row does claim one - ElarionUiKit's CurrencyChipHandle.SyncPreferredWidth
+            // (ElarionUiKitObsidian.cs:836-845) writes preferredWidth from its amount text on every
+            // SetAmount, and MakeCurrencyChip above calls SetAmount. So the word chip was the only
+            // child of the HorizontalLayoutGroup asking for nothing, and the group gave it what was
+            // left. MEASURE the word instead, through the kit's own glyph-advance measurer (the
+            // PageButtonWidthPx idiom, including its fallback when no font resolves), and add the
+            // chip's two side pads. minWidth stays 0 on purpose: a crowded row must shrink these
+            // chips PROPORTIONALLY inside the card, never overflow it.
+            float measured = ElarionUiKit.MeasureLineWidthPx(
+                ElarionUiKit.FontRole.Body, display, ElarionUi.FontMicro, out _);
+            if (measured < 0f) measured = display.Length * ElarionUi.FontMicro * 0.70f;
+            le.preferredWidth = measured + 2f * ChipPadPx;
             float floor = display.EndsWith(" MORE", System.StringComparison.OrdinalIgnoreCase)
                 ? 18f : ChipMinFontPx;
             ElarionUiKit.FitSingleLine(lbl, floor, ElarionUi.FontMicro);

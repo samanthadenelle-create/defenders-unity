@@ -43,9 +43,13 @@
 //     advances and WRAPS at the end; PrevPage() steps back and WRAPS at the
 //     start - the owner chose the keep-going form, so the board never dead-ends
 //     on a short page.
-//   * HookFor is now a ONE-LINE hook derived at a SENTENCE boundary from the full
+//   * HookFor is now a SHORT hook derived at a SENTENCE boundary from the full
 //     letter, and LetterFor carries the whole prose for the "Read the letter >"
-//     overlay. Both captures of the 2026-08-25/26 shots clipped this text MID-WORD
+//     overlay. (It read "ONE-LINE" here until WO-1636: the poster's hook band now
+//     seats TWO lines, and HookMaxChars is measured from that band's width rather
+//     than chosen. The method keeps the name OneLineHook, which is now about the
+//     hook being ONE SENTENCE, not one rendered line.)
+//     Both captures of the 2026-08-25/26 shots clipped this text MID-WORD
 //     ("begun to sin", "wakes the lantern eels. Sh"); a hook cut at a sentence and
 //     a letter that scrolls is what makes that unreachable rather than tuned away.
 //   * RewardChipsFor projects READY-TO-DRAW reward chips carrying the reward KIND
@@ -175,9 +179,27 @@ namespace DeNelle.Village.Hero
         /// <summary>Rumors shown per page. The owner-approved v3 board is three posters.</summary>
         public const int PageSize = 3;
 
-        /// <summary>Longest one-line hook before it is cut at a WORD boundary. A hook that
-        /// ends mid-word reads as a bug; one that ends on a word reads as a summary.</summary>
-        public const int HookMaxChars = 72;
+        /// <summary>Longest hook before it is cut at a WORD boundary. A hook that ends mid-word
+        /// reads as a bug; one that ends on a word reads as a summary.
+        ///
+        /// WO-1636 - THIS NUMBER IS NOW MEASURED, NOT CHOSEN. It was 72, a character count with no
+        /// relation to the band that draws it, and the first glyph-oracle run (Builds/wave3-capture2)
+        /// caught the consequence on eighteen labels: TMP swapped the tail for an ellipsis rather
+        /// than the VM cutting on a word ("Carry the sealed ledger past the flooded stai...", 27 of
+        /// 62 printable glyphs at 1920x1080). The narrowest hook band in that run measured 451.2 ref
+        /// px and its widest measured advance was 15.04 px per character ("Done: Clear 3 waves at the
+        /// western gate." drawing 30 characters in that width), so ONE line holds 30 characters and
+        /// RumorBoardPanel.HookBandPx now seats TWO. 52 is the largest cap at which every objective
+        /// and letter in quests.json + daily-quests.json (63 strings) and every fixture in that
+        /// capture wraps to two lines or fewer - simulated over the shipped copy, not estimated.
+        ///
+        /// IT IS A REAL COPY CUT AND IT IS DECLARED: 48 of those 63 hooks lose words they kept at 72
+        /// (and 39 of them were being ellipsized past TWO lines at the old cap anyway, so most of
+        /// what the cut removes is text the player could not read).
+        /// Nothing is lost to the player - the FULL letter is one tap away behind "Read the letter >",
+        /// which is why RumorBoardPanel's own header says the board never shows dense copy. Raising
+        /// this back above 52 without also re-budgeting HookBandPx puts the ellipsis straight back.</summary>
+        public const int HookMaxChars = 52;
 
         private readonly IRumorBoardBackend _backend;
         private readonly Action _onClose;
@@ -332,9 +354,11 @@ namespace DeNelle.Village.Hero
             return "A new thread waits to be picked up.";
         }
 
-        /// <summary>The ONE-LINE hook: the letter's first sentence, cut at a WORD boundary if
-        /// that sentence is itself long. It can never end mid-word, which is the defect both
-        /// the 2026-08-25 and 2026-08-26 captures showed ("begun to sin" / "lantern eels. Sh").</summary>
+        /// <summary>The ONE-SENTENCE hook: the letter's first sentence, cut at a WORD boundary if
+        /// that sentence is itself longer than <see cref="HookMaxChars"/>. It can never end
+        /// mid-word, which is the defect both the 2026-08-25 and 2026-08-26 captures showed
+        /// ("begun to sin" / "lantern eels. Sh"). It is no longer one rendered LINE - the poster's
+        /// hook band seats two of them since WO-1636.</summary>
         public string HookFor(string id) => OneLineHook(LetterFor(id));
 
         /// <summary>Pure, testable hook derivation (see <see cref="HookFor"/>).</summary>

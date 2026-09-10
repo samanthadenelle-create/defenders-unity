@@ -21,6 +21,20 @@
 // footer) with ONE: three self-contained rumor posters, paged three at a time.
 // The cases below are the properties that make the old failures unreachable:
 //
+// WO-1636 (2026-09-10) RE-POINTED CASE 1, AND THE RE-POINT IS THE FINDING. The first
+// live run of the glyph oracle (Builds/wave3-capture2) measured 21 truncated labels on
+// this board across six panel builds. Two causes, both of them a budget written against
+// the wrong number rather than a bug in the layout pass:
+//   * The hook band was ONE FontMicro line box while RumorBoardVM cut the hook at 72
+//     characters, and one line of the NARROWEST hook band (451.2 ref px at 1920x1080)
+//     holds about 30. Eighteen hooks ellipsized. The band now seats TWO lines and the
+//     VM's cut is measured from that width, so the only cut the player sees is the VM's.
+//   * The title band was budgeted here against ElarionUi.FontBody(50) while the View
+//     handed FitBlock a ceiling of 40. Those 25 reserved-but-unreachable pixels are what
+//     funds the hook's second line; the budget now reads the View's own TitleFontMaxPx.
+// The lesson is the repo's usual one: a budget that names a number the drawing code does
+// not use is duplicated state, and it fails silently in the direction of "looks fine".
+//
 //   1 [poster-stack]  Every band inside a poster is a FIXED reference-pixel budget
 //                     that is at least one TMP line box at the font it renders,
 //                     every tap target is authored AT/above the kit touch floor,
@@ -211,9 +225,16 @@ namespace DeNelle.Editor.Regression
             float fontBody = ConstFloat(ui, "FontBody", failures, "[poster-stack]");
             float fontMicro = ConstFloat(ui, "FontMicro", failures, "[poster-stack]");
             float fontFloor = ConstFloat(ui, "FontFloorMobile", failures, "[poster-stack]");
-            if (minTouch <= 0f || fontBody <= 0f || fontMicro <= 0f || fontFloor <= 0f) return;
+            // WO-1636: the title band is budgeted from the ceiling the View actually HANDS to
+            // FitBlock, not from FontBody. Those two disagreed - the View capped the title at 40
+            // while this budget reserved two FontBody(50) line boxes - so the band held 25 px for
+            // a size the title can never render at, and the hook next door was one line short.
+            // Read the View's own const; a budget that guesses at the render size is the same
+            // duplicated state this file exists to catch.
+            float titleFontMax = ConstFloat(view, "TitleFontMaxPx", failures, "[poster-stack]");
+            if (minTouch <= 0f || fontBody <= 0f || fontMicro <= 0f || fontFloor <= 0f || titleFontMax <= 0f) return;
 
-            float bodyLine = fontBody * LineBoxMul;
+            float titleLine = titleFontMax * LineBoxMul;
             float microLine = fontMicro * LineBoxMul;
 
             float titleBand = ConstFloat(view, "TitleBandPx", failures, "[poster-stack]");
@@ -231,15 +252,28 @@ namespace DeNelle.Editor.Regression
                 panelMax <= panelMin) return;
 
             // Every band is a whole TMP line box at the font it renders.
-            if (titleBand < 2f * bodyLine)
-                failures.Add("[poster-stack] TitleBandPx=" + titleBand + " cannot seat TWO FontBody line boxes (" +
-                             (2f * bodyLine) + ") - the v3 title is a TWO-LINE block and the second line is culled whole");
-            if (hookBand < microLine)
-                failures.Add("[poster-stack] HookBandPx=" + hookBand + " is under one FontMicro line box (" +
-                             microLine + ") - TMP culls the hook whole, which is the -11px body class of bug (WO-866)");
+            if (titleBand < 2f * titleLine)
+                failures.Add("[poster-stack] TitleBandPx=" + titleBand + " cannot seat TWO TitleFontMaxPx(" +
+                             titleFontMax + ") line boxes (" + (2f * titleLine) +
+                             ") - the v3 title is a TWO-LINE block and the second line is culled whole");
+            // WO-1636 - TWO line boxes, not one. The first glyph-oracle run (Builds/wave3-capture2)
+            // measured eighteen hooks ellipsizing inside a one-line band: 451.2 ref px of width at
+            // 1920x1080 against a 72-character cut. Width cannot grow (three owner-approved poster
+            // columns), so the band's HEIGHT carries two lines and RumorBoardVM.HookMaxChars is cut
+            // to what two of them hold. A seat that puts this back to one line puts the ellipsis back.
+            if (hookBand < 2f * microLine)
+                failures.Add("[poster-stack] HookBandPx=" + hookBand + " is under TWO FontMicro line boxes (" +
+                             (2f * microLine) + ") - the hook is a TWO-LINE block since WO-1636; at one line " +
+                             "TMP ellipsizes the tail of every hook longer than ~30 characters, which is the " +
+                             "measured defect from Builds/wave3-capture2 (27 of 62 printable glyphs)");
             if (rewardBand < microLine)
                 failures.Add("[poster-stack] RewardBandPx=" + rewardBand + " is under one FontMicro line box (" +
                              microLine + ") - the reward chips render as empty outlines (the 2026-08-02 symptom)");
+            float chipHeight = ConstFloat(view, "ChipHeightPx", failures, "[poster-stack]");
+            if (chipHeight > 0f && rewardBand < chipHeight)
+                failures.Add("[poster-stack] RewardBandPx=" + rewardBand + " cannot seat the chip it exists for " +
+                             "(ChipHeightPx=" + chipHeight + ") - the row's LayoutElement asks for that height " +
+                             "and a shorter band clips every chip's border");
 
             // Every tap target is AUTHORED at the floor - never grown into it by ClampMinTouch,
             // which would spill it symmetrically into both neighbours.
@@ -571,6 +605,24 @@ namespace DeNelle.Editor.Regression
             if (view.IndexOf("MeasureLineWidthPx", StringComparison.Ordinal) < 0)
                 failures.Add("[source-laws] the View no longer MEASURES the Previous label " +
                              "(MeasureLineWidthPx) - a character-count host is how 'Previous' becomes 'Pr...'");
+
+            // -- WO-1636: the two shapes the first glyph-oracle run bought ---------
+            // Both are pinned as SOURCE laws because both are one-token reverts. The band
+            // budgets in Case 1 catch a band that shrinks; only these catch a band that keeps
+            // its height while the label goes back to refusing to use it.
+            if (Regex.IsMatch(view, @"hookLabel\.textWrappingMode\s*=\s*TMPro\.TextWrappingModes\.NoWrap"))
+                failures.Add("[source-laws] the poster hook is back to NoWrap - it is a TWO-LINE block since " +
+                             "WO-1636, and a no-wrap hook in an 82 px band ellipsizes exactly as the first " +
+                             "glyph-oracle run measured (18 labels, Builds/wave3-capture2)");
+            if (!Regex.IsMatch(view, @"FitBlock\s*\(\s*hookLabel"))
+                failures.Add("[source-laws] the poster hook no longer routes through ElarionUiKit.FitBlock - " +
+                             "FitSingleLine sets Ellipsis overflow, which is the mechanism that ate the tail " +
+                             "of every hook longer than ~30 characters (WO-1636)");
+            if (Regex.IsMatch(view, @"le\.preferredWidth\s*=\s*0f\s*;\s*float\s+floor"))
+                failures.Add("[source-laws] the reward WORD chip is back to claiming preferredWidth 0 - a " +
+                             "currency chip in the same row claims one (ElarionUiKitObsidian's " +
+                             "CurrencyChipHandle.SyncPreferredWidth), so a zero-claim word chip gets whatever " +
+                             "is left: 'A found item' drew 4 of 10 glyphs in 73 ref px (WO-1636)");
             // WO-1521: the poster's door is still ITS OWN and there is still no selection step -
             // but its FACE is now Claim / Go To / Accept, chosen by the row's kind. So the law
             // moved from "the literal string Accept" to "the door exists and the VM names it".

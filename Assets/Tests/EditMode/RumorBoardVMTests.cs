@@ -328,8 +328,12 @@ namespace DeNelle.Tests.EditMode
         }
 
         [Test]
-        public void the_hook_is_one_line_and_never_ends_mid_word()
+        public void the_hook_is_one_sentence_and_never_ends_mid_word()
         {
+            // WO-1636 renamed this case from "..._is_one_line_...". The hook was never about a
+            // rendered LINE - it is one SENTENCE, cut on a word when the sentence is long. The
+            // poster's hook band seats TWO lines since WO-1636 and HookMaxChars is measured from
+            // that band's width (451.2 ref px at 1920x1080), so the bound below moves with it.
             // THE DEFECT THIS LOCKS, verbatim from the two failing captures: the objective
             // rendered as "...have begun to sin" (the word is "sing") and "...wakes the
             // lantern eels. Sh". A hook cut at a SENTENCE or a WORD boundary cannot do that.
