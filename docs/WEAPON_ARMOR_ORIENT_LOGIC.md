@@ -168,7 +168,7 @@ its existing behaviour**. The hand-typed constants (`Shield` preset euler, `_she
 | **shield, drawn** | **DERIVED** (both native and normalized props), global weapon yaw withheld |
 | **shield, sheathed** | **DERIVED** off the back socket with outward = −body.forward; the Seating Editor preview shares the same method so the two can never disagree |
 | **bow, drawn + sheathed** | unchanged — felt-verified |
-| **melee (sword/staff/…)** | seat unchanged. The archetype rules run as a **read-only `[Flow:Equip] OrientMeasure` prediction** beside the live seat (WO-1123 §4 step 1), because re-resolving which end is the hilt is a thing you must SEE before shipping. Wiring them is a follow-up that needs a screenshot per family. |
+| **staff, drawn + sheathed** | grip point **DERIVED** (0.75 up the long axis) via `EquipmentController.SeatMeleeGripPoint`, precedence-gated; sword/dagger and every Unknown family keep the hilt-lower-half seat and the read-only prediction. (updated 2026-09-09, WO-1431 lane HERO-GRIP) |
 
 **Companion reference:** `docs/WEAPON_MESH_ARCHETYPES.md` — what each archetype's mesh *is* in
 measurable terms (the bin/profile-curve primitive and the per-family **disambiguator** that separates

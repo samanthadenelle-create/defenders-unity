@@ -11,6 +11,12 @@
 // Bones: Humanoid RightHand for main weapon, LeftHand for offhand/shield/bow.
 // Grip transforms are coarse defaults for 1.8 m humanoids — tune via def fields
 // later if needed. Colliders on gear are stripped (visual only).
+//
+// ⛔ EXCEPT THE SHIELD (WO-1616, 2026-09-09). The off-hand is NOT seated by the coarse
+// defaults below: it goes through the game's ONE shield-seating authority,
+// EquipmentController.SeatShieldMountRotation / SeatShieldPlateOnSocket — the same
+// measured derivation the hero uses. Do not add a shield case back into
+// ApplyDefaultGrip, and do not author a troop offsets table: that split is the defect.
 // =============================================================================
 
 using UnityEngine;
@@ -94,10 +100,165 @@ namespace DeNelle.Village
             foreach (var c in instance.GetComponentsInChildren<Collider>(true))
                 Object.Destroy(c);
 
-            ApplyDefaultGrip(instance.transform, isOffhand, isBow, resourcesPath);
+            // WO-1616: a SHIELD is seated by the game's ONE shield-seating authority; everything
+            // else keeps the coarse per-family grips below. The predicate is the same one
+            // ApplyDefaultGrip used to test, moved out so the shield never reaches that method.
+            bool isShield = !isBow &&
+                            (isOffhand ||
+                             resourcesPath.IndexOf("shield", System.StringComparison.OrdinalIgnoreCase) >= 0);
+            if (isShield)
+                SeatShield(instance, hand, anim, troopId, resourcesPath);
+            else
+                ApplyDefaultGrip(instance.transform, isOffhand, isBow, resourcesPath);
+
             FlowTrace.Step("TroopGear",
                 $"id={troopId}: attached '{resourcesPath}' on {boneId} " +
                 $"(src={(prefab != null ? "Resources" : "primitive")}).");
+        }
+
+        // =====================================================================================
+        //  WO-1616 — the NPC shield reads the HERO's seat, because there is only one
+        // =====================================================================================
+        //
+        // WHAT THIS REPLACES: the deleted `else if (shield)` branch of ApplyDefaultGrip wrote one
+        // hard-coded triple — a few centimetres out from the bone, a flat 90-degree yaw, scale
+        // forced to one. (The exact numbers are quoted in WORK_ORDER_1616_*.md §1 and its RESULT,
+        // and are deliberately NOT repeated here: the ticket's acceptance is that this file no
+        // longer contains them in any form, and a "documentation" copy is how a deleted constant
+        // gets pasted back.)
+        // One triple, applied to every off-hand on every rig, with no per-rig, per-mesh or
+        // per-shield term — which is why every deployed raid NPC wore a visibly wrong shield for a
+        // whole raid while the hero, five metres away, wore a correct one. The correct seat was
+        // never missing; this path simply could not reach it.
+        //
+        // ⛔ THE CONSTANT IS DELETED, NOT RE-DIALLED. WO-1616 §4: "Never add a second offset table."
+        // A per-troop offsets file, or a better-looking triple, is two authorities that drift apart
+        // the moment a new rig or a new shield mesh arrives (CLAUDE.md §2/§5/§16 each tell this same
+        // story about a different copy). Re-dialling by eye would have shipped the SAME bug with
+        // nicer numbers.
+        //
+        // ⚠ A GRIP ROOT IS REQUIRED, NOT COSMETIC. The measured ShieldFrame is expressed in the
+        // PARENT's frame, and the seat then writes a rotation onto that parent. If the prop were
+        // both the measured subject and the rotated transform, rotating it would invalidate the very
+        // measurement it was derived from. The hero has always had this two-level shape
+        // (gripRoot -> prop); this gives the NPC the same one. The root carries the `TroopGear_`
+        // prefix so the existing re-skin cleanup in Attach() still destroys it (and, with it, the
+        // prop beneath).
+        //
+        // ⚠ SCALE IS NO LONGER FORCED TO 1. The deleted branch overwrote the prefab root's scale;
+        // the hero's path leaves a native prop's pivot and scale untouched and derives ROTATION
+        // only. If the troop shield now reads a different SIZE on device, that is this line, and it
+        // is deliberate — name it in the felt-test rather than re-adding a scale write.
+        private static void SeatShield(GameObject instance, Transform hand, Animator anim,
+                                       string troopId, string path)
+        {
+            if (instance == null || hand == null) return;
+
+            var gripRoot = new GameObject("TroopGear_ShieldGrip");
+            gripRoot.transform.SetParent(hand, false);
+            gripRoot.transform.localPosition = Vector3.zero;
+            gripRoot.transform.localRotation = Quaternion.identity;
+            gripRoot.transform.localScale = Vector3.one;
+            // worldPositionStays:false — the root is identity under the same bone, so the prop's
+            // authored local transform is carried across byte-for-byte.
+            instance.transform.SetParent(gripRoot.transform, false);
+
+            Transform body = anim != null ? anim.transform : hand.root;
+
+            // ── POSE-SETTLE BEFORE MEASURING THE ARM (WO-1616) ──────────────────────────────────
+            // TroopFactory.Build calls Apply() SYNCHRONOUSLY, one line after ApplyTroopAnimator —
+            // so the Animator has been BOUND but has never EVALUATED: the rig is standing in its
+            // BIND POSE. That matters because GearSeat.GetShieldAxes derives `outward` by projecting
+            // the body's left onto the plane perpendicular to the forearm, and in a T-pose the
+            // forearm IS the body's left: the projection collapses to its documented fallback and
+            // the derived seat is taken against axes that no animated pose ever shows. The shield's
+            // local rotation is then rigid on the bone, so the error travels into every frame after.
+            // (GearSeat.SnapHandleToSocket names the same degenerate case in its own doc: "when the
+            // forearm is parallel to the shoulders the heater is posed upright".) The hero is immune
+            // for a reason that does not apply here — it equips while already posed.
+            //
+            // Update(0f) advances the state machine by zero and WRITES THE ENTRY STATE ONTO THE
+            // BONES. It is a no-op when no controller is bound, so it cannot make an un-animated
+            // troop worse. ⚠ UNPROVEN ON DEVICE — the arm angle is printed in the seat line below
+            // precisely so a bounce can be settled from the log instead of re-theorised.
+            if (anim != null && anim.isHuman && anim.runtimeAnimatorController != null)
+                Guard.Try("TroopGear", "pose-settle before shield seat", () => anim.Update(0f));
+
+            SeatShieldOnHand(instance, gripRoot.transform, hand, anim, body,
+                             troopId + " '" + path + "'");
+        }
+
+        /// <summary>
+        /// WO-1616 §12 instrument. How far the off-hand FOREARM is from the body's own left/right
+        /// axis at the moment the seat is derived. Near 0 or 180 means GetShieldAxes' projection is
+        /// degenerate (a bind/T pose) and the derived seat was taken against fallback axes — read
+        /// this before re-theorising a wrong-looking NPC shield.
+        /// </summary>
+        private static string DescribeOffHandArm(Animator anim, Transform body)
+        {
+            if (anim == null || !anim.isHuman || body == null) return "armVsBodyRight=n/a(no rig)";
+            Transform forearm = null, wrist = null;
+            try
+            {
+                forearm = anim.GetBoneTransform(HumanBodyBones.LeftLowerArm)
+                          ?? anim.GetBoneTransform(HumanBodyBones.LeftUpperArm);
+                wrist = anim.GetBoneTransform(HumanBodyBones.LeftHand);
+            }
+            catch { /* invalid avatar */ }
+            if (forearm == null) return "armVsBodyRight=n/a(no forearm bone)";
+
+            Vector3 alongArm = wrist != null ? (wrist.position - forearm.position) : forearm.up;
+            if (alongArm.sqrMagnitude < 1e-8f) return "armVsBodyRight=n/a(zero-length arm)";
+            alongArm.Normalize();
+            float vsRight = Vector3.Angle(alongArm, body.right);
+            float fromAxis = Mathf.Min(vsRight, 180f - vsRight);
+            return $"armVsBodyRight={vsRight:0.#}deg" +
+                   (fromAxis < 15f
+                       ? " ⚠ DEGENERATE (arm lies along the body's left/right axis, so GetShieldAxes' " +
+                         "outward projection collapsed to its fallback — a bind/T pose)"
+                       : " (projection well-conditioned)");
+        }
+
+        /// <summary>
+        /// WO-1616. Seats an already-parented shield prop through the ONE authority
+        /// (<see cref="EquipmentController.SeatShieldMountRotation"/> +
+        /// <see cref="EquipmentController.SeatShieldPlateOnSocket"/>) and emits the device line.
+        /// Public static so <c>TroopShieldSeatRegression</c> asserts the SHIPPED call, not a copy of
+        /// it — a suite that re-typed these two calls would stay green while this path regressed.
+        /// <para>
+        /// NOTE — there is deliberately no precedence input. `mayDerive` is unconditionally TRUE
+        /// here because the troop path has NO authored-offset channel and NO `manual` flag:
+        /// `TroopDef.Offhand` is a bare Resources path, not a catalog row, so there is no
+        /// owner-dialled seat that derivation could overrule. If troop gear ever gains authored
+        /// seats, feed that verdict in here — do not add a second ladder.
+        /// </para>
+        /// </summary>
+        public static EquipmentController.ShieldSeat SeatShieldOnHand(
+            GameObject prop, Transform gripRoot, Transform hand, Animator anim, Transform body,
+            string subject)
+        {
+            var seat = EquipmentController.SeatShieldMountRotation(
+                prop, gripRoot, hand, anim, body, mayDerive: true, subject: subject);
+
+            if (seat.Derived)
+                EquipmentController.SeatShieldPlateOnSocket(gripRoot, hand, anim, body, seat.Frame, subject);
+
+            // ── §12 PROVING LINE ────────────────────────────────────────────────────────────────
+            // The five "attached 'TroopGear/Shield' on LeftHand" lines the RCA quotes are NOT proof
+            // of anything: they printed identically while the constant was seating the shield wrong.
+            // THIS line names the rule, the authority and the resulting transform, so a bad seat can
+            // be split into "the derivation never ran" (rule=SHIELD-NOT-DERIVED, with the
+            // ShieldFrame Warn above saying which clause failed) vs "it ran and is wrong"
+            // (rule=SHIELD-DERIVED-…, with the numbers to argue about).
+            FlowTrace.Step("TroopGear",
+                $"SHIELD SEAT APPLIED {subject}: rule={seat.Rule} " +
+                "authority=EquipmentController.SeatShieldMountRotation " +
+                $"frameValid={seat.FrameValid} derived={seat.Derived} " +
+                $"lPos={gripRoot.localPosition} lEuler={gripRoot.localEulerAngles:0.#} " +
+                $"lScale={gripRoot.localScale} {DescribeOffHandArm(anim, body)} " +
+                "— WO-1616: this used to be one hard-coded triple, identical on every rig and " +
+                "every shield mesh.");
+            return seat;
         }
 
         private static void ApplyDefaultGrip(Transform t, bool isOffhand, bool isBow, string path)
@@ -109,8 +270,14 @@ namespace DeNelle.Village
                          || path.IndexOf("Staff", System.StringComparison.OrdinalIgnoreCase) >= 0;
             bool axe = path.IndexOf("axe", System.StringComparison.OrdinalIgnoreCase) >= 0
                        || path.IndexOf("Axe", System.StringComparison.OrdinalIgnoreCase) >= 0;
-            bool shield = isOffhand || path.IndexOf("shield", System.StringComparison.OrdinalIgnoreCase) >= 0
-                          || path.IndexOf("Shield", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+            // ⛔ NO SHIELD BRANCH LIVES HERE ANY MORE (WO-1616). It held one hard-coded triple for
+            // every off-hand on every rig; it is DELETED, not moved and not re-dialled, and the
+            // shield is routed to the game's one shield-seating authority in Attach() before this
+            // method is ever called. If you are here to "fix the NPC shield", you are in the wrong
+            // method — read EquipmentController.SeatShieldMountRotation. Re-adding a triple here
+            // recreates the exact defect (two authorities, the NPC's wrong) and reddens
+            // TroopShieldSeatRegression case `npc-shield-uses-the-shared-authority`.
 
             if (isBow)
             {
@@ -134,12 +301,6 @@ namespace DeNelle.Village
                 // That is its own lane with its own felt-check, not a rider on the bow fix.
                 t.localPosition = new Vector3(0.02f, 0.04f, 0.02f);
                 t.localRotation = Quaternion.Euler(-90f, 0f, 0f);
-                t.localScale = Vector3.one * 1.0f;
-            }
-            else if (shield)
-            {
-                t.localPosition = new Vector3(0.05f, 0.05f, 0.02f);
-                t.localRotation = Quaternion.Euler(0f, 90f, 0f);
                 t.localScale = Vector3.one * 1.0f;
             }
             else if (staff)

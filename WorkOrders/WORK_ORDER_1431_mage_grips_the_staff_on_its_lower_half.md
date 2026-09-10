@@ -1,6 +1,6 @@
 # WO-1431: the mage grips the staff on its LOWER half, not its upper half
 
-**Status:** READY TO IMPLEMENT - LOW PRIORITY, minted 2026-09-06 (CLI). **Tracked deliberately, NOT queued.**
+**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane HERO-GRIP); owner felt-test on device closes
 **Silo:** Hero visuals - weapon attachment offsets
 **Owner (2026-09-06, verbatim):** *"the staff needs reversed, right now they grasp it 75% on the lower half instead of
 on the upper half of the staff"* and, on priority: *"it's a very low priority. We don't need to fix it right now, but I
@@ -32,8 +32,38 @@ visual; combat, reach and damage are unaffected.
   AttachmentOffsetRegistry."* So the registry is the sanctioned seam - do not invent a second one.
 
 ## 3. The fix
-Author a staff offset in `offsets.json` - position, rotation and, if the forge supports it, the grip point - so the
-hand meets the upper shaft. **Data, not code.** If a code change turns out to be required, STOP and report why.
+
+> ### ⚠ SECTIONS 2 AND 3 BELOW ARE SUPERSEDED (2026-09-09, lane HERO-GRIP). Read this box first.
+> Section 2's lead ("THE LIKELY CAUSE: no staff entry in `offsets.json`, so a staff falls back to a
+> one-handed-sword default") and section 3's instruction ("**Data, not code.**") were a five-minute
+> read, and section 2 said so in its own words. They were **verified and superseded** by the RCA in
+> `docs/READY_RCA_2026-09-09.md` § "WO-1431", which is source- and device-proven.
+>
+> **The half that held up:** `offsets.json` really does hold **26** rows and **none of them is a
+> staff** (re-counted at source 2026-09-09; the ids are shield_A, ShieldWithItemLogic, Knight,
+> crystals, iron, wood, food, sword_A/D/F/G, enemy_outpost, arcane tower, three Tower_Wooden_
+> Watchtower tiers, bow_A_withString, jeweler, Forge, barracks, armorer, three Ballista tiers,
+> RealmStore, ShopAndCrafting).
+>
+> **The half that was wrong:** there is no "sword default" fallback. The live non-native melee attach
+> path called `EquipmentController.SeatHiltLowerHalf` for **every** melee prop — the bladed rule was
+> the *only* rule, applied unconditionally. Meanwhile `WeaponOrientHelper.TryDeriveStaffGripY`
+> already computed the owner's ruled answer (device trace, `tripo_staff_a` on Hero (Blaise): a
+> 1.2639 m staff, `fraction=0.75 -> gripY=0.7204`) and **the result was discarded** — it was reachable
+> only from `TraceMeasuredSeat`, a read-only prediction. The measurement path and the live path were
+> two different programs.
+>
+> **So authoring a JSON row is the wrong fix**, and the ledger rules it out: it would paper a
+> per-asset hand-dial over a live/measure split, and it would have to be re-dialled for every staff
+> mesh — the exact per-asset tuning `docs/WEAPON_ARMOR_ORIENT_LOGIC.md` exists to abolish. Worse, an
+> authored row moves the staff **out of the derived tier**, so the sanctioned derivation would then be
+> permanently unreachable for it.
+>
+> **What shipped instead:** the split is joined. `EquipmentController.SeatMeleeGripPoint` is one
+> dispatcher — a Staff that passes the precedence ladder takes the derived 0.75 grip; every other
+> melee family keeps the hilt-lower-half rule byte-for-byte; an authored offset row or a
+> substantiated `manual: true` still outranks the derivation. See
+> `WORK_ORDER_1431_mage_grips_the_staff_on_its_lower_half.RESULT.md`.
 
 ⚠ `offsets.json` lives under `Assets/Resources/`. Check whether a `StreamingAssets` twin exists; if it does, both
 copies stay byte-identical and the edit is byte-mode with the LF count proven.

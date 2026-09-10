@@ -256,6 +256,16 @@ namespace DeNelle.Village
         private Vector3     _currentWeaponGripPos;
         private Vector3     _currentWeaponGripEuler;
         private bool        _currentWeaponNative;
+        /// <summary>WO-1431: the archetype the MAIN-HAND seat was dispatched on, resolved ONCE at
+        /// attach by <see cref="WeaponOrientHelper.Classify"/> and reused by the Seating Editor
+        /// preview so the preview and the shipped seat can never dispatch on different families.
+        /// (The shield's sheathed path was fixed for exactly this class of two-baseline drift.)</summary>
+        private WeaponArchetype _currentWeaponArchetype;
+        /// <summary>WO-1431: the main-hand mirror of <see cref="_currentOffHandDerivable"/> — this
+        /// prop passed the WO-1123/WO-1215 precedence ladder at attach, so an archetype-derived
+        /// grip may touch it. False = an authored Offset Forge row or a SUBSTANTIATED
+        /// `manual: true` owns the seat and the derived rule must keep its hands off.</summary>
+        private bool _currentWeaponDerivable;
         private string  _currentOffHandMeshKey;
         private float   _currentOffHandHeldLength;
         private Vector3 _currentOffHandGripPos;
@@ -1265,6 +1275,12 @@ namespace DeNelle.Village
             // WO-478: native melee trusts authored pivot unless ff.weapongripinfer restores inference.
             bool trustNativePivot = vis.native && !fullOverride &&
                 (!meleeSeat || !FeatureFlags.WeaponGripInfer);
+            // WO-1431: reset the main-hand seat-dispatch state so a PREVIOUS weapon's archetype can
+            // never leak into this attach or into the Seating Editor preview. The melee branch
+            // below overwrites both; a native/non-melee prop deliberately leaves them cleared,
+            // which reads as "no archetype derivation was involved in this seat".
+            _currentWeaponArchetype = WeaponArchetype.Unknown;
+            _currentWeaponDerivable = false;
             float heldLen = ProportionalHeldLength(vis.heldLength);
             FlowTrace.Step("Equip",
                 $"heldLength '{weaponId}' kind={vis.kind}: archetype={vis.heldLength:0.###}m " +
@@ -1282,29 +1298,55 @@ namespace DeNelle.Village
                 // non-native Tripo/KayKit FBX. Ref: WORK_ORDER_478_weapon_grip_trust_native_pivot.md
                 FlowTrace.Step("Equip", meleeSeat
                     ? (vis.native
-                        ? "seat: DEPRECATED GEOMETRY (ff.weapongripinfer) — NormalizeInto + SeatHiltLowerHalf"
-                        : "seat: GEOMETRY — NormalizeInto (longest->+Y) + SeatHiltLowerHalf (hilt=lower half, blade +Y)")
+                        ? "seat: DEPRECATED GEOMETRY (ff.weapongripinfer) — NormalizeInto + SeatMeleeGripPoint"
+                        : "seat: GEOMETRY — NormalizeInto (longest->+Y) + SeatMeleeGripPoint (WO-1431: staff -> 0.75 up the shaft, bladed -> hilt lower half, blade +Y)")
                     : "seat: GEOMETRY — NormalizeInto (bounds-true)");
                 NormalizeInto(prop, gripRoot.transform, heldLen, ResolveHiltFromKind(vis.kind),
                               ResolveGripAnchorFromKind(vis.kind));   // WO-1105 R4: bow -> stave-surface grip
                 if (meleeSeat)
                 {
-                    FlowTrace.Try("Equip", "SeatHiltLowerHalf", () => SeatHiltLowerHalf(prop, gripRoot.transform));
-                    // ── WO-1123 §4 STEP 1: MEASUREMENT, NOT AN EDIT ─────────────────────────────
-                    // Read-only. It states what the owner's 2026-08-19 archetype rules WOULD say
-                    // about THIS mesh — which end the taper calls the hilt, where the staff's
-                    // 0.75 grip lands — beside what the live SeatHiltLowerHalf path actually did.
-                    // The melee SEAT is deliberately unchanged by WO-1123: the live rotation is
-                    // already rig-derived (ComputeMeleeGripRotation), and re-resolving which end is
-                    // the hilt is a thing you must SEE before you ship (docs/ARCHITECTURE.md:155-159
-                    // — a derived value can be arithmetically perfect and land 90 deg out one
-                    // transform up). This line is the prediction to diff a screenshot against.
+                    // ── WO-1431: ONE archetype, feeding BOTH the applied rule and the prediction ──
+                    // Resolved ONCE, here, and passed to the seat AND to TraceMeasuredSeat. Before
+                    // this change the trace classified by mesh NAME while the seat had no archetype
+                    // input at all, which is precisely how the prediction could say 0.75 for eleven
+                    // days while the seat did 0.18 and nobody could see the two were different
+                    // programs. `vis.kind.ToString()` is fed as the CATEGORY so a staff whose mesh
+                    // is not literally named "staff" still classifies as one (WeaponOrientHelper
+                    // .Classify deliberately leaves wand/axe/hammer/mace/crossbow Unknown — the
+                    // owner's 2026-08-19 spec covers bow/sword/staff/shield only, and Unknown means
+                    // "keep today's behaviour and say so", not "guess").
+                    WeaponArchetype seatArch = WeaponOrientHelper.Classify(
+                        vis.kind.ToString(), !string.IsNullOrEmpty(vis.mesh) ? vis.mesh : weaponId);
+                    // PRECEDENCE (WeaponOrientHelper.ResolveSource, WO-1123; `manual` value per
+                    // WO-1215 ManualSeatIsSubstantiated). Same computation the off-hand already
+                    // does — an authored Offset Forge row, or a `manual: true` that names a
+                    // correction which actually exists, keeps the pre-WO-1431 seat untouched.
+                    bool rawWeaponManual = IsManualOrientRow(weaponId);
+                    bool weaponRowGenerated = IsGeneratedCatalogRow(weaponId);
+                    bool weaponManual = WeaponOrientHelper.ManualSeatIsSubstantiated(
+                        rawWeaponManual, weaponRowGenerated, hasOffset);
+                    _currentWeaponArchetype = seatArch;
+                    _currentWeaponDerivable = WeaponOrientHelper.MayDerive(hasOffset, weaponManual);
+                    FlowTrace.Step("Equip",
+                        $"melee seat source '{weaponId}' key='{offsetKey}': " +
+                        $"{WeaponOrientHelper.ResolveSource(hasOffset, weaponManual, canDerive: true)} " +
+                        $"(archetype={seatArch} authoredRow={hasOffset} manual={weaponManual} " +
+                        $"rawManual={rawWeaponManual} generated={weaponRowGenerated} " +
+                        $"derivable={_currentWeaponDerivable})");
+                    FlowTrace.Try("Equip", "SeatMeleeGripPoint", () =>
+                        SeatMeleeGripPoint(prop, gripRoot.transform, seatArch,
+                                           _currentWeaponDerivable, weaponId));
+                    // ── WO-1123 §4 STEP 1: MEASUREMENT, KEPT AS A CROSS-CHECK ───────────────────
+                    // Still read-only, and NEVER stripped (CLAUDE.md §12). What changed on
+                    // 2026-09-09 is that the staff half of this prediction is no longer the only
+                    // place the rule exists: SeatMeleeGripPoint above APPLIES it, and this line now
+                    // serves as the independent second opinion on the same mesh. If the
+                    // "MELEE GRIP APPLIED" line and this PREDICTION line ever disagree for a staff,
+                    // the two paths have split again — that divergence is the bug, read both.
                     FlowTrace.Try("Equip", "OrientMeasure(melee)", () =>
                         WeaponOrientHelper.TraceMeasuredSeat(prop, gripRoot.transform, hand,
-                            WeaponOrientHelper.Classify(null,
-                                !string.IsNullOrEmpty(vis.mesh) ? vis.mesh : weaponId),
-                            weaponId));
-                    FlowTrace.Step("Equip", $"trued+seated: grip-shift localY={prop.transform.localPosition.y:0.###} (geometry hilt-lower-half{(fullOverride ? ", vertical-delta" : "")} infer={FeatureFlags.WeaponGripInfer})");
+                            seatArch, weaponId));
+                    FlowTrace.Step("Equip", $"trued+seated: grip-shift localY={prop.transform.localPosition.y:0.###} (archetype={seatArch} grip dispatched by SeatMeleeGripPoint{(fullOverride ? ", vertical-delta" : "")} infer={FeatureFlags.WeaponGripInfer})");
                 }
             }
 
@@ -1905,19 +1947,33 @@ namespace DeNelle.Village
         // which-end-is-the-hilt ambiguity (no flip): the grip is always in the bottom portion.
         // Default grip = ~18% up from the bottom (hilt centre near the pommel); a clear width
         // spike (crossguard) WITHIN the lower half refines the exact grip Y. Prop-LOCAL coords
-        // relative to <paramref name="parent"/> (the grip root). Used by the vertical-authoring /
-        // fullOverride path + the in-game Seating Editor preview; the default path keeps SeatByHandle.
-        private static void SeatHiltLowerHalf(GameObject prop, Transform parent)
+        // relative to <paramref name="parent"/> (the grip root).
+        //
+        // ⚠ CORRECTED 2026-09-09 (WO-1431). This header used to close with "Used by the
+        // vertical-authoring / fullOverride path + the in-game Seating Editor preview; the default
+        // path keeps SeatByHandle." That was FALSE of the shipped tree: SeatByHandle is deprecated
+        // (see its own header) and this method was the DEFAULT melee seat for EVERY non-native
+        // melee prop — swords AND staves. It is now reached through
+        // <see cref="SeatMeleeGripPoint"/>, which keeps this rule for the BLADED families and
+        // hands a STAFF to the owner-ruled 0.75 derivation instead. Nothing about the rule below
+        // changed; only who is routed into it.
+        //
+        // Reports the grip it used so the dispatcher can trace it and a regression can assert the
+        // SHIPPED composition instead of re-typing the constants (the WO-1226 discipline).
+        private static bool SeatHiltLowerHalf(GameObject prop, Transform parent,
+                                              out float gripY, out float gripFraction)
         {
-            if (!TryLocalBounds(prop, parent, out Bounds b)) return;
+            gripY = 0f;
+            gripFraction = 0f;
+            if (!TryLocalBounds(prop, parent, out Bounds b)) return false;
             float yMin = b.center.y - b.extents.y;
             float yMax = b.center.y + b.extents.y;
             float length = yMax - yMin;
-            if (length < 1e-4f) return;
+            if (length < 1e-4f) return false;
             float mid = yMin + length * 0.5f;
 
             // Default: hilt centre ~18% up from the bottom.
-            float gripY = yMin + length * 0.18f;
+            gripY = yMin + length * 0.18f;
 
             // Refine within the LOWER half only: a crossguard width spike marks the blade/handle
             // boundary; grip the centre of the handle segment below it.
@@ -1946,7 +2002,283 @@ namespace DeNelle.Village
             Vector3 lp = prop.transform.localPosition;
             lp.y -= gripY;
             prop.transform.localPosition = lp;
-            FlowTrace.Step("Equip", $"SeatHiltLowerHalf: gripY={gripY:0.###} spikeBin={spikeBin} spikeW={spikeW:0.###} median={median:0.###} shiftedY={prop.transform.localPosition.y:0.###}");
+            gripFraction = (gripY - yMin) / length;
+            FlowTrace.Step("Equip", $"SeatHiltLowerHalf: gripY={gripY:0.###} spikeBin={spikeBin} spikeW={spikeW:0.###} median={median:0.###} shiftedY={prop.transform.localPosition.y:0.###} fraction={gripFraction:0.###}");
+            return true;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════════════════
+        //  WO-1431 — THE MELEE GRIP DISPATCHER: the derivation that was MEASURED now APPLIES
+        // ═══════════════════════════════════════════════════════════════════════════════════════
+        //
+        // ⛔ READ THIS BEFORE CHANGING EITHER BRANCH.
+        //
+        // THE DEFECT (owner, 2026-09-06, verbatim): *"the staff needs reversed, right now they
+        // grasp it 75% on the lower half instead of on the upper half of the staff"*.
+        //
+        // THE PROVEN CAUSE (READY_RCA_2026-09-09, device trace on Hero (Blaise) / tripo_staff_a):
+        // the helper ALREADY computed the owner-ruled answer — a 1.2639 m staff, fraction 0.75 ->
+        // gripY 0.7204 — and then THREW IT AWAY. `WeaponOrientHelper.TryDeriveStaffGripY` was
+        // reachable only from `TraceMeasuredSeat`, a read-only prediction, while the live melee
+        // attach path called `SeatHiltLowerHalf` for EVERY non-native melee prop. That method
+        // defaults to 18% up from the foot and its crossguard refinement `break`s at the midpoint
+        // (`if (by > mid) break;`), so it is STRUCTURALLY INCAPABLE of returning anything above
+        // 0.50 — the measurement path and the live path were two different programs and only one
+        // of them moved the prop. This dispatcher is the join: one function, one archetype input,
+        // so a future reader cannot re-open the split by editing "the other" path.
+        //
+        // ⛔ IT IS NOT A JSON OFFSET. The old WO-1431 text proposed authoring a staff row in
+        // offsets.json; the ledger rules that out as a workaround over a live/measure split — and
+        // an authored row would have to be re-dialled per staff mesh, which is the per-asset
+        // hand-tuning docs/WEAPON_ARMOR_ORIENT_LOGIC.md exists to abolish. Verified 2026-09-09:
+        // offsets.json holds 26 rows and NONE of them is a staff.
+        //
+        // PRECEDENCE IS UNCHANGED (WeaponOrientHelper.ResolveSource, WO-1123 + WO-1215):
+        // authored offset row -> substantiated manual -> derived -> archetype default. This method
+        // only ever runs the derived branch when <paramref name="mayDerive"/> is true, which the
+        // caller computes from that ladder. An owner-dialled seat therefore takes the byte-for-byte
+        // pre-WO-1431 path (SeatHiltLowerHalf + the authored nudge on top) and is untouched.
+        //
+        // ONLY the Staff archetype changes. Sword/dagger keep the hilt-lower-half rule — the
+        // bladed families are felt-verified and docs/WEAPON_ARMOR_ORIENT_LOGIC.md warns in its own
+        // words that "a staff repair must not rotate every melee family to fix one" (that guard is
+        // asserted in AttachmentOffsetRegression Case7 and again in StaffGripSeatRegression).
+        // axe/hammer/mace/wand/crossbow classify Unknown and DERIVE NOTHING by the owner's 2026-08-19
+        // ruling, so they land in the same untouched sword branch, exactly as they do today.
+        //
+        // ⚠ THIS TOUCHES THE GRIP POINT ONLY — the position of the shaft in the fist. It does not
+        // touch a single rotation. The drawn staff's verticality is StaffDrawnGripNudgeDefault
+        // (90,0,0), owner-ruled 2026-08-26 and pinned twice; do not fold the two together.
+        public struct MeleeGripSeat
+        {
+            /// <summary>Which rule moved the prop — printed in the trace, asserted by the suite.</summary>
+            public string Rule;
+            /// <summary>Parent-local Y that was brought onto the hand bone.</summary>
+            public float GripY;
+            /// <summary>Where that grip sits along the measured long axis, 0 = foot, 1 = head.</summary>
+            public float GripFraction;
+            /// <summary>False = bounds unmeasurable; NOTHING was moved and the caller keeps its frame.</summary>
+            public bool Measured;
+        }
+
+        /// <summary>
+        /// WO-1431. Seat a melee prop's grip point on the hand, per ARCHETYPE. Staff (and only
+        /// staff) takes the owner-ruled 0.75-up-the-long-axis derivation; every other melee family
+        /// keeps the hilt-lower-half rule. Public static so the regression asserts the SHIPPED
+        /// dispatch rather than re-typing its constants.
+        /// </summary>
+        public static MeleeGripSeat SeatMeleeGripPoint(GameObject prop, Transform parent,
+                                                       WeaponArchetype archetype, bool mayDerive,
+                                                       string subject)
+        {
+            var seat = new MeleeGripSeat { Rule = "none", Measured = false };
+            if (prop == null || parent == null) return seat;
+
+            if (archetype == WeaponArchetype.Staff && mayDerive &&
+                WeaponOrientHelper.TryDeriveStaffGripY(prop, parent, out float staffGripY,
+                                                       out float staffYMin, out float staffLen, out string why))
+            {
+                Vector3 lp = prop.transform.localPosition;
+                lp.y -= staffGripY;
+                prop.transform.localPosition = lp;
+
+                seat.Rule = "STAFF-DERIVED-UPPER-SHAFT";
+                seat.GripY = staffGripY;
+                seat.GripFraction = (staffGripY - staffYMin) / staffLen;
+                seat.Measured = true;
+                FlowTrace.Step("Equip",
+                    $"MELEE GRIP APPLIED '{subject}': rule={seat.Rule} archetype={archetype} " +
+                    $"gripY={seat.GripY:0.####} fraction={seat.GripFraction:0.###} up the long axis " +
+                    $"(ySpan={staffLen:0.####}m) shiftedY={prop.transform.localPosition.y:0.####} " +
+                    $"| WHY: {why} | WO-1431: this value used to be computed and DISCARDED by " +
+                    "TraceMeasuredSeat while SeatHiltLowerHalf seated the shaft at ~0.18. If this " +
+                    "line reads at or below 0.50 for a staff, the lower-hilt rule has crept back.");
+                return seat;
+            }
+
+            bool hilted = SeatHiltLowerHalf(prop, parent, out float hiltGripY, out float hiltFraction);
+            seat.Rule = "HILT-LOWER-HALF";
+            seat.GripY = hiltGripY;
+            seat.GripFraction = hiltFraction;
+            seat.Measured = hilted;
+            FlowTrace.Step("Equip",
+                $"MELEE GRIP APPLIED '{subject}': rule={seat.Rule} archetype={archetype} " +
+                $"mayDerive={mayDerive} gripY={seat.GripY:0.####} fraction={seat.GripFraction:0.###} " +
+                $"measured={seat.Measured}. " +
+                (archetype == WeaponArchetype.Staff
+                    ? "⚠ A STAFF took the bladed rule — either an authored/substantiated-manual seat " +
+                      "owns this row (precedence, correct) or its bounds were unmeasurable (Warn above)."
+                    : "Bladed/unknown archetype keeps the WO-577 hilt rule, unchanged by WO-1431."));
+            return seat;
+        }
+
+        // =====================================================================================
+        //  WO-1616 — THE ONE SHIELD-SEATING AUTHORITY (hero AND raid NPC read it)
+        // =====================================================================================
+        //
+        // WHY THIS EXISTS. `TroopGearApplier.ApplyDefaultGrip` attached EVERY off-hand to LeftHand
+        // with one hard-coded triple — `localPosition (0.05, 0.05, 0.02)`, `Euler(0, 90, 0)`,
+        // `scale 1` — under a header that concedes its own ceiling ("Coarse grips for ~1.8 m
+        // Supercyan / Tripo humanoids"). It carried no per-rig, per-mesh or per-shield term of any
+        // kind, so every deployed raid NPC wore a visibly wrong shield for the whole raid
+        // (`troop-echo-legionnaire`, five actors at once). The hero has never had that bug because
+        // the hero path MEASURES: WeaponOrientHelper.TryResolveShieldFrame + GearSeat.GetShieldAxes
+        // + TryComputeShieldMountRotation + EnsureShieldOuterFaces + GearSeat.ShieldPlateOffBone.
+        //
+        // ⛔ THE FIX IS TO DELETE THE COPY, NOT TO AUTHOR A BETTER ONE. A per-troop offsets file or
+        // a second hand-dialled triple is the duplicated-state failure CLAUDE.md §2 / §5 / §16 each
+        // describe in their own words — two authorities that drift, and the next rig breaks both.
+        // These two methods ARE the hero's own steps, LIFTED (moved, not re-authored) so both
+        // callers execute the same instructions. docs/ARCHITECTURE_PRINCIPLES.md §2b.1: one owner
+        // per concern; shield seating is one concern.
+        //
+        // ⚠ WHY IT LIVES HERE AND NOT IN GearSeat. WO-1616 §3 suggested placing the authority beside
+        // WeaponOrientHelper/GearSeat. It is here instead, as `public static`, on the orchestrator's
+        // lane instruction and following today's `SeatMeleeGripPoint` precedent (WO-1431): this lane
+        // may not edit WeaponOrientHelper.cs, and a shared entry point that lives where the hero's
+        // steps already live is a move rather than a rewrite. The rotation/centre math it calls is
+        // already in DeNelle.Core; lifting these two wrappers down to GearSeat later is a pure
+        // relocation and should be its own ticket.
+        //
+        // SPLIT IN TWO, DELIBERATELY. The hero interleaves the Offset-Forge nudge and the
+        // global-yaw-or-withhold decision BETWEEN the rotation and the plate seat, so one monolithic
+        // "seat the shield" call could not be dropped into the hero without REORDERING the hero —
+        // which this ticket explicitly must not do. The split follows the vocabulary WO-1123 already
+        // uses: one measured half (per attach) and one cheap posing half.
+        public struct ShieldSeat
+        {
+            /// <summary>The measured frame — hand it to the sheathed pose and to the plate seat.</summary>
+            public WeaponOrientHelper.ShieldFrame Frame;
+            /// <summary>True when the bounds answered (plate-shaped, measurable renderer).</summary>
+            public bool FrameValid;
+            /// <summary>True when the derived rotation was actually WRITTEN onto the grip root.</summary>
+            public bool Derived;
+            /// <summary>Which rule moved it — printed in the trace, asserted by the suite.</summary>
+            public string Rule;
+            /// <summary>The rotation written (mount-local), or identity when nothing was derived.</summary>
+            public Quaternion MountLocal;
+        }
+
+        public const string ShieldRuleDerived    = "SHIELD-DERIVED-THICKNESS-OUTWARD";
+        public const string ShieldRuleNotDerived = "SHIELD-NOT-DERIVED";
+        public const string ShieldRulePrecedence = "SHIELD-SEAT-OWNED-BY-PRECEDENCE";
+
+        /// <summary>
+        /// WO-1616. THE shield seat: measure the plate's own frame, then (when precedence allows)
+        /// point its measured thickness away from the body and its longest extent along the forearm,
+        /// and WRITE that rotation onto <paramref name="gripRoot"/>. Public static so the raid NPC
+        /// path and the regression both execute the SHIPPED instructions rather than a copy.
+        /// <para>
+        /// MEASURE FIRST, DECIDE AFTER (owner ruling 2026-08-20): the vertex walk used to sit inside
+        /// the drawn-pose precedence gate, so a shield with an authored DRAWN row was never measured
+        /// at all — and the SHEATHED pose, which has its own channel and its own precedence, was left
+        /// with no frame to pose from. Proving line, logs/device/2026-08-20-equip.log: NOT ONE
+        /// `ShieldFrame` line appears in the whole capture. Measurement is not a decision: one walk,
+        /// at attach, and every pose afterwards reads the same numbers.
+        /// </para>
+        /// <para>
+        /// NATIVE IS DELIBERATELY *NOT* EXCLUDED. "Native" means "trust the authored pivot", and the
+        /// LIVE default shield (knight_shield_starter -> ShieldWithItemLogic) is exactly a native prop
+        /// whose authored orientation is the broken one. Excluding native would have fixed every
+        /// shield except the one that is wrong. Only the ROTATION is derived; pivot and scale are
+        /// untouched.
+        /// </para>
+        /// </summary>
+        /// <param name="mayDerive">The caller's precedence verdict (WeaponOrientHelper.ResolveSource:
+        /// authored row -> substantiated manual -> derived -> archetype default). False means an
+        /// owner-dialled seat owns this row and NOTHING here may move it.</param>
+        public static ShieldSeat SeatShieldMountRotation(GameObject prop, Transform gripRoot, Transform hand,
+                                                        Animator animator, Transform body,
+                                                        bool mayDerive, string subject)
+        {
+            var seat = new ShieldSeat { Rule = ShieldRuleNotDerived, MountLocal = Quaternion.identity };
+            if (prop == null || gripRoot == null || hand == null)
+            {
+                FlowTrace.Warn("Equip",
+                    $"SeatShieldMountRotation '{subject}': null prop/gripRoot/hand — nothing seated. " +
+                    "The caller keeps whatever frame the prop arrived with.");
+                return seat;
+            }
+
+            var measured = default(WeaponOrientHelper.ShieldFrame);
+            if (Guard.Try("Equip", $"shield frame measure for '{subject}' (owner ruling 2026-08-20)",
+                    () => WeaponOrientHelper.TryResolveShieldFrame(prop, gripRoot, out measured),
+                    false))
+            {
+                seat.Frame = measured;
+                seat.FrameValid = measured.Valid;
+            }
+
+            if (!mayDerive)
+            {
+                seat.Rule = ShieldRulePrecedence;
+                return seat;
+            }
+            if (!seat.FrameValid)
+            {
+                // §12 / WO-1123: ambiguity FALLS BACK, it never guesses. The Warn naming which clause
+                // failed was already emitted inside TryResolveShieldFrame; this line names the
+                // consequence so "the shield is wrong" can be split into "the derivation ran and is
+                // wrong" vs "the derivation never ran".
+                FlowTrace.Warn("Equip",
+                    $"SeatShieldMountRotation '{subject}': rule={ShieldRuleNotDerived} — the frame is " +
+                    "unmeasurable (see the ShieldFrame Warn immediately above for WHICH clause: null, " +
+                    "no measurable renderer bounds, or not plate-shaped). The prop is left exactly as " +
+                    "it arrived. WO-1616: this used to be a hand-typed triple on the troop path; that " +
+                    "copy is deleted, so an unmeasurable NPC shield now sits at its parent's frame " +
+                    "rather than at a constant nobody could tune.");
+                return seat;
+            }
+
+            // Mount axes are the FOREARM SOCKET: +Z away from the arm (inner face flush), +Y along
+            // the forearm toward the wrist. Body-forward here was "face the camera" and is why a
+            // strapped heater spun off the limb.
+            var frame = seat.Frame;
+            Vector3 socketOut, socketUp;
+            GearSeat.GetShieldAxes(animator, body, out socketOut, out socketUp);
+            Quaternion derivedShield = Quaternion.identity;
+            // Reads the frame measured above — STILL exactly one vertex walk per attach, and still
+            // the frame overload (the GameObject one would walk the mesh a second time).
+            bool ok = Guard.Try("Equip", $"derived shield seat for '{subject}' (WO-1123)",
+                () => WeaponOrientHelper.TryComputeShieldMountRotation(
+                          frame, subject, hand, socketOut, socketUp,
+                          out derivedShield, out string shieldWhyUnused),
+                false);
+            if (!ok) return seat;
+
+            derivedShield = GearSeat.EnsureShieldOuterFaces(
+                derivedShield, hand, socketOut, socketUp, frame, body);
+            gripRoot.localRotation = derivedShield;
+            seat.Derived = true;
+            seat.Rule = ShieldRuleDerived;
+            seat.MountLocal = derivedShield;
+            return seat;
+        }
+
+        /// <summary>
+        /// WO-1616. The second half: put the measured plate ON the arm. Handle loop first (a prefab
+        /// that ships a DUMMY/Handle node snaps that node onto the socket); otherwise centre the
+        /// rendered AABB on the bone and push it OUT along the opening by half the measured
+        /// thickness, so the only volume intersecting the bone is the handle — not the plate, not
+        /// the torso. Lifted verbatim from the hero's snap/off-bone branch.
+        /// </summary>
+        public static void SeatShieldPlateOnSocket(Transform gripRoot, Transform hand, Animator animator,
+                                                   Transform body, WeaponOrientHelper.ShieldFrame frame,
+                                                   string subject, string extraTraceToken = null)
+        {
+            if (gripRoot == null || hand == null) return;
+            if (GearSeat.FindHandleDummy(gripRoot) != null)
+            {
+                GearSeat.SnapHandleToSocket(gripRoot, hand);
+                return;
+            }
+            // extraTraceToken exists so the HERO's centring line keeps the `(arm=…)` token it has
+            // always printed — the F8 captures grep for that line, and a shared core that silently
+            // dropped a token would make an old capture and a new one incomparable.
+            CentreGripOnSocket(gripRoot, hand, Vector3.zero, subject, extraTraceToken);
+            Vector3 outward, heaterUp;
+            GearSeat.GetShieldAxes(animator, body, out outward, out heaterUp);
+            gripRoot.localPosition += GearSeat.ShieldPlateOffBone(hand, outward, frame, gripRoot);
         }
 
         // WO-478 §12: dump seated transforms so headless equip captures prove native vs infer path.
@@ -2509,71 +2841,39 @@ namespace DeNelle.Village
                     $"(generated={offHandRowGenerated} authoredSeat={hasOffset}) — CANON, the derived " +
                     "pass leaves this row exactly as loaded.");
             _currentOffHandShieldFrame = default;
-            // ── MEASURE FIRST, DECIDE AFTER (owner ruling 2026-08-20) ────────────────────────────
-            // The vertex walk used to live INSIDE the drawn-pose precedence gate below, so a shield
-            // with an authored DRAWN row was never measured at all — and the SHEATHED pose, which
-            // has its own authored channel and its own precedence, was left with no frame to pose
-            // from. Proving line, from logs/device/2026-08-20-equip.log: NOT ONE `ShieldFrame` line
-            // appears in the whole capture, while "off-hand seat NOT derived ... source=
-            // AuthoredOffset (authoredRow=True ...)" appears on every equip. Measurement is not a
-            // decision: it is one walk, at attach, and both poses read the same numbers afterwards.
+            // ── WO-1616: THE SEAT ITSELF NOW LIVES IN ONE PLACE ──────────────────────────────────
+            // The measure-then-decide steps that used to be typed out here are unchanged; they were
+            // MOVED into `SeatShieldMountRotation` (see its header) so the raid NPC path executes the
+            // same instructions instead of its own hard-coded triple. Everything hero-specific —
+            // the precedence inputs, the trace strings that name `vis`/`offsetKey`, the nudge and the
+            // yaw decision below — deliberately stays here.
             if (vis.kind == WeaponClass.Shield)
             {
-                var measured = default(WeaponOrientHelper.ShieldFrame);
-                if (Guard.Try("Equip", $"shield frame measure for '{id}' (owner ruling 2026-08-20)",
-                        () => WeaponOrientHelper.TryResolveShieldFrame(prop, gripRoot.transform, out measured),
-                        false))
-                    _currentOffHandShieldFrame = measured;
-            }
-            // NATIVE IS DELIBERATELY *NOT* EXCLUDED. "Native" means "trust the authored pivot",
-            // and the LIVE default shield (knight_shield_starter -> ShieldWithItemLogic) is exactly
-            // a native prop whose authored orientation is the broken one — WO-1123 §1's table row
-            // "shield, drawn (native): IDENTITY, no derivation of any kind". Excluding native would
-            // have fixed every shield except the one that is wrong. Only the ROTATION is derived;
-            // the native pivot and scale are untouched.
-            if (!fullOverride && vis.kind == WeaponClass.Shield &&
-                WeaponOrientHelper.MayDerive(hasOffset, _currentOffHandManual))
-            {
-                Quaternion derivedShield = Quaternion.identity;
-                // Reads the frame measured above — STILL exactly one vertex walk per attach, and
-                // still the frame overload (the GameObject one would walk the mesh a second time).
-                // Mount axes are the FOREARM SOCKET: +Z away from the arm (inner face flush),
-                // +Y along the forearm toward the wrist. Body-forward here was "face the camera"
-                // and is why a strapped heater spun off the limb.
-                var frame = _currentOffHandShieldFrame;
-                Vector3 socketOut, socketUp;
-                GearSeat.GetShieldAxes(_animator, transform, out socketOut, out socketUp);
-                offHandDerivedSeat = frame.Valid && Guard.Try("Equip",
-                    $"derived shield seat for '{id}' (WO-1123)",
-                    () => WeaponOrientHelper.TryComputeShieldMountRotation(
-                              frame, id, hand,
-                              // NOT `out _`: line 1904 opens `using var _ = FlowTrace.Enter(...)`,
-                              // so `_` is a using variable in this scope and a discard there is
-                              // CS1657. Name the throwaway instead (the WHY is already traced
-                              // inside the helper, so it is genuinely unused here).
-                              socketOut, socketUp, out derivedShield, out string _shieldWhyUnused),
-                    false);
+                bool shieldMayDerive = !fullOverride &&
+                                       WeaponOrientHelper.MayDerive(hasOffset, _currentOffHandManual);
+                ShieldSeat shieldSeat = SeatShieldMountRotation(
+                    prop, gripRoot.transform, hand, _animator, transform, shieldMayDerive, id);
+                _currentOffHandShieldFrame = shieldSeat.Frame;
+                offHandDerivedSeat = shieldSeat.Derived;
                 if (offHandDerivedSeat)
                 {
-                    derivedShield = GearSeat.EnsureShieldOuterFaces(
-                        derivedShield, hand, socketOut, socketUp, frame, transform);
-                    gripRoot.transform.localRotation = derivedShield;
                     FlowTrace.Step("Equip",
                         $"off-hand seat DERIVED (WO-1123) for '{id}' key='{offsetKey}': thickness -> " +
                         $"outboard left/forward-left, handle -> inward. presetEuler={vis.gripEuler} was " +
-                        $"SUPERSEDED by derivedEuler={derivedShield.eulerAngles:0.#}; global yaw WITHHELD.");
+                        $"SUPERSEDED by derivedEuler={shieldSeat.MountLocal.eulerAngles:0.#}; global yaw WITHHELD.");
                 }
-            }
-            else if (vis.kind == WeaponClass.Shield)
-            {
-                // §12 / §1.4b: the un-derived shield must be distinguishable from the derived one in
-                // a capture — otherwise "the shield is wrong" cannot be split into "the derivation
-                // ran and is wrong" vs "the derivation never ran".
-                FlowTrace.Step("Equip",
-                    $"off-hand seat NOT derived for '{id}' key='{offsetKey}': source=" +
-                    $"{WeaponOrientHelper.ResolveSource(hasOffset, _currentOffHandManual, canDerive: true)} " +
-                    $"(authoredRow={hasOffset} manual={_currentOffHandManual} native={vis.native} " +
-                    $"fullOverride={fullOverride}) — keeping the preset euler {vis.gripEuler}.");
+                else
+                {
+                    // §12 / §1.4b: the un-derived shield must be distinguishable from the derived one
+                    // in a capture — otherwise "the shield is wrong" cannot be split into "the
+                    // derivation ran and is wrong" vs "the derivation never ran".
+                    FlowTrace.Step("Equip",
+                        $"off-hand seat NOT derived for '{id}' key='{offsetKey}': source=" +
+                        $"{WeaponOrientHelper.ResolveSource(hasOffset, _currentOffHandManual, canDerive: true)} " +
+                        $"(authoredRow={hasOffset} manual={_currentOffHandManual} native={vis.native} " +
+                        $"fullOverride={fullOverride} rule={shieldSeat.Rule}) — keeping the preset " +
+                        $"euler {vis.gripEuler}.");
+                }
             }
 
             // OFFSET FORGE NUDGE (mirror main-hand): compose onto the seated frame, then global Y.
@@ -2621,16 +2921,11 @@ namespace DeNelle.Village
                 using (FlowTrace.Enter("Equip", "snap/off-bone (not fullOverride)"))
                 {
                     TraceOffHandTrs("snap IN", gripRoot.transform);
-                    if (GearSeat.FindHandleDummy(gripRoot.transform) != null)
-                        GearSeat.SnapHandleToSocket(gripRoot.transform, hand);
-                    else
-                    {
-                        ApplyOffHandCentreOnSocket(gripRoot.transform, hand, Vector3.zero);
-                        Vector3 outward, heaterUp;
-                        GearSeat.GetShieldAxes(_animator, transform, out outward, out heaterUp);
-                        gripRoot.transform.localPosition += GearSeat.ShieldPlateOffBone(
-                            hand, outward, _currentOffHandShieldFrame, gripRoot.transform);
-                    }
+                    // WO-1616: these four steps moved into SeatShieldPlateOnSocket so the raid NPC
+                    // plate is pushed off the bone by the same instructions, not a second copy.
+                    SeatShieldPlateOnSocket(gripRoot.transform, hand, _animator, transform,
+                                            _currentOffHandShieldFrame, _currentOffHandMeshKey,
+                                            $"(arm={_sheatheSocketOffIsArm})");
                     TraceOffHandTrs("snap OUT", gripRoot.transform);
                 }
             }
@@ -3791,6 +4086,18 @@ namespace DeNelle.Village
         /// </summary>
         private void ApplyOffHandCentreOnSocket(Transform grip, Transform socket, Vector3 baseLocalPos)
         {
+            // WO-1616: the MATH moved to the static core so the raid NPC path centres its plate with
+            // the same instructions instead of a second implementation. The instance wrapper keeps
+            // the hero's own trace tokens (mesh key + which socket it is), which the static cannot
+            // know — the line the F8 captures already grep for is therefore byte-identical.
+            CentreGripOnSocket(grip, socket, baseLocalPos, _currentOffHandMeshKey,
+                               $"(arm={_sheatheSocketOffIsArm})");
+        }
+
+        /// <summary>WO-1616. The shared centring core — see the contract on the wrapper above.</summary>
+        public static void CentreGripOnSocket(Transform grip, Transform socket, Vector3 baseLocalPos,
+                                              string subject, string extraTraceToken)
+        {
             if (grip == null || socket == null) return;
             Renderer r = grip.GetComponentInChildren<Renderer>();
             if (r == null) { grip.localPosition = baseLocalPos; return; }
@@ -3798,10 +4105,10 @@ namespace DeNelle.Village
             if (originToCentreWorld.sqrMagnitude < 1e-8f) { grip.localPosition = baseLocalPos; return; }
             Vector3 shiftLocal = socket.InverseTransformVector(originToCentreWorld);
             grip.localPosition = baseLocalPos - shiftLocal;
-            FlowTrace.Throttle("Equip", "offhand-centre-" + (_currentOffHandMeshKey ?? "?"), 5f,
-                $"sheathed off-hand centred on its mount: '{_currentOffHandMeshKey}' origin->renderedCentre " +
+            FlowTrace.Throttle("Equip", "offhand-centre-" + (subject ?? "?"), 5f,
+                $"sheathed off-hand centred on its mount: '{subject}' origin->renderedCentre " +
                 $"was {originToCentreWorld} (world), shifted {shiftLocal} in socket '{socket.name}' " +
-                $"(arm={_sheatheSocketOffIsArm}). A grip-at-origin shield otherwise hangs its whole " +
+                $"{extraTraceToken}. A grip-at-origin shield otherwise hangs its whole " +
                 "plate UPWARD from the anchor. NOTE: this shift is re-derived from a WORLD AABB, so " +
                 "it moves a few mm as the hero turns — that drift is why the seat tripwire is " +
                 "throttled, and it is the seam to fix if the plate ever visibly swims.");
@@ -4811,8 +5118,18 @@ namespace DeNelle.Village
                     WeaponClass previewKind = offHand ? WeaponClass.Shield : _currentWeaponKind;
                     NormalizeInto(child, grt, held > 0f ? held : 1f,
                         ResolveHiltFromKind(previewKind), ResolveGripAnchorFromKind(previewKind));
+                    // WO-1431: the preview MUST dispatch the grip on the same archetype + the same
+                    // derivability the attach path used, or the owner dials a nudge against an
+                    // 0.18 baseline and the game ships against an 0.75 one — two baselines, the
+                    // exact class of drift the shield's sheathed preview was fixed for
+                    // (docs/WEAPON_ARMOR_ORIENT_LOGIC.md: "the Seating Editor preview shares the
+                    // same method so the two can never disagree"). Both fields are captured at
+                    // attach; an off-hand preview keeps the bladed rule as before.
                     if (melee)
-                        SeatHiltLowerHalf(child, grt);
+                        SeatMeleeGripPoint(child, grt,
+                            offHand ? WeaponArchetype.Unknown : _currentWeaponArchetype,
+                            !offHand && _currentWeaponDerivable,
+                            (_currentWeaponMeshKey ?? "<unkeyed>") + " [seating-preview]");
                 }
                 _seatEditMode = wantMode;
                 // WO-1123: re-measure the shield frame AGAINST THE PREVIEW'S OWN SEAT. The cached

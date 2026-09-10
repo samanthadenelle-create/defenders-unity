@@ -1366,14 +1366,40 @@ namespace DeNelle.Core.Geometry
         /// find the head. docs/WEAPON_MESH_ARCHETYPES.md §3 names the disambiguator that would
         /// (a local cross-section bulge in the outer ~20% of the long axis) and also notes that a
         /// plain quarterstaff has no head at all, so the ends are genuinely interchangeable. On a
-        /// staff seated head-down this grip lands 0.75 from the HEAD instead. That is why the staff
-        /// rule is measurement-only today (see TraceMeasuredSeat) and is not yet wired into the live
-        /// melee seat: it needs a screenshot per staff before it moves anything.
+        /// staff seated head-down this grip lands 0.75 from the HEAD instead. That gap is REAL and
+        /// unchanged; only the owner's device screenshot can close it.
+        /// </para>
+        /// <para>
+        /// ⚠ THE "measurement-only" SENTENCE THAT USED TO CLOSE THIS BLOCK IS RETIRED (WO-1431,
+        /// 2026-09-09). It read: *"That is why the staff rule is measurement-only today (see
+        /// TraceMeasuredSeat) and is not yet wired into the live melee seat."* It was true when
+        /// written and became the defect: this method computed the owner-ruled 0.75 grip on every
+        /// staff equip and the live path DISCARDED it, seating the shaft at ~0.18 via
+        /// EquipmentController.SeatHiltLowerHalf — the owner's *"they grasp it 75% on the lower
+        /// half"*. The derivation is now APPLIED, through
+        /// EquipmentController.SeatMeleeGripPoint, for staves whose row passes the precedence
+        /// ladder. Do not re-demote it to a prediction.
         /// </para>
         /// </summary>
         public static bool TryDeriveStaffGripY(GameObject prop, Transform parent, out float gripY, out string why)
+            => TryDeriveStaffGripY(prop, parent, out gripY, out _, out _, out why);
+
+        /// <summary>
+        /// WO-1431 overload: the same derivation, additionally reporting the MEASUREMENT it was
+        /// derived from (<paramref name="yMin"/> = the foot, <paramref name="length"/> = the long
+        /// axis span, both parent-local). The applying caller needs these to state the grip as a
+        /// FRACTION in its trace, and it must state it off THIS measurement — computing the
+        /// fraction from a second bounds reader (EquipmentController has its own, coarser,
+        /// world-AABB copy) would print a number that does not describe the shift that happened.
+        /// Two readers of the same geometry disagreeing by a little is how a trace stops being
+        /// evidence.
+        /// </summary>
+        public static bool TryDeriveStaffGripY(GameObject prop, Transform parent, out float gripY,
+                                               out float yMin, out float length, out string why)
         {
             gripY = 0f;
+            yMin = 0f;
+            length = 0f;
             why = "staff: not derived";
             if (!TryLocalBounds(prop, parent, out Bounds b))
             {
@@ -1381,8 +1407,8 @@ namespace DeNelle.Core.Geometry
                 FlowTrace.Warn("Equip", $"StaffGrip '{prop.name}': no measurable bounds — no grip derived.");
                 return false;
             }
-            float yMin = b.center.y - b.extents.y;
-            float length = b.extents.y * 2f;
+            yMin = b.center.y - b.extents.y;
+            length = b.extents.y * 2f;
             if (length < 1e-4f)
             {
                 why = "staff: degenerate long axis";
