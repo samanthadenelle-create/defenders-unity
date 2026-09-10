@@ -1,9 +1,11 @@
 # WO-1184 — Earned lookout warnings: phone alerts + a LOOKOUT REPORT HUD surface
 
-**Status:** BLOCKED ON OWNER CAPTURE - not implementable as written. Re-statused 2026-09-06 (CLI) after a
+**Status:** AWAITING OWNER RULING - owner 2026-09-10 morning, verbatim: "i do get a report post battle offline" (the post-battle offline report surface RENDERS on her device); remaining question = close the report half and keep only the phone-alert half as its own spec? (was: BLOCKED ON OWNER CAPTURE - see banner)
 read-only RCA lane proved the body describes code that no longer exists. **Do not pick this up without a
 device screenshot and the build id.**
 
+> ### OWNER NOTE 2026-09-10 (morning): "i do get a report post battle offline" - the offline post-battle report surface renders on the Seeker; recorded as testimony, no capture yet.
+>
 > ### ⚠ STALE BODY - BANNER ADDED 2026-09-06. The two findings below are BOTH ALREADY FIXED.
 > Verified at source this session, not inferred:
 > - *"Finding 1: hosts on `FindAnyObjectByType<UIDocument>()`, may not render on device"* - **false today.**
