@@ -1,10 +1,26 @@
 # WORK ORDER 1658 — Eight label bands are authored too short to seat the 30 px floor, and the fit guard has been hiding it
 
-**Status:** IMPLEMENTED — awaiting gate + a fresh device log
-(lane BAND-HEIGHTS, 2026-09-10. All eight bands authored at their DRIVERS; three files, all disjoint
-from the lead's uncommitted `ElarionUiKitObsidian.cs` edits — no 3-way merge needed. The allowlist is
-deliberately UNTOUCHED: §5.1 says an entry drops only on a fresh device logcat, which this lane cannot
-produce. RESULT: `WorkOrders/WORK_ORDER_1658_eight_label_bands_authored_under_the_30px_floor.RESULT.md`.)
+**Status:** FIXED — proven on a fresh device log, allowlist emptied 2026-09-10.
+
+**THE WARRANT (§5.1: an entry drops only on a fresh device logcat — this is that logcat).**
+APK **2026.09.10.363786**, PID **8062**,
+`Builds/device-frames/2026-09-10_1019_363786_logcat.txt` (**7,005,654 bytes**, read at source by lane
+FIT-GUARD). Last of 13 census lines:
+
+```
+09-10 10:18:58.675  8062  8103 I Unity   : [Flow:UI] TextFitGuard CENSUS armCalls=354 armed=354 declinedNotPlaying=0 declinedNullText=0 evaluated=97 relaxed=0 stillBlank=0
+```
+
+`grep -c 'relaxKey='` = **0**, `grep -c ']: rect '` = **0** — no relaxation in the new token form OR
+the legacy prose. Non-vacuity: **15,597** `[Flow:` lines on that log, so the channel was live and the
+zeros are real zeros. Frames covering the affected screens: `2026-09-10_1016_363786_harvestresult.png`,
+`_1017_363786_town_goldchip_plus4.png`, `_1018_363786_managehub_250crystals.png`.
+
+**ALL EIGHT ENTRIES RETIRED** from `FitGuardRelaxAllowlistRegression.Allowlist`, which is now empty —
+and stays armed: `Judge()` reports any parsed relaxation as NEW, so the next sub-floor band reds on its
+first device log. RESULTs:
+`WORK_ORDER_1658_eight_label_bands_authored_under_the_30px_floor.RESULT.md` (lane BAND-HEIGHTS, the
+authoring) + its `§ RETIREMENT` section (lane FIT-GUARD, the leash). Not gated — no Unity in this lane.
 
 > ⚠ **§3 of this WO CARRIES TWO ERRORS — both corrected by measurement, both recorded in the RESULT.**
 > (a) The `+4` label's producer is **NOT** `ElarionUiKitObsidian.cs:960` (that is the CurrencyChip TAG,

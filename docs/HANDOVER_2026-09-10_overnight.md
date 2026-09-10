@@ -267,6 +267,10 @@ entries (six harvest lines need the non-overflow path), push.
   `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=279`, `APK_DONE`; install `Success` (`Builds/wave6-install-b.runner.txt`,
   10:12); `dumpsys versionName=2026.09.10.363786`; portrait flags still 0. Device proofs owed: the eight allowlist entries retiring on a
   fresh logcat (WO-1658), the Manage hub cost band, the raid HUD family (still blocked on the 10-troop door).
+- **Third exe + WebGL (10:13-10:30, sixth-wave tree at 366c0630c):** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2011 MB` (10:16);
+  `Builds/wave6-webgl.runner.txt` -> `[webgl] SUCCESS` (10:30); `tools/r2-ship.ps1` -> `R2_PARITY_OK objects=279` (10:30). Vercel preview
+  `https://defenders-of-the-realm-v2-gky2hg3pk.vercel.app`, alias `https://defenders-pi.vercel.app` moved to it (HTTP 200, loader
+  `2805beb6371223cebb37b9a84265c0b7.loader.js` = `Builds/WebGL/Build/`).
 - **Seeker install:** `install-apk-to-seeker.ps1 -Build:$false -Install:$true` -> `Performing Streamed
   Install / Success` on `SM02G4061955851` (00:23). Device frames under `Builds/device-frames/` and sent
   to the owner as they were taken.

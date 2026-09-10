@@ -36,6 +36,35 @@
 //  ⛔ NO FONT FLOOR IS MOVED BY THIS FILE. ElarionUiKit.FontFloor (30) and
 //  FontHardFloor (20) are READ here and never written (WO-1652 acceptance §4).
 //
+//  ── WO-1658 CLOSED THE LIST. THE ALLOWLIST IS NOW EMPTY, AND THAT IS THE POINT. ──
+//  Proven on APK 2026.09.10.363786, PID 8062,
+//  Builds/device-frames/2026-09-10_1019_363786_logcat.txt (7,005,654 bytes; read at
+//  source 2026-09-10; 15,597 [Flow: lines, so the channel was live and a zero is a
+//  real zero). Last of 13 census lines:
+//
+//    armCalls=354 armed=354 declinedNotPlaying=0 declinedNullText=0
+//    evaluated=97 relaxed=0 stillBlank=0
+//
+//  `grep -c relaxKey=` = 0 and `grep -c "]: rect "` = 0 on that log -- no relaxation
+//  in EITHER the new token form or the legacy prose. All eight bands were re-authored
+//  and every one of the eight screens was visited in that session (frames
+//  2026-09-10_1016_363786_harvestresult.png, _1017_363786_town_goldchip_plus4.png,
+//  _1018_363786_managehub_250crystals.png).
+//
+//  The array below is therefore EMPTY and must stay that way. The suite is not
+//  retired with it: an empty leash is a live tripwire -- Judge() reports any parsed
+//  relaxation as NEW, so the next sub-floor band reds on its first device log instead
+//  of disappearing into the logcat ring the way these eight did for months.
+//
+//  ⚠ PATHOF IS CAPPED AT FOUR PARENTS, SO A KEY IS NOT A UNIQUE ADDRESS.
+//  UiKitTextFitGuard.PathOf walks at most four parents, which is why the six harvest
+//  keys read as two families ("ObsidianPanel/PanelFill/HarvestRow_<X>/Well/Label" and
+//  "HarvestOverflowUI/ObsidianPanel/PanelFill/HarvestRow_<X>/Label") when they are all
+//  ONE modal -- the truncation dropped the shared HarvestOverflowUI root off the first
+//  three. Never read a key as a screen boundary, and never assume two keys mean two
+//  screens: six of the eight were one fix. If keys ever need to be unique, that is a
+//  change to PathOf's depth, not to this file.
+//
 //  RED-FIRST (PROD-008 / WO-1138). Cases A and B feed the parser synthetic lines
 //  and FAIL IF IT STAYS GREEN -- an unlisted key and a sub-FontHardFloor final
 //  size must each red. A device log is NOT required for those two, so this suite
@@ -61,43 +90,30 @@ namespace DeNelle.Editor.Regression
         private const string Tag = "[fitguard-relax-allowlist]";
 
         /// <summary>
-        /// THE EIGHT. Every floor relaxation observed on APK 363722 (PID 5095),
-        /// Builds/device-frames/2026-09-10_0929_363722_logcat.txt, read at source 2026-09-10.
+        /// EMPTY, AND THAT IS THE PASSING STATE (WO-1658, closed 2026-09-10).
         /// <para/>
-        /// ⚠ THIS IS A LEASH, NOT AN APPROVAL. Each entry is a band authored too short to seat
-        /// the owner's FontFloor(30) -- the F8 2026-07-08 "text will never be able to be seen on
-        /// mobile at this size" ruling. They are listed so a NINTH one reds instead of vanishing
-        /// into the logcat ring. Entries come OFF this list by fixing the band, never by widening
-        /// the list, and the smallest of them (the gold chip at 21/23 px) is the one to fix first.
+        /// This array held THE EIGHT: every floor relaxation observed on APK 363722 (PID 5095),
+        /// Builds/device-frames/2026-09-10_0929_363722_logcat.txt. All eight bands were re-authored
+        /// under WO-1658 and the next device session -- APK 2026.09.10.363786, PID 8062,
+        /// Builds/device-frames/2026-09-10_1019_363786_logcat.txt -- carried
+        /// `relaxed=0` with ZERO relaxKey lines and ZERO legacy "]: rect " lines, on 15,597 live
+        /// [Flow: lines. Per WO-1658 SS5.1 an entry leaves only on a fresh device log; that log is
+        /// the warrant for all eight leaving at once.
         /// <para/>
-        /// Keys are UiKitTextFitGuard.PathOf output: the label's own name plus up to four parents.
+        /// ⛔ AN EMPTY LEASH IS STILL A LEASH -- do not delete the array or the suite. Judge()
+        /// reports ANY parsed relaxation as NEW, so the next band authored under FontFloor(30) reds
+        /// on its first device log instead of shrinking text silently for months the way these eight
+        /// did. Re-adding an entry means re-accepting a sub-floor label and needs the owner's word.
+        /// <para/>
+        /// Keys are UiKitTextFitGuard.PathOf output: the label's own name plus up to FOUR parents --
+        /// a truncated address, not a unique one (see the header's PathOf note).
         /// </summary>
-        // Each entry leaves this array only when a FRESH device logcat no longer carries its
-        // relaxKey. Deleting one to go green is forbidden (WO-1658 §5.1). If entries are still
-        // here on the remove-by date, THAT is the finding: sub-floor labels shipping for a quarter.
-        // WO-1658, origin 2026-09-10, remove-by 2026-12-10 - the eight bands authored under the
-        // 30 px floor, measured on APK 2026.09.10.363722 (see the header for the two census reads).
-        private static readonly RelaxEntry[] Allowlist =
-        {
-            new RelaxEntry("ObsidianPanel/PanelFill/HarvestRow_Wood/Well/Label", 22f, 24f,
-                           "harvest modal, wood 'FULL' well line - 26 px band"),
-            new RelaxEntry("HarvestOverflowUI/ObsidianPanel/PanelFill/HarvestRow_Wood/Label", 26f, 29f,
-                           "harvest overflow, wood 'waiting, safe' - 32 px band"),
-            new RelaxEntry("ObsidianPanel/PanelFill/HarvestRow_Iron/Well/Label", 22f, 24f,
-                           "harvest modal, iron 'FULL' well line - 26 px band"),
-            new RelaxEntry("HarvestOverflowUI/ObsidianPanel/PanelFill/HarvestRow_Iron/Label", 26f, 29f,
-                           "harvest overflow, iron 'waiting, safe' - 32 px band"),
-            new RelaxEntry("ObsidianPanel/PanelFill/HarvestRow_Stone/Well/Label", 22f, 24f,
-                           "harvest modal, stone 'FULL' well line - 26 px band"),
-            new RelaxEntry("HarvestOverflowUI/ObsidianPanel/PanelFill/HarvestRow_Stone/Label", 26f, 29f,
-                           "harvest overflow, stone 'waiting, safe' - 32 px band"),
-            new RelaxEntry("HudAreasHost/Area_ActionRail/Widget_resourceChipsCollapsed/CurrencyChip_Gold/Label", 21f, 23f,
-                           "WORST OFFENDER: the gold '+4' chip renders at 23 px, 7 px under the owner's " +
-                           "floor and 3 px off FontHardFloor, on the always-on HUD rail"),
-            new RelaxEntry("ObsidianPanel/PanelContent/ManageCategoryLauncher/ManageHeartFace/Label", 28f, 30f,
-                           "Manage hub '250 Crystals' - floor moved 30->28 but fontSize stayed 30, so " +
-                           "nothing actually shrank; the band is one px from being a real defect"),
-        };
+        // An entry may be added ONLY with an owner ruling, and leaves only when a fresh device
+        // logcat no longer carries its relaxKey. Deleting one to go green is forbidden (WO-1658
+        // SS5.1); the eight left because a device log proved them fixed, which is the only warrant.
+        // WO-1658, origin 2026-09-10, remove-by 2026-12-10 - CLOSED: the eight bands authored under
+        // the 30 px floor are re-authored; the remove-by forces a re-read if entries ever come back.
+        private static readonly RelaxEntry[] Allowlist = new RelaxEntry[0];
 
         private sealed class RelaxEntry
         {
@@ -154,7 +170,8 @@ namespace DeNelle.Editor.Regression
                 return false;
             }
 
-            reason = Tag + " OK - " + Allowlist.Length + " leashed relaxations, no new ones, none under the hard floor.\n"
+            reason = Tag + " OK - allowlist holds " + Allowlist.Length + " leashed relaxation(s) (WO-1658 emptied " +
+                     "it on a fresh device log); no NEW relaxation, none under the hard floor.\n"
                      + log.ToString();
             return true;
         }
@@ -183,13 +200,18 @@ namespace DeNelle.Editor.Regression
         }
 
         // -----------------------------------------------------------------
-        //  CASE B -- RED-FIRST. A final size under FontHardFloor must red even
-        //  when the key IS on the allowlist. The guard clamps at the hard floor
-        //  today; this case is what catches a future change that weakens the clamp.
+        //  CASE B -- RED-FIRST. A final size under FontHardFloor must red, and the
+        //  hard-floor arm must be judged BEFORE the allowlist arm, so that being
+        //  listed could never buy a label a trip under 20 px. The guard clamps at
+        //  the hard floor today; this case catches a change that weakens the clamp.
+        //
+        //  ⚠ The key here is a LITERAL, deliberately not Allowlist[0]. WO-1658 emptied
+        //  the array, and a RED case indexed into it would have died with it — a
+        //  red-first case that stops existing when the list is fixed is not a pin.
         // -----------------------------------------------------------------
         private static void CaseB_ParserRedsBelowHardFloor(List<string> failures, StringBuilder log)
         {
-            string key = Allowlist[0].Key;
+            const string key = "ObsidianPanel/PanelFill/HarvestRow_Wood/Well/Label";
             string synthetic = "[Flow:UI] TextFitGuard 'x' [" + key + "]: rect 742x26 lineFactor 1.15 " +
                                "— floor 30 -> 13 (4 post-check iterations), fontSize now 13, chars 1 | " +
                                "relaxKey=" + key + " floorFrom=30 floorTo=13 finalSize=13";
@@ -199,18 +221,40 @@ namespace DeNelle.Editor.Regression
             {
                 failures.Add(Tag + " CASE B (RED-first): a label rendered at 13 px passed judgement. That is the " +
                              "exact sub-legible size the F8 2026-07-08 ruling raised FontHardFloor to 20 to end " +
-                             "(Sylas 24->13, Affiliation 13->12) - being on the allowlist must never buy a label " +
-                             "a trip under the hard floor.");
+                             "(Sylas 24->13, Affiliation 13->12) - no allowlist state may ever buy a label a trip " +
+                             "under the hard floor.");
+                return;
+            }
+
+            // It must red for the RIGHT REASON. With the array empty, an unlisted key alone would also
+            // red (that is Case A) - so a Case B that only counted violations would silently stop
+            // testing the hard floor the moment WO-1658 emptied the list.
+            if (violations[0].IndexOf("UNDER FontHardFloor", StringComparison.Ordinal) < 0)
+            {
+                failures.Add(Tag + " CASE B: the 13 px line was rejected, but as '" + violations[0] +
+                             "' - not as a hard-floor breach. Judge() must test the hard floor BEFORE the " +
+                             "allowlist, or a listed key rendering at 13 px would pass.");
                 return;
             }
             log.AppendLine("  [red-B] sub-hard-floor size correctly rejected: " + violations[0]);
         }
 
         // -----------------------------------------------------------------
-        //  CASE C -- the eight real lines, verbatim from the device log, must parse
-        //  and must pass. If they do not, the parser and the allowlist have drifted
-        //  apart and Cases A/B/D are judging nothing.
+        //  CASE C -- the eight HISTORICAL lines, verbatim from APK 363722's log.
+        //
+        //  TWO ASSERTIONS, and they pull in opposite directions on purpose:
+        //   1. they still PARSE -- the shipped prose form (no relaxKey tokens) must stay
+        //      readable, or every scan of a log already on disk is blind; and
+        //   2. every one is now judged NEW -- because WO-1658 re-authored all eight bands
+        //      and emptied the allowlist. That flips this fixture from "green because
+        //      leashed" to "green because retired", and it reds if an entry comes back.
+        //
+        //  ⚠ It counted against Allowlist.Length until 2026-09-10. That coupling meant
+        //  emptying the array — the SUCCESS this ticket exists to reach — would have RED-ed
+        //  the suite. A fixture sized by the thing it is testing is not a fixture.
         // -----------------------------------------------------------------
+        private const int HistoricalRelaxationCount = 8;
+
         private static void CaseC_TheAuthoredEightParseAndPass(List<string> failures, StringBuilder log)
         {
             // Legacy PROSE form -- exactly as APK 363722 emitted them, WITHOUT the machine tokens
@@ -236,27 +280,34 @@ namespace DeNelle.Editor.Regression
                                   "actually emitted. Every scan below is then blind. Line: " + line);
             }
 
-            if (hits.Count != Allowlist.Length)
+            // The fixture's size is a HISTORICAL FACT (eight lines on APK 363722), not a function of
+            // the live allowlist. It was `hits.Count != Allowlist.Length` until WO-1658 emptied the
+            // array — a coupling that would have RED-ed this case for the very success it measures.
+            if (hits.Count != HistoricalRelaxationCount)
             {
-                failures.Add(Tag + " CASE C: parsed " + hits.Count + " of the " + Allowlist.Length +
-                             " observed relaxations. The fixture and the allowlist must stay the same size, " +
-                             "or the count this ticket reports is fiction.");
+                failures.Add(Tag + " CASE C: parsed " + hits.Count + " of the " + HistoricalRelaxationCount +
+                             " relaxation lines APK 363722 actually emitted. The parser has stopped reading a " +
+                             "shape the shipped build produces, so every scan below is blind.");
                 return;
             }
 
+            // ...and every one must now be judged a NEW relaxation, because WO-1658 fixed all eight
+            // bands and retired the entries. This is the assertion that keeps the retirement honest:
+            // if anyone re-adds an entry without an owner ruling, this case reds.
             var violations = Judge(observed);
-            if (violations.Count > 0)
+            if (violations.Count != HistoricalRelaxationCount)
             {
-                foreach (var v in violations)
-                    failures.Add(Tag + " CASE C: an ALLOWLISTED relaxation was rejected, so the list no longer " +
-                                 "describes the build it was measured from: " + v);
+                failures.Add(Tag + " CASE C: " + violations.Count + " of " + HistoricalRelaxationCount +
+                             " historical relaxations were rejected as NEW. WO-1658 re-authored all eight bands " +
+                             "and emptied the allowlist (proven on 2026-09-10_1019_363786_logcat.txt: relaxed=0, " +
+                             "zero relaxKey lines), so a line that still passes judgement means an entry came " +
+                             "back — which is re-accepting a sub-floor label and needs the owner's word.");
                 return;
             }
 
-            log.AppendLine("  [green-C] all " + hits.Count + " observed relaxations parse and are leashed:");
-            foreach (var e in Allowlist)
-                log.AppendLine("      floor 30 -> " + e.FloorTo.ToString("F0") + ", renders at " +
-                               e.FinalSize.ToString("F0") + " px  " + e.Key + "  (" + e.Note + ")");
+            log.AppendLine("  [green-C] all " + hits.Count + " historical relaxation lines still PARSE (the " +
+                           "shipped prose form is readable) and all " + violations.Count + " are now judged NEW, " +
+                           "i.e. the allowlist is genuinely empty. Live allowlist size: " + Allowlist.Length + ".");
         }
 
         // -----------------------------------------------------------------

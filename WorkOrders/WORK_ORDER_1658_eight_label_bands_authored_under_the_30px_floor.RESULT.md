@@ -370,3 +370,88 @@ catastrophic hit). `tr -dc '\000' | wc -c` is the check that actually answers th
 **Left to the lead:** batch gate (`COMPILE_GATE_OK` + `REGRESSION_OK` on fresh logs, judged by the
 marker), `python tools/board_build.py`, commit by explicit path. **Then a device session**, after
 which the eight allowlist entries in §6 come off one by one against a fresh logcat.
+
+---
+
+# § RETIREMENT — the device session happened; all eight entries are off
+
+*Appended 2026-09-10 by lane **FIT-GUARD** (worktree `agent-a9e001ddb25631dda`, branched from dev
+`366c0630c`). The lane above authored the bands; this section closes the leash they were on.*
+
+## R1. The warrant, read at source
+
+| what | value |
+|---|---|
+| APK | **2026.09.10.363786** |
+| PID | **8062** |
+| log | `Builds/device-frames/2026-09-10_1019_363786_logcat.txt`, **7,005,654 bytes** |
+| last of 13 census lines | `armCalls=354 armed=354 declinedNotPlaying=0 declinedNullText=0 evaluated=97 relaxed=0 stillBlank=0` |
+| `grep -c 'relaxKey='` | **0** |
+| `grep -c ']: rect '` | **0** (the legacy prose form — an old-shaped relaxation would still have been caught) |
+| `grep -c '\[Flow:'` | **15,597** — the channel was live, so the zeros are real zeros |
+
+Compare the session that opened the ticket (`..._0929_363722_logcat.txt`, PID 5095):
+`evaluated=88 relaxed=8`. **Same instrument, same screens, eight → zero.**
+
+⚠ **Screen-visit evidence is asymmetric, and the honest version is:** `CurrencyChip_Gold` and
+`ManageCategoryLauncher` each appear in the log (1 line each); `HarvestOverflowUI` and
+`ManageHeartFace` appear **zero** times — the harvest modal's visit is evidenced by the FRAME
+(`2026-09-10_1016_363786_harvestresult.png`), not by a log token. Stated rather than smoothed over,
+because "all eight screens were visited" is a claim the log alone does not carry.
+
+## R2. What changed in the leash
+
+`Assets/Editor/Regression/FitGuardRelaxAllowlistRegression.cs`:
+
+- **All eight entries retired**; `Allowlist` is now `new RelaxEntry[0]`. ⛔ The array and the suite
+  STAY — an empty leash is a live tripwire. `Judge()` reports any parsed relaxation as NEW, so the
+  next band authored under `FontFloor(30)` reds on its **first** device log instead of shrinking text
+  silently for months the way these eight did.
+- **WO-1495 annotation kept and rewritten** (`WO-1658, origin 2026-09-10, remove-by 2026-12-10`).
+  Verified by porting the meta-suite's own four regexes (`DeclLine`, `WoPointer`, `AnyDate`,
+  `RemoveBy`) and running them over the real file: block `Allowlist` at line 116, WO ✓, remove-by ✓,
+  **origin date survives the remove-by strip** ✓ — that strip-then-require step is the one that
+  silently fails a block carrying only a remove-by. An absent block was rejected as an option: the
+  declaration is what `[scan-alive]` counts, and `DefinitionalAllowlists` is another suite's file.
+- **Case B decoupled**: its key was `Allowlist[0].Key`, which **ceases to exist** when the list is
+  emptied — a RED-first case that dies of the success it guards is not a pin. It is now a literal,
+  **plus** a new assertion that the violation is a hard-floor breach (`UNDER FontHardFloor`) and not
+  merely an unlisted key: with the array empty, a bare count would have quietly stopped testing the
+  floor at all.
+- **Case C restructured**, which is the change WO-1658 could not land without. It asserted
+  `hits.Count == Allowlist.Length` — so emptying the array would have RED-ed the suite for the very
+  outcome this ticket exists to produce (caught by the DEVICE-FRAMES-3 lane's read). The fixture is
+  now sized by `HistoricalRelaxationCount = 8`, a historical fact about APK 363722, and asserts two
+  things pulling opposite ways: the eight legacy prose lines **still parse** (or every log already on
+  disk is unreadable), and **all eight are now judged NEW** (or an entry came back without a ruling).
+- The header records the **PathOf finding**: `UiKitTextFitGuard.PathOf` walks at most four parents, so
+  a key is a **truncated address, not a unique one**. The six harvest keys read as two families only
+  because the shared `HarvestOverflowUI` root was trimmed off three of them — **all six were one
+  modal, and one fix**. Never read a key as a screen boundary.
+
+## R3. Verified without Unity, and the limits of that
+
+The suite cannot be run in this lane (no Unity). The **judgement logic** was ported to Python and run
+against real data — the same method that proved the parser when it was written:
+
+```
+CASE C parse: 8/8      verdicts: all NEW           (allowlist genuinely empty)
+CASE B verdict: HARDFLOOR   (not NEW — the ordering assertion holds)
+CASE A verdict: NEW
+CASE D on 2026-09-10_1019_363786_logcat.txt: 0 relaxations parsed -> GREEN
+```
+
+`gate_brace.py` → `bad=0`; NUL scan clean; braces 43/43.
+⛔ **Not proven from here:** that the C# compiles, and `REGRESSION_OK` on a fresh log. The port shares
+the algorithm, not the code. **The lead's gate is the proof.**
+
+## R4. Bonus finding, free with this log — WO-1656 is confirmed on device
+
+`grep -c 'TEXT-NEVER-SET'` on the 363786 log = **0**, and both stand-downs carry the new wording
+(*"…standing down; whether that is empty-BY-DESIGN or never-set is the PRODUCER's call…"*). WO-1656's
+fix is live on the device, which closes its acceptance §3 in the reworded form.
+
+⚠ **A THIRD stand-down label has appeared** that WO-1656 never covered:
+`Area_HeartStatus/Widget_heartStatus/HeartStatus/PartyNameplate/Label`. It is not a regression of
+anything — it is the reworded warning doing its job on a label nobody has classified yet. Someone
+should decide whether it is empty-by-design; it is **not** claimed either way here.
