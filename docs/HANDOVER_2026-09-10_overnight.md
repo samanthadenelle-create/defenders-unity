@@ -77,6 +77,47 @@ the 17:05 capture before this wave - a ticket, not a regression).
 Board after the wave: `python tools/board_build.py` -> `BOARD_CHECK_OK 0 unlabeled, 0 missing status
 lines, 0 status contradictions`.
 
+## 1B. Morning wave (owner awake 03:20-03:45, then back to bed for an hour; orders: "exe apk webgl")
+
+| Commit | Lane | Tickets | What |
+|---|---|---|---|
+| `08e336f28` | lead | 1184 | owner testimony recorded ("i do get a report post battle offline"); then CLOSED on her ruling in `9281cd7ea` |
+| `9281cd7ea` | RULINGS-AM | 1373, 1412, 1461, 1184 | 1373 FIXED as shipped (code ladder top two, global day cap), 1461 FIXED (cap 1800 kept; the settle wiring HAD landed at RaidVictoryController.cs:281), 1412 item 2 READY (USD-only), 1184 CLOSED |
+| `b877e633c` | PLACED-CARD | 1629 (+1088) | FIXED: "manage what you built" in its own 50 px band, pin tightened to zero; gate wave3-compile1/reg1 493/493, capture wave3-capture1 24/24 probes; WO-1088 CLOSED on her word |
+| `3da5e5360` | RULINGS-PM | 1099, 1574, 1430, 1629 | 1099 CLOSED, 1574 CLOSED (09-06 medallions are final; crop stays), 1430 fields 3-5 DROP (field map in the WO), Manage Placed art strip = intended |
+| (in the raid chain) | LANDSCAPE + lead | 1631 | landscape only: ProjectSettings portrait autorotate flags 1 -> 0 (lead, on the ruling), ScreenOrientationRegression registered; gated green on wave3-reg2 |
+| (in the raid chain) | STORE-LABEL | 1412 | item 2: the busy label already read `Buy builder - $9.99` from PackDef.UsdReference; the deliverable is the pin + the ruling in code; green on wave3-reg2 |
+| (in the raid chain) | GLYPH-ORACLE | 1630 | fourth LayoutOracle kind, `UI_GLYPH_*` marker from all 14 ReportTouchOracle sites; first live run: 68 cut labels over 21 panels (NightMarket 21, RumorBoard 12+9, RealmWorkspace 11, HeroSelect 5); baseline + umbrella WO-1636 being built |
+| (in the raid chain) | ARENA-WALL | 1632 | exterior boundary ring at the plane edge, SQUARE (the staging diagonal fallback parks at 79 m; no circle fits), battle-arena rock vocabulary via a shared `ArenaBoundaryRing` helper, siege venue re-routed byte-identical; Case 6 `[arena-boundary]` reds until the bake |
+| (in the raid chain) | RAID-POLISH | 1633-1635 | premise DISPROVED: `props` IS authored and read (27/25/27, bake missing=0); the real gaps: props stripped colliders (decor not cover), even polar singles not clusters, no clear lane - fixed as WO-1633 with `CoverRingPlacer` extracted from the arena; 1634 authored prop gaps + 1635 stale canon minted READY |
+| (in the raid chain) | SPIRE-ART | 1619 | no ruined-watchtower model exists anywhere; owner chose the KayKit tower BASE; new catalog row `tower_ruined_watchtower`, raider_camp_small centralBuilding re-pointed; a dresser defect found and fixed (`MapCatalogArt` would have re-skinned the spire back to the arcane art); needs CopyKitToResources + MarkCatalogArt + bake + r2-ship (remote Structure_Art) |
+
+LANDED 05:33 (chain 18 fully green: `Builds/wave3-compile9` COMPILE_GATE_OK, `wave3-reg9` REGRESSION_OK 494/494, `wave3-capture9`
+UI_CAPTURE_OK 91 + UI_GEOMETRY_OK 91 + UI_GLYPH_OK 91/91, `wave3-navcapture5` UI_GLYPH_OK 15/15):
+`29296e086` landscape only (1631) | `7429ddfb7` store label USD-only (1412 FIXED) | `ac15fb88e` fields 3-5 dropped (1430 FIXED) |
+`9e44ad076` glyph oracle + baseline + WO-1636 (1630 FIXED, 1636 PARTIAL) | `9c7855902` RumorBoard 21 | `d5ccb24ed` deck cards 16 |
+`28b0719f2` HeroSelect 5 + Manage ARMY partial | `3c2302534` arena boundary ring (1632 FIXED) | `b10cd6783` courtyard cover props (1633 FIXED,
+1634 READY, 1635 PARTIAL) | `16e7da66b` Forsaken Camp tower base + raid-only catalog row + fallback regen | `2e66a552e` the re-bake (4 scenes + navmesh).
+Still gating (chain 19): the NightMarket CTA seat v3 (21 findings; v2 collapsed the CTA at the narrow aspects) and the BuildMenu two-line
+info band (1 finding). Then the three builds.
+Raid wave evidence (chain 16, 04:45-05:03): `Builds/wave3-compile7` COMPILE_GATE_OK; `wave3-mark5` STRUCTURE_MARK_OK 36;
+`wave3-bake7`: Forsaken Camp spire = `art='Structures/building_tower_base_green'` rawHeight 1.500 m at factor 9.600 (100% of
+14.40 m); `ring 'Arena'` 82 pieces/side, 328 boundary pieces per base, containment inner 66.350 vs clamp 66.000 and outer
+70.850 vs limit 71.200 (0.35 m slack both, required 0.30), no assert; props 27/25/27 with cover; `wave3-navbake7` 4/4;
+`wave3-capture7` UI_CAPTURE_OK 91 + UI_GLYPH_OK 91/91 (baselined 47 after the RumorBoard fix); `wave3-navcapture3`
+UI_GLYPH_OK 15/15. Regression `wave3-reg7` 490/494: the four reds are all the new catalog row being swept as PLAYER content
+(zero cost, zero stats, no build-card art, stale generated fallback) - back with the SPIRE-ART lane to use the repo's
+non-player-row convention + regenerate CatalogFallbackData.g.cs. Three earlier bakes (chains 12-15) failed on the ring's
+containment assert (boulder scale, then 66.0==66.0, then 0.30<0.30 float) and on three of the spire lane's hunks that my
+3-way applies silently dropped (importer row, catalog row, generator path) - recovered by copying the lane's files.
+Chain running: `Builds/wave3-compile3` -> `wave3-kitcopy` -> `wave3-mark` -> `wave3-bake3` -> `wave3-navbake3` -> `wave3-reg3`.
+Owner-ruled this morning (all recorded in the WOs and memory): Pi = `https://defenders-pi.vercel.app`; LANDSCAPE ONLY; push done; 1373 as shipped;
+1412 USD-only; 1461 keep 1800; 1184/1088/1099/1574 closed; 1430 fields dropped; Forsaken spire = KayKit tower base; Manage Placed
+art strip intended; WO-1629 = shorten the copy; raid arena: "exterior walls around entire arena" + "similar strategy as we used in
+battle arena" + "i have mentioned it in testing that it feels incomplete and not polished".
+Number collision this morning: three worktree lanes each read next-free 1631; resolved 1631 LANDSCAPE / 1632 ARENA / 1633-1635 POLISH,
+banner set to 1636 by the lead; rule recorded in memory (the lead pre-assigns number blocks to parallel minting lanes).
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
