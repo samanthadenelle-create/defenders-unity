@@ -772,6 +772,26 @@ namespace DeNelle.Editor.Regression
 
         /// <summary>Greedy word wrap using the SAME measured advances, so the line count asserted
         /// against is the line count TMP would produce - not a guess at one.</summary>
+        // ⭐ WO-1666 §6 — CLASSIFIED 2026-09-10, AND `FontRole.Body` BELOW IS CORRECT. LEAVE IT.
+        // ---------------------------------------------------------------------
+        // WO-1663 proved that measuring an obsidian button face in Body under-reports its width
+        // (it is drawn Title/Bold/characterSpacing 2 by MedievalUiSkin.ApplyButton) and put the
+        // corrected measurement behind HudLabelFitRegression.MeasureFacePx. This helper is a
+        // SEPARATE private copy in a different class, so that fix never reached it — and WO-1666
+        // asked whether it should.
+        //
+        // IT SHOULD NOT, because the faces it measures are NOT buttons. Its only caller is the
+        // empty-section block above, which wraps the invEmpty*/invPaneGearGaps sentences. Traced
+        // at source: those strings are drawn by HeroInventoryController.AddLabel (:813-831), which
+        // news up a bare TextMeshProUGUI, sets fontSize/color/alignment and `characterSpacing =
+        // spacing` (0 at the InventorySidebar.cs:122 call site), takes `bold: false` by default,
+        // and never touches MedievalUiSkin or ElarionUiKit.EnsureFont. A plain Body/regular label.
+        //
+        // ⛔ SO DO NOT "UNIFY" THIS ONTO THE SKINNED MEASURER. Re-pointing a plain face to Title
+        // + a bold slack would over-report every one of these sentences by ~30-35% and red a
+        // working screen — the precise hazard WO-1663 §7 kept three sites away from. What IS worth
+        // doing one day is sharing the wrap ALGORITHM (role-parameterised) rather than the role;
+        // that is the kit-side measurer WO-1663 §9 describes, and it is not this ticket.
         private static int WrappedLineCount(string text, float boxW, float fontSize)
         {
             if (string.IsNullOrEmpty(text) || boxW <= 0f) return 0;
