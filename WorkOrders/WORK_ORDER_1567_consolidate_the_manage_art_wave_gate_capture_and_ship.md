@@ -401,3 +401,4 @@ because `DrawerTitlePx = DrawerTitleOverlayPx` is one number rather than two tha
 ## Lead addendum (2026-09-10 08:35) - open item 6 closed, item 2 re-run
 
 Install proven: `Builds/wave5-install.runner.txt` reads `Performing Streamed Install` / `Success` (08:05:52); `adb shell dumpsys package com.denellestudios.echoesofelarion` read by the lead at 08:06 -> `versionName=2026.09.10.363660` (stamp commit dd8342230). Step ZERO `CatalogFallbackGenerator.Generate` re-run by the lead after this close-out (log `Builds/wave5-catfallback1`, marker recorded below when it lands).
+Step ZERO result: `Builds/wave5-catfallback1` (08:34) `CATALOG_FALLBACK_GEN_OK wrote Assets/_Modules/Village/Catalog/Generated/CatalogFallbackData.g.cs ... rows=29 version=42 bytes=110625`; `git status` shows the generated file UNCHANGED, so the committed fallback data was already in sync with structures-catalog.json - open item 2 closed.
