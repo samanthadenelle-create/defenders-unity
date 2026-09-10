@@ -504,6 +504,9 @@ entries (six harvest lines need the non-overflow path), push.
     ladder is 1-based for UPGRADES, not for existence), so the head no longer says "Level 0 of 4"; it now reads "Not yet upgraded . 4 levels"
     (constant ManageVmProjection.FoundingLevelWord). Keep that wording or give another?
 
+15. **ARMY tile badge word** (WO-1661) - the Footman/Archer tiles cut "UPGRADE AVAILABLE" to "UPGRADE A..." on device; the grid needs a
+    short BadgeWord like READY/SHORT have. "UPGRADE" collides with the UPGRADING badge on the same grid - which word?
+
 ## 4. Findings the next seat must not re-derive
 
 - The compile gate's brace scanner has no interpolated-string model; `tools/gate_brace.py` is its port

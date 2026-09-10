@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-ninth pass): main line next free = **1658**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-fiftieth pass): main line next free = **1662**.
+> WO-1658 (eight label bands, FIT-GUARD/BAND-HEIGHTS), WO-1659 (locked founding rail - CLOSED no live defect), WO-1660 (gold chip touch band under 112 px), WO-1661 (ARMY tile UPGRADE A... chip on device) minted on lead pre-assigned numbers.
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-ninth pass): main line next free = **1658**.
 > WO-1656 (Manage Band_Notice / WorkspaceBack labels never receive text - likely a guard false positive) and WO-1657 (Quarry upgrade cost shows Gold; Level 0 of 4 while READY) minted by the DEVICE-FRAMES-2 lane on lead pre-assigned numbers.
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-eighth pass): main line next free = **1656**.
