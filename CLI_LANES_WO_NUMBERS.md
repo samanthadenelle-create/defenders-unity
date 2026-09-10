@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-fortieth pass): main line next free = **1637**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-first pass): main line next free = **1643**.
+> 1637-1642 = the DEVICE-RAID lane's six device-frame findings on build 363529 (CLI minting lane, block pre-assigned by the lead): 1637 raid arena reads flat (ring/spire/sky one pale tan) - 1638 gatehouse banners read as untextured green placeholders (the "these are the gates" premise is FALSIFIED in the ticket) - 1639 in-raid HUD readout illegible at 1.1:1, DEPLOY ellipsised, HERO DOWN buried, objective marker unclamped - 1640 staging SPOILS breaks mid-word + the outmatch two-tap confirm draws behind the panel (the "needs two taps" premise is CORRECTED: the step is owner-ruled WO-1542, its toast is invisible) - 1641 Heart plate says "Train 2 troops to unlock Raids" after a raid (everCompletedRaid flips the bar 3 -> cap 10, proven in the device logcat) - 1642 RAIDS deck card white corners + ATTACK REPORT chip off its own plate. Bumped 1637 -> 1643 in this SAME edit.
+
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-fortieth pass): main line next free = **1637**.
 > 1636 = glyph-oracle first run, 68 truncated labels (GLYPH-ORACLE lane, number pre-assigned by the lead). Bumped 1636 -> 1637 in this SAME edit.
 
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-thirty-ninth pass): main line next free = **1636**.
