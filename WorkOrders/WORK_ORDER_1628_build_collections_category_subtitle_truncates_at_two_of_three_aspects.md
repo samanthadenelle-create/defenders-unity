@@ -1,6 +1,6 @@
 # WO-1628 - Build Collections: every category card's affordability caption renders as "nothing affordable y" at two of the three capture aspects
 
-**Status:** BLOCKED - awaiting the instrumented capture; INSTRUMENTED step 1 (lane SUBTITLE 2026-09-10)
+**Status:** FIXED 2026-09-10 - gated (Builds/wave2-compile6, Builds/wave2-reg6 493/493) and captured (Builds/wave2-capture4: UI_CAPTURE_OK 91; all 21 probe lines bandPx h=50, fontSize=21, rendered=2 lines, 22 chars, truncated=False at every aspect); the 2670x1200 PNG shows "nothing affordable / yet" on two lines clear of the bezel, sent to the owner; owner felt-test closes. (was: IMPLEMENTED - awaiting gate + capture (lane SUBTITLE 2026-09-10))
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1628 -> 1629 in the SAME edit)
 **Silo / Lane:** Village / BuildMode UI (`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
 **Severity:** P2 felt-legibility. Seven cards, seven truncated captions, on the FIRST build screen a
@@ -439,3 +439,32 @@ The glyph-survival oracle rule sec.1i describes is still unminted. `isTextTrunca
 computes both - but `LayoutOracle.cs:17-20` requires a new rule be SEEN RED first against a synthetic
 authored-defect canvas in `UiTouchClampRegression`. That is its own ticket with its own red-first
 proof and is deliberately NOT in this diff.
+
+
+---
+
+## IMPLEMENTED 2026-09-10 - step 2, branch 1
+
+Lane SUBTITLE, rebased onto `446c8b992` (this ticket's own step-1 commit).
+
+The 21 probe lines on `Builds/wave2-capture3` license **sec.4 Step 2's FIRST branch** - the band
+seats only one line at the two wide aspects. `bandPx` height reads **52.2** at 1920x1080
+(`:2936-2942`, 2 lines, 22 of 22 chars, `truncated=False`), **43.2** at 2340x1080 (`:2998-3004`)
+and **42.1** at 2670x1200 (`:3060-3066`) - both one line, 21 of 22 chars, `truncated=True` -
+against a `preferredHeightPx` of **47.6 on all twenty-one lines**. That requirement does not move
+with `fontSize` because TMP computes it at `fontSizeMax` while auto-sizing is on
+(`TMP_Text.cs:3762`), so it is the two-line height at the largest size the fitter may choose.
+
+Branch 3 is ruled out: `bandPx` height is exactly 0.16 of `cardPx` height at every aspect, so the
+card and the band are one fact - the card is legitimately shorter on a 965.4-ref-px canvas.
+Branch 2 is ruled out: `modes=Truncate / Normal` on all 21, wrapping was never disabled.
+
+**The fix:** the caption's band HEIGHT is authored in reference px (`CaptionBandPx = 50f`,
+`BuildCollectionBrowser.cs:107`) hanging below its own existing top edge
+(`CaptionTopFrac = .21f`, `:112`) - both y anchors collapsed, pivot set before the offsets, same
+shape as WO-1623's `FooterLinkBandPx`. X stays a fraction (width was never implicated: the two
+failing aspects had MORE band width). No font floor, no kit file and no neighbour was touched.
+Pinned RED-first by `BuildCollectionPlayerRegression.cs:178-208`.
+
+Full record, including what the next capture must show and the two items raised for minting:
+`WorkOrders/WORK_ORDER_1628_build_collections_category_subtitle_truncates_at_two_of_three_aspects.RESULT.md`

@@ -70,6 +70,46 @@ namespace DeNelle.Village
         /// <summary>What the footer costs the category grid, bottom-up, in reference px.</summary>
         private const float FooterLinkReservePx =
             FooterLinkBottomInsetPx + FooterLinkBandPx + FooterLinkGridGapPx;
+        // =====================================================================
+        //  WO-1628 — THE CATEGORY CAPTION'S HEIGHT IS PIXELS, NOT A SHARE OF THE CARD.
+        //
+        //  The affordability caption under every category title was authored as the band
+        //  .05f-.21f of card height — 0.16 of a rect that is itself a fraction of a canvas
+        //  whose REFERENCE HEIGHT changes with the aspect. The WO-1628 step-1 probe measured
+        //  what that resolved to, per card, per aspect (Builds/wave2-capture3):
+        //
+        //    1920x1080  card 326.2 px  band 52.2 px  ->  2 lines, 22 of 22 chars, truncated False
+        //    2340x1080  card 270.1 px  band 43.2 px  ->  1 line,  21 of 22 chars, truncated True
+        //    2670x1200  card 263.0 px  band 42.1 px  ->  1 line,  21 of 22 chars, truncated True
+        //
+        //  and on ALL twenty-one lines preferredHeight read 47.6 px. That number does not
+        //  move with fontSize because TMP computes it at fontSizeMax while auto-sizing is on
+        //  (TMP_Text.cs:3762) — so 47.6 is the two-line requirement at the LARGEST size the
+        //  fitter may choose, i.e. the real, aspect-invariant height this copy needs.
+        //
+        //  ⛔ THE DEFECT IS THE UNIT, NOT THE NUMBER. The caption needs a fixed count of
+        //  reference px; it was given a share of a shrinking rect, so the same authoring is
+        //  ~5 px over the requirement on one aspect and ~5 px under it on the other two.
+        //  This is the identical failure WO-1623 retired for the footer band a few lines
+        //  above, and the cure is the same one: author the HEIGHT in px, collapse both y
+        //  anchors onto the edge the band hangs from, set the pivot BEFORE the offsets.
+        //
+        //  ⚠ AND NOT THE FONT. Shrinking the floor to make 47.6 fit a 42 px band is the
+        //  inverse of this fix and the trap WO-1626 names — the kit owns the readability
+        //  floor (ElarionUiKit.FontHardFloor), and FitBlock(subtitle, 18f, 21f) at the call
+        //  site is left exactly as it is: the kit already clamps that 18f up to the floor
+        //  (ElarionUiKitObsidian.cs:3083), so it is a note, not a knob.
+        // =====================================================================
+        /// <summary>The category caption's band HEIGHT in reference px. Sized from the measured
+        /// two-line requirement (47.6 px preferredHeight at fontSizeMax on every one of the 21
+        /// WO-1628 probe lines) plus headroom, so the fitter can still reach its 21 pt ceiling
+        /// instead of being driven onto the floor. Never a fraction of the card.</summary>
+        private const float CaptionBandPx = 50f;
+        /// <summary>Where the caption band hangs from: the TOP edge it already had. Keeping the
+        /// top edge and growing DOWNWARD is what leaves the title, the divider and the artwork
+        /// exactly where they are — the band grows into the card's empty bottom margin, which
+        /// nothing else is authored into (the next rect up is the title at .22f).</summary>
+        private const float CaptionTopFrac = .21f;
         private readonly List<GameObject> _pageObjects = new List<GameObject>();
         private RectTransform _panel;
         private CardCollectionDocument _document;
@@ -205,6 +245,12 @@ namespace DeNelle.Village
             // (Assets/Editor/UICaptureLaunch.cs:5703-5710 -- Canvas.ForceUpdateCanvases then
             // LayoutRebuilder.ForceRebuildLayoutImmediate on the panel root).
             var subtitleProbes = new List<SubtitleFitProbe>();
+            FlowTrace.Step("BuildCollections",
+                "WO-1628 category caption band authored in px: height " +
+                CaptionBandPx.ToString("0.#") + " hanging below the card's " +
+                CaptionTopFrac.ToString("0.##") + " top edge, x .08-.92 as before. The retired " +
+                ".05-.21 fraction resolved 52.2 / 43.2 / 42.1 ref px against a two-line " +
+                "requirement of 47.6, which is why the word was lost on two of three aspects.");
             for (int index = 0; index < visible.Count; index++)
             {
                 var c = visible[index];
@@ -244,9 +290,22 @@ namespace DeNelle.Village
                 // the promise on the card and the cards inside it cannot disagree.
                 int affordable = StructureCardVM.AffordableCount(c);
                 var subtitle = Label(card.transform, StructureCardVM.AffordabilityWords(affordable), 21,
-                    TextAlignmentOptions.Top, new Vector2(.08f, .05f), new Vector2(.92f, .21f));
+                    TextAlignmentOptions.Top, new Vector2(.08f, CaptionTopFrac),
+                    new Vector2(.92f, CaptionTopFrac));
                 subtitle.color = ElarionUi.Parchment;
                 subtitle.raycastTarget = false;
+                // WO-1628 — Y IS PIXELS, X STAYS A FRACTION, and that asymmetry is the fix.
+                // The caption's WIDTH was never implicated: the two aspects that LOST the word
+                // measured MORE band width than the one that kept it (180.8 / 183.4 vs 162.6 ref
+                // px), so x stays proportional to the card. Its HEIGHT is a number of lines of
+                // readable copy, which is px. Both y anchors collapse onto the band's existing
+                // TOP edge and the height hangs below it. Pivot is set BEFORE the offsets:
+                // moving a pivot afterwards keeps sizeDelta and anchoredPosition and would slide
+                // the rect straight back off the number. Same shape as the footer band above.
+                var subtitleRect = subtitle.rectTransform;
+                subtitleRect.pivot = new Vector2(.5f, 1f);
+                subtitleRect.offsetMax = Vector2.zero;
+                subtitleRect.offsetMin = new Vector2(0f, -CaptionBandPx);
                 ElarionUiKit.FitBlock(subtitle, 18f, 21f);
                 // WO-1628 Step 1: the line this used to emit HERE is unchanged in wording and
                 // still one per card -- it is emitted from ReportSubtitleFit below, once the

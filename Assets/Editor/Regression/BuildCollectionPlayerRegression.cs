@@ -175,6 +175,38 @@ namespace DeNelle.Editor.Regression
             if (!browser.Contains("FitSingleLine(label,") ||
                 browser.Contains("fontSizeMin = 16f"))
                 return Fail("the Manage > Defense footer caption sets its own font floor instead of the kit's: a sub-floor fontSizeMin literal is back, or the label no longer routes through ElarionUiKit.FitSingleLine", out reason);
+            // WO-1628 ADDED 2026-09-10. The seven category cards' affordability caption had its
+            // band authored as .05f-.21f of CARD HEIGHT -- 0.16 of a rect that is itself a share
+            // of a canvas whose reference height changes with the aspect. The step-1 probe
+            // measured the result (Builds/wave2-capture3): 52.2 ref px at 1920x1080 against a
+            // two-line requirement of 47.6 (2 lines, 22 of 22 chars), but 43.2 at 2340x1080 and
+            // 42.1 at 2670x1200 -- one line, 21 of 22 chars, isTextTruncated TRUE on fourteen
+            // labels. Same unit defect WO-1623 retired for the footer band: a height that is a
+            // number of lines of readable copy is PIXELS, never a fraction.
+            //
+            // WHY THE POSITIVE PIN IS BOTH "CaptionBandPx" AND "-CaptionBandPx": the const being
+            // DECLARED proves nothing on its own -- a later edit could leave it sitting unread
+            // while the fraction crept back. The second literal is the const actually spent as
+            // the band's bottom offset, so declaration and use must both survive. Both are RED
+            // before the fix, because neither string existed.
+            //
+            // WHY THE NEGATIVE PIN COUNTS TO ONE INSTEAD OF FORBIDDING: the retired pair
+            // `new Vector2(.08f, .05f)` legitimately survives at the Manage Placed card's own
+            // caption. WO-1628 names that card only to scope its TITLE's font floor out (sec.6,
+            // manageTitle.fontSizeMin) and never names its caption at all; the card was SKIPPED
+            // in all three passes of the capture -- Show() was called without a managePlaced
+            // callback -- so its caption's render is UNMEASURED; and its 45-character copy needs
+            // more lines than this band gives. Re-pointing it here would be a fix claimed
+            // without evidence. Exactly ONE occurrence is therefore correct today; tighten this
+            // to zero when that card is re-pointed on its own measured frame.
+            // RED PROOF: restore the `new Vector2(.08f, .05f), new Vector2(.92f, .21f)` pair at
+            // the seven-card caption and delete the pivot/offset block -- either half alone reds
+            // this pin.
+            if (!browser.Contains("CaptionBandPx") ||
+                !browser.Contains("-CaptionBandPx") ||
+                browser.IndexOf("new Vector2(.08f, .05f)", StringComparison.Ordinal) !=
+                browser.LastIndexOf("new Vector2(.08f, .05f)", StringComparison.Ordinal))
+                return Fail("the category caption band is a fraction of card height again instead of reference px: CaptionBandPx is missing or unspent, or the retired .08/.05 fraction is back on the seven category cards", out reason);
             string managePanel = File.ReadAllText("Assets/_Modules/Village/UI/Manage/ManageScreenPanel.cs");
             string manageVm = File.ReadAllText("Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs");
             // -- WO-1422 ruling 3.4 --------------------------------------------
