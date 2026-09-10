@@ -1197,6 +1197,14 @@ namespace DeNelle.Editor
             //     through the DrewContent evidence gate (a blank RT and a drawn hero are the same
             //     pixels, which is how the owner's empty navy rectangle shipped). ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "inventory-armory-rail suite", () => { if (!DeNelle.Editor.Regression.InventoryArmoryRailRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[inventory-armory-rail] " + r); });
+            // --- WO-1664: five controls were AUTHORED under ElarionUiKit.MinTouchPx and shipped
+            //     only because ClampMinTouch rescued them at runtime -- the owner's Seeker printed
+            //     five CLAMP FIRED lines, byte-identical across two consecutive APKs. The gate-time
+            //     rule (LayoutOracle's SUB-TOUCH-FLOOR BAND) already existed and already ran; two
+            //     capture entry points computed its verdict and never reported it. This suite pins
+            //     the three DRIVER bands arithmetically and pins that those two paths now read the
+            //     tally, so the same class cannot go quiet again. ---
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "touch-floor-authoring suite", () => { if (!DeNelle.Editor.Regression.TouchFloorAuthoringRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[touch-floor-authoring] " + r); });
             // --- WO-1059: the hero preview must frame the MODEL. The captured defect was
             //     ComputeBounds summing a cloned WeaponTrail's world-space AABB, which aimed the
             //     preview camera at the midpoint between the world origin and the rig origin and
@@ -1739,6 +1747,9 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "deck-return-door suite", () => { if (!DeNelle.Editor.Regression.DeckReturnDoorRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[deck-return-door] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "textfit-guard-arm suite", () => { if (!DeNelle.Editor.Regression.TextFitGuardArmRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[textfit-guard-arm] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "fitguard-relax-allowlist suite", () => { if (!DeNelle.Editor.Regression.FitGuardRelaxAllowlistRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[fitguard-relax-allowlist] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "jewel-polish suite", () => { if (!DeNelle.Editor.Regression.JewelPolishRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[jewel-polish] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "startnew-confirm-gate suite", () => { if (!DeNelle.Editor.Regression.StartNewConfirmGateRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[startnew-confirm-gate] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "save-wipe-backup suite", () => { if (!DeNelle.Editor.Regression.SaveWipeBackupRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[save-wipe-backup] " + r); });
             // WO-1397: the Cosmetic Shop is reachable - a Hero-deck "Wardrobe" card routes to the
             // already-registered PanelId.CosmeticShop; the deck grid derives its rows from the card
             // count (2x3 for five cards) so no card lands under the purpose line. WO-1523: that

@@ -136,9 +136,21 @@ namespace DeNelle.Editor.Regression
                                      "'result.Total <= 0 && !result.HasMendNews' is still present -- a collector-only town " +
                                      "falls through it");
 
-                    if (popup.IndexOf("new Vector2(0.63f, 0.155f), CollectAndDismiss", StringComparison.Ordinal) < 0)
+                    // WO-1664 (2026-09-10) -- THE PINNED STRING MOVED, THE PIN'S INTENT DID NOT.
+                    // It read `new Vector2(0.63f, 0.155f), CollectAndDismiss`. This case is named
+                    // [collect-button-performs-its-verb] and its failure text is about the VERB:
+                    // the rect was only ever incidental context that happened to sit on the same
+                    // line. WO-1664 raised that band to ElarionUiKit.MinTouchPx (the Seeker logged
+                    // it authored 22.8 ref px under the floor and clamp-rescued) and replaced both
+                    // literals with ActionBandY0/ActionBandY1, because AddReadyBand seats the raid
+                    // door on the SAME band and two hand-typed copies desynchronise. Pinning the
+                    // constant instead of the number keeps the verb assertion and stops this case
+                    // from failing every time the band is legitimately re-seated. The BAND'S
+                    // ARITHMETIC is not this suite's job -- TouchFloorAuthoringRegression owns it.
+                    if (popup.IndexOf("ActionBandY1), CollectAndDismiss", StringComparison.Ordinal) < 0)
                         failures.Add("case5 [collect-button-performs-its-verb] the COLLECT button is not wired to " +
-                                     "CollectAndDismiss (it used to call Dismiss, i.e. it collected nothing)");
+                                     "CollectAndDismiss on the shared bottom action band (it used to call Dismiss, " +
+                                     "i.e. it collected nothing)");
                     if (popup.IndexOf("CollectorStatusGate.RequestCollectAll", StringComparison.Ordinal) < 0)
                         failures.Add("case5 [collect-button-performs-its-verb] the popup never reaches " +
                                      "CollectorStatusGate.RequestCollectAll -- the tap does not carry to the existing " +

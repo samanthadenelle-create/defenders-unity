@@ -1,6 +1,8 @@
 # WORK ORDER 1664 — Five controls are authored under the touch floor and rely on the runtime clamp
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED — bands re-authored at their drivers + both blind capture paths now report the touch oracle; COMPILE_GATE / REGRESSION and a fresh device logcat are pending, then PO felt-verify to close
+**Result:** `WorkOrders/WORK_ORDER_1664_five_controls_authored_under_the_touch_floor_rely_on_the_clamp.RESULT.md`
+⚠ **Two of this ticket's own findings were WRONG and the RESULT corrects them at source: §2B/§4B (the `0.72` is a WIDTH slice, not a height fraction) and §3C (the welcome-back modal IS captured — its verdict was thrown away, same defect as §3B). Read the RESULT before acting on either section.**
 **Silo:** UI / layout (ElarionUiKit consumers). No gameplay, no economy, no scene files.
 **Raised by:** DEVICE-FRAMES-4 lane, 2026-09-10, from a live Seeker capture.
 **Number:** pre-assigned by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately NOT edited by this lane.
