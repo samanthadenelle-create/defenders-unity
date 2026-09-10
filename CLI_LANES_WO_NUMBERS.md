@@ -189,7 +189,32 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-thirty-seventh pass): main line next free = **1631**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-fortieth pass): main line next free = **1637**.
+> 1636 = glyph-oracle first run, 68 truncated labels (GLYPH-ORACLE lane, number pre-assigned by the lead). Bumped 1636 -> 1637 in this SAME edit.
+
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-thirty-ninth pass): main line next free = **1636**.
+> Lead reconciliation after three worktree lanes minted in parallel: 1631 landscape-only (LANDSCAPE), 1632 raid arena
+> exterior boundary ring (ARENA-WALL, renumbered from a colliding 1631), 1633-1635 raid courtyard cover / authored prop
+> gaps / retire legacy props canon (RAID-POLISH, renumbered from 1631-1633). Bumped 1632 -> 1636 in this SAME edit.
+> Rule from this collision: the lead hands each parallel minting lane its number block in the brief.
+
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-thirty-eighth pass): main line next free = **1632**.
+> *(LANDSCAPE lane minted **WO-1631** on the owner's morning ruling of 2026-09-10 (AskUserQuestion):
+> **the game is LANDSCAPE ONLY.** The player build autorotates. Proven at source this session:
+> `ProjectSettings/ProjectSettings.asset:11` `defaultScreenOrientation: 4` and `:63-66` all four
+> `allowedAutorotateTo*` flags = 1. `4` is `UnityEditor.UIOrientation.AutoRotation` - read by
+> reflection out of the editor install's `UnityEditor.CoreModule.dll` (6000.4.8f1), which enumerates
+> Portrait=0, PortraitUpsideDown=1, LandscapeRight=2, LandscapeLeft=3, AutoRotation=4. Consequence,
+> measured: ALL NINE device frames captured overnight are **1200x2670 PORTRAIT** (PNG IHDR-decoded,
+> `Builds/device-frames/2026-09-10_0028_title_363195.png` and eight siblings), and the portrait ones
+> carry the truncations the night's tickets were written from - `PLAY INT...` on the Title row, the
+> `MANAGE` title struck through by the QUEUE button, `UPGRADE ...` cut. The ticket carries the
+> regression pin (`ScreenOrientationRegression`, markers LANDSCAPE_ONLY_OK/_FAIL) but NOT the
+> ProjectSettings edit: that one line is the lead's, on the ruling, and never rides a lane commit.
+> The pin is RED AT HEAD BY CONSTRUCTION from the three values above; it has not been run.
+> Bumped 1631 -> 1632 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-thirty-seventh pass): main line next free = **1631**.
 > *(CLI minting lane minted **WO-1629 + WO-1630** - the two items WO-1628's own RESULT sec.5 raised
 > for minting, each re-proven at source this session rather than carried from the RESULT that raised
 > it. **WO-1629** = the Manage Placed card's caption at `BuildCollectionBrowser.cs:492-497` is STILL

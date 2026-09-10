@@ -60,25 +60,17 @@ namespace DeNelle.Editor
         private const float PlateRadius = 70f;     // ~140m diameter walkable plate
         private const float BoundaryRadius = 72f;  // outer boundary ring just past the plate edge
 
-        // Polyperfect Nature_M roots (validated against the on-disk pack glob).
-        private const string NatureRoot =
-            "Assets/polyperfect/Low Poly Ultimate Pack/_M/Prefabs_M/Nature_M/";
+        // Log tag handed to the shared boundary/cover helper so its warnings still
+        // self-identify as coming from THIS builder.
+        private const string LogTag = "[ProceduralSiegeArenaBuilder]";
 
-        // Cover-piece prefab file paths (relative to NatureRoot). Verified present on disk.
-        // Trees + rocks + shrubs — pieces that read as "natural cover" and keep colliders.
-        private static readonly string[] TreePaths =
-        {
-            "Trees_M/Tree_Oak.prefab",
-            "Trees_M/Tree_Conifer.prefab",
-            "Trees_M/Tree_Beech.prefab",
-            "Trees_M/Trees_Dead_M/Tree_Dead_Broken.prefab",
-        };
-        private static readonly string[] RockPaths =
-        {
-            "Stones_M/Stone_Large.prefab",
-            "Stones_M/Rock_Pillar.prefab",
-            "Stones_M/Stone_Medium_Flat.prefab",
-        };
+        // WO-1632: the pack root, the tree/rock palettes, the polar-ring placement math
+        // and the graceful-miss instantiate now live in ArenaBoundaryRing (same assembly),
+        // shared with RaidBaseGenerator's arena boundary. The RNG draw order is unchanged,
+        // so this venue's saved layout is identical and needs no re-bake.
+        private static string[] TreePaths => ArenaBoundaryRing.TreePaths;
+        private static string[] RockPaths => ArenaBoundaryRing.RockPaths;
+
         private static readonly string[] ShrubPaths =
         {
             "Trees_M/Shrub.prefab",
@@ -201,57 +193,20 @@ namespace DeNelle.Editor
         //  as PREFABS (colliders intact → they block movement + LoS) with a graceful
         //  primitive fallback when the polyperfect pack isn't imported. Deterministic via
         //  the shared seeded rng so a rebuild reproduces the layout.
+        //
+        //  WO-1632: the BODY moved to ArenaBoundaryRing.PlacePolarRing so the raid arena
+        //  boundary reuses this exact vocabulary instead of copying it. The RNG draw order
+        //  (jx, jz, prefab index, yaw, scale) is preserved there byte-for-byte, so the
+        //  saved SiegeArena venue layout is unchanged. This wrapper is kept so the four
+        //  cover-ring call sites above read the same as they always did.
         // =====================================================================
         private static void PlaceCoverRing(
             Transform parent, System.Random rng, float radius, int count, float jitter,
             string[] prefabRelPaths, string label, ref int placedCounter,
             float scaleMin, float scaleMax)
         {
-            for (int i = 0; i < count; i++)
-            {
-                float ang = (i / (float)count) * Mathf.PI * 2f;
-                float jx = (float)(rng.NextDouble() * 2.0 - 1.0) * jitter;
-                float jz = (float)(rng.NextDouble() * 2.0 - 1.0) * jitter;
-                var pos = new Vector3(Mathf.Cos(ang) * radius + jx, 0f, Mathf.Sin(ang) * radius + jz);
-
-                string rel = prefabRelPaths[rng.Next(prefabRelPaths.Length)];
-                var go = InstantiateCover(rel, parent);
-                go.transform.localPosition = pos;
-                go.transform.localRotation = Quaternion.Euler(0f, (float)(rng.NextDouble() * 360.0), 0f);
-                float s = Mathf.Lerp(scaleMin, scaleMax, (float)rng.NextDouble());
-                go.transform.localScale *= s;
-                go.name = $"{label}_{i}";
-                placedCounter++;
-            }
-        }
-
-        // Load + instantiate a cover prefab from the polyperfect Nature pack. Graceful:
-        // warn (not error) + return a primitive fallback (a small collidered cylinder so
-        // the cover still blocks movement/LoS) when the pack isn't imported.
-        private static GameObject InstantiateCover(string relPath, Transform parent)
-        {
-            string path = NatureRoot + relPath;
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            if (prefab != null)
-            {
-                var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-                inst.transform.SetParent(parent, false);
-                // Ensure the cover actually blocks — add a collider if the prefab lacks one.
-                if (inst.GetComponentInChildren<Collider>() == null)
-                {
-                    var cap = inst.AddComponent<CapsuleCollider>();
-                    cap.radius = 0.6f;
-                    cap.height = 3f;
-                    cap.center = new Vector3(0f, 1.5f, 0f);
-                }
-                return inst;
-            }
-
-            Debug.LogWarning("[ProceduralSiegeArenaBuilder] Missing polyperfect nature prefab (primitive fallback): " + path);
-            var fallback = GameObject.CreatePrimitive(PrimitiveType.Cylinder); // keeps a CapsuleCollider → blocks
-            fallback.transform.SetParent(parent, false);
-            fallback.transform.localScale = new Vector3(1.2f, 1.5f, 1.2f);
-            return fallback;
+            ArenaBoundaryRing.PlacePolarRing(parent, rng, radius, count, jitter, prefabRelPaths,
+                                             label, ref placedCounter, scaleMin, scaleMax, LogTag);
         }
 
         // =====================================================================

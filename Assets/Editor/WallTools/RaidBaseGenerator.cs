@@ -42,6 +42,14 @@
 // The builder logs the worst-case concurrency, the resulting DPS and the hero
 // time-to-death at 100 HP (base) and 195 HP (geared).
 //
+// WO-1632: EVERY raid base now also carries an EXTERIOR ARENA BOUNDARY - a square ring
+// of landscape pieces at +/-ArenaBoundaryHalfExtent, i.e. the edge of the 140 m plane
+// itself, NOT the edge of the base. Owner 2026-09-10: "exterior walls around entire
+// arena" / "similar strategy as we used in battle arena". It is the siege venue's own
+// OuterBoundary_Ring vocabulary, shared through DeNelle.Editor's ArenaBoundaryRing. It
+// has NO gate, it is not part of the layered defense, and it does not touch the base's
+// Outer / Keep rings, the spire fit, EnsureUpright or garrison HP.
+//
 // STILL TRUE FROM BEFORE: tier-driven wall art via WallTierData, "Watchtower" in the
 // name so GarrisonTurretArmer can still arm anything this builder did not stat,
 // BossSpawn marker for RaidGarrisonSpawner, idempotent roots, LogWarning + fall back
@@ -82,6 +90,108 @@ namespace DeNelle.Editor
         /// expressed against THIS. If RaidNavBake.GroundScale changes, change this.
         /// </summary>
         public const float MapHalfExtent = 70f;
+
+        // -- ARENA EXTERIOR BOUNDARY (WO-1632) ---------------------------------
+        // Owner directive 2026-09-10, verbatim: "exterior walls around entire arena", then
+        // "similar strategy as we used in battle arena". The battle arena frames its venue
+        // with ProceduralSiegeArenaBuilder's OuterBoundary_Ring - large polyperfect rocks,
+        // colliders ON, "so it reads as a wall". The same vocabulary now frames every raid
+        // arena, through the shared ArenaBoundaryRing helper.
+
+        /// <summary>
+        /// How far a boundary piece may hang PAST the RaidGround plane edge. The pieces are
+        /// static scenery and the plane's own edge is not walkable, so a small overhang is
+        /// cosmetic - but it is bounded, not unlimited.
+        /// </summary>
+        private const float ArenaBoundaryEdgeTolerance = 1.2f;
+
+        /// <summary>
+        /// THE BAND. The ring must live entirely between two hard lines:
+        /// <list type="bullet">
+        /// <item>INNER: <c>MapHalfExtent - StagingPlaneEdgeMargin</c> - the furthest a staging
+        /// marker can ever sit, because <see cref="PlaceStagingMarker"/>'s diagonal fallback
+        /// (:503-528) clamps its leg at exactly that per axis.</item>
+        /// <item>OUTER: <c>MapHalfExtent + ArenaBoundaryEdgeTolerance</c>.</item>
+        /// </list>
+        /// The ring LINE is the band's midpoint and <see cref="ArenaBoundaryBandHalf"/> is
+        /// half its width; a piece reaching more than that inward or outward breaks it.
+        /// <para/>
+        /// ⚠ THIS REPLACED A CHOSEN INSET, AND THE BAKE IS WHY. WO-1632 first authored
+        /// <c>ArenaBoundaryInset = 1.5f</c> with the inward reach priced at
+        /// <c>scaleMax / 2</c> - i.e. assuming a 1 m mesh. The 2026-09-10 bake measured the
+        /// palette at 3.38 m across, so the 3.4x scale produced an 11.5 m piece reaching
+        /// 5.75 m inward and <see cref="AssertBoundaryContainsStaging"/> fired on all three
+        /// configs (inner face 62.8 m vs a 66.0 m clamp). The instrument caught it; the fix
+        /// is to make the SCALE follow the band instead of the band follow the scale.
+        /// </summary>
+        private const float ArenaBoundaryBandHalf =
+            (StagingPlaneEdgeMargin + ArenaBoundaryEdgeTolerance) * 0.5f;
+
+        /// <summary>Square half-extent of the exterior boundary ring = the band's midpoint.</summary>
+        public const float ArenaBoundaryHalfExtent =
+            MapHalfExtent + (ArenaBoundaryEdgeTolerance - StagingPlaneEdgeMargin) * 0.5f;
+
+        /// <summary>
+        /// Share of the band the widest piece may occupy.
+        /// <para/>
+        /// ⚠ IT MUST LEAVE ROOM FOR THE JITTER **AND** THE SLACK, and the second bake is why.
+        /// At 0.85 the widest piece reached 2.21 m of a 2.60 m half-band and the jitter bound
+        /// then spent the remaining 0.39 m exactly, so <c>reach + jitter == bandHalf</c> and the
+        /// inner face landed EXACTLY on the 66.0 m staging clamp - the assert fired on all three
+        /// configs a second time, on a ring that was otherwise built to spec. Zero slack is not a
+        /// pass. The live invariant is
+        /// <c>bandHalf*fill + jitter + ArenaBoundaryContainmentSlack &lt;= bandHalf</c>, which at
+        /// slack 0.3 over a 2.60 m half-band caps the fill at ~0.88 before the jitter gets
+        /// anything at all; 0.70 leaves the jitter ~0.48 m and both faces a full 0.30 m.
+        /// </summary>
+        private const float ArenaBoundaryBandFill = 0.70f;
+
+        /// <summary>
+        /// The margin the ring must keep from BOTH band edges - the staging clamp inward and the
+        /// plane-edge tolerance outward. Named in the assert's own message so a failure says how
+        /// much room it wanted, not just that it wanted some. Never zero: an inner face that only
+        /// EQUALS the clamp is a marker sitting on a boulder.
+        /// </summary>
+        private const float ArenaBoundaryContainmentSlack = 0.3f;
+
+        /// <summary>
+        /// Extra room the LAYOUT reserves ON TOP of <see cref="ArenaBoundaryContainmentSlack"/>,
+        /// so the designed clearance EXCEEDS the required clearance instead of equalling it.
+        /// <para/>
+        /// ⚠ THIS EXISTS BECAUSE THE ASSERT FIRED THREE TIMES, AND THE THIRD WAS PURE ROUNDING.
+        /// Bake 3 built the ring to spec and reported "0.30m of clearance where
+        /// ArenaBoundaryContainmentSlack requires 0.30m" - the reserve made the clearance land
+        /// EXACTLY on the requirement, so `68.6f - 1.82f - 0.48f - 66.0f = 0.2999...` lost a
+        /// strict compare to float error. The lesson is not "add an epsilon" (that is fix 2, and
+        /// it is necessary but not sufficient): **a design that aims at the limit will keep
+        /// touching it.** The reserve now aims 0.05 m PAST the limit, so the assert is a real
+        /// test with room on both sides rather than a coin flip on the last bit.
+        /// </summary>
+        private const float ArenaBoundaryContainmentHeadroom = 0.05f;
+
+        /// <summary>Tolerance for the containment compares - float error must never be a FAIL.</summary>
+        private const float ArenaBoundaryContainmentEpsilon = 0.001f;
+
+        /// <summary>Ring root object name (mirrors the siege venue's "OuterBoundary_Ring").</summary>
+        private const string ArenaBoundaryRootName = "ArenaBoundary_Ring";
+        /// <summary>Root name used INSTEAD when containment fails - the scene carries the finding.</summary>
+        private const string ArenaBoundaryUnsafeName = "ArenaBoundary_Ring_CONTAINMENT_FAIL";
+        /// <summary>Per-piece name prefix - what the regression greps for in the baked scene.</summary>
+        private const string ArenaBoundaryPieceLabel = "ArenaBoundary";
+
+        /// <summary>Centre-to-centre stride as a fraction of the smallest piece footprint (&lt;1 = pieces overlap).</summary>
+        private const float ArenaBoundaryOverlap = 0.7f;
+        /// <summary>CAP on the symmetric radial scatter; the band fit lowers it as needed.</summary>
+        private const float ArenaBoundaryRadialJitterCap = 1.2f;
+        /// <summary>
+        /// Boulder scale CEILING, not a promise. The band fit shrinks it to whatever the
+        /// measured mesh needs - on the 09-10 palette (3.38 m wide) the applied scale lands
+        /// near 1.3, which is still a ~4.4 m boulder.
+        /// </summary>
+        private const float ArenaBoundaryScaleMin = 2.2f;
+        private const float ArenaBoundaryScaleMax = 3.4f;
+        /// <summary>Cost ceiling per side. When it binds the stride widens and the build log says so.</summary>
+        private const int ArenaBoundaryMaxPerSide = 100;
 
         /// <summary>Widest a single wall panel may be stretched before the builder adds panels instead.</summary>
         private const float MaxSegmentWidth = 3.0f;
@@ -421,6 +531,13 @@ namespace DeNelle.Editor
             //    PROVEN outside every turret's reach and every defender's awareness radius.
             var staging = PlaceStagingMarker(root, def, radius, towerReport.MaxReach);
 
+            // -- ARENA EXTERIOR BOUNDARY (WO-1632). Built LAST so it is measured against the
+            //    markers that already exist, and asserted to contain both of them.
+            var boundary = BuildArenaBoundary(root, seed);
+            if (!AssertBoundaryContainsStaging(def != null ? def.id : root.name, staging.Position,
+                                               heroStart.transform.localPosition, boundary))
+                MarkBoundaryUnsafe(root);
+
             RaidBaseDresser.Dress(def, root, new RaidBaseDresser.LayoutContext
             {
                 Radius = radius,
@@ -444,7 +561,9 @@ namespace DeNelle.Editor
                 $"@{HeroBaseHp:F0}HP / {(towerReport.WorstDps > 0.01f ? (HeroGearedHp / towerReport.WorstDps).ToString("F1") : "inf")}s " +
                 $"@{HeroGearedHp:F0}HP. BossSpawn @ -{bossOffset:F1}m, hero entry @ -{radius + 8f:F1}m, " +
                 $"STAGING @ {staging.Position} ({staging.Distance:F1}m out, {staging.Clearance:F1}m of clear air, " +
-                $"{(staging.Safe ? "SAFE" : "*** UNSAFE - see the error above ***")}).");
+                $"{(staging.Safe ? "SAFE" : "*** UNSAFE - see the error above ***")}), " +
+                $"ARENA BOUNDARY +/-{ArenaBoundaryHalfExtent:F1}m: {boundary.Placed} landscape piece(s), " +
+                $"{boundary.PerSide}/side @ {boundary.Stride:F2}m.");
         }
 
         // =====================================================================
@@ -600,10 +719,29 @@ namespace DeNelle.Editor
                                      "Falling back to a URP-safe primitive obelisk.");
                 }
             }
+            else if (entry == null)
+            {
+                // ⛔ NO ROW AT ALL - a DIFFERENT failure from "row exists, path blank", and the two
+                //    were one message until 2026-09-10 (WO-1619). That single line cost a
+                //    diagnosis: the Forsaken Camp bake printed "has no visualPrefabPath in
+                //    structures-catalog.json" for 'tower_ruined_watchtower' when the true state was
+                //    that scene-configs.json had been updated and structures-catalog.json had NOT,
+                //    so the row did not exist in either canonical twin. The message named the wrong
+                //    half of the data and sent the hunt at LoadVisual's search order, which was
+                //    working perfectly. A warning that cannot tell "absent" from "blank" is not
+                //    instrumentation (CLAUDE.md sec.12).
+                Debug.LogWarning($"[RaidBaseGenerator] centralBuilding '{catalogId}' has NO ROW in " +
+                                 "structures-catalog.json (the id is not in the catalog at all - check BOTH " +
+                                 "canonical twins, Assets/Resources/Data/Canonical/ and " +
+                                 "Assets/StreamingAssets/Data/Canonical/; a scene-configs.json re-point whose " +
+                                 "matching catalog row was never added lands exactly here) - falling back to a " +
+                                 "URP-safe primitive obelisk.");
+            }
             else
             {
-                Debug.LogWarning($"[RaidBaseGenerator] centralBuilding '{catalogId}' has no visualPrefabPath in " +
-                                 "structures-catalog.json - falling back to a URP-safe primitive obelisk.");
+                Debug.LogWarning($"[RaidBaseGenerator] centralBuilding '{catalogId}' HAS a structures-catalog row " +
+                                 "but that row authors no visualPrefabPath - falling back to a URP-safe " +
+                                 "primitive obelisk.");
             }
 
             if (go == null) go = BuildFallbackObelisk(targetHeight);
@@ -1044,6 +1182,30 @@ namespace DeNelle.Editor
             return DefaultMageTowerId;
         }
 
+        /// <summary>
+        /// The catalog's OWN art path for a structure id, or null when the id has no row (or the
+        /// row authors no path). WO-1619, 2026-09-10.
+        ///
+        /// `internal` for the same reason <see cref="IsAuthoredSiegeMachine"/> is - so
+        /// RaidBaseDresser.MapCatalogArt can reach the SAME source of truth the generator itself
+        /// measures (<see cref="PlaceSpire"/> reads `entry.visualPrefabPath`) instead of keeping a
+        /// second, hand-maintained id-to-token table. That table answered only four substrings, so
+        /// the owner's 2026-09-10 ruled spire art (`tower_ruined_watchtower`) fell through it to
+        /// the raw id, failed to load, and was silently replaced with ArcaneSpire_1 - the dresser
+        /// undoing the generator's own fitted model. One owner for "what art does this id carry",
+        /// and it is the catalog.
+        ///
+        /// The value is returned VERBATIM, including its "Structures/" prefix:
+        /// RaidBaseDresser.LoadVisual strips that prefix itself before searching the KayKit /
+        /// Synty / StructureContent roots, so the same string serves the editor bake and the
+        /// runtime StructureAssetLoader address without a second spelling.
+        /// </summary>
+        internal static string CatalogArtPath(string catalogId)
+        {
+            var entry = FindStructure(catalogId);
+            return entry != null ? entry.visualPrefabPath : null;
+        }
+
         /// <summary>URP-safe primitive turret (never a default-material primitive).</summary>
         private static GameObject BuildFallbackTurret()
         {
@@ -1176,6 +1338,198 @@ namespace DeNelle.Editor
                 SegmentWidth = segW,
                 GateWidth = gateWidth,
             };
+        }
+
+        // =====================================================================
+        //  ARENA EXTERIOR BOUNDARY (WO-1632) - the ring that closes the whole plane.
+        //
+        //  Owner, 2026-09-10: "exterior walls around entire arena" / "similar strategy as
+        //  we used in battle arena". This is the SAME vocabulary the siege venue uses to
+        //  frame itself (ProceduralSiegeArenaBuilder's OuterBoundary_Ring: large
+        //  polyperfect rocks, colliders ON), placed on a SQUARE because the raid ground
+        //  plane is a 140 m square and the staging marker's diagonal fallback deliberately
+        //  parks in its CORNERS - no circle that fits the plane could contain those points.
+        //
+        //  It carries NO GATE. It is not part of the base's layered defense; it is the edge
+        //  of the world. The base's own Outer / Keep rings are untouched.
+        //
+        //  NAVMESH: RaidNavBake marks every renderer NavigationStatic and bakes, so vertical
+        //  geometry carves out (RaidNavBake.cs:55-64). The ring therefore ends the walkable
+        //  area at itself with no extra wiring - and because the ground plane is unchanged,
+        //  BakeAll still reports a walkable floor for every raid scene.
+        // =====================================================================
+        private static ArenaBoundaryRing.BoundaryReport BuildArenaBoundary(Transform root, int seed)
+        {
+            // Clear BOTH names - a prior run that failed containment left the UNSAFE root, and
+            // leaving it behind would red the suite forever on a scene that is now clean.
+            var prior = root.Find(ArenaBoundaryRootName);
+            if (prior != null) Object.DestroyImmediate(prior.gameObject);
+            var priorUnsafe = root.Find(ArenaBoundaryUnsafeName);
+            if (priorUnsafe != null) Object.DestroyImmediate(priorUnsafe.gameObject);
+
+            var ringRoot = new GameObject(ArenaBoundaryRootName);
+            ringRoot.transform.SetParent(root, false);
+            ringRoot.transform.localPosition = Vector3.zero;
+
+            var rng = new System.Random(seed ^ 0x5A17);   // own stream: the ring never shifts turret/prop seeds
+            var report = ArenaBoundaryRing.PlaceSquarePerimeter(
+                ringRoot.transform, rng, ArenaBoundaryHalfExtent, ArenaBoundaryBandHalf,
+                ArenaBoundaryBandFill, ArenaBoundaryContainmentSlack, ArenaBoundaryContainmentHeadroom,
+                ArenaBoundaryOverlap, ArenaBoundaryRadialJitterCap,
+                ArenaBoundaryRing.RockPaths, ArenaBoundaryPieceLabel,
+                ArenaBoundaryScaleMin, ArenaBoundaryScaleMax, ArenaBoundaryMaxPerSide,
+                "[RaidBaseGenerator]");
+
+            // Same line shape as the wall rings above, so one grep reads every ring in a bake.
+            string gapText = report.WorstGap <= 0f
+                ? ((-report.WorstGap).ToString("F2") + "m overlap")
+                : ("*** " + report.WorstGap.ToString("F2") + "m GAP ***");
+            string clampText = report.Clamped
+                ? (" CLAMPED at " + ArenaBoundaryMaxPerSide + "/side")
+                : "";
+            string scaleText = report.ScaleFitted
+                ? (" scale " + ArenaBoundaryScaleMax.ToString("F2") + "->" + report.AppliedScaleMax.ToString("F2") +
+                   " band-fitted")
+                : (" scale " + report.AppliedScaleMax.ToString("F2"));
+            Debug.Log($"[RaidBaseGenerator] ring '{ArenaBoundaryRingName}': target +/-{ArenaBoundaryHalfExtent:F1}m -> " +
+                      $"+/-{ArenaBoundaryHalfExtent:F1}m, {report.PerSide} piece(s)/side @ {report.Stride:F2}m " +
+                      $"(piece {report.PieceFootprint:F2}m, {gapText}{clampText},{scaleText}, reach " +
+                      $"{report.InwardReach:F2}m of {ArenaBoundaryBandHalf:F2}m band, jitter " +
+                      $"+/-{report.RadialJitter:F2}m), kit landscape-rock " +
+                      $"(0 watchtowers, {report.Placed} boundary pieces), gates=[none].");
+
+            if (report.WorstGap > 0f)
+                Debug.LogWarning("[RaidBaseGenerator] the arena boundary ring is NOT continuous - " +
+                                 $"{report.WorstGap:F2}m of open ground between pieces. Lower " +
+                                 "ArenaBoundaryOverlap or raise ArenaBoundaryMaxPerSide / " +
+                                 "ArenaBoundaryScaleMin. This is a finding about the ring's density, " +
+                                 "not a number to soften.");
+
+            return report;
+        }
+
+        /// <summary>Ring label used in the build log (kept next to the other ring names).</summary>
+        private const string ArenaBoundaryRingName = "Arena";
+
+        /// <summary>
+        /// PROVE, at every build, that the ring did not fence the player's own markers out.
+        /// The staging marker and the hero entry point must both sit inside the ring's inner
+        /// face. This never adjusts anything - a violation is a LAYOUT finding and is logged
+        /// as an error, the same discipline PlaceStagingMarker uses (:526-538).
+        /// <para/>
+        /// The faces are computed from the MEASURED widest piece the palette can produce
+        /// (<c>BoundaryReport.InwardReach</c>) PLUS the scatter actually applied
+        /// (<c>RadialJitter</c>) - never from the scale multiplier alone. Pricing a 3.4x scale
+        /// as 1.7 m of reach assumes a 1 m mesh; the 2026-09-10 bake measured 3.38 m and this
+        /// assert fired on all three configs, which is exactly what it is for.
+        /// <para/>
+        /// Returns FALSE on any violation, and the caller then renames the ring root
+        /// (<see cref="MarkBoundaryUnsafe"/>) so the finding survives into the saved scene.
+        /// </summary>
+        private static bool AssertBoundaryContainsStaging(string id, Vector3 staging, Vector3 heroStart,
+                                                          ArenaBoundaryRing.BoundaryReport boundary)
+        {
+            // Pieces are centred on the ring line and scatter symmetrically within the band,
+            // so half of the widest piece is the whole inward reach.
+            float inwardReach = boundary.InwardReach + boundary.RadialJitter;
+            float innerFace = ArenaBoundaryHalfExtent - inwardReach;
+            float outerFace = ArenaBoundaryHalfExtent + inwardReach;
+            float clampCorner = MapHalfExtent - StagingPlaneEdgeMargin;   // the diagonal fallback's own clamp
+            float edgeLimit = MapHalfExtent + ArenaBoundaryEdgeTolerance;
+            bool safe = true;
+
+            // STRICT, and the required margin is NAMED. An inner face that merely EQUALS the
+            // clamp is a staging marker sitting on a boulder, so the test is
+            // innerFace >= clampCorner + slack, not innerFace > clampCorner.
+            float innerSlack = innerFace - clampCorner;
+            float outerSlack = edgeLimit - outerFace;
+
+            // The compare carries an EXPLICIT epsilon: float error must never read as a FAIL.
+            // Bake 3 lost this by 1e-7 on a ring that was built exactly to spec.
+            float required = ArenaBoundaryContainmentSlack - ArenaBoundaryContainmentEpsilon;
+
+            if (innerSlack < required)
+            {
+                safe = false;
+                Debug.LogError($"[RaidBaseGenerator] ARENA BOUNDARY ASSERT: the staging clamp reaches " +
+                               $"+/-{clampCorner:F3}m per axis and the boundary ring's inner face is at " +
+                               $"+/-{innerFace:F3}m (ring +/-{ArenaBoundaryHalfExtent:F3}m minus a MEASURED " +
+                               $"{boundary.InwardReach:F3}m reach + {boundary.RadialJitter:F3}m jitter). That " +
+                               $"is {innerSlack:F3}m of clearance against a required " +
+                               $"{ArenaBoundaryContainmentSlack:F3}m " +
+                               $"(epsilon {ArenaBoundaryContainmentEpsilon:F3}m, so the test is " +
+                               $"{innerSlack:F3} < {required:F3}) - a staging marker would sit on, or inside, " +
+                               "the ring. The LAYOUT is supposed to reserve slack + " +
+                               $"ArenaBoundaryContainmentHeadroom ({ArenaBoundaryContainmentHeadroom:F3}m) = " +
+                               $"{ArenaBoundaryContainmentSlack + ArenaBoundaryContainmentHeadroom:F3}m, so if " +
+                               "this fires the fit is genuinely wrong: lower ArenaBoundaryBandFill (fill + " +
+                               "jitter + slack + headroom must fit the half-band) or lower " +
+                               "ArenaBoundaryRadialJitterCap. Never raise StagingPlaneEdgeMargin, which would " +
+                               "move the authored staging positions.");
+            }
+            else if (outerSlack < required)
+            {
+                safe = false;
+                Debug.LogError($"[RaidBaseGenerator] ARENA BOUNDARY ASSERT: the ring's outer face is at " +
+                               $"+/-{outerFace:F3}m against a {edgeLimit:F3}m edge limit " +
+                               $"(plane {MapHalfExtent:F0}m + {ArenaBoundaryEdgeTolerance:F1}m cosmetic " +
+                               $"tolerance) = {outerSlack:F3}m of clearance against a required " +
+                               $"{ArenaBoundaryContainmentSlack:F3}m (epsilon " +
+                               $"{ArenaBoundaryContainmentEpsilon:F3}m, so the test is {outerSlack:F3} < " +
+                               $"{required:F3}). Pieces would hang off the world. Lower ArenaBoundaryBandFill.");
+            }
+            else
+            {
+                Debug.Log($"[RaidBaseGenerator] arena boundary containment for '{id}': inner face " +
+                          $"+/-{innerFace:F3}m (measured reach {boundary.InwardReach:F3}m + jitter " +
+                          $"{boundary.RadialJitter:F3}m) vs staging clamp +/-{clampCorner:F3}m = " +
+                          $"{innerSlack:F3}m of slack; outer face +/-{outerFace:F3}m vs edge limit " +
+                          $"+/-{edgeLimit:F3}m = {outerSlack:F3}m of slack; both clear the required " +
+                          $"{ArenaBoundaryContainmentSlack:F3}m by design headroom " +
+                          $"{ArenaBoundaryContainmentHeadroom:F3}m.");
+            }
+
+            float sMax = Mathf.Max(Mathf.Abs(staging.x), Mathf.Abs(staging.z));
+            if (sMax + required > innerFace)
+            {
+                safe = false;
+                Debug.LogError($"[RaidBaseGenerator] ARENA BOUNDARY ASSERT for '{id}': the staging marker at " +
+                               $"{staging} sits {sMax:F2}m out on its widest axis against a " +
+                               $"{innerFace:F2}m inner face - {innerFace - sMax:F2}m of clearance where " +
+                               $"{ArenaBoundaryContainmentSlack:F2}m is required. The player would deploy on " +
+                               "top of, or outside, the arena boundary.");
+            }
+
+            float hMax = Mathf.Max(Mathf.Abs(heroStart.x), Mathf.Abs(heroStart.z));
+            if (hMax + required > innerFace)
+            {
+                safe = false;
+                Debug.LogError($"[RaidBaseGenerator] ARENA BOUNDARY ASSERT for '{id}': the hero entry marker at " +
+                               $"{heroStart} sits {hMax:F2}m out against a {innerFace:F2}m inner face - " +
+                               $"{innerFace - hMax:F2}m of clearance where {ArenaBoundaryContainmentSlack:F2}m " +
+                               "is required. That is a baseRadius too large for this plane - see the radius " +
+                               "clamp above.");
+            }
+
+            return safe;
+        }
+
+        /// <summary>
+        /// Name the ring root so a containment failure SURVIVES INTO THE SAVED SCENE.
+        /// <para/>
+        /// A `Debug.LogError` in a bake log is only a finding while someone is reading that
+        /// log; the scene is the artifact the player loads and the artifact the suite reads.
+        /// Renaming the root makes `RaidArenaShapeRegression` Case 6 red on the shipped
+        /// scene, with no log parsing, exactly as it reds on a MISSING ring.
+        /// </summary>
+        private static void MarkBoundaryUnsafe(Transform root)
+        {
+            var ring = root != null ? root.Find(ArenaBoundaryRootName) : null;
+            if (ring == null) return;
+            ring.gameObject.name = ArenaBoundaryUnsafeName;
+            Debug.LogError($"[RaidBaseGenerator] the arena boundary root is renamed to " +
+                           $"'{ArenaBoundaryUnsafeName}' so the failure is carried by the SCENE, " +
+                           "not only by this log. The suite reds on it until the ring is rebuilt clean.");
         }
 
         private static string GatesToStr(bool[] gateSides)
@@ -1589,9 +1943,16 @@ namespace DeNelle.Editor
                     courtTowers++;
             }
 
+            // WO-1632: "exterior walls around entire arena" is EVERY raid base, the parked
+            // flagship included. BuildAllRaidScenes does not rebake Iron Bastion (it is not a
+            // scene-config), so this only lands when the menu item / Build() is run.
+            var boundary = BuildArenaBoundary(root, StableHash(RootName));
+
             Debug.Log($"[RaidBaseGenerator] '{RootName}': OUTER {OuterTier} (gate S, +/-{outer.HalfExtent:F1}m) + " +
                       $"KEEP {InnerTier} (gate N, +/-{inner.HalfExtent:F1}m) + BossSpawn@centre + " +
-                      $"{courtTowers} court towers. Funnel: cross the courtyard S->N under crossfire.");
+                      $"{courtTowers} court towers + ARENA BOUNDARY +/-{ArenaBoundaryHalfExtent:F1}m " +
+                      $"({boundary.Placed} landscape piece(s)). " +
+                      "Funnel: cross the courtyard S->N under crossfire.");
         }
     }
 }
