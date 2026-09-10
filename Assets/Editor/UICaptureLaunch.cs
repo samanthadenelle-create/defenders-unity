@@ -8949,6 +8949,7 @@ namespace DeNelle.Editor
             {
                 GameObject host = null;
                 GameObject canvas = null;
+                GameObject placedStub = null;   // WO-1629 Step 1a — see the note at the Show() call
                 try
                 {
                     PanelManager.CloseAll();
@@ -8962,7 +8963,32 @@ namespace DeNelle.Editor
                     var browser = host.AddComponent<BuildCollectionBrowser>();
                     InvokePrivate(browser, "Awake");
                     InvokePrivate(browser, "OnEnable");
-                    browser.Show(_ => { });
+                    // WO-1629 Step 1a -- CAPTURE THE SCREEN THE PLAYER ACTUALLY GETS (EIGHT CARDS).
+                    // The live door passes BOTH callbacks (BuildPaletteUI.cs:345-347); this call
+                    // passed only the first, so BuildManagePlacedCard returned at its callback gate
+                    // (BuildCollectionBrowser.cs:428-434) and every BuildCollections_*.png ever
+                    // captured showed a SEVEN-card grid the player never sees. The cards are
+                    // children of one HorizontalLayoutGroup, so the missing card changed every
+                    // sibling's width too -- WO-1628's band was measured on the wrong frame.
+                    //
+                    // ⚠ THERE ARE **TWO** GATES, AND WO-1629 sec.1d NAMES ONLY THE FIRST. After the
+                    // callback check the builder also refuses when FindObjectsByType<PlacedStructure>
+                    // finds no LIVE body (BuildCollectionBrowser.cs:450-457 -- a card that closes the
+                    // browser onto a map with nothing selectable is a dead end). This capture places
+                    // nothing itself, and UICaptureLaunch.cs opens no scene of its own (grepped
+                    // 2026-09-10: no OpenScene/NewScene/LoadScene anywhere in this file), so whether
+                    // batchmode's open scene holds a live body is NOT PROVEN either way — and the
+                    // second gate's SKIPPED line has never appeared in a log, because the callback
+                    // gate above it always fired first. The stub below makes the count >= 1
+                    // regardless, so the gate passes whatever the scene holds. It is the
+                    // minimum honest fixture for the second gate: one empty marker component, no
+                    // catalog row, no art, never rendered -- it is only counted. PlacedStructure has
+                    // no [ExecuteAlways]/[ExecuteInEditMode] (grepped 2026-09-10, no match), so its
+                    // Start() -- and StorageStackView.Attach with it -- does not run in this
+                    // edit-mode capture. Destroyed in the finally below.
+                    placedStub = new GameObject("~UICapPlacedStub");
+                    placedStub.AddComponent<DeNelle.Village.PlacedStructure>();
+                    browser.Show(_ => { }, () => { });
                     Canvas.ForceUpdateCanvases();
                     canvas = GetPrivateFieldValue(browser, "_canvas") as GameObject;
                     if (canvas == null) return 0;
@@ -8979,6 +9005,8 @@ namespace DeNelle.Editor
                 {
                     if (canvas != null) UnityEngine.Object.DestroyImmediate(canvas);
                     if (host != null) UnityEngine.Object.DestroyImmediate(host);
+                    // WO-1629 Step 1a — the counted-only stub leaves the scene with the capture.
+                    if (placedStub != null) UnityEngine.Object.DestroyImmediate(placedStub);
                     PanelManager.CloseAll();
                 }
             });

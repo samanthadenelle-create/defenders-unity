@@ -1,6 +1,6 @@
 # WO-1629 - Build Collections: the Manage Placed card's caption is still authored as a fraction of the card, and no capture has ever rendered it
 
-**Status:** READY TO IMPLEMENT
+**Status:** BLOCKED - awaiting the eight-card capture; INSTRUMENTED step 1 (lane PLACED-CARD 2026-09-10)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1629 -> 1631 in the SAME edit, with WO-1630)
 **Silo / Lane:** Village / BuildMode UI (`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
 **Severity:** P2 felt-legibility, with a P2 evidence defect attached. The caption carries the longest
@@ -307,3 +307,164 @@ This lane owns this ticket. Its hand-back is incomplete until this file's `**Sta
 flipped and
 `WorkOrders/WORK_ORDER_1629_manage_placed_card_caption_is_still_a_fraction_and_has_never_been_rendered_in_any_capture.RESULT.md`
 is written, with both paths reported. The lead regenerates `BOARD.html`.
+
+---
+
+## INSTRUMENTED 2026-09-10 (lane PLACED-CARD — STEP 1 ONLY, EDIT-ONLY, no Unity/gate/commit)
+
+Step 1 is in the tree. **No band was authored, no anchor moved, no copy changed** — sec.4 forbids it
+before the numbers are read. Base: `5c5419513` (the WO-1629/1630 mint commit, newest on `dev`).
+
+### 1. What changed, file:line (post-edit numbers, all opened this session)
+
+**`Assets/Editor/UICaptureLaunch.cs`** — three edits, all inside `CaptureBuildCollections`
+(`:8946`), nothing else in the file touched (sec.7 / WO-1630 owns `:5825-5975`, untouched):
+
+- `:8952` — `GameObject placedStub = null;` declared beside the existing `host` / `canvas`.
+- `:8966-8987` — the note, the stub, and the call. `browser.Show(_ => { });` is now
+  `browser.Show(_ => { }, () => { })` (`:8987`), matching the live door at
+  `Assets/_Modules/Village/BuildMode/BuildPaletteUI.cs:345-347`.
+- `:9004-9005` — the stub is destroyed in the existing `finally`.
+
+**`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`** — three edits, instrumentation only:
+
+- `:129-139` — new private field `_subtitleProbes`, with the reason it exists instead of a second
+  parameter.
+- `:336-349` — `_subtitleProbes = subtitleProbes;` before `BuildManagePlacedCard(grid)` (`:341`,
+  spelling **unchanged**), cleared to `null` at `:349` immediately after `ReportSubtitleFit` (`:348`).
+- `:520-547` — inside `BuildManagePlacedCard`, after the existing `FitBlock` (`:519`), the caption is
+  pushed onto that list. Nothing above `:519` moved: the caption is still authored at `:514-518` with
+  the retired `new Vector2(.08f, .05f)` / `new Vector2(.92f, .21f)` pair, exactly as sec.1a describes.
+
+### 2. ⚠ CORRECTION TO THIS TICKET: sec.1d NAMES ONE GATE. THERE ARE TWO.
+
+`BuildManagePlacedCard` refuses in **two** places, and sec.1d (and the pin comment it quotes at
+`Assets/Editor/Regression/BuildCollectionPlayerRegression.cs:193-204`, which states the skip reason as
+the missing callback alone) records only the first:
+
+- `:450` `if (_managePlaced == null)` — the callback gate sec.1d quotes.
+- `:470-471` `int selectable = FindObjectsByType<PlacedStructure>(...).Length;` then
+  `if (selectable <= 0)` — **a card that closes the browser onto a map with nothing selectable is a
+  dead end**, so the builder refuses there too.
+
+`CaptureBuildCollections` builds a bare `~UICapBuildCollections` GameObject and places nothing itself,
+and `UICaptureLaunch.cs` opens no scene of its own —
+`grep -n "OpenScene\|NewScene\|LoadScene" Assets/Editor/UICaptureLaunch.cs` returned **no match** this
+session. **NOT PROVEN either way** is whether batchmode's open scene happens to hold a live
+`PlacedStructure`; the second gate's `SKIPPED` line has never appeared in any log, because the callback
+gate always fired first. What IS certain is that the second-callback edit alone would have left that
+count to chance on a screen the whole ticket depends on — and if it is zero, Step 1 silently produces
+a SEVEN-card grid and 21 grep lines, which sec.4 reads as "the card did not build".
+
+The minimum honest fixture is therefore one counted-only marker: `~UICapPlacedStub` with a bare
+`PlacedStructure` component (`UICaptureLaunch.cs:8985-8986`), destroyed in the `finally`. It is never
+rendered, carries no catalog row and no art — it exists solely to make the second gate's count 1.
+`PlacedStructure` carries **no** `[ExecuteAlways]` / `[ExecuteInEditMode]`
+(`grep -n "ExecuteAlways\|ExecuteInEditMode" Assets/_Modules/Village/BuildMode/PlacedStructure.cs`
+returned no match, this session), so its `Start()` — and `StorageStackView.Attach` with it
+(`PlacedStructure.cs:26-31`) — does not run in this edit-mode capture.
+
+**Step 3 must fix the pin comment too.** `BuildCollectionPlayerRegression.cs:193-204` will be rewritten
+anyway; its stated skip reason is incomplete and should name both gates.
+
+### 3. The grep the lead runs, and the ONLY number that licenses Step 2
+
+    tr -d '\000' < Builds/<capture-log> | grep -a "Flow:Build" | grep -a subtitle | wc -l
+
+**Expected: exactly 24** = 8 cards x 3 aspects (1920x1080, 2340x1080, 2670x1200). The seven-card frame
+returned 21.
+
+Exactly **two** emitted strings in the tree contain `subtitle='`, verified by
+`grep -n "subtitle='" Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs` this session:
+`:330` (the seven category probes, prefix unchanged) and `:540` (the new one). Both are emitted from the
+single `ReportSubtitleFit` pass (`:348`), so a pre-layout twin cannot appear.
+
+**The Manage Placed line's exact emitted prefix** (`:540-541`):
+
+    collection=manage-placed card=ManagePlacedCard subtitle='Move, upgrade or sell anything already built.'
+
+It deliberately does **not** rebuild `"collection=" + c.CollectionId + " affordable="`, the source
+literal pinned by `Assets/Editor/Regression/BuildAffordabilityWordsRegression.cs:67`. Each of the 24
+lines then carries the same fields `ReportSubtitleFit` already emits: `bandPx`, `cardPx`, `gridPx`,
+`fontSize` (with floor and ceiling), `rendered` (lines + chars), `sourceLen`, `truncated`,
+`preferredHeightPx`, `modes`. That method's body was NOT edited by this lane.
+
+**Any count other than 24 = STOP, author nothing.**
+- **21** — the card did not build. Read the `SKIPPED` reason string to see WHICH gate fired: the
+  callback gate emits `... without a managePlaced callback ...` (`:452-454`), the body gate emits
+  `... zero live PlacedStructure bodies ...` (`:473-476`).
+- **42 / 48** — a pre-layout twin came back; the numbers are unresolved rects, not measurements.
+- **Anything between 22 and 27 that is not 24** — most likely the `Guard.Try("Build", "WO-1628 subtitle
+  fit measurement", ...)` wrapper emitted a `Fail`, whose own label contains the word `subtitle`, so it
+  is counted by the grep: a probe threw and the loop aborted part-way. Read that line first.
+- My verifying grep was the narrower `subtitle='`; the lead's is the bare word `subtitle`. The 21
+  baseline (7 x 3) is what proves no other emitted string carried the bare word before this lane, and
+  this lane added exactly one emitted string.
+
+**⚠ ONE THING THE LEAD SHOULD EXPECT AND NOT RCA AGAINST THIS LANE.** The capture's geometry audit
+(`UICaptureLaunch.cs:5825-5975`, WO-1630's region — untouched here) runs `LayoutOracle` over the
+captured frame, and this is the first frame in which the eighth card exists at all. Its finding kinds
+are `ButtonsOverlap`, `ButtonOverText` and `SubTouchFloorBand`
+(`Assets/_Modules/Core/UI/LayoutOracle.cs:56-64`, read this session). The eighth card is an interactive
+rect the audit has never seen, and it makes every sibling narrower, so a **NEW** finding on this frame
+is possible. Any such finding is **pre-existing geometry, not this lane's edit** — nothing was moved.
+Note also that the oracle has **no font-floor finding kind**, so the sub-floor
+`manageTitle.fontSizeMin = 15f` (WO-1626 sec.6, out of scope) cannot surface through it.
+
+### 4. What the 24 numbers must SHOW to license Step 2
+
+**The Manage Placed card (3 lines) — the number the whole ticket waits on** is
+`preferredHeightPx` against its `bandPx` HEIGHT at each aspect. `preferredHeight` is what TMP needs at
+`fontSizeMax` with wrapping on; the band is what it was given. `sourceLen` must read **45**.
+- `preferredHeightPx` > `bandPx` height at ANY aspect, or `truncated=True`, or
+  `rendered chars < sourceLen`, or `fontSize` reading below **21** → the fraction is short and Step 2
+  authors its **OWN** reference-px const hanging below the existing `.21f` top edge (sec.4 Step 2).
+  Do not stretch `CaptionBandPx` over two different strings; do not shorten the copy (sec.6).
+- All three clear it with room → the fraction happens to survive; Step 2 still re-points the anchor to
+  px so the pin can be tightened to zero (Step 3), and says so with the numbers.
+
+**The seven category cards (21 lines) — WHETHER WO-1628's 50 px STILL HOLDS ON THE NARROWER CARDS.**
+This is not assumed in either direction: the eight-card grid gives every sibling **less width**, and a
+narrower band makes a wrapped caption **taller**. `CaptionBandPx = 50f`
+(`BuildCollectionBrowser.cs:107`) was authored against a measured two-line requirement of **47.6** px —
+**2.4 px of headroom** — on the seven-card frame.
+- **50 px HOLDS** only if all 21 lines read `fontSize=21`, `truncated=False`,
+  `rendered chars == sourceLen`, **and** `preferredHeightPx <= 50`.
+- **Any** line reading `fontSize=20` (the auto-size floor, clamped up from the call site's dead `18f`
+  by `ElarionUiKitObsidian.cs:3083`), or `preferredHeightPx` above 50, means the narrower card pushed a
+  caption onto a third line. **WO-1628 re-opens inside Step 2** and `CaptionBandPx` is re-authored from
+  the new measurement — sec.5.3 makes that in scope here, and it contradicts what WO-1628's RESULT
+  predicted, so the hand-back must say so explicitly.
+- Also compare `cardPx` against WO-1628's recorded widths: it quantifies how much narrower the
+  eight-card grid made every card, which is the input both bands were sized from.
+
+### 5. Pins re-asserted as source text (this session, post-edit)
+
+- `PlacedStructureDoorRegression.cs:210` C4b — `BuildManagePlacedCard\s*\(\s*grid\s*\)` still matches
+  (1 occurrence, `:341`). **C4b was NOT re-pointed.** C4a (`private void BuildManagePlacedCard`, `:449`)
+  and C4c (`_managePlaced?.Invoke`) both still match.
+- `BuildCollectionPlayerRegression.cs:205-209` — `new Vector2(.08f, .05f)` occurs **exactly once**
+  (`:514`), which is what that pin requires *today*; `CaptionBandPx` and `-CaptionBandPx` both present.
+  Tightening it to zero is **Step 3**, and cannot happen before the caption is re-pointed.
+- `BuildAffordabilityWordsRegression.cs:67` — the WO-1411 literal is present and untouched.
+  `StructureCardVM.cs` was not opened for edit.
+- Read-only per sec.6 and NOT touched: `ElarionUiKitObsidian.cs`, `ElarionUiKit.cs`, the copy at `:514`,
+  `manageTitle.fontSizeMin = 15f`, the `.08f`/`.92f` fractions, WO-1623's footer constants.
+- A regression-wide grep for
+  `ReportSubtitleFit|SubtitleFitProbe|subtitleProbes|isTextTruncated|Show(_ =>|CaptureBuildCollections`
+  found **no pin** on the probe shape or on the capture's single-arg call — only a prose comment at
+  `BuildCollectionPlayerRegression.cs:183`. So neither edit can red a suite by shape.
+
+### 6. Quality gate
+
+`python tools/gate_brace.py Assets/Editor/UICaptureLaunch.cs Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`
+→ `GATE_BRACE_SUMMARY bad=0 of 2`. NUL scan of both files → 0 bytes. No Unity run, no compile gate, no
+commit (sec.7). Instrumentation stays in the code permanently (CLAUDE.md sec.12).
+
+### 7. Next
+
+**BLOCKED on the lead running the capture.** Step 2 and Step 3 — and the `.RESULT.md`, deferred by lead
+instruction because Step 1 alone does not close the ticket — begin once the 24 lines exist and are read.
+WO-1630 edits `UICaptureLaunch.cs:5825-5975` and is sequenced AFTER this lane; it must state which commit
+it rebased onto and re-confirm its own line numbers, since this lane added ~24 lines at `:8952-9005`,
+below its region.

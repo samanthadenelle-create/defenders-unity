@@ -126,6 +126,18 @@ namespace DeNelle.Village
         // state. Null when the host never supplied one (older Show overload).
         private Action _managePlaced;
 
+        // WO-1629 Step 1b — THE ROUTE THAT LEAVES THE PINNED CALL SHAPE ALONE.
+        // The Manage Placed caption has to reach the SAME post-layout probe pass the seven
+        // category captions go through (ReportSubtitleFit), because a band measured before the
+        // HorizontalLayoutGroup has run is zeros. The obvious edit — BuildManagePlacedCard(grid,
+        // probes) — is forbidden: PlacedStructureDoorRegression.cs:210 pins the call by the regex
+        // `BuildManagePlacedCard\s*\(\s*grid\s*\)` (C4b) and a second argument REDS it. So the
+        // builder reaches the list through this field instead. RenderCategories owns its lifetime:
+        // it is set to that render's fresh list immediately before the builder runs and cleared
+        // immediately after the report, so it is null outside that window and a later Refresh()
+        // can never push into a previous render's list.
+        private List<SubtitleFitProbe> _subtitleProbes;
+
         protected override string WorkspaceName => "Build Collections";
 
         protected override string TitleFor(BuildCollectionPage page) =>
@@ -321,10 +333,20 @@ namespace DeNelle.Village
                 });
             }
 
+            // WO-1629 Step 1b -- hand the builder the list it must push its own caption onto.
+            // Set here, not at construction, so the field is null everywhere except the few
+            // statements between this line and the report below. The call shape below is
+            // UNCHANGED and must stay so (PlacedStructureDoorRegression C4b, :210).
+            _subtitleProbes = subtitleProbes;
             BuildManagePlacedCard(grid);
             // WO-1628 Step 1 -- measured AFTER the Manage Placed card, because that card is an
             // additional child of the SAME grid and therefore changes every sibling's width.
+            // WO-1629 Step 1b -- and the list now carries EIGHT probes, not seven, so the seven
+            // category lines are re-emitted on the eight-card frame in the same pass that first
+            // measures the Manage Placed caption. That is the whole point: the category numbers
+            // WO-1628 authored 50 px from were taken on a grid with one card too few.
             ReportSubtitleFit(grid, subtitleProbes);
+            _subtitleProbes = null;
             BuildManageDefensesFooterLink();
         }
 
@@ -495,6 +517,34 @@ namespace DeNelle.Village
             manageSubtitle.color = ElarionUi.Parchment;
             manageSubtitle.raycastTarget = false;
             ElarionUiKit.FitBlock(manageSubtitle, 18f, 21f);
+            // =================================================================
+            //  WO-1629 Step 1b — INSTRUMENT ONLY. NOTHING ABOVE THIS LINE MOVED.
+            //
+            //  This caption is still authored as a FRACTION of the card (.05f-.21f, the pair
+            //  WO-1628 retired for the seven category cards) and it carries 45 characters
+            //  against their 22 — but its render has never been MEASURED, because the card has
+            //  never been built in a capture. So no band is authored here and no anchor is
+            //  touched: this push only makes the existing post-layout probe pass see it.
+            //  Reading preferredHeightPx against the resolved band height at all three aspects
+            //  is what licenses Step 2 (CLAUDE.md sec.11B / sec.12 — the requirement is a
+            //  number someone read, not an inference from the 22-character measurement).
+            //
+            //  ⚠ THE PREFIX IS DELIBERATELY DISTINCT AND DOES NOT REBUILD THE PINNED LITERAL.
+            //  BuildAffordabilityWordsRegression.cs:67 pins the source text
+            //  `"collection=" + c.CollectionId + " affordable="` as the WO-1411 proving trace;
+            //  this card has no CollectionId and no affordability count, so it identifies
+            //  itself by its card name instead. It still carries `subtitle='` so the lead's
+            //  narrowed grep (Flow:Build | subtitle) counts it — 8 cards x 3 passes = 24 lines,
+            //  where the seven-card frame returned 21.
+            // =================================================================
+            string managePrefix = "collection=manage-placed card=ManagePlacedCard subtitle='" +
+                                  manageSubtitle.text + "'";
+            _subtitleProbes?.Add(new SubtitleFitProbe
+            {
+                Prefix = managePrefix,
+                Label = manageSubtitle,
+                Card = manageCard.GetComponent<RectTransform>()
+            });
 
             FlowTrace.Step("BuildCollections",
                 $"Manage Placed card BUILT in the category grid over {selectable} selectable placed " +
