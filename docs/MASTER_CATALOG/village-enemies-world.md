@@ -445,6 +445,16 @@ The village wave loop owner. `[DisallowMultipleComponent]`.
   test: a live siege keeps the lock, an empty one completes. It **re-decides nothing** — the clear
   rule stays in `TickActiveWave` alone. It declines while `TownSuspension.SuspendedFor(this)`,
   because that freeze is deliberate and self-clears.
+  ⛔ **AND UNTIL WO-1694 (2026-09-10) THAT FREEZE NEVER ENGAGED FOR AN ARENA FIGHT.**
+  `TownSuspension.SuspendedFor`'s ACTIVE-SCENE EXEMPTION was unconditional, and the battle arena
+  stages 7 km away in the **same** scene — so `WaveManager`, living in that active scene, was exempted
+  and `BattleArena`'s hand-driven `Suspend` (`BattleArena.cs:516`, added for precisely this defect) was
+  a no-op. The village countdown ran through the whole fight and a wave spawned ~0.8 s after the win,
+  re-raising the battle-lock and failing the quiescence gate. The exemption is now scoped to a hold a
+  scene **CHANGE** created (the FLOOR); a floorless hand-driven hold covers the active scene too. Read
+  the rule at `Assets/_Modules/Core/TownSuspension.cs` (`SuspendedFor`), never off a doc; pinned by
+  `Assets/Editor/Regression/ArenaInSceneSuspensionRegression.cs`, evidence in
+  `WorkOrders/WORK_ORDER_1694_arena_win_leaves_battle_lock_held.md`.
   Two latch sources were closed with it: `OnDisable` now stands the phase down to Idle alongside the
   roster it already cleared (`"OnDisable/roster-cleared"`), and the `_heldSmartReinforcements` clear
   gate now releases on a **stale drain heartbeat** (`_reinforcementDrainUnscaled`,

@@ -37,6 +37,16 @@
 // ever touching the dungeon - it is not possible to freeze the room the player is
 // in through this API.
 //
+// ⛔ ...AND THAT RULE IS SCOPED TO A **SCENE** HOLD (WO-1694, 2026-09-10). The
+// active-scene test answers "did the player LEAVE this scene?", so it is honoured
+// only for the FLOOR - a hold a scene CHANGE created. A FLOORLESS, hand-driven
+// Suspend (the ARENA, staged 7 km away in the SAME scene) has no scene change to
+// reason about, and applying the exemption to it voided the caller entirely: the
+// village wave clock ticked through the whole arena fight and spawned a wave 0.7 s
+// after the win, which re-raised the battle-lock and failed the quiescence gate.
+// Proven on the owner's Seeker, 2026-09-10 15:20; the log line numbers are cited
+// on SuspendedFor. Pinned by Editor/Regression/ArenaInSceneSuspensionRegression.cs.
+//
 // THE SCENE IS A FLOOR, NOT A PEER FLAG (WO-1017, proven by F8 seq 2314): while the
 // active scene is off-hub it holds the town down, and an ad-hoc hold layered on top
 // (a BattleArena encounter staged INSIDE a dungeon) can only ever ADD. Its Resume
@@ -157,6 +167,34 @@ namespace DeNelle.Core
         /// returns false for them even at the height of a town suspension. It is
         /// structurally impossible to freeze the room the player is in through this API.
         ///
+        /// ⛔ AND IT IS EXEMPTION FROM A **SCENE** HOLD ONLY (WO-1694, 2026-09-10).
+        /// The exemption is the answer to ONE question - "did the player LEAVE this
+        /// scene?" - so it may only be applied to a hold that a scene CHANGE created,
+        /// i.e. the FLOOR (see ApplySceneBaseline). Applied to an ad-hoc, FLOORLESS
+        /// hold it answers a question nobody asked and silently voids the caller:
+        ///
+        ///   The ARENA stages 7 km away in the SAME scene, so there is no scene change
+        ///   and no floor. BattleArena drives Suspend() by hand for exactly that reason
+        ///   (BattleArena.cs:502-516, whose own comment says so). But WaveManager lives
+        ///   in that same active scene, so the exemption fired for it and the town's
+        ///   wave clock ran through the entire fight - the precise defect the hand-driven
+        ///   call was added to prevent, defeated one method away from the call.
+        ///
+        ///   PROVEN, owner's Seeker build 363866, 2026-09-10 15:20 session
+        ///   (Builds/device-frames/2026-09-10_1520_logcat.txt):
+        ///     L710344  town SUSPENDED (arena battle staged at ArenaCentre ...)
+        ///     L710750..L714808  [Flow:HUD] Countdown wave 1 cd19.8 ... cd8.0 ... cd0.8
+        ///                       -- the clock ticked every second THROUGH the fight
+        ///     grep "HELD at phase" over all 732k lines => ZERO. The SuspendAndResume
+        ///                       hold never once engaged for the arena.
+        ///     L714859  StartWave(1) -> 4 village enemies, 0.8s after the arena win's
+        ///                       clean BATTLE_SESSION_RELEASED at L714122 (holders=[none])
+        ///     L715193  BATTLE_QUIESCENCE_FAIL (arena win): battle-lock HELD by
+        ///                       WaveManager.OnEnable's probe. Nobody declared a win over
+        ///                       live enemies; a village wave landed on top of the win.
+        ///   The same-session CONTROL is the dungeon at L398282-L405463: a real scene
+        ///   change, so a floor, and NOT ONE countdown tick in that window.
+        ///
         /// A null owner, or an object with no valid scene (DontDestroyOnLoad singletons
         /// such as the region roamer spawner), is treated as TOWN-SIDE and suspended.
         /// That direction is deliberate: the failure mode of wrongly suspending a
@@ -171,8 +209,31 @@ namespace DeNelle.Core
             var scene = owner.scene;
             if (!scene.IsValid() || string.IsNullOrEmpty(scene.name)) return true;   // DDOL / unowned
 
-            // The player is standing here - never hold it still.
-            if (scene.handle == SceneManager.GetActiveScene().handle) return false;
+            if (scene.handle == SceneManager.GetActiveScene().handle)
+            {
+                // The player is standing here - never hold it still, PROVIDED the hold is
+                // the one this test can reason about: a scene the player walked out of.
+                if (_floorReason != null) return false;
+
+                // FLOORLESS HOLD: an ad-hoc Suspend with no scene change behind it. The
+                // player is elsewhere INSIDE this scene (the arena, 7 km away), so "same
+                // scene" no longer means "standing among these objects" and the exemption
+                // would void the only pause this case has. Hold it.
+                //
+                // Throttled to one line per 10s per reason: this runs from WaveManager.Update,
+                // and a per-frame trace here evicts the boot window out of the device logcat
+                // ring (FlowTrace.cs:293-300).
+                // _reason is reset to "none" by Resume, so during the return grace the hold has no
+                // reason left to name - say "return-grace" rather than print 'none' and read like a bug.
+                string who = _suspended ? _reason : "return-grace";
+                FlowTrace.Throttle("TownSuspend", "floorless-hold-covers-active-scene", 10f,
+                    $"floorless hold '{who}' is holding ACTIVE-scene owners too (grace " +
+                    $"{ReturnGraceRemaining:F1}s). There was no scene change, so the active-scene " +
+                    "exemption does not apply: the player is elsewhere INSIDE this scene and the " +
+                    "town clock must stand still. WO-1694 - before this, the arena's hand-driven " +
+                    "Suspend was silently voided here and the village wave clock ran the whole fight.");
+                return true;
+            }
 
             return true;
         }
@@ -205,9 +266,17 @@ namespace DeNelle.Core
             _suspended = true;
             _reason = r;
             _graceUntil = -1f;
+            // WO-1694: name the SHAPE of the hold, because it decides who it actually covers.
+            // A FLOORLESS hold (no scene change - the arena, staged 7 km away in this same scene)
+            // covers the active scene too; a FLOORED one exempts it. That single sentence is the
+            // difference between the arena's Suspend working and being a no-op, and it used to be
+            // invisible in the log: the "town SUSPENDED" line read identically in both cases.
+            string coverage = _floorReason != null
+                ? $"FLOORED by '{_floorScene}' - objects in the ACTIVE scene are EXEMPT (the player is standing among them)"
+                : "FLOORLESS (no scene change) - ACTIVE-scene town objects are held TOO, because the player is elsewhere INSIDE this scene";
             FlowTrace.Step("TownSuspend",
                 $"town SUSPENDED ({r}). Held: wave countdown, enemy spawns, structure damage, heart damage. " +
-                $"Still running: HARVESTING (never suspended). Wave policy={WavePolicy}.");
+                $"Still running: HARVESTING (never suspended). Wave policy={WavePolicy}. Coverage: {coverage}.");
         }
 
         /// <summary>
