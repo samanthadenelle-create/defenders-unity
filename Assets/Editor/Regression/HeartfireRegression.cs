@@ -68,6 +68,17 @@
 //          OnCardTapped (F1), or replace `!HeartfireService.HasCharge` with `false`
 //          (F2). Two lockouts "reads as a bug" - this is the pin that keeps it one.
 //
+//   PIN I  EXACTLY TWO SOURCES, AND THE SECOND ONE IS BOUNDED.
+//          Added 2026-09-10 (WO-1678/HEART-005) with the owner's Q-HEARTFIRE
+//          ruling: "allow a second source for stakers - the single-source lint is
+//          re-pointed to permit exactly Heartfire Spark." PIN B is UNCHANGED and
+//          still forbids a balance; what moved is the source COUNT. So this pin
+//          asserts the ruled seam EXISTS (a permit whose subject was deleted is a
+//          lie) and that it is CLAMPED at the same ceiling as time, grants nothing
+//          to a full pool and never moves the accrual stamp - the three properties
+//          the ruling was granted on - and that no THIRD mutator has appeared
+//          beside it. Driven on the pure function, like PIN A.
+//
 // Standalone:
 //   -Method DeNelle.Editor.Regression.HeartfireRegression.RunStandalone
 // =============================================================================
@@ -75,6 +86,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using DeNelle.Core.State;
 
@@ -124,6 +136,7 @@ namespace DeNelle.Editor.Regression
             DoorGateCases(f);          // PIN F
             PlateCopyCases(f);         // PIN G (the plate says what a charge BUYS)
             IntroducedCases(f);        // PIN H (the game introduces the word at all)
+            SecondSourceCases(f);      // PIN I (the ONE ruled second source, capped)
 
             if (f.Count == 0)
             {
@@ -137,8 +150,11 @@ namespace DeNelle.Editor.Regression
                          "and the raid door consults HasCharge ONLY -- no RaidCooldownService reference " +
                          "anywhere on RaidSelectionScreen, the refusal is the Heart's sentence, the door " +
                          "reads and the entry seam spends, with its empty-pool Fail tripwire intact; " +
-                         "the plate names what a charge BUYS at both states; and the guide, the " +
-                         "introduction dialogue and the tutorial step all carry the ruled sentence";
+                         "the plate names what a charge BUYS at both states; the guide, the " +
+                         "introduction dialogue and the tutorial step all carry the ruled sentence; " +
+                         "and Heartfire has EXACTLY TWO sources -- time, and the ruled Heartfire Spark, " +
+                         "which is clamped at the same ceiling, grants nothing to a full pool, never " +
+                         "moves the accrual stamp and is bought by nobody";
                 return true;
             }
             reason = "HEARTFIRE FAIL x" + f.Count + ": " + string.Join(" | ", f);
@@ -775,6 +791,129 @@ namespace DeNelle.Editor.Regression
                               "silent");
                 }
             }
+        }
+
+        // =====================================================================
+        //  PIN I -- THE ONE RULED SECOND SOURCE, AND NO THIRD
+        // =====================================================================
+        //
+        // Owner ruling 2026-09-10 (Q-HEARTFIRE, WO-1678/HEART-005), verbatim:
+        //
+        //     "allow a second source for stakers - the single-source lint is
+        //      re-pointed to permit exactly Heartfire Spark."
+        //
+        // ⛔ "RE-POINTED TO PERMIT EXACTLY" IS THE WHOLE INSTRUCTION, AND IT HAS TWO
+        // HALVES. PIN B still forbids Heartfire becoming a currency (no balance, no
+        // wallet row, no price, no vendor, no cap row, no enum member) and none of
+        // that moved. What moved is the SOURCE COUNT, from one to two - so this pin
+        // asserts the second source EXISTS and is bounded, and that a THIRD has not
+        // quietly appeared beside it. A permit with no bound is not a permit.
+        //
+        // ⚠ WHY THE POSITIVE HALF MATTERS AS MUCH AS THE NEGATIVE. A lint that only
+        // forbade things would stay green if somebody deleted Spark and re-added a
+        // faucet somewhere else. Asserting the ruled seam exists, by name, means the
+        // ruled design is what the build is measured against.
+        //
+        // Driven against the PURE function, so it needs no save, no clock and no
+        // scene - the same reasoning as PIN A.
+
+        private static void SecondSourceCases(List<string> f)
+        {
+            const int Max = 3;
+            double t = 1_700_000_000_000d;
+
+            // I1 - it lights charges, up to the number asked for.
+            var empty = new HeartfireCharges.Pool(0, t, true);
+            int lit = HeartfireCharges.Spark(empty, 1, Max, out var afterOne);
+            if (lit != 1 || afterOne.Charges != 1)
+                f.Add("I1 Spark on an empty pool lit " + lit + " charge(s) leaving " + afterOne.Charges +
+                      " -- the ruled second source must light exactly what the event authored");
+
+            // I2 - THE CLAMP. This is the property the ruling was granted on: a staker
+            // reaches the ceiling sooner, never holds more than an idle player who slept.
+            var nearFull = new HeartfireCharges.Pool(Max - 1, t, true);
+            int litNear = HeartfireCharges.Spark(nearFull, 5, Max, out var clamped);
+            if (litNear != 1 || clamped.Charges != Max)
+                f.Add("I2 Spark carried the pool to " + clamped.Charges + "/" + Max + " (lit " + litNear +
+                      ") -- the second source MUST clamp at the same ceiling as time. An uncapped faucet " +
+                      "influenced by a staked position is the currency the design forbids");
+
+            // I3 - a FULL pool gains nothing, and says so by returning 0.
+            var full = new HeartfireCharges.Pool(Max, t, true);
+            int litFull = HeartfireCharges.Spark(full, 1, Max, out var stillFull);
+            if (litFull != 0 || stillFull.Charges != Max)
+                f.Add("I3 Spark on a FULL pool lit " + litFull + " leaving " + stillFull.Charges +
+                      " -- a full pool must gain nothing from the second source");
+
+            // I4 - a non-positive request is REFUSED, not silently treated as zero-and-fine.
+            if (HeartfireCharges.Spark(empty, 0, Max, out _) != 0 ||
+                HeartfireCharges.Spark(empty, -3, Max, out var negative) != 0 || negative.Charges != 0)
+                f.Add("I4 Spark accepted a non-positive charge count -- an authoring error must never " +
+                      "read as a grant, and must never remove a charge");
+
+            // I5 - THE STAMP IS NOT TOUCHED. Moving it forward would push the next rekindle
+            // away, so a spark would silently cost time and the reward would be part illusion.
+            if (Math.Abs(afterOne.LastRegenUnixMs - t) > 0.5d)
+                f.Add("I5 Spark moved the accrual stamp (" + afterOne.LastRegenUnixMs + " vs " + t +
+                      ") -- a spark must be purely additive, never a charge that costs time");
+
+            // I6 - THE SOURCE COUNT ITSELF. `out Pool` is how this file hands a caller a
+            // MUTATED pool, so counting the parameter counts the mutators: TrySpend (spend)
+            // and Spark (the ruled grant). Regenerate returns its pool instead and is the
+            // third, named separately below. A FOURTH mutator arriving without a ruling
+            // fails here, which is exactly the drift a behavioural test cannot see.
+            //
+            // ⚠ COUNTED BY REGEX ON A WORD BOUNDARY, not by the literal "out Pool " with a
+            // trailing space. The text being counted has already been through
+            // SourceLint.ReadCode, whose whitespace handling is not this pin's to assume -
+            // and a miscount here would report "3 mutators, not 2" about a file nobody
+            // changed, which is the failure mode that gets a pin deleted rather than read.
+            string core = SourceLint.ReadCode(CoreRel, f);
+            if (!string.IsNullOrEmpty(core))
+            {
+                int mutators = Regex.Matches(core, @"\bout\s+Pool\b").Count;
+                if (mutators != 2)
+                    f.Add("I6 HeartfireCharges now has " + mutators + " 'out Pool' mutators, not 2 -- " +
+                          "Heartfire has exactly TWO sources (time via Regenerate, and the ruled Spark) " +
+                          "and one sink (TrySpend). A new one needs an owner ruling, not a commit");
+
+                if (core.IndexOf("public static int Spark(", StringComparison.Ordinal) < 0)
+                    f.Add("I6 HeartfireCharges.Spark is GONE -- the ruled second source (owner, " +
+                          "2026-09-10) was removed. The ruling and the code move together");
+
+                if (core.IndexOf("public static Pool Regenerate(", StringComparison.Ordinal) < 0)
+                    f.Add("I6 HeartfireCharges.Regenerate is gone -- the FIRST source (the passage of " +
+                          "time) is the one Heartfire has always had");
+            }
+
+            // I7 - the service exposes exactly ONE grant seam, and it routes through the
+            // clamped pure function rather than writing the pool itself.
+            string svc = SourceLint.ReadCode(ServiceRel, f);
+            if (!string.IsNullOrEmpty(svc))
+            {
+                int seams = CountOccurrences(svc, "public static int TryGrantSpark(");
+                if (seams != 1)
+                    f.Add("I7 HeartfireService declares " + seams + " TryGrantSpark seams, not 1 -- the " +
+                          "ruled second source has exactly one door");
+
+                if (svc.IndexOf("HeartfireCharges.Spark(", StringComparison.Ordinal) < 0)
+                    f.Add("I7 HeartfireService.TryGrantSpark no longer calls HeartfireCharges.Spark -- a " +
+                          "service that writes the pool itself has bypassed the ceiling clamp, which is " +
+                          "the property the second source was permitted on");
+            }
+        }
+
+        private static int CountOccurrences(string haystack, string needle)
+        {
+            if (string.IsNullOrEmpty(haystack) || string.IsNullOrEmpty(needle)) return 0;
+            int count = 0;
+            int at = 0;
+            while ((at = haystack.IndexOf(needle, at, StringComparison.Ordinal)) >= 0)
+            {
+                count++;
+                at += needle.Length;
+            }
+            return count;
         }
     }
 }

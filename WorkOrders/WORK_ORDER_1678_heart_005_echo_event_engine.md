@@ -1,6 +1,6 @@
 # WORK ORDER 1678 — HEART-005: Echo Event engine
 
-**Status:** SPEC
+**Status:** IMPLEMENTED 2026-09-10 — event engine + config + 23-case node oracle, the client presentation/application seam (Core/Wallet/Village, all `#if DAPP_STORE`), the ruled Heartfire second source with its lint re-pointed in the same change, and `HeartboundEventRegression` pinning all four rulings. Not gated in Unity (no Unity run in this lane); see the RESULT for what is proven and what is not.
 **Silo:** Backend event generation + a client reveal surface + one grant seam. Touches the rough-stone chain, Heartfire and the Echo appearance owner. **Highest conflict density of the thirteen.**
 **Raised by:** HEARTBOUND-TRIAGE lane, 2026-09-10.
 **Number:** PRE-ASSIGNED by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately **NOT** edited by this lane.

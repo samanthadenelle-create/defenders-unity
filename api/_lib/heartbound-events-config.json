@@ -1,0 +1,93 @@
+{
+  "_authoringNotes": [
+    "WO-1678 / HEART-005. THE ECHO EVENT TABLE. Every reward amount, duration, weight and",
+    "tier gate in the Heartbound event engine lives HERE and nowhere else - spec :947,",
+    "'All reward amounts and weights belong in data/config. No reward values hardcoded in",
+    "presentation classes.' api/_lib/heartbound-events.js contains no numeric reward literal.",
+    "",
+    "TABLE VERSION IS PART OF THE SEED. Changing any row below without bumping tableVersion",
+    "would re-roll history: the same (pulseId, playerId, tableVersion) must return the same",
+    "event forever, and a player who already saw event X for pulse P must keep seeing X.",
+    "Bump tableVersion for ANY edit to rows[]; a bump is a NEW table, and old pulses keep",
+    "resolving against whichever version was recorded with them.",
+    "",
+    "WEIGHT IS NOT A PROBABILITY FIELD. The roll is a deterministic hash-to-index over the",
+    "cumulative weight sum - the same inputs always land on the same row. No entropy, no",
+    "Math.random, no clock. The word 'weight' is deliberate; there is no 'chance', 'odds',",
+    "'probability', 'dropRate' or 'roll' field in this file, and HeartboundEventRegression",
+    "fails if one appears.",
+    "",
+    "WHAT IS NOT IN THIS TABLE, AND WHY (owner rulings 2026-09-10 13:12 / 13:36):",
+    "  * The dungeon-exclusive crafting ingredient event: DROPPED by ruling. Its supply is",
+    "    owner-capped on both existing faucets and its only use is a weighted craft roll; a",
+    "    staked position must not become a third faucet. It is not deferred - it is out.",
+    "  * The visiting-vendor event: moved to its own work order (visiting-NPC lifecycle is a",
+    "    feature in its own right; zero such lifecycle exists in the client today).",
+    "  * Echo Bloom and Ancient Echo: deferred to the Heart-visual work order. A reveal card",
+    "    that names a reward with no application behind it is worse than the row's absence.",
+    "    They land with a tableVersion bump when their application seams exist.",
+    "",
+    "NO ROW MAY EVER CARRY COMBAT POWER. Owner ruling Q-P2W 2026-09-10 13:10: economic",
+    "acceleration is allowed; combat power is not. kind is an ALLOW-LIST of four values and",
+    "the regression asserts it, so a row that moved a combat stat is a build failure rather",
+    "than a code review. The stat NAMES are deliberately not written anywhere in this file:",
+    "the lint that forbids them sweeps this text, and a note quoting one would fail the very",
+    "rule it was written to explain."
+  ],
+
+  "tableVersion": 1,
+
+  "kinds": ["modifier", "scout", "heartfire", "item"],
+
+  "rows": [
+    {
+      "id": "resource_surge",
+      "kind": "modifier",
+      "weight": 34,
+      "minTier": 1,
+      "modifier": "gather_rate",
+      "magnitude": 0.15,
+      "durationSeconds": 7200
+    },
+    {
+      "id": "crafting_inspiration",
+      "kind": "modifier",
+      "weight": 26,
+      "minTier": 1,
+      "modifier": "craft_speed",
+      "magnitude": 0.10,
+      "durationSeconds": 7200
+    },
+    {
+      "id": "scout_whisper",
+      "kind": "scout",
+      "weight": 22,
+      "minTier": 1,
+      "durationSeconds": 86400
+    },
+    {
+      "id": "echo_labor",
+      "kind": "modifier",
+      "weight": 14,
+      "minTier": 2,
+      "modifier": "build_speed",
+      "magnitude": 0.10,
+      "durationSeconds": 7200
+    },
+    {
+      "id": "heartfire_spark",
+      "kind": "heartfire",
+      "weight": 4,
+      "minTier": 3,
+      "charges": 1
+    }
+  ],
+
+  "_rowNotes": {
+    "resource_surge": "One gathering structure produces faster for two hours. A MODIFIER only.",
+    "crafting_inspiration": "A crafting queue finishes sooner. Sells the WAIT, never a roll - it may never resolve a random outcome (JobRushPolicy).",
+    "scout_whisper": "Surfaces the EXISTING scout report EARLIER (ruled 2026-09-10 13:36). No new intel: no composition, no resistance, no recommended troop type. The information stays equal for every player; only the moment moves.",
+    "echo_labor": "Tier II identity. A pure NUMBER (ruled 2026-09-10 13:20): no world actors, no second Echo spawner. The Echo appearance owner stays the one owner.",
+    "heartfire_spark": "The ONE ruled second source of Heartfire (2026-09-10 13:12), capped at one charge, never purchasable, clamped at the pool ceiling. Rarest row on purpose."
+  }
+}

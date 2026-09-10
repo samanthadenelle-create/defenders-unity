@@ -222,6 +222,52 @@ namespace DeNelle.Village.World.Camps
         }
 
         /// <summary>
+        /// Light Heartfire from a Heartbound Echo Event - THE RULED SECOND SOURCE
+        /// (owner, 2026-09-10, Q-HEARTFIRE: "allow a second source for stakers ... the
+        /// single-source lint is re-pointed to permit exactly Heartfire Spark").
+        ///
+        /// <para>⛔ IT IS CAPPED BY THE SAME CEILING AS TIME. A full pool gains NOTHING and
+        /// returns 0. A staker reaches the ceiling sooner; they never hold more than an
+        /// idle player who slept. That clamp is why the second source was allowed, so it
+        /// is not a detail a later edit may relax.</para>
+        ///
+        /// <para>⛔ NOTHING IS BOUGHT HERE. There is no price, no pack and no wallet row on
+        /// this path: the event that calls it was decided by the server, and the player
+        /// cannot ask for one. Heartfire is still a CHARGE, not a currency.</para>
+        ///
+        /// <para>NOT IDEMPOTENT - each call that returns a positive number lights charges.
+        /// Once-only belongs to the caller's claim ledger (HeartboundEventInbox plus the
+        /// backend's own), never to this seam.</para>
+        /// </summary>
+        /// <param name="charges">How many to light, from the authored event table.</param>
+        /// <param name="reason">The event id, for the trace.</param>
+        /// <returns>How many were actually lit; 0 when the pool was already full.</returns>
+        public static int TryGrantSpark(int charges, string reason)
+        {
+            var pool = Current();
+            int max = HeartfireCharges.MaxCharges;
+
+            int lit = HeartfireCharges.Spark(pool, charges, max, out var sparked);
+            if (lit <= 0)
+            {
+                FlowTrace.Step(Sys, "Heartfire SPARK from '" + (reason ?? "unknown") + "' lit nothing - " +
+                                    "the pool is already at its ceiling (" + pool.Charges + "/" + max +
+                                    "). The second source is capped by the SAME ceiling as time; it can " +
+                                    "never carry a player past it.");
+                return 0;
+            }
+
+            Store(sparked);
+            double now = TimeSource.NowUnixMs();
+            Publish(sparked, now, max, HeartfireCharges.RegenSeconds);
+
+            FlowTrace.Step(Sys, "Heartfire SPARK from '" + (reason ?? "unknown") + "' lit " + lit +
+                                " -> " + sparked.Charges + "/" + max + ". The accrual stamp is untouched, " +
+                                "so a spark is purely additive and never pushes the next rekindle away.");
+            return lit;
+        }
+
+        /// <summary>
         /// Test/dev hook: put the pool at an exact state. Exercised by HeartfireRegression -
         /// an unexercised hook proves nothing (the RaidClaimService.ClearClaim lesson).
         /// Never called by gameplay.

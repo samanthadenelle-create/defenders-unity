@@ -21,10 +21,47 @@
 //
 // The distinction is mechanical, not decorative: a currency has a SOURCE the
 // player can influence (produce it, buy it, loot more of it) and a SINK that
-// competes with other sinks. Heartfire has exactly one source - the passage of
-// time - and exactly one sink - marching. Nothing the player does makes it arrive
-// faster, and nothing else can consume it. That is why it is safe, and it is what
+// competes with other sinks. Nothing else can consume Heartfire, and nothing the
+// player SPENDS makes it arrive faster. That is why it is safe, and it is what
 // HeartfireRegression's currency-lint exists to keep true.
+//
+// =============================================================================
+//  (!) TWO SOURCES, AS OF 2026-09-10. THE SECOND IS RULED, CAPPED AND NAMED.
+// =============================================================================
+// This header said "exactly one source - the passage of time" from WO-1379 until
+// 2026-09-10, when the owner ruled (Q-HEARTFIRE, WO-1678/HEART-005):
+//
+//     "allow a second source for stakers - the single-source lint is re-pointed
+//      to permit exactly Heartfire Spark."
+//
+// So the sentence above is CORRECTED rather than quietly left to rot, and the
+// lint moved in the same change (CLAUDE.md section 15 - the doc and the code
+// travel together). The sources are now, exhaustively:
+//
+//     1. TIME.  Regenerate(). The pool climbs one charge per rekindle interval.
+//     2. SPARK. Spark(), below. A Heartbound Echo Event lights a charge.
+//
+// ⛔ AND THE SECOND ONE IS STILL NOT A CURRENCY, WHICH IS THE WHOLE REASON IT WAS
+// ALLOWED. Read the three properties, because a future faucet has to keep all
+// three or it is a different decision:
+//
+//   * IT IS CAPPED BY THE SAME CEILING AS TIME. Spark() clamps at maxCharges and
+//     grants NOTHING to a full pool. A staker cannot hold more Heartfire than an
+//     idle player who slept - only reach the ceiling sooner.
+//   * IT CANNOT BE BOUGHT. No price, no pack, no vendor, no wallet row. It arrives
+//     with an event the SERVER decided; the player cannot ask for one, and the
+//     event table carries no purchase of any kind.
+//   * IT IS NOT A BALANCE. There is still no amount, no storage cap, no
+//     ResourceType member and no enum row. A second faucet on a capped pool is
+//     still a pool.
+//
+// IF THE IMPLEMENTATION EVER GROWS A BALANCE, IT IS WRONG. That line is unchanged
+// and unconditional; a second SOURCE is not a balance.
+//
+// ⚠ AND THE OPEN QUESTION IS NOW ANSWERED IN ONE DIRECTION ONLY. The "Heartfire is
+// full" return door recorded as deliberately-not-built in WelcomeBackDoorsVM is a
+// SEPARATE unruled question about a door, not about a faucet. This ruling does not
+// answer it, and a lane must not read it as licence to build that door.
 //
 // "RAID ORDERS" IS DEAD (canon section 4): the player is the ruler and nobody
 // issues them orders. But "MARCH" SURVIVES AS THE VERB - you spend Heartfire, you
@@ -311,6 +348,46 @@ namespace DeNelle.Core.State
             // player who marches the instant a charge lands would silently lose the partial
             // progress toward the next one - a punishment nobody authored.
             return true;
+        }
+
+        /// <summary>
+        /// THE RULED SECOND SOURCE (owner, 2026-09-10, Q-HEARTFIRE): light charges from a
+        /// Heartbound Echo Event. PURE - the caller persists, publishes and traces, exactly
+        /// like <see cref="TrySpend"/>.
+        ///
+        /// <para>⛔ CLAMPED AT THE SAME CEILING AS TIME, and that clamp is the reason this
+        /// source was allowed at all. A full pool grants ZERO and reports it: a staker can
+        /// reach the ceiling sooner, never hold more than an idle player who slept.</para>
+        ///
+        /// <para>⛔ THE STAMP IS NOT TOUCHED, and this direction matters more than it does
+        /// for spending. Moving it FORWARD would push the next rekindle away, so a spark
+        /// would silently cost time and the reward would be partly an illusion. Leaving it
+        /// alone means a spark is purely additive, which is what the reveal card promises.
+        /// (A pool taken to the ceiling by a spark still stops accruing on the next
+        /// Regenerate, which re-stamps a full pool by its own rule - so no hidden backlog
+        /// is banked either.)</para>
+        ///
+        /// <para>⛔ NOT IDEMPOTENT. Each call that returns a positive number lights charges.
+        /// Once-only belongs to the caller's claim ledger, never to this arithmetic.</para>
+        /// </summary>
+        /// <param name="pool">The pool as last written.</param>
+        /// <param name="charges">How many to light. Non-positive is refused, not silently zero-ed.</param>
+        /// <param name="maxCharges">Pool ceiling (pass <see cref="MaxCharges"/> in production).</param>
+        /// <param name="sparked">The pool afterwards. Equals the input when nothing was lit.</param>
+        /// <returns>How many charges were actually lit: 0 at the ceiling, or on a bad request.</returns>
+        public static int Spark(Pool pool, int charges, int maxCharges, out Pool sparked)
+        {
+            sparked = pool;
+            if (charges <= 0) return 0;
+            if (maxCharges < 1) maxCharges = 1;
+
+            int current = pool.Charges < 0 ? 0 : pool.Charges;
+            if (current >= maxCharges) return 0;
+
+            int room = maxCharges - current;
+            int lit = charges < room ? charges : room;
+            sparked.Charges = current + lit;
+            return lit;
         }
 
         // =====================================================================
