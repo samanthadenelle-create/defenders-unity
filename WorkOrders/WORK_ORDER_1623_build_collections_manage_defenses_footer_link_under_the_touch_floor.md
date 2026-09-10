@@ -1,6 +1,6 @@
 # WO-1623 - Build Collections: the "Already built? Manage defenses >" footer link is authored ~60 px UNDER the kit touch floor, at every captured resolution
 
-**Status:** IMPLEMENTED - awaiting gate (lane FOOTER 2026-09-10; was: READY TO IMPLEMENT)
+**Status:** FIXED 2026-09-10 - gated (Builds/wave2-compile2, Builds/wave2-reg2 493/493) and captured: Builds/wave2-capture -> UI_GEOMETRY_OK 91 canvases (was UI_GEOMETRY_FAIL x3 on this item), PNG Builds/ui-capture/BuildCollections_2670x1200.png sent to the owner; owner felt-test closes. (was: IMPLEMENTED - awaiting gate (lane FOOTER 2026-09-10; was: READY TO IMPLEMENT))
 **Minted:** 2026-09-10 (CLI, main-line banner; bumped 1621 -> 1625 in the SAME edit)
 **Silo / Lane:** UI / Build mode (`BuildCollectionBrowser`) + ElarionUiKit touch floor
 **Severity:** P2. The capture gate is RED on it (`UI_GEOMETRY_FAIL x3`), and the oracle's own message
