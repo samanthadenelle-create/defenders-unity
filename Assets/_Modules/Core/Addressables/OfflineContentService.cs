@@ -108,6 +108,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
@@ -294,6 +295,166 @@ namespace DeNelle.Core
             }
             reason = $"verified: {keyCount} address(es), 0 bytes outstanding after the pull";
             return true;
+        }
+
+        // =====================================================================
+        //  WO-1092. The abandoned cache transaction, and the unique-bundle plan.
+        // ---------------------------------------------------------------------
+        //  PROVEN CAUSE (docs/READY_RCA_2026-09-09.md, section WO-1092): the Orc
+        //  bundle `enemy_models_assets_enemyfam-orc_2220522384eb58b0db363f6c6e1b47ab
+        //  .bundle` (19,398,472 bytes, VALID non-zero hash) has a CURRENT-version
+        //  cache directory holding a single zero-byte `__lock` and no `__data` /
+        //  `__info`, created 2026-09-08 14:51:27, while the PREVIOUS version
+        //  `3c9df7ea9a3c1566f0cde489711dfec6` stays complete at 19,400,698 bytes.
+        //  Unity opened that cache transaction, abandoned it before commit, kept the
+        //  lock, and every later fetch of that bundle succeeded IN MEMORY and never
+        //  committed. Verified by hand on this disk 2026-09-09:
+        //      <cacheRoot>/912fa7abd447ca13619697b1fce844c6/
+        //          2220522384eb58b0db363f6c6e1b47ab/__lock   (0 bytes)
+        //          3c9df7ea9a3c1566f0cde489711dfec6/{__data,__info}
+        //  so the on-disk shape is <root>/<bundle-name-dir>/<hash>/{__data,__info,__lock}
+        //  and the VERSION directory is named by the bundle HASH. That is what makes a
+        //  name-independent scan possible: the directory that names the bundle is an
+        //  opaque hash, but the version directory underneath it is the catalog Hash,
+        //  which the resolved locations DO carry.
+        //
+        //  ⛔ THE VERIFIER STAYS STRICT. PullVerified and MeasureDownloadSize above are
+        //  arithmetically honest and are NOT touched by this fix - relaxing either one
+        //  would hide the defect instead of repairing it.
+        // =====================================================================
+
+        /// <summary>What one on-disk cache VERSION directory is.</summary>
+        public enum CacheVersionState
+        {
+            /// <summary>Shape we do not recognise. NEVER touched - the safe default.</summary>
+            Unknown = 0,
+            /// <summary>Committed: both `__data` and `__info` are present.</summary>
+            Healthy = 1,
+            /// <summary>No lock and no payload. Nothing to repair, nothing to delete.</summary>
+            Empty = 2,
+            /// <summary>Lock only, and YOUNG - a download may be in flight right now. Leave it.</summary>
+            LiveTransaction = 3,
+            /// <summary>Lock only, and OLD. The WO-1092 defect. Safe to remove.</summary>
+            AbandonedTransaction = 4,
+        }
+
+        /// <summary>
+        /// How old a lock-only version directory has to be before we are willing to call it
+        /// abandoned rather than in flight. A content warmer (EnemyContentWarmer /
+        /// StructureContentWarmer) can legitimately hold an open transaction at boot, and
+        /// deleting a LIVE one would manufacture the very corruption this repairs. Five
+        /// minutes is far longer than any single-bundle fetch in this content set (the
+        /// largest bundle is ~19.4 MB) and far shorter than a session.
+        /// </summary>
+        public const double CacheLockStaleSeconds = 300d;
+
+        /// <summary>
+        /// How many passes the pull is allowed. TWO: one normal, one after the repair.
+        /// Deliberately NOT a loop-until-success - if a bundle structurally cannot cache,
+        /// an honest failure beats a hang (WO-1092 spec).
+        /// </summary>
+        private const int MaxPullAttempts = 2;
+        /// <summary>How many outstanding bundles the failure diagnostic names before summarising.</summary>
+        private const int DiagnosticBundleCap = 8;
+
+        /// <summary>
+        /// PURE. Classify one cache VERSION directory from its measured signals. Kept free of
+        /// the filesystem so the Editor regression can pin BOTH the abandoned case and the
+        /// live-transaction case without staging a real download.
+        /// </summary>
+        /// <param name="versionDirName">Directory name - must be the 32-hex bundle hash, or we refuse.</param>
+        /// <param name="hasLock">A `__lock` file is present.</param>
+        /// <param name="hasData">A `__data` file is present.</param>
+        /// <param name="hasInfo">An `__info` file is present.</param>
+        /// <param name="otherEntryCount">Anything else inside (files or subdirectories). Non-zero = refuse.</param>
+        /// <param name="lockAgeSeconds">Age of the lock file. Negative = unknown = refuse to call it stale.</param>
+        /// <param name="minStaleAgeSeconds">Threshold, normally <see cref="CacheLockStaleSeconds"/>.</param>
+        public static CacheVersionState ClassifyCacheVersion(string versionDirName,
+                                                             bool hasLock, bool hasData, bool hasInfo,
+                                                             int otherEntryCount,
+                                                             double lockAgeSeconds, double minStaleAgeSeconds)
+        {
+            // A committed version is healthy no matter what else sits beside it.
+            if (hasData && hasInfo) return CacheVersionState.Healthy;
+            // Only ever act on something shaped exactly like a Unity cache version dir.
+            if (!LooksLikeAssetGuid(versionDirName)) return CacheVersionState.Unknown;
+            if (!hasLock) return CacheVersionState.Empty;
+            // Payload half-present, or foreign content: not a shape we are willing to delete.
+            if (hasData || hasInfo || otherEntryCount > 0) return CacheVersionState.Unknown;
+            if (lockAgeSeconds < 0) return CacheVersionState.Unknown;
+            return lockAgeSeconds >= minStaleAgeSeconds
+                ? CacheVersionState.AbandonedTransaction
+                : CacheVersionState.LiveTransaction;
+        }
+
+        /// <summary>One catalog key and the remote bundles it depends on.</summary>
+        public struct KeyBundleSet
+        {
+            public string Key;
+            /// <summary>Bundle names this key pulls. EMPTY means "we could not resolve it" - never "none".</summary>
+            public string[] BundleNames;
+        }
+
+        /// <summary>
+        /// PURE. Plan the download chunks by UNIQUE BUNDLE instead of by address.
+        ///
+        /// WHY: the failed pull reported downloaded=77,346,600 against total=38,549,656.
+        /// 19,151,184 + (3 x 19,398,472) = 77,346,600 exactly - three separate 24-address
+        /// chunks each touched the SAME shared Orc family bundle. MergeMode.Union
+        /// deduplicates WITHIN a chunk and cannot deduplicate ACROSS chunks, so a bundle
+        /// shared by ~16 addresses is re-requested once per chunk that touches it.
+        ///
+        /// A key joins a chunk only if it introduces at least one bundle no earlier key has
+        /// already claimed. A key whose bundles are ALL claimed is dropped: its bytes are
+        /// already in the plan, so coverage is unchanged. A key with NO resolved bundles is
+        /// ALWAYS kept - an unresolved key is an unknown, and dropping unknowns is how the
+        /// PROD-010 "zero keys = already cached" defect was built.
+        ///
+        /// ⚠ HONEST LIMIT: key-based chunking cannot perfectly partition a dependency graph
+        /// whose closures partially overlap - a later key can legitimately need one new
+        /// bundle plus one already claimed. What it removes is the pathological case above,
+        /// where a key set adds NOTHING new and re-requests a whole family bundle.
+        /// </summary>
+        public static List<List<string>> PlanUniqueBundleChunks(IList<KeyBundleSet> entries, int chunkSize,
+                                                               out int uniqueBundles, out int skippedKeys)
+        {
+            var chunks = new List<List<string>>();
+            uniqueBundles = 0;
+            skippedKeys = 0;
+            if (entries == null || entries.Count == 0) return chunks;
+            if (chunkSize < 1) chunkSize = 1;
+
+            var claimed = new HashSet<string>(StringComparer.Ordinal);
+            var current = new List<string>();
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var e = entries[i];
+                if (string.IsNullOrEmpty(e.Key)) continue;
+
+                var bundles = e.BundleNames;
+                if (bundles != null && bundles.Length > 0)
+                {
+                    bool introducesSomething = false;
+                    for (int b = 0; b < bundles.Length; b++)
+                    {
+                        if (string.IsNullOrEmpty(bundles[b])) continue;
+                        if (!claimed.Contains(bundles[b])) { introducesSomething = true; break; }
+                    }
+                    if (!introducesSomething) { skippedKeys++; continue; }
+                    for (int b = 0; b < bundles.Length; b++)
+                    {
+                        if (string.IsNullOrEmpty(bundles[b])) continue;
+                        if (claimed.Add(bundles[b])) uniqueBundles++;
+                    }
+                }
+
+                current.Add(e.Key);
+                if (current.Count >= chunkSize) { chunks.Add(current); current = new List<string>(); }
+            }
+
+            if (current.Count > 0) chunks.Add(current);
+            return chunks;
         }
 
         // =====================================================================
@@ -673,6 +834,368 @@ namespace DeNelle.Core
         }
 
         // =====================================================================
+        //  WO-1092 runtime seam: resolve bundle facts, repair abandoned transactions.
+        // =====================================================================
+
+        /// <summary>What the catalog says about one remote bundle. Read, never typed.</summary>
+        public sealed class RemoteBundleFact
+        {
+            public string BundleName;
+            public string Hash;
+            public bool HashValid;
+            public long BundleSize;
+        }
+
+        /// <summary>
+        /// Walk every key's resolved locations SYNCHRONOUSLY and read the
+        /// <c>AssetBundleRequestOptions</c> off each dependency. No async handles: 682 keys
+        /// through GetDownloadSizeAsync would be 682 operations, and
+        /// <see cref="IResourceLocator.Locate"/> already answers without a network call.
+        /// Feeds BOTH the unique-bundle chunk plan and the failure diagnostic.
+        /// </summary>
+        /// <param name="keys">The offline key set.</param>
+        /// <param name="factsByHash">bundle HASH -> fact. The hash is what a cache version
+        /// directory is NAMED, which is how a stale lock gets a bundle name in the log.</param>
+        public static List<KeyBundleSet> ResolveKeyBundles(List<string> keys,
+                                                           Dictionary<string, RemoteBundleFact> factsByHash)
+        {
+            var entries = new List<KeyBundleSet>();
+            if (keys == null || keys.Count == 0) return entries;
+
+            int unresolved = 0;
+            Guard.Try(Sys, "resolve bundle dependencies for the offline key set", () =>
+            {
+                var scratch = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var key in keys)
+                {
+                    scratch.Clear();
+                    foreach (var locator in Addressables.ResourceLocators)
+                    {
+                        if (locator == null) continue;
+                        IList<IResourceLocation> locs = null;
+                        try { if (!locator.Locate(key, typeof(object), out locs)) continue; }
+                        catch (Exception ex)
+                        {
+                            FlowTrace.Warn(Sys, $"Locate('{key}') threw {ex.GetType().Name}: {ex.Message} - " +
+                                                "key kept in the plan as UNRESOLVED rather than dropped.");
+                            continue;
+                        }
+                        if (locs == null) continue;
+                        for (int i = 0; i < locs.Count; i++) CollectBundleNames(locs[i], scratch, factsByHash, 0);
+                    }
+
+                    if (scratch.Count == 0) unresolved++;
+                    var arr = new string[scratch.Count];
+                    scratch.CopyTo(arr);
+                    entries.Add(new KeyBundleSet { Key = key, BundleNames = arr });
+                }
+            });
+
+            // ⛔ COVERAGE CAN ONLY GROW, NEVER SHRINK. The Guard above swallows a throw part-way
+            // through the walk; if that happened, `entries` would be SHORT and every key after the
+            // throw would silently drop out of the plan - the exact PROD-010 coverage-cut shape,
+            // one layer down. Backfill every missing key as an UNKNOWN (the planner always keeps
+            // unknowns) and say how many, loudly.
+            if (entries.Count < keys.Count)
+            {
+                var have = new HashSet<string>(StringComparer.Ordinal);
+                for (int i = 0; i < entries.Count; i++) have.Add(entries[i].Key);
+                int backfilled = 0;
+                foreach (var key in keys)
+                {
+                    if (have.Contains(key)) continue;
+                    entries.Add(new KeyBundleSet { Key = key, BundleNames = Array.Empty<string>() });
+                    backfilled++;
+                }
+                FlowTrace.Warn(Sys, $"bundle resolution stopped early - {backfilled} of {keys.Count} key(s) were " +
+                                    "never walked. Re-added as UNKNOWN so the plan still covers the whole set; " +
+                                    "a short plan would quietly stop fetching part of the content.");
+            }
+
+            FlowTrace.Step(Sys, $"bundle resolution: {entries.Count} key(s) planned of {keys.Count} in the set, " +
+                                $"{factsByHash.Count} distinct remote bundle(s) named, " +
+                                $"{unresolved} key(s) resolved to NO bundle (kept in the plan as unknown).");
+            return entries;
+        }
+
+        /// <summary>Recursive dependency walk. Depth-bounded so a cyclic locator cannot hang the pull.</summary>
+        private static void CollectBundleNames(IResourceLocation loc, HashSet<string> into,
+                                               Dictionary<string, RemoteBundleFact> factsByHash, int depth)
+        {
+            if (loc == null || depth > 6) return;
+
+            if (loc.Data is AssetBundleRequestOptions opts && !string.IsNullOrEmpty(opts.BundleName))
+            {
+                into.Add(opts.BundleName);
+                string hash = opts.Hash;
+                if (!string.IsNullOrEmpty(hash) && factsByHash != null && !factsByHash.ContainsKey(hash))
+                {
+                    bool valid = false;
+                    try { valid = Hash128.Parse(hash).isValid; } catch { valid = false; }
+                    factsByHash[hash] = new RemoteBundleFact
+                    {
+                        BundleName = opts.BundleName,
+                        Hash = hash,
+                        HashValid = valid,
+                        BundleSize = opts.BundleSize,
+                    };
+                }
+            }
+
+            var deps = loc.Dependencies;
+            if (deps == null) return;
+            for (int i = 0; i < deps.Count; i++) CollectBundleNames(deps[i], into, factsByHash, depth + 1);
+        }
+
+        /// <summary>
+        /// Scan the writable AssetBundle cache and remove EXACTLY the abandoned version
+        /// transactions - a version directory holding a stale zero-byte `__lock` and nothing
+        /// else (WO-1092). Returns how many were repaired.
+        ///
+        /// ⛔ TARGETED, NEVER BROAD. The complete PREVIOUS version of the same bundle
+        /// (`3c9df7ea...`, 19,400,698 bytes on this disk) must survive, so this never calls
+        /// <c>Caching.ClearAllCachedVersions</c> and never calls
+        /// <see cref="AddressablesCacheHealth.ReportDownloadFailure"/> - that arms a whole-cache
+        /// <c>Caching.ClearCache()</c> for the next launch, which is the opposite of targeted.
+        /// </summary>
+        /// <param name="minStaleAgeSeconds">
+        /// How old a lock must be to count as abandoned. The FIRST pass uses
+        /// <see cref="CacheLockStaleSeconds"/> because a content warmer may hold a live
+        /// transaction. A RETRY pass passes 0: the pull's own handles have all been released
+        /// by then, so a lock-only directory that survived our own attempt is abandoned by
+        /// definition - and if the retry pass kept the 5-minute floor it would refuse to
+        /// repair the very transaction the failed attempt just abandoned, which is the whole
+        /// point of the retry.
+        /// </param>
+        public static int RepairAbandonedCacheTransactions(Dictionary<string, RemoteBundleFact> factsByHash,
+                                                           int attempt, double minStaleAgeSeconds)
+        {
+            int repaired = 0;
+            int inspected = 0;
+            int live = 0;
+
+            Guard.Try(Sys, "scan the AssetBundle cache for abandoned version transactions", () =>
+            {
+#if UNITY_WEBGL
+                // ⛔ WEBGL HAS NO ASSETBUNDLE CACHE. `UnityEngine.Caching` and `CachedAssetBundle`
+                // live in UnityEngine.AssetBundleModule, which is NOT part of a WebGL player - the
+                // identifiers do not exist there at all, which is why the WebGL content compile
+                // (Builds/wave1-compile2, 2026-09-09 23:24) failed CS0103 on them while the active
+                // Android target compiled clean. Guarded rather than papered over with a using: the
+                // platform genuinely cannot have an abandoned cache transaction, because it has no
+                // cache to open one in. The decision is still NAMED in the trace (CLAUDE.md §12).
+                // The counters are named in the line so they are READ on this target too - an
+                // int left assigned-but-unused behind a platform guard is a CS0219 warning.
+                FlowTrace.Step(Sys, $"cache repair (attempt={attempt}) NOT APPLICABLE on WebGL - the platform has " +
+                                    "no AssetBundle cache, so there is no version transaction to abandon and " +
+                                    $"nothing to repair. inspected={inspected}, repaired={repaired}, live={live}.");
+                return;
+#else
+                string root = null;
+                try { root = Caching.currentCacheForWriting.path; } catch { root = null; }
+
+                if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
+                {
+                    FlowTrace.Warn(Sys, $"cache repair (attempt={attempt}) SKIPPED: writable cache path " +
+                                        $"'{root ?? "<null>"}' does not exist. The on-disk layout assumption " +
+                                        "(<root>/<bundle-dir>/<hash>/{__data,__info,__lock}) could not be checked.");
+                    return;
+                }
+
+                FlowTrace.Step(Sys, $"cache repair (attempt={attempt}) scanning '{root}' " +
+                                    $"(a lock-only version dir counts as abandoned at >= {minStaleAgeSeconds:F0}s).");
+
+                foreach (var bundleDir in Directory.GetDirectories(root))
+                {
+                    foreach (var versionDir in Directory.GetDirectories(bundleDir))
+                    {
+                        inspected++;
+                        string name = Path.GetFileName(versionDir);
+                        string lockPath = Path.Combine(versionDir, "__lock");
+
+                        bool hasLock = File.Exists(lockPath);
+                        bool hasData = File.Exists(Path.Combine(versionDir, "__data"));
+                        bool hasInfo = File.Exists(Path.Combine(versionDir, "__info"));
+
+                        int other = 0;
+                        foreach (var f in Directory.GetFiles(versionDir))
+                        {
+                            string fn = Path.GetFileName(f);
+                            if (fn != "__lock" && fn != "__data" && fn != "__info") other++;
+                        }
+                        other += Directory.GetDirectories(versionDir).Length;
+
+                        double ageSeconds = -1d;
+                        if (hasLock)
+                        {
+                            try { ageSeconds = (DateTime.UtcNow - File.GetLastWriteTimeUtc(lockPath)).TotalSeconds; }
+                            catch { ageSeconds = -1d; }
+                        }
+
+                        var state = ClassifyCacheVersion(name, hasLock, hasData, hasInfo, other,
+                                                         ageSeconds, minStaleAgeSeconds);
+
+                        if (state == CacheVersionState.LiveTransaction)
+                        {
+                            live++;
+                            FlowTrace.Step(Sys, $"cache repair (attempt={attempt}) LEFT ALONE " +
+                                                $"{DescribeBundle(factsByHash, name)} - lock is only " +
+                                                $"{ageSeconds:F0}s old (< {minStaleAgeSeconds:F0}s); a download " +
+                                                "may be in flight and deleting it would manufacture corruption.");
+                            continue;
+                        }
+                        if (state != CacheVersionState.AbandonedTransaction) continue;
+
+                        // LIVENESS PROBE. The age bound alone cannot see a CONCURRENT writer, and the
+                        // retry pass deliberately drops that bound to 0. Try to take the lock file
+                        // exclusively: if anything else holds a handle on it, the transaction is LIVE
+                        // and deleting it would manufacture the partial-bundle corruption
+                        // AddressablesCacheHealth exists to recover from. If Unity does not hold the
+                        // file open during a transaction this probe simply always passes - so it costs
+                        // nothing and can only ever prevent a wrong delete.
+                        if (!TryTakeExclusively(lockPath, out string holdReason))
+                        {
+                            live++;
+                            FlowTrace.Step(Sys, $"cache repair (attempt={attempt}) LEFT ALONE " +
+                                                $"{DescribeBundle(factsByHash, name)} - its __lock is HELD by " +
+                                                $"another handle ({holdReason}), so the transaction is live " +
+                                                "despite its age. Not deleting.");
+                            continue;
+                        }
+
+                        FlowTrace.Warn(Sys, $"cache repair (attempt={attempt}) ABANDONED TRANSACTION found: " +
+                                            $"{DescribeBundle(factsByHash, name)} at '{versionDir}' holds a " +
+                                            $"{FileLength(lockPath)}-byte __lock, no __data, no __info, age " +
+                                            $"{ageSeconds:F0}s. Every fetch of this bundle succeeds in memory and " +
+                                            "never commits. Removing this exact version transaction; the other " +
+                                            "cached versions of the same bundle are untouched.");
+
+                        bool deleted = false;
+                        try { Directory.Delete(versionDir, true); deleted = !Directory.Exists(versionDir); }
+                        catch (Exception ex)
+                        {
+                            FlowTrace.Fail(Sys, $"cache repair (attempt={attempt}) could NOT remove " +
+                                                $"{DescribeBundle(factsByHash, name)} at '{versionDir}': " +
+                                                $"{ex.GetType().Name}: {ex.Message}. The retry below will not help " +
+                                                "this bundle - saying so beats a silent second failure.");
+                        }
+
+                        if (deleted)
+                        {
+                            repaired++;
+                            FlowTrace.Step(Sys, $"cache repair (attempt={attempt}) REMOVED " +
+                                                $"{DescribeBundle(factsByHash, name)} - verified gone from disk.");
+                        }
+                        else
+                        {
+                            FlowTrace.Fail(Sys, $"cache repair (attempt={attempt}) reported no exception but " +
+                                                $"'{versionDir}' still EXISTS. Not counting it as repaired.");
+                        }
+                    }
+                }
+
+                FlowTrace.Step(Sys, $"cache repair (attempt={attempt}) done: {inspected} version dir(s) inspected, " +
+                                    $"{repaired} abandoned transaction(s) removed, {live} live transaction(s) left alone.");
+#endif
+            });
+
+            return repaired;
+        }
+
+        /// <summary>
+        /// Can we open this file with NO sharing? Success means nobody else holds it. Failure is
+        /// reported as a reason string rather than a bool alone, so the log says WHY we backed off.
+        /// </summary>
+        private static bool TryTakeExclusively(string path, out string reason)
+        {
+            try
+            {
+                using (File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+                reason = "not held";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                reason = $"{ex.GetType().Name}: {ex.Message}";
+                return false;
+            }
+        }
+
+        private static long FileLength(string path)
+        {
+            try { return new FileInfo(path).Length; } catch { return -1L; }
+        }
+
+        /// <summary>Name a bundle from its cache-version hash, so no log line says only "a directory".</summary>
+        private static string DescribeBundle(Dictionary<string, RemoteBundleFact> factsByHash, string hash)
+        {
+            if (factsByHash != null && !string.IsNullOrEmpty(hash) &&
+                factsByHash.TryGetValue(hash, out var fact) && fact != null)
+            {
+                return $"bundle '{fact.BundleName}' (hash={hash}, hashValid={fact.HashValid}, {fact.BundleSize} bytes)";
+            }
+            return $"bundle hash={hash} (not in this build's catalog key set - name unknown)";
+        }
+
+        /// <summary>
+        /// On a NON-VERIFIED pull, name the bundles that are still not cached, with the four
+        /// facts that tell an invalid-hash defect apart from a lost cache write (WO-1092 spec).
+        /// Synchronous - <c>Caching.IsVersionCached</c> needs no handle. CAPPED: this fires over
+        /// a ~682-key set and an uncapped dump evicts the surrounding evidence out of the 256 KiB
+        /// Android logcat ring (memory logcat-ring-buffer-destroys-evidence).
+        /// </summary>
+        public static void LogOutstandingBundles(Dictionary<string, RemoteBundleFact> factsByHash)
+        {
+            Guard.Try(Sys, "name the bundles still outstanding after a failed pull", () =>
+            {
+                if (factsByHash == null || factsByHash.Count == 0)
+                {
+                    FlowTrace.Warn(Sys, "outstanding-bundle diagnostic has NOTHING to report: no remote bundle " +
+                                        "was resolved from the catalog. That is itself the finding.");
+                    return;
+                }
+
+                int missing = 0, listed = 0, invalidHash = 0;
+                long missingBytes = 0;
+                foreach (var kv in factsByHash)
+                {
+                    var f = kv.Value;
+                    if (f == null) continue;
+
+                    bool cached = false;
+#if !UNITY_WEBGL
+                    // Same platform guard as the repair above: `Caching` / `CachedAssetBundle` are
+                    // UnityEngine.AssetBundleModule types and do not exist in a WebGL player. On
+                    // WebGL `cached` stays false, which is the truthful answer - nothing is cached
+                    // there - so the report below still lists the set honestly rather than lying.
+                    try
+                    {
+                        var h = Hash128.Parse(f.Hash);
+                        cached = h.isValid && Caching.IsVersionCached(new CachedAssetBundle(f.BundleName, h));
+                    }
+                    catch { cached = false; }
+#endif
+                    if (cached) continue;
+
+                    missing++;
+                    missingBytes += f.BundleSize > 0 ? f.BundleSize : 0;
+                    if (!f.HashValid) invalidHash++;
+                    if (listed++ < DiagnosticBundleCap)
+                    {
+                        FlowTrace.Fail(Sys, $"STILL OUTSTANDING: bundle '{f.BundleName}' hash={f.Hash} " +
+                                            $"hashValid={f.HashValid} size={f.BundleSize} - not cached after the pull.");
+                    }
+                }
+
+                FlowTrace.Fail(Sys, $"outstanding-bundle diagnostic: {missing} of {factsByHash.Count} remote " +
+                                    $"bundle(s) are NOT cached ({missingBytes} byte(s)); {invalidHash} carry an " +
+                                    $"INVALID hash; first {Mathf.Min(listed, DiagnosticBundleCap)} named above. " +
+                                    "An invalid hash means the bundle can never cache at all; a valid hash means " +
+                                    "the cache write was lost or the transaction never committed.");
+            });
+        }
+
+        // =====================================================================
         //  3. The opt-in pull
         // =====================================================================
 
@@ -743,85 +1266,160 @@ namespace DeNelle.Core
                 yield break;
             }
 
-            FlowTrace.Step(Sys, $"offline pull START: {keys.Count} key(s), {total} bytes " +
-                                $"({total / (1024f * 1024f):F1} MB), chunk size {ChunkSize}.");
+            // ─── WO-1092 (b): CHUNK BY UNIQUE BUNDLE, NOT BY ADDRESS ────────────────────
+            // MergeMode.Union deduplicates INSIDE a chunk and cannot deduplicate ACROSS
+            // chunks, so a family bundle shared by ~16 addresses was re-requested by every
+            // chunk that touched it: 19,151,184 + (3 x 19,398,472) = 77,346,600, the exact
+            // numerator the failed pull reported.
+            var factsByHash = new Dictionary<string, RemoteBundleFact>(StringComparer.Ordinal);
+            var entries = ResolveKeyBundles(keys, factsByHash);
+            var plan = PlanUniqueBundleChunks(entries, ChunkSize, out int uniqueBundles, out int skippedKeys);
 
-            bool allOk = true;
-            long doneBytes = 0;
-            float lastPct = 0f;
-            int failedChunks = 0;
-
-            for (int start = 0; start < keys.Count; start += ChunkSize)
+            if (plan.Count == 0)
             {
-                int count = Mathf.Min(ChunkSize, keys.Count - start);
-                var chunk = keys.GetRange(start, count);
-
-                AsyncOperationHandle h = default;
-                bool started = false;
-                try
-                {
-                    h = Addressables.DownloadDependenciesAsync((IEnumerable)chunk, Addressables.MergeMode.Union, false);
-                    started = true;
-                }
-                catch (Exception ex)
-                {
-                    allOk = false;
-                    failedChunks++;
-                    FlowTrace.Fail(Sys, $"DownloadDependenciesAsync(chunk {start}..{start + count - 1}) threw: " +
-                                        $"{ex.GetType().Name}: {ex.Message}");
-                }
-                if (!started) continue;
-
-                while (!h.IsDone)
-                {
-                    // BYTE-WEIGHTED, from GetDownloadStatus - never a key counter and never a
-                    // timer. With the re-pack producing many small bundles this advances
-                    // continuously inside a chunk instead of stepping once per chunk.
-                    var st = h.GetDownloadStatus();
-                    Report(doneBytes + st.DownloadedBytes);
-                    yield return null;
-                }
-
-                var fin = h.GetDownloadStatus();
-                doneBytes += fin.DownloadedBytes;
-
-                if (h.Status != AsyncOperationStatus.Succeeded)
-                {
-                    allOk = false;
-                    failedChunks++;
-                    AddressablesCacheHealth.ReportDownloadFailure(
-                        $"offline chunk {start}..{start + count - 1}");
-                    FlowTrace.Fail(Sys, $"offline pull FAILED for chunk {start}..{start + count - 1} " +
-                                        $"(first key '{chunk[0]}') - the player is NOT offline-ready.");
-                }
-
-                Addressables.Release(h);
-                Report(doneBytes);
+                // Never let a resolution failure shrink the set to nothing - that is the shape
+                // of the PROD-010 "zero keys read as already cached" defect. Fall back to the
+                // old address chunking and SAY SO.
+                FlowTrace.Warn(Sys, "unique-bundle planning produced 0 chunks - falling back to plain address " +
+                                    "chunking so coverage is never reduced by a resolution failure.");
+                plan = new List<List<string>>();
+                for (int s = 0; s < keys.Count; s += ChunkSize)
+                    plan.Add(keys.GetRange(s, Mathf.Min(ChunkSize, keys.Count - s)));
             }
 
-            // ⭐ THE OUTCOME ASSERTION. Handles reporting Succeeded is not evidence that bytes
-            // landed; on 2026-08-19 a set that matched nothing "succeeded" instantly. Re-measure
-            // the SAME key set and require zero outstanding. This single check is the difference
-            // between a feature and a no-op wearing a green tick.
-            long remaining = -1; bool remeasured = false;
-            yield return MeasureDownloadSize(keys, (b, ok) => { remaining = b; remeasured = ok; });
+            FlowTrace.Step(Sys, $"offline pull START: {keys.Count} key(s), {total} bytes " +
+                                $"({total / (1024f * 1024f):F1} MB), chunk size {ChunkSize}. " +
+                                $"Planned by UNIQUE BUNDLE: {plan.Count} chunk(s) over {uniqueBundles} distinct " +
+                                $"bundle(s); {skippedKeys} key(s) added no new bundle and were folded in " +
+                                "(coverage unchanged - their bytes are already in the plan).");
+
+            bool allOk = true;
+            long doneBytes = 0;          // this attempt only - the chunk loop's running total
+            long downloadedAllAttempts = 0;  // what the player actually pulled, across attempts
+            float lastPct = 0f;
+            int failedChunks = 0;
+            long remaining = -1;
+            bool remeasured = false;
+            int repairedTotal = 0;
+
+            // ─── WO-1092 (a): repair the abandoned cache transaction, then ONE bounded retry ──
+            for (int attempt = 1; attempt <= MaxPullAttempts; attempt++)
+            {
+                // Pass 1 keeps the 5-minute floor (a warmer may hold a live transaction);
+                // a retry pass uses 0, because our own handles are released by then.
+                repairedTotal += RepairAbandonedCacheTransactions(
+                    factsByHash, attempt, attempt == 1 ? CacheLockStaleSeconds : 0d);
+
+                allOk = true;
+                failedChunks = 0;
+                doneBytes = 0;
+
+                for (int ci = 0; ci < plan.Count; ci++)
+                {
+                    var chunk = plan[ci];
+                    if (chunk == null || chunk.Count == 0) continue;
+
+                    AsyncOperationHandle h = default;
+                    bool started = false;
+                    try
+                    {
+                        h = Addressables.DownloadDependenciesAsync((IEnumerable)chunk, Addressables.MergeMode.Union, false);
+                        started = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        allOk = false;
+                        failedChunks++;
+                        FlowTrace.Fail(Sys, $"DownloadDependenciesAsync(attempt={attempt} chunk {ci + 1}/{plan.Count}, " +
+                                            $"{chunk.Count} key(s), first '{chunk[0]}') threw: " +
+                                            $"{ex.GetType().Name}: {ex.Message}");
+                    }
+                    if (!started) continue;
+
+                    while (!h.IsDone)
+                    {
+                        // BYTE-WEIGHTED, from GetDownloadStatus - never a key counter and never a
+                        // timer. With the re-pack producing many small bundles this advances
+                        // continuously inside a chunk instead of stepping once per chunk.
+                        var st = h.GetDownloadStatus();
+                        Report(doneBytes + st.DownloadedBytes);
+                        yield return null;
+                    }
+
+                    var fin = h.GetDownloadStatus();
+                    doneBytes += fin.DownloadedBytes;
+
+                    if (h.Status != AsyncOperationStatus.Succeeded)
+                    {
+                        allOk = false;
+                        failedChunks++;
+                        AddressablesCacheHealth.ReportDownloadFailure(
+                            $"offline attempt {attempt} chunk {ci + 1}/{plan.Count}");
+                        FlowTrace.Fail(Sys, $"offline pull FAILED for attempt={attempt} chunk {ci + 1}/{plan.Count} " +
+                                            $"(first key '{chunk[0]}') - the player is NOT offline-ready.");
+                    }
+
+                    Addressables.Release(h);
+                    Report(doneBytes);
+                }
+
+                // ⭐ THE OUTCOME ASSERTION. Handles reporting Succeeded is not evidence that bytes
+                // landed; on 2026-08-19 a set that matched nothing "succeeded" instantly. Re-measure
+                // the SAME key set and require zero outstanding. This single check is the difference
+                // between a feature and a no-op wearing a green tick. NOT relaxed by this fix.
+                downloadedAllAttempts += doneBytes;
+
+                remaining = -1; remeasured = false;
+                yield return MeasureDownloadSize(keys, (b, ok) => { remaining = b; remeasured = ok; });
+
+                if (allOk && remeasured && remaining == 0)
+                {
+                    FlowTrace.Step(Sys, $"offline pull attempt {attempt}/{MaxPullAttempts} left 0 bytes outstanding " +
+                                        $"({doneBytes} byte(s) downloaded this attempt, {repairedTotal} abandoned cache " +
+                                        "transaction(s) repaired in total).");
+                    break;
+                }
+
+                if (attempt >= MaxPullAttempts)
+                {
+                    FlowTrace.Fail(Sys, $"offline pull attempt {attempt}/{MaxPullAttempts} STILL leaves " +
+                                        $"{(remeasured ? remaining.ToString() : "an unmeasurable number of")} byte(s) " +
+                                        $"outstanding (failedChunks={failedChunks}, repaired={repairedTotal}). No " +
+                                        "further retry BY DESIGN - if a bundle structurally cannot cache, looping " +
+                                        "would hang and an honest failure is better. Naming the bundles now.");
+                    break;
+                }
+
+                FlowTrace.Warn(Sys, $"offline pull attempt {attempt}/{MaxPullAttempts} finished with " +
+                                    $"allHandlesOk={allOk}, remeasured={remeasured}, remaining=" +
+                                    $"{(remeasured ? remaining.ToString() : "UNKNOWN")}. Re-scanning for abandoned " +
+                                    "cache transactions and retrying the whole set ONCE - already-committed bundles " +
+                                    "cost a cache check, not a download.");
+            }
 
             bool verified = PullVerified(keys.Count, allOk, remeasured ? remaining : -1, out string verdict);
 
-            onProgress?.Invoke(verified ? 1f : lastPct, doneBytes, total);
+            // WO-1092 diagnostic: on a failure, say WHICH bundles and whether their hash is even
+            // valid. An invalid hash can never cache; a valid one means the write was lost.
+            if (!verified) LogOutstandingBundles(factsByHash);
+
+            // Report what the player ACTUALLY pulled across every attempt. Using the last attempt's
+            // figure would read as "downloaded 19 MB of 38 MB" on a successful retry.
+            onProgress?.Invoke(verified ? 1f : lastPct, downloadedAllAttempts, total);
 
             if (verified)
             {
                 StampOfflineReady();
                 FlowTrace.Step(Sys, $"OFFLINE PULL COMPLETE for build {Application.version} - {verdict}. " +
-                                    $"{doneBytes} byte(s) actually downloaded. Later launches with no network " +
+                                    $"{downloadedAllAttempts} byte(s) actually downloaded. Later launches with no network " +
                                     "will use the local cache.");
                 onDone?.Invoke(true, "Done. This game now works without a connection.");
             }
             else
             {
                 FlowTrace.Fail(Sys, $"OFFLINE PULL NOT VERIFIED ({verdict}); failedChunks={failedChunks}, " +
-                                    $"downloaded={doneBytes}/{total}. NOT stamped - the player stays " +
+                                    $"attempts={MaxPullAttempts}, cacheTransactionsRepaired={repairedTotal}, " +
+                                    $"downloaded={downloadedAllAttempts}/{total}. NOT stamped - the player stays " +
                                     "online-dependent, which is the truthful state; a half-cache recorded " +
                                     "as complete is worse than no cache at all.");
                 onDone?.Invoke(false, "The download did not finish. You can try again any time; " +

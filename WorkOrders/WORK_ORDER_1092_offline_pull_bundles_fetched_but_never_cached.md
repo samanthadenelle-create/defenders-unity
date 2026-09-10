@@ -1,6 +1,6 @@
 # WORK ORDER 1092 — the offline pull fetches ~19.4 MB that never becomes a cache entry, so the player can never be stamped offline-ready
 
-**Status:** READY TO IMPLEMENT (diagnostic first — the behavioural fix is deliberately deferred)
+**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane CACHE)
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1089 → 1095 in the same edit)
 **Silo:** Content / Addressables
 **Severity:** P2 — offline mode never stamps; no crash, no data loss
@@ -69,7 +69,25 @@ Constraints:
   device logcat ring and evicts the surrounding evidence (memory `logcat-ring-buffer-destroys-evidence`).
   A capped list plus a total count is the right shape.
 
-## ⛔ Do NOT implement the retry yet
+## ⛔ Do NOT implement the retry yet — ⚠ SUPERSEDED 2026-09-09 (lane CACHE)
+
+> **The deferral condition below is DISCHARGED, so the retry SHIPPED.** This section deferred the
+> retry on one stated condition: *"If those bundles structurally cannot cache, a retry loops or
+> hangs."* `docs/READY_RCA_2026-09-09.md` section **WO-1092** since proved the opposite from the
+> retained build catalog + the surviving cache: the one absent remote request is
+> `enemy_models_assets_enemyfam-orc_2220522384eb58b0db363f6c6e1b47ab.bundle` (19,398,472 bytes,
+> CRC 4262033540) carrying a **VALID non-zero hash**, whose current-version cache directory holds a
+> single zero-byte `__lock` and no `__data`/`__info` while the previous version stays complete.
+> Re-verified by listing that directory on this disk 2026-09-09 (see the RESULT). A valid-hash
+> bundle behind an abandoned transaction *can* cache — so the retry is bounded, not looping, and it
+> is preceded by a targeted repair of that exact transaction.
+>
+> **The diagnostic this WO specified is still implemented, unchanged in intent** — it now runs on the
+> final non-verified verdict and names each still-outstanding bundle's `BundleName`, `Hash`,
+> `Hash128.Parse(...).isValid` and `BundleSize`, capped at 8 plus a total. See
+> `WORK_ORDER_1092_offline_pull_bundles_fetched_but_never_cached.RESULT.md`.
+
+### Original deferral text (kept for the record)
 
 A bounded second pass over the still-outstanding locations is the obvious follow-up and is
 **deliberately deferred until this diagnostic reports**. If those bundles structurally cannot cache,
