@@ -1,8 +1,23 @@
 # WO-1621 - Title screen: the PLAY INTRO caption ellipsises to "PLAY INT..." on the Seeker
 
-**Status:** READY TO IMPLEMENT - **instrument first** (CLAUDE.md sec.12: no code edit until a
+**Status:** FIXED 2026-09-10 by evidence, ZERO code changed - the caption FITS in landscape on the
+Seeker. `Builds/device-frames/2026-09-10_0558_raid_title_363529.png` decodes **2670x1200 LANDSCAPE**
+(build `2026.09.10.363529`, `deviceModel=Seeker` in `2026-09-10_raid_logcat_preraid.txt` 05:57:03)
+and its three-face action row draws `CONTINUE | START NEW | PLAY INTRO` **in full, no ellipsis**.
+That closes the OWNER RULING's item 3 exactly as written (*"If it fits, this ticket closes on that
+frame"*) - and it retires that block's own clause *"Builds/device-frames/ holds no landscape frame"*,
+which was true when written and is not true now. The row/skin/fit files are unchanged since
+2026-09-04, so the frame measures HEAD. **Awaiting the owner's felt close (sec.13: PO closes, not
+CLI).** Full evidence + what remains UNPROVEN (final fontSize, isTextOverflowing, which fit path
+settled the label - none measured, and the ruling made that trace conditional on NOT fitting) in
+`WORK_ORDER_1621_title_play_intro_caption_truncates_on_the_seeker.RESULT.md`. Status flipped by the
+TITLE-CAPTION lane under an explicit lead instruction, overriding the ruling block's
+*"the lead flips it"* sentence.
+
+*(Superseded original: "READY TO IMPLEMENT - instrument first (CLAUDE.md sec.12: no code edit until a
 captured line names the final fontSize and the overflow flag for all three captions on the portrait
-device aspect)
+device aspect)". Kept verbatim because the OWNER RULING block below quotes this line's portrait
+phrasing and would be unreadable without it.)*
 **Minted:** 2026-09-10 (CLI, main-line banner; bumped 1621 -> 1625 in the SAME edit)
 **Silo / Lane:** UI / Onboarding Title screen + ElarionUiKit text fit
 **Severity:** P2 felt - the FIRST screen of the game, on the owner's own device, renders a
@@ -269,3 +284,7 @@ lead flips it - this lane does not rewrite another ticket's status.
 4. **Everything else in this ticket stands unchanged** - the pins (sec.5), the forbidden 24f->20f drop,
    the kit-not-TitleController architecture ruling (sec.3), and the sec.6b asmdef blocker (b), which
    the orientation ruling does not touch.
+
+## Lead addendum (2026-09-10 07:00)
+
+Post-WO-1631 landscape frame on APK 2026.09.10.363591: `Builds/device-frames/2026-09-10_0700_363591_title_portrait_lock.png` (2670x1200, opened) - the action row reads CONTINUE | START NEW | PLAY INTRO drawn in full.

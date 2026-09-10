@@ -180,6 +180,10 @@ HEART-COPY 1641, TOWN-CHROME 1642, MANAGE-COPY. APK rebuild + Seeker reinstall c
   = the two version lines only, `allowedAutorotateToPortrait: 0` / `...UpsideDown: 0` held. Seeker install
   `Builds/wave4-install.runner.txt` -> `Performing Streamed Install / Success` (06:57); `dumpsys` on `SM02G4061955851` reads
   `versionName=2026.09.10.363591`. Device frames of a raid on this build are the WO-1631 felt-test closer.
+  Landscape proof on 363591 (07:00): `settings put system user_rotation 0` (portrait) then 1 and 3 with the accelerometer off,
+  screencap each -> `Builds/device-frames/2026-09-10_0700_363591_title_{portrait_lock,rot1,rot3}.png`, all three 2670x1200
+  (PNG IHDR read). Sent to the owner. dev pushed at `94dfd6481` (LFS 5000 objects first). F8 seq 4988 = the benign
+  StructureAssets INIT-handle line from that launch, acked.
 - **Seeker install:** `install-apk-to-seeker.ps1 -Build:$false -Install:$true` -> `Performing Streamed
   Install / Success` on `SM02G4061955851` (00:23). Device frames under `Builds/device-frames/` and sent
   to the owner as they were taken.

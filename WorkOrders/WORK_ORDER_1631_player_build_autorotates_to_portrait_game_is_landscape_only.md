@@ -495,3 +495,7 @@ the code. This worktree's copy already reads `0/0/1/1`.
 **Not proven from here:** no Unity-side preset, `.preset` asset or settings-snapshot restore mechanism
 was found - but that is a grep, not a runtime trace. If the flags ever move again with CASE 5 green,
 that is where to look next.
+
+## Device proof (lead, 2026-09-10 07:00)
+
+APK 2026.09.10.363591 (built after e1558e6a0, installed 06:57, dumpsys versionName confirmed). With the accelerometer off and `user_rotation` forced to 0 (portrait), 1 and 3, every screencap is 2670x1200: `Builds/device-frames/2026-09-10_0700_363591_title_portrait_lock.png`, `_rot1.png`, `_rot3.png`. Owner felt-test closes.
