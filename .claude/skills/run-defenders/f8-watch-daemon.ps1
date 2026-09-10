@@ -159,6 +159,25 @@ $kindSkip = 'session_start|scene_loaded|note|idle'
 $hbEvery = 30
 $hbLast = [datetime]::MinValue
 $passFails = 0
+# WO-1624 sec.4.5: $logPositions is IN-MEMORY, so "the Editor/Player scan ran" was not observable
+# from outside the process - which is how a scan that had NEVER executed still read healthy. These
+# two counters make the read branch visible in the heartbeat detail (same shape the device producer
+# already uses: "offset=1215/1215"). Liveness only, NOT triage state - captures still go to the
+# queue via Emit-Capture and nowhere else.
+$logReads = 0
+$logBytes = 0
+function Watch-Detail {
+    $parts = @()
+    foreach ($pair in @(@('editor', $EditorLog), @('player', $PlayerLog))) {
+        $name = $pair[0]; $p = $pair[1]
+        if (Test-Path $p) {
+            $parts += ('{0}={1}/{2}' -f $name, [int64]$logPositions[$p], (Get-Item $p).Length)
+        } else {
+            $parts += ('{0}=absent' -f $name)
+        }
+    }
+    return ('watching {0} reads={1} bytes={2}' -f ($parts -join ' '), $logReads, $logBytes)
+}
 function Beat([string]$detail) {
     $script:hbLast = Get-Date
     Write-F8Heartbeat $Inbox 'desktop' @{
@@ -221,12 +240,21 @@ while ($true) {
         if ($len -lt $pos) { $pos = 0 }
         if ($len -le $pos) { continue }
 
-        $fs = [System.IO.File]::Open($logPath, 'Open', 'Read', 'FileShare.ReadWrite')
+        # WO-1624: this argument was the STRING 'FileShare.ReadWrite' from 2026-07-09 (22ae4de5b)
+        # until 2026-09-10. It carried the TYPE NAME as well as the member name, so PowerShell
+        # could not match it to a FileShare enumerator ("Unable to match the identifier name
+        # FileShare.ReadWrite to a valid enumerator name") and EVERY pass threw here - 9317 caught
+        # throws on one process alone - meaning the Editor/Player scan below had never run.
+        # TYPED form deliberately, not the bare 'ReadWrite' string: it cannot be mis-shortened
+        # again. ReadWrite share is REQUIRED - Unity holds these logs open for writing.
+        $fs = [System.IO.File]::Open($logPath, 'Open', 'Read', [System.IO.FileShare]::ReadWrite)
         $fs.Seek($pos, 'Begin') | Out-Null
         $sr = New-Object System.IO.StreamReader($fs)
         $chunk = $sr.ReadToEnd()
         $sr.Close()
         $fs.Close()
+        $logReads++
+        $logBytes += ($len - $pos)   # BYTES off the stream, not $chunk.Length (chars)
         $logPositions[$logPath] = $len
 
         foreach ($line in ($chunk -split "`r?`n")) {
@@ -262,5 +290,5 @@ while ($true) {
 
   # heartbeat on its own cadence, whether or not anything was captured: silence must be
   # distinguishable from death (WO-1460).
-  if (((Get-Date) - $hbLast).TotalSeconds -ge $hbEvery) { Beat 'watching' }
+  if (((Get-Date) - $hbLast).TotalSeconds -ge $hbEvery) { Beat (Watch-Detail) }
 }

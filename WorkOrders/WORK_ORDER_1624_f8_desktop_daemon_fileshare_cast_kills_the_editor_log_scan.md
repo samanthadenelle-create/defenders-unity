@@ -1,6 +1,6 @@
 # WO-1624 - F8 desktop daemon: a type-qualified enum name inside a string kills every pass, so the Editor/Player log scan has NEVER run
 
-**Status:** READY TO IMPLEMENT (tooling; haiku-sized - one line changed, one restart to verify)
+**Status:** FIXED 2026-09-10 - lead reviewed the diff (typed [System.IO.FileShare]::ReadWrite, counters, catch block untouched), parse OK, daemon restarted pid 47444 with passFails=0 and detail=watching; the live reads>0 proof lands on the next Play session. (was: IMPLEMENTED - awaiting lead review, lane F8-DAEMON)
 **Minted:** 2026-09-10 (CLI, main-line banner; bumped 1621 -> 1625 in the SAME edit)
 **Silo / Lane:** Tooling / F8 watcher (`.claude/skills/run-defenders/`) - **no .cs, no Unity, no git**
 **Severity:** P1 process, small fix. CLAUDE.md sec.14 is BINDING and its whole point is that
