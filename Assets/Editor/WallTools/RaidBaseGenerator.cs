@@ -587,15 +587,23 @@ namespace DeNelle.Editor
             // - a Ballista IS 2.6 m tall and 4.4 m wide, so the heuristic read correct art as a
             // fallen building, tipped it on its edge, and ScaleToHeight then magnified the wrong
             // axis to 14.4 m. The exemption PlaceTowerProp already had is now shared, not copied.
+            // WO-1619 step 1: ONE line per spire, and it must name the scene it came from -
+            // BuildAllRaidScenes bakes several configs in one run, and "SPIRE 'tower_arcane_spire'"
+            // alone cannot be told apart between them in Builds/raidbase-bake.log.
+            string fitLabel = $"config '{def.id}' spire '{catalogId}'";
+
             float built;
             if (authoredSiege)
             {
                 built = MeasuredHeight(go);
+                Debug.Log($"[RaidBaseGenerator] SPIRE FIT {fitLabel}: EXEMPT (authored siege machine) - " +
+                          $"no upright correction and no fit applied; measured={built:F2}m against a " +
+                          $"pre-clamp target of {targetHeight:F2}m. (WO-1619 step 1 instrumentation.)");
             }
             else
             {
                 EnsureUpright(go, $"spire art '{catalogId}'");
-                built = ScaleToHeight(go, targetHeight);
+                built = ScaleToHeight(go, targetHeight, fitLabel);
             }
             SeatOnGround(go);
 
@@ -1236,17 +1244,78 @@ namespace DeNelle.Editor
             return b.size.y;
         }
 
-        /// <summary>Uniformly scale an object so its rendered height matches <paramref name="target"/>. Returns the height achieved.</summary>
-        private static float ScaleToHeight(GameObject go, float target)
+        /// <summary>
+        /// Uniformly scale an object so its rendered height matches <paramref name="target"/>.
+        /// Returns the height achieved.
+        ///
+        /// WO-1619 STEP 1 - INSTRUMENT ONLY, NO BEHAVIOUR CHANGE. The clamp below can SATURATE,
+        /// and until this line was written a saturated fit was INDISTINGUISHABLE from a satisfied
+        /// one in the bake log: the method already returned the truth (b.size.y * f) and nothing
+        /// compared it to what was asked for. Every call now reports the raw measured bounds
+        /// height, the target, the factor the fit WANTED, the factor it was ALLOWED, which bound
+        /// it hit, and the achieved height. A saturated fit reports at WARNING, because
+        /// "I could not do what I was asked" is an anomaly, not information (CLAUDE.md sec.12).
+        ///
+        /// The 0.2f / 8f bounds are DELIBERATELY still bare literals here. Turning them into
+        /// named tunables beside SpireMonumentMultiplier is WO-1619 STEP 2, and step 2 is
+        /// licensed by the numbers this instrumentation prints - not by reading this file.
+        /// The lower bound is doing real work against oversized art (WO-1619 sec.5 pin).
+        ///
+        /// <paramref name="what"/> is the caller's label for the log line. It is REQUIRED and
+        /// there is no silent branch: a fit that reports nothing is the exact defect this
+        /// instrumentation exists to end, so an empty label falls back to the object name
+        /// rather than suppressing the line.
+        /// </summary>
+        private static float ScaleToHeight(GameObject go, float target, string what)
         {
+            string label = string.IsNullOrEmpty(what) ? go.name : what;
+
             var rends = go.GetComponentsInChildren<Renderer>(true);
-            if (rends.Length == 0) return target;
+            if (rends.Length == 0)
+            {
+                Debug.LogWarning($"[RaidBaseGenerator] SPIRE FIT {label}: NO RENDERERS - nothing to " +
+                                 $"measure and nothing scaled; target={target:F2}m is being REPORTED as " +
+                                 "achieved, which is a fiction. (WO-1619 step 1 instrumentation.)");
+                return target;
+            }
+
             var b = rends[0].bounds;
             for (int k = 1; k < rends.Length; k++) b.Encapsulate(rends[k].bounds);
-            if (b.size.y <= 0.0001f) return target;
-            float f = Mathf.Clamp(target / b.size.y, 0.2f, 8f);
+            float raw = b.size.y;
+            Vector3 scaleBefore = go.transform.localScale;
+
+            if (raw <= 0.0001f)
+            {
+                Debug.LogWarning($"[RaidBaseGenerator] SPIRE FIT {label}: DEGENERATE BOUNDS " +
+                                 $"(rawHeight={raw:F5}m) - no fit applied; target={target:F2}m is being " +
+                                 "REPORTED as achieved, which is a fiction. (WO-1619 step 1 instrumentation.)");
+                return target;
+            }
+
+            float wanted = target / raw;
+            float f = Mathf.Clamp(wanted, 0.2f, 8f);
             go.transform.localScale *= f;
-            return b.size.y * f;
+            float achieved = raw * f;
+
+            // Mathf.Clamp returns `wanted` bit-exactly when it is inside the range, so these two
+            // comparisons are exact and - deliberately - do not restate the bound literals.
+            bool satUpper = wanted > f;
+            bool satLower = wanted < f;
+            string bound = satUpper ? "UPPER" : (satLower ? "LOWER" : "none");
+            float pct = achieved / target * 100f;
+
+            string line = $"[RaidBaseGenerator] SPIRE FIT {label}: rawHeight={raw:F3}m " +
+                          $"prefabScaleBefore={scaleBefore.y:F3} target={target:F2}m " +
+                          $"wantedFactor={wanted:F3} appliedFactor={f:F3} saturatedAt={bound} " +
+                          $"achieved={achieved:F2}m ({pct:F0}% of target)";
+
+            if (satUpper || satLower)
+                Debug.LogWarning(line + " - SATURATED: the fit could NOT reach the height the " +
+                                        "generator asked for. (WO-1619 step 1 instrumentation.)");
+            else
+                Debug.Log(line + " - fit satisfied. (WO-1619 step 1 instrumentation.)");
+
+            return achieved;
         }
 
         /// <summary>

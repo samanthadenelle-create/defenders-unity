@@ -75,6 +75,7 @@ namespace DeNelle.Editor.Regression
                     CaseTowerPropStillGuarded(gen, failures, notes);
                     CaseExactlyOnePredicate(gen, dress, failures, notes);
                     CaseMonumentFitIsTunable(gen, failures, notes);
+                    CaseSaturationIsReported(gen, failures, notes);
                     CaseDresserRoutesSpireThroughTheDecider(gen, dress, failures, notes);
                 }
             }
@@ -187,6 +188,49 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[tunable] PlaceSpire still hardcodes the 1.6f / 8f / 18f monument clamp.");
 
             notes.Add("monument fit tunable");
+        }
+
+        /// <summary>
+        /// WO-1619 STEP 1. The monument fit is allowed to fail; it is NOT allowed to fail
+        /// SILENTLY. ScaleToHeight has always returned the height it actually achieved, and
+        /// nothing ever compared that to the target - so a spire landing at 8.0 m against a
+        /// 14.4 m target logged identically to one that landed on its target (the 2026-09-09
+        /// bake in Builds/raidbase-bake.log recorded exactly that, twice, with no warning).
+        ///
+        /// RED AT BASE e225ca57b: ScaleToHeight's body carried no Debug call of any kind and
+        /// PlaceSpire called it with two arguments.
+        /// MUTATION THAT RE-REDS IT: delete the LogWarning saturation branch from ScaleToHeight
+        /// (case (a) fails), or drop the label argument at the PlaceSpire call site so the fit
+        /// goes back to reporting nothing identifiable (case (b) fails).
+        ///
+        /// NOT PINNED HERE: that the 0.2f / 8f bounds are named tunables. That is WO-1619
+        /// STEP 2, it is RED at this commit by design, and a red case for a change nobody has
+        /// made yet would fail the lead's combined gate. Its spec lives in the WO.
+        /// </summary>
+        private static void CaseSaturationIsReported(string gen, List<string> failures, List<string> notes)
+        {
+            string fit = MethodBody(gen, "private static float ScaleToHeight(");
+            if (fit == null) { failures.Add("[saturation] cannot locate ScaleToHeight in " + GeneratorSrc); return; }
+
+            if (fit.IndexOf("Debug.LogWarning", StringComparison.Ordinal) < 0)
+                failures.Add("[saturation] ScaleToHeight has no Debug.LogWarning branch - a fit that " +
+                             "saturates at a clamp bound would again be indistinguishable from a fit " +
+                             "that reached its target (WO-1619).");
+
+            if (fit.IndexOf("saturat", StringComparison.Ordinal) < 0 &&
+                fit.IndexOf("SATURAT", StringComparison.Ordinal) < 0)
+                failures.Add("[saturation] ScaleToHeight never names saturation - the log line must say " +
+                             "which bound it hit, not merely print a height (WO-1619).");
+
+            string body = MethodBody(gen, "private static RaidSpire PlaceSpire(");
+            if (body == null) { failures.Add("[saturation] cannot locate PlaceSpire in " + GeneratorSrc); return; }
+
+            if (body.IndexOf("ScaleToHeight(go, targetHeight,", StringComparison.Ordinal) < 0)
+                failures.Add("[saturation] PlaceSpire no longer passes a label to ScaleToHeight - " +
+                             "BuildAllRaidScenes bakes several configs per run, so an unlabelled fit line " +
+                             "cannot be attributed to a scene (WO-1619).");
+
+            notes.Add("fit saturation reported");
         }
 
         /// <summary>

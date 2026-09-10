@@ -1,7 +1,6 @@
 # WO-1619 - Raid spire height is capped by the 8x scale factor: every baked spire lands short of the monument height the code asks for
 
-**Status:** READY TO IMPLEMENT - **instrument first** (CLAUDE.md sec.12: no code edit until a bake
-log line names target vs measured height, per spire, in the current build)
+**Status:** BLOCKED - awaiting the bake that prints the spire measurement; INSTRUMENTED step 1 (lane SPIRE 2026-09-10)
 **Minted:** 2026-09-09 (CLI, main-line banner; bumped 1619 -> 1621 in the SAME edit)
 **Silo / Lane:** World / Raid scene builders (serialization bottleneck - ONE agent on the raid
 builders at a time, CLAUDE.md sec.9)
@@ -249,3 +248,112 @@ WO-1607. **Start from the WORKING TREE, never from HEAD.**
 - [ ] Brace balance + NUL scan on every `.cs` touched (CLAUDE.md sec.1, WO-434).
 - [ ] Everything not proven is listed as unproven (CLAUDE.md sec.11B).
 - [ ] Owner felt-verifies on device and **closes**. CLI never closes a visual ticket.
+
+---
+
+## INSTRUMENTED 2026-09-10
+
+**Lane SPIRE, edit-only.** Base `e225ca57b` (after WO-1617's commit `29b6180ec` landed, so sec.1's
+line numbers had all shifted - every line below was re-read at source this session). **Step 1 ONLY:
+no behaviour change.** The height cap, the scale factor, the tunables at `:122-124` and
+`EnsureUpright` are all untouched, and the bake has NOT been run by this lane.
+
+### The measurement lines
+
+`Assets/Editor/WallTools/RaidBaseGenerator.cs`
+
+| file:line | level | exact tag text emitted |
+|---|---|---|
+| `:593` | - | builds the label: `` string fitLabel = $"config '{def.id}' spire '{catalogId}'"; `` - `BuildAllRaidScenes` bakes three configs per run, so an unlabelled fit line cannot be attributed to a scene |
+| `:599` | `Debug.Log` | `[RaidBaseGenerator] SPIRE FIT <label>: EXEMPT (authored siege machine) - no upright correction and no fit applied; measured=<n>m against a pre-clamp target of <n>m. (WO-1619 step 1 instrumentation.)` |
+| `:1276` | `Debug.LogWarning` | `[RaidBaseGenerator] SPIRE FIT <label>: NO RENDERERS - nothing to measure and nothing scaled; target=<n>m is being REPORTED as achieved, which is a fiction. (WO-1619 step 1 instrumentation.)` |
+| `:1289` | `Debug.LogWarning` | `[RaidBaseGenerator] SPIRE FIT <label>: DEGENERATE BOUNDS (rawHeight=<n>m) - no fit applied; target=<n>m is being REPORTED as achieved, which is a fiction. (WO-1619 step 1 instrumentation.)` |
+| `:1307-1310` | (line body) | `[RaidBaseGenerator] SPIRE FIT <label>: rawHeight=<n>m prefabScaleBefore=<n> target=<n>m wantedFactor=<n> appliedFactor=<n> saturatedAt=<UPPER\|LOWER\|none> achieved=<n>m (<n>% of target)` |
+| `:1313` | `Debug.LogWarning` | the line above **+** ` - SATURATED: the fit could NOT reach the height the generator asked for. (WO-1619 step 1 instrumentation.)` |
+| `:1316` | `Debug.Log` | the line above **+** ` - fit satisfied. (WO-1619 step 1 instrumentation.)` |
+
+Design notes, so step 2 does not have to re-derive them:
+
+- **`ScaleToHeight` (`:1269`) is where the reporting went**, per sec.3 - it already returned the
+  truth (`raw * f`) and nothing compared it to `target`. Its signature is now
+  `ScaleToHeight(GameObject go, float target, string what)`. **It has exactly ONE caller in this
+  file** (`:606`, verified by grep this session); the same-named methods in
+  `BattleAnchorStageVerify.cs`, `TreeOfLifeMaterialFixer.cs`, `HubFoliageInjector.cs`,
+  `Village2Generator.cs` are unrelated private statics and were NOT touched.
+- **There is no silent branch.** The label is required, an empty one falls back to `go.name`, and
+  the zero-renderer / degenerate-bounds early-returns now WARN instead of returning `target`
+  wordlessly - a fit that reports nothing is the exact defect being instrumented.
+- **`satUpper` / `satLower` (`:1302-1303`) compare `wanted` against `f` directly.** `Mathf.Clamp`
+  returns `wanted` bit-exactly when it is in range, so the test is exact and, deliberately, does
+  **not** restate `0.2f` / `8f`. No new magic number entered a ticket about magic numbers.
+- **The `0.2f` / `8f` bounds at `:1296` are still bare literals ON PURPOSE.** Naming them is sec.4
+  step 2 and it is licensed by the bake numbers, not by reading the file.
+- `prefabScaleBefore` is logged so sec.1d's derivation (`8.0 / 8 = 1.0 m`) can be replaced by a
+  measured `rawHeight` **and** confirmed to be a 1x-imported prefab rather than a pre-scaled one.
+- Pins held: `MeasuredHeight` (`:1238`), `IsAuthoredSiegeMachine`, `ResolveSpireArtId`,
+  `PlaceTowerProp`'s guard, `RaidSpire.Configure`'s height argument, the `0.2f` lower bound.
+
+### The suite
+
+`Assets/Editor/Regression/RaidSpireSiegeRegression.cs` - **extended, not minted** (sec.6).
+New case `CaseSaturationIsReported` (`:210`), wired into `Run` at `:78`. Source-text oracle, for
+the asmdef reason the file's own header records. It pins two things:
+
+- (a) `ScaleToHeight`'s body contains a `Debug.LogWarning` **and** names saturation;
+- (b) `PlaceSpire` calls `ScaleToHeight(go, targetHeight,` - i.e. the label is still passed.
+
+**RED-first, stated per sec.6:** at base `e225ca57b` case (a) failed because `ScaleToHeight`'s body
+carried no `Debug` call of any kind, and case (b) failed because the call site passed two arguments.
+**Mutation that re-reds it:** delete the `LogWarning` saturation branch at `:1313` -> (a) reds;
+drop the third argument at `:606` -> (b) reds.
+
+**`CaseScaleFactorBoundsAreTunable` was DELIBERATELY NOT ADDED.** It is red by design until step 2
+turns `0.2f` / `8f` into named consts, and this suite is **already registered** in
+`Assets/Editor/Regression/DataRegression.cs:1984` - so committing a red case would fail the lead's
+combined gate for a change nobody has made yet. Its spec stays in sec.6; step 2 adds it and records
+its own RED-first mutation. **No registration line is owed to the lead: the suite was already wired
+by WO-1617.**
+
+`CaseMonumentFitIsTunable` (`:173`) is unchanged and still green - no tunable value moved.
+
+### The bake, and what its output must show to license step 2
+
+Batchmode method: **`DeNelle.Editor.RaidBaseGenerator.BuildAllRaidScenes`**
+(then `DeNelle.Editor.RaidNavBake.BakeAll` per sec.7 **only if the re-baked scenes are kept**; a
+measurement-only run does not need it). Never with the editor open (CLAUDE.md sec.3).
+
+Read the log with PowerShell, not `grep` - **Unity logs are UTF-16**
+(memory `unity-logs-are-utf16-read-with-powershell`):
+
+```powershell
+Select-String -Path Builds\raidbase-bake.log -Pattern 'SPIRE FIT|SPIRE ''' | ForEach-Object { $_.Line }
+```
+
+Expect **three** `SPIRE FIT` lines - `BuildAllRaidScenes` iterates `RaidConfigIds` =
+`raider_camp_small`, `fortified_garrison`, `mage_enclave` (sec.1c). Anything other than three is
+itself a finding; use the measured population, never sec.1c's prediction.
+
+Step 2 is licensed by, and only by, these numbers:
+
+- **If all three read `saturatedAt=UPPER` with `achieved≈8.00m` against `target=14.40m`** - the CAP
+  axis is confirmed and sec.4's first branch is the fix: the `8f` ceiling at `:1296` becomes a named
+  tunable beside `:122-124` and moves.
+- **`rawHeight` is the number sec.1d forbade guessing.** If it lands near `1.0m` the derivation is
+  vindicated (say so as *measured*, not derived). **If it is materially different from `1.0m`, sec.1d's
+  inference was WRONG** and that is the finding - re-derive before touching anything.
+- **If any line reads `saturatedAt=none`** the fit is reaching its target on that spire and the
+  defect is narrower than sec.1 claims; the RESULT must say which spires actually saturate.
+- **If a line reads `saturatedAt=LOWER`** the art is oversized, not undersized, and the ticket's
+  whole premise inverts - stop and re-scope.
+- `prefabScaleBefore` materially off `1.000` means the prefab arrives pre-scaled and the target, not
+  the cap, is the wrong axis (sec.4's second branch).
+
+### Unproven by this lane (CLAUDE.md sec.11B)
+
+- **No bake was run and no number was measured here.** Every quantity in sec.1c remains the
+  2026-09-09 log's, read from disk by a previous lane; this lane read only source.
+- `ArcaneSpire_1`'s raw height is **still the `8.0/8` derivation** and must not be written as fact
+  anywhere until the `rawHeight=` field prints it.
+- The new suite case has **not been executed** - the lane holds no Unity lock. It is brace-clean
+  (`tools/gate_brace.py`, `bad=0`) and NUL-free, and that is all that has been proven about it.
+- Sec.8's Forsaken Camp art question is untouched and still awaiting the owner.
