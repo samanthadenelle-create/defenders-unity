@@ -110,6 +110,19 @@ namespace DeNelle.Village
         /// exactly where they are — the band grows into the card's empty bottom margin, which
         /// nothing else is authored into (the next rect up is the title at .22f).</summary>
         private const float CaptionTopFrac = .21f;
+        /// <summary>WO-1629 — the MANAGE PLACED caption's OWN band height in reference px.
+        /// ⛔ DELIBERATELY A SECOND CONSTANT WITH THE SAME VALUE, NOT A REUSE OF
+        /// <see cref="CaptionBandPx"/>. The two bands seat DIFFERENT STRINGS: the category
+        /// caption is StructureCardVM's affordability sentence, this one is the door's own
+        /// promise. They agree today only because the owner's 2026-09-10 ruling re-voiced this
+        /// copy to the categories' ~22-character shape, so both resolve to the same measured
+        /// two-line requirement (47.6 ref px at fontSize 21, in the same 140.8 px band width on
+        /// the narrowest card) with the same 2.4 px of headroom. Stretching one constant over
+        /// both would silently re-tune this caption the next time the category words change
+        /// length — which is precisely the duplicated-state failure WO-1629 exists to end.
+        /// Measured ceiling: the band hangs below <see cref="CaptionTopFrac"/>, so it can never
+        /// exceed .21 x cardHeight = 68.5 / 56.7 / 55.2 px at the three captured aspects.</summary>
+        private const float ManageCaptionBandPx = 50f;
         private readonly List<GameObject> _pageObjects = new List<GameObject>();
         private RectTransform _panel;
         private CardCollectionDocument _document;
@@ -511,23 +524,48 @@ namespace DeNelle.Village
             manageTitle.fontSizeMax = 26f;
             manageTitle.transform.SetAsLastSibling();
 
+            // ⛔ OWNER RULING 2026-09-10 — SHORTEN THE COPY; THE LAYOUT DOES NOT MOVE.
+            // The retired sentence was "Move, upgrade or sell anything already built." — 45
+            // characters, and WO-1629 Step 1 MEASURED that it could not be seated: it needed
+            // 95.9 / 71.8 / 71.8 ref px at the kit floor while the card leaves only
+            // .21 x cardHeight = 68.5 / 56.7 / 55.2 px below the caption's top edge. It was cut
+            // at all three aspects (32 / 16 / 18 of 45 chars, truncated=True, already driven onto
+            // fontSize 20). Every band constant that fits under .21f was therefore too short, and
+            // the owner ruled the copy yields rather than the title, the artwork or the kit floor.
+            // The replacement is written in the SEVEN CATEGORY CAPTIONS' VOICE — lowercase, no
+            // terminal period, ~22 characters — the shape StructureCardVM.AffordabilityWords
+            // authors ("nothing affordable yet", :418), so the eight captions read as one row.
             var manageSubtitle = Label(manageCard.transform,
-                "Move, upgrade or sell anything already built.", 21, TextAlignmentOptions.Top,
-                new Vector2(.08f, .05f), new Vector2(.92f, .21f));
+                "manage what you built", 21, TextAlignmentOptions.Top,
+                new Vector2(.08f, CaptionTopFrac), new Vector2(.92f, CaptionTopFrac));
             manageSubtitle.color = ElarionUi.Parchment;
             manageSubtitle.raycastTarget = false;
+            // WO-1629 Step 2 — Y IS PIXELS HERE TOO. This was the LAST fraction-authored caption
+            // band on the screen (its y anchors ran from the card's .05 to its .21); it now hangs
+            // from the same top edge in reference px, the identical shape the seven category
+            // captions use (:305-308). Pivot BEFORE the offsets — moving a pivot afterwards keeps
+            // sizeDelta and anchoredPosition and slides the rect straight back off the number.
+            // ⛔ AND THE RETIRED PAIR IS NOT SPELLED ANYWHERE IN THIS FILE, COMMENTS INCLUDED:
+            // BuildCollectionPlayerRegression's negative pin is a plain source-text Contains with
+            // no comment model, so quoting the old literal here — even to explain it — reds the
+            // gate. The pin's own red-recipe carries the exact string instead.
+            var manageSubtitleRect = manageSubtitle.rectTransform;
+            manageSubtitleRect.pivot = new Vector2(.5f, 1f);
+            manageSubtitleRect.offsetMax = Vector2.zero;
+            manageSubtitleRect.offsetMin = new Vector2(0f, -ManageCaptionBandPx);
             ElarionUiKit.FitBlock(manageSubtitle, 18f, 21f);
             // =================================================================
-            //  WO-1629 Step 1b — INSTRUMENT ONLY. NOTHING ABOVE THIS LINE MOVED.
+            //  WO-1629 — THE PROBE STAYS AFTER THE FIX (CLAUDE.md sec.12: instrumentation is
+            //  PERMANENT, and this caption is exactly the one that shipped truncated unseen).
             //
-            //  This caption is still authored as a FRACTION of the card (.05f-.21f, the pair
-            //  WO-1628 retired for the seven category cards) and it carries 45 characters
-            //  against their 22 — but its render has never been MEASURED, because the card has
-            //  never been built in a capture. So no band is authored here and no anchor is
-            //  touched: this push only makes the existing post-layout probe pass see it.
-            //  Reading preferredHeightPx against the resolved band height at all three aspects
-            //  is what licenses Step 2 (CLAUDE.md sec.11B / sec.12 — the requirement is a
-            //  number someone read, not an inference from the 22-character measurement).
+            //  ⚠ THIS BLOCK USED TO SAY the caption "is still authored as a FRACTION" and that
+            //  "its render has never been MEASURED". Both were true when Step 1 wrote them and
+            //  BOTH ARE NOW FALSE — the band above is reference px and the render was measured
+            //  on 2026-09-10. It is corrected here rather than deleted because the measurement
+            //  is what licensed the fix: 45 characters needed 95.9 / 71.8 / 71.8 px against a
+            //  .21f ceiling of 68.5 / 56.7 / 55.2, so no band could seat it and the OWNER ruled
+            //  the copy yields. This probe is how the next capture PROVES the new copy fits
+            //  rather than asserting it (CLAUDE.md sec.11B).
             //
             //  ⚠ THE PREFIX IS DELIBERATELY DISTINCT AND DOES NOT REBUILD THE PINNED LITERAL.
             //  BuildAffordabilityWordsRegression.cs:67 pins the source text

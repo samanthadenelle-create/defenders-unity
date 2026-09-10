@@ -190,23 +190,40 @@ namespace DeNelle.Editor.Regression
             // the band's bottom offset, so declaration and use must both survive. Both are RED
             // before the fix, because neither string existed.
             //
-            // WHY THE NEGATIVE PIN COUNTS TO ONE INSTEAD OF FORBIDDING: the retired pair
-            // `new Vector2(.08f, .05f)` legitimately survives at the Manage Placed card's own
-            // caption. WO-1628 names that card only to scope its TITLE's font floor out (sec.6,
-            // manageTitle.fontSizeMin) and never names its caption at all; the card was SKIPPED
-            // in all three passes of the capture -- Show() was called without a managePlaced
-            // callback -- so its caption's render is UNMEASURED; and its 45-character copy needs
-            // more lines than this band gives. Re-pointing it here would be a fix claimed
-            // without evidence. Exactly ONE occurrence is therefore correct today; tighten this
-            // to zero when that card is re-pointed on its own measured frame.
+            // ⛔ TIGHTENED TO ZERO 2026-09-10 (WO-1629 Step 3). THE ALLOWANCE IS SPENT.
+            // This clause used to permit exactly ONE `new Vector2(.08f, .05f)`, because the
+            // Manage Placed card's caption legitimately still carried the retired pair and its
+            // render had never been captured -- re-pointing it then would have been a fix
+            // claimed without evidence. That frame has now been shot. WO-1629 made the capture
+            // build the eight-card grid and probed the caption (Builds/wave2-capture5): its
+            // 45-character copy needed 95.9 / 71.8 / 71.8 ref px against the .21f ceiling's
+            // 68.5 / 56.7 / 55.2, so it was CUT at all three aspects (32 / 16 / 18 of 45,
+            // isTextTruncated TRUE, already driven onto the kit floor at fontSize 20). No band
+            // constant could seat it, so the OWNER RULED 2026-09-10 that the copy yields rather
+            // than the title, the artwork or the floor: the caption is now the categories'
+            // ~22-character voice, in a px band of its own (ManageCaptionBandPx).
+            //
+            // So the retired fraction pair must now occur ZERO times in the file -- there is no
+            // caption left on this screen entitled to it, and a single re-appearance is the
+            // regression this whole ticket chain exists to stop.
+            // WHY THE NEGATIVE PIN NAMES ONLY `.08f, .05f`: it is the y-fraction that was the
+            // defect. The x fractions .08/.92 stay proportional by design (WO-1628 proved width
+            // was never implicated for the category caption).
             // RED PROOF: restore the `new Vector2(.08f, .05f), new Vector2(.92f, .21f)` pair at
-            // the seven-card caption and delete the pivot/offset block -- either half alone reds
-            // this pin.
+            // EITHER caption -- the seven-card one or the Manage Placed one -- and delete that
+            // caption's pivot/offset block. Either site alone reds this pin now, where before
+            // the Manage Placed site was tolerated.
             if (!browser.Contains("CaptionBandPx") ||
                 !browser.Contains("-CaptionBandPx") ||
-                browser.IndexOf("new Vector2(.08f, .05f)", StringComparison.Ordinal) !=
-                browser.LastIndexOf("new Vector2(.08f, .05f)", StringComparison.Ordinal))
-                return Fail("the category caption band is a fraction of card height again instead of reference px: CaptionBandPx is missing or unspent, or the retired .08/.05 fraction is back on the seven category cards", out reason);
+                browser.Contains("new Vector2(.08f, .05f)"))
+                return Fail("a caption band on the Build Collections cards is a fraction of card height again instead of reference px: CaptionBandPx is missing or unspent, or the retired .08/.05 fraction is back on one of the eight cards (the Manage Placed allowance was spent by WO-1629)", out reason);
+            // WO-1629 Step 3 -- and the Manage Placed caption's OWN band must be DECLARED and
+            // SPENT, the same declaration-plus-use pair the category band is held to above. A
+            // const left unread while the fraction crept back is the exact hole that shape
+            // closes. RED PROOF: delete `-ManageCaptionBandPx` from the offsetMin assignment.
+            if (!browser.Contains("ManageCaptionBandPx") ||
+                !browser.Contains("-ManageCaptionBandPx"))
+                return Fail("the Manage Placed caption has no reference-px band of its own: ManageCaptionBandPx is missing or never spent as the band's bottom offset (WO-1629 Step 2)", out reason);
             string managePanel = File.ReadAllText("Assets/_Modules/Village/UI/Manage/ManageScreenPanel.cs");
             string manageVm = File.ReadAllText("Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs");
             // -- WO-1422 ruling 3.4 --------------------------------------------

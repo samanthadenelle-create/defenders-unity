@@ -1,6 +1,6 @@
 # WO-1629 - Build Collections: the Manage Placed card's caption is still authored as a fraction of the card, and no capture has ever rendered it
 
-**Status:** BLOCKED - Step 2 needs a layout ruling; measured requirement exceeds the .21f ceiling at every aspect (lane PLACED-CARD 2026-09-10)
+**Status:** FIXED 2026-09-10 - owner ruled "shorten the copy"; caption is "manage what you built" in its own 50 px band; gated (Builds/wave3-compile1, Builds/wave3-reg1 493/493) and captured (Builds/wave3-capture1: UI_CAPTURE_OK 91; all 24 probes fontSize=21, 2 lines, chars == sourceLen, truncated=False); PNG read by the lead and sent to the owner; owner felt-test closes. (was: IMPLEMENTED - awaiting gate + capture (lane PLACED-CARD 2026-09-10))
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1629 -> 1631 in the SAME edit, with WO-1630)
 **Silo / Lane:** Village / BuildMode UI (`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
 **Severity:** P2 felt-legibility, with a P2 evidence defect attached. The caption carries the longest
@@ -552,3 +552,118 @@ category lines read `fontSize=21 floor 20 ceiling 21`, `rendered=2 lines, 22 cha
 189.3**. So `CaptionBandPx = 50f` still clears its 47.6 px requirement on the narrower eight-card grid,
 with the same 2.4 px of headroom. **sec.5.3 is satisfied and WO-1628 does NOT re-open.** The risk sec.2
 flagged did not materialise.
+
+---
+
+### OWNER RULING 2026-09-10 — SHORTEN THE COPY. THE LAYOUT DOES NOT MOVE.
+
+The STEP 2 BLOCKED report above put five levers in front of the owner. The ruling picks the one sec.6
+had reserved: **the copy yields.** The title stays at `.22f`-`.34f`, the artwork stays at `.38f`-`.91f`,
+the divider stays, and the kit's font floor is not touched. **sec.6's "do not shorten, re-word or
+abbreviate it to buy room" is OVERRIDDEN for this string by this ruling, and only for this string.**
+
+That unblocks Step 2 and Step 3, which are implemented below in the same change.
+
+---
+
+## IMPLEMENTED 2026-09-10 — Steps 2 + 3 (lane PLACED-CARD, EDIT-ONLY)
+
+Base: `c10e4f5d1`. Two `.cs` files changed. No Unity run, no gate, no commit.
+
+### 1. Where the copy is authored — a bare C# literal, NOT a localized key
+
+`grep -rn "Move, upgrade or sell" --include=*.cs --include=*.json Assets/` returned exactly **one**
+source site this session: `Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs:515`. It is a
+plain literal argument to `Label(...)` — **there is no localization key, no `canon-strings.json` row and
+no VM behind it.** That matches how the seven category captions are authored: their words come from
+`StructureCardVM.AffordabilityWords` (`Assets/_Modules/Village/BuildMode/StructureCardVM.cs:416-420`),
+which is itself a C# literal returning `"nothing affordable yet"` / `"N you can build now"`. So the
+lead's *"change the source string the way the category captions are authored, keep the key"* resolves
+to: **edit the literal; there is no key to keep.**
+
+### 2. The new copy, and why this wording
+
+`BuildCollectionBrowser.cs:539` — **`manage what you built`**, **21 characters** (was 45).
+
+Written in the seven category captions' voice, read off `StructureCardVM.cs:418` this session:
+**lowercase, no terminal period, ~22 characters** (`nothing affordable yet` is 22). The eight captions
+now read as one row rather than seven labels and a sentence. The card's TITLE still says
+"Manage Placed" (`:503-504`, unchanged), so the caption does not have to re-introduce the noun.
+
+### 3. Step 2 — its own reference-px band
+
+- `BuildCollectionBrowser.cs:113-125` — new `private const float ManageCaptionBandPx = 50f;`
+- `:538-541` — the y anchors collapse onto `CaptionTopFrac`, replacing the retired fraction pair.
+- `:543-556` — `pivot = (.5f, 1f)` set BEFORE `offsetMax = Vector2.zero` /
+  `offsetMin = new Vector2(0f, -ManageCaptionBandPx)`: the identical shape the category captions use
+  at `:305-308`.
+
+**Why 50f, and why it is a SECOND CONSTANT rather than a reuse of `CaptionBandPx`.** The number is
+sized from the measured two-line requirement the category cards report on this same eight-card grid —
+`preferredHeightPx=47.6` at `fontSize=21` in a `140.8` px band on the narrowest card
+(`Builds/wave2-capture5`, read this session) — which is exactly the geometry this caption now sits in:
+same band width, same font ceiling, same ~22-character two-line shape. 50 px leaves the same 2.4 px of
+headroom. It clears the `.21f` ceiling at every aspect (68.5 / 56.7 / 55.2 px). It is nonetheless
+declared separately because the two bands seat **different strings** — the category band follows
+`StructureCardVM`'s affordability words, this one the door's own promise. Sharing one constant would
+silently re-tune this caption the next time the category words change length, which is the
+duplicated-state failure this ticket chain exists to end (CLAUDE.md sec.2 / sec.5 / sec.16 all describe
+the same shape). The reasoning is written at the declaration, not only here.
+
+### 4. Step 3 — the pin tightened to ZERO, same change
+
+`Assets/Editor/Regression/BuildCollectionPlayerRegression.cs`:
+- The `IndexOf == LastIndexOf` count-to-one clause is replaced by a plain
+  `browser.Contains("new Vector2(.08f, .05f)")` **must be FALSE**.
+- The comment block above it is rewritten: it no longer explains why one occurrence is correct, it
+  records that the Manage Placed card was re-pointed on its own measured frame and the allowance is
+  spent, with the measured numbers that licensed it and a red proof naming **either** caption site.
+- A **second** assertion added: `ManageCaptionBandPx` must be both DECLARED and SPENT
+  (`-ManageCaptionBandPx`), the same declaration-plus-use pair the category band is held to — a const
+  left unread while a fraction crept back is the hole that shape closes. Red proof: delete
+  `-ManageCaptionBandPx` from the `offsetMin` assignment.
+
+Verified this session on the edited tree: `grep -c 'new Vector2(\.08f, \.05f)'` on the browser = **0**.
+
+### 5. ⚠ A TRAP THIS LANE HIT AND THE NEXT SEAT WILL — THE PIN HAS NO COMMENT MODEL
+
+The first draft of the Step 2 comment quoted the retired literal to explain what it replaced. The pin is
+a plain source-text `Contains` over the whole file, so **the comment alone would have RED-ed the gate**
+with the code already correct. The retired pair is now spelled nowhere in `BuildCollectionBrowser.cs`,
+comments included, and `:548-551` says so in place. The exact string lives in the pin's own red-recipe,
+in the regression file, which nothing scans.
+
+### 6. Pins read at source this session and still green
+
+- **`BuildCollectionPlayerRegression`** — `CaptionBandPx` present (6), `-CaptionBandPx` spent (1),
+  retired fraction 0, `ManageCaptionBandPx` declared and spent (1). Note `-ManageCaptionBandPx` does
+  **not** satisfy the older `-CaptionBandPx` literal (the `-` is followed by `Manage`), so the category
+  band's own use is still independently proven.
+- **`PlacedStructureDoorRegression.cs:202-221`** — C4a `private void BuildManagePlacedCard`,
+  C4b `BuildManagePlacedCard(grid)` (1 occurrence, call shape untouched), C4c `_managePlaced?.Invoke`
+  (1). **C4b was NOT re-pointed.**
+- **`BuildAffordabilityWordsRegression.cs:67`** — the WO-1411 literal present; `StructureCardVM.cs` was
+  READ but not edited.
+- **`PlayerTextLiteralLeakRegression`** — the copy-change pin, and the one that could have bitten. Its
+  own header red-recipe #2 is *"Change an existing baselined sentence. It must appear once NEW and once
+  STALE."* **It is NOT armed on this tree:** `docs/localization/manifest.json` top-level keys are
+  `schemaVersion / generatedBy / mode / scope / summary / entries` — there is **no
+  `literalDebtBaseline`** property, so `LocalizationAuditIO.cs:260` (`token == null → return true`)
+  leaves `hasBaseline=false` and the suite returns `RegressionOutcome.PartialSkip` with
+  *"fail-on-new/stale debt is not armed"*. The scan root **does** cover this file
+  (`Assets/Editor/Localization/LocalizationPolicy.json:6-8` → `Assets/_Modules`), so this would bite the
+  moment someone arms the baseline — recorded here, not assumed away.
+- **`CopyHygieneRegression`** — its `_Modules`-wide sweep (`:110-122`) forbids only the retired
+  `& Pet` phrases and `to every node's yield`. The new copy contains neither.
+- **`LocalizationAuthorityRegression`** — checks which files READ the string tables, not literals. This
+  file reads none and adds none.
+- Untouched: the kit files, the title's `fontSizeMin = 15f` (WO-1626 sec.6), the artwork/divider rects,
+  WO-1623's footer constants, the `.08f`/`.92f` x fractions.
+
+### 7. Gate
+
+`python tools/gate_brace.py` on both `.cs` → `GATE_BRACE_SUMMARY bad=0 of 2` (exit 0). NUL scan → 0
+bytes each. No marker string written into any file. Instrumentation left in place and CORRECTED rather
+than deleted (CLAUDE.md sec.12): the Step 1 probe comment at `:553-564` had gone stale the moment the
+fix landed — it still claimed the caption was a fraction and unmeasured — and now records that both
+statements are false and what the measurement was.

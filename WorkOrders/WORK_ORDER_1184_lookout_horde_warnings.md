@@ -1,6 +1,6 @@
 # WO-1184 — Earned lookout warnings: phone alerts + a LOOKOUT REPORT HUD surface
 
-**Status:** CLOSED 2026-09-10 - owner ruling (morning, via AskUserQuestion): "Close it" - the offline post-battle report renders on her device (her testimony 2026-09-10); the ticket body described code that no longer existed (09-06 banner); phone alerts get their own spec only if she asks later. (was: AWAITING OWNER RULING)
+**Status:** CLOSED 2026-09-10 - owner ruling (morning): "Close it" - the offline post-battle report renders on her device (her testimony 2026-09-10); the ticket body described code that no longer existed (09-06 banner); phone alerts get their own spec only if she asks later.
 read-only RCA lane proved the body describes code that no longer exists. **Do not pick this up without a
 device screenshot and the build id.**
 
