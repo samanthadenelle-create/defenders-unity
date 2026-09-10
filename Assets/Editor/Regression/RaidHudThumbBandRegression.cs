@@ -403,8 +403,29 @@ namespace DeNelle.Editor.Regression
                 // troops); the thinnest authored one is the Razed row at 0.120 of the panel.
                 RequireSeats(failures, "the raid readout column", readout.height * 0.120f, refH,
                              needPx, "its thinnest authored row (Razed) is 0.120 of it");
-                RequireSeats(failures, "the raid deploy tray", deployBar.height * 0.64f * 0.48f, refH,
-                             needPx, "the tile count badge is 0.48 of a tile that is 0.64 of the bar");
+                // ⛔ WO-1646 RE-POINT: THE TILE HEIGHT IS READ, NOT TYPED.
+                // This asserted `deployBar.height * 0.64f * 0.48f`, and the 0.64 went STALE the
+                // moment WO-1646 landed: the tray tiles' band is now DERIVED from
+                // ElarionUiKit.MinTouchPx (the three bar faces and the tiles all resolved 92.7 ref
+                // px tall at 2670x1200 against a 112 floor, so ClampMinTouch was silently growing
+                // them into their neighbours every frame). The literal still PASSED - it
+                // under-states the real height, so the assert was strictly conservative - which is
+                // exactly what makes a stale copy dangerous: it measures something the code no
+                // longer does and says nothing when the two diverge. Same duplicated-state failure
+                // CLAUDE.md sec.2 / sec.5 / sec.16 each document, and the same reason this suite
+                // already REQUIRES the readout seat to read HudLayoutBands.RaidReadoutBand rather
+                // than a copied rect (:207-209).
+                //
+                // ⚠ THE 0.48f IS DELIBERATELY LEFT TYPED, and that is a judgement, not an
+                // oversight. It is the count badge's own anchor span (RaidDeployController.cs
+                // cr.anchorMin 0.26 / cr.anchorMax 0.74 = 0.48), and those anchors did NOT move -
+                // so unlike the 0.64 it is still accurate. It is the same duplicated-state shape
+                // and worth hoisting on the next touch of that badge; re-pointing it now would be
+                // an unrequested change to a passing, correct assert.
+                RequireSeats(failures, "the raid deploy tray",
+                             deployBar.height * RaidDeployController.DeployFaceHeightFraction * 0.48f, refH,
+                             needPx,
+                             "the tile count badge is 0.48 of a tile whose height is DERIVED from MinTouchPx");
             }
             finally
             {

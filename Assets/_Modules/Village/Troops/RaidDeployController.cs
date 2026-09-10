@@ -83,6 +83,10 @@ namespace DeNelle.Village
         private Button _retreatButton;
         private readonly List<TrayTile> _tiles = new List<TrayTile>();
 
+        /// <summary>The empty-tray sentence, held so WO-1646's probe can PROVE it wrapped rather
+        /// than being truncated. Null whenever the tray has tiles.</summary>
+        private TMPro.TextMeshProUGUI _emptyTrayLabel;
+
         // ── Tap state machine ─────────────────────────────────────────────────
         private string _armedDefId;     // the TroopDefId armed for the next ground tap (null = none)
         private bool _rallyMode;        // true while the Rally toggle is on (next tap sets the rally point)
@@ -1592,6 +1596,114 @@ namespace DeNelle.Village
         private const float DeployBarHeight = 0.150f;
         /// <summary>Status-line height as a screen fraction (was 0.205 - 0.165).</summary>
         private const float DeployStatusHeight = 0.040f;
+
+        // =====================================================================
+        // ⛔ WO-1646 — EVERY FACE ON THIS BAR SHIPPED UNDER THE TOUCH FLOOR, AT EVERY ASPECT.
+        // ---------------------------------------------------------------------
+        // MEASURED, not theorised: the WO-1645 capture (Builds/wave5-capture2, fresh 07:33
+        // 2026-09-10) reported UI_GEOMETRY_FAIL x15 over 97 canvases, EVERY failure on
+        // RaidDeployHud and NONE on RaidHud. `Panel/ObsBtn_Deploy All`, `ObsBtn_Rally` and
+        // `ObsBtn_Retreat` resolved:
+        //     103.7 ref px tall at 1920x1080
+        //      93.9 ref px tall at 2340x1080
+        //      92.7 ref px tall at 2670x1200   <- the Seeker's real surface
+        // against ElarionUiKit.MinTouchPx = 112 (ElarionUiKit.cs:347). Every one is UNDER.
+        //
+        // THE ARITHMETIC THAT PRODUCED THEM, so this can never be re-guessed. The faces were
+        // authored y 0.18-0.82 OF THE BAR = 0.64, and the bar is DeployBarHeight (0.150) of
+        // screen, so a face is 0.150 * 0.64 = 0.096 of the canvas's REFERENCE height:
+        //     1920x1080 -> refH 1080.0 -> 103.68     (reported 103.7)
+        //     2340x1080 -> refH  978.3 ->  93.92     (reported  93.9)
+        //     2670x1200 -> refH  965.4 ->  92.67     (reported  92.7)
+        // refH is HudLayoutBands.CanvasReferenceSize(w, h).y (:379-387), Unity's own match-0.5
+        // formula. All three reproduce the oracle's numbers exactly - the model is confirmed, so
+        // the "after" figures below are arithmetic, not hope.
+        //
+        // ⚠ WHY THIS WAS INVISIBLE UNTIL NOW, AND WHY IT IS NOT A COSMETIC TICKET.
+        // ElarionUiKit.ClampMinTouch (ElarionUiKit.cs:1069) RESCUES an under-floor control at
+        // runtime by GROWING it - symmetrically, in LateUpdate, spilling into whatever sits
+        // beside it. So the bar was never untappable; it was silently re-laid-out every frame
+        // into a shape nobody authored. The kit's own comment at :1082-1098 says this in as many
+        // words: *"by the time the clamp grows a control, the layout it was meant to protect is
+        // already spilled into its neighbours, and nothing anywhere says so"* - and that
+        // LateUpdate never runs in an edit-mode capture, which is exactly why the AUTHORED-BAND
+        // assert in UICaptureLaunch.AuditGeometry is the gate and the clamp is not.
+        //
+        // ⛔ THE FIX IS DERIVED, NOT A PER-ASPECT NUMBER. Three literals - one per aspect - would
+        // be the duplicated-state failure CLAUDE.md sec.2 / sec.5 / sec.16 each describe, and
+        // there is no hook to apply them at anyway. The face fraction below is computed FROM the
+        // kit's floor, this bar's own height, and the canvas reference constants, so if any of
+        // those move the band follows with no edit here.
+        //
+        // ⚠ AND IT IS DERIVED AGAINST THE WIDEST ASPECT, NOT AGAINST Screen.*. Two reasons, both
+        // hard: (1) refH = sqrt(CanvasRefWidth * CanvasRefHeight / aspect), so refH SHRINKS as a
+        // device gets wider - the widest supported aspect is the worst case, and a fraction that
+        // clears the floor there clears it everywhere narrower; (2) Screen.* DOES NOT MOVE in a
+        // batchmode capture (UICaptureLaunch's own banner says so and tracks it as
+        // _screenStuckBuilds), so a Screen-derived fraction would author one shape headless and a
+        // different one on the device - the capture would stop being evidence. A constant
+        // expression authors the SAME band in both, which is the only way the gate can prove the
+        // device.
+        // =====================================================================
+
+        /// <summary>The widest landscape aspect the touch floor is derived against (21:9). The
+        /// worst case, because reference height falls as aspect widens - see the block above.</summary>
+        private const float TouchFloorWidestAspect = 21f / 9f;
+
+        /// <summary>Reference px of headroom above <see cref="ElarionUiKit.MinTouchPx"/>. The floor
+        /// is a floor, not a target: authoring EXACTLY 112 puts the band one rounding from failing
+        /// the same assert it was written to pass.</summary>
+        private const float TouchFloorSafetyPx = 2f;
+
+        /// <summary>What the faces shipped at before WO-1646 (y 0.18-0.82). The derived fraction
+        /// never goes BELOW this - a narrower band could only ever be a regression.</summary>
+        private const float LegacyFaceHeightFraction = 0.64f;
+
+        /// <summary>Ceiling, so a face can never eat the plate's own inset entirely.</summary>
+        private const float MaxFaceHeightFraction = 0.96f;
+
+        /// <summary>
+        /// Height of a bar FACE (and of a tray tile) as a fraction OF THE BAR, derived so the
+        /// resolved rect clears <see cref="ElarionUiKit.MinTouchPx"/> at every supported aspect.
+        /// <para>PUBLIC on purpose: <c>RaidHudThumbBandRegression</c> currently asserts the tray
+        /// against a typed <c>0.64f</c>. That literal is now STALE - it under-states the real
+        /// height, so the case still passes while measuring something the code no longer does.
+        /// It should read THIS instead, exactly as the readout seat is required to read
+        /// <c>HudLayoutBands.RaidReadoutBand</c> rather than a copied rect. Not re-pointed here
+        /// because this ticket is scoped to one file; called out in the RESULT.</para>
+        /// </summary>
+        public static float DeployFaceHeightFraction
+        {
+            get
+            {
+                // refH at the worst (widest) supported aspect.
+                float widestRefH = Mathf.Sqrt(
+                    (HudLayoutBands.CanvasRefWidth * HudLayoutBands.CanvasRefHeight) / TouchFloorWidestAspect);
+                float barPx = DeployBarHeight * widestRefH;
+                if (barPx <= 0f) return LegacyFaceHeightFraction;
+                float need = (ElarionUiKit.MinTouchPx + TouchFloorSafetyPx) / barPx;
+                return Mathf.Clamp(need, LegacyFaceHeightFraction, MaxFaceHeightFraction);
+            }
+        }
+
+        /// <summary>Bottom edge of a face, as a fraction of the bar. The band is CENTRED, so the
+        /// plate keeps equal inset above and below.</summary>
+        private static float FaceY0 { get { return (1f - DeployFaceHeightFraction) * 0.5f; } }
+
+        /// <summary>Top edge of a face, as a fraction of the bar.</summary>
+        private static float FaceY1 { get { return 1f - FaceY0; } }
+
+        // ⛔ WO-1646 DEFECT 2: THE TRAY'S EDGES LIVE HERE AND NOWHERE ELSE.
+        // These were typed twice - once as BuildTrayTiles' `left`/`right` locals and once as the
+        // empty-state label's x0/x1. WO-1639 moved one of them (0.55 -> 0.390) and not the other,
+        // and the label ended up spanning the "Deploy All" and "Rally" faces. One definition, so
+        // the next edit to the tray's width cannot leave anything behind.
+        /// <summary>Left edge of the troop tray, as a fraction of the bar.</summary>
+        private const float TrayLeftX = 0.03f;
+        /// <summary>Right edge of the troop tray, as a fraction of the bar. ⚠ WO-1639 pulled this
+        /// in from 0.55 to free width for the "Deploy All" face - do not widen it without moving
+        /// that face, and never re-type it beside a widget.</summary>
+        private const float TrayRightX = 0.390f;
         // ── WO-1464: THE LEFT EDGE IS THE STICK'S RIGHT EDGE, AND IT IS NOT A LITERAL ────
         //
         // ⛔ THE DEFECT THIS CLOSES, MEASURED ON THE OWNER'S DEVICE (build 358872,
@@ -1661,9 +1773,18 @@ namespace DeNelle.Village
             // the hero's ability row keeps the thumb position (owner ruling 2026-09-06; see the
             // DeployBarBand block above). The band comes from DeNelle.Core.UI, not from here.
             var barBand = DeployBarBand;
+            // ⛔ WO-1647: `innerRim: false`. ElarionUiKit.Panel's innerRim DEFAULTS TO TRUE
+            // (ElarionUiKit.cs:145-146) and AddInnerRim (:2670-2683) is NOT a rim - it lays a
+            // FULL-RECT quad over the host's whole face at AccentSoft (Gold @ 0.30, UiStyle.cs:116)
+            // halved, i.e. gold at 0.15 across the entire plate. The kit documents this about
+            // itself at :2657-2668. MEASURED at HEAD: Builds/wave5-capture4 (07:43) reads this
+            // bar's plate the same dark OLIVE as the readout's at all three aspects, against a
+            // fill that is near-black. The seam is the kit's own parameter and the tree already
+            // uses it (HeroInventoryController.cs:632); the kit itself is NOT touched, because
+            // lowering AccentSoft would repaint every panel in the game to fix two.
             var bar = ElarionUiKit.Panel(_ui.transform,
                 new Vector2(barBand.xMin, barBand.yMin), new Vector2(barBand.xMax, barBand.yMax),
-                deep: false);
+                deep: false, innerRim: false);
             var barImg = bar.GetComponent<Image>();
             if (barImg != null) barImg.color = new Color(0.04f, 0.035f, 0.03f, 0.38f);
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
@@ -1733,15 +1854,20 @@ namespace DeNelle.Village
             // Touch floor: the tray keeps 541 reference px for its tiles, so four troop types
             // seat 135 px each - still over ElarionUiKit.MinTouchPx (112); a fifth relies on the
             // kit's own ClampMinTouch, exactly as it did at the old width.
+            // ⚠ WO-1646: the y fractions are DERIVED (FaceY0 / FaceY1), never typed. The x
+            // fractions are WO-1639's and are deliberately UNCHANGED - that ticket sized them so
+            // "Deploy All" stops ellipsising, and this one only makes the faces tall enough to
+            // touch. Widths must not move here.
+            float faceY0 = FaceY0, faceY1 = FaceY1;
             _deployAllButton = ElarionUiKit.Button(bar.transform, "Deploy All", ElarionUiKit.ButtonKind.Gold,
-                new Vector2(0.410f, 0.18f), new Vector2(0.650f, 0.82f), DeployAll);
+                new Vector2(0.410f, faceY0), new Vector2(0.650f, faceY1), DeployAll);
 
             // Rally toggle + Retreat — right edge of the bar. Rally's band carries "Rally ON"
             // (RefreshRallyButton), not "Rally", so it is sized for the LONGER of the two.
             _rallyButton = ElarionUiKit.Button(bar.transform, "Rally", ElarionUiKit.ButtonKind.Quiet,
-                new Vector2(0.665f, 0.18f), new Vector2(0.825f, 0.82f), ToggleRally);
+                new Vector2(0.665f, faceY0), new Vector2(0.825f, faceY1), ToggleRally);
             _retreatButton = ElarionUiKit.Button(bar.transform, "Retreat", ElarionUiKit.ButtonKind.Danger,
-                new Vector2(0.840f, 0.18f), new Vector2(0.985f, 0.82f), OnRetreatPressed);
+                new Vector2(0.840f, faceY0), new Vector2(0.985f, faceY1), OnRetreatPressed);
 
             if (_status != null) _status.text = "";
             RefreshTiles();
@@ -1757,6 +1883,37 @@ namespace DeNelle.Village
         // the string as far as it is concerned (CLAUDE.md sec.1). Concatenation only.
         // =====================================================================
 
+        /// <summary>
+        /// WO-1646 STEP 1 / PERMANENT: print the DERIVED face band and what it actually resolved
+        /// to in reference px on THIS device, against the kit's floor. The gate measures the
+        /// authored band headless; this is the runtime half, so a device whose aspect is outside
+        /// what <see cref="TouchFloorWidestAspect"/> assumes says so in the log instead of being
+        /// silently rescued by ClampMinTouch (which spills into neighbours - ElarionUiKit.cs:1082-1098).
+        /// </summary>
+        private void LogTouchFloor()
+        {
+            float frac = DeployFaceHeightFraction;
+            var refSize = HudLayoutBands.CanvasReferenceSize(Screen.width, Screen.height);
+            float barPx = DeployBarHeight * refSize.y;
+            float facePx = frac * barPx;
+            string sFrac = frac.ToString("F4");
+            string sBar = barPx.ToString("F1");
+            string sFace = facePx.ToString("F1");
+            string sFloor = ElarionUiKit.MinTouchPx.ToString("F0");
+            string sRef = refSize.x.ToString("F0") + "x" + refSize.y.ToString("F0");
+            string sScreen = Screen.width + "x" + Screen.height;
+            string msg = "[wo1646-touch] screen=" + sScreen + " reference=" + sRef +
+                         " barH=" + sBar + "px faceFrac=" + sFrac + " -> faceH=" + sFace +
+                         "px vs MinTouchPx=" + sFloor;
+            if (facePx + 0.5f < ElarionUiKit.MinTouchPx)
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                    msg + " <- STILL UNDER THE FLOOR. This device is wider than " +
+                    "TouchFloorWidestAspect assumes, so ClampMinTouch will grow these faces and " +
+                    "spill them into their neighbours. Widen that constant or raise DeployBarHeight.");
+            else
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid", msg + " - clears the floor.");
+        }
+
         /// <summary>The canvas scale factor behind a label, as a string, so a device-px reading in
         /// the log can be converted to the reference px the layout arithmetic uses.</summary>
         private static string ScaleFactorOf(TMPro.TextMeshProUGUI t)
@@ -1768,10 +1925,50 @@ namespace DeNelle.Village
         private System.Collections.IEnumerator WO1639BarProbe()
         {
             yield return null;   // one frame so TMP has laid the faces out
+            LogTouchFloor();
             LogFaceFit("deployAll", _deployAllButton);
             LogFaceFit("rally", _rallyButton);
             LogFaceFit("retreat", _retreatButton);
+            LogEmptyTrayLabel();
             LogToastOrdering();
+        }
+
+        /// <summary>
+        /// WO-1646 Step 1 / PERMANENT: prove the empty-tray sentence WRAPPED rather than being
+        /// truncated. <see cref="ElarionUiKit.FitBlock"/> ends in TMP's Truncate mode, which drops
+        /// a line that does not fit its rect - so a sentence that needs one line more than the
+        /// band seats goes PARTLY MISSING with no error. Same read shape as
+        /// <c>LogFaceFit</c>: drawn characters against the string's length, plus the line count
+        /// and the seated size, so the next capture answers this instead of arithmetic doing it.
+        /// </summary>
+        private void LogEmptyTrayLabel()
+        {
+            var t = _emptyTrayLabel;
+            if (t == null) return;   // the tray has tiles; nothing to prove
+            t.ForceMeshUpdate();
+            var corners = new Vector3[4];
+            t.rectTransform.GetWorldCorners(corners);
+            float bandW = Mathf.Abs(corners[2].x - corners[1].x);
+            float bandH = Mathf.Abs(corners[1].y - corners[0].y);
+            string raw = t.text ?? string.Empty;
+            int drawn = t.textInfo != null ? t.textInfo.characterCount : -1;
+            int lines = t.textInfo != null ? t.textInfo.lineCount : -1;
+            string msg = "[wo1646-label] empty-tray sentence" +
+                         " band=" + bandH.ToString("F1") + "x" + bandW.ToString("F1") + "px" +
+                         " font=" + t.fontSize.ToString("F1") +
+                         " [" + t.fontSizeMin.ToString("F1") + ".." + t.fontSizeMax.ToString("F1") + "]" +
+                         " lines=" + lines +
+                         " chars=" + drawn + "/" + raw.Length +
+                         " truncated=" + t.isTextTruncated +
+                         " overflow=" + t.overflowMode.ToString() +
+                         " scaleFactor=" + ScaleFactorOf(t);
+            if (t.isTextTruncated || lines <= 0 || (drawn >= 0 && drawn < raw.Length))
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                    msg + " <- THE SENTENCE IS CUT. The tray strip cannot seat it at the " +
+                    "FontFloor; widen TrayRightX (and the faces with it) or raise the band - " +
+                    "do NOT shorten the copy, that is the owner's call.");
+            else
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid", msg + " - whole sentence drawn.");
         }
 
         /// <summary>WO-1639 DEFECT B Step 1: does the face show its whole word? Same read shape as
@@ -1846,6 +2043,7 @@ namespace DeNelle.Village
         private void BuildTrayTiles(Transform bar)
         {
             _tiles.Clear();
+            _emptyTrayLabel = null;
             var army = Army();
 
             // Distinct deployable def ids, in catalog order so Footman/Archer read stably.
@@ -1861,10 +2059,43 @@ namespace DeNelle.Village
 
             if (defIds.Count == 0)
             {
+                // ⛔ WO-1646 DEFECT 2 — THE EMPTY-TRAY LABEL SAT *UNDERNEATH* THE BUTTONS.
+                // MEASURED by the WO-1645 capture at 2670x1200 (root-canvas local px): this
+                // label's rect spanned x -427.4..549.9 while `Panel/ObsBtn_Deploy All` spanned
+                // 143.9..504.8 and `ObsBtn_Rally` 527.3..767.9 - on the IDENTICAL y band
+                // -302.2..-209.5. Both faces were painted straight over the sentence.
+                //
+                // THE CAUSE IS A HALF-APPLIED WO-1639. That ticket pulled the tray's right edge
+                // in from 0.55 to 0.390 to free width for the "Deploy All" face - and this label,
+                // the tray's OWN empty-state copy, kept its authored x1 of 0.68, which now reaches
+                // straight across the new face. A shared edge held in two places drifted the
+                // moment one of them moved: the same duplicated-state failure CLAUDE.md documents
+                // in sec.2, sec.5 and sec.16, in miniature.
+                //
+                // THE FIX IS TO STOP HOLDING IT TWICE. The label is the TRAY's, so it takes the
+                // tray's own `left`/`right` - the same two values the tiles are laid out from,
+                // hoisted above this branch so there is exactly ONE definition of where the tray
+                // ends. It can never again be left behind when that edge moves.
+                //
+                // ⚠ AND IT WRAPS INSTEAD OF ELLIPSISING. The tray strip is 0.360 of a 1503.5-ref-px
+                // bar = 541 px, and the sentence is 49 characters: at FontLabel 40 it needs roughly
+                // 1078 px, so on ONE line FitSingleLine would autoshrink to the 30 px FontFloor and
+                // then CUT it - trading a covered sentence for a truncated one. FitBlock wraps it
+                // to two lines instead, and two lines at 40 need 2 x NeedPx(40) = 100.8 px against
+                // the derived face band's 116.7 px at 2670x1200. It seats, at full size, with the
+                // whole sentence. NO FONT GOES UNDER FontFloor and NO PLAYER COPY IS SHORTENED.
                 var empty = ElarionUiKit.Label(bar, "No troops to deploy - train at the Barracks first.",
-                    0.18f, 0.82f, ElarionUi.ParchmentDim, ElarionUi.FontLabel,
-                    TMPro.TextAlignmentOptions.Left, 0.03f, 0.68f);
-                ElarionUiKit.FitSingleLine(empty);
+                    FaceY0, FaceY1, ElarionUi.ParchmentDim, ElarionUi.FontLabel,
+                    TMPro.TextAlignmentOptions.Left, TrayLeftX, TrayRightX);
+                ElarionUiKit.FitBlock(empty);
+                // ⚠ AND IT IS PROVEN, NOT ASSERTED. FitBlock's overflow mode is TRUNCATE, which
+                // DROPS a line that will not fit the rect - so "two lines at 40 need 100.8 px and
+                // the band is 116.7" is a heuristic (RaidSelectionScreen.NeedPx is a SINGLE-LINE
+                // seat estimate; TMP's real multi-line height is lineCount x fontSize x the FONT
+                // ASSET's line-height ratio, which this lane did not read). A 16 px margin resting
+                // on an unread number is the WO-1464 "0.04 px margin" class all over again, so the
+                // label is held and MEASURED by LogEmptyTrayLabel() instead of trusted.
+                _emptyTrayLabel = empty;
                 return;
             }
 
@@ -1879,7 +2110,7 @@ namespace DeNelle.Village
             // count badge inside them) are untouched, so RaidHudThumbBandRegression's
             // "the tile count badge is 0.48 of a tile that is 0.64 of the bar" case still holds.
             int count = defIds.Count;
-            float left = 0.03f, right = 0.390f;
+            float left = TrayLeftX, right = TrayRightX;
             float w = (right - left) / Mathf.Max(1, count);
             for (int i = 0; i < count; i++)
             {
@@ -1888,8 +2119,14 @@ namespace DeNelle.Village
                 float x1 = x0 + w * 0.94f;
 
                 string label = DisplayName(defId);
+                // ⚠ WO-1646: the tiles are BUTTONS on the same bar, so they carry the identical
+                // under-floor defect the three named faces did - the capture simply could not see
+                // it, because headless there is no GameStateService and the tray builds EMPTY
+                // (that caveat is recorded in the WO-1645 capture's own log line). Fixing only the
+                // three faces the oracle named would have left the defect shipping for every
+                // player who actually owns troops. Derived band, same as the faces.
                 var btn = ElarionUiKit.Button(bar, label, ElarionUiKit.ButtonKind.Gold,
-                    new Vector2(x0, 0.18f), new Vector2(x1, 0.82f), () => ArmTile(defId));
+                    new Vector2(x0, FaceY0), new Vector2(x1, FaceY1), () => ArmTile(defId));
 
                 // Captured BEFORE the badge is parented under the button, so this is the name
                 // label and can never resolve to the count (WO-1464).
