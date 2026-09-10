@@ -576,6 +576,38 @@ namespace DeNelle.Dungeons
                 }
 
                 string stoneId = DeNelle.Core.Catalog.DungeonExclusiveItems.RoughStoneId;
+
+                // WO-1373 — STARTER DUNGEONS DO NOT PAY ROUGH STONE. Owner ruling 2026-09-09,
+                // verbatim: "5% drop rate in dungeons not included the starter dungeons".
+                //
+                // HOW A STARTER DUNGEON IS IDENTIFIED IN DATA, quoted at source 2026-09-09: the
+                // authored layout carries a "tier" field —
+                // Assets/Resources/Data/Canonical/dungeon-layouts/<dungeonId>.json, e.g.
+                // dg_starter_loop / dg_healers_cottage / dg_folks_granary / dg_hollow_roads all
+                // read "tier": 1, while dg_sunken_vault is 2, dg_bonecrypt 3 and dg_ember_deep 4.
+                // Tier 1 IS the starter band; there is no separate "starter" flag anywhere in
+                // the dungeon data (checked across dungeon-graphs/, dungeon-layouts/,
+                // dungeon-balance.json and dungeon-kit.json).
+                //
+                // ⛔ THE GATE COVERS THE GUARANTEED FIRST STONE TOO, and that is a real
+                // consequence, stated rather than buried: the one-time introduction now waits
+                // for the player's first tier-2+ delve instead of landing in dg_starter_loop.
+                // The alternative reading — gate only the 5% ROLL and let a starter dungeon
+                // still pay the introduction — would leave starter dungeons dropping stone,
+                // which is the thing "not included" most plainly refuses. JewelerProgression
+                // hangs off that first acquisition, so this MOVES when the Jeweler is revealed.
+                // It is the top open item in the WO-1373 RESULT.
+                int dungeonTier = ResolveDungeonTier(st.DungeonId);
+                if (dungeonTier > 0 && dungeonTier < RoughStoneMinDungeonTier)
+                {
+                    DeNelle.Core.Diagnostics.FlowTrace.Step("JewelPolish",
+                        $"run payout ({via}): '{st.DungeonId}' is a STARTER dungeon (layout tier " +
+                        $"{dungeonTier}, below the minimum {RoughStoneMinDungeonTier}) - no rough " +
+                        "stone, per the owner ruling 2026-09-09. Everything else this run earned " +
+                        "is unaffected.");
+                    return;
+                }
+
                 bool firstDungeonStone = !inv.HasEverAcquired(stoneId);
                 if (!firstDungeonStone && !ShouldAwardPostFirstStone(UnityEngine.Random.value))
                 {
@@ -584,23 +616,97 @@ namespace DeNelle.Dungeons
                         $"post-first roll missed the {PostFirstRoughStoneDropRate:P0} drop rate.");
                     return;
                 }
-                // Only the dungeon reward authority may stamp this as EARNED. Shop/dev/plain
-                // inventory Add calls deliberately cannot reveal the Jeweler.
-                inv.AddEarned(stoneId, 1);
-                DungeonRunPayout.LastPolishScore = score;
-
-                DeNelle.Core.Diagnostics.FlowTrace.Step("JewelPolish",
-                    $"run payout ({via}): 1x '{stoneId}' granted (polish score {score}; boss={st.BossDefeated}, " +
-                    $"encounters={st.RandomEncounterCount}, chests={chests}, secrets={secrets}). " +
-                    "Take it to the Jeweler.");
-
-                // WO-1596: TELL SOMEBODY. The grant above is still the ONE producer - this raises
-                // no reward and changes no state; it only announces that one was paid, so a
-                // presentation layer can put a full-screen moment in front of it. The listeners
-                // run in their OWN Guard on purpose: a throwing subscriber must not be reported
-                // as "grant dungeon run payout FAILED" when the stone is already banked.
-                RaiseRoughStoneGranted(stoneId, score, firstDungeonStone);
+                // WO-1373: the bank + grade + announce is now BankRoughStone, the ONE writer of
+                // DungeonRunPayout.LastPolishScore in the whole project. This call site did not
+                // move; only the three statements it used to inline did, so the raid settle can
+                // reach the SAME authority instead of copying it (WO-1112, [exit-pays]).
+                BankRoughStone(score, via,
+                    $"boss={st.BossDefeated}, encounters={st.RandomEncounterCount}, " +
+                    $"chests={chests}, secrets={secrets}");
             });
+        }
+
+        // =====================================================================
+        //  WO-1373 - THE ONE PLACE A ROUGH STONE IS BANKED AND GRADED.
+        // =====================================================================
+        //
+        // ⛔ EXACTLY ONE SITE UNDER Assets/_Modules MAY WRITE
+        // DungeonRunPayout.LastPolishScore, and this is it. ComposedDungeonRunRegression
+        // case [exit-pays] scans every module .cs and FAILS on a second writer, with the
+        // WO-1112 reason in its own failure text: "the payout was DUPLICATED rather than
+        // shared. Two payout authorities drift, then double-pay or disagree on the grade."
+        //
+        // ⚠ IT IS REACHED FROM DeNelle.Village BY INVERSION, NOT BY A DIRECT CALL, and
+        // that is forced rather than chosen: DeNelle.Dungeons references DeNelle.Village,
+        // so DeNelle.Village cannot reference DeNelle.Dungeons without a cycle. The raid
+        // settle therefore calls DeNelle.Core.Catalog.DungeonRunPayout.GrantRoughStone,
+        // whose delegate is installed below - the same CoreServices-shaped inversion
+        // CLAUDE.md section 5 mandates for every other cross-module call.
+        //
+        // ⚠ THE CALLER OWNS THE GATE, THIS OWNS THE GRANT. Eligibility is deliberately NOT
+        // decided here: the dungeon's engagement / claim / starter-tier / drop-roll gates
+        // live in GrantRunPayout, and the raid's tier + per-UTC-day gates live in
+        // RaidScoring. Two producers were the bug; two POLICIES over one producer is the
+        // point of the seam.
+
+        /// <summary>
+        /// Bank one rough stone, record its polish grade, and announce it. Returns TRUE only
+        /// when a stone actually reached the larder - a caller that spends a daily cap must
+        /// stamp its ledger on TRUE and leave it unspent otherwise.
+        /// </summary>
+        /// <param name="score">The grade carried to the bench. Clamped 0..<see cref="DeNelle.Core.Catalog.DungeonRunGrade.MaxStars"/>.</param>
+        /// <param name="via">Call-site label for the trace, so a capture says WHAT earned it.</param>
+        /// <param name="detail">Free-text context for the trace (run stats, camp id). May be null.</param>
+        public static bool BankRoughStone(int score, string via, string detail)
+        {
+            var inv = DeNelle.Village.Crafting.VillageInventory.Instance;
+            if (inv == null)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Fail("JewelPolish",
+                    $"rough stone LOST ({via}) - no VillageInventory to bank it into. Nothing was " +
+                    "granted and no grade was recorded, so a caller holding a daily cap must NOT " +
+                    "stamp it.");
+                return false;
+            }
+
+            string stoneId = DeNelle.Core.Catalog.DungeonExclusiveItems.RoughStoneId;
+            bool firstDungeonStone = !inv.HasEverAcquired(stoneId);
+            score = Mathf.Clamp(score, 0, DeNelle.Core.Catalog.DungeonRunGrade.MaxStars);
+
+            // Only the reward authority may stamp this as EARNED. Shop/dev/plain
+            // inventory Add calls deliberately cannot reveal the Jeweler.
+            inv.AddEarned(stoneId, 1);
+            DungeonRunPayout.LastPolishScore = score;
+
+            DeNelle.Core.Diagnostics.FlowTrace.Step("JewelPolish",
+                $"rough stone GRANTED ({via}): 1x '{stoneId}' (polish score {score}; " +
+                $"{detail ?? "no detail"}; firstEverAcquired={firstDungeonStone} - that flag is " +
+                "what reveals the Jeweler). Take it to the bench; the outcome is rolled there.");
+
+            // WO-1596: TELL SOMEBODY. The grant above is still the ONE producer - this raises
+            // no reward and changes no state; it only announces that one was paid, so a
+            // presentation layer can put a full-screen moment in front of it. The listeners
+            // run in their OWN Guard on purpose: a throwing subscriber must not be reported
+            // as "grant dungeon run payout FAILED" when the stone is already banked.
+            RaiseRoughStoneGranted(stoneId, score, firstDungeonStone);
+            return true;
+        }
+
+        /// <summary>
+        /// Install <see cref="BankRoughStone"/> as the project-wide grant authority (WO-1373).
+        /// <para>⛔ Runs at BOOT, not on a dungeon scene load, and that is required: the raid
+        /// settle earns a stone in a <c>RaidBase_*</c> scene where no <c>DungeonController</c>
+        /// instance exists. The authority is static, so no instance is needed - only this
+        /// assignment. Idempotent by assignment.</para>
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void InstallRoughStoneGrantAuthority()
+        {
+            DungeonRunPayout.RoughStoneGrantAuthority =
+                (score, via) => BankRoughStone(score, via, null);
+            DeNelle.Core.Diagnostics.FlowTrace.Step("JewelPolish",
+                "rough stone grant authority INSTALLED (DungeonController.BankRoughStone). Every " +
+                "module that earns a stone routes through this one writer of LastPolishScore.");
         }
 
         /// <summary>
@@ -623,12 +729,101 @@ namespace DeNelle.Dungeons
                 () => handler(stoneId, score, firstEver));
         }
 
-        /// <summary>Owner fallback tuning for subsequent completed eligible dungeons. The first
-        /// dungeon-earned stone bypasses this roll and remains guaranteed exactly once.</summary>
-        public const float PostFirstRoughStoneDropRate = 0.15f;
+        /// <summary>
+        /// Owner tuning for subsequent completed eligible dungeons. The first dungeon-earned
+        /// stone bypasses this roll and remains guaranteed exactly once (on an ELIGIBLE dungeon
+        /// - see the starter-tier gate in <see cref="GrantRunPayout"/>).
+        ///
+        /// <para>⚠ WO-1373, 2026-09-09: this was a compiled <c>const float 0.15f</c> and the
+        /// owner ruled 5%. It is now a rail-backed PERCENT
+        /// (<c>dungeon.roughStoneDropPct</c>, shipping default 5) read through
+        /// <c>SpecFor</c> first, so an unregistered key answers the shipping default rather than
+        /// <c>Int</c>'s 0-for-unknown - which here would mean "no dungeon ever pays a stone
+        /// again". A row of 15 restores the previous rate exactly. Clamped 0..100 before the
+        /// divide, so a console typo cannot make the roll certain or negative.</para>
+        ///
+        /// <para>⛔ The NAME is unchanged on purpose: two oracles read it
+        /// (<c>RoughStoneFanfareRegression</c> asserts it stays inside (0,1);
+        /// <c>JewelerDiscoveryFtueRegression</c> pinned the literal <c>0.15f</c> and needs the
+        /// ruling-driven re-point named in the WO-1373 RESULT). Renaming it would turn one
+        /// stale pin into two.</para>
+        /// </summary>
+        public static float PostFirstRoughStoneDropRate => PostFirstRoughStoneDropPct / 100f;
+
+        /// <summary>
+        /// The rail-backed PERCENT behind <see cref="PostFirstRoughStoneDropRate"/>. Separate
+        /// because the rail carries integers only and this is the one place the percent becomes
+        /// a fraction. Rail: <c>dungeon.roughStoneDropPct</c>, shipping default 5.
+        /// </summary>
+        public static int PostFirstRoughStoneDropPct
+        {
+            get
+            {
+                var spec = DeNelle.Core.Ops.RemoteTunables.SpecFor(
+                    DeNelle.Core.Ops.RemoteTunables.KeyDungeonRoughStoneDropPct);
+                if (spec == null)
+                    return DeNelle.Core.Ops.RemoteTunables.DungeonRoughStoneDropPctDefault;
+                return Mathf.Clamp(DeNelle.Core.Ops.RemoteTunables.Int(
+                    DeNelle.Core.Ops.RemoteTunables.KeyDungeonRoughStoneDropPct), 0, 100);
+            }
+        }
 
         public static bool ShouldAwardPostFirstStone(float roll01)
             => roll01 >= 0f && roll01 < PostFirstRoughStoneDropRate;
+
+        /// <summary>
+        /// WO-1373 — the lowest authored layout <c>tier</c> that may pay a rough stone. Tier 1
+        /// is the starter band (dg_starter_loop, dg_healers_cottage, dg_folks_granary,
+        /// dg_hollow_roads all read <c>"tier": 1</c>), so 2 is "anything past the starters".
+        ///
+        /// <para>⚠ THIS IS A CONST, NOT A ROW, AND THAT IS AN OPEN ITEM. The lane that landed
+        /// WO-1373 registered the three knobs the work order enumerated
+        /// (<c>raid.roughStoneMinTier</c>, <c>raid.roughStonePerDayCap</c>,
+        /// <c>dungeon.roughStoneDropPct</c>); section 6's standing rule says every number is a
+        /// row, and this one is not yet. It is named in the RESULT rather than smuggled in as a
+        /// fourth unrequested knob.</para>
+        /// </summary>
+        public const int RoughStoneMinDungeonTier = 2;
+
+        /// <summary>
+        /// WO-1373 — the authored <c>tier</c> of <paramref name="dungeonId"/>, read from
+        /// <c>Resources/Data/Canonical/dungeon-layouts/&lt;id&gt;.json</c>. Returns 0 when the
+        /// layout cannot be found or parsed.
+        ///
+        /// <para>⛔ 0 IS "UNKNOWN", AND THE CALLER FAILS OPEN ON IT — deliberately, and stated
+        /// so nobody has to derive it. A dungeon whose layout is missing from Resources still
+        /// pays, because the alternative is a silent, permanent loss of the only material the
+        /// Jeweler chain consumes on every dungeon whose layout has not been mirrored. The
+        /// tier gate exists to hold BACK the starters, which are the ids most certain to have a
+        /// layout on disk; failing closed here would punish content for a packaging accident.
+        /// The Warn names it either way, so a capture can tell "starter, refused" from "unknown,
+        /// allowed".</para>
+        ///
+        /// <para>⚠ <c>DungeonRoomBinder.LoadTier</c> is the SAME read against the SAME path, and
+        /// it is private in a file this lane does not own. That is duplicated state and it is
+        /// flagged in the RESULT for consolidation onto this method rather than left unremarked.</para>
+        /// </summary>
+        public static int ResolveDungeonTier(string dungeonId)
+        {
+            if (string.IsNullOrEmpty(dungeonId)) return 0;
+            return DeNelle.Core.Diagnostics.Guard.Try("JewelPolish",
+                $"resolve layout tier for '{dungeonId}'",
+                () =>
+                {
+                    var text = Resources.Load<TextAsset>("Data/Canonical/dungeon-layouts/" + dungeonId);
+                    if (text == null)
+                    {
+                        DeNelle.Core.Diagnostics.FlowTrace.Warn("JewelPolish",
+                            $"no layout at Data/Canonical/dungeon-layouts/{dungeonId} - tier UNKNOWN. " +
+                            "The rough-stone starter gate fails OPEN on an unknown tier, so this run " +
+                            "is still eligible; it is not being silently refused.");
+                        return 0;
+                    }
+                    var layout = Newtonsoft.Json.JsonConvert
+                        .DeserializeObject<DeNelle.Dungeons.RoomForge.DungeonComposeLayout>(text.text);
+                    return layout != null ? Mathf.Max(0, layout.tier) : 0;
+                }, 0);
+        }
 
         // ── Per-frame: room tracking + encounter clock ───────────────────────
 

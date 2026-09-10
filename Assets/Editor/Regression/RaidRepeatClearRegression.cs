@@ -318,14 +318,23 @@ namespace DeNelle.Editor.Regression
                           "wiring cannot be verified");
             else
             {
-                int iRead  = handleVictory.IndexOf("RaidClaimService.IsClaimed(", StringComparison.Ordinal);
+                // Re-pointed 2026-09-09 by the lead WITH the owner's WO-1461 ruling (60% repeat clear inside
+                // the same cycle): the read is now IsRepeatClearInCycle, which wraps IsClaimed AND the cooldown
+                // stamp (RaidClaimService.cs ~:151). It must still precede ClaimBase (flips the flag) and now
+                // also BeginAfterClear (stamps the cooldown) - either one first would read every clear as a repeat.
+                int iRead  = handleVictory.IndexOf("RaidClaimService.IsRepeatClearInCycle(", StringComparison.Ordinal);
                 int iClaim = handleVictory.IndexOf("ClaimBase(", StringComparison.Ordinal);
+                int iStamp = handleVictory.IndexOf("BeginAfterClear(", StringComparison.Ordinal);
                 int iGate  = handleVictory.IndexOf("ApplyFirstClearGate(", StringComparison.Ordinal);
                 int iGrant = handleVictory.IndexOf("GrantLoot(", StringComparison.Ordinal);
 
                 if (iRead < 0)
-                    fails.Add("RaidVictoryController.HandleVictory no longer calls RaidClaimService.IsClaimed " +
-                              "- nothing tells a first clear from a repeat, so every clear pays in full again");
+                    fails.Add("RaidVictoryController.HandleVictory no longer calls RaidClaimService.IsRepeatClearInCycle " +
+                              "- nothing tells a first clear from a same-cycle repeat, so every clear pays in full again");
+                if (iRead >= 0 && iStamp >= 0 && iRead > iStamp)
+                    fails.Add("RaidVictoryController.HandleVictory reads IsRepeatClearInCycle (at " + iRead + ") AFTER " +
+                              "BeginAfterClear (at " + iStamp + "), which stamps the cooldown the predicate reads - so " +
+                              "every clear would read as a repeat. Read before you stamp");
                 if (iGate < 0)
                     fails.Add("RaidVictoryController.HandleVictory no longer calls ApplyFirstClearGate - the " +
                               "settled loot reaches GrantLoot ungated, which is the infinite-faucet defect");
@@ -368,12 +377,19 @@ namespace DeNelle.Editor.Regression
                 fails.Add("could not locate Village2RaidController.HandleCleared's body");
             else
             {
-                int iRead  = handleCleared.IndexOf("RaidClaimService.IsClaimed(", StringComparison.Ordinal);
+                // Re-pointed 2026-09-09 by the lead WITH the owner's WO-1461 ruling (60% same-cycle
+                // repeat clear): the village raid path now reads IsRepeatClearInCycle, like HandleVictory,
+                // and must read it BEFORE BeginAfterClear stamps the window it consults.
+                int iRead  = handleCleared.IndexOf("RaidClaimService.IsRepeatClearInCycle(", StringComparison.Ordinal);
                 int iClaim = handleCleared.IndexOf("ClaimBase(", StringComparison.Ordinal);
+                int iStamp = handleCleared.IndexOf("BeginAfterClear(", StringComparison.Ordinal);
                 if (iRead < 0)
-                    fails.Add("Village2RaidController.HandleCleared does not read RaidClaimService.IsClaimed - " +
+                    fails.Add("Village2RaidController.HandleCleared does not read RaidClaimService.IsRepeatClearInCycle - " +
                               "its own header comment claims this controller both writes AND reads the claim key; " +
                               "a comment asserting a read that does not exist is how the write-only claim set survived review");
+                if (iRead >= 0 && iStamp >= 0 && iRead > iStamp)
+                    fails.Add("Village2RaidController.HandleCleared reads IsRepeatClearInCycle (at " + iRead + ") AFTER " +
+                              "BeginAfterClear (at " + iStamp + ") stamps the cooldown it consults - every clear would read as a repeat");
                 if (iRead >= 0 && iClaim >= 0 && iRead > iClaim)
                     fails.Add("Village2RaidController.HandleCleared reads IsClaimed (at " + iRead + ") after " +
                               "ClaimBase (at " + iClaim + ") flips it - the read can only ever answer 'repeat'");

@@ -26,7 +26,11 @@ namespace DeNelle.Editor.Regression
             string english = Read("Assets/Resources/Data/Canonical/en.json", f);
             string englishTwin = Read("Assets/StreamingAssets/Data/Canonical/en.json", f);
 
-            if (!dungeon.Contains("PostFirstRoughStoneDropRate = 0.15f")) f.Add("post-first rate is not pinned to 15%");
+            // Re-pointed 2026-09-09 by the lead WITH the owner's WO-1373 ruling ("5% drop rate in
+            // dungeons"): the post-first rate is a knob on the RemoteTunables rail, default 5, read by
+            // DungeonController.PostFirstRoughStoneDropPct. The old literal pin (0.15f) is retired.
+            if (!dungeon.Contains("RemoteTunables.KeyDungeonRoughStoneDropPct")) f.Add("post-first rate no longer reads the rail knob dungeon.roughStoneDropPct");
+            if (DeNelle.Core.Ops.RemoteTunables.DungeonRoughStoneDropPctDefault != 5) f.Add("post-first rate default is not the owner-ruled 5% (read " + DeNelle.Core.Ops.RemoteTunables.DungeonRoughStoneDropPctDefault + ")");
             if (!dungeon.Contains("!firstDungeonStone && !ShouldAwardPostFirstStone")) f.Add("guaranteed first award does not bypass later RNG");
             if (!dungeon.Contains("inv.AddEarned(stoneId, 1)")) f.Add("dungeon reward no longer stamps earned history");
             if (!dungeon.Contains("st.TryClaimReward()") || !runState.Contains("public bool TryClaimReward()")) f.Add("retry/re-entry can evaluate the same run reward twice");

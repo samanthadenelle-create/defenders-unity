@@ -223,10 +223,27 @@ namespace DeNelle.Village.World.Camps
             // Raid brass for the victory track.
             CoreServices.Audio?.PlayMusic(DeNelle.Core.Audio.MusicTrack.Victory);
 
-            // STEP 1.5 — IS THIS A REPEAT CLEAR? This read MUST happen BEFORE ClaimBase,
-            // which flips the persisted flag: query it afterwards and every clear reads as
-            // a repeat. The answer feeds the first-clear loot gate at STEP 3.5.
-            bool repeatClear = RaidClaimService.IsClaimed(configId);
+            // STEP 1.5 — IS THIS A REPEAT CLEAR *INSIDE THE CAMP'S CURRENT CYCLE*?
+            //
+            // ⚠ CORRECTED 2026-09-09 (WO-1461, owner ruling 2026-09-06 20:33). This line read
+            // RaidClaimService.IsClaimed, and the comment here used to describe the answer as
+            // "have I EVER taken this camp" - which is exactly what IsClaimed means, and exactly
+            // what the owner's ruling is NOT. Verbatim: "100% first clear after cooldown, 60%
+            // repeat clear during the same cycle, then reset to 100% when the camp's cooldown
+            // expires." Read alone, IsClaimed says "reduced FOREVER" - the behaviour the player
+            // met. IsRepeatClearInCycle is the AND of the permanent claim and a still-running
+            // cooldown window, so the share resets when the cooldown does. IsClaimed itself is
+            // unchanged and still permanent on purpose (WO-1134: it also gates the one-time
+            // companion unlock, and STEP 3's newClaim below still rides that flag).
+            //
+            // THE ORDER IS LOAD-BEARING ON *BOTH* SIDES NOW, not just one:
+            //   * before ClaimBase (STEP 2), which flips the claim flag - query after it and
+            //     every clear reads as a repeat;
+            //   * before RaidCooldownService.BeginAfterClear (STEP 2.5), which STAMPS the
+            //     cooldown this predicate reads - query after it and the window is always
+            //     running, so again every clear reads as a repeat.
+            // The answer feeds the first-clear loot gate at STEP 3.5.
+            bool repeatClear = RaidClaimService.IsRepeatClearInCycle(configId);
 
             // STEP 1.6 (WO-1134) — HAVE THIS CAMP'S CRYSTALS ALREADY BEEN PAID TODAY (UTC)?
             // A SECOND, INDEPENDENT question from repeatClear, kept on its own flag on purpose:
@@ -261,10 +278,43 @@ namespace DeNelle.Village.World.Camps
             loot = ApplyFirstClearGate(loot, repeatClear, crystalsPaidToday, configId);
             GrantLoot(loot);
 
+            // STEP 3.5b (WO-1461) — RETAIN WHAT THE BANK REFUSED INSTEAD OF BURNING IT.
+            // Owner ruling 2026-09-06 20:33, verbatim: "Never destroy raid loot because storage
+            // is full. Put overflow into a temporary Raid Cache with a modest cap." The measured
+            // shortfall is (what we asked for) minus (what the wallet actually moved), and
+            // GrantLoot above has just written that measurement into _credited - so this must
+            // stay immediately after it, and it must stay HERE rather than inside GrantLoot,
+            // whose signature carries no configId while this scope's local does. Capped axes
+            // only: crystals and gold have no ceiling (TownBankCapacity Law 1), so a shortfall
+            // on those is not an overflow. Call exactly once per settle - it is not idempotent.
+            ResourceCost retained = RaidClaimService.RetainOverflow(configId, loot, _credited);
+            FlowTrace.Step("Raid",
+                "RAID CACHE at settle: requested " + loot.Wood + "w " + loot.Iron + "i " + loot.Food +
+                "f, credited " + _credited.Wood + "w " + _credited.Iron + "i " + _credited.Food +
+                "f, RETAINED " + retained.Wood + "w " + retained.Iron + "i " + retained.Food +
+                "f for camp '" + (configId ?? "(none)") + "'. Anything the bank refused and the " +
+                "cache could not hold is named by RaidClaimService's own line above this one.");
+
             // WO-1134 — stamp the crystal day AFTER the grant, and only when this payout
             // actually carried crystals. Stamping before the grant (or unconditionally) would
             // burn the player's one crystal clear of the day on a payout that paid none.
             if (loot.Crystals > 0) RaidClaimService.MarkCrystalsPaid(configId);
+
+            // STEP 3.5c (WO-1373) — THE ROUGH STONE. Owner ruling 2026-09-09, verbatim: "there
+            // is only one stone type till it gets to jeweler, and then its RND. So only top two
+            // tiers of raids can drop stone and no more than 1 per day."
+            //
+            // ⛔ WHY IT IS A SEPARATE STEP AND NOT PART OF GrantLoot. The stone is an ITEM in
+            // the larder, not an axis of ResourceCost, so it cannot ride the loot basket; and
+            // it must land AFTER STEP 3.5b, because RetainOverflow measures `loot` against
+            // `_credited` and neither of those baskets knows anything about items. Putting the
+            // stone inside GrantLoot would put an item grant inside the resource wallet's
+            // before/after measurement, which is how a credited-delta measurement starts lying.
+            //
+            // The whole step sits in ONE Guard: a throw here must never skip the victory screen
+            // or the army settle below it. RaidScoring owns the RULE (pure, tier + day cap) and
+            // the day LEDGER; this is the single grant site, beside the single resource grant.
+            GrantRoughStoneIfEarned(configId, result != null ? result.Stars : 0);
 
             // STEP 3.6 - SETTLE THE ARMY. A WON raid must cost troops and pay veterancy
             // exactly as the retreat exit does. Before this, ReconcileAfterRaid had a single
@@ -528,6 +578,81 @@ namespace DeNelle.Village.World.Camps
                 "The reduced ordinary-resource payout keeps practice runs useful; crystals on a repeat " +
                 "are decided by the UTC day-stamp above, NOT by this multiplier.");
             return scaled;
+        }
+
+        /// <summary>
+        /// WO-1373 — THE SINGLE RAID ROUGH-STONE GRANT. Owner ruling 2026-09-09: only the top
+        /// two camp tiers, at most one stone per UTC day across every camp.
+        ///
+        /// <para>The RULE is <see cref="RaidScoring.ShouldDropRoughStone"/> - pure, static, and
+        /// asserted offline by <c>RaidRoughStoneDropRegression</c>. This method is only the
+        /// plumbing: read the ledger, ask the rule, put the stone in the larder, stamp the day.
+        /// It reports on BOTH branches, because a player who cleared the Iron Bastion and got no
+        /// stone must be able to see WHY in a capture (CLAUDE.md section 12).</para>
+        ///
+        /// <para>⛔ THE GRANT ITSELF IS NOT PERFORMED HERE, AND MUST NOT BE. WO-1112's law, pinned
+        /// by <c>ComposedDungeonRunRegression</c> case <c>[exit-pays]</c>, is that EXACTLY ONE site
+        /// under <c>Assets/_Modules</c> may write <c>DungeonRunPayout.LastPolishScore</c> - that
+        /// site is <c>DungeonController.BankRoughStone</c>, and everything that earns a stone must
+        /// REACH it rather than copy it. This lane's first attempt inlined the bank here and the
+        /// oracle caught it by name ("2 sites write ... the payout was DUPLICATED rather than
+        /// shared"). It was right, and this is the corrected shape: the gates live here, the grant
+        /// lives there.</para>
+        ///
+        /// <para>⚠ IT GOES THROUGH A DELEGATE BECAUSE THE ASSEMBLIES FORBID A DIRECT CALL, not as
+        /// a matter of taste: <c>DeNelle.Dungeons</c> references <c>DeNelle.Village</c> (read at
+        /// source in its <c>.asmdef</c>), so this file cannot name <c>DungeonController</c> without
+        /// a circular reference. The seam is declared in <c>DeNelle.Core</c>
+        /// (<c>DungeonRunPayout.GrantRoughStone</c>) and implemented in <c>DeNelle.Dungeons</c> -
+        /// the same inversion CLAUDE.md section 5 mandates for every other cross-module call.</para>
+        ///
+        /// <para>⚠ THE POLISH GRADE IS AN INPUT, AND ITS MAPPING IS UNRULED. The FIFO carries one
+        /// grade per un-polished stone and pays oldest-first, so a stone banked with no grade would
+        /// silently consume a dungeon run's. The raid passes its settled STAR count - both scales
+        /// are 0..3 (<c>DungeonRunGrade.MaxStars</c>) - as the DOCUMENTED DEFAULT, not as a table
+        /// anyone invented: ⛔ WO-1373 section 5.2 asks whether the drop should scale by stars and
+        /// the owner has NOT answered. Still flagged as open in the RESULT.</para>
+        ///
+        /// <para>⚠ The day ledger is stamped ONLY on a TRUE return - the authority reports whether
+        /// a stone actually reached the larder, so a failed bank cannot burn the player's one
+        /// stone of the day. Same lesson as <c>MarkCrystalsPaid</c>.</para>
+        /// </summary>
+        private void GrantRoughStoneIfEarned(string configId, int stars)
+        {
+            Guard.Try("Raid", "grant raid rough stone", () =>
+            {
+                int minTier = RaidScoring.RoughStoneMinTier;
+                int perDayCap = RaidScoring.RoughStonePerDayCap;
+                int today = RaidScoring.RoughStonesGrantedToday();
+
+                if (!RaidScoring.ShouldDropRoughStone(configId, today, minTier, perDayCap, out string why))
+                {
+                    FlowTrace.Step("Raid", "ROUGH STONE withheld: " + why);
+                    return;
+                }
+
+                bool granted = DeNelle.Core.Catalog.DungeonRunPayout.GrantRoughStone(
+                    stars, "raid clear '" + (configId ?? "(none)") + "'");
+
+                if (!granted)
+                {
+                    // Never silent, and never stamped: the authority already said WHY it could
+                    // not bank, so this line adds only the consequence the reader needs.
+                    FlowTrace.Warn("Raid",
+                        "ROUGH STONE not banked for '" + (configId ?? "(none)") + "' although the " +
+                        "rule said pay (" + why + ") - the authority reported failure above. The " +
+                        "UTC day ledger is deliberately NOT stamped, so this clear has not spent " +
+                        "the player's stone for today.");
+                    return;
+                }
+
+                RaidScoring.MarkRoughStoneGranted();
+                FlowTrace.Step("Raid",
+                    "ROUGH STONE paid by raid '" + (configId ?? "(none)") + "' (" + why +
+                    "). Polish grade supplied = " + stars + " star(s). The bank, the grade and " +
+                    "the announce were all done by the ONE authority (WO-1112); this path owns " +
+                    "only the tier gate and the per-UTC-day cap.");
+            });
         }
 
         private void GrantLoot(ResourceCost loot)

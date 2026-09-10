@@ -1,6 +1,13 @@
 # WORK ORDER 1373 - Raids pay big, and drop rough stone: the Jeweler chain closes the loop
 
-**Status:** READY TO IMPLEMENT - ⛔ **BLOCKED ON ONE OWNER RULING** (§4, the exclusivity reversal)
+**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane RAID-3) PRIOR STATUS: READY TO IMPLEMENT - RULED 2026-09-09 (section 4); every number a tunable. PRIOR: ⛔ **BLOCKED ON ONE OWNER RULING** (§4, the exclusivity reversal)
+
+> ⚠ **SCOPE OF THE 2026-09-09 IMPLEMENTATION, stated so nobody reads this ticket as closed.**
+> Lane RAID-3 landed the §4 ruling only: the raid drop (top two tiers, one per UTC day), the
+> dungeon 5% rate with starter dungeons excluded, and the three tunable rows. **§2b's three
+> game-changer RINGS are NOT built** - they are a separate, still-open body of work, and §2b's
+> own "can a player wear more than one" question remains unanswered. See
+> `WORK_ORDER_1373_raid_rewards_and_rough_stone_chain.RESULT.md`.
 **Silo / Lane:** Economy / raid rewards + loot tables + the Jeweler chain
 **Type:** NEW FEATURE + BALANCE, owner-ruled
 **Minted:** 2026-09-04 (CLI)
@@ -136,6 +143,9 @@ and it must not be done by quietly deleting a regression.** That invariant exist
 draw nothing else has. Removing it without replacing that draw makes dungeons strictly worse.
 
 ## §4. ⛔ THE OWNER RULING THIS TICKET IS BLOCKED ON
+
+### OWNER RULING 2026-09-09 (recorded by the CLI lead)
+Section 4 is RULED. Shape: ONE rough stone item (no grade split, no new material). Raids: only the top two raid tiers may drop it, at most 1 per day (a daily cap, tunable). Dungeons: 5% drop rate (tunable), EXCLUDING the starter dungeons. The jeweler outcome is random (RND) at the bench. This supersedes the A/B/C framing (closest to A with a daily cap).
 
 **Which shape do you want?** Each preserves the raid payoff; they differ in what happens to dungeons.
 

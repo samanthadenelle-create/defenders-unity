@@ -49,7 +49,9 @@ namespace DeNelle.Village.World.Camps
         // NOTE (WO-550, flagged for owner): the CLAIM key is the SCENE NAME "Village2", not the
         // scene-configs id "village2_enemy_outpost". It is self-consistent (this controller both
         // WRITES it - ClaimBase -> RaidClaimService.MarkClaimed - and READS it back in
-        // HandleCleared via RaidClaimService.IsClaimed, to tell a first clear from a repeat;
+        // HandleCleared via RaidClaimService.IsRepeatClearInCycle (the AND of that permanent
+        // flag and a still-running cooldown; corrected from the bare IsClaimed 2026-09-09,
+        // WO-1373 lane RAID-3), to tell a first clear from a repeat inside the same cycle;
         // persisted as dotr-raid-owner-Village2) and keys
         // on scene name like the rest of the ownership system (SceneOwnership / HubScenes). Nothing
         // external reads "village2_enemy_outpost" as a claim key, so it is left as-is — changing it
@@ -215,15 +217,31 @@ namespace DeNelle.Village.World.Camps
 
             CoreServices.Audio?.PlayMusic(DeNelle.Core.Audio.MusicTrack.Victory);
 
-            // Read the claim BEFORE ClaimBase flips it - afterwards every clear reads as a
-            // repeat. Village2 grants no RESOURCE loot (it has no RaidScoring), so there is
-            // no payout to gate here; the one-time payoff is the companion, already gated on
-            // newClaim below. The read is kept because a silent repeat clear is exactly the
-            // state that hid the write-only claim set: say which one this was.
-            bool repeatClear = RaidClaimService.IsClaimed(ConfigId);
+            // CORRECTED 2026-09-09 (WO-1373 lane RAID-3, owner ruling 2026-09-06 20:33 as
+            // landed by WO-1461). This read was RaidClaimService.IsClaimed, which is PERMANENT
+            // by design - "have I EVER taken this camp". Her ruling is a CYCLE: "100% first
+            // clear after cooldown, 60% repeat clear during the same cycle, then reset to 100%
+            // when the camp's cooldown expires." RaidVictoryController.HandleVictory was moved
+            // to IsRepeatClearInCycle for exactly that reason; this path was left behind, so the
+            // raid-VILLAGE clear kept narrating "already claimed, forever" while the raid-CAMP
+            // clear narrated the cycle. One ruling, two answers, is the defect.
+            //
+            // THE ORDER IS LOAD-BEARING ON BOTH SIDES and is already correct here: this read
+            // precedes RaidCooldownService.BeginAfterClear below (which STAMPS the window the
+            // new predicate reads) AND ClaimBase (which flips the claim flag). Query after
+            // either and every clear, including the first, reports as a repeat.
+            //
+            // Village2 grants no RESOURCE loot (it has no RaidScoring), so there is no payout
+            // to gate here; the one-time payoff is the companion, already gated on newClaim
+            // below. The read is kept because a silent repeat clear is exactly the state that
+            // hid the write-only claim set: say which one this was.
+            bool repeatClear = RaidClaimService.IsRepeatClearInCycle(ConfigId);
             if (repeatClear)
-                FlowTrace.Warn("Raid", $"REPEAT CLEAR of '{ConfigId}' - it was already claimed. No re-grant: " +
-                                       "no companion, no resources (this raid pays no resource loot at all).");
+                FlowTrace.Warn("Raid", $"REPEAT CLEAR of '{ConfigId}' INSIDE ITS CURRENT CYCLE - already " +
+                                       "claimed AND its cooldown from the previous clear is still running. " +
+                                       "No re-grant: no companion, no resources (this raid pays no resource " +
+                                       "loot at all). Once the cooldown expires this reads as a first clear " +
+                                       "again, per the owner's cycle ruling.");
 
             // WO-728 — open the per-camp cooldown on EVERY clear, first or repeat. Village2
             // pays no resource loot, so the cooldown is the only thing that makes re-clearing

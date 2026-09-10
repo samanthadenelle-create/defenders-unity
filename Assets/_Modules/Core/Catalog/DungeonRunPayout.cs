@@ -139,6 +139,70 @@ namespace DeNelle.Core.Catalog
             return left == 1 ? "Up to 1 more chance." : "Up to " + left + " more chances.";
         }
 
+        // =====================================================================
+        //  WO-1373 - THE ONE "A ROUGH STONE WAS EARNED" SEAM, and WHY it is a
+        //  delegate rather than a direct call.
+        // =====================================================================
+        //
+        // ⛔ THE LAW BEING KEPT (WO-1112, pinned by ComposedDungeonRunRegression case
+        // [exit-pays]): EXACTLY ONE site under Assets/_Modules may WRITE
+        // DungeonRunPayout.LastPolishScore. Two payout authorities drift, then
+        // double-pay or disagree on the grade. That single writer is
+        // DungeonController.BankRoughStone, and everything that earns a stone must
+        // reach IT rather than copy it.
+        //
+        // ⚠ WHY A DELEGATE AND NOT `DungeonController.BankRoughStone(...)` DIRECTLY.
+        // The assemblies forbid it, and it is not a style choice:
+        //     DeNelle.Dungeons  ->  references  ->  DeNelle.Village   (asmdef, read
+        //                                                              at source)
+        // so DeNelle.Village CANNOT reference DeNelle.Dungeons - that is a circular
+        // assembly reference and does not compile. The raid settle lives in
+        // DeNelle.Village (RaidVictoryController) and the one authority lives in
+        // DeNelle.Dungeons (DungeonController). This class is in DeNelle.Core, which
+        // both already reference, so the seam is DECLARED here and IMPLEMENTED there
+        // - the same inversion CLAUDE.md section 5 mandates for every other
+        // cross-module call (CoreServices.Hud / CoreServices.Audio, always null-safe).
+        //
+        // ⛔ THIS IS NOT A SECOND PRODUCER AND MUST NEVER BECOME ONE. It grants
+        // nothing itself: no inventory, no PlayerPrefs, no score. It forwards, or it
+        // fails loudly. A future edit that "just banks it here when the hook is null"
+        // re-creates the exact duplicate-authority bug the oracle exists to catch.
+
+        /// <summary>
+        /// THE ONE implementation of "a rough stone was earned - bank it and record its grade".
+        /// Installed once at boot by <c>DungeonController</c> (DeNelle.Dungeons); invoked by any
+        /// module that earns a stone. Arguments <c>(polishScore, via)</c>; returns TRUE when a
+        /// stone was actually banked.
+        /// <para>⛔ Assign this from ONE place only. A second assignment is a second authority
+        /// wearing a delegate, which is the thing this seam exists to prevent.</para>
+        /// </summary>
+        public static System.Func<int, string, bool> RoughStoneGrantAuthority;
+
+        /// <summary>
+        /// Bank one rough stone and record its polish grade, through the single authority.
+        /// Returns TRUE only when a stone was banked - a caller that gates a daily cap must
+        /// stamp its ledger on TRUE and leave it unspent otherwise.
+        /// </summary>
+        /// <param name="polishScore">The grade this stone carries to the bench, 0..<see
+        /// cref="DungeonRunGrade.MaxStars"/>. Clamped by the authority.</param>
+        /// <param name="via">Call-site label for the trace, so a capture says WHAT earned it.</param>
+        public static bool GrantRoughStone(int polishScore, string via)
+        {
+            var authority = RoughStoneGrantAuthority;
+            if (authority == null)
+            {
+                // NEVER SILENT (CLAUDE.md section 12). No local fallback on purpose: banking the
+                // stone here would make this a second producer, which is worse than not paying.
+                FlowTrace.Fail(Sys,
+                    $"rough stone NOT granted ({via}) - no grant authority is installed. " +
+                    "DungeonController installs it at boot; if this fires, that install did not " +
+                    "run in this build. Deliberately NOT banked locally: a fallback here would " +
+                    "be the second payout authority WO-1112 forbids.");
+                return false;
+            }
+            return authority(polishScore, via);
+        }
+
         /// <summary>Drop every pending score (test/regression hygiene).</summary>
         public static void Clear()
         {

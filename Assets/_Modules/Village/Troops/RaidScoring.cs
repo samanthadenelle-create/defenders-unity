@@ -133,6 +133,88 @@ namespace DeNelle.Village
         /// </summary>
         public const float DefaultClockSeconds = 180f;
 
+        // ── WO-1594 HONOR MILESTONES (owner ruling 2026-09-07, verbatim: "1594 you determine
+        //    what is realistic and fair" / "1594 q2 yes") ───────────────────────────────────
+        // The felt story the owner asked for is CoC-adjacent and the opposite of the earn-up
+        // ladder: the fight OPENS with three stars lit and they go DARK as milestones pass, so
+        // the pressure is readable without arithmetic. On a 180s clock: half the fight to keep
+        // the third star; the last 30s before timeout for the second, and only if the camp is
+        // still under half razed. The first star is never snuffed mid-fight for time alone -
+        // cracking the camp always pays something.
+        //
+        // These are PRESENTATION milestones. They do not touch ComputeStars, and the only place
+        // they reach the payout is Finalize's honesty clamp (min(settle, honor)), which can
+        // lower a result but never invent one.
+
+        // ── THE MILESTONES ARE ROWS NOW (owner ruling 2026-09-09, verbatim choice: "Tunables
+        //    with those defaults") ────────────────────────────────────────────────────────────
+        // They were three compiled consts here (90f / 150f / 0.50f) from 2026-09-07, so the pace
+        // of every raid in the game needed a 30-minute rebuild to move - and these numbers do not
+        // only narrate: Finalize clamps the payout to min(settle, honor), so they set what a raid
+        // can PAY as well. The owner's standing ruling since 2026-09-02 is that a balance number
+        // is a row, and the defaults registered on the rail are 90 / 150 / 50, which is TODAY'S
+        // BEHAVIOUR byte for byte.
+        //
+        // ⛔ EVERY READ GOES THROUGH SpecFor(key) FIRST - the same shape RaidDeployController's
+        // StagingCeilingSeconds uses (RaidDeployController.cs:410-417), and it is load-bearing
+        // rather than defensive: RemoteTunables.Int answers 0 for an UNREGISTERED key (and says
+        // so loudly), and 0 seconds on the T3 milestone would snuff the third honor star on the
+        // first frame of every raid. With the guard, "no row" and "no registry entry" both mean
+        // exactly what this build shipped.
+
+        /// <summary>
+        /// Elapsed RAID seconds after which the third honor star snuffs (speed honor).
+        /// Rail: <c>raid.honorThirdStarSeconds</c>, shipping default 90. Floored at 1 s so a
+        /// console typo of 0 cannot put the star out before the fight starts.
+        /// </summary>
+        public static float HonorThirdStarSeconds
+        {
+            get
+            {
+                var spec = DeNelle.Core.Ops.RemoteTunables.SpecFor(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidHonorThirdStarSeconds);
+                if (spec == null) return DeNelle.Core.Ops.RemoteTunables.RaidHonorThirdStarSecondsDefault;
+                return Mathf.Max(1f, DeNelle.Core.Ops.RemoteTunables.Int(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidHonorThirdStarSeconds));
+            }
+        }
+
+        /// <summary>
+        /// Elapsed RAID seconds after which the second honor star may snuff, if D2 is unmet.
+        /// Rail: <c>raid.honorSecondStarSeconds</c>, shipping default 150. Floored at 1 s.
+        /// </summary>
+        public static float HonorSecondStarSeconds
+        {
+            get
+            {
+                var spec = DeNelle.Core.Ops.RemoteTunables.SpecFor(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidHonorSecondStarSeconds);
+                if (spec == null) return DeNelle.Core.Ops.RemoteTunables.RaidHonorSecondStarSecondsDefault;
+                return Mathf.Max(1f, DeNelle.Core.Ops.RemoteTunables.Int(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidHonorSecondStarSeconds));
+            }
+        }
+
+        /// <summary>
+        /// Destruction FRACTION (0..1) that must be reached by T2 to keep the second honor star.
+        /// Rail: <c>raid.honorSecondStarMinDestructionPct</c>, an integer PERCENT with shipping
+        /// default 50 - the rail carries no floats, so the percent is the row and this property
+        /// is the one place it becomes a fraction. Clamped 0..100 before the divide, so a row of
+        /// 400 cannot make the milestone unsurvivable.
+        /// </summary>
+        public static float HonorSecondStarMinDestruction
+        {
+            get
+            {
+                var spec = DeNelle.Core.Ops.RemoteTunables.SpecFor(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidHonorSecondStarMinDestructionPct);
+                if (spec == null)
+                    return DeNelle.Core.Ops.RemoteTunables.RaidHonorSecondStarMinDestructionPctDefault / 100f;
+                return Mathf.Clamp(DeNelle.Core.Ops.RemoteTunables.Int(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidHonorSecondStarMinDestructionPct), 0, 100) / 100f;
+            }
+        }
+
         [Header("Clock")]
         [Tooltip("Raid clock in seconds (design B5 = 180s). A full clear UNDER this earns the 3rd star; " +
                  "when it runs out the raid ends (OnTimeExpired). Owner tunes by feel.")]
@@ -179,6 +261,25 @@ namespace DeNelle.Village
         // WO-1526: latched the moment the hero falls in this raid. Clamps the settled result to
         // HeroDeathStarCap. Session state, never persisted - a raid is one session by definition.
         private bool _heroDied;
+        // WO-1594: the last honor tier the HUD was told to show. -1 = never published (staging).
+        // Presentation only - it is the edge detector behind the one "star-lost" trace line.
+        private int _lastHonorStars = -1;
+
+        // ── WO-1373 lane RAID-3: THE HONOR MILESTONE CACHE ────────────────────
+        // PresentationStars is read by the live HUD AND by the per-frame snuff detector, and
+        // each read used to walk all three Honor* properties - SpecFor + Int, i.e. a dictionary
+        // probe and (on a miss) a PlayerPrefs read, six of them a frame on a device the raid
+        // lane measured at 22 fps. These knobs are per-SESSION configuration; nothing about
+        // them is per-frame. So they are read ONCE at engagement and re-read only when the rail
+        // publishes a new payload, which RemoteTunables.Generation announces (it is bumped by
+        // ApplyPayload and by Clear). The tunable ruling still holds - a knob pushed mid-raid
+        // lands on the next frame - it just stops costing six lookups to find out it did not
+        // change. -1 means "never seeded"; Generation starts at 0, so the first read always
+        // seeds even if nothing has engaged yet.
+        private int _honorGeneration = -1;
+        private float _honorT3;
+        private float _honorT2;
+        private float _honorD2;
 
         /// <summary>How often the passive engagement detector sweeps while the raid is staging.</summary>
         private const float EngagementScanInterval = 0.2f;
@@ -428,6 +529,36 @@ namespace DeNelle.Village
                 _heroDied);
 
         /// <summary>
+        /// WO-1594 — THE NUMBER THE LIVE HUD BINDS. Honor stars: three lit the instant the raid
+        /// engages, snuffed one at a time as milestones pass. Staging reads 0 because nothing is
+        /// lit before the fight starts (the clock has not started either — WO-1520).
+        ///
+        /// <para>⚠ NOT the same axis as <see cref="ProjectedStars"/>, and they are deliberately
+        /// both kept. ProjectedStars is an EARN-UP settle preview (what would I score if the raid
+        /// ended now); this is a SNUFF-DOWN honor read (what have I not lost yet). Binding the
+        /// earn-up number to the HUD is what produced the felt defect this ticket exists for: the
+        /// bar sat at 0/3 through the whole fight and jumped at the end, which narrates nothing.
+        /// Tools and the end screen may still read ProjectedStars.</para>
+        /// </summary>
+        /// <remarks>
+        /// WO-1373 lane RAID-3: this getter reads the CACHED milestones, never the three
+        /// <c>Honor*</c> properties. It is read twice a frame (HUD bind + the snuff detector),
+        /// and each property walks <c>RemoteTunables.SpecFor</c> then <c>RemoteTunables.Int</c>.
+        /// The cache is seeded at <see cref="NotifyEngagement"/> and refreshed only when the rail
+        /// publishes a new payload (<c>RemoteTunables.Generation</c> moves), so a mid-raid knob
+        /// change still lands — it just does not cost six lookups per frame to notice.
+        /// </remarks>
+        public int PresentationStars
+        {
+            get
+            {
+                RefreshHonorCacheIfStale();
+                return ComputeHonorStars(_engaged, _elapsed, DestructionPct, _heroDied,
+                                         _honorT3, _honorT2, _honorD2);
+            }
+        }
+
+        /// <summary>
         /// WO-1526 — true once the hero has fallen in THIS raid. Read by the HUD and by
         /// <see cref="Finalize"/>; latched by <see cref="NotifyHeroDied"/>.
         /// </summary>
@@ -533,6 +664,64 @@ namespace DeNelle.Village
         /// </summary>
         public static int ApplyHeroDeathCap(int stars, bool heroDied)
             => heroDied ? Mathf.Min(stars, HeroDeathStarCap) : stars;
+
+        /// <summary>
+        /// WO-1594 — the PURE honor / presentation projector. Snuffs DOWN from three; it can
+        /// never light a star back up, which is what makes it safe to clamp the payout against.
+        /// <list type="bullet">
+        /// <item>Staging (<paramref name="engaged"/> false) → <b>0</b>: nothing is lit before the
+        /// fight starts, and the clock has not started either (WO-1520).</item>
+        /// <item>At engage → <b>3</b>.</item>
+        /// <item>Past <see cref="HonorThirdStarSeconds"/>, or the hero has fallen (owner Q2 =
+        /// YES) → at most <b>2</b>. The hero clause agrees with
+        /// <see cref="HeroDeathStarCap"/> by construction.</item>
+        /// <item>Past <see cref="HonorSecondStarSeconds"/> AND destruction still below
+        /// <see cref="HonorSecondStarMinDestruction"/> → at most <b>1</b>.</item>
+        /// <item>The last star is NEVER snuffed mid-fight for time alone — a player who cracked
+        /// the camp keeps something. Whether it survives to the payout is
+        /// <see cref="ComputeStars"/>'s call at settle, not this one's.</item>
+        /// </list>
+        /// Pure + static: unit-testable with no scene, exactly like <see cref="ComputeStars"/>.
+        /// </summary>
+        public static int ComputeHonorStars(
+            bool engaged, float elapsedSeconds, float destructionPct, bool heroDied)
+            => ComputeHonorStars(engaged, elapsedSeconds, destructionPct, heroDied,
+                                 HonorThirdStarSeconds, HonorSecondStarSeconds,
+                                 HonorSecondStarMinDestruction);
+
+        /// <summary>
+        /// WO-1373 lane RAID-3 — the SAME projector with the three milestones passed IN.
+        ///
+        /// <para><b>WHY THIS OVERLOAD EXISTS, measured not guessed.</b> The four-argument form
+        /// above reads <see cref="HonorThirdStarSeconds"/>, <see cref="HonorSecondStarSeconds"/>
+        /// and <see cref="HonorSecondStarMinDestruction"/>, and every one of those getters walks
+        /// <c>RemoteTunables.SpecFor</c> and then <c>RemoteTunables.Int</c> — a dictionary probe
+        /// plus, on a miss, a PlayerPrefs read. <see cref="PresentationStars"/> is bound by the
+        /// live HUD (<c>RaidHudController</c>) AND read again by <c>TraceHonorStarSnuff</c> from
+        /// <c>Update</c>, so the shipped build performed those three lookups TWICE PER FRAME on a
+        /// device the raid lane already measured at 22 fps. The knobs are per-session
+        /// configuration; nothing about them is per-frame.</para>
+        ///
+        /// <para>⛔ THE FOUR-ARG SIGNATURE ABOVE IS PINNED and must not be removed — the honor
+        /// oracle calls it directly (<c>RaidWatchdogHonorRegression</c>), and it stays the pure,
+        /// nothing-loaded entry point. This overload is the same arithmetic with the reads
+        /// hoisted; the two can never disagree because the four-arg form now delegates here.</para>
+        /// </summary>
+        public static int ComputeHonorStars(
+            bool engaged, float elapsedSeconds, float destructionPct, bool heroDied,
+            float thirdStarSeconds, float secondStarSeconds, float secondStarMinDestruction)
+        {
+            if (!engaged) return 0;
+
+            int stars = 3;
+            if (heroDied || elapsedSeconds > thirdStarSeconds)
+                stars = Mathf.Min(stars, 2);
+            if (elapsedSeconds > secondStarSeconds
+                && Mathf.Clamp01(destructionPct) < secondStarMinDestruction)
+                stars = Mathf.Min(stars, 1);
+
+            return Mathf.Clamp(stars, 0, 3);
+        }
 
         /// <summary>
         /// Survivors / deployed at this instant, clamped 0..1. Deploying nothing reads as 1f
@@ -657,6 +846,211 @@ namespace DeNelle.Village
             return ComputeLoot(stars, destructionPct,
                 crystalsBase, foodBase, crystalsPerStar, foodPerStar, rewardMultiplier,
                 woodBase, ironBase, coinsBase);
+        }
+
+        // =====================================================================
+        //  WO-1373 - THE ROUGH-STONE DROP. Owner ruling 2026-09-09, verbatim:
+        //  "there is only one stone type till it gets to jeweler, and then its
+        //  RND. So only top two tiers of raids can drop stone and no more than 1
+        //  per day. 5% drop rate in dungeons not included the starter dungeons".
+        //
+        //  ⛔ WHY THE RULE LIVES HERE AND THE GRANT DOES NOT. The stone is an
+        //  ITEM (ing_rough_stone in the larder), not an axis of ResourceCost, so
+        //  it cannot ride ComputeLoot's return value. The DECISION is pure and
+        //  static here - callable by an oracle with no scene, no save, no network
+        //  and no PlayerPrefs - and the single GRANT stays in RaidVictoryController
+        //  beside the one resource grant, so there is still exactly one place a
+        //  raid pays a player. Do not add a second grant site (WO-1112 spent a day
+        //  undoing four of those in the dungeon payout).
+        //
+        //  ⚠ scene-configs.json HAS NO "tier" FIELD - read at source 2026-09-09.
+        //  The camp ladder is RaidLootTunables' four id constants, in map order,
+        //  and that ordering is corroborated by two authored fields in the same
+        //  catalog: unlockVictories (0 / 3 / 10 / 20) and difficulty (Regular /
+        //  Hard / Extreme / Extreme). Both agree the top two are mage_enclave and
+        //  iron_bastion. Only the id constants are read here - a copy of the
+        //  ladder would be exactly the duplicated state CLAUDE.md keeps naming.
+        // =====================================================================
+
+        /// <summary>
+        /// The item id a raid may drop. ONE stone type, per the ruling - the grade is decided
+        /// at the Jeweler's bench, not here (see <c>JewelPolishService</c>).
+        /// <para>⚠ It is BOUND to <c>DungeonExclusiveItems.RoughStoneId</c> at compile time, not
+        /// re-typed - so the two can never be edited apart in source. But be honest about what a
+        /// cross-assembly <c>const</c> is: C# bakes the literal into DeNelle.Village's IL, so
+        /// changing the catalog's id requires a REBUILD of this assembly, not just of Core. That
+        /// is true of every consumer of that const and is not a defect introduced here;
+        /// <c>RaidRoughStoneDropRegression</c>'s <c>[one-stone]</c> case compares the two at run
+        /// time precisely so a half-rebuilt tree fails loudly instead of paying the wrong item.</para>
+        /// </summary>
+        public const string RoughStoneItemId = DeNelle.Core.Catalog.DungeonExclusiveItems.RoughStoneId;
+
+        /// <summary>
+        /// Lowest camp TIER (1..4) that may drop a rough stone. Rail:
+        /// <c>raid.roughStoneMinTier</c>, shipping default 3 = the lower of the top two rungs.
+        /// Clamped 1..99 so a console typo can only ever narrow the drop, never widen it past
+        /// the ladder; a value above 4 turns the raid drop off entirely, which is the ONE row
+        /// that restores the pre-WO-1373 build.
+        /// </summary>
+        public static int RoughStoneMinTier
+        {
+            get
+            {
+                var spec = DeNelle.Core.Ops.RemoteTunables.SpecFor(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidRoughStoneMinTier);
+                if (spec == null) return DeNelle.Core.Ops.RemoteTunables.RaidRoughStoneMinTierDefault;
+                return Mathf.Clamp(DeNelle.Core.Ops.RemoteTunables.Int(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidRoughStoneMinTier), 1, 99);
+            }
+        }
+
+        /// <summary>
+        /// How many rough stones EVERY raid together may pay in one UTC day. Rail:
+        /// <c>raid.roughStonePerDayCap</c>, shipping default 1 - her "no more than 1 per day".
+        /// GLOBAL, not per camp. Clamped 0..99; 0 turns the raid drop off without touching the
+        /// tier row.
+        /// </summary>
+        public static int RoughStonePerDayCap
+        {
+            get
+            {
+                var spec = DeNelle.Core.Ops.RemoteTunables.SpecFor(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidRoughStonePerDayCap);
+                if (spec == null) return DeNelle.Core.Ops.RemoteTunables.RaidRoughStonePerDayCapDefault;
+                return Mathf.Clamp(DeNelle.Core.Ops.RemoteTunables.Int(
+                    DeNelle.Core.Ops.RemoteTunables.KeyRaidRoughStonePerDayCap), 0, 99);
+            }
+        }
+
+        /// <summary>
+        /// The camp's rung on the I..IV ladder, or 0 for an id this build does not know.
+        /// <para>0 is the SAFE answer, deliberately: an unknown camp is below every possible
+        /// <see cref="RoughStoneMinTier"/>, so a camp added to the catalog without being added
+        /// here pays no stone and says so, rather than silently inheriting the top rung. That
+        /// is the opposite default from <c>RaidLootTunables.CoinsBaseFor</c>, and for the
+        /// opposite reason: falling back to Camp I gold protects a payout that already exists,
+        /// while falling back to a tier would OPEN a faucet nobody authored.</para>
+        /// Pure and static: no scene, no save, no rail.
+        /// </summary>
+        public static int TierOf(string configId)
+        {
+            string id = string.IsNullOrEmpty(configId) ? "" : configId.Trim();
+            if (string.Equals(id, RaidLootTunables.CampIdCamp1, StringComparison.OrdinalIgnoreCase)) return 1;
+            if (string.Equals(id, RaidLootTunables.CampIdCamp2, StringComparison.OrdinalIgnoreCase)) return 2;
+            if (string.Equals(id, RaidLootTunables.CampIdCamp3, StringComparison.OrdinalIgnoreCase)) return 3;
+            if (string.Equals(id, RaidLootTunables.CampIdBastion, StringComparison.OrdinalIgnoreCase)) return 4;
+            return 0;
+        }
+
+        /// <summary>
+        /// THE PURE DECISION. True when a victory on <paramref name="configId"/> should pay one
+        /// rough stone, given how many the player has already been paid today.
+        ///
+        /// <para>Two gates and nothing else, because the ruling names two: the camp's tier, and
+        /// a per-UTC-day count across every camp. There is deliberately NO star gate - WO-1373
+        /// section 5.2 asks whether the drop should scale by stars and the owner did not answer
+        /// it, so this ships on the axes she DID rule and the question stays open in the RESULT
+        /// rather than being settled by an implementer.</para>
+        ///
+        /// <para>Pure and static: nothing loaded, so an oracle asserts the whole table offline.</para>
+        /// </summary>
+        /// <param name="configId">The raid config id being settled. Unknown ids pay nothing.</param>
+        /// <param name="grantedToday">Stones already paid by raids this UTC day, across every camp.</param>
+        /// <param name="minTier">Lowest eligible tier - pass <see cref="RoughStoneMinTier"/>.</param>
+        /// <param name="perDayCap">The global day cap - pass <see cref="RoughStonePerDayCap"/>.</param>
+        /// <param name="why">Always written, on BOTH branches - a player who cleared the top
+        /// camp and got no stone must be explainable from a capture.</param>
+        public static bool ShouldDropRoughStone(string configId, int grantedToday,
+                                                int minTier, int perDayCap, out string why)
+        {
+            int tier = TierOf(configId);
+            string id = string.IsNullOrEmpty(configId) ? "(none)" : configId;
+
+            if (tier <= 0)
+            {
+                why = "camp '" + id + "' is not on the I..IV ladder (RaidLootTunables camp ids), " +
+                      "so its tier is unknown and it pays NO stone. Add its id to RaidScoring.TierOf " +
+                      "if it is meant to.";
+                return false;
+            }
+            if (perDayCap <= 0)
+            {
+                why = "the per-day cap is 0 (raid.roughStonePerDayCap) - raids do not drop stone at all.";
+                return false;
+            }
+            if (tier < minTier)
+            {
+                why = "camp '" + id + "' is tier " + tier + ", below the minimum tier " + minTier +
+                      " (raid.roughStoneMinTier) - only the top rungs drop stone.";
+                return false;
+            }
+            if (grantedToday >= perDayCap)
+            {
+                why = "the UTC day cap is already met: " + grantedToday + " of " + perDayCap +
+                      " stone(s) paid today across every camp.";
+                return false;
+            }
+
+            why = "camp '" + id + "' is tier " + tier + " (>= " + minTier + ") and " + grantedToday +
+                  " of " + perDayCap + " stone(s) have been paid today - PAYING one rough stone.";
+            return true;
+        }
+
+        // ── The per-day LEDGER. Impure; kept apart from the decision above ────
+        // PlayerPrefs, deliberately, exactly like RaidClaimService's crystal day-stamp
+        // (dotr-raid-crystalday-<id>) and DungeonRunPayout's polish FIFO: a day key plus a
+        // count self-expires, needs no cleanup, and needs NO SAVE-SCHEMA BUMP. A schema bump
+        // is an owner decision and nothing here requires one - the AUTHORITATIVE record of
+        // what the player owns is the larder count, which is already persisted properly. If
+        // this ledger is lost the player gets at most one extra stone; nothing is destroyed
+        // and nothing is duplicated.
+
+        private const string PrefStoneDayKey = "dotr-raid-stoneday";
+        private const string PrefStoneCountKey = "dotr-raid-stonecount";
+
+        /// <summary>
+        /// How many rough stones raids have paid so far in the current UTC day. Reads 0 on a
+        /// new day without anything having to reset it - the stored day key simply stops
+        /// matching, which is the same self-expiry the crystal stamp uses.
+        /// </summary>
+        public static int RoughStonesGrantedToday()
+        {
+            string stamped = PlayerPrefs.GetString(PrefStoneDayKey, string.Empty);
+            if (string.IsNullOrEmpty(stamped) || stamped != DeNelle.Core.UtcDay.Key()) return 0;
+            return Mathf.Max(0, PlayerPrefs.GetInt(PrefStoneCountKey, 0));
+        }
+
+        /// <summary>
+        /// Record one rough stone paid by a raid today. ⛔ Call this AFTER the stone is in the
+        /// larder, never before - the same lesson written on <c>MarkCrystalsPaid</c>: a stamp
+        /// written ahead of a grant that then throws burns the player's one stone of the day
+        /// for nothing.
+        /// </summary>
+        public static void MarkRoughStoneGranted()
+        {
+            string day = DeNelle.Core.UtcDay.Key();
+            int next = RoughStonesGrantedToday() + 1;
+            PlayerPrefs.SetString(PrefStoneDayKey, day);
+            PlayerPrefs.SetInt(PrefStoneCountKey, next);
+            PlayerPrefs.Save();
+            FlowTrace.Step("Raid",
+                "ROUGH STONE day-ledger: " + next + " stone(s) paid by raids on " + day +
+                " (persisted " + PrefStoneDayKey + " / " + PrefStoneCountKey + "). Cap is " +
+                RoughStonePerDayCap + ".");
+        }
+
+        /// <summary>
+        /// Test/dev hook: clear the day ledger so raids may pay stone again today. Exercised by
+        /// <c>RaidRoughStoneDropRegression</c>, which round-trips it on the real keys and
+        /// restores whatever was there. (An unexercised reset hook proves nothing - the claim
+        /// set went write-only for months for exactly that reason.)
+        /// </summary>
+        public static void ClearRoughStoneDayLedger()
+        {
+            PlayerPrefs.DeleteKey(PrefStoneDayKey);
+            PlayerPrefs.DeleteKey(PrefStoneCountKey);
+            PlayerPrefs.Save();
+            FlowTrace.Step("Raid", "ROUGH STONE day-ledger CLEARED.");
         }
 
         /// <summary>
@@ -849,6 +1243,7 @@ namespace DeNelle.Village
             }
 
             _elapsed += Time.deltaTime;
+            TraceHonorStarSnuff();
 
             if (!_timeExpiredFired && _elapsed >= _clockSeconds)
             {
@@ -856,6 +1251,70 @@ namespace DeNelle.Village
                 FlowTrace.Step("Raid", $"raid clock expired at {_elapsed:0.0}s (destruction {DestructionPct * 100f:0}%). Ending the raid.");
                 OnTimeExpired?.Invoke();
             }
+        }
+
+        /// <summary>
+        /// WO-1594 — emit ONE permanent line each time an honor star goes dark, naming which
+        /// milestone took it. This is the acceptance evidence for the ticket and the only way a
+        /// capture can tell "the third star snuffed on time" from "it snuffed because the hero
+        /// fell" after the fact. Instrumentation is permanent — never strip it (CLAUDE.md §12).
+        ///
+        /// <para>Edge-triggered, so a 10Hz HUD poll and a 60Hz Update cannot spam the log: the
+        /// line is written only on a DROP, and the tier is latched.</para>
+        /// </summary>
+        /// <summary>
+        /// WO-1373 lane RAID-3 — re-read the three honor milestones ONLY when the tunables rail
+        /// has published something since the last read. One integer compare on the hot path.
+        ///
+        /// <para>⛔ Do not "simplify" this back into reading the properties inline. That is the
+        /// shape it had, and it cost three <c>SpecFor</c> + three <c>Int</c> lookups on every
+        /// <see cref="PresentationStars"/> read, twice a frame. The permanent trace below fires
+        /// only on an actual refresh, so it names a mid-raid knob change and is silent otherwise
+        /// (CLAUDE.md section 12 — instrument, and never on a per-frame cadence).</para>
+        /// </summary>
+        private void RefreshHonorCacheIfStale()
+        {
+            int gen = DeNelle.Core.Ops.RemoteTunables.Generation;
+            if (gen == _honorGeneration) return;
+
+            bool seeding = _honorGeneration < 0;
+            _honorGeneration = gen;
+            _honorT3 = HonorThirdStarSeconds;
+            _honorT2 = HonorSecondStarSeconds;
+            _honorD2 = HonorSecondStarMinDestruction;
+
+            FlowTrace.Step("Raid",
+                (seeding ? "honor milestones CACHED" : "honor milestones REFRESHED") +
+                " at tunables generation " + gen + ": T3=" + _honorT3.ToString("0") + "s T2=" +
+                _honorT2.ToString("0") + "s D2=" + (_honorD2 * 100f).ToString("0") + "%. " +
+                "Read once per rail payload, not per frame - PresentationStars is bound by the " +
+                "HUD and by the snuff detector, so the old inline reads cost six tunable " +
+                "lookups every frame of every raid.");
+        }
+
+        private void TraceHonorStarSnuff()
+        {
+            int now = PresentationStars;
+            if (_lastHonorStars < 0 || now >= _lastHonorStars)
+            {
+                _lastHonorStars = now;
+                return;
+            }
+
+            // WO-1373 lane RAID-3: the milestones come from the CACHE, not from the three
+            // properties. PresentationStars above has already refreshed it this frame, so these
+            // are the exact values the tier was computed from - which the old inline reads could
+            // not promise if a payload landed between the two statements.
+            string reason =
+                _heroDied && _lastHonorStars == 3 ? "hero-death"
+                : now <= 1 && _elapsed > _honorT2 ? "t2-destruction"
+                : "t3-time";
+
+            FlowTrace.Step("Raid",
+                $"star-lost reason={reason} honor {_lastHonorStars}->{now} " +
+                $"elapsed={_elapsed:F0}s/{_clockSeconds:F0}s destruction={DestructionPct:P0} " +
+                $"(T3={_honorT3:0}s T2={_honorT2:0}s D2={_honorD2:P0}).");
+            _lastHonorStars = now;
         }
 
         // =====================================================================
@@ -880,9 +1339,14 @@ namespace DeNelle.Village
             if (_engaged || _finalized) return;
             _engaged = true;
             _engagedReason = string.IsNullOrEmpty(reason) ? "unspecified" : reason;
+            _lastHonorStars = 3;   // WO-1594: three lit at engage, and the snuff detector starts here.
+            // WO-1373 lane RAID-3: seed the honor milestone cache HERE, at the one authority that
+            // starts the raid, so the first frame of the fight already has them and the very
+            // first PresentationStars read is a cache hit like every one after it.
+            RefreshHonorCacheIfStale();
             FlowTrace.Step("Raid", $"clock started reason={_engagedReason} " +
                                    $"(staging ended; {_clockSeconds:0}s raid clock now running, " +
-                                   $"deployed={_deployedCount}).");
+                                   $"deployed={_deployedCount}, honorStars=3/3).");
         }
 
         /// <summary>
@@ -1000,10 +1464,23 @@ namespace DeNelle.Village
             float survival = SurvivalPct;
             int earnedStars = ComputeStars(cleared, bossDown, destruction, _elapsed, _clockSeconds, survival);
             // WO-1526 — the owner's hero-death ceiling, applied at the ONE place a raid settles.
-            int stars = ApplyHeroDeathCap(earnedStars, _heroDied);
+            int cappedStars = ApplyHeroDeathCap(earnedStars, _heroDied);
+            // WO-1594 HONESTY CLAMP. The payout may never exceed what the live HUD promised in
+            // the last second of the fight - a player who watched the third star go dark at 90s
+            // must not be handed three stars at settle. It only ever LOWERS: ComputeStars still
+            // owns what is EARNABLE, and this owns what was still PROMISED.
+            //
+            // NOTE, recorded rather than hidden: a raid that settles with _engaged still false
+            // clamps to 0 honor stars. That is the staging-retreat case, where destruction is 0
+            // and ComputeStars returns 0 anyway - so the clamp is not what zeroes it. If a future
+            // change lets a raid raze the camp without ever tripping NotifyEngagement, this line
+            // is where that would surface, and the fix would be the engagement detector.
+            int honorStars = ComputeHonorStars(_engaged, _elapsed, destruction, _heroDied);
+            int stars = Mathf.Min(cappedStars, honorStars);
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                 $"stars settled: {stars} (earned={earnedStars} heroDied={_heroDied} " +
-                $"cap={(_heroDied ? HeroDeathStarCap.ToString() : "none")}) " +
+                $"cap={(_heroDied ? HeroDeathStarCap.ToString() : "none")} " +
+                $"honor={honorStars} clamped=min({cappedStars},{honorStars})) " +
                 $"(cleared={cleared} destruction={destruction:P0} " +
                 $"elapsed={_elapsed:F0}s/{_clockSeconds:F0}s underTime={_elapsed <= Mathf.Max(1f, _clockSeconds)} " +
                 $"survival={survival:P0} high={survival >= HighSurvivalPct} @{HighSurvivalPct:P0}).");
