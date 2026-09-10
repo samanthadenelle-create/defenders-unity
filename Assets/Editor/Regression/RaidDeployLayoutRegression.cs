@@ -66,13 +66,27 @@
 //   M7. Make ArmyBandText stop saying FULL at the cap            -> [vm-army-band].
 //   M8. Build the spoils chips from a second estimator           -> [vm-spoils-chips].
 //   M9. Paint vm.ScoutReport (4 lines) in the 3-line well again  -> [vm-scout-intel].
+//  M10. Type a sub-floor fontPx back into BuildSpoilsChips, or   -> [spoils-floor].
+//       shrink the spoils row's share of its band
 //
-// REGISTRATION: NOT wired here - DataRegression.RunAll is the sole-committer's lane
-// (and is already dirty from other lanes). Wire it beside the two existing deploy
-// suites as:
-//   if (!RaidDeployLayoutRegression.Run(out var raidDeployLayoutReason))
-//       failures.Add(raidDeployLayoutReason);
-//   else log.AppendLine("[raid-deploy-layout] " + raidDeployLayoutReason);
+//   R4 (WO-1669, owner ruling 2026-09-10 12:16) THE ROW WAS DRAWN UNDER THE FLOOR AND
+//      NOTHING COULD SEE IT. BuildSpoilsChips passed a bare literal `fontPx: 24f` while
+//      ElarionUiKit.FontFloor is 30 - the one text site on this screen below the mobile-
+//      legibility floor (WO-1640's RESULT checked the other three: 32 and 40). Case
+//      [seat] passed throughout, because the BAND (40.3 ref px) seats a floor-height line
+//      perfectly well; what it never judged was the size handed to CostRow.
+//      ⚠ HOW TO REPRODUCE THE RED, stated precisely because "red on HEAD" would be a
+//      claim no one can run: HEAD has neither SpoilsChipFontPx nor SpoilsRowAnchorMin/Max,
+//      so this case does not go red against HEAD - it does not COMPILE against it. The
+//      reproducible red is mutation M10: type HEAD's own values back into those two
+//      constants (24f, and 0.10/0.90) and BOTH halves fail - the constant (24 < 30) and
+//      the row's share of the band (0.80 x 40.3 = 32.2 px against NeedPx(30) = 38.58).
+//
+// REGISTRATION: WIRED. Read at source 2026-09-10 (WO-1669): DataRegression.cs:623
+// runs this suite inside a Guard.Try as "raid-deploy-layout suite". The paragraph here
+// used to read "NOT wired here" with the snippet to add - true the day WO-1519 authored
+// it, stale ever since, and exactly the kind of line that makes a seat re-wire a suite
+// that is already running. Every case below is a LIVE pin, not a proposal.
 //
 // Markers: RAID_DEPLOY_LAYOUT_OK / RAID_DEPLOY_LAYOUT_FAIL.
 // Standalone: run-unity-method
@@ -188,6 +202,7 @@ namespace DeNelle.Editor.Regression
                 Case(failures, "guide-intact",    () => CaseGuideFeatureIntact(screenSrc, failures, log));
                 Case(failures, "no-hue-only",     () => CaseNoHueOnlyDifficulty(screenSrc, failures, log));
                 Case(failures, "vm-army-band",    () => CaseArmyBandWords(failures, log));
+                Case(failures, "spoils-floor",    () => CaseSpoilsFloor(failures, log));
                 Case(failures, "vm-spoils-chips", () => CaseSpoilsChips(vmSrc, failures, log));
                 Case(failures, "vm-scout-intel",  () => CaseScoutIntel(failures, log));
             }
@@ -204,7 +219,9 @@ namespace DeNelle.Editor.Regression
                          "party-row band is disjoint from its column neighbours, sits wholly inside its " +
                          "host, and is at least NeedPx(FontFloor)=" +
                          RaidSelectionScreen.NeedPx(30).ToString("0.#") + " ref px tall so TMP cannot cull " +
-                         "the line; the deploy screen composes NO Echo Guide block while EchoGuideService " +
+                         "the line; the spoils chips draw at ElarionUiKit.FontFloor=" +
+                         ElarionUiKit.FontFloor.ToString("0") + " in a row that can hold that line " +
+                         "(WO-1669); the deploy screen composes NO Echo Guide block while EchoGuideService " +
                          "and the NoteExpeditionTarget seam survive; no hue-only difficulty pill; and the " +
                          "VM's army band, spoils chips and scout-intel projection all agree with the one " +
                          "producer behind them" + noteStr;
@@ -590,6 +607,110 @@ namespace DeNelle.Editor.Regression
 
             if (failures.Count == before)
                 log.AppendLine(tag + " army band words hold at 0 / below-cap / at-cap.");
+        }
+
+        // =====================================================================
+        //  CASE [spoils-floor] - WO-1669. THE SPOILS ROW IS DRAWN AT THE FLOOR, AND THE
+        //  ROW GETS THE WHOLE BAND TO DRAW IT IN.
+        // =====================================================================
+        //  Owner ruling 2026-09-10 12:16, closing the open item WO-1640 declined to decide:
+        //      "the raid staging screen's SPOILS resource band is seated at FontLabel 40
+        //       (RaidDeployScreen.cs:219) but drawn at 24 px (:890), under the 30 px floor
+        //       - raise the draw to the floor."
+        //
+        //  WHY NEITHER EXISTING CASE COULD SEE IT, which is the whole reason this one exists:
+        //   * [seat] next door judges the BAND against NeedPx(FontFloor). The spoils band is
+        //     40.3 ref px on the 411 px body floor against a 38.58 px demand - it PASSED,
+        //     every run, while the row inside it was drawn at 24. A band that seats a floor-
+        //     height line says nothing about the size actually handed to CostRow.
+        //   * CostRowFitRegression's SPOILS cases measure the WRAP of the prefix word at
+        //     whatever size they are given. SealPrefixCell is size-agnostic, so they are
+        //     green at 24 and green at 30 - honest about the word, blind to the size.
+        //  The sub-floor number was a BARE LITERAL at a call site with no oracle over it.
+        //  That is the duplicated/unwatched-state shape CLAUDE.md warns about, and it is why
+        //  this case reads RaidDeployScreen's LIVE constants rather than the source text -
+        //  the regex-over-the-file approach this suite's banner retired (:16-23) would go
+        //  quiet on a rename while still reporting OK.
+        //
+        //  ⚠ WHAT THIS CASE DOES NOT CLAIM. Do not read the [seat] cull law into it. The
+        //  cost-row cells are NOT FitSingleLine labels: AddCostText (CostFormat.cs:133-155)
+        //  leaves TMP's DEFAULT Overflow mode live and the HorizontalLayoutGroup clamps each
+        //  cell to preferredHeight = max(24, fontPx + 4), so this row was never going to
+        //  render BLANK - it was going to render SMALL, and then, once raised, to bleed past
+        //  its own plate. Half 2 below is bleed containment, stated as such. An oracle that
+        //  overclaims its own subject is how a suite starts being believed about things it
+        //  never measured.
+        private static void CaseSpoilsFloor(List<string> failures, StringBuilder log)
+        {
+            const string tag = "[spoils-floor]";
+
+            // -- HALF 1: the DRAWN size is at or above the kit's mobile-legibility floor.
+            float drawPx = RaidDeployScreen.SpoilsChipFontPx;
+            if (drawPx + 0.001f < ElarionUiKit.FontFloor)
+            {
+                failures.Add(tag + " the spoils chips draw at " + drawPx.ToString("0.#") +
+                             " px, under ElarionUiKit.FontFloor = " + ElarionUiKit.FontFloor.ToString("0") +
+                             " (ElarionUiKitObsidian.cs). That is the WO-1669 defect by name: the row " +
+                             "the owner had to lean in to read, while every neighbour on the screen sat " +
+                             "at 32-40. RaidDeployScreen.SpoilsChipFontPx must stay pointed at the floor " +
+                             "- never a literal typed back into BuildSpoilsChips.");
+                return;
+            }
+
+            // -- HALF 2: the row's SHARE of its band can hold a line at that size.
+            // The band is taken from the LIVE table, and the body from the screen's own
+            // recorded floor (MinBodyFracOfPanel) - the tightest surface, so passing here
+            // passes everywhere. Both are the same inputs case [bands] measures with.
+            float bandFrac = 0f;
+            foreach (var b in RaidDeployScreen.BandsFor(true))
+                if (b.Name == "spoils") bandFrac = b.Y1 - b.Y0;
+            if (bandFrac <= 0f)
+            {
+                failures.Add(tag + " RaidDeployScreen.BandsFor no longer contains a band named 'spoils' " +
+                             "- this case cannot measure the row's share of a band that is not in the " +
+                             "table, and a vacuous pass here is worse than no case. Fix the fixture.");
+                return;
+            }
+
+            GameObject root = null;
+            try
+            {
+                var s = Surfaces[0]; // the owner's own Seeker frame, and the tightest body
+                float refW, refH;
+                ReferenceBox(s, out refW, out refH);
+                root = NewCanvas("rdl-spoils-floor", refW, refH);
+                var panel = Region((RectTransform)root.transform, "Panel",
+                                   RaidDeployScreen.PanelAnchorMin, RaidDeployScreen.PanelAnchorMax);
+                var body = Region(panel, "Body", new Vector2(0.055f, 0f),
+                                  new Vector2(0.945f, RaidDeployScreen.MinBodyFracOfPanel));
+                Settle((RectTransform)root.transform);
+
+                float bodyPx = body.rect.height;
+                float bandPx = bandFrac * bodyPx;
+                float rowFrac = RaidDeployScreen.SpoilsRowAnchorMax.y - RaidDeployScreen.SpoilsRowAnchorMin.y;
+                float rowPx = rowFrac * bandPx;
+                float needPx = RaidSelectionScreen.NeedPx(Mathf.RoundToInt(drawPx));
+
+                if (rowPx + 0.05f < needPx)
+                {
+                    failures.Add(tag + " the spoils CostRow gets " + rowPx.ToString("0.#") +
+                                 " ref px (" + rowFrac.ToString("0.##") + " of a " + bandPx.ToString("0.#") +
+                                 " px band on the " + bodyPx.ToString("0") + " px body floor) but a line at " +
+                                 drawPx.ToString("0") + " px needs " + needPx.ToString("0.#") +
+                                 ". The row would overflow its own plate and print into the scout/enemy " +
+                                 "gaps. Widen RaidDeployScreen.SpoilsRowAnchorMin/Max toward the whole " +
+                                 "band - do NOT re-seat the band itself, which already clears the floor " +
+                                 "and whose neighbours are 4.9 ref px away.");
+                    return;
+                }
+
+                log.AppendLine(tag + " chips draw at " + drawPx.ToString("0") + " px (= FontFloor " +
+                               ElarionUiKit.FontFloor.ToString("0") + "), row " + rowPx.ToString("0.#") +
+                               " of " + bandPx.ToString("0.#") + " band ref px vs NeedPx(" +
+                               drawPx.ToString("0") + ") = " + needPx.ToString("0.#") + " on the " +
+                               s.Name + " body floor.");
+            }
+            finally { if (root != null) UnityEngine.Object.DestroyImmediate(root); }
         }
 
         // =====================================================================

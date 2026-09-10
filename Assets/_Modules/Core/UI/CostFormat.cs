@@ -193,7 +193,12 @@ namespace DeNelle.Core.UI
         //  exceed the band it was given, and the HorizontalLayoutGroup would then push
         //  children OUTSIDE it -- the exact WO-1060 escape CostRowFitRegression reds for.
         //
-        //  Pinned by CostRowFitRegression [fit-SPOILS-24] + its RED companion.
+        //  Pinned by CostRowFitRegression's SPOILS prefix case + its RED companion. The tag
+        //  carries the SIZE the screen passes and is built from it, so it is [fit-SPOILS-30]
+        //  since WO-1669 raised that row to ElarionUiKit.FontFloor (owner ruling 2026-09-10
+        //  12:16). ⛔ Do not re-write a number into this line: the fixture reads
+        //  RaidDeployScreen.SpoilsChipFontPx, and a tag typed here would go stale the next
+        //  time it moves — which is exactly how the 24 above became history.
         // =====================================================================
         private static void SealPrefixCell(TextMeshProUGUI text, string value, float fontPx)
         {

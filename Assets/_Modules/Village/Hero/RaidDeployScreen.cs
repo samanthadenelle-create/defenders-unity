@@ -177,6 +177,53 @@ namespace DeNelle.Village.Hero
         private const float SpoilsBandY0 = 0.394f, SpoilsBandY1 = 0.492f;
         private const float EnemyBandY0  = 0.504f, EnemyBandY1  = 0.998f;
 
+        // =====================================================================
+        //  WO-1669 — THE SPOILS ROW'S DRAWN SIZE, AND ITS SHARE OF THE BAND.
+        // ---------------------------------------------------------------------
+        //  Owner ruling 2026-09-10 12:16, on WO-1640's own open item:
+        //      "the raid staging screen's SPOILS resource band is seated at FontLabel 40
+        //       (RaidDeployScreen.cs:219) but drawn at 24 px (:890), under the 30 px
+        //       floor — raise the draw to the floor."
+        //
+        //  WO-1640 fixed the WORD (SealPrefixCell, CostFormat.cs — "SPOIL" over an orphan
+        //  "S") and deliberately did NOT rule on the SIZE: its RESULT flagged that the row
+        //  ships under ElarionUiKit.FontFloor and said "the FontFloor question is a ruling,
+        //  not a lane call". This is that ruling landed.
+        //
+        //  ⛔ THE NUMBER IS NEVER TYPED HERE. It is ElarionUiKit.FontFloor
+        //  (ElarionUiKitObsidian.cs:3033), the one place the mobile-legibility floor lives.
+        //  A second copy of it in this file is the duplicated-state failure CLAUDE.md
+        //  §2/§5/§16 each describe in their own words — and this row is the proof, because
+        //  the 24 it shipped with was exactly such a copy: a bare literal at the call site
+        //  that nothing could see and no oracle judged.
+        //
+        //  THE BAND IS NOT CHANGED AND MUST NOT BE. spoils is 0.394..0.492 = 40.3 ref px on
+        //  the 411 px body floor, and NeedPx(FontFloor) = 38.58 — it already seats a 30 pt
+        //  line, and RaidDeployLayoutRegression [seat] already measures that. What was too
+        //  small was the ROW'S SHARE of the band: 0.10..0.90 gave the CostRow 80% of it,
+        //  32.2 px, which a 30 pt line overflows. The row now takes the whole band.
+        //
+        //  ⚠ AND IT WAS NEVER A BLANK-LINE RISK, so do not read the [seat] law into it. The
+        //  cost-row cells are NOT FitSingleLine labels: AddCostText (CostFormat.cs:133-155)
+        //  leaves TMP's default Overflow mode live, and the HorizontalLayoutGroup clamps
+        //  each cell to preferredHeight = max(24, fontPx + 4) = 34 and centres it. Widening
+        //  to the full band is BLEED CONTAINMENT, not a cull fix. Saying so here is what
+        //  keeps the next seat from inheriting a false premise.
+        //
+        //  Both are exposed so RaidDeployLayoutRegression [spoils-floor] measures the REAL
+        //  values rather than a typed copy of them.
+        // =====================================================================
+
+        /// <summary>The size the spoils chips DRAW at — the kit's mobile-legibility floor,
+        /// never a literal (owner ruling WO-1669).</summary>
+        public const float SpoilsChipFontPx = ElarionUiKit.FontFloor;
+
+        /// <summary>The spoils CostRow's anchors inside its plate. The y-extent is the WHOLE
+        /// band (WO-1669): at 0.10..0.90 the row got 80% of 40.3 px and a floor-height line
+        /// overflowed its own plate.</summary>
+        public static readonly Vector2 SpoilsRowAnchorMin = new Vector2(0.04f, 0.00f);
+        public static readonly Vector2 SpoilsRowAnchorMax = new Vector2(0.96f, 1.00f);
+
         // ── Column x-extents (WO-839 #3 seam, unchanged) ──
         private const float LeftColX1  = 0.49f;
         private const float RightColX0 = 0.51f;
@@ -887,9 +934,12 @@ namespace DeNelle.Village.Hero
 
             var parts = new List<(string conceptId, string word, int amount)>(chips.Count);
             foreach (var c in chips) parts.Add((c.ConceptId, c.Word, c.Amount));
+            // WO-1669 (owner ruling 2026-09-10 12:16): the chips draw at the kit's floor,
+            // and the row takes the WHOLE band. Both come off the named surface above —
+            // a literal here is what shipped this row at 24 with nothing able to see it.
             ElarionUiKit.CostRow(plate.transform, DeNelle.Core.UI.CostFormat.Parts(parts),
-                new Vector2(0.04f, 0.10f), new Vector2(0.96f, 0.90f),
-                ElarionUi.Parchment, prefix: "SPOILS", fontPx: 24f);
+                SpoilsRowAnchorMin, SpoilsRowAnchorMax,
+                ElarionUi.Parchment, prefix: "SPOILS", fontPx: SpoilsChipFontPx);
         }
 
         // =====================================================================

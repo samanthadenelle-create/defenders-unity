@@ -41,6 +41,7 @@
 using System.Collections.Generic;
 using System.Text;
 using DeNelle.Core.UI;
+using DeNelle.Village.Hero;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -249,9 +250,17 @@ namespace DeNelle.Editor.Regression
         //          SPOIL
         //              S      1800   1100   2200
         //
-        //  RaidDeployScreen.BuildSpoilsChips passes prefix "SPOILS" at fontPx 24 --
+        //  RaidDeployScreen.BuildSpoilsChips passed prefix "SPOILS" at fontPx 24 that day --
         //  6 bold caps that the 8-px-per-character heuristic sized at 88.6 ref px, with
         //  no wrapping mode authored, so TMP broke the single word.
+        //
+        //  ⚠ THE SIZE HAS SINCE MOVED (WO-1669, owner ruling 2026-09-10 12:16: the row was
+        //  drawn under ElarionUiKit.FontFloor and comes up to it). THAT DOES NOT WEAKEN THIS
+        //  CASE and no number below was retuned: SealPrefixCell measures the string at
+        //  whatever size it is handed, so the case is size-agnostic by construction and
+        //  simply follows the screen. SpoilsPrefixFontPx now READS the screen's constant
+        //  instead of copying it, which is why this paragraph can be history without going
+        //  stale — the fixture cannot drift from the surface it claims to model.
         //
         //  THIS CASE MEASURES THE WRAP, NOT THE FIT: lineCount and characterCount off the
         //  built label's own textInfo after a forced mesh update. It runs on a DELIBERATELY
@@ -260,7 +269,13 @@ namespace DeNelle.Editor.Regression
         //  of room", which are different bugs with different fixes.
         // =====================================================================
         private const string SpoilsPrefix = "SPOILS";
-        private const float SpoilsPrefixFontPx = 24f;
+        /// <summary>THE SIZE THE SCREEN PASSES, TAKEN FROM THE SCREEN (WO-1669). It used to be
+        /// a literal 24f copied off RaidDeployScreen's call site, and the owner's 12:16 ruling
+        /// then moved the screen to ElarionUiKit.FontFloor — at which point this fixture's own
+        /// doc-comment ("at the fontPx RaidDeployScreen passes") became a lie while every case
+        /// kept reporting OK. A copied number is hearsay (CLAUDE.md §11B); this is the value.
+        /// The [fit-SPOILS-&lt;n&gt;] tag below is built from it, so it renames itself.</summary>
+        private const float SpoilsPrefixFontPx = RaidDeployScreen.SpoilsChipFontPx;
         /// <summary>A card far wider than the row needs, so shrink can never be the cause.</summary>
         private const float WidePrefixCardPx = 900f;
 
