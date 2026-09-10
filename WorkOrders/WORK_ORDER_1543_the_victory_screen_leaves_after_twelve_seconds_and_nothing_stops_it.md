@@ -1,6 +1,6 @@
 # WO-1543: the victory screen routes home after 12 s and no touch stops it — hold on touch, longer guard
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate — **owner ruling 2026-09-06: "Hold on touch, longer guard."**
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes — **owner ruling 2026-09-06: "Hold on touch, longer guard."**
 **Priority:** P1
 **Silo:** `Assets/_Modules/Village/UI/EndState/EndStateView.cs` + `EndStateVM.cs` +
 `Assets/_Modules/Village/World/Camps/RaidVictoryController.cs` (`_autoReturnSeconds` only).

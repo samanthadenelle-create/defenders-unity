@@ -1,6 +1,6 @@
 # WO-1455: the offline sync queue has no cap and its depth warning only fires on exact multiples of 25
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
 **Silo:** `Assets/_Modules/Core/State/GameStateService.cs` (the offline sync queue).
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1455 -> 1456 in the same edit).

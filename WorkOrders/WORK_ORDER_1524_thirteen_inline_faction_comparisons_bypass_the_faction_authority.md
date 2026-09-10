@@ -1,6 +1,6 @@
 # WO-1524: thirteen inline faction comparisons still bypass CombatFactionRules
 
-**Status:** PARTIALLY IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
+**Status:** PARTIALLY IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
 **Silo:** Village/Combat faction seam - pets, towers, tower combat, the ability lane, hero abilities.
 **Source:** carried forward from **WO-1503**, whose implementation lane found these while proving that
 ticket's premise false. Minted from the banner (`CLI_LANES_WO_NUMBERS.md`, main line 1524 -> 1525 in the

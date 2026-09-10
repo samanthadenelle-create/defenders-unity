@@ -1,6 +1,6 @@
 # WO-1561: retreat and clock-expiry end the raid with NO result screen — the outcome is computed, banked, and discarded unread
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Priority:** **P0** — and it is the exit a new player is most likely to hit.
 **Silo:** `Assets/_Modules/Village/Troops/RaidDeployController.cs` (exit paths only) +
 `Assets/_Modules/Village/UI/EndState/EndStateVM.cs`. **NOT the raid's layout, art or lifecycle.**

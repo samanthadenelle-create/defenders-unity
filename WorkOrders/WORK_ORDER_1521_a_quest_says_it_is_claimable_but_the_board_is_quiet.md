@@ -1,6 +1,6 @@
 # WO-1521: a quest counter says one is ready to claim while the rumor board says the board is quiet
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate (prior: READY TO IMPLEMENT - owner report 2026-09-06 20:18)
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes (prior: READY TO IMPLEMENT - owner report 2026-09-06 20:18)
 **Silo:** Village quests / rumor board - the quest service and its claim surface, `QuestRewardBridge.cs`,
 `JourneyDeckSubtitleVM`, and the rumor board panel.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner

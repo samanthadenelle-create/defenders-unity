@@ -1,6 +1,6 @@
 # WO-1538: the arena projectile TRAIL fire-point is never reached
 
-**Status:** IMPLEMENTED - 2026-09-07 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - c0c30f715 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Silo:** Village/Arena VFX + `ArenaCombatOracle`.
 **Source:** wave-two regression `Builds/reg-wave2.log` (422/435), 2026-09-06. Surfaced by `ArenaCombatOracle`,
 **registered tonight by WO-1496** - a pre-existing gap becoming visible. Minted from the banner

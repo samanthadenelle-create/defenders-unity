@@ -1,6 +1,6 @@
 # WO-1581 - "Manage Placed" card and tap-a-structure select are both stomped by their own disarm, so MOVE is unreachable
 
-**Status:** IMPLEMENTED - 2026-09-07 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - 55d3a7c56 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Silo:** Build / BuildMode (palette seam + placed-structure edit verbs)
 **Minted from:** `CLI_LANES_WO_NUMBERS.md` banner, hundred-and-sixteenth pass (1581 -> 1582, same edit)
 **Source:** owner device report 2026-09-07 08:3x on build 2026.09.07.359076 - *"manage buildings

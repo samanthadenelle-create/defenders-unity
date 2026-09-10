@@ -1,6 +1,6 @@
 # WO-1515: the defense report is an unreadable tan slab with overlapping rows, and its only door is buried under Settings
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate (panel half + the sec.2B/2D HUD chip; prior: READY TO IMPLEMENT - P1, owner-ask, ruling received 2026-09-06 20:05)
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes (panel half + the sec.2B/2D HUD chip; prior: READY TO IMPLEMENT - P1, owner-ask, ruling received 2026-09-06 20:05)
 **Silo:** `Assets/_Modules/Village/UI/Defense/DefenseReportPanel.cs` + a new HUD chip.
 **LANDS AFTER** the WO-1465 / 1466 / 1468 lane commits - that lane is editing `HudKitController.cs` tonight.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner

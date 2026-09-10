@@ -1,6 +1,6 @@
 # WO-1540: the blank-start census sees a baked CastleBarracks because ff.barracks is ON in batchmode
 
-**Status:** IMPLEMENTED - 2026-09-07 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - c0c30f715 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Silo:** Editor/regression environment - `BlankStartCensusRegression` + `FeatureFlags` + possibly
 `HubStructureVisualInjector`.
 **Source:** wave-two regression `Builds/reg-wave2.log` (422/435), 2026-09-06. Surfaced by

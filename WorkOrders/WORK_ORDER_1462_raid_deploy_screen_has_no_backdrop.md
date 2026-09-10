@@ -1,6 +1,6 @@
 # WO-1462: RaidDeployScreen has no backdrop - the town bleeds through the panel
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
 **Silo:** `Assets/_Modules/Village/Hero/RaidDeployScreen.cs` + `RaidSelectionLayoutRegression`. Same class
 WO-1442 fixed one screen earlier on RaidSelectionScreen.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner

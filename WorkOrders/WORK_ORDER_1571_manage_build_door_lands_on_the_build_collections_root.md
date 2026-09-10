@@ -1,6 +1,6 @@
 # WO-1571 - Manage BUILD door for a non-defence structure lands on the Build Collections root, a dead end
 
-**Status:** IMPLEMENTED - 2026-09-07 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - c0c30f715 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Silo:** Build / Manage (UI door + placement seam)
 **Minted from:** `CLI_LANES_WO_NUMBERS.md` banner, hundred-and-eighth pass (1571 -> 1572, same edit)
 **Source:** owner device build 358872, logcat 2026-09-07 00:58:40 - *"clicking BUILD on it takes me

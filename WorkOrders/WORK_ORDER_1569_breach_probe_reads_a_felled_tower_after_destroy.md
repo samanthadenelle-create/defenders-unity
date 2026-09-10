@@ -1,6 +1,6 @@
 # WO-1569 - Breach probe reads a felled tower after Unity destroyed it
 
-**Status:** IMPLEMENTED - 2026-09-07 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - c0c30f715 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Silo:** Combat/AI (edit-only lane; file-disjoint from RaidDeployController, Dungeons, EnemyContent, ObsidianQueue)
 **Minted:** 2026-09-07, from the `CLI_LANES_WO_NUMBERS.md` main-line banner (1569 -> 1570, same edit)
 

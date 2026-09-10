@@ -1,6 +1,6 @@
 # WO-1537: a PAID RepairFull leaves eleven structure types at zero health - the player is charged for nothing
 
-**Status:** IMPLEMENTED - 2026-09-07 - uncommitted, awaiting gate. See the RESULT file.
+**Status:** IMPLEMENTED - c0c30f715 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes. See the RESULT file.
 WARNING: the section-2 fix shape (MaxHp-vs-tier mismatch) is DISPROVEN. The flat 0.00 is the WO-753
 destroyed guard (`Building.cs:260` / `WallSegment.cs:504`) refusing a fixture that drove structures to
 hp=0. The FIXTURE was corrected to DAMAGED; the assertions were not weakened and a ruling pin was added.

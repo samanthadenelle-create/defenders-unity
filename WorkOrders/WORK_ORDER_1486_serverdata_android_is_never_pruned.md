@@ -1,6 +1,6 @@
 # WO-1486: ServerData/Android is never pruned (597 MB, 168 catalogs back to 2026-08-18) and the build marker reports the wrong size
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
 **Silo:** `tools/r2-ship.ps1` (pruning) + the Android build marker. Tooling only.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1486 -> 1487 in the same edit).

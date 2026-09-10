@@ -1,6 +1,6 @@
 # WO-1536: the ogre asks for model 'OgreMage', which was never imported, and silently wears a stand-in
 
-**Status:** IMPLEMENTED - 2026-09-07 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - cd57a1c1e on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Silo:** Village/Enemies art - `enemies.json` + the committed model registry + `EnemyResolverRegression`.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1536 -> 1537 in the same edit; **drafted as 1533 and renumbered** -

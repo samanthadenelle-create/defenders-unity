@@ -1,6 +1,6 @@
 # WO-1512: presentation mutates the objects in eight view files; one view spends currency and one grants it
 
-**Status:** PARTIALLY IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate: the two consequential views (queue spend, redeem grant) and ArmyMuster are VM-routed; see RESULT for the remaining views (was: READY TO IMPLEMENT)
+**Status:** PARTIALLY IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes: the two consequential views (queue spend, redeem grant) and ArmyMuster are VM-routed; see RESULT for the remaining views (was: READY TO IMPLEMENT)
 **Silo:** Architecture / views. Eight view files; `ManageScreenPanel` is the pattern to copy.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1512 -> 1513 in the same edit).

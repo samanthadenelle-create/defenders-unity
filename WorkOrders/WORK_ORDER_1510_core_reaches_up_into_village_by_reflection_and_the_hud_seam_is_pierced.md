@@ -1,6 +1,6 @@
 # WO-1510: Core reaches UP into Village by reflection, the HUD/Village invariant is pierced both ways, and one catch is silent
 
-**Status:** PARTIALLY IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
+**Status:** PARTIALLY IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes (was: IN PROGRESS - lane handed back edits 2026-09-06 (uncommitted, awaiting the wave-two compile + regression gate); prior: READY TO IMPLEMENT)
 **Silo:** Architecture. `SceneRouter`, `PersistenceBridge`, `BreakCaptureHarness`, ten HUD files, three Village
 files.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner

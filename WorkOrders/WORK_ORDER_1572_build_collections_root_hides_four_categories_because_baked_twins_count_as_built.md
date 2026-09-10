@@ -1,6 +1,6 @@
 # WO-1572: Build Collections root hides four categories because baked twins count as built
 
-**Status:** IMPLEMENTED - 2026-09-07 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - c0c30f715 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Silo:** Village/BuildMode - `BuildCollectionBrowser` + `StructureCardVM` + the two collection suites.
 **Source:** WO-1540 section 5, written 2026-09-07 by the WO-1571 lane. Minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1572 -> 1573 in the same edit).

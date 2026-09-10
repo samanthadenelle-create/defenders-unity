@@ -1,6 +1,6 @@
 # WO-1520: raids spawn the hero INSIDE defender range with the clock already running - a staging area, and a clock that starts on first engagement
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate (was: READY TO IMPLEMENT - P0, owner ruling 2026-09-06 20:26)
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes (was: READY TO IMPLEMENT - P0, owner ruling 2026-09-06 20:26)
 **Silo:** Village/Troops raid lifecycle - `RaidDeployController`, `RaidScoring`, `RaidGarrisonSpawner`, and the
 raid base generator's marker authoring. WO-1437 landed the lifecycle; WO-1436 the posture.
 **LANDS AFTER** tonight's WO-1462 / 1463 commit (same files).

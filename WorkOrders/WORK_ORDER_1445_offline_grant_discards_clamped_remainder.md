@@ -1,6 +1,6 @@
 # WO-1445: OfflineHarvestService.Grant banks the clamped amount and throws the remainder away
 
-**Status:** IMPLEMENTED - 2026-09-07 uncommitted, awaiting gate. ! THE TICKET'S FIX SHAPE WAS NOT
+**Status:** IMPLEMENTED - c0c30f715 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes. ! THE TICKET'S FIX SHAPE WAS NOT
 FOLLOWED AS WRITTEN and the reason is in the RESULT: there is no pending store on this path to retain
 onto. The remainder is NAMED IN WORDS instead (owner law, WO-1461). Contradiction raised for the lead.
 PRIOR STATUS: READY TO IMPLEMENT - low severity today (dead on the owner's save), real divergence

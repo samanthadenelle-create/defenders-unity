@@ -1,6 +1,6 @@
 # WO-1531: the F8 device bridge dedupes on message text forever - 319 captures published 0, including the owner's FLAG
 
-**Status:** IMPLEMENTED - 2026-09-07 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - c0c30f715 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Silo:** Tooling/F8 - `.claude/skills/run-defenders/f8-device-bridge.ps1`, `Get-EntryKey`.
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1531 -> 1532 in the same edit). Found by the WO-1460 lane, which landed

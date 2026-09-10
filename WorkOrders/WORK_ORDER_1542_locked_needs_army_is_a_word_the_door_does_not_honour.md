@@ -1,6 +1,6 @@
 # WO-1542: `LOCKED - needs Army 9` is a word the door does not honour, and the card is not even dimmed
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate — **owner ruling 2026-09-06: "Warning, not a lock."** (was: BLOCKED)
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes — **owner ruling 2026-09-06: "Warning, not a lock."** (was: BLOCKED)
 **Priority:** P1
 **Silo:** `Assets/_Modules/Village/Hero/RaidSelectionScreen.cs` + `RaidSelectionVM.cs`. **Both CLEAN** in
 the working tree as of 2026-09-06 21:50.

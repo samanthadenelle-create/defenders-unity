@@ -1,6 +1,6 @@
 # WO-1583: wallet signature only for purchases and codes; boot never signs
 
-**Status:** IMPLEMENTED - 2026-09-07, uncommitted, awaiting gate.
+**Status:** IMPLEMENTED - 55d3a7c56 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes.
 **Silo:** `DeNelle.Core.Web3` (`BackendRequestSigner`) + `DeNelle.Wallet` (`WalletSkinBootstrap`) +
 `DeNelle.Core.State` (`GameStateService` save-refusal log level only). Disjoint from Manage/**, Raid*,
 BuildMode and `api/` - all untouched.

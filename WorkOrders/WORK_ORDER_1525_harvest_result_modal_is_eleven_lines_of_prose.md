@@ -1,6 +1,6 @@
 # WO-1525: the Harvest Result modal is eleven lines of prose - make it three rows, a bar, and one action each
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate
+**Status:** IMPLEMENTED - c0c30f715 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes
 **Silo:** `Assets/_Modules/Core/UI/HarvestOverflowModal.cs` + the copy composer in `OfflineHarvestService` /
 `HarvestResultCopy`. WO-1279 is the prior; WO-1370 CLOSED tonight on her Pass covers READABILITY, not this
 SHAPE.

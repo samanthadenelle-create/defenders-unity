@@ -1,6 +1,6 @@
 # WO-1523: hide the Wardrobe section on the Hero screen while everything in it is locked
 
-**Status:** IMPLEMENTED - 2026-09-06 uncommitted, awaiting gate (was: READY TO IMPLEMENT - owner ruling, 2026-09-06 20:23)
+**Status:** IMPLEMENTED - d6511b8e5 on HEAD, landed 2026-09-07 (was: uncommitted, awaiting gate); gated by the 2026-09-09 wave (REGRESSION 492/492 on Builds/wave1-reg3); owner felt-test closes (was: READY TO IMPLEMENT - owner ruling, 2026-09-06 20:23)
 **Silo:** Hero screen / cosmetics - the hero wardrobe section (`CosmeticShopPanel` or the hero screen's
 wardrobe block).
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
