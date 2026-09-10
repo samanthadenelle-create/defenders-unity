@@ -5810,6 +5810,23 @@ namespace DeNelle.Editor
                 tex.ReadPixels(new Rect(0f, 0f, w, h), 0, 0);
                 tex.Apply(false);
 
+                // ===== WO-1648 LUMINANCE ORACLE - BEGIN (delimited; nothing else in this
+                // method changes). THE PIXELS AND THE LAYOUT ARE BOTH IN HAND EXACTLY HERE,
+                // and nowhere else in this file: the canvas is still camera-space with `cam`
+                // as its worldCamera, so a RectTransform maps onto THIS texture's pixels with
+                // no scaler arithmetic - and the texture has not yet been encoded or freed.
+                // Guarded: a throwing probe must never cost the run its screenshot, the same
+                // contract _settledProbe already carries above.
+                try { ProbeCloseLuminance(tex, cam, canvasGo, Path.GetFileNameWithoutExtension(path), w, h); }
+                catch (Exception le)
+                {
+                    Debug.LogError("[luma-oracle] probe threw on " + path + ": " + le);
+                    _lumaFailures.Add("LUMA PROBE THREW on " + Path.GetFileNameWithoutExtension(path) +
+                                      " (" + le.GetType().Name + ") -- this frame proved NOTHING about " +
+                                      "the CLOSE plate's legibility; absence here is a FAILURE, not a pass.");
+                }
+                // ===== WO-1648 LUMINANCE ORACLE - END
+
                 // THE BLANK GUARD: measure the pixels before shipping them. A flat frame is
                 // the no-graphics failure mode, not a screenshot -- refuse to write it, so a
                 // reviewer sees an honest MISSING instead of a convincing empty rectangle,
@@ -6373,6 +6390,215 @@ namespace DeNelle.Editor
                            "in the right place whose words were cut away is invisible to every other " +
                            "rule on this path.");
         }
+
+        // =====================================================================
+        //  ===== WO-1648 LUMINANCE ORACLE - BEGIN =====
+        // ---------------------------------------------------------------------
+        //  ⛔ A SOURCE LINT CANNOT SEE LUMINANCE, AND THAT IS THE WHOLE TICKET.
+        //  ManageMockupConformanceRegression's [chrome-close-is-live] pins the TEXT of the
+        //  lines that set the hub CLOSE interactable, label it "CLOSE", colour it Parchment
+        //  and draw it a gold perimeter. Every one of those assertions was TRUE on a device
+        //  frame in which the control measured 13/255 - brightest RGB (13,13,13) - against a
+        //  BUILD card label of 172/255 in the SAME frame. The code claimed legible, the lint
+        //  confirmed the claim, and nothing in the chain ever looked at a pixel.
+        //
+        //  ⛔ JUDGED IN Rec.709 LUMA, NEVER IN HUE. The owner is red/green colourblind and
+        //  ManageScreenPanel says in its own comment that luminance is the channel here. A
+        //  hue comparison would call a dark gold plate on black "correct".
+        //
+        //  ⛔ IT COMPARES TWO NUMBERS FROM ONE FRAME, and prints BOTH. An absolute floor
+        //  cannot survive a deliberately dim panel or a different exposure; a REFERENCE
+        //  GLYPH in the same capture is the only stable yardstick, so the finding reads
+        //  "close=13 vs reference BUILD=172" and needs no interpretation.
+        //
+        //  ⚠ SCOPE, DELIBERATELY NARROW. The probe runs on every captured frame, but only a
+        //  frame that ALSO carries the reference glyph can produce a FINDING; every other
+        //  frame with a CloseButton contributes a measurement line and nothing more. ~19
+        //  panels build the kit close, and this file's own §5 records what happens when a
+        //  widened assert is wired straight into a live gate: everything reds and the gate
+        //  gets suppressed instead of fixed. Its marker is its own, and it does not gate
+        //  UI_CAPTURE_OK.
+        // =====================================================================
+        /// <summary>The label whose luminance is the yardstick - a BUILD card face on the Manage hub.</summary>
+        private const string LumaReferenceGlyph = "BUILD";
+        /// <summary>The CLOSE plate must reach this fraction of the reference glyph's peak luma.</summary>
+        private const float LumaCloseFloorFraction = 0.35f;
+        /// <summary>Pixels trimmed off each edge before sampling, so a rect's own AA fringe and the
+        /// neighbouring frame art can never be read as the control's ink.</summary>
+        private const int LumaSampleInsetPx = 4;
+
+        private static readonly List<string> _lumaFailures = new List<string>();
+        private static readonly List<string> _lumaMeasurements = new List<string>();
+        private static int _lumaPlatesMeasured;
+
+        /// <summary>Clear the luma tallies. Called from the entry point that REPORTS them, never
+        /// from inside the reporter - the same reasoning ResetGlyphOracle records above.</summary>
+        private static void ResetLumaOracle()
+        {
+            _lumaFailures.Clear();
+            _lumaMeasurements.Clear();
+            _lumaPlatesMeasured = 0;
+        }
+
+        /// <summary>
+        /// Measure the shared CLOSE plate's peak Rec.709 luma against the reference glyph's, both
+        /// out of THIS frame's pixels, while the canvas is still camera-space against
+        /// <paramref name="cam"/>.
+        /// </summary>
+        private static void ProbeCloseLuminance(Texture2D tex, Camera cam, GameObject canvasGo,
+            string label, int w, int h)
+        {
+            if (tex == null || cam == null || canvasGo == null) return;
+
+            // The kit stamps this name on the ONE shared close (ElarionUiKit.ObsidianCloseButton),
+            // so the probe finds the control by the same identity the rest of the codebase uses.
+            RectTransform plate = null;
+            var rects = canvasGo.GetComponentsInChildren<RectTransform>(true);
+            for (int i = 0; i < rects.Length; i++)
+            {
+                var rt = rects[i];
+                if (rt == null || !rt.gameObject.activeInHierarchy) continue;
+                if (!string.Equals(rt.name, "CloseButton", StringComparison.Ordinal)) continue;
+                plate = rt;
+                break;
+            }
+            if (plate == null) return;   // no shared CLOSE on screen: nothing to say about this frame
+
+            TMP_Text reference = null;
+            var texts = canvasGo.GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                var t = texts[i];
+                if (t == null || !t.gameObject.activeInHierarchy) continue;
+                string txt = (t.text ?? string.Empty).Trim();
+                if (!string.Equals(txt, LumaReferenceGlyph, StringComparison.OrdinalIgnoreCase)) continue;
+                reference = t;
+                break;
+            }
+
+            Color32[] px = tex.GetPixels32();
+            if (px == null || px.Length < w * h) return;
+
+            float closeMax, closeMean;
+            string closeRect;
+            if (!TryMeasureLuma(px, w, h, plate, cam, out closeMax, out closeMean, out closeRect))
+            {
+                _lumaFailures.Add("CLOSE UNMEASURED on " + label + " -- the plate's rect resolved " +
+                    "off-frame (" + closeRect + "), so this frame proves nothing about its legibility.");
+                return;
+            }
+            _lumaPlatesMeasured++;
+
+            string closePart = "close max=" + closeMax.ToString("0.#") + "/255 mean=" +
+                               closeMean.ToString("0.##") + " rect " + closeRect;
+
+            if (reference == null)
+            {
+                // No yardstick in this frame -> a MEASUREMENT, never a verdict.
+                _lumaMeasurements.Add(label + ": " + closePart + "; no '" + LumaReferenceGlyph +
+                    "' reference glyph in this frame, so no comparison was made.");
+                return;
+            }
+
+            float refMax, refMean;
+            string refRect;
+            if (!TryMeasureLuma(px, w, h, reference.rectTransform, cam, out refMax, out refMean, out refRect))
+            {
+                _lumaMeasurements.Add(label + ": " + closePart + "; the reference glyph's rect " +
+                    "resolved off-frame (" + refRect + "), so no comparison was made.");
+                return;
+            }
+
+            float floor = refMax * LumaCloseFloorFraction;
+            string refPart = "reference '" + LumaReferenceGlyph + "' max=" + refMax.ToString("0.#") +
+                             "/255 rect " + refRect;
+            string floorPart = "floor=" + floor.ToString("0.#") + " (" +
+                               LumaCloseFloorFraction.ToString("0.##") + " of the reference)";
+            _lumaMeasurements.Add(label + ": " + closePart + "; " + refPart + "; " + floorPart);
+
+            if (closeMax < floor)
+                _lumaFailures.Add("CLOSE UNREADABLE on " + label + " -- " + closePart + " vs " +
+                    refPart + "; " + floorPart + ". Rec.709 luma, not hue. The control is on screen " +
+                    "and its setters all ran; it simply does not reach the player's eye.");
+        }
+
+        /// <summary>Peak and mean Rec.709 luma inside a RectTransform, in THIS texture's pixels.
+        /// Bottom-origin throughout: Texture2D rows and camera screen-space agree, so no flip.</summary>
+        private static bool TryMeasureLuma(Color32[] px, int w, int h, RectTransform rt, Camera cam,
+            out float max, out float mean, out string rectText)
+        {
+            max = 0f;
+            mean = 0f;
+            rectText = "<none>";
+            if (px == null || rt == null || cam == null) return false;
+
+            var corners = new Vector3[4];
+            rt.GetWorldCorners(corners);
+            Vector2 a = RectTransformUtility.WorldToScreenPoint(cam, corners[0]);
+            Vector2 b = RectTransformUtility.WorldToScreenPoint(cam, corners[2]);
+
+            int x0 = Mathf.RoundToInt(Mathf.Min(a.x, b.x)) + LumaSampleInsetPx;
+            int x1 = Mathf.RoundToInt(Mathf.Max(a.x, b.x)) - LumaSampleInsetPx;
+            int y0 = Mathf.RoundToInt(Mathf.Min(a.y, b.y)) + LumaSampleInsetPx;
+            int y1 = Mathf.RoundToInt(Mathf.Max(a.y, b.y)) - LumaSampleInsetPx;
+            rectText = x0.ToString() + ".." + x1.ToString() + " x " + y0.ToString() + ".." + y1.ToString();
+
+            x0 = Mathf.Clamp(x0, 0, w - 1);
+            x1 = Mathf.Clamp(x1, 0, w - 1);
+            y0 = Mathf.Clamp(y0, 0, h - 1);
+            y1 = Mathf.Clamp(y1, 0, h - 1);
+            if (x1 <= x0 || y1 <= y0) return false;
+
+            double sum = 0.0;
+            int n = 0;
+            for (int y = y0; y <= y1; y++)
+            {
+                int row = y * w;
+                for (int x = x0; x <= x1; x++)
+                {
+                    var p = px[row + x];
+                    float luma = 0.2126f * p.r + 0.7152f * p.g + 0.0722f * p.b;
+                    if (luma > max) max = luma;
+                    sum += luma;
+                    n++;
+                }
+            }
+            if (n == 0) return false;
+            mean = (float)(sum / n);
+            return true;
+        }
+
+        /// <summary>Emit the luma oracle's OWN marker. Absence of a measurement is a FAILURE, not an
+        /// unknown - the repo judges by markers on fresh logs, so a silent run must not read green.</summary>
+        private static void ReportLumaOracle()
+        {
+            for (int i = 0; i < _lumaMeasurements.Count; i++)
+                Debug.Log("[luma-oracle] " + _lumaMeasurements[i]);
+
+            if (_lumaPlatesMeasured == 0)
+            {
+                Debug.LogError("UI_LUMA_FAIL x0 -- ZERO CLOSE plates were measured this run, so " +
+                    "nothing here proves the hub CLOSE is legible. An absent case is not a passing case.");
+                return;
+            }
+
+            if (_lumaFailures.Count > 0)
+            {
+                int shown = Mathf.Min(_lumaFailures.Count, GeoMaxPrintedLines);
+                for (int i = 0; i < shown; i++) Debug.LogError("[luma-oracle] " + _lumaFailures[i]);
+                if (_lumaFailures.Count > shown)
+                    Debug.LogError("[luma-oracle] ... and " + (_lumaFailures.Count - shown) + " more");
+                Debug.LogError("UI_LUMA_FAIL x" + _lumaFailures.Count + " over " + _lumaPlatesMeasured +
+                    " measured CLOSE plate(s) -- every line above names BOTH numbers (the plate's peak " +
+                    "Rec.709 luma and the reference glyph's) so the verdict needs no interpretation.");
+                return;
+            }
+
+            Debug.Log("UI_LUMA_ORACLE_OK " + _lumaPlatesMeasured + " CLOSE plate(s) measured; each " +
+                "reaching at least " + LumaCloseFloorFraction.ToString("0.##") + " of its frame's '" +
+                LumaReferenceGlyph + "' reference glyph in Rec.709 luma.");
+        }
+        //  ===== WO-1648 LUMINANCE ORACLE - END =====
 
         private static void ReportGeometry()
         {
@@ -8167,7 +8393,35 @@ namespace DeNelle.Editor
             // The cell MUST match the placement seeded above (3,7) or the key names a tower that is not there.
             queue.Enqueue(JobKind.TowerUpgrade, ChannelId.Builder, PlacedUpgradeKey.Compose("tower_ground_archer", 3, 7), 420d, 2);
             queue.Enqueue(JobKind.Upgrade, ChannelId.Builder, "barracks:2:0", 660d, 4);
-            queue.Enqueue(JobKind.Repair, ChannelId.Builder, "gate:4:1", 180d);
+            // ⚠ THE GATE ID WAS NOT REAL EITHER - the FOURTH fake id in this one seeder, after the
+            // colon-shape tower key, the invented perk 'warding' and the invented troop 'militia'
+            // below. WO-1655. This read "gate:4:1", and "gate" IS NOT A STRUCTURE ID ANYWHERE IN
+            // THIS REPO: structures-catalog.json authors the gate as id 'gate_stone' / displayName
+            // "Stone Gate" (type Gate), building-tiers.json authors only the six civic ladders
+            // (arcane-tower, armorer, barracks, forge, lumbermill, farm), and
+            // WallRepairController.FallbackGateCatalogId is itself "gate_stone" - the repo has one
+            // canonical spelling and this fixture used a different one.
+            // ⛔ "gate" is the damage-states TELL key, a DIFFERENT VOCABULARY: damage-states.json,
+            // WallRepairController.DamageTellKeyFor(RepairTargetKind.Gate) and
+            // RepairAvailabilityProbe.AddIfBurning<Gate> all speak it, and none of them is a
+            // catalog id. Borrowing it here is how a repair row asked the catalog a question in
+            // the wrong language.
+            // ⭐ THE SIBLING SEEDER ALREADY HAD THE GRAMMAR RIGHT: SeedManageFlowExtraQueue seeds
+            // "wall_wood:13:9" - a real catalog id plus the cell pair - so the two Repair fixtures
+            // now speak the same language.
+            // The resolution this restores, step by step (ManageScreenVM.cs:940-1007):
+            // NormalizeBuildingJobId -> "gate-stone" misses BuildingTierCatalog (CORRECT: gates
+            // have no civic ladder); the structures branch strips at ':' -> "gate_stone";
+            // CatalogRegistry.Get("gate_stone").displayName = "Stone Gate" -> the row reads
+            // "Stone Gate"; portraitId = "gate_stone" -> ManageArt.BuildingPortraitKey gives
+            // "Portraits/Buildings/gate_stone", and Assets/Resources/Portraits/Buildings/
+            // gate_stone.png is on disk - so the thumbnail resolves VERBATIM with no alias layer
+            // (ManageArt.cs:306 forbids one).
+            // ⛔ THE CATALOG WAS NEVER THE DEFECT, so nothing was added to it: authoring a second
+            // 'gate' row beside 'gate_stone' would mint a phantom palette tile, make
+            // CatalogRegistry.OfType(Gate) return two structures for one gate, and be exactly the
+            // alias-by-another-name that rule forbids. Pinned by QueueJobCatalogCoverageRegression.
+            queue.Enqueue(JobKind.Repair, ChannelId.Builder, "gate_stone:4:1", 180d);
 
             queue.Enqueue(JobKind.TrainTroop, ChannelId.Train, "train:militia:capture-a", 240d);
             queue.Enqueue(JobKind.TrainTroop, ChannelId.Train, "train:archer:capture-b", 360d);
@@ -8698,6 +8952,9 @@ namespace DeNelle.Editor
             _geoCanvasesChecked = _touchPanelsChecked = _touchPanelsClean = 0;
             _flowInventory.Clear();
             _flowStateNotes.Clear();
+            // WO-1648: the luma tallies are cleared by the entry point that reports them, so the
+            // numbers a ticket quotes always belong to the run whose log it quotes.
+            ResetLumaOracle();
 
             // ⛔ THE ASPECT-DIVERGENCE PROOF, WHICH THIS ENTRY POINT HAD NEVER RUN. This is the
             // whole of `UI_CAPTURE_FIDELITY_DEGRADED 16/16` on Builds/cap-manage-wave4.log, and the
@@ -8741,6 +8998,12 @@ namespace DeNelle.Editor
                                    // table and at its one emit site -- never copied here. Wired at
                                    // EVERY site that emits the touch marker: one path missing it
                                    // prints marker-absent there, read here as a FAILURE not an unknown.
+            // WO-1648: the luma oracle carries its OWN marker (UI_LUMA_ORACLE_OK / UI_LUMA_FAIL) and
+            // deliberately does NOT gate MANAGE_FLOW_MAP_OK below. It has not yet been proven red on
+            // this repo's own frames, and this file's §5 records what a never-red assert wired into a
+            // live gate costs: everything reds and the gate gets suppressed instead of fixed. Promote
+            // it into the verdict once it has failed once ON PURPOSE - not before.
+            ReportLumaOracle();
             if (count == expected && ledger == 0 && _fidelityDegraded == 0 &&
                 _geoFailures.Count == 0 && _touchFailures.Count == 0)
                 // ⛔ THE FRAME SET IS DESCRIBED FROM THE PLAN, NOT RETYPED. This line used to read

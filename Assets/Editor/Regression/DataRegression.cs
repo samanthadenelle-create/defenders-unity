@@ -1130,6 +1130,8 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "build-inventory-filters suite", () => { if (!DeNelle.Editor.Regression.BuildInventoryFilterRegression.Run(out var r)) failures.Add(r); else log.AppendLine(r); });
             // --- 2026-09-06 Manage portrait lane: every id a Manage tab can DISPLAY resolves to a sprite, or is named on a DATED art exemption ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "manage-portrait-coverage suite", () => { if (!DeNelle.Editor.Regression.ManagePortraitCoverageRegression.Run(out var r)) failures.Add(r); else log.AppendLine(r); });
+            // --- WO-1655: every id a Builder queue job can carry NAMES ITSELF in at least one catalog, so no row paints "Unknown structure" ---
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "queue-job-catalog-coverage suite", () => { if (!DeNelle.Editor.Regression.QueueJobCatalogCoverageRegression.Run(out var r)) failures.Add(r); else log.AppendLine(r); });
             // --- SEAM ORACLES (CLI driving plan section 1): every panel has a door; no authored field goes unread ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "panel-door suite", () => { if (!DeNelle.Editor.PanelDoorRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[panel-door] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "authored-field-reader suite", () => { if (!DeNelle.Editor.AuthoredFieldReaderRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[authored-field-reader] " + r); });
@@ -1735,6 +1737,7 @@ namespace DeNelle.Editor
             // return door in PanelManager, one mechanism, honours the WO-1393 close-frame grace);
             // a HUD-opened panel's close does not return anywhere.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "deck-return-door suite", () => { if (!DeNelle.Editor.Regression.DeckReturnDoorRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[deck-return-door] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "textfit-guard-arm suite", () => { if (!DeNelle.Editor.Regression.TextFitGuardArmRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[textfit-guard-arm] " + r); });
             // WO-1397: the Cosmetic Shop is reachable - a Hero-deck "Wardrobe" card routes to the
             // already-registered PanelId.CosmeticShop; the deck grid derives its rows from the card
             // count (2x3 for five cards) so no card lands under the purpose line. WO-1523: that

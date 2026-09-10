@@ -1,6 +1,6 @@
 # WO-1655: `gate` has no display name in EITHER catalog, so its queue row reads `Unknown structure`
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate 2026-09-10 (fix + RED-first oracle landed edit-only in a lane worktree off `dev` @ `efc56f67c`; no Unity run, no gate, no commit - the lead gates and commits). ⛔ **THE TICKET'S §2 CAUSE WAS A FALSE PREMISE and the RESULT says so:** the gate IS authored (`structures-catalog.json` row `gate_stone` / "Stone Gate"); the FIXTURE seeded a non-id. **NOTHING was added to either catalog and no JSON was touched.** RESULT: `WorkOrders/WORK_ORDER_1655_gate_has_no_display_name_in_either_catalog_queue_row_reads_unknown_structure.RESULT.md` *(was: READY TO IMPLEMENT)*
 **Silo:** **DATA / catalog** (`BuildingTierCatalog` + `CatalogRegistry` sources). ⛔ **NOT the queue UI.**
 **Number:** PRE-ASSIGNED by the lead. ⛔ **Do NOT edit `CLI_LANES_WO_NUMBERS.md`.**
 **Source:** WO-1566 audit re-tick, RESULT row **8.6** (audit `2039e2c41`, re-tick `9592cdd6f`).
