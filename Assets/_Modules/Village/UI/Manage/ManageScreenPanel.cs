@@ -2271,8 +2271,28 @@ namespace DeNelle.Village.UI
                     // The title sits directly under the art well - see HubArtWellF. The band is
                     // 0.16 of the card, which at the hub's card height clears the TMP cull floor
                     // with room to spare.
-                    rt.anchorMin = new Vector2(0.04f, 1f - HubArtWellF - 0.02f - HubTitleBandF);
-                    rt.anchorMax = new Vector2(0.96f, 1f - HubArtWellF - 0.02f);
+                    // ── WO-1636: THE SIDE INSET GOES 0.04 -> 0.02 (0.92 -> 0.96 OF THE CARD) ────
+                    // MEASURED (Builds/wave3-navcapture, 2026-09-10): the locked ARMY card's face,
+                    // "BUILD A BARRACKS", drew 11 of 14 printable glyphs at BOTH captured aspects -
+                    // rect x -144.2..144.2 (288.4 px) @2340x1080 and -140.8..140.8 (281.6 px)
+                    // @2670x1200, at font 30, the FitSingleLine floor armed three lines below.
+                    // 288.4 / 0.92 back-solves the CELL to 313.5 px, so this widening buys the face
+                    // 12.6 px. It is the ONLY width lever on this card that is not somebody else's
+                    // ruling, and it is deliberately taken to the edge of the gold perimeter.
+                    // ⚠ AND IT IS NOT ENOUGH ON ITS OWN, WHICH IS RECORDED RATHER THAN GLOSSED. A
+                    // glyph-advance estimate calibrated against that same rect puts the full string
+                    // at ~324 px at font 30 bold, against 301 px of lane after this change - still
+                    // ~7% over. Closing the rest needs a RULING, not another nudge, because both
+                    // remaining levers are pinned: the WORDS are pinned by
+                    // ManageApprovedLauncherRegression (WO-1406, the locked card's door), and the
+                    // CELL WIDTH is pinned by HubCardAspect (132/169), which is height-clamped off
+                    // the owner's own device frame - `cellW = Min(width/3, height * HubCardAspect)`
+                    // is already taking the aspect branch here, so a wider band cannot help. The
+                    // cheapest ruling on offer is dropping one word: "BUILD BARRACKS" measures
+                    // ~293 px and would fit inside this lane with room. NOT taken here - it is
+                    // player-facing copy behind an owner ruling. See the WO-1636 RESULT.
+                    rt.anchorMin = new Vector2(0.02f, 1f - HubArtWellF - 0.02f - HubTitleBandF);
+                    rt.anchorMax = new Vector2(0.98f, 1f - HubArtWellF - 0.02f);
                     rt.offsetMin = rt.offsetMax = Vector2.zero;
                     face.fontSize = 36f;
                     face.alignment = TextAlignmentOptions.Center;

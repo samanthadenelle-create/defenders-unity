@@ -203,12 +203,56 @@ namespace DeNelle.Onboarding
         private const string RotateNextLabel = "NEXT";
 
         // The four details columns (fractions of the well's width).
+        //
+        // ── WO-1636: RE-PROPORTIONED FROM MEASURED GLYPH COUNTS, NOT FROM TASTE ──────────
+        // The glyph oracle's first run (Builds/wave3-capture2, 2026-09-10) reported FIVE cut
+        // captions on this screen, ALL of them in this strip and ALL of them only at PORTRAIT
+        // 1080x1920 (the 1920x1080 and 2670x1200 shots of the same screen are clean, because
+        // the well is ~1.8x wider there). Measured, from the run's own rects:
+        //
+        //   Col_Signature/Label  "Shield Bash"     7 of 10 glyphs  x 151.8..277.1 (125.3 px) @25
+        //   Col_Skills/Label     "Sword Heroic"    7 of 11         x 344..458.3   (114.3 px) @20
+        //   Col_Skills/Label     "Shield Bash"     8 of 10         (same lane)
+        //   Col_Skills/Label     "Warden's Grace"  8 of 13         (same lane)
+        //   Col_Skills/Label     "Radiant Strike"  8 of 13         (same lane)
+        //
+        // THE WELL IS 932.0 REFERENCE PX WIDE AT 1080x1920, and that is DERIVED FROM THOSE TWO
+        // RECTS, not assumed: SIGNATURE's label at 0.6628..0.7972 of the well back-solves to
+        // 151.9..277.0 against a 932 px well centred on 0, and SKILLS' name lane at
+        // 0.820+0.28*0.175 .. 0.820+0.98*0.175 back-solves to 343.9..458.0. Two independent
+        // labels agreeing to a tenth of a pixel is the corroboration.
+        //
+        // The old split gave SIGNATURE 0.140 (130 px) and SKILLS 0.175 (163 px) while LORE and
+        // STATS took 0.615 between them. Both narrow columns carry PROPER NOUNS out of
+        // HeroCatalog - the longest are "Sacred Mending" (Cleric signature) and "Storm of
+        // Arrows" / "Warden's Grace" (skill names) - and a name cannot be wrapped, hyphenated
+        // or shortened: it is mirrored verbatim from abilities.json and HeroKitMirrorRegression
+        // pins that mirror. So the BAND had to move, and it moves toward the two columns that
+        // hold names and away from the two that hold a wrapped blurb and image pips.
+        //
+        // WIDTHS AFTER, in reference px at 1080x1920 (well 932):
+        //   LORE    0.262 -> 244.2 px  (was 0.295 -> 275.0)   blurb band grown 0.80 -> 0.84 to compensate
+        //   STATS   0.262 -> 244.2 px  (was 0.320 -> 298.2)   pip key lane widened 0.28 -> 0.30 of the column
+        //   SIG     0.210 -> 195.7 px  (was 0.140 -> 130.5)   label lane 125.3 -> 187.9 px  (+50%)
+        //   SKILLS  0.232 -> 216.2 px  (was 0.175 -> 163.1)   name lane  114.3 -> 165.4 px  (+45%)
+        // The three inter-column gaps drop 0.020 -> 0.010 and the outer margins 0.005 -> 0.002,
+        // which is where the last ~19 px came from; the columns stay DISJOINT by construction.
+        //
+        // ⛔ NO FONT FLOOR WAS LOWERED. The signature name still floors at 25 and the skill names
+        // at 20 (FitLine below, fontSize*0.5 of FontBody 50 / FontLabel 40), which is what the
+        // oracle measured them resolving to. Widening the band is the whole fix.
+        //
+        // ⚠ THE LORE AND STATS FIGURES ARE ESTIMATES, AND THAT IS RECORDED ON PURPOSE. The
+        // oracle logs only the labels it FAILS, so this run carries no rect for the blurb or the
+        // pip keys; their new widths were sized from a glyph-advance estimate calibrated against
+        // the two rects above (longest EN blurb = hero.ranger.blurb, 168 chars; longest pip key
+        // = "ATTACK"). The re-capture is the proof, not this comment.
         private static readonly Vector2[] DetailColumns =
         {
-            new Vector2(0.005f, 0.300f),   // LORE
-            new Vector2(0.320f, 0.640f),   // STATS
-            new Vector2(0.660f, 0.800f),   // SIGNATURE
-            new Vector2(0.820f, 0.995f),   // PRIMARY SKILLS
+            new Vector2(0.002f, 0.264f),   // LORE
+            new Vector2(0.274f, 0.536f),   // STATS
+            new Vector2(0.546f, 0.756f),   // SIGNATURE
+            new Vector2(0.766f, 0.998f),   // PRIMARY SKILLS
         };
         private Image[] _pageDots;
         private Vector2 _swipeStart;
@@ -828,8 +872,13 @@ namespace DeNelle.Onboarding
 
             // — LORE —
             SectionHead(lore, "LORE", 0.85f, 1.00f);
+            // WO-1636: 0.80 -> 0.84. The LORE column gave 31 px of WIDTH to the two name columns
+            // (see DetailColumns), so it takes back the dead strip between the old blurb top and
+            // the section head at 0.85 - 12 px of HEIGHT at portrait, which is roughly half a
+            // wrapped line and offsets the narrower measure. The blurb is a wrapped FitBlock, so
+            // height and width trade directly; a single-line label could not have made this swap.
             var blurb = ElarionUiKit.Label(lore, CanonStrings.Locale(info.BlurbKey),
-                0.02f, 0.80f, ElarionUi.Parchment, ElarionUi.FontLabel,
+                0.02f, 0.84f, ElarionUi.Parchment, ElarionUi.FontLabel,
                 TextAlignmentOptions.TopLeft, 0.02f, 0.98f);
             blurb.textWrappingMode = TextWrappingModes.Normal;
             blurb.raycastTarget = false;
@@ -871,9 +920,14 @@ namespace DeNelle.Onboarding
                     // The skills column is NARROW (a quarter of the strip), so the slot
                     // badge gets a wider lane than the old full-width rail used or the
                     // Q/W/E/R glyph autosizes into a smear.
+                    // WO-1636: badge 0.02..0.22 -> 0.02..0.17 and the name starts at 0.215 instead
+                    // of 0.28. The column itself grew (0.175 -> 0.232 of the well), so the BADGE
+                    // still gets 32.4 px - the same plate width it had - while the NAME lane goes
+                    // 114.3 -> 165.4 reference px. That is what seats "Warden's Grace" (~147 px at
+                    // the 20 px floor) and "Storm of Arrows"; both were cut at 8 of 13 glyphs.
                     BuildSkillRow(skillsCol, skills[s].Slot, skills[s].Name,
                                   y1 - sRow * 0.92f, y1 - sRow * 0.08f,
-                                  badgeX1: 0.22f, nameX0: 0.28f);
+                                  badgeX1: 0.17f, nameX0: 0.215f);
                 }
             }
             else
@@ -915,16 +969,25 @@ namespace DeNelle.Onboarding
         /// </summary>
         private static void BuildPipRow(Transform parent, string label, int value, float y0, float y1)
         {
+            // WO-1636: the key lane widens 0.02..0.30 -> 0.02..0.32 of the column and the pip run
+            // tightens to match. WHY, since no pip key was in the oracle's findings: the STATS
+            // column itself gave 54 reference px to the two name columns (see DetailColumns), and
+            // at the OLD 0.28 share the longest key, "ATTACK", would have landed inside ~5% of its
+            // own floor - i.e. this fix would have bought two clean columns by quietly opening a
+            // THIRD truncation, which is the one thing WO-1636's acceptance forbids. At 0.30 of the
+            // narrowed column the lane is 73.3 px against ~66 px of "ATTACK" at the 16 px FitLine
+            // floor, so the margin is preserved rather than spent. Pips are IMAGES: they lose
+            // 7 px each (34.3 -> 27.3) and cannot truncate, so they are the right thing to trade.
             var key = ElarionUiKit.Label(parent, label, y0, y1,
                 ElarionUi.Gold, ElarionUi.FontMicro,
-                TextAlignmentOptions.Left, 0.02f, 0.30f, spacing: 1f, bold: true);
+                TextAlignmentOptions.Left, 0.02f, 0.32f, spacing: 1f, bold: true);
             key.raycastTarget = false;
             FitLine(key);
 
             value = Mathf.Clamp(value, 0, 5);
-            const float pipX0 = 0.34f;
-            const float pipW = 0.115f;
-            const float pipGap = 0.015f;
+            const float pipX0 = 0.35f;
+            const float pipW = 0.112f;
+            const float pipGap = 0.013f;
             float padY = (y1 - y0) * 0.18f;
             for (int p = 0; p < 5; p++)
             {
