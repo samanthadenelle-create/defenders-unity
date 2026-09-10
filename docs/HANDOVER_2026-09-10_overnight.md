@@ -245,6 +245,11 @@ three pins found over retired surfaces -> WO-1666); mints `8470a9b18` 1663, `668
 TOUCH-FLOOR 1664 (five clamps: title row 69.5 px, REPAIR ALL 101.4, COLLECT 89.2; front-door touch oracle unreported), PROBE-READBACK
 1665 (state-word probe 20 px for seven glyphs; PartyNameplate = four GameObjects named Label on one path), LABEL-PINS 1666.
 
+**12:34 - owner delivered a 13-part feature spec:** `docs/specs/HEARTBOUND_SKR_RESONANCE_WORK_ORDERS_2026-09-10.md` (HEART-001..013,
+Heartbound SKR Resonance: native Solana Mobile SKR staking read on-chain, never custodied, backend-authoritative, RPC-outage safe, playable
+without SKR). HEARTBOUND-TRIAGE lane (read-only) is mapping each section onto the repo and minting WO-1674..1686 (SPEC or READY) with the
+canon conflicts as owner questions; index + dependency order will be `docs/specs/HEARTBOUND_TRIAGE_2026-09-10.md`.
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
@@ -502,6 +507,19 @@ TOUCH-FLOOR 1664 (five clamps: title row 69.5 px, REPAIR ALL 101.4, COLLECT 89.2
 **RULED 12:07 (AskUserQuestion):** 1 = WO-1637 all axes (fog first, base wall, ring material for both venues); 2 = WO-1638 re-tint the
 banners; 9 = train 2 Footmen on her save for the raid proofs (approved spend 1100 gold); 15 = WO-1661 word UPGRADE (keep). Also: **WO-1215
 CLOSED** ("i already validated and should be closed").
+**RULED 12:12:** 11 = keep the BUILD 4-tile picker, update the mockup rows; 12 = locked ARMY CTA becomes a disabled LOCKED face (WO-1668);
+13 = WO-947 governs upgrades: CostGold -> 0 (WO-1657 item A implements); 14 = keep "Not yet upgraded . 4 levels".
+**RULED 12:16:** 3 = full-cap raid door intended, line kept (WO-1641 closes on felt-verify); 5 = SPOILS band up to the 30 px floor (WO-1669);
+6 = Echo chip fixed now via a HudLayoutBands seam (WO-1670); 10 = ticket a caption plate under the dock medallions (WO-1671) AND a new
+design rule, owner verbatim: "when you are outside the castle should not be the peaceful UI, not combat, but should not be able to build or
+talk but can use items still" (WO-1672, outside-the-walls dock mode).
+**RULED 12:20:** 4 = keep the near-black readout plate; 8 = the Play listing is open in ALL countries, so the Korea + Brazil
+probabilistic-item disclosures apply (WO-1673, store-listing text). **All fifteen rulings are now answered.**
+
+WO-1673 (Play disclosures) minted: six live RNG mechanics, none purchasable with real money or hard currency; the daily chest, every
+rewarded ad and packs.json have NO RNG. Two things for the owner before any questionnaire: the dormant Arena wager stakes REAL purchasable
+Crystals (a gambling question, not a loot-box one), and SKR staking buys extra polish attempts (attempts only; DAPP_STORE define). Two defects
+found: JewelPolishRegression does not exist, and jewel-polish.json still says the rough stone is "guaranteed" while WO-1373 made it 5%.
 
 1. **WO-1637 raid arena palette** - which axis moves: the ring MATERIAL (RockPaths is shared with the battle arena's siege venue,
    consumed twice there: 56 m cover ring + 72 m outer boundary; split deliberately or move both), the FOG (end 95 m sits inside the
