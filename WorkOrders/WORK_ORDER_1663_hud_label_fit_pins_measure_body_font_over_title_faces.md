@@ -1,6 +1,14 @@
 # WORK ORDER 1663 — `HudLabelFitRegression` measures Alata Regular over faces the game draws in Merriweather Bold
 
-**Status:** READY TO IMPLEMENT
+**Status:** PARTIALLY IMPLEMENTED — awaiting gate + THREE rulings
+> Re-point + parameterisation are DONE (`Assets/Editor/Regression/HudLabelFitRegression.cs`, one
+> shared `MeasureFacePx`, no third copy of the role or the slack). **§6's red-first acceptance
+> CANNOT be met as written and this lane did not force it** — the two predicted reds were computed
+> on the UPPER-CASE form, and the rail chips draw the AUTHORED case (proof in the RESULT). No
+> producer fix was made, because nothing reds honestly. Three findings are surfaced for a ruling:
+> §5 site #3 (retired bar surface), site #1 (the three action-line keys are no longer drawn), and
+> site #9 (the Builders chip's call site is retired). See
+> `WORK_ORDER_1663_hud_label_fit_pins_measure_body_font_over_title_faces.RESULT.md`.
 **Silo:** HUD / oracles (`Assets/Editor/Regression/HudLabelFitRegression.cs` only)
 **Origin:** WO-1662 §8 — the systemic half of the root cause that WO-1662 fixed for one label
 **Number:** PRE-ASSIGNED by the lead. **The `CLI_LANES_WO_NUMBERS.md` banner was NOT edited by this lane.**

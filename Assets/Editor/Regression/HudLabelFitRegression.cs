@@ -519,6 +519,32 @@ namespace DeNelle.Editor.Regression
         // two lines tall by design - so the real assertions are:
         //   (a) every ACTION line fits on ONE line of ~202 px at the floor  <- defect 1
         //   (b) the whole block still seats in 112 px of height once line 1 has wrapped
+        //
+        // ⭐ WO-1663 — the ROLE is fixed here (Body -> Title + slack; the chip is an obsidian face,
+        // HudKitController.BuildRailChip:2287 calls MedievalUiSkin.ApplyButton). TWO findings came
+        // out of that re-point and are RECORDED, NOT ACTED ON, pending a lead/owner ruling:
+        //
+        // ⚠ 1. THE THREE ACTION LINES ARE NO LONGER DRAWN ON THIS CHIP. FormatCollectorChip
+        //    (HudKitController.cs:2239-2246) returns HudStrings.Get(KeyCollectorsTitle) and
+        //    NOTHING else — WO-1194 moved the storage state onto the three resource rows. The
+        //    runtime assignments are `_collectorsChipLabel.text = FormatCollectorChip(cs)`
+        //    (:5373) and `= HudStrings.Get(KeyCollectorsTitle)` (:2749). So KeyCollectorsFullLine
+        //    / NearlyLine / WaitingLine are measured here against a surface that does not paint
+        //    them. Coverage over a dormant string is not coverage; retiring them from this case
+        //    is a COPY decision, so it waits for a ruling rather than being done quietly.
+        //
+        // ⚠ 2. THE DRAWN CASE IS THE AUTHORED CASE, NOT UPPER. ApplyButton:86 upper-cases the
+        //    label VALUE once at apply time and never sets FontStyles.UpperCase, and both
+        //    assignments above run AFTER it — so the chip draws "Harvest", not "HARVEST". These
+        //    measurements therefore pass the authored string, deliberately. Measuring the upper
+        //    form here would model a render that does not happen (that is this file's own root
+        //    cause, one step to the other side).
+        //
+        // THE PROOF THAT THE RE-POINT IS RIGHT is the historic cut, re-measured 2026-09-10 from
+        // the committed font assets: "Tap to collect" @30 is 182.7 px in Body — INSIDE the 202.4
+        // px rect, i.e. Body said it FITS — yet all 8 runs of the 2026-08-22 fleet captured it cut
+        // to "Tap to collec". At the drawn face it is 201.9 x 1.15 = 232.2 px, which reds. Body
+        // could not have caught the very defect this case exists for; the skinned measurement can.
         private static void Case2_CollectorChip(List<string> failures, List<string> notes)
         {
             float boxW = RailChipWidthPx * ButtonLabelInset;
@@ -537,7 +563,7 @@ namespace DeNelle.Editor.Regression
             foreach (string action in actionLines)
             {
                 string detail;
-                float w = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, action, floor, out detail);
+                float w = MeasureFacePx(SkinnedFaceRole, action, floor, out detail);
                 if (w < 0f)
                 {
                     failures.Add("[collector-chip] cannot measure '" + action + "': " + detail);
@@ -545,14 +571,15 @@ namespace DeNelle.Editor.Regression
                 }
                 if (w > boxW)
                     failures.Add("[collector-chip] the action line '" + action + "' MEASURES " +
-                                 w.ToString("0.0") + " ref px at the " + floor + "px legibility floor but the " +
+                                 w.ToString("0.0") + " ref px at the " + floor + "px legibility floor " +
+                                 SkinnedFaceWhy() + " but the " +
                                  "chip label rect is only " + boxW.ToString("0.0") + " px (" + detail +
                                  "). There is no legible size at which it fits, so TMP cuts it - that is the " +
                                  "captured 'Tap to collec' exactly. Shorten the WORDS in canon-strings.json; " +
                                  "do NOT drop the font and do NOT widen the chip (three rail chips share one edge)");
 
                 // (b) height: line 1 wraps, then the action line. Measured wrap, not assumed.
-                int lines = WrappedLineCount(count, boxW, floor) + 1;
+                int lines = WrappedLineCount(count, boxW, floor, SkinnedFaceRole) + 1;
                 float needed = lines * floor * LineHeightFactor;
                 if (needed > boxH)
                     failures.Add("[collector-chip] '" + count + "' + '" + action + "' needs " + lines +
@@ -563,12 +590,14 @@ namespace DeNelle.Editor.Regression
 
             string d2;
             string title = Copy(failures, notes, HudStrings.KeyCollectorsTitle);
-            float cw = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, title, floor, out d2);
+            float cw = MeasureFacePx(SkinnedFaceRole, title, floor, out d2);
             if (cw > boxW)
                 failures.Add("[collector-chip] even the bare title '" + title + "' MEASURES " + cw.ToString("0.0") +
-                             " px against a " + boxW.ToString("0.0") + " px rect (" + d2 + ")");
+                             " px " + SkinnedFaceWhy() + " against a " + boxW.ToString("0.0") +
+                             " px rect (" + d2 + ")");
             notes.Add("collector chip rect " + boxW.ToString("0") + "x" + boxH.ToString("0") +
-                      " ref px; longest action line " + LongestOf(actionLines, floor).ToString("0.0") + " px");
+                      " ref px; longest action line " +
+                      LongestOf(actionLines, floor, SkinnedFaceRole).ToString("0.0") + " px " + SkinnedFaceWhy());
         }
 
         // =====================================================================
@@ -578,6 +607,22 @@ namespace DeNelle.Editor.Regression
         // the CANVAS - so it is aspect-dependent and has to be measured at both. The
         // captured sentence "Manage - 2 of 3 idle" was roughly four times its box; the
         // face now paints ManageBaseLabel plus a canon BADGE on a second line.
+        //
+        // ⭐ WO-1663 §5 — THE ROLE IS FIXED HERE; THE SURFACE ITSELF IS AN OPEN QUESTION, RAISED
+        // AND DELIBERATELY NOT ANSWERED BY THIS LANE. This case sizes its box from
+        // HudActionBarModel.MaxVisibleFaces (= 4, HudActionBarModel.cs:139). Read at source
+        // 2026-09-10: HudKitController.BindActionBar (:3473) opens with
+        //     if (_peacefulDockRoot != null) { ...SetActive(false) on every _barButtons[i]...
+        //       FlowTrace.Step("HudKit", "adaptive peaceful dock owns the actionBar; legacy
+        //       repacker retired"); return; }
+        // at :3480-3486 — so whenever the peaceful dock exists the legacy faces are disabled and
+        // the model is never subscribed. That matches CLAUDE.md §7 ("no reasoning about the
+        // shipped bar may start from that constant"), and it means this case measures a RETIRED
+        // geometry. Re-pointing its role only turns a green oracle over a dead surface into a red
+        // one over a dead surface; neither is coverage. The live authority for the shipped bar is
+        // HudActionBarRegression.CheckMeasuredPeacefulDock, which BUILDS the real dock.
+        // ⛔ Do not delete, re-point or "fix" this case on a lane's own judgement — the ruling is
+        // the owner's: retire it, or re-point it at the dock's measured slots. WO-1663 §5.
         private static void Case3_ManageFace(List<string> failures, List<string> notes)
         {
             float floor = ElarionUiKit.FontFloor;
@@ -600,11 +645,12 @@ namespace DeNelle.Editor.Regression
                 foreach (string line in faceLines)
                 {
                     string detail;
-                    float w = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, line, floor, out detail);
+                    float w = MeasureFacePx(SkinnedFaceRole, line, floor, out detail);
                     if (w < 0f) { failures.Add("[manage-face] cannot measure '" + line + "': " + detail); continue; }
                     if (w > boxW)
                         failures.Add("[manage-face] at " + a.Name + " the face line '" + line + "' MEASURES " +
-                                     w.ToString("0.0") + " ref px at the " + floor + "px floor but a bar face's " +
+                                     w.ToString("0.0") + " ref px at the " + floor + "px floor " + SkinnedFaceWhy() +
+                                     " but a bar face's " +
                                      "label rect is only " + boxW.ToString("0.0") + " px (" + detail +
                                      "). TMP ellipsises past the floor - that is the captured 'Manag...'. Put " +
                                      "FEWER WORDS on the face (HudStrings/ManageFaceBadge); the one-line " +
@@ -1173,8 +1219,14 @@ namespace DeNelle.Editor.Regression
         }
 
         /// <summary>Greedy word wrap using the SAME measured advances, so the line count this
-        /// suite asserts against is the line count TMP would produce - not a guess at one.</summary>
-        private static int WrappedLineCount(string text, float boxW, float fontSize)
+        /// suite asserts against is the line count TMP would produce - not a guess at one.
+        /// ⭐ WO-1663: <paramref name="role"/> IS A PARAMETER, NOT A CONSTANT. This helper is
+        /// shared, and its callers do not all draw the same face — an obsidian caller passes
+        /// <see cref="SkinnedFaceRole"/> (and is charged the slack by <see cref="MeasureFacePx"/>),
+        /// a plain ElarionUiKit.Label caller passes Body. Hardcoding either one here is how the
+        /// helper silently reported on a font its caller does not draw.</summary>
+        private static int WrappedLineCount(string text, float boxW, float fontSize,
+                                            ElarionUiKit.FontRole role)
         {
             if (string.IsNullOrEmpty(text)) return 0;
             string[] words = text.Split(' ');
@@ -1184,20 +1236,22 @@ namespace DeNelle.Editor.Regression
             {
                 string candidate = current.Length == 0 ? word : current + " " + word;
                 string detail;
-                float w = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, candidate, fontSize, out detail);
+                float w = MeasureFacePx(role, candidate, fontSize, out detail);
                 if (w > boxW && current.Length > 0) { lines++; current = word; }
                 else current = candidate;
             }
             return lines;
         }
 
-        private static float LongestOf(string[] lines, float fontSize)
+        /// <summary>The widest of <paramref name="lines"/> at <paramref name="fontSize"/>, measured
+        /// in the face the caller actually draws (WO-1663 — see <see cref="WrappedLineCount"/>).</summary>
+        private static float LongestOf(string[] lines, float fontSize, ElarionUiKit.FontRole role)
         {
             float max = 0f;
             foreach (string s in lines)
             {
                 string detail;
-                float w = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, s, fontSize, out detail);
+                float w = MeasureFacePx(role, s, fontSize, out detail);
                 if (w > max) max = w;
             }
             return max;
@@ -1861,6 +1915,42 @@ namespace DeNelle.Editor.Regression
         /// (MedievalUiSkin.cs:91). Every measurement of such a label reads THIS, never Body.</summary>
         private const ElarionUiKit.FontRole SkinnedFaceRole = ElarionUiKit.FontRole.Title;
 
+        // ⭐ WO-1663 — THE ONE MEASUREMENT EVERY CASE IN THIS FILE GOES THROUGH.
+        // ---------------------------------------------------------------------
+        // WO-1662 proved the role-and-weight blind spot on ONE label and fixed it there. It is
+        // SYSTEMIC: an obsidian face is Title/Bold/characterSpacing 2 (MedievalUiSkin.cs:86-91)
+        // wherever it is drawn, so every case measuring such a face needs the same two terms.
+        // The cure for that is ONE function, not a second copy of the constants — a third copy is
+        // exactly the duplicated state CLAUDE.md §2/§5/§16 each describe in their own words.
+        //
+        // The slack is charged ONLY for the skinned role. A plain ElarionUiKit.Label face
+        // (Case 4 wave band, Case 10 heartfire, Case 13 heart objective) is Body/regular/no
+        // spacing and would be made falsely PESSIMISTIC by it — three working screens red for
+        // nothing. So the role is the switch, and it is decided here once.
+        //
+        // ⚠ CASE, DELIBERATELY NOT UPPER-CASED HERE. MedievalUiSkin.ApplyButton:86 upper-cases
+        // the label's VALUE once, at apply time; it never sets FontStyles.UpperCase (grep for it
+        // under Assets/_Modules/ returns nothing, 2026-09-10). So a face whose text is assigned
+        // again at RUNTIME draws the AUTHORED case, not upper: HudKitController.cs:5348
+        // (_queueChipLabel) and :5373 + :2749 (_collectorsChipLabel) all re-assign .text after
+        // the skin ran. Callers that measure a BUILD-TIME string (the Night Market title) upper
+        // it themselves before calling in — that is a per-site fact, and it must stay one.
+        private static float MeasureFacePx(ElarionUiKit.FontRole role, string text,
+                                           float sizePx, out string detail)
+        {
+            float w = ElarionUiKit.MeasureLineWidthPx(role, text, sizePx, out detail);
+            if (w < 0f) return w;                       // -1 = unmeasurable; never scale a sentinel
+            return role == SkinnedFaceRole ? w * SkinnedFaceWidthSlack : w;
+        }
+
+        /// <summary>The sentence a skinned-face failure has to carry, so no case has to retype the
+        /// reasoning and none of them can drift into describing a different measurement.</summary>
+        private static string SkinnedFaceWhy()
+        {
+            return "(FontRole.Title, the role MedievalUiSkin.ApplyButton:91 installs, x" +
+                   SkinnedFaceWidthSlack.ToString("0.00") + " for its bold weight + characterSpacing 2)";
+        }
+
         /// <summary>Greedy word-wrap of <paramref name="text"/> at <paramref name="sizePx"/> into
         /// <paramref name="boxW"/>, measuring each candidate line through the kit and charging
         /// <see cref="SkinnedFaceWidthSlack"/>. Returns false (with <paramref name="detail"/>) when
@@ -1877,7 +1967,7 @@ namespace DeNelle.Editor.Regression
             {
                 string candidate = current.Length == 0 ? words[i] : current + " " + words[i];
                 string d;
-                float w = ElarionUiKit.MeasureLineWidthPx(SkinnedFaceRole, candidate, sizePx, out d) * SkinnedFaceWidthSlack;
+                float w = MeasureFacePx(SkinnedFaceRole, candidate, sizePx, out d);
                 if (w < 0f) { detail = d; return false; }
                 // `|| current.Length == 0` deliberately ACCEPTS a first word that is itself wider
                 // than the box: no wrapping can rescue such a word, so it is not this loop's job to
@@ -1893,7 +1983,7 @@ namespace DeNelle.Editor.Regression
                 lines++;
                 current = words[i];
                 string d2;
-                float w2 = ElarionUiKit.MeasureLineWidthPx(SkinnedFaceRole, current, sizePx, out d2) * SkinnedFaceWidthSlack;
+                float w2 = MeasureFacePx(SkinnedFaceRole, current, sizePx, out d2);
                 if (w2 < 0f) { detail = d2; return false; }
                 if (w2 > widest) widest = w2;
             }
@@ -1944,8 +2034,7 @@ namespace DeNelle.Editor.Regression
                 // The pre-WO-1662 shape, kept so a revert REDS instead of skipping. On HEAD
                 // a89603a7a this measured 214.7 x 1.15 = 246.9 against a 226.7 px plate.
                 string d;
-                float w = ElarionUiKit.MeasureLineWidthPx(SkinnedFaceRole, upper,
-                              ElarionUiKit.FontHardFloor, out d) * SkinnedFaceWidthSlack;
+                float w = MeasureFacePx(SkinnedFaceRole, upper, ElarionUiKit.FontHardFloor, out d);
                 if (w < 0f) { notes.Add(tag + " '" + upper + "' not measurable headlessly: " + d); return; }
                 if (w > plateW)
                     failures.Add(tag + " '" + upper + "' is fitted as ONE line and MEASURES " + w.ToString("0.0") +
@@ -2518,16 +2607,30 @@ namespace DeNelle.Editor.Regression
             }
 
             // 15c - the idle word fits the chip at the chip's floor.
+            // ⭐ WO-1663 — role fixed (Body -> Title + slack; BuildRailChip is an obsidian face).
+            // ⚠ SURFACED, NOT FIXED: THIS CHIP DOES NOT BUILD TODAY. Its call site is retired at
+            // HudKitController.cs:811 — `// BuildQueueStatusChip(pool);   // retired 2026-08-07
+            // (owner)` — and the method's own header (:1930-1936) says the wiring is kept
+            // DELIBERATELY because the chip is "two lines from returning", with
+            // SessionShapeRegression Case7_OneDoor failing the build if that retirement line
+            // disappears. So 15c is a PRE-EMPTIVE pin on a dormant surface, which is legitimate
+            // and worth keeping — but it can never red on a shipped screen, and a reader must not
+            // mistake its green for the live bar being measured. Case model as in Case 2: the
+            // chip's text is assigned at runtime (:5348, FormatQueueChip) AFTER ApplyButton
+            // upper-cased the build-time word, so the drawn glyphs are "Builders idle 2", not
+            // "BUILDERS IDLE 2". Measured 2026-09-10: 157.1 x 1.15 = 180.6 px in a 202.4 px rect.
             float boxW = RailChipWidthPx * ButtonLabelInset;
             const float chipFloor = 22f;   // BuildRailChip: FitSingleLine(lbl, 22f, 30f)
             string detail;
-            float w = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, idleText, chipFloor, out detail);
+            float w = MeasureFacePx(SkinnedFaceRole, idleText, chipFloor, out detail);
             if (w < 0f) notes.Add("builders idle word not measurable headlessly: " + detail);
             else if (w > boxW)
                 failures.Add(tag + " '" + idleText + "' MEASURES " + w.ToString("0.0") + " ref px at the chip's " +
-                             chipFloor + "px floor but the label rect is " + boxW.ToString("0.0") + " px (" + detail +
+                             chipFloor + "px floor " + SkinnedFaceWhy() + " but the label rect is " +
+                             boxW.ToString("0.0") + " px (" + detail +
                              ") - it would ellipsise the count, the one number that carries the state");
-            else notes.Add("builders idle chip '" + idleText + "' " + w.ToString("0.0") + " px in " + boxW.ToString("0") + " px");
+            else notes.Add("builders idle chip '" + idleText + "' " + w.ToString("0.0") + " px " + SkinnedFaceWhy() +
+                           " in " + boxW.ToString("0") + " px");
         }
 
         private static void RequirePin(List<string> failures, string tag, string src, string literal, string why)
