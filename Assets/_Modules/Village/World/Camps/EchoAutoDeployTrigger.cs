@@ -18,6 +18,13 @@
 //                       ARRIVAL AND VANISH ARE THE SAME EVENT and cannot disagree.
 //   3. REAPPEAR       - exactly ONCE, when the first battle RESOLVES. Guarded by the
 //                       same once-per-session static idiom this file already used.
+//                       WO-1696: it is also gated on WHERE the hero is standing. The
+//                       battle arena is a masked 7km WARP inside the same scene, and on
+//                       a WIN the battle lock drops seconds before the return warp, so
+//                       an ungated reappearance seated the companion ON THE ARENA STAGE
+//                       and left it there for the rest of the session (owner capture
+//                       2026-09-10: "wolf is in the battle areena"). The transition is
+//                       DEFERRED, never duplicated -- there is still exactly one.
 //
 // ---------------------------------------------------------------------------
 // WHY WO-360's OUTPOST SUMMON IS RETIRED HERE (the two-seam reconcile)
@@ -385,6 +392,37 @@ namespace DeNelle.Village.World.Camps
                 return false;
             }
 
+            // WO-1696 -- THE OFF-STAGE GATE. The arena is a MASKED WARP, not a scene: the hero is
+            // teleported 7km to ArenaCentre (5000,0,5000) inside Main_Castle_Overworld and warped
+            // home again on resolve. BattleLock drops the moment BattleArena.Resolve runs, which on
+            // a WIN is several seconds BEFORE the return warp (kill stream + celebration + fade).
+            // EchoPresenceWatcher polls that edge every 0.5s, so on a first-battle WIN in the arena
+            // the reappearance fired while the hero still stood on the stage and
+            // ResolveReturnPosition seated the companion beside him -- AT 5000. Captured proof
+            // (Builds/device-frames/2026-09-10_1520_logcat.txt): resolve :714168 -> REAPPEAR at
+            // (4997.29, 0.08, 5002.89) :714180 -> return warp home only at :715040. The Echo was
+            // BORN on the stage and stayed there; every later arena entry warps the hero back to
+            // the wolf. (On a LOSS the order inverts -- warp :731866, resolve :731911 -- which is
+            // why the same session ALSO shows healthy town returns and why an ordering assumption
+            // is the wrong fix.)
+            //
+            // So the gate is POSITIONAL, not ordering-based: while the hero stands inside the
+            // staged arena, defer. BattleArena.IsArenaPosition (Arena/BattleArena.cs:102) is a pure
+            // public static predicate in this same assembly -- reading it touches none of the
+            // battle-lock code. The guard is deliberately NOT consumed (same contract as the
+            // null-summon branch below), and EchoPresenceWatcher retries every poll until the hero
+            // is home, so the one reappearance still happens -- in town, where it belongs. The
+            // once-per-session rule is untouched.
+            if (IsHeroOnArenaStage(out Vector3 stagePos))
+            {
+                FlowTrace.Warn("Echo",
+                    $"echo REAPPEAR DEFERRED ({reason}) -- the hero is still on the arena stage at {stagePos} " +
+                    "(BattleArena.IsArenaPosition). Seating the companion here would strand it 7km from town, " +
+                    "which is exactly what the 2026-09-10 capture shows. The once-per-session guard is NOT " +
+                    "consumed; EchoPresenceWatcher retries once the hero is home.");
+                return false;
+            }
+
             var deployer = EchoAutoDeployTrigger.EnsurePetDeployer();
             if (deployer == null)
             {
@@ -502,6 +540,38 @@ namespace DeNelle.Village.World.Camps
             return heroPosition - forward * ReturnBehindMetres + right * ReturnSideMetres;
         }
 
+        /// <summary>
+        /// WO-1696 -- true while the "Player"-tagged hero stands inside the staged battle arena.
+        /// <para/>
+        /// The ONE authority on "is this position the arena" is
+        /// <c>DeNelle.Village.Arena.BattleArena.IsArenaPosition</c> (Arena/BattleArena.cs:102) -- a
+        /// pure public static predicate over a world position. It is READ here and never
+        /// re-implemented: the 7km offset and the radius live in that one file, and a second copy of
+        /// either is the duplicated-state failure CLAUDE.md sec.2/5/8/16 each describe. Reading a
+        /// predicate is not touching the arena's battle-lock code (WO-1694).
+        /// <para/>
+        /// No hero found = NOT on the stage: the town/Heart fallbacks inside
+        /// <see cref="ResolveReturnPosition"/> already handle that case and they never produce an
+        /// arena seat, so failing open here cannot strand the Echo.
+        /// </summary>
+        private static bool IsHeroOnArenaStage(out Vector3 heroPos)
+        {
+            heroPos = Vector3.zero;
+            GameObject hero = null;
+            Guard.Try("Echo", "resolve hero for the arena-stage gate",
+                () => hero = GameObject.FindWithTag("Player"));
+            if (hero == null) return false;
+
+            // `pos` is a plain local on purpose: an `out` parameter may NOT be captured by a lambda
+            // (CS1628), and Guard.Try takes one.
+            Vector3 pos = hero.transform.position;
+            heroPos = pos;
+            bool onStage = false;
+            Guard.Try("Echo", "arena-stage predicate",
+                () => onStage = DeNelle.Village.Arena.BattleArena.IsArenaPosition(pos));
+            return onStage;
+        }
+
         // The hero is tagged "Player" (CLAUDE.md sec.7). Seat the companion off the
         // hero's capsule, then snap that desired seat to nearby walkable ground.
         private static Vector3 ResolveReturnPosition()
@@ -560,6 +630,13 @@ namespace DeNelle.Village.World.Camps
         private bool _wasInBattle;
         private float _timer;
 
+        // WO-1696 -- set when a resolve edge could not seat the Echo yet (the hero was still on the
+        // arena stage). While it is set, every poll retries, so the ONE reappearance lands the
+        // instant the return warp puts the hero back in town. It is a RETRY of the same single
+        // transition, not a new one: TryReappearAfterBattle still owns the once-per-session guard
+        // and clears this the moment it fires.
+        private bool _reappearPending;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
         {
@@ -584,7 +661,28 @@ namespace DeNelle.Village.World.Camps
             Guard.Try("Echo", "battle-resolve probe",
                 () => inBattle = DeNelle.Core.Combat.BattleLock.IsInBattle());
 
-            if (inBattle == _wasInBattle) return;
+            if (inBattle == _wasInBattle)
+            {
+                // WO-1696 -- the deferred landing. No edge this poll, but a resolve already happened
+                // while the hero stood on the arena stage; keep retrying (out of battle only) until
+                // the return warp puts him in town. Cheap: one bool, and it clears on the first
+                // success or as soon as the reappearance is no longer owed.
+                if (!_reappearPending || inBattle) return;
+                if (!EchoWorldPresence.AwaitingBattleReappear)
+                {
+                    _reappearPending = false;
+                    return;
+                }
+                if (EchoWorldPresence.TryReappearAfterBattle("arena return (deferred landing)"))
+                {
+                    _reappearPending = false;
+                    FlowTrace.Step("Echo",
+                        "deferred reappearance LANDED -- the Echo was owed a return from a battle that " +
+                        "resolved while the hero was still on the arena stage, and it has now come back in " +
+                        "town. One transition, retried; the once-per-session guard fired exactly once.");
+                }
+                return;
+            }
             _wasInBattle = inBattle;
 
             if (inBattle)
@@ -596,7 +694,14 @@ namespace DeNelle.Village.World.Camps
             }
 
             FlowTrace.Step("Echo", "battle RESOLVED (BattleLock true->false) -- evaluating the one reappearance.");
-            EchoWorldPresence.TryReappearAfterBattle("first battle resolved");
+            bool returned = EchoWorldPresence.TryReappearAfterBattle("first battle resolved");
+            // WO-1696: owed but not seated (the arena-stage gate deferred it) -> retry each poll.
+            _reappearPending = !returned && EchoWorldPresence.AwaitingBattleReappear;
+            if (_reappearPending)
+                FlowTrace.Step("Echo",
+                    "reappearance still OWED after this resolve -- retrying every poll until the hero is off " +
+                    "the arena stage. (If the Echo had simply been seated here it would have landed 7km away " +
+                    "at ArenaCentre; see the WO-1696 note on the gate.)");
         }
     }
 }

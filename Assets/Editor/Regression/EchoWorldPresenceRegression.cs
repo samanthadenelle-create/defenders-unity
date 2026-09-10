@@ -34,6 +34,15 @@
 //                  TickRepair(), a SECOND uncoordinated repairer of the same walls
 //                  that Lane A makes passive. Reflection + source-lint.
 //   6 [hygiene]    No embedded NUL in the touched sources (CLAUDE.md Sec. 0).
+//   7 [arena-stage] WO-1696. The battle arena is a MASKED 7km WARP inside the same
+//                  scene, and on a WIN the battle lock drops seconds BEFORE the return
+//                  warp - so the resolve edge could fire with the hero still on the
+//                  stage and the companion was seated there, permanently (owner capture
+//                  2026-09-10 1520: REAPPEAR at (4997.29, 0.08, 5002.89), 860 lines
+//                  before the warp home). Driven live in [lifecycle] (b2) and
+//                  source-linted here. The deferral must NOT consume the once-per-session
+//                  guard, and the watcher must keep retrying until the hero is home:
+//                  ONE transition, deferred - never a second appearance owner.
 //
 // EVERY source-lint in this suite reads CODE ONLY (CodeText: comment lines dropped,
 // trailing // comments dropped, string-literal CONTENTS blanked). Fixed 2026-08-16
@@ -93,6 +102,7 @@ namespace DeNelle.Editor.Regression
                 CheckHuskRetired(failures);
                 CheckHygiene(failures);
                 CheckReturnSeat(failures);
+                CheckArenaStageGate(failures);
                 CheckLifecycle(failures, notes);
             }
             catch (Exception ex)
@@ -110,8 +120,37 @@ namespace DeNelle.Editor.Regression
                      "disagree), and reappears EXACTLY ONCE after a battle resolves; PetDeployer carries " +
                      "the despawn verb; exactly one file calls SummonAt (one appearance owner, the WO-360 " +
                      "outpost summon retired); PetTaskController's repair husk and its installer are gone; " +
-                     "no NULs." + (notes.Count > 0 ? " NOTES: " + string.Join("; ", notes.ToArray()) : "");
+                     "a resolve on the staged arena DEFERS that one return instead of stranding the Echo " +
+                     "7km from town (WO-1696, guard unconsumed, watcher retries); no NULs." + (notes.Count > 0 ? " NOTES: " + string.Join("; ", notes.ToArray()) : "");
             return true;
+        }
+
+        // -- 7 [arena-stage] --------------------------------------------------
+        // WO-1696 source-lint. The live behaviour is driven in [lifecycle] (b2); this is the
+        // cheap half that survives a headless run with no body asset, and it is what stops a
+        // later "cleanup" from quietly deleting the gate: the appearance owner must READ
+        // BattleArena.IsArenaPosition (the ONE authority on the 7km offset) rather than
+        // re-implement the radius, and the watcher must keep the deferred retry.
+        private static void CheckArenaStageGate(List<string> failures)
+        {
+            string src = ReadCode(PresenceSrc, failures);
+            if (src == null) return;
+
+            if (src.IndexOf("IsArenaPosition", StringComparison.Ordinal) < 0)
+                failures.Add("[arena-stage] the appearance owner no longer reads " +
+                             "BattleArena.IsArenaPosition. Without that gate a battle that resolves while " +
+                             "the hero is still on the staged arena (a WIN drops the battle lock seconds " +
+                             "before the return warp) seats the Echo 7km from town and strands it - the " +
+                             "2026-09-10 device capture");
+            if (src.IndexOf("5000", StringComparison.Ordinal) >= 0)
+                failures.Add("[arena-stage] a literal arena coordinate appeared in the appearance owner. " +
+                             "The 7km offset and its radius live ONCE, in BattleArena; a second copy is the " +
+                             "duplicated-state failure CLAUDE.md sec.2/5/8/16 each describe - read the " +
+                             "predicate, never re-derive the geometry");
+            if (src.IndexOf("_reappearPending", StringComparison.Ordinal) < 0)
+                failures.Add("[arena-stage] EchoPresenceWatcher lost its deferred-return retry. The gate " +
+                             "alone only REFUSES the stage seat; without the retry the owed reappearance " +
+                             "never lands after the return warp and the Echo is gone for the session");
         }
 
         private static void CheckReturnSeat(List<string> failures)
@@ -222,6 +261,99 @@ namespace DeNelle.Editor.Regression
                 if (!EchoWorldPresence.AwaitingBattleReappear)
                     failures.Add("[lifecycle] after the vanish the Echo is not awaiting its post-battle " +
                                  "return - it would be gone for the rest of the session");
+
+                // --- (b2) WO-1696: it does NOT come back ON THE ARENA STAGE ---------
+                // The battle arena is a MASKED WARP, not a scene: the hero is teleported to
+                // BattleArena's ArenaCentre (5000,0,5000) inside Main_Castle_Overworld and warped
+                // home on resolve. On a WIN the battle lock drops SECONDS before that return warp,
+                // so the resolve edge can fire while the hero still stands on the stage. Captured
+                // proof, Builds/device-frames/2026-09-10_1520_logcat.txt: "battle RESOLVED" :714168
+                // -> "echo REAPPEAR: 'Echo' returned at (4997.29, 0.08, 5002.89)" :714180 -> the
+                // return warp only at :715040. The companion was BORN 7km from town and stayed
+                // there; every later arena entry warped the hero back to the same wolf, which is
+                // what the owner saw. The once-per-session rule is NOT the defect and is untouched
+                // here: the guard must survive the deferral so the one return still happens in town.
+                //
+                // ⚠ DRIVE THE TRANSFORM THE PRODUCTION CODE ACTUALLY READS, NOT OUR STAND-IN.
+                // The first version of this case moved `heroGo` and asserted nothing happened. It
+                // FAILED on the fixed tree (chain 49, Builds/wave10h-reg1) with all four assertions
+                // red, and the run's own trace says why: the appearance owner resolves its hero with
+                // GameObject.FindWithTag("Player"), and in a loaded editor scene that returns a
+                // DIFFERENT Player-tagged object -- "escort staging moved from overlapping anchor
+                // (0.00, 0.00, 0.00) to navmesh-safe (0.00, 0.04, 3.25); hero=(0.00, 0.93, 0.00)".
+                // Our stand-in has y=0; the object the code saw has y=0.93. The reappearance then
+                // seated at "(1.40, 0.03, -2.40)" -- a ReturnSeat around the ORIGIN hero. Moving
+                // `heroGo` was invisible to the gate AND to the seat, so the case proved nothing
+                // about the gate; it only proved which transform the oracle was allowed to move.
+                // (The pre-existing "Player-tagged stand-in" comment above carries the same
+                // assumption and is equally inert in a loaded scene -- left alone here, but noted.)
+                //
+                // So: stage EVERY "Player"-tagged object, restore them all in a finally, and make the
+                // case self-proving. All of them, not the one FindWithTag happens to return today:
+                // that call's choice among several tagged objects is unspecified, and an oracle that
+                // depends on it is the same unproven assumption in a new costume. Stage the whole
+                // set and the gate's lookup CANNOT resolve a hero that is off the stage.
+                GameObject[] taggedHeroes = GameObject.FindGameObjectsWithTag("Player");
+                if (taggedHeroes == null || taggedHeroes.Length == 0)
+                {
+                    notes.Add(DeNelle.Editor.Regression.RegressionOutcome.PartialSkip(
+                        "group [arena-stage]", "no 'Player'-tagged object resolved, so the gate's own hero " +
+                        "lookup has nothing to stage"));
+                }
+                else
+                {
+                    var townPoses = new Vector3[taggedHeroes.Length];
+                    for (int i = 0; i < taggedHeroes.Length; i++)
+                        if (taggedHeroes[i] != null) townPoses[i] = taggedHeroes[i].transform.position;
+                    try
+                    {
+                        // A seat inside BattleArena's staged arena. Deliberately NOT a re-derivation
+                        // of the arena geometry: the very next line asks the predicate whether this
+                        // seat is arena, so if that centre or radius ever moves the case SKIPS
+                        // loudly rather than passing on a stale coordinate.
+                        Vector3 staged = new Vector3(5000f, 0.08f, 4991f);
+                        foreach (GameObject tagged in taggedHeroes)
+                            if (tagged != null) tagged.transform.position = staged;
+                        if (!DeNelle.Village.Arena.BattleArena.IsArenaPosition(staged))
+                        {
+                            notes.Add(DeNelle.Editor.Regression.RegressionOutcome.PartialSkip(
+                                "group [arena-stage]", "BattleArena.IsArenaPosition does not read " + staged +
+                                " as the staged arena - the arena centre/radius moved, so this case can no " +
+                                "longer stage a hero on it and must be re-pointed, not trusted"));
+                        }
+                        else
+                        {
+                            bool seatedOnStage = EchoWorldPresence.TryReappearAfterBattle(
+                                "oracle: battle resolved while the hero was still on the arena stage");
+                            if (seatedOnStage)
+                                failures.Add("[arena-stage] the Echo reappeared with the hero standing INSIDE " +
+                                             "the staged arena (IsArenaPosition true at " + staged + ", measured). " +
+                                             "It is seated ~7km from town and stranded there for the session - " +
+                                             "the 2026-09-10 device capture of exactly that (REAPPEAR at " +
+                                             "(4997.29, 0.08, 5002.89), 860 log lines BEFORE the return warp)");
+                            if (EchoWorldPresence.LiveBodyCount != 0)
+                                failures.Add("[arena-stage] the arena-stage resolve left " +
+                                             EchoWorldPresence.LiveBodyCount + " body/bodies in the world; the " +
+                                             "Echo must not be summoned onto the stage");
+                            if (EchoWorldPresence.ReappearedThisSession)
+                                failures.Add("[arena-stage] the deferred reappearance CONSUMED the " +
+                                             "once-per-session guard. The Echo would then never return at all - " +
+                                             "the deferral must leave the guard unconsumed (same contract as the " +
+                                             "null-summon branch)");
+                            if (!EchoWorldPresence.AwaitingBattleReappear)
+                                failures.Add("[arena-stage] after the deferral the Echo is no longer awaiting " +
+                                             "its return, so EchoPresenceWatcher's retry would never fire and " +
+                                             "the companion is gone for the rest of the session");
+                        }
+                    }
+                    finally
+                    {
+                        // Leave every scene fixture exactly as found - restored even if an assertion
+                        // above throws, and BEFORE (c) runs, so the owed return lands in town.
+                        for (int i = 0; i < taggedHeroes.Length; i++)
+                            if (taggedHeroes[i] != null) taggedHeroes[i].transform.position = townPoses[i];
+                    }
+                }
 
                 // --- (c) it REAPPEARS after the battle, exactly ONCE ---------------
                 if (!EchoWorldPresence.TryReappearAfterBattle("oracle: first battle resolved"))
