@@ -647,6 +647,11 @@ namespace DeNelle.Editor
             // measurement of the WORD rather than of one fixture's happenstance state.
             vm.EnterTab(ManageTabId.Army);
             int measured = 0;
+            // WO-1661: how many UPGRADE AVAILABLE tiles were checked for a distinct SHORT grid
+            // face. Counted and logged rather than left implicit, because a fixture with no
+            // upgradable troop would otherwise make this pin a SILENT skip - and a skip that reads
+            // as a pass is the failure mode CLAUDE.md §11B exists to stop.
+            int gridFacesMeasured = 0;
             var seen = new List<string>();
             // ⚠ SNAPSHOT, not the live list. TileFor below calls vm.ComposeWorkspace(), which is one
             // of the writers that REBUILDS TroopChoices - iterating the live list would throw
@@ -685,6 +690,49 @@ namespace DeNelle.Editor
                     if (t != null && string.IsNullOrEmpty(t.StateText))
                         failures.Add($"[case 10] troop '{c.Id}' composes \"{w}\" and its ARMY tile paints no state " +
                                      "word at all - composed but unpainted (the WO-1444 / WO-1491 family).");
+
+                    // ── WO-1661 RED-FIRST PIN: the grid needs a SHORTER face than the row does ──
+                    //
+                    // THE DEFECT. The tile's word is ManageVmProjection.cs:223 -
+                    // `StateWord = IsNullOrEmpty(BadgeWord) ? BadgeText : BadgeWord`. The
+                    // UpgradeAffordable branch in ComposeTroopItem authored only BadgeText, so a
+                    // grid CELL received the 17-character long face and the device ellipsised it:
+                    // Builds/device-frames/2026-09-10_1018_363786_manage_army.png paints
+                    // "UPGRADE A..." on Footman and Archer (PIL: plate 303x64px, glyph ink
+                    // 248x27px, 41px of the plate left empty). ManageWorkspacePanel.cs:843 had
+                    // already named this exact string as a known truncation - on the BUILD grid.
+                    //
+                    // ⛔ THE ASSERT IS THE RULE, NEVER THE WORD. It reads the two faces off the
+                    // model and requires the short one to EXIST and to be SHORTER - it does not
+                    // know, and must never learn, which word the owner rules for (WO-1661 §4B is
+                    // still open). Hardcoding the chosen word here would be the second copy that
+                    // CLAUDE.md §2/§5/§16 each describe going stale.
+                    //
+                    // RED PROOF (run against HEAD before the ManageScreenVM change): delete
+                    // `item.BadgeWord = ...` from the UpgradeAffordable branch and this fires,
+                    // because StateWord then falls back to the identical long face.
+                    if (t != null)
+                    {
+                        string longFace = t.StateText ?? "";
+                        string gridFace = t.StateWord ?? "";
+                        if (gridFace.Length == 0)
+                            failures.Add($"[case 10 / WO-1661] troop '{c.Id}' is UPGRADE AVAILABLE and its ARMY " +
+                                         "tile carries NO grid face at all (StateWord empty). The cell has " +
+                                         "nothing to paint but the long face.");
+                        else if (string.Equals(gridFace, longFace, StringComparison.Ordinal))
+                            failures.Add($"[case 10 / WO-1661] troop '{c.Id}' paints the SAME string in the grid " +
+                                         $"cell as in the detail row (\"{gridFace}\", {gridFace.Length} chars). " +
+                                         "ComposeTroopItem's UpgradeAffordable branch authored no BadgeWord, so " +
+                                         "ManageVmProjection fell back to the long face and the cell ellipsises " +
+                                         "it - the measured device defect of WO-1661 §1.");
+                        else if (gridFace.Length >= longFace.Length)
+                            failures.Add($"[case 10 / WO-1661] troop '{c.Id}' authored a grid face that is not " +
+                                         $"shorter than the row face ({gridFace.Length} vs {longFace.Length} " +
+                                         "chars). A grid face exists to FIT a cell; one that is no shorter buys " +
+                                         "the cell nothing.");
+                        else
+                            gridFacesMeasured++;
+                    }
                 }
             }
             if (measured == 0)
@@ -694,6 +742,14 @@ namespace DeNelle.Editor
                 return;
             }
             log.AppendLine($"  case 10 OK (upgrade words) - {measured} troop(s), vocabulary {{{string.Join(", ", seen)}}}");
+            if (gridFacesMeasured > 0)
+                log.AppendLine($"  case 10 OK (WO-1661 grid face) - {gridFacesMeasured} UPGRADE AVAILABLE tile(s) " +
+                               "carry a grid face shorter than their row face");
+            else
+                log.AppendLine("  case 10 NOTE (WO-1661 grid face) - this fixture produced no UPGRADE AVAILABLE " +
+                               "tile, so the short-face rule was not exercised here. The covering evidence is " +
+                               "the ManageFlow_ARMY_gridtop capture, whose fixture now seeds that state and " +
+                               "throws if it is absent (UICaptureLaunch.cs).");
 
             // -- HALF B: "should show if queue is full" -----------------------------
             var svc = BuildTimerService.Instance;

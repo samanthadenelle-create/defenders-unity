@@ -1113,11 +1113,49 @@ namespace DeNelle.Core.Manage
         private float ResolveStateWordFont(string widest, float cellW)
         {
             const float Ceiling = 26f;                 // the band's authored maximum
-            if (string.IsNullOrEmpty(widest) || cellW <= 1f) return Ceiling;
+            // ⭐ WO-1661 section 4A - EVERY RETURN NOW NAMES ITSELF, because the four that did not
+            // were the whole diagnosis. MEASURED on device 2026-09-10 (APK 2026.09.10.363786, PID
+            // 8062, Builds/device-frames/2026-09-10_1019_363786_logcat.txt): `grep -i "state word"`
+            // returns ZERO lines over the whole ARMY session while 30+ sibling [Flow:Manage] lines
+            // print in the same window - so this resolver took one of its silent early returns and
+            // believed the word fitted, and the device then painted "UPGRADE A...". Which branch,
+            // and with what numbers, was UNKNOWABLE from the log. CLAUDE.md section 12 forbids
+            // guessing between them, so each one now says so.
+            // ⛔ THESE ARE REPORTS, NOT BEHAVIOUR. Every return value below is byte-for-byte the
+            // value it was before; adding a Step is not a layout change (WO-1661 section 6).
+            // A screen-open path is not a hot loop, so the 3-arg Step form is the correct one here
+            // (the 4-arg Measure form is for per-frame sites - FlowTrace.cs:293-300).
+            string widestWord = widest ?? "";
+            // ⭐ THE ENTRY LINE IS NOT REDUNDANT WITH THE FOUR BELOW, and that is why it exists.
+            // No return-report can distinguish "this resolver ran and took a quiet branch" from
+            // "this resolver was never called on that screen at all" - which is precisely the
+            // question the device log could not answer. One line at the door settles it.
+            FlowTrace.Step("Manage", "state word font: resolving for widest='" + widestWord +
+                "' (" + widestWord.Length.ToString() + " chars) at cellW=" + cellW.ToString("0.##"));
+            if (widestWord.Length == 0 || cellW <= 1f)
+            {
+                // ⚠ THE TICKET'S OWN LEADING CANDIDATE (WO-1661 section 9): BuildTile's parameter
+                // doc warns the cell rect is 0 on the frame the tile is built, so a cellW of 0
+                // arriving here would return the authored ceiling for EVERY grid and explain the
+                // 41px of unused plate without any font-metric theory at all.
+                FlowTrace.Step("Manage", "state word font: early return [no-word-or-no-cell] - widest='" +
+                    widestWord + "' (" + widestWord.Length.ToString() + " chars), cellW=" +
+                    cellW.ToString("0.##") + ", returning the authored ceiling " +
+                    Ceiling.ToString("0") + "px unmeasured");
+                return Ceiling;
+            }
 
             // The label's own usable width, matching the rect BuildTile gives it exactly.
             float availablePx = ((TileStateX1 - 0.01f) - (TileStateX0 + 0.01f)) * cellW;
-            if (availablePx <= 1f) return Ceiling;
+            if (availablePx <= 1f)
+            {
+                FlowTrace.Step("Manage", "state word font: early return [no-plate-width] - widest='" +
+                    widestWord + "', cellW=" + cellW.ToString("0.##") + " gives availablePx=" +
+                    availablePx.ToString("0.##") + " across the " + TileStateX0.ToString("0.##") +
+                    ".." + TileStateX1.ToString("0.##") + " band, returning the authored ceiling " +
+                    Ceiling.ToString("0") + "px unmeasured");
+                return Ceiling;
+            }
 
             var probe = new GameObject("StateWordProbe", typeof(RectTransform), typeof(TextMeshProUGUI));
             try
@@ -1131,8 +1169,34 @@ namespace DeNelle.Core.Manage
                 text.fontStyle = FontStyles.Bold;
                 text.enableAutoSizing = false;
                 float wantPx = text.GetPreferredValues(widest, 0f, 0f).x;
-                if (wantPx <= 1f) return Ceiling;
-                if (wantPx <= availablePx) return Ceiling;      // already fits, nothing to do
+                if (wantPx <= 1f)
+                {
+                    // The probe answered nothing. A zero preferred width means the face never
+                    // resolved or the probe was culled, NOT that the word is narrow - reporting it
+                    // is the difference between "measured and fits" and "never measured at all".
+                    FlowTrace.Step("Manage", "state word font: early return [probe-measured-nothing] - widest='" +
+                        widestWord + "' measured " + wantPx.ToString("0.##") + "px at " +
+                        Ceiling.ToString("0") + "px type (face=" +
+                        (text.font != null ? text.font.name : "<null>") + "), plate offers " +
+                        availablePx.ToString("0") + "px, returning the authored ceiling " +
+                        Ceiling.ToString("0") + "px");
+                    return Ceiling;
+                }
+                if (wantPx <= availablePx)
+                {
+                    // ⭐ THE BRANCH THE DEVICE FRAME ACCUSES. If this one fires on the ARMY grid
+                    // while the tile paints an ellipsis, the probe's model of the band and the
+                    // label's real painted rect disagree - and the numbers below are what say by
+                    // how much. Do not act on this line without a fresh device logcat that shows
+                    // it (WO-1661 acceptance 1).
+                    FlowTrace.Step("Manage", "state word font: early return [already-fits] - widest='" +
+                        widestWord + "' wants " + wantPx.ToString("0") + "px at " +
+                        Ceiling.ToString("0") + "px type and the plate offers " +
+                        availablePx.ToString("0") + "px (cellW=" + cellW.ToString("0.##") +
+                        ", slack " + (availablePx - wantPx).ToString("0") + "px), so it paints at the ceiling " +
+                        Ceiling.ToString("0") + "px");
+                    return Ceiling;                            // already fits, nothing to do
+                }
 
                 float scaled = Ceiling * (availablePx / wantPx);
                 if (scaled < ElarionUiKit.FontHardFloor)

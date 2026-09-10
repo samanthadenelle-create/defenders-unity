@@ -4728,6 +4728,26 @@ namespace DeNelle.Village.UI
             return tiles;
         }
 
+        /// <summary>
+        /// ⚠ PROVISIONAL - THE WORD IS THE OWNER'S CALL AND HAS NOT BEEN MADE (WO-1661 §4B).
+        ///
+        /// <para>The SEAM is what this lane shipped: the <see cref="ManageTileBadge.UpgradeAffordable"/>
+        /// branch now authors a grid face at all, where before it authored none and the cell fell
+        /// back to the 17-character "UPGRADE AVAILABLE". The VALUE is a placeholder standing in
+        /// until the owner rules, and it is a named constant precisely so that ruling is a
+        /// one-token change in one place rather than a hunt through the composer.</para>
+        ///
+        /// <para>⛔ THE OPEN QUESTION, stated so the next reader does not have to re-derive it:
+        /// "UPGRADE" matches the button vocabulary (ManageStateModel.cs:183 / ManageViewContract.cs:124)
+        /// but sits on the SAME grid as "UPGRADING" (the in-flight state, composed one branch
+        /// above), and the two are one letter apart at a glance. WO-1661 §4B puts both candidates
+        /// to the owner. Do NOT treat this string as canon, and do not copy it anywhere - a second
+        /// copy is the duplicated state CLAUDE.md §2/§5/§16 each describe, and the regression pin
+        /// deliberately asserts the RULE (a short face exists and differs from the long one)
+        /// rather than this value.</para>
+        /// </summary>
+        private const string UpgradeAffordableGridWordProvisional = "UPGRADE";
+
         private ManageItemState ComposeTroopItem(TroopChoiceVM c)
         {
             bool atMax = !c.HasNextLevel;
@@ -4893,7 +4913,23 @@ namespace DeNelle.Village.UI
             else if (c.ArmyFull) { item.Badge = ManageTileBadge.QueueBlocked; item.BadgeText = "ARMY FULL"; }
             else if (trainLineFull) { item.Badge = ManageTileBadge.QueueBlocked; item.BadgeText = "QUEUE FULL"; }
             else if (string.Equals(c.UpgradeWord, "UPGRADE AVAILABLE", StringComparison.Ordinal))
-            { item.Badge = ManageTileBadge.UpgradeAffordable; item.BadgeText = "UPGRADE AVAILABLE"; }
+            {
+                item.Badge = ManageTileBadge.UpgradeAffordable;
+                item.BadgeText = "UPGRADE AVAILABLE";
+                // ⭐ WO-1661 - THE GRID FACE, authored HERE, exactly as ApplyBuildBadge already
+                // does for READY/SHORT (cited by symbol, not by line: a line number in a permanent
+                // comment is the duplicated state CLAUDE.md §2/§5/§16 each describe).
+                // ManageVmProjection's tile projection prefers BadgeWord and falls back to
+                // BadgeText; this branch set only BadgeText, so a grid cell got the 17-character
+                // long face and the device painted "UPGRADE A..." with 41px of its own plate still
+                // empty (Builds/device-frames/2026-09-10_1018_363786_manage_army.png, PIL: plate
+                // 303x64, ink 248x27). The long face STAYS on BadgeText - it fits the detail card
+                // and the research row, which is where WO-1518 put it.
+                // ⛔ THE SHORTENING IS THE COMPOSER'S. Nothing downstream truncates: the View is
+                // banned from deriving a label (canon 9, ManageDumbViewRegression), which is why a
+                // missing short face shows up as an ellipsis rather than as a shorter word.
+                item.BadgeWord = UpgradeAffordableGridWordProvisional;
+            }
             else if (string.Equals(c.UpgradeWord, "MAX", StringComparison.Ordinal))
             { item.Badge = ManageTileBadge.Max; item.BadgeText = "MAX"; }
             else if (c.UpgradeWord.StartsWith("NEEDS ", StringComparison.Ordinal))

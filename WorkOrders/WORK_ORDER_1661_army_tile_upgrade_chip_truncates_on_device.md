@@ -1,6 +1,6 @@
 # WORK ORDER 1661 — The ARMY tile's state chip paints "UPGRADE A..." on device; the headless fixture never composes that word
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate + owner word
 **Silo:** Manage / view-model (`Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs`, `Assets/_Modules/Core/Manage/ManageWorkspacePanel.cs`, `Assets/Editor/UICaptureLaunch.cs` fixture)
 **Origin:** DEVICE-FRAMES-3 lane, WO-1658 device measurement, 2026-09-10
 **Device under test:** Seeker SM02G4061955851, APK **2026.09.10.363786**, 2670x1200 landscape, PID 8062.
