@@ -64,12 +64,27 @@ namespace DeNelle.Editor.Regression
             foreach (string card in new[] { "cards/defense", "cards/buildings", "cards/troops-locked", "cards/research" })
                 if (!panel.Contains(card)) failures.Add("approved layered card art missing: " + card);
             // WO-1406 / WO-1418 (owner ruling 2026-09-05, BATCH_STATE PART 8): the locked Troops card is a DOOR,
-            // not a toast - its face reads BUILD A BARRACKS and the tap enters Town build mode. The retired toast
+            // not a toast - its face is a build CTA and the tap enters Town build mode. The retired toast
             // literal "Build a Barracks to unlock Troops." must NOT return; the purpose line keeps the sentence.
+            // ⚠ PIN RE-POINTED 2026-09-10, WITH A RULING - the face copy MOVED, the door did not.
+            // OWNER, verbatim: "Manage ARMY copy: BUILD BARRACKS, keep the cook fire".
+            // WHY: WO-1636's glyph oracle measured that face drawing 11 of 14 printable glyphs at BOTH
+            // captured aspects (ManageWorkspace_2340x1080 and _2670x1200) - the player read "BUILD A BARRA...".
+            // The band was already widened to the gold perimeter and the cell is height-clamped by
+            // HubCardAspect, so THIS pin was the last lever and it only moves on the owner's word. It has now
+            // moved with it: the article is dropped and the door is unchanged.
+            // ⛔ AND THE PIN IS ON THE CODE SHAPE, NOT ON THE BARE WORDS. `ManageScreenPanel.cs` carries both
+            // "BUILD A BARRACKS" and "BUILD BARRACKS" inside its own WO-1636 reasoning COMMENTS, so a
+            // panel.Contains("BUILD BARRACKS") would have passed before the edit and would keep passing after
+            // a revert - a pin that cannot fail. `"BUILD BARRACKS" : title` is the assignment itself.
             if (panel.Contains("Build a Barracks to unlock Troops."))
-                failures.Add("locked-card tap shows the retired toast instead of the BUILD A BARRACKS door (WO-1406)");
-            if (!panel.Contains("BUILD A BARRACKS") || !panel.Contains("BarracksUnlock.IsUnlocked"))
-                failures.Add("locked-card tap has no door: BUILD A BARRACKS face + BarracksUnlock.IsUnlocked refusal expected (WO-1406)");
+                failures.Add("locked-card tap shows the retired toast instead of the BUILD BARRACKS door (WO-1406)");
+            if (!panel.Contains("\"BUILD BARRACKS\" : title") || !panel.Contains("BarracksUnlock.IsUnlocked"))
+                failures.Add("locked-card tap has no door: the faceText assignment must read \"BUILD BARRACKS\" : title " +
+                             "(owner ruling 2026-09-10) plus a BarracksUnlock.IsUnlocked refusal (WO-1406 / WO-1636)");
+            if (panel.Contains("\"BUILD A BARRACKS\" : title"))
+                failures.Add("the ARMY face is back to the article form, which the glyph oracle measured at 11 of 14 " +
+                             "glyphs on both captured aspects (owner ruling 2026-09-10: \"BUILD BARRACKS\")");
             // WO-1418: the strip chips reuse the launcher door with commitLauncherNavigation:false, so the one-shot
             // latch guards CARD taps only; the guard is now conditional on that flag.
             if (!panel.Contains("_categoryNavigationCommitted") ||

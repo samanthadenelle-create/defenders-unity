@@ -1,6 +1,6 @@
 # WO-1634 - Raid camps: the authored prop sets miss what their own child WOs specified
 
-**Status:** FIXED 2026-09-10 - per-tier prop gaps authored (owner: keep the cook fire), baked wave4-bake2 props 33/31/27, gated wave4-reg2 494/494; owner felt-test on the next APK closes (was: READY TO IMPLEMENT)
+**Status:** READY TO IMPLEMENT
 **Minted:** 2026-09-10 (lane RAID-POLISH, main-line banner; bumped 1633 -> 1634 in the SAME edit)
 **Silo / Lane:** World / Raid scenes - DATA only
 **Files owned:** the `raidDress.props` arrays of `Assets/Resources/Data/Canonical/scene-configs.json`
@@ -100,6 +100,8 @@ kit-level ruling; keep the existing two tokens and add the missing rows in the s
 4. Every new token is verified present on disk **before** it is authored - resolve it through `RaidBaseDresser.LoadVisual`'s search order (`:115-172`); never guess a prefab name (`docs/polyperfect-asset-catalog.md`, the KayKit folders at `RaidBaseDresser.cs:40-49`).
 5. The next bake shows `missing=0` for all three configs and a rising props count on the WO-1633 log line.
 6. JSON edits are byte-safe: `scene-configs.json` is CRLF (352 LF == 352 CRLF at mint time); patch bytes and prove LF count == CRLF count after.
+
+---
 
 ### OWNER RULING 2026-09-10
 

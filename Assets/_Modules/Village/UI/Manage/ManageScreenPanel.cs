@@ -2141,6 +2141,27 @@ namespace DeNelle.Village.UI
                     "ElarionUi.FontFloorMobile need. FitBlock will TRUNCATE the sentence rather " +
                     "than go sub-legible; the CARD has to grow, and nothing here will shrink text " +
                     "to hide it");
+            // ⛔ THE LOCKED ARMY FACE WRAPS TO TWO LINES (WO-1636), SO ITS BAND IS CHECKED IN PX TOO
+            // - the same way and for the same reason as the description above, and with a threshold
+            // that is a MEASURED FONT CONSTANT rather than a rule of thumb. The face is fonted from
+            // Assets/Resources/RpgUi/font/font_title.asset (Merriweather), m_LineHeight 80.448 /
+            // m_PointSize 64 = 1.257, so two lines at the 30px floor need 75.4px. wave5-capture1
+            // proved that number to the pixel: a 76.2px band wrapped and a 74.4px band did not.
+            // ⚠ 2f * ElarionUi.FontFloorMobile (60) is NOT the right threshold here and is
+            // deliberately not reused from the line above - it is 15px slacker than this font
+            // actually needs, and it is exactly the kind of near-miss that shipped "BUILD BARRACK".
+            // The CONSERVATIVE of TMP's two two-line extents: ascent + lineHeight + |descent|,
+            // scaled to the 30px floor. The other reading (2 x lineHeight = 75.4) is the one the
+            // captures measured; this is 3.7px stricter and the guard takes the stricter of the two.
+            const float faceTwoLineReqPx = (70.4f + 80.448f + 17.92f) * 30f / 64f;   // 79.1
+            float faceTwoLinePx = height * (1f - HubArtWellF + 0.015f - 0.02f - HubDescBandF);
+            if (faceTwoLinePx < faceTwoLineReqPx)
+                FlowTrace.Warn("Manage", "the hub card is " + height.ToString("0") + "px, so the " +
+                    "locked ARMY face's two-line band is " + faceTwoLinePx.ToString("0") + "px - " +
+                    "under the " + faceTwoLineReqPx.ToString("0.#") + "px two lines of font_title " +
+                    "need at the 30px floor. TMP will not break the line at all: it keeps ONE line " +
+                    "and Truncate cuts the tail, shipping 'BUILD BARRACK' - a different instruction " +
+                    "from the owner's ruling. The CARD has to grow; no nudge here can fix it");
         }
 
         private void RenderLauncherCards()
@@ -2172,8 +2193,16 @@ namespace DeNelle.Village.UI
                 string title = HubTitleFor(captured);
                 string purpose = captured == ManageTab.Troops && !available
                     ? "Build a Barracks to unlock" : PurposeFor(captured);
+                // ── OWNER RULING 2026-09-10, verbatim: "Manage ARMY copy: BUILD BARRACKS, keep
+                // the cook fire". The locked ARMY face drops the article. The WORDS were the one
+                // lever the WO-1636 lane could not take on its own (they are pinned by
+                // ManageApprovedLauncherRegression, WO-1406) and the cell width is height-clamped
+                // by HubCardAspect, so the ruling is what closes the truncation. See the block at
+                // the face-label rect below for the measurement, and note the PURPOSE line
+                // ("Build a Barracks to unlock", just above) is NOT touched - it is a different
+                // string in a wrapped band and is pinned by two suites.
                 string faceText = captured == ManageTab.Troops && !available
-                    ? "BUILD A BARRACKS" : title;
+                    ? "BUILD BARRACKS" : title;
                 var card = ElarionUiKit.BuildObsidianButton(_launcherGrid, faceText,
                     ElarionUiKit.ObsidianButtonStyle.Style1,
                     !available ? ElarionUiKit.ObsidianButtonColor.Gray
@@ -2279,25 +2308,112 @@ namespace DeNelle.Village.UI
                     // 288.4 / 0.92 back-solves the CELL to 313.5 px, so this widening buys the face
                     // 12.6 px. It is the ONLY width lever on this card that is not somebody else's
                     // ruling, and it is deliberately taken to the edge of the gold perimeter.
-                    // ⚠ AND IT IS NOT ENOUGH ON ITS OWN, WHICH IS RECORDED RATHER THAN GLOSSED. A
-                    // glyph-advance estimate calibrated against that same rect puts the full string
-                    // at ~324 px at font 30 bold, against 301 px of lane after this change - still
-                    // ~7% over. Closing the rest needs a RULING, not another nudge, because both
-                    // remaining levers are pinned: the WORDS are pinned by
-                    // ManageApprovedLauncherRegression (WO-1406, the locked card's door), and the
-                    // CELL WIDTH is pinned by HubCardAspect (132/169), which is height-clamped off
-                    // the owner's own device frame - `cellW = Min(width/3, height * HubCardAspect)`
-                    // is already taking the aspect branch here, so a wider band cannot help. The
-                    // cheapest ruling on offer is dropping one word: "BUILD BARRACKS" measures
-                    // ~293 px and would fit inside this lane with room. NOT taken here - it is
-                    // player-facing copy behind an owner ruling. See the WO-1636 RESULT.
-                    rt.anchorMin = new Vector2(0.02f, 1f - HubArtWellF - 0.02f - HubTitleBandF);
-                    rt.anchorMax = new Vector2(0.98f, 1f - HubArtWellF - 0.02f);
+                    // ⚠ AND THE WIDENING ALONE WAS NOT ENOUGH, WHICH IS RECORDED RATHER THAN
+                    // GLOSSED. A glyph-advance estimate calibrated against that same rect put the
+                    // then-current copy at ~324 px at font 30 bold, against ~301 px of lane after
+                    // this widening - still ~7% over. Both remaining levers were pinned: the WORDS
+                    // by ManageApprovedLauncherRegression (WO-1406, the locked card's door), and
+                    // the CELL WIDTH by HubCardAspect (132/169), height-clamped off the owner's own
+                    // device frame - `cellW = Min(width/3, height * HubCardAspect)` is already
+                    // taking the aspect branch here, so a wider band cannot help. So the lane
+                    // stopped and asked, rather than nudging again.
+                    // ── THE RULING LANDED. OWNER, 2026-09-10, verbatim: "Manage ARMY copy: BUILD
+                    // BARRACKS, keep the cook fire". The article is dropped at the faceText site
+                    // above.
+                    // ⛔ AND THE ESTIMATE THAT SAID THE SHORTER COPY WOULD THEN FIT ON ONE LINE WAS
+                    // WRONG - BY ONE GLYPH. It read ~293 px against a ~301 px lane; the capture on
+                    // the shipped copy (Builds/wave4-capture3) measured 12 of 13 glyphs drawn at
+                    // BOTH aspects, so the true width is over 300.8 px. ~324 and ~293 were
+                    // glyph-advance ESTIMATES calibrated off a single rect - the oracle logs a rect
+                    // only for the labels it FAILS - and an estimate is what this file said it was.
+                    // The lesson is kept rather than deleted: it is why the fix below is sized off
+                    // a band that is PROVEN to work rather than off another calculation.
+                    // The measured numbers, and the two-line band they forced, are in the block
+                    // immediately below.
+                    // ── WO-1636 ROUND 2: THE LOCKED ARMY FACE IS THE ONE TWO-LINE CAPTION ───────
+                    // MEASURED on the ruling's own copy (Builds/wave4-capture3, 2026-09-10):
+                    // "BUILD BARRACKS" drew 12 of 13 printable glyphs at BOTH aspects - x
+                    // -150.4..150.4 (300.8 px lane) @2340x1080 and -146.9..146.9 (293.8 px)
+                    // @2670x1200, at font 30 with autosize 30..40 resolving to the FLOOR. So the
+                    // ruling's copy still does not fit on ONE line, and the ~293 px estimate that
+                    // said it would was ONE GLYPH SHORT. It was an estimate; this is a measurement,
+                    // and the measurement wins.
+                    // ⛔ EVERY SINGLE-LINE LEVER IS SPENT, WHICH IS WHY THE SHAPE CHANGES INSTEAD:
+                    // the copy is the owner's ruling, the font is already AT ElarionUiKit.FontFloor,
+                    // the side inset is already at the gold perimeter (0.02/0.98 = 0.96 of the cell)
+                    // and the cell is HEIGHT-clamped by HubCardAspect off the owner's device frame.
+                    // So the caption WRAPS: the band is made two lines tall and FitBlock breaks it
+                    // at the copy's own space. The string is NOT re-authored with a line break, so
+                    // the literal stays exactly the ruling's and the WO-1406 pin keeps reading it.
+                    // ⭐ THE BAND'S HEIGHT IS A MEASURED FONT CONSTANT, NOT AN ESTIMATE. Round 2's
+                    // band was 0.19 of the card and wave5-capture1 SPLIT on it - which is what
+                    // pinned the number down to the pixel:
+                    //   2340x1080  band 76.2 px -> WRAPPED, 13 of 13, two lines. CLEAN.
+                    //   2670x1200  band 74.4 px -> did NOT wrap; one line, "BUILD BARRACK", 12 of 13
+                    //              (captured rect y -146.2..-71.8 = 74.4 px, exactly as predicted).
+                    // The requirement therefore sits in (74.4, 76.2], and the font asset names it
+                    // exactly: this face is fonted from Assets/Resources/RpgUi/font/font_title.asset
+                    // (Merriweather) whose m_FaceInfo reads m_PointSize 64 / m_LineHeight 80.448, a
+                    // line factor of 1.257. TWO LINES AT THE 30 px FLOOR NEED 2 x 30 x 1.257 =
+                    // 75.4 px. 76.2 >= 75.4 wraps; 74.4 < 75.4 does not. Both captures, and the
+                    // asset, agree - the 2670 band was short by ONE PIXEL.
+                    // ⛔ AND THE FIRST GUESS AT THIS NUMBER WAS THE WRONG ASSET, WHICH IS RECORDED
+                    // RATHER THAN QUIETLY CORRECTED: font_body (Alata, 88.32/64 = 1.38) would put
+                    // two lines at 82.8 px and would have "proved" the wrap impossible here. The
+                    // PNG showing 2340 already wrapped is what caught it. Read the ASSET the label
+                    // is actually fonted from; a plausible line factor is still a guess.
+                    // ⚠ AND THE BAND IS SIZED TO CLEAR THE *CONSERVATIVE* READING OF THAT METRIC.
+                    // TMP's two-line extent is 2 x lineHeight = 75.4 px on one reading and
+                    // ascent + lineHeight + |descent| = (70.4 + 80.448 + 17.92) x 30/64 = 79.1 px
+                    // on the other. The captures side with 75.4 (76.2 wrapped, 74.4 did not), so
+                    // that is the binding number - but the band below clears 79.1 as well, because
+                    // the cost of being wrong by a pixel here is a caption that reads "BUILD".
+                    // ⭐ THE FIX IS ~6 px OF HEIGHT, TAKEN WHERE NOTHING IS DRAWN. The band's floor
+                    // is the description top (0.02 + HubDescBandF = 0.21) and its old ceiling was
+                    // the art well (1 - HubArtWellF = 0.40). The ceiling goes 0.015 INTO the well:
+                    // band 0.21..0.415 = 0.205 of the card = 80.3 px @2670x1200 and 82.2 px
+                    // @2340x1080 - clearing 75.4 by +4.9 / +6.8 px, and 79.1 by +1.2 / +3.1 px.
+                    // ⛔ AND IT STILL CLEARS THE PADLOCK, WHICH IS THE OTHER CONSTRAINT ON THIS ONE
+                    // CARD. BuildLockBadge mounts a SQUARE sprite (lock-badge.png, 1254x1254,
+                    // preserveAspect) in a 0.345..0.50 x 0.20..0.76 rect, so it draws card-width
+                    // x 0.155 centred at y 0.48 - its bottom edge is y 0.4195. The new band tops out
+                    // at 0.41, so the caption's BAND, not merely its ink, stays entirely below the
+                    // padlock. Going to 0.42 would have put the band under it for 0.5 px of nothing.
+                    // ⛔ HubArtWellF, HubTitleBandF, HubDescBandF AND BuildLockBadge ARE ALL
+                    // UNTOUCHED. The 0.01 is taken by ONE card's face rect, so no constant moves, no
+                    // other card moves, and the mockup-conformance cases that parse those constants
+                    // read exactly what they read before.
+                    // ⛔ THE OTHER FACES DO NOT MOVE. BUILD / ARMY / RESEARCH are single words that
+                    // never wrapped and were never flagged; they keep this band and the single-line
+                    // fitter verbatim, so HudLabelFitRegression's deck/Manage parity cases on the
+                    // face's size, its alignment and its single-line fit call read exactly what
+                    // they read before. Only the locked ARMY card takes the taller band and the
+                    // block fitter.
+                    // ⛔ AND THE SYMBOL NAMES THOSE CASES ANCHOR ON ARE DELIBERATELY NOT SPELT OUT
+                    // ANYWHERE ABOVE THE STATEMENTS THEMSELVES. HudLabelFitRegression.ArgsOf takes
+                    // the FIRST IndexOf of its anchor in the whole source and reads to the next
+                    // terminator - it has no comment model - so an anchor quoted in a comment that
+                    // sits above the real statement makes the case parse prose instead of the
+                    // value. Naming them here would break the very parity this block promises.
+                    bool faceIsLongCta = captured == ManageTab.Troops && !available;
+                    float faceTopF = faceIsLongCta
+                        ? 1f - HubArtWellF + 0.015f
+                        : 1f - HubArtWellF - 0.02f;
+                    float faceBottomF = faceIsLongCta
+                        ? 0.02f + HubDescBandF
+                        : 1f - HubArtWellF - 0.02f - HubTitleBandF;
+                    rt.anchorMin = new Vector2(0.02f, faceBottomF);
+                    rt.anchorMax = new Vector2(0.98f, faceTopF);
                     rt.offsetMin = rt.offsetMax = Vector2.zero;
                     face.fontSize = 36f;
                     face.alignment = TextAlignmentOptions.Center;
                     face.color = available ? ElarionUi.Gold : ElarionUi.ParchmentDim;
-                    ElarionUiKit.FitSingleLine(face, 30f, 40f);
+                    // ⛔ BOTH CALLS STAY LITERAL AND UNCONDITIONAL IN THEIR ARGS. HudLabelFitRegression
+                    // reads the single-line fit call up to its first ')' and demands the deck's args
+                    // match - a ternary inside the call would change what it parses. The BRANCH is
+                    // outside the call, so the args it reads are still "30f, 40f".
+                    if (faceIsLongCta) ElarionUiKit.FitBlock(face, 30f, 40f);
+                    else ElarionUiKit.FitSingleLine(face, 30f, 40f);
                 }
                 // ⭐ THE FULL DESCRIPTION, WRAPPED OVER TWO LINES - FitBlock, not FitSingleLine.
                 // ⛔ THE SINGLE-LINE FIT IS THE DEFECT. Measured on the owner's device
@@ -2798,7 +2914,7 @@ namespace DeNelle.Village.UI
                 tap.targetGraphic = tapImage;
                 tap.transition = Selectable.Transition.None;
                 // Reuse the launcher's guarded destination door. In particular, a locked Training
-                // chip opens the BUILD A BARRACKS route instead of bypassing it into Troops.
+                // chip opens the BUILD BARRACKS route instead of bypassing it into Troops.
                 tap.onClick.AddListener(() => ActivateLauncherCard(destination, commitLauncherNavigation: false));
                 ElarionUiKit.ClampMinTouch(tap);
             }

@@ -1051,3 +1051,91 @@ holding `BuildMenuLayoutRegression.cs` tonight, the added pin (`:221-243`) is a 
 purely additive hunk and can be taken or dropped independently of the `BuildMenuLayout.cs` fix -
 but dropping it leaves the two-line contract unpinned, which is how this defect stayed green.
 
+---
+
+## CLOSE-OUT 2026-09-10 - 68 -> 0 NEW, PROVEN ON FRESH LOGS
+
+**Markers read at source by this lane, not relayed.** Files opened this session, byte counts and
+encoding checked; every line below is quoted from the log it names.
+
+| log | mtime | marker, verbatim |
+|---|---|---|
+| `Builds/wave5-capture4` (490,295 bytes, UTF-8) | 07:43 | `UI_GLYPH_OK 97/97 panels labels=902 baselined=2 unproved=0` |
+| `Builds/wave5-navcapture4` (134,247 bytes, UTF-8) | 07:44 | `UI_GLYPH_OK 15/15 panels labels=144 baselined=1 unproved=0` |
+| `Builds/wave5-compile3` (755,321 bytes, UTF-8) | 07:43 | `COMPILE_GATE_OK :: scripts compiled clean` |
+
+**`TEXT TRUNCATED` lines on either capture: ZERO.** The only `[glyph-oracle]` findings printed are
+the two baselined rows, and both say `0 new`:
+
+```
+[glyph-oracle] EndStateWaveClear_repairAll_1920x1080 @1920x1080: 1 truncated label(s) (1 baselined, 0 new)
+[glyph-oracle] RealmWorkspace_1920x1080 @1920x1080: 1 truncated label(s) (1 baselined, 0 new)      (main)
+[glyph-oracle] RealmWorkspace_1920x1080 @1920x1080: 1 truncated label(s) (1 baselined, 0 new)      (nav)
+```
+
+⛔ **There is NO `ManageWorkspace` line on either run** - the two ARMY findings that opened this
+ticket's last round are gone, not baselined away. `grep -c "ManageCard_ARMY"` over the main tree's
+`Assets/Editor/UICaptureLaunch.cs` returns **0**: the lead's deletion of both rows is confirmed at
+source, so the clean read is a real fix and not a suppressed one.
+
+**The owner-facing proof:** `Builds/ui-capture/ManageWorkspace_2670x1200.png` (opened by the lead)
+shows **`BUILD` / `BARRACKS` on two lines, whole**; `ManageWorkspace_2340x1080.png` (opened by this
+lane) shows the same. A glyph count is a number - acceptance item 5 asks for the words, and the words
+are there.
+
+### The 68, closed
+
+| lane | findings | state |
+|---|---|---|
+| A `RumorBoard` + `_page2` | 21 | cleared |
+| B `NightMarket` | 21 | cleared |
+| C `DeckCardPurpose_*` (`RealmWorkspace` + `JourneyWorkspace`) | 16 | cleared |
+| D `HeroSelect` | 5 | cleared |
+| E `BuildMenuUpgradeTower` | 1 | cleared |
+| F `ManageWorkspace` `ManageCard_ARMY` x2 | 2 | cleared - owner ruling **"BUILD BARRACKS"** + a two-line band |
+| - `EndStateWaveClear_repairAll` | 1 | **accepted debt** (below) |
+| - `RealmWorkspace` `DeckCard_The Night Market` | 1 | **accepted debt** (below) |
+| | **68** | **66 fixed, 2 accepted, 0 NEW** |
+
+### Accepted debt - 2 DISTINCT baseline rows, and why the counts read 2 + 1
+
+⚠ **`baselined=2` (main) and `baselined=1` (nav) are the SAME TWO ROWS, not three.** The nav capture
+covers the deck-card family only, so it re-measures the `RealmWorkspace` row and never reaches
+`EndStateWaveClear`. `GlyphBaseline` in the main tree holds exactly **2** entries
+(`Assets/Editor/UICaptureLaunch.cs:6174-6179`, read at source), verbatim:
+
+```
+EndStateWaveClear_repairAll_1920x1080|ObsidianPanel/PanelContent/Zone_Body/Zone_RewardWell/Band/SpoilCell2/SpoilRow/Label|17 of 19
+RealmWorkspace_1920x1080|ObsidianPanel/PanelFill/Zone_Body/RealmCardGrid/DeckCard_The Night Market/Label|12 of 14
+```
+
+1. **`EndStateWaveClear_repairAll` - the CAPTURE FIXTURE is the defect, not the screen.** Proven in
+   sec.4 of the sub-lane remainder above: `UICaptureLaunch.BuildWaveClearFixture` emits a non-`Wide`
+   row carrying a sentence (`"DESTROYED, looted 120"`), while the live producer `EndStateVM.FromWaveClear`
+   sets `Wide = true` on every row that puts prose in `Amount`. **Nothing that ships renders this
+   shape.** Re-pointing the fixture is the fix and it belongs to whoever owns `UICaptureLaunch.cs`;
+   it will likely reveal a real truncation rather than remove one, so it wants its own ticket and its
+   own capture.
+2. **`RealmWorkspace | DeckCard_The Night Market` - a `PlayerDeck` TITLE, lane C scope.** `"THE NIGHT
+   MARKET"` at 12 of 14, `overflow=Ellipsis wrap=NoWrap`. It is a deck-card title authored by
+   `PlayerDeckWorkspace`, not by any file this ticket's lanes were allowed to touch, and the
+   `DeckCardPurpose_*` lane that owns that file fixed the PURPOSE band, not the title.
+
+Both are **held deliberately, listed with their keys, and shrink-only**: the array is the ledger, and
+`UI_GLYPH_FAIL` still fires on anything new. Neither is a regression introduced by this ticket.
+
+### Acceptance, line by line
+
+1. ~~Step 0: read the 8 unprinted findings~~ - **DONE** (`Builds/wave3-navcapture`, all 8 tabled).
+2. **Each sub-fix deleted its own `GlyphBaseline` entries** - the array went 68 -> 2.
+3. **A fresh capture shows the marker with `baselined=` reduced and nothing new** - `wave5-capture4`
+   and `wave5-navcapture4`, both `unproved=0`, both `0 new`.
+4. **No font floor was lowered anywhere.** `ElarionUiKit.FontFloor` (30), `FontHardFloor` (20) and
+   `ElarionUi.FontFloorMobile` (30) are untouched by every lane. Band changes are stated in px in each
+   lane's section above.
+5. **The PNGs are opened.** `ManageWorkspace_2670x1200.png` + `_2340x1080.png` this round; the earlier
+   families in their own sections.
+
+**Status flipped to FIXED in the same edit as this close-out.** Felt-verification and closure remain
+the PO's (§13) - this lane does not close a ticket, it proves one.
+

@@ -47,3 +47,51 @@ Row benefit lines (WO-1405); the queue drawer; the HUD Builders chip (WO-1407); 
 
 ## Owner ruling
 None from section 2 - the ticket reuses rulings already made (WO-1389 army status; Defense tab door pattern).
+
+---
+
+### OWNER RULING 2026-09-10 - the door's FACE COPY moved (this ticket stays CLOSED)
+
+> **"Manage ARMY copy: BUILD BARRACKS, keep the cook fire"** - owner, verbatim, 2026-09-10 (morning).
+
+⚠ **Appended, not rewritten** - this ticket is CLOSED (owner PASS 2026-09-06) and its body above is a
+frozen record. The record it holds is now one word out of date, so the correction is recorded here
+rather than edited into the text above: everywhere this file says the locked ARMY card's face reads
+**`BUILD A BARRACKS`** (fix shape bullet 3, the ASCII sketch, acceptance bullet 1), the shipped face
+now reads **`BUILD BARRACKS`**.
+
+**What did NOT change: the DOOR.** WO-1406's actual finding was that the locked Troops card was a wall
+- it toasted its own label back at the player. It is still a tappable door onto
+`Close + EnterBuildMode`, still gated on `BarracksUnlock.IsUnlocked`, and the retired toast literal
+`"Build a Barracks to unlock Troops."` is still forbidden. Only the CTA's wording moved.
+
+**Why it moved.** WO-1636's glyph oracle measured that face drawing **11 of 14** printable glyphs at
+BOTH captured aspects (`ManageWorkspace_2340x1080`, `_2670x1200`) - the player was reading
+`BUILD A BARRA...`. The card's band had already been widened to the gold perimeter and its cell is
+height-clamped by `HubCardAspect` (132/169, off the owner's own device frame), so the WORDS - pinned
+by this ticket - were the last lever, and a pin only moves on the owner's word. It has now moved with
+it.
+
+**Where the pin now sits:** `Assets/Editor/Regression/ManageApprovedLauncherRegression.cs`. It pins the
+**code shape** `"BUILD BARRACKS" : title` and FORBIDS `"BUILD A BARRACKS" : title` - not the bare
+words, because `ManageScreenPanel.cs` carries both strings inside its own reasoning comments and a
+bare-word pin there could neither fail nor prove anything.
+
+**The purpose line is untouched:** `"Build a Barracks to unlock"` keeps its article. Different string,
+different band, never truncated, pinned by two suites.
+
+Full record, including the two `GlyphBaseline` entries that clear on the next capture:
+`WorkOrders/WORK_ORDER_1636_glyph_oracle_first_run_68_truncated_labels.md`, section
+`OWNER RULING 2026-09-10`.
+
+**LANDED 2026-09-10 - the copy is on the screen, and this ticket's Status does NOT change.** The
+`BUILD BARRACKS` face shipped and is proven: `Builds/wave5-capture4` reads
+`UI_GLYPH_OK 97/97 panels labels=902 baselined=2 unproved=0` with **no `ManageWorkspace` finding at
+all**, and `Builds/ui-capture/ManageWorkspace_2670x1200.png` shows **`BUILD` / `BARRACKS` on two
+lines, whole** - the caption the player reads is now the whole instruction at both captured aspects,
+where WO-1406's own body recorded a card that "is not tappable" and a face that never fit. The DOOR
+this ticket actually fixed (tappable locked card -> `Close + EnterBuildMode`, gated on
+`BarracksUnlock.IsUnlocked`, retired toast forbidden) is unchanged and still pinned by
+`Assets/Editor/Regression/ManageApprovedLauncherRegression.cs` - now on the code shape
+`"BUILD BARRACKS" : title`. **This ticket stays CLOSED (owner PASS 2026-09-06)**; the line is here so
+the record shows where its copy went.
