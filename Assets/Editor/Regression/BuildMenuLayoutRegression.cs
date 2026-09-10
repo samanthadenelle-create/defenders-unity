@@ -218,6 +218,30 @@ namespace DeNelle.Editor.Regression
             if (BuildMenuLayout.InfoLinePx < microLine)
                 failures.Add("[line-box] InfoLinePx=" + BuildMenuLayout.InfoLinePx + " is shorter than one FontMicro " +
                              "line box (" + microLine + ") - the preview line would clip");
+            // ── WO-1636: THE ROWS MUST SEAT **TWO** LINE BOXES, NOT ONE ─────────────────────
+            // The three asserts above only ever demanded ONE line box per info row, and that was
+            // exactly the shipped defect: at ActionBandPx 112 each row was 56 px = one 30 px line
+            // box, so the preview SENTENCE the VM emits could only ellipsise. Measured on chain 17
+            // (BuildMenuUpgradeTower_1920x1080): "Lvl 1 to 2:  dmg 23.8 to 46.8,  range 18m to 22m"
+            // drew 33 of 35 printable glyphs in a 604.1 x 56.0 px rect at font 30. The old asserts
+            // were GREEN throughout - a pin that passes while the screen cuts its own copy is not
+            // covering the thing it names, so the contract is stated here in full.
+            // The floor is the MOBILE font floor, not FontLabel/FontMicro: FitBlock is free to
+            // autosize DOWN to ElarionUi.FontFloorMobile, and the two-line requirement has to hold
+            // at the size the text will actually resolve to when it is long.
+            float floorMobile = UiFloat("FontFloorMobile", failures, "[line-box]");
+            if (floorMobile > 0f)
+            {
+                float twoFloorLines = 2f * floorMobile * LineBoxMul;
+                if (BuildMenuLayout.InfoLinePx < twoFloorLines)
+                    failures.Add("[line-box] InfoLinePx=" + BuildMenuLayout.InfoLinePx + " cannot seat TWO " +
+                                 "line boxes at the mobile font floor (" + twoFloorLines + ") - the cost and " +
+                                 "preview lines are SENTENCES (BuildMenuVM.UpgradeCostLineFor / " +
+                                 "UpgradeStatLineFor), the longest measure ~731 px against a ~538 px lane, and " +
+                                 "a one-line row can only ellipsise them. Raise ActionBandPx (its ceiling is " +
+                                 "the [body-fits] case below); NEVER shorten the copy to fit one line and " +
+                                 "NEVER lower the floor");
+            }
             if (Mathf.Abs(BuildMenuLayout.InfoLinePx * 2f - BuildMenuLayout.ActionBandPx) > 0.01f)
                 failures.Add("[line-box] InfoLinePx(" + BuildMenuLayout.InfoLinePx + ") x2 != ActionBandPx(" +
                              BuildMenuLayout.ActionBandPx + ") - the two preview lines must exactly tile the " +

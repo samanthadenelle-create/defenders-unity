@@ -378,6 +378,22 @@ namespace DeNelle.Village
         /// <summary>The two VM-authored preview lines inside the action band. Each is exactly half
         /// the band (56 px — a whole line box at the fonts they render) and fit-guarded, so a long
         /// string wraps-and-truncates inside its own half instead of spilling into the other.</summary>
+        /// <summary>
+        /// The two preview rows on the left of the action band.
+        /// ⛔ WO-1636: EACH ROW IS A TWO-LINE BLOCK, AND THAT IS THE WHOLE POINT OF ITS HEIGHT.
+        /// Both strings are SENTENCES the VM assembles (BuildMenuVM.UpgradeCostLineFor /
+        /// UpgradeStatLineFor / BuildDetailLineFor) and the longest of them measure ~731 px at the
+        /// font floor, against an info lane of 538.3 px at the narrowest captured aspect - so
+        /// neither can ever be a single line at any width this band could give it. The measured
+        /// proof: chain 17 caught "Lvl 1 to 2:  dmg 23.8 to 46.8,  range 18m to 22m" drawing
+        /// 33 of 35 glyphs in a 604.1 x 56.0 px rect, where 56 px is exactly one line box.
+        /// The rows are half of BuildMenuLayout.ActionBandPx (160 -> 80 px each), which seats two
+        /// line boxes at ElarionUi.FontFloorMobile; see BuildMenuLayout for both bounds.
+        /// ⛔ FitBlock, NEVER FitSingleLine. FitSingleLine cannot wrap - it shrinks to the floor
+        /// and then ellipsises - so swapping it back re-imposes the one-line cap and makes the
+        /// extra 48 px of band dead space. The Truncate that FitBlock arms is still the net: copy
+        /// that overruns TWO lines goes missing visibly rather than sub-legibly.
+        /// </summary>
         private void AddInfoLines(Transform band, string line1, string line2)
         {
             if (band == null) return;
