@@ -1,6 +1,6 @@
 # WO-1631 - The player build autorotates to portrait; the game is LANDSCAPE ONLY (owner ruling 2026-09-10)
 
-**Status:** FIXED 2026-09-10 - owner ruling landscape only; ProjectSettings portrait autorotate flags 1 -> 0 (lead), ScreenOrientationRegression registered and green on wave3-reg9; owner felt-test on the Seeker closes (was: IMPLEMENTED - awaiting the lead's ProjectSettings flip + gate (lane LANDSCAPE 2026-09-10))
+**Status:** FIXED 2026-09-10 - landscape only at both authorities: ProjectSettings flags 0 AND AndroidBuild no longer forces portrait (Case 5 pins every build script); gated wave4-reg2 494/494; the APK rebuilt after this commit is the first landscape-only APK - owner felt-test on it closes (was: IMPLEMENTED - build-script writer fixed, awaiting gate + rebuild (lane ORIENT-SCRIPT 2026-09-10) (was: FIXED 2026-09-10 - owner ruling landscape only; ProjectSettings portrait autorotate flags 1 -> 0 (lead), ScreenOrientationRegression registered and green on wave3-reg9; owner felt-test on the Seeker closes - REOPENED the same day: the 05:45 build chain put both flags back, see sec.10))
 **Minted:** 2026-09-10 (LANDSCAPE lane, `CLI_LANES_WO_NUMBERS.md` main-line banner; bumped 1631 -> 1632 in the SAME edit)
 **Silo / Lane:** Project configuration - `ProjectSettings/ProjectSettings.asset` orientation fields, plus one new oracle under `Assets/Editor/Regression/`
 **Severity:** P1 presentation. It is not one screen: it is the box every screen is drawn into, on the
@@ -330,3 +330,168 @@ This lane owns this ticket. Its `**Status:**` line above is flipped and
 `WorkOrders/WORK_ORDER_1631_player_build_autorotates_to_portrait_game_is_landscape_only.RESULT.md` is
 written; `python tools/board_build.py` was re-run. The lead commits the flip in the same commit as the
 work (CLAUDE.md sec.11, `.claude/hooks/ORCHESTRATION_CADENCE.md`).
+
+---
+
+## 10. REGRESSION 2026-09-10 (build chain re-enabled portrait)
+
+**The ticket came back the same day it was closed, and the data flip is the whole finding.** The
+ruling commit `29296e086` set `ProjectSettings/ProjectSettings.asset` `allowedAutorotateToPortrait`
+and `allowedAutorotateToPortraitUpsideDown` from `1` to `0`. After the 05:45 build chain
+(`build-windows.ps1 -Release` -> `overnight-apk-build.ps1` -> install -> `build-webgl.ps1`), `git diff`
+on that file read `-  allowedAutorotateToPortrait: 0` / `+  allowedAutorotateToPortrait: 1`, and the
+same pair for `UpsideDown`. **The APK `2026.09.10.363529` now on the Seeker was therefore built with
+portrait autorotate ON**, which is why sec.8's acceptance item 4 (a landscape device frame) could
+never have passed against it.
+
+### 10.1 The writer, at source
+
+**`Assets/Editor/AndroidBuild.cs:327-331`** (line numbers as they stood at `a96bfe332`, before this
+lane's edit), inside `ApplyAndroidPlayerSettings()` (declared `:307`), called from the Seeker APK
+build path at **`AndroidBuild.cs:120`**:
+
+```
+PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+PlayerSettings.allowedAutorotateToPortrait = true;
+PlayerSettings.allowedAutorotateToPortraitUpsideDown = true;
+PlayerSettings.allowedAutorotateToLandscapeRight = true;
+PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+```
+
+A `PlayerSettings` write is persisted straight back into `ProjectSettings.asset`, so this method does
+not merely configure the build - it **rewrites the file the ruling edited**, every time an APK is
+built. That is the mechanism `ScreenOrientationRegression`'s own header predicted ("ProjectSettings
+.asset is REWRITTEN WHOLESALE ... any tooling that round-trips PlayerSettings silently restores the
+portrait flags") and did not guard against.
+
+**It is the sole writer.** A grep for `allowedAutorotate`, `UIOrientation`,
+`defaultInterfaceOrientation`, `PlayerSettings.allowed` and `ScreenOrientation` over every `.cs` and
+`.ps1` in the tree (2026-09-10, worktree at `a96bfe332`) returned `AndroidBuild.cs`,
+`GooglePlayPackagingRegression.cs` and `ScreenOrientationRegression.cs` and **nothing else** -
+`DesktopBuild.cs` and the WebGL build write no orientation at all. **This grep is the lane's
+first-hand proof and it is what the fix rests on.**
+
+⚠ `Assets/_Modules/Core/Validation/OrientationGuard.cs` appears in all three build logs (a `CS0414`
+warning) and is **NOT** a writer - it is the WO-363 *character-facing* gate, nothing to do with the
+screen. Named here so the next seat does not lose an hour to it.
+
+**Timestamps, measured this session, and one of them is not what you would expect.** File mtimes read
+off `D:\EoA` on 2026-09-10:
+
+| File | mtime |
+|---|---|
+| `Builds/build.log` (Windows release) | 05:47 |
+| `Builds/apk-build.log` (Seeker APK) | 05:54 |
+| `Builds/webgl-build.log` | 06:08 |
+| `ProjectSettings/ProjectSettings.asset` | **05:57** |
+
+The asset's mtime falls in the **WebGL** window, not the APK one. That does **not** move the writer:
+the WebGL build contains no orientation write at all (grep above), and every Unity batchmode session
+re-serializes `ProjectSettings.asset` on quit - so a later session that merely *loaded* the
+already-flipped values rewrites the file and takes the mtime. The value change is visible earlier: in
+`apk-build.log` the `ProjectSettings.asset` import result ID changes mid-run (line 4175 -> line 4276),
+and every import in `webgl-build.log` already carries the **later** ID. *Stated as what it is: the
+import-ID sequence is consistent with the APK run being where the content changed, and it is not by
+itself a proof, because the version stamp also rewrites this file. The proof that the APK step is the
+writer is the grep, not the timestamps.*
+
+The lead's independent measurement (05:58) put the orientation writer at `AndroidBuild.cs:327-329`,
+which is the same block.
+
+### 10.2 What the writer's comment claimed, and why it does not survive
+
+The block carried a dated rationale, kept verbatim in the source as prose so the tradeoff is not lost:
+
+> "Large-screen / foldable readiness (Play Console, 2026-09-08): do not lock the player activity to
+> landscape. AutoRotation with every direction enabled makes Unity emit an unrestricted orientation
+> contract, while the generated Unity 6 GameActivity remains resizeable. The UI already derives its
+> layout from the live canvas and safe area, so tablets, desktop windows and fold posture changes may
+> resize without Android letterboxing the game."
+
+That premise is **WO-1255 (2026-09-08)** and it is **superseded by the owner's ruling of 2026-09-10**:
+portrait is not a supported presentation of this game, on any device, at any screen. Play's
+large-screen guidance may flag a landscape-only orientation contract; that is an owner-level tradeoff
+that has already been ruled, and is recorded here rather than relitigated. `AutoRotation` is **kept**,
+so the generated `GameActivity` stays resizeable - only the *directions* it may rotate to changed.
+
+### 10.3 The second half of the defect: the oracle that pinned the writer
+
+`Assets/Editor/Regression/GooglePlayPackagingRegression.cs:49` and `:51` (WO-1255) **REQUIRED the
+exact source text assigning `true` to both portrait flags** in `AndroidBuild.cs`. So the packaging
+oracle was a portrait writer by proxy: honouring the owner's ruling turned it red, and it would have
+forced the flip back in. Both needles are rewritten to require `false`, with their messages corrected
+(the AutoRotation message read "does not remove the landscape-only restriction", which is inverted
+under the ruling). **This is why the fix could not be a one-line edit at the writer.**
+
+### 10.4 The fix
+
+| File | Change |
+|---|---|
+| `Assets/Editor/AndroidBuild.cs` (block now at `:321-363`, assignments `:359-363`) | both portrait flags -> `false`; `AutoRotation` and both landscape flags unchanged (`true`); the old Play Console rationale retained as prose with the 2026-09-10 ruling cited over it |
+| `Assets/Editor/Regression/GooglePlayPackagingRegression.cs:47-66` | the two portrait pins now require `= false` (`:60`, `:62`); all five messages rewritten to state the ruling |
+| `Assets/Editor/Regression/ScreenOrientationRegression.cs` | **new CASE 5 `[no-build-script-portrait-writer]`** + header addendum |
+
+**Never force portrait, and never over-correct**: the shape written at the writer is exactly the shape
+the ruling authored into the asset (`:11` `defaultScreenOrientation: 4` = `AutoRotation`, `:63`/`:64`
+portrait `0`, `:65`/`:66` landscape `1`), which is CASE 4's recommended state. The build now
+**re-asserts** the ruling on every APK instead of undoing it.
+
+### 10.5 CASE 5 - the source lint, and its RED-first proof
+
+CASE 5 scans every `.cs` under `Assets/Editor` (recursive; it skips its own file, which names the API
+in prose) for `PlayerSettings.allowedAutorotateToPortrait[UpsideDown] = <rhs>` and FAILS unless the
+leading identifier of `<rhs>` is exactly `false`. The rule is "must be `false`", not "must not be
+`true`", so `= someFlag` and `= !locked` are caught rather than dodged - an orientation that depends on
+a variable cannot be decided by reading the repo (CLAUDE.md sec.11B). The capture stops at end of
+**line**, not at a `;`, because half the matches it must judge live inside string literals in the
+packaging oracle, where the statement ends at a quote.
+
+**Why CASE 2 was not enough:** CASE 2 reads a *file*, and a build rewrites that file *after* the gate
+has run. An oracle that guards only the data cannot see a writer that runs later.
+
+**RED-first.** The C# suite was not executed (edit-only lane: no Unity, no build). A faithful port of
+the same regex and the same `LeadingToken` rule was run in PowerShell
+(session scratchpad, deliberately not added to the repo - the inline output below is the record) -
+stated as a port, not as the suite's own run; the lead's gate is the authority:
+
+```
+# against HEAD (a96bfe332), i.e. the code BEFORE this lane's fix
+RED  Assets/Editor/AndroidBuild.cs:328 assigns 'true'
+RED  Assets/Editor/AndroidBuild.cs:329 assigns 'true'
+RED  Assets/Editor/Regression/GooglePlayPackagingRegression.cs:49 assigns 'true'
+RED  Assets/Editor/Regression/GooglePlayPackagingRegression.cs:51 assigns 'true'
+MODE=head scanned=2 assignments=4 failures=4
+
+# against the working tree AFTER the fix
+ok   Assets/Editor/AndroidBuild.cs:360 assigns 'false'
+ok   Assets/Editor/AndroidBuild.cs:361 assigns 'false'
+ok   Assets/Editor/Regression/GooglePlayPackagingRegression.cs:60 assigns 'false'
+ok   Assets/Editor/Regression/GooglePlayPackagingRegression.cs:62 assigns 'false'
+MODE=tree scanned=833 assignments=4 failures=0
+```
+
+The lint red on the *previous* writer, and on the pin that protected it, before it went green - which
+is the only order in which a new case proves anything.
+
+### 10.6 Acceptance, on top of sec.8
+
+7. **`ScreenOrientationRegression` green with CASE 5 in it** - the `[case5]` note must appear in the
+   pass reason and must report a non-zero scanned count (a scan that found nothing to assert must not
+   read as an assertion that passed).
+8. **`GooglePlayPackagingRegression` still green** after its pins moved (`PLAY_PACKAGING_REGRESSION_OK`).
+9. **`git diff ProjectSettings/ProjectSettings.asset` is EMPTY after the next full build chain.** This
+   is the acceptance this section exists for: the previous FIXED status was true of the repo and false
+   of the artifact.
+10. **A landscape device frame off a rebuilt APK** (sec.8 item 4). The APK `2026.09.10.363529` cannot
+    satisfy it and must be rebuilt, not re-tested.
+
+### 10.7 For the lead
+
+The main tree `D:\EoA` was carrying `M ProjectSettings/ProjectSettings.asset` with the flags back at
+`1` when this lane started (that dirt is the defect itself, not new work). Restore it before gating -
+`git checkout -- ProjectSettings/ProjectSettings.asset` - or CASE 2 reds on the dirt rather than on
+the code. This worktree's copy already reads `0/0/1/1`.
+
+**Not proven from here:** no Unity-side preset, `.preset` asset or settings-snapshot restore mechanism
+was found - but that is a grep, not a runtime trace. If the flags ever move again with CASE 5 green,
+that is where to look next.

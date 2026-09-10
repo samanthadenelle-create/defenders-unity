@@ -44,12 +44,23 @@ namespace DeNelle.Editor
                     "Play artifact define composition no longer strips SOLANA_SDK", failures);
             Require(build, ".Append(wanted)", "artifact define composition no longer supplies its channel stamp", failures);
             Require(build, "GooglePlayPackagingGate.AssertBuiltArtifact(artifactPath)", "successful AAB bypasses post-build inspection", failures);
+            // ⛔ THESE FIVE PINS WERE REWRITTEN 2026-09-10 (WO-1631). As authored for WO-1255
+            // (2026-09-08) the two portrait pins REQUIRED AndroidBuild.cs to assign TRUE to
+            // both portrait autorotate flags (the needles below, with the other boolean) —
+            // i.e. this oracle was itself a portrait writer by proxy: it turned red on any attempt
+            // to honour the owner's landscape-only ruling, and it would have forced the
+            // 05:45 chain's flip back in. The WO-1255 premise (Play Console large-screen /
+            // foldable readiness: do not lock the activity to landscape) is superseded by the
+            // owner's 2026-09-10 ruling that portrait is not a supported presentation of this
+            // game on any device. AutoRotation is KEPT so the generated GameActivity stays
+            // resizeable — what changed is only which directions it may rotate to. The
+            // needles are exact text: they must match AndroidBuild.cs byte-for-byte.
             Require(build, "PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation",
-                    "Android build does not remove the landscape-only orientation restriction", failures);
-            Require(build, "PlayerSettings.allowedAutorotateToPortrait = true",
-                    "Android build does not permit portrait on large/foldable displays", failures);
-            Require(build, "PlayerSettings.allowedAutorotateToPortraitUpsideDown = true",
-                    "Android build does not permit reverse portrait on large/foldable displays", failures);
+                    "Android build no longer sets AutoRotation, so the activity is pinned to a fixed orientation and stops being resizeable on large/foldable displays", failures);
+            Require(build, "PlayerSettings.allowedAutorotateToPortrait = false",
+                    "Android build does not forbid portrait — the owner ruled 2026-09-10 the game is landscape only (WO-1631)", failures);
+            Require(build, "PlayerSettings.allowedAutorotateToPortraitUpsideDown = false",
+                    "Android build does not forbid reverse portrait — the owner ruled 2026-09-10 the game is landscape only (WO-1631)", failures);
             Require(build, "PlayerSettings.allowedAutorotateToLandscapeRight = true",
                     "Android build does not permit landscape-right", failures);
             Require(build, "PlayerSettings.allowedAutorotateToLandscapeLeft = true",

@@ -1,5 +1,12 @@
 # WO-1631 RESULT - Landscape-only ruling recorded, and the settings drift is now pinned by an oracle
 
+> ⚠ **SUPERSEDED 2026-09-10 (same day).** The ticket was REOPENED: the 05:45 build chain put both
+> portrait autorotate flags back to `1`, because `AndroidBuild.cs` assigned them `true` at build time
+> and a `PlayerSettings` write is persisted into `ProjectSettings.asset`. The APK
+> `2026.09.10.363529` on the Seeker was built with portrait ON and must be **rebuilt, not retested**.
+> The body below is frozen as the record of the first pass; the current state is
+> **WO-1631 sec.10** in the work order (lane ORIENT-SCRIPT).
+
 **Status:** IMPLEMENTED - awaiting the lead's ProjectSettings flip + gate (lane LANDSCAPE 2026-09-10)
 **Lane:** LANDSCAPE, isolated worktree `D:\EoA\.claude\worktrees\agent-a7e746b59e527473d`
 **Base sha:** `c10e4f5d1` (fast-forwarded from `f5d39acd1` at lane start; tree clean before and after the merge)

@@ -70,15 +70,57 @@
 //     An oracle that only checks the direction of a change cannot see the
 //     over-correction - the neighbour's CASE 3 was written for the same reason.
 //
+//   CASE 5 [no-build-script-portrait-writer]  ADDED 2026-09-10, AFTER THE ASSET WAS
+//     FIXED AND A BUILD PUT IT BACK. No `.cs` under Assets/Editor may assign anything
+//     but `false` to PlayerSettings.allowedAutorotateToPortrait or
+//     ...PortraitUpsideDown. THE MEASURED DEFECT: the ruling commit 29296e086 set the
+//     asset's portrait flags to 0; the 05:45 build chain of 2026-09-10 (Windows
+//     release, then the Seeker APK, then WebGL) left them back at 1, and the APK
+//     2026.09.10.363529 that reached the Seeker was built with portrait autorotate ON.
+//     The writer was AndroidBuild.cs:327-331 (as it stood at commit a96bfe332; the same
+//     block now reads `false` at :359-363) - `ApplyAndroidPlayerSettings()`, called from
+//     the APK path at AndroidBuild.cs:120, which set both portrait flags TRUE via the
+//     PlayerSettings API, and a PlayerSettings write is persisted straight back into the
+//     asset CASE 2 reads. A grep for `allowedAutorotate` / `UIOrientation` /
+//     `defaultInterfaceOrientation` over every `.cs` and `.ps1` in the tree on 2026-09-10
+//     returned AndroidBuild.cs and these two regression files and NOTHING ELSE -
+//     DesktopBuild.cs and the WebGL build write no orientation at all, so the APK step is
+//     the only step in the chain that contains an orientation write. (Not a writer, and
+//     do not go looking at it: Assets/_Modules/Core/Validation/OrientationGuard.cs is the
+//     WO-363 CHARACTER-facing gate, nothing to do with the screen.)
+//     Why CASE 2 alone was not enough: CASE 2 reads a FILE, and a build rewrites that
+//     file AFTER the gate has run. An oracle that only guards the data cannot see a
+//     writer that runs later, so the ratchet has to guard the SOURCE too.
+//     The rule is "must be false", not "must not be true", so `= someFlag` and
+//     `=true` (no spaces) are both caught rather than dodged.
+//     ⚠ IT WILL ALSO RED ON A STRING LITERAL that pins `= true` - a source-scanning
+//     oracle REQUIRING the portrait writer is a portrait writer by proxy, and there was
+//     exactly such a pin: GooglePlayPackagingRegression.cs:49,:51 (WO-1255, 2026-09-08)
+//     required the literal text `PlayerSettings.allowedAutorotateToPortrait = true` in
+//     AndroidBuild.cs, so honouring the ruling turned THAT suite red. Both were fixed in
+//     the same change. That behaviour is deliberate and must not be narrowed.
+//
 // ⛔ WHAT THIS SUITE DOES NOT CLAIM.
 //   * It does not claim WebGL is affected or unaffected by these fields. What was
 //     measured is narrower and is all that is asserted anywhere: there is no
 //     `screenOrientation` attribute in any Android manifest under Assets/, and no
 //     `Screen.orientation` / `ScreenOrientation.` write anywhere under
 //     Assets/_Modules or Assets/Editor (grepped 2026-09-10, zero hits) - so nothing
-//     in this tree overrides the asset at runtime. Unity's own summary calls the
+//     in this tree overrides the asset at runtime.
+//     ⚠ ADDENDUM 2026-09-10 (same day, later): that paragraph was true and it was
+//     still not enough. It scanned for RUNTIME overrides and found none - and missed
+//     the BUILD-TIME writer at AndroidBuild.cs:327-331, which does not override the
+//     asset at runtime, it REWRITES the asset. "Nothing overrides it" was the wrong
+//     question. CASE 5 asks the right one.
+//     Unity's own summary calls the
 //     field "Default mobile device orientation"; the browser owns the WebGL canvas.
 //     That is the reasoning, and it is written here as reasoning, not as a proof.
+//   * CASE 5 lints the two PORTRAIT AUTOROTATE FLAGS and nothing else. A build script
+//     assigning `defaultInterfaceOrientation = UIOrientation.Portrait` would have the
+//     SAME rewrite-after-the-gate shape, and only CASE 3 would see it - after the fact,
+//     on the asset. No such assignment exists in the tree today (grepped 2026-09-10);
+//     the scope was deliberately not widened past the measured defect, and this bullet
+//     is where the next seat should start if the default field ever moves.
 //   * It does not assert WHICH of the two legal landscape shapes the project should
 //     use. Both pass. The choice is the owner's ruling, recorded in WO-1631 sec.4.
 //   * It does not look at a single screen, layout, caption or font. A screen that is
@@ -87,6 +129,10 @@
 //
 // Standalone: run-unity-method
 //   -Method DeNelle.Editor.Regression.ScreenOrientationRegression.RunAll
+//
+// ✔ RESOLVED 2026-09-10: the registration landed - DataRegression.cs:1998 runs this
+// suite. The note below is kept as the record of why it was written that way; it no
+// longer describes the tree, and RULE 2 no longer names this class.
 //
 // NOTE FOR THE LEAD: this file is NOT registered in DataRegression.RunAll - the lane
 // that wrote it is forbidden from touching that file. Until the registration line is
@@ -105,6 +151,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace DeNelle.Editor.Regression
@@ -134,6 +181,11 @@ namespace DeNelle.Editor.Regression
         private const int Off = 0;
         private const int On  = 1;
 
+        // CASE 5. Every build entry point this project owns lives under Assets/Editor, and
+        // AndroidBuild.cs (the writer that produced the 2026-09-10 defect) is one of them.
+        private const string EditorScanRoot = "Assets/Editor";
+        private const string SelfFileName   = "ScreenOrientationRegression.cs";
+
         public static void RunAll()
         {
             bool ok = Run(out string reason);
@@ -156,6 +208,8 @@ namespace DeNelle.Editor.Regression
                 () => Case3_DefaultOrientationForbidsPortrait(values, lineNos, failures, notes));
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "screen-orientation case 4",
                 () => Case4_LandscapeStillReachable(values, lineNos, failures, notes));
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "screen-orientation case 5",
+                () => Case5_NoBuildScriptWritesPortrait(failures, notes));
 
             if (failures.Count == 0)
             {
@@ -356,8 +410,125 @@ namespace DeNelle.Editor.Regression
         }
 
         // =====================================================================
+        //  CASE 5 - no editor build script may assign anything but false to a
+        //           portrait autorotate flag (SOURCE lint - see the header)
+        // =====================================================================
+        private static void Case5_NoBuildScriptWritesPortrait(List<string> failures, List<string> notes)
+        {
+            string root = FullPath(EditorScanRoot);
+            if (!Directory.Exists(root))
+            {
+                failures.Add("missing directory: " + EditorScanRoot + " - the source lint has nothing to read, " +
+                             "which is a broken oracle, not a clean tree (same rule as CASE 1).");
+                return;
+            }
+
+            string[] files;
+            try { files = Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories); }
+            catch (Exception e)
+            {
+                failures.Add("could not enumerate " + EditorScanRoot + ": " + e.GetType().Name + ": " + e.Message);
+                return;
+            }
+
+            // PlayerSettings.allowedAutorotateToPortrait[UpsideDown] = <rest of the line>
+            // Assembled from parts so this file's own text is never a needle for any other
+            // source-scanning oracle - the same reason the YAML keys above are split.
+            // The capture deliberately stops at the end of the LINE, not at a ';': half the
+            // matches this lint must judge live inside STRING LITERALS in a sibling oracle
+            // (see the header), where there is no semicolon at all and the statement ends at
+            // a closing quote. The leading identifier of the capture is what is judged, so
+            // `= false;`, `= false",` and `=false;` all read as 'false', while `= true`,
+            // `= someFlag` and `= !locked` do not - and a right-hand side that is not a
+            // literal is a failure in its own right, because an orientation that depends on
+            // a variable cannot be decided by reading the repo (CLAUDE.md sec.11B).
+            const string pattern = "PlayerSettings" + @"\s*\.\s*" + "allowedAutorotateTo" +
+                                   @"Portrait(?:UpsideDown)?\s*=\s*([^;\r\n]*)";
+            var rx = new Regex(pattern, RegexOptions.CultureInvariant);
+
+            int scanned = 0;
+            int assignments = 0;
+            int before = failures.Count;
+
+            foreach (string file in files)
+            {
+                // Skip this suite's own file: it names the API in prose and in this pattern,
+                // and an oracle that fails on its own description asserts nothing.
+                if (string.Equals(Path.GetFileName(file), SelfFileName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string text;
+                try { text = File.ReadAllText(file); }
+                catch (Exception e)
+                {
+                    failures.Add("could not read " + Rel(file) + ": " + e.GetType().Name + ": " + e.Message +
+                                 " - a file the lint cannot read is a file the lint is not guarding.");
+                    continue;
+                }
+
+                scanned++;
+                if (text.IndexOf("allowedAutorotateTo" + "Portrait", StringComparison.Ordinal) < 0) continue;
+
+                foreach (Match m in rx.Matches(text))
+                {
+                    assignments++;
+                    string rhs = LeadingToken(m.Groups[1].Value);
+                    if (string.Equals(rhs, "false", StringComparison.Ordinal)) continue;
+
+                    failures.Add(Rel(file) + ":" + LineOf(text, m.Index) + " - assigns '" + rhs + "' to a portrait " +
+                                 "autorotate flag. The owner ruled 2026-09-10 that the game is LANDSCAPE ONLY " +
+                                 "(WO-1631); the only value this project may assign here is 'false'. A build " +
+                                 "script that sets it TRUE re-enables portrait no matter what " + SettingsRel +
+                                 " says, because a PlayerSettings write is persisted back into that file AFTER " +
+                                 "this gate has read it - which is exactly how the APK 2026.09.10.363529 reached " +
+                                 "the Seeker in portrait. A non-literal right-hand side is a failure too: an " +
+                                 "orientation that depends on a variable cannot be decided by reading the repo. " +
+                                 "If this is a string literal in another oracle PINNING the writer, that oracle " +
+                                 "is a portrait writer by proxy - fix it, do not narrow this scan.");
+                }
+            }
+
+            if (failures.Count == before)
+            {
+                notes.Add("[case5] " + scanned + " .cs file(s) under " + EditorScanRoot + " scanned, " +
+                          assignments + " portrait-autorotate assignment(s) found, every one of them 'false' - " +
+                          "no build script can put the portrait flags back");
+            }
+        }
+
+        // =====================================================================
         //  helpers
         // =====================================================================
+        /// <summary>
+        /// The leading C# identifier/keyword of a right-hand side, or "" when it does not
+        /// start with one (`!locked`, `(a ? b : c)`). "" is never "false", so those FAIL -
+        /// which is the intent: only a bare `false` literal is a decidable orientation.
+        /// </summary>
+        private static string LeadingToken(string rhs)
+        {
+            string trimmed = rhs.TrimStart();
+            int i = 0;
+            while (i < trimmed.Length && (char.IsLetterOrDigit(trimmed[i]) || trimmed[i] == '_')) i++;
+            return trimmed.Substring(0, i);
+        }
+
+        private static int LineOf(string text, int index)
+        {
+            int line = 1;
+            for (int i = 0; i < index && i < text.Length; i++)
+                if (text[i] == '\n') line++;
+            return line;
+        }
+
+        private static string Rel(string full)
+        {
+            string cwd = Directory.GetCurrentDirectory();
+            string rel = full.StartsWith(cwd, StringComparison.OrdinalIgnoreCase)
+                ? full.Substring(cwd.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                : full;
+            return rel.Replace('\\', '/');
+        }
+
         private static void CheckIs(Dictionary<string, int> values, Dictionary<string, int> lineNos,
                                     string key, int expected, string consequence, List<string> failures)
         {

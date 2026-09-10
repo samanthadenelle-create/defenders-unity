@@ -318,15 +318,47 @@ namespace DeNelle.Editor
             // the APK size for no benefit.
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
 
-            // Large-screen / foldable readiness (Play Console, 2026-09-08): do not lock the
-            // player activity to landscape. AutoRotation with every direction enabled makes
-            // Unity emit an unrestricted orientation contract, while the generated Unity 6
-            // GameActivity remains resizeable. The UI already derives its layout from the live
-            // canvas and safe area, so tablets, desktop windows and fold posture changes may
-            // resize without Android letterboxing the game.
+            // ⛔ ORIENTATION — LANDSCAPE ONLY (owner ruling 2026-09-10, WO-1631).
+            //
+            // THIS BLOCK IS THE WRITER THAT RE-ENABLED PORTRAIT. Measured 2026-09-10: the
+            // ruling commit 29296e086 set ProjectSettings.asset:63/:64 to 0, and the 05:45
+            // build chain left them back at 1 — because ApplyAndroidPlayerSettings() (called
+            // from the Seeker APK path at :120) assigns these five PlayerSettings, and a
+            // PlayerSettings write is persisted straight back into ProjectSettings.asset.
+            // It is the ONLY orientation writer in the tree: a grep for allowedAutorotate /
+            // UIOrientation / defaultInterfaceOrientation over every .cs and .ps1 on
+            // 2026-09-10 returned this file and the two regression suites that guard it, and
+            // nothing else — DesktopBuild.cs and the WebGL build write no orientation at all.
+            // (The chain's log timestamps are recorded in WO-1631 sec.10.1.)
+            // The APK 2026.09.10.363529 now on the
+            // Seeker was therefore built with portrait autorotate ON, and all nine overnight
+            // device frames decode as 1200x2670 portrait. Nothing threw; nothing went red.
+            //
+            // WHAT THE PREVIOUS COMMENT CLAIMED, kept verbatim as prose so the tradeoff is
+            // not silently lost: "Large-screen / foldable readiness (Play Console,
+            // 2026-09-08): do not lock the player activity to landscape. AutoRotation with
+            // every direction enabled makes Unity emit an unrestricted orientation contract,
+            // while the generated Unity 6 GameActivity remains resizeable. The UI already
+            // derives its layout from the live canvas and safe area, so tablets, desktop
+            // windows and fold posture changes may resize without Android letterboxing the
+            // game." That premise (WO-1255, pinned by GooglePlayPackagingRegression) is
+            // SUPERSEDED by the owner's 2026-09-10 ruling: portrait is not a supported
+            // presentation of this game, on any device, at any screen. Play's large-screen
+            // guidance may flag a landscape-only orientation contract — that is an
+            // owner-level tradeoff that has already been ruled, and it is NOT a reason to
+            // re-enable portrait here. Raise it with the owner; never with an edit.
+            //
+            // The shape below is exactly the shape the ruling authored into the asset
+            // (ProjectSettings.asset:11 defaultScreenOrientation 4 = UIOrientation
+            // .AutoRotation, :63/:64 portrait 0, :65/:66 landscape 1), which is also
+            // ScreenOrientationRegression CASE 4's recommended state: AutoRotation, so the
+            // GameActivity stays resizeable rather than fixed-orientation; both portrait
+            // directions OFF; both landscape directions ON so a phone held either way up
+            // still shows the game the right way round. This is idempotent and it now
+            // RE-ASSERTS the ruling on every build instead of undoing it.
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
-            PlayerSettings.allowedAutorotateToPortrait = true;
-            PlayerSettings.allowedAutorotateToPortraitUpsideDown = true;
+            PlayerSettings.allowedAutorotateToPortrait = false;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
 
