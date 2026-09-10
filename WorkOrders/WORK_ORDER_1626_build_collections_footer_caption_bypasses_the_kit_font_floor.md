@@ -1,6 +1,6 @@
 # WO-1626 - Build Collections footer caption writes fontSizeMin straight onto TMP, bypassing the kit's font floor
 
-**Status:** IMPLEMENTED - awaiting gate (lane FOOTER-FONT 2026-09-10)
+**Status:** FIXED 2026-09-10 - gated (wave2-compile3, wave2-reg3 493/493) and captured (Builds/wave2-capture2 -> UI_GEOMETRY_OK 91): the footer caption renders complete on one line with no ellipsis marker at 2670x1200 (PNG read by the lead); owner felt-test closes. (was: IMPLEMENTED - awaiting gate (lane FOOTER-FONT 2026-09-10))
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1625 -> 1628 in the SAME edit)
 **Silo / Lane:** Village / BuildMode UI (`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
 **Severity:** P2 legibility. Currently **DORMANT, not shipping** - see sec.2. This is a
