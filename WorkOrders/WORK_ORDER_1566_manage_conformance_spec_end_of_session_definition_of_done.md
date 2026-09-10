@@ -248,3 +248,7 @@ against the 18:39 set is judging a build that has moved on.
 - **The raid flow.** WO-1541/1542/1543 and WO-1561/1562.
 - **Board/record repair.** **WO-1560** — do it first; it is documentation and it stops three false greens
   from certifying a superseded design.
+
+## OWNER RULINGS (2026-09-10 12:12)
+
+Row F5 (2.1/2.2): KEEP the 4-tile category picker; update the mockup/yardstick rows to it (rows close as ruled). Row 6.3: the locked ARMY tile CTA becomes a DISABLED "LOCKED" face (ticketed as WO-1668), not "VIEW BARRACKS".

@@ -243,3 +243,7 @@ is written, with both paths reported. The lead regenerates `BOARD.html`.
 ## Device evidence (lead, 2026-09-10 08:14, APK 2026.09.10.363660)
 
 `Builds/device-frames/2026-09-10_0814_363660_town_dock.png` (2670x1200, opened): the heart plate reads "Train 2 troops for the next raid" (8 deployable of cap 10, everCompletedRaid true). Owner felt-verify closes.
+
+## OWNER RULING (2026-09-10 12:16)
+
+The full-cap raid door after the first raid (ArmyReadiness.cs:121) is INTENDED; the line "Train N troops for the next raid" stands. Both open items closed; owner felt-verify remains the close.

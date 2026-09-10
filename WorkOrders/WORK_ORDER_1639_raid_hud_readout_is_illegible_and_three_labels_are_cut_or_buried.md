@@ -377,3 +377,7 @@ This lane owns this ticket. Its hand-back is incomplete until this file's `**Sta
 flipped and
 `WorkOrders/WORK_ORDER_1639_raid_hud_readout_is_illegible_and_three_labels_are_cut_or_buried.RESULT.md`
 is written, with both paths reported. The lead regenerates `BOARD.html`.
+
+## OWNER RULING (2026-09-10 12:20)
+
+Keep the near-black ObsidianFill readout plate (WO-1639 s.5 question answered); contrast rows stand as re-measured in WO-1647.

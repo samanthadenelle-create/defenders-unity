@@ -530,6 +530,58 @@ probabilistic-item disclosures apply (WO-1673, store-listing text). **All fiftee
 **RULED 12:55:** dungeons take the same outside dock (WO-1672); the ITEM picker keeps the world pause outside; the ATTACK REPORT chip HIDES
 while the resource panel is expanded (WO-1670 follow-up).
 **RULED 13:02:** the dialogue Affiliation tag (authored 26) goes up to the 30 px floor (WO-1690 item 4).
+**HEARTBOUND RULED 13:10 (Tier 1):** Q1 = backend-only stake read (HEART-001 relocates NativeSkrStakeQuery to api/, the client read is
+deleted or display-only); Q2 = RPC outage fails to LAST-KNOWN verified state with a bounded grace window; Q3 = Seeker / dApp Store only, the
+Play build never shows it (DAPP_STORE define); Q-P2W = economic acceleration bought with a staked position IS allowed (combat power stays
+off the table). Tier 2 next.
+**HEARTBOUND RULED 13:12 (Tier 2):** one wallet = one realm (no re-binding; the spec's wallet-change sections drop); DROP the Rough Stone
+Discovery event; Heartfire Spark ALLOWED as a second Heartfire source for stakers (the single-source lint is re-pointed to allow exactly it);
+MERGE the ladders - the Heartbound tier drives polish attempts too.
+**HEARTBOUND RULED 13:20 (Tier 3):** Echo Labor / Echo Worker Manifestations are MODIFIERS ONLY (no new world actors); the pulse-injection
+route exists in TEST BUILDS ONLY (the grant demo runs on a test deploy, never the app players get - owner: "Oh for demo yes"); THREAT WINS
+while the Heart is under attack (resonance visuals pause during a wave); the player-facing name is THE HEART everywhere ("Tree of Life" is
+a dev synonym). Tier 4 (Q-CADENCE, Q-METER, Q-CLIENTECON, Q-SCOUT, Q-MERCHANT, Q-CONFIG, Q4, Q-CRON, Q-COLOR, Q-VFX) next.
+**RULED 13:32:** WO-1688 wipe-confirm copy ACCEPTED as "Erase This Realm?" / body / "Erase" / "Keep" (faces shortened by the measured 12-glyph
+budget); WO-1687 SENTENCE FIRST - the away sentence is reserved and mend lines that do not fit are skipped with a trace (the Echoes panel
+still holds them); HEARTBOUND Q-CADENCE = rare and ceremonial, AT MOST ONE PULSE PER DAY (daily cron); Q-CLIENTECON = ACCEPT the
+client-applied ceiling as a design guardrail (not anti-cheat), rate modifiers stay. Remaining: Q-METER, Q-SCOUT, Q-MERCHANT, Q-CONFIG, Q4,
+Q-CRON, Q-COLOR, Q-VFX.
+**HEARTBOUND RULED 13:36:** Q-METER = production-rate modifiers only; Q-SCOUT = the existing scout report shown EARLIER, no new intel;
+Q-MERCHANT = its own work order, HEART-005 ships without it; Q-CONFIG = Command Center server-only rows (manifest serverOnly marker).
+Remaining: Q4, Q-CRON, Q-COLOR, Q-VFX.
+**RULED 13:40:** Q4 = the Play-boundary lint lands INSIDE HEART-001; Q-CRON = a third DAILY cron; Q-COLOR = tier shown as the COUNT of lit
+root segments (never hue); WO-1673 store text = ACCEPT THE ARENA LINE ONLY (the SKR line drops - Play never shows Heartbound). Only Q-VFX
+(per-prefab owner tags) remains, owned by the WO-1680 lane.
+
+**WAVE 9 LANDED (13:45-14:05).** Chain 43 (Builds/wave10b-*): COMPILE_GATE_OK; bakes 4 raid + siege (SiegeArena NOT registered in
+EditorBuildSettings any more - WO-1689 seam fix); RaidNavBake 4/4; REGRESSION_OK 500/500; UI_CAPTURE_OK 106 (geometry/touch/glyph clean);
+NAVIGATION_CAPTURE_OK 15/15; MANAGE_FLOW_MAP_OK 20 + UI_LUMA_ORACLE_OK; WELCOME_BACK_CAPTURE_OK 6/6 (WelcomeBack_1920x1080.png opened:
+sentence whole on two lines, one mend line drawn - owner ruling SENTENCE FIRST); FRONT_DOOR_CAPTURE_FAIL 6/6 touchPanels=7 was a literal-6
+arithmetic (the WO-1688 confirm is a 7th panel) - lead re-pointed to 6 + confirmShots, chain 44 (Builds/wave10c-*) COMPILE_GATE_OK +
+FRONT_DOOR_CAPTURE_OK 6/6; touch=clean + FRONT_DOOR_CONFIRM_CAPTURE_OK 1/1. Commits (dev): 27e1a90f7 (1668), b68bf553d (1657A),
+08f2a2dc1 (1669), f93abfd5f (1665 probe), 0303ce4c3 (1666) + 4329accd1 (1666 InventoryArmoryRail follow-up), aa5f377c9 (1667),
+c18c9b4db (1670), 4e7859987 (1687 + 1673 D1/D7), 42676d391 (1688), 16dc689d8 (1664 + DataRegression registrations), ce251d436
+(1637/1638), 97a196e8b (1689 + rebaked scenes + SiegeArena.unity), cde1c1f63 (1676 HEART-003). HELD for chain 45: WO-1671/1672
+(shares ElarionUiKit.cs) and WO-1690 (+1690b). STOP-PRESS: StartNewConfirm_2670x1200.png on chain 43 was VISUALLY BROKEN with every
+oracle green (body line 1 drawn over the gold title and outside the plate; last line cut behind KEEP/ERASE) - the screenshot is primary
+evidence; FIT-GUARD lane: BuildConfirmModal's message label was never fit-protected (unbounded since the builder was written; the 1690b lift
+made it worse); fix = modal 0.325..0.675, header band px returned, SeatConfirmBodyBetweenBands + FitBlock, TextFitGuardArmRegression CaseF
+(body inside PanelFill, between header and faces) - RED on the shipped frame. Chain 45 (Builds/wave10d-*) running: compile, regression,
+all five captures; the PNG must be opened again.
+HEART-001 (WO-1674) returned DONE: backend stake read (api/_lib/skr-staking.js + solana-pda.js hand-written ed25519 on-curve test, IDL
+read from chain, 5/5 mainnet PDAs at bump 254), api/heartbound/status.js, migration 20260910_0024_skr_stake_snapshots.sql, client
+VerifiedStakeSnapshot.cs + HeartboundStatusClient.cs (sole writer, #if DAPP_STORE), NativeSkrStakeQuery display-only (deleting it reds
+JewelerDiscoveryFtueRegression), PolishBonusProvider re-pointed off the settable Query seam, StakingComplianceRegression.cs (lead
+registered it in DataRegression.cs); node 26/26. Merged into main; NOT yet Unity-gated (chain 45 covers it). Open: grace window length
+(provisional 86400, non-canon); SOLANA_MAINNET_RPC_URL env var needed on Vercel; JewelerDiscoveryFtue.cs:304-307 still reports "stake
+verified" from the client read - follow-up WO to mint. HEART-002 (WO-1675) IMPLEMENTED: heartbound_state table keyed by wallet (api/schema.sql
+section 23 + migration 20260910_0025_heartbound_state.sql), api/_lib/heartbound-state.js importing resonance's toBigInt, 24/24; merged
+(schema.sql 3-way with HEART-001's block resolved by hand, both tables present). HEART-004 (WO-1677) IMPLEMENTED in its worktree: daily cron
+api/cron/heart-pulse.js (vercel.json 0 5 * * *), api/_lib/heartbound-pulse.js (UTC-day cadence key, DETECT/RESUME/SWEEP, 5 catch-up),
+DDL in api/_lib/heartbound-pulse-schema.sql (must be folded into schema.sql / a migration by the lead), 24/24 - being reconciled against
+the real resonance exports, not merged yet. Lanes running: HEART-005 (WO-1678 + WO-1691 merchant SPEC), HEART-006/009 (WO-1679+1682),
+VFX-TUNABLES (WO-1348). Pre-existing red, not this wave: node test "WebGL hides and runtime-blocks the app offline-download flow" fails
+at c96030b5c too (test/webgl-offline-content-surface.test.js) - triage with WO-1314. Banner: next free = 1692.
 
 WO-1673 (Play disclosures) minted: six live RNG mechanics, none purchasable with real money or hard currency; the daily chest, every
 rewarded ad and packs.json have NO RNG. Two things for the owner before any questionnaire: the dormant Arena wager stakes REAL purchasable

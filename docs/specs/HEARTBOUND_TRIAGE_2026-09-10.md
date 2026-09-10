@@ -132,6 +132,38 @@ The spec's own waves (`:1228-1290`) are sound and are kept. Two amendments, both
 
 ## 3. ⛔ CONSOLIDATED OWNER QUESTIONS
 
+### RULED 2026-09-10 13:10 (owner, AskUserQuestion) - Tier 1
+- Q1: **backend only** - relocate the read; the client read is deleted or display-only.
+- Q2: **fail to last-known verified state** (bounded grace window, then degrade).
+- Q3: **Seeker only; Play never shows it.**
+- Q-P2W: **economic acceleration is allowed**; combat power stays off the table.
+
+### RULED 2026-09-10 13:12 (owner) - Tier 2
+- Q-WALLET: **one wallet, one realm** - no linkage table, no re-binding; HEART-002/010 wallet-change sections drop.
+- Q-STONE: **drop the Rough Stone Discovery event.**
+- Q-HEARTFIRE: **allow a second source for stakers** - the single-source lint is re-pointed to permit exactly Heartfire Spark.
+- Q-LADDER: **merge** - the Heartbound tier drives polish attempts (the polish mapping becomes a benefit row).
+### RULED 2026-09-10 13:20 (owner) - Tier 3
+- Q-ECHOFIG: **modifiers only** - Tier II Echo Labor and Tier VII Echo Worker Manifestations move numbers; no new world actors, EchoWorldPresence stays the one owner.
+- Q-INJECT / Q-DEMO-FLAG: **test builds only** - the pulse-injection route does not exist in the app real players get; the grant-reviewer demo runs on a separate test deploy. (Owner: "Oh for demo yes".)
+- Q-AXIS: **threat wins while under attack** - resonance visuals pause during a wave and resume after; option (a).
+- Q-NAME: **the Heart everywhere** - "Tree of Life" stays a dev synonym only; no player-facing string carries it.
+### RULED 2026-09-10 13:32 (owner) - Tier 3 continued
+- Q-CADENCE: **rare and ceremonial, at most one pulse per day** - a daily cron; the player sees at most one pulse per login day; the HEART-007 show plays per pulse.
+- Q-CLIENTECON: **accept as a design guardrail** - the 10% ceiling is computed server-side and applied client-side; written down as not-an-anti-cheat, the same posture save.js:70-72 takes for soft currency. Rate modifiers stay.
+### RULED 2026-09-10 13:36 (owner) - Tier 3/4
+- Q-METER: **production-rate modifiers only** - the 10% ceiling is the sum of the passive tier percentage boosts to resource yield; timers and event drops are not counted.
+- Q-SCOUT: **existing report, earlier** - stakers see RaidDeployVM.ScoutReport before committing troops; the information itself stays equal for everyone; no new intel.
+- Q-MERCHANT: **own work order; HEART-005 ships without it** - the visiting-NPC lifecycle is a separate ticket (to mint); the merchant row leaves the HEART-005 event table.
+- Q-CONFIG: **Command Center, server-only rows** - teach tunable-manifest a serverOnly marker honoured by build(); the client registry never carries the ladder; the status endpoint returns nextTierAt.
+### RULED 2026-09-10 13:40 (owner) - Tier 4
+- Q4: **inside HEART-001** - the real Play-boundary lint lands with WO-1674; no separate ticket.
+- Q-CRON: **daily is fine** - a third daily Vercel cron; worst-case pulse latency 24 h accepted; no plan change.
+- Q-COLOR: **count of lit roots/rings** - tier N lights N of ten root segments around the Heart; never hue; greyscale is the gate.
+- Q-VFX: still open - needs the owner to tag each HEART-007 prefab (list to be put in front of her by the WO-1680 lane before it starts).
+
+All Tier 1-4 questions except Q-VFX are now ruled; the Heartbound WOs are dispatchable in dependency order (HEART-001 and HEART-003 lanes already running/returned).
+
 **Ordered by blast radius. Every question raised in any of the thirteen WOs appears below** — each is recorded in its own WO with the evidence; this is the complete list to rule from.
 
 ### TIER 1 — these change the shape of everything downstream

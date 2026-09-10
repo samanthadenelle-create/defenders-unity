@@ -1,6 +1,6 @@
 # WO-1634 - Raid camps: the authored prop sets miss what their own child WOs specified
 
-**Status:** READY TO IMPLEMENT
+**Status:** FIXED - landed in b4613489d on 2026-09-10 with the WO-1635 code half; scenes re-baked on every chain since (flip recorded by the lead 13:50 - the PROP-GAPS lane returned without it)
 **Minted:** 2026-09-10 (lane RAID-POLISH, main-line banner; bumped 1633 -> 1634 in the SAME edit)
 **Silo / Lane:** World / Raid scenes - DATA only
 **Files owned:** the `raidDress.props` arrays of `Assets/Resources/Data/Canonical/scene-configs.json`

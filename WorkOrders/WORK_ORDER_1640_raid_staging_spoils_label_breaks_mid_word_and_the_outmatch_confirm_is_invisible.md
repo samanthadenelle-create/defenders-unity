@@ -289,3 +289,7 @@ This lane owns this ticket. Its hand-back is incomplete until this file's `**Sta
 flipped and
 `WorkOrders/WORK_ORDER_1640_raid_staging_spoils_label_breaks_mid_word_and_the_outmatch_confirm_is_invisible.RESULT.md`
 is written, with both paths reported. The lead regenerates `BOARD.html`.
+
+## OWNER RULING (2026-09-10 12:16)
+
+The SPOILS band draw size goes UP to the 30 px floor (RaidDeployScreen.cs:890 draws 24 under the :219 seat of 40) - ticketed as WO-1669.
