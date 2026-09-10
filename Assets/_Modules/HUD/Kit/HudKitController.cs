@@ -1188,6 +1188,13 @@ namespace DeNelle.HUD.Kit
         /// canon-strings is the owner's call and a second copy of the name is forbidden
         /// (StoreNameSingleSourceRegression). Only the plate inside the card moves.</para></summary>
         private const float NightMarketLabelPlateX0 = 0.20f;
+        /// <summary>WO-1662: the card title's font CEILING, reference px. Named rather than typed
+        /// twice at the call site, because <see cref="HudLabelFitRegression"/> 11c/12e parse it out
+        /// of this file to model the TWO-LINE block they now measure — a hand-copied 26 in the
+        /// oracle would be the duplicated state CLAUDE.md documents four times over. The FLOOR is
+        /// deliberately NOT named here: it is <c>ElarionUiKit.FontHardFloor</c>, and FitBlock clamps
+        /// to it structurally (ElarionUiKitObsidian.cs:3083).</summary>
+        private const float NightMarketLabelMaxPx = 26f;
 
         private void BuildNightMarketCard(Transform pool)
         {
@@ -1390,14 +1397,57 @@ namespace DeNelle.HUD.Kit
                 face.alignment = TextAlignmentOptions.Center;
                 face.color = ElarionUi.Gold;
                 face.fontStyle = FontStyles.Bold;
-                face.fontSize = 26f;
-                face.textWrappingMode = TextWrappingModes.NoWrap;
-                face.overflowMode = TextOverflowModes.Ellipsis;
-                // ⚠ THE FLOOR IS PASSED EXPLICITLY. FitSingleLine's `minSize: 0` default resolves
-                // to ElarionUiKit.FontFloor (30), NOT FontHardFloor (20) - a default that has
-                // already ellipsised a label in this project. 20 is the kit's hard readability
-                // floor and is stated here so nobody has to re-derive which floor the default meant.
-                ElarionUiKit.FitSingleLine(face, 20f, 26f);
+                face.fontSize = NightMarketLabelMaxPx;
+                // ⭐ WO-1662 — THE TITLE WRAPS TO TWO LINES. IT DID NOT FIT ON ONE, AT ANY ASPECT.
+                // ---------------------------------------------------------------------
+                // CAPTURED (Builds/wave7-capture1, HEAD a89603a7a, all THREE landscape targets and
+                // all six HUD panel builds - the card is authored in fixed px, so the defect is
+                // aspect-independent):
+                //   [glyph-oracle] TEXT TRUNCATED [AdaptiveHudPeaceful_2670x1200] '.../
+                //   NightMarketCardLabelPlate/Label' ("THE NIGHT MARKET") draws 12 of 14 printable
+                //   glyphs. (x -976.5..-749.8 ...) at font 20 [autosize 20..26, enabled=True]
+                //   overflow=Ellipsis
+                // ⚠ font 20 IS the hard floor: autosize had already bottomed out on FontHardFloor
+                // and ellipsised anyway. There was nothing left underneath, so a smaller font was
+                // never available as a remedy.
+                //
+                // WHY ONE LINE COULD NOT WORK, in numbers (glyph advances summed from the committed
+                // font assets exactly as MeasureLineWidthPx sums them; the label rect derived from
+                // the authored fractions below is 226.7 x 68.9 ref px, which the capture's x/y bands
+                // reproduce to the tenth - so this is a model of the render, not of itself):
+                //   font_body   (Alata Regular)      "THE NIGHT MARKET" @20 = 177.6 px   <- what the
+                //                                     two existing pins measured, and why they passed
+                //   font_title  (Merriweather Bold)  same string  @20 = 214.7 px   <- what is DRAWN
+                //   + characterSpacing 2                          ~= 221 px
+                //   + TMP faux-bold (font_title.asset:2968 boldSpacing 7)  ~= 243 px  -> OVER by ~17
+                // The drawn face is Title/bold/spaced because BuildObsidianButton ends on
+                // MedievalUiSkin.ApplyButton (ElarionUiKitObsidian.cs:688), which sets
+                // fontStyle |= Bold, characterSpacing = 2 and EnsureFont(FontRole.Title)
+                // (MedievalUiSkin.cs:88-91). This slice overrides the SIZE afterwards; it never
+                // resets the role or the spacing, and it must not - that is the shared button skin.
+                //
+                // TWO LINES, AT THE CEILING, WITH ROOM TO SPARE:
+                //   band 68.9 px tall; two Title lines at 26 px need 2 x 26 x 1.2570 = 65.4 px
+                //     (font_title m_LineHeight 80.448 / m_PointSize 64 = 1.2570)
+                //   widest wrapped line "THE NIGHT" @26 = 154.5 px raw in a 226.7 px rect - ~30%
+                //     margin, which absorbs the bold + spacing terms the one-line form could not.
+                // So the word gets BIGGER (26, not the bottomed-out 20), which is also WO-1384's
+                // owner ruling: "night market ... needs to be the shining gem ... it should stand
+                // out". No font floor is lowered and no player-facing string is shortened - the
+                // wordmark is canon storeWordmark (WO-1398), and shortening it is an owner ruling.
+                //
+                // ⚠ THIS REPLACES A ONE-LINE CONTRACT THAT WAS PINNED. HudLabelFitRegression 12e
+                // required the kit's no-wrap single-line fitter here, verbatim, and 12e now pins
+                // the OPPOSITE - so the two tokens it greps for are deliberately NOT spelled out
+                // anywhere in this slice, not even in prose: a comment that happens to contain the
+                // pinned string is indistinguishable from code to a source-text oracle.
+                // That pin and 11c are
+                // re-pointed in the SAME change (CLAUDE.md §15), onto the font actually drawn. The
+                // one-line rule traced to the WO-1384b implementation, not to an owner sentence -
+                // grep of WORK_ORDER_1384 finds no wrap ruling. FitBlock sets Normal wrapping +
+                // Truncate itself and clamps minSize at FontHardFloor (ElarionUiKitObsidian.cs:3083),
+                // so the floor is structural here rather than passed by hand.
+                ElarionUiKit.FitBlock(face, ElarionUiKit.FontHardFloor, NightMarketLabelMaxPx);
             }
 
             Register("nightMarketCard", WrapAsWidget("nightMarketCard", root));

@@ -1816,11 +1816,199 @@ namespace DeNelle.Editor.Regression
         //   11b  HudKitController mounts the soft ring and the kit's RadialGlowSprite aura
         //        (WO-1384b: the ring REPLACED the flat gold frame - Case 12 pins the shape);
         //   11c  the canon storeWordmark (the word the card renders since WO-1398; it was the
-        //        literal "NIGHT MARKET") measures inside the label plate at the 20 px hard floor.
+        //        literal "NIGHT MARKET") is DRAWN WHOLE inside the label plate at or above the
+        //        hard floor - measured in the ROLE THE SKIN ACTUALLY INSTALLS (WO-1662: this
+        //        measured FontRole.Body against a FontRole.Title render, and was green over a cut).
         // RED, one line each: HudLayoutBands.NightMarketCardWidthPx = 112f (11a); delete the
-        // "NightMarketCardRing" AddImage (11b); NightMarketLabelPlateX0 = 0.60f (11c).
+        // "NightMarketCardRing" AddImage (11b); NightMarketLabelPlateX0 = 0.60f (11c) - and 11c is
+        // ALSO red on HEAD a89603a7a, i.e. before the WO-1662 authoring, at 214.7 x 1.15 = 246.9
+        // ref px in a 226.7 px plate.
         // =====================================================================
         private const string FlagSrc = "Assets/_Modules/Core/Dev/FlagCaptureButton.cs";
+
+        // =====================================================================
+        // ⭐ WO-1662 — MEASURE THE FACE THAT IS DRAWN, AT THE WEIGHT IT IS DRAWN AT.
+        // ---------------------------------------------------------------------
+        // ⛔ EVERY OBSIDIAN BUTTON LABEL IS TITLE/BOLD/SPACED, NOT BODY/REGULAR.
+        // ElarionUiKit.BuildObsidianButton ends on MedievalUiSkin.ApplyButton
+        // (ElarionUiKitObsidian.cs:688), and ApplyButton (MedievalUiSkin.cs:86-91) does FOUR
+        // things to the label: upper-cases it, ORs in FontStyles.Bold, sets characterSpacing = 2,
+        // and EnsureFont(FontRole.Title). WO-1466 fixed the CASE half of this blind spot in these
+        // same two cases. This is its WEIGHT-AND-ROLE half, and it cost exactly what the case half
+        // cost: the HUD Night Market card shipped cut at all three aspects while 11c and 12e were
+        // GREEN, because both measured Alata Regular against a Merriweather Bold render.
+        //
+        // THE NUMBERS (glyph advances summed from the committed assets the way
+        // MeasureLineWidthPx sums them; "THE NIGHT MARKET" at the 20 px hard floor, plate 226.7):
+        //     font_body  (Alata Regular)      177.6 px   <- what these cases measured: 78%, passes
+        //     font_title (Merriweather Bold)  214.7 px   <- what is drawn: 95% before anything else
+        //     + characterSpacing 2                ~221 px
+        //     + TMP faux-bold (font_title.asset:2968 boldSpacing 7, ~7% of size per char)  ~243 px
+        // and the capture cut 2 of 14 glyphs, i.e. ~17 px over. So the role alone recovers 37 px of
+        // the 65 and the slack below covers the rest.
+        //
+        // ⛔ ONE SLACK, NAMED, NOT A MODEL OF TMP'S INTERNALS. Exactly how TMP scales
+        // characterSpacing and boldSpacing is not asserted here — asserting it would be a guess
+        // about engine internals (CLAUDE.md §11B). This is a SLACK covering both terms together,
+        // sized from the measurement above. Precedent: RumorBoardPanel.PageButtonBoldSlack = 1.10f
+        // (RumorBoardPanel.cs:126-128) already concedes the weight half on Body advances.
+        // ⚠ IT IS ALSO WHAT MAKES THIS PIN RED-FIRST: Title-regular alone is 214.7 < 226.7, so a
+        // re-point WITHOUT the slack would have gone straight to green and never been seen fail.
+        // With it, HEAD measures 214.7 x 1.15 = 246.9 > 226.7 and FAILS, as it must.
+        private const float SkinnedFaceWidthSlack = 1.15f;
+
+        /// <summary>The role <see cref="MedievalUiSkin"/> installs on every obsidian face
+        /// (MedievalUiSkin.cs:91). Every measurement of such a label reads THIS, never Body.</summary>
+        private const ElarionUiKit.FontRole SkinnedFaceRole = ElarionUiKit.FontRole.Title;
+
+        /// <summary>Greedy word-wrap of <paramref name="text"/> at <paramref name="sizePx"/> into
+        /// <paramref name="boxW"/>, measuring each candidate line through the kit and charging
+        /// <see cref="SkinnedFaceWidthSlack"/>. Returns false (with <paramref name="detail"/>) when
+        /// the kit cannot measure headlessly — an unmeasurable font is NOT a pass and NOT a fail,
+        /// it is a stated skip. <paramref name="widest"/> is the widest resolved line, slack included.</summary>
+        private static bool TryWrapLines(string text, float sizePx, float boxW,
+                                         out int lines, out float widest, out string detail)
+        {
+            lines = 0; widest = 0f; detail = "";
+            if (string.IsNullOrEmpty(text)) { detail = "empty string"; return false; }
+            string[] words = text.Split(' ');
+            string current = "";
+            for (int i = 0; i < words.Length; i++)
+            {
+                string candidate = current.Length == 0 ? words[i] : current + " " + words[i];
+                string d;
+                float w = ElarionUiKit.MeasureLineWidthPx(SkinnedFaceRole, candidate, sizePx, out d) * SkinnedFaceWidthSlack;
+                if (w < 0f) { detail = d; return false; }
+                // `|| current.Length == 0` deliberately ACCEPTS a first word that is itself wider
+                // than the box: no wrapping can rescue such a word, so it is not this loop's job to
+                // reject it. It lands in `widest` and the caller's `widest > plateW` assert names it
+                // with its numbers. Rejecting it here would only turn a precise finding into a
+                // line-count one.
+                if (w <= boxW || current.Length == 0)
+                {
+                    current = candidate;
+                    if (w > widest) widest = w;
+                    continue;
+                }
+                lines++;
+                current = words[i];
+                string d2;
+                float w2 = ElarionUiKit.MeasureLineWidthPx(SkinnedFaceRole, current, sizePx, out d2) * SkinnedFaceWidthSlack;
+                if (w2 < 0f) { detail = d2; return false; }
+                if (w2 > widest) widest = w2;
+            }
+            if (current.Length > 0) lines++;
+            detail = "'" + text + "' @" + sizePx.ToString("0.#") + "px wraps to " + lines +
+                     " line(s), widest " + widest.ToString("0.0") + " px (slack x" +
+                     SkinnedFaceWidthSlack.ToString("0.00") + ") in a " + boxW.ToString("0.0") + " px box";
+            return true;
+        }
+
+        /// <summary>The card title's shared contract, measured once and consumed by BOTH 11c and
+        /// 12e so the two cases can never drift into measuring different things (they already had:
+        /// each carried its own copy of the same Body-role measurement). Appends to
+        /// <paramref name="failures"/> under the caller's tag.</summary>
+        private static void CheckNightMarketTitleFit(string src, string tag,
+                                                     List<string> failures, List<string> notes)
+        {
+            float plateX0;
+            if (!TryFloatConst(src, "NightMarketLabelPlateX0", out plateX0))
+            { failures.Add(tag + " NightMarketLabelPlateX0 is no longer a float literal in " + HudSrc); return; }
+            float plateW = (0.97f - plateX0) * HudLayoutBands.NightMarketCardWidthPx * ButtonLabelInset;
+
+            string word = Copy(failures, notes, HudStrings.KeyStoreWordmark);
+            if (string.IsNullOrEmpty(word)) return;
+            string upper = word.ToUpperInvariant();   // WO-1466: the obsidian faces draw upper case
+
+            string card = Between(src, "private void BuildNightMarketCard(", "private void OpenNightMarket(");
+            if (card == null) { failures.Add(tag + " the BuildNightMarketCard slice was not found in " + HudSrc); return; }
+
+            bool wraps = card.IndexOf("ElarionUiKit.FitBlock(face,", StringComparison.Ordinal) >= 0;
+            bool oneLine = card.IndexOf("ElarionUiKit.FitSingleLine(face,", StringComparison.Ordinal) >= 0;
+
+            // ⛔ NEITHER FORM IS A HARD FAIL, NOT A NOTE. If the slice stops matching either shape,
+            // this oracle would be modelling a label the card does not draw — and an oracle carrying
+            // a stale model reports GREEN over a real defect. That is this ticket's entire root
+            // cause, so it must never be reachable by silence.
+            if (!wraps && !oneLine)
+            {
+                failures.Add(tag + " the card title is fitted by NEITHER ElarionUiKit.FitBlock(face, ...) nor " +
+                             "ElarionUiKit.FitSingleLine(face, ...). This check cannot tell whether it models one " +
+                             "line or two, so it refuses to report either way. Re-point it in the SAME change as " +
+                             "the authoring (WO-1662).");
+                return;
+            }
+
+            if (!wraps)
+            {
+                // The pre-WO-1662 shape, kept so a revert REDS instead of skipping. On HEAD
+                // a89603a7a this measured 214.7 x 1.15 = 246.9 against a 226.7 px plate.
+                string d;
+                float w = ElarionUiKit.MeasureLineWidthPx(SkinnedFaceRole, upper,
+                              ElarionUiKit.FontHardFloor, out d) * SkinnedFaceWidthSlack;
+                if (w < 0f) { notes.Add(tag + " '" + upper + "' not measurable headlessly: " + d); return; }
+                if (w > plateW)
+                    failures.Add(tag + " '" + upper + "' is fitted as ONE line and MEASURES " + w.ToString("0.0") +
+                                 " ref px at the " + ElarionUiKit.FontHardFloor + "px hard floor (FontRole.Title, " +
+                                 "the role MedievalUiSkin.ApplyButton installs, x" +
+                                 SkinnedFaceWidthSlack.ToString("0.00") + " for its bold weight + characterSpacing 2) " +
+                                 "but the label plate is only " + plateW.ToString("0.0") + " px wide. That is the " +
+                                 "captured 'draws 12 of 14 printable glyphs'. Autosize is ALREADY at the hard floor, " +
+                                 "so the font cannot shrink further: wrap it (FitBlock) or widen the plate — never " +
+                                 "lower a floor, never shorten the canon wordmark (WO-1662).");
+                else notes.Add(tag + " one line: '" + upper + "' " + w.ToString("0.0") + " px in " +
+                               plateW.ToString("0.0") + " px");
+                return;
+            }
+
+            // The WO-1662 shape: two lines at the authored ceiling.
+            float maxPx;
+            if (!TryFloatConst(src, "NightMarketLabelMaxPx", out maxPx))
+            { failures.Add(tag + " NightMarketLabelMaxPx is no longer a float literal in " + HudSrc); return; }
+
+            int lines; float widest; string detail;
+            if (!TryWrapLines(upper, maxPx, plateW, out lines, out widest, out detail))
+            { notes.Add(tag + " title not measurable headlessly: " + detail); return; }
+
+            const int MaxTitleLines = 2;
+            if (lines > MaxTitleLines)
+                failures.Add(tag + " '" + upper + "' wraps to " + lines + " lines at the authored ceiling " +
+                             maxPx.ToString("0.#") + "px in a " + plateW.ToString("0.0") + " px plate. The band " +
+                             "seats " + MaxTitleLines + " (see the height budget below); a third line is cut, " +
+                             "which is the WO-1662 defect in a new shape.");
+            if (widest > plateW)
+                failures.Add(tag + " the title's widest wrapped line measures " + widest.ToString("0.0") +
+                             " ref px against a " + plateW.ToString("0.0") + " px plate — a single word that " +
+                             "cannot fit is a cut no wrapping can save (" + detail + ").");
+
+            // The height half: the block must seat MaxTitleLines at the ceiling inside the plate's
+            // own band. Both fractions are read from the authoring, never retyped.
+            float bandH = (0.92f - 0.46f) * HudLayoutBands.NightMarketCardHeightPx * 0.96f;
+            // Read the face's own line height rather than typing a factor: font_title declares
+            // m_LineHeight 80.448 at m_PointSize 64 = 1.2570, and a copy of that here would be the
+            // duplicated state this whole file keeps having to correct. `var` deliberately, so the
+            // regression never has to name a TMPro type it does not otherwise reference.
+            var titleFont = ElarionUiKit.FontFor(SkinnedFaceRole);
+            float lineFactor = (titleFont != null && titleFont.faceInfo.pointSize > 0f)
+                ? titleFont.faceInfo.lineHeight / titleFont.faceInfo.pointSize
+                : 0f;
+            // ⚠ FontFor CAN RETURN NULL EVEN WHEN THE ASSET EXISTS — it runs the numeral-legibility
+            // gate (ElarionUiKitObsidian.cs:2938-2975). So this branch is reachable on a healthy
+            // tree, and it is a STATED SKIP, never a pass: a reader of the gate log must be able to
+            // tell "the height budget held" from "nobody measured it". The green run prints the
+            // note in the else branch WITH the two numbers; this one prints no numbers at all.
+            if (lineFactor <= 0f)
+                notes.Add(tag + " the Title font's line factor is not resolvable headlessly — the HEIGHT half of " +
+                          "the two-line budget is UNMEASURED this run, not proven");
+            else if (MaxTitleLines * maxPx * lineFactor > bandH)
+                failures.Add(tag + " " + MaxTitleLines + " lines at the " + maxPx.ToString("0.#") +
+                             "px ceiling need " + (MaxTitleLines * maxPx * lineFactor).ToString("0.0") +
+                             " ref px but the label band is " + bandH.ToString("0.0") +
+                             " px tall — autosize would drive the title down toward the floor to seat it.");
+            else
+                notes.Add(tag + " " + detail + "; " + MaxTitleLines + " lines need " +
+                          (MaxTitleLines * maxPx * lineFactor).ToString("0.0") + " of " + bandH.ToString("0.0") + " px");
+        }
 
         private static void Case11_NightMarketStandout(List<string> failures, List<string> notes)
         {
@@ -1882,45 +2070,23 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[night-market-standout] BuildNightMarketCard no longer uses ElarionUi.Gold - the " +
                              "frame must be the kit gold, the same tone as the card's title");
 
-            // 11c - the whole word, one line, at the hard floor. WO-1398: the word is no longer
-            // a literal - it is the canon storeWordmark the card now renders (HudStrings.
-            // StoreFaceLabel), so the string MEASURED is the string AUTHORED in canon-strings.
-            // The obsidian button sets `canonical.text = label` with no case transform
-            // (ElarionUiKitObsidian.CanonicalizeButtonLabels), so the authored casing is what
-            // TMP steps the pen by; the upper-case width is reported as a note only.
-            float plateX0;
-            if (!TryFloatConst(src, "NightMarketLabelPlateX0", out plateX0))
-            { failures.Add("[night-market-standout] NightMarketLabelPlateX0 is no longer a float literal in " + HudSrc); return; }
-            float plateW = (0.97f - plateX0) * HudLayoutBands.NightMarketCardWidthPx * ButtonLabelInset;
-            string word = Copy(failures, notes, HudStrings.KeyStoreWordmark);
-            if (string.IsNullOrEmpty(word)) return;
-            // ⛔ WO-1466 (2026-09-06) — MEASURE THE GLYPHS THAT ARE DRAWN, NOT THE ONES AUTHORED.
-            // This block used to measure the MIXED-CASE storeWordmark and report the upper-case
-            // width as a NOTE, on the reasoning quoted above ("no case transform ... the authored
-            // casing is what TMP steps the pen by"). The capture disproves it:
-            // Builds/ui-capture/AdaptiveHudGearOpen_2670x1200.png paints "THE NIGHT MA..." while
-            // canon-strings authors "The Night Market" — and the same frame shows every other
-            // obsidian face upper-cased too (AddDockTab passes "Music"/"Settings"/"Realm"/"Pause";
-            // the HUD paints MUSIC / SETTINGS / REALM / PAUSE). So the oracle was measuring a
-            // narrower string than the player sees, which is exactly how a cut caption survived
-            // two builds, a felt-test and this very case. UPPER CASE IS NOW THE BINDING
-            // MEASUREMENT; the authored casing is kept as the note.
-            string dUpper;
-            string upper = word.ToUpperInvariant();
-            float ww = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, upper,
-                                                        ElarionUiKit.FontHardFloor, out dUpper);
-            if (ww < 0f) notes.Add("'" + upper + "' not measurable headlessly: " + dUpper);
-            else if (ww > plateW)
-                failures.Add("[night-market-standout] '" + upper + "' (canon storeWordmark, AS DRAWN - the " +
-                             "obsidian faces render upper case) MEASURES " + ww.ToString("0.0") +
-                             " ref px at the " + ElarionUiKit.FontHardFloor + "px hard floor but the label plate is " +
-                             plateW.ToString("0.0") + " px wide (" + dUpper + ") - that is the captured 'THE NIGHT " +
-                             "MA...' shape. The words get shorter or the plate gets wider; the font does not shrink");
-            else notes.Add("'" + upper + "' " + ww.ToString("0.0") + " px in a " + plateW.ToString("0.0") + " px plate");
-            string d;
-            float wa = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, word,
-                                                        ElarionUiKit.FontHardFloor, out d);
-            if (wa >= 0f) notes.Add("as authored, '" + word + "' would measure " + wa.ToString("0.0") + " px");
+            // 11c - the whole word seats inside the label plate, at or above the hard floor.
+            // WO-1398: the word is not a literal - it is the canon storeWordmark the card renders
+            // (HudStrings.StoreFaceLabel), so the string MEASURED is the string AUTHORED.
+            // ⚠ TWO EARLIER VERSIONS OF THIS COMMENT WERE WRONG ABOUT WHAT IS DRAWN, and each cost
+            // a shipped cut. It claimed the button applies "no case transform ... the authored
+            // casing is what TMP steps the pen by" - MedievalUiSkin.ApplyButton upper-cases at
+            // MedievalUiSkin.cs:86 (corrected by WO-1466) - and it then measured FontRole.Body
+            // while the same method installs FontRole.Title at :91 (corrected here).
+            // ⭐ WO-1662 — THE MEASUREMENT MOVED TO CheckNightMarketTitleFit, AND IT MOVED ROLE.
+            // What stood here measured FontRole.BODY (Alata Regular) against the plate and passed
+            // at 177.6 / 226.7 px, while the card DRAWS FontRole.Title bold+spaced at ~243 px and
+            // the glyph oracle captured it cutting 2 of 14 glyphs at all three aspects
+            // (Builds/wave7-capture1, HEAD a89603a7a). The shared helper measures the drawn role
+            // for BOTH this case and 12e — they each carried their own copy of the identical wrong
+            // measurement, which is how one fix could have left the other green.
+            CheckNightMarketTitleFit(src, "[night-market-standout]", failures, notes);
+            return;
         }
 
         // =====================================================================
@@ -1944,11 +2110,14 @@ namespace DeNelle.Editor.Regression
         //        "aurora cost" is traced;
         //   12d  the three knobs exist as literals in NightMarketGlowKnobs with sane defaults
         //        (lap 3..8 s, alpha 15..60 %) and the palette default names all three stops;
-        //   12e  the label stays ONE FULL LINE: NoWrap + FitSingleLine in the slice, and
-        //        the canon storeWordmark (WO-1398) still measures inside the plate at the hard floor.
+        //   12e  the label DRAWS WHOLE: FitBlock in the slice (at most two lines, with the floor
+        //        clamped structurally) and the canon storeWordmark (WO-1398) measures inside the
+        //        plate in the role the skin installs. ⚠ This read "stays ONE FULL LINE: NoWrap +
+        //        FitSingleLine" until WO-1662 - the one shape the string could not be drawn in.
         // RED, one line each: delete `button.gameObject.AddComponent<Mask>()` (12a); rename
         // "NightMarketCardRing" (12b); delete the `AnimateNightMarketGlow();` call in Update
-        // (12c); NightMarketGlowLapSecDefault = 30f (12d); drop `TextWrappingModes.NoWrap` (12e).
+        // (12c); NightMarketGlowLapSecDefault = 30f (12d); swap FitBlock back to
+        // `TextWrappingModes.NoWrap` + FitSingleLine (12e).
         // =====================================================================
         private static void Case12_NightMarketAurora(List<string> failures, List<string> notes)
         {
@@ -2018,29 +2187,31 @@ namespace DeNelle.Editor.Regression
                     failures.Add(Tag + " the tunable key '" + knob + "' is no longer named at the knob holder - the rail " +
                                  "lane finds the knobs by that name");
 
-            // 12e - one full line.
-            if (card.IndexOf("TextWrappingModes.NoWrap", StringComparison.Ordinal) < 0)
-                failures.Add(Tag + " the label lost TextWrappingModes.NoWrap - 'NIGHT MARKET' may wrap to two lines");
-            if (card.IndexOf("ElarionUiKit.FitSingleLine(face, 20f, 26f)", StringComparison.Ordinal) < 0)
-                failures.Add(Tag + " the label is no longer fitted as ONE line at the 20 px hard floor");
-            float plateX0;
-            if (TryFloatConst(src, "NightMarketLabelPlateX0", out plateX0))
-            {
-                // WO-1398: measure the canon storeWordmark the card renders, not a literal.
-                // WO-1466: and measure it UPPER CASE - the obsidian faces draw upper case (see
-                // the long note in Case 11c). Measuring the authored casing here was the second
-                // copy of the same blind spot.
-                float plateW = (0.97f - plateX0) * HudLayoutBands.NightMarketCardWidthPx * ButtonLabelInset;
-                string word = Copy(failures, notes, HudStrings.KeyStoreWordmark);
-                string upper = string.IsNullOrEmpty(word) ? "" : word.ToUpperInvariant();
-                string d;
-                float ww = string.IsNullOrEmpty(upper) ? -1f
-                    : ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, upper, ElarionUiKit.FontHardFloor, out d);
-                if (ww >= 0f && ww > plateW)
-                    failures.Add(Tag + " '" + upper + "' (canon storeWordmark, as drawn) MEASURES " + ww.ToString("0.0") +
-                                 " ref px at the hard floor but the plate is " + plateW.ToString("0.0") +
-                                 " px - it would truncate again");
-            }
+            // 12e - THE WHOLE TITLE IS DRAWN. ⚠ THIS PIN SAID "ONE FULL LINE" AND THAT WAS THE
+            // DEFECT'S HIDING PLACE (WO-1662). It required `TextWrappingModes.NoWrap` plus
+            // `FitSingleLine(face, 20f, 26f)` verbatim, while measuring the width in FontRole.Body
+            // — so it enforced the one shape the string could NOT be drawn in, and measured a font
+            // narrow enough to say it fitted. The glyph oracle then caught the card cutting 2 of 14
+            // glyphs at all three aspects on Builds/wave7-capture1.
+            // THE INVARIANT IS UNCHANGED — the player reads the whole wordmark, at or above the
+            // hard floor. Only the SHAPE moved, from one line to at most two, because the numbers
+            // said one line was impossible: "THE NIGHT MARKET" in the drawn Title face needs ~243 px
+            // (bold + characterSpacing 2) in a 226.7 px plate at the 20 px floor, while the widest
+            // wrapped line "THE NIGHT" needs 154.5 px at the 26 px CEILING. The word gets bigger,
+            // not smaller. The one-line rule traced to the WO-1384b implementation, not to an owner
+            // sentence — a grep of WORK_ORDER_1384 for a wrap ruling finds none. If an owner ruling
+            // for one line exists elsewhere, it supersedes this and the plate must widen instead.
+            if (card.IndexOf("ElarionUiKit.FitBlock(face,", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " the card title is no longer fitted with ElarionUiKit.FitBlock(face, ...). " +
+                             "FitBlock is what allows the two-line wrap the title needs AND clamps the floor at " +
+                             "FontHardFloor structurally (ElarionUiKitObsidian.cs:3083). Going back to NoWrap + " +
+                             "FitSingleLine re-ships the WO-1662 cut.");
+            if (card.IndexOf("TextWrappingModes.NoWrap", StringComparison.Ordinal) >= 0)
+                failures.Add(Tag + " TextWrappingModes.NoWrap is back on the card title - with it the title cannot " +
+                             "wrap, and it does not fit on one line at any aspect (WO-1662).");
+            // The measurement itself is the SHARED one, so 11c and 12e can never again disagree
+            // about what is drawn - each used to carry its own copy of the same wrong role.
+            CheckNightMarketTitleFit(src, Tag, failures, notes);
             notes.Add("night market aurora: r=" + radius + " lap=" + lap + "s alpha=" + alphaPct + "% updateOwners=" + updateOwners);
         }
 
