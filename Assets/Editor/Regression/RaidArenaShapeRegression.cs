@@ -763,18 +763,47 @@ namespace DeNelle.Editor.Regression
             CaseArenaBoundaryDesignedFit(gen, failures, log);
         }
 
-        // ---- The palette, as MEASURED by the bakes -----------------------------
-        // Back-solved from the builder's own printed values, twice, and consistent both times:
-        //   Builds/wave3-bake3: "piece 4.93m" at scaleMin 2.20  -> thinnest 4.93/2.20 = 2.24 m
-        //                       "MEASURED 5.75m inward reach" at scaleMax 3.40
-        //                                                      -> widest (5.75*2)/3.40 = 3.38 m
-        //   Builds/wave3-bake5: "piece 2.42m ... reach 1.82m" at applied scale 1.08 - same mesh.
+        // ---- The palette, as MEASURED -----------------------------------------
         // These are the ONLY numbers in this oracle that come from outside the source tree, and
-        // they are the reason it can predict a bake. If the boundary palette is ever changed
-        // these go stale - the bake-time assert stays the authority and would still catch it;
-        // this case exists so the knife edge is caught BEFORE a 20-minute bake, not instead of it.
-        private const float MeasuredThinnestPieceXZ = 2.24f;
-        private const float MeasuredWidestPieceXZ = 3.38f;
+        // they are the reason it can predict a bake. The comment here has ALWAYS said "if the
+        // boundary palette is ever changed these go stale" - WO-1637 changed it, so they moved
+        // in the same edit. Re-pointed, never deleted.
+        //
+        // ⚠ RE-POINTED 2026-09-10 (WO-1637, owner ruling 12:07 - the ring moves to a darker
+        // stone family). ArenaBoundaryRing.RockPaths is now the Fantasy_M ruined-masonry trio
+        // (Rubble_Stone / Dungeon_Pillar_Stone_Round / Dungeon_Pillar_Stone_Square), NOT the
+        // Nature_M/Stones_M trio these constants used to describe.
+        //
+        //   OLD (Nature_M/Stones_M, back-solved from the builder's own printed values, twice):
+        //     Builds/wave3-bake3: "piece 4.93m" at scaleMin 2.20  -> thinnest 4.93/2.20 = 2.24 m
+        //                         "MEASURED 5.75m inward reach" at scaleMax 3.40
+        //                                                       -> widest (5.75*2)/3.40 = 3.38 m
+        //     Builds/wave3-bake5: "piece 2.42m ... reach 1.82m" at applied scale 1.08 - same mesh.
+        //
+        //   NEW (Fantasy_M ruined masonry): the meshes were read out of the FBX vertex extents
+        //   with the importer's unit conversion applied, by a script whose CONTROL run on the OLD
+        //   palette reproduces the two bake readings above EXACTLY (2.24 / 3.38, piece 2.42,
+        //   stride 1.67, 82 a side). So the method is validated against a real bake, not asserted.
+        //     Rubble_Stone .................. 1.56 x 1.61 m XZ   <- the WIDEST
+        //     Dungeon_Pillar_Stone_Round .... 0.78 x 0.78 m XZ   <- the THINNEST
+        //     Dungeon_Pillar_Stone_Square ... 0.80 x 0.80 m XZ
+        //
+        // ⚠ THE CONTAINMENT PREDICTION BELOW IS UNCHANGED BY THIS SWAP, AND THAT IS NOT LUCK.
+        // `appliedScaleMax` is min(scaleMax, allowedFootprint / widest), so as long as the fit
+        // CEILING binds - i.e. while widest > allowedFootprint/scaleMax = 3.64/3.40 = 1.07 m -
+        // `maxPieceFootprint` lands on `allowedFootprint` (3.64 m) and `reach` on 1.82 m whatever
+        // the mesh is. Old widest 3.38 and new widest 1.61 both clear 1.07, so both predict the
+        // identical band fit. **A future palette whose widest piece is under ~1.07 m would break
+        // that** - the scale would cap at 3.40 first, the reach would shrink, and this case would
+        // start describing a different regime. Measure before you edit the array.
+        //
+        // NOTE: MeasuredThinnestPieceXZ drives NO arithmetic here - it is printed in the OK line
+        // only. It is the number that decides CONTINUITY (stride = thinnest * appliedScale * 0.7,
+        // clamped by ArenaBoundaryMaxPerSide), and continuity is asserted at BAKE time by the
+        // builder's own WorstGap warning, not here. On the new palette that lands at piece 1.72 m
+        // vs a clamped stride of 1.39 m - still overlapping, so the ring stays continuous.
+        private const float MeasuredThinnestPieceXZ = 0.78f;
+        private const float MeasuredWidestPieceXZ = 1.61f;
 
         /// <summary>
         /// Run the BUILDER'S OWN ARITHMETIC against the measured palette and require the DESIGNED

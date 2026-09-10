@@ -86,8 +86,8 @@
       },
       "raidDress": {
         "kit": "hexagon-green",
-        "gate": "wall_straight_gate",
-        "wallModule": "barrier",
+        "gate": "wall_gated",
+        "wallModule": "wall_broken",
         "floor": "floor_dirt_large",
         "towersVisual": "building_watchtower_green",
         "props": [
@@ -101,7 +101,7 @@
           { "token": "haybale", "count": 2, "zone": "Courtyard", "cover": true },
           { "token": "torch_lit", "count": 2, "zone": "Courtyard" },
           { "token": "banner_green", "count": 2, "zone": "Approach" },
-          { "token": "flag_green", "count": 2, "zone": "Gatehouse" },
+          { "token": "flag_red", "count": 2, "zone": "Gatehouse" },
           { "token": "crate_large", "count": 2, "zone": "Gatehouse", "cover": true },
           { "token": "rubble_large", "count": 2, "zone": "Gatehouse", "cover": true },
           { "token": "rubble_large", "count": 3, "zone": "Courtyard", "cover": true }
@@ -250,7 +250,7 @@
       },
       "raidDress": {
         "kit": "dungeon-stone",
-        "gate": "wall_straight_gate",
+        "gate": "wall_gated",
         "wallModule": "wall_cracked",
         "floor": "floor_tile_large",
         "towersVisual": "Tower_Castle_Square",

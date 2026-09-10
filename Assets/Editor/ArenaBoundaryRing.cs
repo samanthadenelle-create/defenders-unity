@@ -18,8 +18,17 @@
 // failure CLAUDE.md sec.2 / sec.5 / sec.16 each describe - the placement math, the
 // prefab palette and the graceful-miss instantiate move HERE, and
 // ProceduralSiegeArenaBuilder now calls in. Its RNG draw order is preserved exactly
-// (jitter-x, jitter-z, prefab index, yaw, scale), so SiegeArena.unity's layout is
-// unchanged and needs no re-bake.
+// (jitter-x, jitter-z, prefab index, yaw, scale), so the siege venue's layout is
+// reproduced by the siege bake from the same seed.
+//
+// ⚠ CORRECTED 2026-09-10 (WO-1689). These two lines used to say the move left
+// "SiegeArena.unity's layout unchanged and needing no re-bake". THAT SCENE DOES NOT
+// EXIST and never has: it is absent from `git ls-files`, absent from disk, NOT
+// gitignored, `git log -- Assets/Scenes/SiegeArena.unity` returns nothing, and it is
+// not in EditorBuildSettings. The venue is created on demand by
+// `DeNelle.Editor.ProceduralSiegeArenaBuilder.BatchBuildAndBakeSiegeArena`. The
+// RNG-order guarantee is real and worth keeping - it just guarantees that the BAKE
+// reproduces the same layout, not that some saved scene stays valid.
 //
 // TWO RING SHAPES, and the difference is load-bearing:
 //   * PlacePolarRing    - a CIRCLE of radius r. What the siege venue uses; its plate
@@ -36,7 +45,16 @@
 // Packs: polyperfect Low Poly Ultimate Pack _M tier. GITIGNORED (CLAUDE.md sec.4) -
 // every load is LogWarning + a collidered primitive fallback, never an error, never a
 // throw. All seven prefab paths below were listed on disk 2026-09-10 in
-// <repo>/Assets/polyperfect/Low Poly Ultimate Pack/_M/Prefabs_M/Nature_M/.
+// <repo>/Assets/polyperfect/Low Poly Ultimate Pack/_M/Prefabs_M/.
+//
+// WO-1637 (2026-09-10) RE-ROOTED THE PALETTE ONE FOLDER UP, and the reason is a
+// measurement, not a preference. The root used to be `.../Prefabs_M/Nature_M/`, which
+// made the whole pack outside `Nature_M` unreachable - and EVERY prefab in
+// `Nature_M/Stones_M` binds the SAME single swatch, `M_14_Brown_lightest_LPUP`
+// (_BaseColor 0.863/0.749/0.604, no _BaseMap at all). Twenty-three stone prefabs, one
+// pale-tan colour: there was no darker rock to pick inside that folder, so "change the
+// palette" was not expressible until the root moved. It is now `Prefabs_M/` and every
+// entry carries its own theme folder.
 // =============================================================================
 
 using System.Collections.Generic;
@@ -48,25 +66,84 @@ namespace DeNelle.Editor
 {
     public static class ArenaBoundaryRing
     {
-        /// <summary>polyperfect Nature_M root. Gitignored pack - callers must tolerate a miss.</summary>
-        public const string NatureRoot =
-            "Assets/polyperfect/Low Poly Ultimate Pack/_M/Prefabs_M/Nature_M/";
+        /// <summary>
+        /// polyperfect `_M/Prefabs_M/` root - the THEME folder is part of each entry below.
+        /// Gitignored pack, so callers must tolerate a miss (see <see cref="InstantiatePiece"/>).
+        /// </summary>
+        public const string PrefabRoot =
+            "Assets/polyperfect/Low Poly Ultimate Pack/_M/Prefabs_M/";
 
         /// <summary>Trees / rocks that read as natural cover and keep their colliders.</summary>
         public static readonly string[] TreePaths =
         {
-            "Trees_M/Tree_Oak.prefab",
-            "Trees_M/Tree_Conifer.prefab",
-            "Trees_M/Tree_Beech.prefab",
-            "Trees_M/Trees_Dead_M/Tree_Dead_Broken.prefab",
+            "Nature_M/Trees_M/Tree_Oak.prefab",
+            "Nature_M/Trees_M/Tree_Conifer.prefab",
+            "Nature_M/Trees_M/Tree_Beech.prefab",
+            "Nature_M/Trees_M/Trees_Dead_M/Tree_Dead_Broken.prefab",
         };
 
-        /// <summary>The boundary palette - "a low wall of large rocks" (the siege venue's own words).</summary>
+        /// <summary>
+        /// The boundary palette - "a low wall of large rocks" (the siege venue's own words).
+        /// <para/>
+        /// ⚠ WO-1637, owner ruling 2026-09-10 12:07: THIS MOVED TO A DARKER STONE FAMILY, and
+        /// it moved for BOTH venues (the raid arena boundary and the battle arena's siege
+        /// venue, which delegates to this very array). The owner ticked "both venues"; if the
+        /// siege venue then reads wrong, that is its own ticket - it is not a reason to fork
+        /// the palette here into two copies.
+        /// <para/>
+        /// WHAT WAS MEASURED, on the shipped device frame
+        /// `Builds/device-frames/2026-09-10_0614_arena_06_wide.png` (build 363529, Seeker,
+        /// 2670x1200), luminance = 0.2126R+0.7152G+0.0722B over the sRGB pixel values, i.e.
+        /// what a DESATURATED copy of that PNG shows:
+        /// <list type="bullet">
+        /// <item>boundary ring band ......... 0.670 (median 0.595)</item>
+        /// <item>sky immediately above it ... 0.677 (median 0.692)</item>
+        /// </list>
+        /// A delta of <b>0.007</b>. The ring had no top edge at all - not "hard to see", ABSENT.
+        /// The old palette was three prefabs that all bind ONE untextured swatch,
+        /// `M_14_Brown_lightest_LPUP` at 0.763, seen through 64-100% linear fog toward a colour
+        /// of 0.585 in the same hue family. Two authored decisions, each fine alone, that
+        /// cancelled the geometry between them.
+        /// <para/>
+        /// WHY THESE THREE. The pack was swept by PROPERTY, not by name (memory
+        /// `search-by-token-not-by-name`): every prefab whose materials all sit in
+        /// luminance 0.15-0.56, whose mesh is chunky enough not to open gaps, and whose pivot
+        /// is at its base. <b>polyperfect has NO dark NATURAL rock at boulder scale</b> - the
+        /// entire `Nature_M/Stones_M` family is the one pale swatch, and every darker stone in
+        /// the pack is a dungeon / ruin piece at roughly a third the size. So the palette is
+        /// ruined masonry, which also suits this camp's own fiction ("Scavengers strip an
+        /// abandoned settlement", scene-configs.json `raider_camp_small.description`).
+        /// Materials: `M_20_Grey_LPUP` 0.514 and `M_21_Grey_Light_LPUP` 0.636 - and TWO values
+        /// instead of one is itself part of the fix, because "one flat untextured swatch" was
+        /// half the original finding.
+        /// <para/>
+        /// ⚠ THE GEOMETRY WAS MEASURED BEFORE THE SWAP, because this array can silently break
+        /// WO-1632's continuity pin. <see cref="PlaceSquarePerimeter"/> derives its stride from
+        /// the THINNEST piece and band-fits the WIDEST, so a palette with a bad
+        /// thin/wide ratio drives the per-side count past `maxPerSide`, the clamp widens the
+        /// stride and `WorstGap` goes POSITIVE - open ground in a playable boundary. Measured
+        /// (metres, importer units applied), against a control that reproduces the 2026-09-10
+        /// bake log exactly (it said min 2.24 / max 3.38 / piece 2.42 / stride 1.67 / 82 a side):
+        /// <list type="bullet">
+        /// <item>Rubble_Stone ............ 1.56 x 1.61 XZ, 0.53 high, pivot -0.14</item>
+        /// <item>Pillar_Stone_Round ...... 0.78 x 0.78 XZ, 3.02 high, pivot +0.09</item>
+        /// <item>Pillar_Stone_Square ..... 0.80 x 0.80 XZ, 3.12 high, pivot  0.00</item>
+        /// </list>
+        /// Palette min 0.78 / max 1.61 -> band fit applies ~2.26, widest piece 3.64 m (the SAME
+        /// 1.82 m inward reach as before, so containment is untouched), piece 1.72 m, per-side
+        /// count clamps at 100 and the stride lands at 1.39 m - still SHORTER than the piece, so
+        /// `WorstGap` stays negative (-0.33 m overlap) and the ring stays continuous. Heights
+        /// land at 1.2 / 6.8 / 7.1 m against the old 1.4 / 4.0 / 7.3 m.
+        /// <para/>
+        /// ⛔ DO NOT ADD A THIN PIECE HERE. A modular wall panel (e.g. `Dungeon_Wall_Stone`,
+        /// 4.00 x 0.33) has a thin/wide ratio of 0.08; it would clamp the count and tear the
+        /// ring open. Anything added must be measured first.
+        /// </summary>
         public static readonly string[] RockPaths =
         {
-            "Stones_M/Stone_Large.prefab",
-            "Stones_M/Rock_Pillar.prefab",
-            "Stones_M/Stone_Medium_Flat.prefab",
+            "Fantasy_M/Rubble_Stone.prefab",
+            "Fantasy_M/Dungeon_Pillar_Stone_Round.prefab",
+            "Fantasy_M/Dungeon_Pillar_Stone_Square.prefab",
         };
 
         /// <summary>Widest a fallback primitive is - the floor used when the pack is absent.</summary>
@@ -110,8 +187,10 @@ namespace DeNelle.Editor
         //  POLAR RING - the siege venue's original PlaceCoverRing, moved here verbatim.
         //  Drop `count` pieces evenly around a circle of `radius`, each nudged by up to
         //  `jitter` metres so the ring does not look mechanical. RNG draw order is
-        //  FROZEN (jx, jz, prefab index, yaw, scale) - SiegeArena.unity's saved layout
-        //  is reproduced exactly by the same seed, so moving this code re-bakes nothing.
+        //  FROZEN (jx, jz, prefab index, yaw, scale) - the siege venue's layout is
+        //  reproduced exactly by the siege bake from the same seed (WO-1689: this line
+        //  used to name a saved `SiegeArena.unity`; that scene has never existed - see
+        //  the file header).
         // =====================================================================
         public static void PlacePolarRing(
             Transform parent, System.Random rng, float radius, int count, float jitter,
@@ -137,7 +216,7 @@ namespace DeNelle.Editor
                 float s = Mathf.Lerp(scaleMin, scaleMax, (float)rng.NextDouble());
                 go.transform.localScale *= s;
                 go.name = label + "_" + i;
-                if (traced.Add(rel)) TraceMaterials(flowSys, label + " (polar)", NatureRoot + rel, go);
+                if (traced.Add(rel)) TraceMaterials(flowSys, label + " (polar)", PrefabRoot + rel, go);
                 placedCounter++;
             }
         }
@@ -263,7 +342,7 @@ namespace DeNelle.Editor
                     float sc = Mathf.Lerp(appliedScaleMin, appliedScaleMax, (float)rng.NextDouble());
                     go.transform.localScale *= sc;
                     go.name = label + "_" + sideNames[s] + "_" + i;
-                    if (traced.Add(rel)) TraceMaterials(flowSys, label + " (boundary ring)", NatureRoot + rel, go);
+                    if (traced.Add(rel)) TraceMaterials(flowSys, label + " (boundary ring)", PrefabRoot + rel, go);
                     placed++;
                 }
             }
@@ -310,7 +389,7 @@ namespace DeNelle.Editor
             {
                 foreach (var rel in prefabRelPaths)
                 {
-                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(NatureRoot + rel);
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabRoot + rel);
                     if (prefab == null) continue;
 
                     var tmp = Object.Instantiate(prefab);
@@ -352,7 +431,7 @@ namespace DeNelle.Editor
         // =====================================================================
         public static GameObject InstantiatePiece(string relPath, Transform parent, string logTag)
         {
-            string path = NatureRoot + relPath;
+            string path = PrefabRoot + relPath;
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab != null)
             {
@@ -368,7 +447,7 @@ namespace DeNelle.Editor
                 return inst;
             }
 
-            Debug.LogWarning(logTag + " missing polyperfect nature prefab (primitive fallback): " + path);
+            Debug.LogWarning(logTag + " missing polyperfect prefab (primitive fallback): " + path);
             var fallback = GameObject.CreatePrimitive(PrimitiveType.Cylinder);  // keeps a CapsuleCollider -> blocks
             fallback.transform.SetParent(parent, false);
             fallback.transform.localScale = new Vector3(FallbackFootprint, 1.5f, FallbackFootprint);

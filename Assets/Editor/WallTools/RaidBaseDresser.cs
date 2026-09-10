@@ -147,13 +147,16 @@ namespace DeNelle.Editor
 
             DressAtmosphere(kit, def.id);
             HideWallRenderers(root);
-            CladRing(root, wallTok, ctx.Radius, ctx.GateWidth, ctx.TwoGates, kit);
+            // WO-1689: CladRing now RETURNS the wall height it actually achieved, so the
+            // gatehouse can report itself against the wall it stands in. Nothing compared the
+            // two before, which is how a 1.41 m gate in a ~3.8 m wall could ship silently.
+            float wallHeight = CladRing(root, wallTok, ctx.Radius, ctx.GateWidth, ctx.TwoGates, kit);
             if (ctx.InnerLayers > 0)
                 CladRing(root, InnerWall(kit, wallTok), ctx.Innermost, Mathf.Max(MinGateWidth, ctx.GateWidth * 0.85f), false, kit, northGate: true);
 
-            PlaceGatehouse(gatehouse, gateTok, kit, new Vector3(0f, 0f, -ctx.Radius), 0f, ctx.GateWidth, "south");
+            PlaceGatehouse(gatehouse, gateTok, kit, new Vector3(0f, 0f, -ctx.Radius), 0f, ctx.GateWidth, "south", wallHeight);
             if (ctx.TwoGates)
-                PlaceGatehouse(gatehouse, gateTok, kit, new Vector3(0f, 0f, ctx.Radius), 180f, ctx.GateWidth, "north");
+                PlaceGatehouse(gatehouse, gateTok, kit, new Vector3(0f, 0f, ctx.Radius), 180f, ctx.GateWidth, "north", wallHeight);
 
             TileApproachRoad(approach, floorTok, ctx.Radius, ctx.GateWidth);
             TileCourtyardRing(courtyard, floorTok, ctx);
@@ -262,18 +265,64 @@ namespace DeNelle.Editor
             return "hexagon-green";
         }
 
+        /// <summary>
+        /// The gatehouse module, per kit. A camp may override it with `raidDress.gate`
+        /// (read at <c>:143</c>), so this is the fallback.
+        /// <para/>
+        /// ⚠ WO-1689: the two KayKit branches moved OFF the hexagon pack's
+        /// <c>wall_straight_gate</c>. Measured, that piece is <b>2.00 x 1.41 x 0.90 m</b> - a
+        /// hex-TILE prop - and `PlaceGatehouse` applies no scale, so it stood 1.41 m inside a
+        /// 4.00 m wall: <b>0.35 of the wall's height</b>. `wall_gated` from the KayKit Dungeon
+        /// Remastered pack is <b>4.00 x 4.00 x 1.00</b> - the SAME box as `wall` / `wall_broken`
+        /// / `wall_cracked`, which is what every KayKit-walled camp now uses - so the gate and
+        /// its wall match with **no scaling code at all**.
+        /// <para/>
+        /// ⚠ `synty-castle` is DELIBERATELY UNCHANGED. Its kit was authored as a matched set and
+        /// already passes: wall 5.00 m, gate `SM_Bld_Castle_Wall_Gate_01` 5.86 m (1.17 of the
+        /// wall), tower `SM_Bld_Castle_Wall_Tower_S_01` 7.52 m (1.50). Do not "unify" it onto
+        /// the dungeon pack - it is the one kit that was already right.
+        /// <para/>
+        /// Pinned by <c>RaidBaseLayoutRegression.CaseGateReadsAsAGate</c>, which reads these
+        /// tokens out of this method and fails when a gate drops below 0.80 of its wall.
+        /// </summary>
         private static string DefaultGate(string kit)
         {
             if (kit == "synty-castle") return "SM_Bld_Castle_Wall_Gate_01";
-            if (kit == "dungeon-stone") return "wall_straight_gate";
-            return "wall_straight_gate";
+            if (kit == "dungeon-stone") return "wall_gated";
+            return "wall_gated";
         }
 
+        /// <summary>
+        /// The base's perimeter wall module, per kit. A camp may override it with
+        /// `raidDress.wallModule` (read at <c>:144</c>), so THIS is only the fallback - and both
+        /// seams had to move for WO-1637.
+        /// <para/>
+        /// ⚠ WO-1637, owner ruling 2026-09-10 12:07 - "the knee-high barrier reads as a WALL".
+        /// The hexagon-green fallback was <c>"barrier"</c>, and the mesh is why it read as a
+        /// railing: measured out of
+        /// `KayKit Dungeon Remastered 1.1/Assets/fbx(unity)/barrier.fbx`, it is
+        /// <b>4.00 m wide x 1.10 m tall x 0.50 m thick</b>. A 1.8 m trooper stands well over it.
+        /// That is exactly WO-1607 sec.6 `:139`'s "thickness, not a stick" failing - and the whole
+        /// `barrier_*` family fails it identically (barrier_half 1.10, barrier_column 1.40,
+        /// barrier_corner 1.40), so no sibling token could have fixed it.
+        /// <para/>
+        /// <c>"wall"</c> from the same pack is <b>4.00 x 4.00 x 1.00</b>. CladRing measures the
+        /// LONGEST axis (4.00, unchanged) and fits it along the run, so the ring's piece count,
+        /// step and gate cut-outs are all identical to before; only the mass changes. At this
+        /// camp's radius the fit factor lands near 0.95, i.e. a ~3.8 m wall about 0.95 m thick -
+        /// twice a trooper's height. The material is unchanged (`dungeon_texture_URP`, a real
+        /// `_BaseMap`), because it is the same atlas the `barrier` already used.
+        /// <para/>
+        /// REACH: this line reaches <b>iron_bastion only</b> - it is the one hexagon-green camp
+        /// with no `raidDress` block at all. `raider_camp_small` authors its own `wallModule` and
+        /// is moved in `scene-configs.json` instead (to `wall_broken`, the ruined variant, same
+        /// 4.00 x 4.00 x 1.00 box, because that camp's own fiction is a stripped settlement).
+        /// </summary>
         private static string DefaultWall(string kit)
         {
             if (kit == "synty-castle") return "SM_Bld_Castle_Wall_01";
             if (kit == "dungeon-stone") return "wall_cracked";
-            return "barrier";
+            return "wall";
         }
 
         private static string InnerWall(string kit, string outer)
@@ -341,9 +390,44 @@ namespace DeNelle.Editor
             }
             else
             {
+                // ── hexagon-green: raider_camp_small AND iron_bastion (KitFor sends both here).
+                //
+                // ⚠ WO-1637, owner ruling 2026-09-10 12:07 - "FOG FIRST: push the fog end past the
+                // ring and drop the density so the ring silhouette reads against the sky."
+                //
+                // THE ARITHMETIC IS THE FINDING, and it is why 22/95 had to move.
+                //
+                // ⚠ MEASURE FROM THE CAMERA, NOT FROM THE ARENA CENTRE. Unity's linear fog is a
+                // function of distance to the CAMERA, and the hero deploys at RaidStagingPoint
+                // (0, 0, -51.2) facing north - so the ring arc he is looking AT is far further
+                // than the ring's own +/-68.6 m radius suggests. WO-1637 sec.1d made exactly this
+                // conflation and it understated the problem. From the deploy seat:
+                //     north side midpoint .... 119.8 m      E/W side midpoints ..... 85.6 m
+                //     north corners .......... 138.0 m      south side (behind) .... 17.4 m
+                //
+                // Under 22/95 EVERY ONE of those forward distances is past the 95 m end, so the
+                // whole visible arc rendered at 100% fog - it WAS the fog colour, and so was the
+                // ground under it. That is why changing the palette alone could not have worked:
+                // at 100% fog the material contributes nothing at all.
+                // Measured on the shipped frame (build 363529,
+                // Builds/device-frames/2026-09-10_0614_arena_06_wide.png, greyscale luminance):
+                // ring band median 0.595 vs the fog colour's own luminance 0.585 - and vs the sky
+                // immediately above it, mean 0.670 against 0.677, a delta of 0.007.
+                //
+                // start 22 -> 45 m  : the base itself is radius 31 m and its near wall is ~20 m
+                //                     from the seat, so the walls, the gate and the courtyard now
+                //                     sit in CLEAR air instead of behind a curtain.
+                // end   95 -> 200 m : past the FURTHEST thing a raider can look at - the far ring
+                //                     corner at 138.0 m from the deploy seat - so NOTHING in the
+                //                     arena is ever fully fogged again. The visible ring arc now
+                //                     renders at 26% fog (E/W) to 60% (far corners): a depth cue,
+                //                     not an eraser.
+                //
+                // The fog COLOUR is deliberately unchanged: it is this camp's identity and the
+                // ruling moved the end distance and the density, not the hue.
                 RenderSettings.fogColor = new Color(0.66f, 0.58f, 0.42f);
-                RenderSettings.fogStartDistance = 22f;
-                RenderSettings.fogEndDistance = 95f;
+                RenderSettings.fogStartDistance = 45f;
+                RenderSettings.fogEndDistance = 200f;
                 RenderSettings.ambientLight = new Color(0.42f, 0.36f, 0.26f);
             }
 
@@ -388,14 +472,19 @@ namespace DeNelle.Editor
             }
         }
 
-        private static void CladRing(Transform root, string token, float radius, float gateWidth,
-                                     bool twoGates, string kit, bool northGate = false)
+        /// <summary>
+        /// Clad one wall ring. WO-1689: RETURNS the wall height actually achieved (the module's
+        /// measured height times the fit factor), so `PlaceGatehouse` can state the gate against
+        /// the wall it stands in. Returns 0 when the module could not be loaded.
+        /// </summary>
+        private static float CladRing(Transform root, string token, float radius, float gateWidth,
+                                      bool twoGates, string kit, bool northGate = false)
         {
             var model = LoadVisual(token);
             if (model == null)
             {
                 WarnMissing(token);
-                return;
+                return 0f;
             }
             float piece = MeasureLongest(model);
             if (piece < 1.2f) piece = kit == "synty-castle" ? 5f : 4f;
@@ -411,6 +500,7 @@ namespace DeNelle.Editor
             // the token resolved to, and what that asset is actually shaded with.
             string cladPath = AssetDatabase.GetAssetPath(model);
             bool cladTraced = false;
+            float achievedHeight = 0f;
 
             for (int s = 0; s < 4; s++)
             {
@@ -429,16 +519,25 @@ namespace DeNelle.Editor
                     if (go != null && !cladTraced)
                     {
                         cladTraced = true;
+                        achievedHeight = MeasureHeight(go);   // WO-1689: AFTER the fit scale
                         string cladFamily = "base wall token='" + token + "' kit=" + kit +
                                             " radius=" + radius.ToString("F1") + "m";
                         ArenaBoundaryRing.TraceMaterials(Sys, cladFamily, cladPath, go);
                     }
                 }
             }
+
+            // WO-1689: the wall's own height, on the same tag, so one grep of a bake log reads
+            // the wall and the gate together. Read off the PLACED panel, not the prefab, so it
+            // reports what the fit actually produced.
+            FlowTrace.Step(Sys, $"WALL token='{token}' kit={kit} radius={radius:F1}m " +
+                                $"module={piece:F2}m wide, achievedH={achievedHeight:F2}m " +
+                                $"panels/side={n} step={step:F2}m");
+            return achievedHeight;
         }
 
         private static void PlaceGatehouse(Transform zone, string token, string kit, Vector3 pos,
-                                           float yaw, float width, string side)
+                                           float yaw, float width, string side, float wallHeight = 0f)
         {
             var model = LoadVisual(token);
             if (model == null)
@@ -454,11 +553,28 @@ namespace DeNelle.Editor
                 if (structure >= 0) gate.layer = structure;
             }
 
+            // ⚠ WO-1689: hexagon-green's flank moved OFF `building_watchtower_green` (1.04 x
+            // 1.11 x 1.04 m) - at 0.28 of a 4.00 m wall it was a tower SHORTER than the wall it
+            // flanks. `wall_pillar` (4.00 x 4.00 x 1.50) is what `dungeon-stone` already used
+            // and is the same pack as the wall. `synty-castle` keeps its own matched tower.
             string flankTok = kit == "synty-castle" ? "SM_Bld_Castle_Wall_Tower_S_01"
-                : kit == "dungeon-stone" ? "wall_pillar" : "building_watchtower_green";
+                : kit == "dungeon-stone" ? "wall_pillar" : "wall_pillar";
             var flank = LoadVisual(flankTok);
             if (flank == null) flank = LoadVisual("Tower_Wooden_Watchtower");
-            float offset = Mathf.Max(3.2f, width * 0.55f);
+
+            // ⛔ THE FLANK MUST STAND BESIDE THE OPENING, NEVER INSIDE IT.
+            // The old offset was `Mathf.Max(3.2f, width * 0.55f)` = 4.70 m at this camp, which
+            // was safe ONLY because the flank was 1.04 m wide (its inner face sat at 4.18 m,
+            // outside the 4.28 m half-opening). `wall_pillar` is 4.00 m wide: at the same
+            // offset its inner face would sit at 2.70 m - i.e. 1.6 m INSIDE the gate mouth,
+            // narrowing the walkable slit either side of the gate from 3.28 m to 0.7 m. That is
+            // below MinGateWidth and below anything a NavMeshAgent can path through, so the
+            // taller tower would have SEALED the base. RaidNavBake marks these renderers
+            // NavigationStatic and bakes, so the seal would have been real, not cosmetic.
+            // Deriving the offset from the flank's MEASURED span keeps its inner face on the
+            // opening's edge whatever module is chosen next.
+            float flankSpan = flank != null ? MeasureLongest(flank) : 0f;
+            float offset = Mathf.Max(Mathf.Max(3.2f, width * 0.55f), width * 0.5f + flankSpan * 0.5f);
             var right = rot * Vector3.right;
             if (flank != null)
             {
@@ -466,7 +582,18 @@ namespace DeNelle.Editor
                 InstantiateVisual(flank, zone, "GateFlank_" + side + "_R", pos + right * offset, rot, true);
             }
 
-            FlowTrace.Step(Sys, $"GATE {side} width={width:F2}m art={(model != null ? model.name : "MISSING")}");
+            // WO-1689: the line now names HEIGHTS, not just the opening's width and an art name.
+            // Nothing on this path reported a height before, so no log could ever have caught a
+            // gate that did not fit its wall. Parts are computed into locals first - the compile
+            // gate's brace scanner has no interpolated-string model (CLAUDE.md sec.1).
+            string gateArt = model != null ? model.name : "MISSING";
+            float gateH = MeasureHeight(gate);
+            float flankH = MeasureTallest(flank);
+            string gateRatio = wallHeight > 0.01f ? (gateH / wallHeight).ToString("F2") : "n/a";
+            string flankRatio = wallHeight > 0.01f ? (flankH / wallHeight).ToString("F2") : "n/a";
+            FlowTrace.Step(Sys, $"GATE {side} width={width:F2}m art={gateArt} gateH={gateH:F2}m " +
+                                $"wallH={wallHeight:F2}m gate/wall={gateRatio} flank={flankTok} " +
+                                $"flankH={flankH:F2}m flank/wall={flankRatio} flankOffset={offset:F2}m");
         }
 
         /// <summary>
@@ -1181,6 +1308,40 @@ namespace DeNelle.Editor
             }
             Object.DestroyImmediate(tmp);
             return w;
+        }
+
+        /// <summary>
+        /// World-space height of a PLACED instance (WO-1689). Sibling to
+        /// <see cref="MeasureLongest"/>, which measures a PREFAB by instantiating a throwaway
+        /// copy; this one reads an object already in the scene, so it reports the height AFTER
+        /// any fit scale has been applied - which is the number the gate has to match.
+        /// Returns 0 for a null object or one with no renderers, and every caller treats 0 as
+        /// "unknown" rather than as a failure.
+        /// </summary>
+        private static float MeasureHeight(GameObject go)
+        {
+            if (go == null) return 0f;
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            if (rends == null || rends.Length == 0) return 0f;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            return b.size.y;
+        }
+
+        /// <summary>
+        /// Height of a PREFAB (WO-1689). Instantiates a throwaway copy and destroys it, exactly
+        /// as <see cref="MeasureLongest"/> does and for the same reason: a prefab ASSET's
+        /// renderer bounds are not the world bounds a placed instance reports, so measuring the
+        /// asset directly would quietly read a different number than the scene will.
+        /// </summary>
+        private static float MeasureTallest(GameObject model)
+        {
+            if (model == null) return 0f;
+            var tmp = Object.Instantiate(model);
+            tmp.hideFlags = HideFlags.HideAndDontSave;
+            float h = MeasureHeight(tmp);
+            Object.DestroyImmediate(tmp);
+            return h;
         }
 
         private static void FitPieceAlong(GameObject go, float target, float native)

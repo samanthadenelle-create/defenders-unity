@@ -1,6 +1,6 @@
 # WO-1638 - Two flat green slabs stand on the raid base's south wall line and read as placeholder art
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting bake + device frame (lane RAID-ART-2, 2026-09-10; the re-tint landed as a one-token data edit on `e4b5906a5`; RESULT at `WorkOrders/WORK_ORDER_1638_raid_gatehouse_banners_read_as_untextured_green_placeholder_boxes.RESULT.md`)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; number block 1637-1642 pre-assigned by the
 lead, banner bumped 1637 -> 1643 in the SAME edit)
 **Silo / Lane:** World / Raid scenes - DRESSING only.
@@ -217,6 +217,15 @@ bake commands go to the lead.
   agreement. Keep it that way.**
 - `RaidBaseDresser.PlaceGatehouse` (`:386-416`) - gate placement, gate art token, the layer assignment
   at `:397-401`. Read-only in this lane.
+  > ⚠ **RE-POINTED 2026-09-10 (WO-1689), NOT DELETED.** This pin held for WO-1637 and WO-1638 and it
+  > did its job - both lanes left the gate alone, which is exactly why the mismatch was reported rather
+  > than silently patched into an art ticket. **WO-1689 is the ticket that owns this method**, and it
+  > has now changed the gate MODULE (`wall_straight_gate` -> `wall_gated`), the flank MODULE
+  > (`building_watchtower_green` -> `wall_pillar`), the flank OFFSET (derived from the flank's measured
+  > span so a wider tower cannot narrow the gate mouth) and the `GATE` trace line (it now names
+  > heights). **What this pin still protects, for every OTHER lane: the gate POSITION
+  > (`(0, 0.05, -/+31)`), the `Structure` layer assignment, and `entranceCount`.** Those did not move
+  > and must not.
 - `HideWallRenderers` (`RaidBaseDresser.cs:339-350`) - it disables renderers on `Wall_`-prefixed
   objects only and must keep ignoring `Gatehouse_*`, `GateFlank_*` and `Prop_*`.
 - `ApplyUrpMaterial` / `MagentaGuard.BuildUrpLitMaterial` (`RaidBaseGenerator.cs:828-835`) - the

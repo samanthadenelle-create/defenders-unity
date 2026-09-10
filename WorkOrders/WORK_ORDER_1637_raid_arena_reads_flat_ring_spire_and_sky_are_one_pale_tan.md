@@ -1,6 +1,6 @@
 # WO-1637 - The raid arena reads flat: the boundary ring, the spire and the sky are one pale tan, and the base wall is a low grey railing
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting bake + device frame (lane RAID-ART-2, 2026-09-10; all three ruled axes landed edit-only on `e4b5906a5`; RESULT at `WorkOrders/WORK_ORDER_1637_raid_arena_reads_flat_ring_spire_and_sky_are_one_pale_tan.RESULT.md`)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; number block 1637-1642 pre-assigned by the
 lead, banner bumped 1637 -> 1643 in the SAME edit)
 **Silo / Lane:** World / Raid scenes - the MATERIAL / PALETTE / ATMOSPHERE seam.
