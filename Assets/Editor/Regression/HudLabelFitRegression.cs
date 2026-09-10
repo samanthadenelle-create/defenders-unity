@@ -846,9 +846,14 @@ namespace DeNelle.Editor.Regression
             // cards read "Construct and upgrade yo...", "Train and manage your tr...", "Unlock
             // powerful advance..." - the one sentence that says what the card DOES was ellipsised
             // off every card. FitSingleLine can only shrink to a floor and then ellipsise; FitBlock
-            // WRAPS, and the band is two lines tall. The deck card's purpose band is 0.26-0.52 of
-            // its plate - taller still - and case 6d below already argues for wrapping over an
-            // inserted U+2026 on that exact label.
+            // WRAPS, and the band is two lines tall. Case 6d below already argues for wrapping over
+            // an inserted U+2026 on that exact label.
+            // ⚠ CORRECTED 2026-09-10 (WO-1636). This sentence used to read "The deck card's purpose
+            // band is 0.26-0.52 of its plate - taller still". It was NOT taller: 0.26 of the deck
+            // card resolved to 45-53 measured ref px against a 68.0 px two-line requirement, which
+            // is why the glyph oracle found sixteen truncations on DeckCardPurpose_* alone. The
+            // band is now 70 ref px hung off PlayerDeckWorkspace.PurposeFloorFrac; the FIT CALL
+            // this case compares is unchanged and still must equal Manage's.
             // ⚠ THE FLOOR IS NOT WEAKENED. This still demands EQUALITY, and Manage's floor ROSE
             // (24f -> ElarionUi.FontFloorMobile, 30f), so the deck had to follow UP, not down.
             // Manage remains the standard the deck is read against; this case cannot pass by
@@ -1523,8 +1528,31 @@ namespace DeNelle.Editor.Regression
         // 9a fails with "the Journey RAIDS card declares no LockedArtKey".
         private const string RaidsLockedKey = "raids-locked";
         /// <summary>The illustrated card's text plate, copied from
-        /// PlayerDeckWorkspace.TextPlateX0(true) and the title/purpose anchors around it.</summary>
-        private const float PlateX0 = 0.49f, PlateX1 = 0.96f, PlateY0 = 0.20f, PlateY1 = 0.86f;
+        /// PlayerDeckWorkspace.TextPlateX0(true) and the title/purpose anchors around it.
+        /// <para>⚠ PlateY0 RE-POINTED 0.20 -> 0.06 (WO-1636, 2026-09-10), AND THE OLD VALUE IS
+        /// NAMED SO IT IS NOT PUT BACK. It was the purpose band's old 0.26 bottom minus a 0.06
+        /// margin. That band is no longer a share of the card at all: PlayerDeckWorkspace hangs
+        /// it in reference px off PurposeTopFrac - read PurposeBandPx / PurposeTwoLineReqPx
+        /// THERE, never a copy of them here - because 0.26 of this card resolved to 45-53 px
+        /// against a two-line requirement the font asset puts at 68.0, which is the sixteen
+        /// DeckCardPurpose_* truncations the glyph oracle recorded. Leaving PlateY0 at 0.20
+        /// would have left 9c checking contrast where the live copy no longer lands, which reads
+        /// GREEN while covering nothing.</para>
+        /// <para>⛔ THESE FRACTIONS ARE PNG FRACTIONS, AND THE LABEL'S ARE BUTTON FRACTIONS - the
+        /// two frames are NOT the same. PlayerDeckWorkspace.MeasureArtFit seats a sprite's OPAQUE
+        /// region onto the button, so PNG y p renders at button y (p - fy0)/(fy1 - fy0). This
+        /// case happens to be safe because raids-locked.png's alpha bbox is (3,7)-(1410,736) of
+        /// 1416x742, i.e. fy0..fy1 = 0.008..0.991 and the two frames coincide to within 1%. A
+        /// face with a real packaging margin (raids.png crops 0.088..0.929) would NOT, and this
+        /// assumption predates WO-1636 - it is recorded here, not fixed here.</para>
+        /// <para>MEASURED BEFORE IT WAS CHANGED (replica of MeasurePlate/Contrast run over the
+        /// PNG bytes, 2026-09-10): raids-locked.png over the enlarged 0.06-0.86 plate reads ink
+        /// 0.0014 (ceiling 0.006) and 9.10 / 10.25 / 15.98 : 1 for Gold / ParchmentDim /
+        /// Parchment - versus 0.0017 and 9.05 / 10.21 / 15.91 at the old 0.20. The replica
+        /// reproduces this suite's own documented 0.0017 baseline exactly, and the enlarged
+        /// region is if anything CLEANER, so this re-point does not buy its coverage with a
+        /// relaxed assert.</para></summary>
+        private const float PlateX0 = 0.49f, PlateX1 = 0.96f, PlateY0 = 0.06f, PlateY1 = 0.86f;
         /// <summary>Fraction of plate pixels allowed to be light enough to be a glyph.
         /// <para>CALIBRATED, not guessed. The delivered face measures 0.0017 - the padlock rim
         /// clipping the plate's left edge, and nothing else. Baking one parchment-toned line

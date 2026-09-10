@@ -348,24 +348,106 @@ namespace DeNelle.HUD
             var purpose = ElarionUiKit.Label(button.transform,
                 available ? spec.Purpose
                           : (string.IsNullOrEmpty(lockLine) ? "Complete its requirement first" : lockLine),
-                0.26f, 0.52f, available ? ElarionUi.Parchment : ElarionUi.ParchmentDim,
+                PurposeTopFrac, PurposeTopFrac,
+                available ? ElarionUi.Parchment : ElarionUi.ParchmentDim,
                 (int)ElarionUi.FontMicro, TextAlignmentOptions.Center,
                 TextPlateX0(illustratedCard != null), 0.96f);
             purpose.gameObject.name = "DeckCardPurpose_" + spec.Title;
+            // WO-1636 - Y IS PIXELS, X STAYS A FRACTION, and that asymmetry is the fix. The
+            // caption's WIDTH was never implicated - the aspect that kept the MOST glyphs also
+            // measured the WIDEST band (370.4 ref px at 2670x1200 vs 329.6 at 1920x1080), so x
+            // stays proportional to the card. Its HEIGHT is a number of lines of readable copy,
+            // which is px. Both y anchors are collapsed onto the band's existing TOP edge by the
+            // Label call above and the height hangs below it. Pivot is set BEFORE the offsets:
+            // moving a pivot afterwards keeps sizeDelta and anchoredPosition and would slide the
+            // rect straight back off the number. The WO-1628 shape, verbatim.
+            var purposeRect = purpose.rectTransform;
+            purposeRect.pivot = new Vector2(.5f, 1f);
+            purposeRect.offsetMax = Vector2.zero;
+            purposeRect.offsetMin = new Vector2(0f, -PurposeBandPx);
+            FlowTrace.Step("Navigation", "deck card '" + spec.Title + "' purpose band " +
+                PurposeBandPx.ToString("F0") + " ref px below top frac " +
+                PurposeTopFrac.ToString("F2") + " (two " + ElarionUi.FontFloorMobile.ToString("F0") +
+                "px lines measure " + PurposeTwoLineReqPx.ToString("F1") + " px)");
             // THE DECK FOLLOWS MANAGE (owner ruling: Manage is the card standard;
             // HudLabelFitRegression case 6c reads the floors OUT of ManageScreenPanel and requires
             // this call to equal them). Manage's hub card description moved from a single-line fit
             // to FitBlock on 2026-09-07 because the owner's device showed all three descriptions
-            // ellipsised mid-word (owner-screen-20260907-004724.png), and this label carries the
+            // cut mid-word (owner-screen-20260907-004724.png), and this label carries the
             // SAME defect class - case 6d already records "Choose the abilities equipped for
             // bat..." on this exact line.
             // NOTE - THE FLOOR WENT UP, NOT DOWN: 24f -> ElarionUi.FontFloorMobile (30f). FitBlock
-            // wraps into the band rather than shrinking toward a floor and then ellipsising, and
-            // this label's band is 0.26-0.52 of the plate - a genuinely multi-line seat, so
-            // wrapping has somewhere to go. Truncation, if it ever happens, is VISIBLE at the end
-            // of a line instead of three dots that look deliberate.
+            // wraps into the band rather than shrinking toward a floor and then cutting, and the
+            // band is now sized in px for the two lines the wrapped copy actually needs
+            // (PurposeBandPx).
+            // Truncation, if it ever happens, is VISIBLE at the end of a line instead of three
+            // dots that look deliberate.
             ElarionUiKit.FitBlock(purpose, ElarionUi.FontFloorMobile, 34f);
         }
+
+        // =====================================================================
+        //  WO-1636 - THE PURPOSE LINE'S HEIGHT IS PIXELS, NOT A SHARE OF THE CARD.
+        //
+        //  The glyph oracle's first run (Builds/wave3-capture2.glyph-findings.txt:72-81 and
+        //  Builds/wave3-navcapture.glyph-findings.txt:1-6) recorded SIXTEEN truncations on this
+        //  one label - twelve on RealmWorkspace, four on JourneyWorkspace - each one a whole
+        //  second LINE dropped, never a clipped word:
+        //
+        //    1920x1080  card 202.7 px  band 52.7 px  "Review non-expiring monthly progress" 20/33
+        //    2340x1080  card 176.5 px  band 45.9 px  same copy                              23/33
+        //    2670x1200  card 173.1 px  band 45.0 px  same copy                              23/33
+        //
+        //  (card height = the measured band / the 0.26 share it was authored as). The band was
+        //  0.26-0.52 of a card whose REFERENCE HEIGHT changes with the aspect, so the same
+        //  authoring resolves to 45-53 px - and TWO lines at the fitter's own floor need 68.0.
+        //
+        //  ⛔ THE DEFECT IS THE UNIT, NOT THE COPY AND NOT THE FONT. This is the identical
+        //  failure WO-1628 retired for the build-collection caption, and the cure is the same
+        //  one: author the HEIGHT in px, collapse both y anchors onto the edge the band hangs
+        //  from, set the pivot BEFORE the offsets. The in-code note that used to sit on the
+        //  FitBlock call - "this label's band is 0.26-0.52 of the plate, a genuinely multi-line
+        //  seat" - was WRONG, and the oracle is what disproved it: 0.26 of this card has never
+        //  been a two-line seat on any captured aspect.
+        // =====================================================================
+        /// <summary>What TWO lines of purpose copy actually measure, in reference px, at the
+        /// fitter's floor.
+        /// <para>MEASURED AT THE FONT ASSET, not estimated: Assets/Resources/Localization/Fonts/
+        /// ElarionLocaleFallback.asset declares m_PointSize 64, m_LineHeight 73.59375,
+        /// m_AscentLine 57.9375, m_DescentLine -13.5625. TMP stacks N lines as
+        /// (N-1) x lineHeight + (ascent - descent), so per point that is
+        /// (73.59375 + 71.5) / 64 = 2.26709, i.e. 68.01 px at 30 and 77.08 px at 34.
+        /// CORROBORATED INDEPENDENTLY: WO-1628's step-1 probe MEASURED preferredHeight 47.6 px
+        /// for two lines at fontSize 21 on all twenty-one of its lines, and this model returns
+        /// 47.61 for the same input. Two derivations, one number.</para></summary>
+        private const float PurposeTwoLineReqPx = 68.01f;
+        /// <summary>The purpose band's HEIGHT in reference px. <see cref="PurposeTwoLineReqPx"/>
+        /// plus ~2 px of headroom, the same margin WO-1628 left (50 authored over 47.6 measured),
+        /// so the fitter has somewhere to land instead of sitting on its floor. Never a fraction
+        /// of the card.</summary>
+        private const float PurposeBandPx = 70f;
+        /// <summary>
+        /// Where the purpose band hangs from: the TOP edge it already had. Keeping the top edge
+        /// and growing DOWNWARD is what leaves the title, the medallion and the artwork exactly
+        /// where they are - the band grows into the card's empty bottom margin, which nothing
+        /// else is authored into. The next rect up is the title at .55; the concept medallion
+        /// (x .055-.245) never reaches this label's plate, which starts at
+        /// <see cref="TextPlateX0"/> .27 at the narrowest.
+        /// <para>⭐ THE ROOM BELOW IT WAS MEASURED, NOT ASSUMED - and the frame that measurement
+        /// lives in is the trap. An illustrated card's dark text plate is painted into the
+        /// delivered PNG, but the art is NOT drawn 1:1: MeasureArtFit seats the sprite's OPAQUE
+        /// region onto the button, so a PNG y-fraction p renders at button y (p - fy0)/(fy1 - fy0).
+        /// Measured in BUTTON space over the plate's x .49-.96, as a WCAG ratio for ParchmentDim
+        /// copy (the arithmetic HudLabelFitRegression.MeasurePlate/Contrast use, replicated
+        /// 2026-09-10 across all fifteen faces in Assets/Resources/UI/ElarionMedieval/cards/):
+        /// every face holds 10.1:1 or better from .10 to .52 and 9.0:1 or better down to .058.
+        /// Only the last .058 of the card - its frame edge - drops (troops-locked 3.8, defense-
+        /// report 2.3), and this band never reaches it: <see cref="PurposeBandPx"/> below .52
+        /// resolves to a bottom of .175 / .123 / .116 at the three captured aspects.
+        /// ⚠ Sampling the same bands in RAW PNG fractions instead says the plate falls off a
+        /// cliff below .14 - that reading is an artefact of the packaging margin the fit crops
+        /// away, and acting on it would have moved this band for no reason.</para>
+        /// </summary>
+        private const float PurposeTopFrac = 0.52f;
 
         /// <summary>
         /// Left edge of a card's text plate. An illustrated card's art fills its left half, so the
