@@ -1,6 +1,6 @@
 # WO-1625 - f8-check-inbox prints an OK verdict while the same line carries the daemon's own failure
 
-**Status:** READY TO IMPLEMENT
+**Status:** FIXED 2026-09-10 - lead ran the patched check live (both producers OK, NO_CAPTURE byte-identical) and f8-inbox-selftest (F8_SELFTEST_OK 39/39); DEGRADED branch proven on a fixture in the RESULT. Follow-up not ticketed: the selftest fixtures no HEARTBEAT.json, so STALE/DEGRADED have no runnable pin. (was: IMPLEMENTED - awaiting lead review, lane INBOX-VERDICT)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1625 -> 1628 in the SAME edit)
 **Silo / Lane:** Tooling / F8 watcher (`.claude/skills/run-defenders/`) - **no .cs, no Unity, no git**
 **Severity:** P1 process, small fix. CLAUDE.md sec.14 is BINDING and its whole point is that

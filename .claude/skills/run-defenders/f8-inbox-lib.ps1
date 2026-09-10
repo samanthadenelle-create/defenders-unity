@@ -152,6 +152,11 @@ function Get-F8Heartbeat([string]$Inbox) {
         try { $age = [int]([Math]::Round(($now - ([datetime]::Parse([string]$v.updatedUtc)).ToUniversalTime()).TotalSeconds)) } catch { $age = -1 }
         $procPid = 0
         try { $procPid = [int]$v.pid } catch { $procPid = 0 }
+        # WO-1625: the daemon's own failure counter. NOT every producer writes it (the device
+        # producer has no such key), so an absent or unparsable value MUST read as 0 -- degrading a
+        # healthy producer is the same false-signal defect pointed the other way.
+        $passFails = 0
+        try { $passFails = [int]$v.passFails } catch { $passFails = 0 }
         $alive = $false
         if ($procPid -gt 0) {
             $p = Get-Process -Id $procPid -ErrorAction SilentlyContinue
@@ -163,6 +168,7 @@ function Get-F8Heartbeat([string]$Inbox) {
             ageSec        = $age
             updatedUtc    = [string]$v.updatedUtc
             alive         = $alive
+            passFails     = $passFails
             detail        = [string]$v.detail
             lastDeviceUtc = [string]$v.lastDeviceUtc
         }

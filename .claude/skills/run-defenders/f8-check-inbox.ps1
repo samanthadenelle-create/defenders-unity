@@ -36,11 +36,26 @@ function Write-F8Liveness {
     }
     foreach ($p in @($hb.Producers)) {
         $age = [int]$p.ageSec
+        # WO-1625: structured counter FIRST, string second. A missing/unparsable passFails is already
+        # normalised to 0 by Get-F8Heartbeat, so a producer that never writes the key is never degraded.
+        $passFails = 0
+        try { $passFails = [int]$p.passFails } catch { $passFails = 0 }
+        $degraded = ($passFails -gt 0) -or (([string]$p.detail) -match 'pass-failed')
         if ($age -lt 0 -or $age -gt $StaleSeconds) {
             $liveTxt = 'process-dead'
             if ($p.alive) { $liveTxt = 'process-alive-but-not-beating' }
             Write-Host ("F8_DAEMON_STALE {0} producer={1} pid={2} {3} last={4} lastDeviceUtc={5} detail={6}" -f $age, $p.name, $p.pid, $liveTxt, $p.updatedUtc, $p.lastDeviceUtc, $p.detail)
             Write-Host ("F8_DAEMON_STALE the {0} half of the section 14 chain is NOT proving itself alive. Captures may be going nowhere. Restart: powershell -File .claude\skills\run-defenders\f8-watch-start.ps1" -f $p.name)
+        } elseif ($degraded) {
+            # WO-1625: a producer that beats ON TIME while FAILING used to print F8_DAEMON_OK with the
+            # failure text interpolated into the same line as detail= -- the script printed the proof
+            # of the defect inside the verdict that denied it, for ~12.7 hours (WO-1624 RESULT :123).
+            # Age is no longer the only predicate. STALE still wins: a producer that is not beating at
+            # all is a STALE problem, and this branch sits BELOW it deliberately.
+            # NOT gated on -Quiet, matching the STALE branch directly above: -Quiet exists to hide
+            # HEALTH (the OK line below), never a failure.
+            Write-Host ("F8_DAEMON_DEGRADED producer={0} pid={1} age={2}s passFails={3} lastDeviceUtc={4} detail={5}" -f $p.name, $p.pid, $age, $passFails, $p.lastDeviceUtc, $p.detail)
+            Write-Host ("F8_DAEMON_DEGRADED the {0} producer IS beating but its own work is failing. Captures may be going nowhere even though it looks alive. Read the detail= above, then restart it: powershell -File .claude\skills\run-defenders\f8-watch-start.ps1" -f $p.name)
         } elseif (-not $Quiet) {
             Write-Host ("F8_DAEMON_OK producer={0} pid={1} age={2}s lastDeviceUtc={3} detail={4}" -f $p.name, $p.pid, $age, $p.lastDeviceUtc, $p.detail)
         }
