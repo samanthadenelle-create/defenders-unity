@@ -230,3 +230,42 @@ proof** (memory `screenshots-are-primary-evidence-for-visual-defects`).
   registered suite, so there should be nothing to register; if that changes, hand back the line.
 - Do **not** run Unity, gate, or commit from the lane. Edit-only; the lead holds the Unity lock and
   is the sole committer.
+
+---
+
+### OWNER RULING 2026-09-10
+
+**PORTRAIT IS NOT SUPPORTED. The game is LANDSCAPE ONLY.** Owner ruling of 2026-09-10 (morning, via
+AskUserQuestion), recorded in `WorkOrders/WORK_ORDER_1631_player_build_autorotates_to_portrait_game_is_landscape_only.md`
+and annotated onto `docs/HANDOVER_2026-09-10_overnight.md` section 3 item 10 - the item that put this
+very question to the owner ("Is the TOWN HUD expected to be playable in portrait?"). The answer is NO,
+and that item's own text named the consequence: *"NO = the autorotate flags are the defect and the fix
+is landscape-only."*
+
+APPENDED, not rewritten. Nothing above this line is edited. The `**Status:**` line at the top of this
+file still reads *"the portrait device aspect"*; **that phrase is superseded by this block** and the
+lead flips it - this lane does not rewrite another ticket's status.
+
+**What the ruling changes here:**
+
+1. ⛔ **The portrait `Aspects` row stays OUT.** Sec.6 blocker (a) (`:196-200`) said this suite's
+   `Aspects` array (`HudLabelFitRegression.cs:177-181`) declares only the two LANDSCAPE aspects, so a
+   case added as-is *"cannot red on the reported defect"*, and named adding a portrait aspect as the
+   first edit of the suite work. **Do not add it.** That blocker does not get solved, it **dissolves**:
+   a portrait row would pin a presentation the game is not allowed to reach, and a green portrait
+   assert would be a permanent claim that portrait is supported. The Case 3/4/13 reds that row would
+   have produced are not tickets and must not be minted.
+2. **The evidence frame is now evidence of TWO things.** `Builds/device-frames/2026-09-10_0028_title_363195.png`
+   (sec.1a) is 1200x2670 - PORTRAIT. So is every other frame captured that night: all nine decode as
+   1200x2670 from their PNG IHDR (tabled in WO-1631 sec.1c). The frame proves the caption was cut, and
+   it proves it was cut **in a box the game will not ship in**.
+3. **THE ONE QUESTION THIS TICKET IS NOW REDUCED TO:** *does `PLAY INTRO` fit in **LANDSCAPE** on the
+   device?* Nothing answers it - `Builds/device-frames/` holds no landscape frame. **A landscape device
+   frame is the proof** (memory `screenshots-are-primary-evidence-for-visual-defects`), taken after the
+   WO-1631 settings flip lands. If it fits, this ticket closes on that frame. If it does not, sec.4
+   Step 1 (instrument at `TitleController.cs:325`, this file `:136-144`) is still the correct opening move and
+   the two-line-caption precedent at `HudActionBarModel.cs:349-351` is still the strongest candidate -
+   but it is measured at the landscape aspect, never at 1200x2670.
+4. **Everything else in this ticket stands unchanged** - the pins (sec.5), the forbidden 24f->20f drop,
+   the kit-not-TitleController architecture ruling (sec.3), and the sec.6b asmdef blocker (b), which
+   the orientation ruling does not touch.

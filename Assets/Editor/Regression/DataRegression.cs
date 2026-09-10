@@ -1995,6 +1995,7 @@ namespace DeNelle.Editor
             // tiers drop it, at most one per UTC day; dungeons 5% off the rail, starter dungeons excluded.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-rough-stone suite", () => { if (!DeNelle.Editor.Regression.RaidRoughStoneDropRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-rough-stone] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "seating-preview-shield suite", () => { if (!DeNelle.Editor.Regression.SeatingPreviewShieldRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[seating-preview-shield] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "screen-orientation suite", () => { if (!DeNelle.Editor.Regression.ScreenOrientationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[screen-orientation] " + r); });
 
             // =====================================================================
             //  >>> REGISTERED ORACLE SUITES — END FENCE <<<  (new lines go ABOVE)
