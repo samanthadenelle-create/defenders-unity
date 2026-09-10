@@ -160,6 +160,31 @@ UI_GLYPH_FAIL x2 NEW, back with the MANAGE-COPY lane) and the TMP fallback font 
 HEART-COPY 1641, TOWN-CHROME 1642, MANAGE-COPY. APK rebuild + Seeker reinstall chain launched 06:50 (`Builds/wave4-apk-chain.txt`,
 `Builds/overnight-apk-status.txt`, `Builds/wave4-install.runner.txt`) on the owner's "push dev and reinstall the apk when it's done".
 
+Third wave COMMITTED (07:30, gate chain 23 on the combined tree: `wave5-compile1` COMPILE_GATE_OK, `wave5-bake1` props 33/31/27 + MAT/ATMOSPHERE/PROP
+traces, `wave5-navbake1` 4/4, `wave5-loc1` BuildAll 6 locales 2508 entries, `wave5-reg1` REGRESSION_OK 494/494, `wave5-capture1` UI_CAPTURE_OK 91 +
+UI_GEOMETRY_OK 91 + UI_GLYPH_FAIL x1 NEW = the held Manage ARMY face, `wave5-navcapture1` UI_GEOMETRY_OK 15, `wave5-frontdoor1` UI_GLYPH_OK 6/6 +
+FRONT_DOOR_CAPTURE_OK 6/6): `b2fa255cf` WO-1639 raid HUD (IMPLEMENTED, device frame is the close); `f8b6a5885` WO-1640 staging spoils + toasts
+(IMPLEMENTED, device frame); `575750f86` WO-1641 heart objective post-raid line + 20 locale twins + tables (IMPLEMENTED, owner ruling on the
+full-cap door + wording pending); `8b9b6b087` WO-1642 RAIDS card alpha + ATTACK REPORT seat (IMPLEMENTED, play-mode frame with an unread report is
+the close); `bb131973a` WO-1637/1638 step-1 traces + re-bake (both READY for the owner ruling, evidence in each WO's last section); `ff42319de`
+WO-1644 FIXED (front door reports the glyph oracle). Earlier: `fd68cb413` WO-1621 FIXED on evidence; mints `bccf9c5ac` 1643, `a06542478` 1644,
+`0a7edc6b1` 1645 (banner now 1646). HELD: Manage ARMY face (round 3 with the MANAGE-COPY lane: 2340 clean, 2670 still 12 of 13 on ONE line in
+the 74.4 px band); WO-1645 capture patch applied on top of ff42319de, red-first + green run = gate chain 24 (`wave5-capture2red`,
+`wave5-compile2`, `wave5-capture2`); JOURNEY-CARD lane on WO-1643 in flight. Push: dev pushed at `94dfd6481` (07:00); the 07:30 commits are
+local until the next APK + push.
+
+Fourth wave in the tree (07:45, awaiting one combined gate): MANAGE-COPY round 3 (ARMY face two-line band 0.205 of the card sized off
+font_title.asset lineHeight 80.448/64; `wave5-capture4` UI_GLYPH_OK 97/97 + `wave5-navcapture4` 15/15 after the lead deleted the two stale
+ARMY GlyphBaseline rows; ManageWorkspace_2670x1200.png reads BUILD / BARRACKS whole); WO-1643 JOURNEY-CARD ("no camp in reach", copy
+provisional, SetRaidOpenCampCount already traced since WO-1404 - the WO premise was false; the 0603 contradiction proven from logcat :14265 +
+:28080); WO-1645 RAID-CAPTURE (RaidHud + RaidDeployHud capture panels, +6 PNGs, red-first PROVEN: `wave5-capture3red` with the pre-1639
+files reds DEPLOY ALL 6-7 of 9 at all three aspects, HEAD 9 of 9); WO-1646 RAID-HUD (deploy faces derived to clear the 112 px floor at
+every aspect: 130.6/118.3/116.7/114.0; TrayLeftX/TrayRightX defined once so the empty-tray label ends 30 px before Deploy All; tray
+tiles fixed too); WO-1647 minted (readout plate measures (88,71,17) at HEAD because ElarionUiKit.Panel's AddInnerRim is a full-rect
+Gold@0.15 veil, ElarionUiKit.cs:2670-2683 - WO-1639's ObsidianFill sits UNDER it; Option A innerRim:false at the two callers with the
+RAID-HUD lane). Banner 1648. PowerShell `git show | Set-Content` mangled a .cs during the first red-first attempt (memory written); the
+bash redirect version compiled.
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
@@ -184,6 +209,12 @@ HEART-COPY 1641, TOWN-CHROME 1642, MANAGE-COPY. APK rebuild + Seeker reinstall c
   screencap each -> `Builds/device-frames/2026-09-10_0700_363591_title_{portrait_lock,rot1,rot3}.png`, all three 2670x1200
   (PNG IHDR read). Sent to the owner. dev pushed at `94dfd6481` (LFS 5000 objects first). F8 seq 4988 = the benign
   StructureAssets INIT-handle line from that launch, acked.
+- **Second exe + WebGL (07:00-07:16, after the raid wave):** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2011 MB` (07:02);
+  `Builds/wave4-webgl.runner.txt` -> `[webgl] SUCCESS -> Builds/WebGL/index.html (~182.5 MB)` (07:15); `tools/r2-ship.ps1` ->
+  `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=279` (07:15, `Builds/r2-parity.log`). Vercel preview
+  `https://defenders-of-the-realm-v2-k7n3pyuv6.vercel.app` (repo-linked project, never --prod), alias
+  `https://defenders-pi.vercel.app` moved to it (HTTP 200, serves loader `4bef8671e63a615effc52d21e09bdb3e.loader.js` = the
+  file in `Builds/WebGL/Build/`).
 - **Seeker install:** `install-apk-to-seeker.ps1 -Build:$false -Install:$true` -> `Performing Streamed
   Install / Success` on `SM02G4061955851` (00:23). Device frames under `Builds/device-frames/` and sent
   to the owner as they were taken.
@@ -382,6 +413,27 @@ HEART-COPY 1641, TOWN-CHROME 1642, MANAGE-COPY. APK rebuild + Seeker reinstall c
   `docs/reference/BOARD_STALE_AUDIT_2026-09-10.md`.
 - **Worktree lanes start on a STALE base** (`f5d39acd1`, the 09-07 release): every lane must `git merge --ff-only
   refs/heads/dev` before reading. Two lanes caught it themselves; the instruction is now in every lane brief.
+
+
+### 3C. Owner rulings queued by the 07:00 lanes (ask in ONE AskUserQuestion pass when she is back)
+
+1. **WO-1637 raid arena palette** - which axis moves: the ring MATERIAL (RockPaths is shared with the battle arena's siege venue,
+   consumed twice there: 56 m cover ring + 72 m outer boundary; split deliberately or move both), the FOG (end 95 m sits inside the
+   ring radius 68.6-97 m; reaches raider_camp_small + iron_bastion only), or the base WALL height/mass (per camp via
+   raidDress.wallModule). Never a hue - the lane picks the value, greyscale is the gate. Full text WO-1637 s.11.3.
+2. **WO-1638 gatehouse banners** - the two green slabs are the south gatehouse's Prop_flag_green pair (static read; the north
+   gatehouse gets none, PropSlot hardcodes z). Options: re-tint into the camp palette / a different gatehouse prop (brazier, wall
+   bracket banner, shield rack) / remove the pair. Full text WO-1638 s.10.5.
+3. **WO-1641 raid door** - is the full-cap-forever door at ArmyReadiness.cs:121 intended, and does the new post-raid line
+   "Train N troops for the next raid" stand (wording is the lane's, provisional)?
+4. **WO-1639 readout plate** - the plate went to the kit's ObsidianFill (near-black, Parchment 16.5:1); the WO said ask first.
+   Revert is one line.
+5. **WO-1640 spoils band** - RaidDeployScreen.cs:219 seats the band at FontLabel 40 but :890 draws it at 24, below FontFloor 30;
+   the WO forbade fixing it there. Raise the draw size or leave?
+6. **WO-1642 Echo chip** - the chip encroaches 0.022 into QueueStatus; needs a HudLayoutBands seam. Fix now or park?
+7. **WO-1644 front door** - the front-door capture also skips ProveGeometryMoves / ReportFidelity / ReportGeometry /
+   ReportTouchOracle (four one-liners); widen now or separate ticket?
+8. **Google Play country list** - which countries is the listing open in (answers the probabilistic-item disclosure question).
 
 ## 4. Findings the next seat must not re-derive
 
