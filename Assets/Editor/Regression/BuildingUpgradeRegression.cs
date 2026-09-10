@@ -529,11 +529,19 @@ namespace DeNelle.Editor
         //  (the strip showed 706) but BuildingUpgradeVM.ComposeNextCity never emitted a
         //  Gold cost LINE - so no line was short, WorstShortMissing was 0, and the face
         //  had nothing to name. The fix makes the lines THE predicate and the sentence
-        //  a pure function of them. This case drives those pure functions with fixtures
-        //  and lints that the Gold term reaches the lines.
+        //  a pure function of them. This case drives those pure functions with fixtures.
+        //
+        //  ⛔ THE [gold-line] HALF IS RE-POINTED (WO-1657 item A, owner ruling 2026-09-10 12:12).
+        //  It used to assert the OPPOSITE of what it asserts now: that BuildingUpgradeVM still
+        //  contained "AddCoinCostLine(", i.e. that the Gold term REACHED the lines. WO-947 (regular
+        //  structures cost wood + iron) now governs the UPGRADE ladder too, so no tier authors gold
+        //  at all and there is no Gold line left to reach. CheckTierGoldIsZero walks the DATA in
+        //  both canonical twins instead - RED on HEAD's file (26 rows), GREEN on the shipped one.
+        //  The AddCoinCostLine seam is NOT deleted from the VM: BuildingUpgradeVM.cs:1545-1547
+        //  returns on amount <= 0, so it is the self-guard if a gold term ever comes back.
         //
         //  RED-FIRST MUTATIONS (each was applied mentally against the pre-fix tree):
-        //    * delete the AddCoinCostLine( call in ComposeNextCity      -> [gold-line] fails
+        //    * author a non-zero costGold on any ladder tier             -> [gold-line] fails
         //    * make ShortfallSentence return ""                           -> [sentence] fails
         //    * make AffordableFromLines ignore Short                      -> [ready] fails
         //    * return the bare "Missing resources" from the 6-arg composer -> [face] fails
@@ -585,13 +593,19 @@ namespace DeNelle.Editor
             if (twoS == null || !twoS.StartsWith("Short 500 Crystals", StringComparison.Ordinal) || !twoS.Contains("300 Iron"))
                 failures.Add($"[shortfall-named] two-short sentence = '{twoS}'; expected 'Short 500 Crystals, 300 Iron' (largest gap first)");
 
-            // The Gold term must reach the lines in the CITY composer - the exact omission that shipped.
+            // [gold-line] RE-POINTED 2026-09-10 (WO-1657 item A, owner ruling 12:12). It used to
+            // lint that BuildingUpgradeVM still CONTAINED "AddCoinCostLine(" - i.e. that the Gold
+            // term reached the lines. WO-947 now governs the UPGRADE ladder too, so the ruled
+            // shape is the opposite: NO tier authors a gold cost at all. The lint is not deleted,
+            // it is turned around - it now walks the DATA and fails on any ladder tier whose
+            // costGold != 0, in BOTH canonical twins. AddCoinCostLine deliberately STAYS in the VM
+            // (BuildingUpgradeVM.cs:1545-1547 returns on amount <= 0) as the self-guarding net if a
+            // gold term ever comes back.
+            CheckTierGoldIsZero(failures);
+
             string vmSrc = ReadStrippedSource("_Modules/Village/Buildings/Progression/BuildingUpgradeVM.cs", failures);
             if (vmSrc != null)
             {
-                if (!vmSrc.Contains("AddCoinCostLine("))
-                    failures.Add("[shortfall-named][gold-line] BuildingUpgradeVM no longer emits the Gold (CostGold) cost line - " +
-                                 "CanAffordTier checks Coins >= CostGold, so the page would again read MissingResources with no short line to name");
                 if (!vmSrc.Contains("AffordableFromLines(_nextCostLines)"))
                     failures.Add("[shortfall-named] BuildingUpgradeVM no longer derives _nextAffordable from its own cost lines - " +
                                  "the sentence and the button state can disagree again");
@@ -599,6 +613,62 @@ namespace DeNelle.Editor
             string viewSrc = ReadStrippedSource("_Modules/Village/Buildings/Progression/BuildingUpgradePanelMvvm.cs", failures);
             if (viewSrc != null && !viewSrc.Contains("NextShortfallSentence"))
                 failures.Add("[shortfall-named] the View no longer reads BuildingUpgradeVM.NextShortfallSentence for the face");
+        }
+
+        /// <summary>
+        /// [gold-line] WO-1657 item A (owner ruling 2026-09-10 12:12): WO-947 - regular structures
+        /// cost wood + iron - governs the UPGRADE ladder as well, so EVERY tier in
+        /// building-tiers.json authors costGold 0. Walked over BOTH canonical twins because a
+        /// one-copy edit is the drift this repo keeps paying for.
+        ///
+        /// RED-FIRST, proved before the data moved: run against HEAD's building-tiers.json this
+        /// names 26 rows (arcane-tower 4, armorer 4, barracks 6, forge 4, lumbermill 4, farm 4,
+        /// e.g. 'lumbermill' tier 2 costGold 970). Against the shipped data it names none.
+        /// PERK 'goldCost' rows are RESEARCH, a different key and a different ruling - not read here.
+        /// </summary>
+        private static void CheckTierGoldIsZero(List<string> failures)
+        {
+            foreach (var rel in TierPaths)
+            {
+                string path = Path.Combine(Application.dataPath, rel);
+                string tag = rel.StartsWith("StreamingAssets") ? "StreamingAssets" : "Resources";
+                if (!File.Exists(path))
+                {
+                    failures.Add($"[shortfall-named][gold-line] [{tag}] building-tiers.json missing at '{rel}' - " +
+                                 "the gold-free ladder cannot be proved, and a whole cost-authoring copy would go unchecked");
+                    continue;
+                }
+
+                JArray buildings;
+                try { buildings = JObject.Parse(File.ReadAllText(path))["buildings"] as JArray; }
+                catch (Exception ex)
+                {
+                    failures.Add($"[shortfall-named][gold-line] [{tag}] building-tiers.json failed to parse: {ex.Message}");
+                    continue;
+                }
+
+                if (buildings == null || buildings.Count == 0)
+                {
+                    failures.Add($"[shortfall-named][gold-line] [{tag}] building-tiers.json has no buildings[]");
+                    continue;
+                }
+
+                foreach (var b in buildings)
+                {
+                    string id = (string)b["id"] ?? "<no-id>";
+                    var tiers = b["tiers"] as JArray;
+                    if (tiers == null) continue;
+                    foreach (var t in tiers)
+                    {
+                        int gold = (int?)t["costGold"] ?? 0;
+                        if (gold == 0) continue;
+                        failures.Add($"[shortfall-named][gold-line] [{tag}] '{id}' tier {t["tier"]} authors costGold " +
+                                     $"{gold}. WO-947 governs the upgrade ladder (owner ruling 2026-09-10 12:12): a " +
+                                     "regular structure's upgrade basket is wood + iron and carries NO gold. Set the " +
+                                     "row to 0 in BOTH canonical twins - never re-price a ladder in gold.");
+                    }
+                }
+            }
         }
 
         // =====================================================================

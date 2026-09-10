@@ -1780,6 +1780,12 @@ namespace DeNelle.Editor
         //      keys (BuildingTierCatalog.cs:61-62); costFood appears ZERO times in either
         //      canonical twin, so no row is silently priced through the legacy alias at
         //      BuildingTierCatalog.cs:64;
+        //      [SUPERSEDED 2026-09-10, WO-1657 item A] the costGold HALF of that reading is
+        //      now history: the owner ruled WO-947 over the upgrade ladder too, so all 26
+        //      tier rows (this one included) author costGold 0 in building-tiers.json v8.
+        //      costWood 2600 and the Stone charge lane below are UNCHANGED. Pinned by
+        //      BuildingUpgradeRegression [shortfall-named][gold-line]. The narrative above is
+        //      kept verbatim because it records how the capture was mis-read at the time;
         //    * "Stone" is the LIVE player-facing word for the Food wallet slot
         //      (TownBankCapacity.DisplayName, HudKitController.cs:3024) -- WO-1416 retired
         //      FOOD and Stone reuses that persisted slot;

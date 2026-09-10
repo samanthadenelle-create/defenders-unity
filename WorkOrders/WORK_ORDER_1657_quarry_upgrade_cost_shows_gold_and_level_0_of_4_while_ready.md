@@ -1,6 +1,6 @@
 # WORK ORDER 1657 — Quarry detail shows a **Gold** upgrade cost and reads "Level 0 of 4" while status is READY
 
-**Status:** ITEM B IMPLEMENTED - awaiting gate. ⚠ ITEM A: OWNER RULING STILL PENDING (Reading 1 vs Reading 2, §2) - NO CODE TOUCHED, `CostGold` / the catalog row / `BuildingUpgradeRegression:593` are all untouched.
+**Status:** IMPLEMENTED - awaiting gate (both items now implemented).
 
 > ## ✅ ITEM B RESOLVED 2026-09-10 (MANAGE-VM lane) — **B2, and it is proven, not chosen.**
 > Full working in
@@ -199,3 +199,38 @@ ceiling.** Whatever supplies the "4", do not introduce a second hardcoded ceilin
   Mill and Forge also read READY on
   `Builds/device-frames/2026-09-10_0914c_363722_build_economy_grid.png` and were not opened. Check
   them before scoping the fix to one row.
+
+## OWNER RULING (2026-09-10 12:12)
+
+Item A: WO-947 governs upgrades too - CostGold -> 0 on the building-tiers ladder (wood + iron only); BuildingUpgradeRegression:593 re-pointed, not deleted. Item B wording "Not yet upgraded . 4 levels" KEPT.
+
+### ITEM A IMPLEMENTED 2026-09-10 (UPGRADE-COST lane)
+
+- `building-tiers.json` v7 -> v8 on BOTH canonical twins: **all 26 civic ladder tier rows**
+  (`arcane-tower` 4, `armorer` 4, `barracks` 6, `forge` 4, `lumbermill` 4, `farm` 4) now author
+  `"costGold": 0`. Binary patch from the committed bytes; CRLF preserved (86 LF = 86 CRLF = 86 CR
+  before and after), twins byte-identical, trailing newline kept. Perk `goldCost` rows are RESEARCH
+  and were NOT touched (17 occurrences, unchanged before and after).
+- `BuildingUpgradeRegression` case 11 `[gold-line]` was a SOURCE LINT asserting the VM still emits
+  the Gold cost line. It is **re-pointed, not deleted**: it now walks
+  `Data/Canonical/building-tiers.json` and FAILS on any tier whose `costGold != 0`. RED-proved
+  against `HEAD:building-tiers.json` (26 named failures), GREEN on the working tree (0).
+- **Five gold-rendering surfaces were opened. FOUR already self-omit at zero; ONE did not and is
+  fixed:**
+  - `CostFormat.Parts` (`Assets/_Modules/Core/UI/CostFormat.cs:32-34`) drops any part with
+    `amount <= 0`. That covers `ManageScreenVM.BuildingUpgradeCostParts` (`:2200-2209` - the brief
+    said `:2185-2194`, the composer has since MOVED, reported as drift), `ManageScreenVM.DescribeCost`
+    (`:3281-3285`) and `BuildingUpgradeVM.CostString` / `CostParts` (`:1802-1808`).
+  - `BuildingUpgradeVM.AddCoinCostLine` (`:1545-1547`) returns on `amount <= 0`, so no Gold cost LINE
+    is emitted. It is deliberately LEFT IN as the self-guarding net if a gold term ever returns.
+  - ⛔ **`ManageScreenVM.AddGoldBrowseRow` (`:3287-3298`) DID render a zero chip** - it concatenated
+    the gold clause unconditionally, so the town browse row would have read
+    `"Wood 2600  Stone 970, 0 gold"`. **FIXED**: the gold clause is emitted only when `gold > 0`,
+    and `"free"` stays the empty-basket word. It is the one hand-rolled cost string in the set;
+    every sibling rides `CostFormat`.
+  - `BuildInventoryModel.cs:321` (`BuildTierChargeRow.Gold`) needs no fix: `TierCharges` has exactly
+    two references in the tree - the field declaration (`:131`) and the builder (`:316`). Nothing
+    renders it, so a 0 reaches no screen.
+- `BuildEconomyRegression.cs:1779` carried "costGold 970 -- both LIVE"; a dated `[SUPERSEDED]`
+  clause was added under it. The narrative above it is kept verbatim (frozen RCA record).
+- Not touched, per the ruling: catalog rows (`collector_farm` etc.), save keys, the level heading.

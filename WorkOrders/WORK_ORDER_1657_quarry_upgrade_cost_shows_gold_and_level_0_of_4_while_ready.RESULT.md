@@ -1,13 +1,147 @@
-# WO-1657 RESULT — ITEM B only: "Level 0 of 4" on a placed, READY Quarry
+# WO-1657 RESULT — both items: the Gold upgrade cost, and "Level 0 of 4" on a placed, READY Quarry
 
-**Status:** ITEM B IMPLEMENTED - awaiting gate. **ITEM A: OWNER RULING PENDING — no code touched.**
-**Lane:** MANAGE-VM (isolated worktree `.claude/worktrees/agent-a6afae9850478e00d`, branch `dev` @ `aba49bd4c`)
+**Status:** IMPLEMENTED - awaiting gate (both items).
+**Lane:** MANAGE-VM (item B) + UPGRADE-COST (item A).
 **Date:** 2026-09-10
-**No Unity run, no commit** — per the lane brief.
+**No Unity run, no commit** — per the lane briefs.
 
-> ## ⛔ ITEM A WAS NOT TOUCHED, AS INSTRUCTED.
+---
+
+# ITEM A — the Gold term (UPGRADE-COST lane, owner ruling 2026-09-10 12:12)
+
+**Ruling:** WO-947 (regular structures cost wood + iron) governs the UPGRADE ladder too.
+`CostGold -> 0` on the building-tiers ladder; `BuildingUpgradeRegression:593` re-pointed, not deleted.
+
+**Worktree:** `.claude/worktrees/agent-a0c15f9d18e6ed54b`, branch `dev` @ **`e4b5906a541c65fc12255a109b5dc3723e328488`**
+(fast-forwarded from `f5d39acd1`; the ruling section was copied in from `D:\EoA\WorkOrders`).
+
+## A1. Data — both canonical twins, binary patch, newline proof
+
+`building-tiers.json` v7 -> **v8**. All **26** civic ladder tier rows now author `"costGold": 0`:
+
+| ladder | tiers | costGold before |
+|---|---|---|
+| `arcane-tower` | 1-4 | 800 / 1440 / 2880 / 5600 |
+| `armorer` | 1-4 | 670 / 1400 / 2850 / 5720 |
+| `barracks` | 1-6 | 1240 / 2740 / 5560 / 9860 / 15100 / 23030 |
+| `forge` | 1-4 | 680 / 1440 / 2970 / 5800 |
+| `lumbermill` | 1-4 | 460 / 970 / 1990 / 4250 |
+| `farm` | 1-4 | 1150 / 2380 / 4910 / 7470 |
+
+Patched with `re.subn(rb'"costGold": \d+', b'"costGold": 0', ...)` over the bytes on disk, asserting
+`n == 26` per twin, then re-parsed as JSON before writing.
+
+```
+Assets/Resources/Data/Canonical/building-tiers.json
+  before {bytes 21877, LF 86, CRLF 86, CR 86, endsNL True, "costGold" 26, "goldCost" 17, sha 834aed4128e08eed}
+  after  {bytes 22952, LF 86, CRLF 86, CR 86, endsNL True, "costGold" 26, "goldCost" 17, nonzero 0, sha 64c9de752a111369}
+Assets/StreamingAssets/Data/Canonical/building-tiers.json
+  before {bytes 21877, LF 86, CRLF 86, CR 86, endsNL True, "costGold" 26, "goldCost" 17, sha 834aed4128e08eed}
+  after  {bytes 22952, LF 86, CRLF 86, CR 86, endsNL True, "costGold" 26, "goldCost" 17, nonzero 0, sha 64c9de752a111369}
+```
+
+**Newline proof:** LF == CRLF == CR == **86** before and after on both twins (pure CRLF, no lone LF
+introduced), trailing newline kept, and the two twins are **byte-identical** (same sha both sides,
+before and after). Byte growth is the `_comment` v8 clause only.
+
+**`"costFood"` = 0 occurrences in both twins** — load-bearing, because
+`BuildingTierCatalog.cs:64` refills `CostGold` from a legacy `costFood` key *when CostGold is 0*.
+With gold now 0 on every row that alias is live for every row, so the count must be zero for the
+gold to really be gone. It is.
+
+**Perk `goldCost` (17 rows) is untouched** — research is a different key and a different ruling.
+
+**The `"version": 7 -> 8` bump is CONVENTION, not behaviour.** `BuildingTierCatalog.cs:104` declares
+`Version` and **nothing in the tree reads it** (`grep -rn "\.Version" --include=*.cs Assets/ | grep -i tier`
+returns only `TowerPerkRegression:90`, a different file's log line). The file's own `_comment` is a
+per-version changelog (v4-v7 in place), so a v8 clause follows its convention; it rode the same
+binary patch, which is why the newline proof covers it.
+
+## A2. Oracle — RED first, then GREEN
+
+`Assets/Editor/Regression/BuildingUpgradeRegression.cs` case 11 `[shortfall-named][gold-line]` was a
+SOURCE LINT (`vmSrc.Contains("AddCoinCostLine(")`) asserting the VM still emitted a Gold line. It is
+**re-pointed, not deleted**: `CheckTierGoldIsZero` now walks `buildings[*].tiers[*].costGold` in
+**both** twins (reusing the existing `TierPaths` array) and fails, one named failure per row, on any
+non-zero. The case-11 header was rewritten in the same edit — it previously stated the opposite rule
+and listed "delete the AddCoinCostLine call" as its RED mutation.
+
+RED-first was proved with a Python mirror of the exact assertion:
+
+```
+$ git show HEAD:Assets/Resources/Data/Canonical/building-tiers.json > head-bt.json
+$ python mirror.py head-bt.json        # the PRE-ruling data
+  RED: 'arcane-tower' tier 1 costGold 800      ... (26 rows, listed above)
+head-bt.json -> gold-line failures: 26
+
+$ python mirror.py <working tree, both twins>
+  -> gold-line failures: 0     (Resources)
+  -> gold-line failures: 0     (StreamingAssets)
+```
+
+`AddCoinCostLine` **stays in `BuildingUpgradeVM`** (`:1545-1547` returns on `amount <= 0`) as the
+self-guard if a gold term ever returns.
+
+## A3. The composer — four surfaces were already safe, one was not
+
+- `CostFormat.Parts` (`Assets/_Modules/Core/UI/CostFormat.cs:32-34`) drops `amount <= 0`. That covers
+  `ManageScreenVM.BuildingUpgradeCostParts` (**`:2200-2209`** — the brief said `:2185-2194`; the
+  composer has moved, reported as line drift), `ManageScreenVM.DescribeCost` (`:3281-3285`) and
+  `BuildingUpgradeVM.CostString`/`CostParts` (`:1802-1808`).
+- ⛔ **`ManageScreenVM.AddGoldBrowseRow` (`:3287-3298`) WOULD have rendered a zero chip** — it
+  concatenated `", " + gold + " gold"` unconditionally, so the town browse row would read
+  `"Wood 2600  Stone 970, 0 gold"`. **Fixed**: the gold clause is emitted only at `gold > 0`;
+  `"free"` stays the empty-basket word. Its one live caller is `:1555`.
+- `BuildInventoryModel.cs:321` (`BuildTierChargeRow.Gold`) needs nothing: `TierCharges` has exactly
+  two references in the tree — the declaration (`:131`) and the builder (`:316`). Nothing renders it.
+
+## A4. Why the CHARGE is unchanged
+
+`BuildingTierChargeLane` derives the spent resource from the **tier number** over
+`BuildingTierDef.PrimaryMaterialCost = Max(costWood, costCrystal)` (owner ruling 22, WO-2005), and
+`BuildingUpgradeService.TryUpgrade` (`:115-120`) debits `Coins` separately. Zeroing `costGold`
+removes the Coins term and touches nothing else. `CanAffordTier` (`:219`) becomes
+`Coins >= 0 && ResourceLedger.CanAfford(...)` — materials only.
+
+`CostBasketSeparationRegression [tiers-basket]` still passes: it reads `costWood` / `costCrystal`
+only, and `arcane-tower` keeps `costWood 0 / costCrystal N`, so its magical check is satisfied.
+
+## A5. The sweep for OTHER suites asserting a gold cost — 1 found, 0 left to re-point
+
+Three greps across `Assets/Editor`, `Assets/Tests`, `Assets/Data` (the brief's "any other suite/test
+that asserts a gold cost"):
+
+| grep | hits that bear on a BUILDING-TIER upgrade |
+|---|---|
+| `CostGold\|costGold` | `BuildingUpgradeRegression:593` (**re-pointed**, A2). Everything else is `TroopDef.CostGold` (troops.json, a different file and the WO-1387 ruling), `BuildTimerMercenaryRegression` (mercenary hire), or a comment. `Assets/Data/**` has **zero** hits. |
+| `" gold\|gold "\|"Gold` in the suites | **none** assert a rendered gold word on a ladder upgrade row. `BuildingUpgradeRegression:580` is an inline `Line("Gold", 800, 806)` FIXTURE for `AffordableFromLines` — a hand-built array, not data-driven, so it is unaffected and is deliberately left as the proof that the predicate still handles a gold line if one ever returns. `ManageResearchCardRegression:290-316` and `ManageMockupConformanceRegression:706` are PERK/research rows (`goldCost`, untouched). |
+| `CostText\|BrowseRows\|AddGoldBrowseRow\|Short on resources` | `ManageDefenseUpgradeDoorRegression:210-228` reads `ActionText`/`Label` only (and the Defense tab runs `PlacedStructureUpgradeService`, not this ladder). `ManageProgressiveDisclosureRegression:623` requires a non-empty `RowAction.CostText` on **perk** rows. `ManageTroopsTrainDoorRegression:477` is troops. **No suite asserts the town Upgrade row's cost STRING**, which is why the `AddGoldBrowseRow` zero-chip could have shipped unseen. |
+
+So exactly ONE oracle needed re-pointing and it was re-pointed, not deleted.
+
+## A6. Gates run in-lane
+
+```
+python tools/gate_brace.py Assets/Editor/Regression/BuildingUpgradeRegression.cs Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs
+GATE_BRACE_SUMMARY bad=0 of 2
+NUL bytes: 0 in every .cs and .json touched
+```
+
+`BuildEconomyRegression.cs` was edited for a stale comment only (`:1779` said "costGold 970 -- both
+LIVE"); a dated `[SUPERSEDED 2026-09-10]` clause was added beneath it, narrative kept verbatim.
+
+**No Unity run, no commit** — the gate is what turns A2's RED/GREEN mirror into a fact.
+
+---
+
+# ITEM B — "Level 0 of 4" (MANAGE-VM lane)
+
+**Lane:** MANAGE-VM (isolated worktree `.claude/worktrees/agent-a6afae9850478e00d`, branch `dev` @ `aba49bd4c`)
+
+> ## ⛔ ITEM A WAS NOT TOUCHED BY THIS LANE (it was still unruled at the time).
 > `BuildingTierDef.CostGold`, `building-tiers.json`, `structures-catalog.json` and
-> `BuildingUpgradeRegression.cs:593-594` are **all unmodified**. The Gold-in-the-basket question is
+> `BuildingUpgradeRegression.cs:593-594` are **all unmodified** *by the MANAGE-VM lane*. The
+> Gold-in-the-basket question is
 > the owner's ruling (Reading 1 vs Reading 2, WO §2) and remains visible in the WO's Status line.
 > *(Incidental confirmation of A's source, recorded because it was read in passing while proving B and
 > costs nothing to state: `building-tiers.json` authors the farm ladder's `costGold` as
