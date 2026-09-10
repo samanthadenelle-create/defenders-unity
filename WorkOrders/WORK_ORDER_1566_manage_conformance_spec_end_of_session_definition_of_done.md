@@ -1,6 +1,6 @@
 # WO-1566: the Manage conformance spec — the end-of-session definition of DONE
 
-**Status:** READY TO IMPLEMENT — this is a **SPEC, not a lane.** It does not itself change code; it is the
+**Status:** AUDITED 2026-09-10 - 50 pass / 4 fail / 12 unmeasured / 1 blocked-on-art / 1 superseded (68 rows), see RESULT — this is a **SPEC, not a lane.** It does not itself change code; it is the
 acceptance every Manage lane is measured against before the session closes.
 **Silo:** none — it is the yardstick. Each row names the lane that owns the fix.
 **Source:** owner ask 2026-09-06: *"can you write the specs so the work at the end of CLI's session matches
