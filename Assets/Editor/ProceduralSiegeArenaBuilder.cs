@@ -242,9 +242,39 @@ namespace DeNelle.Editor
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ArenaScenePath);
-            EnsureInBuildSettings();
+            // ⛔ DELIBERATELY NOT CALLING EnsureInBuildSettings() - WO-1689, 2026-09-10.
+            //
+            // This line used to run, and the FIRST time this bake was ever executed it put
+            // Assets/Scenes/SiegeArena.unity into EditorBuildSettings and RED the posture seam:
+            //   "'SiegeArena' is in the build list but NO HubScenes predicate names it
+            //    (SceneKind.Unknown, resolves calm(explore)). Classify it in HubScenes.Classify
+            //    and give it an expectation here - do not delete this check to go green."
+            // (Builds/wave9-reg1, chain 41.)
+            //
+            // ⚠ THE SEAM WAS RIGHT, AND CLASSIFYING THE SCENE WOULD HAVE BEEN THE WRONG FIX.
+            // The venue is loaded by NOTHING. Grepped across every .cs under Assets/ on
+            // 2026-09-10: outside this file, `SiegeArena` appears only in comments and in a
+            // regression's source-path string. It is not loaded by NAME, and it cannot be
+            // loaded by INDEX either - every scene load in the game is by name (no
+            // LoadScene(int) / buildIndex call exists under Assets/_Modules).
+            //
+            // ArenaMode does NOT load a venue scene. Read its own header: it spawns the
+            // opponent's base "at a raid anchor near the hero" in the CURRENT scene, by reusing
+            // EnemyOutpost + OutpostFoundationGenerator.Realize. The "ArenaMode ports the castle
+            // onto it" line at :97 is an ASPIRATION that was never wired.
+            //
+            // So registering it shipped an unloadable scene in every APK and forced every seam
+            // oracle to invent a posture for ground no player can stand on. Building and baking
+            // the venue is still correct - the scene file is what the siege bake produces, and
+            // WO-1637's ring palette lands in it either way. Only the BUILD-LIST entry was wrong.
+            //
+            // ✅ PUT THIS BACK - one line, uncommented - THE DAY a runtime path actually loads
+            // ArenaScenePath. On that day the posture seam will red again, and THAT is when the
+            // scene's posture gets decided, by whoever wires the loader and knows what it is.
+            // EnsureInBuildSettings();
             AssetDatabase.SaveAssets();
-            Log("BATCH: built + baked + saved " + ArenaScenePath + ". Venue ready for ArenaMode to port a castle onto.");
+            Log("BATCH: built + baked + saved " + ArenaScenePath + ". NOT added to Build Settings - " +
+                "nothing loads this venue yet (WO-1689); it is a bakeable asset, not a shipped scene.");
         }
 
         // Configure + bake a single NavMeshSurface on the venue root via reflection
@@ -295,6 +325,16 @@ namespace DeNelle.Editor
 
         // Add SiegeArena.unity to Build Settings (enabled) if absent, so ArenaMode /
         // WorldSceneLoader can load it by name at runtime. Idempotent.
+        /// <summary>
+        /// Add the venue to Build Settings.
+        /// <para/>
+        /// ⛔ **NOT CALLED, ON PURPOSE** (WO-1689, 2026-09-10) - see the commented-out call in
+        /// <see cref="BatchBuildAndBakeSiegeArena"/> for the full reasoning and the exact
+        /// condition for restoring it. It is kept rather than deleted because the day a runtime
+        /// path loads this venue, the fix is to uncomment one line, not to rewrite this.
+        /// **Do not call it to make a red go away** - a scene in the build list that nothing
+        /// loads is the defect the red was reporting.
+        /// </summary>
         private static void EnsureInBuildSettings()
         {
             var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);

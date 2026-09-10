@@ -53,6 +53,7 @@ namespace DeNelle.Editor.Regression
                 CaseGateWidth(failures, notes);
                 CaseGarrisonWipeWins(failures, notes);
                 CaseCourtyardCoverRings(failures, notes);
+                CaseGateReadsAsAGate(failures, notes);      // WO-1689
             }
             catch (Exception ex)
             {
@@ -372,6 +373,220 @@ namespace DeNelle.Editor.Regression
                              "for two of the three camps.");
 
             notes.Add("courtyard cover rows=" + coverRows);
+        }
+
+        // =====================================================================
+        //  WO-1689 - THE GATE MUST READ AS A GATE IN THE WALL IT SITS IN.
+        //
+        //  ⚠ WHY THIS CASE EXISTS. WO-1637 raised the hexagon-green base wall from the
+        //  1.10 m `barrier` rail to the 4.00 m dungeon `wall` box, and NOTHING anywhere
+        //  compared the gate to the wall - so a 1.41 m gate in a ~3.8 m wall, with 1.11 m
+        //  flank towers now SHORTER than the wall they flank, would have shipped silently.
+        //  The gate's own bake line printed the OPENING's width and the art's NAME, never a
+        //  height, so no log could have caught it either.
+        //
+        //  It also found a defect WO-1637 did NOT cause: `mage_enclave` has been pairing the
+        //  same 1.41 m hexagon gate with a 4.00 m `wall_cracked` wall all along.
+        //
+        //  SHAPE: pure arithmetic on measured mesh boxes + the tokens read out of source and
+        //  JSON. No bake, no PlayMode - the same idiom as
+        //  RaidArenaShapeRegression.CaseArenaBoundaryDesignedFit, whose header explains how a
+        //  measured-mesh constant is sourced and why it must be re-pointed in the same edit as
+        //  any module change. Follow that, not a threshold tweak, if this ever reds.
+        // =====================================================================
+
+        /// <summary>
+        /// Mesh heights in metres, measured 2026-09-10 from the FBX vertex extents with the
+        /// importer's unit conversion applied (<c>UnitScaleFactor/100 * scaleFactor</c> when
+        /// <c>useFileScale</c>), times the prefab's own transform scale.
+        /// <para/>
+        /// ⚠ These are the ONLY numbers in this case that come from outside the source tree.
+        /// The measuring script's CONTROL run reproduces the 2026-09-10 raid bake log exactly
+        /// (that log printed <c>piece 2.42m ... reach 1.82m</c> at applied scale 1.08 for a
+        /// palette the script measures at 2.24 / 3.38 m), so the method is validated against a
+        /// real bake rather than asserted. **Re-point them in the same edit as any module swap.**
+        /// <para/>
+        /// A token that is NOT in this table is NOTED and SKIPPED, never failed: the art packs
+        /// are gitignored (CLAUDE.md sec.4) and a fresh clone must not red on absent art.
+        /// </summary>
+        private static readonly Dictionary<string, float> MeasuredHeightM =
+            new Dictionary<string, float>(StringComparer.Ordinal)
+            {
+                // KayKit Dungeon Remastered 1.1 - the wall vocabulary with mass
+                { "wall",                          4.00f },
+                { "wall_broken",                   4.00f },
+                { "wall_cracked",                  4.00f },
+                { "wall_gated",                    4.00f },
+                { "wall_doorway",                  4.00f },
+                { "wall_pillar",                   4.00f },
+                { "wall_half",                     4.00f },
+                // KayKit Dungeon Remastered 1.1 - the barrier family, ALL of it knee-high
+                { "barrier",                       1.10f },
+                { "barrier_half",                  1.10f },
+                { "barrier_column",                1.40f },
+                { "barrier_corner",                1.40f },
+                // KayKit Medieval Hexagon 1.0.1 - a hex-TILE kit, authored at tile scale
+                { "wall_straight",                 1.10f },
+                { "wall_straight_gate",            1.41f },
+                { "building_watchtower_green",     1.11f },
+                { "building_tower_A_green",        2.19f },
+                // Synty PolygonFantasyKingdom - authored as a matched set, and it passes
+                { "SM_Bld_Castle_Wall_01",         5.00f },
+                { "SM_Bld_Castle_Wall_Gate_01",    5.86f },
+                { "SM_Bld_Castle_Wall_Tower_S_01", 7.52f },
+                { "SM_Bld_Castle_Wall_Tower_M_01", 7.52f },
+            };
+
+        /// <summary>
+        /// The gate must reach this share of the wall module's height. Not 1.0: a gate arch
+        /// legitimately sits a little under its wall, and the Synty set (5.86 / 5.00 = 1.17)
+        /// shows a kit author going the other way. 0.80 fails the 0.35 the hexagon gate
+        /// actually scores by a wide margin and would still pass a deliberately squat gate.
+        /// </summary>
+        private const float GateHeightFloorOfWall = 0.80f;
+
+        /// <summary>
+        /// A flank tower must be at LEAST the wall's height. A tower shorter than its own wall
+        /// is the specific thing the owner's frame showed. Synty scores 1.50 here.
+        /// </summary>
+        private const float FlankHeightFloorOfWall = 1.00f;
+
+        /// <summary>
+        /// Pull the token a kit-branch returns out of source. Handles BOTH shapes the dresser
+        /// uses: <c>if (kit == "x") return "tok";</c> and the ternary chain
+        /// <c>kit == "x" ? "tok" : ...</c>. The LAST quoted string in the body is the
+        /// fall-through default, which is what `hexagon-green` always takes - neither
+        /// `DefaultGate` nor `DefaultWall` names it explicitly.
+        /// </summary>
+        private static string KitToken(string body, string kit)
+        {
+            if (string.IsNullOrEmpty(body)) return null;
+            int at = body.IndexOf("kit == \"" + kit + "\"", StringComparison.Ordinal);
+            if (at >= 0)
+            {
+                // Start PAST the kit literal's own closing quote: `kit == "` is 8 chars,
+                // then the kit name, then the closing quote. Starting one short of that
+                // finds the closing quote itself and returns the text between the branches
+                // (`) return ` / ` ? `) instead of the token - which is how the first draft
+                // of this helper silently mis-read every explicit branch.
+                int after = at + 8 + kit.Length + 1;
+                int q = after <= body.Length ? body.IndexOf('"', after) : -1;
+                if (q >= 0)
+                {
+                    int e = body.IndexOf('"', q + 1);
+                    if (e > q) return body.Substring(q + 1, e - q - 1);
+                }
+                return null;
+            }
+            // fall-through default = the last quoted string in the body
+            int last = body.LastIndexOf('"');
+            if (last <= 0) return null;
+            int start = body.LastIndexOf('"', last - 1);
+            return start >= 0 ? body.Substring(start + 1, last - start - 1) : null;
+        }
+
+        /// <summary>Slice out a method or statement body by a start marker and a terminator.</summary>
+        private static string Slice(string src, string from, string to)
+        {
+            if (string.IsNullOrEmpty(src)) return null;
+            int a = src.IndexOf(from, StringComparison.Ordinal);
+            if (a < 0) return null;
+            int b = src.IndexOf(to, a, StringComparison.Ordinal);
+            return b < 0 ? src.Substring(a) : src.Substring(a, b - a);
+        }
+
+        private static void CaseGateReadsAsAGate(List<string> failures, List<string> notes)
+        {
+            string dress = TryRead(DresserSrc);
+            if (dress == null) { failures.Add("cannot read " + DresserSrc); return; }
+            var cfg = LoadConfigs(failures);
+            if (cfg == null) return;
+
+            // ⚠ Slice each body from its SIGNATURE to its own closing brace, never "to the
+            // next method". The first draft ran DefaultGate -> "private static string
+            // DefaultWall(", which swallowed DefaultWall's XML doc comment - and that comment
+            // quotes a token, so the fall-through default read out of the COMMENT instead of
+            // the code. A doc comment must never be able to change what a source lint sees.
+            string wallBody = Slice(dress, "private static string DefaultWall(string kit)", "\n        }");
+            string gateBody = Slice(dress, "private static string DefaultGate(string kit)", "\n        }");
+            string flankBody = Slice(dress, "string flankTok =", ";");
+
+            if (wallBody == null || gateBody == null || flankBody == null)
+            {
+                failures.Add("[gate-scale] could not slice DefaultWall / DefaultGate / flankTok out of " +
+                             Path.GetFileName(DresserSrc) + " - the gate-vs-wall pin cannot be evaluated, " +
+                             "so it is treated as broken rather than skipped.");
+                return;
+            }
+
+            // id -> kit, mirroring RaidBaseDresser.KitFor. iron_bastion authors no raidDress
+            // at all, so it takes every default; that is exactly why it is listed here.
+            var camps = new[]
+            {
+                new[] { "raider_camp_small", "hexagon-green" },
+                new[] { "iron_bastion",      "hexagon-green" },
+                new[] { "fortified_garrison", "synty-castle" },
+                new[] { "mage_enclave",       "dungeon-stone" },
+            };
+
+            int judged = 0;
+            foreach (var camp in camps)
+            {
+                string id = camp[0], kit = camp[1];
+                var row = Row(cfg, id);
+                var dressRow = row != null ? row["raidDress"] as JObject : null;
+
+                // DATA wins over the code default - that is the live precedence at
+                // RaidBaseDresser.Dress (the wallTok / gateTok ternaries).
+                string wallTok = dressRow != null && dressRow["wallModule"] != null
+                    ? (string)dressRow["wallModule"] : KitToken(wallBody, kit);
+                string gateTok = dressRow != null && dressRow["gate"] != null
+                    ? (string)dressRow["gate"] : KitToken(gateBody, kit);
+                string flankTok = KitToken(flankBody, kit);   // code-only, no data override
+
+                if (wallTok == null || gateTok == null || flankTok == null)
+                {
+                    notes.Add("gate-scale " + id + ": token unresolved, skipped");
+                    continue;
+                }
+
+                float wallH, gateH, flankH;
+                if (!MeasuredHeightM.TryGetValue(wallTok, out wallH) ||
+                    !MeasuredHeightM.TryGetValue(gateTok, out gateH) ||
+                    !MeasuredHeightM.TryGetValue(flankTok, out flankH))
+                {
+                    notes.Add("gate-scale " + id + ": unmeasured module, skipped");
+                    continue;
+                }
+                if (wallH <= 0.01f) continue;
+                judged++;
+
+                float gateRatio = gateH / wallH;
+                float flankRatio = flankH / wallH;
+
+                if (gateRatio < GateHeightFloorOfWall)
+                    failures.Add("[gate-scale] '" + id + "' (" + kit + "): the gate '" + gateTok +
+                                 "' is " + gateH.ToString("F2") + "m against a '" + wallTok + "' wall of " +
+                                 wallH.ToString("F2") + "m - it reaches " + gateRatio.ToString("F2") +
+                                 " of the wall where " + GateHeightFloorOfWall.ToString("F2") +
+                                 " is required. A gate that short reads as a doll's door in a giant's " +
+                                 "wall. Fix the MODULE (a matched-box gate from the wall's own pack), " +
+                                 "not this threshold.");
+
+                if (flankRatio < FlankHeightFloorOfWall)
+                    failures.Add("[gate-scale] '" + id + "' (" + kit + "): the flank tower '" + flankTok +
+                                 "' is " + flankH.ToString("F2") + "m against a '" + wallTok + "' wall of " +
+                                 wallH.ToString("F2") + "m - " + flankRatio.ToString("F2") + " of the wall, " +
+                                 "so the tower is SHORTER than the wall it flanks. Required >= " +
+                                 FlankHeightFloorOfWall.ToString("F2") + ".");
+            }
+
+            if (judged == 0)
+            {
+                notes.Add("gate-scale: nothing measurable (art packs absent?)");
+                return;
+            }
+            notes.Add("gate-scale " + judged + " camp(s) judged");
         }
 
         private static string TryRead(string path)
