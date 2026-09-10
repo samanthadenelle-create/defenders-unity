@@ -1,8 +1,6 @@
 # WO-1628 - Build Collections: every category card's affordability caption renders as "nothing affordable y" at two of the three capture aspects
 
-**Status:** READY TO IMPLEMENT - **instrument first** (CLAUDE.md sec.12: no code edit until a
-captured line names the resolved band height, the final fontSize, the line count and the character
-count for this label at all three aspects)
+**Status:** BLOCKED - awaiting the instrumented capture; INSTRUMENTED step 1 (lane SUBTITLE 2026-09-10)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1628 -> 1629 in the SAME edit)
 **Silo / Lane:** Village / BuildMode UI (`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
 **Severity:** P2 felt-legibility. Seven cards, seven truncated captions, on the FIRST build screen a
@@ -302,3 +300,142 @@ This lane owns this ticket. Its hand-back is incomplete until this file's `**Sta
 flipped and
 `WorkOrders/WORK_ORDER_1628_build_collections_category_subtitle_truncates_at_two_of_three_aspects.RESULT.md`
 is written, with both paths reported. The lead regenerates `BOARD.html`.
+
+---
+
+## INSTRUMENTED 2026-09-10
+
+Lane SUBTITLE. **Step 1 ONLY. No layout edit was made and none is licensed yet** - sec.4 forbids it
+until the capture below is read. Rebased onto `b3f6c9187` (WO-1626's `FitSingleLine(label,` at
+`BuildCollectionBrowser.cs:333` is present in the base, and sec.1e's statements re-resolved after the
+rebase: the caption is still authored at `:245-247`, coloured `:248`, `raycastTarget` `:249`,
+`FitBlock(subtitle, 18f, 21f)` `:250`).
+
+### What was added (one file: `Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
+
+| file:line | what it is |
+|---|---|
+| `BuildCollectionBrowser.cs:198-207` | note + `var subtitleProbes = new List<SubtitleFitProbe>();` declared before the card loop |
+| `BuildCollectionBrowser.cs:251-262` | the loop no longer emits the trace; it pushes a `SubtitleFitProbe` (prefix, label, card rect) instead |
+| `BuildCollectionBrowser.cs:265-268` | `ReportSubtitleFit(grid, subtitleProbes);` (`:268`) called AFTER `BuildManagePlacedCard(grid)` (`:265`), before the footer link |
+| `BuildCollectionBrowser.cs:839-848` | `private sealed class SubtitleFitProbe` - doc `:839-842`, body `:843-848` (prefix / label / card) |
+| `BuildCollectionBrowser.cs:850-869` | the doc block: why a separate pass, why edit-mode has no fit guard, units = canvas reference px |
+| `BuildCollectionBrowser.cs:870-907` | `ReportSubtitleFit` - `Guard.Try("Build", ...)`, `Canvas.ForceUpdateCanvases()`, `LayoutRebuilder.ForceRebuildLayoutImmediate(grid)` (`:876`), `t.ForceMeshUpdate(true, true)` (`:886`), one `FlowTrace.Step("Build", ...)` per card (`:898`) |
+
+### The tag text
+
+The emitted line keeps the **exact prefix the pre-WO-1628 trace emitted**, then appends the
+measurement:
+
+```
+collection=<id> affordable=<n> subtitle='<text>' bandPx=<w>x<h> cardPx=<w>x<h> gridPx=<w>x<h>
+ fontSize=<size> floor <min> ceiling <max> rendered=<lineCount> lines, <characterCount> chars
+ sourceLen=<text.Length> truncated=<isTextTruncated> preferredHeightPx=<preferredHeight>
+ modes=<overflowMode> / <textWrappingMode>
+```
+
+(one physical line per card; wrapped here only for the page). Tag is the existing `Build` system -
+no new tag was introduced. Units are canvas **reference px**.
+
+### Why the line MOVED out of the build loop (read this before judging the numbers)
+
+Measuring at the old site would have measured nothing. Every card is a child of the
+`HorizontalLayoutGroup` authored at `BuildCollectionBrowser.cs:176`, so each card added re-sizes its
+siblings, and while the loop is still filling no layout pass has run at all. The capture harness does
+not force one until after the panel is built -
+`Assets/Editor/UICaptureLaunch.cs:5703-5710` (`Canvas.ForceUpdateCanvases()` then
+`LayoutRebuilder.ForceRebuildLayoutImmediate` on the panel root). The reading of "keep it on the
+existing call" taken here is therefore: **same system tag, same prefix, one line per card** - relocated
+post-layout. The in-loop emission was DELETED rather than kept, because a pre-layout twin of every
+line in the capture log is worse than no measurement.
+
+Three fields are emitted **beyond** sec.4's enumerated bullets, and are named here for the lead:
+`cardPx` + `gridPx` (sec.4 Step 2's third branch is "the card's own height changed between aspects" -
+that branch cannot be decided without them, and they also make a mis-timed measurement self-evident as
+zeros) and `preferredHeightPx` (Step 2's first branch must author a band from the measured two-line
+requirement; without it the capture has to be run twice).
+
+### The grep the lead runs on the capture log
+
+```
+tr -d '\000' < Builds/<capture-log> | grep -a subtitle
+```
+
+⚠ **That bare grep returns 27 lines, not 21, and always did.** Run against
+`Builds/wave2-capture2` on 2026-09-10 it returned 21 `[Flow:Build] collection=... subtitle='nothing
+affordable yet'` lines (`:2933-2942`, `:2998-3004`, `:3060-3066`) PLUS 6 `[Flow:Journey] deck
+card=... subtitle='...'` lines (`:2623`, `:2624`, `:2641`, `:2642`, `:2656`, `:2657`) that match the
+bare word and have nothing to do with this screen. **The count that matters is the Build one** - so
+either read past the Journey rows, or narrow the grep by piping through `grep -a "Flow:Build"`
+first. The narrowed form must return **21** lines - 7 cards x 3 aspect passes - not 42. 42 means the
+in-loop emission came back and the numbers are pre-layout.
+
+### What the numbers must show to license Step 2
+
+Read the 21 lines. The three branches sec.4 Step 2 lists are decided as follows, and **exactly one**
+must be named in the Step 2 hand-back:
+
+1. **Band is the defect** - at 2340 and 2670 `bandPx` height is less than `preferredHeightPx`, while
+   at 1920 it is not, and `rendered` reads `1 lines` at the two wide aspects against `2 lines` at
+   1920. Then author the caption band in reference px from the measured `preferredHeightPx`, the way
+   `FooterLinkBandPx` is - sec.6's pins stay untouched.
+2. **Wrap is the defect** - `bandPx` height is ample at all three aspects yet `rendered` still reads
+   `1 lines` at the wide ones. Then `modes` names what the label was actually left in and the fix is
+   that cause, not the band.
+3. **The card is the defect** - `cardPx` height differs between aspects by more than the band delta.
+   Then it is the grid, and sec.4 requires that to be said out loud in the hand-back because it widens
+   the blast radius to every card on the screen.
+
+In every branch the discriminator that proves the loss is `characterCount` (inside `rendered`) vs
+`sourceLen`: with a block fit, TMP's `characterCount` is the PROCESSED count, so a cut reads
+`characterCount < sourceLen` and `truncated=True`. Acceptance sec.5.2 is met only when all 21 lines
+read `characterCount == sourceLen`.
+
+**If the 21 lines come back with `bandPx=0x0` or `cardPx=0x0`, the measurement site is wrong and NO
+step-2 branch may be chosen from them.** That is the guard the extra rect fields exist for.
+
+### Pins checked this session (each read at source before the edit)
+
+- `Assets/Editor/Regression/BuildCollectionPlayerRegression.cs:116-121` scans this file for
+  `TextOverflowModes.Ellipsis` / `TextOverflowModes.Truncate` as **whole-file negative** pins and
+  requires `enableWordWrapping=true`, `enableAutoSizing=true`,
+  `overflowMode=TextOverflowModes.Overflow`. Verified after the edit: the two forbidden literals occur
+  **0** times (the new trace prints `t.overflowMode.ToString()`, never the literal, and the comments
+  deliberately avoid spelling either), and the three required literals occur once each.
+- `BuildCollectionPlayerRegression.cs:74-79` walks (the `StringLiterals` helper at `:218`) every double-quoted literal and fails on a `[`
+  glyph or `NO COST`. The diff introduces **no** `[` in any added line.
+- `BuildCollectionPlayerRegression.cs:153-176` - `link.name = "ManageDefensesFooterLink"`,
+  `"Already built? Manage defenses >"`, `PanelRouter.Open(PanelId.Manage, "Defense")`,
+  `FitSingleLine(label,` present; `"Upgrade Defenses"` and `fontSizeMin = 16f` absent. All verified
+  post-edit.
+- ⛔ `BuildAffordabilityWordsRegression.cs:67` pins the **exact source literal**
+  `"collection=" + c.CollectionId + " affordable="` as the WO-1411 proving trace. Relocating the
+  emission would have RED-ed it if the string had been rebuilt; it was not - the probe's `Prefix`
+  at `BuildCollectionBrowser.cs:257-258` is that literal character for character, and `:64-65`
+  (`StructureCardVM.AffordabilityWords(` / `StructureCardVM.AffordableCount(`) are untouched. All
+  three verified GREEN against the edited file this session. `StructureCardVM` itself was **not
+  touched**.
+- The other three suites that `ReadAllText` this file were checked too, all GREEN post-edit:
+  `BuildFirstUseGuideRegression.cs:50` (`BuildFirstUseGuide.CategorySelected();`),
+  `CardCollectionFoundationRegression.cs:74-76` (`ResolveAsync(collection.CollectionId`,
+  `foreach (var card in _remoteCollection.Cards)`, `result.Add(card.StableId)`), and
+  `PlacedStructureDoorRegression.cs:202-217` C4a/C4b/C4c (`BuildManagePlacedCard` declared, called
+  as `BuildManagePlacedCard(grid)`, `_managePlaced?.Invoke`) - the new call was inserted AFTER
+  `BuildManagePlacedCard(grid)`, never in place of it.
+- `ElarionUiKitObsidian.cs` / `ElarionUiKit.cs` - **not touched** (read only: `FitBlock` `:3077-3092`,
+  `ArmFitGuard` `:3094-3100`).
+
+### Checks run
+
+- `python tools/gate_brace.py Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs` ->
+  `GATE_BRACE_SUMMARY bad=0 of 1`
+- NUL scan: `0` NUL bytes in the file (59490 bytes).
+- No Unity run, no gate, no commit - EDIT ONLY, per the lane's instruction.
+
+### Raised for the lead (sec.7 asked for this)
+
+The glyph-survival oracle rule sec.1i describes is still unminted. `isTextTruncated` /
+`characterCount < text.Length` on a visible TMP is now trivially available - `ReportSubtitleFit`
+computes both - but `LayoutOracle.cs:17-20` requires a new rule be SEEN RED first against a synthetic
+authored-defect canvas in `UiTouchClampRegression`. That is its own ticket with its own red-first
+proof and is deliberately NOT in this diff.

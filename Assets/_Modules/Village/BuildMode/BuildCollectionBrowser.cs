@@ -195,6 +195,16 @@ namespace DeNelle.Village
             layout.childControlHeight = true;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = true;
+            // WO-1628 Step 1 (INSTRUMENT ONLY -- CLAUDE.md sec.12: no layout edit until this
+            // measurement is read). The card's sub-caption is the label under investigation.
+            // The probes are collected here and REPORTED AFTER the grid is complete, because
+            // measuring inside this loop measures nothing: every card is a child of the
+            // HorizontalLayoutGroup authored just above, so each card added re-sizes its
+            // siblings, and no layout pass has run at all while the loop is still filling.
+            // The capture harness itself does not force one until after the panel is built
+            // (Assets/Editor/UICaptureLaunch.cs:5703-5710 -- Canvas.ForceUpdateCanvases then
+            // LayoutRebuilder.ForceRebuildLayoutImmediate on the panel root).
+            var subtitleProbes = new List<SubtitleFitProbe>();
             for (int index = 0; index < visible.Count; index++)
             {
                 var c = visible[index];
@@ -238,11 +248,24 @@ namespace DeNelle.Village
                 subtitle.color = ElarionUi.Parchment;
                 subtitle.raycastTarget = false;
                 ElarionUiKit.FitBlock(subtitle, 18f, 21f);
-                FlowTrace.Step("Build", "collection=" + c.CollectionId + " affordable=" + affordable +
-                    " subtitle='" + subtitle.text + "'");
+                // WO-1628 Step 1: the line this used to emit HERE is unchanged in wording and
+                // still one per card -- it is emitted from ReportSubtitleFit below, once the
+                // grid has actually been laid out, with the resolved band and the render facts
+                // appended. Emitting it here as well would put a pre-layout twin of every line
+                // in the capture log, which is worse than no measurement at all.
+                subtitleProbes.Add(new SubtitleFitProbe
+                {
+                    Prefix = "collection=" + c.CollectionId + " affordable=" + affordable +
+                             " subtitle='" + subtitle.text + "'",
+                    Label = subtitle,
+                    Card = card.GetComponent<RectTransform>()
+                });
             }
 
             BuildManagePlacedCard(grid);
+            // WO-1628 Step 1 -- measured AFTER the Manage Placed card, because that card is an
+            // additional child of the SAME grid and therefore changes every sibling's width.
+            ReportSubtitleFit(grid, subtitleProbes);
             BuildManageDefensesFooterLink();
         }
 
@@ -811,6 +834,76 @@ namespace DeNelle.Village
             Edge("GoldBottom", new Vector2(.018f, .008f), new Vector2(.982f, .018f));
             Edge("GoldLeft",   new Vector2(.008f, .018f), new Vector2(.018f, .982f));
             Edge("GoldRight",  new Vector2(.982f, .018f), new Vector2(.992f, .982f));
+        }
+
+        /// <summary>WO-1628 Step 1 -- one category card's sub-caption, held until the grid has
+        /// been laid out so the band it ends up with can be MEASURED rather than derived. The
+        /// prefix is the exact text the pre-WO-1628 trace emitted, so the capture log keeps the
+        /// same one-line-per-card shape and the same grep.</summary>
+        private sealed class SubtitleFitProbe
+        {
+            public string Prefix;
+            public TextMeshProUGUI Label;
+            public RectTransform Card;
+        }
+
+        /// <summary>
+        /// WO-1628 Step 1 -- INSTRUMENTATION ONLY. Emits, per category card, what the affordability
+        /// sub-caption BECAME after layout: the resolved band, the card that holds it, the fitted
+        /// font size and its floor/ceiling, the rendered line and character counts against the
+        /// source length, whether TMP cut the string, its preferred height, and the two modes the
+        /// fit left it in.
+        ///
+        /// WHY IT IS A SEPARATE PASS AND NOT A LINE INSIDE THE BUILD LOOP: rect sizes inside a
+        /// HorizontalLayoutGroup are not resolved until a layout pass runs, and the headless
+        /// capture is an EDIT-MODE render (UICaptureLaunch.cs:525-532) with no LateUpdate and no
+        /// post-layout fit guard -- ElarionUiKitObsidian.ArmFitGuard returns immediately when
+        /// !Application.isPlaying (:3096). So the numbers below are the AUTHORED fit with no
+        /// runtime rescue, which is exactly what the three captured PNGs show.
+        ///
+        /// UNITS: canvas reference px. The card and panel rects are emitted alongside the band on
+        /// purpose -- a measurement taken at the wrong moment shows itself as zeros here, so a bad
+        /// site can never be mistaken for a real number.
+        ///
+        /// Per CLAUDE.md sec.12 this stays in the code after the fix.
+        /// </summary>
+        private static void ReportSubtitleFit(RectTransform grid, List<SubtitleFitProbe> probes)
+        {
+            if (probes == null || probes.Count == 0) return;
+            Guard.Try("Build", "WO-1628 subtitle fit measurement", () =>
+            {
+                Canvas.ForceUpdateCanvases();
+                if (grid != null) LayoutRebuilder.ForceRebuildLayoutImmediate(grid);
+                Canvas.ForceUpdateCanvases();
+                string gridPx = grid == null ? "none" :
+                    grid.rect.width.ToString("0.#") + "x" + grid.rect.height.ToString("0.#");
+                foreach (var probe in probes)
+                {
+                    if (probe == null || probe.Label == null) continue;
+                    var t = probe.Label;
+                    // ignoreActiveState + forceTextReparsing: in edit mode nothing has ticked TMP,
+                    // so without both the textInfo below is the pre-fit mesh, not the shipped one.
+                    t.ForceMeshUpdate(true, true);
+                    var band = t.rectTransform.rect;
+                    string bandPx = band.width.ToString("0.#") + "x" + band.height.ToString("0.#");
+                    string cardPx = probe.Card == null ? "none" :
+                        probe.Card.rect.width.ToString("0.#") + "x" + probe.Card.rect.height.ToString("0.#");
+                    string fontPx = t.fontSize.ToString("0.##") + " floor " + t.fontSizeMin.ToString("0.##") +
+                                    " ceiling " + t.fontSizeMax.ToString("0.##");
+                    string source = t.text == null ? "null" : t.text.Length.ToString();
+                    string rendered = t.textInfo == null ? "none" :
+                        t.textInfo.lineCount.ToString() + " lines, " +
+                        t.textInfo.characterCount.ToString() + " chars";
+                    string modes = t.overflowMode.ToString() + " / " + t.textWrappingMode.ToString();
+                    FlowTrace.Step("Build", probe.Prefix +
+                        " bandPx=" + bandPx + " cardPx=" + cardPx + " gridPx=" + gridPx +
+                        " fontSize=" + fontPx +
+                        " rendered=" + rendered + " sourceLen=" + source +
+                        " truncated=" + t.isTextTruncated +
+                        " preferredHeightPx=" + t.preferredHeight.ToString("0.#") +
+                        " modes=" + modes);
+                }
+            });
         }
 
         private static RectTransform Box(string name, Transform parent, Color color)
