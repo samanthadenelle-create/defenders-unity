@@ -169,6 +169,56 @@ namespace DeNelle.Wallet
             internal const float UtilityRowSpacingPx = 6f;
             internal const int   UtilityColumnPadPx  = 8;
 
+            // ── WO-1636 — THE UTILITY ROW'S HORIZONTAL BUDGET, IN REFERENCE PX ────────────
+            // The row's icon and caption used to be authored as shares of the button (.035-.17 and
+            // .20-.92), which is a share of a rect whose width is whatever the commerce rail
+            // resolved to. At 1280x720 that left the caption 302 px and "MONTHLY LEDGER" drew 12 of
+            // 13 printable glyphs (Builds/wave3-capture2.glyph-findings.txt:57). Px, so the caption
+            // gets the same room at every aspect and the dead gap between the two is spent.
+            /// <summary>Left inset of the icon slot inside the row button.</summary>
+            internal const float UtilityRowIconLeftPx  = 14f;
+            /// <summary>The icon slot's width. Its art fits inside by aspect (AddArt).</summary>
+            internal const float UtilityRowIconWidthPx = 52f;
+            /// <summary>Gap between the icon slot and the caption.</summary>
+            internal const float UtilityRowIconGapPx   = 8f;
+            /// <summary>Where the caption starts — derived, never a second literal.</summary>
+            internal const float UtilityRowTextLeftPx =
+                UtilityRowIconLeftPx + UtilityRowIconWidthPx + UtilityRowIconGapPx;
+            /// <summary>Padding between the caption's end and the button's right edge.</summary>
+            internal const float UtilityRowTextRightPadPx = 8f;
+
+            // ── WO-1636 — THE BOTTOM BAND'S THREE TENANTS, STATED ONCE ───────────────────
+            // ⛔ CONSUMED, NOT RESTATED. SeatCloseInBottomBand reads the Close's centre from here,
+            // BuildLandscapeBottomNotice reads the legal copy's left edge from here, and the
+            // CommerceCta seat is derived from BOTH of them. They used to be three literals in
+            // three methods (.15f, .51f, and a .30-.50 pair) with only a comment tying them
+            // together — and the comment was already wrong, because it said "the landscape CTA owns
+            // x .30-.50" while nothing enforced it.
+            /// <summary>Centre of the canon Close in the landscape bottom band.</summary>
+            internal const float BottomBandCloseCentreFrac = 0.15f;
+            /// <summary>Left edge of the landscape legal copy.</summary>
+            internal const float BottomNoticeLeftFrac = 0.51f;
+            /// <summary>Clearance the CTA seat keeps from each neighbour. Comfortably above
+            /// LayoutOracle's overlap pad (2 px) — two neighbours that merely fail to overlap are
+            /// not a layout.</summary>
+            internal const float BottomBandKeepOutPx = 24f;
+
+            /// <summary>The narrowest the landscape legal copy may be squeezed to before the Buy
+            /// control leaves the band instead (rule 4 at the CommerceCta seat).
+            /// <para>MEASURED, not chosen: the two notice labels are authored across x .51-.995 of
+            /// the band, and the NARROWEST captured aspect is 16:9, whose reference band is
+            /// 1920 - 2 x EdgePadPx = 1884 px. That share is .485 x 1884 = 914 px, and the
+            /// glyph-oracle run flagged NEITHER notice label at 1280x720 — so 914 px is a width
+            /// this copy is known to render whole in. Below it we are guessing, so below it the
+            /// CTA relocates rather than the copy shrinking into a truncation nobody measured.</para></summary>
+            internal const float BottomNoticeMinPx = 914f;
+
+            /// <summary>WO-1636 — the pad either side of a canon CTA's caption, in reference px.
+            /// The same 8 px the utility rows use, so a Buy-control caption and a rail caption
+            /// breathe alike. See <c>PackStore.SeatCtaLabelInPx</c> for why the kit's .04 fraction
+            /// is wrong on a button that is authored at a fixed px width.</summary>
+            internal const float CtaLabelPadPx = UtilityRowTextRightPadPx;
+
             // ⛔ THE CLOSE KEEP-OUT IS NOT HERE. It moved to StoreLegalFooter.CloseKeepOutPx with
             // the copy it protects — a keep-out authored in one file and consumed by the layout in
             // another is the duplicated-measurement shape this file's own comments keep warning
@@ -260,6 +310,12 @@ namespace DeNelle.Wallet
         private RectTransform _marketHost;              // centre column (fluid) — the banded shelf
         private RectTransform _commerceHost;            // right column — status + the ONE Buy control
         private RectTransform _ctaHost;                 // cleared per focus; the CTA lives here
+        // WO-1636 — the bottom band's seats, resolved ONCE in EnsureBuilt and consumed downstream.
+        // ⛔ THEY ARE DERIVED VALUES, NOT MEASUREMENTS. Reading `.rect.width` at build time returns
+        // RAW SCREEN PIXELS (the canvas scaler has not run), which is what shipped a 26.9 px Buy
+        // control at 800x360 on WO-1636's first attempt. Nothing below may re-measure them.
+        private float _ctaHostWidthPx;                  // the CTA seat's reference width
+        private float _bottomNoticeLeftFrac;            // where the landscape legal copy starts
         private Transform _shelfContent;                // band strips + card rows
         private int _persistentShelfChildren;           // the FREE band, built once, never re-rendered
         private Transform _utilityContent;              // landscape upper-right rail: persistent actions
@@ -956,11 +1012,109 @@ namespace DeNelle.Wallet
 
             // The CTA sub-host. Cleared and rebuilt per focus so the spotlight column never has to be
             // torn down to repaint a button — and so the status surface above it SURVIVES a rebuild.
-            _ctaHost = landscapeRail
-                ? Region(_bottomBand, "CommerceCta", new Vector2(0.30f, 0f), new Vector2(0.50f, 1f),
-                    Vector2.zero, Vector2.zero)
-                : Region(_commerceHost, "CommerceCta", Vector2.zero, new Vector2(1f, 0f),
+            // ⛔ WO-1636 — THE LANDSCAPE CTA SEAT IS PX WIDE NOW, AND THAT IS THE SAME BUG THE
+            // HEIGHT ABOVE ALREADY FIXED. The stacked seat has always taken its HEIGHT in px
+            // (_plan.CtaHostPx, right below); the landscape seat took its WIDTH as .30-.50 of the
+            // bottom band — 20% of a band whose reference width moves with the aspect. At 1280x720
+            // that is 375 px, the button inside resolves to 335, its label to 308, and "CONNECT
+            // WALLET" drew 12 of 13 printable glyphs (Builds/wave3-capture2.glyph-findings.txt:58):
+            // the one control on this screen that takes money, missing a letter.
+            //
+            // ⛔ AND IT IS SEATED BETWEEN ITS TWO NEIGHBOURS, WITH A STATED ORDER OF PRECEDENCE.
+            // The bottom band holds three tenants and they are in it TOGETHER: the canon Close on
+            // the left (SeatCloseInBottomBand, centred at BottomBandCloseCentreFrac x CanonCtaWidth),
+            // this seat, and the legal copy from BottomNoticeLeftFrac rightward
+            // (BuildLandscapeBottomNotice). The rule, in priority order:
+            //
+            //   1. The CLOSE never moves. It is the way out of a full-screen modal.
+            //   2. The BUY CONTROL is seated at CANON WIDTH or it is not seated in this band at
+            //      all. It never shrinks — a sub-MinTouchPx Buy control is a dead control, and
+            //      ClampMinTouch would then GROW it over whatever is beside it.
+            //   3. The LEGAL COPY yields. It is fine print with an autosize band; it gives ground
+            //      before the control the screen exists for does.
+            //   4. If even a yielded notice cannot leave the copy a readable width, the CTA LEAVES
+            //      the band and STACKS into the commerce rail — the same seat the stacked
+            //      composition already uses, which NightMarketUiRegression.CheckCommerceCta already
+            //      guarantees is at least CanonCtaWidth wide. A designed relocation, not a collapse.
+            //
+            // ⛔ AND THE BAND WIDTH IS THE PLAN'S, NOT `_bottomBand.rect.width`. WO-1636's first
+            // attempt measured the rect and shipped nine UI_GEOMETRY_FAILs (chain 17): at 800x360
+            // the Buy control resolved to 26.9 x 119 ref px — 85 px UNDER MinTouchPx — because at
+            // build time the rect still reads RAW SCREEN PIXELS (~764) rather than the ~2110
+            // reference px the canvas scaler will give it. That is exactly why this file already
+            // derives every other width from SurfaceReferenceWidthPx instead of a rect
+            // (NightMarketLayout's own header says so), and `bodyW` above IS that derivation:
+            // _bottomBand is _screen inset by `pad` on each side, so its reference width is bodyW.
+            float bandW = Mathf.Max(1f, bodyW);
+            float closeRightPx = NightMarketLayout.BottomBandCloseCentreFrac * bandW
+                               + 0.5f * ElarionUiKit.CanonCtaWidth;
+            float gapLeftPx = closeRightPx + NightMarketLayout.BottomBandKeepOutPx;
+            float noticeLeftPx = NightMarketLayout.BottomNoticeLeftFrac * bandW;
+            float gapRightPx = noticeLeftPx - NightMarketLayout.BottomBandKeepOutPx;
+            bool ctaStacks = false;
+
+            if (landscapeRail && gapRightPx - gapLeftPx < NightMarketComposition.CommerceMinPx)
+            {
+                // Rule 3 — the legal copy yields.
+                float yieldedNoticeLeftPx = gapLeftPx + NightMarketComposition.CommerceMinPx
+                                          + NightMarketLayout.BottomBandKeepOutPx;
+                if (bandW - yieldedNoticeLeftPx >= NightMarketLayout.BottomNoticeMinPx)
+                {
+                    FlowTrace.Warn("Store", $"CommerceCta seat: the {bandW:0}px bottom band cannot hold the Close, a " +
+                                            $"canon Buy control and the legal copy at its authored " +
+                                            $"{NightMarketLayout.BottomNoticeLeftFrac:0.##} edge, so the LEGAL COPY " +
+                                            $"YIELDS from {noticeLeftPx:0}px to {yieldedNoticeLeftPx:0}px. The " +
+                                            "fine print gives ground before the Buy control does (rule 3).");
+                    noticeLeftPx = yieldedNoticeLeftPx;
+                    gapRightPx = noticeLeftPx - NightMarketLayout.BottomBandKeepOutPx;
+                }
+                else
+                {
+                    // Rule 4 — relocate, never shrink.
+                    ctaStacks = true;
+                    FlowTrace.Warn("Store", $"CommerceCta seat: the {bandW:0}px bottom band cannot seat the Close, a " +
+                                            $"canon {NightMarketComposition.CommerceMinPx:0}px Buy control AND " +
+                                            $"{NightMarketLayout.BottomNoticeMinPx:0}px of readable legal copy. The " +
+                                            "Buy control LEAVES the band and stacks into the commerce rail at full " +
+                                            "canon size (rule 4) — it is never narrowed, because a Buy control under " +
+                                            "MinTouchPx is a dead control the clamp would grow over its neighbour.");
+                }
+            }
+
+            // The notice's edge is handed downstream as a FRACTION of the band — BuildLandscapeBottomNotice
+            // authors anchors, and re-dividing by a rect there would reintroduce the raw-pixel bug.
+            _bottomNoticeLeftFrac = Mathf.Clamp01(noticeLeftPx / bandW);
+
+            if (landscapeRail && !ctaStacks)
+            {
+                // Canon width, centred in the gap so it sits where the retired .30-.50 pair put it
+                // without ever touching either neighbour.
+                float seatCentrePx = 0.5f * (gapLeftPx + gapRightPx);
+                float seatLeftPx = seatCentrePx - 0.5f * NightMarketComposition.CommerceMinPx;
+                float seatRightPx = seatLeftPx + NightMarketComposition.CommerceMinPx;
+                _ctaHostWidthPx = NightMarketComposition.CommerceMinPx;
+                _ctaHost = Region(_bottomBand, "CommerceCta", new Vector2(0f, 0f), new Vector2(0f, 1f),
+                    new Vector2(seatLeftPx, 0f), new Vector2(seatRightPx, 0f));
+                float leftClear = seatLeftPx - closeRightPx;
+                float rightClear = noticeLeftPx - seatRightPx;
+                FlowTrace.Step("Store", $"WO-1636 CommerceCta seat: band {bandW:0}px, Close ends {closeRightPx:0}, " +
+                                        $"seat {seatLeftPx:0}..{seatRightPx:0} ({_ctaHostWidthPx:0}px = canon), legal " +
+                                        $"copy starts {noticeLeftPx:0} — clearances {leftClear:0}px left / " +
+                                        $"{rightClear:0}px right. Reference px from the plan, never from a rect that " +
+                                        "still reads raw screen pixels at build time.");
+                if (leftClear < NightMarketLayout.BottomBandKeepOutPx - 0.5f ||
+                    rightClear < NightMarketLayout.BottomBandKeepOutPx - 0.5f)
+                    FlowTrace.Fail("Store", $"CommerceCta seat: clearances {leftClear:0}px / {rightClear:0}px are under " +
+                                            $"the {NightMarketLayout.BottomBandKeepOutPx:0}px keep-out — the Buy control " +
+                                            "is touching the Close or the legal copy, which is a LayoutOracle Assert B " +
+                                            "overlap waiting to happen. The seat arithmetic above is wrong for this band.");
+            }
+            else
+            {
+                _ctaHostWidthPx = Mathf.Max(1f, _plan.CommerceWidthPx);
+                _ctaHost = Region(_commerceHost, "CommerceCta", Vector2.zero, new Vector2(1f, 0f),
                     Vector2.zero, new Vector2(0f, _plan.CtaHostPx));
+            }
 
             if (landscapeRail)
             {
@@ -1126,13 +1280,70 @@ namespace DeNelle.Wallet
             // that takes real money. PlateBehind reads the label's anchors and pads them, so moving
             // the chip moves its ground for free.
             //
-            // ⚠ FitSingleLine's floor is passed EXPLICITLY. Its `minSize: 0` default resolves to
+            // ⚠ The kit fit's floor is passed EXPLICITLY. Its `minSize: 0` default resolves to
             // ElarionUiKit.FontFloor (30), NOT FontHardFloor (20) — a default that has already
             // ellipsised one label in this project. The explicit argument is here so nobody has to
             // re-derive which floor the default meant.
+            //
+            // ── WO-1636 — THIS LABEL WRAPS. IT DOES NOT ELLIPSIZE. ───────────
+            //
+            // ⛔ THE RULING ABOVE IS INTACT AND THE FIT IS WHAT CHANGED, so read the two apart. The
+            // first glyph-oracle run measured this label on all four captured Night Market surfaces
+            // (Builds/wave3-capture2.glyph-findings.txt:44, 50, 56, 59): the rect is 625 x 84 ref px
+            // and the WALLETLESS BANNER branch of RenderBalanceLabel — "Connect a wallet to buy -
+            // prices shown in USD" — drew 32 of 36 printable glyphs at 1920/2340/2670 and 28 of 36 at
+            // 1280x720. The player read a sentence with its last word missing, on the money screen.
+            //
+            // ⚠ AND NEITHER OF THE FAMILY'S TWO USUAL FIXES IS AVAILABLE HERE, which is why this one
+            // is a third. The band cannot be WIDENED: the ruling above puts this rect entirely inside
+            // the left third (x .018-.315) and the wordmark art starts at x .25, so every px of width
+            // walks into the ruling, the art, or both. The copy cannot be SHORTENED: it is
+            // StoreStrings.WalletlessBrowsingBanner, probed by name in NightMarketNoWalletRegression
+            // (:335), and re-voicing player copy is the owner's call, not a fit lane's. The font
+            // cannot come down (WO-1636 §2). What is left is the axis nobody was using: the band is
+            // 84 px tall — TopBarPx(100) x (.92 - .08) — and two line boxes at the floor are
+            // 2 x LedgerRowBandPx = 78 px (the 1.30 line factor MEASURED off the 1280x720 panel,
+            // not LineBoxPx's 1.25 assumption). The sentence fits on two lines with 6 px to spare,
+            // and the Warn below fires if either number ever moves the wrong way.
+            //
+            // ⚠ RULING-ADJACENT, AND SAID SO RATHER THAN SLIPPED THROUGH. WO-1334b's wording is "ONE
+            // LINE, TOP LEFT, ON ITS OWN READABLE GROUND". Its three named instructions are all
+            // untouched — the rect, the word "Balance", the plate — and the BALANCE sentence it was
+            // written about ("Balance: 3,817 SKR") still renders on one line, because it fits on one.
+            // Only the walletless banner, which that ruling never saw, now takes a second line rather
+            // than losing its last four characters. If the owner wants one line at any cost, the
+            // remaining lever is her copy, and that is her call to make.
+            // ⛔ THE TWO Vector2 LITERALS ON THE NEXT CALL ARE READ BY AN ORACLE — DO NOT HOIST THEM
+            // INTO CONSTANTS. NightMarketUiRegression's `[top-left]` case parses this rect straight
+            // out of the source text: AnchorsAfter (NightMarketUiRegression.cs:537, matcher at
+            // :1079-1094) finds the assignment below by name and regexes the first two
+            // `new Vector2(<n>f, <n>f)` in the 800 characters that follow, bounding them against the
+            // owner's top-left ruling. WO-1636 first named these edges `headerBandY0/Y1` for
+            // tidiness and the pin could no longer see them — NIGHT_MARKET_UI_FAIL, "could not
+            // derive anchored rect", chain 17, 493/494. Literals here; the derivation below reads
+            // the LABEL itself, so there is still no second copy of them anywhere.
+            //
+            // ⚠ AND THIS COMMENT DELIBERATELY DOES NOT SPELL THE MARKER STRING. The oracle takes
+            // the FIRST IndexOf of it in the file, so a comment quoting it verbatim would move the
+            // 800-character read window up here and could push the real anchors out of range — a
+            // note about the pin breaking the pin.
             _balanceLabel = MakeText(host, string.Empty, 30, ElarionUi.Gold,
                 FontStyles.Bold, TextAlignmentOptions.Left, new Vector2(0.018f, 0.08f), new Vector2(0.315f, 0.92f));
-            ElarionUiKit.FitSingleLine(_balanceLabel, ElarionUi.FontFloorMobile, 30f);
+            ElarionUiKit.FitBlock(_balanceLabel, ElarionUi.FontFloorMobile, 30f);
+            // The band px are read back off the label's OWN anchors — not a second copy of ".84"
+            // in a log line, which is a copy that goes stale the first time either edge moves.
+            var balanceRt = _balanceLabel.rectTransform;
+            float headerBandPx = NightMarketLayout.TopBarPx * (balanceRt.anchorMax.y - balanceRt.anchorMin.y);
+            float twoLinesPx = 2f * NightMarketComposition.LedgerRowBandPx;
+            FlowTrace.Step("Store", "WO-1636 header line: band " + headerBandPx.ToString("0") +
+                "px tall vs " + twoLinesPx.ToString("0") +
+                "px for two line boxes at the floor — FitBlock (wrap+Truncate), not FitSingleLine " +
+                "(NoWrap+Ellipsis), so the walletless banner keeps its last word.");
+            if (headerBandPx < twoLinesPx)
+                FlowTrace.Warn("Store", "BuildHeader: the header band is " + headerBandPx.ToString("0") +
+                    "px and two line boxes need " + twoLinesPx.ToString("0") +
+                    "px — the walletless banner will TRUNCATE its second line. Grow the band or " +
+                    "take the copy to the owner; never drop the floor.");
             PlateBehind(_balanceLabel, Translucent(NightMarketPalette.Ground, 0.66f),
                         padX: 0.010f, padY: 0.03f);
         }
@@ -1205,7 +1416,10 @@ namespace DeNelle.Wallet
             // Keep the complete 360px control inside the left notice seat. At 1280-wide
             // landscape, 0.085 put the button centre closer to the edge than its own
             // half-width and visibly cut away the frame.
-            float closeX = landscapeRail ? 0.15f : 0.5f;
+            // WO-1636: the landscape centre is read from NightMarketLayout, because the CommerceCta
+            // seat is derived from where this button ENDS. A literal here and a derivation there is
+            // how the seat and the Close drift into each other.
+            float closeX = landscapeRail ? NightMarketLayout.BottomBandCloseCentreFrac : 0.5f;
             rt.anchorMin = new Vector2(closeX, 0.5f);
             rt.anchorMax = new Vector2(closeX, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
@@ -1232,15 +1446,32 @@ namespace DeNelle.Wallet
         private void BuildLandscapeBottomNotice(Transform host)
         {
             if (host == null) return;
-            // The landscape CTA owns x .30-.50 even when it is a non-interactive
-            // "Coming soon" plate. Legal copy begins after that keep-out; the prior
-            // .34 start drew two sentences through the CTA at every supported ratio.
+            // Legal copy begins after the CTA's keep-out; the prior .34 start drew two sentences
+            // through the CTA at every supported ratio.
+            // ⚠ WO-1636 — THIS EDGE IS NOW LOAD-BEARING IN BOTH DIRECTIONS, and the old comment here
+            // ("The landscape CTA owns x .30-.50") was a claim nothing enforced. The CTA seat is
+            // authored in px between the Close and this copy, and when the band is too narrow to
+            // hold all three THIS COPY IS THE TENANT THAT YIELDS (rule 3 at the seat). So the left
+            // edge is taken from `_bottomNoticeLeftFrac`, which the seat resolved — one owner for the
+            // number instead of two literals that agreed by hand until an aspect changed.
+            // ⚠ A FRACTION, RESOLVED FROM PX BY THE SEAT — never re-divided by a rect here. The
+            // rect at build time still reads raw screen pixels, which is the whole reason the seat
+            // above stopped measuring one.
+            float noticeLeftFrac = _bottomNoticeLeftFrac > 0f
+                ? _bottomNoticeLeftFrac
+                : NightMarketLayout.BottomNoticeLeftFrac;
+            // The two labels keep their authored SHARE of whatever is left, so a yielded notice
+            // narrows evenly instead of one label eating the other's room.
+            float noticeSpan = Mathf.Max(0.001f, 0.995f - NightMarketLayout.BottomNoticeLeftFrac);
+            float remaining = Mathf.Max(0.001f, 0.995f - noticeLeftFrac);
+            float Reflow(float authored) =>
+                noticeLeftFrac + (authored - NightMarketLayout.BottomNoticeLeftFrac) / noticeSpan * remaining;
             var marketLine = MakeText(host, PackCatalog.CurrencyDisclaimer, 19,
                 ElarionUi.ParchmentDim, FontStyles.Normal, TextAlignmentOptions.Left,
-                new Vector2(0.51f, 0.18f), new Vector2(0.68f, 0.82f));
+                new Vector2(noticeLeftFrac, 0.18f), new Vector2(Reflow(0.68f), 0.82f));
             var feeLine = MakeText(host, StoreStrings.Get(StoreStrings.KeyTrustFee), 18,
                 ElarionUi.Gold, FontStyles.Bold, TextAlignmentOptions.Right,
-                new Vector2(0.69f, 0.18f), new Vector2(0.995f, 0.82f));
+                new Vector2(Reflow(0.69f), 0.18f), new Vector2(0.995f, 0.82f));
             ElarionUiKit.FitSingleLine(marketLine, 12f, 19f);
             ElarionUiKit.FitSingleLine(feeLine, 11f, 18f);
         }
@@ -1873,20 +2104,47 @@ namespace DeNelle.Wallet
             MedievalUiSkin.ApplyButton(button, primary: accent);
             var face = button != null ? button.targetGraphic as Image : null;
             if (face != null) face.type = Image.Type.Simple;
+            // ⛔ WO-1636 — THE ICON GUTTER AND THE TEXT INSET ARE PX, AND THEY COME FROM ONE PAIR OF
+            // CONSTANTS. The label used to be x .20-.92 of the button — a 72% share of a rect whose
+            // width is whatever the commerce rail resolved to — and at 1280x720 that is 302 px, in
+            // which "MONTHLY LEDGER" drew 12 of its 13 printable glyphs
+            // (Builds/wave3-capture2.glyph-findings.txt:57). One glyph plus an ellipsis, so the door
+            // to the ledger read "MONTHLY LEDGE...". The font is already at 28 and may not come down
+            // (WO-1636 §2), and the rail's own minimum is derived from the canon Buy control, not
+            // from this caption — so the px that were available were the .08 of button width sitting
+            // dead between the icon and the text and the .08 at the right edge.
+            //
+            //     button 419 px at 1280x720  ->  419 - IconGutter(74) - TextRightPadPx(8) = 337 px
+            //     needed = 302 x 14/13 ~= 326 px  (the drawn 12 + the missing glyph + the ellipsis)
+            //
+            // ⚠ THAT IS A ~3% MARGIN AND IT IS STATED, NOT ROUNDED AWAY. The next capture is what
+            // proves it; if 337 is still short, the honest next lever is the commerce rail's
+            // MINIMUM (NightMarketComposition.CommerceMinPx derives from the CTA alone and has never
+            // accounted for this caption), never this label's floor.
+            if (button != null)
+            {
+                // The icon gets a px SLOT rather than a px AddArt overload — AddArt fills its parent,
+                // so one empty rect authored in px puts the art on the same measuring system as the
+                // caption beside it without a second signature to keep in step.
+                var iconSlot = Region(button.transform, "icon-slot",
+                    new Vector2(0f, 0.12f), new Vector2(0f, 0.88f),
+                    new Vector2(NightMarketLayout.UtilityRowIconLeftPx, 0f),
+                    new Vector2(NightMarketLayout.UtilityRowIconLeftPx +
+                                NightMarketLayout.UtilityRowIconWidthPx, 0f));
+                AddArt(iconSlot, iconResource, Vector2.zero, Vector2.one);
+            }
             var text = button != null ? button.GetComponentInChildren<TMP_Text>(true) : null;
             if (text != null)
             {
                 var textRect = text.rectTransform;
-                textRect.anchorMin = new Vector2(0.20f, 0f);
-                textRect.anchorMax = new Vector2(0.92f, 1f);
-                textRect.offsetMin = Vector2.zero;
-                textRect.offsetMax = Vector2.zero;
+                textRect.anchorMin = new Vector2(0f, 0f);
+                textRect.anchorMax = new Vector2(1f, 1f);
+                textRect.pivot = new Vector2(0.5f, 0.5f);
+                textRect.offsetMin = new Vector2(NightMarketLayout.UtilityRowTextLeftPx, 0f);
+                textRect.offsetMax = new Vector2(-NightMarketLayout.UtilityRowTextRightPadPx, 0f);
                 text.alignment = TextAlignmentOptions.Left;
                 ElarionUiKit.FitSingleLine(text, ElarionUi.FontFloorMobile, 28f);
             }
-            if (button != null)
-                AddArt(button.transform, iconResource,
-                    new Vector2(0.035f, 0.12f), new Vector2(0.17f, 0.88f));
         }
 
         /// <summary>Compact two-field offer row used by the landscape catch-up rail.</summary>
@@ -2368,35 +2626,113 @@ namespace DeNelle.Wallet
             MakeText(_spotlightHost, StorePresentationText.LedgerHeading.Resolve(), 30,
                 ElarionUi.ParchmentDim, FontStyles.Bold, TextAlignmentOptions.BottomLeft,
                 new Vector2(0.06f, 0.405f), new Vector2(0.94f, 0.445f));
-            // 0.058 of a 746-unit column is ~43 px, which holds a 30-unit row without the next row
-            // climbing onto it. The CTA moved to the commerce column, so this ladder now owns the
-            // whole lower half of the spotlight instead of sharing it with a button.
-            float ledgerTop = 0.395f, rowH = 0.055f;
-            int drawn = 0;
+            // ⛔ WO-1636 — THE LADDER IS AUTHORED IN REFERENCE PX, AND THE OLD COMMENT HERE WAS
+            // WRONG TWICE OVER. It read "0.058 of a 746-unit column is ~43 px", but the code beneath
+            // it was `rowH = 0.055f` re-gapped by `+0.010f`, i.e. a .045 BAND, and the column the
+            // first glyph-oracle run measured is 729 px, not 746. The band resolved to 32.8 px on
+            // every captured landscape surface (Builds/wave3-capture2.glyph-findings.txt:45-49,
+            // 51-55, 60-64) and TMP's Ellipsis overflow CULLED THE WHOLE LINE: "4,000", "2,000",
+            // "400", "1,500" and "600" each drew ZERO of their glyphs. Fifteen of that run's sixty
+            // findings are this one fraction, on the money screen, and no geometry rule could see it
+            // because the rect was exactly where it belonged — only the words inside it were gone.
+            //
+            // A fraction cannot express a line box. The row band, the pitch and what the comparison
+            // sentence needs are now px constants on NightMarketComposition (beside the WIDTH
+            // derivation that was already there), and the ladder SPENDS a measured budget:
+            //
+            //     available = ledgerTopFrac * columnPx       .395 x 727.8 = 287.5 px
+            //     ladder    = rows x LedgerRowPitchPx        5 x 39       = 195.0 px
+            //     left over                                               =  92.5 px
+            //     the sentence wants LedgerComparisonGapPx(8) + LedgerComparisonReservePx(78)
+            //                                                             =  86.0 px
+            //     slack                                                   =   6.5 px
+            //
+            // (727.8 is the run's own column, back-solved from its measured 32.75 px band over the
+            // retired .045 fraction — not a rounded 729, because the row count is a FLOOR and a
+            // rounded numerator is how a five-row ladder quietly becomes a four-row one.)
+            //
+            // ⚠ SO A SHORTER COLUMN CANNOT HOLD EVERYTHING, AND THAT IS SAID OUT LOUD RATHER THAN
+            // DRAWN INVISIBLY. Rows are the truth and go first; the comparison sentence is the
+            // qualifier and is the thing that gives — the same rule BuildCommerce already applies to
+            // its balance-after line. A row that will not seat is DROPPED WITH A WARN, never
+            // authored into a band that culls it, which is what the retired fraction did.
+            const float ledgerTopFrac = 0.395f;
+            // ⛔ THE COLUMN HEIGHT IS THE PLAN'S, NOT THE RECT'S — the same rule the CommerceCta seat
+            // states at length. `_spotlightHost` hangs off `_bodyHost`, whose height comes from the
+            // canvas, and a rect read during the build returns RAW SCREEN PIXELS: at 800x360 that
+            // is a ~128 px column against the ~730 reference px the scaler will give it, which
+            // would take `roomForRows` from five to ONE and silently drop four granted goods.
+            // `_plan.SpotlightHeightPx` is resolved from SurfaceReferenceHeightPx in
+            // NightMarketComposition.Resolve, so it is reference px by construction and needs no
+            // cast, no null guard and no layout pass. (`_spotlightHost` is declared `Transform` at
+            // :308 anyway, so `.rect` does not even compile on it.)
+            float columnPx = Mathf.Max(1f, _plan.SpotlightHeightPx);
+            float availablePx = ledgerTopFrac * columnPx;
+            float pitchPx     = NightMarketComposition.LedgerRowPitchPx;
+            float bandPx      = NightMarketComposition.LedgerRowBandPx;
+
+            // ⛔ ROWS FIRST, AND THE CODE SAYS SO AS PLAINLY AS THE COMMENT DOES. The ladder takes
+            // what it needs out of the band and the comparison sentence is offered whatever is left
+            // — never the other way round. Reserving the qualifier's px BEFORE the rows is how a
+            // budget that is 1 px short silently drops a granted good instead of a sentence, and the
+            // oracle cannot tell a fixed label from one that was never built.
+            string compare = BuildComparisonLine(pack);
+            float comparePx = string.IsNullOrEmpty(compare)
+                ? 0f
+                : NightMarketComposition.LedgerComparisonGapPx + NightMarketComposition.LedgerComparisonReservePx;
+            int roomForRows = Mathf.Max(0, Mathf.FloorToInt(availablePx / pitchPx));
+
+            int drawn = 0, skipped = 0;
             foreach (string key in PackCatalog.LedgerEconomyKeys)
             {
                 int amount = pack.EconomyAmount(key);
                 if (amount <= 0) continue;
-                int max = scale != null && scale.TryGetValue(key, out int m) && m > 0 ? m : amount;
-                float y1 = ledgerTop - drawn * rowH;
-                float y0 = y1 - rowH + 0.010f;
-                BuildLedgerRow(_spotlightHost, key, amount, max, light, y0, y1);
-                drawn++;
                 if (drawn >= 6) break;
+                if (drawn >= roomForRows) { skipped++; continue; }
+                int max = scale != null && scale.TryGetValue(key, out int m) && m > 0 ? m : amount;
+                BuildLedgerRow(_spotlightHost, key, amount, max, light,
+                               ledgerTopFrac, drawn * pitchPx, bandPx);
+                drawn++;
             }
-            if (drawn == 0)
+            // ⚠ "nothing to draw" and "no room to draw it" are DIFFERENT findings and must not share
+            // a line — the second one below says the column is short, and reporting it as an empty
+            // grant seam would send the next reader to the catalogue instead of to the layout.
+            if (drawn == 0 && skipped == 0)
                 FlowTrace.Warn("Store", $"BuildSpotlight '{pack.Sku}': the grant seam pays out NOTHING this ledger can draw — " +
                                         "the card advertises no goods at all.");
+            if (skipped > 0)
+                FlowTrace.Warn("Store", $"BuildSpotlight '{pack.Sku}': the spotlight column is {columnPx:0}px, so its " +
+                                        $"ledger band is {availablePx:0}px and seats {roomForRows} row(s) of " +
+                                        $"{pitchPx:0}px — {skipped} granted good(s) are NOT drawn. This is a column " +
+                                        "too short for its content, not a fit problem: shrinking the row would put " +
+                                        "the figures back under the cull line WO-1636 lifted them out of.");
 
-            float cursor = ledgerTop - drawn * rowH - 0.012f;
+            float ladderPx = drawn * pitchPx;
+            FlowTrace.Step("Store", $"WO-1636 ledger ladder: column {columnPx:0}px, band {availablePx:0}px, " +
+                                    $"{drawn} row(s) x {pitchPx:0}px = {ladderPx:0}px, comparison reserve " +
+                                    $"{comparePx:0}px — rows authored in px, not the retired .045 fraction.");
 
             // ── The comparison line ──────────────────────────────────────────
-            string compare = BuildComparisonLine(pack);
-            if (!string.IsNullOrEmpty(compare))
+            // Its band is px now too, hanging from the bottom of the ladder, so the sentence keeps
+            // the two line boxes it needs instead of whatever a fraction happened to leave it.
+            float cursorPx = availablePx - ladderPx;
+            if (!string.IsNullOrEmpty(compare) && comparePx > 0f && cursorPx >= comparePx)
             {
-                FitInto(MakeText(_spotlightHost, compare, 30, ElarionUi.Parchment, FontStyles.Normal,
-                    TextAlignmentOptions.TopLeft, new Vector2(0.06f, cursor - 0.11f), new Vector2(0.94f, cursor)), 30);
-                cursor -= 0.12f;
+                float compareTopPx = ladderPx + NightMarketComposition.LedgerComparisonGapPx;
+                var compareLabel = MakeText(_spotlightHost, compare, 30, ElarionUi.Parchment,
+                    FontStyles.Normal, TextAlignmentOptions.TopLeft,
+                    new Vector2(0.06f, ledgerTopFrac), new Vector2(0.94f, ledgerTopFrac));
+                var crt = compareLabel.rectTransform;
+                crt.pivot = new Vector2(0.5f, 1f);
+                crt.offsetMin = new Vector2(0f, -(compareTopPx + NightMarketComposition.LedgerComparisonReservePx));
+                crt.offsetMax = new Vector2(0f, -compareTopPx);
+                FitInto(compareLabel, 30);
+            }
+            else if (!string.IsNullOrEmpty(compare))
+            {
+                FlowTrace.Warn("Store", $"BuildSpotlight '{pack.Sku}': the comparison sentence is DROPPED — the ledger " +
+                                        $"band has {cursorPx:0}px left and the sentence needs {comparePx:0}px. The " +
+                                        "qualifier gives, the granted figures do not.");
             }
 
             // The balance-after preview moved to the commerce column, beside the button it qualifies.
@@ -2411,13 +2747,26 @@ namespace DeNelle.Wallet
         /// something — but the stub is never allowed to overstate: the printed figure beside it is
         /// exact, and it is the figure the grant seam pays.</para>
         /// </summary>
-        private void BuildLedgerRow(Transform host, string key, int amount, int max, Color light, float y0, float y1)
+        /// <param name="ledgerTopFrac">The column fraction the ladder hangs from. Both y anchors
+        /// collapse onto it so the px offsets below mean px on every surface.</param>
+        /// <param name="rowTopPx">This row's top edge, in reference px BELOW that anchor line.</param>
+        /// <param name="bandPx">The row's height in reference px
+        /// (<see cref="NightMarketComposition.LedgerRowBandPx"/>).</param>
+        private void BuildLedgerRow(Transform host, string key, int amount, int max, Color light,
+                                    float ledgerTopFrac, float rowTopPx, float bandPx)
         {
             var go = new GameObject("ledger-" + key, typeof(RectTransform));
             go.transform.SetParent(host, false);
             var rt = go.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0.06f, y0); rt.anchorMax = new Vector2(0.94f, y1);
-            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+            // WO-1636 — collapse the y anchors onto the ladder's edge, set the PIVOT BEFORE the
+            // offsets, and express the band as px. This is the WO-1623/1628 shape (see
+            // BuildCollectionBrowser.cs:41-113): a fraction of a column whose reference height moves
+            // with the aspect cannot express "one line box", which is the only thing this row needs.
+            rt.anchorMin = new Vector2(0.06f, ledgerTopFrac);
+            rt.anchorMax = new Vector2(0.94f, ledgerTopFrac);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.offsetMin = new Vector2(0f, -(rowTopPx + bandPx));
+            rt.offsetMax = new Vector2(0f, -rowTopPx);
 
             // Receipt-style rows match the approved landscape reference: recognizable
             // resource art + exact grant. A generic empty socket made five distinct goods
@@ -2432,10 +2781,29 @@ namespace DeNelle.Wallet
             // ⛔ THE PRINTED NUMBER IS THE TRUTH AND IT MUST NEVER CLIP (§5). The bar is only the
             // comparison; if a figure ever had to shrink, it shrinks toward the floor — it is never
             // truncated, because a truncated quantity on a money screen is a wrong quantity.
-            ElarionUiKit.FitSingleLine(
-                MakeText(go.transform, amount.ToString("N0"), 32, ElarionUi.Parchment, FontStyles.Bold,
-                    TextAlignmentOptions.Right, new Vector2(0.66f, 0f), new Vector2(1f, 1f)),
-                ElarionUi.FontFloorMobile, 32f);
+            //
+            // ⚠ WO-1636 — THE CEILING IS 30, NOT 32, AND THAT IS ARITHMETIC RATHER THAN TASTE. TMP
+            // computes its line box at fontSizeMAX while auto-sizing, so a [30..32] band asks for a
+            // 32 pt line box even on the surfaces where it renders at 30 — and the 2 pt of growth
+            // headroom it buys costs 2.5 px of band the ladder above does not have. The FLOOR is
+            // untouched (ElarionUi.FontFloorMobile); only the unused ceiling came down.
+            var figure = MakeText(go.transform, amount.ToString("N0"),
+                NightMarketComposition.LedgerFigureMaxPt, ElarionUi.Parchment, FontStyles.Bold,
+                TextAlignmentOptions.Right, new Vector2(0.66f, 0f), new Vector2(1f, 1f));
+            ElarionUiKit.FitSingleLine(figure, ElarionUi.FontFloorMobile,
+                                       NightMarketComposition.LedgerFigureMaxPt);
+
+            // The band was authored from a 1.33 line-factor ceiling, which is a stated assumption
+            // about the font face and not a measurement of it. Measure it here, on the real label,
+            // so a face that reads wider names ITSELF in the log instead of quietly re-culling the
+            // figure the way the retired fraction did (§12: no silent failures).
+            float needPx = figure.preferredHeight;
+            if (needPx > bandPx + 0.5f)
+                FlowTrace.Warn("Store", $"BuildLedgerRow '{key}': the figure \"{figure.text}\" wants {needPx:0.#}px of " +
+                                        $"line box and its band is {bandPx:0.#}px — NightMarketComposition." +
+                                        "LedgerRowLineFactorCeiling is too low for this font face and the figure " +
+                                        "will cull. Raise the ceiling and re-spend the ladder budget; never shrink " +
+                                        "the floor.");
         }
 
         private static string LedgerIconResource(string economyKey)
@@ -2557,8 +2925,20 @@ namespace DeNelle.Wallet
             // Deriving the fraction from the REAL host height keeps the button the canon size in
             // every composition, so the clamp stays the no-op it is meant to be.
             float ctaHostPx = Mathf.Max(1f, _ctaHost.rect.height > 1f ? _ctaHost.rect.height : _plan.CtaHostPx);
+            // ⚠ WO-1636 — THE GUTTER IS A FRACTION OF THE SEAT IT IS APPLIED TO, NOT OF THE RAIL.
+            // It read `CommerceGutterPx / _plan.CommerceWidthPx`, which is correct only in the
+            // stacked composition where the seat IS the rail. In landscape the seat lives in the
+            // bottom band, so a 24 px gutter was being expressed as a share of a different rect and
+            // the button came out narrower than canon.
+            // ⛔ AND THE WIDTH IS THE ONE THE SEAT AUTHORED (`_ctaHostWidthPx`), NEVER `.rect.width`.
+            // A rect read during the build returns raw screen pixels — at 800x360 that is ~764
+            // against a ~2110 px reference, which is how WO-1636's first attempt clamped this
+            // gutter to .20 and shipped a 26.9 px Buy control.
+            float ctaHostWidthPx = Mathf.Max(1f, _ctaHostWidthPx > 1f
+                ? _ctaHostWidthPx
+                : NightMarketComposition.CommerceMinPx);
             float gutterFrac = Mathf.Clamp(NightMarketComposition.CommerceGutterPx /
-                                           Mathf.Max(1f, _plan.CommerceWidthPx), 0.02f, 0.20f);
+                                           ctaHostWidthPx, 0.02f, 0.20f);
             float ctaY0 = NightMarketComposition.CtaBottomPadPx / ctaHostPx;
             float ctaY1 = (NightMarketComposition.CtaBottomPadPx + NightMarketComposition.CtaButtonPx) / ctaHostPx;
             var ctaMin = new Vector2(gutterFrac, ctaY0);
@@ -2641,7 +3021,11 @@ namespace DeNelle.Wallet
                 var reconcileLabel = reconcile != null
                     ? reconcile.GetComponentInChildren<TMP_Text>(true)
                     : null;
-                if (reconcileLabel != null) ElarionUiKit.FitSingleLine(reconcileLabel, ElarionUi.FontFloorMobile, 38f);
+                if (reconcileLabel != null)
+                {
+                    SeatCtaLabelInPx(reconcileLabel);
+                    ElarionUiKit.FitSingleLine(reconcileLabel, ElarionUi.FontFloorMobile, 38f);
+                }
                 return;
             }
 
@@ -2707,7 +3091,11 @@ namespace DeNelle.Wallet
                     if (connect != null) connect.interactable = !_purchaseInFlight;
 
                     var connectLabel = connect != null ? connect.GetComponentInChildren<TMP_Text>(true) : null;
-                    if (connectLabel != null) ElarionUiKit.FitSingleLine(connectLabel, ElarionUi.FontFloorMobile, 38f);
+                    if (connectLabel != null)
+                    {
+                        SeatCtaLabelInPx(connectLabel);
+                        ElarionUiKit.FitSingleLine(connectLabel, ElarionUi.FontFloorMobile, 38f);
+                    }
                 }
 
                 FlowTrace.Step("Store", $"BuildSpotlightCta '{pack.Sku}': Buy REFUSED by PurchaseGate — \"{gateReason}\" " +
@@ -4545,6 +4933,32 @@ namespace DeNelle.Wallet
         /// and survives any colour vision. Owner ruling 2026-09-03 on the wallet chip: *"white where
         /// it's over top of everything else ... you can't read it"*.</para>
         /// </summary>
+        /// <summary>
+        /// WO-1636 — re-seat a canon CTA's label band in reference px.
+        ///
+        /// <para>⛔ THIS DOES NOT EDIT THE KIT, AND IT MUST NOT. ElarionUiKit.BuildObsidianButton
+        /// gives every constructed button a label at x .04-.96 — .92 of the face, which is right for
+        /// a button whose width is itself a fraction of something. The canon CTA is not that: it is
+        /// exactly <see cref="ElarionUiKit.CanonCtaWidth"/> px wide, so .04 of it is 14.4 px of pad
+        /// on each side and the caption is left 331 px. "CONNECT WALLET" measured 12 of 13 printable
+        /// glyphs in 308 px (Builds/wave3-capture2.glyph-findings.txt:58) and needs ~332 with its
+        /// ellipsis, which 331 does not clear. A px pad leaves 344 and clears it by ~3.5%.</para>
+        ///
+        /// <para>The pad is the same 8 px the utility rows use on their right edge, so a CTA caption
+        /// and a rail caption breathe alike; the kit's own label anchoring is untouched for every
+        /// button that is NOT authored at a px width.</para>
+        /// </summary>
+        private static void SeatCtaLabelInPx(TMP_Text label)
+        {
+            if (label == null) return;
+            var rt = label.rectTransform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.offsetMin = new Vector2(NightMarketLayout.CtaLabelPadPx, 0f);
+            rt.offsetMax = new Vector2(-NightMarketLayout.CtaLabelPadPx, 0f);
+        }
+
         private static Image PlateBehind(TextMeshProUGUI label, Color color, float padX, float padY)
         {
             if (label == null) return null;

@@ -205,6 +205,77 @@ namespace DeNelle.Wallet
             }
         }
 
+        // =====================================================================
+        //  WO-1636 - THE LEDGER ROW'S HEIGHT, IN REFERENCE PX.
+        //
+        //  ⛔ THE COLUMN HAD A WIDTH DERIVATION AND NO HEIGHT ONE, AND THAT IS THE
+        //  WHOLE DEFECT. Everything above derives the spotlight's WIDTH from the widest
+        //  thing a ledger row must hold. Nothing derived its HEIGHT, so BuildSpotlight
+        //  authored the ladder as a fraction - rowH .055 of the column with a .010
+        //  re-gap, i.e. a .045 BAND - and the first live glyph-oracle run measured what
+        //  that resolves to (Builds/wave3-capture2.glyph-findings.txt:45-49, 51-55,
+        //  60-64): a 32.8 px band on a 729 px column, on EVERY captured landscape
+        //  surface. TMP's Ellipsis overflow CULLS THE WHOLE LINE when the line box will
+        //  not seat in the rect, so all five printed figures - "4,000", "2,000", "400",
+        //  "1,500", "600" - drew ZERO of their glyphs. Fifteen of the run's sixty
+        //  findings are that one authoring mistake, on the money screen, and the rect
+        //  passed every geometry rule because the rect was exactly where it belonged.
+        //
+        //  ⚠ AND THE FIGURE'S AUTOSIZE CEILING IS PART OF THE ARITHMETIC. TMP computes
+        //  a line box at fontSizeMAX while auto-sizing, so a [30..32] band needs a
+        //  32 pt line box even when it renders at 30. The ceiling is stated here and
+        //  consumed by BuildLedgerRow, so the band and the ceiling cannot drift.
+        // =====================================================================
+
+        /// <summary>The autosize CEILING the printed ledger figure may reach. Deliberately the
+        /// mobile font FLOOR, not a size above it: the band below is one line box at this value,
+        /// and 2 pt of unused growth headroom is 2.5 px of line box the ladder cannot afford.
+        /// ⛔ This is a CEILING, never a floor - the floor stays <see cref="ElarionUi.FontFloorMobile"/>
+        /// and no path here may go under it (WO-1636 §2).</summary>
+        public static float LedgerFigureMaxPt => ElarionUi.FontFloorMobile;
+
+        /// <summary>One ledger row's band height, in reference px. Sized so the figure's line box
+        /// seats with headroom over <see cref="LineBoxPx"/>'s 1.25 factor - the kit's own fit guard
+        /// derives the real factor from the font face (ElarionUiKitObsidian.cs:3150-3153) and a
+        /// band authored at exactly 1.25 has no margin if that face reads wider.</summary>
+        public static float LedgerRowBandPx => Mathf.Ceil(LedgerFigureMaxPt * LedgerRowLineFactorCeiling);
+
+        /// <summary>The widest font line factor (faceInfo.lineHeight / pointSize) this band is
+        /// authored to survive.
+        /// <para>⭐ IT IS MEASURED, NOT GUESSED, AND THE MEASUREMENT IS AN ABSENCE. The same
+        /// glyph-oracle run that culled these figures on the three ~2.22-aspect surfaces did NOT
+        /// flag them at 1280x720 (Builds/wave3-capture2.glyph-findings.txt:56-58 lists three
+        /// findings for that panel and no ledger row among them). 16:9 resolves a ~848 px column,
+        /// where the retired .045 fraction is 38.2 px - and every figure drew. So the real 30 pt
+        /// line box on the shipped face is <b>at most 38.2 px, i.e. a factor of at most
+        /// 1.272</b>. 1.30 clears that with margin and still leaves the ladder budget below room to
+        /// spend; 1.25 (what <see cref="LineBoxPx"/> assumes) does not clear it at all.</para></summary>
+        public const float LedgerRowLineFactorCeiling = 1.30f;
+
+        /// <summary>Gap between two ledger rows. Deliberately ZERO: the rows are text bands, not tap
+        /// targets, their leading already separates them, and the lower spotlight is spent to the px
+        /// (see <see cref="LedgerComparisonReservePx"/>). Named rather than implied so the ladder's
+        /// pitch is one expression and not an assumption.</summary>
+        public const float LedgerRowGapPx = 0f;
+
+        /// <summary>Row-to-row pitch down the ladder.</summary>
+        public static float LedgerRowPitchPx => LedgerRowBandPx + LedgerRowGapPx;
+
+        /// <summary>Gap between the bottom of the ladder and the comparison line under it.
+        /// ⚠ 8 px, not 12: the retired `.012f` fraction resolved to 8.7 px on the 727.8 px column the
+        /// run measured, and rounding a retired fraction UP would silently take px off the rows this
+        /// ticket exists to give them back.</summary>
+        public const float LedgerComparisonGapPx = 8f;
+
+        /// <summary>What the comparison sentence needs. It WRAPS (FitInto -> Truncate) and the live
+        /// string is a full sentence in a ~640 px band, so it is a TWO-line block.
+        /// ⚠ DERIVED FROM <see cref="LedgerRowBandPx"/>, NOT FROM <see cref="LineBoxPx"/>. LineBoxPx
+        /// assumes a 1.25 line factor while the rows beside it assume 1.30; two line boxes at 1.25
+        /// is 76 px and the measured worst case is 76.4, so the cheaper constant is 0.4 px short and
+        /// would trade fifteen culled figures for one truncated sentence. One assumption governs
+        /// both bands.</summary>
+        public static float LedgerComparisonReservePx => 2f * LedgerRowBandPx;
+
         /// <summary>Comfort headroom over the spotlight minimum in the wide case.</summary>
         public const float SpotlightComfort = 1.06f;
 

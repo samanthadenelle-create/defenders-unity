@@ -202,11 +202,111 @@ already right: `_bottomBand` and `_ctaHost` are `RectTransform` (`:299`, `:302`)
 exactly two errors and both were this one line — nothing else in the patch relied on an implicit
 `RectTransform`.
 
+### ⛔ Gate RED #2 (chain 17) — the source pin and nine geometry failures. Both were MY defects.
+
+**(a) `NIGHT_MARKET_UI_FAIL - could not derive anchored rect after _balanceLabel = MakeText(` (493/494).**
+`NightMarketUiRegression`'s `[top-left]` case reads the wallet chip's rect **out of the source text**:
+`AnchorsAfter(store, "_balanceLabel = MakeText(")` (`NightMarketUiRegression.cs:537`, matcher at
+`:1079-1094`) regexes the first two `new Vector2(<n>f, <n>f)` in the 800 characters after that marker
+and bounds them against the owner's top-left ruling. I had hoisted those two literals into
+`headerBandY0/Y1` for tidiness, so the pin could no longer see the rect it exists to bound.
+**Fix (`PackStore.cs:1316-1335`):** the literals are back inline, with a ⛔ comment naming the oracle
+so nobody hoists them again, and the band px are read off `_balanceLabel.rectTransform.anchorMax.y -
+anchorMin.y` — derived from the object, so there is still no second copy of `.84` anywhere.
+⚠ **And the comment deliberately does not spell the marker string.** `AnchorsAfter` takes the FIRST
+`IndexOf` of it in the file, so a note quoting it verbatim would move the 800-character read window
+into the comment block — a comment about the pin breaking the pin. Simulated against the real file:
+the marker occurs **exactly once** (line 1330) and the window's first two matches are
+`(0.018, 0.08)` and `(0.315, 0.92)` — inside both `[top-left]` bounds. The suite's other three pins
+on this file (`PlateBehind(_balanceLabel`, `BottomBandPx = ElarionUiKit.CanonCtaHeight`,
+`NightMarketComposition.CtaBottomPadPx / ctaHostPx`) and `NightMarketNoWalletRegression`'s
+`RenderBalanceLabel()` were each re-checked present.
+
+**(b) `UI_GEOMETRY_FAIL x9` + `UI_GLYPH_FAIL x4 NEW`, all on the CommerceCta seat.**
+26.9 x 119 ref px at 800x360 (85 px under `MinTouchPx`), 51.8 px at 915x412, overlapping CLOSE at
+1280x720, covering the legal Text at 2670x1200, and "CONNECT WALLET" drawing 0/13, 1/13, 6/13.
+
+**Cause — one line, and it is the same class of mistake as (a) and as the RectTransform slip:
+`_bottomBand.rect.width` DOES NOT RETURN REFERENCE PIXELS AT BUILD TIME.** The canvas scaler has not
+run, so the rect reads **raw screen pixels** — ~764 at 800x360 against the ~2110 reference px it will
+become. Feed 764 into my seat arithmetic and the gap between Close and legal copy computes as 47 px,
+the gutter clamps to its `.20` ceiling, and the button lands at **28 px** — which is the 26.9 px the
+capture measured. This file already knew: `NightMarketLayout`'s own header says the literals "are now
+the FALLBACK, not the measurement" and every other width on this screen comes from
+`SurfaceReferenceWidthPx`. I measured a rect anyway.
+
+**Fix — three parts.**
+1. **`PackStore.cs:1048`** — the band width is `bodyW`, the value EnsureBuilt already derived at `:952`
+   (`surfaceW - safe.x - safe.y - 2*pad`); `_bottomBand` is `_screen` inset by `pad` each side, so
+   that IS its reference width. No rect is read.
+2. **`PackStore.cs:1030-1120`** — a stated order of precedence replaces "centre it and hope":
+   **(1)** the Close never moves; **(2)** the Buy control is seated at **canon width or not in this
+   band at all** — it never shrinks, because a sub-`MinTouchPx` control is a dead control that
+   `ClampMinTouch` would then grow over its neighbour; **(3)** the **legal copy yields** (it is fine
+   print with an autosize band, and its two labels reflow keeping their authored share); **(4)** if a
+   yielded notice cannot keep `BottomNoticeMinPx` of readable width, the CTA **leaves the band and
+   stacks into the commerce rail** at full canon size — a designed relocation, and the same seat the
+   stacked composition already uses, which `NightMarketUiRegression.CheckCommerceCta` already proves
+   is at least `CanonCtaWidth` wide. A `FlowTrace.Fail` fires if either clearance ever lands under the
+   keep-out.
+3. **`PackStore.cs:2922-2936`** — `gutterFrac` now divides by `_ctaHostWidthPx`, the width the seat
+   **authored**, not by `_ctaHost.rect.width`.
+
+**(c) The same bug in my ledger ladder, caught by sweeping rather than by the gate.** `columnPx` read
+`_spotlightHost.rect.height`, and `_spotlightHost` hangs off `_bodyHost` — also canvas-derived. At
+800x360 that would have read ~128 px instead of ~734, taking `roomForRows` from 5 to **1 and silently
+dropping four granted goods** — the precise failure this RESULT's own "must show" section warns the
+oracle cannot see. **Fix (`PackStore.cs:2657-2666`):** `columnPx = _plan.SpotlightHeightPx`, which
+`NightMarketComposition.Resolve` derives from `SurfaceReferenceHeightPx`, so it is reference px by
+construction — no cast, no null guard, no layout pass. The only `.rect` read left anywhere in this
+patch's blast radius is the **pre-existing** `_ctaHost.rect.height` at `:2922`, and heights on this
+screen are authored as literal px offsets (`BottomBandPx` = 132), so they are aspect-independent.
+
+### The arithmetic, per captured aspect (the list in `UICaptureLaunch`)
+
+Reference box = `refH = sqrt(1080 x 1920 / aspect)`, `refW = refH x aspect` (CanvasScaler 1080x1920,
+match 0.5); `band = refW - 2 x EdgePadPx(18)`; `column = refH - TopBarPx(100) - BottomBandPx(132)`.
+
+**CTA seat** — `closeEnd = .15 x band + 180`, `noticeLeft = .51 x band`, seat = canon
+`CommerceMinPx` 408 centred in the gap, button = 408 − 2 x 24 = **360** (`CanonCtaWidth`, 3.2x
+`MinTouchPx`), caption = 360 − 2 x 8 = **344**:
+
+| aspect | band | Close ends | seat | width | notice starts | clear L / R | button | caption |
+|---|---|---|---|---|---|---|---|---|
+| 800x360 | 2110.6 | 496.6 | 582.5..990.5 | **408** | 1076.4 | 85.9 / 85.9 | 360 | 344 |
+| 915x412 | 2110.0 | 496.5 | 582.3..990.3 | **408** | 1076.1 | 85.8 / 85.8 | 360 | 344 |
+| 1280x720 | 1884.0 | 462.6 | 507.7..915.7 | **408** | 960.8 | 45.1 / 45.1 | 360 | 344 |
+| 1920x1080 | 1884.0 | 462.6 | 507.7..915.7 | **408** | 960.8 | 45.1 / 45.1 | 360 | 344 |
+| 2340x1080 | 2083.6 | 492.5 | 573.6..981.6 | **408** | 1062.6 | 81.1 / 81.1 | 360 | 344 |
+| 2670x1200 | 2112.0 | 496.8 | 582.9..990.9 | **408** | 1077.1 | 86.2 / 86.2 | 360 | 344 |
+
+Every captured aspect seats the canon control, never touches either neighbour (45–86 px of clearance
+against a 24 px keep-out), and never yields or stacks. A 4:3 tablet (band 1626.8, **not** in the
+captured set) computes a 358 px gap and a 747 px yielded notice — under `BottomNoticeMinPx` — so the
+CTA **stacks** into the commerce rail by rule 4, logged.
+
+**Ledger ladder** — `available = .395 x column`, `cap = floor(available / 39)`, five goods drawn,
+`ladder = 5 x 39 = 195`, comparison needs `8 + 78 = 86`:
+
+| aspect | column | available | row cap | ladder | left | comparison |
+|---|---|---|---|---|---|---|
+| 800x360 | 734.0 | 289.9 | 7 | 195 | 94.9 | drawn |
+| 915x412 | 734.3 | 290.0 | 7 | 195 | 95.0 | drawn |
+| 1280x720 | 848.0 | 335.0 | 8 | 195 | 140.0 | drawn |
+| 1920x1080 | 848.0 | 335.0 | 8 | 195 | 140.0 | drawn |
+| 2340x1080 | 746.3 | 294.8 | 7 | 195 | 99.8 | drawn |
+| 2670x1200 | 733.4 | 289.7 | 7 | 195 | 94.7 | drawn |
+
+The row cap is 7–8 everywhere against five goods, so **no ledger row is dropped on any captured
+aspect** and the comparison sentence keeps its two line boxes on all six. A hypothetical six-good pack
+at the 734 px column would leave 55.9 px — under 86 — and the **comparison sentence** would be the
+thing dropped, with a `FlowTrace.Warn`. That is rule 3 working, not a regression.
+
 ### Gate evidence for this lane (edit-only, as instructed)
 
 ```
 GATE_BRACE_SUMMARY bad=0 of 2
-Assets/_Modules/Wallet/PackStore.cs              no-NUL  316291 bytes
+Assets/_Modules/Wallet/PackStore.cs              no-NUL  325306 bytes
 Assets/_Modules/Wallet/NightMarketComposition.cs no-NUL   35101 bytes
 ```
 
@@ -628,7 +728,7 @@ seats. This lane took **everything else in sec.5's table**: 9 findings across 4 
 |---|---|---|---|---|
 | 1-5 | `HeroSelect_1080x1920` | `Col_Signature/Label`, `Col_Skills/Label` x4 | 7/10, 7/11, 8/10, 8/13, 8/13 | **YES - fixed** |
 | 6-7 | `ManageWorkspace_2340x1080`, `_2670x1200` | `ManageCard_ARMY/Label` | 11 of 14 (both) | **YES - partial, ruling needed** |
-| 8 | `BuildMenuUpgradeTower_1920x1080` | `ObsBtn_Not enough resources/Label` | 16 of 18 | **YES - fixed** |
+| 8 | `BuildMenuUpgradeTower_1920x1080` | `ObsBtn_Not enough resources/Label` | 16 of 18 | **YES - fixed** (2nd pass; chain 16 moved the cut to the info line, chain 17 caught it, sec.2) |
 | 9 | `EndStateWaveClear_repairAll_1920x1080` | `SpoilCell2/SpoilRow/Label` | 17 of 19 | **NO - report only, see sec.4** |
 
 ⛔ **DECLINED, and it is NOT this lane's:**
@@ -696,41 +796,123 @@ proof, not this file.
 neither is touched. `ArtResourceRegression`, `FoundingReachabilityRegression`,
 `StarterLoadoutRegression`, `UiMvvmConformanceRegression` reference the controller for other reasons.
 
-### 2. BuildMenuUpgradeTower - 1 finding - FIXED
+### 2. BuildMenuUpgradeTower - 1 finding - FIXED ON THE SECOND PASS (chain 16 was wrong)
 
-**File:** `Assets/_Modules/Village/Buildings/UI/BuildMenuLayout.cs`
-**Source sites as they are NOW:**
-* the two fractions - `InfoWidthFrac` `:129`, `CtaLeftFrac` `:131` (reasoning block `:101-128`)
-* the CTA that reads them - `BuildMenu.BuildUpgradeActionBand`,
-  `Assets/_Modules/Village/Buildings/UI/BuildMenu.cs:691-695`
-* the caption itself - `BuildMenuVM.UpgradeCtaLabelFor`,
-  `Assets/_Modules/Village/Buildings/UI/BuildMenuVM.cs:571-572` ->
-  `BuildModeController.ShortfallMessage`, `Assets/_Modules/Village/BuildMode/BuildModeController.cs:3531-3562`
-* the info lines that move with it - `BuildMenu.AddInfoLines`, `BuildMenu.cs:381-393`
+⚠ **THE FIRST ATTEMPT MOVED THE TRUNCATION INSTEAD OF REMOVING IT, AND THAT IS THE FINDING.**
+Chain 16 shipped `InfoWidthFrac 0.58 -> 0.505` / `CtaLeftFrac 0.62 -> 0.525`. It DID clear the CTA -
+and chain 17's capture then caught the INFO line cut in its place:
 
-⛔ **THE CAPTURED CAPTION IS NOT THE LONGEST ONE, SO IT IS NOT THE ONE TO SIZE FOR.** The label is
-`ShortfallMessage`, whose branches are `"Not enough Wood (N)"`, `"Not enough Iron (N)"`,
-`"Not enough Stone (N)"`, `"Not enough Crystals (N)"` and, last, the generic `"Not enough resources"`
-the capture happened to land on. Sizing to the shot would have shipped a band that still cuts the
-refusal a player is most likely to read.
+```
+[glyph-oracle] TEXT TRUNCATED [BuildMenuUpgradeTower_1920x1080]
+  'ObsidianPanel/PanelContent/Zone_Body/ActionBand/Text'
+  ("Lvl 1 to 2:  dmg 23.8 to 46.8,  range 18m to 22m")
+  draws 33 of 35 printable glyphs. (x -598.1..6, y -156.1..-100.1) at font 30
+```
 
-**Change:** `CtaLeftFrac 0.62 -> 0.525`, `InfoWidthFrac 0.58 -> 0.505` (the 0.02 clear-air gap is
-preserved). Widths are pure ratios of one band, so the measured **418.2 px at a 0.38 lane** scales
-linearly to a 0.475 lane = **~523 px of label (+25%)**:
+**Root cause of MY error, stated plainly:** the CTA side had a real measured rect and the info side
+had only a glyph-advance ESTIMATE, because the oracle logs only the labels it FAILS. I traded an
+estimate against a measurement and called the result a budget. It was a guess wearing a number.
+Both sides are measured now, and the estimate that was wrong is the one this section leads with.
 
-| caption | needs (est.) | headroom after |
+**Files:** `Assets/_Modules/Village/Buildings/UI/BuildMenuLayout.cs` (the ladder + the split),
+`Assets/_Modules/Village/Buildings/UI/BuildMenu.cs:381-397` (`AddInfoLines`, the two-line contract),
+`Assets/Editor/Regression/BuildMenuLayoutRegression.cs:221-243` (the new pin).
+
+#### 2a. The band width, MEASURED and cross-checked
+
+`604.1 / 0.505 = 1196.2` — the chain-17 info rect divided by the `InfoWidthFrac` in force when it was
+taken. Cross-checked against the chain-16 CTA rect: `418.2 / (0.38 x 1196.2) = 0.9200`, an exact
+kit-button label inset. Two independent rects, two clean numbers.
+
+| aspect | canvasW | band px | note |
+|---|---|---|---|
+| **1920x1080** | 1920.0 | **1196.2** | **the NARROWEST - both findings fired here** |
+| 2340x1080 | 2119.6 | 1320.5 | |
+| 2670x1200 | 2148.0 | 1338.2 | |
+
+(band = canvasW x ModalWidth 0.70 x FrameCore body 0.890; `canvasH = sqrt(1080*1920*H/W)`.)
+
+#### 2b. THE ARITHMETIC FOR BOTH STRINGS - it does not close on one line, at any split
+
+Sized for the LONGEST each side can emit, never the captured sample. At the font floor (30):
+
+| side | longest string it can emit | needs |
 |---|---|---|
-| `"NOT ENOUGH RESOURCES"` (the finding) | ~454 px | **+15%** |
-| `"NOT ENOUGH CRYSTALS (220)"` (worst real) | ~510 px | +2% |
+| info | `UpgradeStatLineFor` worst: "Lvl 9 to 10:  dmg 123.4 to 234.5,  range 18.5m to 22.5m" | ~731 px |
+| info | `CostSummaryFor` worst: three priced axes | ~732 px |
+| info | *the captured sample*, "Lvl 1 to 2:  dmg 23.8 to 46.8,  range 18m to 22m" | ~634 px |
+| CTA | "NOT ENOUGH CRYSTALS (220)" | ~492 px |
+| CTA | "NOT ENOUGH RESOURCES" *(the chain-16 finding)* | ~437 px |
 
-**Pins checked:** `BuildMenuLayoutRegression:273-278` asserts ONLY `InfoWidthFrac <= CtaLeftFrac` and
-`CtaLeftFrac < 1` - both hold (`0.505 <= 0.525 < 1`). No regression pins either literal value.
+**`731 + 492/0.92 = 1266 px` against a `1196.2 px` band, before any gap.** Over-subscribed at the
+narrowest aspect no matter where the split sits. ⛔ **And reverting does not help either:** the
+ORIGINAL `InfoWidthFrac 0.58` gave a 693.8 px lane, so the longest real preview line was ALREADY
+~37 px over the edge before this ticket touched anything. That is the proof that no fraction solves
+it - so the fix is the WO-1628 shape the coordinator named.
 
-⚠ **Risk to watch on the re-capture, named rather than glossed:** the info lines are `FitBlock` at
-`ElarionUi.FontFloorMobile` in a 56 px half-band, so they are effectively single-line. The longest
-(`UpgradeStatLineFor`, `"Lvl 1 to 2:  dmg 10 to 15,  range 8m to 10m"`) is **estimated** ~13% inside
-the narrowed lane, but it has no rect on this run. If it turns red, the width came out of the wrong
-column and the CTA lane is the thing to re-derive - never the font floor.
+#### 2c. The fix: the info text becomes a TWO-LINE FitBlock, and the band grows to seat it
+
+**`ActionBandPx` 112 -> 160 px.** The 56 px info row was exactly ONE line box
+(`30 x LineBoxMul 1.25 = 37.5`), which is why the wrap put the tail on a second line and `Truncate`
+dropped it - **the band, not the font, was the constraint.** Bounded on both sides, both computed:
+
+* **FLOOR** two line boxes at the floor = `2 x 37.5 = 75 px` per info row; the rows tile the band
+  (pinned), so the band needs **>= 150**. 144 gives 72 px a row and still culls the second line.
+* **CEILING** `BuildMenuLayoutRegression`'s own `[body-fits]` formula over its own `Aspects`:
+  body = 489.0 / 430.5 / 423.1 px, and the ladder must leave one `RowPx` row, so
+  `ActionBandPx <= body - NavBandPx - 2*BandGapPx - RowPx` = 241.0 / 182.5 / **175.1**.
+  The Seeker's 2670x1200 binds.
+
+**160** sits 10 px over the floor and 15.1 px under the tightest ceiling. `InfoLinePx` follows as
+`ActionBandPx * 0.5 = 80` with no second typed number, so the exact-tiling pin holds for free.
+
+**PRECEDENT, not invention:** the sibling `BuildingUpgradePanelMvvm` already sizes its action band
+this way - `Assets/Tests/EditMode/BuildingUpgradePanelLayoutTests.cs:199` asserts
+`ActionBandPx >= FloorLine * 2f` with `FloorLine = ElarionUiKit.FontFloor * 1.25` (`:34`). BuildMenu
+was the panel that had NOT adopted it.
+
+**The split: `InfoWidthFrac 0.505 -> 0.45`, `CtaLeftFrac 0.525 -> 0.47`** (0.02 gap preserved). Two
+lines halve what the info column needs in width, and the difference goes to the CTA:
+
+| aspect | info lane | info capacity (x2) | vs ~731 needed | CTA label | vs ~492 needed |
+|---|---|---|---|---|---|
+| **1920x1080** | 538.3 | ~1076 px | **+47%** | **583.2** | **+19%** |
+| 2340x1080 | 594.2 | ~1188 px | +63% | 643.9 | +31% |
+| 2670x1200 | 602.2 | ~1204 px | +65% | 652.5 | +33% |
+
+Both margins are smallest at the aspect the findings fired at and only grow from there. The captured
+sample (~634 px) now wraps to two lines inside an 80 px row (2 x 37.5 = 75 px) instead of losing its
+tail. **No font floor was lowered; no player copy was shortened.**
+
+#### 2d. Pins - all green, and ONE strengthened
+
+Computed against the constants as edited:
+
+| pin | assertion | value | result |
+|---|---|---|---|
+| `[touch-floor]` :166 | `ActionBandPx >= MinTouchPx` (a FLOOR) | 160 >= 112 | PASS |
+| `[line-box]` | `InfoLinePx >= FontLabel x 1.25` | 80 >= 50 | PASS |
+| `[line-box]` | `InfoLinePx >= FontMicro x 1.25` | 80 >= 40 | PASS |
+| `[line-box]` | `InfoLinePx x2 == ActionBandPx` | 160 == 160 | PASS |
+| `[body-fits]` | `body >= SubScreenFixedPx + RowPx` (296+112=408) | 489.0 / 430.5 / 423.1 | PASS (slack +81.0 / +22.5 / **+15.1**) |
+| `[body-fits]` | `body >= RootGridHeightPx` (360) | all three | PASS |
+| `[disjoint]` :273 | `InfoWidthFrac <= CtaLeftFrac` | 0.45 <= 0.47 | PASS |
+
+⭐ **ADDED (`BuildMenuLayoutRegression.cs:221-243`): `InfoLinePx >= 2 x FontFloorMobile x LineBoxMul`
+(80 >= 75).** The three `[line-box]` asserts only ever demanded ONE line box per info row - so they
+were **GREEN throughout the defect**. A pin that passes while the screen cuts its own copy is not
+covering the thing it names; without this, a future seat restores `ActionBandPx = TouchFloorPx` and
+nothing says a word. It reads the MOBILE floor rather than FontLabel/FontMicro deliberately: FitBlock
+autosizes DOWN to `ElarionUi.FontFloorMobile`, so the two-line requirement has to hold at the size a
+long string actually resolves to.
+
+#### 2e. ⛔ One caption is still unfittable, and it is NOT a width problem
+
+`ShortfallMessage` returns `CapBlockMessage` FIRST (`BuildModeController.cs:3547`), and that is a
+multi-SENTENCE paragraph - `"... Also over your Iron ceiling of 3,000: needs 3,500."`
+(`:3599-3604`) - routed into a `FitSingleLine` button face. **No band width seats a paragraph on one
+line.** It is pre-existing, neither capture caught it, and it wants its own ticket. Do not widen this
+lane further chasing it.
 
 ### 3. ManageWorkspace ARMY card - 2 findings - PARTIAL, needs a ruling
 
@@ -841,10 +1023,14 @@ inverse is just as true - an entry deleted ahead of the capture proves nothing a
 ### 7. Verification actually performed by this lane
 
 * `git status --short` clean before, three modified files after - listed below, nothing else.
-* `python tools/gate_brace.py` on all three: **`GATE_BRACE_SUMMARY bad=0 of 3`**, exit 0.
-* NUL scan on all three: clean. Raw brace counts balanced (94/94, 425/425, 2/2).
-* `git diff -U0` reviewed line by line: **only the 13 intended value lines changed**, everything else
-  is comment.
+* `python tools/gate_brace.py` on all five: **`GATE_BRACE_SUMMARY bad=0 of 5`**, exit 0.
+* NUL scan on all five: clean. Raw brace counts balanced (94/94, 425/425, 2/2, 57/57, 51/51).
+* `git diff` reviewed: the only VALUE changes are the 13 from pass 1 (less the two BuildMenu
+  fractions, which moved again) plus `ActionBandPx 112 -> 160`, `InfoWidthFrac -> 0.45`,
+  `CtaLeftFrac -> 0.47`; everything else is comment or the one added regression block.
+* Every pin the BuildMenu change touches was recomputed by hand against the regression's OWN
+  formulas and constants - the table in sec.2d. That is arithmetic over the source, **not** a suite
+  run; the gate is still the lead's.
 * ⛔ **NOT performed, and not claimed:** no Unity run, no compile gate, no regression suite, no
   capture, no PNG opened. Every fit number in this section that is not a quotation from the oracle's
   own output is a **calibrated estimate**, and is marked as one where it appears. The re-capture is
@@ -853,8 +1039,15 @@ inverse is just as true - an entry deleted ahead of the capture proves nothing a
 ### 8. Files changed
 
 ```
-Assets/_Modules/Onboarding/HeroSelectController.cs
-Assets/_Modules/Village/Buildings/UI/BuildMenuLayout.cs
-Assets/_Modules/Village/UI/Manage/ManageScreenPanel.cs
+Assets/_Modules/Onboarding/HeroSelectController.cs          (sec.1)
+Assets/_Modules/Village/UI/Manage/ManageScreenPanel.cs      (sec.3)
+Assets/_Modules/Village/Buildings/UI/BuildMenuLayout.cs     (sec.2 - band ladder + split)
+Assets/_Modules/Village/Buildings/UI/BuildMenu.cs           (sec.2 - AddInfoLines two-line contract, comment only)
+Assets/Editor/Regression/BuildMenuLayoutRegression.cs       (sec.2d - ADDED two-line-floor pin)
 ```
+
+⚠ **For the lead:** the last two files are new to this lane on the second pass. If another lane is
+holding `BuildMenuLayoutRegression.cs` tonight, the added pin (`:221-243`) is a self-contained,
+purely additive hunk and can be taken or dropped independently of the `BuildMenuLayout.cs` fix -
+but dropping it leaves the two-line contract unpinned, which is how this defect stayed green.
 
