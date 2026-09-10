@@ -1,6 +1,14 @@
 # WORK ORDER 1677 — HEART-004: Native SKR Heart Pulse detector
 
-**Status:** SPEC
+**Status:** IMPLEMENTED — 2026-09-10. Daily pulse-detector cron (`api/cron/heart-pulse.js`) + logic module + DDL + 27 passing node:test cases; consumes the real `heartbound-resonance.js` (landed `cde1c1f63`), chain reads left as named injected seams for HEART-001/002, DDL held out of `api/schema.sql` for the lead to fold in. See `WORK_ORDER_1677_heart_004_native_skr_heart_pulse_detector.RESULT.md`.
+
+> ⚠ **§0a / acceptance 7 (the cadence measurement) is SUPERSEDED, not skipped.** Owner ruling
+> **Q-CADENCE (2026-09-10)**: a Heart Pulse is rare and ceremonial, **AT MOST ONE PER DAY**. That is a
+> POLICY bound and it holds whatever the chain cadence turns out to be, so the unmeasured on-chain
+> tick no longer gates the design. It is implemented as `MAX_PULSES_PER_UTC_DAY` + `utcDayKey()`
+> (`api/_lib/heartbound-pulse.js`) — the `MIN_PULSE_INTERVAL` floor §0a said the spec lacked, as a UTC
+> calendar-day key rather than an elapsed-ms floor (cron jitter would otherwise skip a day; RESULT §3.2).
+> The measurement is still worth taking later, for the reason recorded in the RESULT.
 **Silo:** Backend (Neon tables + a scheduled job). No Unity, no gameplay, no scene files.
 **Raised by:** HEARTBOUND-TRIAGE lane, 2026-09-10.
 **Number:** PRE-ASSIGNED by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately **NOT** edited by this lane.
