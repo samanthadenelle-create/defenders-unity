@@ -189,7 +189,10 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-third pass): main line next free = **1645**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-forty-fourth pass): main line next free = **1646**.
+> WO-1645 minted by the RAID-HUD lane on a lead pre-assigned number (no gate renders the in-raid HUD).
+>
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-third pass): main line next free = **1645**.
 > WO-1644 minted by the TITLE-CAPTION lane on a lead pre-assigned number (front-door capture never reports the glyph oracle).
 >
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-forty-second pass): main line next free = **1644**.
