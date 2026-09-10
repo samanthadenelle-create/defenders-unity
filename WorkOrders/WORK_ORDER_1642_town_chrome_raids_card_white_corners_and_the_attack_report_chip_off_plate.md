@@ -1,6 +1,6 @@
 # WO-1642 - Town chrome: the RAIDS deck card has white corner patches, and the ATTACK REPORT chip's third line falls off its own plate into the Echoes chip's gap
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate + capture (lane TOWN-CHROME 2026-09-10)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; number block 1637-1642 pre-assigned by the
 lead, banner bumped 1637 -> 1643 in the SAME edit)
 **Silo / Lane:** HUD chrome. Item A is an ART re-export plus the retirement of a code workaround

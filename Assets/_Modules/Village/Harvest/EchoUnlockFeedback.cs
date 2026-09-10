@@ -51,8 +51,29 @@ namespace DeNelle.Village
     [DisallowMultipleComponent]
     public sealed class EchoUnlockFeedback : MonoBehaviour
     {
-        /// <summary>WO-867: vertical centre of the ONE free band on HudAreasHost's right column —
-        /// between ActionRail's top (0.420) and QueueStatus's bottom (0.530).</summary>
+        /// <summary>WO-867: vertical centre of this chip's band on HudAreasHost's right column.
+        /// <para>⚠ THE JUSTIFICATION THAT USED TO SIT HERE WAS STALE, AND BOTH NUMBERS IT CITED
+        /// ARE GONE (corrected WO-1642, 2026-09-10). It read "the ONE free band ... between
+        /// ActionRail's top (0.420) and QueueStatus's bottom (0.530)". Re-read at source this
+        /// session, HudAreasHost.cs authors ActionRail at 0.770..0.965 (`:130`) and QueueStatus at
+        /// 0.510..0.750 (`:175`) — so neither 0.420 nor 0.530 exists, and the band this constant
+        /// claims to be docked in does not either. That is the duplicated-state rot CLAUDE.md §2,
+        /// §5 and §16 each describe: a number copied into a second file goes stale where it
+        /// stands.</para>
+        /// <para>WHAT IS TRUE TODAY, MEASURED NOT ASSUMED: the chip is a FIXED 112 ref px tall box
+        /// centred on this fraction, so on the owner's 2670x1200 Seeker frame (canvas 1080x1920,
+        /// match 0.5 → scale 1.243, band 139.2 device px) it occupies 0.418..0.532 of screen
+        /// height — its top edge sits about <b>0.022 INSIDE QueueStatus's 0.510 bottom</b>. No
+        /// pixel overlap has been observed: on Builds/device-frames/2026-09-10_0602_town.png this
+        /// chip's plate measures device rows 585..658 and the attack-report chip's plate above it
+        /// ends at 545. The encroachment is RECORDED, not fixed here — moving a placement the
+        /// owner felt-tested (2026-07-24) is a ruling, not a comment repair.</para>
+        /// <para>⛔ DO NOT WRITE A MOUNT RECT INTO THIS FILE AGAIN. The only cure for the copy is
+        /// deleting it: this chip lives in DeNelle.Village and may not reference DeNelle.HUD
+        /// (CLAUDE.md §5), so having it READ the band needs a shared table in
+        /// DeNelle.Core.UI.HudLayoutBands — the same seam WO-1436 and WO-1464 already cut for the
+        /// raid deploy bar and the move stick. That is a structural change with an owner ruling
+        /// attached; it is raised, not smuggled in here.</para></summary>
         private const float EchoChipBandCentreY = 0.475f;
 
         /// <summary>WO-867: chip width, reference px — fits "Echoes 6/6" on one line at the kit's
@@ -444,12 +465,12 @@ namespace DeNelle.Village
             if (rt != null)
             {
                 // WO-867 — DOCK IT IN A REAL BAND ON THE RIGHT COLUMN.
-                // HudAreasHost reserves 0.780..0.995 x for the right column and leaves exactly one
-                // free vertical band there: between ActionRail's top (0.420) and QueueStatus's
-                // bottom (0.530) — ~107.6 ref px at 2340x1080 (canvas 1080x1920, match 0.5 =>
-                // 2119.6 x 978.3 ref units). Anchor the chip on that band's centre (0.475) at a
-                // FIXED 112-px height, so it occupies 0.418..0.532 and collides with neither
-                // neighbour at any aspect. Fixed pixels, never a fraction of parent.
+                // HudAreasHost reserves 0.780..0.995 x for the right column. Anchor the chip on
+                // EchoChipBandCentreY at a FIXED 112-px height, so it occupies 0.418..0.532.
+                // Fixed pixels, never a fraction of parent.
+                // ⚠ The two mount fractions this comment used to quote as the band's edges no
+                // longer exist — read the correction (and the live 0.510 / 0.770 values) on
+                // EchoChipBandCentreY above rather than restating any of them here.
                 rt.anchorMin = new Vector2(1f, EchoChipBandCentreY);
                 rt.anchorMax = new Vector2(1f, EchoChipBandCentreY);
                 rt.pivot = new Vector2(1f, 0.5f);

@@ -526,11 +526,18 @@ namespace DeNelle.HUD
         // the PNG's border pixels are packaging, and the only proof of that is opening the file.
         // Re-export raids.png / game-guide.png with a transparent margin and the matching row
         // becomes dead - delete it THEN, not before.
+        //
+        // ⭐ WO-1642 (2026-09-10) - THE "raids" ROW IS GONE, AND THAT IS THE INTENDED ENDING.
+        // The rectangular crop above only ever removed a rectangular band; the frame painted into
+        // raids.png is ROUNDED, so ~33% of each 60x60 corner block inside the authored bbox stayed
+        // opaque checkerboard and drew as four white triangles on the card (owner: "it feels
+        // incomplete and not polished"). cards/raids.png now carries a real alpha channel -
+        // measured after the fix: alpha margin L49 T62 R48 B76, all four corners (0,0,0,0) - so
+        // the WO-1311 tight-mesh route sees the margin, this table is never consulted for it, and
+        // HudLabelFitRegression case 7 turns RED if the row is ever put back. game-guide.png is
+        // still flattened and keeps its row.
         private static readonly OpaqueMargin[] OpaqueMargins =
         {
-            // cards/raids.png      1774x887 - checkerboard border, art bbox (49,63)-(1726,809)
-            new OpaqueMargin { Key = "raids", Width = 1774, Height = 887,
-                               Left = 49, Top = 63, Right = 48, Bottom = 78 },
             // cards/game-guide.png 1821x864 - checkerboard border, art bbox (53,65)-(1769,776)
             new OpaqueMargin { Key = "game-guide", Width = 1821, Height = 864,
                                Left = 53, Top = 65, Right = 52, Bottom = 88 }
