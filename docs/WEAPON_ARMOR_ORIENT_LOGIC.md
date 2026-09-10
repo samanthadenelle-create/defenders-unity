@@ -165,10 +165,27 @@ its existing behaviour**. The hand-typed constants (`Shield` preset euler, `_she
 
 | path | state |
 |---|---|
-| **shield, drawn** | **DERIVED** (both native and normalized props), global weapon yaw withheld |
+| **shield, drawn** | **DERIVED** (both native and normalized props), global weapon yaw withheld. The Seating Editor preview shares the same method: both sides call `EquipmentController.TryDeriveShieldMountRotation` (declared `EquipmentController.cs:2295`) - the attach path through `SeatShieldMountRotation` (declared `:2190`, which calls the deriver at `:2240`; called from the hero attach at `:2918-2919`), the preview directly at `:5275-5276` - and both pass the SAME body, bare `transform` (`:2919` attach, `:5276` preview). The preview supplies its own re-measured `_previewShieldFrame` (`:5276`, reasoning `:5272-5274`), so what is shared is the METHOD, not the frame. (added 2026-09-10, WO-1620 / WO-1627) |
 | **shield, sheathed** | **DERIVED** off the back socket with outward = −body.forward; the Seating Editor preview shares the same method so the two can never disagree |
-| **bow, drawn + sheathed** | unchanged — felt-verified |
+| **shield, raid NPC** | **DERIVED** through the same authority as the hero (`EquipmentController.SeatShieldMountRotation` / `SeatShieldPlateOnSocket`), called from `Assets/_Modules/Village/Troops/TroopGearApplier.cs:240-241` (and `:244` for the plate); `TroopGearApplier` holds no shield ROTATION constant - its deleted `else if (shield)` triple is called out at `TroopGearApplier.cs:274-280`, and the only shield-shaped literals left in that file are the scale/colour of the missing-prefab primitive fallback at `:348-352`. (added 2026-09-10, WO-1616 wording, written by WO-1627) |
+| **bow, drawn + sheathed** | unchanged — felt-verified. Preview and attach pass the **same** body expression, `_animator != null ? _animator.transform : transform`, at `EquipmentController.cs:1440` (attach), `:5234` (drawn preview) and `:5390` (sheathed preview), and all three hand it to `WeaponBoundsOrient.ComputeBowHeldRotation` (`:1445`, `:5236`, `:5389-5390`); `TraceBowSeatMeasured` uses the same expression at `:1611`. **There is no bow preview-vs-attach divergence.** (confirmed 2026-09-10, WO-1627) |
 | **staff, drawn + sheathed** | grip point **DERIVED** (0.75 up the long axis) via `EquipmentController.SeatMeleeGripPoint`, precedence-gated; sword/dagger and every Unknown family keep the hilt-lower-half seat and the read-only prediction. (updated 2026-09-09, WO-1431 lane HERO-GRIP) |
+
+> ### Open convention question - NOT a defect, NOT investigated, do NOT "align" it blind
+> The two seams above standardise on **different** expressions for "the body transform", and each is
+> internally consistent with itself. The **shield** seam passes bare `transform` on both sides
+> (`EquipmentController.cs:2919` attach, `:5276` preview). The **bow** seam passes
+> `_animator != null ? _animator.transform : transform` on all of its sides (`:1440`, `:5234`,
+> `:5390`, `:1611`). `_animator` is resolved with `GetComponentInChildren<Animator>()`
+> (`:5673-5674`; also resolved at `:918` and assigned to `_animator` at `:920`), so on a rig whose
+> Animator sits on a CHILD of the EquipmentController's GameObject the two expressions yield
+> different transforms with different `right` / `up` / `forward`.
+>
+> **Nothing here claims any rig in this project is shaped that way, or that any bow's rendered pose
+> differs.** Neither was investigated. Closing this question is an instrumented read first
+> (CLAUDE.md sec.12), and the in-code comment at `EquipmentController.cs:5260-5267` already rules the
+> bow branch out of scope for the shield lane - that comment is accurate and stays. (recorded
+> 2026-09-10, WO-1627)
 
 **Companion reference:** `docs/WEAPON_MESH_ARCHETYPES.md` — what each archetype's mesh *is* in
 measurable terms (the bin/profile-curve primitive and the per-family **disambiguator** that separates

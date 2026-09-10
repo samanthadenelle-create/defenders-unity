@@ -174,6 +174,12 @@ not edge-on?*
    Suggested addition for whoever owns the doc: *"**shield, raid NPC** — DERIVED through the same
    authority as the hero (`EquipmentController.SeatShieldMountRotation` /
    `SeatShieldPlateOnSocket`); `TroopGearApplier` holds no shield constant (WO-1616, 2026-09-09)."*
+   **CLOSED 2026-09-10 by WO-1627 (lane ORIENT-DOC): the "shield, raid NPC" row is WRITTEN into
+   `docs/WEAPON_ARMOR_ORIENT_LOGIC.md`'s live table.** This item needs no third flag. One precision
+   added while writing it, re-measured at source: "holds no shield constant" is exact for a shield
+   ROTATION constant (`TroopGearApplier.cs:274-280` records the deleted triple), but the file does
+   still carry shield-shaped SCALE/COLOUR literals in the missing-prefab primitive fallback
+   (`:348-352`), so the doc row says "no shield ROTATION constant" and names that exception.
 9. **CORRECTION 2026-09-09 (lead, re-measured at source): THIS ITEM IS WRONG - NOT MINTED.**
    `troops.json` carries ZERO `"None"` values in `weapon` or `offhand`; the only `"None"` strings
    are `"element": "None"` (8 of 9 rows). Rows without gear simply OMIT the key (2 lack `weapon`,

@@ -1,6 +1,15 @@
 # WO-1627 - WEAPON_ARMOR_ORIENT_LOGIC needs its preview rows, and the WO-1620 hand-back needs a CORRECTION banner
 
-**Status:** READY TO IMPLEMENT - **SEQUENCED behind the lead's commit of the WO-1620 RESULT**
+**Status:** FIXED 2026-09-10 - lead reviewed: five cited rows in docs/WEAPON_ARMOR_ORIENT_LOGIC.md, CORRECTION banners on the 1620 RESULT (pure insertions) and 1616 item 8 closed; docs only. (was: IMPLEMENTED - awaiting lead review, lane ORIENT-DOC)
+
+**Sequencing note (2026-09-10):** the READY status below said *"SEQUENCED behind the lead's commit of
+the WO-1620 RESULT"*. The lead's dispatch to this lane OVERRODE that guard explicitly, instructing the
+banner be appended to the still-uncommitted `WORK_ORDER_1620_*.RESULT.md` in the main tree, with
+nothing else in that file rewritten. Named here rather than hidden (CLAUDE.md sec.11B B). A snapshot
+of the file was taken before the edit and the resulting `diff -u` is quoted in the RESULT, since an
+untracked file produces no git hunk.
+
+**Original status line, kept for the record:** READY TO IMPLEMENT - **SEQUENCED behind the lead's commit of the WO-1620 RESULT**
 (measured 2026-09-10: `git status` reports
 `?? WorkOrders/WORK_ORDER_1620_seating_editor_shield_preview_must_route_through_the_shared_authority.RESULT.md`
 - UNTRACKED, i.e. that lane's hand-back is still uncommitted in the shared tree. Appending a banner to

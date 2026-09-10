@@ -104,12 +104,13 @@ what attach passes. Reasoning written in-code at `:5261-5267`.
 touched** — it is a different derivation with its own history and the WO pins it. Whether it has the
 same divergence is **not investigated and not claimed**; it is flagged in §7 below.
 
-> **CORRECTION 2026-09-10 (WO-1627, re-measured at source) - see the full banner at the end of §7.**
-> The bow branch does NOT "still" pass a body different from its own attach path. Bow attach
-> (`EquipmentController.cs:1440`) and bow preview (`:5234`) pass the identical expression
-> `_animator != null ? _animator.transform : transform`. There is no bow preview-vs-attach
-> divergence. What remains is a cross-seam convention difference (shield seam vs bow seam), not
-> investigated and not claimed.
+> **CORRECTION 2026-09-10 (WO-1627, re-measured at source) - full banner below the "New finding"
+> paragraph in sec.7.** The sentence above is literally true (the bow preview does pass
+> `_animator.transform`), but the question it leaves open - *"whether it has the same divergence"* -
+> is now ANSWERED: it cannot. Bow ATTACH passes the identical expression
+> `_animator != null ? _animator.transform : transform` (`EquipmentController.cs:1440`) that bow
+> preview passes (`:5234`). There is no bow preview-vs-attach divergence. What remains is a
+> cross-seam convention difference (shield seam vs bow seam), not investigated and not claimed.
 
 ---
 
