@@ -114,6 +114,15 @@ namespace DeNelle.Editor
         private const string DefaultArcherTowerId = "tower_ground_archer";
         private const string DefaultMageTowerId = "tower_arcane_spire";
 
+        // -- SPIRE MONUMENT FIT (WO-1617). These were three bare literals inside PlaceSpire
+        //    ("targetHeight * 1.6f, 8f, 18f"). They are TUNABLES now, with TODAY'S VALUES as the
+        //    defaults - the ticket changes WHO the fit applies to, never the numbers, so the
+        //    arcane-spire bake must land on the identical height it did before (8.0 m, proven in
+        //    Builds/raidbase-bake.log). Do not retune here without a WO.
+        internal const float SpireMonumentMultiplier = 1.6f;
+        internal const float SpireMonumentMinHeight = 8f;
+        internal const float SpireMonumentMaxHeight = 18f;
+
         private const string RootName = "RaidBase_IronBastion";
         private const string DefaultScene = "Assets/Scenes/MainCastle_Hall.unity";
         private const string HeroStartName = "HeroStartPoint_PlayerSpawn";
@@ -519,13 +528,23 @@ namespace DeNelle.Editor
 
         private static RaidSpire PlaceSpire(Transform root, SceneConfigDef def, RaidTier tier)
         {
-            string catalogId = string.IsNullOrEmpty(def.centralBuilding) ? DefaultMageTowerId : def.centralBuilding;
+            // WO-1617: the spire slot never carries siege art. ONE decider, shared with
+            // PlaceTowerProp and the dresser - see ResolveSpireArtId / IsAuthoredSiegeMachine.
+            string catalogId = ResolveSpireArtId(def.centralBuilding);
             var entry = FindStructure(catalogId);
 
             float targetHeight = 9f;
             if (entry != null && entry.repo != null && entry.repo.visualHeight > 0.5f)
                 targetHeight = entry.repo.visualHeight;
-            targetHeight = Mathf.Clamp(targetHeight * 1.6f, 8f, 18f);   // a monument, not a hut
+
+            // A machine authored at its true size must not be magnified to monument height.
+            // (Belt as well as braces: ResolveSpireArtId already keeps siege art out of this
+            // slot, but if a future config or caller ever routes one here, the fit must still
+            // leave it alone rather than repeat the 2.6 m -> 14.4 m Ballista blow-up.)
+            bool authoredSiege = IsAuthoredSiegeMachine(catalogId);
+            if (!authoredSiege)
+                targetHeight = Mathf.Clamp(targetHeight * SpireMonumentMultiplier,
+                                           SpireMonumentMinHeight, SpireMonumentMaxHeight);   // a monument, not a hut
 
             GameObject go = null;
             string prefabPath = entry != null ? entry.visualPrefabPath : null;
@@ -560,8 +579,24 @@ namespace DeNelle.Editor
 
             // Stand it up BEFORE measuring height (a flat FBX would otherwise be "scaled to
             // height" on the wrong axis and become a pancake), then scale + ground-seat.
-            EnsureUpright(go, $"spire art '{catalogId}'");
-            float built = ScaleToHeight(go, targetHeight);
+            //
+            // WO-1617: an authored siege machine skips BOTH corrections. EnsureUpright's own
+            // warning predicted this false positive and the bake log recorded it firing:
+            //   "'spire art 'tower_siege_tower'' imported FLAT (h=2.6m vs 4.4m wide) - applied
+            //    the -90 X FBX-flat correction" (Builds/raidbase-bake.log)
+            // - a Ballista IS 2.6 m tall and 4.4 m wide, so the heuristic read correct art as a
+            // fallen building, tipped it on its edge, and ScaleToHeight then magnified the wrong
+            // axis to 14.4 m. The exemption PlaceTowerProp already had is now shared, not copied.
+            float built;
+            if (authoredSiege)
+            {
+                built = MeasuredHeight(go);
+            }
+            else
+            {
+                EnsureUpright(go, $"spire art '{catalogId}'");
+                built = ScaleToHeight(go, targetHeight);
+            }
             SeatOnGround(go);
 
             var spire = go.GetComponent<RaidSpire>();
@@ -918,10 +953,51 @@ namespace DeNelle.Editor
             return go;
         }
 
-        private static bool IsAuthoredSiegeMachine(string catalogId)
+        /// <summary>
+        /// THE ONE DECIDER for "is this catalog art an authored siege machine?" (WO-1617).
+        /// Catapults and siege towers are low, wide machines authored at their true size
+        /// (the height cadence gives siege 0.75 - KEY_FACTS "ONE HEIGHT CADENCE"), so they must
+        /// never be auto-uprighted by the flat-FBX heuristic nor scaled to monument height.
+        ///
+        /// EVERY placer consults THIS method - <see cref="PlaceTowerProp"/>, <see cref="PlaceSpire"/>
+        /// and (via <see cref="ResolveSpireArtId"/>) RaidBaseDresser.MapCatalogArt. It is
+        /// deliberately `internal` rather than `private` so the dresser reaches the SAME predicate
+        /// instead of copying the two ids: a second copy is how PlaceSpire came to disagree with
+        /// PlaceTowerProp in the first place. DO NOT fork it, do not inline the ids elsewhere.
+        /// </summary>
+        internal static bool IsAuthoredSiegeMachine(string catalogId)
         {
             return string.Equals(catalogId, "tower_catapult", System.StringComparison.OrdinalIgnoreCase)
                 || string.Equals(catalogId, "tower_siege_tower", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Resolve the art id the SPIRE SLOT should carry (WO-1617). The spire is the camp's
+        /// architectural centrepiece and the raid's win condition; a siege machine is not
+        /// architecture. `raider_camp_small` authors the siege-tower id as its `centralBuilding`
+        /// (Assets/Resources/Data/Canonical/scene-configs.json:76), which is how the Easy camp's
+        /// centrepiece became a Ballista tipped onto its edge and blown up to 14.4 m.
+        ///
+        /// This routes a siege id to the module's EXISTING default spire art
+        /// (<see cref="DefaultMageTowerId"/>) and says so loudly. That is the codebase's own
+        /// fallback, NOT a creative pick - which spire art the Forsaken Camp should actually
+        /// carry is the owner's call (WO-1617 sec.7 / WO-1607 sec.0). When she rules, change the
+        /// JSON's `centralBuilding` and this warning stops firing on its own.
+        ///
+        /// Both the generator and the dresser call this, so the model the generator MEASURES for
+        /// the height fit and the model the dresser INSTANTIATES are always the same one - the
+        /// dresser's ReplaceChildrenWith swaps the mesh but inherits the host's fitted scale.
+        /// </summary>
+        internal static string ResolveSpireArtId(string centralBuilding)
+        {
+            if (string.IsNullOrEmpty(centralBuilding)) return DefaultMageTowerId;
+            if (!IsAuthoredSiegeMachine(centralBuilding)) return centralBuilding;
+
+            Debug.LogWarning($"[RaidBaseGenerator] centralBuilding '{centralBuilding}' is an authored SIEGE MACHINE, " +
+                             $"not architecture - it cannot be the spire (WO-1617). Substituting the default spire art " +
+                             $"'{DefaultMageTowerId}'. Fix the config's centralBuilding in scene-configs.json once the " +
+                             "owner picks the camp's centrepiece; this warning stops when she does.");
+            return DefaultMageTowerId;
         }
 
         /// <summary>URP-safe primitive turret (never a default-material primitive).</summary>
@@ -1144,6 +1220,20 @@ namespace DeNelle.Editor
             var b = rends[0].bounds;
             for (int k = 1; k < rends.Length; k++) b.Encapsulate(rends[k].bounds);
             go.transform.position += new Vector3(0f, -b.min.y, 0f);
+        }
+
+        /// <summary>
+        /// Rendered world height of an object, unchanged (WO-1617). Used where the art is
+        /// authored at its true size and must be REPORTED, not refitted - the log line and
+        /// RaidSpire.Configure still need a real height even when nothing was scaled.
+        /// </summary>
+        private static float MeasuredHeight(GameObject go)
+        {
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            if (rends.Length == 0) return 0f;
+            var b = rends[0].bounds;
+            for (int k = 1; k < rends.Length; k++) b.Encapsulate(rends[k].bounds);
+            return b.size.y;
         }
 
         /// <summary>Uniformly scale an object so its rendered height matches <paramref name="target"/>. Returns the height achieved.</summary>

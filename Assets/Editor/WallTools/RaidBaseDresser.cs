@@ -471,9 +471,30 @@ namespace DeNelle.Editor
             return "RaidSpire";
         }
 
+        /// <summary>
+        /// Map a structures-catalog id to the art token for the SPIRE SLOT.
+        ///
+        /// ⚠ THIS HAS EXACTLY ONE CALLER AND IT IS THE SPIRE (ReskinCombatArt, above). WO-1617's
+        /// premise that the siege branches served "the turret slots" was checked and is FALSE -
+        /// the turrets go through RaidBaseGenerator.PlaceTowerProp, which never comes here. So a
+        /// `siege -> Ballista` row could only ever hand siege art to the camp's architectural
+        /// centrepiece, which is precisely the defect: the Easy camp rendered a Ballista as its
+        /// spire ('Structures/Ballista' in Builds/raidbase-bake.log).
+        ///
+        /// The fix routes the id through the ONE decider that owns "is this a siege machine?" -
+        /// RaidBaseGenerator.ResolveSpireArtId - BEFORE the token mapping. That keeps the model
+        /// the generator MEASURED for its height fit and the model this dresser INSTANTIATES in
+        /// agreement (ReplaceChildrenWith inherits the host's fitted localScale), and it means
+        /// the two ids live in one place instead of being restated here.
+        ///
+        /// The siege/catapult rows below are consequently UNREACHABLE for today's only caller.
+        /// They are kept, not deleted, so that a future turret-side caller gets a correct answer
+        /// rather than falling through to the raw id - but they are no longer the spire's answer.
+        /// </summary>
         private static string MapCatalogArt(string catalogId)
         {
             if (string.IsNullOrEmpty(catalogId)) return "ArcaneSpire_1";
+            catalogId = RaidBaseGenerator.ResolveSpireArtId(catalogId);
             if (catalogId.IndexOf("siege", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 return "Ballista";
             if (catalogId.IndexOf("catapult", System.StringComparison.OrdinalIgnoreCase) >= 0)
