@@ -1048,6 +1048,30 @@
    "canHitAir": true
   },
   {
+   "id": "tower_ruined_watchtower",
+   "displayName": "Ruined Watchtower",
+   "description": "A watchtower the scavengers took: the shaft still stands, the crown is long gone.",
+   "type": "Decoration",
+   "kind": "Cell",
+   "visualPrefabPath": "Structures/building_tower_base_green",
+   "_ownerArtRuling": "2026-09-10 OWNER RULING (via AskUserQuestion, relayed in the WO-1619 lane brief - NOT a captured transcript): the Forsaken Camp raid base (scene-configs.json raider_camp_small) carries a RUINED WATCHTOWER as its spire - explicitly NOT the default arcane spire and NOT a wooden keep. Asked to choose from three measured candidates, the owner ruled: \"Use the KayKit tower base\". This row exists to give that ruling an art id the raid generator can resolve. THE ART: Assets/Models/KayKit/KayKit Medieval Hexagon Pack 1.0.1/Assets/fbx(unity)/buildings/green/building_tower_base_green.fbx, from the same hexagon-green kit the camp is already dressed in (pinned by RaidBaseLayoutRegression.CaseEasyDress). MEASURED off the pack's own glTF twin 2026-09-10: 0.930 x 1.500 x 1.111 m, ONE mesh node. The complete tower building_tower_A_green is 0.993 x 2.192 x 1.153 with TWO nodes (building_tower_A_top_green + building_tower_A_green), and building_tower_cannon_green shares this row's 0.930 x 1.111 footprint to three decimals - so this model is measurably the same tower shaft with its crown absent. It stands upright unaided: 1.500 >= max(0.930, 1.111) * 0.8, so RaidBaseGenerator.EnsureUpright returns early and applies no flat-FBX rotation.",
+   "_raidOnlyNote": "RAID ART ROW - deliberately NOT player content, and every omission below is load-bearing. NO manageFilters and NO manageArtKey: BuildInventoryFilterRegression case 2 fires only on rows a card collection OFFERS, case 4 only on rows carrying a filter, and case 6 (DerivedUnnamedLocks) only on offered ids - so an unoffered, unfiltered row needs NO dated exemption in that suite. It is not in card-collections.json and must not be added there. \u26a0 CORRECTED 2026-09-10, and the correction is the finding: this row FIRST shipped with no repo block at all, on the reading that BuildEconomyRegression.CheckCosts skips rows where repo == null. IT DOES NOT SKIP THIS ROW - CatalogEntry.repo is default-constructed, so an absent JSON repo still deserializes to a NON-null object, and the gate fired: \"is affordability-gated but CostFor resolves ZERO (no repo.cost AND buildCost 0 - placement would be free)\" (Builds/wave3-reg7). Reading the predicate was not the same as reading what the predicate SEES. The real seam is placement.checkAffordable false - see _nonPlayerRowNote. CheckTowerContract is genuinely inert here, but for the OTHER reason stated there: behaviorId is null and the type is no longer Tower. A description IS authored because CheckStructureDescriptions requires one from every row that carries a visualPrefabPath. type Tower / kind Cell match the three existing spire-capable rows (tower_arcane_spire, tower_ground_archer, tower_siege_tower). Read RaidBaseGenerator.PlaceSpire: it needs exactly entry.visualPrefabPath, and repo.visualHeight is guarded and authored zero times catalog-wide.",
+   "_artPipelineNote": "\u26d4 THE ADDRESS DOES NOT RESOLVE UNTIL TWO EDITOR METHODS HAVE RUN, and until they have, DataRegression.CheckStructures FAILS on this row - by design, not by accident: it loads every visualPrefabPath through StructureAssetLoader (Addressables-first, Resources-fallback), and the KayKit pack is neither. The sanctioned chain, in order: (1) DeNelle.Editor.CatalogPrefabImporter.CopyKitToResources copies the source FBX into Assets/StructureContent/ (the KayKit hexagon-green row was added to its table for exactly this); (2) DeNelle.Editor.StructureAddressablesMigrator.MarkCatalogArt reads THIS key back out of this file and registers Assets/StructureContent/building_tower_base_green.fbx into the Structure_Art group - its lookup already accepts .fbx. Structure_Art is a REMOTE group (R2, CLAUDE.md section 16), so the content build and tools\\r2-ship.ps1 follow, or the spire renders as a placeholder on device with no error on screen. The stem is deliberately left identical to the source file so that copy step, this key and that lookup all line up with no renaming.",
+   "_nonPlayerRowNote": "NON-PLAYER seam, authored to the convention repair_default and deco_torch already use - NOT an ad-hoc exemption. Three separate suites sweep every catalog row as if it were buildable, and each has an EXISTING door for a row that is not: (a) BuildEconomyRegression.CheckCosts skips a row whose placement.checkAffordable is FALSE, which is exactly why repair_default (buildCost 0, and a DATA row) passes it - that flag, not a fabricated price, is the seam, and this row authors no cost because it is not purchasable at any price; (b) BuildModeController.IsTowerEntry classifies a tower as type Tower OR repo.behaviorId DefenseTower/ArcaneTower, and TowerManagerRegression's own failure text says \"author repo.range/repo.damage or DROP THE TOWER TYPE\" - so type is Decoration and behaviorId is null, which also drops it from BuildMenuRealEconomyRegression (that suite selects on entry.type != CatalogType.Tower); (c) no build verb maps to Decoration in build-categories.json, which is the reason deco_torch's and repair_default's own notes give for being unreachable from every palette. navSurface None because this row is never placed in town - the raid generator instantiates it directly and fits it to monument height. heightMul is deliberately unauthored: it only feeds the TOWN placement fit, which this row never reaches, and RaidBaseGenerator.ScaleToHeight computes the raid height from measured bounds. WO-1619, 2026-09-10.",
+   "repo": {
+    "behaviorId": null,
+    "buildCost": 0,
+    "navSurface": "None",
+    "placement": {
+     "mustSitOn": "Ground",
+     "footprint": 1,
+     "noOverlap": false,
+     "checkAffordable": false
+    }
+   },
+   "canHitAir": false
+  },
+  {
    "id": "tower_arcane_spire",
    "manageFilters": ["DEFENSE"],
    "manageArtKey": "building-arcane-spire",

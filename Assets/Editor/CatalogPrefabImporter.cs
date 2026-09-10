@@ -41,12 +41,27 @@ namespace DeNelle.Editor
             public readonly string Name;
             public readonly string Category; // folder under the tier root (no trailing slash)
             public readonly string Root;     // tier root ("..._M/Prefabs_M/" unless overridden)
-            public KitPrefab(string name, string category, string root = SrcRoot)
-            { Name = name; Category = category; Root = root; }
+            // Source/destination file extension. Defaults to ".prefab" because every
+            // polyperfect row below IS a prefab. KayKit ships raw .fbx models with no
+            // prefab wrapper, so that pack's rows override this (WO-1619, 2026-09-10).
+            // CopyAsset and AssetDatabase.LoadAssetAtPath<GameObject> both treat a model
+            // file exactly like a prefab, and StructureAddressablesMigrator.MarkInto
+            // already probes ".fbx" alongside ".prefab" when it resolves a catalog key -
+            // so an .fbx row needs no other change anywhere in the chain.
+            public readonly string Ext;
+            public KitPrefab(string name, string category, string root = SrcRoot, string ext = ".prefab")
+            { Name = name; Category = category; Root = root; Ext = ext; }
         }
 
         private const string SrcRootT =
             "Assets/polyperfect/Low Poly Ultimate Pack/_T/Prefabs_T/";
+
+        // KayKit Medieval Hexagon Pack - the kit the raid camps are dressed in
+        // (RaidBaseDresser.KayFolders; RaidBaseLayoutRegression.CaseEasyDress pins the Easy
+        // camp's kit as "hexagon-green"). Gitignored like every other pack, so a row sourced
+        // here warns rather than errors when the pack is absent - CLAUDE.md section 4.
+        private const string SrcRootKayHex =
+            "Assets/Models/KayKit/KayKit Medieval Hexagon Pack 1.0.1/Assets/fbx(unity)/buildings/";
 
         // The defensive-kit prefabs the catalog references (owner's prefab map, WO).
         // Most live in Medieval_M; a few primitives live in other category folders.
@@ -93,6 +108,18 @@ namespace DeNelle.Editor
             new KitPrefab("Tower_Tribal_Tier1",        "Tribal_T", SrcRootT),  // tower_ground_archer L1
             new KitPrefab("Tower_Tribal_Tier2",        "Tribal_T", SrcRootT),  // tower_ground_archer L2
             new KitPrefab("Tower_Tribal_Tier3",        "Tribal_T", SrcRootT),  // tower_ground_archer L3
+
+            // --- RAID SPIRE ART, owner ruling 2026-09-10 (WO-1619): The Forsaken Camp's
+            //     centrepiece is a RUINED WATCHTOWER, and the owner picked "the KayKit tower
+            //     base" from three measured candidates. It backs the tower_ruined_watchtower
+            //     catalog row, whose visualPrefabPath is "Structures/building_tower_base_green"
+            //     - the stem is deliberately IDENTICAL to the source file so the copy below,
+            //     that catalog key and MarkCatalogArt's lookup all agree with no renaming.
+            //     MEASURED off the pack's own glTF twin: 0.930 x 1.500 x 1.111 m, one mesh node
+            //     (the complete building_tower_A_green is 2.192 m with a separate _top_ node) -
+            //     i.e. the same shaft with its crown gone. .fbx, not .prefab: KayKit ships raw
+            //     models.
+            new KitPrefab("building_tower_base_green", "green", SrcRootKayHex, ".fbx"),
         };
 
         [MenuItem("Defenders/Catalog/Copy Kit Prefabs To Resources")]
@@ -105,8 +132,9 @@ namespace DeNelle.Editor
             foreach (var kit in KitPrefabs)
             {
                 string name = kit.Name;
-                string src = kit.Root + kit.Category + "/" + name + ".prefab";
-                string dst = DstDir + name + ".prefab";
+                string ext = string.IsNullOrEmpty(kit.Ext) ? ".prefab" : kit.Ext;
+                string src = kit.Root + kit.Category + "/" + name + ext;
+                string dst = DstDir + name + ext;
 
                 // Idempotent — already in Resources, leave it.
                 if (File.Exists(dst))

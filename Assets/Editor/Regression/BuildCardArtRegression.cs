@@ -69,6 +69,16 @@ namespace DeNelle.Editor.Regression
                 // Type 'Decoration', and NO build verb maps to Decoration.
                 "deco_torch",
                 "repair_default",      // a repair-economy DATA row, not a building
+                // 2026-09-10, WO-1619 (owner ruling, same date): the Forsaken Camp raid base's
+                // spire art. It is a RAID row, not a build card - type 'Decoration' (so no build
+                // verb maps to it, the same reason the two ids above are here), no manageFilters
+                // (so BuildInventoryModel scores it BuildAvailability.NotPlayerContent), in no
+                // card collection, and placement.checkAffordable false. RaidBaseGenerator.PlaceSpire
+                // instantiates it directly from visualPrefabPath at BAKE time; it never reaches a
+                // palette, so NO CARD IS EVER DRAWN and no portrait is owed. Per this list's own
+                // header this is debt-ledger content that is "retired or gated", NOT a work queue -
+                // do not commission a portrait for it, and do not delete this line expecting art.
+                "tower_ruined_watchtower",
             };
 
         /// <summary>Shape of Data/Canonical/structures-catalog.json.</summary>

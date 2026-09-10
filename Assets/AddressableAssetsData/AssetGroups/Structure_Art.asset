@@ -280,6 +280,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c4ed130479453c248b10b01818cf19e5
+    m_Address: Structures/building_tower_base_green
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c83598997a5b4f1797e66e82b1a8fb7a
     m_Address: Structures/ArcaneSpire_Albedo
     m_ReadOnly: 0
@@ -335,6 +340,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f54e5ee978bef294ea92647d989faf56
+    m_Address: Structures/Tower_Medieval_Big
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f70a5ba1f6656fe4fb83272ea292424e
     m_Address: Structures/arcane tower
     m_ReadOnly: 0
@@ -342,11 +352,6 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f7d39bbe3a3cb574aa61580f34b7fdc2
     m_Address: Structures/Ballista
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: f54e5ee978bef294ea92647d989faf56
-    m_Address: Structures/Tower_Medieval_Big
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
