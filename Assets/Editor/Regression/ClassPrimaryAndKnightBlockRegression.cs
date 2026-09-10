@@ -31,7 +31,37 @@ namespace DeNelle.Editor.Regression
 
                 string hud = File.ReadAllText("Assets/_Modules/HUD/Kit/HudKitController.cs");
                 Require(hud, "var q = a.Slots[0]");
-                Require(hud, "primary.SetIcon");
+                // ⛔ RE-POINTED 2026-09-10 WITH THE RULING (WO-1695), by the SAME reasoning the
+                // WO-1429 block above records — and this one needs saying carefully, because the
+                // old token was not itself a defect, it was merely a WRITE SITE.
+                //
+                // WHAT THIS ROW IS ACTUALLY FOR: that the class-authored Q reaches the combat
+                // dock's primary FACE as art. `Require(hud, "primary.SetIcon")` was one particular
+                // spelling of that — the literal inline write. It could never distinguish a face
+                // that paints the class Q from one that paints the crossed-swords DEFAULT, which
+                // is exactly what WO-1695 found the Knight doing on the owner's Seeker
+                // (Builds/device-frames/2026-09-10_1520_owner_icons.png, build 363866): the inline
+                // `primary.SetIcon(UiStyle.Icon(q.IconKey))` DROPPED the in-band "text:" IconKey
+                // mode that AbilityLoadoutProducer forces for knight.q
+                // (HudModelProducers.cs:619), resolved nothing, and fell to
+                // ConceptIconResolver.DefaultSprite(). **The old pin was GREEN throughout.**
+                //
+                // The fix routes the face through ONE art rule, HudKitController
+                // .ApplyCombatPrimaryFaceArt, so the rail and the dock cannot disagree about what
+                // an IconKey means — and the write moved inside it, because the two branches
+                // (SetLabel for text, SetIcon for a concept) write DIFFERENT members. Keeping a
+                // literal `primary.SetIcon` at the call site would mean putting that branch back
+                // at the call site, i.e. re-creating the divergence WO-1695 closed, purely to
+                // satisfy a string. That is a pin dictating a shape, so it is re-pointed rather
+                // than worked around, and the WO says so.
+                //
+                // The replacement is STRICTLY STRONGER: it names the call AND that `q.IconKey`
+                // (the class Q's own resolved concept) is what is handed to it, so a face wired to
+                // a constant, to another slot, or to nothing at all now FAILS where the old token
+                // passed. The Forbid re-arms the revert guard the way WO-1429 did: the exact
+                // pre-WO-1695 line cannot come back and still pass this suite.
+                Require(hud, "ApplyCombatPrimaryFaceArt(primary, q.IconKey)");
+                Forbid(hud, "primary.SetIcon(string.IsNullOrEmpty(q.IconKey)");
                 Require(hud, "primary.SetCaption");
 
                 string factory = File.ReadAllText("Assets/Editor/HeroAnimatorFactory.cs");
