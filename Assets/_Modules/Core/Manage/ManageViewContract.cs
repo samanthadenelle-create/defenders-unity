@@ -160,6 +160,26 @@ namespace DeNelle.Core.Manage
         public string Value;
         /// <summary>ASCII "what changes next" fragment ("+120/hr"), already computed. Null when none.</summary>
         public string DeltaText;
+        /// <summary>
+        /// WO-1654 row 5.3 - the glyph drawn against this stat, e.g.
+        /// <see cref="ManageArt.StatAttack"/>. Null / empty means NO glyph, which is the correct
+        /// answer for every row that has none authored (Production / hr, Storage, Placed, the
+        /// prose rows) - the renderer paints nothing and the row keeps its full width.
+        ///
+        /// <para>THE ICON IS AN ADDITION TO <see cref="Label"/>, NEVER A REPLACEMENT FOR IT.
+        /// The owner is red/green colourblind and WO-1566 C8 makes greyscale the gate: every stat
+        /// must stay identifiable with hue stripped, and the WORD is the channel that survives.
+        /// A renderer that drops the label once a key resolves has broken the accessibility
+        /// contract, not tightened the layout.</para>
+        ///
+        /// <para>Resolved by the View through <c>ManageArt.LoadSprite</c>, the same door the cost
+        /// glyphs and the clock already use, so an unresolvable key degrades to a transparent
+        /// image rather than a pink square. The MAPPING from stat to key lives in the MODEL
+        /// (<c>ManageScreenVM.TroopStatRows</c>) because a View that switched on a stat name
+        /// would be canon-9 derivation - the same reason <c>ManageCostVM.IconKey</c> is filled by
+        /// <c>ManageScreenVM.CostIconFor</c> and not by the panel.</para>
+        /// </summary>
+        public string IconKey;
     }
 
     /// <summary>

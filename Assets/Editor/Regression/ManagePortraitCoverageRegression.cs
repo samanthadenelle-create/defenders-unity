@@ -192,6 +192,7 @@ namespace DeNelle.Editor.Regression
             {
                 ManageArt.ClearCache();
                 checkedKeys += CheckChrome(failures, log);
+                checkedKeys += CheckStatGlyphs(failures, log);
                 checkedKeys += CheckTroopPortraits(failures, log);
                 checkedKeys += CheckBuildingTierPortraits(failures, log);
                 CheckVmUsesBuildingPortraitKey(failures, log);
@@ -240,6 +241,43 @@ namespace DeNelle.Editor.Regression
             foreach (string key in keys) Require(key, "chrome", "manage frame/medallion", failures);
             log.AppendLine("chrome keys checked=" + keys.Count);
             return keys.Count;
+        }
+
+        /// <summary>
+        /// [stat-glyphs-resolve] WO-1654 row 5.3 - the four troop-stat glyphs the detail card
+        /// paints against Health / Attack / Range / Speed.
+        ///
+        /// <para>⛔ THIS IS A RESOLUTION ORACLE, NOT A SOURCE LINT, AND THE DIFFERENCE IS THE
+        /// WHOLE POINT. A case that only proved the four constants exist would pass with all four
+        /// PNGs deleted - and it would pass LOUDLY, because ManageArt.LoadSprite degrades an
+        /// unresolvable key to a transparent Image (ManageWorkspacePanel.PaintSprite sets alpha 0
+        /// when the sprite is null). The failure mode is therefore INVISIBLE on a device: no pink
+        /// square, no exception, just a stat column with no glyphs and nobody's eyes on it but the
+        /// owner's - which is the thing CLAUDE.md section 14 exists to never rely on. So every key
+        /// is pushed through the PRODUCTION loader, exactly as the portrait keys are.</para>
+        ///
+        /// <para>THE LIST IS ENUMERATED OFF <see cref="ManageArt.StatIconKeys"/>, NOT RETYPED
+        /// HERE. A second copy of the four keys would keep passing on the day a fifth stat gained
+        /// a glyph and nobody added it - the duplicated-state shape CLAUDE.md 2 / 5 / 16 records
+        /// three times over.</para>
+        ///
+        /// <para>RED PROOF: delete any one of
+        /// <c>Assets/Resources/UI/ElarionMedieval/Manage/stat-{health,attack,range,speed}.png</c>.</para>
+        /// </summary>
+        private static int CheckStatGlyphs(List<string> failures, StringBuilder log)
+        {
+            var keys = ManageArt.StatIconKeys;
+            if (keys == null || keys.Length == 0)
+            {
+                failures.Add("[stat-glyphs-resolve] ManageArt.StatIconKeys is empty, so this case would " +
+                             "assert on nothing. The four troop-stat glyphs mockup panel 5 draws have no " +
+                             "enumerable home any more. FAIL, not a skip.");
+                return 0;
+            }
+            for (int i = 0; i < keys.Length; i++)
+                Require(keys[i], "stat-glyphs-resolve", "troop stat row glyph (mockup panel 5, row 5.3)", failures);
+            log.AppendLine("stat glyph keys checked=" + keys.Length);
+            return keys.Length;
         }
 
         /// <summary>

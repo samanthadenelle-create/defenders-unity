@@ -1,6 +1,16 @@
 # WO-1654: troop stat rows have NO icon channel at all, and `Attack` is labelled `Damage`
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate
+
+> ## ⚠ NOTE 2026-09-10 (MANAGE-VM lane) — implemented as specified, with two clarifications.
+> Full record in `WORK_ORDER_1654_troop_stat_rows_have_no_icon_channel_and_attack_is_labelled_damage.RESULT.md`.
+>
+> **§5.4 WAS HONOURED: NO COST ROW WAS ADDED.** `TrainCostText = ""` and the reasoning comment at
+> `ManageScreenVM.cs:5246-5257` are untouched. Owner ruling WO-1387 stands.
+>
+> **THE RENDERER IS `ManageWorkspacePanel.BuildStatRows`, NOT `ManageScreenPanel`.** §3's table is
+> right; the lead's brief guessed `ManageScreenPanel.cs`, which was NOT touched — so the MANAGE-CHROME
+> lane's `_chromeClose` / queue-row work is untouched by this ticket.
 **Silo:** `ManageViewContract.cs` + `ManageScreenVM.cs` + `ManageWorkspacePanel.cs` (contract, producer,
 renderer — one vertical slice, no other module).
 **Number:** PRE-ASSIGNED by the lead. ⛔ **Do NOT edit `CLI_LANES_WO_NUMBERS.md`.**

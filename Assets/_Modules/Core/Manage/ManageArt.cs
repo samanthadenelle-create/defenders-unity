@@ -94,6 +94,31 @@ namespace DeNelle.Core.Manage
         /// the cost row - a duration is not a price and cannot be compared against a bank.</summary>
         public const string IconTime = UiFolder + "icon-time";
 
+        // -- Stat glyphs, delivered (WO-1567 section 1 art wave; wired WO-1654) ----------------
+        // Mockup panel 5 draws a glyph against each of the four troop stats. The four PNGs have
+        // been on disk since the art wave and were read by NOTHING until WO-1654 - the same
+        // "delivered but unwired" shape as the cost glyphs above, which shipped as two bare
+        // numbers naming no resource.
+        // THE GLYPH IS A SECOND CHANNEL, NEVER THE ONLY ONE. ManageStatVM.IconKey's doc comment
+        // carries the reasoning: the owner is red/green colourblind, WO-1566 C8 makes greyscale
+        // the gate, and the WORD is what survives it. These keys ADD to the label.
+        // ⚠ THE FILE IS stat-attack.png. It is the ATTACK glyph, which is why WO-1654 also
+        // re-labelled the troop row "Damage" -> "Attack": the sheet, the mockup and row 5.3 all
+        // said Attack while the card said Damage, so the screen disagreed with its own art.
+        /// <summary>Troop HEALTH glyph - stat-health.png.</summary>
+        public const string StatHealth = UiFolder + "stat-health";
+        /// <summary>Troop ATTACK glyph - stat-attack.png.</summary>
+        public const string StatAttack = UiFolder + "stat-attack";
+        /// <summary>Troop RANGE glyph - stat-range.png.</summary>
+        public const string StatRange = UiFolder + "stat-range";
+        /// <summary>Troop SPEED glyph - stat-speed.png.</summary>
+        public const string StatSpeed = UiFolder + "stat-speed";
+
+        /// <summary>The four troop-stat glyph keys, in the order the card draws their rows.
+        /// Enumerated so a coverage oracle can PROVE they resolve without re-listing them - a
+        /// second list is the duplicated state CLAUDE.md sections 2/5/16 record three times over.</summary>
+        public static readonly string[] StatIconKeys = { StatHealth, StatAttack, StatRange, StatSpeed };
+
         /// <summary>
         /// ⭐ WO-1491 - THE BACK ARROW'S FACE. The mockup draws a plain left arrow on every
         /// numbered panel; the device build painted the ASCII literal "&lt;-", which the owner's

@@ -1803,9 +1803,31 @@ namespace DeNelle.Core.Manage
                 float rowBottom = y1 - (i + 1) * rowH;
                 float inner = rowH * 0.10f;
 
+                // WO-1654 row 5.3 - THE STAT GLYPH, drawn INLINE to the left of its word.
+                // Mockup panel 5 draws an icon against each troop stat; the card had no icon
+                // channel at all until the contract gained ManageStatVM.IconKey.
+                // ⚠ INLINE, AND THE LABEL STARTS AFTER IT - never hung off the column's left edge
+                // at a negative offset. That is what made the why-band padlock VANISH from a
+                // capture (see the needWhy block above): a rect outside its column is a rect
+                // nobody sees.
+                // ⚠ THE WORD IS NOT SACRIFICED FOR THE GLYPH. The owner is red/green colourblind
+                // (WO-1566 C8: greyscale is the gate), so the icon is a SECOND channel - the
+                // label still renders, it only starts further right. A row with no key keeps the
+                // full column width, so nothing that never had a glyph loses room to one.
+                float labelX0 = x0;
+                bool hasIcon = !string.IsNullOrEmpty(s.IconKey);
+                if (hasIcon)
+                {
+                    float iconW = (mid - x0) * 0.20f;
+                    PaintSprite(band, "SelStatIcon" + i,
+                        new Vector2(x0, rowBottom + inner), new Vector2(x0 + iconW, rowBottom + rowH - inner),
+                        s.IconKey);
+                    labelX0 = x0 + iconW + (mid - x0) * 0.05f;
+                }
+
                 var label = ElarionUiKit.Label(band, s.Label ?? string.Empty,
                     rowBottom + inner, rowBottom + rowH - inner,
-                    ElarionUi.ParchmentDim, ElarionUi.FontLabel, TextAlignmentOptions.Left, x0, mid);
+                    ElarionUi.ParchmentDim, ElarionUi.FontLabel, TextAlignmentOptions.Left, labelX0, mid);
                 ElarionUiKit.FitSingleLine(label, 18f, 26f);
 
                 string valueLine = string.IsNullOrEmpty(s.DeltaText)

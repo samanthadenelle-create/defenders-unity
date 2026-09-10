@@ -392,7 +392,7 @@ namespace DeNelle.Editor
                 // now demanded BY NAME (a count of five could be met by any five rows, including
                 // the two mislabelled timer rows the owner photographed), and the duration is
                 // demanded on the channel that now carries it. Strictly stronger than "rows >= 5".
-                bool sawDamage = false, sawRange = false, sawSpeed = false;
+                bool sawAttack = false, sawRange = false, sawSpeed = false;
                 if (string.IsNullOrWhiteSpace(sel.TimeText))
                     failures.Add($"[case 8] troop '{c.Id}' carries no TimeText. The train duration left the stats " +
                                  "table for the clock band under the costs (mockup panel 5) - if it is on neither, " +
@@ -415,19 +415,49 @@ namespace DeNelle.Editor
                         string.Equals(row.Label, "Time", StringComparison.Ordinal))
                         failures.Add($"[case 8] troop '{c.Id}' still carries the retired row label \"{row.Label}\" " +
                                      $"over the value \"{row.Value}\" (WO-1517 §1B item 4).");
+                    // ⛔ RE-POINTED "Damage" -> "Attack" (WO-1654 row 5.3, 2026-09-10), NOT
+                    // DELETED. The delivered glyph is stat-ATTACK.png and the yardstick row reads
+                    // "Health / Attack / Range / Speed"; the card was the last surface calling it
+                    // Damage. This pin still fails if the row disappears - only its expected WORD
+                    // moved, with the label it names.
                     if (string.Equals(row.Label, "Health", StringComparison.Ordinal)) sawHealth = true;
-                    if (string.Equals(row.Label, "Damage", StringComparison.Ordinal)) sawDamage = true;
+                    if (string.Equals(row.Label, "Attack", StringComparison.Ordinal)) sawAttack = true;
                     if (string.Equals(row.Label, "Range", StringComparison.Ordinal)) sawRange = true;
                     if (string.Equals(row.Label, "Speed", StringComparison.Ordinal)) sawSpeed = true;
+                    if (string.Equals(row.Label, "Damage", StringComparison.Ordinal))
+                        failures.Add($"[case 8] troop '{c.Id}' still labels its attack row \"Damage\". " +
+                                     "WO-1654 row 5.3 and the delivered glyph (stat-attack.png) both say " +
+                                     "ATTACK; a card that names a stat differently from its own art teaches " +
+                                     "the player two names for one number.");
                     if (!string.IsNullOrEmpty(row.DeltaText)) sawDelta = true;
+
+                    // ⭐ WO-1654 row 5.3 - THE ICON CHANNEL, pinned on the COMPOSED VM.
+                    // The mockup draws a glyph against each of the four stats and the contract
+                    // had NO field to put one in until this WO. Pinned here, on the four rows
+                    // that own a delivered sheet - the building / storage / placed rows author no
+                    // glyph and must not be forced one.
+                    // ⛔ THIS IS NOT THE RESOLUTION PROOF. A key that resolves to nothing would
+                    // still pass here; ManagePortraitCoverageRegression's [stat-glyphs-resolve]
+                    // loads all four sprites and is the case that fails with the PNGs deleted.
+                    // RED PROOF: drop the ManageArt.Stat* argument from any StatRow call in
+                    // ManageScreenVM.TroopStatRows.
+                    bool isFourStat =
+                        string.Equals(row.Label, "Health", StringComparison.Ordinal) ||
+                        string.Equals(row.Label, "Attack", StringComparison.Ordinal) ||
+                        string.Equals(row.Label, "Range", StringComparison.Ordinal) ||
+                        string.Equals(row.Label, "Speed", StringComparison.Ordinal);
+                    if (isFourStat && string.IsNullOrEmpty(row.IconKey))
+                        failures.Add($"[case 8] troop '{c.Id}' stat row \"{row.Label}\" carries NO IconKey, " +
+                                     "so the renderer has nothing to paint and mockup panel 5's glyph column " +
+                                     "is blank. The four sheets have been on disk since the WO-1567 art wave.");
                 }
                 // BY NAME, all four. These are the stats troop-upgrades.json's curves actually move
                 // (strength scales MaxHp + DPS, reach scales AttackRange + AggroRadius), read
                 // through TroopStatResolver.Effective - the SAME resolver TroopDeployer applies to
                 // the live unit, so the number on the card is the number that fights.
-                if (rows > 0 && !(sawHealth && sawDamage && sawRange && sawSpeed))
+                if (rows > 0 && !(sawHealth && sawAttack && sawRange && sawSpeed))
                     failures.Add($"[case 8] troop '{c.Id}' shows {rows} stat row(s) and is missing " +
-                                 (!sawHealth ? "Health " : "") + (!sawDamage ? "Damage " : "") +
+                                 (!sawHealth ? "Health " : "") + (!sawAttack ? "Attack " : "") +
                                  (!sawRange ? "Range " : "") + (!sawSpeed ? "Speed " : "") +
                                  "- the stat table is not being read from TroopStatResolver.");
                 if (c.HasNextLevel && !sawDelta)
