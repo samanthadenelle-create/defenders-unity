@@ -618,20 +618,24 @@ namespace DeNelle.Editor
                 for (int i = 0; i < def.raidDress.props.Count; i++)
                     if (def.raidDress.props[i] != null) list.Add(def.raidDress.props[i]);
             }
-            if (list.Count == 0 && def.props != null && def.props.set != null)
+            // WO-1635 acceptance #1 + #2 (2026-09-10): `raidDress.props` in scene-configs.json is
+            // the ONE authority for raid props. The two legacy readers that used to sit here are
+            // RETIRED, not merely disabled:
+            //   * the `props.set` block (a List<string>, one instance each, ALWAYS zone Courtyard)
+            //   * a kit-keyed emergency set hardcoded in C# (deleted; see the note where it stood,
+            //     immediately above ZoneOf)
+            // Both were silent third copies of authored content. Each fired only when the authored
+            // array came back empty, so a config mid-edit dressed itself from DRIFTED content and
+            // read as authored in the bake log - the same duplicated-state trap CLAUDE.md sections
+            // 2, 5, 8 and 16 each describe. An unauthored raid config must now be LOUD and empty;
+            // RaidBaseLayoutRegression.CaseSinglePropAuthority reds on it, and CaseOnePropReader
+            // reds if either legacy reader is ever restored here.
+            if (list.Count == 0)
             {
-                for (int i = 0; i < def.props.set.Count; i++)
-                {
-                    if (string.IsNullOrEmpty(def.props.set[i])) continue;
-                    list.Add(new RaidDressPropDef
-                    {
-                        token = def.props.set[i],
-                        count = 1,
-                        zone = "Courtyard"
-                    });
-                }
+                FlowTrace.Warn(Sys, "props '" + def.id + "' kit=" + kit +
+                               " authors NO raidDress.props - this courtyard dresses EMPTY. " +
+                               "scene-configs.json is the only prop authority (WO-1635).");
             }
-            if (list.Count == 0) list.AddRange(DefaultProps(kit));
 
             int seed = StableHash(def.id);
             // Seeded, so a re-bake reproduces the identical courtyard (the arena's contract,
@@ -892,41 +896,14 @@ namespace DeNelle.Editor
             });
         }
 
-        // ⚠ TGVRU EMERGENCY SET ONLY - `scene-configs.json` raidDress.props IS THE AUTHORITY.
-        // This list is reached only when a config authors NO props at all (a new camp, or a row
-        // mid-edit). It has already drifted from the shipped JSON once and must never be treated
-        // as the content: WO-1635 owns retiring it. `cover` mirrors the authored intent so the
-        // fallback still yields cover rather than scenery.
-        private static List<RaidDressPropDef> DefaultProps(string kit)
-        {
-            var list = new List<RaidDressPropDef>();
-            if (kit == "hexagon-green")
-            {
-                list.Add(new RaidDressPropDef { token = "building_tent_green", count = 4, zone = "Courtyard", cover = true });
-                list.Add(new RaidDressPropDef { token = "barrel_large", count = 4, zone = "Courtyard", cover = true });
-                list.Add(new RaidDressPropDef { token = "crate_large", count = 4, zone = "Courtyard", cover = true });
-                list.Add(new RaidDressPropDef { token = "banner_green", count = 2, zone = "Approach" });
-                list.Add(new RaidDressPropDef { token = "rubble_large", count = 3, zone = "Courtyard", cover = true });
-                list.Add(new RaidDressPropDef { token = "weaponrack", count = 2, zone = "Courtyard", cover = true });
-            }
-            else if (kit == "synty-castle")
-            {
-                list.Add(new RaidDressPropDef { token = "barracks", count = 1, zone = "Courtyard", cover = true });
-                list.Add(new RaidDressPropDef { token = "SM_Prop_Spike_Fortification_01", count = 3, zone = "Approach", cover = true });
-                list.Add(new RaidDressPropDef { token = "barrel_large", count = 4, zone = "Courtyard", cover = true });
-                list.Add(new RaidDressPropDef { token = "crate_large", count = 4, zone = "Courtyard", cover = true });
-                list.Add(new RaidDressPropDef { token = "weaponrack", count = 3, zone = "Courtyard", cover = true });
-            }
-            else
-            {
-                list.Add(new RaidDressPropDef { token = "pillar_decorated", count = 6, zone = "Courtyard", cover = true });
-                list.Add(new RaidDressPropDef { token = "banner_white", count = 4, zone = "Keep" });
-                list.Add(new RaidDressPropDef { token = "torch_mounted", count = 6, zone = "Keep" });
-                list.Add(new RaidDressPropDef { token = "chest_gold", count = 2, zone = "Keep", cover = true });
-                list.Add(new RaidDressPropDef { token = "rubble_large", count = 3, zone = "Courtyard", cover = true });
-            }
-            return list;
-        }
+        // WO-1635 (2026-09-10): the kit-keyed emergency prop set that used to live here is DELETED.
+        // It was reached only when a config authored no props at all, and it had already drifted
+        // from the shipped JSON (its hexagon-green branch still handed out a banner/weaponrack set
+        // that Easy's authored 10-entry array had moved past). A fallback that silently substitutes
+        // stale content for authored content is not a safety net - it hides the empty row it was
+        // meant to cover. ScatterProps now FlowTrace.Warns and dresses nothing; the empty row is
+        // caught in the suite, not papered over at bake time. Do not reintroduce a C# prop set:
+        // RaidBaseLayoutRegression.CaseOnePropReader reds on the identifier.
 
         private static Transform ZoneOf(string zone, Transform approach, Transform gatehouse,
                                         Transform courtyard, Transform choke, Transform keep)

@@ -96,6 +96,10 @@
           { "token": "crate_large", "count": 4, "zone": "Courtyard", "cover": true },
           { "token": "crates_stacked", "count": 2, "zone": "Courtyard", "cover": true },
           { "token": "weaponrack", "count": 2, "zone": "Courtyard", "cover": true },
+          { "token": "SM_Prop_Camp_Firepit_01", "count": 1, "zone": "Courtyard" },
+          { "token": "SM_Prop_Spit_Roaster_01", "count": 1, "zone": "Courtyard" },
+          { "token": "haybale", "count": 2, "zone": "Courtyard", "cover": true },
+          { "token": "torch_lit", "count": 2, "zone": "Courtyard" },
           { "token": "banner_green", "count": 2, "zone": "Approach" },
           { "token": "flag_green", "count": 2, "zone": "Gatehouse" },
           { "token": "crate_large", "count": 2, "zone": "Gatehouse", "cover": true },
@@ -157,8 +161,8 @@
         }
       ],
       "props": {
-        "set": ["barracks"],
-        "count": 1
+        "set": [],
+        "count": 0
       },
       "raidDress": {
         "kit": "synty-castle",
@@ -175,7 +179,12 @@
           { "token": "barrel_large", "count": 4, "zone": "Courtyard", "cover": true },
           { "token": "crate_large", "count": 4, "zone": "Courtyard", "cover": true },
           { "token": "weaponrack", "count": 3, "zone": "Courtyard", "cover": true },
-          { "token": "rubble_large", "count": 3, "zone": "Courtyard", "cover": true }
+          { "token": "bucket_arrows", "count": 2, "zone": "Courtyard", "cover": true },
+          { "token": "cannonball_pallet", "count": 1, "zone": "Courtyard", "cover": true },
+          { "token": "SM_Wep_Catapult_01", "count": 1, "zone": "Courtyard", "cover": true },
+          { "token": "SM_Wep_Ballista_Mobile_01", "count": 1, "zone": "Courtyard", "cover": true },
+          { "token": "rubble_large", "count": 3, "zone": "Courtyard", "cover": true },
+          { "token": "wall_broken", "count": 1, "zone": "Courtyard", "cover": true }
         ]
       },
       "garrison": {
@@ -247,8 +256,8 @@
         "towersVisual": "Tower_Castle_Square",
         "props": [
           { "token": "pillar_decorated", "count": 6, "zone": "Courtyard", "cover": true },
-          { "token": "banner_white", "count": 4, "zone": "Keep" },
-          { "token": "torch_mounted", "count": 6, "zone": "Keep" },
+          { "token": "banner_white", "count": 4, "zone": "Courtyard" },
+          { "token": "torch_mounted", "count": 6, "zone": "Courtyard" },
           { "token": "chest_gold", "count": 2, "zone": "Keep", "cover": true },
           { "token": "floor_tile_big_spikes", "count": 2, "zone": "Choke" },
           { "token": "rubble_large", "count": 2, "zone": "Gatehouse", "cover": true },

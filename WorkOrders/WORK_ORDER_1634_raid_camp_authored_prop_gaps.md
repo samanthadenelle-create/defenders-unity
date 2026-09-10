@@ -1,6 +1,6 @@
 # WO-1634 - Raid camps: the authored prop sets miss what their own child WOs specified
 
-**Status:** READY TO IMPLEMENT
+**Status:** FIXED 2026-09-10 - per-tier prop gaps authored (owner: keep the cook fire), baked wave4-bake2 props 33/31/27, gated wave4-reg2 494/494; owner felt-test on the next APK closes (was: READY TO IMPLEMENT)
 **Minted:** 2026-09-10 (lane RAID-POLISH, main-line banner; bumped 1633 -> 1634 in the SAME edit)
 **Silo / Lane:** World / Raid scenes - DATA only
 **Files owned:** the `raidDress.props` arrays of `Assets/Resources/Data/Canonical/scene-configs.json`
@@ -100,3 +100,34 @@ kit-level ruling; keep the existing two tokens and add the missing rows in the s
 4. Every new token is verified present on disk **before** it is authored - resolve it through `RaidBaseDresser.LoadVisual`'s search order (`:115-172`); never guess a prefab name (`docs/polyperfect-asset-catalog.md`, the KayKit folders at `RaidBaseDresser.cs:40-49`).
 5. The next bake shows `missing=0` for all three configs and a rising props count on the WO-1633 log line.
 6. JSON edits are byte-safe: `scene-configs.json` is CRLF (352 LF == 352 CRLF at mint time); patch bytes and prove LF count == CRLF count after.
+
+### OWNER RULING 2026-09-10
+
+> **"Manage ARMY copy: BUILD BARRACKS, keep the cook fire"** - owner, verbatim, 2026-09-10 (morning).
+
+**No code or data change is made by this block.** It is recorded so the decision is on the ticket
+before anyone implements it.
+
+**What the second clause settles: acceptance item 1 STANDS.** Easy (`raider_camp_small`) gains its
+fire/cook cluster - the WO-1609:105 row this ticket's section 1 measured as **MISSING** (spec asks 1
+cluster: `torch_lit.fbx`, or hexagon `haybale.fbx` / `trough.fbx`; authored today: nothing). The
+ticket's own line at `:45` calls it *"the single loudest missing 'camp life' tell in the Easy frame"*,
+and the owner has now said keep it. It is not to be dropped, deferred, or traded away against
+WO-1633's collider work on the same JSON rows.
+
+⛔ **THIS DOES NOT RULE ON SECTION 2, AND MUST NOT BE READ AS DOING SO.** The file's "one owner
+question" is a different question entirely - **hexagon-red vs Synty/neutral** for Hard's two yard
+buildings (WO-1610:108-109 names `building_barracks_red.fbx` / `building_home_A_red.fbx`; WO-1607
+section 4's per-camp kit table assigns Hard "Synty, not hexagon-red"). The owner did not address it.
+**Section 2's stated DEFAULT stands unchanged: follow WO-1607 section 4, keep Hard Synty/neutral.**
+
+⚠ **Wording note, surfaced rather than smoothed over:** the ruling's "keep the cook fire" phrasing
+reads as a response to a proposal to DROP the fire cluster. No such proposal was located in the
+repo this session - a search of `WorkOrders/` and the root `*.md` set for "cook fire" / "cookfire"
+returns exactly one hit, `:45` of this file. So the clause is recorded here as an affirmation of
+acceptance item 1, which is the only reading the written record supports. If the owner meant
+something narrower (a specific token, or a count above 1), that has not been proven from here and
+one word from her settles it.
+
+**Status deliberately untouched** (READY TO IMPLEMENT), and the WO-1633 sequencing note above still
+holds - these two tickets edit the same JSON rows and are not file-disjoint.

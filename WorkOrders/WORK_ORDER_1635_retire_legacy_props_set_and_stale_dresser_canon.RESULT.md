@@ -175,3 +175,140 @@ lines move in the same commit. WO-1635 does not say so.
 
 **And note §2.4:** the ordered Status string puts WO-1635 in the board's **Done** bucket even though
 four of its six acceptance items are open.
+
+---
+
+# WO-1635 RESULT — lane PROPS-RETIRE (code half), 2026-09-10
+
+**Lane:** PROPS-RETIRE, 2026-09-10
+**Worktree:** `.claude/worktrees/agent-a3dd7f19089bc8008` (isolated), branch `dev`
+**Base sha:** `5a65a7831` (`git status --short` empty, then `git merge --ff-only refs/heads/dev`)
+**Unity:** NOT run — edit-only lane. No gate, no bake, no commit, and **no gate marker is claimed.**
+**Scope:** acceptance #1 (code side), #2, #3. **#4 and #6 were already closed** by lane PROPS-CANON
+(landed `b10cd6783`). **#5 is N/A for this lane — see §D.**
+
+## A. What changed, and the line it stood at on `5a65a7831`
+
+| File | Was (at `5a65a7831`) | Now |
+|---|---|---|
+| `Assets/Editor/WallTools/RaidBaseDresser.cs` `:621-633` | `if (list.Count == 0 && def.props != null && def.props.set != null)` — the legacy `props.set` fallback, one instance each, always zone `Courtyard` | **DELETED.** In its place a dated retirement note + `FlowTrace.Warn(Sys, …)` naming the config, its kit and that it authors no props. The prop loop then runs zero times, so the existing `props '<id>': 0 placed` line still prints — an unauthored row is now LOUD and empty instead of silently dressed. |
+| `Assets/Editor/WallTools/RaidBaseDresser.cs` `:634` | `if (list.Count == 0) list.AddRange(DefaultProps(kit));` | **DELETED** (the call). |
+| `Assets/Editor/WallTools/RaidBaseDresser.cs` `:895-929` | the `DefaultProps(string kit)` method — a kit-keyed third copy of the content, already drifted (its `hexagon-green` branch still handed out `banner_green`/`weaponrack` that Easy's authored 10-entry array had moved past) | **DELETED**, replaced by a dated note where it stood (immediately above `ZoneOf`) saying why a C# prop set must not come back. |
+| `Assets/_Modules/Village/World/SceneConfigCatalog.cs` `:60-66` (`PropsDef`) | `/// <summary>The props block ({ set:[ids], count }).</summary>` | Type **kept** (the JSON rows still carry the block and this lane may not edit them), summary rewritten to state it is **legacy, has no raid reader since WO-1635, and changes nothing at bake time**. |
+| `Assets/Editor/Regression/RaidBaseLayoutRegression.cs` `:157-158` | `if (dress.IndexOf("def.props", …) < 0) failures.Add("props has no dresser consumer.");` — **the suite REQUIRED the legacy reader** (the blocker §2.3 of the first RESULT flagged) | **Moved and inverted** into a new `CaseOnePropReader`. |
+| `Assets/Editor/Regression/RaidBaseLayoutRegression.cs` (new) | — | `CaseOnePropReader` + `CaseSinglePropAuthority`, both registered in `RunAll`, plus a WO-1635 bullet in the file header. |
+
+## B. The RED-first pins (acceptance #3)
+
+`CaseOnePropReader` (source-text oracle over `RaidBaseDresser.cs`) reds if:
+1. `def.raidDress.props` is **absent** — the one authority lost its consumer; or
+2. `def.props` is **present** — the retired `props.set` reader came back (the exact inversion the
+   ticket asked for: the line that used to demand the legacy reader now forbids it); or
+3. `DefaultProps` is **present** — a hardcoded C# prop set came back.
+
+Proven by construction: pin 2 matches the literal `def.props`, and the deleted reader was written
+`def.props.set[i]`, so restoring it in any recognisable form reds the suite. Neither literal survives
+anywhere in the dresser — `grep -n "DefaultProps\|def\.props" Assets/Editor/WallTools/RaidBaseDresser.cs`
+returns nothing, and the retirement comments deliberately spell the legacy shape as `props.set` so they
+do not trip the pin they document.
+
+`CaseSinglePropAuthority` (JSON oracle) walks **every** row with a `raidDress` block — not a hardcoded
+id list, so a row PROP-GAPS adds today is covered the day it lands — and reds if that row authors no
+`raidDress.props`, or if it **also** authors a non-empty legacy `props.set`.
+
+## C. ⛔ THE SUITE REDS TODAY, ON PURPOSE, ON ONE ROW
+
+`fortified_garrison` still carries `"props": { "set": ["barracks"], "count": 1 }` **and** `"barracks"`
+as the first entry of `raidDress.props` — the duplicate the ticket names in §1. That is acceptance #1's
+**JSON half**, and this lane was scoped OFF `scene-configs.json` because lane PROP-GAPS (WO-1634) is
+authoring props rows in it concurrently. So `CaseSinglePropAuthority` will emit:
+
+> raid row 'fortified_garrison' authors props in BOTH schemas: legacy props.set carries 1 token
+> (barracks ...) while raidDress.props carries 25 instance(s). The legacy block has had no reader
+> since WO-1635 — delete it from scene-configs.json so the row states one intent.
+
+**The one-line fix, for whoever owns the JSON:** set `fortified_garrison`'s `"props"` to
+`{ "set": [], "count": 0 }` (the shape the other four rows already use). Nothing else changes; the
+block has had no reader since this commit. **Do not weaken the case to make it green** — a check that
+cannot fail is what §2.3 of this file was written about.
+
+This was a deliberate choice over the alternative (a compound `props.set non-empty AND dresser still
+reads it` clause) which would have been **vacuous**: it can only fire when `CaseOnePropReader` has
+already fired, so it could never independently red and would not satisfy acceptance #3.
+
+**⚠ IT DOES BLOCK THE AGGREGATE, NOT JUST ITS OWN MARKER.** `RaidBaseLayoutRegression.Run` is invoked
+from `Assets/Editor/Regression/DataRegression.cs:741` (`Guard.Try("Regression", "raid-base-layout
+suite", …)`, adding to `failures`), so until the token goes the full data-regression entry point
+reports FAIL, not just the raid-base suite line. The lead should land the one-token JSON edit in the
+same gate run, or expect that FAIL and know exactly what it is.
+
+**Contract this hands lane PROP-GAPS (WO-1634), who is editing the same JSON right now:** any row it
+gives a `raidDress` block must author a non-empty `raidDress.props`, and must leave that row's legacy
+`"props": { "set": [] }` empty. `CaseSinglePropAuthority` iterates rows by the presence of a
+`raidDress` block, so a new or half-authored row reds on its own name. That is the case working, not a
+defect — but PROP-GAPS should hear it before its bake.
+
+## D. Scope conflict, stated plainly (CLAUDE.md §11B-B)
+
+The lane brief lists **item 5** (`scene-configs.json` byte-safety: prove LF count == CRLF count after)
+in this lane's scope **and** forbids the only file item 5 applies to. Both cannot hold. This lane took
+the prohibition as controlling: **no JSON was touched, so item 5 has nothing to prove and travels with
+the one-token edit in §C.** Flagging rather than silently choosing, per §11B-B.
+
+## E. Proof that placement did not move (as far as an edit-only lane can prove it)
+
+Baseline is `Builds/wave3-bake7` (newest bake on disk; `ls -t Builds/` puts `wave3-bake7` /
+`wave3-navbake7` at the top). **`Builds/wave2-bake2` cited by the ticket is still not a readable log** —
+only `wave2-bake2.runner.txt` exists, as the first RESULT already recorded.
+
+    501:[RaidBaseDresser] props 'raider_camp_small': 27 placed (set=building_tent_greenx4*, barrel_largex4*, ...)
+    636:[RaidBaseDresser] props 'fortified_garrison': 25 placed (set=barracksx1*, House_Medieval_Mediumx1*, ...)
+    667:[RaidBaseDresser] props 'mage_enclave': 27 placed (set=pillar_decoratedx6*, banner_whitex4, ...)
+    503:[Flow:RaidBase] dressed 'raider_camp_small' kit=hexagon-green placed=314 missing=0 gateW=8.55
+    640:[Flow:RaidBase] dressed 'fortified_garrison' kit=synty-castle placed=489 missing=0 gateW=8.72
+    671:[Flow:RaidBase] dressed 'mage_enclave' kit=dungeon-stone placed=590 missing=0 gateW=8.58
+
+**27 / 25 / 27 is exactly the sum of `count` over each row's authored `raidDress.props`** (10 entries /
+27 instances, 9 / 25, 8 / 27, counted from `scene-configs.json` at `5a65a7831`). Every placed prop is
+therefore already accounted for by priority 1 — **neither deleted branch contributed a single instance
+to the shipped bake**, which is why the counts must still read 27 / 25 / 27 and the aggregates
+314 / 489 / 590 after a re-bake.
+
+**Iron Bastion is untouched, and cannot be touched by this change.** `RaidBaseDresser.Dress(` has
+exactly **one** call site repo-wide — `RaidBaseGenerator.cs:541`, inside `BuildFromConfig` — and the
+config-driven entry point bakes `RaidConfigIds` = `{ raider_camp_small, fortified_garrison, mage_enclave }`
+(`RaidBaseGenerator.cs:399-400`). Iron Bastion ships from the separate hardcoded `Build()` path
+(`BuildInOpenScene` / `BuildIntoScene` / `BuildToNewScene`, `:364-394`), which never calls `Dress`. Consistent with that,
+`grep -ci "iron_bastion" Builds/wave3-bake7` = **0**. `iron_bastion` and `player_outpost` also carry no
+`raidDress` block at all, so `CaseSinglePropAuthority` skips them by construction.
+
+## F. Gate evidence owed by this lane
+
+- `python tools/gate_brace.py <the three .cs>` -> `GATE_BRACE_SUMMARY bad=0 of 3`, exit 0.
+- NUL scan: 0 embedded NUL bytes in each of the three files; raw brace counts balanced
+  (139/139, 48/48, 29/29).
+- No `.unity`, no `.asset`, no `.json` touched. No `System.Reflection` introduced.
+- **Unity was NOT run.** The compile gate and the regression run are the lead's step, and no gate
+  marker string is claimed or reproduced anywhere in this lane's output. §C says what the raid-base
+  suite will report until the JSON token goes.
+
+## G. Files changed by this lane
+
+```
+M Assets/Editor/WallTools/RaidBaseDresser.cs
+M Assets/Editor/Regression/RaidBaseLayoutRegression.cs
+M Assets/_Modules/Village/World/SceneConfigCatalog.cs
+M WorkOrders/WORK_ORDER_1635_retire_legacy_props_set_and_stale_dresser_canon.md          (Status flip)
+M WorkOrders/WORK_ORDER_1635_retire_legacy_props_set_and_stale_dresser_canon.RESULT.md   (this section)
+```
+
+## H. What remains open on WO-1635 after this lane
+
+1. **Acceptance #1, JSON half + #5** — `fortified_garrison`'s `props.set` token (§C, §D). Owner: the
+   lane holding `scene-configs.json`.
+2. Nothing else. #2 and #3 are delivered here; #4 and #6 were delivered by lane PROPS-CANON at
+   `b10cd6783`.
+
+⚠ Per §2.4 above, the flipped Status string leads with `IMPLEMENTED`, so `tools/board_build.py` renders
+WO-1635 in the **Done** bucket while §C's one item is still open. The lead ordered that exact string;
+the `⚠` banner sits directly under it so a human reader hits the caveat first.

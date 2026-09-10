@@ -10,6 +10,9 @@
 //   * Gate width floor is 3.5 m
 //   * WO-1633: courtyard props are authored COVER (colliders kept) and placed as
 //     clusters on concentric cover rings, and the bake states a per-config props count
+//   * WO-1635: raid props have exactly ONE authority. The dresser reads raidDress.props
+//     and nothing else (the props.set fallback + the hardcoded kit set are retired), and
+//     no scene-config row may author props in both schemas or leave raidDress.props empty
 // =============================================================================
 using System;
 using System.Collections.Generic;
@@ -43,6 +46,8 @@ namespace DeNelle.Editor.Regression
                 CaseHardKeep(failures, notes);
                 CaseExtremeKeep(failures, notes);
                 CaseGeneratorWiresDresser(failures, notes);
+                CaseOnePropReader(failures, notes);
+                CaseSinglePropAuthority(failures, notes);
                 CaseArtLoadNotResourcesStructures(failures, notes);
                 CaseSpawnerSlots(failures, notes);
                 CaseGateWidth(failures, notes);
@@ -154,9 +159,81 @@ namespace DeNelle.Editor.Regression
             if (gen.IndexOf("def.raidDress", StringComparison.Ordinal) < 0 &&
                 dress.IndexOf("def.raidDress", StringComparison.Ordinal) < 0)
                 failures.Add("raidDress has no consumer.");
-            if (dress.IndexOf("def.props", StringComparison.Ordinal) < 0)
-                failures.Add("props has no dresser consumer.");
             notes.Add("generator wires dresser");
+        }
+
+        /// <summary>
+        /// WO-1635 acceptance #1/#2 - the INVERSE of what this suite used to demand.
+        /// Until 2026-09-10 CaseGeneratorWiresDresser reded when the string "def.props" was ABSENT
+        /// from the dresser ("props has no dresser consumer"), i.e. the suite REQUIRED the legacy
+        /// reader that the ticket exists to retire. Deleting the fallback would have reded the
+        /// suite and read as the implementing lane's own regression, so the pin moves here and
+        /// flips: the dresser must have exactly ONE prop reader, `raidDress.props`, and neither
+        /// legacy reader may come back.
+        /// </summary>
+        private static void CaseOnePropReader(List<string> failures, List<string> notes)
+        {
+            string dress = TryRead(DresserSrc);
+            if (dress == null) { failures.Add("cannot read dresser"); return; }
+
+            if (dress.IndexOf("def.raidDress.props", StringComparison.Ordinal) < 0)
+                failures.Add("dresser no longer reads def.raidDress.props - the ONE authored prop " +
+                             "authority has no consumer, so every raid courtyard dresses empty.");
+            if (dress.IndexOf("def.props", StringComparison.Ordinal) >= 0)
+                failures.Add("dresser reads the legacy props.set block again (found \"def.props\") - " +
+                             "WO-1635 retired it. Two authorities let one prop be authored twice in " +
+                             "two schemas with different zones and counts; scene-configs.json " +
+                             "raidDress.props is the only authority.");
+            if (dress.IndexOf("DefaultProps", StringComparison.Ordinal) >= 0)
+                failures.Add("dresser carries a hardcoded kit prop set again (found \"DefaultProps\") - " +
+                             "WO-1635 deleted it. A C# fallback silently substitutes drifted content " +
+                             "for an unauthored row instead of exposing it.");
+            notes.Add("one prop reader");
+        }
+
+        /// <summary>
+        /// WO-1635 acceptance #3 - the JSON half of the same invariant. Every row that authors a
+        /// `raidDress` block must author props there and ONLY there. Iterates the live rows rather
+        /// than a hardcoded id list, so a raid row added mid-edit is covered the day it lands.
+        /// </summary>
+        private static void CaseSinglePropAuthority(List<string> failures, List<string> notes)
+        {
+            var root = LoadConfigs(failures);
+            if (root == null) return;
+            var arr = root["configs"] as JArray;
+            if (arr == null) { failures.Add("scene-configs has no configs array"); return; }
+
+            int rows = 0;
+            foreach (var c in arr)
+            {
+                var o = c as JObject;
+                if (o == null) continue;
+                var dress = o["raidDress"] as JObject;
+                if (dress == null) continue;   // not a dressed raid row
+                rows++;
+                string id = (string)o["id"];
+
+                var authored = dress["props"] as JArray;
+                int instances = 0;
+                if (authored != null)
+                    foreach (var p in authored)
+                        instances += Math.Max(0, (int)(p["count"] ?? 0));
+                if (instances <= 0)
+                    failures.Add("raid row '" + id + "' has a raidDress block but authors no " +
+                                 "raidDress.props - since WO-1635 there is no fallback, so its " +
+                                 "courtyard bakes EMPTY dirt.");
+
+                var legacy = o["props"] as JObject;
+                var set = legacy != null ? legacy["set"] as JArray : null;
+                if (set != null && set.Count > 0)
+                    failures.Add("raid row '" + id + "' authors props in BOTH schemas: legacy " +
+                                 "props.set carries " + set.Count + " token(s) (" + (string)set[0] +
+                                 " ...) while raidDress.props carries " + instances + " instance(s). " +
+                                 "The legacy block has had no reader since WO-1635 - delete it from " +
+                                 "scene-configs.json so the row states one intent.");
+            }
+            if (rows == 0) failures.Add("no scene-config row authors a raidDress block at all.");
+            notes.Add("prop authority rows=" + rows);
         }
 
         private static void CaseArtLoadNotResourcesStructures(List<string> failures, List<string> notes)

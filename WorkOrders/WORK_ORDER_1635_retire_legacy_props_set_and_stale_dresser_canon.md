@@ -1,6 +1,13 @@
 # WO-1635 - Raid dressing: two prop authorities, and four docs that still say the dresser is dead
 
-**Status:** PARTIALLY IMPLEMENTED - canon corrections landed 2026-09-10 (items 4 + 6: six stale props sites banner-corrected against Builds/wave3-bake7; RaidBaseGenerator.cs:35 was already live); items 1-3 + 5 (retire the props.set fallback, moving RaidBaseLayoutRegression.cs:154-155 in the same commit) still to implement (was: IMPLEMENTED - awaiting lead merge (lane PROPS-CANON 2026-09-10))
+**Status:** FIXED 2026-09-10 - canon half b10cd6783; code half: legacy props.set fallback + DefaultProps deleted, one prop authority pinned (CaseOnePropReader, CaseSinglePropAuthority), the last legacy token blanked; placement unchanged (33/31/27 on wave4-bake2); gated wave4-reg2 494/494 (was: IMPLEMENTED - awaiting gate + bake (lane PROPS-RETIRE 2026-09-10; canon half landed b10cd6783))
+⚠ **ONE ITEM IS DELIBERATELY LEFT RED.** Lane PROPS-RETIRE delivered the code half (items 1 code-side,
+2, 3). The new `CaseSinglePropAuthority` **REDS today on `fortified_garrison`**, which still authors
+`"props": { "set": ["barracks"], "count": 1 }` alongside `"barracks"` in `raidDress.props`. That one JSON
+token is item 1's JSON half and item 5; the lane was scoped OFF `scene-configs.json` (lane PROP-GAPS /
+WO-1634 owns it concurrently), so the red is the RED-first test handed to whoever makes that edit. It
+goes green the moment the `set` array is emptied. See the 2026-09-10 section of the .RESULT.md.
+(was: PARTIALLY IMPLEMENTED - canon corrections landed 2026-09-10 (items 4 + 6: six stale props sites banner-corrected against Builds/wave3-bake7; RaidBaseGenerator.cs:35 was already live); items 1-3 + 5 (retire the props.set fallback, moving RaidBaseLayoutRegression.cs:154-155 in the same commit) still to implement)
 ⛔ **SCOPE OF THAT FLIP — read before trusting it.** Lane PROPS-CANON delivered **acceptance #4 ONLY**
 (the stale doc lines get dated correction banners) and confirmed **#6** (`RaidBaseGenerator.cs` untouched;
 its `:35` header was **already** corrected at base sha `3da5e5360`). **Acceptance #1, #2, #3 and #5 — the

@@ -57,7 +57,17 @@ namespace DeNelle.Village
         public int count;
     }
 
-    /// <summary>The props block ({ set:[ids], count }).</summary>
+    /// <summary>
+    /// The LEGACY props block ({ set:[ids], count }).
+    /// ⛔ NOT the raid prop authority and NO LONGER READ BY RAID DRESSING (WO-1635, 2026-09-10).
+    /// `RaidDressDef.props` (<see cref="RaidDressPropDef"/> - token + count + zone + cover) is the
+    /// one authority; <c>RaidBaseDresser.ScatterProps</c> used to fall back to this shape when the
+    /// authored array came back empty, which let the same prop be authored twice in two schemas
+    /// with different zones and counts. That fallback is retired, so a value here now changes
+    /// NOTHING at bake time. The type is kept only because scene-configs.json rows still carry the
+    /// block; those rows are pending removal, and RaidBaseLayoutRegression.CaseSinglePropAuthority
+    /// reds while any row with a `raidDress` block still authors a non-empty `set`.
+    /// </summary>
     [Serializable]
     public sealed class PropsDef
     {
