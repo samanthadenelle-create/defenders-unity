@@ -150,3 +150,7 @@ Home: `Assets/Editor/Regression/ManageTroopsTrainDoorRegression.cs` — it alrea
 ## Device evidence (lead, 2026-09-10 11:37, APK 2026.09.10.363866)
 
 `Builds/device-frames/2026-09-10_1137_363866_manage_army.png` + `_army_badge_crop.png`: Footman and Archer tiles read "UPGRADE" whole (363786 read "UPGRADE A..."). Instrument: `[Flow:Manage] state word font: early return [already-fits] - widest=UPGRADE wants 20px at 26px type and the plate offers 407px (cellW=565.87)` x2; the other three returns 0. Anomaly recorded: seven glyphs at 26 pt wanting 20 px is implausible - the probe may measure an unlaid rect (WO-1665). The WORD is still the owner ruling (15).
+
+## OWNER RULING (2026-09-10 12:07, AskUserQuestion)
+
+Badge word = UPGRADE (keep). UpgradeAffordableGridWordProvisional is now the ruled word - rename the const to drop "Provisional" in the next touch of the file; the collision with UPGRADING is accepted.

@@ -1,6 +1,6 @@
 # WORK ORDER 1215 - A dropped shield attaches at IDENTITY and sits through the hero's body
 
-**Status:** READY TO IMPLEMENT - cause NOT proven 2026-09-06 (the WO-1215 seat path cannot be the live starter shield, fullOverride=True short-circuits); permanent MEASURED facets added to EquipmentController + registryProbe, gated; needs one device capture of a hero holding a shield + screenshot
+**Status:** CLOSED 2026-09-10 - owner validated on device ("1215 i already validated and should be closed"). PRIOR STATUS: READY TO IMPLEMENT - cause NOT proven 2026-09-06 (the WO-1215 seat path cannot be the live starter shield, fullOverride=True short-circuits); permanent MEASURED facets added to EquipmentController + registryProbe, gated; needs one device capture of a hero holding a shield + screenshot
 **Silo:** Gear seating / attachment orientation
 **Origin:** Owner felt-test, Seeker build `2026.08.26.341419`, 2026-08-26.
 Owner verbatim: *"and shield sits through the body not seated correctly"*.

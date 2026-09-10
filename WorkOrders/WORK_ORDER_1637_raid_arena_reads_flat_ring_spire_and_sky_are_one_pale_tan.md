@@ -524,3 +524,7 @@ Ring, base wall, spire and atmosphere as the bake resolved them (sort -u of the 
 ```
 
 Reading: the boundary ring is ONE swatch, `M_14_Brown_lightest_LPUP` (URP/Lit, the pack's lightest brown) on all three rock prefabs; the green camp's base wall is the KayKit dungeon `barrier` piece (`dungeon_texture_URP`, radius 31.0 m); the Forsaken Camp spire is `building_tower_base_green` on the `hexagons_medieval` atlas; fog on raider_camp_small is Linear 22-95 m, colour (0.66, 0.58, 0.42) - the same tan family as the ring swatch. The ruling (s.3) is now being made against measured material state.
+
+## OWNER RULING (2026-09-10 12:07, AskUserQuestion)
+
+ALL axes move: fog first (end past the ring, density down; raider_camp_small + iron_bastion), base wall height/mass, and the ring material - she ticked both "split from battle arena" and "both venues"; the lead reads that as: move RockPaths for BOTH venues (one palette), and if the siege venue then reads wrong it is its own ticket. Value choices are the lane s; greyscale is the gate.

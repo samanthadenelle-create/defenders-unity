@@ -463,3 +463,7 @@ ticket's.** It is repeated here only so the two rulings are not conflated.
 ```
 
 Render-side confirmation of s.10: the only two `flag_green` placements in the scene are the Gatehouse pair at (+/-6.476, 0, -28.5) - the south gatehouse; no north-gatehouse flag line exists. The identification is now trace-proven, not static.
+
+## OWNER RULING (2026-09-10 12:07, AskUserQuestion)
+
+RE-TINT the flag_green pair into the camp palette (keep the banners; lane picks the value; greyscale gate).

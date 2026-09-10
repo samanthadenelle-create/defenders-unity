@@ -499,6 +499,10 @@ TOUCH-FLOOR 1664 (five clamps: title row 69.5 px, REPAIR ALL 101.4, COLLECT 89.2
 
 ### 3C. Owner rulings queued by the 07:00 lanes (ask in ONE AskUserQuestion pass when she is back)
 
+**RULED 12:07 (AskUserQuestion):** 1 = WO-1637 all axes (fog first, base wall, ring material for both venues); 2 = WO-1638 re-tint the
+banners; 9 = train 2 Footmen on her save for the raid proofs (approved spend 1100 gold); 15 = WO-1661 word UPGRADE (keep). Also: **WO-1215
+CLOSED** ("i already validated and should be closed").
+
 1. **WO-1637 raid arena palette** - which axis moves: the ring MATERIAL (RockPaths is shared with the battle arena's siege venue,
    consumed twice there: 56 m cover ring + 72 m outer boundary; split deliberately or move both), the FOG (end 95 m sits inside the
    ring radius 68.6-97 m; reaches raider_camp_small + iron_bastion only), or the base WALL height/mass (per camp via
