@@ -1,6 +1,6 @@
 # WORK ORDER 1094 — the hero's ±50 playable-bounds clamp is a castle-era constant in a 1000×1000 world, and `_isTeleporting` guards zero frames
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate (2026-09-09 lane LOCOMOTION)
 **Minted:** 2026-09-09 by the UI seat (UI reserved block; banner bumped 1089 → 1095 in the same edit)
 **Silo:** Hero / locomotion
 **Severity:** P2 — latent, but it silently reverts any legitimate off-mesh position past ±50 anywhere in the merged world

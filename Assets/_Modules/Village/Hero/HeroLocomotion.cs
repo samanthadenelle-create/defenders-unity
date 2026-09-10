@@ -327,7 +327,41 @@ namespace DeNelle.Village
         // moves it, re-warps it onto the destination mesh, and raises OnTeleported so the
         // follow camera can snap instead of smooth-chasing the jump. _isTeleporting tells
         // the off-mesh clamp below to leave the warp frame alone.
+        //
+        // ⛔ _isTeleporting IS A *SPAN* LATCH AND IT ONLY WORKS WHERE A SPAN EXISTS.
+        // BeginSeamCross raises it and the seam-cross DONE branch (~:1825) lowers it FRAMES
+        // later, so for the slide it genuinely covers the crossing. WarpTo is the opposite
+        // shape: it raises and lowers this flag inside ONE SYNCHRONOUS CALL, so by the time
+        // Update next runs the latch is already down and the clamp below sees an ordinary
+        // off-mesh hero. That is WO-1094 defect 2 — the guard protected ZERO frames, and a
+        // deliberate warp to (-400,17,0) was reclaimed to (-50,0) on the very next tick
+        // (F8/WO-1091 trace). The fix is a FRAME STAMP, not a second bool: WarpTo records the
+        // last frame the guard must still hold, and TeleportGuardHeld reads it. That spans
+        // exactly the frames the warp needs — the agent disable -> warp -> re-enable frame
+        // AND the next Update, which is the first tick on which the re-enabled agent's
+        // isOnNavMesh can be trusted.
         private bool _isTeleporting;
+
+        /// <summary>Last frame index on which a WarpTo's teleport guard still holds.
+        /// <see cref="int.MinValue"/> = never warped, so the guard is down.</summary>
+        private int _teleportGuardUntilFrame = int.MinValue;
+
+        /// <summary>
+        /// WO-1094 — the last frame a warp landed on <paramref name="warpFrame"/> must keep
+        /// protecting. One frame past the warp: the warp frame itself is covered because
+        /// <see cref="TeleportGuardHeld"/> is inclusive, and the frame after it is the first
+        /// Update that can observe the re-enabled agent. Pure + public so the regression can
+        /// assert the span without a PlayMode session.
+        /// </summary>
+        public static int TeleportGuardEndFrame(int warpFrame) => warpFrame + 1;
+
+        /// <summary>
+        /// WO-1094 — true while a deliberate teleport still owns the transform, so the
+        /// playable-bounds clamp must not touch it. Either a live SPAN (the seam slide) or a
+        /// frame stamp that has not expired yet. Pure + public for the regression.
+        /// </summary>
+        public static bool TeleportGuardHeld(bool spanActive, int currentFrame, int guardUntilFrame)
+            => spanActive || currentFrame <= guardUntilFrame;
 
         // ── Playable-bounds clamp OWNERSHIP (dungeon walk-fail P0, owner 2026-08-05) ─────────
         // The off-mesh ±50 clamp in Update (~:1100) was written for ONE situation: a
@@ -343,7 +377,7 @@ namespace DeNelle.Village
         //     a CC re-asserts/depenetrates on a raw position write. That is the owner's
         //     "won the fight and then could not move at all".
         //   • THE STAGED ARENA — BattleArena stages the fight at (5000,0,5000)
-        //     (BattleArena.cs:81) with the agent off-mesh. Clamped to ±50 that is EXACTLY
+        //     (BattleArena.cs:81) with the agent off-mesh. Clamped to the then-±50 that is EXACTLY
         //     (50.00, 0.00, 50.00) — the unattributed ~7km teleport seen in the capture, which
         //     had no WarpTo line because the clamp, not a warp, wrote it.
         // Note the x/z clamp was NOT gated on GroundSnapEnabled (only the Y-snap sub-blocks
@@ -364,6 +398,137 @@ namespace DeNelle.Village
         // (Sink.Info, FlowTrace.cs:173); a relocation this large must read as a WARNING, so we
         // gate FlowTrace.Warn on our own timer rather than downgrade it.
         private float _nextClampWarnAt;
+
+        // ── WO-1094: WHERE THE CLAMP BOUND COMES FROM ────────────────────────────────────────
+        // It used to be a castle-era `const float` half-extent of 50 — a literal left standing in
+        // a MERGED 1000x1000 world (terrain seated at (-500,-4,-500), size 1000x42). Any
+        // legitimate off-mesh position past ±50 anywhere in Main_Castle_Overworld was silently
+        // reclaimed to the castle box; the WO-1091 capture caught it moving the hero from
+        // (-400,0) to (-50,0) on one tick. A second literal — even a bigger one, even a tunable
+        // one — would be the SAME defect with a later expiry date, which is the
+        // RepoProps.MaxStructureLevel lesson (CLAUDE.md §8): one authority, read from it.
+        //
+        // THE AUTHORITY IS THE WORLD ITSELF: DeNelle.Core.World.BiomeRoads.TryMeasureWorldBounds
+        // measures the live extent off the active Terrain(s) and REFUSES rather than typing a
+        // fallback. Wherever it answers, its answer wins and nothing else is consulted.
+        //
+        // ⛔ AN UNMEASURABLE SCENE DOES NOT LOSE ITS BOUND (lead ruling 2026-09-09).
+        // The first draft of this fix inherited BiomeRoads' refusal literally and SKIPPED the
+        // clamp when the extent could not be measured. That was wrong, and the reason is counted
+        // rather than argued: THREE SHIPPED SCENES CARRY ZERO Terrain components —
+        // Village2 (0), RaidBase_IronBastion (0) and the legacy MainCastle_Hall (0), counted in
+        // the scene files 2026-09-09. In those, "no measurement" would have meant NO BOUND AT
+        // ALL, and this component's off-mesh path is `transform.position += step` — so the hero
+        // drifts unbounded, inside the raid loop that is the north star. Deleting a bound is not
+        // a safer failure than a stale one; it is the same class of failure with no ceiling.
+        //
+        // So the KEY_FACTS invariant applies here exactly as it does on the tunables rail:
+        // NO MEASUREMENT => TODAY'S BEHAVIOUR, EXACTLY. Today's behaviour was a ±50 box, and 50
+        // is now a ROW (RemoteTunables hero.playableFallbackHalf, default 50) rather than a
+        // constant — so an empty table reproduces the shipped clamp byte for byte in every
+        // unmeasured scene, and moving it in a raid base costs a database write, not a rebuild.
+        // The relocation trace names WHICH bound applied, so a capture never has to infer it.
+        //
+        // Resolved LAZILY and only from inside the clamp branch, so a dungeon (foreign CC mover)
+        // or a staged arena frame never pays the Terrain scan at all, and cached per scene so a
+        // per-frame FindObjectsByType is impossible.
+        //
+        // ⛔ KEYED ON THE **ACTIVE SCENE**, NOT gameObject.scene — AND THAT IS NOT A STYLE CHOICE.
+        // The town hero TRAVELS: SceneRouter.cs:666-676 marks the hero root DontDestroyOnLoad before
+        // a Single load and HeroControlEnsurer.TryRecoverCarriedHero re-homes it with
+        // MoveGameObjectToScene (HeroControlEnsurer.cs:244) — a call that is Guard-wrapped precisely
+        // because it can FAIL (:247 warns). So gameObject.scene is the DDOL scene for part of every
+        // crossing, and permanently if the re-home fails: a handle that never changes again. Keying
+        // on it would let the extent measured in one world be enforced in the NEXT one — the same
+        // "bound from a world that no longer exists" defect this ticket exists to kill, wearing a
+        // new number. The ACTIVE scene is always the world the hero is standing in.
+        //
+        // ⛔ PROBED EXACTLY ONCE PER ACTIVE SCENE — NO TIMED RE-PROBE, DELIBERATELY.
+        // BiomeRoads.TryMeasureWorldBounds emits FlowTrace.Fail on a miss, and Fail routes to
+        // Sink.Error (FlowTrace.cs:169-172), which is what break-log.jsonl records and what wakes the
+        // §14 F8 daemon. A retry timer in a terrain-less scene would therefore fire a live ERROR at
+        // the owner on a loop, with a message written for the biome-drop caller ("no biome drop can
+        // be derived"), forever. Instrumentation that manufactures false captures is worse than none.
+        // The retry would also be speculative: these scenes carry their Terrain in the scene file
+        // itself (Main_Castle_Overworld.unity has one), so there is no proven stream-in case to catch.
+        private int _boundsSceneHandle = int.MinValue;
+        private bool _boundsProbed;
+        private Bounds _boundsBox;
+        private string _boundsSource = "unresolved";
+
+        /// <summary>
+        /// WO-1094 — the pure clamp. Clamps XZ into <paramref name="playable"/>'s real min/max
+        /// (NOT a symmetric half-extent: the authority hands back a Bounds, and assuming it is
+        /// centred on the origin would re-introduce a typed assumption by the back door).
+        /// Public + static so the regression can prove both halves — "a legitimate far position
+        /// survives" and "a genuinely out-of-world one is still recovered" — with no scene.
+        /// </summary>
+        public static Vector3 ClampToPlayableBounds(Vector3 p, Bounds playable)
+        {
+            p.x = Mathf.Clamp(p.x, playable.min.x, playable.max.x);
+            p.z = Mathf.Clamp(p.z, playable.min.z, playable.max.z);
+            return p;
+        }
+
+        /// <summary>
+        /// WO-1094 — the FALLBACK bound for a scene whose extent cannot be measured, built from
+        /// the rail value. A symmetric half-extent about the origin, because that is the shape
+        /// the shipped ±50 had and inventing an asymmetric fallback would be picking a world
+        /// nobody measured. CLAMPED 1..100000: a rail value of 0 would pin every unmeasured
+        /// scene's hero to the origin, which is a worse outcome than any bound. Pure + public so
+        /// the regression can prove "an unmeasurable scene still clamps, and at today's number".
+        /// </summary>
+        public static Bounds FallbackPlayableBounds(int halfFromRail)
+        {
+            float half = Mathf.Clamp(halfFromRail, 1, 100000);
+            return new Bounds(Vector3.zero, new Vector3(half * 2f, half * 2f, half * 2f));
+        }
+
+        /// <summary>
+        /// Resolve the playable bounds for the hero's ACTIVE scene. ALWAYS answers: the measured
+        /// world extent where a Terrain exists, else the rail fallback (today's shipped ±50 by
+        /// default). <paramref name="source"/> names which, verbatim, for the trace.
+        /// </summary>
+        private Bounds ResolvePlayableBounds(out string source)
+        {
+            var active = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (active.handle != _boundsSceneHandle)
+            {
+                // New world: drop everything the previous one taught us, and probe again.
+                _boundsSceneHandle = active.handle;
+                _boundsProbed = false;
+                _boundsSource = "unresolved";
+            }
+
+            if (!_boundsProbed)
+            {
+                _boundsProbed = true;
+                if (DeNelle.Core.World.BiomeRoads.TryMeasureWorldBounds(out Bounds measured))
+                {
+                    _boundsBox = measured;
+                    _boundsSource = "measured-terrain (BiomeRoads.TryMeasureWorldBounds)";
+                }
+                else
+                {
+                    // NO MEASUREMENT => TODAY'S BEHAVIOUR, EXACTLY. The rail default is 50, the
+                    // bound this build shipped, so an empty tunables table reproduces the old
+                    // clamp here rather than removing it.
+                    int rail = DeNelle.Core.Ops.RemoteTunables.Int(
+                        DeNelle.Core.Ops.RemoteTunables.KeyHeroPlayableFallbackHalf);
+                    _boundsBox = FallbackPlayableBounds(rail);
+                    _boundsSource = $"fallback-tunable ({DeNelle.Core.Ops.RemoteTunables.KeyHeroPlayableFallbackHalf}={rail})";
+                }
+
+                DeNelle.Core.Diagnostics.FlowTrace.Step("HeroLoco",
+                    $"playable bounds RESOLVED for active scene '{active.name}': " +
+                    $"x[{_boundsBox.min.x:F1}..{_boundsBox.max.x:F1}] z[{_boundsBox.min.z:F1}..{_boundsBox.max.z:F1}] " +
+                    $"source={_boundsSource} — the scene is ALWAYS bounded (WO-1094): measured where a " +
+                    "Terrain exists, else the rail's default, which is exactly the bound this build shipped.");
+            }
+
+            source = _boundsSource;
+            return _boundsBox;
+        }
 
         /// <summary>
         /// True when a mover OTHER than this component owns the transform this frame — i.e. a
@@ -574,7 +739,17 @@ namespace DeNelle.Village
             Velocity = Vector3.zero;   // don't carry pre-warp momentum across the seam
             OnTeleported?.Invoke();
 
+            // WO-1094 defect 2. Lowering the span latch here is correct — the synchronous warp
+            // IS over — but on its own it left the clamp free to reclaim the landing on the very
+            // next Update. Stamp the guard forward instead, so the frames the warp actually
+            // needs (this one, plus the first Update that can read the re-enabled agent) are
+            // covered. Traced: a guard that silently protects nothing is what this ticket was.
             _isTeleporting = false;
+            _teleportGuardUntilFrame = TeleportGuardEndFrame(Time.frameCount);
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Seam",
+                $"WarpTo teleport guard armed through frame {_teleportGuardUntilFrame} " +
+                $"(landed on frame {Time.frameCount}) — the playable-bounds clamp is held off " +
+                $"until the re-enabled agent has had one Update to re-acquire the mesh.");
         }
 
         private ActorAnimator _actor; // lazy, for driving Speed into the (Humanoid) controller blendtree
@@ -1369,9 +1544,10 @@ namespace DeNelle.Village
             // fallback). When the hero is ON the NavMesh, the bake defines the walkable
             // bounds + height, so a manual clamp would fight the agent (and break
             // ramparts/hills by pinning Y to 0).
-            // WO-383: a seam warp (WarpTo) deliberately places the hero past ±50 and onto a
+            // WO-383: a seam warp (WarpTo) deliberately places the hero far out and onto a
             // separately-baked NavMesh — skip the off-mesh clamp on that frame so the warp
-            // isn't yanked back to the castle bounds.
+            // isn't yanked back. WO-1094: "that frame" now MEANS something — TeleportGuardHeld
+            // spans the warp frame AND the next Update, where the old bool spanned zero frames.
             // OWNERSHIP GATE (dungeon walk-fail P0, 2026-08-05 — see ForeignMoverOwnsTransform
             // ~:317 for the full rationale). "Off the navmesh" alone does NOT mean this
             // component may move the hero, and it does NOT mean the ±50 castle bounds apply:
@@ -1385,28 +1561,36 @@ namespace DeNelle.Village
             // must never disagree about who owns the transform on a given frame.
             bool foreignMover  = foreignOwnsTransform;
             bool inStagedArena = DeNelle.Village.Arena.BattleArena.IsArenaPosition(transform.position);
-            if ((_agent == null || !_agent.isOnNavMesh) && !_isTeleporting && !foreignMover && !inStagedArena)
+            if ((_agent == null || !_agent.isOnNavMesh)
+                && !TeleportGuardHeld(_isTeleporting, Time.frameCount, _teleportGuardUntilFrame)
+                && !foreignMover && !inStagedArena)
             {
                 var p = transform.position;
-                const float PlayableHalf = 50f;
                 float preX = p.x, preZ = p.z;
-                p.x = Mathf.Clamp(p.x, -PlayableHalf, PlayableHalf);
-                p.z = Mathf.Clamp(p.z, -PlayableHalf, PlayableHalf);
+
+                // WO-1094: the bound is MEASURED where a Terrain exists and comes off the
+                // RemoteTunables rail where one does not. It is never absent, and never a literal.
+                Bounds playable = ResolvePlayableBounds(out string boundsSource);
+                p = ClampToPlayableBounds(p, playable);
 
                 // OBSERVABILITY: when the clamp actually RELOCATES the hero, name the before/
-                // after and why. A 7km-to-(50,50) jump must never again be a silent,
-                // unattributable teleport in a capture. Exact float compare is intentional —
-                // Mathf.Clamp returns the input bit-identical when it is already in range, so
-                // this is precisely "the clamp changed something". Throttled to 1/sec.
+                // after, the BOUND IT ENFORCED and WHERE THAT BOUND CAME FROM. A 7km-to-(50,50)
+                // jump must never again be a silent, unattributable teleport in a capture, and
+                // the old line named the value only — which is exactly why ±50 read as
+                // intentional for a month. Exact float compare is intentional: Mathf.Clamp
+                // returns the input bit-identical when it is already in range, so this is
+                // precisely "the clamp changed something". Throttled to 1/sec.
                 if ((preX != p.x || preZ != p.z) && Time.realtimeSinceStartup >= _nextClampWarnAt)
                 {
                     _nextClampWarnAt = Time.realtimeSinceStartup + 1f;
                     DeNelle.Core.Diagnostics.FlowTrace.Warn("HeroLoco",
                         $"playable-bounds CLAMP relocated the hero: ({preX:F2},{preZ:F2}) -> ({p.x:F2},{p.z:F2}) " +
-                        $"[±{PlayableHalf} off-mesh guard; agent=" +
+                        $"[bound x[{playable.min.x:F1}..{playable.max.x:F1}] z[{playable.min.z:F1}..{playable.max.z:F1}]" +
+                        $", source={boundsSource}; off-mesh guard; agent=" +
                         $"{(_agent == null ? "<null>" : (_agent.enabled ? "enabled/off-mesh" : "disabled"))}, " +
                         $"cc={(_ccProbe == null ? "<none>" : (_ccProbe.enabled ? "LIVE" : "disabled"))}, " +
-                        $"scene='{gameObject.scene.name}']");
+                        $"scene='{gameObject.scene.name}', frame={Time.frameCount}, " +
+                        $"teleportGuardUntil={_teleportGuardUntilFrame}]");
                 }
 
                 // DEF-147: off-mesh ground-snap / re-bind. The agent goes off-mesh both
@@ -1886,7 +2070,9 @@ namespace DeNelle.Village
         {
             _crossingSeam = true;
             _seamTarget = target;
-            _isTeleporting = true;   // skip the off-mesh ±50 clamp while we cross the gap (z<-50)
+            // SPAN latch — correct here (lowered frames later at the seam-cross DONE branch);
+            // WO-1094's frame stamp is for WarpTo, whose "span" was one synchronous call.
+            _isTeleporting = true;   // skip the off-mesh playable-bounds clamp while we cross the gap
             // RELEASE the agent's grip on the transform during the slide — otherwise updatePosition
             // clamps the hero back onto the castle navmesh every frame and it never crosses the gap
             // (the BEGIN-without-DONE bug). We drive transform.position ourselves, then Warp + re-arm.
