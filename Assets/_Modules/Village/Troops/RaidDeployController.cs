@@ -1092,7 +1092,7 @@ namespace DeNelle.Village
                     "raid CANNOT apply the 2-star cap (WO-1526). The raid still continues; the " +
                     "result will over-pay. If you are reading this, the scorer failed to install.");
 
-            SetStatus(DeNelle.Village.UI.EndStateVM.HeroDownArmyFightsOn);
+            SetStatus(DeNelle.Village.UI.EndStateVM.HeroDownArmyFightsOn, HeroDownToastLifeSeconds);
 
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                 "hero DOWN - the raid CONTINUES and the army fights on (WO-1526). No loot settled, " +
@@ -1700,18 +1700,146 @@ namespace DeNelle.Village
 
             BuildTrayTiles(bar.transform);
 
+            // ⛔ WO-1639 DEFECT B — THE FACE WAS TOO NARROW FOR ITS OWN WORD, AND THE WORD IS PINNED.
+            // Every one of the four arena frames (Builds/device-frames/2026-09-10_060*_arena_*.png)
+            // shows this face reading "DEPLOY ..." - the label autoshrunk to ElarionUiKit.FontFloor
+            // (30) and then ELLIPSISED. The arithmetic, at the owner's 2670x1200:
+            //   canvas reference = 2147.9 x 965.4 px (HudLayoutBands.CanvasReferenceSize, :379,
+            //   Unity's own match-0.5 formula on the 1080x1920 reference), so the bar's
+            //   x 0.280-0.980 span is 1503.5 reference px wide.
+            //   BuildObsidianButton insets its label to 0.04-0.96 of the face
+            //   (ElarionUiKitObsidian.cs:681-683), i.e. 92% usable, then FitSingleLine (:686)
+            //   autosizes [30..50] and cuts with Ellipsis (:3054-3070).
+            //   OLD: Deploy All 0.130 of the bar = 195.5 px, 179.9 usable, for TEN characters at
+            //   FontBody 50 bold. Rally (5) and Retreat (7) fit the same width; "Deploy All"
+            //   never could - and RefreshRallyButton (see below) swaps Rally to "Rally ON" (8),
+            //   so that face was one character from the same failure.
+            //
+            // ⛔ SHORTENING THE COPY IS NOT AVAILABLE AND WAS NOT DONE. The exact literal
+            // "Deploy All" is pinned by Editor/Regression/RaidDeployUiRegression.cs:411-415, and
+            // renaming a player-facing face is the owner's call, not a lane's (CLAUDE.md sec.2).
+            // So the FACES WIDEN, and the room comes from the tray, which was over-wide: its
+            // tiles are square portraits in a 0.52-of-bar strip. WHAT MOVED, in bar fractions:
+            //   tray        0.030-0.550  ->  0.030-0.390   (BuildTrayTiles `right`)
+            //   Deploy All  0.565-0.695  ->  0.410-0.650   (0.130 -> 0.240)
+            //   Rally       0.700-0.830  ->  0.665-0.825   (0.130 -> 0.160)
+            //   Retreat     0.845-0.985  ->  0.840-0.985   (0.140 -> 0.145)
+            // The bar's own edges do not move, so DeployBarBand, DeployStatusBand and every
+            // y-band case in RaidHudThumbBandRegression are untouched; only x within the bar
+            // changes. Predicted seated sizes at 92% usable width and ~0.68 em average advance
+            // for this bold face: "Deploy All" ~48pt, "Rally ON" ~40pt, "Retreat" ~42pt - all
+            // comfortably above the 30 px FontFloor, so no face reaches the ellipsis at all.
+            // NO FONT IS LOWERED ANYWHERE; the fitters keep the kit's own floors.
+            // Touch floor: the tray keeps 541 reference px for its tiles, so four troop types
+            // seat 135 px each - still over ElarionUiKit.MinTouchPx (112); a fifth relies on the
+            // kit's own ClampMinTouch, exactly as it did at the old width.
             _deployAllButton = ElarionUiKit.Button(bar.transform, "Deploy All", ElarionUiKit.ButtonKind.Gold,
-                new Vector2(0.565f, 0.18f), new Vector2(0.695f, 0.82f), DeployAll);
+                new Vector2(0.410f, 0.18f), new Vector2(0.650f, 0.82f), DeployAll);
 
-            // Rally toggle + Retreat — right edge of the bar.
+            // Rally toggle + Retreat — right edge of the bar. Rally's band carries "Rally ON"
+            // (RefreshRallyButton), not "Rally", so it is sized for the LONGER of the two.
             _rallyButton = ElarionUiKit.Button(bar.transform, "Rally", ElarionUiKit.ButtonKind.Quiet,
-                new Vector2(0.70f, 0.18f), new Vector2(0.83f, 0.82f), ToggleRally);
+                new Vector2(0.665f, 0.18f), new Vector2(0.825f, 0.82f), ToggleRally);
             _retreatButton = ElarionUiKit.Button(bar.transform, "Retreat", ElarionUiKit.ButtonKind.Danger,
-                new Vector2(0.845f, 0.18f), new Vector2(0.985f, 0.82f), OnRetreatPressed);
+                new Vector2(0.840f, 0.18f), new Vector2(0.985f, 0.82f), OnRetreatPressed);
 
             if (_status != null) _status.text = "";
             RefreshTiles();
             RefreshRallyButton();
+            StartCoroutine(WO1639BarProbe());
+        }
+
+        // =====================================================================
+        //  WO-1639 STEP 1 INSTRUMENTATION — PERMANENT (CLAUDE.md sec.12)
+        // ---------------------------------------------------------------------
+        // ⚠ Interpolated parts are computed into locals FIRST: the compile gate's brace
+        // scanner has no interpolated-string model, so a quote inside a `{...}` hole ends
+        // the string as far as it is concerned (CLAUDE.md sec.1). Concatenation only.
+        // =====================================================================
+
+        /// <summary>The canvas scale factor behind a label, as a string, so a device-px reading in
+        /// the log can be converted to the reference px the layout arithmetic uses.</summary>
+        private static string ScaleFactorOf(TMPro.TextMeshProUGUI t)
+        {
+            var c = t != null ? t.canvas : null;
+            return c != null ? c.scaleFactor.ToString("F4") : "unknown";
+        }
+
+        private System.Collections.IEnumerator WO1639BarProbe()
+        {
+            yield return null;   // one frame so TMP has laid the faces out
+            LogFaceFit("deployAll", _deployAllButton);
+            LogFaceFit("rally", _rallyButton);
+            LogFaceFit("retreat", _retreatButton);
+            LogToastOrdering();
+        }
+
+        /// <summary>WO-1639 DEFECT B Step 1: does the face show its whole word? Same read shape as
+        /// WO-1628 sec.4 Step 1 - band px, the autosize window, drawn characters vs the string's
+        /// length, and TMP's own truncation flag. A face whose drawn count is short of its string
+        /// is the "DEPLOY ..." defect, and this line names it without a pixel audit.</summary>
+        private static void LogFaceFit(string faceName, UnityEngine.UI.Button btn)
+        {
+            if (btn == null)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                    "[wo1639-face] " + faceName + " button is NULL.");
+                return;
+            }
+            var t = btn.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+            if (t == null)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                    "[wo1639-face] " + faceName + " has no label.");
+                return;
+            }
+            t.ForceMeshUpdate();
+            var corners = new Vector3[4];
+            t.rectTransform.GetWorldCorners(corners);
+            float labelW = Mathf.Abs(corners[2].x - corners[1].x);
+            float labelH = Mathf.Abs(corners[1].y - corners[0].y);
+            var faceCorners = new Vector3[4];
+            ((RectTransform)btn.transform).GetWorldCorners(faceCorners);
+            float faceW = Mathf.Abs(faceCorners[2].x - faceCorners[1].x);
+            float faceH = Mathf.Abs(faceCorners[1].y - faceCorners[0].y);
+            string raw = t.text ?? string.Empty;
+            int drawn = t.textInfo != null ? t.textInfo.characterCount : -1;
+            string msg = "[wo1639-face] " + faceName +
+                         " text='" + raw + "'" +
+                         " face=" + faceW.ToString("F1") + "x" + faceH.ToString("F1") + "px" +
+                         " label=" + labelW.ToString("F1") + "x" + labelH.ToString("F1") + "px" +
+                         " font=" + t.fontSize.ToString("F1") +
+                         " [" + t.fontSizeMin.ToString("F1") + ".." + t.fontSizeMax.ToString("F1") + "]" +
+                         " chars=" + drawn + "/" + raw.Length +
+                         " truncated=" + t.isTextTruncated +
+                         " overflow=" + t.overflowMode.ToString() +
+                         // ⚠ GetWorldCorners on a ScreenSpaceOverlay canvas returns DEVICE px, not
+                         // the reference px the WO-1639 arithmetic is written in. The scale factor
+                         // is logged so the two can be reconciled without guessing (at the owner's
+                         // 2670x1200 it is ~1.243).
+                         " scaleFactor=" + ScaleFactorOf(t);
+            if (t.isTextTruncated || (drawn >= 0 && drawn < raw.Length))
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                    msg + " <- FACE IS ELLIPSISED, it does not show its whole word.");
+            else
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid", msg);
+        }
+
+        /// <summary>WO-1639 DEFECT C Step 1: the draw-order fact that explains the burial, printed
+        /// every raid so it can never be inferred again. See <see cref="RaidToastSortingOrder"/>
+        /// for the RCA.</summary>
+        private void LogToastOrdering()
+        {
+            var canvas = _ui != null ? _ui.GetComponent<Canvas>() : null;
+            string deployOrder = canvas != null ? canvas.sortingOrder.ToString() : "no-canvas";
+            string raidHudOrder = "29000 (RaidHudController.BuildHud)";
+            string toastOrder = RaidToastSortingOrder.ToString();
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                "[wo1639-toast] raid status toasts are raised to sortingOrder " + toastOrder +
+                " so they draw ABOVE the deploy HUD canvas (" + deployOrder + ") and the raid " +
+                "readout canvas (" + raidHudOrder + "). The kit default is 720, which is BELOW " +
+                "both - that is why 'HERO DOWN' was visible only faintly THROUGH the deploy bar " +
+                "in Builds/device-frames/2026-09-10_0613_arena_05_hero_left_edge.png.");
         }
 
         // One tile per troop TYPE the player has deployable in this raid (deduped by def).
@@ -1740,9 +1868,18 @@ namespace DeNelle.Village
                 return;
             }
 
-            // Lay the tiles across the left ~68% of the bar.
+            // Lay the tiles across the left of the bar.
+            // ⚠ WO-1639 DEFECT B: `right` was 0.55f. It is 0.390f now, and the 0.16 of bar width
+            // that frees is what widens the "Deploy All" face from 0.130 to 0.240 so it stops
+            // ellipsising (the full arithmetic and the before/after table are in BuildHud, at the
+            // _deployAllButton line). The tiles are SQUARE portraits, so the strip they lost was
+            // never carrying glyphs: at 0.360 of a 1503.5-reference-px bar the tray still seats
+            // 541 px, i.e. 135 px per tile for four troop types - over ElarionUiKit.MinTouchPx
+            // (112, ElarionUiKit.cs:347). The tile's HEIGHT fractions (0.18-0.82, and the 0.48
+            // count badge inside them) are untouched, so RaidHudThumbBandRegression's
+            // "the tile count badge is 0.48 of a tile that is 0.64 of the bar" case still holds.
             int count = defIds.Count;
-            float left = 0.03f, right = 0.55f;
+            float left = 0.03f, right = 0.390f;
             float w = (right - left) / Mathf.Max(1, count);
             for (int i = 0; i < count; i++)
             {
@@ -1916,7 +2053,64 @@ namespace DeNelle.Village
             if (lbl != null) lbl.text = _rallyMode ? "Rally ON" : "Rally";
         }
 
-        private void SetStatus(string s)
+        // ⛔ WO-1639 DEFECT C — WHY "HERO DOWN" RENDERED *UNDER* THE DEPLOY BAR. RCA, not a guess.
+        //
+        // The ticket looked for a seat bug and there is none: DeployStatusBand (y 0.320-0.360)
+        // does not overlap DeployBarBand (y 0.160-0.310), and _status is built AFTER the bar so
+        // uGUI would draw it on top anyway. The frame disagreed with the source because THE
+        // SENTENCE IS NOT IN _status AT ALL. SetStatus below CLEARS _status and routes the copy
+        // to ElarionUiKit.ShowToast - and the kit's toast builds its own ScreenSpaceOverlay
+        // canvas at sortingOrder 720 (ElarionUiKitConformance.cs:393-411). This controller's HUD
+        // canvas is 30000 (BuildHud) and RaidHudController's is 29000. 720 is below BOTH, so the
+        // toast draws UNDERNEATH the deploy bar, and the ONLY reason the owner could see any of
+        // it is the bar plate's own 0.38 alpha. That is exactly the frame: "HERO DO..." faint,
+        // through the tan plate, at y 855-885 of 2026-09-10_0613_arena_05_hero_left_edge.png.
+        //
+        // THE SEAT ARITHMETIC CONFIRMS IT INDEPENDENTLY. The toast card is pivot (0.5, 0),
+        // anchoredPosition (0, 220) on a 1080x1920 reference at match 0.5
+        // (ElarionUiKitConformance.cs:419-424). At 2670x1200 the scale is
+        // sqrt((2670/1080) * (1200/1920)) = 1.2430, so a 76 px card spans 273.5 to 367.9 device
+        // px from the BOTTOM, i.e. 832 to 926 from the top, and its vertically centred label
+        // lands at ~879. The measured glyphs sit at 855-885. It is the toast.
+        //
+        // THE FIX IS CALLER-SIDE, because ElarionUiKit* is READ-ONLY for this ticket (WO-1639
+        // sec.7): ShowToast already takes a sortingOrder, so the raid passes one above its own
+        // two canvases. This is deliberately applied to EVERY raid status, not just hero-down -
+        // a toast that draws behind the HUD is useless for "Deploy All needs open ground ahead"
+        // as well.
+        //
+        // RESIDUALS, RECORDED AND NOT FIXED HERE (both are kit-owned, sec.7 forbids the edit):
+        //  * the card's SEAT is the kit's hardcoded 220 ref px, which is inside the bar's y band
+        //    (0.228-0.307 normalised). Above the bar in sort order it is fully legible, but for
+        //    its ~3s life it covers part of the tray. Acceptable for a transient; the alternative
+        //    is a kit change.
+        //  * the toast label is the kit's 24 px legacy Text, below ElarionUiKit.FontFloor (30).
+        //    Flagged for the lead - it is a kit-wide question, not a raid one.
+
+        /// <summary>Sorting order for raid status toasts. ABOVE this controller's HUD canvas
+        /// (30000) and RaidHudController's readout canvas (29000); the kit default of 720 is
+        /// below both, which is the WO-1639 Defect C burial. Never lower this below 30001.</summary>
+        private const int RaidToastSortingOrder = 30500;
+
+        /// <summary>Toast card size in reference px for raid status. The kit's 480x76 default is
+        /// sized for ~2 lines of short chrome copy; the raid's longest sentence is
+        /// EndStateVM.HeroDownArmyFightsOn ("HERO DOWN - your army fights on", 31 chars) and it
+        /// is the single most important message this HUD ever shows (WO-1639 sec.3), so it gets
+        /// a card with room rather than a wrap.</summary>
+        private const float RaidToastCardWidth = 640f;
+        private const float RaidToastCardHeight = 96f;
+
+        /// <summary>Default toast life for raid status, in seconds. Matches what SetStatus has
+        /// always passed; named so the one message that needs longer can say so.</summary>
+        private const float RaidToastLifeSeconds = 2.2f;
+
+        /// <summary>Toast life for the hero-down line. It is the single most important sentence
+        /// this HUD shows (WO-1639 sec.3) and it arrives while the player is being killed, so it
+        /// gets more than the chrome default. The STRING is still EndStateVM.HeroDownArmyFightsOn
+        /// and is never retyped inline (pinned by RaidScoringRegression.cs:411-413).</summary>
+        private const float HeroDownToastLifeSeconds = 4.5f;
+
+        private void SetStatus(string s, float lifeSeconds = RaidToastLifeSeconds)
         {
             // Persistent mid-fight copy ("Rally set — idle troops will muster there")
             // sat in the world and the owner hated it (2026-09-09 raid frame). The
@@ -1925,7 +2119,10 @@ namespace DeNelle.Village
             // toasted - the tray already says that with brackets and Rally ON.
             if (_status != null) _status.text = "";
             if (string.IsNullOrEmpty(s)) return;
-            ElarionUiKit.ShowToast(s, ElarionUiKit.ToastTone.Info, lifeSeconds: 2.2f);
+            ElarionUiKit.ShowToast(s, ElarionUiKit.ToastTone.Info,
+                lifeSeconds: Mathf.Max(RaidToastLifeSeconds, lifeSeconds),
+                sortingOrder: RaidToastSortingOrder,
+                cardWidth: RaidToastCardWidth, cardHeight: RaidToastCardHeight);
         }
 
         // =====================================================================

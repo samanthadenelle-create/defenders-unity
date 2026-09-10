@@ -66,7 +66,29 @@ namespace DeNelle.Village
         private readonly Image[] _starDiamonds = new Image[3];
 
         private static readonly Color StarLit = ElarionUi.Gilt;
-        private static readonly Color StarDim = new Color(1f, 1f, 1f, 0.14f);
+
+        // ⛔ WO-1639 DEFECT A, SECOND HALF: THE "EMPTY" TOKENS WERE AUTHORED FOR A GREY PLATE.
+        // The three progress TRACKS (timer / objective / razed) shipped as
+        // `new Color(0f, 0f, 0f, 0.5f)` - a DARK groove, which read as a groove only because the
+        // plate behind it was a translucent grey. On the kit's near-black ObsidianFill the plate
+        // composites to ~0.037 sRGB and 50% black lands at ~0.019: **1.03 : 1**. The empty part of
+        // every bar would VANISH, leaving a gilt line of varying length with nothing to say what
+        // "full" was - and the draining/filling bar is the MOTION channel the repo's colourblind
+        // law leans on, so losing it is worse than the illegibility this ticket started with.
+        // The same logic applies to an unlit honor diamond, so both take ONE value: white at 0.40,
+        // which predicts 3.77 : 1 against the plate (over the 3:1 non-text component floor) while
+        // staying ~4x dimmer in luminance than a lit/filled Gilt element (12.2 : 1). Empty reads
+        // as empty, full reads as full, and neither is a hue decision.
+        private static readonly Color EmptyTrackFill = new Color(1f, 1f, 1f, 0.40f);
+        // ⚠ WO-1639 DEFECT A: alpha was 0.14f and it measured 1.55:1 against the readout plate on
+        // the owner's device frame (2026-09-10_0608_arena_01_entry.png). An unlit honor diamond is
+        // a non-text UI COMPONENT, so its floor is 3:1, not the 4.5:1 the text rows answer to.
+        // 0.40 over ElarionUiKit.ObsidianFill predicts 3.77:1 - above the floor with margin, and
+        // still ~4x dimmer in luminance than a lit Gilt diamond (12.2:1), so the lit/unlit read
+        // survives. The PRIMARY channel is unchanged and remains SHAPE (StarSizeLit 34 vs
+        // StarSizeLost 20) plus the hue-free "n/3" number, per the repo's colourblind law - this
+        // only stops a lost star from vanishing entirely on a bright arena.
+        private static readonly Color StarDim = EmptyTrackFill;
 
         // ── WO-1594 honor stars: SHAPE carries the state, not hue ────────────────────────
         // The owner is red/green colourblind (repo law), and dimming alone is luminance, not
@@ -121,6 +143,276 @@ namespace DeNelle.Village
         private void Start()
         {
             BuildHud();
+            StartCoroutine(WO1639Probe());
+        }
+
+        // =====================================================================
+        //  WO-1639 STEP 1 INSTRUMENTATION — PERMANENT (CLAUDE.md sec.12)
+        // ---------------------------------------------------------------------
+        // Three things this ticket could not settle from source, and the two reads that
+        // settle them on the next device run. These calls STAY IN THE CODE once the
+        // systems are proven (sec.12: instrumentation is never stripped, only flagged
+        // off) - a raid HUD defect must never again cost a frame-by-frame pixel audit.
+        //
+        // ⚠ EVERY interpolated part is computed into a local FIRST. The compile gate's
+        // brace scanner has no interpolated-string model, so a quote inside a `{...}`
+        // hole ends the string as far as it is concerned and the file reads unbalanced
+        // (CLAUDE.md sec.1). Plain concatenation only, below.
+        // =====================================================================
+
+        /// <summary>Screen-height fraction above which a world-space renderer is reported by
+        /// <see cref="LogOversizedWorldMarkers"/>. WO-1639 DEFECT D.
+        /// ⚠ 0.10, NOT 0.25, AND THE FRAME IS WHY. In the ENTRY frame
+        /// (Builds/device-frames/2026-09-10_0608_arena_01_entry.png, opened this session) the
+        /// yellow shield-and-chevron measures roughly 240 px of 1200 = 0.20 of screen height -
+        /// a 0.25 threshold would have reported NOTHING at the t+1s sample and the whole point
+        /// of sampling twice is to catch the object at BOTH distances and prove it grows.
+        /// 0.10 keeps the entry sample and still excludes terrain-scale geometry noise.</summary>
+        private const float OversizedMarkerScreenFraction = 0.10f;
+
+        private System.Collections.IEnumerator WO1639Probe()
+        {
+            // One frame so TMP has laid the rows out and the raid scene has finished spawning.
+            yield return null;
+            LogReadoutFitState();
+
+            // DEFECT D: the shape grows with camera proximity, so sample twice - once at the
+            // entry seat and once after the player has closed on the spire.
+            yield return new WaitForSecondsRealtime(1f);
+            LogOversizedWorldMarkers("t+1s");
+            yield return new WaitForSecondsRealtime(4f);
+            LogOversizedWorldMarkers("t+5s");
+        }
+
+        /// <summary>
+        /// WO-1639 DEFECT A/B Step 1: the five readout rows' resolved fit state. Same shape as
+        /// WO-1628 sec.4 Step 1 - band px, the autosize window, the line/character counts and
+        /// whether TMP truncated. A row whose <c>characterCount</c> is under its
+        /// <c>text.Length</c> is ellipsised; a row with <c>lineCount</c> 0 was CULLED because
+        /// its band could not seat the floor (the WO-1519 class).
+        /// </summary>
+        private void LogReadoutFitState()
+        {
+            LogRowFit("timer", _timerLabel);
+            LogRowFit("objective", _objLabel);
+            LogRowFit("razed", _destLabel);
+            LogRowFit("stars", _starCount);
+            LogRowFit("troops", _troopLabel);
+        }
+
+        private static void LogRowFit(string rowName, TMPro.TextMeshProUGUI t)
+        {
+            if (t == null)
+            {
+                FlowTrace.Warn("Raid", "[wo1639-fit] readout row '" + rowName + "' is NULL.");
+                return;
+            }
+            t.ForceMeshUpdate();
+            var rt = t.rectTransform;
+            var corners = new Vector3[4];
+            rt.GetWorldCorners(corners);
+            float bandPx = Mathf.Abs(corners[1].y - corners[0].y);
+            float widthPx = Mathf.Abs(corners[2].x - corners[1].x);
+            string raw = t.text ?? string.Empty;
+            int drawn = t.textInfo != null ? t.textInfo.characterCount : -1;
+            int lines = t.textInfo != null ? t.textInfo.lineCount : -1;
+            bool truncated = t.isTextTruncated;
+            string size = t.fontSize.ToString("F1");
+            string sizeMin = t.fontSizeMin.ToString("F1");
+            string sizeMax = t.fontSizeMax.ToString("F1");
+            string band = bandPx.ToString("F1");
+            string wide = widthPx.ToString("F1");
+            string overflow = t.overflowMode.ToString();
+            string wrap = t.textWrappingMode.ToString();
+            string colour = t.color.r.ToString("F3") + "/" + t.color.g.ToString("F3") + "/" +
+                            t.color.b.ToString("F3") + "/a" + t.color.a.ToString("F2");
+            string msg = "[wo1639-fit] row=" + rowName +
+                         " band=" + band + "x" + wide + "px" +
+                         " font=" + size + " [" + sizeMin + ".." + sizeMax + "]" +
+                         " lines=" + lines +
+                         " chars=" + drawn + "/" + raw.Length +
+                         " truncated=" + truncated +
+                         " overflow=" + overflow + " wrap=" + wrap +
+                         " colour=" + colour +
+                         // ⚠ GetWorldCorners on a ScreenSpaceOverlay canvas returns DEVICE px, not
+                         // the reference px the WO-1639 band arithmetic is written in. Log the
+                         // scale factor so the two reconcile without guessing (~1.243 at 2670x1200).
+                         " scaleFactor=" + (t.canvas != null ? t.canvas.scaleFactor.ToString("F4") : "unknown");
+            if (truncated || lines <= 0 || (drawn >= 0 && drawn < raw.Length))
+                FlowTrace.Warn("Raid", msg + " <- ROW DOES NOT SHOW ITS WHOLE STRING.");
+            else
+                FlowTrace.Step("Raid", msg);
+        }
+
+        /// <summary>
+        /// WO-1639 DEFECT D Step 1: NAME the oversized yellow shape. The frames proved its KIND
+        /// (world-space: the compass strip's ScreenSpaceOverlay plate occludes it, and an
+        /// overlay canvas always draws over world geometry) but no source line names it. No
+        /// clamp is authored anywhere in this ticket - CLAUDE.md sec.12 forbids editing a
+        /// non-trivial defect before captured data names the object. This read produces that
+        /// name: every world renderer whose projected screen height exceeds
+        /// <see cref="OversizedMarkerScreenFraction"/>, with its hierarchy path so the owning
+        /// script is one grep away.
+        /// </summary>
+        private static void LogOversizedWorldMarkers(string phase)
+        {
+            var cam = Camera.main;
+            if (cam == null)
+            {
+                FlowTrace.Warn("Raid", "[wo1639-marker] " + phase + ": no Camera.main, cannot project.");
+                return;
+            }
+            float screenH = Mathf.Max(1f, Screen.height);
+            float threshold = screenH * OversizedMarkerScreenFraction;
+            int reported = 0;
+            var renderers = FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var r = renderers[i];
+                if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                var b = r.bounds;
+                float top = float.MinValue, bottom = float.MaxValue;
+                bool anyInFront = false;
+                for (int c = 0; c < 8; c++)
+                {
+                    var corner = new Vector3(
+                        (c & 1) == 0 ? b.min.x : b.max.x,
+                        (c & 2) == 0 ? b.min.y : b.max.y,
+                        (c & 4) == 0 ? b.min.z : b.max.z);
+                    var sp = cam.WorldToScreenPoint(corner);
+                    if (sp.z <= 0f) continue;
+                    anyInFront = true;
+                    if (sp.y > top) top = sp.y;
+                    if (sp.y < bottom) bottom = sp.y;
+                }
+                if (!anyInFront) continue;
+                float heightPx = top - bottom;
+                if (heightPx < threshold) continue;
+                // Cap the burst: at a 0.10 threshold the ground plane, the tower and the
+                // boundary ring all qualify, and a firehose evicts the boot window out of the
+                // device logcat ring (memory `logcat-ring-buffer-destroys-evidence`). 25 is
+                // enough to hold every large object in a raid arena; the TINT field is what
+                // makes the yellow one findable in one grep.
+                if (reported >= 25) break;
+                reported++;
+
+                string path = HierarchyPath(r.transform);
+                string mat = "none";
+                string tint = "n/a";
+                var sm = r.sharedMaterial;
+                if (sm != null)
+                {
+                    mat = sm.name + " (" + (sm.shader != null ? sm.shader.name : "no-shader") + ")";
+                    // Read the tint through HasProperty on BOTH names: Material.color silently
+                    // logs an error on a shader with no _Color, and an instrument that spams the
+                    // log is an instrument that evicts the evidence (memory
+                    // `logcat-ring-buffer-destroys-evidence`).
+                    bool hasBase = sm.HasProperty("_BaseColor");
+                    bool hasLegacy = sm.HasProperty("_Color");
+                    if (hasBase || hasLegacy)
+                    {
+                        Color c0 = hasBase ? sm.GetColor("_BaseColor") : sm.GetColor("_Color");
+                        tint = c0.r.ToString("F2") + "/" + c0.g.ToString("F2") + "/" +
+                               c0.b.ToString("F2") + "/a" + c0.a.ToString("F2");
+                    }
+                }
+                string hpx = heightPx.ToString("F0");
+                string frac = (heightPx / screenH).ToString("F2");
+                string dist = Vector3.Distance(cam.transform.position, b.center).ToString("F1");
+                string kind = r.GetType().Name;
+                FlowTrace.Warn("Raid",
+                    "[wo1639-marker] " + phase + " OVERSIZED world renderer: path=" + path +
+                    " kind=" + kind + " screenH=" + hpx + "px (" + frac + " of screen)" +
+                    " camDist=" + dist + "m mat=" + mat + " tint=" + tint);
+            }
+            // ⛔ SECOND PASS, AND IT IS NOT OPTIONAL: FindObjectsByType<Renderer> DOES NOT SEE uGUI.
+            // A uGUI Image draws through a CanvasRenderer, which is NOT a Renderer, so a WorldSpace
+            // or ScreenSpaceCamera Canvas carrying a shield/chevron SPRITE would be invisible to
+            // the pass above - and this project already builds exactly that shape of thing
+            // (FloatingHealthBar.cs:211-216 stands up a RenderMode.WorldSpace canvas with a gold
+            // rim). Such a canvas matches EVERY fact WO-1639 sec.1d established: it is world-space,
+            // so the ScreenSpaceOverlay compass strip occludes it; it scales with camera proximity;
+            // and a sprite gives the crisp vector silhouette the frames show. Without this pass the
+            // sweep would print "no world renderer exceeds..." and the next lane would start from
+            // zero - the exact dead end sec.1d is trying to close.
+            int uiReported = 0;
+            var canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+            for (int i = 0; i < canvases.Length; i++)
+            {
+                var cv = canvases[i];
+                if (cv == null || !cv.enabled || !cv.gameObject.activeInHierarchy) continue;
+                if (cv.renderMode == RenderMode.ScreenSpaceOverlay) continue;   // draws over the world by definition
+                if (cv.isRootCanvas == false) continue;                          // report the root, not every nested one
+
+                var crt = cv.transform as RectTransform;
+                if (crt == null) continue;
+                var wc = new Vector3[4];
+                crt.GetWorldCorners(wc);
+                float top = float.MinValue, bottom = float.MaxValue;
+                bool anyInFront = false;
+                for (int c = 0; c < 4; c++)
+                {
+                    var sp = cam.WorldToScreenPoint(wc[c]);
+                    if (sp.z <= 0f) continue;
+                    anyInFront = true;
+                    if (sp.y > top) top = sp.y;
+                    if (sp.y < bottom) bottom = sp.y;
+                }
+                if (!anyInFront) continue;
+                float uiHeightPx = top - bottom;
+                if (uiHeightPx < threshold) continue;
+                if (uiReported >= 15) break;
+                uiReported++;
+
+                // Name the sprite(s) it carries - that is what identifies a shield/chevron.
+                string sprites = "none";
+                var images = cv.GetComponentsInChildren<Image>(false);
+                if (images != null && images.Length > 0)
+                {
+                    var names = new System.Text.StringBuilder();
+                    int listed = 0;
+                    for (int k = 0; k < images.Length && listed < 6; k++)
+                    {
+                        var im = images[k];
+                        if (im == null || !im.enabled) continue;
+                        if (listed > 0) names.Append(",");
+                        names.Append(im.sprite != null ? im.sprite.name : "no-sprite");
+                        names.Append("@a");
+                        names.Append(im.color.a.ToString("F2"));
+                        listed++;
+                    }
+                    if (listed > 0) sprites = names.ToString();
+                }
+                string uHpx = uiHeightPx.ToString("F0");
+                string uFrac = (uiHeightPx / screenH).ToString("F2");
+                FlowTrace.Warn("Raid",
+                    "[wo1639-marker] " + phase + " OVERSIZED world-space CANVAS: path=" +
+                    HierarchyPath(cv.transform) + " renderMode=" + cv.renderMode.ToString() +
+                    " sortingOrder=" + cv.sortingOrder + " screenH=" + uHpx + "px (" + uFrac +
+                    " of screen) images=" + sprites);
+            }
+
+            if (reported == 0 && uiReported == 0)
+                FlowTrace.Step("Raid",
+                    "[wo1639-marker] " + phase + ": nothing - neither a world Renderer nor a " +
+                    "non-overlay Canvas - exceeds " +
+                    OversizedMarkerScreenFraction.ToString("F2") + " of screen height. If the " +
+                    "yellow shape was on screen in this frame it is NEITHER, and the next place " +
+                    "to look is a camera-stacked overlay or a projector/decal.");
+        }
+
+        private static string HierarchyPath(Transform t)
+        {
+            if (t == null) return "<null>";
+            string path = t.name;
+            var p = t.parent;
+            int guard = 0;
+            while (p != null && guard++ < 12)
+            {
+                path = p.name + "/" + path;
+                p = p.parent;
+            }
+            return path;
         }
 
         private void OnDestroy()
@@ -186,9 +478,34 @@ namespace DeNelle.Village
             if (barImg != null)
             {
                 barImg.raycastTarget = false;
-                // Quiet glass, not a gilt slab. The five readout rows stay (layout
-                // oracles pin SPIRE / Razed / timer); only the chrome gets out of the way.
-                barImg.color = new Color(0.04f, 0.035f, 0.03f, 0.42f);
+                // ⛔ WO-1639 DEFECT A — "QUIET GLASS" WAS MEASURED AND IT IS NOT LEGIBLE.
+                // This line shipped as new Color(0.04f, 0.035f, 0.03f, 0.42f) with the rationale
+                // "quiet glass, not a gilt slab ... only the chrome gets out of the way". The
+                // owner's device frames (build 363529, 2670x1200, Builds/device-frames/
+                // 2026-09-10_0608_arena_01_entry.png) were sampled and the plate composited to
+                // RGB ~(136,145,154) over the bright daylit arena. Against that, NOTHING on this
+                // panel reached the 3:1 large-text floor: timer 2.67:1, SPIRE 1.98:1, Razed
+                // 1.72:1, unlit stars 1.55:1, Troops 1.12:1. At 42% alpha the boundary-ring
+                // pillars are visible THROUGH the plate behind the last two rows, so those rows
+                // do not even sit on a constant background - their contrast varies with the world.
+                //
+                // The fix is the kit's OWN canon, not a hand-picked alpha: ElarionUiKit.
+                // ObsidianFill (ElarionUiKit.cs:189, 0.02/0.02/0.025 at alpha 0.98) is the panel
+                // fill every other Obsidian surface in the game uses - including the raid's own
+                // end panel, which reads well in the same frames and is the counter-example that
+                // proves 0.42 was the outlier, not the house style. Taking the constant rather
+                // than a local literal also means this plate can never drift from the kit again
+                // (the duplicated-state failure CLAUDE.md documents in sec.2, sec.5 and sec.16).
+                //
+                // PREDICTED ratios at ObsidianFill (WCAG relative luminance, plate composited
+                // over the same sampled arena background, computed 2026-09-10 - see the WO-1639
+                // RESULT for the arithmetic): Parchment 16.5:1, Gilt 12.2:1, ParchmentDim 10.6:1.
+                // Every text row clears 4.5:1 on the plate change ALONE, which is why the two
+                // ParchmentDim rows (Razed, Troops) are deliberately NOT promoted here - the
+                // defect was the plate, and ParchmentDim is the kit's secondary-text role that
+                // reads on a 0.98 plate everywhere else in the game. Only StarDim moves, and
+                // only because an unlit diamond is a non-text component with a 3:1 floor.
+                barImg.color = ElarionUiKit.ObsidianFill;
             }
             var barT = bar.transform;
 
@@ -203,7 +520,7 @@ namespace DeNelle.Village
                 ElarionUi.Parchment, ElarionUi.FontBody, TMPro.TextAlignmentOptions.Right, bold: true);
 
             var timerTrack = ElarionUiKit.AddImage(barT, "TimerTrack",
-                new Vector2(PadX0, 0.735f), new Vector2(PadX1, 0.780f), new Color(0f, 0f, 0f, 0.5f), rounded: false);
+                new Vector2(PadX0, 0.735f), new Vector2(PadX1, 0.780f), EmptyTrackFill, rounded: false);
             timerTrack.GetComponent<Image>().raycastTarget = false;
             var timerFillGo = ElarionUiKit.AddImage(timerTrack.transform, "TimerFill",
                 new Vector2(0f, 0f), new Vector2(1f, 1f), ElarionUi.Gilt, rounded: false);
@@ -219,7 +536,7 @@ namespace DeNelle.Village
                 ElarionUi.Gilt, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Right, bold: true);
 
             var objTrack = ElarionUiKit.AddImage(barT, "ObjectiveTrack",
-                new Vector2(PadX0, 0.515f), new Vector2(PadX1, 0.560f), new Color(0f, 0f, 0f, 0.5f), rounded: false);
+                new Vector2(PadX0, 0.515f), new Vector2(PadX1, 0.560f), EmptyTrackFill, rounded: false);
             objTrack.GetComponent<Image>().raycastTarget = false;
             var objFillGo = ElarionUiKit.AddImage(objTrack.transform, "ObjectiveFill",
                 new Vector2(0f, 0f), new Vector2(1f, 1f), ElarionUi.Gilt, rounded: false);
@@ -231,7 +548,7 @@ namespace DeNelle.Village
                 ElarionUi.ParchmentDim, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Right);
 
             var destTrack = ElarionUiKit.AddImage(barT, "DestTrack",
-                new Vector2(PadX0, 0.310f), new Vector2(PadX1, 0.350f), new Color(0f, 0f, 0f, 0.5f), rounded: false);
+                new Vector2(PadX0, 0.310f), new Vector2(PadX1, 0.350f), EmptyTrackFill, rounded: false);
             destTrack.GetComponent<Image>().raycastTarget = false;
             var destFillGo = ElarionUiKit.AddImage(destTrack.transform, "DestFill",
                 new Vector2(0f, 0f), new Vector2(0f, 1f), ElarionUi.Affordable, rounded: false);

@@ -1,6 +1,6 @@
 # WO-1639 - The in-raid HUD: the readout panel is illegible at 1.1:1 contrast, DEPLOY is ellipsised in every frame, HERO DOWN is buried, and the objective marker has no size limit
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate + device frame (lane RAID-HUD 2026-09-10)
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; number block 1637-1642 pre-assigned by the
 lead, banner bumped 1637 -> 1643 in the SAME edit)
 **Silo / Lane:** UI - `Assets/_Modules/Village/Troops/RaidHudController.cs` and
