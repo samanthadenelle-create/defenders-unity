@@ -3140,6 +3140,41 @@ namespace DeNelle.Core.UI
                 " evaluated=" + evaluated + " relaxed=" + relaxed + " stillBlank=" + blank);
         }
 
+        /// <summary>
+        /// WO-1656: the §1.14 guard's 600-frame STAND-DOWN line. Public for ONE reason — so a
+        /// regression can pin the wording without driving 600 LateUpdate ticks in a batchmode call.
+        /// It is a diagnostic string builder and nothing else; it reads no state and changes none.
+        /// <para/>
+        /// ⚠ WHY THE EMPTY HALF NO LONGER ASSERTS A BUG. It used to end
+        /// <c>"(a blank plate here is a TEXT-NEVER-SET bug, not a fit bug)"</c>. On APK 363722 that
+        /// sentence was FALSE for both labels it fired on, and the WO-1656 discriminating check
+        /// proved it on two device logs (`..._0929_...` and `..._0943_...`, both PID 5095):
+        /// <c>grep back-glyph-miss</c> = 0 and <c>grep "[Flow:Manage] notice:"</c> = 0, on a log
+        /// carrying 550 live <c>[Flow:Manage]</c> lines — so the back arrow's sprite RESOLVED and its
+        /// label was blanked deliberately (ManageScreenPanel.ApplyBackGlyph, the WO-1491 ruling), and
+        /// no notice was ever raised for the notice band. Two correctly-empty labels, accused of a bug.
+        /// <para/>
+        /// A warning that cries bug on healthy state trains every reader to ignore it — and this one
+        /// is the net that catches genuinely blank plates. So the empty half now REPORTS the state and
+        /// says whose call it is, instead of asserting a verdict the guard cannot reach from here.
+        /// <para/>
+        /// ⛔ The ZERO-HEIGHT half still asserts, deliberately: a rect that never gained height after
+        /// 600 frames has no "by design" reading. Narrowing the message must never become silencing
+        /// the branch (§12: instrumentation is never stripped; WO-1656 §6).
+        /// </summary>
+        public static string FitGuardStandDownMessage(string path, bool emptyText)
+        {
+            string where = "TextFitGuard [" + path + "]: armed but ";
+            if (emptyText)
+                return where + "text EMPTY after 600 frames — standing down; whether that is " +
+                       "empty-BY-DESIGN or never-set is the PRODUCER's call, not the fit guard's " +
+                       "(an icon-only face whose word was deliberately cleared, or a notice band with " +
+                       "no notice, is CORRECT here). If this plate should carry words, the bug is in " +
+                       "whatever writes it.";
+            return where + "rect still zero-height after 600 frames — standing down (a plate that never " +
+                   "gained height is a LAYOUT bug, not a fit bug)";
+        }
+
         /// <summary>Attach (or re-arm) the §1.14 post-layout guard on a fitted label.</summary>
         private static void ArmFitGuard(TMP_Text t)
         {
@@ -3234,9 +3269,10 @@ namespace DeNelle.Core.UI
                         // Round-3 finding: an armed label that never received text/size vanished
                         // from the log sweep SILENTLY — the exact hole that made the empty tab
                         // strips untraceable. A stand-down is itself a finding: log it.
-                        FlowTrace.Warn("UI", "TextFitGuard [" + PathOf(_t.transform) + "]: armed but " +
-                            (string.IsNullOrEmpty(_t.text) ? "text still EMPTY" : "rect still zero-height") +
-                            " after 600 frames — standing down (a blank plate here is a TEXT-NEVER-SET bug, not a fit bug)");
+                        // WO-1656: the EMPTY half no longer asserts a bug — see
+                        // ElarionUiKit.FitGuardStandDownMessage for the measurement that changed it.
+                        FlowTrace.Warn("UI", FitGuardStandDownMessage(PathOf(_t.transform),
+                                                                     string.IsNullOrEmpty(_t.text)));
                         enabled = false;
                     }
                     return;
@@ -3307,12 +3343,27 @@ namespace DeNelle.Core.UI
                 }
 
                 if (relaxed)
-                    FlowTrace.Warn("UI", "TextFitGuard '" + _t.text + "' [" + PathOf(_t.transform) + "]: rect " +
+                {
+                    // WO-1652 §6 remedy B: this Warn already fired once PER RELAXATION (never Once,
+                    // never Throttled — a relaxation is rare and each one is a distinct authoring
+                    // defect), but its prose was only readable by a human. The trailing tokens below
+                    // are the MACHINE contract FitGuardRelaxAllowlistRegression parses: a relaxation
+                    // that is not on the authored allowlist, or that lands under FontHardFloor, reds.
+                    // Additive only — the prose is untouched, so an old log still reads the same way.
+                    string relaxKey = PathOf(_t.transform);
+                    string floorFrom = oldMin.ToString("F0");
+                    string floorTo = _t.fontSizeMin.ToString("F0");
+                    string finalSize = _t.fontSize.ToString("F0");
+                    string charCount = (_t.textInfo != null ? _t.textInfo.characterCount : -1).ToString();
+                    FlowTrace.Warn("UI", "TextFitGuard '" + _t.text + "' [" + relaxKey + "]: rect " +
                         ((int)_t.rectTransform.rect.width) + "x" + ((int)h) +
                         " lineFactor " + factor.ToString("F2") +
-                        " — floor " + oldMin.ToString("F0") + " -> " + _t.fontSizeMin.ToString("F0") +
-                        " (" + iter + " post-check iterations), fontSize now " + _t.fontSize.ToString("F0") +
-                        ", chars " + (_t.textInfo != null ? _t.textInfo.characterCount : -1));
+                        " — floor " + floorFrom + " -> " + floorTo +
+                        " (" + iter + " post-check iterations), fontSize now " + finalSize +
+                        ", chars " + charCount +
+                        " | relaxKey=" + relaxKey + " floorFrom=" + floorFrom + " floorTo=" + floorTo +
+                        " finalSize=" + finalSize);
+                }
 
                 // Render assert (the DumpZoneLayout-style oracle): a fitted label MUST draw glyphs.
                 bool stillBlank = Blank(_t);

@@ -133,6 +133,7 @@ namespace DeNelle.Editor.Regression
                 CaseA_FixtureActuallyCulls(label, failures, log);
                 CaseB_ArmDeclineSpeaks(sink, failures, log);
                 CaseC_CensusCarriesCounts(sink, failures, log);
+                CaseD_StandDownDoesNotAccuseTheProducer(failures, log);
                 MeasureOnly_GuardAttachAndEval(label, sink, log);
             }
             catch (Exception ex)
@@ -299,6 +300,72 @@ namespace DeNelle.Editor.Regression
                            ". Both are expected NO on the current tree (edit mode: no arm, no LateUpdate tick). " +
                            "They are recorded, not asserted - WO-1652 §6 remedies A/B/C are TABLED pending an " +
                            "owner ruling, and asserting either value here would pick one.");
+        }
+
+        // -----------------------------------------------------------------
+        //  CASE D -- WO-1656. THE STAND-DOWN MUST NOT ACCUSE A CORRECTLY-EMPTY LABEL.
+        //
+        //  RED-FIRST: on the pre-WO-1656 wording the empty half ended "(a blank plate
+        //  here is a TEXT-NEVER-SET bug, not a fit bug)" and this case fails on it. It
+        //  was measured false on APK 363722 for BOTH labels it fired on -- the WO-1656
+        //  discriminating check returned `back-glyph-miss` = 0 and `[Flow:Manage] notice:`
+        //  = 0 across two device logs (2026-09-10_0929 and _0943, PID 5095) carrying 550
+        //  live [Flow:Manage] lines. The back arrow's sprite resolved, so its label was
+        //  blanked on purpose (the WO-1491 ruling); no notice was ever raised for the
+        //  notice band. Two healthy labels, called a bug by the net that is supposed to
+        //  catch real ones.
+        //
+        //  It pins the wording through the production string builder, not through a
+        //  source-text grep: a source lint would pass on a file that no longer calls it.
+        //  And it pins the OTHER half still asserting, because narrowing this warning
+        //  must never slide into silencing it (WO-1656 acceptance 4, §12).
+        // -----------------------------------------------------------------
+        private static void CaseD_StandDownDoesNotAccuseTheProducer(List<string> failures, StringBuilder log)
+        {
+            const string NoticePath = "ManageScreenUI/ObsidianPanel/PanelContent/Band_Notice/Label";
+            const string BackPath = "ObsidianPanel/PanelContent/ManageHeaderActions/ManageWorkspaceBack/Label";
+
+            string empty = ElarionUiKit.FitGuardStandDownMessage(NoticePath, true);
+            log.AppendLine("  [stand-down/empty] " + empty);
+
+            if (empty.IndexOf("TEXT-NEVER-SET", StringComparison.Ordinal) >= 0)
+            {
+                failures.Add(Tag + " CASE D (WO-1656, RED-first): the empty-text stand-down still asserts a " +
+                             "TEXT-NEVER-SET bug. Measured false on APK 363722 for both labels it fired on " +
+                             "(" + NoticePath + " and " + BackPath + "): back-glyph-miss=0 and " +
+                             "'[Flow:Manage] notice:'=0 on two device logs. A warning that cries bug on healthy " +
+                             "state is how the net that catches real blank plates gets ignored.");
+            }
+
+            if (empty.IndexOf("PRODUCER", StringComparison.Ordinal) < 0)
+            {
+                failures.Add(Tag + " CASE D: the empty-text stand-down does not say whose call the emptiness is. " +
+                             "The guard cannot tell empty-by-design from never-set from inside LateUpdate - the " +
+                             "message must hand that judgement to the producer, not guess it.");
+            }
+
+            if (empty.IndexOf("EMPTY", StringComparison.Ordinal) < 0 ||
+                empty.IndexOf("600 frames", StringComparison.Ordinal) < 0 ||
+                empty.IndexOf(NoticePath, StringComparison.Ordinal) < 0)
+            {
+                failures.Add(Tag + " CASE D: the stand-down stopped reporting the state it stood down on " +
+                             "(the label path, that the text was EMPTY, and the 600-frame wait). Narrowing the " +
+                             "verdict must not cost the diagnostic - that would be stripping instrumentation " +
+                             "by attrition (§12).");
+            }
+
+            // The OTHER half must still assert. A rect that never gained height has no by-design reading.
+            string zeroHeight = ElarionUiKit.FitGuardStandDownMessage(NoticePath, false);
+            log.AppendLine("  [stand-down/zero-height] " + zeroHeight);
+
+            if (zeroHeight.IndexOf("zero-height", StringComparison.Ordinal) < 0 ||
+                zeroHeight.IndexOf("LAYOUT bug", StringComparison.Ordinal) < 0)
+            {
+                failures.Add(Tag + " CASE D: the zero-height stand-down no longer asserts a layout bug. WO-1656 " +
+                             "narrowed the EMPTY half only - a plate that never gained height after 600 frames " +
+                             "is a defect with no 'by design' reading, and silencing it would be a regression of " +
+                             "the detector, not a pass (WO-1656 acceptance 4).");
+            }
         }
 
         private static string FindLine(CapturingSink sink, string token)

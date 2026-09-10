@@ -1,6 +1,6 @@
 # WORK ORDER 1656 — Manage `Band_Notice` and `ManageWorkspaceBack` labels stand down as "text still EMPTY"
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting gate. **§4 RUN 2026-09-10 by lane FIT-GUARD: verdict H1 on BOTH labels** (both greps returned 0 on BOTH device logs, on a log carrying 550 live `[Flow:Manage]` lines). The guard's stand-down message was accusing two correctly-empty labels; the EMPTY half no longer asserts a bug, the zero-height half still does, the branch is intact and `ManageScreenPanel.cs` is untouched. See §4b. RESULT: `WORK_ORDER_1656_manage_band_notice_and_workspace_back_labels_never_receive_text.RESULT.md`. Not gated - this lane holds no Unity.
 **Silo:** UI / Manage screen + UiKit TextFitGuard
 **Opened:** 2026-09-10 by the DEVICE-FRAMES-2 lane
 **Source:** device play-mode session, APK **2026.09.10.363722**, Seeker `SM02G4061955851`, PID **5095**
@@ -113,7 +113,61 @@ through it. **If either resolves to H2**, fix that producer and leave the guard 
 
 ---
 
-## 5. ACCEPTANCE
+### 4b. THE CHECK, RUN — verdict **H1 on both labels**
+
+*2026-09-10, lane FIT-GUARD. Both greps run on BOTH device logs, not one.*
+
+```
+$ grep -c 'back-glyph-miss'        Builds/device-frames/2026-09-10_0929_363722_logcat.txt   -> 0
+$ grep -c '\[Flow:Manage\] notice:' Builds/device-frames/2026-09-10_0929_363722_logcat.txt  -> 0
+$ grep -c 'back-glyph-miss'        Builds/device-frames/2026-09-10_0943_363722_logcat.txt   -> 0
+$ grep -c '\[Flow:Manage\] notice:' Builds/device-frames/2026-09-10_0943_363722_logcat.txt  -> 0
+```
+
+**Proof the greps are not vacuous** (§11B: measuring something is not measuring the right thing):
+
+- `grep -c '\[Flow:Manage\]' …_0943_… ` → **550**. The channel is live; a zero is a real zero.
+- Both tokens exist at exactly the lines §2 cites, re-read at source in the working tree:
+  `FlowTrace.Once("Manage", "back-glyph-miss", …)` at `ManageScreenPanel.cs:4118`, and
+  `FlowTrace.Step("Manage", "notice: " + msg)` at `:7581`.
+
+**Verdicts.**
+
+- **`ManageWorkspaceBack` → H1.** No `back-glyph-miss` on either log ⇒ `ManageArt.LoadSprite(IconBack)`
+  returned non-null ⇒ the blanking at `:4130-4131` ran **on purpose** (the WO-1491 ruling), which the
+  §1 frames corroborate by showing an arrow glyph.
+- **`Band_Notice` → H1.** No `notice:` line on either log ⇒ `FlushNotice` never got past its
+  `IsNullOrEmpty(_vm.Notice)` guard ⇒ nothing ever asked for the band. Legitimately empty.
+
+**Two stand-down lines, not one.** `_0943_` carries both labels; `_0929_` carries **only**
+`Band_Notice` — the back arrow's guard had not yet stood down when that log ended. Anyone quoting "two
+stand-downs" should name the `_0943_` log; the `_0929_` log shows one.
+
+### 4c. THE FIX, AND ONE DELIBERATE DEVIATION FROM §5.3 — flagged, not hidden
+
+Landed in the guard only:
+
+- `ElarionUiKit.FitGuardStandDownMessage(path, emptyText)` (new, `ElarionUiKitObsidian.cs`) is now the
+  single builder for the 600-frame stand-down line. The **EMPTY** half no longer says
+  *"a blank plate here is a TEXT-NEVER-SET bug"*; it reports the state and hands the verdict to the
+  producer: *"…text EMPTY after 600 frames — standing down; whether that is empty-BY-DESIGN or
+  never-set is the PRODUCER's call, not the fit guard's…"*. The **ZERO-HEIGHT** half still asserts a
+  LAYOUT bug — that state has no by-design reading.
+- The stand-down **branch is untouched** (§6: never delete it), `ManageScreenPanel.cs` is **not
+  touched**, no font floor moved, no fit/relax number moved.
+- Pinned by `TextFitGuardArmRegression.CaseD_StandDownDoesNotAccuseTheProducer`, which calls the
+  production builder (not a source grep — a lint would pass on a file that no longer calls it) and
+  reds if the accusation returns, if the message stops naming the producer, if it stops reporting the
+  path/EMPTY/600-frame state, **or if the zero-height half stops asserting**.
+
+⚠ **DEVIATION, stated in advance rather than explained afterwards (§11B B).** Acceptance **§5.3** asks
+that the warning *"no longer fires for these two labels"*. It still fires — reworded. Silencing it
+per-label needs an **opt-out at the arm site**, i.e. an `allowEmpty` flag threaded from
+`ManageScreenPanel`'s two call sites, and §6 of this WO forbids this lane touching that file. The
+reworded line costs nothing that mattered (the state is still reported) and removes the only thing
+that was wrong (the false verdict). **If the owner wants true silence for these two, that is a
+follow-up that must edit the producer — say so and it will be minted.** Acceptance §5.1, §5.2, §5.4
+and §5.5 are met as written; §5.6 is the lead's gate.
 
 1. **The check in §4 is run and its output quoted** — both greps, on a fresh log, with the log path.
    The verdict (H1 or H2, per label) is written into this WO before any code changes.

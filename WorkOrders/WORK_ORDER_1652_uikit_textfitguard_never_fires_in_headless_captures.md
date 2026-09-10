@@ -1,6 +1,6 @@
 # WO-1652 - `UiKitTextFitGuard` NEVER fires in a headless capture: every PNG we gate on measures the UN-GUARDED layout
 
-**Status:** READY TO IMPLEMENT - INSTRUMENTED 2026-09-10 (a5f3b45e4): capture log read (wave5-manageflow3: armCalls=963 armed=0), play-mode log still owed, remedy A/B/C tabled
+**Status:** IMPLEMENTED - awaiting gate. 2026-09-10: both logs read at source; **remedy B recommended and implemented** (§6b/§6c) - captures stay un-guarded, the player build's 8 floor relaxations are now machine-readable and leashed by `FitGuardRelaxAllowlistRegression`. Remedy A rejected ON THE DATA (the guard's rescue path fired 0 times; running it in captures would paint 8 authoring defects as comfortable and blunt the glyph oracle). No font floor moved. Not gated - this lane holds no Unity.
 
 > **2026-09-10, lane FIT-GUARD (worktree `agent-a9e001ddb25631dda`, branched from dev `736b6b4b9`).**
 > §4 (instrument-first) is DONE and nothing else was touched. **No remedy was chosen — §6 options
@@ -155,6 +155,81 @@ choose silently (architecture law: *what is right, not what is easy*).
 ⚠ **A is the tempting one and it is the one that could silently retire the glyph oracle's teeth.** Say
 that out loud when the ruling is asked for.
 
+---
+
+### 6b. RECOMMENDATION: **B**, and the data rules A out rather than merely disfavouring it
+
+*Written 2026-09-10 by lane FIT-GUARD against both logs, read at source in this session. Every number
+below was greped out of the named file, not carried over from the hand-off note.*
+
+**The two measurements.**
+
+| | log (read at source) | last census |
+|---|---|---|
+| capture | `Builds/wave5-manageflow3` (1,358,244 B) | `armCalls=2642 armed=0 declinedNotPlaying=2642 evaluated=0 relaxed=0 stillBlank=0` |
+| play mode | `Builds/device-frames/2026-09-10_0929_363722_logcat.txt` (4,459,194 B, APK 363722, PID 5095) | `armCalls=314 armed=314 declinedNotPlaying=0 evaluated=88 relaxed=8 stillBlank=0` |
+
+⚠ **Two numbers in the hand-off note do not match the files.** The note quoted the capture at
+`armCalls=963` — that is the FOURTH of six census lines in `wave5-manageflow3`; the last is **2642**.
+The note quoted the device at `armCalls=503 … evaluated=172` and **two** stand-downs; this file's
+eleventh and last census reads **314 / evaluated=88**, and it carries **one** stand-down
+(`ManageScreenUI/ObsidianPanel/PanelContent/Band_Notice/Label`, text still EMPTY after 600 frames).
+The `relaxed=8` figure and the eight labels are identical either way, so the recommendation does not
+turn on it — but the counts quoted downstream should be re-greped, not copied (§11B).
+
+**The finding that decides it: the guard has never once done the job it was built for.**
+All eight relaxation lines read **`(0 post-check iterations)`**, and `stillBlank=0`. The
+GUARANTEE-FIT loop — the iterate-down-until-glyphs-render rescue that is the guard's entire reason to
+exist — fired **zero** times. Every one of the eight is the *static* `fitMin = floor(h/factor) - 1`
+recompute. **The guard is not rescuing culls. It is shrinking text in eight bands that were authored
+too short to seat the owner's floor, and telling no one.**
+
+**Therefore A is not a trade-off, it is a downgrade.** A would paint that shrink into the capture PNG —
+the one place a human looks. It buys "the PNG shows what the player sees" at the price of the glyph
+oracle's teeth for the whole WO-1636 class (§6's own warning), and what it would show is not a rescue
+but a defect rendered comfortable. **A is rejected on the data, not on taste.**
+
+**B is recommended, and C collapses into it.** C's "play-mode regression" needs a play-mode harness
+that does not exist; the *evidence* C wanted is already on disk as the per-relaxation `FlowTrace.Warn`,
+so the missing half is not a harness — it is a **leash**: an authored allowlist that reds on a ninth.
+That is what shipped with this WO. Captures keep measuring authored truth, so WO-1636 and the glyph
+oracle are untouched.
+
+**The eight, and what they mean for the FontFloor rulings.** Owner's `FontFloor` = 30 (target),
+`FontHardFloor` = 20 (absolute, raised from 12 by the F8 2026-07-08 *"text will never be able to be seen
+on mobile at this size"* ruling). **All eight are legal by the guard's contract (≥ 20) and all eight are
+under the 30 the owner set.** They are not guard bugs; they are **eight authoring defects the guard has
+been papering over**, none of which has ever appeared in a PNG:
+
+| renders at | floor 30 → | label / key |
+|---|---|---|
+| **23 px** | **21** | `HudAreasHost/Area_ActionRail/Widget_resourceChipsCollapsed/CurrencyChip_Gold/Label` — the **'+4' gold chip on the always-on HUD rail**. 7 px under the owner's floor, 3 px off the hard floor, and its band had to be GROWN first (`26px -> 26px`, minBand 26) — it is the worst of the eight and the one on screen the most. |
+| 24 px | 22 | `ObsidianPanel/PanelFill/HarvestRow_{Wood,Iron,Stone}/Well/Label` — the `'3,000 / 3,000  FULL'` well lines, 26 px bands (×3) |
+| 29 px | 26 | `HarvestOverflowUI/ObsidianPanel/PanelFill/HarvestRow_{Wood,Iron,Stone}/Label` — `'… waiting, safe'`, 32 px bands (×3) |
+| 30 px | 28 | `ObsidianPanel/PanelContent/ManageCategoryLauncher/ManageHeartFace/Label` — `'250 Crystals'`; **the floor moved but `fontSize` stayed 30, so nothing actually shrank** — one px of band from being a real defect |
+
+⛔ **No floor was moved by this work** (acceptance §4): `FontFloor` and `FontHardFloor` are read in the
+new suite and written nowhere. **The fix for each of the eight is the BAND's height, not the list** —
+each should become its own small authoring ticket, gold chip first. Removing an entry by fixing its band
+is the intended way off the list; widening the list is not.
+
+**⚠ Still NOT proven (§5 stays open on one point):** whether the eight ever CULL for a player. On this
+session they did not (`stillBlank=0`). What is proven is that they render below the owner's floor and
+that nobody could have seen it.
+
+### 6c. What landed under B (this commit)
+
+1. `ElarionUiKitObsidian.cs` — the per-relaxation `FlowTrace.Warn` (already one line per relaxation,
+   never `Once`, never `Throttle`) now also carries the machine contract
+   `| relaxKey=<path> floorFrom=<n> floorTo=<n> finalSize=<n>`. **Additive only** — the prose is
+   byte-identical, so every logcat already on disk still reads and parses the same way.
+2. `Assets/Editor/Regression/FitGuardRelaxAllowlistRegression.cs` — the leash. The eight are the
+   authored allowlist, keyed by `PathOf`. It reds when a relaxation is **not on the list**, when one
+   lands **under `FontHardFloor`**, or when a listed one gets **worse than its measured size**. It
+   parses BOTH the new token form and the legacy prose (or every existing log would read as clean).
+   RED-first cases A and B feed it synthetic lines and fail if it stays green, so it cannot pass
+   vacuously on a machine with no device log.
+
 ## 7. Acceptance
 
 1. **RED FIRST.** Add a deliberately-culled fixture label to the capture harness's own fixtures - a
@@ -175,4 +250,4 @@ that out loud when the ruling is asked for.
 
 ## Play-mode measurement (lead, 2026-09-10 09:15, APK 2026.09.10.363722, PID 5095)
 
-`Builds/device-frames/2026-09-10_0929_363722_logcat.txt`: `[Flow:` = 9,925 lines (channel live). `TextFitGuard ARM branch=armed isPlaying=True` (Once). Last census: `TextFitGuard CENSUS armCalls=503 armed=503 declinedNotPlaying=0 declinedNullText=0 evaluated=172 relaxed=8 stillBlank=0`. The 8 relaxations: six harvest-modal labels (floor 30 -> 22 / 26), the gold chip `+4` (30 -> 21, fontSize 23), `250 Crystals` on the Manage hub (30 -> 28). Two TEXT-NEVER-SET stand-downs: `Band_Notice/Label` and `ManageHeaderActions/ManageWorkspaceBack/Label` (armed, text still EMPTY after 600 frames). Both logs now exist (capture: wave5-manageflow3 armed=0; play: armed=503 relaxed=8); the remedy decision is next.
+`Builds/device-frames/2026-09-10_0929_363722_logcat.txt`: `[Flow:` = 9,925 lines (channel live). `TextFitGuard ARM branch=armed isPlaying=True` (Once). Census as quoted by the DEVICE-FRAMES-2 lane: `armCalls=503 armed=503 ... evaluated=172 relaxed=8`; the FIT-GUARD lane re-read the same file and reports the LAST census as `armCalls=314 armed=314 declinedNotPlaying=0 evaluated=88 relaxed=8 stillBlank=0` and one stand-down on _0929_ (both on _0943_) - the lanes disagree on the count, agree on relaxed=8 and the eight labels; re-grep before quoting. The 8 relaxations: six harvest-modal labels (floor 30 -> 22 / 26), the gold chip `+4` (30 -> 21, fontSize 23), `250 Crystals` on the Manage hub (30 -> 28). Two TEXT-NEVER-SET stand-downs: `Band_Notice/Label` and `ManageHeaderActions/ManageWorkspaceBack/Label` (armed, text still EMPTY after 600 frames). Both logs now exist (capture: wave5-manageflow3 armed=0; play: armed=503 relaxed=8); the remedy decision is next.
