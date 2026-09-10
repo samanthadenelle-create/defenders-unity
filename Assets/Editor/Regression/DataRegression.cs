@@ -1750,6 +1750,7 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "jewel-polish suite", () => { if (!DeNelle.Editor.Regression.JewelPolishRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[jewel-polish] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "startnew-confirm-gate suite", () => { if (!DeNelle.Editor.Regression.StartNewConfirmGateRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[startnew-confirm-gate] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "save-wipe-backup suite", () => { if (!DeNelle.Editor.Regression.SaveWipeBackupRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[save-wipe-backup] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "staking-compliance suite", () => { if (!DeNelle.Editor.Regression.StakingComplianceRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[staking-compliance] " + r); });
             // WO-1397: the Cosmetic Shop is reachable - a Hero-deck "Wardrobe" card routes to the
             // already-registered PanelId.CosmeticShop; the deck grid derives its rows from the card
             // count (2x3 for five cards) so no card lands under the purpose line. WO-1523: that

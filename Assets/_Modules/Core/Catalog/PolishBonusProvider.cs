@@ -63,15 +63,41 @@ namespace DeNelle.Core.Catalog
     }
 
     /// <summary>
-    /// Reads the active native SKR stake through the single read-only staking seam. A positive,
-    /// verified active stake grants one weekly re-roll; 10,000+ SKR also raises the per-stone cap.
-    /// The provider never owns a wallet, RPC client, probability, or outcome table.
+    /// Reads the BACKEND-VERIFIED active native SKR stake. A positive, verified active stake
+    /// grants one weekly re-roll; 10,000+ SKR also raises the per-stone cap. The provider never
+    /// owns a wallet, RPC client, probability, or outcome table.
     /// </summary>
+    /// <remarks>
+    /// ⛔ RE-POINTED 2026-09-10 (WO-1674 / HEART-001, owner ruling 13:10 "backend only").
+    ///
+    /// This used to read <c>StakeRewardsResolver.Resolve()</c>, which resolves the standing from
+    /// <c>StakeRewardsResolver.Query</c> — a PUBLIC SETTABLE PROPERTY (StakeRewardsResolver.cs:175-183).
+    /// Anything in the process could install an IStakeQuery reporting any amount and this provider
+    /// would grant on it, which is a live violation of product rule 7 ("The Unity client must never
+    /// be trusted to report the amount of SKR staked"). It was TOLERABLE only because the grant is
+    /// extra ATTEMPTS — never odds, never resources — and HEART-005 makes a stake grant resources.
+    ///
+    /// ⚠ THE SEAM STILL EXISTS AND THAT IS DELIBERATE. <c>StakeRewardsResolver.Query</c> and its
+    /// MockStakeQuery still drive the Seekerthon SHOWCASE panel (StakeRewardsDemoBootstrap.cs:38,
+    /// SkrShowcasePanel.cs:250) and the Jeweler FTUE card's copy. Those are DISPLAY. What changed is
+    /// that setting Query can no longer change what anything GRANTS: the reward path now reads
+    /// <see cref="VerifiedStakeSnapshot"/>, whose only writer is the backend response.
+    ///
+    /// The explicit <c>Resolve(long)</c> overload is used so the tier ladder in stake-rewards.json
+    /// still decides the SHAPE of the standing, while the AMOUNT comes from the server. The ladder
+    /// is presentation data; the amount is the thing that had to move.
+    ///
+    /// ⛔ THE INTERFACE IS UNCHANGED, ON PURPOSE. Still attempts-only — no odds, weights, luck, tier
+    /// bias or bonus table (see the file header, and DungeonGemExclusivityRegression which fails on
+    /// an odds-shaped member). WO-1674 moved WHERE the input comes from and nothing else; widening
+    /// the grant is a separate decision the owner has not made (WO-1673 D6 adjacency).
+    /// </remarks>
     public sealed class NativeSkrPolishBonus : IPolishBonusProvider
     {
         public const long ExpandedRollCapStake = 10_000L;
 
-        private static StakeStanding Standing => StakeRewardsResolver.Resolve();
+        private static StakeStanding Standing =>
+            StakeRewardsResolver.Resolve(VerifiedStakeSnapshot.RewardBearingStakeSkr);
 
         public int ExtraWeeklyRerolls => Standing.HasStake ? 1 : 0;
         public int RollCapDelta => Standing.HasStake && Standing.ActiveStake >= ExpandedRollCapStake ? 1 : 0;

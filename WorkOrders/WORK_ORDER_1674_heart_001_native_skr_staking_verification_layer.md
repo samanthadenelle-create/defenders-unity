@@ -1,6 +1,6 @@
 # WORK ORDER 1674 — HEART-001: Native SKR staking verification layer (backend-authoritative)
 
-**Status:** SPEC
+**Status:** IMPLEMENTED - 2026-09-10 HEART-001 lane; merged by the lead 14:00 (re-worded from DONE by the lead: the migration is unapplied, api/heartbound/status.js never executed against Neon, and the editor gate does not define DAPP_STORE so HeartboundStatusClient.cs body compiles first in the APK build - all named unproven in the RESULT)
 **Silo:** Backend (`api/`, Neon, Vercel) + one Unity read-only client seam. No gameplay, no economy, no scene files.
 **Raised by:** HEARTBOUND-TRIAGE lane, 2026-09-10, from the owner's 13-part spec.
 **Number:** PRE-ASSIGNED by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately **NOT** edited by this lane.
@@ -188,3 +188,7 @@ It is a five-minute source-lint at most (the pins that *do* exist are listed in 
 - `vercel.json:6-9` — exactly two crons
 - **`grep -rn "StakingComplianceRegression" .` → 3 hits, all of them claims. The proof for D5.**
 - **`grep -rn "getAccountInfo\|getTokenAccountsByOwner" api/` → 0 hits. The proof for D1's "no backend precedent".**
+
+## OWNER RULINGS (2026-09-10 13:10, Tier 1)
+
+Stake read: BACKEND ONLY (relocate; client read deleted or display-only). RPC outage: fail to LAST-KNOWN verified state with a bounded grace window. Platform: Seeker only, Play never shows it. Economic acceleration via a staked position: allowed; combat power never.
