@@ -238,6 +238,13 @@ DEVICE-FRAMES-4 on 363866 (11:34-11:37, `Builds/device-frames/2026-09-10_113*_36
 COLLECT 89.2) -> WO-1664; the state-word probe reporting 20 px for seven glyphs + PartyNameplate standing down 40 s after live text ->
 WO-1665 (both minting). Pushed: dev = `bee7a2261` (11:32).
 
+Wave 7b COMMITTED (11:50, chain 36/37: `wave7-compile2/3` COMPILE_GATE_OK, `wave7-reg2/3` REGRESSION_OK 496/496, `wave7-capture2`
+UI_CAPTURE_OK 106 + UI_GLYPH_OK 106/106): `9a6ec970d` WO-1662 (Night Market HUD title wraps at 26; pins re-pointed to the Title font);
+`b75dcb24d` WO-1663 PARTIALLY (six obsidian-face pins measure Title; the WO's predicted reds did not fire - rail chips draw authored case;
+three pins found over retired surfaces -> WO-1666); mints `8470a9b18` 1663, `668ef70b7` 1664/1665/1666 (banner 1667). Lanes out:
+TOUCH-FLOOR 1664 (five clamps: title row 69.5 px, REPAIR ALL 101.4, COLLECT 89.2; front-door touch oracle unreported), PROBE-READBACK
+1665 (state-word probe 20 px for seven glyphs; PartyNameplate = four GameObjects named Label on one path), LABEL-PINS 1666.
+
 ## 2. Builds (appended as each marker lands)
 
 - **Windows release exe:** `Builds/build.log` -> `[DesktopBuild] SUCCEEDED - 2009 MB` (2026-09-10 00:13).
