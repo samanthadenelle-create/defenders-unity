@@ -98,6 +98,19 @@ namespace DeNelle.Core.State
         /// <summary>Sibling-key suffix holding a save slot's integrity signature.</summary>
         public const string SignatureKeySuffix = ".sig";
 
+        // ── WO-1688: the ONE-GENERATION WIPE-UNDO SLOT ────────────────────────
+        // Declared HERE, beside SignatureKeySuffix, for the reason the WO states
+        // outright: the backup slot's name must be DERIVED from PlayerPrefsKey, never
+        // written as a second literal key somewhere else. A second "dotr-save.prev"
+        // literal in another file is the same duplicated-state failure that has cost
+        // this repo a stale WO-number block and a retired dependency table - it goes
+        // stale the moment PlayerPrefsKey is ever repointed, and the wipe-undo then
+        // writes to a slot nothing reads. SaveBackupService composes
+        // PlayerPrefsKey + BackupKeySuffix and is the only place that does.
+        /// <summary>Suffix of the one-generation pre-reset backup slot (WO-1688).
+        /// Compose as <c>PlayerPrefsKey + BackupKeySuffix</c> - never hardcode the key.</summary>
+        public const string BackupKeySuffix = ".prev";
+
         /// <summary>
         /// The client-embedded HMAC key. Assembled from fragments so it is not a
         /// single grep-able literal in the binary (obfuscation only — see the

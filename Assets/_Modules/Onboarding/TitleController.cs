@@ -128,7 +128,22 @@ namespace DeNelle.Onboarding
 
         private void OnDestroy()
         {
+            CloseStartNewConfirm();   // WO-1688: the wipe sheet never outlives the title
             if (_canvas != null) Destroy(_canvas);
+        }
+
+        /// <summary>WO-1688: pad a confirm face up to the kit touch floor once its layout has
+        /// resolved. Returns false while the rect still reads 0 (layout pending).</summary>
+        private static bool EnsureConfirmTouchFloor(Button b)
+        {
+            if (b == null) return true;                       // no face — nothing to do
+            var rt = b.transform as RectTransform;
+            if (rt == null) return true;
+            float h = rt.rect.height;
+            if (h <= 0.5f) return false;                      // layout not resolved yet
+            if (h < ElarionUiKit.MinTouchPx)
+                rt.sizeDelta = new Vector2(rt.sizeDelta.x, rt.sizeDelta.y + (ElarionUiKit.MinTouchPx - h));
+            return true;
         }
 
         /// <summary>
@@ -276,10 +291,39 @@ namespace DeNelle.Onboarding
             var row = new GameObject("TitleButtons", typeof(RectTransform), typeof(Image));
             row.transform.SetParent(parent, false);
             var rt = (RectTransform)row.transform;
-            // A single low, wide band — small clean buttons side-by-side. Kept a healthy
-            // ~7% screen-height so the touch target stays tappable on mobile.
+            // A single low, wide band — small clean buttons side-by-side.
+            //
+            // ⛔ THE ROW HEIGHT IS ARITHMETIC, NOT TASTE, AND THE OLD COMMENT HERE LIED
+            // (WO-1664, 2026-09-10). It read "Kept a healthy ~7% screen-height so the touch
+            // target stays tappable on mobile" — and the device disagreed in its own words:
+            //   [touch-oracle] CLAMP FIRED TitleScreenUI/TitleButtons/ObsBtn_Continue:
+            //   authored 399.5x69.5 -> grown 399.5x112 (1.0x on W, 1.61x on H)
+            // (Builds/device-frames/2026-09-10_1137_363866_logcat.txt, and byte-identical on the
+            // 363786 log before it, so it is standing residue, not a one-build blip). All three
+            // faces fired. ClampMinTouch grows a sub-floor face SYMMETRICALLY ABOUT ITS CENTRE,
+            // so a rescued face spills into BOTH neighbours — here, into the row's own chrome.
+            //
+            // THE FORMULA. A face fills 0.10..0.90 of this row (see the loop below), so
+            //     faceH_px = (anchorMax.y - anchorMin.y) x refHeight x 0.80
+            // and the row must satisfy faceH_px >= ElarionUiKit.MinTouchPx (112).
+            // refHeight is the CanvasScaler's post-scale height, and the kit scaler is
+            // referenceResolution (1080,1920), MatchWidthOrHeight 0.5 (ElarionUiKit.cs:109-111):
+            //     scale = (W/1080)^0.5 x (H/1920)^0.5 ,  refHeight = H / scale
+            //   1920x1080 -> 1080.0 | 2340x1080 -> 978.4 | 2670x1200 -> 965.4  (the Seeker)
+            // 965.4 is the SMALLEST of the captured aspects, so the band is authored against it —
+            // clearing the floor there clears it everywhere.
+            //     minimum row height = 112 / (965.4 x 0.80) = 0.1450
+            // ⚠ 0.045..0.190 (the first-draft value) resolves to 0.145 x 965.4 x 0.80 = 111.95 px
+            // — SIX HUNDREDTHS OF A PIXEL UNDER THE FLOOR, and the clamp would still fire.
+            // 0.045..0.195 resolves to 0.150 x 965.4 x 0.80 = 115.8 px, which clears it.
+            //
+            // The row grows UPWARD off a FIXED bottom margin (anchorMin.y stays 0.045), so the
+            // thumb-reach edge does not move. Clearance above: this row and BuildTitleTextBlock
+            // both parent to _canvas.transform (:204-206), i.e. the SAME full-canvas space, so
+            // the comparison is aspect-independent — the tagline's floor is 0.60 (:265) and the
+            // row's new top is 0.195, leaving 0.405 of screen height between them.
             rt.anchorMin = new Vector2(0.20f, 0.045f);
-            rt.anchorMax = new Vector2(0.80f, 0.135f);
+            rt.anchorMax = new Vector2(0.80f, 0.195f);
             rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
             var tray = row.GetComponent<Image>();
             var traySprite = Resources.Load<Sprite>("UI/ElarionMedieval/frames/content-panel");
@@ -375,16 +419,153 @@ namespace DeNelle.Onboarding
         //  Menu actions (flow contract preserved from the UITK version)
         // =====================================================================
 
+        // =====================================================================
+        //  WO-1688 — THE WIPE CONFIRM. Copy lives here, in ONE place.
+        // ---------------------------------------------------------------------
+        //  ⚠ EXACT WORDS FLAGGED FOR THE OWNER (WO-1688 §2.1 asks for plain copy
+        //  that names what is lost, and the WO itself asks that the words be put
+        //  in front of her rather than chosen silently). Facts only — the realm,
+        //  the hero, the town, and that it cannot be undone. No lore, no "are you
+        //  sure". Change these four constants and nothing else moves.
+        // =====================================================================
+        // ⚠ THE TITLE BAND IS BROKEN AND IT IS NOT THIS STRING'S FAULT (chain 41, 2026-09-10):
+        //     [glyph-oracle] TEXT CULLED WHOLE [StartNewConfirm_2670x1200] '.../PanelFill/Label'
+        //     ("*  Erase This Realm?") draws ZERO of 16 printable glyphs ... The band has no
+        //     room for one character at the resolved size.
+        // ZERO, not "a few short" - no wording of any length would seat there, so shortening
+        // this is not the fix and would only hide the band defect. The band belongs to the
+        // FIT-GUARD lane (WO-1690, ElarionUiKit.BuildConfirmModal); do not edit that file from
+        // here. If the repaired band still cannot seat 15 glyphs, the owner-flagged fallback is
+        // "Erase Realm?" (11) - a one-line flip, and deliberately NOT pre-applied, because a
+        // copy change made to dodge a layout bug outlives the bug.
+        private const string StartNewConfirmTitle = "Erase This Realm?";
+        private const string StartNewConfirmBody =
+            "Starting a new game erases your current realm — your town, your hero and everything " +
+            "you have built. This cannot be undone.";
+        // ⚠ THE FACES WERE SHORTENED BY MEASUREMENT, NOT BY TASTE (chain 41, 2026-09-10).
+        // The first pass authored "Erase and Start New" / "Keep My Realm". The front-door
+        // capture built the sheet for the first time and the glyph oracle measured the
+        // result on the Seeker's real surface:
+        //     [glyph-oracle] TEXT TRUNCATED [StartNewConfirm_2670x1200]
+        //     '...ObsBtn_Erase and Start New/Label' ("ERASE AND START NEW") draws 12 of 16
+        // Four glyphs of the most destructive label in the game were not on screen. A face
+        // that cannot say its own word is worse than a short one, and the BODY above it
+        // already names the loss in full ("erases your current realm — your town, your hero
+        // ... This cannot be undone"), so the faces only have to name the CHOICE.
+        // ⛔ Do NOT lengthen these without re-running the front-door capture and reading the
+        // glyph line. The face BAND and the MinTouchPx floor are the FIT-GUARD lane's
+        // (WO-1690, ElarionUiKit.BuildConfirmModal) — the WORDS are this ticket's, and
+        // [face-fits] below pins them against the measured budget.
+        private const string StartNewConfirmEraseLabel = "Erase";
+        private const string StartNewConfirmKeepLabel = "Keep";
+
+        /// <summary>The live wipe-confirm sheet (null when closed).</summary>
+        private ElarionUiKit.ConfirmModal _startNewConfirm;
+        private bool _startNewConfirmTouchFloorApplied;
+
         // Start New: a genuinely FRESH game, routed to the HeroSelect carousel.
+        //
+        // WO-1688 (P1, from a real save loss on the owner's device 2026-09-10): this
+        // handler used to call ResetToNewGame() DIRECTLY. One unintended touch on the
+        // middle face of the title row therefore destroyed a real player's realm nine
+        // milliseconds before the hero carousel was even shown, with no confirmation and
+        // no undo. The `_splashActive` latch below is a DOUBLE-PRESS guard and never was
+        // a confirm; it stays, but it no longer drops on the mere press of Start New.
         private void OnStartNew()
         {
             if (!_splashActive) return;
-            _splashActive = false;
 
+            // FRESH INSTALL keeps today's frictionless path. A confirm over an empty save
+            // is friction for nothing (WO-1688 §2.1), and HasExistingSave() is the SAME
+            // predicate that already gates the Continue button — deliberately reused, so
+            // there is never a second notion of "has a save" to drift apart.
+            if (!HasExistingSave())
+            {
+                _splashActive = false;
+                FlowTrace.Step("Onboarding",
+                    "OnStartNew: saveExists=false (genuine fresh install) — no confirm, straight through.");
+                PerformStartNew();
+                return;
+            }
+
+            // A second press while the sheet is already up is a no-op, not a second sheet.
+            if (_startNewConfirm != null && _startNewConfirm.canvas != null) return;
+
+            // ⛔ THE LATCH IS NOT DROPPED HERE. It used to be, one line into this method.
+            // If it dropped now and the player chose "Keep My Realm", every other title
+            // face (Continue / Play Intro) would early-return on !_splashActive forever —
+            // a softlock at the front door, traded for the save loss. It drops only on the
+            // confirmed branch, and the modal's own full-screen scrim is what stops a
+            // stray tap reaching the row underneath while the sheet is open.
+            FlowTrace.Step("Onboarding",
+                "OnStartNew: saveExists=true — raising the WIPE CONFIRM. NOTHING has been erased at " +
+                "this point; ResetToNewGame is unreachable from here until the destructive face is chosen.");
+            _startNewConfirmTouchFloorApplied = false;
+            _startNewConfirm = ElarionUiKit.BuildConfirmModal(
+                "StartNewConfirm",
+                StartNewConfirmTitle,
+                StartNewConfirmBody,
+                StartNewConfirmEraseLabel,
+                StartNewConfirmKeepLabel,
+                onConfirm: () =>
+                {
+                    FlowTrace.Step("Onboarding",
+                        "OnStartNew: wipe CONFIRMED by the player — proceeding to ResetToNewGame.");
+                    CloseStartNewConfirm();      // sheet down BEFORE the work, as TutorialSkipUi does
+                    _splashActive = false;
+                    PerformStartNew();
+                },
+                onCancel: () =>
+                {
+                    // Cancel, the shared Close and a tap on the scrim ALL land here, so the
+                    // safe answer is the one every accidental gesture produces.
+                    FlowTrace.Step("Onboarding",
+                        "OnStartNew: wipe DECLINED — the realm is untouched and the title stays live.");
+                    CloseStartNewConfirm();
+                },
+                // The destructive face is the NON-default one and carries the Danger kind;
+                // the kit lays Cancel on the LEFT (0.10-0.48) and Confirm on the RIGHT
+                // (0.52-0.90), so the erase face is not under the finger that just pressed
+                // START NEW in the bottom row.
+                confirmKind: ElarionUiKit.ButtonKind.Danger);
+
+            if (_startNewConfirm == null || _startNewConfirm.canvas == null)
+            {
+                // A confirm that failed to build must NEVER silently degrade into the old
+                // one-touch wipe. Stay on the title and say so.
+                FlowTrace.Fail("Onboarding",
+                    "OnStartNew: the wipe confirm FAILED TO BUILD — Start New is refused this press " +
+                    "rather than falling back to an unconfirmed reset. The realm is untouched.");
+                _startNewConfirm = null;
+                return;
+            }
+            SceneRootAdopt(_startNewConfirm.canvas);
+        }
+
+        /// <summary>Tear the wipe-confirm sheet down. Safe when nothing is open.</summary>
+        private void CloseStartNewConfirm()
+        {
+            if (_startNewConfirm != null && _startNewConfirm.canvas != null)
+                Destroy(_startNewConfirm.canvas);
+            _startNewConfirm = null;
+            _startNewConfirmTouchFloorApplied = false;
+        }
+
+        /// <summary>
+        /// EVERYTHING "Start New" MEANS, in one place: the save wipe, the dialogue wipe,
+        /// the onboarding-mode choice and the route. It is called from exactly two places —
+        /// the fresh-install fast path and the confirm's positive action — so a declined
+        /// confirm cannot leave half of a new game behind (flipping OnboardingMode to the
+        /// fast path on a cancelled press would do precisely that).
+        /// </summary>
+        private void PerformStartNew()
+        {
             // Wipe the save progression (this also clears SeenTutorials, so once-only
             // recruit/intro beats replay) AND all dialogue state — the $-toggle
             // variable storage and the gameplay->dialogue event latches — so no stale
             // toggle from a prior run carries over. Continue does NOT do this.
+            // WO-1688: ResetToNewGame now takes a one-generation local backup of the
+            // previous signed save as its first statement, so this line is recoverable.
             GameStateService.Instance?.ResetToNewGame();
             DeNelle.Core.DialogueResetService.ResetForNewGame();
 
@@ -522,6 +703,28 @@ namespace DeNelle.Onboarding
             // Orientation flip — swap the landscape/portrait cover art.
             if (_backdropArt != null && _canvas != null && _canvas.activeSelf)
                 ApplyBackdropArt();
+
+            // WO-1688: MinTouchPx on the WIPE CONFIRM's two faces. The kit modal lays its
+            // buttons out as panel FRACTIONS, which can resolve under the touch floor at a
+            // short landscape aspect — so measure one frame after open (rects are valid
+            // post-layout) and pad any short face up via sizeDelta. Padding, not growth:
+            // anchors are untouched. Same idiom as TutorialSkipUi.EnsureTouchFloor, and it
+            // matters more here: the two faces are "erase everything" and "keep it".
+            // ⚠ THIS IS A NET, NOT THE FIX, and chain 41 measured exactly how far short:
+            //     [touch-oracle] SUB-TOUCH-FLOOR BAND [StartNewConfirm_2670x1200] both faces
+            //     resolve 356.9x48.5 ref px -- shortest side 48.5 is 63.5 px UNDER
+            //     ElarionUiKit.MinTouchPx (112) ... Author the band AT the floor.
+            // The oracle's advice is the ruling: the BAND must be authored at the floor, in
+            // ElarionUiKit.BuildConfirmModal, which is the FIT-GUARD lane's file (WO-1690) and
+            // must not be edited from here. Growing a 48.5 px face by 63.5 px at runtime
+            // spills it symmetrically into both neighbours, so this pass keeps the control
+            // TAPPABLE while the band is still wrong - it does not make the band right.
+            if (_startNewConfirm != null && _startNewConfirm.canvas != null && !_startNewConfirmTouchFloorApplied)
+            {
+                bool measured = EnsureConfirmTouchFloor(_startNewConfirm.confirm)
+                                & EnsureConfirmTouchFloor(_startNewConfirm.cancel);
+                if (measured) _startNewConfirmTouchFloorApplied = true;
+            }
 
             // While the 9-screen cinematic plays it OWNS the screen and routes onward
             // itself — never force the title up over it.

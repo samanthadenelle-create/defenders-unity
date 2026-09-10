@@ -1209,6 +1209,28 @@ namespace DeNelle.Core.State
         /// </summary>
         public void ResetToNewGame()
         {
+            // ===== WO-1688 PRE-RESET BACKUP — BEGIN (the FIRST statement, deliberately) =====
+            // The owner's realm was destroyed on 2026-09-10 by one unintended touch, and the
+            // device log shows why nothing could be recovered: this method's own Save() wrote
+            // len=3417 over the single "dotr-save" slot that had just held len=9457. So the
+            // copy has to happen HERE — ahead of the ENTER trace, ahead of the epoch bump,
+            // ahead of every field assignment — because ANY line above it is a line that could
+            // one day be moved above the copy. The ordering is the guarantee, so the position
+            // is the implementation.
+            //
+            // The predicate is the SAME notion of "has a save" the title gates on
+            // (TitleController.HasExistingSave: a chosen hero, or completed onboarding),
+            // computed here on the live state. It is not a nicety: after a wipe the live save
+            // IS a blank town, and a second START NEW would otherwise copy that blank over the
+            // good backup — the identical gesture finishing the job. A NULL _state (an EditMode
+            // caller that never ran Awake) is treated as "back it up": unknown is not empty.
+            // Nothing here can block the reset — SaveBackupService swallows-and-logs.
+            bool progressToLose = _state == null
+                                  || _state.HeroClass.ToNullable().HasValue
+                                  || _state.Onboarded;
+            SaveBackupService.CaptureBeforeReset(progressToLose, "ResetToNewGame");
+            // ===== WO-1688 PRE-RESET BACKUP — END =====
+
             // Lazy-init mirrors Awake: ResetToNewGame() is "New Game" and must work even when called
             // before Awake has run — EditMode tests AddComponent without the MonoBehaviour
             // lifecycle, and a reset-before-load path would otherwise null-deref here (every

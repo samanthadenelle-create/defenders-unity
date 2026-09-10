@@ -2009,10 +2009,39 @@ namespace DeNelle.Editor
             // there when it is true. The first is the long-standing worst-case haul with NO doors
             // (the "COLLECT alone, no empty rows" half); the second carries a finished job, a
             // recorded attack and a ready army, so the doors and the ready band are on screen.
+            // WO-1664 (2026-09-10) -- SAME DEFECT AS THE FRONT DOOR, AND WO-1664 §3C GOT THIS ONE
+            // WRONG. The ticket said the welcome-back modal was "not captured at all", so
+            // "LayoutOracle.Audit has no rect to measure". FALSE, and the correction matters
+            // because it changes the fix from "build a new fixture" to "read the verdict you are
+            // already computing": both fixtures below go through RenderCanvasToPng, which calls
+            // this file's ONE AuditGeometry call on the settled layout. COLLECT's 89.2 ref px HAS been measured
+            // here on every run; nothing read the tally. The ticket's §3B and §3C are therefore
+            // ONE cause with two faces, not the two separate explanations it warned against.
+            _touchFailures.Clear();
+            ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
+            _touchPanelsChecked = 0;
+            _touchPanelsClean = 0;
             int count = ForEachTarget("WelcomeBack", CaptureWelcomeBackOnce) +
                         ForEachTarget("WelcomeBackDoors", CaptureWelcomeBackDoorsOnce);
-            if (count == 6) Debug.Log("WELCOME_BACK_CAPTURE_OK 6/6");
-            else Debug.LogError("WELCOME_BACK_CAPTURE_FAIL " + count + "/6");
+            ReportTouchOracle();   // WO-1060: UI_TOUCH_OK <clean>/<checked> panels. WO-1664.
+            ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
+                                   // table and at its one emit site -- never copied here.
+            // ⚠ THE DOORS FIXTURE IS EXPECTED TO HAVE BEEN CARRYING A SIXTH SUB-FLOOR FACE, and
+            // WO-1664 fixed it in the same change rather than wiring an oracle that reds on day
+            // one and gets suppressed by week two -- the warning written into the "ROUTING IS
+            // UNCHANGED" block above AuditGeometry's LayoutOracle.Audit loop. The
+            // WO-1408 door row filled DoorRowH x body, which at the smallest captured refHeight
+            // was 0.21 x 0.60 x 810.9 = 102.2 ref px -- under the floor, invisible to the gate
+            // because of the missing report above, and never seen on device only because that
+            // session's report carried no door row. DoorRowH is now 0.245 (115.2 ref px); see its
+            // doc block in WelcomeBackPopup.cs for why the retired number looked safe.
+            bool touchClean = _touchPanelsChecked == 6
+                              && _touchPanelsClean == _touchPanelsChecked
+                              && _touchFailures.Count == 0;
+            if (count == 6 && touchClean) Debug.Log("WELCOME_BACK_CAPTURE_OK 6/6; touch=clean");
+            else Debug.LogError("WELCOME_BACK_CAPTURE_FAIL " + count + "/6; touchPanels=" +
+                                _touchPanelsChecked + "; touchClean=" + _touchPanelsClean +
+                                "; touchFailures=" + _touchFailures.Count);
         }
 
         /// <summary>
@@ -2247,18 +2276,71 @@ namespace DeNelle.Editor
         public static void RunFrontDoorCaptureHeadless()
         {
             Directory.CreateDirectory(OutDir);
+            // WO-1664 (2026-09-10) -- THE OTHER HALF OF WO-1644'S FIX. WO-1644 wired the GLYPH
+            // oracle here and its comment below says this path "was the odd one out -- Title/Login
+            // were measured by AuditGeometry and the verdict thrown away." That was true of BOTH
+            // oracles and only ONE was rescued: AuditGeometry has been tallying _touchPanelsChecked
+            // /_touchFailures on every Title and Login build all along, and nothing ever read them.
+            // So three sub-floor title faces shipped green through this gate and were caught, at
+            // the end of the chain, by the owner's device printing
+            //   [touch-oracle] CLAMP FIRED TitleScreenUI/TitleButtons/ObsBtn_Continue: authored
+            //   399.5x69.5 -> grown 399.5x112
+            // three times over (Builds/device-frames/2026-09-10_1137_363866_logcat.txt).
+            // ⚠ Title is NOT in the TouchBaseline array (it holds only ArmyMuster + EquipDrawer), so
+            // nothing was suppressing this -- nobody was looking. The reset triple and the report
+            // are copied from RunGooglePlayLoginCaptureHeadless verbatim rather than invented in a
+            // third shape; a third reporting shape in this file is what let this path drift.
+            _touchFailures.Clear();
             ResetGlyphOracle();          // WO-1630, beside its sibling so neither can drift
+            _touchPanelsChecked = 0;
+            _touchPanelsClean = 0;
             _loginCaptureStem = "Login";
+            // ===== WO-1688 WIPE-CONFIRM CAPTURE - BEGIN (delimited; the Title/Login
+            // arithmetic below is untouched). The touch tallies are reset HERE because
+            // this entry point never reported them: AuditGeometry has always POPULATED
+            // _touchFailures on this path and nothing printed them, so the confirm's two
+            // faces - "erase everything" and "keep it" - would have been measured and the
+            // verdict thrown away. Same defect WO-1644 fixed for the glyph oracle one line
+            // above, on this same method.
+            _touchFailures.Clear();
+            _touchPanelsChecked = 0;
+            _touchPanelsClean = 0;
+            // ===== WO-1688 WIPE-CONFIRM CAPTURE - END (part 1 of 2)
             int count = ForEachTarget("Title", CaptureTitleOnce) +
                         ForEachTarget("Login", CaptureLoginOnce);
+            // ===== WO-1688 WIPE-CONFIRM CAPTURE - BEGIN (part 2 of 2)
+            // ONE build of the START NEW wipe confirm, at the Seeker's real surface, so the
+            // sheet that now stands between an accidental touch and a destroyed realm is
+            // judged by the same touch + glyph oracles as every other face. Its count is
+            // deliberately NOT folded into FRONT_DOOR_CAPTURE_OK 6/6 - that marker's
+            // arithmetic is read by existing runbooks - so it carries its own line.
+            int confirmShots = CaptureStartNewConfirmOnce(LandscapeTargets[LandscapeTargets.Length - 1]);
+            if (confirmShots == 1) Debug.Log("FRONT_DOOR_CONFIRM_CAPTURE_OK 1/1 (WO-1688 START NEW wipe confirm)");
+            else Debug.LogError("FRONT_DOOR_CONFIRM_CAPTURE_FAIL 0/1 - the WO-1688 wipe confirm did not render, " +
+                                "so NOTHING was proved about the faces guarding the save wipe.");
+            ReportTouchOracle();   // WO-1060: UI_TOUCH_OK <clean>/<checked> panels. WO-1664 wired it here; WO-1688 folds the confirm build in above.
+            // ===== WO-1688 WIPE-CONFIRM CAPTURE - END (part 2 of 2)
             ReportGlyphOracle();   // WO-1630 Assert C. Its marker is named ONCE, in the header
                                    // table and at its one emit site -- never copied here. Wired at
                                    // EVERY site that emits the touch marker: one path missing it
                                    // prints marker-absent there, read here as a FAILURE not an unknown.
                                    // WO-1644: this path was the odd one out -- Title/Login were
                                    // measured by AuditGeometry and the verdict thrown away.
-            if (count == 6) Debug.Log("FRONT_DOOR_CAPTURE_OK 6/6");
-            else Debug.LogError("FRONT_DOOR_CAPTURE_FAIL " + count + "/6");
+            // The touch verdict is FOLDED IN, exactly as :2323-2325 folds it for the Google Play
+            // path. A capture that renders six clean PNGs of a panel whose faces are under the
+            // touch floor is not a pass, and UI_TOUCH_FAIL beside FRONT_DOOR_CAPTURE_OK is the
+            // split verdict §8's "a 22-case suite's pass read as the full suite's pass" warns about.
+            // WO-1688 folds one more panel build (the START NEW confirm, above) into the same
+            // tallies, so the expected count is 6 + confirmShots - chain 43 (Builds/wave10b-frontdoor1)
+            // read "touchPanels=7; touchClean=7; touchFailures=0" against a literal 6 and FAILED a
+            // clean run. Re-pointed by the lead with the merged tree (one-line oracle re-point).
+            bool touchClean = _touchPanelsChecked == 6 + confirmShots
+                              && _touchPanelsClean == _touchPanelsChecked
+                              && _touchFailures.Count == 0;
+            if (count == 6 && touchClean) Debug.Log("FRONT_DOOR_CAPTURE_OK 6/6; touch=clean");
+            else Debug.LogError("FRONT_DOOR_CAPTURE_FAIL " + count + "/6; touchPanels=" +
+                                _touchPanelsChecked + "; touchClean=" + _touchPanelsClean +
+                                "; touchFailures=" + _touchFailures.Count);
         }
 
         /// <summary>
@@ -2367,6 +2449,84 @@ namespace DeNelle.Editor
                 if (host != null) UnityEngine.Object.DestroyImmediate(host);
             }
         }
+
+        // ===== WO-1688 WIPE-CONFIRM CAPTURE - BEGIN (the build) =====
+        /// <summary>
+        /// Build the START NEW wipe confirm ONCE and shoot it, so its faces go through
+        /// AuditGeometry's touch + glyph oracles like every other captured surface.
+        /// <para>THE COPY IS REFLECTED OUT OF THE SHIPPING CONTROLLER, never retyped here.
+        /// TitleController's four confirm constants are private, and a second copy of the
+        /// words in this file would go stale the first time the owner rules on the wording -
+        /// leaving a screenshot that proves the legibility of text no player ever sees. Read
+        /// them; if any one cannot be read, FAIL rather than substitute a placeholder.</para>
+        /// <para>What this does NOT prove: that the button is WIRED to this sheet. That is a
+        /// flow assertion and it lives in the StartNewConfirmGateRegression source sweep -
+        /// the editor regression assembly cannot reference DeNelle.Onboarding, and driving
+        /// the live handler here would risk calling ResetToNewGame against the developer's
+        /// own editor PlayerPrefs.</para>
+        /// </summary>
+        private static int CaptureStartNewConfirmOnce(CaptureTarget target)
+        {
+            ElarionUiKit.ConfirmModal modal = null;
+            try
+            {
+                var type = ResolveType("DeNelle.Onboarding.TitleController");
+                if (type == null)
+                {
+                    Debug.LogError("[UICap-HL] StartNew confirm: TitleController type did not resolve.");
+                    return 0;
+                }
+                string title = ReadPrivateConstString(type, "StartNewConfirmTitle");
+                string body = ReadPrivateConstString(type, "StartNewConfirmBody");
+                string erase = ReadPrivateConstString(type, "StartNewConfirmEraseLabel");
+                string keep = ReadPrivateConstString(type, "StartNewConfirmKeepLabel");
+                if (title == null || body == null || erase == null || keep == null)
+                {
+                    Debug.LogError("[UICap-HL] StartNew confirm: the shipping copy constants could not be " +
+                                   "read off TitleController, so this shot would have proved a sheet the " +
+                                   "player never sees. Refused.");
+                    return 0;
+                }
+
+                using (new CaptureSurfaceScope(target, "StartNewConfirm"))
+                {
+                    // Null handlers: a still frame has nothing to invoke. One honest
+                    // consequence, stated rather than glossed - ElarionUiKit.Scrim only
+                    // adds its Button when a handler is supplied, so the captured sheet
+                    // carries no full-screen interactive rect where the runtime one does.
+                    // The two FACES are identical, and they are what this shot judges.
+                    modal = ElarionUiKit.BuildConfirmModal(
+                        "StartNewConfirm", title, body, erase, keep,
+                        onConfirm: null, onCancel: null,
+                        confirmKind: ElarionUiKit.ButtonKind.Danger);
+                    if (modal == null || modal.canvas == null) return 0;
+                    Canvas.ForceUpdateCanvases();
+                    return RenderCanvasToPng(modal.canvas,
+                        OutDir + "StartNewConfirm_" + target.Tag + ".png", target.W, target.H) ? 1 : 0;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[UICap-HL] StartNew confirm capture threw: " + e);
+                return 0;
+            }
+            finally
+            {
+                if (modal != null && modal.canvas != null)
+                    UnityEngine.Object.DestroyImmediate(modal.canvas);
+            }
+        }
+
+        /// <summary>Read a private const string off a type, or null when it is absent.</summary>
+        private static string ReadPrivateConstString(Type type, string name)
+        {
+            var f = type != null
+                ? type.GetField(name, BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+                : null;
+            if (f == null || !f.IsLiteral) return null;
+            return f.GetRawConstantValue() as string;
+        }
+        // ===== WO-1688 WIPE-CONFIRM CAPTURE - END (the build) =====
 
         private static string _loginCaptureStem = "Login";
 
@@ -4711,10 +4871,18 @@ namespace DeNelle.Editor
                 bgrt.offsetMin = Vector2.zero; bgrt.offsetMax = Vector2.zero;
                 bg.GetComponent<Image>().color = new Color(0.13f, 0.15f, 0.12f, 1f);
 
-                // (1) THE ALWAYS-ON HUD SURFACE — the exact HudArea.QueueStatus band
-                //     geometry (0.780-0.995 x, 0.530-0.865 y) the owner is looking at.
+                // (1) THE ALWAYS-ON HUD SURFACE — the HudArea.QueueStatus band the owner is
+                //     looking at, READ FROM THE SEAM.
+                // ⛔ WO-1670: this call used to hardcode (0.780, 0.530)..(0.995, 0.865) while
+                // describing itself as "the exact HudArea.QueueStatus band geometry". It was the
+                // THIRD copy of that band and it was wrong twice over — neither the live
+                // 0.510..0.750 nor the 0.420 those numbers were drifting from. A fixture that
+                // renders a band the game does not have judges a layout nobody ships. It now
+                // resolves HudLayoutBands.QueueStatusMount, the one authority HudAreasHost reads
+                // too, so this frame cannot go stale again.
+                var queueBand = HudLayoutBands.QueueStatusMount;
                 var band = MakeAreaMount(canvasGo.transform, "Area_QueueStatus",
-                    new Vector2(0.780f, 0.530f), new Vector2(0.995f, 0.865f));
+                    queueBand.min, queueBand.max);
                 var chipBand = MakePixelBand(band, "ChipBand", 0f, ElarionUiKit.MinTouchPx, 4f);
                 ElarionUiKit.BuildObsidianButton(chipBand, "Builders 1/2 | Training 1",
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
