@@ -1,6 +1,6 @@
 # WORK ORDER 1685 — HEART-012: Regression and automated test package
 
-**Status:** IMPLEMENTED 2026-09-10 — the test MAP (§7) landed with `test/heartbound-suite.test.js` asserting it (136/136 green, map + ladder detectors proven RED first); the EditMode NUnit half and the `DataRegression` registration (acceptance 1/2/3-Unity/5/6) are NOT done and are listed as open in the RESULT.
+**Status:** IMPLEMENTED 2026-09-10 — the test MAP (§7) landed with `test/heartbound-suite.test.js` asserting it (136/136 green, map + ladder detectors proven RED first); the EditMode NUnit half and the `DataRegression` registration (acceptance 1/2/3-Unity/5/6) are left to the Unity seat and are listed as open in the RESULT.
 **Silo:** Test infrastructure only — `node --test`, EditMode NUnit, one `DataRegression` registration line. No gameplay, no economy, no scene files.
 **Raised by:** HEARTBOUND-TRIAGE lane, 2026-09-10.
 **Number:** PRE-ASSIGNED by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately **NOT** edited by this lane.
