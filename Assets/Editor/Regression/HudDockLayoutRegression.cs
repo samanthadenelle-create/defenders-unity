@@ -351,12 +351,20 @@ namespace DeNelle.Editor.Regression
                              "Ellipsis) - an unfitted caption is free to paint past its slot again");
 
             // No re-introduced 1/n horizontal slicing in the dock builder.
-            var builder = ExtractMethod(code, "private void BuildPeacefulDockSlot");
+            // ⚠ WO-1672 RE-POINT — READ THIS BEFORE MOVING IT BACK. This law used to extract
+            // `private void BuildPeacefulDockSlot`. That method is now a THREE-LINE WRAPPER: the
+            // 1/n seed arithmetic this law polices was hoisted into the shared `BuildDockSlot`
+            // when the outside dock (WO-1672) started using the same builder. Left pointing at
+            // the wrapper, the extract would contain no arithmetic at all, the regex could never
+            // match, and the law would report green FOREVER while `BuildDockSlot` was free to
+            // re-hardcode the gap - the "green worth nothing" failure WO-1467 removed one file
+            // over. A source law must follow the code it names, not the name it was written with.
+            var builder = ExtractMethod(code, "private ElarionUiKit.ActionSlotHandle BuildDockSlot");
             if (builder == null)
-                notes.Add("BuildPeacefulDockSlot not found by name - renamed? re-point this law");
+                notes.Add("BuildDockSlot not found by name - renamed? re-point this law");
             else if (Regex.IsMatch(builder, @"1f\s*-\s*gap\s*\*\s*\(\s*count\s*\+\s*1\s*\)") &&
                      builder.IndexOf("HudDockLayout.GapFraction", StringComparison.Ordinal) < 0)
-                failures.Add("[source] BuildPeacefulDockSlot re-hardcodes its gap fraction instead of " +
+                failures.Add("[source] BuildDockSlot re-hardcodes its gap fraction instead of " +
                              "reading HudDockLayout.GapFraction - one gap, one source");
 
             // The responder may never grow the track LEFT.

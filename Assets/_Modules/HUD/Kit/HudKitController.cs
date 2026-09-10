@@ -296,6 +296,12 @@ namespace DeNelle.HUD.Kit
         private TMP_Text _defenseChipLabel;
         private RectTransform _defenseChipBand;
         private int _defenseChipKey = -1;
+        /// <summary>WO-1670b (owner ruling 2026-09-10 12:55) — the resource-panel state that was
+        /// folded into the LAST visibility decision. It is a second input to the SAME change
+        /// detector, never a second visibility writer: the model's Key does not move when the
+        /// player opens the resource panel, so without this the throttled early-return would
+        /// hold the chip on screen over the expanded panel forever.</summary>
+        private bool _defenseChipPanelWasOpen;
         private float _defenseChipPollTimer;
         /// <summary>How often the unread predicate is evaluated, seconds. The Builders and
         /// Collectors chips compare a published Version int per frame; the defence ledger
@@ -967,6 +973,11 @@ namespace DeNelle.HUD.Kit
 
             BuildAdaptivePeacefulDock(pool);
             BuildAdaptiveCombatDock(pool);
+            // WO-1672 — the third posture dock. Built unconditionally like the other two; which
+            // one the player sees is DATA, not an `if`: ApplyPosture activates whichever dock the
+            // posture's hud-areas.json actionBar row names (calm(town) -> peacefulDock,
+            // calm(explore) -> outsideDock, hostile -> combatDock).
+            BuildAdaptiveOutsideDock(pool);
 
             // ── moveCluster -> HudMoveInput ──
             if (FeatureFlags.CombatHud611)
@@ -1930,8 +1941,11 @@ namespace DeNelle.HUD.Kit
             // the variable-height resource panel). ⚠ THIS CHIP CANNOT COLLIDE TODAY, and the proof
             // is at source, not an inference: the call site is commented out at
             // `// BuildQueueStatusChip(pool);` in Build(), so nothing here ever runs, and
-            // SessionShapeRegression Case7_OneDoor FAILS the build if that byte-exact retirement
-            // line disappears. It is wired anyway because the owner ruling that retired it also
+            // SessionShapeRegression Case7_OneDoor FAILS the build if that retirement line
+            // disappears. ⚠ WO-1667a: that was NOT TRUE until 2026-09-10 — Case7 searched for the
+            // SHORT form, which THIS VERY COMMENT also contains, so the prose satisfied the pin and
+            // the line could be replaced by a live call while the gate stayed green. It is anchored
+            // on the FULL retirement text now. It is wired anyway because the owner ruling that retired it also
             // said the chip is "two lines from returning" — un-retiring it must not silently
             // re-ship this defect, nor land it on top of the Collectors chip that took its band.
             RectTransform buildersBand;
@@ -2192,8 +2206,23 @@ namespace DeNelle.HUD.Kit
 
         /// <summary>
         /// The conditional repaint. THROTTLED (see DefenseChipPollSeconds) and change-detected
-        /// on the model's own Key, so a town frame costs one float compare in the common case.
-        /// PURE PRESENTATION: every branch below reads a field of the snapshot.
+        /// on the model's own Key PLUS the resource-panel state, so a town frame costs one float
+        /// compare in the common case. PURE PRESENTATION: every branch below reads a field of the
+        /// snapshot or a HUD-local view flag.
+        /// <para>⭐ WO-1670b — OWNER RULING 2026-09-10 12:55: *hide the ATTACK REPORT chip while
+        /// the resource panel is expanded; it returns on collapse.* WHY IT IS DECIDED HERE AND
+        /// NOWHERE ELSE: this method holds the ONLY <c>SetActive</c> on <c>_defenseChipBand</c> in
+        /// the whole codebase, and WO-1515's own header says why that matters ("a second object is
+        /// how a widget ends up permanently off in exactly one posture"). A hide written from
+        /// <see cref="SetResourcePanelOpen"/> would be a SECOND writer racing this one on the next
+        /// throttled tick — the chip would flicker back on 0.5 s later. So the panel state becomes
+        /// an INPUT to this decision; SetResourcePanelOpen only RINGS the tick, exactly as it
+        /// already rings HudRailClearance.MarkDirty().</para>
+        /// <para>⚠ The chip is HIDDEN, not moved. WO-1670 measured the alternative: with the panel
+        /// open, HudRailClearance derives this chip DOWN out of the QueueStatus mount to
+        /// y 0.4667..0.3507 at four resource rows (0.2244 at six), straight through the Echoes
+        /// chip's band. No authored fraction can fix that — the depth is a runtime function of
+        /// kinds.Length — which is why the ruling is visibility, not geometry.</para>
         /// </summary>
         private void TickDefenseReportChip()
         {
@@ -2204,14 +2233,33 @@ namespace DeNelle.HUD.Kit
             _defenseChipPollTimer = 0f;
 
             var snap = DefenseReportChipModel.Current;
-            if (snap.Key == _defenseChipKey) return;
+            bool panelOpen = _resChipsExpanded;
+            // Both inputs guard the early-out. The model's Key does NOT move when the player
+            // toggles the resource panel, so keying on it alone would never re-evaluate.
+            if (snap.Key == _defenseChipKey && panelOpen == _defenseChipPanelWasOpen) return;
+            bool panelEdge = panelOpen != _defenseChipPanelWasOpen;
             _defenseChipKey = snap.Key;
+            _defenseChipPanelWasOpen = panelOpen;
 
-            if (_defenseChipLabel != null && snap.Visible) _defenseChipLabel.text = snap.Caption;
-            if (_defenseChipBand != null && _defenseChipBand.gameObject.activeSelf != snap.Visible)
-                _defenseChipBand.gameObject.SetActive(snap.Visible);
+            // The model still owns WHETHER there is a report to show; the panel only SUPPRESSES
+            // an otherwise-visible chip. snap.Visible is never overwritten, so a report that
+            // lands while the panel is open is still unread and still appears on collapse.
+            bool wantVisible = snap.Visible && !panelOpen;
+
+            if (_defenseChipLabel != null && wantVisible) _defenseChipLabel.text = snap.Caption;
+            if (_defenseChipBand != null && _defenseChipBand.gameObject.activeSelf != wantVisible)
+                _defenseChipBand.gameObject.SetActive(wantVisible);
+
+            if (panelEdge)
+                FlowTrace.Step("HudKit", "WO-1670b attack report chip " +
+                                         (panelOpen ? "HIDDEN" : "SHOWN") +
+                                         " on the resource panel " + (panelOpen ? "EXPAND" : "COLLAPSE") +
+                                         " edge (owner ruling 12:55) - model says visible=" + snap.Visible +
+                                         ", so on screen=" + wantVisible + ". The report is not consumed; " +
+                                         "it returns on collapse while it is still unread.");
 
             FlowTrace.Step("HudKit", "WO-1515 attack report chip: visible=" + snap.Visible +
+                                     " onScreen=" + wantVisible + " panelOpen=" + panelOpen +
                                      " unread=" + snap.UnreadCount +
                                      " face='" + (snap.Caption ?? string.Empty).Replace("\n", " / ") + "'.");
         }
@@ -2681,7 +2729,32 @@ namespace DeNelle.HUD.Kit
         private void BuildPeacefulDockSlot(int index, string iconKey, string labelKey,
                                            string[] iconFallbacks, Action command)
         {
-            string caption = HudStrings.Get(labelKey);
+            BuildDockSlot(_peacefulDockRoot, _peacefulDockLayout, _peacefulDockLabels,
+                          index, PeacefulDockFaceCount, iconKey, labelKey, null,
+                          iconFallbacks, command);
+        }
+
+        /// <summary>How many faces the CALM dock builds. Named once, used by the build-time x
+        /// seed. ⛔ This is NOT the authority on what the bar ships — HudActionBarRegression
+        /// .CheckMeasuredPeacefulDock builds the dock and COUNTS it (CLAUDE.md §7).</summary>
+        private const int PeacefulDockFaceCount = 5;
+        /// <summary>WO-1672 — how many faces the OUTSIDE dock builds. BUILD and TALK are not
+        /// among them; see BuildAdaptiveOutsideDock for why they are absent, not disabled.</summary>
+        private const int OutsideDockFaceCount = 4;
+
+        /// <summary>
+        /// The ONE calm/outside dock medallion builder. <paramref name="literalCaption"/> wins over
+        /// <paramref name="labelKey"/> when non-null (the ITEM face, which has no HudStrings key
+        /// yet — see WO-1672's follow-up note); everything else is unchanged from the five-face
+        /// path this was hoisted out of, so the peaceful dock builds byte-for-byte as before.
+        /// </summary>
+        private ElarionUiKit.ActionSlotHandle BuildDockSlot(
+            GameObject dockRoot, HudDockSlotLayout layout, TMP_Text[] labelSink,
+            int index, int count, string iconKey, string labelKey, string literalCaption,
+            string[] iconFallbacks, Action command)
+        {
+            if (dockRoot == null) return null;
+            string caption = literalCaption ?? HudStrings.Get(labelKey);
             // The authored emblem sheet is asked FIRST and by name; the pack fallbacks below are
             // only reached when her art cannot be resolved. Which one answered decides how the
             // medallion is dressed, so the two lookups stay separate.
@@ -2697,11 +2770,10 @@ namespace DeNelle.HUD.Kit
             // gets a layout pass still renders in a sane shape. HudDockSlotLayout overwrites
             // these x anchors with absolute reference-pixel positions on the first LateUpdate
             // and on every surface change after (a browser window drag is a shipping event).
-            const int count = 5;
             const float gap = HudDockLayout.GapFraction;
             float width = (1f - gap * (count + 1)) / count;
             float x0 = gap + index * (width + gap);
-            var slot = ElarionUiKit.BuildActionSlot(_peacefulDockRoot.transform,
+            var slot = ElarionUiKit.BuildActionSlot(dockRoot.transform,
                 new Vector2(x0, PeacefulDockSlotY0), new Vector2(x0 + width, PeacefulDockSlotY1), command);
             // Keep the slot as an equal-width quarter of the shared dock.  Only its medallion
             // artwork is square; constraining the slot itself makes Unity centre all four roots
@@ -2715,8 +2787,8 @@ namespace DeNelle.HUD.Kit
             // fallback keeps the kit medallion it has always had.
             if (authored != null) ElarionUiKit.PresentAuthoredEmblem(slot);
             slot.SetCaption(caption);
-            if (index >= 0 && index < _peacefulDockLabels.Length)
-                _peacefulDockLabels[index] = slot.caption;
+            if (labelSink != null && index >= 0 && index < labelSink.Length)
+                labelSink[index] = slot.caption;
             // WO-1319 acceptance 2 — the caption's degradation is AUTHORED, not incidental.
             // SetCaption leaves the kit default (word-wrap on, autosize floor 6f), so a caption
             // that outgrew its face either re-flowed or shrank to an illegible smear. The shared
@@ -2726,10 +2798,138 @@ namespace DeNelle.HUD.Kit
             // now never be wider than its slot, whatever the solver hands it.
             if (slot.caption != null)
                 ElarionUiKit.FitSingleLine(slot.caption, ElarionUiKit.FontHardFloor, ElarionUi.FontMicro);
+            // WO-1671 — the caption band draws BELOW the housing art, onto the town terrain: the
+            // owner's device frames measure BUILD 2.12:1, TALK 2.73:1, HERO 2.97:1, JOURNEY 1.87:1,
+            // MANAGE 2.16:1 against what is actually behind them (2670x1200, PIL, 2026-09-10) - all
+            // five under the 3:1 floor. The kit's obsidian plate goes under each word. The caption
+            // rect is NOT changed by this, so the solved slot geometry is untouched: HudDockLayout
+            // .Solve(count, mountW, maxTrack, gap) takes no caption or height term at all.
+            var captionPlate = ElarionUiKit.AddCaptionPlate(slot);
             if (slot.button != null) ElarionUiKit.ClampMinTouch(slot.button);
-            if (_peacefulDockLayout != null)
-                _peacefulDockLayout.AddSlot((RectTransform)slot.root.transform, slot.caption);
+            if (layout != null)
+                layout.AddSlot((RectTransform)slot.root.transform, slot.caption, captionPlate);
+            return slot;
         }
+
+        // ═══ WO-1672 — THE OUTSIDE DOCK ═══════════════════════════════════════════
+        //
+        // OWNER RULING, verbatim (2026-09-10 12:16): "when you are outside the castle should not
+        // be the peaceful UI, not combat, but should not be able to build or talk but can use
+        // items still."
+        //
+        // ⚠ THE SIGNAL ALREADY EXISTS AND THE HUD ALREADY COMPUTES IT — that is the finding, and
+        // it is why this ticket did not need a new world seam invented for it:
+        //   HudContextEvaluator.IsInTownRing (Assets/_Modules/Village/HUD/HudContextEvaluator.cs
+        //   :202-214) tests the hero's horizontal distance from the world origin against
+        //   TownRadius 60 m (:74) with 8 m hysteresis (:75), polled every 0.2 s;
+        //   -> HudContextResolver.Resolve (Core/HudModel/HudContextResolver.cs:41-48) turns it
+        //      into HudContext.Town vs HudContext.Overworld;
+        //   -> PostureEvaluator.Derive (HUD/Kit/PostureEvaluator.cs:143-145) turns THAT into
+        //      HudPosture.CalmTown vs HudPosture.CalmExplore, and traces every transition at
+        //      PostureEvaluator.cs:78-80 ("posture calm(town)->calm(explore)"). No new trace is
+        //      added here: adding a second one would be two owners of the same event.
+        // What was MISSING is only the last hop: hud-areas.json listed the SAME "peacefulDock"
+        // widget under calm(town) and calm(explore), so the dock was byte-identical on both sides
+        // of a boundary the HUD had already crossed. This dock is what calm(explore) gets instead.
+        //
+        // ⛔ BUILD AND TALK ARE **ABSENT**, NOT DISABLED, AND THE CHOICE IS FORCED:
+        //  1. The oracle cannot tell a disabled face from a live one. CheckMeasuredPeacefulDock
+        //     finds faces with GetComponentInChildren<Button>(true) — includeInactive, and
+        //     DELIBERATELY so, because Register() deactivates the whole dock root. A
+        //     SetActive(false) BUILD face still counts as a face; only a face that was never
+        //     constructed can be asserted absent.
+        //  2. A dimmed face must carry a WORD or a NUMBER saying why (HudActionBarModel.cs:270-285
+        //     — the owner is red/green colourblind, so a greyed medallion signals nothing to her).
+        //     No such copy is ruled, and inventing it would be a design decision this lane does
+        //     not own.
+        //  3. The touch floor is the scarcest thing on this bar (MinSlotPx 112; HudDockLayout
+        //     already degrades to icon-only when five faces will not fit). Spending two of them on
+        //     controls that cannot fire is the opposite of what the narrow-surface ladder is for.
+        // If the owner wants them present-but-dead instead, that is a one-line change here plus a
+        // ruled word for each — flagged in the WO, not decided here.
+        //
+        // HERO / JOURNEY / MANAGE are UNRULED and therefore carried over from the peaceful dock
+        // exactly as they are, in the same relative order. ITEM is appended on the right, where
+        // the combat dock already puts it (BuildAdaptiveCombatDock slot 5), so the item face never
+        // moves between postures. Both of those are flagged for the owner in the WO.
+        private void BuildAdaptiveOutsideDock(Transform pool)
+        {
+            _outsideDockRoot = new GameObject("AdaptiveOutsideDock", typeof(RectTransform));
+            _outsideDockRoot.transform.SetParent(pool, false);
+            var rootRt = (RectTransform)_outsideDockRoot.transform;
+            rootRt.anchorMin = Vector2.zero;
+            rootRt.anchorMax = Vector2.one;
+            rootRt.offsetMin = rootRt.offsetMax = Vector2.zero;
+
+            ElarionUiKit.BuildActionBarHousing(_outsideDockRoot.transform,
+                new Vector2(0f, 0f), new Vector2(1f, 1f));
+
+            // Same live reference-pixel solver as the other two docks (WO-1319). Four faces, so
+            // it solves WIDER slots than the calm dock at every surface — never narrower.
+            _outsideDockLayout = _outsideDockRoot.AddComponent<HudDockSlotLayout>();
+            _outsideDockLayout.Configure(rootRt, PeacefulDockSlotY0, PeacefulDockSlotY1,
+                HudAreasHost.ActionBarRightHeadroomRatio, HudDockLayout.GapFraction);
+
+            BuildDockSlot(_outsideDockRoot, _outsideDockLayout, _outsideDockLabels, 0,
+                OutsideDockFaceCount, "hero", HudStrings.KeyNavHero, null,
+                new[] { "helmet", "sword" }, () =>
+                {
+                    if (!PanelRouter.Open(PanelId.HeroDeck))
+                        FlowTrace.Warn("HudKit", "Hero workspace opener not registered");
+                });
+            BuildDockSlot(_outsideDockRoot, _outsideDockLayout, _outsideDockLabels, 1,
+                OutsideDockFaceCount, "journey", HudStrings.KeyNavJourney, null,
+                new[] { "compass", "quest" }, OnQuestsAction);
+            BuildDockSlot(_outsideDockRoot, _outsideDockLayout, _outsideDockLabels, 2,
+                OutsideDockFaceCount, "manage", HudStrings.KeyNavManage, null,
+                new[] { "banner", "shield" }, OnManageAction);
+            // "can use items still" — the SAME picker the combat dock opens (OpenItemPicker), with
+            // the same stack badge and the same WO-1468 in-medallion seat, so the face the player
+            // learned in combat behaves identically out here. The caption is the literal "ITEM"
+            // because HudStrings has no item key today (AllKeys, HudStrings.cs:128-139) and the
+            // combat face is the same literal — minting a key belongs to the localization lane and
+            // is flagged in the WO rather than done half-way here.
+            _outsideItemSlot = BuildDockSlot(_outsideDockRoot, _outsideDockLayout,
+                _outsideDockLabels, 3, OutsideDockFaceCount, "potion", null, "ITEM",
+                new[] { "consumable", "bag" }, OpenItemPicker);
+            if (_outsideItemSlot != null)
+            {
+                _outsideItemSlot.showZero = true;
+                ElarionUiKit.StyleAsStackBadge(_outsideItemSlot);
+                SeatStackBadgeInMedallion(_outsideItemSlot);
+            }
+
+            Register("outsideDock", WrapAsWidget("outsideDock", _outsideDockRoot));
+            FlowTrace.Once("HudKit", "outside-dock-built",
+                "WO-1672: outside dock built with " + OutsideDockFaceCount + " faces " +
+                "(HERO/JOURNEY/MANAGE/ITEM). BUILD and TALK are NOT CONSTRUCTED - the owner ruled " +
+                "they must not be usable outside the castle, and an absent face is the only kind " +
+                "the measured-dock oracle can tell apart from a live one.");
+        }
+
+        /// <summary>WO-1672 — the measurement hook for the outside dock, the exact twin of
+        /// <see cref="BuildPeacefulDockProbe"/>: it calls the ONE builder and returns the same root
+        /// the runtime registers. No live caller, no state, and it must never grow one.</summary>
+        public GameObject BuildOutsideDockProbe(Transform pool)
+        {
+            BuildAdaptiveOutsideDock(pool);
+            return _outsideDockRoot;
+        }
+
+        private GameObject _outsideDockRoot;
+        private HudDockSlotLayout _outsideDockLayout;
+        private ElarionUiKit.ActionSlotHandle _outsideItemSlot;
+        private readonly TMP_Text[] _outsideDockLabels = new TMP_Text[OutsideDockFaceCount];
+        /// <summary>Localization keys for the outside dock, index-aligned with
+        /// <c>_outsideDockLabels</c>. The ITEM slot is NULL on purpose: it carries a literal today
+        /// (see BuildAdaptiveOutsideDock) and the refresh loop skips nulls rather than blanking it.</summary>
+        private static readonly string[] OutsideDockLabelKeys =
+        {
+            HudStrings.KeyNavHero,
+            HudStrings.KeyNavJourney,
+            HudStrings.KeyNavManage,
+            null,
+        };
 
         private void BindLocalizedHudCopy()
         {
@@ -2745,6 +2945,12 @@ namespace DeNelle.HUD.Kit
             for (int i = 0; i < _peacefulDockLabels.Length && i < PeacefulDockLabelKeys.Length; i++)
                 if (_peacefulDockLabels[i] != null)
                     _peacefulDockLabels[i].text = HudStrings.Get(PeacefulDockLabelKeys[i]);
+            // WO-1672 — the outside dock's carried-over faces retranslate with the calm ones. A
+            // null key is the ITEM literal and is SKIPPED, never resolved: HudStrings.Get on an
+            // unknown key would blank the only word on that face.
+            for (int i = 0; i < _outsideDockLabels.Length && i < OutsideDockLabelKeys.Length; i++)
+                if (_outsideDockLabels[i] != null && OutsideDockLabelKeys[i] != null)
+                    _outsideDockLabels[i].text = HudStrings.Get(OutsideDockLabelKeys[i]);
             if (_collectorsChipLabel != null)
                 _collectorsChipLabel.text = HudStrings.Get(HudStrings.KeyCollectorsTitle);
             if (_heartPlate.NameLabel != null)
@@ -4231,6 +4437,15 @@ namespace DeNelle.HUD.Kit
                 if (item.button != null)
                     item.button.interactable = HudCommands.HasPotion || HudCommands.HasManaPotion;
             }
+            // WO-1672 — the outside dock's ITEM face is driven by the SAME model event as the
+            // combat one. Without this line its badge would freeze at whatever it read on the
+            // frame it was built, and a stale "3" over an empty belt is worse than no digit.
+            if (_outsideItemSlot != null)
+            {
+                _outsideItemSlot.SetCount(c.HpPotionCount + c.ManaPotionCount);
+                if (_outsideItemSlot.button != null)
+                    _outsideItemSlot.button.interactable = HudCommands.HasPotion || HudCommands.HasManaPotion;
+            }
             RefreshItemPicker();
         }
 
@@ -4333,6 +4548,17 @@ namespace DeNelle.HUD.Kit
             // poll is what turns a layout rule back into a race.
             if (_collectorsClearance != null) _collectorsClearance.MarkDirty();
             if (_buildersClearance != null) _buildersClearance.MarkDirty();
+
+            // ⭐ WO-1670b (owner ruling 2026-09-10 12:55) — RING the ATTACK REPORT chip's own
+            // repaint on this edge. ⛔ THIS IS NOT A SECOND VISIBILITY WRITER, AND THAT IS THE
+            // whole design: TickDefenseReportChip holds the ONLY SetActive on _defenseChipBand and
+            // now reads _resChipsExpanded as an input. Setting the band active/inactive from here
+            // would race that method's next throttled tick and the chip would flicker back on half
+            // a second later. Clearing the throttle and calling the one writer makes the hide land
+            // on the SAME frame as the expand, with no new owner — the identical idiom as the
+            // MarkDirty ring two lines above, and for the identical reason.
+            _defenseChipPollTimer = DefenseChipPollSeconds;
+            TickDefenseReportChip();
 
             if (open)
             {

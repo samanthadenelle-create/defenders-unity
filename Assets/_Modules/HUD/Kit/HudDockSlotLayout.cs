@@ -40,6 +40,11 @@ namespace DeNelle.HUD.Kit
     {
         private readonly List<RectTransform> _slots = new List<RectTransform>();
         private readonly List<TMP_Text> _captions = new List<TMP_Text>();
+        // WO-1671 — the caption's obsidian backing band. It MUST be toggled with the caption:
+        // this class already hides captions on the icon-only tier (sol.ShowCaptions below), and a
+        // plate that stayed visible there would paint an empty black smear under five wordless
+        // medallions. One list, one toggle, no second owner of caption visibility.
+        private readonly List<GameObject> _captionPlates = new List<GameObject>();
 
         private RectTransform _track;      // the dock root (expands right past its mount)
         private float _y0 = 0.08f, _y1 = 0.94f;
@@ -71,9 +76,18 @@ namespace DeNelle.HUD.Kit
         /// <summary>Register one medallion (and its optional caption) in left-to-right order.</summary>
         public void AddSlot(RectTransform slot, TMP_Text caption)
         {
+            AddSlot(slot, caption, null);
+        }
+
+        /// <summary>Register one medallion with its caption AND that caption's WO-1671 obsidian
+        /// backing plate, so the two are shown and hidden as one thing. <paramref name="captionPlate"/>
+        /// may be null (the combat dock passes none today).</summary>
+        public void AddSlot(RectTransform slot, TMP_Text caption, GameObject captionPlate)
+        {
             if (slot == null) return;
             _slots.Add(slot);
             _captions.Add(caption);
+            _captionPlates.Add(captionPlate);
             MarkDirty();
         }
 
@@ -139,6 +153,10 @@ namespace DeNelle.HUD.Kit
                     var cap = i < _captions.Count ? _captions[i] : null;
                     if (cap != null && cap.gameObject.activeSelf != sol.ShowCaptions)
                         cap.gameObject.SetActive(sol.ShowCaptions);
+                    // WO-1671 — the plate follows the word it backs, never the other way round.
+                    var plate = i < _captionPlates.Count ? _captionPlates[i] : null;
+                    if (plate != null && plate.activeSelf != sol.ShowCaptions)
+                        plate.SetActive(sol.ShowCaptions);
                 }
 
                 // Trace only when the SHAPE changes — this runs on a resize, not per frame,

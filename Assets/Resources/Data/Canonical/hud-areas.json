@@ -124,7 +124,7 @@
         {
           "area": "actionBar",
           "widgets": [
-            "peacefulDock"
+            "outsideDock"
           ]
         },
         {
