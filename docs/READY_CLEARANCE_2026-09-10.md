@@ -81,3 +81,65 @@ Evidence: `Builds/ready-owner-validation-import.log` and
 The owner additionally requested textured raid floors reaching the walls,
 recorded as WO-1703. WO-1702 records the repeated-old-Fail retest defect.
 Both are added to this effort; existing raid boundary/prop sign-offs remain closed.
+
+## Delivered revisions and current work
+
+- `18952982e`: imported owner findings and applied Fixed queue policy.
+- `b65996d05`: Google email promo lookup/binding, verified by 147 root Node tests.
+  Schema migration and production proof remain pending; WO-1698 is Fixed.
+- `c8326f721`: explicit retest receipts preserve old findings while delivered work
+  awaits a fresh test. Validation roundtrip passed; WO-1702 and WO-1244 are Fixed.
+- `ea9a7201c`: WO-1697 pip bands meet the existing floor. Root compile passed,
+  regression 507/507 and 12 skill-tree captures completed. Device proof pending.
+- `100984ce9`: captured-base/AI/player arena architecture records owner direction.
+
+Current root integration: WO-1291 scoped completion generated eight approved
+wrappers and reduced Structure_Art from 72 entries/45 keys to 45/45, preserving
+protected towers and catalog bytes. Remaining storefront/delivery proof is under
+review. WO-2016 passes 44 oracle cases and 22 Manage capture geometry/touch checks;
+its synthetic 16-tile stress fixture proves 738.1px overflow and zero endpoint gaps.
+The category-first normal BUILD screen remains intentional under later owner rules.
+WO-1695 now restores existing charge_knight art after renewed owner feedback; its
+focused regression went RED on the placeholder and GREEN on the correction.
+WO-1703 ground coverage/material regression went RED on actual missing coverage
+and texture, then GREEN. First two attempts failed in test setup and are not defect
+proof. Persisted scene/nav proof and rendered floor inspection remain pending.
+
+## Additional phone findings and product direction
+
+Pulled and opened `Builds/device-frames/owner-20260910/Screenshot_20260910-202900.png`.
+Owner reported missing bottom icons, exterior wall holes and disconnected inner
+keep/gate. WO-1695 covers the primary icon; three empty hot-swap slots are not
+proven lost assignments. The pale capsule's producer remains unproven; do not
+change game toast code on a device-overlay guess. WO-1704 records measured wall,
+gate and inner assembly continuity work. Root RED captured seams, actual mesh
+holes, absent inner assemblies and inadequate usable gate spans on real configs.
+
+Owner established: save castle in Chapter One, raid, capture a base as it stands,
+repair and redesign it CoC-style, then battle with that build against AI or players.
+A modest one-time essential repair grant supports starting out; upgrades remain
+earned. The grant amount is not chosen. Playable, resumable ownership/repair/design
+FTUE belongs in this progression. Details and recommended implementation stages:
+`docs/RAIDS_TO_PVP_ARCHITECTURE_2026-09-10.md`.
+
+Owner also requested a Pi funding pitch deck adapted from the existing SKR deck,
+while fixes continue. This is a parallel artifact task, not authorization to submit
+an application, publish the deck or make unsupported traction/approval claims.
+
+## Pi deck publication and test-platform clarification
+
+Owner subsequently explicitly requested publication beside the SKR deck on Vercel.
+Published site/pi-network-grant-deck.pdf and .pptx to the existing marketing project,
+then moved echoes-of-elarion.vercel.app to deployment dpl_3Qz3uuGPKYkzG15j7qEtP41KgDqs.
+Used site/README.md's documented site-only fallback: the web-ship dry run also
+planned a WebGL deployment outside this request. No WebGL deployment performed.
+Both public Pi files returned HTTP 200 and exact local SHA256; existing SKR PDF
+also matched local bytes and the marketing landing retained its dApp Store link.
+Public links: https://echoes-of-elarion.vercel.app/pi-network-grant-deck.pdf
+and https://echoes-of-elarion.vercel.app/pi-network-grant-deck.pptx.
+
+Owner clarified the last test was SKR-facing on their phone, used first because
+WebGL builds take longer. Treat the imported Fail as Android evidence, not proof
+that WO-1701's original WebGL-only loading exception recurred. Existing native
+screenshots show armored Knight; the expected hero and exact reported symptom
+remain undetermined. Keep original WebGL acceptance separately pending.
