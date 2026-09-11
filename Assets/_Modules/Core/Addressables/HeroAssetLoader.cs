@@ -24,8 +24,34 @@
 //     and Heroes/Textures/* now live in Assets/HeroContent/ in REMOTE R2 bundles and
 //     have NO local copy: for those, Addressables is the only path that can succeed.
 //
+// !! RESOLUTION ORDER SINCE WO-1701 (2026-09-10): WARM CACHE -> Addressables sync -> Resources.
+//
+// STEP 0, THE WARM CACHE, IS THE ONLY BRANCH WEBGL CAN TAKE FOR A REMOTE HERO.
+// HeroContentPrewarmer already downloads this hero's bundle on the post-class-select load
+// screen; since WO-1701 it ALSO LoadAssetAsync-es every address this loader will later ask
+// for (see WarmableAddresses below - one list, built here, consumed there) and keeps the
+// loaded objects for the process. A warm hit is a dictionary read on every platform: it
+// cannot block, cannot throw, and needs no Addressables call at all.
+//
 // Synchronous surface (WaitForCompletion) so the existing sync call sites keep their
 // shape (AtbCombatantSwapper, HeroBodySwapper legacy path, StoryCompanionInjector).
+// That branch is now compiled ONLY when the target is not WebGL, or when we are in the
+// Editor (whose AssetDatabase/local providers resolve synchronously and never run the
+// WebGL player). It is NOT the load-bearing path any more - the warm cache is.
+//
+// STOP - CAPTURED DATA THAT FORCED THE GUARD (Seeker, Pi Browser, 2026-09-10, WO-1701):
+//   21:54:23Z [Flow:HeroPrewarm] 'Mage' art downloaded and cached on attempt 1 - Ready.
+//   21:54:24Z error: [Flow:HeroAssets] Addressables resolve 'Heroes/Mage' (GameObject)
+//             FAILED: Exception: WebGLPlayer does not support synchronous Addressable
+//             loading. Please do not use WaitForCompletion on the WebGLPlayer platform.
+//   21:54:24Z [Flow:HeroBody] class=Mage slug=Mage - kicking Blink base load 'hero/base/HumanMale'.
+// The bundle WAS resident one second earlier. Addressables refuses WaitForCompletion on
+// WebGLPlayer REGARDLESS of cache state; Guard.Try logged and swallowed the throw, the
+// null fell through to a Resources copy the remote migration had deleted, and the player
+// got the naked Blink placeholder body. Caching harder would never have fixed it - only
+// not calling WaitForCompletion does.
+// Pinned by Assets/Editor/Regression/HeroAssetLoaderWebGlRegression.cs (both halves: the
+// guard on every WaitForCompletion occurrence, and warm-cache-before-Addressables).
 //
 // We deliberately check LoadResourceLocationsAsync FIRST rather than blindly calling
 // LoadAssetAsync on a possibly-unregistered key: in V1 NO hero address is registered,
@@ -63,6 +89,34 @@ namespace DeNelle.Core
         public static RuntimeAnimatorController LoadHeroController(string slug) => Load<RuntimeAnimatorController>(slug);
 
         /// <summary>
+        /// THE address builder. One expression, used by <see cref="Load{T}"/> and by
+        /// <see cref="WarmableAddresses"/>, so the prewarm can never warm a different string
+        /// from the one this loader later asks for. (WO-1701: a second hand-written list is
+        /// exactly the duplicated state CLAUDE.md sections 2/5/16 each describe going stale.)
+        /// </summary>
+        public static string AddressFor(string slug) =>
+            string.IsNullOrEmpty(slug) ? null : HeroAddrPrefix + slug;
+
+        /// <summary>
+        /// Every (asset type, address) pair this loader can be asked for on behalf of
+        /// <paramref name="slug"/> - i.e. the exact set HeroContentPrewarmer must hold in its warm
+        /// cache for a WebGL player to render this hero. Derived from the two public entry points
+        /// (<see cref="LoadHeroPrefab"/> -> GameObject, <see cref="LoadHeroController"/> ->
+        /// RuntimeAnimatorController) and from <see cref="AddressFor"/>; ENUMERATE THIS, never
+        /// re-type the addresses at the call site.
+        /// <para>Both pairs share one address on purpose - the asset TYPE disambiguates the two
+        /// catalog locations, which is why the warm cache is keyed by type AND address.</para>
+        /// </summary>
+        public static IEnumerable<KeyValuePair<System.Type, string>> WarmableAddresses(string slug)
+        {
+            string address = AddressFor(slug);
+            if (string.IsNullOrEmpty(address)) yield break;
+
+            yield return new KeyValuePair<System.Type, string>(typeof(GameObject), address);
+            yield return new KeyValuePair<System.Type, string>(typeof(RuntimeAnimatorController), address);
+        }
+
+        /// <summary>
         /// Build the address "Heroes/&lt;slug&gt;", try Addressables when that address (of type
         /// <typeparamref name="T"/>) is registered, else fall back to Resources.Load. Guarded — a
         /// throw at any step degrades to the Resources fallback so the hero is never left assetless.
@@ -71,8 +125,23 @@ namespace DeNelle.Core
         {
             if (string.IsNullOrEmpty(slug)) return null;
 
-            string address = HeroAddrPrefix + slug;
+            string address = AddressFor(slug);
             T result = null;
+
+            // -- 0. WARM CACHE FIRST (WO-1701) ---------------------------------------
+            // A dictionary probe and nothing else: no catalog lookup, no handle, no wait,
+            // no possibility of a throw, on ANY platform. On WebGL it is the only branch
+            // that can succeed for a remote hero, because the block below is compiled out
+            // there (Addressables refuses a synchronous load on WebGLPlayer even when the
+            // bundle is already cached - see the header's captured lines).
+            if (HeroContentPrewarmer.TryGetWarm(address, out T warm) && warm != null)
+            {
+                string warmName = warm.name;
+                FlowTrace.Step("HeroAssets",
+                    $"warm-cache HIT '{address}' ({typeof(T).Name}) -> '{warmName}' - served from the " +
+                    "HeroContentPrewarmer dictionary, no Addressables call made.");
+                return warm;
+            }
 
             // ── Addressables FIRST (WO-1187) ────────────────────────────────────────
             // ⚠ ORDER IS THE WHOLE POINT OF THIS METHOD. Until WO-1187 this block sat
@@ -87,16 +156,27 @@ namespace DeNelle.Core
                 wasRegistered = AddressableRegistered<T>(address);
                 if (!wasRegistered) return; // un-grouped asset (Props/, Emotes/, SC_*) — Resources below
 
-                // Safe because HeroContentPrewarmer has already DOWNLOADED this hero's bundle on
-                // the post-class-select load screen. WaitForCompletion on an UNCACHED remote
-                // bundle would stall the main thread for the length of the download, which is
-                // exactly why the prewarm gate blocks entry into the world instead.
+                // The prewarm has already DOWNLOADED this hero's bundle on the post-class-select
+                // load screen, so this resolves from cache. WaitForCompletion on an UNCACHED
+                // remote bundle would stall the main thread for the length of the download,
+                // which is why the prewarm gate blocks entry into the world instead.
+                //
+                // WO-1701: compiled ONLY off the WebGL player. UnityEngine.AddressableAssets
+                // THROWS "WebGLPlayer does not support synchronous Addressable loading" here
+                // regardless of cache state (captured 2026-09-10, header). UNITY_EDITOR is kept
+                // in the condition because the Editor resolves through the AssetDatabase/local
+                // providers and never runs the WebGL player, so an editor session with the WebGL
+                // build target selected keeps a working hero instead of silently losing one.
+                // ONLY this guarded block may contain that call - HeroAssetLoaderWebGlRegression
+                // walks the #if stack over this file and fails on any occurrence outside it.
+#if !UNITY_WEBGL || UNITY_EDITOR
                 var handle = Addressables.LoadAssetAsync<T>(address);
                 result = handle.WaitForCompletion();
                 // Intentionally NOT released — the asset must outlive the spawned hero (parity with
                 // Resources.Load, which never unloads). Tier-2 adds ref-counted release.
                 if (result != null)
                     FlowTrace.Step("HeroAssets", $"Addressables HIT '{address}' -> '{result.name}' ({typeof(T).Name}).");
+#endif
             });
             if (result != null) return result;
 
@@ -107,13 +187,26 @@ namespace DeNelle.Core
             });
 
             // §12 hygiene: separate a clean "never grouped, lives in Resources by design" (Step)
-            // from "the catalog HAS this address but it did not resolve" (Warn — a real anomaly,
-            // and on a remote group it almost always means the bundle was never pushed to R2).
+            // from "the catalog HAS this address but it did not resolve" (a real anomaly).
+            //
+            // WO-1701 CORRECTION - this line used to assert "the bundle is likely missing from
+            // the CDN (never pushed)". On 2026-09-10 it printed that sentence one second after
+            // [Flow:HeroPrewarm] logged the very same bundle as downloaded and cached, and while
+            // R2 parity was green for WebGL. The loader CANNOT see why the resolve returned null;
+            // asserting a cause it has not measured is the CLAUDE.md section 11B failure, and it
+            // sent the first reader of that log hunting a push that had already happened.
+            // It now names what it DOES know and lists the candidates as candidates.
+            string fellBackTo = result == null ? "ALSO NULL" : result.name;
             if (wasRegistered)
                 FlowTrace.Warn("HeroAssets",
-                    $"Addressables '{address}' IS registered but resolved null — the bundle is likely missing from " +
-                    $"the CDN (never pushed). Fell back to Resources.Load(\"{HeroAddrPrefix}{slug}\") -> " +
-                    $"{(result == null ? "ALSO NULL" : result.name)}.");
+                    $"Addressables '{address}' IS registered but resolved null - the prewarm did not hold " +
+                    $"'{address}' ({typeof(T).Name}) either. CAUSE NOT DETERMINED FROM HERE. Candidates, in " +
+                    "the order worth checking: (1) this platform refuses the synchronous load - WebGL always " +
+                    "does, and the sync branch is compiled out there, so a WebGL miss means the warm cache " +
+                    "did not hold it; (2) the bundle for THIS content build was never pushed (CLAUDE.md " +
+                    "section 16 - names are content-hashed, so a previous push does not cover this build); " +
+                    "(3) nothing at this address provides " + typeof(T).Name + ". Fell back to " +
+                    $"Resources.Load('{address}') -> {fellBackTo}.");
             else
                 FlowTrace.Step("HeroAssets",
                     $"no Addressables entry for '{address}' (expected for the deliberately-local Props/Emotes/SC_ " +
@@ -121,7 +214,9 @@ namespace DeNelle.Core
 
             if (result == null)
                 FlowTrace.Fail("HeroAssets",
-                    $"hero asset '{HeroAddrPrefix}{slug}' ({typeof(T).Name}) not found via Addressables OR Resources — caller falls back.");
+                    $"hero asset '{address}' ({typeof(T).Name}) not found: the prewarm did not hold '{address}', " +
+                    "Addressables did not return it, and Resources has no copy - caller falls back (on the " +
+                    "playable hero that fallback is the Blink base body, i.e. the placeholder the player sees).");
             return result;
         }
 
@@ -129,8 +224,13 @@ namespace DeNelle.Core
         /// True when the Addressables catalog has at least one location for <paramref name="address"/>
         /// providing type <typeparamref name="T"/>. Silent (no error spam) on the common V1 miss.
         /// Type-filtered so the prefab vs controller locations sharing the same address resolve apart.
+        /// <para>PUBLIC since WO-1701 so HeroContentPrewarmer's warm pass uses THIS probe rather than
+        /// a second copy of the same rule - a blind LoadAssetAsync on an unregistered key is what
+        /// spams a red Addressables error on every hero load, and the warm pass asks for more keys
+        /// than the loader does. It is a catalog lookup only: it starts no operation and cannot
+        /// block, so it is safe on WebGL and stays OUTSIDE the platform guard above.</para>
         /// </summary>
-        private static bool AddressableRegistered<T>(string address) where T : Object
+        public static bool AddressableRegistered<T>(string address) where T : Object
         {
             try
             {

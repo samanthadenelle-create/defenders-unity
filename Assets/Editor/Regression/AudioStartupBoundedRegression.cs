@@ -28,7 +28,10 @@ namespace DeNelle.Editor
                     continue;
                 }
 
-                int method = source.IndexOf("private static bool AddressableRegistered", StringComparison.Ordinal);
+                // WO-1701 (2026-09-10): the anchor dropped its accessibility keyword - the method went public so
+                // HeroContentPrewarmer can reuse it; the contract this lint guards (in-memory locator set, no
+                // synchronous wait) is unchanged and still asserted on the body below.
+                int method = source.IndexOf("static bool AddressableRegistered", StringComparison.Ordinal);
                 int end = method < 0 ? -1 : source.IndexOf("\n        }", method, StringComparison.Ordinal);
                 string body = method >= 0 && end > method ? source.Substring(method, end - method) : string.Empty;
                 if (body.Length == 0) failures.Add(name + " AddressableRegistered body not found");

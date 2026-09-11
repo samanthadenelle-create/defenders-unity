@@ -1,6 +1,7 @@
 # WORK ORDER 1701 - On WebGL the hero is the naked Blink base: HeroAssetLoader resolves the hero prefab with WaitForCompletion, which WebGL refuses
 
-**Status:** READY TO IMPLEMENT
+**Status:** FIXED - gated (Builds/wave12-compile1 COMPILE_GATE_OK, Builds/wave12-reg2 REGRESSION_OK 507/507) and deployed to defenders-pi.vercel.app 2026-09-10 19:25; NOT device-proven (owner out of tokens) - next Seeker session in Pi Browser: the Mage must enter the town in Mage art
+**Implemented:** 2026-09-10 by the WO-1701 SME lane (worktree `agent-a74b360b34c7b3fb0`). Code + regression written, brace/NUL gate clean, lint proven RED on HEAD and GREEN after. NOT gated in Unity, NOT committed - the lead batch-gates and commits, and registers the suite in `DataRegression.cs`. Result: `WorkOrders/WORK_ORDER_1701_webgl_hero_art_falls_back_to_blink_base_sync_addressables_load.RESULT.md`.
 **Minted:** 2026-09-10 17:05 by the CLI lead from the owner's bug report #4 (Seeker, Pi Browser, build 2026.09.10.364108@defenders-pi.vercel.app; owner: "the character is the fallback blink naked mage"). Main-line banner bumped 1701 -> 1702 in the same edit.
 **Silo:** Core / Addressables (`Assets/_Modules/Core/Addressables/HeroAssetLoader.cs`, `HeroContentPrewarmer.cs`). Pi / WebGL surface only; the APK and exe hit a warm local cache and are unaffected.
 **Severity:** P1 for the Pi listing - every WebGL player sees the placeholder body, and the Pi portal reviewer will too.
