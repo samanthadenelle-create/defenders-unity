@@ -1,6 +1,6 @@
 # WO-1633 - Raid courtyards: props are decor, not cover, and they sit on one mechanical ring
 
-**Status:** FIXED 2026-09-10 - courtyard props keep colliders (cover), sit in 2-3 clustered rings with a clear lane, 27/25/27 placed on wave3-bake7 with per-config log lines; CoverRingPlacer extracted from the siege arena; owner felt-test on the next APK closes (was: IMPLEMENTED - awaiting gate + bake (lane RAID-POLISH 2026-09-10))
+**Status:** CLOSED 2026-09-10 - owner felt-test PASS (validated 2026-09-11T01:16:39, build 2026.09.10.364108). PRIOR STATUS: FIXED 2026-09-10 - courtyard props keep colliders (cover), sit in 2-3 clustered rings with a clear lane, 27/25/27 placed on wave3-bake7 with per-config log lines; CoverRingPlacer extracted from the siege arena; owner felt-test on the next APK closes (was: IMPLEMENTED - awaiting gate + bake (lane RAID-POLISH 2026-09-10))
 **Minted:** 2026-09-10 (lane RAID-POLISH, main-line banner; bumped 1633 -> 1634 in the SAME edit)
 **Silo / Lane:** World / Raid scenes - the PROPS / DRESSING seam only
 **Files owned:** `Assets/Editor/WallTools/RaidBaseDresser.cs`, NEW `Assets/Editor/WallTools/CoverRingPlacer.cs`,

@@ -1,6 +1,6 @@
 # WO-2018 — Manage category-first navigation, detail space, and Army frames
 
-**Status:** FIXED - checked in; awaiting owner device match on the next build
+**Status:** CLOSED 2026-09-10 - owner felt-test PASS (validated 2026-09-11T01:12:44, build 2026.09.10.364108). PRIOR STATUS: FIXED - checked in; awaiting owner device match on the next build
 
 **Date:** 2026-09-08
 

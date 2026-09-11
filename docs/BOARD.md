@@ -1,5 +1,12 @@
 # BOARD.md — how the work-order board works (WO-1011)
 
+> **Owner ruling, 2026-09-10:** any implemented item whose remaining work is proof
+> from a test build moves to **Fixed**. The owner tests Fixed items and their
+> findings determine **Closed** or reopening to **Ready**. Record the pending
+> proof explicitly; diagnosis and unimplemented acceptance remain Ready. This
+> supersedes the older device-install prerequisite below. A build or gate pass
+> alone does not supply the owner's sign-off.
+
 **The board is `BOARD.html` at the repo root. It is GENERATED. Never hand-edit it.**
 
 ```

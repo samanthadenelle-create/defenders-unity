@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-sixty-third pass): main line next free = **1702**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-sixty-fourth pass): main line next free = **1704**.
+
+> 1702: preserve prior owner findings while redelivered Fixed work awaits a new test.
+> 1703: owner request, raid textured floors reach the enclosing walls.
+
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-sixty-third pass): main line next free = **1702**.
 
 > ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-sixty-second pass): main line next free = **1701**.
 

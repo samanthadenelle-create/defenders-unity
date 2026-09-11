@@ -1,6 +1,6 @@
 # WO-1484: the Unity heap climbs 66 MB in four minutes without leaving the scene
 
-**Status:** READY TO IMPLEMENT - PARKED (owner 2026-09-09: measure in Pi Browser on the Seeker first)
+**Status:** FIXED - awaiting controlled same-scene Seeker Pi test-build measurement (owner 2026-09-10 status ruling). Memory/GC/scene diagnostics are delivered; allocation cause is not yet proven or claimed corrected. See docs/READY_CLEARANCE_2026-09-10.md. PRIOR STATUS: READY TO IMPLEMENT - PARKED (owner 2026-09-09: measure in Pi Browser on the Seeker first)
 
 ### OWNER RULING 2026-09-09 (recorded by the CLI lead)
 Both WO-1484 and WO-1314 need measured over the Seeker in Pi Browser to verify. The 2026-09-09 desktop/controlled-run retractions in docs/READY_RCA_2026-09-09.md do not close them. A measurement session must run the game in Pi Browser ON THE SEEKER (not desktop, not headless).

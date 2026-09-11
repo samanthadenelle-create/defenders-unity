@@ -1,6 +1,6 @@
 # WO-1629 - Build Collections: the Manage Placed card's caption is still authored as a fraction of the card, and no capture has ever rendered it
 
-**Status:** FIXED 2026-09-10 - owner ruled "shorten the copy"; caption is "manage what you built" in its own 50 px band; gated (Builds/wave3-compile1, Builds/wave3-reg1 493/493) and captured (Builds/wave3-capture1: UI_CAPTURE_OK 91; all 24 probes fontSize=21, 2 lines, chars == sourceLen, truncated=False); PNG read by the lead and sent to the owner; owner felt-test closes. (was: IMPLEMENTED - awaiting gate + capture (lane PLACED-CARD 2026-09-10))
+**Status:** CLOSED 2026-09-10 - owner felt-test PASS (validated 2026-09-11T01:13:09, build 2026.09.10.364108). PRIOR STATUS: FIXED 2026-09-10 - owner ruled "shorten the copy"; caption is "manage what you built" in its own 50 px band; gated (Builds/wave3-compile1, Builds/wave3-reg1 493/493) and captured (Builds/wave3-capture1: UI_CAPTURE_OK 91; all 24 probes fontSize=21, 2 lines, chars == sourceLen, truncated=False); PNG read by the lead and sent to the owner; owner felt-test closes. (was: IMPLEMENTED - awaiting gate + capture (lane PLACED-CARD 2026-09-10))
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1629 -> 1631 in the SAME edit, with WO-1630)
 **Silo / Lane:** Village / BuildMode UI (`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
 **Severity:** P2 felt-legibility, with a P2 evidence defect attached. The caption carries the longest

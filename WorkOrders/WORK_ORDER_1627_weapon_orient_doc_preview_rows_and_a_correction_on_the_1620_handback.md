@@ -1,6 +1,6 @@
 # WO-1627 - WEAPON_ARMOR_ORIENT_LOGIC needs its preview rows, and the WO-1620 hand-back needs a CORRECTION banner
 
-**Status:** FIXED 2026-09-10 - lead reviewed: five cited rows in docs/WEAPON_ARMOR_ORIENT_LOGIC.md, CORRECTION banners on the 1620 RESULT (pure insertions) and 1616 item 8 closed; docs only. (was: IMPLEMENTED - awaiting lead review, lane ORIENT-DOC)
+**Status:** CLOSED 2026-09-10 - owner felt-test PASS (validated 2026-09-11T01:14:48, build 2026.09.10.364108). PRIOR STATUS: FIXED 2026-09-10 - lead reviewed: five cited rows in docs/WEAPON_ARMOR_ORIENT_LOGIC.md, CORRECTION banners on the 1620 RESULT (pure insertions) and 1616 item 8 closed; docs only. (was: IMPLEMENTED - awaiting lead review, lane ORIENT-DOC)
 
 **Sequencing note (2026-09-10):** the READY status below said *"SEQUENCED behind the lead's commit of
 the WO-1620 RESULT"*. The lead's dispatch to this lane OVERRODE that guard explicitly, instructing the

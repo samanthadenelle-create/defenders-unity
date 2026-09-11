@@ -1,6 +1,6 @@
 # WO-1628 - Build Collections: every category card's affordability caption renders as "nothing affordable y" at two of the three capture aspects
 
-**Status:** FIXED 2026-09-10 - gated (Builds/wave2-compile6, Builds/wave2-reg6 493/493) and captured (Builds/wave2-capture4: UI_CAPTURE_OK 91; all 21 probe lines bandPx h=50, fontSize=21, rendered=2 lines, 22 chars, truncated=False at every aspect); the 2670x1200 PNG shows "nothing affordable / yet" on two lines clear of the bezel, sent to the owner; owner felt-test closes. (was: IMPLEMENTED - awaiting gate + capture (lane SUBTITLE 2026-09-10))
+**Status:** CLOSED 2026-09-10 - owner felt-test PASS (validated 2026-09-11T01:13:16, build 2026.09.10.364108). PRIOR STATUS: FIXED 2026-09-10 - gated (Builds/wave2-compile6, Builds/wave2-reg6 493/493) and captured (Builds/wave2-capture4: UI_CAPTURE_OK 91; all 21 probe lines bandPx h=50, fontSize=21, rendered=2 lines, 22 chars, truncated=False at every aspect); the 2670x1200 PNG shows "nothing affordable / yet" on two lines clear of the bezel, sent to the owner; owner felt-test closes. (was: IMPLEMENTED - awaiting gate + capture (lane SUBTITLE 2026-09-10))
 **Minted:** 2026-09-10 (CLI minting lane, main-line banner; bumped 1628 -> 1629 in the SAME edit)
 **Silo / Lane:** Village / BuildMode UI (`Assets/_Modules/Village/BuildMode/BuildCollectionBrowser.cs`)
 **Severity:** P2 felt-legibility. Seven cards, seven truncated captions, on the FIRST build screen a

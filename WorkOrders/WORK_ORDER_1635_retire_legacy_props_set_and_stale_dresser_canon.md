@@ -1,6 +1,6 @@
 # WO-1635 - Raid dressing: two prop authorities, and four docs that still say the dresser is dead
 
-**Status:** FIXED 2026-09-10 - canon half b10cd6783; code half: legacy props.set fallback + DefaultProps deleted, one prop authority pinned (CaseOnePropReader, CaseSinglePropAuthority), the last legacy token blanked; placement unchanged (33/31/27 on wave4-bake2); gated wave4-reg2 494/494 (was: IMPLEMENTED - awaiting gate + bake (lane PROPS-RETIRE 2026-09-10; canon half landed b10cd6783))
+**Status:** CLOSED 2026-09-10 - owner felt-test PASS (validated 2026-09-11T01:16:38, build 2026.09.10.364108). PRIOR STATUS: FIXED 2026-09-10 - canon half b10cd6783; code half: legacy props.set fallback + DefaultProps deleted, one prop authority pinned (CaseOnePropReader, CaseSinglePropAuthority), the last legacy token blanked; placement unchanged (33/31/27 on wave4-bake2); gated wave4-reg2 494/494 (was: IMPLEMENTED - awaiting gate + bake (lane PROPS-RETIRE 2026-09-10; canon half landed b10cd6783))
 ⚠ **ONE ITEM IS DELIBERATELY LEFT RED.** Lane PROPS-RETIRE delivered the code half (items 1 code-side,
 2, 3). The new `CaseSinglePropAuthority` **REDS today on `fortified_garrison`**, which still authors
 `"props": { "set": ["barracks"], "count": 1 }` alongside `"barracks"` in `raidDress.props`. That one JSON

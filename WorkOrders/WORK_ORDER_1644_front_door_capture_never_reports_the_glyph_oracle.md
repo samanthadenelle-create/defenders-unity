@@ -1,6 +1,6 @@
 # WO-1644 - The FRONT-DOOR capture measures Title + Login through the glyph oracle and reports NO marker
 
-**Status:** FIXED - 2026-09-10. Proven by the marker on a FRESH log, `Builds/wave5-frontdoor1`
+**Status:** CLOSED 2026-09-10 - owner felt-test PASS (validated 2026-09-11T01:12:55, build 2026.09.10.364108). PRIOR STATUS: FIXED - 2026-09-10. Proven by the marker on a FRESH log, `Builds/wave5-frontdoor1`
 (07:26): `UI_GLYPH_OK 6/6 panels labels=18 baselined=0 unproved=0` followed by
 `FRONT_DOOR_CAPTURE_OK 6/6`. Zero findings, zero baseline entries added. RESULT:
 `WorkOrders/WORK_ORDER_1644_front_door_capture_never_reports_the_glyph_oracle.RESULT.md`

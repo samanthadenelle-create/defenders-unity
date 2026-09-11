@@ -1,6 +1,6 @@
 # WORK ORDER 1658 — Eight label bands are authored too short to seat the 30 px floor, and the fit guard has been hiding it
 
-**Status:** FIXED — proven on a fresh device log, allowlist emptied 2026-09-10.
+**Status:** CLOSED 2026-09-10 - owner felt-test PASS (validated 2026-09-11T01:12:51, build 2026.09.10.364108). PRIOR STATUS: FIXED — proven on a fresh device log, allowlist emptied 2026-09-10.
 
 **THE WARRANT (§5.1: an entry drops only on a fresh device logcat — this is that logcat).**
 APK **2026.09.10.363786**, PID **8062**,

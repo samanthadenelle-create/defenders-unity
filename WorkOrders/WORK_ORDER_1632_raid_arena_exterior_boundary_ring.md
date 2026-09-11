@@ -1,6 +1,6 @@
 # WO-1632 - Raid arenas have no exterior boundary: the base has wall rings, the 140 m arena has nothing at its edge
 
-**Status:** FIXED 2026-09-10 - owner directive: a square rock boundary ring at +/-68.6 m on every raid base (82 pieces/side, band-fitted scale, 0.35 m containment slack both faces, no gates), shared ArenaBoundaryRing helper with the siege venue; baked wave3-bake7 + Iron Bastion; owner felt-test on the next APK closes (was: IMPLEMENTED - awaiting gate + bake (lane ARENA-WALL 2026-09-10))
+**Status:** CLOSED 2026-09-10 - owner felt-test PASS (validated 2026-09-11T01:16:40, build 2026.09.10.364108). PRIOR STATUS: FIXED 2026-09-10 - owner directive: a square rock boundary ring at +/-68.6 m on every raid base (82 pieces/side, band-fitted scale, 0.35 m containment slack both faces, no gates), shared ArenaBoundaryRing helper with the siege venue; baked wave3-bake7 + Iron Bastion; owner felt-test on the next APK closes (was: IMPLEMENTED - awaiting gate + bake (lane ARENA-WALL 2026-09-10))
 **Minted:** 2026-09-10 (lane ARENA-WALL, main-line banner; bumped 1632 -> 1633 in the SAME edit)
 **Silo / Lane:** World / Raid scenes - `Assets/Editor/WallTools/RaidBaseGenerator.cs` +
 `Assets/Editor/ArenaBoundaryRing.cs` (new) + `Assets/Editor/ProceduralSiegeArenaBuilder.cs`.

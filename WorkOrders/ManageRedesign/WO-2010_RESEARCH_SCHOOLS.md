@@ -1,6 +1,6 @@
 # WO-2010 — Replace Flat Research Rail With School-First Research
 
-**Status:** IN PROGRESS - PARTIAL: a research-school surface exists (ManageViewContract.cs, ManageScreenVM.cs); the school-first layout acceptance (no 17-perk flat list, all schools visible without scrolling) is not verified at HEAD 2026-09-06.
+**Status:** FIXED - awaiting owner test-build proof (2026-09-10 status ruling). Current captured Research grid shows five schools in one row; see docs/READY_CLEARANCE_2026-09-10.md. PRIOR STATUS: IN PROGRESS - PARTIAL: a research-school surface exists (ManageViewContract.cs, ManageScreenVM.cs); the school-first layout acceptance (no 17-perk flat list, all schools visible without scrolling) is not verified at HEAD 2026-09-06.
 
 **Priority:** P0  
 **Depends on:** WO-2002
