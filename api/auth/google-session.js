@@ -122,6 +122,43 @@ async function resolveStablePlayerId(sql, subject, env) {
     return { ok: true, playerId: currentId, pinned: false };
 }
 
+// WO-1698: optional admin lookup metadata must never prevent a valid sign-in.
+// A missing/unverified claim clears the previous lookup, rather than retaining stale mail.
+const EMAIL_LOOKUP_TIMEOUT_MS = 1000;
+async function persistEmailFingerprint(sql, playerId, claims, env) {
+    const controller = new AbortController();
+    let deadline;
+    try {
+        let fingerprint = null;
+        if (claims && claims.email_verified === true && typeof claims.email === 'string') {
+            try { fingerprint = identity.deriveEmailHmac(claims.email, env.GOOGLE_IDENTITY_KEY); }
+            catch (_) { console.warn('[auth/google-session] email lookup claim invalid'); }
+        }
+        // This deadline applies ONLY to optional lookup metadata, never auth or sessions.
+        // The race also bounds completion if a transport fails to honor cancellation.
+        await Promise.race([
+            sql('INSERT INTO play_identities (player_id, email_hmac) VALUES ($1, $2) ' +
+                'ON CONFLICT (player_id) DO UPDATE SET email_hmac = EXCLUDED.email_hmac',
+                [playerId, fingerprint], { fetchOptions: { signal: controller.signal } }),
+            new Promise((_, reject) => {
+                deadline = setTimeout(() => {
+                    controller.abort();
+                    reject(new Error('EMAIL_LOOKUP_TIMEOUT'));
+                }, EMAIL_LOOKUP_TIMEOUT_MS);
+            }),
+        ]);
+        return true;
+    } catch (_) {
+        // Do not log database error text: drivers may include statement parameters.
+        console.warn(controller.signal.aborted
+            ? '[auth/google-session] email lookup timed out; sign-in continues'
+            : '[auth/google-session] email lookup unavailable; check migration 0027');
+        return false;
+    } finally {
+        clearTimeout(deadline);
+    }
+}
+
 async function handler(req, res) {
     if (applyCors(req, res, 'POST, OPTIONS')) return;
 
@@ -224,6 +261,8 @@ async function handler(req, res) {
         return quietFail(res, 500, AuthCode.SERVER_ERROR, ref);
     }
 
+    await persistEmailFingerprint(sql, playerId, verified.claims, process.env);
+
     try {
         await logApiEvent(sql, playerId, 'google_session_issued', {
             ttlSeconds: session.ttlSeconds, ref, rekeyPinned: resolved.pinned === true,
@@ -251,4 +290,4 @@ module.exports = handler;
 // for the exact bug the other ordering caused (config silently discarded, body parser
 // never disabled, read hangs).
 module.exports.config = { api: { bodyParser: false } };
-module.exports._test = { resolveStablePlayerId, statusForCode, ID_TOKEN_MAX_BODY_BYTES };
+module.exports._test = { persistEmailFingerprint, resolveStablePlayerId, statusForCode, ID_TOKEN_MAX_BODY_BYTES };

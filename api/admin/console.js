@@ -320,13 +320,13 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
   }
 
   // Every WRITE goes here, and only here. Separate endpoint, second key.
-  function postOps(payload){
+  function postOps(payload, bindGoogle){
     if (!OPS_KEY){
       OPS_KEY = window.prompt('Write key (ADMIN_OPS_KEY). Asked once per tab; never saved.');
       if (!OPS_KEY) return Promise.resolve({ status:0, body:{ ok:false, code:'CANCELLED' } });
     }
     payload.by = 'console';
-    return fetch('/api/admin/ops', {
+    return fetch(bindGoogle ? '/api/admin/promo-bind' : '/api/admin/ops', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'X-Admin-Key':READ_KEY, 'X-Admin-Ops-Key':OPS_KEY },
       body: JSON.stringify(payload)
@@ -1108,9 +1108,18 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
       '<input id="pper" type="number" inputmode="numeric" min="0"></div></div>' +
       '<label for="pexp">Expires (blank = never)</label><input id="pexp" type="datetime-local">' +
       '<div class="row" style="margin-top:12px"><button class="primary grow" id="pcreate">Create code</button></div>' +
-      '<p class="note">Private, wallet-bound codes are NOT authored here on purpose: it would mean ' +
-      'typing an address into a page and reading it back out of a list. Use the SQL editor for those. ' +
-      'This console can see THAT a code is bound and never to whom.</p></div>';
+      '<p class="note">For a Google player, create the code here, then bind it using the card below. ' +
+      'Wallet-address binding still requires the operator SQL workflow. ' +
+      'This console reports whether a code is bound, never the player it is bound to.</p></div>';
+
+    h += '<div class="card"><h2>Bind code to Google player</h2>' +
+      '<p class="note">The player must sign in with Google after email lookup is enabled. ' +
+      'Existing players appear after their next sign-in. Only a fingerprint is stored, never the email. ' +
+      'This binds an existing active code; it does not grant or redeem it.</p>' +
+      '<label for="pbemail">Google email</label><input id="pbemail" type="email" maxlength="320" autocomplete="off" spellcheck="false">' +
+      '<label for="pbcode">Existing code</label><input id="pbcode" type="text" maxlength="64" autocomplete="off" spellcheck="false">' +
+      '<button id="pbind" class="primary">Bind code</button>' +
+      '<p id="pbresult" role="status" aria-live="polite"></p></div>';
 
     h += '<div class="card"><h2>Codes (' + rows.length + ')</h2><p class="note">' + esc(p.note || '') +
          '</p><div class="scroll"><table><tr><th>Code</th><th>State</th><th>Grants</th>' +
@@ -1746,6 +1755,42 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
           opsResult(r, rspec.label + ' reset. It now answers the installed game (' +
                        shippedTxt + ').');
         });
+      return;
+    }
+
+    if (e.target.id === 'pbind'){
+      var bindButton = e.target;
+      var bindEmail = $('pbemail');
+      var bindResult = $('pbresult');
+      var bindPayload = { email:bindEmail.value, code:$('pbcode').value };
+      bindEmail.value = '';
+      bindButton.disabled = true;
+      bindResult.textContent = 'Binding...';
+      postOps(bindPayload, true).then(function(r){
+        bindPayload.email = '';
+        var b = r.body || {};
+        if (b.error === 'OPS_UNAUTHORIZED') OPS_KEY = null;
+        var words = {
+          NO_MATCH:'No matching Google player. Ask them to sign in again, then retry.',
+          AMBIGUOUS_MATCH:'More than one player matches. Nothing was changed; an operator must resolve the identity records.',
+          CODE_NOT_FOUND:'Code not found. Check the existing code.',
+          CODE_INACTIVE:'That code is disabled. Enable it before binding.',
+          ALREADY_BOUND_ELSEWHERE:'That code is already bound to another player. Use another code.',
+          CODE_CHANGED_RETRY:'The code changed during this request. Retry.',
+          EMAIL_INVALID:'Enter a valid Google email address.',
+          CODE_INVALID:'Enter a valid existing promo code.',
+          OPS_UNAUTHORIZED:'Write key refused. Retry to enter it again.',
+          UNAUTHORIZED:'Read key refused. Unlock the console again.',
+          OPS_WRITE_NOT_CONFIGURED:'Write access is not configured on this deployment.',
+          GOOGLE_IDENTITY_UNCONFIGURED:'Google email lookup is not configured on this deployment.',
+          LOOKUP_UNAVAILABLE:'Lookup is unavailable. Check the server and migration 0027 before retrying.',
+          CANCELLED:'Binding cancelled.',
+          NETWORK:'Network unavailable. Retry when connected.'
+        };
+        bindResult.textContent = b.success ? 'Bound. The Google player can now redeem this code.' :
+          (words[b.error || b.code] || 'Binding was refused. Check configuration and retry.');
+        bindButton.disabled = false;
+      });
       return;
     }
 

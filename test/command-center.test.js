@@ -603,7 +603,11 @@ test('the served page cannot render a wallet, an email or a real name', () => {
         assert.equal(hit, '.wallet_masked', 'unexpected wallet field on the page: ' + hit);
     }
     assert.doesNotMatch(page, /bound_wallet/);
-    assert.doesNotMatch(page, /\bemail\b/i);
+    // WO-1698 permits email INPUT only; never render a returned email or store it.
+    assert.match(page, /id="pbemail" type="email"/);
+    assert.match(page, /bindEmail\.value = ''/);
+    assert.doesNotMatch(page, /(?:b|r\.body|c)\.email\b/);
+    assert.doesNotMatch(page, /(?:localStorage|sessionStorage)\.setItem/);
     assert.doesNotMatch(page, /player_id\b/);      // masked ids only
     // Every value the page prints goes through esc() -- a player-authored bug
     // description is untrusted text and must never become markup.
