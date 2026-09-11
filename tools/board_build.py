@@ -790,6 +790,7 @@ def parse_wos():
         bucket, fallback_bucketed = classify_status(status, has_result, is_wo)
         cap_log, cap_sha, cap_targets = parse_capture(text)   # WO-1080; (None, None, []) if absent
         rows.append({
+            "retest_text": "\n".join(re.findall(r"(?m)^\*\*Retest:\*\*.*$", text)),
             "capture_log": cap_log, "capture_sha": cap_sha, "capture_targets": cap_targets,
             "num": num, "prod": prod, "ui": ui, "mon_tag": mon_tag, "file": base, "title": title, "status": status,
             "bucket": bucket, "result": has_result, "malformed_status": malformed_status,
@@ -818,6 +819,20 @@ def build_html(rows):
     # verified" over a corrupt file would look completely normal and quietly invite
     # the owner to re-do work she had already done.
     disk_validation = owner_validations.entries()
+    retest_previous = {}
+    retest_notices = {}
+    for r in rows:
+        st = disk_validation.get(r["file"], {})
+        receipt, error = board_close_pass.retest_receipt(r.get("retest_text", ""), st)
+        if error:
+            retest_notices[r["file"]] = error + "; owner finding remains actionable"
+        elif receipt and r["bucket"] in board_close_pass.OWNER_JUDGED:
+            retest_previous[r["file"]] = owner_validations.normalize(st)
+            retest_notices[r["file"]] = ("Previous " + st["verdict"] +
+                "; awaiting retest of " + receipt["revision"] + ". " + receipt["reason"])
+
+    def current_validated(r):
+        return bool(disk_validation.get(r["file"], {}).get("validated")) and r["file"] not in retest_previous
 
     def row_html(r):
         # PROD tickets render as PROD-001 (post-launch, zero-padded so they sort as text
@@ -851,6 +866,8 @@ def build_html(rows):
                    f' · {html.escape(offtree_data[1])}</span>'
                    if offtree_data and r["bucket"] == "Ready" else "")
         res = ' <span class="res">RESULT</span>' if r["result"] else ""
+        if r["file"] in retest_notices:
+            res += ' <span class="oldm">' + html.escape(retest_notices[r["file"]]) + '</span>'
         # WO-1080. Rendered ONLY on a row that cites a capture, so every other row's HTML is
         # byte-identical to before. Reuses the existing word-plus-colour badge class: the
         # owner is red/green colourblind, so the WORD carries the finding, never the hue.
@@ -898,7 +915,7 @@ def build_html(rows):
         # colourblind, so a validated row is marked THREE ways that survive greyscale:
         # the word "VALIDATED", the button label flipping to "Validated", and this
         # POSITION. Never a hue swap alone. Stable sort, so untested order is unchanged.
-        items.sort(key=lambda r: 1 if disk_validation.get(r["file"], {}).get("validated") else 0)
+        items.sort(key=lambda r: 1 if current_validated(r) else 0)
         item_html = []
         for r in items:
             if r.get("prod") is not None: key = f"PROD-{r['prod']:03d}"
@@ -910,7 +927,7 @@ def build_html(rows):
             # felt-test result in the record.
             st = disk_validation.get(r["file"], {})
             vd = st.get("verdict") or ""
-            done = bool(st.get("validated"))
+            done = current_validated(r)
             if done: disk_done += 1
             # SERVER-SIDE RENDER of the disk state. This is the whole point of the fix:
             # the sign-off is visible on a cold load, in another browser, on the CLI's
@@ -919,6 +936,8 @@ def build_html(rows):
             # class, so JS toggling a mark needs no DOM surgery and a no-JS load still
             # shows the word.
             badge = ' <span class="vok">[X] VALIDATED</span>'
+            if r["file"] in retest_notices:
+                badge += ' <span class="vretest">' + html.escape(retest_notices[r["file"]]) + '</span>'
             opts = "".join(
                 f'<option{" selected" if vd == v else ""}>{v}</option>'
                 for v in ("Pass", "Fail", "Needs Work"))
@@ -944,7 +963,7 @@ def build_html(rows):
         # make the feature worse than leaving them all open.
         # The count is rendered FROM DISK, not seeded at 0 and fixed up by script: a
         # collapsed board must show where felt-testing stands even with JS disabled.
-        gdone = sum(1 for r in items if disk_validation.get(r["file"], {}).get("validated"))
+        gdone = sum(1 for r in items if current_validated(r))
         validation_groups.append(f'<details class="vgroup" data-area="{html.escape(area)}"><summary>{html.escape(area)} '
             f'<span class="gcount">{gdone} / {len(items)}</span></summary>' + "".join(item_html) + '</details>')
     validation_html = "".join(validation_groups)
@@ -1023,6 +1042,7 @@ def build_html(rows):
  .vgroup{{border-top:1px solid #30333d;padding:8px 0}} .vgroup summary{{cursor:pointer;font-size:15px;font-weight:650}} .gcount{{color:#888;font-weight:400}}
  .vitem{{display:grid;grid-template-columns:82px 76px minmax(220px,1fr) 120px minmax(180px,1fr);gap:8px;align-items:center;padding:6px 0}}
  .vitem a{{color:#e0b341;text-decoration:none}} .vtitle{{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+ .vretest{{display:block;white-space:normal;color:#e8c07a;font-size:12px}}
  .validated,.verdict,.vnote{{background:#20232b;border:1px solid #484c59;color:#ddd;border-radius:5px;padding:5px}} .validated{{cursor:pointer}}
  .vitem.isvalidated .validated{{background:#24513d;border-color:#66bb88}} .vitem.isvalidated{{opacity:.72}}
  /* The owner is red/green colourblind: a validated row is marked by the WORD, the button
@@ -1194,19 +1214,27 @@ document.querySelectorAll('.vgroup').forEach(g=>{{
    Pending marks are counted separately and said in WORDS (she is red/green colourblind, so a
    state is never carried by hue). */
 function vMarked(s){{return !!(s&&(s.validated||s.verdict||s.note));}}
+const retestPrevious={json.dumps(retest_previous, ensure_ascii=True).replace('<', chr(92) + 'u003c')};
+function vRetestPending(t,s){{const old=retestPrevious[t]; if(!old) return false;
+ return ['validated','verdict','note','at','build'].every(k=>
+  k==='validated'?!!(s||{{}})[k]===!!old[k]:((s||{{}})[k]||'')===(old[k]||''));}}
 function vDurableDone(tickets,diskMap){{let n=0;
- tickets.forEach(t=>{{if((diskMap[t]||{{}}).validated) n++;}}); return n;}}
+ tickets.forEach(t=>{{if(vRetestPending(t,diskMap[t])) return;
+  if((diskMap[t]||{{}}).validated) n++;}}); return n;}}
 function vPending(tickets,diskMap,localMap){{let n=0;
  tickets.forEach(t=>{{const l=localMap[t]; if(!vMarked(l)) return; const d=diskMap[t]||{{}};
-  if(!!l.validated!==!!d.validated||(l.verdict||'')!==(d.verdict||'')||(l.note||'')!==(d.note||''))
+  if(!!l.validated!==!!d.validated||(l.verdict||'')!==(d.verdict||'')||(l.note||'')!==(d.note||'')||
+     (vRetestPending(t,d)&&!vRetestPending(t,l)))
    n++;}}); return n;}}
 /* [/ORACLE:counts] */
 function renderValidation(){{
  document.querySelectorAll('.vitem').forEach(item=>{{const state=eff(item.dataset.ticket);
+  const pending=vRetestPending(item.dataset.ticket,state), done=!!state.validated&&!pending;
   item.querySelector('.verdict').value=state.verdict||'';item.querySelector('.vnote').value=state.note||'';
-  item.classList.toggle('isvalidated',!!state.validated);item.style.display=(needsOnly&&state.validated)?'none':'';
-  item.querySelector('.validated').textContent=state.validated?'Validated':'Validate';}});
- document.querySelectorAll('.vgroup').forEach(g=>{{const xs=[...g.querySelectorAll('.vitem')],n=xs.filter(x=>eff(x.dataset.ticket).validated).length;g.querySelector('.gcount').textContent=`${{n}} / ${{xs.length}}`;}});
+  item.classList.toggle('isvalidated',done);item.style.display=(needsOnly&&done)?'none':'';
+  const notice=item.querySelector('.vretest'); if(notice&&retestPrevious[item.dataset.ticket]) notice.style.display=pending?'':'none';
+  item.querySelector('.validated').textContent=pending?'Confirm retest':done?'Validated':'Validate';}});
+ document.querySelectorAll('.vgroup').forEach(g=>{{const xs=[...g.querySelectorAll('.vitem')],n=xs.filter(x=>{{const t=x.dataset.ticket,s=eff(t);return s.validated&&!vRetestPending(t,s);}}).length;g.querySelector('.gcount').textContent=`${{n}} / ${{xs.length}}`;}});
  const vtickets=[...document.querySelectorAll('.vitem')].map(i=>i.dataset.ticket);
  document.getElementById('vprogress').textContent=`${{vDurableDone(vtickets,disk)}} / {len(fixed_rows)} verified`;
  const vpend=document.getElementById('vpending');
@@ -1221,7 +1249,7 @@ function renderValidation(){{
   const dl=document.getElementById('vdl');
   if(dl) dl.href='data:application/json;charset=utf-8,'+encodeURIComponent(ta.value);}}}}
 document.querySelectorAll('.vitem').forEach(item=>{{const t=item.dataset.ticket;
- item.querySelector('.validated').addEventListener('click',()=>mark(t,{{validated:!eff(t).validated}}));
+ item.querySelector('.validated').addEventListener('click',()=>mark(t,{{validated:vRetestPending(t,eff(t))?true:!eff(t).validated}}));
  item.querySelector('.verdict').addEventListener('change',e=>mark(t,{{verdict:e.target.value}}));
  item.querySelector('.vnote').addEventListener('change',e=>mark(t,{{note:e.target.value}}));}});
 /* Clipboard on a phone: navigator.clipboard needs a secure context and this board is

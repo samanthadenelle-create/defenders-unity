@@ -431,6 +431,32 @@ Resulting status line, the live acceptance case (WO-1184, Validated **and** "Nee
   mutations that each must be caught, and the live acceptance case: **WO-1184 bounces and must not
   close, while the seven Pass+Validated rows close.**
 
+## 6g. Delivered revisions awaiting a retest (WO-1702, 2026-09-10)
+
+A stored Fail or Needs Work applies to the work the owner tested. When the CLI delivers
+a new revision of that specific ticket, it may add one receipt immediately below Status:
+
+```text
+**Retest:** {"priorVerdictSha256":"<64 lowercase hex characters>","revision":"<delivered commit or evidence reference>","reason":"<what changed and needs testing>"}
+```
+
+Generate the digest with `board_close_pass.verdict_fingerprint(state)` from that ticket's
+existing owner-validation entry. It hashes the normalized complete finding, including note,
+validated flag, timestamp and build. The receipt must be in the first 20,000 characters,
+alongside the status metadata the board reads. This is an explicit delivery receipt, not
+automatic expiration based on the latest commit or build.
+
+The old finding remains unchanged in `proof/owner-validations.json` and visible on the
+board as **Previous Fail; awaiting retest** with the delivered revision and reason. A matching
+receipt holds that one old failure and reports `RETEST_PENDING`; it does not mark the new
+work verified. The owner can choose a result and use **Confirm retest**, including confirming
+Fail again. A changed finding remains actionable and can reopen the ticket. A new validated
+Pass can close it normally. Unrelated tickets and existing Pass sign-offs are unaffected.
+
+Missing, malformed, duplicate, or mismatched receipts cannot suppress a failure. Malformed
+metadata is reported; the usual bounce still runs. Neither this feature nor a board rebuild
+edits or removes owner findings. Tests use throwaway work orders and validation records.
+
 ## 7. What this board is NOT
 
 - Not a service, not CI, not a database. It is one Python file and one HTML output.

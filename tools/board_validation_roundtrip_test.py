@@ -877,6 +877,78 @@ def main() -> int:
         check(bool(broke), "mutation caught (" + what + ") -> "
               + (broke[0] if broke else "NOTHING"))
 
+    print("stage 13 - a delivered revision consumes only its exact prior failure")
+    import hashlib
+    retest_dir = os.path.join(tmp, "retest")
+    os.makedirs(retest_dir)
+    rt_name = "WORK_ORDER_9010_retest.md"
+    rt_path = os.path.join(retest_dir, rt_name)
+    old_mark = {"validated": True, "verdict": "Fail", "note": "still broken",
+                "at": "2026-09-10T01:00:00", "build": "test-old"}
+    digest = hashlib.sha256(json.dumps(ov.normalize(old_mark), sort_keys=True,
+                            separators=(",", ":"), ensure_ascii=True).encode()).hexdigest()
+    receipt = {"priorVerdictSha256": digest, "revision": "delivered-test-revision",
+               "reason": "new diagnostic available for retest"}
+    def reset_retest(value=receipt):
+        with open(rt_path, "w", encoding="utf-8") as f:
+            f.write("# Retest fixture\n\n**Status:** FIXED - newer implementation\n\n"
+                    "**Retest:** " + json.dumps(value) + "\n")
+    reset_retest()
+    untouched_record = open(rec, "rb").read()
+    unchanged = json.dumps(old_mark, sort_keys=True)
+    for _ in range(2):
+        outcome = bcp.bounce_pass(entries={rt_name: old_mark}, wo_dir=retest_dir)
+        check(not outcome["bounced"] and bcp.read_status(rt_path).startswith("FIXED"),
+              "exact prior Fail does not reopen explicitly redelivered work")
+    check(json.dumps(old_mark, sort_keys=True) == unchanged and open(rec, "rb").read() == untouched_record,
+          "redelivery never changes owner evidence")
+    for field, value in [("at", "2026-09-11T01:00:00"), ("note", "different symptom"),
+                         ("build", "test-new"), ("verdict", "Needs Work")]:
+        reset_retest()
+        newer = dict(old_mark, **{field: value})
+        outcome = bcp.bounce_pass(entries={rt_name: newer}, wo_dir=retest_dir)
+        check(bool(outcome["bounced"]), "new finding still reopens: " + field)
+    reset_retest({"priorVerdictSha256": "bad", "revision": "x", "reason": "x"})
+    check(bool(bcp.bounce_pass(entries={rt_name: old_mark}, wo_dir=retest_dir)["bounced"]),
+          "malformed retest receipt cannot suppress a failure")
+    reset_retest()
+    passed = dict(old_mark, verdict="Pass")
+    check(bool(bcp.close_pass(entries={rt_name: passed}, wo_dir=retest_dir)["closed"]),
+          "new owner Pass remains able to close retested work")
+    reset_retest()
+    old_path, old_wo_dir = ov.PATH, bb.WO_DIR
+    render_record = os.path.join(retest_dir, "marks.json")
+    with open(render_record, "w", encoding="utf-8") as f:
+        json.dump({"validations": {rt_name: old_mark}}, f)
+    try:
+        ov.PATH, bb.WO_DIR = render_record, retest_dir
+        retest_rows = bb.parse_wos()
+        retest_page = bb.build_html(retest_rows)
+    finally:
+        ov.PATH, bb.WO_DIR = old_path, old_wo_dir
+    check(retest_page.count("Previous Fail; awaiting retest of delivered-test-revision") == 2,
+          "prior failure and pending revision render in both board and owner review rows")
+    check('id="vprogress">0 / 1 verified' in retest_page,
+          "old validated failure does not count as verification of a delivered revision")
+    if node:
+        start = retest_page.index("/* [ORACLE:counts]")
+        end = retest_page.index("/* [/ORACLE:counts] */")
+        retest_js = retest_page[start:end]
+        same = run_counts(retest_js, {rt_name: old_mark}, {rt_name: old_mark}, [rt_name])
+        renewed = dict(old_mark, at="2026-09-11T01:00:00")
+        new = run_counts(retest_js, {rt_name: old_mark}, {rt_name: renewed}, [rt_name])
+        check(same == {"d": 0, "p": 0}, "browser preserves old finding without calling it current or unsaved")
+        check(new == {"d": 0, "p": 1}, "confirming same Fail again creates a pending new finding")
+    # A mutant that always ignores receipts must fail the redelivery contract.
+    reset_retest()
+    parser = bcp.retest_receipt
+    try:
+        bcp.retest_receipt = lambda text, state: (None, None)
+        mutant = bcp.bounce_pass(entries={rt_name: old_mark}, wo_dir=retest_dir)
+        check(bool(mutant["bounced"]), "RED proof: removing receipt matching reintroduces repeated bounce")
+    finally:
+        bcp.retest_receipt = parser
+
     print(f"record: {rec}")
     if failures:
         print("VALIDATION_ROUNDTRIP_FAIL " + "; ".join(failures))

@@ -65,6 +65,8 @@ import glob
 import os
 import re
 import sys
+import hashlib
+import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import owner_validations
@@ -290,6 +292,42 @@ def run(entries=None, wo_dir=None, today=None, echo=print):
 
 BOUNCE_VERDICTS = ("Fail", "Needs Work")
 
+
+def verdict_fingerprint(state):
+    """WO-1702: identity of one finding, never of an APK or an unrelated commit."""
+    normalized = owner_validations.normalize(state)
+    return hashlib.sha256(json.dumps(normalized, sort_keys=True, separators=(",", ":"),
+                                    ensure_ascii=True).encode("utf-8")).hexdigest()
+
+
+def retest_receipt(text, state):
+    """Return (matching receipt, error). Missing/different findings remain actionable.
+
+    The CLI explicitly records a delivered revision beside the ticket's status. This
+    acknowledges an exact old failure without editing the owner's durable record.
+    Malformed/duplicate metadata cannot suppress a bounce; the caller reports it.
+    """
+    lines = re.findall(r"(?m)^\*\*Retest:\*\*[^\S\r\n]*(.*)$", text[:20000])
+    if not lines:
+        return None, None
+    try:
+        if len(lines) != 1:
+            raise ValueError("expected exactly one Retest receipt")
+        receipt = json.loads(lines[0])
+        if not isinstance(receipt, dict):
+            raise ValueError("receipt must be an object")
+        digest = receipt.get("priorVerdictSha256")
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError("priorVerdictSha256 must be 64 lowercase hex characters")
+        for key in ("revision", "reason"):
+            if not isinstance(receipt.get(key), str) or not receipt[key].strip():
+                raise ValueError(key + " must name the delivered work")
+        if state.get("verdict") not in BOUNCE_VERDICTS or digest != verdict_fingerprint(state):
+            return None, None
+        return receipt, None
+    except (ValueError, TypeError) as exc:
+        return None, "invalid Retest receipt: " + str(exc)
+
 # Smart punctuation a phone keyboard produces on its own. Folded to the ASCII character
 # it IS, never dropped - "don't" must not become "dont".
 _ASCII_FOLD = {
@@ -395,6 +433,14 @@ def bounce_pass(entries=None, wo_dir=None, today=None):
         if bucket not in OWNER_JUDGED:                      # B2
             res["held"].append((name, f"not Fixed (bucket={bucket}) - a felt-test verdict "
                                       f"cannot re-open a ticket that is not on her device"))
+            continue
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            receipt, receipt_error = retest_receipt(handle.read(), state)
+        if receipt_error:
+            res["sanitized"].append((name, [receipt_error + "; failure remains actionable"]))
+        if receipt:
+            res["held"].append((name, "RETEST_PENDING previous " + verdict +
+                                "; delivered " + receipt["revision"] + "; " + receipt["reason"]))
             continue
         note_s, applied = sanitize_note(state.get("note"))   # B5/B6 - empty is fine
         if applied:
