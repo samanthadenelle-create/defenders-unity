@@ -2033,6 +2033,22 @@ namespace DeNelle.Village.Talents
                 var lbl = ElarionUiKit.Label(pip.transform, glyph, 0.05f, 0.95f, ink,
                     ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Center, 0.06f, 0.94f, bold: true);
                 lbl.raycastTarget = false;
+                // WO-1697: the Seeker captured floor 30 -> 26, finalSize 28 on these
+                // pips. A normal node's fractional band is only 31.82 reference px.
+                // Seat THIS font's full floor line in pixels, growing upward from
+                // the same bottom-right corner; neither fitting floor is relaxed.
+                float bandPx = ElarionUiKit.MinBandPxForFloor(lbl);
+                const float paddingPx = 2f;
+                pr.anchorMax = new Vector2(pr.anchorMax.x, pr.anchorMin.y);
+                pr.pivot = new Vector2(pr.pivot.x, 0f);
+                pr.sizeDelta = new Vector2(pr.sizeDelta.x, bandPx + 2f * paddingPx);
+                pr.anchoredPosition = new Vector2(pr.anchoredPosition.x, 0f);
+                var labelRt = lbl.rectTransform;
+                labelRt.anchorMin = new Vector2(labelRt.anchorMin.x, 0.5f);
+                labelRt.anchorMax = new Vector2(labelRt.anchorMax.x, 0.5f);
+                labelRt.pivot = new Vector2(labelRt.pivot.x, 0.5f);
+                labelRt.sizeDelta = new Vector2(labelRt.sizeDelta.x, bandPx);
+                labelRt.anchoredPosition = new Vector2(labelRt.anchoredPosition.x, 0f);
                 ElarionUiKit.FitSingleLine(lbl);
             }
         }

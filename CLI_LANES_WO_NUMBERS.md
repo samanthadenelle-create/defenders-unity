@@ -189,7 +189,9 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-sixty-fourth pass): main line next free = **1704**.
+> ## RECONCILED 2026-09-10 (CLI, hundred-and-sixty-fifth pass): main line next free = **1705**.
+
+> 1704: owner raid wall continuity and inner keep gate connection findings.
 
 > 1702: preserve prior owner findings while redelivered Fixed work awaits a new test.
 > 1703: owner request, raid textured floors reach the enclosing walls.

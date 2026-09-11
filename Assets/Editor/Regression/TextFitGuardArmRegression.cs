@@ -136,6 +136,7 @@ namespace DeNelle.Editor.Regression
                 CaseD_StandDownDoesNotAccuseTheProducer(failures, log);
                 CaseE_ConfirmModalTitleBandSeatsTheFloor(failures, log);
                 CaseF_ConfirmModalBodyStaysBetweenHeaderAndFaces(failures, log);
+                CaseG_SkillPipSeatsTheFloor(failures, log);
                 MeasureOnly_GuardAttachAndEval(label, sink, log);
             }
             catch (Exception ex)
@@ -544,6 +545,66 @@ namespace DeNelle.Editor.Regression
             catch (Exception ex)
             {
                 failures.Add(Tag + " CASE F threw: " + ex.GetType().Name + " " + ex.Message);
+            }
+            finally { Kill(canvasGo); }
+        }
+
+        // WO-1697: captured Seeker Pip/Label floorFrom=30 floorTo=26 finalSize=28.
+        // Invoke the shipped builder, not a copy of its anchor arithmetic. The old
+        // normal-size node produces a 31.8 px band, below the resolved font's need.
+        private static void CaseG_SkillPipSeatsTheFloor(List<string> failures, StringBuilder log)
+        {
+            GameObject canvasGo = null;
+            try
+            {
+                var panelType = typeof(DeNelle.Village.Talents.HeroSkillTreePanelMvvm);
+                var build = panelType.GetMethod("BuildQuietCornerPip",
+                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                if (build == null)
+                {
+                    failures.Add(Tag + " CASE G: production pip builder is missing; no geometry was tested.");
+                    return;
+                }
+                canvasGo = BuildCanvas(2670, 1200);
+                foreach (bool focused in new[] { false, true })
+                foreach (string glyph in new[] { "1", "-1", "!" })
+                {
+                    var node = new GameObject("Node_PipProbe", typeof(RectTransform));
+                    node.transform.SetParent(canvasGo.transform, false);
+                    var nodeRt = (RectTransform)node.transform;
+                    float size = DeNelle.Village.Talents.HeroSkillTreePanelMvvm.NodePlateSizePx(focused);
+                    nodeRt.anchorMin = nodeRt.anchorMax = nodeRt.pivot = new Vector2(0.5f, 0.5f);
+                    nodeRt.sizeDelta = new Vector2(size, size);
+                    build.Invoke(null, new object[] { node.transform, glyph, Color.white });
+                    Settle(canvasGo);
+                    var pip = node.transform.Find("Pip") as RectTransform;
+                    var label = pip != null ? pip.GetComponentInChildren<TMP_Text>(true) : null;
+                    if (label == null || label.font == null)
+                    {
+                        failures.Add(Tag + " CASE G: production pip has no label/font; a fallback measurement proves nothing.");
+                        continue;
+                    }
+                    label.ForceMeshUpdate();
+                    float band = label.rectTransform.rect.height;
+                    float need = ElarionUiKit.MinBandPxForFloor(label);
+                    log.AppendLine("  [skill-pip] node=" + size + " glyph=" + glyph + " font=" + label.font.name +
+                                   " band=" + band.ToString("F2") + " need=" + need.ToString("F2") +
+                                   " min=" + label.fontSizeMin.ToString("F1"));
+                    if (band + 0.5f < need)
+                        failures.Add(Tag + " CASE G (WO-1697, RED-first): pip band " + band.ToString("F2") +
+                                     " is below font-floor need " + need.ToString("F2") + " on node " + size + ".");
+                    if (label.fontSizeMin < ElarionUiKit.FontFloor)
+                        failures.Add(Tag + " CASE G: pip fitting lowered the owner's font floor.");
+                    if (WorldTop(label.rectTransform) > WorldTop(pip) + 0.5f ||
+                        WorldBottom(label.rectTransform) < WorldBottom(pip) - 0.5f ||
+                        WorldTop(pip) > WorldTop(nodeRt) + 0.5f || WorldBottom(pip) < WorldBottom(nodeRt) - 0.5f)
+                        failures.Add(Tag + " CASE G: pip label escapes its plate or the plate escapes its node.");
+                    Kill(node);
+                }
+            }
+            catch (Exception ex)
+            {
+                failures.Add(Tag + " CASE G threw: " + ex.GetType().Name + " " + ex.Message);
             }
             finally { Kill(canvasGo); }
         }
