@@ -212,3 +212,24 @@ whether this GameObject existed before her removal attempt) rather than assume t
       removal that strips only the visual is its own defect regardless of this specific instance.
 - [ ] The `Nav Mesh Obstacle` Size mismatch (16.9 x 5.1 x 14.5 on a 0.6/0.9/0.6-scaled object) should
       be explained - was it hand-authored against the wrong base mesh, or inherited incorrectly.
+
+## CONFIRMED 2026-09-14: hypothesis proven correct, fix NOT yet applied (owner deleted diagnostically only, told not to save)
+
+Owner deleted the ghost `CastleBarracks` GameObject in the open Editor session and re-baked. Screenshot
+confirms: the oversized square is gone; every remaining structure shows a normally-sized carved hole.
+This PROVES the invisible, renderer-stripped `CastleBarracks` (Mesh Filter/Mesh Renderer both
+`(Removed)`, oversized `NavMeshObstacle` Size `16.90712 x 5.08288 x 14.51318`) was the entire cause of
+the oversized-footprint symptom - not the lumbermill, not a bake-config issue, not a family-wide
+authored-structure problem.
+
+Owner was told NOT to save this deletion - it was a diagnostic-only test. The permanent fix still needs
+to land through the sanctioned path:
+1. Remove/clean up this specific leftover `CastleBarracks` GameObject properly (via tooling, not a
+   manual scene save) so the fix is reproducible from a fresh clone.
+2. Find and fix whatever "remove/replace structure" code path can strip a MeshFilter/MeshRenderer
+   without also destroying or properly clearing the Collider/NavMeshObstacle - this is the root defect;
+   this specific barracks is one instance, but the same code path could do this to any structure a
+   player removes.
+3. Cross-check against WO-1710's original report: does removing this leftover, plus WO-1710's already-
+   shipped fix, together resolve troop training + the original "couldn't re-add a barracks" symptom on
+   a fresh test? This needs an owner playtest to close, not just a code read.
