@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-seventh pass): main line next free = **1719**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-eighth pass): main line next free = **1720**.
+> *(CLI minted **1719** 2026-09-14 from owner design rulings: a Breach button gates a direct wall-tap
+> that overrides the automatic most-damaged targeting - WO-1717 finding 2, split out per its own
+> recommendation.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-seventy-seventh pass): main line next free = **1719**.
 > *(RCA lane minted **1718** 2026-09-14 from the owner's device screenshot: Settings > Help > Dev Tools
 > renders ~4x oversized with overlapping rows. The panel is **AdminOverlay** (HUD), NOT the deprecated
 > DevPanelController. `AdminOverlay.TryBuild` creates its own runtime PanelSettings and never sets
