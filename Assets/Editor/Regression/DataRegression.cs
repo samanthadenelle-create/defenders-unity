@@ -1233,6 +1233,7 @@ namespace DeNelle.Editor
             // anything in its way. The oracle's dogleg case fails against the old straight-line rule.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "guide-lead-route suite", () => { if (!DeNelle.Editor.Regression.GuideLeadRoutingRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[guide-lead-route] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "town-movement-floor suite", () => { if (!DeNelle.Editor.Regression.TownMovementFloorRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[town-movement-floor] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "dialogue-input-gate suite", () => { if (!DeNelle.Editor.Regression.DialogueInputGateRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[dialogue-input-gate] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "one-guide-body suite", () => { if (!DeNelle.Editor.Regression.OneGuideBodyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[one-guide-body] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "wall-adjacency suite", () => { if (!DeNelle.Editor.Regression.WallAdjacencyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[wall-adjacency] " + r); });
             // --- WO-1105: the ranged primary is DERIVED (strike-shaped effect whose authored range

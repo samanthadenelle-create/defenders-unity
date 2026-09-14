@@ -106,7 +106,33 @@ namespace DeNelle.HUD
         public bool IsShowing => _ui != null && _ui.activeSelf;
 
         private void OnEnable() { DialogueService.Opened += OnOpened; }
-        private void OnDisable() { DialogueService.Opened -= OnOpened; }
+
+        private void OnDisable()
+        {
+            DialogueService.Opened -= OnOpened;
+            // WO-1714: a view torn down mid-truce must never leave a stale TRUE behind — that
+            // would tell Village a dialogue is hidden forever and hold the input gate open.
+            DeNelle.Core.Dialogue.DialogueGateState.Clear();
+        }
+
+        // ── WO-1714 dialogue/locomotion truce seam ───────────────────────────────
+        // PROVEN DEFECT (device capture 2026-09-14, 35.5s frozen hero, 11.3s of it mid-wave
+        // with nothing on screen): the combat + WO-795 modal truces hide a live dialogue
+        // without firing Ended, and Ended is the ONLY thing that clears
+        // HeroLocomotion.InputSuppressed. The builder truce already publishes
+        // BuildModeState.DialogueHiddenForBuilder for exactly this reason
+        // (BuildModeState.cs:38 -> BuildModeController.cs:772); these two never got a seam.
+        //
+        // Published EVERY FRAME, not on transition — the same self-healing reason
+        // TickBuilderTruce states in its own comment: a dialogue superseded or closed while
+        // hidden must clear the flag without anyone remembering to.
+        private void PublishGateState()
+        {
+            bool live = _vm != null && _vm.IsOpen;
+            DeNelle.Core.Dialogue.DialogueGateState.HiddenForCombat = live && _hiddenForCombat;
+            DeNelle.Core.Dialogue.DialogueGateState.HiddenForModal  = live && _hiddenForModal;
+            DeNelle.Core.Dialogue.DialogueGateState.PanelVisible    = live && IsShowing;
+        }
 
         // P0 RE-ENTRANCY FIX (owner "still cant do the tower", RCA 2026-07-08): when a dialogue's
         // Closed invocation-list SYNCHRONOUSLY chains into the NEXT dialogue (the tutorial's
@@ -519,6 +545,7 @@ namespace DeNelle.HUD
             TickBuilderTruce();
             TickCombatTruce();
             TickModalTruce();
+            PublishGateState();
             if (_vm != null && _vm.HiddenForBuilder) return;   // WO-702: no any-key advance on an invisible dialogue
             if (_hiddenForCombat) return;
             if (_hiddenForModal) return;                       // WO-795: same law while a modal owns the screen

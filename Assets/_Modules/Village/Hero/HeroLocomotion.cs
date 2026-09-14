@@ -312,7 +312,118 @@ namespace DeNelle.Village
         // so the whole player-input surface is suppressed from ONE place. Static (not
         // instance) so those readers don't need a hero reference; defaults false so
         // outside dialogue everything behaves exactly as before.
-        public static bool InputSuppressed { get; private set; }
+        // ── WO-1714: THE GATE IS NO LONGER AN UNBOUNDED RAW LATCH ────────────────────
+        // PROVEN DEFECT (device capture docs/handoffs/movement_freeze_logcat_2026-09-14.txt,
+        // RCA in WorkOrders/WORK_ORDER_1714_*.md): Started raised this flag and ONLY Ended
+        // cleared it, but DialogueView's three truces hide a live dialogue WITHOUT ending it
+        // (each logs "Ended NOT fired" by design). So the hero sat frozen 35.5 s — 11.3 s of it
+        // mid-wave with wave=True battleLock=True and NOTHING ON SCREEN — unable to move,
+        // attack or cast, with no timeout, no escape and no visible cause. A shipping,
+        // player-facing combat softlock.
+        //
+        // TWO INDEPENDENT PROTECTIONS, deliberately layered (defence in depth):
+        //   (b) SEAM RELEASE — while the HUD reports a live dialogue hidden by the combat or
+        //       WO-795 modal truce (DialogueGateState.HiddenByTruce), the gate reads FALSE
+        //       immediately. A hidden dialogue cannot be mis-clicked, so there is nothing left
+        //       to suppress. This is exactly the law BuildModeController.cs:772 already applies
+        //       for the builder truce — the builder truce got its seam, these two never did.
+        //   (a) BOUNDED BACKSTOP — TickInputSuppressionWatchdog latches the gate off, loudly
+        //       (FlowTrace.Fail, never silent — CLAUDE.md §12), if the raw latch is held with
+        //       NO visible panel and NO known truce for longer than
+        //       InputSuppressionInvisibleMaxSeconds. That catches the classes (b) cannot: an
+        //       alive-but-headless VM (the P0 re-entrancy shape, DialogueView.cs:110-118), an
+        //       Ended that never fires, or a FOURTH truce added later with no seam of its own.
+        //
+        // NOT bounded: suppression while the panel is VISIBLE. A player may legitimately leave
+        // a line on screen for minutes; force-clearing that would resurrect the WO-377
+        // click-through defect this gate was built for.
+        private static bool _inputSuppressRaw;
+
+        /// <summary>WO-1714 — latched TRUE by the watchdog once the raw gate has been held
+        /// invisibly past the bound. Cleared whenever the panel becomes visible again or the
+        /// raw latch drops, so a re-shown dialogue re-engages suppression correctly (the gate
+        /// recovers; it is not destroyed).</summary>
+        private static bool _inputSuppressStuckLatched;
+
+        /// <summary>WO-1714 — unscaled seconds the raw gate has been held with no visible panel
+        /// and no known truce. Unscaled because timeScale is not 1 during every beat.</summary>
+        private static float _inputSuppressInvisibleHeld;
+
+        /// <summary>WO-1714 — how long the input gate may stay raised with NO visible dialogue
+        /// panel and NO known truce before the watchdog calls it stuck. Comfortably longer than
+        /// the one-frame Started -> BuildUi gap, far shorter than the 35.5 s captured freeze.</summary>
+        public const float InputSuppressionInvisibleMaxSeconds = 5f;
+
+        /// <summary>
+        /// WO-1714 — the shipped gate. Pure composition of the raw latch, the HUD truce seam
+        /// and the stuck latch, so every consumer (HeroAbilityInput.cs:51,
+        /// PlayerAttackController.cs:297/:456, Tower.cs:1327, BuildModeController.cs:772)
+        /// is protected from ONE place, exactly as the WO-377 header below intends.
+        /// </summary>
+        public static bool InputSuppressed =>
+            EvaluateInputSuppressed(_inputSuppressRaw,
+                                    DeNelle.Core.Dialogue.DialogueGateState.HiddenByTruce,
+                                    _inputSuppressStuckLatched);
+
+        /// <summary>
+        /// WO-1714 — the gate decision, pure + public so the regression can assert it with no
+        /// PlayMode session (same precedent as <see cref="TeleportGuardHeld"/> above).
+        /// </summary>
+        public static bool EvaluateInputSuppressed(bool rawSuppressed, bool hiddenByTruce, bool stuckLatched)
+            => rawSuppressed && !hiddenByTruce && !stuckLatched;
+
+        /// <summary>
+        /// WO-1714 — the watchdog decision, pure + public for the same reason. TRUE when the
+        /// raw gate has been held for <paramref name="invisibleHeldSeconds"/> with no visible
+        /// panel and NONE of the three sanctioned truces live. Every known hidden state is
+        /// exempt on purpose: a builder truce can legitimately outlast the bound (the player is
+        /// building), so bounding it would false-fire every session.
+        /// </summary>
+        public static bool InputSuppressionStuck(bool rawSuppressed, bool panelVisible,
+                                                 bool hiddenForCombat, bool hiddenForModal,
+                                                 bool hiddenForBuilder, float invisibleHeldSeconds)
+            => rawSuppressed && !panelVisible && !hiddenForCombat && !hiddenForModal &&
+               !hiddenForBuilder && invisibleHeldSeconds >= InputSuppressionInvisibleMaxSeconds;
+
+        /// <summary>
+        /// WO-1714 — per-frame bound on the input gate. Called as the FIRST thing in Update, so
+        /// it runs even on the frames the suppression branch early-returns on.
+        /// </summary>
+        private void TickInputSuppressionWatchdog()
+        {
+            bool panelVisible     = DeNelle.Core.Dialogue.DialogueGateState.PanelVisible;
+            bool hiddenForCombat  = DeNelle.Core.Dialogue.DialogueGateState.HiddenForCombat;
+            bool hiddenForModal   = DeNelle.Core.Dialogue.DialogueGateState.HiddenForModal;
+            bool hiddenForBuilder = DeNelle.Core.BuildModeState.DialogueHiddenForBuilder;
+            bool accountedFor     = panelVisible || hiddenForCombat || hiddenForModal || hiddenForBuilder;
+
+            if (!_inputSuppressRaw || accountedFor)
+            {
+                // Either nothing is suppressed, or the state is fully explained — reset the
+                // timer AND release the stuck latch so a re-shown panel re-engages the gate.
+                _inputSuppressInvisibleHeld = 0f;
+                _inputSuppressStuckLatched = false;
+                return;
+            }
+
+            if (_inputSuppressStuckLatched) return;   // already reported; don't re-Fail every frame
+
+            _inputSuppressInvisibleHeld += Time.unscaledDeltaTime;
+            if (!InputSuppressionStuck(_inputSuppressRaw, panelVisible, hiddenForCombat,
+                                       hiddenForModal, hiddenForBuilder, _inputSuppressInvisibleHeld))
+                return;
+
+            _inputSuppressStuckLatched = true;
+            string state = DeNelle.Core.Dialogue.DialogueGateState.DescribeGate(
+                hiddenForCombat, hiddenForModal, hiddenForBuilder, panelVisible);
+            DeNelle.Core.Diagnostics.FlowTrace.Fail("UI",
+                "WO-1714 STUCK INPUT GATE — HeroLocomotion.InputSuppressed has been raised for " +
+                _inputSuppressInvisibleHeld.ToString("F1") + "s with NO visible dialogue panel and NO " +
+                "known truce (" + state + "). A dialogue's Ended never fired and nothing released the " +
+                "gate: the hero was frozen, mute and defenceless with nothing on screen. FORCING the " +
+                "gate open (latched; it re-engages if a panel becomes visible again). This is a REAL " +
+                "defect upstream in the dialogue lifecycle — do not treat the recovery as the fix.");
+        }
 
         // WO-557 (Yarn removed): we subscribe to OUR dialogue stack's engine-wide
         // Started/Ended signals (DeNelle.Core.Dialogue.DialogueService) to suppress player
@@ -933,7 +1044,19 @@ namespace DeNelle.Village
                 DeNelle.Core.Dialogue.DialogueService.Ended -= OnDialogueEnded;
                 _dialogueHooked = false;
             }
-            InputSuppressed = false;
+            SetRawSuppression(false);   // WO-1714: raw latch + stuck latch + timer, one place
+        }
+
+        /// <summary>
+        /// WO-1714 — the ONLY writer of the raw dialogue input latch. Resetting the stuck latch
+        /// and the invisible-hold timer alongside every raise/clear is what makes the watchdog
+        /// recoverable rather than one-shot: a fresh Started always starts from a clean bound.
+        /// </summary>
+        private static void SetRawSuppression(bool suppressed)
+        {
+            _inputSuppressRaw = suppressed;
+            _inputSuppressStuckLatched = false;
+            _inputSuppressInvisibleHeld = 0f;
         }
 
         // WO-557: subscribe to OUR dialogue stack's Started/Ended events (parameterless,
@@ -948,17 +1071,20 @@ namespace DeNelle.Village
             _dialogueHooked = true;
 
             bool running = DeNelle.Core.Dialogue.DialogueService.IsRunning;
-            if (running && !InputSuppressed)
+            // WO-1714: reconcile against the RAW latch, not the composed InputSuppressed — the
+            // composed value can read false purely because a truce is masking it, and raising
+            // the raw latch a second time there would be a no-op that reset the bound timer.
+            if (running && !_inputSuppressRaw)
             {
-                InputSuppressed = true;
+                SetRawSuppression(true);
                 Velocity = Vector3.zero;
                 DeNelle.Core.Diagnostics.FlowTrace.Warn("UI",
                     "HeroLocomotion hooked a dialogue ALREADY in progress — suppressing input (catch-up for the missed Started).");
             }
-            else if (!running && InputSuppressed)
+            else if (!running && _inputSuppressRaw)
             {
                 // No dialogue live now — don't inherit a stale lock that would dead-freeze this fresh hero.
-                InputSuppressed = false;
+                SetRawSuppression(false);
             }
         }
 
@@ -968,14 +1094,14 @@ namespace DeNelle.Village
         // input read while the flag is set.
         private void OnDialogueStarted()
         {
-            InputSuppressed = true;
+            SetRawSuppression(true);
             Velocity = Vector3.zero;
         }
 
         // WO-377: dialogue closed — restore normal player input.
         private void OnDialogueEnded()
         {
-            InputSuppressed = false;
+            SetRawSuppression(false);
         }
 
         // DEF-70: called by WaveManager.OnWaveCleared (WaveNumberEvent — int waveId).
@@ -1109,6 +1235,11 @@ namespace DeNelle.Village
             // it up once a second, and a single pass over 4ms warns at most once a second.
             using var _perf = DeNelle.Core.Diagnostics.FlowTrace.Measure(
                 "Perf", "HeroLocomotion.Update", 4f, 1f);
+
+            // WO-1714 — FIRST, before every early-return below (the suppression branch itself
+            // early-returns, so a tick placed after it could never unstick the very state it
+            // exists to bound).
+            TickInputSuppressionWatchdog();
 
             TryResolveWaveManager();
             // The legacy FootstepsWalk loop is intentionally not driven. Its leading transient

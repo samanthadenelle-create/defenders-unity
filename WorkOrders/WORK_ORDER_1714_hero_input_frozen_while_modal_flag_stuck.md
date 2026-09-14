@@ -1,7 +1,14 @@
 # WORK ORDER 1714 - HeroLocomotion input frozen for 18+ seconds while the HUD context reads modal=True
 
-**Status:** RCA COMPLETE - PROVEN combat softlock (35.5s frozen mid-wave, no timeout, F8 harness structurally blind to it); implementation lane assigned 2026-09-14, HIGH PRIORITY
-the trigger
+**Status:** FIXED - DialogueGateState seam (WO-795/combat/builder truces release immediately) + a 5s invisible-hold watchdog backstop + BreakCaptureHarness suppression whitelist bounded at 30s; COMPILE_GATE_OK 09:56, REGRESSION_OK 525/525 10:01 including new [dialogue-input-gate] 6/6; PO felt-verifies and closes
+(PROVEN combat softlock: 35.5s frozen mid-wave, no timeout, F8 harness structurally blind to it.
+Implementation lane 2026-09-14 shipped BOTH fix shapes — a Core truce seam
+`DeNelle.Core.Dialogue.DialogueGateState` that releases the input gate the moment the HUD reports a
+dialogue hidden, AND a bounded 5s no-visible-panel/no-known-truce backstop with a loud `FlowTrace.Fail`;
+plus a 30s bound on `BreakCaptureHarness`'s suppression whitelist so this class can self-report. New
+suite `DialogueInputGateRegression` (`DIALOGUE_INPUT_GATE_OK`, 6 cases), registered at
+`DataRegression.cs:1236`. Edit-only: NOT compiled, NOT gated, NOT committed by the lane. See
+`WorkOrders/WORK_ORDER_1714_hero_input_frozen_while_modal_flag_stuck.RESULT.md`.)
 **Minted:** 2026-09-14 by the CLI lead (Fable seat), from a live device pull while the owner was
 felt-testing, immediately after she reported "something happens in combat where my movement freezes"
 

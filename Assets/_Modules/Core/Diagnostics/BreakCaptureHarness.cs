@@ -49,6 +49,13 @@ namespace DeNelle.Core.Diagnostics
         const float HeroMoveEpsilon   = 0.75f; // metres of movement that counts as "still progressing"
         const float WatchdogInterval  = 2f;    // how often the softlock watchdog samples
         const int   MaxScreenshots    = 25;    // per session, so an error storm can't fill the disk
+
+        /// <summary>WO-1714 — how long hero input suppression may count as PROGRESS before the
+        /// watchdog stops whitelisting it. Deliberately much longer than
+        /// HeroLocomotion.InputSuppressionInvisibleMaxSeconds (5s): the game's own recovery gets
+        /// first refusal, and the harness only reports a suppression that outlived it. Real
+        /// scripted beats (a dialogue line being read) end far inside this window.</summary>
+        public const float HeroSuppressionProgressMaxSeconds = 30f;
         const string HeroTag          = "Player";
 
         // ---- state -------------------------------------------------------------
@@ -399,11 +406,36 @@ namespace DeNelle.Core.Diagnostics
                 // 75s stall never accumulates during scripted time and only resumes counting once
                 // the player has free control and is still idle. DialogueEventBus advances already
                 // count as progress; this covers the WAIT-on-a-line / cutscene stretches between.
+                // WO-1714 — THE WHITELIST IS NOW BOUNDED. It used to be unconditional, which is
+                // why the 35.5 s combat freeze of 2026-09-14 could never self-report and the
+                // owner had to flag it by hand — exactly the failure CLAUDE.md §14 exists to
+                // prevent. Scripted beats are still free (they end); a suppression that has run
+                // past HeroSuppressionProgressMaxSeconds is no longer evidence of progress and
+                // falls through to the ordinary stall detection below.
                 if (IsHeroInputSuppressed())
                 {
-                    if (_hero != null) _lastHeroPos = _hero.position;
-                    MarkProgress();
-                    return;
+                    _heroSuppressedHeld += WatchdogInterval;
+                    if (SuppressionCountsAsProgress(_heroSuppressedHeld))
+                    {
+                        if (_hero != null) _lastHeroPos = _hero.position;
+                        MarkProgress();
+                        return;
+                    }
+                    // Rising-edge trace only (same shape as _buildSuppressTraced below): this
+                    // runs on a 2s tick and a per-tick line would drown the very capture this
+                    // harness exists to produce. Never silent (§12).
+                    if (!_heroSuppressedOverBoundTraced)
+                    {
+                        _heroSuppressedOverBoundTraced = true;
+                        FlowTrace.Warn("Break",
+                            $"softlock watchdog NO LONGER treating hero input suppression as progress: held >{HeroSuppressionProgressMaxSeconds:0}s " +
+                            "(WO-1714 bound). A scripted beat this long is a stuck dialogue gate, not a beat.");
+                    }
+                }
+                else
+                {
+                    _heroSuppressedHeld = 0f;
+                    _heroSuppressedOverBoundTraced = false;
                 }
                 // Ticket #1 (2026-07-07): a modal owning the screen (Seating Editor, shop, help…)
                 // is the PLAYER choosing to stand still — not a softlock. Two false captures in one
@@ -505,6 +537,20 @@ namespace DeNelle.Core.Diagnostics
         // F8-13: rising-edge flag so the build-mode suppression FlowTrace fires once per
         // build session (not every 2s watchdog tick); cleared when build mode exits.
         bool _buildSuppressTraced;
+
+        // WO-1714: seconds of CONTINUOUS hero input suppression seen by the watchdog, plus the
+        // rising-edge trace flag for the moment it passes the bound. Both reset the tick the
+        // suppression clears.
+        float _heroSuppressedHeld;
+        bool  _heroSuppressedOverBoundTraced;
+
+        /// <summary>
+        /// WO-1714 — the whitelist decision, pure + public so the regression can assert it with
+        /// no PlayMode session (same precedent as HeroLocomotion.TeleportGuardHeld). TRUE while a
+        /// suppression is still short enough to read as a legitimate scripted beat.
+        /// </summary>
+        public static bool SuppressionCountsAsProgress(float suppressedHeldSeconds)
+            => suppressedHeldSeconds < HeroSuppressionProgressMaxSeconds;
 
         // F8-13: true while a Build Mode edit session is live. Core-legal without reflection:
         // Village's HudContextEvaluator is the single writer that mirrors
