@@ -1,6 +1,6 @@
 # WORK ORDER 1709 - F8 daemon replays an old break-log; Addressables INIT logged at Fail
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - daemon offset half fixed 2026-09-14 (proof in RESULT); Addressables INIT Fail-level half still READY (Unity lane)
 **Minted:** 2026-09-14 by the CLI lead from F8 triage
 **Source of truth:** `docs/F8_TRIAGE_2026-09-14.md` clusters A (`:17`) and D-F (`:20-22`, `:24-30`) and
 section 4 (`:117-119`). Harness ticket - **the defects are in the evidence supply, not in the game**.
@@ -25,9 +25,11 @@ every boot.
 - `:126-127` replay-from-0 on a shrunk log; `:129` replay-the-backlog on a resumed offset.
 - `:148` - `$seenKeys = @{}` is initialised **per process**, so a restart's dedupe table is empty and
   previously published rows re-publish - consistent with 5038 == 5031 byte-for-byte.
-- **UNPROVEN:** the ~150 s inter-capture cadence is not the `:9`/`:200` 5 s poll
-  (`[int]$PollSeconds = 5`) and nothing read this session explains it. Proof: the per-seq timestamps in
-  `logs/f8-inbox/QUEUE.jsonl` for 5031-5039 against the publish path.
+- ~~**UNPROVEN:** the ~150 s inter-capture cadence is not the `:9`/`:200` 5 s poll
+  (`[int]$PollSeconds = 5`) and nothing read this session explains it.~~ **CLOSED 2026-09-14 by the
+  implementation lane, measured:** `Harvest-Context` ran `Select-String` over the WHOLE `Editor.log`,
+  which had grown to **5,415,468,464 bytes (5.4 GB)** - one scan costs **154,657 ms**. That ~155 s
+  per `Emit-Capture` IS the cadence. See the RESULT.
 
 **The trigger is proven, and it is the `:129` branch, not `:126`.** `logs/f8-inbox/queue-events.log:27298`
 reads `2026-09-14T07:42:31.3281424Z [warn] daemon was DOWN for 1733 break-log line(s) (offset 1331 of
@@ -37,10 +39,13 @@ proven for the DEVICE clock, doc `:6-9`; that this PC log shares it is assumed, 
 
 **The real defect is in that same log:** the offset is stuck at **1331** across every replay from
 `2026-09-12T02:01:56Z` (line 27251) to `2026-09-14T08:01:24Z` (line 27313) - at least **13 restarts**,
-each replaying 1608-1733 lines. **UNPROVEN why:** `Save-BreakOffset` IS called in the loop (`:232`,
-after `$breakBase = $cur` at `:231`) and at startup (`:141`), so the symptom is proven and the cause is
-not - its write sits in a `try { } catch { }` (`:139`) that swallows failures. Read the state file and
-that catch before fixing.
+each replaying 1608-1733 lines. ~~**UNPROVEN why:**~~ **CAUSE PROVEN 2026-09-14 - and it is NOT the swallowing catch.** The write
+always succeeded (`daemon-state.json` mtime matches the replay event to the millisecond); it wrote the
+value it had just loaded. `Save-BreakOffset` at `:232` was reachable only **after the entire `foreach`
+completed**, and at ~155 s per emit (above) a 1733-row backlog needed ~56 h to persist one byte. The
+daemon was stopped mid-backlog every time. Fixed by per-row persistence + a published-`utc` watermark
++ a tail-reading harvest + a loud save-failure. Full falsification table and headless proof in the
+RESULT.
 
 ## 3. Defect B - Addressables INIT is logged at `Fail`
 

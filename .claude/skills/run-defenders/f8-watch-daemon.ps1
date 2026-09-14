@@ -6,7 +6,17 @@
 # a VIEW; the queue is the record, so a burst can no longer collapse to its newest member.
 
 param(
-    [int]$PollSeconds = 5
+    [int]$PollSeconds = 5,
+    # WO-1709 test seams. Production defaults are unchanged ('' / 0 = use the real paths, run
+    # forever), so the daemon behaves EXACTLY as before unless a harness overrides them. They exist
+    # because the replay defect below can only be proven by running THIS script against a scratch
+    # inbox + a scratch break-log; copying its functions into a throwaway proves the copy, not the
+    # daemon.
+    [string]$InboxOverride = '',
+    [string]$BreakLogOverride = '',
+    [string]$EditorLogOverride = '',
+    [string]$PlayerLogOverride = '',
+    [int]$MaxPasses = 0
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -15,6 +25,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $Inbox    = Join-Path $RepoRoot 'logs\f8-inbox'
+if ($InboxOverride) { $Inbox = $InboxOverride }
 $PidFile  = Join-Path $Inbox 'daemon.pid'
 $PingFile = Join-Path $Inbox 'PING.json'
 $Latest   = Join-Path $Inbox 'LATEST_CAPTURE.md'
@@ -29,6 +40,9 @@ if ((-not (Test-Path $BreakLogDir)) -and (Test-Path $LegacyLogDir)) { $BreakLogD
 $BreakLog    = Join-Path $BreakLogDir 'break-log.jsonl'
 $PlayerLog   = Join-Path $BreakLogDir 'Player.log'
 $EditorLog   = Join-Path $env:LOCALAPPDATA 'Unity\Editor\Editor.log'
+if ($BreakLogOverride)  { $BreakLog  = $BreakLogOverride }
+if ($PlayerLogOverride) { $PlayerLog = $PlayerLogOverride }
+if ($EditorLogOverride) { $EditorLog = $EditorLogOverride }
 
 New-Item -ItemType Directory -Force -Path $Inbox | Out-Null
 
@@ -45,15 +59,42 @@ if (Test-Path $PidFile) {
 }
 Write-F8Text $PidFile "$myPid"
 
+# WO-1709: this was `Select-String -Path $L` over the WHOLE file, once per emitted capture.
+# Measured 2026-09-14 on this machine: Editor.log had grown to 5,415,468,464 bytes (5.4 GB) and one
+# such scan cost 154,657 ms - 372 ms for the 29 MB Player.log. That ~155 s is the "unexplained
+# ~150 s capture cadence" WO-1709 recorded as UNPROVEN, and it is why a 1733-row replay could never
+# reach the offset save at the bottom of the break-log branch. We only ever keep the LAST 60 signal
+# lines, so reading the whole file was always wasted work: seek to the tail instead. ReadWrite share
+# is REQUIRED (Unity holds these logs open) - same reason as the Editor/Player scan further down.
+$HarvestTailBytes = 4MB
+function Read-LogTail([string]$path, [int64]$maxBytes) {
+    $fs = $null; $sr = $null
+    try {
+        $fs = [System.IO.File]::Open($path, 'Open', 'Read', [System.IO.FileShare]::ReadWrite)
+        $start = [Math]::Max([int64]0, $fs.Length - $maxBytes)
+        [void]$fs.Seek($start, 'Begin')
+        $sr = New-Object System.IO.StreamReader($fs)
+        return $sr.ReadToEnd()
+    } catch {
+        return ''
+    } finally {
+        if ($sr) { $sr.Close() }
+        if ($fs) { $fs.Close() }
+    }
+}
+
 function Harvest-Context {
     $blocks = @()
     foreach ($L in @($EditorLog, $PlayerLog)) {
         if (-not (Test-Path $L)) { continue }
-        $hits = Select-String -Path $L -Pattern '\[Flow:|\[FeatureFlags\]|ff\.[a-z]+ =|\[Guard\]|EXCEPTION|NullReference' |
-            Select-Object -Last 60
-        if ($hits) {
-            $blocks += ('--- {0} (last 60 signal lines) ---' -f $L)
-            $blocks += ($hits | ForEach-Object { $_.Line })
+        $text = Read-LogTail $L $HarvestTailBytes
+        if ([string]::IsNullOrEmpty($text)) { continue }
+        $hits = @($text -split "`r?`n" |
+            Where-Object { $_ -match '\[Flow:|\[FeatureFlags\]|ff\.[a-z]+ =|\[Guard\]|EXCEPTION|NullReference' } |
+            Select-Object -Last 60)
+        if ($hits.Count -gt 0) {
+            $blocks += ('--- {0} (last 60 signal lines within the final {1} MB) ---' -f $L, [int]($HarvestTailBytes / 1MB))
+            $blocks += $hits
         }
     }
     return $blocks
@@ -118,8 +159,61 @@ $breakBase = 0
 $curBreakLines = 0
 if (Test-Path $BreakLog) { $curBreakLines = @(Get-Content $BreakLog -ErrorAction SilentlyContinue).Count }
 
+# WO-1709 dedupe watermark. The break-log offset alone cannot survive a kill mid-replay, and
+# $seenKeys is per-process, so a restart re-published rows the queue already held (5038 was
+# byte-identical to 5031). The device bridge already solved this with a published-`lastUtc`
+# watermark; this is that SAME mechanism on the desktop path, not a second one. Every break-log row
+# carries `"utc":"<ISO-8601>"` and the file is append-only, so the newest PUBLISHED payload utc is a
+# safe floor: anything at or below it has already reached the queue.
+function ConvertTo-F8Utc([string]$s) {
+    if ([string]::IsNullOrWhiteSpace($s)) { return $null }
+    try {
+        return [datetime]::Parse($s, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
+    } catch { return $null }
+}
+
+# Fallback only: used the FIRST time a daemon starts after this fix, when daemon-state.json predates
+# the watermark field. Derived from the RECORD (QUEUE.jsonl + the per-seq capture files), never from
+# LATEST_CAPTURE.md - the newest seq is not the furthest row when replays overlap. Reads only the
+# `## Payload` line of each capture, so an unrelated `utc` inside the auto-harvest block can never
+# over-advance the floor.
+function Get-PublishedUtcWatermark {
+    $queue = Join-Path $Inbox 'QUEUE.jsonl'
+    if (-not (Test-Path $queue)) { return '' }
+    $rows = @(Get-Content $queue -ErrorAction SilentlyContinue |
+        Where-Object { $_ -match '"source"\s*:\s*"f8"' } |
+        Select-Object -Last 500)
+    $archive = Join-Path $Inbox 'archive'
+    $best = $null
+    $bestS = ''
+    $scanned = 0
+    foreach ($row in $rows) {
+        if ($row -notmatch '"capturePath"\s*:\s*"([^"]+)"') { continue }
+        $capPath = $Matches[1] -replace '\\\\', '\'
+        if (-not (Test-Path $capPath)) { $capPath = Join-Path $archive (Split-Path $capPath -Leaf) }
+        if (-not (Test-Path $capPath)) { continue }
+        $txt = ''
+        try { $txt = [System.IO.File]::ReadAllText($capPath) } catch { continue }
+        $scanned++
+        if ($txt -notmatch '(?m)^## Payload\r?\n(.+)$') { continue }
+        $payload = $Matches[1]
+        if ($payload -notmatch '"utc"\s*:\s*"([^"]+)"') { continue }
+        $s = $Matches[1]
+        $d = ConvertTo-F8Utc $s
+        if ($d -and ((-not $best) -or ($d -gt $best))) { $best = $d; $bestS = $s }
+    }
+    if ($bestS) {
+        Write-F8Event $Inbox 'info' ("no persisted publish watermark - derived {0} from {1} published capture file(s)" -f $bestS, $scanned)
+    }
+    return $bestS
+}
+
 $persisted = $null
 if (Test-Path $StateFile) { try { $persisted = Get-Content $StateFile -Raw | ConvertFrom-Json } catch { } }
+
+$lastPubUtc = ''
+if ($persisted -and $persisted.lastPublishedUtc) { $lastPubUtc = [string]$persisted.lastPublishedUtc }
+
 if ($persisted -and $persisted.breakLog -eq $BreakLog) {
     $breakBase = [int]$persisted.breakOffset
     if ($breakBase -gt $curBreakLines) {
@@ -127,6 +221,10 @@ if ($persisted -and $persisted.breakLog -eq $BreakLog) {
         $breakBase = 0
     } elseif ($breakBase -lt $curBreakLines) {
         Write-F8Event $Inbox 'warn' ("daemon was DOWN for {0} break-log line(s) (offset {1} of {2}) - replaying them now, none dropped" -f ($curBreakLines - $breakBase), $breakBase, $curBreakLines)
+        if (-not $lastPubUtc) { $lastPubUtc = Get-PublishedUtcWatermark }
+        if ($lastPubUtc) {
+            Write-F8Event $Inbox 'info' ("publish watermark {0}: backlog rows at or below it are ALREADY in QUEUE.jsonl and will be skipped (offset still advances, nothing is dropped)" -f $lastPubUtc)
+        }
     }
 } else {
     # first ever run against this break-log: baseline to now (do not replay months of history)
@@ -134,11 +232,31 @@ if ($persisted -and $persisted.breakLog -eq $BreakLog) {
     Write-F8Event $Inbox 'info' ("first run for $BreakLog - baselined at $breakBase line(s)")
 }
 
-function Save-BreakOffset([int]$offset) {
-    $obj = @{ breakLog = $BreakLog; breakOffset = $offset; updatedUtc = (Get-Date).ToUniversalTime().ToString('o') }
-    try { Write-F8Text $StateFile ($obj | ConvertTo-Json -Depth 3) } catch { }
+# WO-1709: the write was `try { ... } catch { }` - a SILENT swallow, which is precisely why "the
+# offset is stuck" could not be told apart from "the offset write is failing" without this lane
+# measuring the emit path. It is now loud, and it READS THE FILE BACK: $ErrorActionPreference is
+# 'SilentlyContinue' at the top of this script, so a non-terminating failure would never have
+# reached the catch at all. A save that does not land is a capture-replay storm waiting to happen.
+$script:saveFailures = 0
+function Save-BreakOffset([int]$offset, [string]$publishedUtc) {
+    $obj = @{
+        breakLog         = $BreakLog
+        breakOffset      = $offset
+        lastPublishedUtc = $publishedUtc
+        updatedUtc       = (Get-Date).ToUniversalTime().ToString('o')
+    }
+    try {
+        Write-F8Text $StateFile ($obj | ConvertTo-Json -Depth 3)
+        $back = [System.IO.File]::ReadAllText($StateFile)
+        if ($back -notmatch ('"breakOffset"\s*:\s*{0}\b' -f $offset)) {
+            throw ("read-back did not show breakOffset={0}" -f $offset)
+        }
+    } catch {
+        $script:saveFailures++
+        Write-F8Event $Inbox 'warn' ("Save-BreakOffset FAILED (#{0}) writing offset={1} to {2}: {3} - the next restart will replay from the stale offset" -f $script:saveFailures, $offset, $StateFile, $_.Exception.Message)
+    }
 }
-Save-BreakOffset $breakBase
+Save-BreakOffset $breakBase $lastPubUtc
 
 $logPositions = @{}
 foreach ($p in @($EditorLog, $PlayerLog)) {
@@ -189,6 +307,7 @@ function Beat([string]$detail) {
     }
 }
 Beat 'armed'
+$passCount = 0
 
 Write-Host ('[f8-daemon] armed pid={0} poll={1}s' -f $myPid, $PollSeconds)
 Write-Host ('[f8-daemon] break-log: {0}' -f $BreakLog)
@@ -205,31 +324,72 @@ while ($true) {
         $cur = $lines.Count
         if ($cur -lt $breakBase) { $breakBase = 0 }
         if ($cur -gt $breakBase) {
-            $newLines = $lines[$breakBase..($cur - 1)]
-            foreach ($line in $newLines) {
-                if ($line -match ('"kind"\s*:\s*"({0})"' -f $kindSkip)) { continue }
-                if ([string]::IsNullOrWhiteSpace($line)) { continue }
-                # WO-1531: an owner FLAG is an EVENT, not a message. Two identical presses are two
-                # facts, so a flagged line is never suppressed by the seen table. (This key is the
-                # whole line, utc included, so ordinary entries were never suppressed forever the
-                # way the device bridge's kind+message key was - the flag carve-out is the half
-                # that matters here.)
-                $isFlaggedLine = $line -match '"kind"\s*:\s*"flagged"'
-                $key = 'bl:' + $line.GetHashCode()
-                if (-not $isFlaggedLine) {
-                    if ($seenKeys.ContainsKey($key)) { continue }
-                    $seenKeys[$key] = $true
+            # WO-1709: this was a `foreach` over a slice, with ONE `Save-BreakOffset $cur` after it.
+            # That save was reachable only once every row had been emitted, and each emit cost ~155 s
+            # (see Harvest-Context above), so a 1733-row backlog needed ~56 HOURS of uninterrupted
+            # runtime to persist a single byte of progress. It never got it: the daemon was stopped
+            # mid-backlog every time, the offset stayed at 1331 across 13+ restarts from 2026-09-12
+            # to 2026-09-14, and each restart re-emitted the same 09-11 rows. An indexed loop that
+            # persists after EVERY row makes progress survive a kill - the durability property the
+            # single trailing save never actually had.
+            $replaySkipped = 0
+            for ($i = $breakBase; $i -lt $cur; $i++) {
+                $line = $lines[$i]
+                $emit = $true
+                if ([string]::IsNullOrWhiteSpace($line)) { $emit = $false }
+                elseif ($line -match ('"kind"\s*:\s*"({0})"' -f $kindSkip)) { $emit = $false }
+
+                $rowUtc = ''
+                if ($emit) {
+                    if ($line -match '"utc"\s*:\s*"([^"]+)"') { $rowUtc = $Matches[1] }
+                    # Already-published floor. A row with NO utc is never skipped - an unparseable
+                    # timestamp must not silently drop an owner capture (WO-965).
+                    $rowDt = ConvertTo-F8Utc $rowUtc
+                    $markDt = ConvertTo-F8Utc $lastPubUtc
+                    if ($rowDt -and $markDt -and ($rowDt -le $markDt)) {
+                        $replaySkipped++
+                        $emit = $false
+                    }
                 }
 
-                # anchored on the "kind" FIELD: the old greedy 'kind.*:\s*"(\w+)"' walked past it and
-                # captured the LAST quoted word on the line - which is why PING.json kind read
-                # "Main_Castle_Overworld" (the scene) instead of "flagged" / "error".
-                $capKind = 'break-log'
-                if ($line -match '"kind"\s*:\s*"([^"]+)"') { $capKind = $Matches[1] }
-                Emit-Capture -kind $capKind -body $line -triggerLine $line
+                if ($emit) {
+                    # WO-1531: an owner FLAG is an EVENT, not a message. Two identical presses are two
+                    # facts, so a flagged line is never suppressed by the seen table. (This key is the
+                    # whole line, utc included, so ordinary entries were never suppressed forever the
+                    # way the device bridge's kind+message key was - the flag carve-out is the half
+                    # that matters here.) The utc watermark above is orthogonal: two presses carry two
+                    # different utc values, so neither is ever below the floor at the time it arrives.
+                    $isFlaggedLine = $line -match '"kind"\s*:\s*"flagged"'
+                    $key = 'bl:' + $line.GetHashCode()
+                    if ((-not $isFlaggedLine) -and $seenKeys.ContainsKey($key)) {
+                        $emit = $false
+                    } else {
+                        if (-not $isFlaggedLine) { $seenKeys[$key] = $true }
+
+                        # anchored on the "kind" FIELD: the old greedy 'kind.*:\s*"(\w+)"' walked past it and
+                        # captured the LAST quoted word on the line - which is why PING.json kind read
+                        # "Main_Castle_Overworld" (the scene) instead of "flagged" / "error".
+                        $capKind = 'break-log'
+                        if ($line -match '"kind"\s*:\s*"([^"]+)"') { $capKind = $Matches[1] }
+                        Emit-Capture -kind $capKind -body $line -triggerLine $line
+                        if ($rowUtc) { $lastPubUtc = $rowUtc }
+                    }
+                }
+
+                $breakBase = $i + 1
+                Save-BreakOffset $breakBase $lastPubUtc
+
+                # WO-1460 liveness during a long backlog. The heartbeat used to be stamped only at the
+                # BOTTOM of the pass, so a daemon grinding through a replay read as frozen at
+                # detail="armed" - which is exactly how HEARTBEAT.json looked at 09:06:33Z while the
+                # process was alive and working.
+                if (((Get-Date) - $hbLast).TotalSeconds -ge $hbEvery) {
+                    Beat ('replaying break-log row {0}/{1} (skipped {2} already-published)' -f $breakBase, $cur, $replaySkipped)
+                }
             }
-            $breakBase = $cur
-            Save-BreakOffset $breakBase
+            if ($replaySkipped -gt 0) {
+                Write-F8Event $Inbox 'info' ("replay: skipped {0} break-log row(s) at or below the published watermark {1} - already in QUEUE.jsonl, not re-published; offset advanced to {2}" -f $replaySkipped, $lastPubUtc, $breakBase)
+            }
         }
     }
 
@@ -291,4 +451,12 @@ while ($true) {
   # heartbeat on its own cadence, whether or not anything was captured: silence must be
   # distinguishable from death (WO-1460).
   if (((Get-Date) - $hbLast).TotalSeconds -ge $hbEvery) { Beat (Watch-Detail) }
+
+  # WO-1709 test seam. 0 (the production default) never breaks: the daemon's contract is
+  # auto-rearm INFINITE.
+  $passCount++
+  if ($MaxPasses -gt 0 -and $passCount -ge $MaxPasses) {
+      Write-Host ('[f8-daemon] MaxPasses={0} reached - exiting (test seam). breakOffset={1} lastPublishedUtc={2}' -f $MaxPasses, $breakBase, $lastPubUtc)
+      break
+  }
 }
