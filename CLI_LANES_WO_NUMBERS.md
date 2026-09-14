@@ -189,7 +189,23 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-eighth pass): main line next free = **1720**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-eightieth pass): main line next free = **1723**.
+> *(CLI minted **1722** 2026-09-14 from a live device capture during the owner's own on-device Breach
+> testing: `Wall_Outer_SE_17` in raid `raider_camp_small` (Regular tier - the SAME tier the WO-1719/1720
+> headed proof called fully clean, 0/78 mismatches) shows a live collider/renderer mismatch far larger
+> than anything seen today - collider Extents (0.75, 2.00, 1.43) vs a CHILD renderer's Extents (5.54,
+> 10.51, 10.61). Also bundles the owner's open "can I walk through a destroyed wall" question and the
+> resolved ToggleBreach logcat-ring-buffer non-issue, all with device screenshots and raw log excerpts.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-seventy-ninth pass): main line next free = **1722**.
+> *(CLI minted **1720** and **1721** 2026-09-14 from owner live playtest reports during the WO-1719
+> breach-tap investigation: **1720** = raid defense towers have line-of-sight through standing walls
+> they should not (found live, same session as the wall collider/renderer height mismatch root cause);
+> **1721** = a destroyed wall segment currently sinks 17m through the floor and vanishes (per
+> WallSegment.Collapse's own "ruin SETTLED" log) rather than leaving a visible breach/rubble - owner
+> wants a visible gap, not an invisible one.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-seventy-eighth pass): main line next free = **1720**.
 > *(CLI minted **1719** 2026-09-14 from owner design rulings: a Breach button gates a direct wall-tap
 > that overrides the automatic most-damaged targeting - WO-1717 finding 2, split out per its own
 > recommendation.)*
