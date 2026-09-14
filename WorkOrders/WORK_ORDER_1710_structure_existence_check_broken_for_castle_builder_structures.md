@@ -1,6 +1,10 @@
 # WORK ORDER 1710 - Structure existence check broken for castle-builder-seeded structures
 
-**Status:** RCA COMPLETE - two independent causes proven; implementation lane assigned 2026-09-14 (see WO-1711 for the related castle-seeding ruling this lane also implements)
+**Status:** IMPLEMENTED - awaiting lead gate 2026-09-14 (both symptoms fixed as two independent lanes,
+per the RCA's DISPROVEN shared-cause verdict; see
+`WORK_ORDER_1710_structure_existence_check_broken_for_castle_builder_structures.RESULT.md` —
+⚠ that RESULT also records a `structures-catalog.json` near-miss this lane caused AND recovered, which
+the lead must read before gating)
 **Minted:** 2026-09-14 by the CLI lead (Fable seat), from the owner's live Firebase tester-build report
 (release 2026.09.14.369302, dev @ 518e7f29a)
 

@@ -385,6 +385,12 @@ namespace DeNelle.Editor
             if (!TroopRosterRegression.Run(out var troopRosterReason)) failures.Add(troopRosterReason); else log.AppendLine("[troop-roster] " + troopRosterReason);
             // --- WO-771.6/771.11: raid V1 win/stars/loot + live HUD (LOCKED teleport/deploy loop) ---
             if (!RaidScoringRegression.Run(out var raidScoringReason)) failures.Add(raidScoringReason); else log.AppendLine("[raid-scoring] " + raidScoringReason);
+            if (!RaidLootAuthorityProof.Run(out var raidLootReason)) failures.Add(raidLootReason); else log.AppendLine("[raid-loot-authority] " + raidLootReason);
+            if (!OwnedTownRepairPaymentProof.Run(out var townRepairReason)) failures.Add(townRepairReason); else log.AppendLine("[owned-town-repair-payment] " + townRepairReason);
+            try { OwnedBaseConstructionProof.RunBatch(); log.AppendLine("[owned-base-construction] payment/refund rollback, retry, reload and detached edits"); }
+            catch (System.Exception ex) { failures.Add("owned-base-construction: " + ex); }
+            try { OwnedTownConstructionRulesProof.RunBatch(); log.AppendLine("[owned-town-construction-rules] shipped snapshot compatibility, fixed identities and repair selection"); }
+            catch (System.Exception ex) { failures.Add("owned-town-construction-rules: " + ex); }
             // --- WO-912 sec.10.5: the ad provider stays BEHIND IAdService (registered BEFORE any SDK) ---
             if (!AdServiceSeamRegression.Run(out var adSeamReason)) failures.Add(adSeamReason); else log.AppendLine("[ad-seam] " + adSeamReason);
             // --- WO-1320: a Pi rewarded ad pays out ONLY after /api/pi/ads-verify answers
@@ -531,6 +537,7 @@ namespace DeNelle.Editor
             // --- WO-673 strategic placement — the §5 permission gates (flag-off parity,
             // migration round-trip, one-per-id, save v30, repair chain, 45° yaw + claim) ---
             if (!StrategicPlacementRegression.Run(out var stratPlaceReason)) failures.Add(stratPlaceReason); else log.AppendLine("[strategic-placement] " + stratPlaceReason);
+            if (!PremadeCastleCompleteRegression.Run(out var premadeCastleReason)) failures.Add(premadeCastleReason); else log.AppendLine("[premade-castle] " + premadeCastleReason);
             // --- WO-676 skill-tree strategic redesign — §C gates G1-G3 (data/dual-copy/
             // vocabulary + StatSum stacking/clamps + NO DEAD NODES consumer registry) ---
             if (!TalentStrategyRegression.Run(out var talentStratReason)) failures.Add(talentStratReason); else log.AppendLine("[talent-strategy] " + talentStratReason);
@@ -615,6 +622,7 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "portal-rebuild suite", () => { if (!PortalRebuildRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[portal-rebuild] " + r); });
             // --- WO-826 Realm Map: realm-map.json dual-copy field parity + RealmMapCatalog loader oracle ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "realm-map suite", () => { if (!RealmMapRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[realm-map] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "owned-base-state suite", () => { if (!DeNelle.Editor.Regression.OwnedBaseStateRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[owned-base-state] " + r); });
             // --- WO-839 raid deploy screen: FrameCore footer/subHeader zones + F8 harness dev-guard + ScoutReport honesty ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-deploy-ui suite", () => { if (!RaidDeployUiRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-deploy-ui] " + r); });
             // --- WO-1403 raid deploy at zero troops: TRAIN TROOPS primary, one Manage door, spoils line shares WO-1402's producer ---
@@ -1092,6 +1100,7 @@ namespace DeNelle.Editor
             // same commit as the lane work, which is also what keeps [regression-marker]
             // green - an oracle written and never registered is a FAIL by design. ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "barracks-blanktown suite", () => { if (!DeNelle.Editor.BarracksBlankTownRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[barracks-blanktown] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "authored-barracks-provenance suite", () => { if (!DeNelle.Editor.AuthoredBarracksProvenanceRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[authored-barracks-provenance] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "echo-hollow-route suite", () => { if (!DeNelle.Editor.EchoHollowRouteRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[echo-hollow-route] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "harvest-drip suite", () => { if (!DeNelle.Editor.HarvestDripRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[harvest-drip] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "hostile-green suite", () => { if (!DeNelle.Editor.HostileGreenCueRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[hostile-green] " + r); });
@@ -1602,6 +1611,12 @@ namespace DeNelle.Editor
             //     hearth-spark's storeVisible was not flipped to paper over an empty Pi shelf. ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "store-pi-skin suite", () => { if (!DeNelle.Editor.Regression.StorePiSkinCurrencyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[store-pi-skin] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "structure-orientation suite", () => { if (!DeNelle.Editor.StructureOrientationOracle.Run(out var r)) failures.Add(r); else log.AppendLine("[structure-orientation] " + r); });
+            // Fresh-town visual gate: every catalog base visual and authored tier is
+            // instantiated with the production orientation policy, checked for a
+            // renderable mesh/material, fitted, and verified seated on its cell plane.
+            // This is the visual companion to the numeric orientation oracle and is
+            // required before packaging after any building or layout change.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "fresh-town-building-visual suite", () => { if (!DeNelle.Editor.Regression.FreshTownBuildingVisualRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[fresh-town-building-visual] " + r); });
             // Registered 2026-08-22 in the same breath as the marker failure that caught it: this
             // oracle exposed Run(out string) and was referenced by NOTHING, which the marker suite
             // words exactly right -- "an unregistered oracle is a file that never runs." Second one
@@ -1846,6 +1861,7 @@ namespace DeNelle.Editor
             // standalone entry point (an EditorApplication.Exit inside RunAll would kill the
             // batch before REGRESSION_OK is written).
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "repair-probe suite", () => { if (!DeNelle.Editor.RepairProbeRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[repair-probe] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "repair-tap-guard suite", () => { if (!DeNelle.Editor.Regression.RepairTapGuardRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[repair-tap-guard] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "combat-foundation suite", () => { if (!DeNelle.Editor.CombatFoundationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[combat-foundation] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "arena-combat suite", () => { if (!DeNelle.Editor.ArenaCombatOracle.Run(out var r)) failures.Add(r); else log.AppendLine("[arena-combat] " + r); });
             // ⚠ DUPLICATE ASSERTION, REPORTED NOT COLLAPSED (WO-1496): CheckGearAddressableGroup
@@ -1860,7 +1876,6 @@ namespace DeNelle.Editor
             // pre-fence baseline and it exposed no `.Run(out` call-site for the denominator to
             // pin, so a throw inside it would have been silent in exactly the way the fence
             // exists to prevent. Same suite, same body; it is now shaped and counted like one.
-            DeNelle.Core.Diagnostics.Guard.Try("Regression", "repair-tap-guard suite", () => { if (!DeNelle.Editor.Regression.RepairTapGuardRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[repair-tap-guard] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "move-manifest suite", () => { if (!DeNelle.Editor.Regression.AssetMoveManifestRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[move-manifest] " + r); });
             // (!) DO NOT WEAKEN THIS SUITE. Its header held it standalone until the orc art landed.
             // WAS RED ON [every-model-has-art] until WO-1536 (2026-09-07): enemies.json:400 said
@@ -2226,6 +2241,11 @@ namespace DeNelle.Editor
                     // NOW coach-mark completes on the OPEN QUEUE drawer opening (ManageScreenPanel).
                     s == DeNelle.Core.Tutorial.TutorialSignals.TroopJobQueued ||
                     s == DeNelle.Core.Tutorial.TutorialSignals.ManageQueueOpened ||
+                    s == DeNelle.Core.Tutorial.TutorialSignals.OwnedTownRevealed ||
+                    s == DeNelle.Core.Tutorial.TutorialSignals.OwnedTownRepaired ||
+                    s == DeNelle.Core.Tutorial.TutorialSignals.OwnedTownDesigned ||
+                    s == DeNelle.Core.Tutorial.TutorialSignals.OwnedTownReentered ||
+                    s == DeNelle.Core.Tutorial.TutorialSignals.OwnedTownPracticed ||
                     s.StartsWith(DeNelle.Core.Tutorial.TutorialSignals.DialogueEndedPrefix) ||
                     s.StartsWith(DeNelle.Core.Tutorial.TutorialSignals.HeroReachedPrefix) ||
                     s.StartsWith(DeNelle.Core.Tutorial.TutorialSignals.PanelOpenedPrefix) ||
@@ -3361,7 +3381,7 @@ namespace DeNelle.Editor
             Lint("_Modules/Village/BuildMode/StructureSingleton.cs", "MayBakedTwinSurface",
                 "the Enforce resurface branch must be gated (WO-834)");
             Lint("_Modules/Village/BuildMode/StrategicPlacementMigration.cs", "MayBakedTwinSurface",
-                "StanddownActiveForBaked must stand never-built bakes down at scene load");
+                "MayBakedTwinSurface remains the barracks/vendor blank-town gate (injector 8 stay up on empty founding)");
             Lint("_Modules/Village/BuildMode/StrategicPlacementMigration.cs", "MarkEverBuilt",
                 "the migration writer must grant the default-town template ids");
             Lint("_Modules/Village/NPCs/CastleVendorNpcInjector.cs", "MayBakedTwinSurface",
@@ -4232,7 +4252,7 @@ namespace DeNelle.Editor
                     chainOk++;
                     // Earmark the first iron/wood-only recipe (no GameState-backed crystals/food)
                     // for the simulated craft so the wallet path needs only EconomyService.
-                    if (simRecipe == null && (r.Cost == null || (r.Cost.Crystals == 0 && r.Cost.Food == 0)))
+                    if (simRecipe == null && (r.Cost == null || (r.Cost.Crystals == 0 && r.Cost.Stone == 0)))
                         simRecipe = r;
                 }
             }
@@ -4990,7 +5010,7 @@ namespace DeNelle.Editor
             {
                 ("wood", "Wood", c.Wood),
                 ("iron", "Iron", c.Iron),
-                ("stone", "Stone", c.Food),
+                ("stone", "Stone", c.Stone),
                 ("crystal", "Crystals", c.Crystals),
             });
             return parts.Count == 0 ? "Free" : DeNelle.Core.UI.CostFormat.Words(parts);

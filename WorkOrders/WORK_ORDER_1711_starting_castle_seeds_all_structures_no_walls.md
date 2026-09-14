@@ -1,7 +1,11 @@
 # WORK ORDER 1711 - Starting castle pre-seeds every structure but towers; walls seed only on raid-arena flip
 
-**Status:** READY TO IMPLEMENT - owner design ruling, depends on WO-1710's RCA verdict for the
-existence-check half (see section 4)
+**Status:** IMPLEMENTED - awaiting lead gate 2026-09-14. Ruling A delivered through WO-1710's registry
+(no parallel mechanism), WITH the "one of everything" gap enumerated for an owner decision. ⚠ RULING B
+IS HALF DONE ON PURPOSE: the builder no longer seeds walls, but the shipped castle's walls are baked
+`CastleSide_*` scene objects that carry the gates, the OuterWorld exit seam and the nav markers —
+stripping them is a scene re-bake needing an owner ruling first. See
+`WORK_ORDER_1711_starting_castle_seeds_all_structures_no_walls.RESULT.md`.
 **Minted:** 2026-09-14 by the CLI lead (Fable seat), from the owner's live design ruling while
 felt-testing the 2026-09-14 tester build (release 2026.09.14.369302)
 

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
@@ -20,30 +20,22 @@ namespace DeNelle.Editor
     // Run from: Defenders > Scenes > Build CastleHub_MainKeep
     //
     // Designed to run AFTER you create a blank/empty scene (File > New Scene > Empty).
-    // It is idempotent: re-running in the same scene will clear the prior root and rebuild.
+    // Requires a new empty scene; refuses to overwrite a populated or saved castle.
     //
-    // ⛔ THIS BUILDER DOES NOT CREATE THE REALM STORE STOREFRONT (PROD-003).
-    // The game's ONLY monetization surface, RealmStore_Storefront, is placed at scene
-    // ROOT by a separate script — Assets/Editor/RealmStorePlacer.cs — and is therefore
-    // NOT part of the rebuild above. The "new empty scene + rebuild the hub" workflow in
-    // the header below will SILENTLY DROP IT: the hub will look correct and the store
-    // will simply not exist, with no error anywhere.
-    //     >>> AFTER RUNNING THIS BUILDER, RE-RUN
-    //     >>> DeNelle.Editor.RealmStorePlacer.Run   AND THEN RE-BAKE THE NAVMESH. <<<
-    // The loss is caught rather than trusted: RealmStorefrontRegression [realm-storefront]
-    // pins the storefront in the SAVED scene and goes red if a bake drops it. Owning the
-    // storefront here instead would be the durable answer, but that is a structural change
-    // and is deliberately not smuggled into a player-facing fix.
+    // OwnerCastleStorefrontLayout supplies the approved fourteen-object ring, including
+    // RealmStore and Cathedral of Learning. RealmStorePlacer preserves that authored door.
     //
     // Implements the Central Castle Hub spec:
     // - Separate scene for home + hub (distinct from Village2 primary).
     // - Beautifully designed castle using Quaternius (modular beauty, walls/floors/stairs/props)
     //   + polyperfect Low Poly Ultimate Pack _M tier (performant, single-atlas, mobile friendly).
-    // - Outer defensive walls + 4 corner towers + main south gate (connection marker to OuterWorld).
-    // - Central courtyard/plaza with exactly 8 dedicated structures (storefront + NPC interact points):
-    //     1. Blacksmith (Weapons)   2. Lumbermill (Wood)   3. Windmill (Food)
-    //     4. Echo Hollow (Pets)     5. Forge (Armor)       6. Arcane Tower (Magic)
-    //     7. Jeweler (Gems)         8. Store/Marketplace (Monetization)
+    // - 4 corner towers + main south gate (connection marker to OuterWorld). ⛔ NO OUTER
+    //   DEFENSIVE WALLS — owner ruling 2026-09-14 (WO-1711 B): walls belong to a base that has
+    //   FLIPPED into a raid target, not to the home castle. This line read "Outer defensive
+    //   walls + 4 corner towers" until that ruling; the wall runs it described are deleted at
+    //   BuildCastleHub's perimeter block, which explains why they are gone.
+    // - Central courtyard with the owner's thirteen saved objects plus the original
+    //   Cathedral, preserving recipe geometry, relative transforms, and semantic markers.
     // - Main Keep (Castle_Medieval) with Player Hero Hall / Personal Quarters (home space).
     // - Upper battlements (wide ~42m platform at height, 4 defensive towers, LOS down to courtyard
     //   for player-placed defenses via existing base-building system).
@@ -75,6 +67,7 @@ namespace DeNelle.Editor
     {
         private const string MenuPath = "Defenders/Scenes/Build CastleHub_MainKeep";
         private const string RootName = "CastleHubRoot";
+        public const string OwnerLayoutPrefabPath = "Assets/Prefabs/Village/OwnerCastleStorefrontLayout.prefab";
         private const string NavFloorName = "NavMeshFloor_Invisible_Walkable";
 
         // WO-593 castle-island raise height. A tunable VARIABLE (owner directive: NOT a const) so the
@@ -138,16 +131,16 @@ namespace DeNelle.Editor
         [MenuItem(MenuPath)]
         public static void BuildCastleHub()
         {
-            // --- Idempotent: clear prior generation in the open scene (safe for re-runs or blank scene) ---
-            var prior = GameObject.Find(RootName);
-            if (prior != null)
-            {
-                Debug.Log($"[CastleHubBuilder] Destroying prior {RootName} root for rebuild.");
-                Object.DestroyImmediate(prior);
-            }
-
-            // Optional: if user wants a truly fresh scene, they created a blank one before running.
-            // We populate whatever scene is active.
+            // Owner 2026-09-13: existing castle layouts are authored work, never regeneration input.
+            var current = SceneManager.GetActiveScene();
+            if (current.rootCount != 0)
+                throw new System.InvalidOperationException("Castle generation requires a new empty scene. Existing scene objects are preserved.");
+            if (current.GetRootGameObjects().Any(g => g.GetComponentsInChildren<Transform>(true)
+                .Any(t => t.name == RootName || t.GetComponent<AuthoredCastleStorefront>() != null)))
+                throw new System.InvalidOperationException("Existing castle preserved. Use OwnerCastleLayoutRepair for additive repairs; create a new empty scene for generation.");
+            var ownerLayout = AssetDatabase.LoadAssetAtPath<GameObject>(OwnerLayoutPrefabPath);
+            if (ownerLayout == null || ownerLayout.transform.childCount != 14)
+                throw new System.InvalidOperationException("Validated owner castle layout prefab is absent/incomplete. Run OwnerCastleLayoutRepair.Apply first.");
 
             LoadFootprintLiftY();   // WO-593: refresh the base height from PlayerPrefs before authoring
             var root = new GameObject(RootName);
@@ -202,56 +195,49 @@ namespace DeNelle.Editor
                 }
             }
 
-            // Main perimeter walls (poly stone segments + Quaternius plaster for beauty/detail)
-            // T-007: the SHIPPING walls come from CastleWallsFromRecipe.Recreate() (the
-            // recipe-driven CastleSide_* geometry; outside this method's legacy path). These
-            // legacy poly-stone runs are the placeholder shell only. The old loops used
-            // `Mathf.Abs(x) > 1` which skipped THREE south/north cells (x = -1,0,1) for the
-            // gate -> a ~26m hole far wider than a 12-15m gate, leaving the wall visibly
-            // "not connected" on each flank of the opening. Skip ONLY the center cell (x==0)
-            // so the gate opening is one cell wide and the flanking segments connect.
-            if (wallStone != null)
-            {
-                // South wall segments (skip ONLY the center cell for the gate)
-                for (int x = -3; x <= 3; x++)
-                {
-                    if (x == 0) continue;
-                    var w = (GameObject)PrefabUtility.InstantiatePrefab(wallStone);
-                    w.transform.SetParent(wallsRoot.transform, false);
-                    w.transform.localPosition = new Vector3(x * 13f, 0f, -44f);
-                    w.name = $"Wall_South_{x}";
-                }
-                // North wall (solid — no gate on the north legacy run)
-                for (int x = -3; x <= 3; x++)
-                {
-                    var w = (GameObject)PrefabUtility.InstantiatePrefab(wallStone);
-                    w.transform.SetParent(wallsRoot.transform, false);
-                    w.transform.localPosition = new Vector3(x * 13f, 0f, 44f);
-                    w.name = $"Wall_North_{x}";
-                }
-                // East/West simplified (add more Quaternius runs for full beauty)
-            }
-
-            // Quaternius west wall line for visual variety + battlements feel
-            if (qWallStraight != null)
-            {
-                for (int i = 0; i < 7; i++)
-                {
-                    var w = (GameObject)PrefabUtility.InstantiatePrefab(qWallStraight);
-                    w.transform.SetParent(wallsRoot.transform, false);
-                    w.transform.localPosition = new Vector3(-44f, 0f, -30f + i * 10f);
-                    w.transform.localRotation = Quaternion.Euler(0, 90, 0);
-                    w.name = $"QWall_West_{i}";
-                }
-                for (int i = 0; i < 7; i++)
-                {
-                    var w = (GameObject)PrefabUtility.InstantiatePrefab(qWallStraight);
-                    w.transform.SetParent(wallsRoot.transform, false);
-                    w.transform.localPosition = new Vector3(44f, 0f, -30f + i * 10f);
-                    w.transform.localRotation = Quaternion.Euler(0, -90, 0);
-                    w.name = $"QWall_East_{i}";
-                }
-            }
+            // ⛔ NO PERIMETER WALLS ON THE HOME CASTLE — owner ruling 2026-09-14 (WO-1711
+            // ruling B), verbatim: "let's remove adding the walls let's only add walls when
+            // they get to a player flipped base. I think it makes more sense."
+            //
+            // WALLS ARE A RAID-ARENA CONCEPT. A home town is not a defended perimeter; a town
+            // that has FLIPPED into a raid target is. That conversion is the existing raid-base
+            // pipeline (RaidBaseGenerator / RaidBaseDresser / ArenaBoundaryRing / RaidNavBake,
+            // WO-1703/1704), which builds its own walls for the RaidBase_* / OwnedTown_* scenes
+            // and is deliberately untouched here.
+            //
+            // WHAT WAS REMOVED: two poly-stone runs (Wall_South_-3..3 skipping the gate cell,
+            // Wall_North_-3..3) and two Quaternius plaster lines (QWall_West_0..6,
+            // QWall_East_0..6) — 26 wall segments. The `wallStone` and `qWallStraight` prefab
+            // loads above are KEPT: other authoring entry points in this file still take
+            // `wallStone` (BuildInnerWallRing_RETIRED / BuildRingSideRun / MeasureWallBaseLength
+            // and the two batch rebuild paths). `qWallStraight` is now unused BY THIS METHOD and
+            // is deliberately still loaded: LoadQuat is the pack-presence probe that warns when
+            // the Quaternius kit is missing, and deleting a load to tidy a now-unused local is
+            // how a sibling path silently loses its prefab.
+            // The CoC inner courtyard ring needs no removal here — BuildInnerWallRing (:705) was
+            // already made DESTROY-ONLY by the owner's own F8s ("you added walls inside, not at
+            // the gates", 2026-06-27 / "Wall in middle?", 2026-07-02), so the call left below
+            // only clears a stray ring and rebuilds nothing. That call STAYS for exactly that
+            // reason: it is the thing that keeps the rejected ring from coming back.
+            //
+            // ⚠ AND READ THIS BEFORE BELIEVING THE CASTLE LOST ITS WALLS. These runs were the
+            // LEGACY PLACEHOLDER SHELL, not the shipping geometry — the T-007 comment that used
+            // to sit here said so itself: "the SHIPPING walls come from
+            // CastleWallsFromRecipe.Recreate() (the recipe-driven CastleSide_* geometry;
+            // outside this method's legacy path)". Verified at source 2026-09-14:
+            // Main_Castle_Overworld.unity contains CastleSide_North/East/South/West and ZERO
+            // objects named OuterWalls_Towers_Battlements / Wall_South_* / QWall_*, and
+            // BuildCastleHub() throws on any non-empty scene, so it has never authored the
+            // shipped hub. REMOVING THESE LOOPS THEREFORE CHANGES NOTHING THE PLAYER SEES.
+            // The walls she is looking at are baked CastleSide_* scene objects and stripping
+            // them needs an editor tool + a re-bake — see the WO-1711 RESULT for why that half
+            // is NOT done here and what has to be ruled on first (the CastleSide_* roots carry
+            // the gates, the OuterWorld exit seam and the Gate_* nav markers, which is exactly
+            // the "load-bearing for nav" case WO-1711 section 2 says to confirm with the owner).
+            //
+            // The 4 corner towers, the south gate and the drawbridge below are KEPT: the ruling
+            // removes walls, towers are the one thing that stays buildable (ruling A), and the
+            // gate/drawbridge are the OuterWorld connection seam, not perimeter defence.
 
             // Main South Gate + Drawbridge (connection to OuterWorld)
             if (gateMedium != null)
@@ -273,100 +259,18 @@ namespace DeNelle.Editor
             var courtyard = new GameObject("CentralCourtyard_Plaza");
             courtyard.transform.SetParent(root.transform, false);
 
-            // Simple ground/plaza floor (Quaternius wood or poly stone brick)
-            if (qFloorWood != null)
-            {
-                for (int x = -2; x <= 2; x++)
-                {
-                    for (int z = -2; z <= 2; z++)
-                    {
-                        var f = (GameObject)PrefabUtility.InstantiatePrefab(qFloorWood);
-                        f.transform.SetParent(courtyard.transform, false);
-                        f.transform.localPosition = new Vector3(x * 8f, 0.01f, z * 8f);
-                        f.name = $"CourtyardFloor_{x}_{z}";
-                    }
-                }
-            }
-            else
-            {
-                // Fallback visual plane
-                var plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-                plane.transform.SetParent(courtyard.transform, false);
-                plane.transform.localScale = new Vector3(8, 1, 8);
-                plane.name = "Courtyard_PlazaFallback";
-                Object.DestroyImmediate(plane.GetComponent<Collider>());
-            }
+            // Owner 2026-09-12: do NOT spawn courtyard floor tiles or Courtyard_PlazaFallback.
+            // The injector's 80x80 plane (same name) overwrote the ring. Grass is the baked
+            // ExteriorTerrain. CentralCourtyard_Plaza stays as a folder for The8Structures only.
+            // if (qFloorWood != null) { ... CourtyardFloor_x_z ... }
+            // else { Plane named Courtyard_PlazaFallback scale 8 }
 
             // === THE 8 STRUCTURES (ring around plaza, storefronts face center, NPC points) ===
-            var structuresRoot = new GameObject("The8Structures_Storefronts_NPCPoints");
+            // Reproduce the owner's saved selection, poses, material repairs, and capabilities.
+            // The prefab is captured by OwnerCastleLayoutRepair, preserving original source references.
+            var structuresRoot = (GameObject)PrefabUtility.InstantiatePrefab(ownerLayout, current);
             structuresRoot.transform.SetParent(courtyard.transform, false);
-
-            // Exact 8 per spec, positions in a pleasant octagon-ish ring for clear mobile nav + thumb reach
-            var structures = new List<(GameObject prefab, string displayName, Vector3 localPos)>
-            {
-                (houseMed,   "Blacksmith_Weapons_Storefront",   new Vector3(-22, 0, -22)),
-                (watermill,  "Lumbermill_Wood_Storefront",      new Vector3( 22, 0, -22)),
-                (windmill,   "Windmill_Food_Storefront",        new Vector3(-22, 0,  22)),
-                (stables,    "EchoHollow_Pets_RoamingArea",     new Vector3( 22, 0,  22)),
-                (houseMed,   "Forge_Armor_Storefront",          new Vector3(-32, 0,   0)),
-                (towerBig,   "ArcaneTower_MagicUpgrades",       new Vector3( 32, 0,   0)),
-                // Jeweler (Gems) REMOVED from the fixed ring — it was blocking the south door.
-                // It is now a player-PLACEABLE build-catalog entry (id "jeweler" in
-                // structures-catalog.json, behaviorId GameplayBuilding); the owner lays it
-                // wherever she wants via build mode. Do NOT re-add a fixed Jeweler here.
-                (houseLarge, "Marketplace_Monetization",        new Vector3(  0, 0,  32)),
-            };
-
-            for (int i = 0; i < structures.Count; i++)
-            {
-                var (prefab, name, pos) = structures[i];
-                if (prefab == null) continue;
-
-                var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-                inst.transform.SetParent(structuresRoot.transform, false);
-                inst.transform.localPosition = pos;
-                inst.name = name;
-
-                // Front-of-building NPC / storefront interact point (wire with existing Yarn/Economy/NPC systems)
-                var npc = new GameObject($"NPC_{name.Split('_')[0]}_Interactable");
-                npc.transform.SetParent(inst.transform, false);
-                npc.transform.localPosition = new Vector3(0, 0, 6); // front offset; rotate building if needed for facing
-
-                // OWNER 2026-06-12: an Anvil in front of the hammering blacksmith NPC. Placed just
-                // ahead of the NPC point (child at (0,0,6)) at local (0,0,5), child of the storefront.
-                if (name == "Blacksmith_Weapons_Storefront")
-                {
-                    var anvilPrefab = Resources.Load<GameObject>("Structures/Anvil");
-                    if (anvilPrefab == null)
-                        Debug.LogWarning("[CastleHubBuilder] Resources/Structures/Anvil not found — Blacksmith Anvil skipped.");
-                    else
-                    {
-                        var anvil = (GameObject)PrefabUtility.InstantiatePrefab(anvilPrefab);
-                        anvil.transform.SetParent(inst.transform, false);
-                        anvil.transform.localPosition = new Vector3(0f, 0f, 5f);
-                        anvil.name = "Anvil";
-                        Log("Placed Anvil at the Blacksmith storefront (local (0,0,5)).");
-                    }
-                }
-
-                // Optional crate/vine dressing for storefront vibe (Quaternius)
-                if (qCrate != null && i % 2 == 0)
-                {
-                    var c = (GameObject)PrefabUtility.InstantiatePrefab(qCrate);
-                    c.transform.SetParent(inst.transform, false);
-                    c.transform.localPosition = new Vector3(3, 0, 4);
-                    c.name = "StorefrontCrate";
-                }
-                if (qVine1 != null)
-                {
-                    var v = (GameObject)PrefabUtility.InstantiatePrefab(qVine1);
-                    v.transform.SetParent(inst.transform, false);
-                    v.transform.localPosition = new Vector3(-2.5f, 2, 0);
-                    v.name = "StorefrontVine";
-                }
-
-                Debug.Log($"[CastleHubBuilder] Placed {name} + NPC interact point.");
-            }
+            structuresRoot.name = "The8Structures_Storefronts_NPCPoints";
 
             // === MAIN KEEP + PLAYER HOME (2 levels: ground hall + upper private quarters) ===
             var keepRoot = new GameObject("MainKeep_CastleWithTwoLevels_Home");
@@ -463,7 +367,7 @@ namespace DeNelle.Editor
             // and flag catalog rows fixed — MUST run BEFORE the nav floor / bake so footprints shrink
             // into the mesh the navmesh will see. Do NOT skip this; a bake of lying-down placeholders
             // locks the oversized claim into the scene.
-            ApplyOwnerUprightCorrectionsBeforeBake();
+            // Owner layout already carries verified pose/material corrections. Never open another scene here.
 
             // Invisible, continuous walkable NavMesh floor (interior + gate bridge) so the
             // NavMeshAgent hero can traverse the WHOLE castle and cross the gate. The visual
@@ -476,7 +380,9 @@ namespace DeNelle.Editor
             // "no enemy engagement"). Clean scale-1 anchor at the north-centre plaza.
             WireCastleHeart(root.transform);
 
-            Debug.Log("[CastleHubBuilder] CastleHubRoot complete (SINGLE-LEVEL). 8 structures + keep + outer walls + inner CoC wall ring + gate marker placed; NO second level.\n" +
+            // WO-1711 ruling B (owner 2026-09-14): NO perimeter walls and NO inner ring on the
+            // home castle — walls are seeded only when a town flips into a raid target.
+            Debug.Log("[CastleHubBuilder] CastleHubRoot complete (SINGLE-LEVEL). 8 structures + keep + 4 corner towers + gate/drawbridge marker placed; NO perimeter walls, NO inner CoC ring, NO second level.\n" +
                       "Next: Save under Assets/Scenes/ (e.g. MainCastle_Hall.unity), Bake NavMesh (NavMeshSurface recommended), wire NPC points + connection via existing systems (WorldSceneLoader, Economy, Yarn).");
             Selection.activeGameObject = root;
         }

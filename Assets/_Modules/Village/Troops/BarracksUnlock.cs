@@ -27,6 +27,7 @@
 // =============================================================================
 
 using DeNelle.Core;
+using DeNelle.Core.Diagnostics;
 using DeNelle.Core.State;
 
 namespace DeNelle.Village
@@ -39,9 +40,25 @@ namespace DeNelle.Village
     public static class BarracksUnlock
     {
         /// <summary>
-        /// The founding-complete signal = <see cref="GameState.Onboarded"/> (set by
-        /// <c>GameStateService.FinishOnboarding</c>). No new flag - the SAME gate the
-        /// FTUE peace window keys on. False when no save state is live.
+        /// The founding-complete signal. TWO ways a town can be founded, and BOTH count:
+        /// <list type="bullet">
+        /// <item><b>Interactive FTUE</b> — <see cref="GameState.Onboarded"/>, set by
+        /// <c>GameStateService.FinishOnboarding</c>. The SAME gate the FTUE peace window
+        /// keys on. Unchanged; this is still the only signal a Build-Your-Own start has.</item>
+        /// <item><b>Premade / Default Town</b> — the persisted explicit selection
+        /// <c>founding.default_town_selected</c>, read through
+        /// <see cref="StrategicPlacementMigration.HasExplicitDefaultTownSelection"/>
+        /// (written ONLY by <c>FoundingChoiceController.OnDefaultTown</c>; Build-Your-Own
+        /// writes nothing). WO-1710 symptom 1 / WO-1711 AC#3, owner 2026-09-14: the premade
+        /// castle ships with a Barracks already placed, so the army door must be open on it
+        /// with no FTUE lap and no remove/re-add ritual.</item>
+        /// </list>
+        /// <para>⛔ THIS PREDICATE MUST STAY PURELY PERSISTED-STATE. It may NEVER ask
+        /// whether a barracks OBJECT exists. <c>HubStructureVisualInjector</c> does
+        /// <c>SetActive(false)</c> on <c>CastleBarracks</c> while this reads false, and both
+        /// <c>AuthoredCastleStorefront.Find</c> and <c>FindObjectsByType</c> default-exclude
+        /// inactive objects — so an existence-based unlock LATCHES OFF on the first locked
+        /// load and can never recover. False when no save state is live.</para>
         /// </summary>
         public static bool FoundingComplete
         {
@@ -49,14 +66,32 @@ namespace DeNelle.Village
             {
                 var svc = GameStateService.Instance;
                 var state = svc != null ? svc.State : null;
-                return state != null && state.Onboarded;
+                if (state == null) return false;
+                if (state.Onboarded) return true;
+                if (StrategicPlacementMigration.HasExplicitDefaultTownSelection(state))
+                {
+                    FlowTrace.Once("Barracks", "founding-complete-via-premade",
+                        "founding-complete via the PREMADE path: 'founding.default_town_selected' is persisted while " +
+                        "Onboarded is still false. The premade castle already carries a Barracks, so the army/train " +
+                        "door opens now (WO-1710 sym.1 / WO-1711 AC#3). The interactive FTUE path is untouched.");
+                    return true;
+                }
+                return false;
             }
         }
 
         /// <summary>
-        /// The Barracks is surfaced/interactable when the feature flag is ON
-        /// (<see cref="FeatureFlags.Barracks"/> - default OFF; testers set PlayerPrefs
-        /// "ff.barracks" = 1) AND founding is complete. ff.basebuilding is NOT required.
+        /// The Barracks is surfaced/interactable when the feature flag is ON AND founding is
+        /// complete (either founding path — see <see cref="FoundingComplete"/>).
+        /// ff.basebuilding is NOT required.
+        /// <para>⚠ THE FLAG DEFAULTS <b>ON</b>, not off. Read it at source:
+        /// <c>FeatureFlags.Barracks =&gt; Get("barracks", defaultOn: true)</c>
+        /// (<c>Assets/_Modules/Core/FeatureFlags.cs:1151</c>, re-read 2026-09-14) — WO-771
+        /// flipped it on 2026-07-26 because the raid deploy loop needs the barracks-gated
+        /// roster in normal play. This summary said "default OFF; testers set PlayerPrefs
+        /// 'ff.barracks' = 1" until 2026-09-14, contradicting the corrected header 40 lines
+        /// above it in the same file. The opt-in direction is REVERSED from that claim: set
+        /// PlayerPrefs "ff.barracks" = 0 to HIDE the barracks again.</para>
         /// </summary>
         public static bool IsUnlocked => FeatureFlags.Barracks && FoundingComplete;
     }

@@ -97,6 +97,29 @@ namespace DeNelle.Village
             new BakedRow { bakedName = "ArcaneTower_MagicUpgrades",     itemId = "arcane-tower" },
             new BakedRow { bakedName = "Marketplace_Monetization",      itemId = "market" },
             new BakedRow { bakedName = "Jeweler_Gems_Storefront",       itemId = "jeweler" },
+
+            // ── WO-1710 sym.2 (2026-09-14): the two authored roots NO registry could see ──
+            // The owner's castle layout (OwnerCastleStorefrontLayout.prefab -> the shipped
+            // Main_Castle_Overworld) carries ELEVEN AuthoredCastleStorefront markers, TEN with
+            // a canonicalId. Eight matched a row above. These two did not, and were therefore
+            // unknown to EVERY registry in the game at once: no BakedRow, so the one-shot writer
+            // never reached them; no repo.bakedTwins, so IsBuilt clause 2 was blind; and
+            // ConfigureCapabilities DestroyImmediate's the Building on the collector branch
+            // (OwnerCastleLayoutRepair.cs:270-296 — "a producer is not the weapons vendor"), so
+            // HasPlacedInstance clause 3 could not see collector_forge either. Result: the build
+            // menu kept OFFERING an Iron Mine and a Crafting Station that were standing in front
+            // of the player (owner's live tester-build report 2026-09-14: "it was telling me to
+            // add an iron mine"). Registering them here is the SAME shape as the eight above —
+            // and, critically, it also makes IsBakedStorefrontId true for them, so
+            // ShouldReplayRecord returns FALSE and BaseLayoutLoader never catalog-replays a
+            // second copy over the owner's authored Tripo art.
+            // bakedName = the marker's legacyName (AuthoredCastleStorefront.Find matches it):
+            // Main_Castle_Overworld.unity:7704-7705 and :28360-28361, read at source 2026-09-14.
+            // ⚠ Each new row MUST also author its repo.bakedTwins in structures-catalog.json —
+            // DataRegression.cs:3252-3260 pins that census/catalog agreement and goes RED
+            // otherwise. Both catalog copies (Resources + StreamingAssets) were updated with it.
+            new BakedRow { bakedName = "IronMine",                      itemId = "collector_forge" },
+            new BakedRow { bakedName = "Crafting",                      itemId = "workshop" },
         };
 
         // ── Runtime crafting stations (the true auto-placers, review G-C). Their
@@ -199,17 +222,16 @@ namespace DeNelle.Village
         /// </summary>
         public static bool StanddownActiveForBaked(string bakedName, out string itemId)
         {
-            // WO-834 blank-town gate (second clause): on a migrated save whose player has
-            // NEVER built this id (StructureSingleton.MayBakedTwinSurface reads
-            // GameState.EverBuiltStructureIds), the bake stands down even with no record —
-            // a Build-Your-Own founding must load truly BLANK, at scene load (no furnished
-            // flash before the deferred EnforceAll sweep). Default-Town/legacy saves are
-            // unaffected: their founding load has the marker false (StanddownActive false)
-            // and post-migration their template grant keeps MayBakedTwinSurface true, so
-            // for them this remains exactly the Lever-1 HasRecord-only rule.
+            // Owner 2026-09-12: BOTH founding paths keep HubStructureVisualInjector models.
+            // WO-834's "!MayBakedTwinSurface" clause hid the 8 on EMPTY REALM (Seeker 365996
+            // 07:38: BaseLayout=0 then standdown migrated->forge with nothing to replay).
+            // Stand down a bake ONLY when a BaseLayout record will replace it (placed wins).
+            // MayBakedTwinSurface remains the barracks / vendor blank-town gate.
             itemId = ItemIdForBaked(bakedName);
-            return itemId != null && StanddownActive &&
-                   (HasRecord(itemId) || !StructureSingleton.MayBakedTwinSurface(itemId));
+            // Owner 2026-09-12: never restyle the ring on a later load. Injector LightSkins
+            // stay on the bake; BaseLayout records may exist for move/upgrade but must not
+            // SetActive(false) this host (that kills the LightSkin child) or catalog-replay it.
+            return false;
         }
 
         /// <summary>
@@ -238,8 +260,18 @@ namespace DeNelle.Village
         /// </summary>
         public static bool ShouldReplayRecord(string itemId)
         {
+            if (IsBakedStorefrontId(itemId)) return false;
             if (!IsManagedId(itemId)) return true;
             return StanddownActive;
+        }
+
+        /// <summary>The 8 ring storefronts HubStructureVisualInjector skins. Not stations.</summary>
+        public static bool IsBakedStorefrontId(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId)) return false;
+            for (int i = 0; i < BakedRows.Length; i++)
+                if (BakedRows[i].itemId == itemId) return true;
+            return false;
         }
 
         /// <summary>True when <paramref name="itemId"/> is one this migration owns.</summary>
@@ -468,6 +500,24 @@ namespace DeNelle.Village
             // The RECORD is the ownership. MarkEverBuilt is a belt for legacy saves whose
             // template grant predates this path - it is the WO-834 SURFACE PERMISSION only,
             // never ownership, and nothing reads it as such.
+            var authoredMarker = baked.GetComponent<AuthoredCastleStorefront>();
+            if (authoredMarker != null && authoredMarker.PreserveAuthoredVisual && authoredMarker.CanonicalId == BarracksItemId)
+            {
+                int recordIndex = state.BaseLayout.Count - 1;
+                var authoredRecord = state.BaseLayout[recordIndex];
+                authoredRecord.authoredSourceId = BarracksItemId;
+                authoredRecord.authoredPose = PlacedStructure.CaptureAuthoredPose(baked);
+                if (!BaseLayoutLoader.TryGetAuthoredFootprint(baked, grid, authoredRecord.authoredPose, out var authoredCell, out var authoredFootprint))
+                {
+                    state.BaseLayout.RemoveAt(recordIndex); // only the record written by this adoption attempt
+                    FlowTrace.Fail("Barracks", "Authored adoption footprint is unavailable/outside the grid; no record saved and geometry unchanged.");
+                    return false;
+                }
+                authoredRecord.cellX = authoredCell.x;
+                authoredRecord.cellZ = authoredCell.y;
+                authoredRecord.worldY = baked.position.y;
+                state.BaseLayout[recordIndex] = authoredRecord;
+            }
             state.MarkEverBuilt(BarracksItemId);
             Guard.Try("Barracks", "persist the adopted barracks record", () => svc.Save());
 
@@ -526,10 +576,30 @@ namespace DeNelle.Village
                 return;
             }
             var state = svc.State;
-            if (state.StrategicPlacementMigrated) return;   // one-shot: NEVER runs twice
-
             var scene = SceneManager.GetActiveScene();
             if (scene.name != DeNelle.Core.SceneRouter.Castle) return;   // home hub only
+            if (state.StrategicPlacementMigrated)
+            {
+                // Only an explicit persisted Default Town selection authorizes adding
+                // newly approved template rights to an already-migrated save. Visible
+                // authored geometry alone is NOT evidence (both founding paths retain it).
+                if (HasExplicitDefaultTownSelection(state))
+                {
+                    int added = GrantAuthoredTemplateIds(state);
+                    int backfilled = BackfillNewCensusRows(state, "already-migrated Default Town save");
+                    if (added > 0 || backfilled > 0)
+                    {
+                        Buildings.Progression.ResourceCollectorBootstrap.RetryAllAfterStateReady();
+                        svc.Save();
+                        FlowTrace.Step("Placement",
+                            $"Explicit Default Town selection: granted {added} newly authored template identities " +
+                            $"and BACKFILLED {backfilled} newly censused record(s).");
+                    }
+                }
+                // Records for the rows this save ALREADY migrated stay strictly one-shot — the
+                // backfill above only ever adds a row that had NO record, guarded by HasRecord.
+                return;
+            }
 
             using var _ = FlowTrace.Enter("Placement", "StrategicPlacementMigration.RunIfNeeded (one-shot writer)");
 
@@ -585,9 +655,13 @@ namespace DeNelle.Village
             for (int i = 0; i < StationRows.Length; i++)
                 if (state.MarkEverBuilt(StationRows[i].itemId)) granted++;
             if (state.MarkEverBuilt("barracks")) granted++;
+            granted += GrantAuthoredTemplateIds(state);
             FlowTrace.Step("Placement",
                 $"migration: default-town template grant -> {granted} id(s) marked ever-built " +
                 "(WO-834 blank-town gate stays open for this save's baked pieces).");
+            // Seeker 365962 22:31:56: grant flipped ever-built AFTER WireScene, so farm/lumbermill
+            // ticked liveCollector=no for the whole session. Re-run fallbacks now that the ledger is true.
+            Buildings.Progression.ResourceCollectorBootstrap.RetryAllAfterStateReady();
 
             // Set the one-shot marker + latch this scene load (standdown flips on the
             // NEXT home-hub load — the atomic bake→BaseLayout ownership handover), then
@@ -602,6 +676,75 @@ namespace DeNelle.Village
                 $"migration COMPLETE: {migrated} structure(s) -> BaseLayout, {skippedNoRow} skipped (no catalog row), " +
                 $"{skippedAbsent} absent in scene. Marker persisted (save v{SaveSchema.CurrentVersion}); " +
                 "standdown activates on the NEXT home-hub load.");
+        }
+
+        public static bool HasExplicitDefaultTownSelection(GameState state) =>
+            state?.SeenTutorials != null && state.SeenTutorials.TryGetValue(StarterSettlementCompletion.SelectedKey, out bool selected) && selected;
+
+        /// <summary>
+        /// WO-1710 (2026-09-14): write records for census rows this save has NEVER had a record
+        /// for, on an ALREADY-MIGRATED Default Town save.
+        /// <para>⛔ WHY THIS EXISTS, AND WHY "IT IS ONE-SHOT" WAS NOT AN ANSWER. The one-shot
+        /// writer runs ONCE, at the first home-hub load after the founding — so it can only ever
+        /// register the census rows that existed ON THAT DAY. Add a row to
+        /// <see cref="BakedRows"/> afterwards (which is exactly what WO-1710 did for
+        /// <c>collector_forge</c> and <c>workshop</c>) and EVERY save founded before the edit
+        /// keeps the defect forever: the building stands in the town, no record names it,
+        /// <c>StructureSingleton.IsPlayerBuilt</c> reads FALSE, and the palette re-offers it. The
+        /// owner's own 2026-09-14 tester save is in precisely that state, so a fix that only
+        /// served FRESH foundings would have read as fixed here and failed her felt-test
+        /// unchanged.</para>
+        /// <para>This is the SAME authorization the branch it lives in was built for on 09-12 —
+        /// "newly approved template rights for an already-migrated save", gated on the EXPLICIT
+        /// persisted Default Town selection, never on visible geometry (both founding paths keep
+        /// the authored models). A Build-Your-Own save is untouched.</para>
+        /// <para>Safe by three properties already proven for these rows: <see cref="HasRecord"/>
+        /// makes it idempotent and keeps migrated rows strictly one-shot; the row is present in
+        /// the scene or it is skipped; and because it is a <see cref="BakedRows"/> member,
+        /// <see cref="ShouldReplayRecord"/> returns FALSE (BaseLayoutLoader never spawns a second
+        /// catalog copy over the owner's authored art) and <c>StructureSingleton.Enforce</c>
+        /// takes its LatchSkipped branch (the bake is never stood down).</para>
+        /// <para>The pose of record is the LIVE object's, exactly as the one-shot writer reads it.</para>
+        /// </summary>
+        private static int BackfillNewCensusRows(GameState state, string why)
+        {
+            if (state == null) return 0;
+            var grid = PlacementGrid.Instance;
+            if (grid == null)
+                grid = new GameObject("PlacementGrid").AddComponent<PlacementGrid>();
+            if (state.BaseLayout == null)
+                state.BaseLayout = new List<PlacedStructureData>();
+
+            int written = 0;
+            for (int i = 0; i < BakedRows.Length; i++)
+            {
+                var row = BakedRows[i];
+                if (HasRecord(row.itemId)) continue;                 // already owned - one-shot holds
+                var t = FindByNameInclInactive(row.bakedName);
+                if (t == null) continue;                             // not in this scene bake - nothing to register
+                if (TryWriteRecord(state, grid, row.itemId, t.position, t.eulerAngles.y))
+                {
+                    written++;
+                    FlowTrace.Step("Placement",
+                        $"backfill ({why}): censused '{row.itemId}' had NO record on this save and its baked root " +
+                        $"'{row.bakedName}' is standing - registered it so the build menu stops offering a building the player owns.");
+                }
+            }
+            return written;
+        }
+
+        private static int GrantAuthoredTemplateIds(GameState state)
+        {
+            if (state == null) return 0;
+            int granted = 0;
+            var scene = SceneManager.GetActiveScene();
+            foreach (var marker in Object.FindObjectsByType<AuthoredCastleStorefront>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (marker == null || marker.gameObject.scene != scene || string.IsNullOrEmpty(marker.CanonicalId)) continue;
+                if (AuthoredCastleStorefront.Find(marker.LegacyName, includeInactive: true) != marker.transform) continue;
+                if (state.MarkEverBuilt(marker.CanonicalId)) granted++;
+            }
+            return granted;
         }
 
         /// <summary>
@@ -647,9 +790,7 @@ namespace DeNelle.Village
         // Name match across the loaded scene(s) — mirrors HubStructureVisualInjector.
         private static Transform FindByName(string name)
         {
-            foreach (var t in Object.FindObjectsByType<Transform>())
-                if (t != null && t.name == name) return t;
-            return null;
+            return AuthoredCastleStorefront.Find(name);
         }
 
         // Name match INCLUDING inactive objects. The plain FindByName above is active-only,
@@ -659,10 +800,7 @@ namespace DeNelle.Village
         // StructureSingleton.FindByNameInclInactive / CastleVendorNpcInjector.
         private static Transform FindByNameInclInactive(string name)
         {
-            if (string.IsNullOrEmpty(name)) return null;
-            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                if (t != null && t.name == name) return t;
-            return null;
+            return AuthoredCastleStorefront.Find(name, includeInactive: true);
         }
     }
 
