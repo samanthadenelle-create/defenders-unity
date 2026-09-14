@@ -189,7 +189,19 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-fourth pass): main line next free = **1716**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-sixth pass): main line next free = **1718**.
+> *(RCA lane minted **1717** 2026-09-14 from the owner's raid report: wall damage HAS no player-facing
+> breach VERB - the only tap is Rally (a ground raycast), and the attacked panel is picked scene-wide by
+> SelectFocusBreach (most-damaged, tie -> nearest muster), so a tap on a wall influences the choice only
+> as a TIE-BREAK; plus structure damage fires no damage NUMBERS and no SFX (DamageNumberSpawner.Spawn has
+> exactly two callers, both in Enemy.cs). Bumped 1717 -> 1718 in this SAME edit.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-seventy-fifth pass): main line next free = **1717**.
+> *(CLI minted **1716** 2026-09-14 from a live Unity Inspector check: authored castle-scene objects
+> may never call Building.Configure, so EnsureBlocker never wires their nav-blocking collider
+> reference - the whole courtyard navmesh gizmo reads as one unbroken sheet with no carved holes.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-seventy-fourth pass): main line next free = **1716**.
 > *(CLI minted **1715** 2026-09-14 from a live device screenshot: a default-town-seeded storage pallet
 > never shows fill items while an interactively-built second one of the same type does - same
 > registry-gap family as WO-1710, different consumer.)*
