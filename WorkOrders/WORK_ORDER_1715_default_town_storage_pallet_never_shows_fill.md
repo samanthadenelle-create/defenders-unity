@@ -66,3 +66,16 @@ separate state source that also has a default-seeding gap, independently of WO-1
   unrelated.
 - Do not re-litigate the storage pallet SIZE/art work from 2026-09-13 (`_containerScaleNote2026_08_26`)
   - this ticket is about fill-display registration, not visual sizing.
+
+## History, owner-flagged 2026-09-14: this is NOT a general fill-mechanic bug
+
+Owner, verbatim: "and thats never been really working well so thats huge win" (re: seeing the
+player-built pallet fill correctly). `WORK_ORDER_903_storage_pallet_fill_stacks.md` shipped and closed
+2026-08-27 (owner felt-tested PASS, APK 2026.08.27.343739) with acceptance text: "Works for freshly
+placed AND save-replayed structures - `PlacedStructure.Start` is the one seam both paths share." So the
+fill mechanic itself has been solid for a month across two paths (interactive placement, save reload).
+The likely missing THIRD path, sharpening this ticket's hypothesis: castle-builder/default-town seeding
+bakes structures directly into the scene and may never route through `PlacedStructure.Start` at all -
+the exact same blind spot WO-1710 found for the troop-training and build-menu-offer registries. The RCA
+lane should check `PlacedStructure.Start`'s callers first and confirm whether the default castle-hub
+build path reaches it, before looking anywhere else.
