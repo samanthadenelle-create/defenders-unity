@@ -189,7 +189,11 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-sixty-eighth pass): main line next free = **1710**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-sixty-ninth pass): main line next free = **1711**.
+> *(CLI minted **1710** 2026-09-14 from the owner's live tester-build felt report: barracks not
+> recognized for troop training + castle-builder singleton structures re-offered in the build menu.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-sixty-eighth pass): main line next free = **1710**.
 > *(CLI minted **1707-1709** 2026-09-14 from the F8 triage doc.)*
 
 > ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-sixty-seventh pass): main line next free = **1707**.
