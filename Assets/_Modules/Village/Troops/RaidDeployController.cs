@@ -17,6 +17,10 @@
 //   RALLY   — toggle Rally on, then tap the ground to set the global TroopRally.Point.
 //             Idle troops (no foe in range) walk to it; a foe in range ALWAYS wins
 //             (rally only fills the idle gap — owner-decided default).
+//   BREACH  — (WO-1719) toggle Breach on, then tap a WALL SEGMENT to order the whole
+//             warband onto THAT panel (TroopBreachOrder). It overrides the automatic
+//             most-damaged pick; that pick stays the fallback when no order stands.
+//             A wall tap with Breach OFF is unchanged - it still falls through to Rally.
 //   RETREAT — survivors = the living deployed bodies' OwnedTroopIds; reconcile the
 //             army (deployed-but-not-survivor → wounded) and evac home via GoCastle.
 //
@@ -80,6 +84,7 @@ namespace DeNelle.Village
         private TMPro.TextMeshProUGUI _status;
         private Button _deployAllButton;
         private Button _rallyButton;
+        private Button _breachButton;
         private Button _retreatButton;
         private readonly List<TrayTile> _tiles = new List<TrayTile>();
 
@@ -90,6 +95,7 @@ namespace DeNelle.Village
         // ── Tap state machine ─────────────────────────────────────────────────
         private string _armedDefId;     // the TroopDefId armed for the next ground tap (null = none)
         private bool _rallyMode;        // true while the Rally toggle is on (next tap sets the rally point)
+        private bool _breachMode;       // WO-1719: true while Breach is on (next wall tap sets TroopBreachOrder)
         private bool _retreatPending;   // first Retreat tap, awaiting confirm (when _retreatConfirm)
 
         // ── Tracking deployed troops (controller + owning army id) ────────────
@@ -147,6 +153,9 @@ namespace DeNelle.Village
 
             // Clear any stale rally from a prior raid so it can't leak into this one.
             TroopRally.Clear();
+            // WO-1719: same lifetime for the breach order - a static holding LAST raid's
+            // wall would point the new warband at a destroyed object from frame one.
+            TroopBreachOrder.Clear();
 
             // ── WO-1379: SPEND ONE HEARTFIRE. This is the raid ENTRY seam ────────────
             // Canon docs/CREATIVE_CANON_ELARION_2026-09-04.md section 4: you spend
@@ -262,6 +271,7 @@ namespace DeNelle.Village
         {
             // Don't let a rally leak across scenes.
             TroopRally.Clear();
+            TroopBreachOrder.Clear();   // WO-1719: nor a breach order (it holds a scene object)
             if (_scoring != null) _scoring.OnTimeExpired -= OnRaidTimeExpired;
             if (_rallyFlag != null) Destroy(_rallyFlag);
             if (_ui != null) Destroy(_ui);
@@ -671,6 +681,13 @@ namespace DeNelle.Village
             // Read the place/rally tap THIS frame (new Input System mouse, or a Lean tap).
             if (!TryReadTapPoint(out Vector2 screenPoint)) return;
 
+            // WO-1719: Breach is checked FIRST and RETURNS unconditionally, so a breach tap
+            // can never also move the rally flag. The three arm states are mutually exclusive
+            // (ToggleBreach / ToggleRally / ArmTile each zero the other two), so at most one
+            // of these branches is live at a time - this order only settles the tie if a
+            // future edit ever breaks that exclusivity, and it settles it toward the mode the
+            // player most recently pressed.
+            if (_breachMode) { HandleBreachTap(screenPoint); return; }
             if (_rallyMode) { HandleRallyTap(screenPoint); return; }
             if (!string.IsNullOrEmpty(_armedDefId)) { HandleDeployTap(screenPoint); return; }
         }
@@ -852,6 +869,99 @@ namespace DeNelle.Village
         }
 
         // =====================================================================
+        //  BREACH (WO-1719) — the player picks the wall the warband cracks
+        // ---------------------------------------------------------------------
+        // Owner ruling 2026-09-14, verbatim: "tap the wall segment directly, and it
+        // overrides ... add a button for breach and select a wall segment" / "the most
+        // damanged [stays the fallback]" / "all together unless they have aggro".
+        //
+        // ⛔ THIS IS A MODE, NOT A CHANGE TO THE DEFAULT TAP. WO-1717 sec.3b proved a raw
+        // wall tap already resolves - RaycastGround falls through to ~0, so it silently
+        // becomes a rally muster point ON the masonry. That behaviour is UNCHANGED here:
+        // with Breach off, Update never reaches HandleBreachTap and the tap is the same
+        // rally it has always been. Making a wall-hit rally tap IMPLICITLY mean "breach"
+        // was the alternative and was rejected - it would have retargeted the whole warband
+        // from a mis-tap, with no way to say "no, just muster there".
+        // =====================================================================
+
+        private void HandleBreachTap(Vector2 screenPoint)
+        {
+            if (!RaycastGround(screenPoint, out RaycastHit hit))
+            {
+                SetStatus("Breach: tap a wall section to order the assault.");
+                return;
+            }
+
+            // GetComponentInParent, not GetComponent: a wall's collider commonly lives on a
+            // child mesh, and a raycast returns THAT collider. Looking only at the hit object
+            // would refuse perfectly good taps on exactly the panels the player aims at.
+            var wall = hit.collider != null ? hit.collider.GetComponentInParent<WallSegment>() : null;
+            if (wall == null)
+            {
+                // A miss is a NO-OP with a hint, never a clear. Losing a standing order to a
+                // stray tap on the ground is the failure the player cannot see or undo; the
+                // Breach toggle is the visible cancel (ToggleBreach), mirroring ToggleRally.
+                SetStatus("Breach: that is not a wall - tap a wall section.");
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    "breach tap missed every WallSegment (hit '" +
+                    (hit.collider != null ? hit.collider.name : "nothing") +
+                    "') - the standing order, if any, is UNCHANGED.");
+                return;
+            }
+
+            if (!wall.IsAlive)
+            {
+                SetStatus("Breach: that section is already down.");
+                return;
+            }
+
+            if (wall.Faction != DeNelle.Core.Combat.CombatFaction.Hostile)
+            {
+                // Faction is DERIVED from SceneOwnership (WO-1717 sec.2), so in a raid every
+                // base wall reads Hostile. A friendly one here means the tap found the wrong
+                // scene's masonry - refuse rather than order the warband onto their own wall.
+                SetStatus("Breach: that wall is not the enemy's.");
+                return;
+            }
+
+            TroopBreachOrder.Set(wall);
+            SetStatus("Breach ordered - the warband hits that section.");
+            RefreshBreachButton();
+        }
+
+        /// <summary>
+        /// Arm / disarm Breach mode. Turning it OFF also CLEARS the standing order, exactly
+        /// as <see cref="ToggleRally"/> clears <see cref="TroopRally.Point"/> - the toggle is
+        /// the player's only visible cancel, and a button reading "Breach" while the warband
+        /// still obeys an invisible old pick is the same confusion that comment records.
+        /// </summary>
+        private void ToggleBreach()
+        {
+            _breachMode = !_breachMode;
+            if (_breachMode)
+            {
+                Disarm();               // breach + deploy are exclusive arm states
+                _rallyMode = false;     // breach + rally are exclusive arm states
+                RefreshRallyButton();
+                RefreshTiles();
+                SetStatus("Breach: tap a wall section to order the assault.");
+            }
+            else
+            {
+                TroopBreachOrder.Clear();
+                SetStatus("Breach order dropped - the warband picks the weakest wall again.");
+            }
+            RefreshBreachButton();
+        }
+
+        private void RefreshBreachButton()
+        {
+            if (_breachButton == null) return;
+            var lbl = _breachButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+            if (lbl != null) lbl.text = _breachMode ? "Breach ON" : "Breach";
+        }
+
+        // =====================================================================
         //  RALLY
         // =====================================================================
 
@@ -981,7 +1091,28 @@ namespace DeNelle.Village
         private void ToggleRally()
         {
             _rallyMode = !_rallyMode;
-            if (_rallyMode) Disarm();   // rally + deploy are exclusive arm states
+            if (_rallyMode)
+            {
+                Disarm();   // rally + deploy are exclusive arm states
+                // WO-1719: the MODE is exclusive; the standing breach ORDER is NOT cleared
+                // here. They are two axes - the player may aim a rally while the warband is
+                // already committed to a panel, the same way ArmTile leaves TroopRally.Point
+                // alone. Only the Breach toggle, a retreat and teardown drop the order.
+                _breachMode = false;
+                RefreshBreachButton();
+            }
+            else
+            {
+                // Turning Rally off is also the player's only visible way to cancel a
+                // previously placed muster point. Leaving TroopRally.Point populated here
+                // made the tray read "Rally" while troops kept walking to the old flag and
+                // never resumed the spire push (the Seeker capture showed exactly that
+                // confusion: Rally ON + a live flag beside the squad). Clear both the
+                // shared command and its marker so the next idle scan can follow the
+                // objective again.
+                TroopRally.Clear();
+                if (_rallyFlag != null) _rallyFlag.SetActive(false);
+            }
             RefreshRallyButton();
         }
 
@@ -1051,6 +1182,7 @@ namespace DeNelle.Village
             ReconcileRaidEnd(0);
 
             TroopRally.Clear();
+            TroopBreachOrder.Clear();   // WO-1719: the order dies with the raid it was given in
             GameStateService.Instance?.Save();
             SetStatus(string.Equals(reason, DeNelle.Village.UI.EndStateVM.TimeoutReason,
                                     System.StringComparison.OrdinalIgnoreCase)
@@ -1160,7 +1292,7 @@ namespace DeNelle.Village
                     (result != null ? result.Stars.ToString() : "unknown") + " razed=" +
                     (result != null ? result.DestructionPercent + "%" : "unknown") +
                     " banked=" + _retreatCredited.Wood + "w/" + _retreatCredited.Iron + "i/" +
-                    _retreatCredited.Food + "f/" + _retreatCredited.Coins + "g/" +
+                    _retreatCredited.Stone + "f/" + _retreatCredited.Coins + "g/" +
                     _retreatCredited.Crystals + "c short=" + _retreatRewardShort +
                     " deployed=" + _lastDeployedCount + " survived=" + _lastSurvivorCount +
                     ". Before WO-1561 this exit routed home with NO screen at all.");
@@ -1290,12 +1422,12 @@ namespace DeNelle.Village
             var eco = EconomyService.Instance;
             if (eco != null)
             {
-                int w0 = eco.Wood, f0 = eco.Food, i0 = eco.Iron, c0 = eco.Crystals, g0 = eco.Coins;
+                int w0 = eco.Wood, f0 = eco.Stone, i0 = eco.Iron, c0 = eco.Crystals, g0 = eco.Coins;
                 eco.Grant(loot);
-                int dw = eco.Wood - w0, df = eco.Food - f0, di = eco.Iron - i0,
+                int dw = eco.Wood - w0, df = eco.Stone - f0, di = eco.Iron - i0,
                     dc = eco.Crystals - c0, dg = eco.Coins - g0;
-                _retreatCredited = new ResourceCost(wood: dw, food: df, iron: di, crystals: dc, coins: dg);
-                _retreatRewardShort = dw < loot.Wood || df < loot.Food || di < loot.Iron
+                _retreatCredited = new ResourceCost(wood: dw, stone: df, iron: di, crystals: dc, coins: dg);
+                _retreatRewardShort = dw < loot.Wood || df < loot.Stone || di < loot.Iron
                                    || dc < loot.Crystals || dg < loot.Coins;
                 LogRetreatCredit("EconomyService", loot, dw, df, di, dc, dg);
                 return;
@@ -1309,12 +1441,12 @@ namespace DeNelle.Village
                 // genuinely DROPPED. The basket says so rather than leaving them unset, and the
                 // caveat sentence fires - a silent drop is what "I raided and got nothing" looks
                 // like from the inside.
-                int c0 = state.Resources.Crystals, f0 = state.Resources.Food;
+                int c0 = state.Resources.Crystals, f0 = state.Resources.Stone;
                 if (loot.Crystals != 0) gs.AddCrystals(loot.Crystals);
-                if (loot.Food != 0) gs.AddFood(loot.Food);
-                int dcF = state.Resources.Crystals - c0, dfF = state.Resources.Food - f0;
-                _retreatCredited = new ResourceCost(food: dfF, crystals: dcF);
-                _retreatRewardShort = dcF < loot.Crystals || dfF < loot.Food
+                if (loot.Stone != 0) gs.AddStone(loot.Stone);
+                int dcF = state.Resources.Crystals - c0, dfF = state.Resources.Stone - f0;
+                _retreatCredited = new ResourceCost(stone: dfF, crystals: dcF);
+                _retreatRewardShort = dcF < loot.Crystals || dfF < loot.Stone
                                    || loot.Wood != 0 || loot.Iron != 0 || loot.Coins != 0;
                 LogRetreatCredit("GameStateService fallback", loot, 0, dfF, 0, dcF, 0);
                 return;
@@ -1322,7 +1454,7 @@ namespace DeNelle.Village
 
             DeNelle.Core.Diagnostics.FlowTrace.Fail("Raid",
                 "RETREAT LOOT LOST - no EconomyService and no loaded GameState, so the settled " +
-                $"partial loot (wood {loot.Wood}, iron {loot.Iron}, food {loot.Food}, gold " +
+                $"partial loot (wood {loot.Wood}, iron {loot.Iron}, food {loot.Stone}, gold " +
                 $"{loot.Coins}, crystals {loot.Crystals}) was credited NOWHERE. The result screen " +
                 "will show no spoils, which at least matches what the player received.");
         }
@@ -1337,10 +1469,10 @@ namespace DeNelle.Village
                                              int dWood, int dFood, int dIron, int dCrystals, int dCoins)
         {
             string measured =
-                $"wood {dWood}/{requested.Wood}, food {dFood}/{requested.Food}, iron {dIron}/{requested.Iron}, " +
+                $"wood {dWood}/{requested.Wood}, food {dFood}/{requested.Stone}, iron {dIron}/{requested.Iron}, " +
                 $"crystals {dCrystals}/{requested.Crystals}, gold {dCoins}/{requested.Coins} (credited/requested)";
 
-            bool shortfall = dWood < requested.Wood || dFood < requested.Food || dIron < requested.Iron
+            bool shortfall = dWood < requested.Wood || dFood < requested.Stone || dIron < requested.Iron
                           || dCrystals < requested.Crystals || dCoins < requested.Coins;
 
             if (shortfall)
@@ -1858,20 +1990,56 @@ namespace DeNelle.Village
             // fractions are WO-1639's and are deliberately UNCHANGED - that ticket sized them so
             // "Deploy All" stops ellipsising, and this one only makes the faces tall enough to
             // touch. Widths must not move here.
+            // ── WO-1719: A THIRD FACE, AND THE ROOM IS RE-SPLIT ARITHMETICALLY ──────────
+            // The owner's ruling needs a Breach toggle on this bar. Nowhere else on the raid
+            // HUD can hold it: the right column is RaidReadoutBand (y 0.475-0.835) over
+            // RaidRetreatBand (0.850-0.970), and the only gap between the readout and this
+            // bar's status line (top 0.360) is 0.115 of screen = 111 reference px at
+            // CanvasReferenceSize's 965.4 - UNDER ElarionUiKit.MinTouchPx (112). A face that
+            // cannot be touched is not a button, so the third face goes on the bar.
+            //
+            // ⚠ WHAT THE PREVIOUS WIDTHS ACTUALLY WERE, read from the diff and not assumed.
+            // WO-1639 SIZED these faces against the ellipsis (Deploy All 0.240, Rally 0.160,
+            // Retreat 0.145). The in-tree 0.715 / 0.955 came from the LATER change that moved
+            // Retreat off the bar to RaidRetreatBand: the two survivors simply spread into the
+            // vacated 0.145 + gaps. So 0.305 and 0.220 are SPARE ROOM, not proven minimums,
+            // and reclaiming part of it is not a regression of WO-1639's fix.
+            //
+            // THE SPLIT, by the file's own formula (92% usable width, ~0.68 em average advance
+            // for this bold face; bar span x 0.280-0.980 = 1503.5 reference px):
+            //   Deploy All  0.410-0.630  0.220 -> 330.8 px, 10 chars -> ~44.7 pt
+            //   Breach      0.645-0.800  0.155 -> 233.0 px,  9 chars ("Breach ON") -> ~35.0 pt
+            //   Rally       0.815-0.955  0.140 -> 210.5 px,  8 chars ("Rally ON")  -> ~35.5 pt
+            // Every face clears ElarionUiKit.FontFloor (30) with margin, so none reaches the
+            // ellipsis; the narrowest is 210 px wide, comfortably over MinTouchPx (112). The
+            // BAR'S OWN EDGES AND THE y FRACTIONS DO NOT MOVE, so DeployBarBand,
+            // DeployStatusBand and every y-band case in RaidHudThumbBandRegression are
+            // untouched - only x within the bar changes, exactly as in WO-1639.
+            // The predictions above are ARITHMETIC; WO1639BarProbe's LogFaceFit("breach", ...)
+            // is the measured half, on the device, in the log.
             float faceY0 = FaceY0, faceY1 = FaceY1;
             _deployAllButton = ElarionUiKit.Button(bar.transform, "Deploy All", ElarionUiKit.ButtonKind.Gold,
-                new Vector2(0.410f, faceY0), new Vector2(0.650f, faceY1), DeployAll);
+                new Vector2(0.410f, faceY0), new Vector2(0.630f, faceY1), DeployAll);
 
-            // Rally toggle + Retreat — right edge of the bar. Rally's band carries "Rally ON"
+            // Breach toggle. Its band carries "Breach ON" (RefreshBreachButton), not "Breach",
+            // so it is sized for the LONGER of the two - the same rule as Rally below.
+            _breachButton = ElarionUiKit.Button(bar.transform, "Breach", ElarionUiKit.ButtonKind.Quiet,
+                new Vector2(0.645f, faceY0), new Vector2(0.800f, faceY1), ToggleBreach);
+
+            // Rally stays on the command bar. Its band carries "Rally ON"
             // (RefreshRallyButton), not "Rally", so it is sized for the LONGER of the two.
             _rallyButton = ElarionUiKit.Button(bar.transform, "Rally", ElarionUiKit.ButtonKind.Quiet,
-                new Vector2(0.665f, faceY0), new Vector2(0.825f, faceY1), ToggleRally);
-            _retreatButton = ElarionUiKit.Button(bar.transform, "Retreat", ElarionUiKit.ButtonKind.Danger,
-                new Vector2(0.840f, faceY0), new Vector2(0.985f, faceY1), OnRetreatPressed);
+                new Vector2(0.815f, faceY0), new Vector2(0.955f, faceY1), ToggleRally);
+            // Owner layout: persistent exit above the right-side raid readout.
+            var retreatBand = HudLayoutBands.RaidRetreatBand;
+            _retreatButton = ElarionUiKit.Button(_ui.transform, "Retreat", ElarionUiKit.ButtonKind.Danger,
+                new Vector2(retreatBand.xMin, retreatBand.yMin),
+                new Vector2(retreatBand.xMax, retreatBand.yMax), OnRetreatPressed);
 
             if (_status != null) _status.text = "";
             RefreshTiles();
             RefreshRallyButton();
+            RefreshBreachButton();
             StartCoroutine(WO1639BarProbe());
         }
 
@@ -1927,6 +2095,7 @@ namespace DeNelle.Village
             yield return null;   // one frame so TMP has laid the faces out
             LogTouchFloor();
             LogFaceFit("deployAll", _deployAllButton);
+            LogFaceFit("breach", _breachButton);   // WO-1719: the new third face
             LogFaceFit("rally", _rallyButton);
             LogFaceFit("retreat", _retreatButton);
             LogEmptyTrayLabel();
@@ -2143,9 +2312,14 @@ namespace DeNelle.Village
                 pr.anchorMin = new Vector2(0.12f, 0.04f);
                 pr.anchorMax = new Vector2(0.88f, 0.96f);
                 pr.offsetMin = Vector2.zero; pr.offsetMax = Vector2.zero;
+                var square = new GameObject("SquarePortrait", typeof(RectTransform), typeof(AspectRatioFitter));
+                square.transform.SetParent(portraitSeat.transform, false);
+                var squareFit = square.GetComponent<AspectRatioFitter>();
+                squareFit.aspectRatio = 1f;
+                squareFit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
                 var def = TroopCatalog.Find(defId);
                 string icon = def != null && !string.IsNullOrEmpty(def.IconId) ? def.IconId : defId;
-                ElarionUiKit.Portrait(portraitSeat.transform,
+                ElarionUiKit.Portrait(square.transform,
                     Resources.Load<Sprite>("RpgUi/troop/" + icon), active: false);
 
                 // ── WO-1464: THE COUNT BADGE, READABLE BY LUMINANCE ─────────────────
@@ -2228,6 +2402,10 @@ namespace DeNelle.Village
         {
             _rallyMode = false;
             RefreshRallyButton();
+            // WO-1719: arming a tile turns the breach MODE off (exclusive arm states) but
+            // leaves the standing ORDER, exactly as it leaves TroopRally.Point.
+            _breachMode = false;
+            RefreshBreachButton();
             _armedDefId = defId;
             RefreshTiles();
         }
@@ -2280,7 +2458,11 @@ namespace DeNelle.Village
                     }
                 }
             }
-            if (_deployAllButton != null) _deployAllButton.interactable = totalRemaining > 0;
+            if (_deployAllButton != null)
+            {
+                _deployAllButton.interactable = totalRemaining > 0;
+                _deployAllButton.gameObject.SetActive(totalRemaining > 0);
+            }
         }
 
         private void RefreshRallyButton()

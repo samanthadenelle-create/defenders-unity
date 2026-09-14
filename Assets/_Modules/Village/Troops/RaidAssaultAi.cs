@@ -12,6 +12,7 @@
 // =============================================================================
 
 using UnityEngine;
+using DeNelle.Core.Combat;
 
 namespace DeNelle.Village
 {
@@ -174,6 +175,98 @@ namespace DeNelle.Village
         {
             if (rallyPointSet) return false;
             return phase == RaidAssaultPhase.Push || phase == RaidAssaultPhase.Finish;
+        }
+
+        /// <summary>
+        /// Owner 2026-09-12: troops must WALK TO THE RALLY, not chew the nearest exterior
+        /// wall on the way. While a rally is set and the troop has not arrived, wall-ring
+        /// picks are suppressed (Peel still wins if they are under attack).
+        /// </summary>
+        public static bool RallyHoldsMarch(bool rallySet, bool arrivedAtRally, bool peelThreat)
+        {
+            return rallySet && !arrivedAtRally && !peelThreat;
+        }
+
+        /// <summary>
+        /// WO-1719: an EXPLICIT player breach order is not held by the rally march.
+        /// </summary>
+        /// <remarks>
+        /// ⚠ WITHOUT THIS THE TICKET'S OWN ACCEPTANCE BULLET CANNOT PASS, and the reason is
+        /// that phase and rally are INDEPENDENT axes. <see cref="ResolvePhase"/> reads
+        /// peel / route / objective-range - never the rally - so a troop walking to a flag
+        /// IS <see cref="RaidAssaultPhase.Breach"/>. The 3-arg rule above then nulls its
+        /// other-structure bucket (TroopController), so "every Breach-phase troop retargets
+        /// to the tapped panel" would silently fail for the whole warband any time a rally
+        /// was set - which, mid-raid, is most of the time. The implicit ring-farm this
+        /// suppression exists to stop (owner 2026-09-12) is untouched: only a panel the
+        /// player explicitly tapped releases the march, and WO-1717 sec.6A asks for exactly
+        /// that ("RallyHoldsMarch does not suppress an EXPLICIT breach order").
+        /// </remarks>
+        public static bool RallyHoldsMarch(
+            bool rallySet, bool arrivedAtRally, bool peelThreat, bool hasExplicitBreachOrder)
+        {
+            if (hasExplicitBreachOrder) return false;
+            return RallyHoldsMarch(rallySet, arrivedAtRally, peelThreat);
+        }
+
+        /// <summary>
+        /// Owner 2026-09-12: the warband focuses ONE breach — the most damaged living
+        /// wall. Ties (all full HP) stack on the panel nearest the muster/rally.
+        /// </summary>
+        public static IDamageable SelectFocusBreach(
+            System.Collections.Generic.IList<IDamageable> walls, Vector3 muster)
+        {
+            return SelectFocusBreach(walls, muster, null);
+        }
+
+        /// <summary>
+        /// WO-1719 — the same rule, with the player's EXPLICIT pick winning outright.
+        /// </summary>
+        /// <remarks>
+        /// Owner ruling 2026-09-14: a wall tapped in Breach mode overrides the automatic
+        /// most-damaged / nearest-muster computation, and that computation stays the
+        /// FALLBACK for when no pick stands (or once the picked panel collapses).
+        ///
+        /// ⭐ THE OVERRIDE IS AN EARLY RETURN, DELIBERATELY - the selection body below is
+        /// NOT restructured. WO-1717 sec.3d proved the auto pick is what overrides the
+        /// local scan unconditionally, so the cheapest correct seam was to put one gate in
+        /// FRONT of the existing rule rather than teach the loop about priorities. The
+        /// fallback is then literally the same code it always was, which is why a
+        /// regression can pin "auto still picks most-damaged" against an unchanged body.
+        ///
+        /// ⚠ The explicit pick is NOT required to appear in <paramref name="walls"/>. The
+        /// player tapped that collider; a candidate list built from a cached scene scan
+        /// (TroopController.SharedBreachFocus, 0.4 s) can trail the tap by a frame, and
+        /// dropping the order for that would be an invisible, intermittent refusal. Its
+        /// liveness is checked here instead.
+        /// </remarks>
+        public static IDamageable SelectFocusBreach(
+            System.Collections.Generic.IList<IDamageable> walls, Vector3 muster,
+            IDamageable explicitFocus)
+        {
+            if (explicitFocus != null && explicitFocus.IsAlive) return explicitFocus;
+            if (walls == null || walls.Count == 0) return null;
+            IDamageable best = null;
+            float bestHp = float.MaxValue;
+            float bestMusterSqr = float.MaxValue;
+            for (int i = 0; i < walls.Count; i++)
+            {
+                var w = walls[i];
+                if (w == null || !w.IsAlive) continue;
+                float hp = w.Hp;
+                Vector3 d = w.WorldPosition - muster;
+                d.y = 0f;
+                float sqr = d.sqrMagnitude;
+                if (best == null
+                    || hp < bestHp - 0.5f
+                    || (Mathf.Abs(hp - bestHp) <= 0.5f && sqr < bestMusterSqr))
+                {
+                    best = w;
+                    bestHp = hp;
+                    bestMusterSqr = sqr;
+                }
+            }
+            return best;
         }
 
         /// <summary>

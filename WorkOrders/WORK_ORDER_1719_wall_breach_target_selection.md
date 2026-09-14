@@ -1,6 +1,8 @@
 # WORK ORDER 1719 - Breach button + direct wall-segment tap to override auto-targeting
 
-**Status:** READY TO IMPLEMENT - owner design ruling, RCA-lane groundwork already done in WO-1717
+**Status:** IMPLEMENTED - awaiting lead gate 2026-09-14
+(result: `WorkOrders/WORK_ORDER_1719_wall_breach_target_selection.RESULT.md`; was READY TO IMPLEMENT -
+owner design ruling, RCA-lane groundwork already done in WO-1717)
 **Minted:** 2026-09-14 by the CLI lead (Fable seat), split out of WO-1717 Finding 2 per that RCA's own
 recommendation (new feature, not a bug fix, needed owner rulings before any code)
 

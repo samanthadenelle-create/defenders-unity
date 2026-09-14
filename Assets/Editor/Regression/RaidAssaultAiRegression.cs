@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using DeNelle.Core.Combat;
 using DeNelle.Village;
 using UnityEngine;
 
@@ -41,6 +42,8 @@ namespace DeNelle.Editor
                 Case_Formation_Bias_RangedHoldsStandoff(failures, log);
                 Case_IdleRallyBeatsSpirePush(failures, log);
                 Case_AllowNonObjectiveWiredIntoPickBucket(failures, log);
+                Case_RallyHoldsMarch_UntilArrival(failures, log);
+                Case_FocusBreach_MostDamagedWins(failures, log);
             }
             catch (Exception ex)
             {
@@ -225,6 +228,49 @@ namespace DeNelle.Editor
                 RaidAssaultPhase.Breach, false, false, false, true, false, false);
             if (breach != 2)
                 failures.Add("Breach+wall must pick otherStruct via mayWall, got " + breach);
+        }
+
+        private static void Case_RallyHoldsMarch_UntilArrival(List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- Case_RallyHoldsMarch_UntilArrival");
+            if (!RaidAssaultAi.RallyHoldsMarch(true, false, false))
+                failures.Add("rally set + not arrived + not peel must HOLD the march (no wall chew)");
+            if (RaidAssaultAi.RallyHoldsMarch(true, true, false))
+                failures.Add("arrived at rally must RELEASE so they can stack the breach wall");
+            if (RaidAssaultAi.RallyHoldsMarch(true, false, true))
+                failures.Add("peel must beat rally march");
+            if (RaidAssaultAi.RallyHoldsMarch(false, false, false))
+                failures.Add("no rally must not hold the march");
+        }
+
+        private static void Case_FocusBreach_MostDamagedWins(List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- Case_FocusBreach_MostDamagedWins");
+            var fullNear = new StubWall { HpValue = 100f, Pos = Vector3.zero };
+            var hurtFar = new StubWall { HpValue = 40f, Pos = new Vector3(20f, 0f, 0f) };
+            var fullFar = new StubWall { HpValue = 100f, Pos = new Vector3(8f, 0f, 0f) };
+            var pick = RaidAssaultAi.SelectFocusBreach(
+                new IDamageable[] { fullNear, hurtFar, fullFar }, Vector3.zero);
+            if (!ReferenceEquals(pick, hurtFar))
+                failures.Add("most-damaged wall must win even when farther than a full-HP neighbour");
+
+            var a = new StubWall { HpValue = 100f, Pos = new Vector3(10f, 0f, 0f) };
+            var b = new StubWall { HpValue = 100f, Pos = new Vector3(3f, 0f, 0f) };
+            var tie = RaidAssaultAi.SelectFocusBreach(new IDamageable[] { a, b }, Vector3.zero);
+            if (!ReferenceEquals(tie, b))
+                failures.Add("all-full HP must stack the panel nearest the muster, not wander the ring");
+        }
+
+        private sealed class StubWall : IDamageable
+        {
+            public float HpValue;
+            public Vector3 Pos;
+            public CombatFaction Faction => CombatFaction.Hostile;
+            public Vector3 WorldPosition => Pos;
+            public float Hp => HpValue;
+            public bool IsAlive => HpValue > 0f;
+            public void TakeDamage(float amount, DamageElement element) { }
+            public void ApplyStatus(StatusEffect effect, float seconds) { }
         }
     }
 }

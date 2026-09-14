@@ -45,6 +45,14 @@ namespace DeNelle.Village
     public sealed class TroopController : MonoBehaviour, IDamageableStructure
     {
         private static readonly List<TroopController> Active = new List<TroopController>();
+        private static readonly List<IDamageable> FocusWallScratch = new List<IDamageable>(64);
+        private static IDamageable _sharedBreachFocus;
+        private static float _sharedBreachFocusAt;
+        // WO-1719: the TroopBreachOrder.Version this cached focus was computed under. An
+        // order being SET or CLEARED must not wait out the 0.4 s cache - the owner's ruling
+        // is that the warband moves "all together", which means on the next resolve, not up
+        // to 0.4 s later in whatever order the troops happen to tick.
+        private static int _sharedBreachOrderVersion = -1;
 
         /// <summary>Allocation-free live roster used by raid towers and squad support AI.</summary>
         public static IReadOnlyList<TroopController> ActiveTroops => Active;
@@ -895,6 +903,7 @@ namespace DeNelle.Village
             IDamageable nearestObjective = null;
             IDamageable nearestOtherStruct = null;
             float nearestObjectiveSqr = float.MaxValue, nearestOtherStructSqr = float.MaxValue;
+            FocusWallScratch.Clear();
             var activeSpire = RaidSpire.Active;
             if (nearestStructAny != null)
             {
@@ -914,10 +923,14 @@ namespace DeNelle.Village
                     {
                         if (sqr < nearestObjectiveSqr) { nearestObjectiveSqr = sqr; nearestObjective = dmg; }
                     }
-                    else if (sqr < nearestOtherStructSqr)
+                    else
                     {
-                        nearestOtherStructSqr = sqr;
-                        nearestOtherStruct = dmg;
+                        FocusWallScratch.Add(dmg);
+                        if (sqr < nearestOtherStructSqr)
+                        {
+                            nearestOtherStructSqr = sqr;
+                            nearestOtherStruct = dmg;
+                        }
                     }
                 }
             }
@@ -933,6 +946,43 @@ namespace DeNelle.Village
             // Owner: if aggro / being attacked, stay alive. Leash is FIXED (not attackRange) so
             // archers do not abandon the push for every unit inside bow distance.
             bool peelThreat = recentlyHurt || unitInPeelLeash;
+
+            Vector3? rallyPt = TroopRally.Point;
+            bool rallySet = rallyPt.HasValue;
+            bool arrivedAtRally = true;
+            if (rallySet)
+            {
+                Vector3 r = rallyPt.Value;
+                float flat = Vector2.Distance(
+                    new Vector2(transform.position.x, transform.position.z),
+                    new Vector2(r.x, r.z));
+                arrivedAtRally = flat <= RallyArrivalEpsilon;
+            }
+            // WO-1719: an explicit player breach order (Breach mode + a wall tap) beats the
+            // rally march as well as the automatic wall pick - see the 4-arg overload's own
+            // remarks for why phase and rally are independent axes.
+            bool explicitBreachOrder = TroopBreachOrder.HasOrder;
+            bool rallyMarch = RaidAssaultAi.RallyHoldsMarch(
+                rallySet, arrivedAtRally, peelThreat, explicitBreachOrder);
+
+            Vector3 muster = rallySet ? rallyPt.Value : transform.position;
+            if (FocusWallScratch.Count > 0)
+            {
+                var focus = RaidAssaultAi.SelectFocusBreach(
+                    FocusWallScratch, muster, TroopBreachOrder.Target);
+                if (focus != null) nearestOtherStruct = focus;
+            }
+            IDamageable shared = SharedBreachFocus(muster);
+            if (shared != null && shared.IsAlive)
+                nearestOtherStruct = shared;
+
+            if (rallyMarch)
+            {
+                nearestOtherStruct = null;
+                nearestOtherStructSqr = float.MaxValue;
+            }
+            hasOtherStruct = nearestOtherStruct != null;
+            hasStruct = hasObjective || hasOtherStruct;
 
             if (!_preferStructures && hasUnit && hasStruct && !unitInAttackRange)
             {
@@ -1104,6 +1154,65 @@ namespace DeNelle.Village
                 _routeToUnitOpen = len > 0f && straightLine > 0.01f && len <= straightLine * RouteDetourFactor;
                 if (!_routeToUnitOpen) _routeStatus += "-detour";
             });
+        }
+
+        /// <summary>
+        /// Scene-wide most-damaged wall so every troop stacks the same breach, not
+        /// the panel next to their own feet.
+        /// </summary>
+        private static IDamageable SharedBreachFocus(Vector3 muster)
+        {
+            // ⭐ WO-1719 - THE PLAYER'S EXPLICIT PICK IS ANSWERED BEFORE THE CACHE, NOT AFTER.
+            // Owner ruling 2026-09-14: a wall tapped in Breach mode overrides the automatic
+            // most-damaged rule; that rule stays the fallback. Answering here (a) makes every
+            // Breach-phase troop resolve the SAME panel on its next update - "all together" -
+            // without waiting out the 0.4 s scan cache, and (b) keeps this method the ONE place
+            // the warband's wall is decided (WO-1717 sec.3c/d), so the order is an input to the
+            // existing seam rather than a second, parallel targeting system.
+            // An aggro'd troop is untouched by construction: peelThreat -> ResolvePhase gives
+            // Peel -> PickBucket returns bucket 0 (the unit), so this value is never its winner.
+            var ordered = TroopBreachOrder.Target;
+            if (ordered != null)
+            {
+                _sharedBreachFocus = ordered;
+                _sharedBreachOrderVersion = TroopBreachOrder.Version;
+                if (FlowTrace.Enabled)
+                {
+                    string orderedName = (ordered as MonoBehaviour) != null ? (ordered as MonoBehaviour).name : "<unnamed>";
+                    string orderedHp = ordered.Hp.ToString("F0");
+                    FlowTrace.Throttle("RaidAI", "breach-focus", 2f,
+                        "source=order focus='" + orderedName + "' hp=" + orderedHp +
+                        " v=" + TroopBreachOrder.Version + " (player breach order OVERRIDES the most-damaged pick)");
+                }
+                return ordered;
+            }
+
+            // The order was just set or just cleared: the cached auto pick predates it, so
+            // recompute NOW instead of serving a stale panel for up to 0.4 s.
+            if (_sharedBreachOrderVersion != TroopBreachOrder.Version)
+            {
+                _sharedBreachOrderVersion = TroopBreachOrder.Version;
+                _sharedBreachFocusAt = 0f;
+            }
+
+            if (Time.time < _sharedBreachFocusAt
+                && _sharedBreachFocus != null && _sharedBreachFocus.IsAlive)
+                return _sharedBreachFocus;
+            _sharedBreachFocusAt = Time.time + 0.4f;
+            FocusWallScratch.Clear();
+            var walls = Object.FindObjectsByType<WallSegment>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < walls.Length; i++)
+            {
+                var w = walls[i];
+                if (w == null || !w.IsAlive) continue;
+                if (w.Faction != CombatFaction.Hostile) continue;
+                FocusWallScratch.Add(w);
+            }
+            _sharedBreachFocus = RaidAssaultAi.SelectFocusBreach(FocusWallScratch, muster);
+            if (_sharedBreachFocus != null)
+                FlowTrace.Throttle("RaidAI", "breach-focus", 2f,
+                    $"source=auto focus='{(_sharedBreachFocus as MonoBehaviour)?.name}' hp={_sharedBreachFocus.Hp:F0} walls={FocusWallScratch.Count}");
+            return _sharedBreachFocus;
         }
 
         /// <summary>
