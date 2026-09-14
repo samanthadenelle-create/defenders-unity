@@ -118,7 +118,7 @@ NavMeshSettings:
     preserveTilesOutsideBounds: 0
     debug:
       m_Flags: 0
-  m_NavMeshData: {fileID: 23800000, guid: 4730ac16381caa946a97244a7355fef5, type: 2}
+  m_NavMeshData: {fileID: 23800000, guid: 819cc32d36ca7ed42af4986002cb0e8d, type: 2}
 --- !u!1001 &1722815
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6538,7 +6538,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &152081563
@@ -10981,7 +10981,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &240724298
@@ -12214,7 +12214,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &268338496
@@ -12711,7 +12711,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &277560317
@@ -18740,7 +18740,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 7c273b90cc03097489acf9a7b026ac7b, type: 2}
+  - {fileID: 2100000, guid: 18a1d29e8d6964144b571e988d185d66, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -22676,7 +22676,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &488238026
@@ -32179,7 +32179,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &681470731
@@ -32724,7 +32724,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &714029813
@@ -46962,7 +46962,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 1e592534da68d5340b79b141bb7ce8ba, type: 2}
+  - {fileID: 2100000, guid: 9fde82de54c277b4996fe03306bdd275, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -55905,7 +55905,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &1271705189
@@ -57107,7 +57107,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &1296041095
@@ -62332,7 +62332,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c347084f28cb30848a8ddd9ddaf9949c, type: 2}
+  - {fileID: 2100000, guid: 2ef8756381c8444468d1415934c44ca8, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -75190,7 +75190,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1690072433}
-  - component: {fileID: 1690072432}
   m_Layer: 0
   m_Name: RaidBase_iron_bastion
   m_TagString: Untagged
@@ -75198,26 +75197,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1690072432
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1690072431}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fbfe0491307d2994fbaf835c7ff5ffaa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: DeNelle.Village::DeNelle.Village.World.Camps.RaidGarrisonSpawner
-  configId: iron_bastion
-  liveCombatantCap: 36
-  bossHpMult: 3
-  bossDamageMult: 1.5
-  bossMinHeight: 2.6
-  turretRange: 16
-  turretDamage: 8
-  turretFireRate: 0.8
 --- !u!4 &1690072433
 Transform:
   m_ObjectHideFlags: 0
@@ -79388,7 +79367,7 @@ MonoBehaviour:
   Element: 1
   ProjectileStyle: 
   CatalogId: tower_arcane_spire
-  Allegiance: 1
+  Allegiance: 0
   ElevationRangeMult: 1
   _maxHp: 200
 --- !u!208 &1772106945
@@ -97678,6 +97657,50 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4493048135532490, guid: 2e9bb0112b1a3428f94ba8550d668f2f, type: 3}
   m_PrefabInstance: {fileID: 2144215940}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2144694994
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2144694996}
+  - component: {fileID: 2144694995}
+  m_Layer: 0
+  m_Name: OwnedTownController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2144694995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144694994}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 278f24124c167ed41916662b7210e4b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DeNelle.Village::DeNelle.Village.World.Camps.OwnedTownController
+--- !u!4 &2144694996
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144694994}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -97686,3 +97709,4 @@ SceneRoots:
   - {fileID: 379525042}
   - {fileID: 1690072433}
   - {fileID: 408097572}
+  - {fileID: 2144694996}

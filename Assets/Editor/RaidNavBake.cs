@@ -24,6 +24,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
 using DeNelle.Core;
+using DeNelle.Village;
 
 namespace DeNelle.Editor
 {
@@ -35,10 +36,13 @@ namespace DeNelle.Editor
             "Assets/Scenes/RaidBase_fortified_garrison.unity",
             "Assets/Scenes/RaidBase_mage_enclave.unity",
             "Assets/Scenes/RaidBase_IronBastion.unity",
+            "Assets/Scenes/OwnedTown_IronBastion.unity",
         };
 
         private const string GroundName = "RaidGround";
-        private const float  GroundScale = 14f;   // Unity Plane = 10m @ scale 1 -> 140m square (covers base + deploy ring)
+        private const float  GroundScale = 14f;   // Legacy approach MINIMUM; measured enclosing walls can extend it.
+        private const string BoundaryName = "ArenaBoundary_Ring";
+        private const string GroundMaterials = "Assets/Generated/RaidGround";
 
         [MenuItem("Defenders/Castle/Bake Raid NavMeshes")]
         public static void BakeAll()
@@ -51,6 +55,8 @@ namespace DeNelle.Editor
                 string name = System.IO.Path.GetFileName(scenePath);
 
                 EnsureGround(scene);
+                PrepareDestructibleWalls(scene);
+                PrepareMovableTowers(scene);
 
                 // Mark all renderers + terrains NavigationStatic so the legacy bake includes them
                 // (ground bakes walkable; vertical walls/towers carve out as obstacles).
@@ -61,7 +67,11 @@ namespace DeNelle.Editor
                     {
                         if (r == null) continue;
                         var flags = GameObjectUtility.GetStaticEditorFlags(r.gameObject);
-                        GameObjectUtility.SetStaticEditorFlags(r.gameObject, flags | StaticEditorFlags.NavigationStatic);
+                        bool destructible = r.GetComponentInParent<WallSegment>() != null ||
+                            r.GetComponentInParent<DefenseTower>() != null;
+                        GameObjectUtility.SetStaticEditorFlags(r.gameObject, destructible
+                            ? flags & ~StaticEditorFlags.NavigationStatic
+                            : flags | StaticEditorFlags.NavigationStatic);
                         marked++;
                     }
                 }
@@ -70,7 +80,8 @@ namespace DeNelle.Editor
                 UnityEditor.AI.NavMeshBuilder.BuildNavMesh();
 
                 EditorSceneManager.MarkSceneDirty(scene);
-                EditorSceneManager.SaveScene(scene);
+                if (!EditorSceneManager.SaveScene(scene))
+                    throw new System.InvalidOperationException("Could not save navigation for " + scenePath);
 
                 var tri = NavMesh.CalculateTriangulation();
                 bool walkable = tri.vertices != null && tri.vertices.Length > 0;
@@ -81,43 +92,255 @@ namespace DeNelle.Editor
                 if (walkable) ok++;
             }
             Debug.Log($"[RaidNavBake] DONE — {ok}/{RaidScenes.Length} raid scenes now have a walkable navmesh.");
+            if (ok != RaidScenes.Length) throw new System.InvalidOperationException("Navigation bake did not cover every required scene.");
+            Debug.Log("RAID_NAV_BAKE_OK scenes=" + ok + "; wall and tower footprints use runtime carving");
         }
 
-        // Add a flat ground plane at y=0 if the scene has none (idempotent by name).
-        // ALWAYS retint: a plane created on an older bake kept Unity's tan Default-Material
-        // because this method used to return early, which is the brown pad in the owner's
-        // 2026-09-09 raid frame.
+        private static void PrepareMovableTowers(Scene scene)
+        {
+            int count = 0;
+            foreach (var root in scene.GetRootGameObjects())
+            foreach (var tower in root.GetComponentsInChildren<DefenseTower>(true))
+            {
+                // EditMode does not run Awake: initialize the same contact collider runtime uses.
+                typeof(DefenseTower).GetMethod("EnsureContactCollider", System.Reflection.BindingFlags.NonPublic |
+                    System.Reflection.BindingFlags.Instance).Invoke(tower, null);
+                Physics.SyncTransforms();
+                bool measured = false;
+                var localBounds = new Bounds();
+                foreach (var collider in tower.GetComponentsInChildren<Collider>(true))
+                {
+                    if (!collider.enabled || collider.isTrigger || !collider.gameObject.activeInHierarchy) continue;
+                    Bounds bounds;
+                    Transform space;
+                    if (collider is BoxCollider box) { bounds = new Bounds(box.center, box.size); space = box.transform; }
+                    else if (collider is MeshCollider mesh && mesh.sharedMesh != null)
+                    { bounds = mesh.sharedMesh.bounds; space = mesh.transform; }
+                    else if (collider is CapsuleCollider capsule)
+                    {
+                        var size = Vector3.one * capsule.radius * 2f;
+                        size[capsule.direction] = Mathf.Max(capsule.height, capsule.radius * 2f);
+                        bounds = new Bounds(capsule.center, size); space = capsule.transform;
+                    }
+                    else { bounds = collider.bounds; space = null; }
+                    for (int i = 0; i < 8; i++)
+                    {
+                        var corner = bounds.center + Vector3.Scale(bounds.extents,
+                            new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                        var local = tower.transform.InverseTransformPoint(space != null ? space.TransformPoint(corner) : corner);
+                        if (!measured) { localBounds = new Bounds(local, Vector3.zero); measured = true; }
+                        else localBounds.Encapsulate(local);
+                    }
+                }
+                if (!measured || localBounds.size.x <= 0 || localBounds.size.z <= 0)
+                    throw new System.InvalidOperationException("Tower has no measurable solid footprint: " + tower.name);
+                foreach (var child in tower.GetComponentsInChildren<Transform>(true))
+                    GameObjectUtility.SetStaticEditorFlags(child.gameObject,
+                        GameObjectUtility.GetStaticEditorFlags(child.gameObject) & ~StaticEditorFlags.NavigationStatic);
+                var obstacle = tower.GetComponent<NavMeshObstacle>();
+                if (obstacle == null) obstacle = tower.gameObject.AddComponent<NavMeshObstacle>();
+                obstacle.shape = NavMeshObstacleShape.Box;
+                obstacle.center = localBounds.center;
+                obstacle.size = localBounds.size;
+                obstacle.carving = true;
+                obstacle.carveOnlyStationary = true;
+                obstacle.carvingTimeToStationary = 0f;
+                obstacle.enabled = tower.HpFraction > 0f;
+                count++;
+            }
+            Debug.Log("[RaidNavBake] " + scene.name + ": " + count + " towers use collider-enclosing movable obstacles");
+        }
+
+        // Bake continuous ground beneath breakable walls. Their live carving obstacles
+        // block intact walls and are disabled by WallSegment.Collapse after destruction.
+        // Baking wall geometry itself leaves a permanent hole even after its collider dies.
+        private static void PrepareDestructibleWalls(Scene scene)
+        {
+            int count = 0;
+            foreach (var root in scene.GetRootGameObjects())
+            foreach (var wall in root.GetComponentsInChildren<WallSegment>(true))
+            {
+                var box = wall.GetComponent<BoxCollider>();
+                if (box == null || box.isTrigger)
+                    throw new System.InvalidOperationException("Raid wall has no solid box for navigation: " + wall.name);
+                foreach (var child in wall.GetComponentsInChildren<Transform>(true))
+                {
+                    var flags = GameObjectUtility.GetStaticEditorFlags(child.gameObject);
+                    GameObjectUtility.SetStaticEditorFlags(child.gameObject, flags & ~StaticEditorFlags.NavigationStatic);
+                }
+                var obstacle = wall.GetComponent<NavMeshObstacle>();
+                if (obstacle == null) obstacle = wall.gameObject.AddComponent<NavMeshObstacle>();
+                obstacle.shape = NavMeshObstacleShape.Box;
+                obstacle.center = box.center;
+                obstacle.size = box.size;
+                obstacle.carving = true;
+                obstacle.carveOnlyStationary = true;
+                obstacle.carvingTimeToStationary = 0f;
+                obstacle.enabled = wall.HpFraction > 0f;
+                count++;
+            }
+            Debug.Log("[RaidNavBake] " + scene.name + ": " + count + " destructible walls use removable carving obstacles");
+        }
+
+        // WO-1703: the continuous floor is not the dresser's sparse disk of decorative
+        // tiles. Refit even an existing plane to the actual enclosing wall footprint,
+        // then repeat an owned terrain texture at its authored metre scale.
         private static void EnsureGround(Scene scene)
         {
-            var ground = GameObject.Find(GroundName);
+            Physics.SyncTransforms();
+            GameObject ground = null;
+            Bounds footprint = new Bounds(Vector3.zero, new Vector3(GroundScale * 10f, 0f, GroundScale * 10f));
+            int boundaryParts = 0;
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name == GroundName) ground = t.gameObject;
+                    if (t.name != BoundaryName) continue;
+                    // Confined to the enclosing ring: props elsewhere in the scene must
+                    // not enlarge the playable floor. World bounds include rotation/offset.
+                    foreach (var wall in t.GetComponentsInChildren<Renderer>(true))
+                    {
+                        footprint.Encapsulate(wall.bounds);
+                        boundaryParts++;
+                    }
+                    foreach (var wall in t.GetComponentsInChildren<Collider>(true))
+                        if (wall.enabled && wall.gameObject.activeInHierarchy) footprint.Encapsulate(wall.bounds);
+                }
+            }
             bool created = false;
             if (ground == null)
             {
                 ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
                 ground.name = GroundName;
-                ground.transform.position = Vector3.zero;
-                ground.transform.localScale = new Vector3(GroundScale, 1f, GroundScale);
+                SceneManager.MoveGameObjectToScene(ground, scene);
                 created = true;
             }
+            else
+            {
+                // Keep any existing approach apron; fitting walls must not remove it.
+                var priorRenderer = ground.GetComponent<Renderer>();
+                if (priorRenderer != null) footprint.Encapsulate(priorRenderer.bounds);
+            }
 
-            var c = GroundColorFor(scene.name);
-            var m = MagentaGuard.BuildUrpLitMaterial(c);
+            var mesh = ground.GetComponent<MeshFilter>();
             var r = ground.GetComponent<Renderer>();
-            if (r != null && m != null) r.sharedMaterial = m;
+            if (mesh == null || mesh.sharedMesh == null || r == null)
+                throw new System.InvalidOperationException("[RaidNavBake] RaidGround has no render mesh");
+            var local = mesh.sharedMesh.bounds;
+            if (local.size.x <= 0f || local.size.z <= 0f)
+                throw new System.InvalidOperationException("[RaidNavBake] RaidGround mesh has empty XZ bounds");
+            ground.transform.SetParent(null, true);
+            ground.transform.rotation = Quaternion.identity;
+            ground.transform.localScale = new Vector3(footprint.size.x / local.size.x, 1f, footprint.size.z / local.size.z);
+            ground.transform.position = new Vector3(footprint.center.x, 0f, footprint.center.z) -
+                                        Vector3.Scale(local.center, ground.transform.localScale);
+            ground.SetActive(true);
+            r.enabled = true;
+            var collider = ground.GetComponent<MeshCollider>();
+            if (collider == null) collider = ground.AddComponent<MeshCollider>();
+            collider.sharedMesh = mesh.sharedMesh;
+            collider.enabled = true;
+            collider.isTrigger = false;
+            collider.convex = false;
+
+            TerrainLayer layer = GroundLayerFor(scene.name);
+            Material m = GroundMaterialFor(scene, r.sharedMaterial);
+            m.SetTexture("_BaseMap", layer.diffuseTexture);
+            m.SetTextureScale("_BaseMap", new Vector2(footprint.size.x / layer.tileSize.x, footprint.size.z / layer.tileSize.y));
+            m.SetTextureOffset("_BaseMap", Vector2.zero);
+            m.SetColor("_BaseColor", Color.white);
+            m.SetFloat("_Smoothness", layer.smoothness);
+            m.SetFloat("_Metallic", layer.metallic);
+            m.SetTexture("_BumpMap", layer.normalMapTexture);
+            m.SetFloat("_BumpScale", layer.normalScale);
+            if (layer.normalMapTexture != null) m.EnableKeyword("_NORMALMAP");
+            else m.DisableKeyword("_NORMALMAP");
+            if (EditorUtility.IsPersistent(m))
+            {
+                EditorUtility.SetDirty(m);
+                AssetDatabase.SaveAssetIfDirty(m);
+            }
+            r.sharedMaterial = m;
+            TextureKeepSurfaces(scene, m, layer);
             MagentaGuard.ProtectPrimitiveArt(ground, "RaidNavBake.RaidGround");
-            Debug.Log($"[RaidNavBake] {(created ? "added" : "retinted")} {GroundName} " +
-                      $"({GroundScale * 10f}m square) color={c} scene={scene.name}.");
+            if (boundaryParts == 0) Debug.LogWarning($"[RaidNavBake] {scene.name}: no enclosing ring renderers; retained legacy approach floor.");
+            Debug.Log($"[RaidNavBake] {(created ? "added" : "refitted")} {GroundName} scene={scene.name} " +
+                      $"bounds={r.bounds} boundaryParts={boundaryParts} texture={AssetDatabase.GetAssetPath(layer.diffuseTexture)} " +
+                      $"tileMetres={layer.tileSize} repeats={m.GetTextureScale("_BaseMap")} collider=shared-ground-mesh.");
         }
 
-        private static Color GroundColorFor(string sceneName)
+        // Keep geometry uses the same owned floor authority, with independent persisted
+        // materials so its metre-sized UV repeats never mutate the enclosing ground.
+        private static void TextureKeepSurfaces(Scene scene, Material ground, TerrainLayer layer)
         {
-            if (!string.IsNullOrEmpty(sceneName) &&
-                sceneName.IndexOf("mage_enclave", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                return new Color(0.11f, 0.10f, 0.13f, 1f);
-            if (!string.IsNullOrEmpty(sceneName) &&
-                sceneName.IndexOf("fortified_garrison", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                return new Color(0.20f, 0.19f, 0.18f, 1f);
-            return new Color(0.18f, 0.14f, 0.09f, 1f);
+            foreach (var root in scene.GetRootGameObjects())
+            foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer.name != "KeepPlatform" && renderer.name != "KeepRamp") continue;
+                string path = $"{GroundMaterials}/{scene.name}_{renderer.name}.mat";
+                bool persist = !string.IsNullOrEmpty(scene.path);
+                Material material = persist ? AssetDatabase.LoadAssetAtPath<Material>(path) : null;
+                if (material == null)
+                {
+                    material = new Material(ground) { name = renderer.name + "_Ground_URP" };
+                    if (persist) AssetDatabase.CreateAsset(material, path);
+                }
+                material.CopyPropertiesFromMaterial(ground);
+                Vector3 size = renderer.transform.lossyScale;
+                var repeats = new Vector2(Mathf.Abs(size.x) / layer.tileSize.x, Mathf.Abs(size.z) / layer.tileSize.y);
+                material.SetTextureScale("_BaseMap", repeats);
+                material.SetTextureOffset("_BaseMap", Vector2.zero);
+                if (EditorUtility.IsPersistent(material))
+                {
+                    EditorUtility.SetDirty(material);
+                    AssetDatabase.SaveAssetIfDirty(material);
+                }
+                renderer.sharedMaterial = material;
+                Debug.Log($"[RaidNavBake] {scene.name}/{renderer.name} material={AssetDatabase.GetAssetPath(material)} texture={AssetDatabase.GetAssetPath(layer.diffuseTexture)} repeats={repeats} surfaceMetres={size}");
+            }
+        }
+
+        private static TerrainLayer GroundLayerFor(string sceneName)
+        {
+            var def = SceneConfigCatalog.FindBySceneName(sceneName);
+            if (def == null && !string.IsNullOrEmpty(sceneName) && sceneName.StartsWith("RaidBase_", System.StringComparison.Ordinal))
+                def = SceneConfigCatalog.Find(sceneName.Substring("RaidBase_".Length));
+            string floor = def?.raidDress?.floor;
+            // The undressed IronBastion template retains the dirt default. Configured
+            // arenas follow their authored dirt/tile intent; no swatch atlas is stretched.
+            string name = floor == "floor_tile_large" ? "Stoneback_Rock" : "Path_Dirt";
+            var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>($"Assets/Generated/Terrain/{name}.terrainlayer");
+            if (layer == null || layer.diffuseTexture == null || layer.tileSize.x <= 0f || layer.tileSize.y <= 0f)
+                throw new System.InvalidOperationException($"[RaidNavBake] missing/invalid owned ground layer {name}; refusing an untextured bake");
+            if (layer.diffuseTexture.wrapModeU != TextureWrapMode.Repeat || layer.diffuseTexture.wrapModeV != TextureWrapMode.Repeat)
+                throw new System.InvalidOperationException($"[RaidNavBake] {name} texture must repeat; refusing stretched/clamped ground");
+            return layer;
+        }
+
+        private static Material GroundMaterialFor(Scene scene, Material previous)
+        {
+            bool persist = !string.IsNullOrEmpty(scene.path);
+            string path = $"{GroundMaterials}/{scene.name}.mat";
+            Material material = persist ? AssetDatabase.LoadAssetAtPath<Material>(path) : null;
+            if (!persist && previous != null && !EditorUtility.IsPersistent(previous) && previous.name == "RaidGround_URP") material = previous;
+            if (material != null)
+            {
+                if (!material.HasProperty("_BaseMap"))
+                    throw new System.InvalidOperationException($"[RaidNavBake] existing ground material lacks URP base map: {path}");
+                return material;
+            }
+            material = MagentaGuard.BuildUrpLitMaterial(Color.white);
+            if (material == null || !material.HasProperty("_BaseMap"))
+                throw new System.InvalidOperationException("[RaidNavBake] URP ground shader unavailable");
+            material.name = "RaidGround_URP";
+            if (persist)
+            {
+                if (!AssetDatabase.IsValidFolder("Assets/Generated")) AssetDatabase.CreateFolder("Assets", "Generated");
+                if (!AssetDatabase.IsValidFolder(GroundMaterials)) AssetDatabase.CreateFolder("Assets/Generated", "RaidGround");
+                AssetDatabase.CreateAsset(material, path);
+            }
+            return material;
         }
     }
 }

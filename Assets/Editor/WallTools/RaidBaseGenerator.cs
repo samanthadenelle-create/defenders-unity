@@ -393,6 +393,22 @@ namespace DeNelle.Editor
                       $"(outer {OuterTier} / keep {InnerTier}).");
         }
 
+        // WO-1705: the playable final tier uses the same authored encounter pipeline as
+        // earlier raids. Keep its established scene path (build settings and saves use it).
+        public static void BuildFinalRaidScene()
+        {
+            SceneConfigCatalog.Invalidate();
+            InvalidateStructureCatalog();
+            const string configId = "iron_bastion";
+            if (SceneConfigCatalog.Find(configId) == null)
+                throw new InvalidOperationException("Final raid config is missing.");
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+            BuildFromConfig(configId, null);
+            if (!EditorSceneManager.SaveScene(scene, "Assets/Scenes/RaidBase_IronBastion.unity"))
+                throw new InvalidOperationException("Final raid scene could not be saved.");
+            Debug.Log("FINAL_RAID_GENERATED_OK config=iron_bastion; navigation bake required");
+        }
+
         // == Config-driven entry points ========================================
 
         /// <summary>The three flagship raid levels, in difficulty order.</summary>
@@ -497,6 +513,7 @@ namespace DeNelle.Editor
             //    SOUTH gate, so the player crosses the courtyard under fire (the funnel).
             float innermost = outer.HalfExtent;
             int innerLayers = Mathf.Max(0, def.interiorWallLayers);
+            var innerLayouts = new List<RaidBaseDresser.RingLayout>();
             for (int layer = 0; layer < innerLayers; layer++)
             {
                 float keepRadius = Mathf.Max(8f, innermost * 0.45f);
@@ -504,6 +521,11 @@ namespace DeNelle.Editor
                 var keep = BuildRing(root, keepRadius, Mathf.Max(3, def.wallSegmentsPerSide - 2),
                                      WallTier.ReinforcedSteel, innerGates, $"Keep{layer + 1}");
                 innermost = keep.HalfExtent;
+                innerLayouts.Add(new RaidBaseDresser.RingLayout
+                {
+                    Radius = keep.HalfExtent,
+                    GateWidth = keep.GateWidth,
+                });
             }
 
             // -- THE OBJECTIVE. Central spire at the origin; destroying it wins the raid.
@@ -544,6 +566,7 @@ namespace DeNelle.Editor
                 Innermost = innermost,
                 TwoGates = twoGates,
                 InnerLayers = innerLayers,
+                InnerRings = innerLayouts.ToArray(),
                 GateWidth = Mathf.Max(RaidBaseDresser.MinGateWidth, outer.GateWidth),
                 SegmentWidth = outer.SegmentWidth,
             });
@@ -1139,6 +1162,18 @@ namespace DeNelle.Editor
             if (!IsAuthoredSiegeMachine(plan.CatalogId))
                 EnsureUpright(go, $"turret art '{plan.CatalogId}' ({plan.Label})");
             SeatOnGround(go);
+            // Owner 2026-09-12: PlaceTowerProp never height-fitted turrets, so Iron Bastion
+            // watchtowers shipped at native FBX size under 3 m walls. Town cadence for the
+            // archer family is YHeightVariable * 1.2 = 4.8 m. Siege machines stay authored.
+            if (!IsAuthoredSiegeMachine(plan.CatalogId))
+            {
+                var entry = FindStructure(plan.CatalogId);
+                float mul = entry != null && entry.repo != null && entry.repo.heightMul > 0.01f
+                    ? entry.repo.heightMul : 1.2f;
+                float target = StructureFactory.YHeightVariable * mul;
+                ScaleToHeight(go, target, plan.Label + " turret cadence");
+                SeatOnGround(go);
+            }
             return go;
         }
 
@@ -1253,6 +1288,7 @@ namespace DeNelle.Editor
         {
             var dt = go.GetComponent<DefenseTower>();
             if (dt == null) dt = go.AddComponent<DefenseTower>();
+            dt.CatalogId = plan.CatalogId;
             dt.Allegiance = TowerAllegiance.EnemyOwned;
             dt.Range = plan.Range;
             dt.Damage = plan.RawDamage;
@@ -1260,6 +1296,38 @@ namespace DeNelle.Editor
             dt.CanHitAir = plan.CanHitAir;
             dt.Element = plan.Element;
             dt.BoltColor = new Color(0.95f, 0.3f, 0.2f);   // hostile red bolt
+        }
+
+        // Upgrade saved metadata only: never regenerate the owner's approved geometry.
+        public static void StampFinalRaidTowerCatalogIds()
+        {
+            var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(
+                "Assets/Scenes/RaidBase_IronBastion.unity", UnityEditor.SceneManagement.OpenSceneMode.Single);
+            var def = SceneConfigCatalog.Find("iron_bastion");
+            if (def == null) throw new System.InvalidOperationException("Final raid config is missing.");
+            var archers = ResolveTowerTypes(def, DefaultArcherTowerId);
+            var mages = ResolveTowerTypes(def, DefaultMageTowerId);
+            int count = 0;
+            foreach (var root in scene.GetRootGameObjects())
+                foreach (var tower in root.GetComponentsInChildren<DefenseTower>(true))
+                {
+                    bool mage = tower.name.StartsWith("Watchtower_Mage_", StringComparison.Ordinal);
+                    bool archer = tower.name.StartsWith("Watchtower_Archer_", StringComparison.Ordinal);
+                    if ((!mage && !archer) || !int.TryParse(tower.name.Substring(tower.name.LastIndexOf('_') + 1), out int index) || index < 0)
+                        throw new System.InvalidOperationException("Unrecognized saved turret identity: " + tower.name);
+                    var palette = mage ? mages : archers;
+                    string id = palette[index % palette.Count];
+                    if (FindStructure(id) == null) throw new System.InvalidOperationException("Missing turret catalog row: " + id);
+                    tower.CatalogId = id;
+                    EditorUtility.SetDirty(tower);
+                    count++;
+                }
+            if (count != def.archerTowerCount + def.mageTowerCount)
+                throw new System.InvalidOperationException("Saved turret census differs from its configuration.");
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
+            if (!UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene))
+                throw new System.InvalidOperationException("Could not save final raid turret identities.");
+            Debug.Log("FINAL_RAID_TOWER_IDS_OK count=" + count + "; metadata only, no regeneration");
         }
 
         // =====================================================================
@@ -1390,7 +1458,7 @@ namespace DeNelle.Editor
                 // so one grep of a bake log reads every art decision this scene made. The tag is
                 // passed (not copied into ArenaBoundaryRing) because DeNelle.Editor cannot see
                 // DeNelle.EditorWallTools - see TraceMaterials' header.
-                RaidBaseDresser.Sys);
+                RaidBaseDresser.Sys, "Fantasy_M/Dungeon_Wall_Stone.prefab");
 
             // Same line shape as the wall rings above, so one grep reads every ring in a bake.
             string gapText = report.WorstGap <= 0f

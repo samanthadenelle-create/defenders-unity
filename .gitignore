@@ -416,6 +416,14 @@ Assets/Generated/*
 # Other Assets/Generated/* subfolders stay ignored (they are not scene-referenced).
 !Assets/Generated/Terrain/
 
+# EXCEPT the raid ground bake (WO-1703/1704, 2026-09-14) - SAME CLASS OF BUG as the terrain
+# material above: the four saved RaidBase_*.unity scenes + OwnedTown_IronBastion bind
+# Assets/Generated/RaidGround/*.mat BY GUID (RaidNavBake.EnsureGround writes them). Ignored, the
+# 26 files (73 KB) never entered git and the Codex night clone had to hand-copy them - on any
+# fresh clone the ground would draw MAGENTA. A TRACKED SCENE MUST NOT REFERENCE AN IGNORED ASSET.
+!Assets/Generated/RaidGround/
+!Assets/Generated/RaidGround.meta
+
 # Test wallets (devnet only, but still treat as secrets)
 Assets/Tests/Fixtures/DevnetTestWallet.*
 

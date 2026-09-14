@@ -86,12 +86,20 @@ namespace DeNelle.Editor
             public bool HasStaging;
         }
 
+        // WO-1704: actual BuildRing authority, not a guessed fraction of outer gate width.
+        public struct RingLayout
+        {
+            public float Radius;
+            public float GateWidth;
+        }
+
         public struct LayoutContext
         {
             public float Radius;
             public float Innermost;
             public bool TwoGates;
             public int InnerLayers;
+            public RingLayout[] InnerRings;
             public float GateWidth;
             public float SegmentWidth;
         }
@@ -151,8 +159,19 @@ namespace DeNelle.Editor
             // gatehouse can report itself against the wall it stands in. Nothing compared the
             // two before, which is how a 1.41 m gate in a ~3.8 m wall could ship silently.
             float wallHeight = CladRing(root, wallTok, ctx.Radius, ctx.GateWidth, ctx.TwoGates, kit);
-            if (ctx.InnerLayers > 0)
-                CladRing(root, InnerWall(kit, wallTok), ctx.Innermost, Mathf.Max(MinGateWidth, ctx.GateWidth * 0.85f), false, kit, northGate: true);
+            if (ctx.InnerRings != null)
+            {
+                for (int i = 0; i < ctx.InnerRings.Length; i++)
+                {
+                    var ring = ctx.InnerRings[i];
+                    float innerHeight = CladRing(root, InnerWall(kit, wallTok), ring.Radius,
+                        ring.GateWidth, false, kit, northGate: true);
+                    PlaceGatehouse(choke, gateTok, kit, new Vector3(0f, 0f, ring.Radius),
+                        180f, ring.GateWidth, "keep" + (i + 1) + "_north", innerHeight);
+                }
+            }
+            else if (ctx.InnerLayers > 0)
+                FlowTrace.Warn(Sys, "inner ring reports missing; refusing guessed gate geometry");
 
             PlaceGatehouse(gatehouse, gateTok, kit, new Vector3(0f, 0f, -ctx.Radius), 0f, ctx.GateWidth, "south", wallHeight);
             if (ctx.TwoGates)
@@ -480,66 +499,70 @@ namespace DeNelle.Editor
         private static float CladRing(Transform root, string token, float radius, float gateWidth,
                                       bool twoGates, string kit, bool northGate = false)
         {
-            var model = LoadVisual(token);
-            if (model == null)
-            {
-                WarnMissing(token);
-                return 0f;
-            }
+            // WO-1704 actual triangle RED: wall_broken has body-level holes even when
+            // its bounds touch. Enclosing rings use the intact sibling; rubble stays decor.
+            string resolvedToken = token == "wall_broken" ? "wall" : token;
+            var model = LoadVisual(resolvedToken);
+            if (model == null) { WarnMissing(resolvedToken); return 0f; }
             float piece = MeasureLongest(model);
-            if (piece < 1.2f) piece = kit == "synty-castle" ? 5f : 4f;
-            float run = radius * 2f;
-            int n = Mathf.Max(2, Mathf.CeilToInt(run / piece));
-            float step = run / n;
+            if (piece < 0.2f) { WarnMissing(resolvedToken + " measurable width"); return 0f; }
             var parent = EnsureZone(root, "Zone_Clad");
-
-            // WO-1637 step 1: the BASE WALL family. The ticket's sec.2 records the wall's
-            // material as explicitly NOT PROVEN - LoadVisual's five-step search order was never
-            // traced to the folder it resolves for a given camp, so "the knee-high grey railing"
-            // is a SHAPE reading with no material behind it. This names both halves: which asset
-            // the token resolved to, and what that asset is actually shaded with.
             string cladPath = AssetDatabase.GetAssetPath(model);
             bool cladTraced = false;
             float achievedHeight = 0f;
-
+            int placed = 0;
             for (int s = 0; s < 4; s++)
             {
-                bool gated = northGate ? (s == 2) : ((s == 0) || (twoGates && s == 2));
+                bool gated = northGate ? s == 2 : s == 0 || (twoGates && s == 2);
                 var rot = Quaternion.Euler(0f, 90f * s, 0f);
                 var mid = rot * new Vector3(0f, 0f, -radius);
                 var along = rot * Vector3.right;
-                for (int i = 0; i < n; i++)
+                // Partition at the REAL physical gate edges. Skipping by cell centre made
+                // cladding narrow the opening and left unmeasured shoulders beside the gate.
+                int runs = gated ? 2 : 1;
+                for (int run = 0; run < runs; run++)
                 {
-                    float t = -run * 0.5f + (i + 0.5f) * step;
-                    if (gated && Mathf.Abs(t) < gateWidth * 0.5f) continue;
-                    var pos = mid + along * t;
-                    var go = InstantiateVisual(model, parent, $"Clad_{s}_{i}", pos,
-                                               rot, stripColliders: true);
-                    if (go != null) FitPieceAlong(go, step * 0.98f, piece);
-                    if (go != null && !cladTraced)
+                    float start = run == 0 ? -radius : gateWidth * 0.5f;
+                    float end = !gated || run == 1 ? radius : -gateWidth * 0.5f;
+                    float length = end - start;
+                    if (length <= 0f) continue;
+                    int n = Mathf.Max(1, Mathf.CeilToInt(length / piece));
+                    float step = length / n;
+                    for (int i = 0; i < n; i++)
                     {
-                        cladTraced = true;
-                        achievedHeight = MeasureHeight(go);   // WO-1689: AFTER the fit scale
-                        string cladFamily = "base wall token='" + token + "' kit=" + kit +
-                                            " radius=" + radius.ToString("F1") + "m";
-                        ArenaBoundaryRing.TraceMaterials(Sys, cladFamily, cladPath, go);
+                        // WO-1704 GREEN residual: touching float bounds still left three
+                        // sampled triangle seams per Easy side. Lap INTERNAL joins by 2cm;
+                        // keep both run endpoints exact, especially the authored gate edges.
+                        float panelStart = i == 0 ? start : start + i * step - 0.01f;
+                        float panelEnd = i + 1 == n ? end : start + (i + 1) * step + 0.01f;
+                        var pos = mid + along * ((panelStart + panelEnd) * 0.5f);
+                        var go = InstantiateVisual(model, parent,
+                            "Clad_" + s + "_" + run + "_" + i + "_R" + radius.ToString("F2"), pos, rot, true);
+                        if (go == null) continue;
+                        FitPieceAlong(go, panelEnd - panelStart, pos);
+                        placed++;
+                        if (!cladTraced)
+                        {
+                            cladTraced = true;
+                            achievedHeight = MeasureHeight(go);
+                            ArenaBoundaryRing.TraceMaterials(Sys, "base wall token='" + token +
+                                "' resolved='" + resolvedToken + "' kit=" + kit + " radius=" + radius.ToString("F1"), cladPath, go);
+                        }
                     }
                 }
             }
-
-            // WO-1689: the wall's own height, on the same tag, so one grep of a bake log reads
-            // the wall and the gate together. Read off the PLACED panel, not the prefab, so it
-            // reports what the fit actually produced.
-            FlowTrace.Step(Sys, $"WALL token='{token}' kit={kit} radius={radius:F1}m " +
-                                $"module={piece:F2}m wide, achievedH={achievedHeight:F2}m " +
-                                $"panels/side={n} step={step:F2}m");
+            FlowTrace.Step(Sys, "WALL token='" + token + "' resolved='" + resolvedToken + "' kit=" + kit +
+                " radius=" + radius.ToString("F1") + "m module=" + piece.ToString("F2") +
+                "m achievedH=" + achievedHeight.ToString("F2") + "m panels=" + placed +
+                " gateWidth=" + gateWidth.ToString("F3") + "m joined=true internalLap=0.020m endpoints=exact");
             return achievedHeight;
         }
 
         private static void PlaceGatehouse(Transform zone, string token, string kit, Vector3 pos,
                                            float yaw, float width, string side, float wallHeight = 0f)
         {
-            var model = LoadVisual(token);
+            string resolvedToken = token == "wall_gated" ? "wall_doorway" : token;
+            var model = LoadVisual(resolvedToken);
             if (model == null)
             {
                 model = LoadVisual("Gate_Medieval_Medium");
@@ -549,6 +572,8 @@ namespace DeNelle.Editor
             var gate = InstantiateVisual(model, zone, "Gatehouse_" + side, pos, rot, stripColliders: false);
             if (gate != null)
             {
+                OpenGateAssembly(gate, kit, width, pos);
+                SeatGateThreshold(gate, pos);
                 int structure = LayerMask.NameToLayer("Structure");
                 if (structure >= 0) gate.layer = structure;
             }
@@ -591,7 +616,7 @@ namespace DeNelle.Editor
             float flankH = MeasureTallest(flank);
             string gateRatio = wallHeight > 0.01f ? (gateH / wallHeight).ToString("F2") : "n/a";
             string flankRatio = wallHeight > 0.01f ? (flankH / wallHeight).ToString("F2") : "n/a";
-            FlowTrace.Step(Sys, $"GATE {side} width={width:F2}m art={gateArt} gateH={gateH:F2}m " +
+            FlowTrace.Step(Sys, $"GATE {side} width={width:F2}m requested={token} art={gateArt} gateH={gateH:F2}m " +
                                 $"wallH={wallHeight:F2}m gate/wall={gateRatio} flank={flankTok} " +
                                 $"flankH={flankH:F2}m flank/wall={flankRatio} flankOffset={offset:F2}m");
         }
@@ -643,6 +668,9 @@ namespace DeNelle.Editor
 
         private static void TileApproachRoad(Transform zone, string token, float radius, float gateWidth)
         {
+            // The owned continuous dirt ground supplies the camp surface. The atlas-flat
+            // dirt tile hides that texture; independently authored scatter remains intact.
+            if (token == "floor_dirt_large") return;
             var model = LoadVisual(token);
             if (model == null) { WarnMissing(token); return; }
             float span = MeasureLongest(model);
@@ -661,6 +689,7 @@ namespace DeNelle.Editor
 
         private static void TileCourtyardRing(Transform zone, string token, LayoutContext ctx)
         {
+            if (token == "floor_dirt_large") return;
             var model = LoadVisual(token);
             if (model == null) { WarnMissing(token); return; }
             float span = MeasureLongest(model);
@@ -679,7 +708,19 @@ namespace DeNelle.Editor
                 {
                     if (x * x + z * z > outerSq) continue;
                     var pos = new Vector3(x, y, z);
-                    InstantiateVisual(model, zone, "Floor", pos, Quaternion.identity, true);
+                    var tile = InstantiateVisual(model, zone, "Floor", pos, Quaternion.identity, true);
+                    if (tile != null)
+                    {
+                        // The instance budget changes grid spacing. Fit actual XZ bounds
+                        // to that cell while preserving the authored thickness and art.
+                        if (!VisualBounds(tile, out Bounds bounds) || bounds.size.x <= 0f || bounds.size.z <= 0f)
+                            throw new System.InvalidOperationException("Floor tile has no measurable XZ footprint");
+                        Vector3 scale = tile.transform.localScale;
+                        tile.transform.localScale = new Vector3(scale.x * span / bounds.size.x,
+                            scale.y, scale.z * span / bounds.size.z);
+                        VisualBounds(tile, out bounds);
+                        tile.transform.position += new Vector3(pos.x - bounds.center.x, 0f, pos.z - bounds.center.z);
+                    }
                 }
             }
         }
@@ -1232,9 +1273,21 @@ namespace DeNelle.Editor
             var ramp = GameObject.CreatePrimitive(PrimitiveType.Cube);
             ramp.name = "KeepRamp";
             ramp.transform.SetParent(keep, false);
-            ramp.transform.localScale = new Vector3(4.2f, 0.35f, half * 0.9f);
-            ramp.transform.position = new Vector3(0f, height * 0.35f, -half - 1.5f);
-            ramp.transform.rotation = Quaternion.Euler(18f, 0f, 0f);
+            const float thickness = 0.35f;
+            // Preserve the original south top-face footprint, but connect its foot to
+            // ground and its north landing to the platform. Positive X rotation made
+            // the old ramp descend toward the platform, leaving an unwalkable step.
+            Quaternion originalRotation = Quaternion.Euler(18f, 0f, 0f);
+            Vector3 originalFoot = new Vector3(0f, height * 0.35f, -half - 1.5f) +
+                originalRotation * new Vector3(0f, thickness * 0.5f, -half * 0.9f * 0.5f);
+            Vector3 foot = new Vector3(0f, 0f, originalFoot.z);
+            Vector3 landing = new Vector3(0f, height, -half + 0.25f);
+            Vector3 rise = landing - foot;
+            Quaternion slope = Quaternion.Euler(-Mathf.Atan2(rise.y, rise.z) * Mathf.Rad2Deg, 0f, 0f);
+            ramp.transform.localScale = new Vector3(4.2f, thickness, rise.magnitude);
+            ramp.transform.rotation = slope;
+            ramp.transform.position = (foot + landing) * 0.5f - slope * Vector3.up * (thickness * 0.5f);
+            FlowTrace.Step(Sys, $"keep ramp topFace foot={foot:F3} landing={landing:F3} width=4.2 thickness={thickness:F2}");
             ApplyUrp(ramp, new Color(0.32f, 0.30f, 0.28f));
             MagentaGuard.ProtectPrimitiveArt(ramp, "RaidBaseDresser.KeepRamp");
 
@@ -1344,11 +1397,120 @@ namespace DeNelle.Editor
             return h;
         }
 
-        private static void FitPieceAlong(GameObject go, float target, float native)
+        private static bool VisualBounds(GameObject go, out Bounds bounds)
         {
-            if (go == null || native < 0.2f) return;
-            float f = Mathf.Clamp(target / native, 0.6f, 1.4f);
-            go.transform.localScale = go.transform.localScale * f;
+            bounds = default(Bounds);
+            bool found = false;
+            if (go == null) return false;
+            foreach (var renderer in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+                if (!found) bounds = renderer.bounds;
+                else bounds.Encapsulate(renderer.bounds);
+                found = true;
+            }
+            return found;
+        }
+
+        private static float AlongSize(Bounds bounds, Vector3 direction)
+        {
+            return Mathf.Abs(direction.x) * bounds.size.x + Mathf.Abs(direction.y) * bounds.size.y +
+                Mathf.Abs(direction.z) * bounds.size.z;
+        }
+
+        private static void FitPieceAlong(GameObject go, float target, Vector3 centre)
+        {
+            if (!VisualBounds(go, out Bounds bounds)) return;
+            float native = AlongSize(bounds, go.transform.right);
+            if (native < 0.01f) return;
+            // Preserve authored height/thickness; fit only the modular run axis.
+            var scale = go.transform.localScale;
+            scale.x *= target / native;
+            go.transform.localScale = scale;
+            if (!VisualBounds(go, out bounds)) return;
+            go.transform.position += new Vector3(centre.x - bounds.center.x, -bounds.min.y, centre.z - bounds.center.z);
+        }
+
+        private static void OpenGateAssembly(GameObject gate, string kit, float width, Vector3 centre)
+        {
+            var doors = new List<Transform>();
+            Transform portcullis = null;
+            foreach (var child in gate.GetComponentsInChildren<Transform>(true))
+            {
+                if (child.name == "wall_doorway_door" || child.name.Contains("_Gate_Door_")) doors.Add(child);
+                if (child.name.Contains("_Gate_Portcullis_")) portcullis = child;
+            }
+            if (doors.Count == 0)
+            {
+                FlowTrace.Warn(Sys, "GATE opener missing authored leaves on " + gate.name);
+                return;
+            }
+            bool measured = false;
+            Bounds doorBounds = default(Bounds);
+            foreach (var door in doors)
+                if (VisualBounds(door.gameObject, out Bounds b))
+                {
+                    if (!measured) doorBounds = b;
+                    else doorBounds.Encapsulate(b);
+                    measured = true;
+                }
+            if (!measured || !VisualBounds(gate, out Bounds frameBounds)) return;
+            Vector3 right = gate.transform.right;
+            float nativeOpening = AlongSize(doorBounds, right);
+            float nativeFrame = AlongSize(frameBounds, right);
+            if (nativeOpening < 0.01f || nativeFrame < 0.01f) return;
+            // A little headroom above the existing 3.5m floor leaves posts/leaf bevels clear.
+            // A narrow physical cut may receive wider jambs OVER its adjacent solid wall;
+            // the opening stays within the physical cut and no ring generation changes.
+            float targetFrame = Mathf.Max(width, nativeFrame * (MinGateWidth + 0.25f) / nativeOpening);
+            FitPieceAlong(gate, targetFrame, centre);
+            foreach (var door in doors)
+            {
+                if (!VisualBounds(door.gameObject, out Bounds b)) continue;
+                bool rightLeaf = door.name.Contains("_Door_R_");
+                float sign = rightLeaf ? 1f : -1f;
+                Vector3 hinge = b.center + right * (AlongSize(b, right) * 0.5f * sign);
+                door.RotateAround(hinge, gate.transform.up, 180f);
+            }
+            if (portcullis != null && VisualBounds(portcullis.gameObject, out Bounds bars))
+                portcullis.position += gate.transform.up * (bars.size.y + 0.1f);
+            FlowTrace.Step(Sys, "GATE OPEN kit=" + kit + " leaves=" + doors.Count +
+                " frameWidth=" + targetFrame.ToString("F3") + "m requestedCut=" + width.ToString("F3") +
+                "m apertureFromLeaves=" + (nativeOpening * targetFrame / nativeFrame).ToString("F3") +
+                "m portcullis=" + (portcullis != null ? "raised" : "none"));
+        }
+
+        // The frame's lowest vertex is not its walkable sill. The saved garrison probe
+        // measured a 0.635m sill above ground against the actual 0.4m agent step.
+        // Seat the centre of the opened aperture on the authored ground, keeping the
+        // mesh and collider together rather than hiding the obstruction from navigation.
+        private static void SeatGateThreshold(GameObject gate, Vector3 ground)
+        {
+            if (!VisualBounds(gate, out Bounds bounds)) return;
+            float probeHeight = Mathf.Min(2f, bounds.size.y * 0.25f);
+            var ray = new Ray(ground + Vector3.up * probeHeight, Vector3.down);
+            Physics.SyncTransforms();
+            float sill = ground.y;
+            bool found = false;
+            foreach (var collider in gate.GetComponentsInChildren<Collider>(false))
+            {
+                if (!collider.enabled || collider.isTrigger) continue;
+                if (collider.Raycast(ray, out RaycastHit hit, probeHeight + 0.1f) && hit.normal.y > 0.5f)
+                {
+                    sill = Mathf.Max(sill, hit.point.y);
+                    found = true;
+                }
+            }
+            if (!found)
+            {
+                FlowTrace.Step(Sys, "GATE threshold " + gate.name + " has no raised collider across aperture.");
+                return;
+            }
+            float correction = Mathf.Max(0f, sill - ground.y);
+            gate.transform.position -= Vector3.up * correction;
+            Physics.SyncTransforms();
+            FlowTrace.Step(Sys, "GATE threshold " + gate.name + " measured=" + sill.ToString("F3") +
+                " ground=" + ground.y.ToString("F3") + " lowered=" + correction.ToString("F3"));
         }
 
         private static void WarnMissing(string token)

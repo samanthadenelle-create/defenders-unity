@@ -261,7 +261,8 @@ namespace DeNelle.Editor
             Transform parent, System.Random rng, float halfExtent, float bandHalf, float bandFill,
             float containmentSlack, float containmentHeadroom, float overlapFactor, float radialJitterCap,
             string[] prefabRelPaths, string label,
-            float scaleMin, float scaleMax, int maxPerSide, string logTag, string flowSys = null)
+            float scaleMin, float scaleMax, int maxPerSide, string logTag, string flowSys = null,
+            string backingModule = null)
         {
             var report = new BoundaryReport();
             if (parent == null || rng == null || prefabRelPaths == null || prefabRelPaths.Length == 0)
@@ -347,6 +348,13 @@ namespace DeNelle.Editor
                 }
             }
 
+            // WO-1704: the palette's footprint overlap never proved body-height
+            // solidity. Raid opts into an intact authored wall behind the original skyline.
+            // No RNG draws, palette edits, polar changes, or expanded staging envelope.
+            if (!string.IsNullOrEmpty(backingModule))
+                PlaceSquareBacking(parent, halfExtent, bandHalf - containmentSlack - containmentHeadroom,
+                    backingModule, logTag, flowSys);
+
             report.Placed = placed;
             report.PerSide = perSide - 1;
             report.Stride = stride;
@@ -360,6 +368,80 @@ namespace DeNelle.Editor
             report.ScaleFitted = scaleFitted;
             report.RadialJitter = radialJitter;
             return report;
+        }
+
+        private static void PlaceSquareBacking(Transform parent, float halfExtent, float allowedHalfDepth,
+                                               string module, string logTag, string flowSys)
+        {
+            // Close the actual exterior body, not merely the player's first two metres.
+            // Keep the top 5% of the existing skyline as decorative pillar caps; all
+            // original pieces, XZ placement, band depth and RNG cadence stay authored.
+            float skylineTop = parent.position.y;
+            foreach (Transform piece in parent)
+                if (PieceBounds(piece.gameObject, out Bounds skyline))
+                    skylineTop = Mathf.Max(skylineTop, skyline.max.y);
+            float closureHeight = (skylineTop - parent.position.y) * 0.95f;
+            var zone = new GameObject("BoundaryBacking");
+            zone.transform.SetParent(parent, false);
+            var probe = InstantiatePiece(module, zone.transform, logTag);
+            if (!PieceBounds(probe, out Bounds native))
+            {
+                Object.DestroyImmediate(probe);
+                Debug.LogWarning(logTag + " backing module has no measurable renderer: " + module);
+                return;
+            }
+            bool longX = native.size.x >= native.size.z;
+            float span = Mathf.Max(native.size.x, native.size.z);
+            float depth = Mathf.Min(native.size.x, native.size.z);
+            float height = native.size.y;
+            Object.DestroyImmediate(probe);
+            if (span < 0.01f || depth * 0.5f > allowedHalfDepth)
+            {
+                Debug.LogWarning(logTag + " backing cannot fit existing containment band: " + module);
+                return;
+            }
+            int count = Mathf.Max(1, Mathf.CeilToInt(halfExtent * 2f / span));
+            float step = halfExtent * 2f / count;
+            int placed = 0;
+            for (int side = 0; side < 4; side++)
+            {
+                var rot = Quaternion.Euler(0f, side * 90f, 0f);
+                for (int i = 0; i < count; i++)
+                {
+                    var go = InstantiatePiece(module, zone.transform, logTag);
+                    go.name = "BoundaryBacking_" + side + "_" + i;
+                    go.transform.localRotation = rot * Quaternion.Euler(0f, longX ? 0f : 90f, 0f);
+                    var scale = go.transform.localScale;
+                    scale.y *= Mathf.Max(height, closureHeight) / Mathf.Max(0.01f, height);
+                    // A 2cm lap joins imperfect authored ends, within the unchanged band.
+                    if (longX) scale.x *= (step + 0.02f) / span;
+                    else scale.z *= (step + 0.02f) / span;
+                    go.transform.localScale = scale;
+                    Vector3 centre = parent.TransformPoint(rot * new Vector3(-halfExtent + (i + 0.5f) * step, 0f, -halfExtent));
+                    if (PieceBounds(go, out Bounds b))
+                        go.transform.position += new Vector3(centre.x - b.center.x, centre.y - b.min.y, centre.z - b.center.z);
+                    if (placed == 0) TraceMaterials(flowSys, "continuous exterior backing", PrefabRoot + module, go);
+                    placed++;
+                }
+            }
+            Debug.Log(logTag + " BOUNDARY BACKING module=" + module + " panels=" + placed +
+                " height=" + Mathf.Max(height, closureHeight).ToString("F3") + "m nativeHeight=" + height.ToString("F3") +
+                "m originalSkylineTop=" + skylineTop.ToString("F3") + "m depth=" + depth.ToString("F3") +
+                "m step=" + step.ToString("F3") + "m lap=0.020m; original skyline retained");
+        }
+
+        private static bool PieceBounds(GameObject go, out Bounds bounds)
+        {
+            bounds = default(Bounds);
+            bool found = false;
+            foreach (var renderer in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+                if (!found) bounds = renderer.bounds;
+                else bounds.Encapsulate(renderer.bounds);
+                found = true;
+            }
+            return found;
         }
 
         // =====================================================================
