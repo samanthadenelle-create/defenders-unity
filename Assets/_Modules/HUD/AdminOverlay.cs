@@ -110,6 +110,21 @@ namespace DeNelle.HUD
             {
                 var ps = ScriptableObject.CreateInstance<PanelSettings>();
                 ps.name = "AdminRuntimePanelSettings";
+                // ⛔ WO-1718 — DO NOT DELETE THESE THREE LINES AS NOISE. A freshly created
+                // PanelSettings defaults to scaleMode = ConstantPhysicalSize (referenceDpi 96),
+                // which scales the WHOLE panel by realScreenDpi/96. On the Seeker (~400 dpi) that
+                // is ≈4.2x: FontBody (50 REFERENCE px, ElarionUi.cs:111-115) rendered ≈210 device
+                // px and the panel filled the screen with rows drawn on top of each other (owner
+                // report 2026-09-14, docs/handoffs/devtools_panel_oversized_text.png). Owning our
+                // own PanelSettings (2026-06-13, below) is what silently dropped the scaler the
+                // BORROWED asset used to bring (OnboardingPanelSettings.asset: m_ScaleMode: 2).
+                // These values MATCH the uGUI CanvasScaler every other screen uses
+                // (ElarionUiKit.cs:107-111 — ScaleWithScreenSize, 1080x1920, MatchWidthOrHeight,
+                // match 0.5) so the two toolkits resolve the SAME reference px. Unity's default
+                // match is 0.0, so it must be set explicitly. Pinned by AdminPanelScaleRegression.
+                ps.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+                ps.referenceResolution = new Vector2Int(1080, 1920);
+                ps.match = 0.5f;
                 if (fallback != null && fallback.themeStyleSheet != null)
                 {
                     ps.themeStyleSheet = fallback.themeStyleSheet;
@@ -192,7 +207,16 @@ namespace DeNelle.HUD
             _root.Add(_overlay);
 
             var card = new VisualElement();
-            card.style.minWidth = 420; card.style.maxWidth = 560;
+            // WO-1718: the card no longer carries a FIXED 560 reference-px ceiling. Those were
+            // pre-ladder DESKTOP px (font ladder tripled 2026-07-04: body 15 -> 50), and the
+            // longest live captions here are ~45 chars — e.g. "Queue clock: real time   (nothing
+            // to reset)" and the armed "SURE? Wipes save+prefs, archives dials, QUITS" — which at
+            // fontSize 50 measure ≈1150 reference px. A 560px card could not hold ONE of them on
+            // a line. With no explicit width the flex column sizes the card to its widest child,
+            // so the card grows to fit the captions; maxWidth is a PERCENT of the panel so it can
+            // never exceed the screen at any resolution (at 2340x1080 the panel resolves to
+            // 2119x978 reference px — ElarionUiKit.cs:4053 — so 92% = ~1950px of headroom).
+            card.style.minWidth = 560; card.style.maxWidth = Length.Percent(92);
             // F8-11 (owner 2026-07-07 "menu needs a scroll bar"): the tool list outgrew the
             // screen — cap the card and let the button column scroll (see ScrollView below).
             card.style.maxHeight = Length.Percent(86);
@@ -253,6 +277,16 @@ namespace DeNelle.HUD
             // reached by reflection here since the HUD asmdef can't reference DeNelle.Village.
             scroll.Add(Button("Set Level 5 (+skill pts)",     () => OnSetHeroLevel(5)));
             scroll.Add(Button("Set Level 10 (+skill pts)",    () => OnSetHeroLevel(10)));
+#endif
+#if DEVELOPMENT_BUILD || UNITY_EDITOR || TESTER_BUILD
+            // Owner 2026-09-11: skip grind to felt-test owned town. Not a store-economy grant.
+            scroll.Add(Button("Set Level 15 (+skill pts)",    () => OnSetHeroLevel(15)));
+            scroll.Add(Button("MAX all buildings",            OnMaxAllBuildings));
+            scroll.Add(Button("MAX troop types",              OnMaxTroopTypes));
+            scroll.Add(Button("Grant Iron Bastion town",      OnGrantCapturedTown));
+            scroll.Add(Button("Raid: Iron Bastion",           OnEnterIronBastionRaid));
+#endif
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
             // Direct Wisdom grants (owner F8 2026-06-28: "Set Level 10 isn't doing it" —
             // SetHeroLevel is a NO-OP once already >= the target level, so it grants no new
             // Wisdom). These add Wisdom unconditionally regardless of level. The only "+Wisdom"
@@ -358,7 +392,12 @@ namespace DeNelle.HUD
         {
             var b = new Button(onClick) { text = label };
             ElarionUi.StyleButton(b, ElarionUi.ButtonKind.Neutral);
-            b.style.minHeight = 38;   // compact debug rows (override the 44 default)
+            // WO-1718: the `b.style.minHeight = 38` override that used to sit here is DELETED.
+            // It undercut ElarionUi.StyleButton's minHeight = TapTarget (88, ElarionUi.cs:198),
+            // and its own comment ("override the 44 default") was stale — TapTarget was raised
+            // 44 -> 88 for mobile. A 38px box cannot hold a FontBody (50) line box (~58px), so
+            // every caption overflowed its own row onto the next one even at 1:1 scale. The kit
+            // default now stands: 88 is both the mobile touch floor and roomy for a 50px line.
             b.style.unityFontStyleAndWeight = FontStyle.Normal;
             var f = AdminFont(); if (f != null) b.style.unityFont = f;
             return b;
@@ -494,16 +533,20 @@ namespace DeNelle.HUD
                 FlowTrace.Warn("UI", "DevPanel open FAILED — AdminOverlay._overlay is null (UI never built)");
                 return;
             }
-            // SECURITY (LB-11 / E-ADMIN): REAL runtime gate. In a release player build the
-            // overlay must NEVER open for a non-owner — the dev grant/tool buttons are also
-            // compile-stripped, but this blocks the panel (incl. the Ctrl+Shift+A chord and
-            // the Help "Dev tools" launcher) from opening at all unless the bound wallet is the
-            // owner's. Editor + debug/DEVELOPMENT builds stay fully open for dev work.
+            // SECURITY (LB-11 / E-ADMIN): REAL runtime gate. In a STORE player build the
+            // overlay must NEVER open for a non-owner. Tester APKs compile TESTER_BUILD
+            // (overnight-apk-build -Tester) but are still release-shaped, so
+            // Debug.isDebugBuild is false — the Help "Dev Tools" row is visible and then
+            // this gate closed Help and bounced to the HUD (Seeker 365962 logcat 22:37:37
+            // and 22:38:07, not-authorised warn). Owner 2026-09-11: tester skip kit must
+            // open. Store builds do not define TESTER_BUILD.
+#if !TESTER_BUILD
             if (open && !IsAuthorised() && !Application.isEditor && !Debug.isDebugBuild)
             {
                 FlowTrace.Warn("UI", "DevPanel open BLOCKED — not authorised (release owner gate)");
                 return;
             }
+#endif
             _overlay.style.display = open ? DisplayStyle.Flex : DisplayStyle.None;
             _overlay.pickingMode = open ? PickingMode.Position : PickingMode.Ignore;
             // Single-modal arbiter (DEF-212): opening closes any other open panel; closing
@@ -791,8 +834,9 @@ namespace DeNelle.HUD
                 : "Queue clock was already at real time - nothing to reset.");
         }
 
-        // WO-1512: value-minting handler — developer-only, TESTER_BUILD deliberately excluded.
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        // WO-1512: resource/Wisdom mint stays developer-only at the BUTTON layer.
+        // Owner 2026-09-11: skip handlers (level, troops, town) also compile for TESTER_BUILD.
+#if DEVELOPMENT_BUILD || UNITY_EDITOR || TESTER_BUILD
         private void OnGiveCrystals(int delta)
         {
             ResolveGameState();
@@ -977,7 +1021,9 @@ namespace DeNelle.HUD
                 $"pool W{poolWood} I{poolIron} F{poolFood} C{poolCrys} | " +
                 $"GameState W{gsWood} I{gsIron}");
         }
+#endif // DEVELOPMENT_BUILD || UNITY_EDITOR — resource mint helpers
 
+#if DEVELOPMENT_BUILD || UNITY_EDITOR || TESTER_BUILD
         /// <summary>
         /// Sets the hero to <paramref name="target"/> through the SAME real leveling path the
         /// F10 DevPanel's "Set Level 5/10" uses (DevPanelController.SetHeroLevelTo): feed XP via
@@ -1055,7 +1101,35 @@ namespace DeNelle.HUD
             FlowTrace.Step("Hero", $"DevPanel (AdminOverlay) granted +{amount} Wisdom -> {wisdom} total.");
             SetStatus($"+{amount} Wisdom — now {wisdom} to spend in the skill tree.");
         }
-#endif // DEVELOPMENT_BUILD || UNITY_EDITOR — WO-1512 value-minting grants, never TESTER_BUILD
+
+        static string CallDevSkip(string method)
+        {
+            var t = Type.GetType("DeNelle.Village.World.Camps.DevSkipKit, DeNelle.Village");
+            var m = t?.GetMethod(method, BindingFlags.Public | BindingFlags.Static);
+            if (m == null) return "DevSkipKit." + method + " not in this build.";
+            return m.Invoke(null, null) as string ?? "ok";
+        }
+
+        void OnMaxAllBuildings()
+        {
+            SetStatus(CallDevSkip("PrepCastlePower"));
+        }
+
+        void OnMaxTroopTypes()
+        {
+            SetStatus(CallDevSkip("PrepCastlePower"));
+        }
+
+        void OnGrantCapturedTown()
+        {
+            SetStatus(CallDevSkip("GrantCapturedTownAndEnter"));
+        }
+
+        void OnEnterIronBastionRaid()
+        {
+            SetStatus(CallDevSkip("EnterIronBastionRaid"));
+        }
+#endif // TESTER_BUILD skip + L15 (owner 2026-09-11)
 
         // ── FULL RESET (owner 2026-07-08: "clears all persistent data and resources and
         // wisdom to a brand new instance") ────────────────────────────────────────────

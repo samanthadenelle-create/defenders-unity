@@ -258,6 +258,9 @@ namespace DeNelle.Editor.Regression
         {
             L("AdPlacementCovenantRegression.cs", "A-missing-dependency", "string.IsNullOrEmpty(v)",
               "an empty JSON string value silently ends the walk"),
+            L("AdminPanelScaleRegression.cs", "A-missing-dependency", "panel == null",
+              "root.panel is only null in edit-mode construction; a real device/editor panel that " +
+              "somehow lost it would skip the measured-layout assertion unproven, not proven-false"),
             L("BarracksBlankTownRegression.cs", "A-missing-dependency", "instField == null || stateField == null",
               "reflection seam moved -> fixture-absent, owes a FAIL"),
             L("BattleMonthlyRegression.cs", "A-missing-dependency", "cards == null",

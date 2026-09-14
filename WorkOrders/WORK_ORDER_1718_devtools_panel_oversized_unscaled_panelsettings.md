@@ -1,6 +1,6 @@
 # WORK ORDER 1718 — Settings > Help > Dev Tools renders ~4x oversized with overlapping rows
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED - awaiting lead gate 2026-09-14
 **Minted:** 2026-09-14 (read-only RCA lane)
 **Silo:** HUD / UI Toolkit panel scaling — `Assets/_Modules/HUD/AdminOverlay.cs` ONLY
 **Severity:** Dev/tester tooling unusable on a real device (the owner cannot read or hit the buttons)
