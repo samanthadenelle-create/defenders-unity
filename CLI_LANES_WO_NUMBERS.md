@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-third pass): main line next free = **1715**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-fourth pass): main line next free = **1716**.
+> *(CLI minted **1715** 2026-09-14 from a live device screenshot: a default-town-seeded storage pallet
+> never shows fill items while an interactively-built second one of the same type does - same
+> registry-gap family as WO-1710, different consumer.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-seventy-third pass): main line next free = **1715**.
 > *(CLI minted **1714** 2026-09-14 from a live device capture: HeroLocomotion input frozen for 18+
 > seconds while the HUD context reads modal=True with no timeout, proven on captured logcat.)*
 
