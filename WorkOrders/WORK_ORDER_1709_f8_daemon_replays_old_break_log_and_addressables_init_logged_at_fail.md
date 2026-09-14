@@ -96,3 +96,11 @@ Eleven more captures, seq 5041-5051, filed 08:12:32Z to 08:42:57Z at a ~3 min ca
 already-handled 09-11 rows (OwnedTownRepairService CS0029 x3, injected save failure x2, EMERGENCY pill x1,
 OWNED_TOWN_MOVE_PLAY_FAIL x1, `t.GetParent() == nullptr` assertion x4). Acked under this ticket; the fix is
 the stuck break-log offset, not any of the payloads.
+
+
+## Ack-sweep ruling (owner, 2026-09-14 ~06:00): "ack-sweep the daemon backlog and restart it"
+
+Lead advanced `logs/f8-inbox/daemon-state.json` breakOffset 1331 -> 3064 (end of break-log.jsonl), wrote an audit
+line to `queue-events.log` (11:02:40Z), restarted the daemon: `NO_CAPTURE ack=5052 ping=5052`, offset held at 3064
+after start. The 1733 never-published 09-11 rows are deliberately not replayed on the owner's order; WO-965's
+no-drop rule yields to that ruling for this backlog only.
