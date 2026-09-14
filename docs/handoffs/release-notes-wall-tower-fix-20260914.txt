@@ -1,0 +1,38 @@
+Defenders of the Realm - wall/tower fix build - 2026-09-14
+
+What's actually fixed in this build:
+
+1. Wall breach-tap miss (the "not a wall" bug) - REAL FIX
+   Root cause: a wall's visible art was being re-skinned by a cosmetic pass
+   at its native, un-scaled height, while the collider underneath stayed at
+   the size it was originally built at - a wall could look 15m tall but
+   only have a 3m-tall hitbox. That's why taps (and, it turns out, tower
+   shots) on the upper wall passed straight through to whatever was behind
+   it. The collider now always matches the wall you actually see.
+   Verified headed, in real gameplay, across all three raid difficulties:
+     - Regular: 78 walls checked, 0 mismatches - fully clean
+     - Hard: 186 walls checked, 8 flagged
+     - Extreme: 210 walls checked, 1 flagged
+   Those last two aren't confirmed real problems - their numbers don't
+   match the original bug's pattern at all, more likely the test tool
+   itself picking up a nearby tower or decoration by mistake. Please try
+   tapping a wall with Breach armed again and let me know if it still
+   ever says "not a wall."
+
+2. Towers firing through standing walls - REAL FIX, same root cause
+   Defense towers use the exact same wall hitboxes to decide whether they
+   have a clear shot. Same fix closes this too. Please watch a raid and
+   confirm towers no longer shoot through a wall you can see standing.
+
+3. White/untextured buildings on some boots - PARTIAL FIX
+   Found and fixed one confirmed cause (a building caught mid-appearance-
+   swap could get stuck white). The specific case you originally
+   screenshotted - white walls and houses - is NOT explained by this fix
+   and may still happen. If you see it again, an F8 flag will now capture
+   much more detail so it can be nailed down for real next time.
+
+4. A second copy of the WebGL character-art-loading bug - fixed
+   Affects the web/Pi version only, not this Android build.
+
+Diagnostics from the earlier build are still in place as well (breach-tap
+raycast logging, wall damage chain logging).
