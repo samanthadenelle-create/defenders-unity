@@ -171,3 +171,44 @@ clicking directly on the square in the Scene view (owner asked to do this next):
 
 Do not assume which of these it is - the RCA lane's first step is identifying exactly what object (if
 any) selecting that square returns, before theorizing further.
+
+
+## RESOLVED (partially): the square is an invisible CastleBarracks, not the lumbermill
+
+Owner clicked directly on the oversized green square. It selected a GameObject named `CastleBarracks`
+(prefab `Military_Barracks`), NOT anything related to the lumbermill - the earlier sections'
+lumbermill-scale hypothesis is now fully superseded by this, not just disproven by the move test.
+
+**PROVEN from the Inspector screenshot:**
+- Transform: Position (16, 0, -4), Rotation (0, -75.964, 0), Scale (0.6, 0.9, 0.6).
+- **`Mesh Filter` and `Mesh Renderer` both read `(Removed)`** - this object has NO visible model.
+  Nothing renders there; the object is completely invisible in normal play.
+- A `Mesh Collider` IS still present (mesh `military-barracks`), so it still physically collides.
+- A `Nav Mesh Obstacle` IS still present and active: `Shape Box`, `Center (0, 2.54145, 0)`,
+  **`Size (16.90712, 5.08288, 14.51318)`**, `Carve` checked, `Carve Only Stationary` checked. That size
+  is dramatically large relative to the object's own small (0.6/0.9/0.6) scale - the obstacle box does
+  not match the visual/collision footprint a barracks should have, and it is this oversized, actively-
+  carving box that produced the huge exclusion square in both bake tests.
+
+**HYPOTHESIS, NOT YET PROVEN - cross-reference to WO-1710's original barracks report:** the owner's
+very first report tonight was troop training refusing to recognize a placed, visible barracks, and
+that she "tried to remove the barracks and re-add barracks... but once I removed it, I still didn't
+have any chance to re-add it." This invisible `CastleBarracks` object, sitting in the SAME scene with
+no renderer but a live collider and an oversized nav obstacle, is consistent with a removal operation
+that stripped only the MeshFilter/MeshRenderer instead of destroying or properly cleaning up the
+GameObject - leaving a ghost that (a) still occupies the barracks singleton slot, which would explain
+why re-adding a new one never worked, and (b) still carves a wrong-sized navmesh hole nobody can see
+the source of. NOT PROVEN: whether this object predates tonight's session, is a leftover from the
+owner's in-session removal attempt, or is unrelated to that report entirely - the RCA lane should
+check the object's creation/edit history if possible (scene file diff history, or ask the owner
+whether this GameObject existed before her removal attempt) rather than assume the connection.
+
+## Acceptance criteria addendum
+
+- [ ] RCA lane determines whether `CastleBarracks` (this specific GameObject) is the leftover from
+      the owner's barracks removal attempt referenced in WO-1710, or a separate, unrelated object.
+- [ ] Whatever "remove structure" code path exists must fully clean up a removed structure (destroy
+      the GameObject or clear its collider/NavMeshObstacle along with its renderer) - a partial
+      removal that strips only the visual is its own defect regardless of this specific instance.
+- [ ] The `Nav Mesh Obstacle` Size mismatch (16.9 x 5.1 x 14.5 on a 0.6/0.9/0.6-scaled object) should
+      be explained - was it hand-authored against the wrong base mesh, or inherited incorrectly.
