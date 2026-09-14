@@ -498,6 +498,90 @@ alongside the miss message to settle it.
 
 ---
 
+### Entry 2 — 2026-09-14, root cause found and fixed; residual mismatch found live; shadow hypothesis for the overlay
+
+**Root cause of Entry 1's breach-tap miss, confirmed by reading `RaidBaseDresser.cs` (WO-1719 fix,
+commit `8333b172d`):** `RaidBaseGenerator.PlaceSegment` sizes a wall's `BoxCollider` correctly from its
+own mesh. A LATER dressing pass, `RaidBaseDresser.Dress -> HideWallRenderers + CladRing`, disables that
+mesh's renderer and instantiates brand-new cosmetic art at the wall's footprint to actually show the
+player a wall — and `CladRing.FitPieceAlong` deliberately preserves that cosmetic art's **native
+authored height** on the Y axis, completely decoupled from the collider sized earlier. Live-captured on
+`Wall_Outer_SS_3`: 15.0m visual vs. 3.0m collider, a clean 5x mismatch. This is exactly the mechanism an
+external AI reviewer independently derived from the release notes alone, unprompted, and it matches:
+*"a wall's visible art was being re-skinned by a cosmetic pass at its native, un-scaled height, while
+the collider underneath stayed at the size it was originally built at."*
+
+**The fix (`RaidBaseDresser.cs`, `SyncWallColliderHeight`) resizes the COLLIDER to match whatever height
+`CladRing` achieves for the visual — it does NOT change the visual's scale.** This is a load-bearing
+fact for the overlay hypothesis below: if a tall visual is the cause of anything else (a shadow, a
+render-order artifact), that visual was never shrunk by this fix. Only the previously-invisible hitbox
+now matches it.
+
+**Headed multi-tier proof of the fix** (`Assets/Editor/RaidWallTierProof.cs`, `RaidWallTierProof.Run`,
+non-batchmode Editor Play mode, castle → `SceneRouter.GoRaid` per tier): Regular 78/78 walls matched
+(0 mismatches). Hard: 8/186 flagged. Extreme: 1/210 flagged, worst delta 10.41m. Recorded at the time as
+"likely the test tool's own nearby-renderer search picking up a tower or decoration, not a proven
+defect" — **that caveat has since been narrowed by a live finding below.**
+
+**Direct, controlled proof the fix works on a real device, real save, real gameplay** — not the headed
+proof, an entirely separate reflection-driven test (`Assets/Editor/RaidBreachTapLiveProof.cs`) that
+invokes the actual `RaidDeployController.HandleBreachTap(Vector2)` method against a wall guaranteed
+untouched at raid start:
+```
+PASS - TroopBreachOrder.Target is exactly the tapped wall 'Wall_Outer_SS_18' after the real HandleBreachTap call.
+```
+And live on the owner's own Seeker, unprompted, mid-raid: a tap on a fully undamaged wall
+(`hp=100`) produced `BREACH ORDER set by the player: focus='Wall_Outer_SS_15' hp=100`, then
+`source=order focus='Wall_Outer_SS_15' ... (player breach order OVERRIDES the most-damaged pick)`, then
+the troop AI actually retargeted and the wall took real damage. The fix is proven working, not merely
+gate-passed.
+
+**A residual mismatch was then found live, in the tier the headed proof called fully clean, closing the
+"just a test-tool artifact" question for at least one case.** Captured via `RaidDeployController`'s own
+`LogBreachTapDiagnostics` (a *different* code path than `RaidWallTierProof`'s renderer search — this one
+reads `GetComponentsInChildren<Renderer>(true)` off the `WallSegment` itself, not a nearby-radius scan,
+so it cannot be a false positive from an unrelated object), mid-raid, `RaidBase_raider_camp_small`
+(Regular tier):
+```
+nearest WallSegment='Wall_Outer_SE_17' colliderPresent=True colliderEnabled=True
+  colliderBounds Extents: (0.75, 2.00, 1.43)      <- ~1.5m x 4m x 2.9m
+  rendererBounds Extents: (5.54, 10.51, 10.61)    <- ~11m x 21m x 21m, SAME centre
+```
+Roughly 7x wider, 5x taller, 7x deeper than its own collider, on a wall that had never collapsed. The
+owner independently reported walking straight through a standing (not destroyed) wall in the same
+session — the same defect: most of the visible wall's width has no collision behind it at all. Filed as
+`WORK_ORDER_1722`. **Open, not yet explained:** whether this is present at raid start (contradicting the
+headed proof's "0/78 clean" for this exact tier) or arises later, during live play, from some runtime
+event the raid-start-only headed proof could not have observed. The original WO-1719 fix, by its own
+commit message, only ever resynced the collider's **Y** — "never touching X/Z, per the existing
+footprint-untouched convention" — so an X/Z-heavy mismatch this large may be a pre-existing defect the
+original diagnosis never looked for, not a regression.
+
+**The blue-grey overlay from Entry 1's second screenshot — leading hypothesis, not yet tested:** an
+external AI reviewer proposed, unprompted, that the overlay is the **shadow of the oversized wall** —
+not a shader leak, not a stuck post-process volume. Every detail in the original description fits: the
+blue-grey tint (this engine's shadow color under its lighting model), the region covering roughly half
+the screen including the ground (a 15m wall at a low sun angle casts a large projected shadow that falls
+on whatever's behind it), the hero rendered as a silhouette (standing inside that shadow), the HUD
+staying fully legible (UI is unlit, drawn on top), and the timing (same raid, right after the wall-spark
+VFX in the first screenshot). Per the "collider resized to match visual, visual left alone" fact above,
+**if this hypothesis is correct, the overlay is predicted to still occur in the fixed build** — the tall
+visual that would cast it was never shrunk, only its hitbox changed. **The ten-second test that settles
+it, not yet run:** rotate the camera without moving the hero. A shadow stays anchored to the ground/wall
+and appears to move as the camera does relative to a fixed world position; a post-process or UI effect
+stays screen-anchored regardless of camera angle. This requires the owner's own hands on the device (a
+camera-drag gesture); not something drivable safely via `adb` blind input.
+
+**Standing next-capture checklist, updated:** (1) tap a wall with Breach armed on each of the three
+tiers in the fixed build and confirm "not a wall" is gone on all three — Regular is confirmed, Hard/
+Extreme still carry the flags above and need the same live-tap confirmation Regular got; (2) if the
+overlay recurs, rotate the camera without moving the hero and note whether the dark region is
+world-anchored (shadow) or screen-anchored (UI/post-process); (3) photograph a wall next to the hero in
+the fixed build — per the collider-vs-visual fact above, it is expected to still read as oversized
+relative to the hero, since only the collider was corrected, not the visual scale.
+
+---
+
 *(Further entries append above this line as more raids are played.)*
 
 ---
