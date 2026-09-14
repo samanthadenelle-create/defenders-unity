@@ -47,6 +47,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using DeNelle.Core.Catalog;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.State;
@@ -397,6 +398,13 @@ namespace DeNelle.Village
             // world tap can only START a selection, never fight an open one.
             if (HasSelection) return;
 
+            // WO-1708 criterion 1: a press that landed on a uGUI widget is NOT a world
+            // tap. Before this guard existed the file contained ZERO references to
+            // EventSystem (measured: grep -c "EventSystem" returned 0), so pressing ANY
+            // on-screen button — the F8 FLAG button included — also raycast the world
+            // behind it and could select/repair a structure the player never aimed at.
+            if (PointerIsOverUi()) return;
+
             var cam = _camera != null ? _camera : Camera.main;
             if (cam == null) return;
 
@@ -414,11 +422,35 @@ namespace DeNelle.Village
                 // so every other damageable surface taps to null here and is silently ignored.
                 // Name what was actually hit so a capture distinguishes "tapped scenery" from
                 // "tapped a damaged structure this controller cannot address".
+                // WO-1708 criterion 2. The OLD line named only the hit object and then
+                // asserted "RepairTarget covers WallSegment" — which read as a CONTRADICTION
+                // every time a `Wall_*` / `Battlement_*` failed here (15 non-terrain failures
+                // on the Seeker logcat). It named a symptom and no cause, so nothing captured
+                // could say WHICH check refused the object. This line now dumps the hit's
+                // parent chain with the components each level actually carries, which is the
+                // one datum that separates the three possible causes:
+                //   * chain carries NO WallSegment/Gate/Building  -> a non-repairable object
+                //     sitting on the selectable mask (_selectableMask defaults to ~0, i.e.
+                //     EVERY layer), e.g. Synty perimeter decor or a tower/collector;
+                //   * chain is tagged Player                      -> RepairTarget's DELIBERATE
+                //     hero reject (IsHeroOrPlayer), not a wrap defect;
+                //   * chain DOES carry one of the three           -> a real wrap defect, and
+                //     the only reading under which the old message's claim was wrong.
+                // NOTE strings are built into locals first (CLAUDE.md §1: the compile gate's
+                // brace scanner has no interpolated-string model, so nested quotes inside an
+                // interpolation hole desynchronise its count).
                 var hitGo = hit.collider != null ? hit.collider.gameObject : null;
-                FlowTrace.Throttle("Repair", "tap-not-repairable", 2f,
-                    $"tap hit '{(hitGo != null ? hitGo.name : "<null>")}' but RepairTarget could not wrap it - " +
-                    "no repair prompt. RepairTarget covers WallSegment/Gate/Building only; towers, " +
-                    "harvest sites and collectors are reachable ONLY through Repair-All.");
+                string hitName = hitGo != null ? hitGo.name : "<null>";
+                string hitChain = DescribeHitChain(hit.collider != null ? hit.collider.transform : null, 3);
+                string notRepairableLine =
+                    $"tap hit '{hitName}' but RepairTarget could not wrap it - no repair prompt. " +
+                    $"HIT CHAIN (up to 3 levels, hit object first): {hitChain}. " +
+                    "RepairTarget.TryWrap walks GetComponentInParent<WallSegment>/<Gate>/<Building> " +
+                    "(RepairTarget.cs:85-97) and rejects anything tagged Player first, so a chain " +
+                    "showing NONE of those three components is a non-repairable object on the " +
+                    "selectable mask - towers, harvest sites and collectors are reachable ONLY " +
+                    "through Repair-All, by design.";
+                FlowTrace.Throttle("Repair", "tap-not-repairable", 2f, notRepairableLine);
                 return; // tapped something that is not a repairable structure.
             }
 
@@ -573,7 +605,7 @@ namespace DeNelle.Village
             return new CoreCost {
                 wood = Mathf.Max(0, cost.wood - (econ != null ? econ.Wood : 0)),
                 iron = Mathf.Max(0, cost.iron - (econ != null ? econ.Iron : 0)),
-                food = Mathf.Max(0, cost.food - (econ != null ? econ.Food : 0)),
+                stone = Mathf.Max(0, cost.stone - (econ != null ? econ.Stone : 0)),
                 crystals = Mathf.Max(0, cost.crystals - (econ != null ? econ.Crystals : 0)),
             };
         }
@@ -644,7 +676,7 @@ namespace DeNelle.Village
             return new CoreCost
             {
                 wood     = Mathf.CeilToInt(buildCost.wood * frac),
-                food     = Mathf.CeilToInt(buildCost.food * frac),
+                stone     = Mathf.CeilToInt(buildCost.stone * frac),
                 iron     = Mathf.CeilToInt(buildCost.iron * frac),
                 crystals = 0,   // owner 2026-07-11: crystals are never spent on repair.
                                 // STILL TRUE, and deliberately so: the 2026-08-24 crystals-for-repair
@@ -676,7 +708,7 @@ namespace DeNelle.Village
         //  CostBasketSeparationRegression's [repair-carve-out] case pins all three.
         //
         //  ZERO MEANS NOT CONVERTIBLE, NEVER FREE. The owner ruled ONE number, for iron.
-        //  perWood/perFood are 0, so a wood-short repair simply cannot be paid in crystals
+        //  perWood/perStone are 0, so a wood-short repair simply cannot be paid in crystals
         //  and says so. Inventing rates for them would be economy policy, which is exactly
         //  why this slice sat blocked -- and a zero read as "costs nothing" would be the
         //  free-repair exploit MaterialsZero was fixed to close.
@@ -721,15 +753,15 @@ namespace DeNelle.Village
         public static CoreCost CrystalPriceFor(CoreCost shortfall, RepairCrystalRate rate, out bool convertible)
         {
             int wood = Mathf.Max(0, shortfall.wood);
-            int food = Mathf.Max(0, shortfall.food);
+            int food = Mathf.Max(0, shortfall.stone);
             int iron = Mathf.Max(0, shortfall.iron);
 
             convertible = (wood == 0 || rate.perWood > 0f)
-                       && (food == 0 || rate.perFood > 0f)
+                       && (food == 0 || rate.perStone > 0f)
                        && (iron == 0 || rate.perIron > 0f);
 
             float crystals = wood * Mathf.Max(0f, rate.perWood)
-                           + food * Mathf.Max(0f, rate.perFood)
+                           + food * Mathf.Max(0f, rate.perStone)
                            + iron * Mathf.Max(0f, rate.perIron);
             // Ceil, like every other repair price: the house never rounds a shortfall down to free.
             return new CoreCost { crystals = Mathf.CeilToInt(crystals) };
@@ -744,12 +776,12 @@ namespace DeNelle.Village
         {
             var econ = EconomyService.Instance;
             int wood = econ != null ? econ.Wood : 0;
-            int food = econ != null ? econ.Food : 0;
+            int food = econ != null ? econ.Stone : 0;
             int iron = econ != null ? econ.Iron : 0;
             return new CoreCost
             {
                 wood = Mathf.Max(0, cost.wood - wood),
-                food = Mathf.Max(0, cost.food - food),
+                stone = Mathf.Max(0, cost.stone - food),
                 iron = Mathf.Max(0, cost.iron - iron),
                 crystals = 0,
             };
@@ -783,7 +815,7 @@ namespace DeNelle.Village
             blended = new CoreCost
             {
                 wood     = cost.wood - shortfall.wood,
-                food     = cost.food - shortfall.food,
+                stone     = cost.stone - shortfall.stone,
                 iron     = cost.iron - shortfall.iron,
                 crystals = cost.crystals + price.crystals,
             };
@@ -890,11 +922,11 @@ namespace DeNelle.Village
             var c = new CoreCost
             {
                 wood = repo.cost.wood,
-                food = repo.cost.food,
+                stone = repo.cost.stone,
                 iron = repo.cost.iron,
                 crystals = 0,
             };
-            found = c.wood > 0 || c.food > 0 || c.iron > 0;
+            found = c.wood > 0 || c.stone > 0 || c.iron > 0;
             return c;
         }
 
@@ -935,7 +967,7 @@ namespace DeNelle.Village
         /// DescribeMaterials were blind to them.
         /// </summary>
         public static bool MaterialsZero(CoreCost c)
-            => c.wood == 0 && c.food == 0 && c.iron == 0 && c.crystals == 0;
+            => c.wood == 0 && c.stone == 0 && c.iron == 0 && c.crystals == 0;
 
         /// <summary>
         /// Player-facing materials list, e.g. "12 wood, 4 iron" (skips zero slots;
@@ -946,7 +978,7 @@ namespace DeNelle.Village
             // WO-697: currency amounts render through the ONE kit formatter
             // (ElarionUi.CompactNumber — verbatim below 10k, "98.6k"/"1.2m" above),
             // so a six-digit rebuild price can never clip a banner/prompt line.
-            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.wood), ("iron", "Iron", c.iron), ("stone", "Stone", c.food), ("crystal", "Crystals", c.crystals) });
+            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.wood), ("iron", "Iron", c.iron), ("stone", "Stone", c.stone), ("crystal", "Crystals", c.crystals) });
             // ⚠ Crystals MUST be listed for the same reason MaterialsZero must count them:
             // without this line a crystals-only cost renders as "nothing" in the player's own
             // prompt WHILE BEING CHARGED. A price the UI calls nothing is worse than a wrong
@@ -983,7 +1015,7 @@ namespace DeNelle.Village
             foreach (var item in CollectRepairAllSet())
             {
                 total.wood += item.Cost.wood;
-                total.food += item.Cost.food;
+                total.stone += item.Cost.stone;
                 total.iron += item.Cost.iron;
             }
             return total;
@@ -1070,7 +1102,7 @@ namespace DeNelle.Village
                 Guard.Try("Repair", $"RepairAll fix '{item.Name}'", () => fix?.Invoke());
                 repaired++;
                 spent.wood += price.wood;
-                spent.food += price.food;
+                spent.stone += price.stone;
                 spent.iron += price.iron;
                 spent.crystals += price.crystals;
                 // REP-1 post-fix state: re-read the live fraction AFTER the fix ran —
@@ -1214,7 +1246,7 @@ namespace DeNelle.Village
         {
             var econ = EconomyService.Instance;
             if (econ == null) return "<no EconomyService>";
-            return $"W{econ.Wood} I{econ.Iron} S{econ.Food}";
+            return $"W{econ.Wood} I{econ.Iron} S{econ.Stone}";
         }
 
         /// <summary>
@@ -1445,6 +1477,96 @@ namespace DeNelle.Village
         {
             if (Input.touchCount > 0) return Input.GetTouch(0).position;
             return Input.mousePosition;
+        }
+
+        /// <summary>
+        /// WO-1708 criterion 1 — true when this frame's pointer press is over a uGUI
+        /// widget, so <see cref="HandleTap"/> must not also raycast the world behind it.
+        ///
+        /// TOUCH USES THE fingerId OVERLOAD, and that is not a style choice. Unity's
+        /// EventSystem reference states, verbatim: "If you use IsPointerOverGameObject()
+        /// without a parameter, it points to the 'left mouse button' (pointerId = -1);
+        /// therefore when you use IsPointerOverGameObject for touch, you should consider
+        /// passing a pointerId to it Note that for touch, IsPointerOverGameObject should be
+        /// used with ''OnMouseDown()'' or ''Input.GetMouseButtonDown(0)'' or
+        /// ''Input.GetTouch(0).phase == TouchPhase.Began''." The parameterless form would
+        /// therefore answer about a mouse that does not exist on the Seeker and return
+        /// false for every real finger — i.e. no guard at all on the one platform that
+        /// produced this ticket. The documented call site is the TouchPhase.Began frame,
+        /// which is exactly where <see cref="TapPressedThisFrame"/> gates this path.
+        ///
+        /// A null EventSystem means no uGUI event system is present at all, so nothing
+        /// could have consumed the press: returns false (world tap allowed) rather than
+        /// silently swallowing every tap in a scene that has no UI.
+        /// </summary>
+        private static bool PointerIsOverUi()
+        {
+            var es = EventSystem.current;
+            if (es == null) return false;
+
+            if (Input.touchCount > 0)
+            {
+                Touch t = Input.GetTouch(0);
+                if (!es.IsPointerOverGameObject(t.fingerId)) return false;
+                string touchLine =
+                    $"world tap IGNORED - the press landed on UI (touch, fingerId={t.fingerId}, " +
+                    $"screen {t.position.x:F0},{t.position.y:F0}). No world raycast, no repair " +
+                    "selection. WO-1708 criterion 1: before this guard the same press was ALSO " +
+                    "raycast into the world behind the button.";
+                FlowTrace.Throttle("Repair", "tap-over-ui", 2f, touchLine);
+                return true;
+            }
+
+            if (!es.IsPointerOverGameObject()) return false;
+            Vector3 m = Input.mousePosition;
+            string mouseLine =
+                $"world tap IGNORED - the press landed on UI (mouse, pointerId=-1, " +
+                $"screen {m.x:F0},{m.y:F0}). No world raycast, no repair selection. " +
+                "WO-1708 criterion 1.";
+            FlowTrace.Throttle("Repair", "tap-over-ui", 2f, mouseLine);
+            return true;
+        }
+
+        /// <summary>
+        /// WO-1708 criterion 2 — renders <paramref name="t"/> and up to
+        /// <paramref name="levels"/> of its ancestors as
+        /// <c>[0] name tag=Untagged {BoxCollider, MeshRenderer} &lt;- [1] ...</c>, so a
+        /// capture can say WHY <see cref="RepairTarget.TryWrap"/> refused a hit instead of
+        /// only that it did. Transform is omitted from every level (it is on all of them
+        /// and carries no signal); a destroyed-script slot renders as
+        /// <c>&lt;missing script&gt;</c> because a broken component reference is itself a
+        /// candidate cause. Public + static so a regression can assert the shape without a
+        /// controller instance or a play session.
+        /// </summary>
+        public static string DescribeHitChain(Transform t, int levels)
+        {
+            if (t == null) return "<null>";
+            if (levels < 1) levels = 1;
+
+            var sb = new System.Text.StringBuilder();
+            int level = 0;
+            for (var cur = t; cur != null && level < levels; cur = cur.parent, level++)
+            {
+                if (level > 0) sb.Append(" <- ");
+                sb.Append("[").Append(level).Append("] ").Append(cur.name);
+                sb.Append(" tag=").Append(cur.tag).Append(" ").Append("{");
+
+                var comps = cur.GetComponents<Component>();
+                bool wroteOne = false;
+                for (int i = 0; i < comps.Length; i++)
+                {
+                    var c = comps[i];
+                    // A null slot is a MISSING SCRIPT, not an empty one — report it.
+                    string typeName = c == null ? "<missing script>" : c.GetType().Name;
+                    if (c is Transform) continue;
+                    if (wroteOne) sb.Append(", ");
+                    sb.Append(typeName);
+                    wroteOne = true;
+                }
+                if (!wroteOne) sb.Append("none");
+                sb.Append("}");
+            }
+            return sb.ToString();
         }
 
         /// <summary>

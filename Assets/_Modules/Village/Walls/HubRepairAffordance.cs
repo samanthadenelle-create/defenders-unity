@@ -80,7 +80,7 @@ namespace DeNelle.Village
         private string _lastClipReported;
 
         // Last-announced state so FlowTrace logs transitions, not every poll.
-        private enum Vis { Uninit, HiddenInBattle, HiddenNothingDamaged, AvailableAffordable, AvailableShort }
+        private enum Vis { Uninit, HiddenInBattle, HiddenNothingDamaged, HiddenPanelOpen, AvailableAffordable, AvailableShort }
         private Vis _last = Vis.Uninit;
 
         /// <summary>
@@ -265,6 +265,36 @@ namespace DeNelle.Village
             SetVisible(false);
         }
 
+        /// <summary>
+        /// WO-1708 criterion 3 — react to a modal opening on the SAME frame it opens.
+        /// <see cref="Refresh"/> alone would leave the card painted for up to
+        /// <see cref="RefreshInterval"/> (0.75 s) after the pause menu appears, which is
+        /// long enough to be exactly the screenshot the ticket carries.
+        /// </summary>
+        private void OnEnable()
+        {
+            PanelManager.OpenStateChanged -= OnPanelStateChanged;
+            PanelManager.OpenStateChanged += OnPanelStateChanged;
+        }
+
+        private void OnDisable()
+        {
+            PanelManager.OpenStateChanged -= OnPanelStateChanged;
+        }
+
+        private void OnPanelStateChanged()
+        {
+            if (!PanelManager.AnyOpen)
+            {
+                // Re-decide on the very next Update rather than popping the card back
+                // immediately — Refresh() owns the affordability/damage decision.
+                _timer = 0f;
+                return;
+            }
+            Announce(Vis.HiddenPanelOpen, default, default, false);
+            SetVisible(false);
+        }
+
         private void Update()
         {
             _timer -= Time.deltaTime;
@@ -307,6 +337,37 @@ namespace DeNelle.Village
 
         private void Refresh()
         {
+            // ***** WO-1708 criterion 3 — MODAL GATE. FIRST, and deliberately so. *****
+            //
+            // The owner's screenshots (flag_20260912-033141_00/_01.png) show `PAIR ALL` and
+            // `Wood 15  Iron 7` painted across the PAUSE menu. That is NOT a sorting-order
+            // bug: the pause modal takes overrideSorting at sortingOrder 31500
+            // (PauseController.cs:195, ElarionUiKit.cs:967) so it genuinely draws ON TOP of
+            // this canvas's 905 — but ElarionUiKit.Scrim paints the modal backdrop at
+            // alpha 0.85 (ElarionUiKit.cs:125), so 15% of whatever sits underneath reads
+            // straight through it. Raising this card's sorting order would make it worse and
+            // lowering it changes nothing; the only fix is to not be drawn at all.
+            //
+            // The seam is PanelManager — the single modal arbiter. PauseController is a
+            // registered client of it (RegisterBattleAllowed("Pause") at PauseController.cs:247,
+            // NotifyOpened at :293), and PanelManager.cs:19 records that MobileInteractButton
+            // already reads AnyOpen for exactly this reason ("prompt suppression"). Gating on
+            // AnyOpen rather than on PauseController specifically is deliberate and is the
+            // wider-correct scope: EVERY registered modal is a full-screen scrimmed surface
+            // built by the same kit, so every one of them has the same 0.85 translucency and
+            // the same bleed-through. It also keeps this file free of a DeNelle.Settings
+            // dependency it does not have.
+            //
+            // Placed before FindAnyObjectByType<WaveManager>() / EnsureRepair() so the hidden
+            // branch has no side effects — in particular it must not self-install a
+            // WallRepair_HubEngine while a menu is up.
+            if (PanelManager.AnyOpen)
+            {
+                Announce(Vis.HiddenPanelOpen, default, default, false);
+                SetVisible(false);
+                return;
+            }
+
             // OUT-OF-BATTLE gate. A pure hub scene (MainCastle_Hall - no WaveManager)
             // always qualifies. In a scene that DOES run waves, show only in the calm
             // postures (Idle before the first wave, Countdown between waves); hide
@@ -400,6 +461,13 @@ namespace DeNelle.Village
                         "(the backend sees no damaged structure). If something is visibly on fire " +
                         "right now, the damage-visual set and the repair set disagree.");
                     break;
+                case Vis.HiddenPanelOpen:
+                    FlowTrace.Step("Repair",
+                        $"hub repair affordance: HIDDEN because a modal is open (PanelManager " +
+                        $"holder='{PanelManager.OpenPanelName}'). WO-1708 criterion 3 - the kit's " +
+                        "modal scrim is alpha 0.85, so an un-hidden card at sortingOrder 905 reads " +
+                        "THROUGH the pause panel even though 31500 draws over it.");
+                    break;
                 case Vis.AvailableAffordable:
                     FlowTrace.Step("Repair",
                         $"hub repair affordance AVAILABLE + affordable: cost {WallRepairController.DescribeMaterials(cost)}, wallet={WalletLine()}");
@@ -474,25 +542,25 @@ namespace DeNelle.Village
             var econ = EconomyService.Instance;
             int w = econ != null ? econ.Wood : 0;
             int i = econ != null ? econ.Iron : 0;
-            int f = econ != null ? econ.Food : 0;
+            int f = econ != null ? econ.Stone : 0;
             return new CoreCost
             {
                 wood = Mathf.Max(0, cost.wood - w),
                 iron = Mathf.Max(0, cost.iron - i),
-                food = Mathf.Max(0, cost.food - f),
+                stone = Mathf.Max(0, cost.stone - f),
                 crystals = 0,
             };
         }
 
         private static string CostKey(CoreCost cost) =>
-            $"{cost.wood}:{cost.iron}:{cost.food}:{cost.crystals}";
+            $"{cost.wood}:{cost.iron}:{cost.stone}:{cost.crystals}";
 
         /// <summary>Compact wallet line for FlowTrace (matches WallRepairController's format).</summary>
         private static string WalletLine()
         {
             var econ = EconomyService.Instance;
             if (econ == null) return "<no EconomyService>";
-            return $"W{econ.Wood} I{econ.Iron} F{econ.Food}";
+            return $"W{econ.Wood} I{econ.Iron} F{econ.Stone}";
         }
 
         // =====================================================================

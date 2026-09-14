@@ -1860,6 +1860,7 @@ namespace DeNelle.Editor
             // pre-fence baseline and it exposed no `.Run(out` call-site for the denominator to
             // pin, so a throw inside it would have been silent in exactly the way the fence
             // exists to prevent. Same suite, same body; it is now shaped and counted like one.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "repair-tap-guard suite", () => { if (!DeNelle.Editor.Regression.RepairTapGuardRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[repair-tap-guard] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "move-manifest suite", () => { if (!DeNelle.Editor.Regression.AssetMoveManifestRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[move-manifest] " + r); });
             // (!) DO NOT WEAKEN THIS SUITE. Its header held it standalone until the orc art landed.
             // WAS RED ON [every-model-has-art] until WO-1536 (2026-09-07): enemies.json:400 said
