@@ -339,9 +339,13 @@ namespace DeNelle.Core
                     Color col = Color.white;
                     if (src != null)
                     {
-                        if (src.HasProperty("_MainTex")) tex = src.GetTexture("_MainTex");
-                        if (tex == null && src.HasProperty("_BaseMap")) tex = src.GetTexture("_BaseMap");
-                        if (src.HasProperty("_Color")) col = src.color;
+                        // Synty / PolygonFantasyKingdom graphs bind colour on _Albedo_Map, not
+                        // _MainTex/_BaseMap. Asking only those two names is how a Default Town
+                        // LightSkin rebuilt to URP/Lit with NO map and rendered flat white
+                        // (Seeker 365875, 2026-09-11 21:17:44 [Flow:TripoMatFix] NO ALBEDO).
+                        tex = DependencyClosureTrace.GetAlbedo(src);
+                        if (src.HasProperty("_BaseColor")) col = src.GetColor("_BaseColor");
+                        else if (src.HasProperty("_Color")) col = src.color;
                     }
                     // Tripo Phong materials sometimes export _Color as
                     // transparent black (0,0,0,0) — that'd render the rebuilt
@@ -520,8 +524,7 @@ namespace DeNelle.Core
                         //
                         // Report what is ACTUALLY BOUND, so a run produces DATA instead of an
                         // argument: material name, albedo texture name (or none), and the tint.
-                        Texture albedo = m.HasProperty("_BaseMap") ? m.GetTexture("_BaseMap") : null;
-                        if (albedo == null && m.HasProperty("_MainTex")) albedo = m.GetTexture("_MainTex");
+                        Texture albedo = DependencyClosureTrace.GetAlbedo(m);
                         Color tint = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor")
                                    : (m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white);
                         string matName = string.IsNullOrEmpty(m.name) ? "<unnamed>" : m.name;
@@ -529,10 +532,25 @@ namespace DeNelle.Core
                         if (albedo == null)
                         {
                             untextured++;
-                            FlowTrace.Warn("TripoMatFix",
-                                $"NO ALBEDO on '{gameObject.name}' renderer '{r.name}' slot {i}: material='{matName}' " +
+                            // WO-1707: a Warn here never reaches break-log.jsonl / the F8 device
+                            // bridge (both are error-level-only, per BreakCaptureHarness), so this
+                            // line — the one place a general (non-arcane, non-forced-texture)
+                            // structure's white render would be diagnosed — was invisible to every
+                            // capture pulled for the seq5020/5023 white-town boots. No line here
+                            // named the wall/house cause because THIS line never shipped as a Fail.
+                            // Promote the literal-white case (no tint pushed off white either) so the
+                            // next boot that reproduces it actually lands in the device's break-log.
+                            // A non-white tint stays a Warn — that fallback is a deliberate degrade,
+                            // not the bug.
+                            bool rendersPureWhite = tint.r > 0.95f && tint.g > 0.95f && tint.b > 0.95f;
+                            string msg = $"NO ALBEDO on '{gameObject.name}' renderer '{r.name}' slot {i}: material='{matName}' " +
                                 $"shader='{sn}' tint=({tint.r:0.00},{tint.g:0.00},{tint.b:0.00}) - the URP rebuild took " +
-                                "but bound NO base map, so this mesh renders as flat tint. A shader-only VERIFY calls this OK.");
+                                "but bound NO base map, so this mesh renders as flat tint. A shader-only VERIFY calls this OK.";
+                            if (rendersPureWhite)
+                                FlowTrace.Fail("TripoMatFix", msg + " Tint is WHITE, not a designed miss-tint degrade — " +
+                                    "this is the flat-white-structure symptom (WO-1707).");
+                            else
+                                FlowTrace.Warn("TripoMatFix", msg);
                         }
                         else
                         {
@@ -551,7 +569,14 @@ namespace DeNelle.Core
                         "not take for this slot. Mesh will render as the error/legacy/unsupported fallback.");
                 }
             }
-            if (broken == 0)
+            if (broken == 0 && untextured > 0 && !_hasFallbackTint && !_hasMissTint && !_suppressBaseMap)
+            {
+                FlowTrace.Fail("TripoMatFix",
+                    $"{gameObject.name}: VERIFY UNTEXTURED — all {checkedSlots} slot(s) on a URP shader, " +
+                    $"but {untextured} slot(s) have NO albedo bound and no miss/fallback tint. " +
+                    "That is the Default Town white LightSkin (shader-only VERIFY used to call this OK).");
+            }
+            else if (broken == 0)
                 FlowTrace.Step("TripoMatFix",
                     $"{gameObject.name}: VERIFY OK — all {checkedSlots} slot(s) on a URP shader " +
                     $"(no magenta/error); {untextured} slot(s) with NO albedo bound.");

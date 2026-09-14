@@ -29,6 +29,8 @@
 
 using System.Collections.Generic;
 using DeNelle.Core;
+using DeNelle.Core.Diagnostics;
+using DeNelle.Village.Buildings.Progression;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
@@ -256,16 +258,15 @@ namespace DeNelle.Village
             // reads BaseLayout/PlacedStructure/live Building and EXCLUDES baked twins
             // (HasPlacedInstance:422-441), so this check can never self-latch off the twin
             // it is suppressing.
-            if (StructureSingleton.IsPlayerBuilt("barracks")) return false;
+            if (StructureSingleton.IsPlayerBuilt("barracks") &&
+                !AuthoredCastleStorefront.IsBoundAuthoredRoot(AuthoredCastleStorefront.Find("CastleBarracks", true), "barracks")) return false;
             // WO-834 blank-town gate: on a Build-Your-Own (migrated, never-built) save the
             // baked CastleBarracks may NOT surface at unlock — the player builds their own
             // from the palette (first is free, WO-812). Default-Town/legacy saves carry the
             // template grant ('barracks' in EverBuiltStructureIds), so this is a no-op for them.
             if (!StructureSingleton.MayBakedTwinSurface("barracks")) return false;
 
-            Transform barracks = null;
-            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                if (t != null && t.name == "CastleBarracks") { barracks = t; break; }
+            Transform barracks = AuthoredCastleStorefront.Find("CastleBarracks", true);
             if (barracks == null) return false;   // not in this scene (pack not imported / not a hub)
 
             if (!barracks.gameObject.activeSelf)
@@ -292,6 +293,13 @@ namespace DeNelle.Village
 
         private static void ApplyAll()
         {
+            // Owner 2026-09-12: Courtyard_PlazaFallback (80x80 lime plane) OVERWROTE the
+            // yard and the ring. Do not spawn it. Kill any leftover from a prior Play.
+            // EnsureCourtyardPlazaVisual();
+            RemoveRetiredCourtyardPlaza();
+            foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects())
+                foreach (var authored in root.GetComponentsInChildren<AuthoredCastleStorefront>(true))
+                    PrepareAuthoredStorefront(authored);
             for (int i = 0; i < Swaps.Length; i++) TrySwap(Swaps[i]);
             for (int i = 0; i < Places.Length; i++)
             {
@@ -438,7 +446,8 @@ namespace DeNelle.Village
             // very object it is suppressing; with no save service it answers false and this
             // is byte-for-byte the pre-existing behaviour.
             if (s.bakedName == "CastleBarracks" &&
-                (!BarracksUnlock.IsUnlocked || StructureSingleton.IsPlayerBuilt("barracks")))
+                (!BarracksUnlock.IsUnlocked || (StructureSingleton.IsPlayerBuilt("barracks") &&
+                    !AuthoredCastleStorefront.IsBoundAuthoredRoot(target, "barracks"))))
             {
                 target.gameObject.SetActive(false);
                 SuppressBakedTwinPhysics(target.gameObject,
@@ -451,6 +460,7 @@ namespace DeNelle.Village
                 return;
             }
             SkinStorefront(s, target);
+            AttachHubCollector(s, target);
         }
 
         // LEVER 1 (owner 2026-07-24, "stores pre-stand on a fresh hub", WWCD): re-surface a
@@ -464,9 +474,7 @@ namespace DeNelle.Village
         public static void ResurfaceStorefront(string bakedName)
         {
             if (string.IsNullOrEmpty(bakedName)) return;
-            Transform target = null;
-            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                if (t != null && t.name == bakedName) { target = t; break; }
+            Transform target = AuthoredCastleStorefront.Find(bakedName, true);
             if (target == null) return;   // not in this scene bake
             if (!target.gameObject.activeSelf) target.gameObject.SetActive(true);
             // WO-950: a prior gate-suppression stripped this twin's colliders + nav
@@ -486,11 +494,18 @@ namespace DeNelle.Village
             {
                 foreach (var r in existingSkin.GetComponentsInChildren<Renderer>(true))
                     if (r != null) r.enabled = true;
+                for (int i = 0; i < Swaps.Length; i++)
+                    if (Swaps[i].bakedName == bakedName) { AttachHubCollector(Swaps[i], target); break; }
                 return;
             }
 
             for (int i = 0; i < Swaps.Length; i++)
-                if (Swaps[i].bakedName == bakedName) { SkinStorefront(Swaps[i], target); return; }
+                if (Swaps[i].bakedName == bakedName)
+                {
+                    SkinStorefront(Swaps[i], target);
+                    AttachHubCollector(Swaps[i], target);
+                    return;
+                }
             // No Swap row (a storefront with no lightweight model): the re-activated baked
             // prefab renderers already make it visible — but a prior standdown may have left the
             // baked renderers disabled by a stale skin attempt; re-enable them to be safe.
@@ -659,36 +674,41 @@ namespace DeNelle.Village
                 return;
             }
 
-            // Bind BOTH the URP name and the built-in one. A URP/Lit material declares _BaseMap;
-            // the legacy path declares _MainTex. Setting only one is silently rejected by the
-            // other shader family — the same mismatch class fixed in UVscroll.cs.
+            // Bind every albedo-classified slot (URP _BaseMap, built-in _MainTex, Synty
+            // _Albedo_Map). Hard-coding the first two is the same miss StructureFactory
+            // already retired — and a throw here used to abort the rest of SkinStorefront
+            // (Seeker 365875 21:17:44 stack: ApplyForcedAlbedo).
             int slots = 0, bound = 0, propless = 0;
             string proplessShader = null;
-            foreach (var r in vis.GetComponentsInChildren<Renderer>(true))
+            Guard.Try("Hub", "forced-albedo bind " + s.bakedName, () =>
             {
-                if (r == null) continue;
-                // Play mode uses instance mats (safe to retint a one-off building); edit mode uses
-                // sharedMaterials to avoid the edit-time material-instantiation leak.
-                var mats = Application.isPlaying ? r.materials : r.sharedMaterials;
-                foreach (var m in mats)
+                foreach (var r in vis.GetComponentsInChildren<Renderer>(true))
                 {
-                    if (m == null) continue;
-                    slots++;
-                    bool hit = false;
-                    if (m.HasProperty("_BaseMap"))   { m.SetTexture("_BaseMap", tex); hit = true; }
-                    if (m.HasProperty("_MainTex"))   { m.SetTexture("_MainTex", tex); hit = true; }
-                    // A map bound under a tinted base color still reads wrong; force it neutral.
-                    if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
-                    if (m.HasProperty("_Color"))     m.SetColor("_Color", Color.white);
-                    if (hit) bound++;
-                    else
+                    if (r == null) continue;
+                    var mats = Application.isPlaying ? r.materials : r.sharedMaterials;
+                    foreach (var m in mats)
                     {
-                        propless++;
-                        if (proplessShader == null)
-                            proplessShader = m.shader != null ? m.shader.name : "(null shader)";
+                        if (m == null) continue;
+                        slots++;
+                        bool hit = false;
+                        foreach (var property in m.GetTexturePropertyNames())
+                        {
+                            if (!DependencyClosureTrace.IsAlbedoSlot(property)) continue;
+                            m.SetTexture(property, tex);
+                            hit = true;
+                        }
+                        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
+                        if (m.HasProperty("_Color"))     m.SetColor("_Color", Color.white);
+                        if (hit) bound++;
+                        else
+                        {
+                            propless++;
+                            if (proplessShader == null)
+                                proplessShader = m.shader != null ? m.shader.name : "(null shader)";
+                        }
                     }
                 }
-            }
+            });
 
             if (bound > 0)
             {
@@ -704,11 +724,31 @@ namespace DeNelle.Village
             }
             else
             {
+                // WO-1707: a bare 'Synty/Generic_Basic' shader here (device captures seq5018/5022,
+                // 2026-09-12) is the BAKED-TWIN PLACEHOLDER's own shader, not the real Tripo model's
+                // — it means SkinStorefront's model swap had not yet landed on 'vis' when this ran,
+                // i.e. the SAME not-resident-yet race as the tex==null branch above, just discovered
+                // one step later (the texture resolved; the MODEL it needs to bind onto had not).
+                // Proven by contrast against a same-day CONFIRMED-textured boot (seeker-365962-logcat,
+                // 22:31:56.581): there this call instead read "served RESIDENT from the structure warm
+                // cache" then "BOUND onto 2/2" — no propless branch at all — because the warm pass had
+                // finished during Title/HeroSelect, ~8s before Main_Castle_Overworld even loaded, so
+                // the real model was already swapped in by the time ApplyAll ran. In both white-town
+                // boots this Fail fired at t=30.6s/39.9s, ~1s after the SAME scene load — no head
+                // start. Previously this branch left the structure white FOREVER for that scene visit
+                // (no retry armed, unlike the tex==null branch). Arm the same WhenSettled retry: if
+                // the model has swapped in for real by the time content settles, the retried call
+                // finds real texture-declaring slots and binds; if the mismatch is genuinely permanent
+                // (not residency), the one-shot retry (s_texRetryArmed already dedupes) logs this same
+                // Fail once more and stops — never a loop.
                 DeNelle.Core.Diagnostics.FlowTrace.Fail("Hub",
                     $"'{s.bakedName}': forced albedo '{s.texPath}' RESOLVED but bound onto ZERO of " +
                     $"{slots} material slot(s) — no material declares _BaseMap or _MainTex " +
                     $"(first shader '{proplessShader ?? "(no materials at all)"}'). The structure " +
-                    "will render colorless. This is a SHADER PROPERTY mismatch, not a missing asset.");
+                    "will render colorless. This is a SHADER PROPERTY mismatch OR the baked-twin " +
+                    "placeholder was still standing in for the real model. Arming one retry for when " +
+                    "structure content settles.");
+                ArmForcedAlbedoRetry(s);
             }
         }
 
@@ -735,11 +775,38 @@ namespace DeNelle.Village
             });
         }
 
+        /// <summary>Keep owner-authored meshes and poses; repair materials and bind existing capabilities only.</summary>
+        public static void PrepareAuthoredStorefront(AuthoredCastleStorefront authored)
+        {
+            if (authored == null || !authored.PreserveAuthoredVisual) return;
+            if (authored.RepairTripoMaterials)
+            {
+                var fixer = authored.GetComponent<TripoMaterialFixer>();
+                if (fixer == null) fixer = authored.gameObject.AddComponent<TripoMaterialFixer>();
+                if (authored.ForcedAlbedo != null) fixer.SetForcedSourceTexture(authored.ForcedAlbedo);
+            }
+            if (!Application.isPlaying || !authored.gameObject.activeInHierarchy) return;
+            if (string.IsNullOrEmpty(authored.CanonicalId)) return; // Realm Store owns its direct panel door.
+            var entry = DeNelle.Core.Catalog.CatalogRegistry.Get(authored.CanonicalId);
+            if (entry == null)
+            {
+                FlowTrace.Warn("Hub", "Authored storefront awaits catalog: " + authored.CanonicalId);
+                return;
+            }
+            StructureFactory.AttachAuthoredCapabilities(authored.gameObject, entry);
+        }
+
         // The lightweight-skin body of a swap (extracted from TrySwap so ResurfaceStorefront
         // can apply it without re-running the standdown/barracks gates). Idempotent by the
         // LightSkin_ marker child.
         private static void SkinStorefront(Swap s, Transform target)
         {
+            var authored = target.GetComponent<AuthoredCastleStorefront>();
+            if (authored != null && authored.PreserveAuthoredVisual)
+            {
+                PrepareAuthoredStorefront(authored);
+                return;
+            }
             string marker = MarkerPrefix + s.bakedName;
             var existing = target.Find(marker);
             if (existing != null)
@@ -796,6 +863,8 @@ namespace DeNelle.Village
             }
             if (s.scaleX > 0f)   // explicit (non-uniform) scale overrides the fit-to-height
                 vis.transform.localScale = new Vector3(s.scaleX, s.scaleY, s.scaleZ);
+            if (!s.setLocalPos)
+                SetBottomToGround(vis, GroundY);
             // Escape hatch: force a texture when the model's embedded material didn't bind one
             // (renders colorless). The Tripo fixer reads the source material's _MainTex/_BaseMap;
             // a model whose FBX material lost that link (e.g. the arcane tower) needs it forced.
@@ -869,6 +938,46 @@ namespace DeNelle.Village
         // No raycast, no sampling — the bottom is set to the scripted GroundY, so the base sits ON the
         // ground every session (editor==build). The Tree of Life grounds off the SAME value via
         // SeatOnGroundOnStart._groundY (default 0, SeatOnGroundOnStart.cs:40) — one ground for the category.
+        // Owner 2026-09-12: do NOT spawn Courtyard_PlazaFallback. That 80x80 lime plane
+        // rewrote the yard. The 8 injector LightSkins are the town; leave the baked ground.
+        private static void RemoveRetiredCourtyardPlaza()
+        {
+            var go = GameObject.Find("Courtyard_PlazaFallback");
+            if (go != null)
+            {
+                FlowTrace.Step("Hub", "destroyed leftover Courtyard_PlazaFallback (80x80 lime plane retired).");
+                Object.Destroy(go);
+            }
+        }
+
+        /// <summary>
+        /// Hub farm/lumbermill are LightSkin swaps on baked twins. StructureFactory never
+        /// runs for them on the founding load (BaseLayoutLoader saw an empty layout, then
+        /// migration latched standdown for the NEXT hub load). Attach the same
+        /// ResourceCollector + CollectorStackView a player-placed collector gets.
+        /// </summary>
+        private static void AttachHubCollector(Swap s, Transform target)
+        {
+            if (target == null || !target.gameObject.activeInHierarchy) return;
+            string buildingId = CollectorBuildingIdForBaked(s.bakedName);
+            if (buildingId == null) return;
+
+            var col = target.GetComponent<ResourceCollector>();
+            if (col == null) col = target.gameObject.AddComponent<ResourceCollector>();
+            col.Configure(buildingId);
+            CollectorStackView.Attach(col);
+            FlowTrace.Step("Harvest",
+                $"hub '{s.bakedName}' ResourceCollector configured id={buildingId} " +
+                "(same attach as StructureFactory.Create ResourceCollector).");
+        }
+
+        private static string CollectorBuildingIdForBaked(string bakedName)
+        {
+            if (bakedName == "Windmill_Food_Storefront") return ResourceBuildingProgression.FarmId;
+            if (bakedName == "Lumbermill_Wood_Storefront") return ResourceBuildingProgression.LumbermillId;
+            return null;
+        }
+
         private static void SetBottomToGround(GameObject vis, float groundY)
         {
             if (vis == null) return;
@@ -890,9 +999,7 @@ namespace DeNelle.Village
         // Name match across the loaded scene(s). Runs once per hub load (not per frame).
         private static Transform FindByName(string name)
         {
-            foreach (var t in Object.FindObjectsByType<Transform>())
-                if (t != null && t.name == name) return t;
-            return null;
+            return AuthoredCastleStorefront.Find(name);
         }
     }
 }

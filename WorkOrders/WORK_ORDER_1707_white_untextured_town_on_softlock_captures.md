@@ -1,6 +1,6 @@
 # WORK ORDER 1707 - White / untextured town in the seq5020 + seq5023 softlock screenshots
 
-**Status:** READY TO IMPLEMENT
+**Status:** PARTIAL — Hub/arcane mechanism proven + fixed (retry armed); wall/house mechanism UNPROVEN, instrumentation added to close the gap on the next capture. Lead must gate + verify + get a fresh capture. See `.RESULT.md`.
 **Minted:** 2026-09-14 by the CLI lead from F8 triage
 **Source of truth:** `docs/F8_TRIAGE_2026-09-14.md` sections 1 (cluster C, `:19`) and 4 (`:103-116`).
 **Class (CLAUDE.md section 12):** **built-but-invisible** - geometry renders, surfaces are colourless.
