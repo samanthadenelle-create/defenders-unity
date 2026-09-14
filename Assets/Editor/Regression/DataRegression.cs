@@ -409,6 +409,7 @@ namespace DeNelle.Editor
             if (!KnightDirectionalDeathRegression.Run(out var knightDeathReason)) failures.Add(knightDeathReason); else log.AppendLine("[knight-directional-death] " + knightDeathReason);
             if (!DeNelle.Editor.Regression.ArmyMusterLayoutRegression.Run(out var armyMusterLayoutReason)) failures.Add(armyMusterLayoutReason); else log.AppendLine("[army-muster-layout] " + armyMusterLayoutReason);
             if (!StructureSeatRegression.Run(out var seatReason)) failures.Add(seatReason); else log.AppendLine("[structure-seat] " + seatReason);
+            if (!StructureRemovalHuskRegression.Run(out var removalHuskReason)) failures.Add(removalHuskReason); else log.AppendLine("[removal-husk] " + removalHuskReason);
             if (!StructureCadenceRegression.Run(out var cadenceReason)) failures.Add(cadenceReason); else log.AppendLine("[structure-cadence] " + cadenceReason);
             if (!StructureLoadBoundedRegression.Run(out var loadBoundedReason)) failures.Add(loadBoundedReason); else log.AppendLine("[structure-load-bounded] " + loadBoundedReason);
             if (!DeNelle.Editor.Regression.StructureFactoryResidencyRetryRegression.Run(out var residencyRetryReason)) failures.Add(residencyRetryReason); else log.AppendLine("[structure-factory-residency-retry] " + residencyRetryReason);

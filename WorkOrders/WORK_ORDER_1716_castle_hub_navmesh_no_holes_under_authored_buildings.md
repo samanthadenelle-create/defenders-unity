@@ -1,6 +1,8 @@
 # WORK ORDER 1716 - Castle hub navmesh gizmo shows one unbroken sheet, no holes under authored buildings
 
-**Status:** READY TO IMPLEMENT - owner live Unity Editor observation, RCA lane assigned
+**Status:** FIXED - root cause proven (CastleHubBuilder.SkinHostUpright stripped a host's visual without clearing its collider/NavMeshObstacle; NavMeshBakeFinal resolved the twin by bare name, predates 2026-09-14); StructureVisualStrip + EnsureNoHusk close the gap for all future removals; a one-time cleanup command exists for the live scene (deferred - a separate, pre-existing unrelated scene diff needs its own triage first, see note below); COMPILE_GATE_OK 10:38, REGRESSION_OK 526/526 10:44 incl. new [removal-husk] proof; PO felt-verifies and closes
+(see `WORK_ORDER_1716_castle_hub_navmesh_no_holes_under_authored_buildings.RESULT.md`; the one-time
+scene repair `Defenders/Castle/Remove invisible structure husks` has NOT been run yet)
 **Minted:** 2026-09-14 by the CLI lead (Fable seat), from the owner inspecting `Main_Castle_Overworld`
 directly in the Editor after reporting "footprint issues with the castle hub, guessing something with
 the bake" earlier the same session
@@ -233,3 +235,17 @@ to land through the sanctioned path:
 3. Cross-check against WO-1710's original report: does removing this leftover, plus WO-1710's already-
    shipped fix, together resolve troop training + the original "couldn't re-add a barracks" symptom on
    a fresh test? This needs an owner playtest to close, not just a code read.
+
+
+## Lead note 2026-09-14: scene cleanup deliberately DEFERRED
+
+`Assets/Scenes/Main_Castle_Overworld.unity` already carries a large uncommitted diff (2432
+insertions / 1952 deletions) predating this session - file mtime 2026-09-13 19:36, before tonight
+started. Sampled object names show several NPC interactables and `OuterWalls_Towers_Battlements`
+disappearing, some renamed cleanly (`ArcaneTower_MagicUpgrades`), several going BLANK with no
+replacement name - consistent with an interrupted or partial regeneration from the inherited Codex
+tree, not a clean pass. Running `StructureHuskCleanup.RemoveBatch` now would open, modify and save
+this same scene file, silently folding that unreviewed diff into the husk-removal commit. The code
+fix (this commit) does not require the cleanup to be run to be correct - it prevents FUTURE ghosts;
+the SPECIFIC existing ghost `CastleBarracks` stays in the live scene until that pending diff is
+triaged on its own, separately, and the cleanup command run cleanly against a known-clean scene state.

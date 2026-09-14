@@ -596,10 +596,20 @@ namespace DeNelle.Editor
                     toDestroy.Add(c.gameObject);
             }
             // Also strip renderers on the host itself (polyperfect prefab root often carries mesh).
-            foreach (var r in host.GetComponents<Renderer>())
-                Object.DestroyImmediate(r);
-            foreach (var mf in host.GetComponents<MeshFilter>())
-                Object.DestroyImmediate(mf);
+            //
+            // WO-1716 — THIS STRIP USED TO BE THE WHOLE STORY, and that is how
+            // `Main_Castle_Overworld` ended up with an invisible, solid, navmesh-carving
+            // `CastleBarracks`: the polyperfect MeshCollider shaped by the mesh destroyed here stayed
+            // live with nothing rendering over it, and NavMeshBakeFinal.PrepareBakedTwinsForDynamicCarving
+            // later sized a carving NavMeshObstacle (16.9 x 5.08 x 14.5) off that orphan. The owner
+            // deleted that one object in the Editor and re-baked: the oversized hole was gone.
+            //
+            // The close is EnsureNoHusk, below, AFTER the new visual resolves — not here. The host's
+            // collider must survive a SUCCESSFUL skin, because SkinOptions.Structure sets
+            // StripColliders=true ("the host owns its collider", VisualFactory.cs:53,112,368-370):
+            // clearing it here would let the player walk through every re-skinned structure.
+            string stripReason = "SkinHostUpright re-skin of '" + host.name + "'";
+            DeNelle.Village.World.StructureVisualStrip.StripHostVisual(host, stripReason);
             foreach (var go in toDestroy)
                 Object.DestroyImmediate(go);
 
@@ -611,6 +621,15 @@ namespace DeNelle.Editor
             var visual = VisualFactory.Skin(host.transform, modelPath, opts);
             if (visual == null)
             {
+                // WO-1716: the strip above already ran, so the host is INVISIBLE from here on. THIS is
+                // the branch that minted the CastleBarracks ghost, and it used to end at a silent
+                // LogWarning. Close the pair: with nothing rendering, the host's solid mesh collision
+                // and any carve sized from it must go too, or the scene keeps an invisible wall.
+                DeNelle.Village.World.StructureVisualStrip.EnsureNoHusk(host, stripReason + " (Skin FAILED)");
+                DeNelle.Core.Diagnostics.FlowTrace.Fail("Hub",
+                    $"upright Skin FAILED for '{host.name}' model '{modelPath}' - the host is now " +
+                    "INVISIBLE (its visual was stripped first); its mesh collision + carve were " +
+                    "cleared so it cannot block. Re-skin it or destroy the object (WO-1716).");
                 Debug.LogWarning($"[CastleHubBuilder] upright Skin failed for '{host.name}' model '{modelPath}'.");
                 return false;
             }
@@ -619,6 +638,12 @@ namespace DeNelle.Editor
             // courtyard parent stays 0; world Y follows CastleFootprintLiftY via root.
             var lp = host.transform.localPosition;
             host.transform.localPosition = new Vector3(lp.x, 0f, lp.z);
+
+            // WO-1716 invariant assert. A NO-OP on the normal path (the skinned visual renders, so
+            // the host is not a husk and keeps the collider SkinOptions.Structure expects it to own).
+            // It only fires if Skin returned a non-null visual that nevertheless renders nothing —
+            // which is precisely the silent case nobody was watching for.
+            DeNelle.Village.World.StructureVisualStrip.EnsureNoHusk(host, stripReason + " (post-skin assert)");
 
             Log($"upright skinned '{host.name}' ← {modelPath} LocalRotation=({pitchDeg},{yawDeg},0) FitHeight={opts.FitHeight:0.##}m");
             return true;

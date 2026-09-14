@@ -321,7 +321,42 @@ namespace DeNelle.Editor
                     continue;
                 }
 
+                // WO-1716 — REFUSE TO CARVE OFF SOMETHING NOBODY CAN SEE. This loop is the step that
+                // WEAPONISED the invisible `CastleBarracks` husk: it resolves a twin BY NAME, then
+                // sizes a carving obstacle from that object's collider bounds. Handed a host whose
+                // MeshFilter/MeshRenderer had been stripped (CastleHubBuilder.SkinHostUpright, before
+                // its WO-1716 fix) it faithfully produced a 16.9 x 5.08 x 14.5 carve over empty
+                // ground. A hole the player cannot see the source of is strictly worse than no hole:
+                // the owner spent a session hunting it. Skip it, drop any carve it already owns, and
+                // say so - the object itself needs removing, which is a scene fix, not a bake fix.
                 var cols = go.GetComponentsInChildren<Collider>(false);
+
+                bool rendersNothing = go.GetComponentsInChildren<Renderer>(true).Length == 0;
+                if (rendersNothing)
+                {
+                    // ⛔ HOLD ITS COLLIDERS OUT OF THE BAKE FIRST, THEN DROP THE OBSTACLE. Skipping
+                    // straight past would leave those colliders IN the bake and freeze the very same
+                    // footprint as a PERMANENT STATIC hole in the surface asset - the method's own
+                    // "never one without the other" rule, broken in the other direction.
+                    foreach (var c in cols)
+                    {
+                        if (c == null || !c.enabled) continue;
+                        c.enabled = false;
+                        suppressed.Add(c);
+                    }
+
+                    var ghostObs = go.GetComponent<UnityEngine.AI.NavMeshObstacle>();
+                    bool hadObstacle = ghostObs != null;
+                    if (hadObstacle) Object.DestroyImmediate(ghostObs);
+                    Debug.LogWarning($"[NavMeshBakeFinal] bakedTwin '{name}' RENDERS NOTHING - it is an " +
+                                     "invisible husk (WO-1716), not a building. Refusing to size a carve from " +
+                                     "its colliders, and holding them out of this bake so no static hole is " +
+                                     "frozen in either" +
+                                     (hadObstacle ? "; removed the carving NavMeshObstacle it was already holding" : "") +
+                                     ". Remove the GameObject via Defenders/Castle/Remove invisible structure husks.");
+                    continue;
+                }
+
                 if (cols.Length == 0)
                 {
                     Debug.LogWarning($"[NavMeshBakeFinal] bakedTwin '{name}' has NO collider — it never carved, " +
@@ -381,7 +416,9 @@ namespace DeNelle.Editor
         /// than deserialized so this keeps working if the catalog schema gains a field — the same
         /// reasoning as TripoStructureMaterialAudit.VerifyCatalogArt.
         /// </summary>
-        private static List<string> ReadBakedTwinNames()
+        /// <summary>Public since WO-1716 so the husk-cleanup command reads the SAME list this bake
+        /// reads, rather than keeping a second copy of the twin names (CLAUDE.md sec.5).</summary>
+        public static List<string> ReadBakedTwinNames()
         {
             var names = new List<string>();
             string path = "Assets/Resources/Data/Canonical/structures-catalog.json";
