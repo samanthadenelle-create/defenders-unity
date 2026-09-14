@@ -324,7 +324,22 @@ namespace DeNelle.Village
         /// <param name="via">Trace label for which seam delivered the hit.</param>
         private void ApplyDamage(float amount, string via)
         {
-            if (amount <= 0f || IsDestroyed) return;
+            // §12 — THE SILENT REJECT, MADE LOUD. This guard used to `return` with no line at
+            // all, which makes "the hit landed and was refused" byte-identical in the log to
+            // "the swing never reached this wall" — the exact ambiguity behind the reported
+            // "attacking a segment shows no damage" symptom. A reject here with IsDestroyed=true
+            // while the player still SEES a standing wall is the collapse-without-visual case;
+            // a reject with a non-positive amount is an upstream damage-calc fault instead.
+            // Throttled per instance: a warband chewing one dead panel would otherwise emit a
+            // line per troop per tick (memory: logcat-ring-buffer-destroys-evidence).
+            if (amount <= 0f || IsDestroyed)
+            {
+                string rejectReason = IsDestroyed ? "already-destroyed" : "non-positive-amount";
+                FlowTrace.Throttle(Sys, $"wall-reject:{GetInstanceID()}", 1f,
+                    $"WallSegment '{name}' REFUSED {amount:0.##} damage ({via}) - {rejectReason}; " +
+                    $"damage={_damage:0}/100 collapsed={_collapsed} faction={Faction}.");
+                return;
+            }
 
             // S5 — higher tiers absorb the hit more slowly (effective-HP scaling on the
             // shared 0-100 track). The collapse threshold stays 100; only the rate changes.
@@ -340,13 +355,23 @@ namespace DeNelle.Village
             // only the hero's own walls; on an enemy raid wall (Faction == Hostile) they
             // used to make the target up to 50% tougher, so investing in defence made
             // raiding harder.
+            // §12: the reduction is CAPTURED, not just applied, so the trace below can show
+            // whether a hit was eaten by the BULWARK gate rather than by the tier divide.
+            // Behaviour is byte-identical — the reader is still called only when Friendly.
+            float bulwark = 0f;
             if (Faction == CombatFaction.Friendly)
-                effective *= 1f - StructureToughnessReduction("WallSegment");
+            {
+                bulwark = StructureToughnessReduction("WallSegment");
+                effective *= 1f - bulwark;
+            }
 
             _damage = Mathf.Clamp(_damage + effective, 0f, 100f);
             DamageChanged?.Invoke(_damage);
+            // §12 — carries RAW amount -> effective, so a hit that arrives fat and lands thin
+            // names its own attenuator (tier divisor vs BULWARK) instead of needing a second line.
             FlowTrace.Throttle(Sys, $"wall-hit:{GetInstanceID()}", 1f,
-                $"WallSegment '{name}' took {effective:0.#} ({via}, tier {t}, {Faction}) -> " +
+                $"WallSegment '{name}' took {amount:0.##} raw -> {effective:0.##} effective " +
+                $"({via}, tier {t}, toughDiv {ToughnessFor(t):0.##}, bulwark {bulwark:P0}, {Faction}) -> " +
                 $"damage {_damage:0}/100 ({HpFraction:P0} standing).");
 
             if (_damage >= 100f) Collapse();
@@ -410,6 +435,17 @@ namespace DeNelle.Village
         {
             var renderers = GetComponentsInChildren<Renderer>(true);
 
+            // §12 — Guard.Try around StartCoroutine catches only a throw BEFORE the first yield;
+            // a fault on any later frame is silent, and so is "zero renderers", which sinks the
+            // transform while leaving nothing visibly moving. Logging the renderer count at the
+            // START and a settle line at the END makes the visual half of the collapse
+            // falsifiable: COLLAPSED with no `ruin settled` line = the tell died mid-routine,
+            // which is a DIFFERENT bug from the collapse never firing. Once per segment.
+            int rendererCount = renderers != null ? renderers.Length : 0;
+            FlowTrace.Once(Sys, $"wall-collapse-visual:{GetInstanceID()}",
+                $"WallSegment '{name}' collapse tell STARTED over {rendererCount} renderer(s), " +
+                $"{_collapseSeconds:0.##}s sink.");
+
             // Sink distance from the actual art bounds when there is art, else the
             // configured tier height (raid walls never get Configure()'d, so _height
             // sits at its serialized default for them).
@@ -436,6 +472,12 @@ namespace DeNelle.Village
             }
             transform.position = to;
             PushCollapseRamp(renderers, 1f);
+
+            // §12 — the terminal proof. Absence of this line on a segment that logged COLLAPSED
+            // is the collapse-without-visual desync; presence means the ruin really did sink and
+            // the symptom lies elsewhere (e.g. the art is a sibling the sink never moved).
+            FlowTrace.Once(Sys, $"wall-collapse-settled:{GetInstanceID()}",
+                $"WallSegment '{name}' ruin SETTLED at y={to.y:0.##} (fell {(from.y - to.y):0.##}m).");
         }
 
         /// <summary>
@@ -496,6 +538,19 @@ namespace DeNelle.Village
         /// flow). Clamped at 0.
         /// </summary>
         /// <param name="amount">Damage to remove. Non-positive values are ignored.</param>
+        // Saved condition is already post-mitigation. Reconstruction must not apply talents twice.
+        public void RestoreOwnedTownCondition(float condition)
+        {
+            if (gameObject.scene.name != DeNelle.Village.World.Camps.OwnedTownScenePose.SceneName &&
+                gameObject.scene.name != DeNelle.Core.Combat.PracticeCombatPolicy.SceneName)
+                throw new System.InvalidOperationException("Owned-town restoration requires its isolated scene.");
+            if (float.IsNaN(condition) || float.IsInfinity(condition) || condition < 0 || condition > 1 || _collapsed)
+                throw new System.InvalidOperationException("Owned-town condition requires a fresh valid structure.");
+            _damage = (1f - condition) * 100f;
+            DamageChanged?.Invoke(_damage);
+            if (_damage >= 100f) Collapse();
+        }
+
         public void Repair(float amount)
         {
             // WO-753 ruling (owner 2026-07-19, SUPERSEDES WO-672's repair-back-online): a DESTROYED

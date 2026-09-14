@@ -1034,9 +1034,17 @@ namespace DeNelle.Village
             // WO-1595: PreferUnit lives on RaidAssaultAi (PrefersUnitOverStructure retired).
             if (FlowTrace.Enabled)
             {
+                // §12 — the three RAW INPUTS RaidAssaultAi.ResolvePhase was actually handed are
+                // printed alongside the phase it returned, so the decision is falsifiable from the
+                // log without re-deriving it. ResolvePhase itself is a PURE STATIC with no troop
+                // identity and no throttle key, so this call site is the instrumented seam — never
+                // instrument inside it. Reads as: routeOpen=False with no wall left standing is the
+                // "route never re-evaluates after a collapse" hypothesis (cross-check the adjacent
+                // `routeObj=` status, which names WHY: detour / PartialPath / no-spire / PathComplete).
                 FlowTrace.Throttle("RaidAI", $"raid-ai-phase-{GetInstanceID()}", 1f,
                     $"id={_troopId} job={_assaultJob} phase={_assaultPhase} " +
-                    $"peelThreat={peelThreat} routeObj={_objectiveRouteStatus} " +
+                    $"in[peel={peelThreat}, routeOpen={_routeToObjectiveOpen}, objInRange={objectiveInAttackRange}] " +
+                    $"routeObj={_objectiveRouteStatus} " +
                     $"bucket={bucket} preferUnit={_lastPreferUnit} " +
                     $"has[unit={hasUnit},obj={hasObjective},wall={hasOtherStruct}]");
             }

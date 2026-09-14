@@ -44,6 +44,7 @@
 using System;
 using UnityEngine;
 using DeNelle.Core.Combat;        // IDamageable / IDamageableStructure / DamageElement
+using DeNelle.Core.Diagnostics;   // FlowTrace (CLAUDE.md §12)
 
 namespace DeNelle.Village
 {
@@ -66,6 +67,13 @@ namespace DeNelle.Village
     [DisallowMultipleComponent]
     public sealed class Gate : MonoBehaviour, IDamageable, IDamageableStructure
     {
+        /// <summary>
+        /// §12 trace system tag. Deliberately NOT "WallSegment": the whole point of the damage
+        /// traces below is that a gate and the wall beside it are indistinguishable to a player
+        /// aiming at the perimeter, so their log lines must be distinguishable to us.
+        /// </summary>
+        private const string TraceSys = "Gate";
+
         [Header("Identity")]
         [Tooltip("Stable damage id -- gate-0 (N) .. gate-3 (W). From WallLayout.Gates.")]
         [SerializeField] private string _gateId;
@@ -240,7 +248,19 @@ namespace DeNelle.Village
         /// </param>
         private void ApplyDamage(float amount, bool applyToughness)
         {
-            if (amount <= 0f || _hp <= 0f) return;
+            // §12 — a Gate and a WallSegment look IDENTICAL to a player aiming at the perimeter,
+            // and they take damage under different rules (a gate has real HP and no tier divide).
+            // This path carried NO trace at all, so a hit that landed on a gate instead of the
+            // wall beside it was invisible in the log. Both the reject and the hit are now named,
+            // throttled per instance, and say GATE explicitly so the two can never be confused.
+            if (amount <= 0f || _hp <= 0f)
+            {
+                string rejectReason = _hp <= 0f ? "already-breached" : "non-positive-amount";
+                FlowTrace.Throttle(TraceSys, $"gate-reject:{GetInstanceID()}", 1f,
+                    $"Gate '{name}' REFUSED {amount:0.##} damage - {rejectReason}; " +
+                    $"hp={_hp:0.#}/{_maxHp:0.#} faction={Faction}.");
+                return;
+            }
 
             float effective = amount;
             // WO-853 §9 — the BULWARK reduction is GATED ON FACTION. The hero's own
@@ -251,6 +271,9 @@ namespace DeNelle.Village
                 effective *= 1f - WallSegment.StructureToughnessReduction("Gate");
 
             _hp = Mathf.Max(0f, _hp - effective);
+            FlowTrace.Throttle(TraceSys, $"gate-hit:{GetInstanceID()}", 1f,
+                $"Gate '{name}' took {amount:0.##} raw -> {effective:0.##} effective " +
+                $"(toughness {applyToughness}, {Faction}) -> hp {_hp:0.#}/{_maxHp:0.#}.");
             RefreshCollapseTarget(snap: false);
             ApplyForceFieldState();
             HpChanged?.Invoke(this);

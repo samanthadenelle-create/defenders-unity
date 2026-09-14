@@ -451,7 +451,54 @@ happen. Where an observation confirms a claim above, it's noted inline; where it
 source reading didn't predict, that's flagged as a genuine open question, not folded into Parts 1-3
 until it's been traced back to a cause.
 
-*(Empty as of this document's creation — entries append below as raids are played.)*
+### Entry 1 — 2026-09-14 12:41, live raid, Breach mode ON
+
+**Screenshot:** `docs/handoffs/wall_target_breach_on_20260914.png` — HUD shows `Breach ON`, Spire 100%,
+Razed 2%, Troops 9/9, wall directly in front of the hero with light spark VFX but no visible damage
+scarring.
+
+**What the log proves, not guessed:**
+
+The *automatic* targeting/damage/collapse chain is healthy in this capture — this is real, working
+behavior, cited exactly as logged:
+
+```
+[Flow:WallSegment] WallSegment 'Wall_Outer_SE_28' took 18 (attack, tier 3, Hostile) -> damage 62/100 (38% standing).
+[Flow:WallSegment] WallSegment 'Wall_Outer_SE_28' (Hostile) COLLAPSED: 1 solid collider(s) and 1 carving obstacle(s) dropped - it no longer blocks tower line-of-sight or agent pathing.
+[Flow:RaidAI] source=auto focus='Wall_Outer_SE_27' hp=100 walls=197
+[Flow:TroopAI] id=troop-battlemage role=ranged RETARGET#14 reason=foe-died dropped='Wall_Outer_SE_28(WallSegment)' -> won='Wall_Outer_SE_27(WallSegment)' ...
+[Flow:Reticle] [hostile-admit] HOSTILE STRUCTURE 'Wall_Outer_SE_27' impl=DeNelle.Village.WallSegment faction=Hostile via physics sweep (mask=Enemy|Structure)
+```
+
+Damage applies, faction reads correctly as Hostile, tier-3 divisor is visibly working (18 incoming →
+consistent with the documented ÷2.56), collapse disables exactly 1 collider + 1 carving obstacle as
+designed, and every troop retargets to the next wall the instant the old one dies. The physics sweep
+mask genuinely includes "Structure" — the layer-mask hypothesis from Part 4's original diagnostic list
+is **disproven for this capture**.
+
+**But the real symptom is narrower than the original hypothesis list, and it's a different subsystem:**
+
+```
+[Flow:Raid] breach tap missed every WallSegment (hit 'RaidGround') - the standing order, if any, is UNCHANGED.
+```
+
+One tap was made with Breach mode active; it hit the ground plane's collider instead of a wall's. Across
+this entire ~4-second capture: **12 lines of `source=auto`, 0 lines of `source=order`** — the explicit
+Breach-tap order (WO-1719) has never once won a resolve in this session. This is not the
+damage/collapse/faction system failing — that's proven healthy above. It's specifically
+`RaidDeployController.HandleBreachTap()`'s raycast resolving to the ground instead of the tapped wall's
+collider at that screen position — narrowing the original 5-hypothesis list to something close to
+hypothesis 5 (collider/geometry mismatch), but on the **tap raycast**, not the attack hit-test, which
+this same capture proves works fine.
+
+**Open, not yet proven:** whether this is a raycast-order issue (ground collider sitting in front of/
+occluding the wall's collider from this camera angle), a raycast-radius/precision issue on a thin wall
+panel, or something else — the next capture should log the raycast's actual hit point and distance
+alongside the miss message to settle it.
+
+---
+
+*(Further entries append above this line as more raids are played.)*
 
 ---
 

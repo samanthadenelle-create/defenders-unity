@@ -886,8 +886,23 @@ namespace DeNelle.Village
 
         private void HandleBreachTap(Vector2 screenPoint)
         {
+            // 2026-09-14 breach-tap-miss investigation (do NOT strip — CLAUDE.md §12):
+            // captured "hit 'RaidGround'" on a tap squarely on a rendered wall, while the
+            // SAME-frame hostile-structure sweep (mask=Enemy|Structure) found the same
+            // WallSegment fine. Source-read comparison against WallRepairController.HandleTap
+            // (the production-proven wall-tap-select path) did NOT find a mask/trigger/distance
+            // mismatch: this controller's _groundMask defaults to ~0 (never overridden by any
+            // prefab/scene — self-installs via a bare AddComponent, WallSegment self-install at
+            // :195), so RaycastGround's mask-then-fallback already queries ALL layers on its
+            // FIRST try here — the "falls through to ~0" note two paragraphs up describes the
+            // general helper, not a narrower mask actually in effect on this controller. Ruled
+            // out too: WallSegment.ApplyTierBlockerHeight (WallSegment.cs:195-200) early-returns
+            // for every raid wall (no PlacedStructure), and RaidBaseGenerator.PlaceSegment sizes
+            // the BoxCollider straight from renderer bounds. None of that explains the miss —
+            // the diagnostics below exist to pin the ACTUAL cause on the next live capture.
             if (!RaycastGround(screenPoint, out RaycastHit hit))
             {
+                LogBreachTapDiagnostics(screenPoint, false, default);
                 SetStatus("Breach: tap a wall section to order the assault.");
                 return;
             }
@@ -898,6 +913,7 @@ namespace DeNelle.Village
             var wall = hit.collider != null ? hit.collider.GetComponentInParent<WallSegment>() : null;
             if (wall == null)
             {
+                LogBreachTapDiagnostics(screenPoint, true, hit);
                 // A miss is a NO-OP with a hint, never a clear. Losing a standing order to a
                 // stray tap on the ground is the failure the player cannot see or undo; the
                 // Breach toggle is the visible cancel (ToggleBreach), mirroring ToggleRally.
@@ -927,6 +943,113 @@ namespace DeNelle.Village
             TroopBreachOrder.Set(wall);
             SetStatus("Breach ordered - the warband hits that section.");
             RefreshBreachButton();
+        }
+
+        /// <summary>
+        /// 2026-09-14 breach-tap-miss investigation (CLAUDE.md §12 — additive, permanent;
+        /// never strip). Called from every branch of <see cref="HandleBreachTap"/> that did
+        /// NOT resolve a WallSegment, so a live capture can pin the ACTUAL cause instead of
+        /// one more guess. Throttled per-tap-window (not per-frame) so a rapid double-tap on
+        /// a genuine miss cannot flood the log and evict the boot window (memory:
+        /// logcat-ring-buffer-destroys-evidence) — 0.25s still lets a second deliberate test
+        /// tap through, per the owner's own workflow of tapping again to retry.
+        /// </summary>
+        /// <param name="groundHit">Whether the masked RaycastGround call (the actual
+        /// gameplay decision) matched ANYTHING at all.</param>
+        /// <param name="hit">The RaycastGround result, only meaningful when groundHit is true.</param>
+        private void LogBreachTapDiagnostics(Vector2 screenPoint, bool groundHit, RaycastHit hit)
+        {
+            // -- mask + camera identity -----------------------------------------------
+            int maskValue = _groundMask.value;
+            string maskLayers = DescribeLayerMask(maskValue);
+            string camName = _camera != null ? _camera.name : "<null>";
+            bool camIsMain = _camera != null && Camera.main != null && _camera == Camera.main;
+            string camPixelRect = _camera != null ? _camera.pixelRect.ToString() : "<n/a>";
+            Ray ray = _camera != null ? _camera.ScreenPointToRay(screenPoint) : default;
+
+            string maskedLine =
+                $"mask=0x{maskValue:X8} ({maskLayers}) rayDistance={_rayDistance:0} " +
+                $"queriesHitTriggers={Physics.queriesHitTriggers} camera='{camName}' " +
+                $"isCameraMain={camIsMain} camPixelRect={camPixelRect} screenSize={Screen.width}x{Screen.height} " +
+                $"screenPoint={screenPoint} rayOrigin={ray.origin} rayDir={ray.direction} " +
+                $"maskedCallMatched={groundHit}" +
+                (groundHit
+                    ? $" hitPoint={hit.point} hitName='{(hit.collider != null ? hit.collider.name : "<null>")}' " +
+                      $"hitLayer={(hit.collider != null ? LayerMask.LayerToName(hit.collider.gameObject.layer) : "<n/a>")} " +
+                      $"hitIsTrigger={(hit.collider != null && hit.collider.isTrigger)} hitDistance={hit.distance:0.00}"
+                    : "");
+            DeNelle.Core.Diagnostics.FlowTrace.Throttle("Raid", "breach-tap-diag-mask", 0.25f, maskedLine);
+
+            // -- unmasked RaycastAll(~0), sorted by distance, up to the first WallSegment
+            //    or 5 hits, whichever comes first ---------------------------------------
+            var allHits = Physics.RaycastAll(ray, _rayDistance, ~0, QueryTriggerInteraction.Collide);
+            System.Array.Sort(allHits, (a, b) => a.distance.CompareTo(b.distance));
+            var sb = new System.Text.StringBuilder("unmasked RaycastAll (~0, sorted): ");
+            int shown = 0;
+            bool sawWall = false;
+            for (int i = 0; i < allHits.Length && shown < 5 && !sawWall; i++)
+            {
+                var h = allHits[i];
+                if (h.collider == null) continue;
+                var seg = h.collider.GetComponentInParent<WallSegment>();
+                sb.Append($"[{shown}] '{h.collider.name}' layer={LayerMask.LayerToName(h.collider.gameObject.layer)} " +
+                          $"isTrigger={h.collider.isTrigger} dist={h.distance:0.00} isWallSegment={seg != null}; ");
+                shown++;
+                if (seg != null) sawWall = true;
+            }
+            if (shown == 0) sb.Append("(no colliders along the ray at all)");
+            DeNelle.Core.Diagnostics.FlowTrace.Throttle("Raid", "breach-tap-diag-rayall", 0.25f, sb.ToString());
+
+            // -- nearest WallSegment to the tap, independent of what the ray hit --------
+            // Splits the remaining causes: if a wall's collider AABB intersects the ray but
+            // Physics never reported it, the collider is disabled/trigger-ignored/stale; if
+            // only the RENDERER bounds intersect, it is a collider/render size mismatch (and
+            // the wall's name says which generator built it); if NEITHER intersects, the ray
+            // itself is wrong (camera or screen-point coordinate space), not the wall.
+            var walls = FindObjectsByType<WallSegment>(FindObjectsSortMode.None);
+            WallSegment nearest = null;
+            float nearestSqr = float.MaxValue;
+            for (int i = 0; i < walls.Length; i++)
+            {
+                float d = (walls[i].transform.position - ray.origin).sqrMagnitude;
+                if (d < nearestSqr) { nearestSqr = d; nearest = walls[i]; }
+            }
+            if (nearest != null)
+            {
+                var col = nearest.GetComponent<Collider>();
+                var rends = nearest.GetComponentsInChildren<Renderer>(true);
+                Bounds? rBounds = null;
+                for (int i = 0; i < rends.Length; i++)
+                {
+                    if (rBounds == null) rBounds = rends[i].bounds;
+                    else { var b = rBounds.Value; b.Encapsulate(rends[i].bounds); rBounds = b; }
+                }
+                bool colliderIntersects = col != null && col.bounds.IntersectRay(ray);
+                bool rendererIntersects = rBounds.HasValue && rBounds.Value.IntersectRay(ray);
+                string nearestLine =
+                    $"nearest WallSegment='{nearest.name}' colliderPresent={col != null} " +
+                    $"colliderEnabled={(col != null && col.enabled)} colliderIsTrigger={(col != null && col.isTrigger)} " +
+                    $"colliderLayer={(col != null ? LayerMask.LayerToName(col.gameObject.layer) : "<n/a>")} " +
+                    $"colliderBounds={(col != null ? col.bounds.ToString() : "<n/a>")} " +
+                    $"rendererBounds={(rBounds.HasValue ? rBounds.Value.ToString() : "<n/a>")} " +
+                    $"colliderBoundsIntersectsRay={colliderIntersects} rendererBoundsIntersectsRay={rendererIntersects}";
+                DeNelle.Core.Diagnostics.FlowTrace.Throttle("Raid", "breach-tap-diag-nearest", 0.25f, nearestLine);
+            }
+        }
+
+        /// <summary>Names the layers a mask value resolves to (0..31), for a diagnostic line.</summary>
+        private static string DescribeLayerMask(int mask)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < 32; i++)
+            {
+                if ((mask & (1 << i)) == 0) continue;
+                string n = LayerMask.LayerToName(i);
+                if (string.IsNullOrEmpty(n)) continue;
+                if (sb.Length > 0) sb.Append(',');
+                sb.Append(n);
+            }
+            return sb.Length > 0 ? sb.ToString() : "none-named";
         }
 
         /// <summary>

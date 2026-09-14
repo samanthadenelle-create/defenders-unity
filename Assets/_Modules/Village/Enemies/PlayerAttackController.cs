@@ -711,22 +711,44 @@ namespace DeNelle.Village
 
             bool anyHit = false;
             float lastHitDamage = 0f;   // WO-497: scales the landing rumble
+
+            // §12 — WHY-REJECTED ACCOUNTING. The whiff line below already reported `candidates=N`,
+            // but N>0 with no hit is the ambiguous case: the sweep TOUCHED something and refused
+            // it, and the log never said which refusal. These three counters split that one
+            // number into the three hypotheses for "I hit the wall and nothing happened":
+            //   noDamageable  — collider found, but no IDamageable up the parent chain. That is a
+            //                   collider/mesh or hierarchy mismatch (the art is not under the
+            //                   component), NOT a mask problem.
+            //   factionReject — found and alive, but CombatFactionRules.MayAttack said no. That is
+            //                   the faction-mislabel case (an enemy wall reading Friendly).
+            //   losReject     — the WO-449 wall-blocks-line-of-sight refusal, already logged
+            //                   individually; counted here so the whiff line totals to `candidates`.
+            // Ints on the stack, folded into the EXISTING throttled miss line — no new hot-path log.
+            int noDamageable = 0, factionReject = 0, losReject = 0;
             foreach (var col in hits)
             {
                 if (col == null) continue;
                 var damageable = col.GetComponentInParent<IDamageable>();
+                if (damageable == null) noDamageable++;
                 // WO-1503: route the friend-or-foe test through the ONE authority instead of the
                 // inline `Faction != CombatFaction.Hostile` copy that used to live here — the exact
                 // duplication CombatFactionRules' header forbids. MayAttack folds in null + IsAlive,
                 // so this single call is the whole guard. `damageable` is IDamageable-typed, which
                 // picks the IDamageable overload unambiguously (see that file's overload trap note).
-                if (!CombatFactionRules.MayAttack(HeroFaction, damageable)) continue;
+                if (!CombatFactionRules.MayAttack(HeroFaction, damageable))
+                {
+                    // §12: counted only when a damageable WAS found, so the null case stays
+                    // attributed to noDamageable above and the two buckets never double-count.
+                    if (damageable != null) factionReject++;
+                    continue;
+                }
 
                 // WO-449: reject a hit when a wall/structure blocks the swing's line-of-sight,
                 // so the hero standing against a wall can't damage an enemy on the far side.
                 // Degrades clear when the mask is unset (HasLoS) so a misconfig never no-ops melee.
                 if (!HasLoS(damageable))
                 {
+                    losReject++;
                     FlowTrace.Warn("Combat", "PlayerAttack: hostile in melee radius REJECTED — wall blocks line-of-sight (WO-449)");
                     continue;
                 }
@@ -838,10 +860,20 @@ namespace DeNelle.Village
             // §12 outgoing-attack trace (2026-06-30): the swing FIRED (BattleLock was live) but
             // connected with nothing — splits "hero can't attack (gated)" from "attacked but no
             // hostile in reach / LoS-blocked". Throttled so a flurry of empty swings doesn't spam.
+            // §12 (extended): `candidates=N` alone could not tell a mask miss from a refusal, so
+            // the miss now carries the three reject buckets AND the resolved layer mask. Read it as:
+            //   candidates=0                       -> the OverlapSphere found NO collider at all.
+            //                                         Compare `mask` against the Structure layer bit:
+            //                                         a wall absent here is the layer/mask hypothesis.
+            //   candidates>0, noDamageable=N       -> colliders present, component missing up the
+            //                                         parent chain (collider/mesh/hierarchy mismatch).
+            //   candidates>0, factionReject=N      -> found and refused on faction (mislabel).
+            //   candidates>0, losReject=N          -> the WO-449 line-of-sight refusal.
             if (!anyHit)
                 FlowTrace.Throttle("Combat", "melee-whiff", 1f,
-                    $"hero MELEE swing FIRED but hit nothing (candidates={hits.Length}, reach={EffectiveRange():F1}m) " +
-                    "— in battle, but no hostile IDamageable in reach/LoS.");
+                    $"hero MELEE swing FIRED but hit nothing (candidates={hits.Length}, reach={EffectiveRange():F1}m, " +
+                    $"mask={_enemyLayer.value}) rejects[noDamageable={noDamageable}, faction={factionReject}, " +
+                    $"los={losReject}] — in battle, but no hostile IDamageable in reach/LoS.");
 
             // WO-997: ranger Focus on-hit restore — a landed basic attack refunds resource
             // through the SINGLE pool on HeroAbilities (RestoreMana, clamped there). Gated on
