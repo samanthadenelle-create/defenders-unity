@@ -145,3 +145,29 @@ sections 1-4) is the owner-designated real issue. Both may share a root mechanis
 Tripo model produces both a huge collider AND an inconsistent navmesh carve), or they may be separate -
 the RCA lane should determine whether fixing the footprint/scale also resolves the carve-hole
 inconsistency, or whether both need independent fixes.
+
+
+## CORRECTION 2026-09-14: the previous section's hypothesis is DISPROVEN by a live test
+
+Owner moved the `LumberMill` GameObject to a new position and re-baked. Result (screenshot): the
+oversized pale-green square footprint STAYED at the ORIGINAL location - it did NOT follow the object.
+The building's NEW position shows a normally-sized, correctly-carved hole (matching the "working"
+back-row huts from the earlier bake test).
+
+**This disproves the "LumberMill's own 3.09x scaled Transform/collider directly produces the oversized
+exclusion zone" hypothesis** from the previous section - if the collider were attached to and derived
+from that GameObject's own Transform, moving the object would have moved the zone with it. It did not.
+
+**Corrected working hypothesis, NOT YET PROVEN:** the oversized green square is a SEPARATE artifact
+independent of the LumberMill GameObject - candidates, in order of likelihood, to be confirmed by
+clicking directly on the square in the Scene view (owner asked to do this next):
+1. A stale/orphaned GameObject left at that location from an earlier layout iteration, unrelated to
+   the current LumberMill object - i.e. a leftover placement marker or an old baked twin that was
+   never cleaned up when the building was re-authored or moved previously.
+2. A persisted `BaseLayout`/placement-grid record with no live GameObject backing it at all (a "ghost"
+   footprint reserved in save/layout data that the nav or grid system still excludes).
+3. Baked directly into the ground/terrain texture or a decal plane, not a separate collider-bearing
+   object - would mean this was never a nav-mesh/footprint issue in the code sense at all.
+
+Do not assume which of these it is - the RCA lane's first step is identifying exactly what object (if
+any) selecting that square returns, before theorizing further.
