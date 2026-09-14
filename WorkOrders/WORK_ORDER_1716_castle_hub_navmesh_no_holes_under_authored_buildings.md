@@ -106,3 +106,42 @@ squarely at PER-OBJECT setup being inconsistent: whatever marks an object for th
 is present on some objects and missing on others. The RCA lane's fastest path: compare the Editor
 static-flag/component setup of one "works" object (a back-row hut) against one "doesn't work" object
 (the workshop root, or the tree) directly, rather than reading source alone.
+
+## PRIMARY FINDING, reframed by the owner: this is an OVERSIZED footprint, not a missing hole
+
+Owner, verbatim: "see the lumbermill and to the left of it still has a huge footprint. thats the real
+issue." Confirmed via Inspector screenshot of the `LumberMill` GameObject in `Main_Castle_Overworld`:
+
+- **Transform: Position (17.05, -0.12, 0), Rotation (-90, 0, -96.04), Scale (3.0888, 3.0888, 3.0888)**
+  - a uniform scale over 3x, on a model rotated -90 degrees on X.
+- `AuthoredCastleStorefront`: Canonical Id `collector_lumbermill`, Legacy Name
+  `Lumbermill_Wood_Storefront` - this is the exact `bakedTwins` entry WO-1710 registered today
+  (`structures-catalog.json`, `collector_lumbermill` row: `"bakedTwins": ["Lumbermill_Wood_Storefront"]`).
+  Catalog's authored `placement.footprint` for this row is a modest `4.9` - the scene's actual scale
+  does not match what the data authors.
+- `ResourceCollector` (Building Id `lumbermill`) and a `Box Collider` are both present on the object.
+- The rendered mesh (`tripo_node_a0ee06b6`, material `OwnerCastle_04`) reads visually as a small
+  bench/worktable, far smaller than the huge pale-green ground patch shown selected beneath/around it
+  in the scene view - the patch is the actual footprint/exclusion zone, and it is dramatically larger
+  than the visible model.
+
+**Known precedent for this exact mechanism**, cited verbatim from `structures-catalog.json`'s own
+`_heightCadence` note (read earlier this session): the `collector_farm` row hit the identical bug -
+"its (-90,0,0) euler stands the 0.391 axis up, so the 5.6 m height target came out as scale 14.34 and a
+14.00 x 14.34 m footprint against a 2.8-5.8 m family" - a flat-lying Tripo model rotated upright by a
+-90 X euler, whose fit-to-height code then measures the now-tiny "flat" axis and divides the target
+height by it, producing a large uniform scale that inflates the FOOTPRINT along with the height because
+the fit is uniform. `collector_farm`'s fix was a `maxFootprint` ceiling, not touching `heightMul`
+(section documented at length in that same note). `collector_lumbermill`'s `-90` X rotation and `3.09`
+uniform scale match this failure shape closely enough that it should be the RCA lane's first hypothesis
+to test, not a fresh investigation from zero.
+
+**Also named by the owner, not yet inspected: "to the left of it" - likely the neighboring collector
+(foundry or silo, part of the same `_containerScaleNote2026_08_26` family) - check for the same
+Transform pattern before assuming this is lumbermill-only.**
+
+This reframes the ticket's priority: the oversized footprint (not the missing-hole question from
+sections 1-4) is the owner-designated real issue. Both may share a root mechanism (a badly-fitted
+Tripo model produces both a huge collider AND an inconsistent navmesh carve), or they may be separate -
+the RCA lane should determine whether fixing the footprint/scale also resolves the carve-hole
+inconsistency, or whether both need independent fixes.
