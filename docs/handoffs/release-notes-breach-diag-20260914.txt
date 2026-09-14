@@ -1,0 +1,20 @@
+Defenders of the Realm - diagnostics build - 2026-09-14
+
+This build does NOT yet fix the "Breach: that is not a wall" bug you're hitting.
+It adds detailed logging so the next attempt pins down the exact cause.
+
+What's in this build:
+- Breach-tap raycast diagnostics: when you tap a wall with Breach mode armed,
+  the log now records the full raycast picture (mask, every hit sorted by
+  distance, and the nearest wall's collider vs. visual size) instead of just
+  "missed". Mask mismatch, trigger settings, tier-scaling, and ground
+  occlusion have all been checked and ruled out by reading the code directly -
+  none of them explain it, so this build stops short of guessing a fix.
+- Wall damage/collapse chain logging, melee-attack target rejection reasons,
+  and troop phase-resolve inputs - all additive, nothing changed in behavior.
+- Gate.cs (the raid gate structure) now has damage logging for the first time.
+
+What to do: play a raid, arm Breach, tap directly on a wall segment once
+(even if it still says "not a wall"). That one tap's log will settle whether
+the cause is a disabled/stale collider, a collider-vs-visual size mismatch,
+or a bad ray - and the real fix can land right after.
