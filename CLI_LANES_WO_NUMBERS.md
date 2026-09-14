@@ -189,7 +189,15 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-sixth pass): main line next free = **1718**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-seventh pass): main line next free = **1719**.
+> *(RCA lane minted **1718** 2026-09-14 from the owner's device screenshot: Settings > Help > Dev Tools
+> renders ~4x oversized with overlapping rows. The panel is **AdminOverlay** (HUD), NOT the deprecated
+> DevPanelController. `AdminOverlay.TryBuild` creates its own runtime PanelSettings and never sets
+> `scaleMode`/`referenceResolution`, so the panel runs Unity's default **ConstantPhysicalSize** (dpi/96
+> ~ 4.2x on the Seeker) while the ElarionUi ladder it draws is 1080x1920 REFERENCE px; the 38px row
+> override then makes the rows overlap. Bumped 1718 -> 1719 in this SAME edit.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-seventy-sixth pass): main line next free = **1718**.
 > *(RCA lane minted **1717** 2026-09-14 from the owner's raid report: wall damage HAS no player-facing
 > breach VERB - the only tap is Rally (a ground raycast), and the attacked panel is picked scene-wide by
 > SelectFocusBreach (most-damaged, tie -> nearest muster), so a tap on a wall influences the choice only
