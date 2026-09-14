@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-sixty-ninth pass): main line next free = **1711**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventieth pass): main line next free = **1712**.
+> *(CLI minted **1711** 2026-09-14 from the owner's live design ruling: starting castle should seed
+> one of every non-tower structure with only towers left to upgrade, and walls should not seed on the
+> home castle at all - only when a base flips to a raid arena.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-sixty-ninth pass): main line next free = **1711**.
 > *(CLI minted **1710** 2026-09-14 from the owner's live tester-build felt report: barracks not
 > recognized for troop training + castle-builder singleton structures re-offered in the build menu.)*
 
