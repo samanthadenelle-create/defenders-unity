@@ -24,11 +24,22 @@
 // falls back to Resources.Load — so enemies and un-migrated content are unaffected.
 //
 // Synchronous surface (WaitForCompletion) so the existing sync call sites keep their
-// shape. ⚠ WEBGL CAVEAT (see WO-545 RESULT): WaitForCompletion is NOT supported on
-// WebGL for a bundle that still has to be downloaded — the hero's bundle must be
-// warmed async (once resident, sync resolves) OR the call sites converted to async.
-// This seam is correct for Editor/Standalone today; the WebGL sync-vs-async decision
-// is called out in the WO result and gated on a build check.
+// shape. ⚠ WEBGL CAVEAT, CLOSED (WO-1701, 2026-09-14): WaitForCompletion is not merely
+// slow on WebGL for an undownloaded bundle — Addressables THROWS unconditionally on the
+// WebGL player, regardless of cache state ("WebGLPlayer does not support synchronous
+// Addressable loading"). That is the exact same defect HeroAssetLoader.cs carried and
+// closed at WO-1701 (2026-09-10/13): the captured session that forced this fix shows the
+// identical throw one second after a successful download, for 'Enemies/OrcTex/
+// Orc_Warrior_basecolor' via THIS file (HeroAssetLoader.cs uses the tag "HeroAssets" too,
+// which is why the WO's own capture reads as one seam). The WaitForCompletion call below is
+// now compiled ONLY off the WebGL player (mirrors HeroAssetLoader.cs's guard exactly,
+// including UNITY_EDITOR so an editor session with the WebGL target selected still resolves
+// through the AssetDatabase/local providers). On WebGL a registered-but-unresolved address
+// falls straight to the Resources fallback below, same as an unregistered one — there is no
+// warm-cache dictionary for textures yet (see HeroContentPrewarmer.cs:472-481 for why
+// Heroes/Textures/* and Enemies/OrcTex/* are deliberately not warmed there); that full
+// warm-and-serve treatment is a larger follow-up, not required to stop the throw.
+// This seam is correct for Editor/Standalone today.
 // =============================================================================
 
 using System.Collections.Generic;
@@ -75,12 +86,21 @@ namespace DeNelle.Core
                 wasRegistered = AddressableRegistered(address);
                 if (!wasRegistered) return; // non-hero / deliberately-local path — Resources below
 
+                // WO-1701: compiled ONLY off the WebGL player. UnityEngine.AddressableAssets THROWS
+                // "WebGLPlayer does not support synchronous Addressable loading" here regardless of
+                // cache state (captured 2026-09-10, header). UNITY_EDITOR stays in the condition for
+                // the same reason as HeroAssetLoader.cs: the Editor resolves through the
+                // AssetDatabase/local providers and never runs the WebGL player. On WebGL, falling
+                // through leaves result null and the Resources fallback below runs exactly as it does
+                // for an unregistered address.
+#if !UNITY_WEBGL || UNITY_EDITOR
                 var handle = Addressables.LoadAssetAsync<Texture2D>(address);
                 result = handle.WaitForCompletion();
                 // Intentionally NOT released — parity with Resources.Load (never unloads); the atlas
                 // must outlive the material it is painted onto. Tier-2 adds ref-counted release.
                 if (result != null)
                     FlowTrace.Step("HeroAssets", $"Addressables HIT texture '{address}' -> '{result.name}'.");
+#endif
             });
             if (result != null) return result;
 
@@ -92,9 +112,13 @@ namespace DeNelle.Core
 
             if (wasRegistered)
                 FlowTrace.Warn("HeroAssets",
-                    $"Addressables texture '{address}' IS registered but resolved null — the bundle is likely " +
-                    $"missing from the CDN (never pushed). Fell back to Resources.Load -> " +
-                    $"{(result == null ? "ALSO NULL" : result.name)}.");
+                    $"Addressables texture '{address}' IS registered but resolved null. CAUSE NOT DETERMINED " +
+                    "FROM HERE. Candidates, in the order worth checking: (1) this platform refuses the " +
+                    "synchronous load — WebGL always does, and the sync branch above is compiled out there, so " +
+                    "a WebGL miss here means only the guard fired, not that anything is missing; (2) the bundle " +
+                    "for THIS content build was never pushed (CLAUDE.md section 16 — names are content-hashed, " +
+                    "so a previous push does not cover this build); (3) nothing at this address provides " +
+                    $"Texture2D. Fell back to Resources.Load -> {(result == null ? "ALSO NULL" : result.name)}.");
             else
                 FlowTrace.Step("HeroAssets",
                     $"no Addressables entry for texture '{address}' (expected on a non-hero path) — using Resources.Load.");

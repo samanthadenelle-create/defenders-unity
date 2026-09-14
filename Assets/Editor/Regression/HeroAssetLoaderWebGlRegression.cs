@@ -34,6 +34,15 @@
 // exactly the documentation CLAUDE.md sections 12/15 demand. Case 3 proves the detector
 // flags the known-bad shape and clears the fixed one, so this gate is falsifiable rather
 // than decorative.
+//
+// SCOPE, WIDENED 2026-09-14: Case 1 also lints HeroTextureLoader.cs (WO-545, the
+// "Enemies/OrcTex/*" / "Heroes/Textures/*" texture seam). The WO's own captured session
+// (header above) shows the identical WebGLPlayer throw for
+// 'Enemies/OrcTex/Orc_Warrior_basecolor' one second after the hero prefab throw, both
+// tagged "HeroAssets" — one symptom, two files. The owner's 2026-09-14 bounce landed after
+// HeroAssetLoader.cs/HeroContentPrewarmer.cs were already fixed and committed
+// (a4c0e7cd1, e54ebe540); HeroTextureLoader.cs:79 was the one remaining unguarded
+// WaitForCompletion call in this seam, confirmed at source, and is closed by this WO.
 // =============================================================================
 
 using System;
@@ -65,6 +74,15 @@ namespace DeNelle.Editor.Regression
 
         private const string LoaderSrc    = "Assets/_Modules/Core/Addressables/HeroAssetLoader.cs";
         private const string PrewarmerSrc = "Assets/_Modules/Core/Addressables/HeroContentPrewarmer.cs";
+
+        /// <summary>The sibling texture seam (WO-545) — carried the SAME unguarded
+        /// WaitForCompletion as HeroAssetLoader.cs did before this WO, reached from the same
+        /// "HeroAssets" FlowTrace tag (which is why the 2026-09-10 capture's
+        /// 'Enemies/OrcTex/Orc_Warrior_basecolor' throw read as one seam with the hero prefab
+        /// throw). Closed 2026-09-14 as part of this WO's residual, per the ticket's own
+        /// "HeroTextureLoader.cs:79 unguarded WaitForCompletion needs its own WO" note — no
+        /// separate WO existed for it, so it is closed here.</summary>
+        private const string TextureLoaderSrc = "Assets/_Modules/Core/Addressables/HeroTextureLoader.cs";
 
         /// <summary>The warm-cache probe that must appear BEFORE any Addressables load.</summary>
         private const string WarmProbe = "HeroContentPrewarmer.TryGetWarm";
@@ -107,12 +125,12 @@ namespace DeNelle.Editor.Regression
                 return false;
             }
 
-            reason = "HeroAssetLoader reaches " + BlockingCall + "() only under a " + WebGlGuard +
-                     " guard, probes HeroContentPrewarmer's warm cache before it touches " +
-                     "Addressables at all, and a warm-cached address is served straight out of " +
-                     "that dictionary - so the WebGL player, which throws on any synchronous " +
-                     "Addressable load, has a path to the real hero body instead of the Blink " +
-                     "base placeholder.";
+            reason = "HeroAssetLoader and HeroTextureLoader reach " + BlockingCall + "() only under a " +
+                     WebGlGuard + " guard, HeroAssetLoader probes HeroContentPrewarmer's warm cache " +
+                     "before it touches Addressables at all, and a warm-cached address is served " +
+                     "straight out of that dictionary - so the WebGL player, which throws on any " +
+                     "synchronous Addressable load, has a path to the real hero body instead of the " +
+                     "Blink base placeholder, and the hero/enemy textures no longer throw either.";
             Debug.Log(log.ToString());
             return true;
         }
@@ -254,6 +272,39 @@ namespace DeNelle.Editor.Regression
                                  "loader falls through on WebGL exactly as before.");
                 else
                     log.AppendLine("OK: " + PrewarmerSrc + " loads assets asynchronously and never blocks");
+            }
+
+            // The sibling texture seam (WO-545) carried the identical defect — same tag, same
+            // shape, same throw captured in the same 2026-09-10 session (Enemies/OrcTex/*).
+            // Closed as part of this WO's residual; pinned here rather than in a new file so a
+            // future re-introduction fails the same suite the hero prefab guard does.
+            string textureLoaderRaw = ReadOrNull(TextureLoaderSrc);
+            if (textureLoaderRaw == null)
+            {
+                failures.Add("[guard] " + TextureLoaderSrc + " is missing - the hero texture seam has " +
+                             "moved or been deleted, and this gate cannot protect a path it cannot find.");
+            }
+            else
+            {
+                string textureLoader = Code(textureLoaderRaw);
+                int texTotal, texUnguarded;
+                List<int> texUnguardedLines = ScanBlockingCalls(textureLoader, out texTotal, out texUnguarded);
+
+                if (texUnguarded > 0)
+                {
+                    failures.Add("[guard] " + TextureLoaderSrc + " calls " + BlockingCall + "() OUTSIDE a " +
+                                 WebGlGuard + " block, at code-line(s) " + Join(texUnguardedLines) + " (" +
+                                 texUnguarded + " of " + texTotal + " occurrence(s)). Same WebGLPlayer throw " +
+                                 "as the hero prefab defect this WO closed, on the enemy texture path " +
+                                 "captured in the same 2026-09-10 session (see the WO's own header for the " +
+                                 "exact address - not re-typed here per the art-ledger rule).");
+                }
+                else
+                {
+                    log.AppendLine("OK: " + texTotal + " " + BlockingCall + "() occurrence(s) in " +
+                                   TextureLoaderSrc + ", all under a " + WebGlGuard + " guard" +
+                                   (texTotal == 0 ? " (zero occurrences is strictly stronger)" : ""));
+                }
             }
         }
 

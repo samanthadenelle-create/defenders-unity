@@ -1,5 +1,80 @@
 # WORK ORDER 1701 - RESULT
 
+## 2026-09-14 follow-up (supersedes implementation state below)
+
+**Status: HeroTextureLoader.cs:79 residual CLOSED; device acceptance still open.**
+
+### What was already true at HEAD before this lane touched anything
+`git log`/`git status` on `Assets/_Modules/Core/Addressables/HeroAssetLoader.cs` and
+`HeroContentPrewarmer.cs`: both clean (no working-tree diff), and the WO-1701 fix (warm-cache
+probe first, `WaitForCompletion` guarded behind `#if !UNITY_WEBGL || UNITY_EDITOR`, misleading
+"never pushed" warning corrected, `HeroAssetLoaderWebGlRegression` suite added and registered
+in `DataRegression.cs:1773`) is already committed — `a4c0e7cd1` then `e54ebe540`. The 2026-09-14
+lead-lane verification block below (dated 2026-09-14, prior to this follow-up) already confirmed
+this with a fresh `REGRESSION_OK 522/522` log. **The owner's 2026-09-14 Fail felt-test ran on
+build `2026.09.10.364108`** (per the WO's own Status line, marked 2026-09-11T01:14:33) — that
+build predates both fix commits, so the bounce is not evidence against the committed code; it
+is evidence the fix was never re-verified on a build built after it shipped.
+
+### What was actually still broken
+The WO's own status line named a real, unclosed residual and no separate WO existed for it
+(checked `grep -ril HeroTextureLoader WorkOrders/` — only WO-1701 and the WO-1338/PROD-009
+docs reference the class name, neither is a ticket for this defect). Read
+`Assets/_Modules/Core/Addressables/HeroTextureLoader.cs` at source: line 79 area (`result =
+handle.WaitForCompletion();`) inside `Guard.Try("HeroAssets", $"Addressables resolve texture
+'{address}'", ...)` had **no `#if` guard at all** — the identical shape `HeroAssetLoader.cs`
+carried before WO-1701's original fix. This is the file behind the WO's own captured evidence:
+section 1 of the WO lists `Enemies/OrcTex/Orc_Warrior_basecolor` throwing
+`WebGLPlayer does not support synchronous Addressable loading` three times at 21:55:01Z, tagged
+`[Flow:HeroAssets]` — the same tag `HeroAssetLoader.cs` uses, which is why the two throws read
+as one seam in the original capture even though they are two different files. The 2026-09-13
+RESULT follow-up and the 2026-09-14 lead-lane verification both name this file explicitly as
+"outside this lane's edit list" / "remains an unguarded sync seam" and recommend a follow-up WO
+that was never minted.
+
+### What was changed
+- `Assets/_Modules/Core/Addressables/HeroTextureLoader.cs`: wrapped the
+  `Addressables.LoadAssetAsync<Texture2D>` + `WaitForCompletion` pair in
+  `#if !UNITY_WEBGL || UNITY_EDITOR` (identical condition to `HeroAssetLoader.cs`, same
+  rationale — Editor resolves via AssetDatabase/local providers and never runs the WebGL
+  player). On WebGL, `result` stays null and the existing `Resources.Load` fallback below runs
+  exactly as it already does for an unregistered address — no new warm-cache dictionary was
+  added for textures; that fuller treatment (warm only the chosen hero's atlases) is still a
+  larger follow-up per the 2026-09-10 RESULT's own item 4.3, deliberately not attempted here
+  since it was not what was actually broken.
+  Also corrected the same unproven-cause warning text this file carried ("the bundle is likely
+  missing from the CDN (never pushed)") to name candidates instead of asserting a cause, mirroring
+  the wording `HeroAssetLoader.cs` already carries.
+- `Assets/Editor/Regression/HeroAssetLoaderWebGlRegression.cs`: extended
+  `Case1_BlockingCallIsGuarded` to also lint `HeroTextureLoader.cs` for the same
+  unguarded-`WaitForCompletion` shape, using the existing `ScanBlockingCalls` detector (already
+  proven discriminating by Case 3). No `DataRegression.cs` change needed — the suite's entry
+  point (`HeroAssetLoaderWebGlRegression.Run`, markers `HERO_WEBGL_LOAD_OK` /
+  `HERO_WEBGL_LOAD_FAIL`) is already registered there; this only changes what the existing case
+  checks.
+
+### Proven this session
+- `python tools/gate_brace.py Assets/_Modules/Core/Addressables/HeroTextureLoader.cs
+  Assets/Editor/Regression/HeroAssetLoaderWebGlRegression.cs` → `GATE_BRACE_SUMMARY bad=0 of 2`.
+- NUL-byte scan on both files: 0.
+- `grep -n WaitForCompletion` on `HeroTextureLoader.cs`: the only remaining call to the method
+  itself is at the line now inside the `#if !UNITY_WEBGL || UNITY_EDITOR` block; other matches
+  are comment prose.
+- **NOT run through the Unity compiler or a full regression pass by this lane** — per this
+  lane's instruction, that batching is the lead's job. No `COMPILE_GATE_OK` / `REGRESSION_OK`
+  claimed here.
+
+### Still open (not this lane's job to close)
+- Section 4 device acceptance: a WebGL content build on a version newer than
+  `2026.09.10.364108`, `tools/r2-ship.ps1` push for THAT build, and a Pi Browser / Seeker
+  session with the trace captured, proving zero
+  `WebGLPlayer does not support synchronous Addressable loading` lines and the Mage rendering
+  in Mage art rather than the Blink base.
+- The fuller warm-and-serve treatment for `Heroes/Textures/*` / `Enemies/OrcTex/*` (2026-09-10
+  RESULT item 4.3) — this session only stopped the throw, it did not add a texture warm cache.
+- The companion-slug residual (2026-09-10 RESULT item 4.4, `StoryCompanionInjector.cs:526/:564`)
+  — untouched, unrelated to the HeroTextureLoader gap.
+
 ## 2026-09-13 follow-up (supersedes implementation state below)
 
 **Status: IMPLEMENTED, UNITY TESTS UNRUN; device acceptance still open.**
