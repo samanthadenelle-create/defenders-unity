@@ -189,7 +189,11 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-second pass): main line next free = **1714**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-third pass): main line next free = **1715**.
+> *(CLI minted **1714** 2026-09-14 from a live device capture: HeroLocomotion input frozen for 18+
+> seconds while the HUD context reads modal=True with no timeout, proven on captured logcat.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-seventy-second pass): main line next free = **1714**.
 > *(CLI minted **1713** 2026-09-14 from a live device capture: the Crystal Mine build-mode ghost
 > preview renders on its side despite the catalog row already carrying a manual euler fix.)*
 
