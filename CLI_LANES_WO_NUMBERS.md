@@ -189,7 +189,13 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-10 (CLI, hundred-and-sixty-fifth pass): main line next free = **1705**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-sixty-seventh pass): main line next free = **1707**.
+
+> 1706: hybrid AI reasoning + task execution orchestrator (owner spec from Downloads; local Ollama worker, OpenAI reasoner).
+
+> ### superseded: RECONCILED 2026-09-10 (CLI, hundred-and-sixty-sixth pass): main line next free = ~~1706~~.
+
+> 1705: final raid victory unlocks owned town, resumable building FTUE, shared-JSON AI arena.
 
 > 1704: owner raid wall continuity and inner keep gate connection findings.
 
