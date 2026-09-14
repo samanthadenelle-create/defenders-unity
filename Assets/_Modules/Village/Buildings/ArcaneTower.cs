@@ -464,7 +464,21 @@ namespace DeNelle.Village
             if (_structureMask < 0) _structureMask = LayerMask.GetMask("Structure");
             if (_structureMask == 0) return false;
             Vector3 fPos = transform.position + Vector3.up * 2.5f;
-            return Physics.Linecast(fPos, target.WorldPosition, _structureMask, QueryTriggerInteraction.Ignore);
+            Vector3 tPos = target.WorldPosition;
+            // WO-1720 — LoS DECISION POINT. Capture the hit collider so a future "Arcane spire
+            // lobs through a standing wall" capture is provable from ONE log read (pair
+            // blocked=false with fPos/tPos Y against the known WallSegment collider-vs-renderer
+            // height gap; WO-1719 measured colliderBounds 3m vs rendererBounds 15m on an intact wall).
+            bool blocked = Physics.Linecast(fPos, tPos, out RaycastHit losHit, _structureMask, QueryTriggerInteraction.Ignore);
+            if (FlowTrace.Enabled)
+            {
+                FlowTrace.Throttle("TowerLoS", $"ArcaneTower:{GetInstanceID()}", 1f,
+                    $"'{name}' BlockedByWall fPos={fPos} tPos={tPos} blocked={blocked}" +
+                    (blocked && losHit.collider != null
+                        ? $" hit='{losHit.collider.name}' hitColliderBoundsY=[{losHit.collider.bounds.min.y:F2}..{losHit.collider.bounds.max.y:F2}] hitPoint={losHit.point}"
+                        : " (no Structure collider on the line — if a wall is visually there, its collider is undersized/absent)"));
+            }
+            return blocked;
         }
 
         private static int Priority(IDamageable d)

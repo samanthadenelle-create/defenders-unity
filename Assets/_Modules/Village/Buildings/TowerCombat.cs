@@ -204,7 +204,22 @@ namespace DeNelle.Village
             if (_structureMask < 0) _structureMask = LayerMask.GetMask("Structure");
             if (_structureMask == 0) return false;
             Vector3 fPos = _firePoint != null ? _firePoint.position : transform.position;
-            return Physics.Linecast(fPos, target.WorldPosition, _structureMask, QueryTriggerInteraction.Ignore);
+            Vector3 tPos = target.WorldPosition;
+            // WO-1720 — LoS DECISION POINT. Capture the hit collider (not just the bool) so a
+            // future "fires through a wall the player can see" capture is provable from ONE log
+            // read: pair blocked=false with fPos/tPos Y and the known WallSegment collider height
+            // (WO-1719 found colliderBounds 3m vs rendererBounds 15m on an intact wall) instead of
+            // re-deriving it from scratch. Throttled — this runs on the fire tick per tower.
+            bool blocked = Physics.Linecast(fPos, tPos, out RaycastHit losHit, _structureMask, QueryTriggerInteraction.Ignore);
+            if (FlowTrace.Enabled)
+            {
+                FlowTrace.Throttle("TowerLoS", $"TowerCombat:{GetInstanceID()}", 1f,
+                    $"'{(_tower != null && _tower.Data != null ? _tower.Data.towerName : name)}' BlockedByWall fPos={fPos} tPos={tPos} blocked={blocked}" +
+                    (blocked && losHit.collider != null
+                        ? $" hit='{losHit.collider.name}' hitColliderBoundsY=[{losHit.collider.bounds.min.y:F2}..{losHit.collider.bounds.max.y:F2}] hitPoint={losHit.point}"
+                        : " (no Structure collider on the line — if a wall is visually there, its collider is undersized/absent)"));
+            }
+            return blocked;
         }
 
         /// <summary>

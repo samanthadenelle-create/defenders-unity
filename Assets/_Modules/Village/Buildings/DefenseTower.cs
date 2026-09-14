@@ -313,6 +313,23 @@ namespace DeNelle.Village
         /// loop resumes on its own (it early-outs only while <see cref="_broken"/>). Cost
         /// enforcement lives with the caller, mirroring ResourceCollector.Repair.
         /// </summary>
+        public void RestoreOwnedTownCondition(float condition)
+        {
+            if (gameObject.scene.name != DeNelle.Village.World.Camps.OwnedTownScenePose.SceneName &&
+                gameObject.scene.name != DeNelle.Core.Combat.PracticeCombatPolicy.SceneName)
+                throw new System.InvalidOperationException("Owned-town restoration requires its isolated scene.");
+            if (float.IsNaN(condition) || float.IsInfinity(condition) || condition < 0 || condition > 1 || _broken)
+                throw new System.InvalidOperationException("Owned-town condition requires a fresh valid structure.");
+            Allegiance = TowerAllegiance.PlayerOwned;
+            _hp = _maxHp * condition;
+            if (condition == 0)
+            {
+                _broken = true;
+                Destructible.Ensure(gameObject);
+                Destructible.For(gameObject)?.NotifyBroken("Owned-town saved ruin");
+            }
+        }
+
         public void Repair()
         {
             // WO-753 ruling (owner 2026-07-19, SUPERSEDES WO-672's repair-back-online): a DESTROYED
@@ -411,6 +428,40 @@ namespace DeNelle.Village
             // Start runs after that assignment, so it sees the real allegiance. Idempotent — a
             // tower already moved in Awake no-ops here.
             EnsureEnemyOwnedHittable();
+            EnsureRaidCadenceHeight();
+        }
+
+        /// <summary>
+        /// Owner 2026-09-12: Iron Bastion turrets shipped at native FBX scale (PlaceTowerProp
+        /// never ScaleToHeight). Town cadence is YHeightVariable * 1.2 = 4.8 m. Fit EnemyOwned
+        /// raid watchtowers shorter than that so they read as towers, not props.
+        /// Combat Range/Damage unchanged.
+        /// </summary>
+        private void EnsureRaidCadenceHeight()
+        {
+            if (Allegiance != TowerAllegiance.EnemyOwned) return;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (string.IsNullOrEmpty(scene) || !scene.StartsWith("RaidBase_", System.StringComparison.Ordinal))
+                return;
+            if (name != null && name.IndexOf("Watchtower_", System.StringComparison.Ordinal) < 0
+                && name.IndexOf("CornerPost_", System.StringComparison.Ordinal) < 0)
+                return;
+
+            var rends = GetComponentsInChildren<Renderer>(true);
+            if (rends == null || rends.Length == 0) return;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++)
+                if (rends[i] != null) b.Encapsulate(rends[i].bounds);
+            float raw = b.size.y;
+            const float cadence = StructureFactory.YHeightVariable * 1.2f;
+            if (raw >= cadence * 0.85f) return;
+            if (raw <= 0.05f) return;
+            float f = cadence / raw;
+            if (f > 16f) f = 16f;
+            transform.localScale *= f;
+            string msg = "cadence-fit " + name + " raw=" + raw.ToString("F2") + "m x" + f.ToString("F2")
+                         + " scene=" + scene;
+            FlowTrace.Once("RaidTower", "cadence-fit", msg);
         }
 
         /// <summary>Set once <see cref="EnsureEnemyOwnedHittable"/> has reached a verdict, so the
@@ -493,10 +544,8 @@ namespace DeNelle.Village
         /// </summary>
         private void EnsureContactCollider()
         {
-            foreach (var c in GetComponentsInChildren<Collider>(true))
-                if (c != null && !c.isTrigger) return;   // already hittable by the sweep
-
             float height = 4.5f, radius = 0.9f;
+            Vector3 worldCenter = transform.position + Vector3.up * (height * .5f);
             var rends = GetComponentsInChildren<Renderer>(true);
             if (rends != null && rends.Length > 0)
             {
@@ -504,13 +553,29 @@ namespace DeNelle.Village
                 for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
                 height = Mathf.Max(1f, b.size.y);
                 radius = Mathf.Max(0.4f, Mathf.Max(b.size.x, b.size.z) * 0.5f);
+                worldCenter = b.center;
             }
 
-            var cap = gameObject.AddComponent<CapsuleCollider>();
+            CapsuleCollider cap = null;
+            foreach (var c in GetComponentsInChildren<Collider>(true))
+            {
+                if (c == null || c.isTrigger) continue;
+                var rootCapsule = c as CapsuleCollider;
+                // Migrate only the old generated signature: world dimensions copied verbatim
+                // to a scaled root, with the old bottom-pivot center. Authored colliders stay put.
+                bool oldGenerated = rootCapsule != null && rootCapsule.transform == transform && rootCapsule.direction == 1 &&
+                    Mathf.Abs(rootCapsule.height - height) < .002f && Mathf.Abs(rootCapsule.radius - radius) < .002f &&
+                    Vector3.Distance(rootCapsule.center, new Vector3(0, height * .5f, 0)) < .002f &&
+                    (rootCapsule.bounds.size.y < height * .25f || rootCapsule.bounds.size.y > height * 4f);
+                if (!oldGenerated) return;
+                cap = rootCapsule;
+            }
+            if (cap == null) cap = gameObject.AddComponent<CapsuleCollider>();
             cap.isTrigger = false;
-            cap.height = height;
-            cap.radius = radius;
-            cap.center = new Vector3(0f, height * 0.5f, 0f);
+            Vector3 scale = transform.lossyScale;
+            cap.height = height / Mathf.Max(.0001f, Mathf.Abs(scale.y));
+            cap.radius = radius / Mathf.Max(.0001f, Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)));
+            cap.center = transform.InverseTransformPoint(worldCenter);
         }
 
         private float _cd;
@@ -852,7 +917,21 @@ namespace DeNelle.Village
             if (_structureMask < 0) _structureMask = LayerMask.GetMask("Structure");
             if (_structureMask == 0) return false;
             Vector3 fPos = transform.position + Vector3.up * 2f;
-            return Physics.Linecast(fPos, target.WorldPosition, _structureMask, QueryTriggerInteraction.Ignore);
+            Vector3 tPos = target.WorldPosition;
+            // WO-1720 — LoS DECISION POINT. Capture the hit collider so a future "Ballista fires
+            // through a standing wall" capture is provable from ONE log read (pair blocked=false
+            // with fPos/tPos Y against the known WallSegment collider-vs-renderer height gap;
+            // WO-1719 measured colliderBounds 3m vs rendererBounds 15m on an intact wall).
+            bool blocked = Physics.Linecast(fPos, tPos, out RaycastHit losHit, _structureMask, QueryTriggerInteraction.Ignore);
+            if (FlowTrace.Enabled)
+            {
+                FlowTrace.Throttle("TowerLoS", $"DefenseTower:{GetInstanceID()}", 1f,
+                    $"'{name}' BlockedByWall fPos={fPos} tPos={tPos} blocked={blocked}" +
+                    (blocked && losHit.collider != null
+                        ? $" hit='{losHit.collider.name}' hitColliderBoundsY=[{losHit.collider.bounds.min.y:F2}..{losHit.collider.bounds.max.y:F2}] hitPoint={losHit.point}"
+                        : " (no Structure collider on the line — if a wall is visually there, its collider is undersized/absent)"));
+            }
+            return blocked;
         }
 
         // "Scamper to the DPS and healers" — squishy backline first, tanks last.

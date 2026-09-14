@@ -158,14 +158,18 @@ namespace DeNelle.Editor
             // WO-1689: CladRing now RETURNS the wall height it actually achieved, so the
             // gatehouse can report itself against the wall it stands in. Nothing compared the
             // two before, which is how a 1.41 m gate in a ~3.8 m wall could ship silently.
-            float wallHeight = CladRing(root, wallTok, ctx.Radius, ctx.GateWidth, ctx.TwoGates, kit);
+            // "Outer" / "Keep{n}" is the SAME ring-name token RaidBaseGenerator.BuildRing bakes
+            // into every "Wall_{ringName}_S{side}_{i}" segment name — CladRing uses it to find
+            // and re-height the matching WallSegment colliders it just hid the renderer of
+            // (proven-cause fix, breach-tap wall-miss: see SyncWallColliderHeight).
+            float wallHeight = CladRing(root, wallTok, ctx.Radius, ctx.GateWidth, ctx.TwoGates, kit, "Outer");
             if (ctx.InnerRings != null)
             {
                 for (int i = 0; i < ctx.InnerRings.Length; i++)
                 {
                     var ring = ctx.InnerRings[i];
                     float innerHeight = CladRing(root, InnerWall(kit, wallTok), ring.Radius,
-                        ring.GateWidth, false, kit, northGate: true);
+                        ring.GateWidth, false, kit, "Keep" + (i + 1), northGate: true);
                     PlaceGatehouse(choke, gateTok, kit, new Vector3(0f, 0f, ring.Radius),
                         180f, ring.GateWidth, "keep" + (i + 1) + "_north", innerHeight);
                 }
@@ -495,9 +499,23 @@ namespace DeNelle.Editor
         /// Clad one wall ring. WO-1689: RETURNS the wall height actually achieved (the module's
         /// measured height times the fit factor), so `PlaceGatehouse` can state the gate against
         /// the wall it stands in. Returns 0 when the module could not be loaded.
+        ///
+        /// ⛔ PROVEN CAUSE, breach-tap wall-miss (live device capture): <see cref="HideWallRenderers"/>
+        /// switches off the WallSegment's own mesh (the one <c>RaidBaseGenerator.PlaceSegment</c>
+        /// sized its BoxCollider FROM), then this method builds an entirely separate "Clad_*"
+        /// cosmetic mesh at the module's NATIVE height — <see cref="FitPieceAlong"/> deliberately
+        /// fits only the run axis and "preserves authored height", by design. X/Z track perfectly
+        /// (same footprint) but Y was left to whatever the art module's native mesh height is —
+        /// captured live at 15.0m visual vs a 3.0m collider on 'Wall_Outer_SS_3', 5x apart. The
+        /// player taps the tall, very-visible cosmetic wall; there is no collider above 3m to hit.
+        /// <paramref name="ringPrefix"/> is the SAME token BuildRing bakes into every
+        /// "Wall_{ringPrefix}_S{side}_{i}" name, so <see cref="SyncWallColliderHeight"/> below can
+        /// re-derive the hidden WallSegment colliders' height from THIS method's achievedHeight —
+        /// the collider now always tracks whatever height the clad visual actually ends up at,
+        /// for any tier/kit/module, not just this one wall id.
         /// </summary>
         private static float CladRing(Transform root, string token, float radius, float gateWidth,
-                                      bool twoGates, string kit, bool northGate = false)
+                                      bool twoGates, string kit, string ringPrefix, bool northGate = false)
         {
             // WO-1704 actual triangle RED: wall_broken has body-level holes even when
             // its bounds touch. Enclosing rings use the intact sibling; rubble stays decor.
@@ -555,7 +573,54 @@ namespace DeNelle.Editor
                 " radius=" + radius.ToString("F1") + "m module=" + piece.ToString("F2") +
                 "m achievedH=" + achievedHeight.ToString("F2") + "m panels=" + placed +
                 " gateWidth=" + gateWidth.ToString("F3") + "m joined=true internalLap=0.020m endpoints=exact");
+            if (achievedHeight > 0f) SyncWallColliderHeight(root, ringPrefix, achievedHeight);
             return achievedHeight;
+        }
+
+        /// <summary>
+        /// Re-derives the hidden WallSegment BoxColliders on one ring from the clad visual's
+        /// FINAL achieved height (see the "PROVEN CAUSE" note on <see cref="CladRing"/>). Finds
+        /// every "Wall_{ringPrefix}_S..." object BuildRing baked, keeps each collider's ground
+        /// seat (its LOCAL min-Y is untouched — only the footprint-authored X/Z, never touched
+        /// here either), and stretches its Y to match the visible wall exactly. This is the fix
+        /// point for ANY tier/kit/module combination, not a special case for one wall id: whatever
+        /// height CladRing achieves next time, the collider is re-synced to it right here.
+        /// </summary>
+        private static void SyncWallColliderHeight(Transform root, string ringPrefix, float achievedHeight)
+        {
+            if (root == null || achievedHeight <= 0f || string.IsNullOrEmpty(ringPrefix)) return;
+            string namePrefix = "Wall_" + ringPrefix + "_S";
+            var xforms = root.GetComponentsInChildren<Transform>(true);
+            int synced = 0;
+            for (int i = 0; i < xforms.Length; i++)
+            {
+                var t = xforms[i];
+                if (t == null || t.name == null || !t.name.StartsWith(namePrefix)) continue;
+                var box = t.GetComponent<BoxCollider>();
+                if (box == null) continue;
+
+                float sy = Mathf.Abs(t.lossyScale.y) > 0.0001f ? t.lossyScale.y : 1f;
+                float oldWorldHeight = box.size.y * sy;
+                if (Mathf.Approximately(oldWorldHeight, achievedHeight)) continue;
+
+                float oldMinLocalY = box.center.y - box.size.y * 0.5f;   // ground-seat offset, kept
+                float newSizeY = achievedHeight / sy;
+                box.size = new Vector3(box.size.x, newSizeY, box.size.z);
+                box.center = new Vector3(box.center.x, oldMinLocalY + newSizeY * 0.5f, box.center.z);
+                synced++;
+
+                FlowTrace.Step("RaidBaseGenerator",
+                    "WALL COLLIDER SYNC '" + t.name + "': visual(renderer) height=" +
+                    achievedHeight.ToString("F2") + "m, collider height before=" +
+                    oldWorldHeight.ToString("F2") + "m -> after=" + achievedHeight.ToString("F2") +
+                    "m (breach-tap wall-miss fix: the WallSegment collider is re-derived from " +
+                    "CladRing's FINAL achieved visual height, not the pre-clad SegSize.y fit).");
+            }
+            if (synced == 0)
+                FlowTrace.Warn("RaidBaseGenerator",
+                    "WALL COLLIDER SYNC ring='" + ringPrefix + "' achievedHeight=" +
+                    achievedHeight.ToString("F2") + "m but found 0 '" + namePrefix +
+                    "*' colliders under '" + root.name + "' - visual/hitbox height may still diverge.");
         }
 
         private static void PlaceGatehouse(Transform zone, string token, string kit, Vector3 pos,
