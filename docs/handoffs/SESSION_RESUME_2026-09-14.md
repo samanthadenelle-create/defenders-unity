@@ -1,3 +1,31 @@
+# HOUR REPORT 04:15-04:50 (owner asleep, full control granted 2026-09-14)
+
+**Landed (all on fresh markers, all by explicit path, nothing pushed):**
+- `f06a73600` raid lane WO-1703+1704 (59 files): RAID_WALL_CONTINUITY_OK 04:08, RAID_GROUND_COVERAGE_OK,
+  RAID_GROUND_SAVED_OK, RAID_POLISH_SAVED_PROOF_OK 04:09, REGRESSION_OK 522/522 04:17. Both Status = FIXED,
+  PO felt-verifies. Ground bake now tracked. New tracked runner `tools/regression/raid_suites_gate.ps1`.
+- `e54ebe540` WO-1701 hero-art warm guard (Codex, verified): FIXED PENDING DEVICE ACCEPTANCE.
+- `87bff288a` `tools/worktree_salvage.ps1`; run 04:20-04:29: **95 worktrees/clones deleted, 502.8 GB freed,
+  D: free 302 -> 811 GB.** 148 branches kept in the main .git, 58 untracked-file sets + 69 tracked patches
+  under `D:\eoa-salvage`. LOSS: 24 entries' tracked-diff patches were overwritten empty by a duplicate
+  second pass (eoa-release-final, eoa-grok-raid, night-build and the other root clones) - their
+  uncommitted edits to TRACKED files are gone; their commits and untracked files survived. Script fixed.
+  Left alone: `D:\eoa-codex-1410` (0.8 GB, no .git), `eoa-art-staging-1418`, `eoa-codex-six`, `D:\eoa	mp\*` (non-git).
+- `01ee69ddd` WO-1709 daemon half: cause = each emit grepped a **5.04 GB Editor.log** (155 s/row) so the
+  offset never persisted; fixed + proven headless. Lead deleted that Editor.log with Unity closed.
+  **Daemon left STOPPED** - restarting would emit 1286 never-published 09-11 rows. YOUR CALL: ack-sweep
+  them (I can script it) or let them replay. Addressables INIT Fail-level half still READY (Unity lane).
+- `6e6ed4ab2` WO-1708 wall repair: pointer-over-UI guard, hide behind modals (the PAUSE overprint was the
+  0.85-alpha scrim), hit-chain trace on un-wrappable hits. COMPILE_GATE_OK 04:40, REGRESSION_OK 523/523
+  04:45. FIXED. YOUR CALL: battlements/door jambs carry no WallSegment - should they be repairable?
+
+**Open board:** WO-1707 white town (needs a device logcat from the softlock save; not started - it
+overlaps other lanes' uncommitted cluster-B files), WO-1706 reasoner half (needs OPENAI_API_KEY),
+WO-1705/2016/1291 inherited dirty files still unreconciled. Memory headroom held (commit 16.7/65.5 GB
+after reboot). Hardware: hold; decide after the WO-1706 benchmark.
+
+---
+
 # Session resume - 2026-09-14 (CLI lead, Fable seat) - written for the post-reboot continuation
 
 Resume the same Claude Code session with `claude --resume` (or `claude -c`) from `D:\eoa`; the transcript
