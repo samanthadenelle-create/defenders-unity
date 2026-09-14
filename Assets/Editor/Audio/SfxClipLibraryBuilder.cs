@@ -122,6 +122,10 @@ namespace DeNelle.Editor.Audio
                 case SfxId.ArcaneExplosion:  return Synth(0.5f,  640f, 240f, 0.25f, 0.75f, 0xA17C, 2.0f);
                 case SfxId.Shockwave:        return Synth(0.35f, 320f, 90f,  0.4f,  0.85f, 0x5403, 2.4f);
                 case SfxId.Heal:             return Synth(0.4f,  520f, 880f, 0.04f, 0.55f, 0x4EA1, 1.8f);
+                // WO-1717 placeholder masonry thud - kept byte-identical to the
+                // ProceduralSfx.StructureImpact recipe so the baked .wav and the runtime
+                // synth are the same sound, never two different placeholders.
+                case SfxId.StructureImpact:  return Synth(0.14f, 260f, 110f, 0.7f,  0.6f,  0x5701, 4.2f);
                 case SfxId.WizardCast:       return Synth(0.3f,  380f, 760f, 0.22f, 0.6f,  0x7E3C, 2.6f);
                 case SfxId.FlameArrowLaunch: return Synth(0.16f, 1200f,480f, 0.35f, 0.65f, 0xF1A0, 4.0f);
                 case SfxId.TowerShot:        return Synth(0.1f,  1400f,600f, 0.12f, 0.6f,  0x70F1, 4.0f);

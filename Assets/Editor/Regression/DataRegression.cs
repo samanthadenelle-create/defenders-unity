@@ -410,6 +410,7 @@ namespace DeNelle.Editor
             if (!DeNelle.Editor.Regression.ArmyMusterLayoutRegression.Run(out var armyMusterLayoutReason)) failures.Add(armyMusterLayoutReason); else log.AppendLine("[army-muster-layout] " + armyMusterLayoutReason);
             if (!StructureSeatRegression.Run(out var seatReason)) failures.Add(seatReason); else log.AppendLine("[structure-seat] " + seatReason);
             if (!StructureRemovalHuskRegression.Run(out var removalHuskReason)) failures.Add(removalHuskReason); else log.AppendLine("[removal-husk] " + removalHuskReason);
+            if (!StructureFeedbackRegression.Run(out var structFeedbackReason)) failures.Add(structFeedbackReason); else log.AppendLine("[structure-feedback] " + structFeedbackReason);
             if (!StructureCadenceRegression.Run(out var cadenceReason)) failures.Add(cadenceReason); else log.AppendLine("[structure-cadence] " + cadenceReason);
             if (!StructureLoadBoundedRegression.Run(out var loadBoundedReason)) failures.Add(loadBoundedReason); else log.AppendLine("[structure-load-bounded] " + loadBoundedReason);
             if (!DeNelle.Editor.Regression.StructureFactoryResidencyRetryRegression.Run(out var residencyRetryReason)) failures.Add(residencyRetryReason); else log.AppendLine("[structure-factory-residency-retry] " + residencyRetryReason);
@@ -1470,6 +1471,7 @@ namespace DeNelle.Editor
             // by explicit path from 7879bc2e8 (this registration hand-applied - the worktree's
             // DataRegression.cs also carried a WO-1593 suite that does not exist here).
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-assault-ai suite", () => { if (!DeNelle.Editor.RaidAssaultAiRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-assault-ai] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "wall-breach-order suite", () => { if (!DeNelle.Editor.WallBreachOrderRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[wall-breach-order] " + r); });
 
             // --- COLLECTOR STACK PROPS (2026-08-16): CollectorStackPropCatalog.cs told
             // everyone to "place the asset at Assets/Resources/Collectors/..." and nobody
@@ -2036,6 +2038,7 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-rough-stone suite", () => { if (!DeNelle.Editor.Regression.RaidRoughStoneDropRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-rough-stone] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "seating-preview-shield suite", () => { if (!DeNelle.Editor.Regression.SeatingPreviewShieldRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[seating-preview-shield] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "screen-orientation suite", () => { if (!DeNelle.Editor.Regression.ScreenOrientationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[screen-orientation] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "admin-panel-scale suite", () => { if (!DeNelle.Editor.Regression.AdminPanelScaleRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[admin-panel-scale] " + r); });
 
             // =====================================================================
             //  >>> REGISTERED ORACLE SUITES — END FENCE <<<  (new lines go ABOVE)

@@ -83,6 +83,13 @@ namespace DeNelle.Audio
                     return Synth("sfx_shockwave", dur: 0.35f, f0: 320f, f1: 90f,  noise: 0.4f,  amp: 0.85f, seed: 0x5403, decay: 2.4f);
                 case SfxId.Heal:
                     return Synth("sfx_heal", dur: 0.4f, f0: 520f, f1: 880f, noise: 0.04f, amp: 0.55f, seed: 0x4EA1, decay: 1.8f);
+                // WO-1717 PLACEHOLDER, not an art pick: a short, dry, noise-heavy low thud
+                // that reads as stone rather than as an explosion, and that separates from
+                // SfxId.EnemyDeath so a wall hit and a kill never sound alike. An authored
+                // clip at the audio key "Sfx/Sfx_StructureImpact" overrides this with no
+                // code change - the owner/artist still owes the real sound.
+                case SfxId.StructureImpact:
+                    return Synth("sfx_structure_impact", dur: 0.14f, f0: 260f, f1: 110f, noise: 0.7f, amp: 0.6f, seed: 0x5701, decay: 4.2f);
 
                 // ── Casting / projectile sounds ──────────────────────────────
                 case SfxId.WizardCast:

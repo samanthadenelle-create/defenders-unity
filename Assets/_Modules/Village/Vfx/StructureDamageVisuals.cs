@@ -747,10 +747,15 @@ namespace DeNelle.Village
             // Wall / Building through the uniform RepairTarget view (Gate is a data
             // opt-out: its force-field collapse is the already-good bespoke tell; the
             // Heart's crystal states likewise — HeartController is never scanned).
-            RegisterRepairables<WallSegment>("wall");
-            RegisterRepairables<Building>("building");
+            // WO-1717: the second argument is the structure's own MAX HP, and it exists
+            // only so StructureHitReaction can turn the observed fraction drop into the
+            // points the player sees. WallSegment.MaxHp is a const 100 and the wall's
+            // fraction is exactly 1 - Damage/100 (RepairTarget.cs:141), so drop x maxHp is
+            // the POST-tier-divide `effective` from WallSegment.cs:334 by construction.
+            RegisterRepairables<WallSegment>("wall", _ => WallSegment.MaxHp);
+            RegisterRepairables<Building>("building", b => b.MaxHp);
             if (!DamageStatesCatalog.OptOut("gate"))
-                RegisterRepairables<Gate>("gate");
+                RegisterRepairables<Gate>("gate", g => g.MaxHp);
 
             // Resource collectors — HpFraction / IsBroken via the registry.
             if (!DamageStatesCatalog.OptOut("collector"))
@@ -759,6 +764,14 @@ namespace DeNelle.Village
                 {
                     if (c == null || _tracked.ContainsKey(c.gameObject)) continue;
                     var cc = c;   // capture the loop variable, not the iterator
+                    // WO-1717: NO maxHp argument on purpose. ResourceCollector exposes
+                    // HpFraction but no public max HP, and its runtime callers all take the
+                    // component's own DefaultMaxHp (120) rather than the catalog row - so
+                    // reading BuildingCatalog here would print a number that does not match
+                    // the HP that actually moved. A collector therefore gets the dust and the
+                    // sound and no number, which beats a number that lies. The fix is one
+                    // read-only getter on ResourceCollector, which WO-1717 6C is forbidden
+                    // from adding (no gameplay-class edits); it is flagged in the RESULT.
                     Register(c.gameObject, "collector", c.BuildingId,
                         () => cc != null ? cc.HpFraction : 1f,
                         () => cc != null && cc.IsBroken);
@@ -773,7 +786,8 @@ namespace DeNelle.Village
                     if (t == null || _tracked.ContainsKey(t.gameObject)) continue;
                     var tt = t;
                     Register(t.gameObject, "tower", t.gameObject.name,
-                        () => tt != null ? tt.HpFraction : 1f, () => tt != null && tt.IsBroken);
+                        () => tt != null ? tt.HpFraction : 1f, () => tt != null && tt.IsBroken,
+                        () => tt != null ? tt.MaxHp : 0f);
                 }
             if (!DamageStatesCatalog.OptOut("defensetower"))
                 foreach (var t in UnityEngine.Object.FindObjectsByType<DefenseTower>(FindObjectsSortMode.None))
@@ -781,7 +795,8 @@ namespace DeNelle.Village
                     if (t == null || _tracked.ContainsKey(t.gameObject)) continue;
                     var tt = t;
                     Register(t.gameObject, "defensetower", t.gameObject.name,
-                        () => tt != null ? tt.HpFraction : 1f, () => tt != null && tt.IsBroken);
+                        () => tt != null ? tt.HpFraction : 1f, () => tt != null && tt.IsBroken,
+                        () => tt != null ? tt.MaxHp : 0f);
                 }
             if (!DamageStatesCatalog.OptOut("arcanetower"))
                 foreach (var t in UnityEngine.Object.FindObjectsByType<ArcaneTower>(FindObjectsSortMode.None))
@@ -789,7 +804,8 @@ namespace DeNelle.Village
                     if (t == null || _tracked.ContainsKey(t.gameObject)) continue;
                     var tt = t;
                     Register(t.gameObject, "arcanetower", t.gameObject.name,
-                        () => tt != null ? tt.HpFraction : 1f, () => tt != null && tt.IsBroken);
+                        () => tt != null ? tt.HpFraction : 1f, () => tt != null && tt.IsBroken,
+                        () => tt != null ? tt.MaxHp : 0f);
                 }
             if (!DamageStatesCatalog.OptOut("harvestsite"))
                 foreach (var t in UnityEngine.Object.FindObjectsByType<DeNelle.Village.World.HarvestSite>(FindObjectsSortMode.None))
@@ -797,27 +813,36 @@ namespace DeNelle.Village
                     if (t == null || _tracked.ContainsKey(t.gameObject)) continue;
                     var tt = t;
                     Register(t.gameObject, "harvestsite", t.gameObject.name,
-                        () => tt != null ? tt.HpFraction : 1f, () => tt != null && tt.IsBroken);
+                        () => tt != null ? tt.HpFraction : 1f, () => tt != null && tt.IsBroken,
+                        () => tt != null ? tt.MaxHp : 0f);
                 }
         }
 
         /// <summary>Register damaged-or-not structures of type <typeparamref name="T"/>
         /// through the uniform RepairTarget wrapping (never re-branching per type).</summary>
-        private void RegisterRepairables<T>(string typeKey) where T : Component
+        /// <param name="maxHpOf">
+        /// WO-1717: reads the concrete structure's own max HP, so the per-hit tell can
+        /// print the POINTS that landed instead of a fraction. Kept as a selector on the
+        /// concrete type rather than a new property on RepairTarget, because WO-1717 §7
+        /// puts RepairTarget off-limits (its faction-blindness is load-bearing here).
+        /// </param>
+        private void RegisterRepairables<T>(string typeKey, Func<T, float> maxHpOf) where T : Component
         {
             foreach (var s in UnityEngine.Object.FindObjectsByType<T>(FindObjectsSortMode.None))
             {
                 if (s == null || _tracked.ContainsKey(s.gameObject)) continue;
                 var target = RepairTarget.TryWrap(s);
                 if (target == null || !target.IsValid) continue;
+                var ss = s;   // capture the component, not the iterator
                 Register(s.gameObject, typeKey, target.DisplayName,
                     () => target.IsValid ? 1f - target.DamageFraction : 1f,
-                    () => target.IsValid && target.DamageFraction >= 0.999f);
+                    () => target.IsValid && target.DamageFraction >= 0.999f,
+                    maxHpOf == null ? (Func<float>)null : () => ss != null ? maxHpOf(ss) : 0f);
             }
         }
 
         private void Register(GameObject host, string typeKey, string name,
-            Func<float> hp, Func<bool> broken)
+            Func<float> hp, Func<bool> broken, Func<float> maxHp = null)
         {
             // VFX anchor + bar offset from the renderer bounds (structures do not
             // move); the data barOffset is the floor so a flat foundation still
@@ -834,7 +859,7 @@ namespace DeNelle.Village
                 offset = Mathf.Max(offset, b.max.y - host.transform.position.y + 0.4f);
             }
 
-            _tracked[host] = new Tracked
+            var rec = new Tracked
             {
                 Host = host,
                 TypeKey = typeKey,
@@ -844,6 +869,7 @@ namespace DeNelle.Village
                 VfxAnchor = anchor,
                 BarOffset = offset,
             };
+            _tracked[host] = rec;
 
             // WO-1024: THIS is the moment a repairable provably exists in the scene. This class
             // installs unconditionally while HubRepairAffordance gated on a scene-load-time scan,
@@ -866,7 +892,47 @@ namespace DeNelle.Village
             // by one line, with no new damage model and no edit to any gameplay class.
             // Family B one-shot: it cannot consume a loop slot, and it is rate-limited
             // per-structure inside the component. The state ladder is untouched.
-            StructureHitReaction.Attach(host, hp, string.IsNullOrEmpty(name) ? typeKey : name);
+            //
+            // WO-1717 (6C): the hit callback now ALSO attaches the floating HP bar. Before
+            // this, the bar was attached only by Evaluate, which runs on a 0.3 s poll behind
+            // a 2.0 s Scan poll - so a structure could be struck and stay visibly inert for
+            // up to 2.3 s, which is exactly why the owner read a wall under attack as doing
+            // nothing. Hanging it off the flinch is the SMALLEST fix that actually closes the
+            // latency: pre-registering at scene load would only remove the 2.0 s half (Scan
+            // already runs on the install frame - OnEnable sets _scanTimer = 0), would not
+            // touch the 0.3 s half at all, and would attach bars to a whole pristine town.
+            // The flinch already fires the frame the HP moves, so the bar now appears on the
+            // FIRST hit, in the same frame, on structures registered and yet-to-be-registered
+            // alike. Evaluate keeps its own attach as the belt-and-braces path for damage that
+            // arrives below the flinch's MinDropFraction - both go through AttachBar, so the
+            // FloatingHealthBar argument list exists exactly once.
+            StructureHitReaction.Attach(host, hp, string.IsNullOrEmpty(name) ? typeKey : name,
+                () => AttachBar(rec, "first-hit"), maxHp);
+        }
+
+        /// <summary>
+        /// Attach the floating HP bar to a tracked structure, once. The ONLY place
+        /// FloatingHealthBar.Attach is called from this class - both the WO-1717 first-hit
+        /// path and the Evaluate poll route through here so the two can never drift.
+        /// </summary>
+        private void AttachBar(Tracked rec, string via)
+        {
+            if (rec == null || rec.BarAttached || rec.Host == null) return;
+
+            // Never bond a bar to a corpse. The collapsing blow drops the fraction to 0 and
+            // would otherwise attach a bar to a ruin that the very next Evaluate tears down
+            // again (the CleanedUpOnBreak path) - a bar that blinks into existence on death
+            // is worse than no bar.
+            if (rec.Broken != null && Guard.Try("DamageVis", "broken probe", rec.Broken, fallback: false)) return;
+
+            float hp = Mathf.Clamp01(rec.Hp != null ? rec.Hp() : 1f);
+            if (hp >= 0.999f) return;   // hideAtFull would hide it anyway
+
+            FloatingHealthBar.Attach(rec.Host, rec.Hp, () => false,
+                heightOffset: rec.BarOffset, hideAtFull: true, destroyOnDead: false);
+            rec.BarAttached = true;
+            FlowTrace.Step("DamageVis",
+                $"bar attached: '{rec.Name}' ({rec.TypeKey}) hp={hp:0.00} via={via}");
         }
 
         // ── EVALUATE — drive the tells from the observed state (fast, cheap) ────
@@ -948,14 +1014,11 @@ namespace DeNelle.Village
 
                     // Health bar - attach lazily on first damage (hideAtFull keeps it
                     // invisible again at full HP).
-                    if (!rec.BarAttached && hp < 0.999f)
-                    {
-                        FloatingHealthBar.Attach(rec.Host, rec.Hp, () => false,
-                            heightOffset: rec.BarOffset, hideAtFull: true, destroyOnDead: false);
-                        rec.BarAttached = true;
-                        FlowTrace.Step("DamageVis",
-                            $"bar attached: '{rec.Name}' ({rec.TypeKey}) hp={hp:0.00}");
-                    }
+                    // WO-1717: the flinch (StructureHitReaction's onHit -> AttachBar) now
+                    // wins this race in the common case, same-frame. This stays as the
+                    // catch-all for damage too small to trip the flinch's MinDropFraction,
+                    // and is a no-op once the bar is on.
+                    if (!rec.BarAttached && hp < 0.999f) AttachBar(rec, "eval-poll");
                 }
 
                 // Break transition — one-shot burst at the moment it broke. A shell

@@ -39,6 +39,19 @@ namespace DeNelle.Audio
         Shockwave,
         /// <summary>Healing contact — warm rising chime at the heal target.</summary>
         Heal,
+        /// <summary>
+        /// WO-1717: masonry impact — a blow landing on a STRUCTURE (wall, gate, building,
+        /// tower, collector, harvest site). Short, dry, low: stone taking a hit, not an
+        /// explosion. Played by StructureHitReaction on the same beat as the dust burst and
+        /// the floating damage number, so the read is MOTION + SOUND + NUMBER and never a
+        /// colour (the owner is colourblind).
+        ///
+        /// <para>NO AUTHORED CLIP EXISTS YET. This falls through to ProceduralSfx's synth
+        /// recipe (a placeholder thud) exactly as every other id does on a fresh clone. An
+        /// artist/owner pick dropped at the audio key <c>Sfx/Sfx_StructureImpact</c> — or a
+        /// row in a generated SfxClipLibrary — wins over the synth with NO code change.</para>
+        /// </summary>
+        StructureImpact,
 
         // ── Casting / projectile sounds ───────────────────────────────────────
         /// <summary>Wizard cast charge-up — swirling arcane wind-up sound.</summary>

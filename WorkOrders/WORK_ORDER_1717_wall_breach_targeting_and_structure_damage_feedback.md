@@ -1,6 +1,18 @@
 # WORK ORDER 1717 - Wall damage: no player breach VERB, and structure damage fires no numbers or sound
 
-**Status:** READY TO IMPLEMENT - read-only RCA complete, three findings each cited at source; recommend SPLITTING into three file-disjoint follow-ups (see section 6)
+**Status:** SPLIT - 6C (structure damage feedback) FIXED, see WORK_ORDER_1719 (6A, breach targeting - IMPLEMENTED) and 6B (rally-arrival trace, still open, unrouted); COMPILE_GATE_OK 11:32, REGRESSION_OK 11:40
+
+> **6C (structure damage feedback) IMPLEMENTED 2026-09-14 - awaiting lead gate.** Numbers on
+> the existing `DamageNumberSpawner` pool carrying the post-tier-divide value, a new
+> `SfxId.StructureImpact` (placeholder synth - a real clip is still owed), a
+> damage-accumulating rate limit, and the HP bar attached on the FIRST hit instead of up to
+> 2.3 s later. No gameplay class edited. Edit-only lane: **not compiled, not gated, not
+> committed, and no headless capture run** - see the RESULT for what is and is not proven:
+> `WORK_ORDER_1717_wall_breach_targeting_and_structure_damage_feedback.RESULT.md`.
+>
+> **6A (breach verb) and 6B (rally-arrival trace) REMAIN OPEN - separate work.** 6A needs the
+> PO's rulings on section 6A's three design questions before any code; 6B's own gate is a
+> capture before code. The overall ticket is therefore NOT done.
 **Minted:** 2026-09-14 by the read-only RCA lane, from the owner's raid report below. No `.cs`, `.unity`
 or asset touched by this lane; no Unity run, no gate, no commit.
 **Branch:** `dev` @ `96c208654`

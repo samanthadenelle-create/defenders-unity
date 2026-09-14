@@ -346,7 +346,12 @@ namespace DeNelle.Village
             StructureHitReaction.Attach(gameObject,
                 () => _heart != null ? Mathf.Clamp01(_heart.Hp / FullHp) : 1f,
                 "HeartOfElarion",
-                NotifyHit);
+                NotifyHit,
+                // WO-1717: the Heart's own max HP, so a blow on the thing the game is named
+                // for prints the points it cost - the same number channel every other
+                // structure now gets. Its fraction above is Hp / FullHp, so the product is
+                // the HP actually lost, exactly.
+                () => FullHp);
 
             // Seed the readout so tier one is traced from the first frame.
             ApplyHealthTell(force: true);
