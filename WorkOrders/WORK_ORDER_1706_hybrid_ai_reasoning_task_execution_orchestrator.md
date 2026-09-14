@@ -1,6 +1,9 @@
 # WORK ORDER 1706 - Hybrid AI Reasoning + Task Execution Orchestrator
 
-**Status:** READY TO IMPLEMENT - Phase 1 worker half only; reasoner half BLOCKED on an OpenAI key (see section 4)
+**Status:** BLOCKED - worker half IMPLEMENTED and lead-verified 2026-09-14 (63/63 tests re-run by the lead, E2E diff on a real repo file, committed); reasoner half waits on the owner supplying OPENAI_API_KEY as an env var
+(result: `WorkOrders/WORK_ORDER_1706_hybrid_ai_reasoning_task_execution_orchestrator.RESULT.md`.
+⚠ The RESULT's section 0 records an UNTRACKED second implementation of this same ticket already in the
+tree at `tools/hybrid-orchestrator/` - the lead must pick one before committing.)
 **Minted:** 2026-09-14 by the CLI lead (Fable seat), from the owner's spec delivered outside the repo
 **Source spec:** `C:\Users\Elden\Downloads\Work Order_ Hybrid AI Reasoning + Task Execution Orchestrator (1).md`
 (861 lines, owner-authored, read in full 2026-09-14). This ticket SCOPES that spec into the repo's lane

@@ -1,0 +1,61 @@
+# WO-1706 / spec section 5 - THE ONLY PLACE MODEL NAMES MAY APPEAR.
+# Code never hard-codes a model string; it resolves a ROLE through config.py.
+#
+# pricing is USD per 1,000,000 tokens, used for the estimated_cost_usd column in
+# the model_calls table (spec section 13). Local models cost nothing, so 0/0.
+
+models:
+
+  reasoner:
+    provider: openai
+    model: gpt-5.6-sol
+    reasoning: high
+    # ⛔ PLACEHOLDER PRICES - NOT verified against a live price list. There is no
+    # OPENAI_API_KEY on this machine (2026-09-14), so nothing here could be checked
+    # against the API. estimated_cost_usd is computed FROM these numbers, so every
+    # cost figure the ledger reports for an openai role is provisional until the
+    # owner confirms them.
+    pricing:
+      input_per_mtok: 1.25
+      output_per_mtok: 10.00
+
+  worker:
+    provider: ollama
+    model: gpt-oss:20b
+    # gpt-oss reasons before answering; "low" keeps a mechanical edit to seconds.
+    think: low
+    pricing:
+      input_per_mtok: 0.0
+      output_per_mtok: 0.0
+
+  worker_fallback:
+    provider: openai
+    model: gpt-5.6-luna
+    # ⛔ PLACEHOLDER PRICES - see the note on the reasoner role above.
+    pricing:
+      input_per_mtok: 0.25
+      output_per_mtok: 2.00
+
+  # Second local candidate for the spec section 21 benchmark. Not the default;
+  # the benchmark decides which role "worker" points at.
+  worker_local_small:
+    provider: ollama
+    model: qwen2.5-coder:7b
+    pricing:
+      input_per_mtok: 0.0
+      output_per_mtok: 0.0
+
+providers:
+  ollama:
+    base_url: http://localhost:11434
+    timeout_seconds: 900
+  openai:
+    base_url: https://api.openai.com/v1
+    # Read from the environment ONLY. Never a value in this file.
+    api_key_env: OPENAI_API_KEY
+    timeout_seconds: 600
+
+limits:
+  # spec section 12: maximum autonomous retry.
+  max_autonomous_retries: 2
+  max_files_per_work_order: 12

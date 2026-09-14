@@ -1,0 +1,7 @@
+# Phase 1 worker-half dependencies (WO-1706).
+# Installed into tools/ai-orchestrator/.venv (gitignored).
+pydantic>=2.9
+PyYAML>=6.0
+httpx>=0.27
+fastapi>=0.115
+pytest>=8.0

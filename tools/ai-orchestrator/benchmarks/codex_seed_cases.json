@@ -1,0 +1,217 @@
+{
+  "description": "20 repository-specific benchmark specifications. Not claimed as executed. Copy source into disposable fixtures; approve the exact work order and executable oracle before running. Never seed defects into the game checkout.",
+  "metrics": [
+    "pass_rate",
+    "first_attempt_success",
+    "input_tokens",
+    "output_tokens",
+    "execution_seconds",
+    "test_success",
+    "hallucinated_changes",
+    "scope_violations",
+    "escalations",
+    "estimated_cost_usd"
+  ],
+  "cases": [
+    {
+      "id": "csharp_comment",
+      "category": "small_csharp",
+      "source_paths": [
+        "Assets/_Modules/Core/ResourceType.cs"
+      ],
+      "request": "Add XML documentation to enum members without changing names, values or mappings.",
+      "oracle": "Compare enum syntax/value map and compile in the isolated Unity runner.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "csharp_inventory_guard",
+      "category": "small_csharp",
+      "source_paths": [
+        "Assets/_Modules/Dungeons/Crafting/DungeonInventory.cs"
+      ],
+      "request": "In a fixture, add a null-input guard at a planner-selected existing inventory entry point; preserve its public contract.",
+      "oracle": "Planner must identify the exact contract; compile and run null/non-null regression cases.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "json_format",
+      "category": "json",
+      "source_paths": [
+        "Assets/Resources/Data/Canonical/audio-mix.json"
+      ],
+      "request": "Reformat the fixture JSON with two-space indentation and preserve every parsed value.",
+      "oracle": "Parse before/after and assert deep equality.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "json_fixture_edit",
+      "category": "json",
+      "source_paths": [
+        "Assets/Resources/Data/Canonical/audio-mix.json"
+      ],
+      "request": "In the benchmark copy only, set tracks.village.defaultVolume to 0.35, preserving all other fields.",
+      "oracle": "Assert exact JSON pointer change and deep equality elsewhere; if this pointer differs, escalate.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "test_inventory",
+      "category": "unit_tests",
+      "source_paths": [
+        "Assets/Tests/EditMode/InventoryVMTests.cs"
+      ],
+      "request": "Add one nonredundant inventory edge-case test following the existing fixture patterns.",
+      "oracle": "Isolated Unity runner; test must fail against an intentionally seeded relevant mutation.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "test_save",
+      "category": "unit_tests",
+      "source_paths": [
+        "Assets/Tests/EditMode/GameStateRoundtripTests.cs"
+      ],
+      "request": "Add a serialization round-trip regression for a planner-selected existing field.",
+      "oracle": "Test fails against the seeded omission and passes with the fixture baseline.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "refactor_cost",
+      "category": "refactor",
+      "source_paths": [
+        "Assets/_Modules/Core/UI/CostFormat.cs"
+      ],
+      "request": "Extract duplicated formatting logic identified by the reasoner without changing outputs.",
+      "oracle": "Compile and compare a fixed matrix of before/after formatting results.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "refactor_capacity",
+      "category": "refactor",
+      "source_paths": [
+        "Assets/_Modules/Core/Economy/TownBankCapacity.cs"
+      ],
+      "request": "Apply an approved local-variable naming cleanup without changing capacity formulas.",
+      "oracle": "Compile and compare boundary-value capacity results.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "docs_resources",
+      "category": "documentation",
+      "source_paths": [
+        "Assets/_Modules/Core/ResourceType.cs"
+      ],
+      "request": "Create a Markdown table of resource enum names and numeric values.",
+      "oracle": "Compare each row to the parsed source; reject invented resources.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "docs_save",
+      "category": "documentation",
+      "source_paths": [
+        "Assets/_Modules/Core/State/SaveSchema.cs"
+      ],
+      "request": "Document current save schema responsibilities and referenced version fields.",
+      "oracle": "Source-grounded human review, no unsupported migration claims.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "localization_es",
+      "category": "localization",
+      "source_paths": [
+        "Assets/Resources/Data/Canonical/es.json"
+      ],
+      "request": "Translate a planner-selected five-key English fixture into Spanish while preserving keys and placeholders.",
+      "oracle": "Exact key and placeholder equality plus bilingual review of meaning.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "localization_de",
+      "category": "localization",
+      "source_paths": [
+        "Assets/Resources/Data/Canonical/de.json"
+      ],
+      "request": "Repair deliberately removed placeholders in a five-key German fixture using the reference language.",
+      "oracle": "Compare placeholder multisets and preserve unrelated translated text.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "log_syntax",
+      "category": "log_diagnosis",
+      "source_paths": [
+        "Assets/Tests/EditMode/InventoryVMTests.cs"
+      ],
+      "request": "Diagnose a captured compiler failure produced by a seeded syntax mutation; report exact file and cause.",
+      "oracle": "Compare diagnosis to the recorded injected defect; no edits allowed.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "log_assertion",
+      "category": "log_diagnosis",
+      "source_paths": [
+        "Assets/Tests/EditMode/RaidScoringTests.cs"
+      ],
+      "request": "Diagnose a captured assertion failure from a seeded scoring mutation without changing game rules.",
+      "oracle": "Identify the seeded defect and cite actual assertion evidence.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "multi_file_doc",
+      "category": "multi_file",
+      "source_paths": [
+        "Assets/_Modules/Core/ResourceType.cs"
+      ],
+      "request": "From an approved plan, emit matching Markdown and JSON resource maps in the benchmark output directory.",
+      "oracle": "Both artifacts must exactly match source enum names and numeric values.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "multi_file_tests",
+      "category": "multi_file",
+      "source_paths": [
+        "Assets/Tests/EditMode/PartyShopVMTests.cs"
+      ],
+      "request": "Implement a planner-approved fixture repair and matching regression test across exactly two permitted files.",
+      "oracle": "Compile; seeded failure becomes green; unrelated tests remain green.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "regression_inventory",
+      "category": "regression",
+      "source_paths": [
+        "Assets/Tests/EditMode/InventorySeamTests.cs"
+      ],
+      "request": "Repair an intentionally seeded inventory fixture regression within the approved file boundaries.",
+      "oracle": "Previously passing tests pass again and a new test detects the injected mutation.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "regression_training",
+      "category": "regression",
+      "source_paths": [
+        "Assets/Tests/EditMode/TroopTrainingVMTests.cs"
+      ],
+      "request": "Repair an intentionally seeded training fixture regression without changing timing/economy rules.",
+      "oracle": "Approved seeded-defect oracle and full relevant test fixture.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "search_wallet",
+      "category": "repository_search",
+      "source_paths": [
+        "Assets/_Modules/Core/State/GameState.cs"
+      ],
+      "request": "Find declarations and references for the resource-wallet fields; produce path and line evidence.",
+      "oracle": "Compare against deterministic repository search; zero code changes.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    },
+    {
+      "id": "search_capacity",
+      "category": "repository_search",
+      "source_paths": [
+        "Assets/_Modules/Core/Economy/TownBankCapacity.cs"
+      ],
+      "request": "Find the capacity calculation entry points and their tests in the supplied repository snapshot.",
+      "oracle": "Compare reported symbols and paths to deterministic search results.",
+      "status": "requires_reviewed_fixture_and_oracle"
+    }
+  ]
+}
