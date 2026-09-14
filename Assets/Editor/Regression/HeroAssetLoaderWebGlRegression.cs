@@ -93,6 +93,7 @@ namespace DeNelle.Editor.Regression
                 Case1_BlockingCallIsGuarded(failures, log);
                 Case2_WarmCacheServesTheLoader(failures, log);
                 Case3_DetectorDiscriminates(failures, log);
+                Case4_FailedBodyCannotPassReady(failures, log);
             }
             catch (Exception ex)
             {
@@ -114,6 +115,58 @@ namespace DeNelle.Editor.Regression
                      "base placeholder.";
             Debug.Log(log.ToString());
             return true;
+        }
+
+        private static void Case4_FailedBodyCannotPassReady(List<string> failures, StringBuilder log)
+        {
+            string address = HeroAssetLoader.AddressFor(ProbeSlug);
+            var locator = new UnityEngine.AddressableAssets.ResourceLocators.ResourceLocationMap("wo1701-readiness");
+            locator.Add(address, new UnityEngine.ResourceManagement.ResourceLocations.ResourceLocationBase(
+                address, address, "wo1701-no-provider", typeof(GameObject)));
+            var validate = typeof(HeroContentPrewarmer).GetMethod("ValidateWarmBodies",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            GameObject body = null;
+            UnityEngine.AddressableAssets.Addressables.AddResourceLocator(locator);
+            try
+            {
+                if (validate == null)
+                {
+                    failures.Add("[ready] missing registered-body readiness check");
+                    return;
+                }
+                if ((bool)validate.Invoke(null, new object[] { ProbeSlug }) ||
+                    HeroContentPrewarmer.State != HeroPrewarmState.Failed ||
+                    !HeroContentPrewarmer.StatusText.Contains("Retry"))
+                    failures.Add("[ready] registered body without loaded object did not fail with Retry instructions");
+                body = new GameObject("wo1701-retry-body");
+                body.hideFlags = HideFlags.HideAndDontSave;
+                HeroContentPrewarmer.SeedWarmForTests(typeof(GameObject), address, body);
+                if (!(bool)validate.Invoke(null, new object[] { ProbeSlug }))
+                    failures.Add("[ready] retained body still rejected on retry");
+
+                string source = File.ReadAllText(PrewarmerSrc);
+                string guarded = "yield return WarmAssets(slug);";
+                int cursor = 0;
+                int paths = 0;
+                while ((cursor = source.IndexOf(guarded, cursor, StringComparison.Ordinal)) >= 0)
+                {
+                    int nextReady = source.IndexOf("State = HeroPrewarmState.Ready", cursor, StringComparison.Ordinal);
+                    int check = source.IndexOf("if (!ValidateWarmBodies(slug)) yield break;", cursor, StringComparison.Ordinal);
+                    if (check < 0 || nextReady < 0 || check > nextReady)
+                        failures.Add("[ready] warm pass can announce Ready without checking registered bodies");
+                    paths++;
+                    cursor += guarded.Length;
+                }
+                if (paths != 2) failures.Add("[ready] expected cached and downloaded warm paths");
+                log.AppendLine("Readiness probe: missing registered body blocks; retained retry body passes; both warm paths checked.");
+            }
+            finally
+            {
+                UnityEngine.AddressableAssets.Addressables.RemoveResourceLocator(locator);
+                HeroContentPrewarmer.ClearWarmForTests();
+                HeroContentPrewarmer.Reset();
+                if (body != null) UnityEngine.Object.DestroyImmediate(body);
+            }
         }
 
         // =====================================================================

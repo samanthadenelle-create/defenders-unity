@@ -1,5 +1,21 @@
 # WORK ORDER 1701 - RESULT
 
+## 2026-09-13 follow-up (supersedes implementation state below)
+
+**Status: IMPLEMENTED, UNITY TESTS UNRUN; device acceptance still open.**
+
+The old GameObject sync guard and retained cache are already in the shared tree. The owner bounce is real, but `Builds/ready-owner-validation-board.log:19` records "no note typed - bounced anyway". The original 2026-09-10 trace proves the old exception; it does not prove a new cause after that fix.
+
+This follow-up closes a separately reproducible contract gap: both cached-byte and successful-download paths unconditionally declared Ready after `WarmAssets`, even when a registered body load failed. `HeroContentPrewarmer` now validates that each registered body candidate is retained before either Ready transition; failure keeps the existing Failed/Retry screen with the exact missing address in FlowTrace. A new attempt starts in Downloading, and failed load handles are released so retries do not accumulate them. Controller misses keep their existing fallback behavior. No `HeroAssetLoader` change was needed.
+
+`HeroAssetLoaderWebGlRegression.Case4_FailedBodyCannotPassReady` adds a synthetic registered body location without loading a provider, checks Failed plus Retry instructions, seeds the retained body and checks retry eligibility, and pins both production Ready paths to the validator. This is a deterministic negative-path test, not a device-art test. **Unity execution UNRUN by this edit-only lane; root must run it and the full suite.** Brace gate passed (`GATE_BRACE_SUMMARY bad=0 of 2`); no compile or player pass is claimed.
+
+Still unproven: actual Mage artwork on Seeker/Pi Browser, zero sync exceptions across the session, fresh WebGL content/catalog parity and loaded production prefab. `HeroTextureLoader` remains a separate unguarded synchronous texture seam (including the captured Orc texture path); this lane did not edit it. The zero-catalog-key prewarm bypass and other-class companion warming also remain separate observations, not established causes of the owner's bounce.
+
+WebGL probe correction: the compiler's generic "enable built-in Web GL" advice does not establish an installable package. Root tried the lane's suggestion and `Builds/night-practice-entry-before.log` rejected `com.unity.modules.webgl@1.0.0` as unavailable; root reverted that manifest addition. No matching BuiltInPackages directory exists. The concrete issue is the inactive-target compile probe's reference set: `Library/Bee/artifacts/20d00e0P.dag/com.solana.unity_sdk.rsp` defines UNITY_WEBGL but omits WebGLModule, whereas the actual-target `2000b0aP.dag/com.solana.unity_sdk.rsp:311` references the installed WebGLSupport/Managed/UnityEngine.WebGLModule.dll. `CompileGate.cs:528` documents this gap, and historical `Builds/wave12-webgl.runner.txt` records an actual WebGL build success. Do not add the nonexistent package or alter Solana's asmdef on this evidence. The next decisive verification is the actual WebGL build with WebGL active; that current-tree build is still UNRUN here. No package/asmdef was edited by this lane.
+
+Historical 2026-09-10 report follows; its open warm-failure-policy item is superseded by the readiness check above.
+
 **Status:** IMPLEMENTED - awaiting lead gate (NOT gated in Unity, NOT committed by this lane)
 **Lane:** SME implementation lane, worktree `agent-a74b360b34c7b3fb0` (branch `worktree-agent-a74b360b34c7b3fb0`, HEAD `f5d39acd1`)
 **Date:** 2026-09-10

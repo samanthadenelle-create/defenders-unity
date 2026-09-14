@@ -192,6 +192,7 @@ namespace DeNelle.Core
         {
             LastSlug = slug ?? string.Empty;
             Progress = 0f;
+            State = HeroPrewarmState.Downloading;
 
             if (string.IsNullOrEmpty(slug))
             {
@@ -228,6 +229,7 @@ namespace DeNelle.Core
                 // this is the common second-launch path, and the WebGL player has no other way
                 // to turn those bytes into a GameObject.
                 yield return WarmAssets(slug);
+                if (!ValidateWarmBodies(slug)) yield break;
                 State = HeroPrewarmState.Ready;
                 Progress = 1f;
                 StatusText = string.Empty;
@@ -296,6 +298,7 @@ namespace DeNelle.Core
                     // WO-1701: the bytes are local now, but nothing has been LOADED yet. Do that
                     // here, async, before Ready - the loader must never have to do it synchronously.
                     yield return WarmAssets(slug);
+                    if (!ValidateWarmBodies(slug)) yield break;
                     State = HeroPrewarmState.Ready;
                     Progress = 1f;
                     StatusText = string.Empty;
@@ -430,20 +433,29 @@ namespace DeNelle.Core
         // =====================================================================
 
         /// <summary>
-        /// Turn the downloaded bytes into LOADED objects and park them in the warm cache, so
-        /// HeroAssetLoader (and, once it is routed here, HeroTextureLoader) can answer from a
-        /// dictionary on every platform.
-        /// <para>What it warms, and where the list comes from: the BODY addresses are enumerated
-        /// from <c>HeroAssetLoader.WarmableAddresses</c> for every slug in
-        /// <see cref="BodySlugCandidates"/> - the loader owns that list, this class does not keep a
-        /// second copy of it. The TEXTURE addresses are the "Heroes/Textures/*" keys already
-        /// collected for the download, warmed as Texture2D.</para>
-        /// <para>Everything is asynchronous and everything is guarded: a single asset that will not
-        /// load is reported by address and skipped, never allowed to fault the pass. The pass does
-        /// NOT flip the state to Failed on a partial warm - whether a missing BODY should hold the
-        /// load screen the way a failed DOWNLOAD does is an open design question recorded in the
-        /// WO-1701 RESULT; it is deliberately not decided here.</para>
+        /// Reject Ready when a registered hero body was not retained by the async warm pass.
+        /// Optional controller misses retain the existing local controller fallback.
         /// </summary>
+        // Download success is not asset-load success. A registered body with no retained
+        // object cannot be resolved by the WebGL loader; keep the existing Retry screen.
+        private static bool ValidateWarmBodies(string slug)
+        {
+            foreach (string candidate in BodySlugCandidates(slug))
+            {
+                string address = HeroAssetLoader.AddressFor(candidate);
+                if (!HeroAssetLoader.AddressableRegistered<GameObject>(address)) continue;
+                if (TryGetWarm<GameObject>(address, out _)) continue;
+
+                State = HeroPrewarmState.Failed;
+                Progress = 0f;
+                StatusText = "Could not load your " + slug + " artwork. Check your internet connection and tap Retry.";
+                FlowTrace.Warn("HeroPrewarm", "world entry BLOCKED: registered body '" + address +
+                    "' was not held after the async warm pass. Downloaded bytes alone are not Ready.");
+                return false;
+            }
+            return true;
+        }
+
         private static IEnumerator WarmAssets(string slug)
         {
             int before = s_warm.Count;
@@ -543,6 +555,7 @@ namespace DeNelle.Core
             string why = handle.OperationException != null
                 ? handle.OperationException.Message
                 : "no exception reported";
+            Guard.Try("HeroPrewarm", "release failed warm handle", () => Addressables.Release(handle));
             FlowTrace.Fail("HeroPrewarm",
                 "the bundle for '" + address + "' (" + typeof(T).Name + ") is local but the ASSET would not " +
                 "load: " + why + ". The warm cache does not hold this address, so HeroAssetLoader must fall " +
