@@ -83,3 +83,11 @@ in `adb logcat`.
 - Do not re-baseline the daemon to "now": `:132-135` exists so a capture made while the daemon was down
   is never silently dropped (WO-965). The fix is **dedupe**, never skipping the backlog.
 - No `.cs` gameplay changes beyond the severity keyword; no `Assets/` scene or data edits.
+
+
+## Replay continued after minting (lead, 2026-09-14)
+
+Eleven more captures, seq 5041-5051, filed 08:12:32Z to 08:42:57Z at a ~3 min cadence, all re-emissions of
+already-handled 09-11 rows (OwnedTownRepairService CS0029 x3, injected save failure x2, EMERGENCY pill x1,
+OWNED_TOWN_MOVE_PLAY_FAIL x1, `t.GetParent() == nullptr` assertion x4). Acked under this ticket; the fix is
+the stuck break-log offset, not any of the payloads.
