@@ -332,3 +332,20 @@ Files: `Assets/_Modules/Village/Vfx/StructureHitReaction.cs` (the seam), possibl
 | per-hit dust: thresholds + mapped prefab | `Assets/_Modules/Village/Vfx/StructureHitReaction.cs:76,83,90,150-186`; `Assets/Editor/VFXCatalogGenerator.cs:271` |
 | no structure-hit SFX exists | `Assets/_Modules/Audio/SfxId.cs:33-70` |
 | raid scenes really are enemy-owned | `Assets/_Modules/Village/World/Camps/RaidGarrisonSpawner.cs:156` |
+
+## Live confirmation, 2026-09-14 (owner mid-raid on device)
+
+Owner was live-raiding on the Seeker while this ticket's RCA was landing. Screenshot:
+`docs/handoffs/live_raid_wall_targeting_confirmation.png` - HUD shows SPIRE 100%, Razed 8%, standing at
+a wall segment. Pulled logcat confirms the RCA's targeting finding in real play, not just source:
+
+```
+[Flow:TroopAI] id=troop-spearman role=melee ENGAGED foe='Wall_Keep1_SE_10(WallSegment)' kind=struct
+dist=20.7m attackRange=3.5m inRange=False moved=0.01m/s commanded=4.0 agent=onNavMesh retargets=76
+```
+
+76 retargets and still out of range, not closing distance - live evidence of the thrashing this
+ticket's targeting finding predicts. Every Breach-phase troop in the same log window shows
+`has[unit=False,obj=False,wall=True]` - locked to "a wall" as a category, not the specific segment
+the owner is standing at. `Razed 8%` climbing on-screen confirms FINDING 1 (damage calculation) is
+healthy; the defect is isolated to FINDING 2 (targeting) as the RCA concluded.
