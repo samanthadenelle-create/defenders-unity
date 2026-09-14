@@ -886,6 +886,11 @@ namespace DeNelle.Village
 
         private void HandleBreachTap(Vector2 screenPoint)
         {
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                $"HandleBreachTap IN - screenPoint={screenPoint}, breachModeOn={_breachMode} " +
+                "(sanity trace only - Update's _breachMode gate means this should always read true; " +
+                "a false here would mean this method was reached with breach mode already off).");
+
             // 2026-09-14 breach-tap-miss investigation (do NOT strip — CLAUDE.md §12):
             // captured "hit 'RaidGround'" on a tap squarely on a rendered wall, while the
             // SAME-frame hostile-structure sweep (mask=Enemy|Structure) found the same
@@ -904,6 +909,11 @@ namespace DeNelle.Village
             {
                 LogBreachTapDiagnostics(screenPoint, false, default);
                 SetStatus("Breach: tap a wall section to order the assault.");
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    $"HandleBreachTap OUT: outcome=raycast_miss screenPoint={screenPoint} - " +
+                    "RaycastGround found nothing at all (masked mask/fallback ~0 both missed). " +
+                    "No wall resolved, standing order (if any) UNCHANGED. See breach-tap-diag-* " +
+                    "lines above for the raycast/collider detail.");
                 return;
             }
 
@@ -922,12 +932,22 @@ namespace DeNelle.Village
                     "breach tap missed every WallSegment (hit '" +
                     (hit.collider != null ? hit.collider.name : "nothing") +
                     "') - the standing order, if any, is UNCHANGED.");
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    $"HandleBreachTap OUT: outcome=not_wall_segment hitCollider=" +
+                    $"'{(hit.collider != null ? hit.collider.name : "nothing")}' - the raycast hit " +
+                    "something, but GetComponentInParent<WallSegment>() found no wall on it. No " +
+                    "order placed, standing order (if any) UNCHANGED.");
                 return;
             }
 
             if (!wall.IsAlive)
             {
                 SetStatus("Breach: that section is already down.");
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    $"HandleBreachTap OUT: outcome=wall_already_dead wall='{wall.name}' - hit a real " +
+                    "WallSegment but wall.IsAlive is false (that section already collapsed). No order " +
+                    "placed; standing order (if any) UNCHANGED - the player must pick a section that " +
+                    "is still standing.");
                 return;
             }
 
@@ -937,12 +957,22 @@ namespace DeNelle.Village
                 // base wall reads Hostile. A friendly one here means the tap found the wrong
                 // scene's masonry - refuse rather than order the warband onto their own wall.
                 SetStatus("Breach: that wall is not the enemy's.");
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    $"HandleBreachTap OUT: outcome=wrong_faction wall='{wall.name}' faction={wall.Faction} " +
+                    "- hit a live WallSegment but it did not resolve Hostile (expected in a raid scene, " +
+                    "faction is derived from SceneOwnership per WO-1717 sec.2). Refused rather than " +
+                    "order the warband onto friendly masonry; standing order (if any) UNCHANGED.");
                 return;
             }
 
             TroopBreachOrder.Set(wall);
             SetStatus("Breach ordered - the warband hits that section.");
             RefreshBreachButton();
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                $"HandleBreachTap OUT: outcome=success wall='{wall.name}' faction={wall.Faction} - " +
+                "TroopBreachOrder.Set(wall) placed (that call logs its own line too), Breach button " +
+                "refreshed. The whole warband now targets this section, overriding the automatic " +
+                "most-damaged pick until the order is cleared or the wall falls.");
         }
 
         /// <summary>
@@ -1060,6 +1090,11 @@ namespace DeNelle.Village
         /// </summary>
         private void ToggleBreach()
         {
+            bool wasOn = _breachMode;
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                $"ToggleBreach IN - player touched the Breach button. wasOn={wasOn} -> " +
+                (wasOn ? "DISARMING breach mode." : "ARMING breach mode (next wall tap orders the warband)."));
+
             _breachMode = !_breachMode;
             if (_breachMode)
             {
@@ -1071,10 +1106,23 @@ namespace DeNelle.Village
             }
             else
             {
+                bool hadOrder = TroopBreachOrder.HasOrder;
                 TroopBreachOrder.Clear();
                 SetStatus("Breach order dropped - the warband picks the weakest wall again.");
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    $"ToggleBreach OUT - breach mode DISARMED. hadStandingOrder={hadOrder} " +
+                    (hadOrder
+                        ? "- an explicit wall order WAS cleared, the automatic most-damaged rule takes back over."
+                        : "- no standing order existed, this was a no-op clear."));
             }
             RefreshBreachButton();
+
+            if (_breachMode)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    "ToggleBreach OUT - breach mode ARMED. Deploy disarmed, rally disarmed, " +
+                    "tiles/rally button refreshed; awaiting a wall tap in HandleBreachTap.");
+            }
         }
 
         private void RefreshBreachButton()
