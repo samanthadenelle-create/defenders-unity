@@ -189,7 +189,11 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-first pass): main line next free = **1713**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-seventy-second pass): main line next free = **1714**.
+> *(CLI minted **1713** 2026-09-14 from a live device capture: the Crystal Mine build-mode ghost
+> preview renders on its side despite the catalog row already carrying a manual euler fix.)*
+
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-seventy-first pass): main line next free = **1713**.
 > *(CLI minted **1712** 2026-09-14 from the owner's felt-test of the tester build: tap a building in
 > the world to jump into its upgrade screen - explicitly a nice-to-have, not blocking.)*
 
