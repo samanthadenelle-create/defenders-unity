@@ -269,6 +269,11 @@ namespace DeNelle.Village
         private readonly List<Renderer> _restoreScratch = new List<Renderer>();
         // Reused buffer for SphereCastAll (NonAlloc) so the per-frame path stays allocation-light.
         private readonly RaycastHit[] _occluderHits = new RaycastHit[16];
+        // WO-1751: scratch for the seat-embed detector below. Non-alloc, never grown.
+        private readonly Collider[] _seatOverlap = new Collider[8];
+        // WO-1751: scratch for CollectOccluderRenderers — reused every frame, never allocated in
+        // the hot path. Capacity matches MaxFadedRenderersPerCollider so it never grows.
+        private readonly List<Renderer> _fadeScratch = new List<Renderer>(MaxFadedRenderersPerCollider);
 
         // ── Runtime state ──────────────────────────────────────────────────────
 
@@ -699,14 +704,76 @@ namespace DeNelle.Village
 
             // Treat the default "everything" value as "unset" and compute a sane world mask.
             if (_collisionMask.value == ~0)
+                _collisionMask = ComputeDefaultCollisionMask();
+
+            // §12: one line answers "which layers can occlude me", with no theory. Once, not
+            // per-frame — this never changes after the first resolve.
+            DeNelle.Core.Diagnostics.FlowTrace.Once("Camera", "collision-mask",
+                "OCCLUSION MASK RESOLVED = " + DescribeMask(_collisionMask.value)
+                + " (raw 0x" + _collisionMask.value.ToString("X8") + "). Any collider on a layer "
+                + "NOT listed here is INVISIBLE to the occlusion spherecast and can never be faded.");
+        }
+
+        /// <summary>
+        /// THE ONE PLACE the camera's occlusion/collision layer mask is computed (WO-1751).
+        /// <para>
+        /// DEF-151 built this from the project's NAMED layers so it tracks the real layer indices
+        /// (walls/buildings/towers = world geometry the camera must not enter) and deliberately
+        /// omits Enemy/Water/UI/triggers (which must never push the camera).
+        /// </para>
+        /// <para>
+        /// ⛔ WO-1751 — <b>"Structure" WAS MISSING AND THAT IS THE WHOLE RAID DEFECT.</b> The mask
+        /// read Default | Building | Tower. Every wall panel in a raid base is explicitly MOVED to
+        /// the "Structure" layer by the builder — <c>RaidBaseGenerator.cs:1999-2000</c>, whose own
+        /// comment at <c>:1991</c> says "the 'Structure' layer is what every LoS linecast is masked
+        /// to" — and a census of <c>Assets/Scenes/RaidBase_IronBastion.unity</c> (2026-09-15) reads
+        /// 158 <c>Wall_*</c> GameObjects on <c>m_Layer: 8</c> plus 2 layer-8 gatehouses
+        /// (<c>RaidBaseDresser.cs:1040-1041</c>). <c>ProjectSettings/TagManager.asset:20</c> is the
+        /// authority that layer 8 is "Structure". So EVERY vertical occluder in a raid sat outside
+        /// the cast: the spherecast hit nothing, <c>_faded</c> stayed empty, and
+        /// <c>TraceOcclusionOutcome</c> — which only speaks on a pull-in EDGE or a non-empty fade
+        /// set — printed NOTHING AT ALL. The owner's 2026-09-15 capture ("camera parked inside a
+        /// watchtower, no occluder fade, no trace line") is that silence, exactly.
+        /// </para>
+        /// <para>
+        /// ⚠ This widens the mask in TOWN as well: every Structure-layer collider there now enters
+        /// the occlusion cast. That is intended (a town wall should fade like a raid wall) but it
+        /// is an owner-FELT change, not a silent one.
+        /// </para>
+        /// <para>
+        /// <c>public static</c> so <c>CameraWallOcclusionRegression</c> can CALL it rather than
+        /// grep the source text for a literal — a source-text pin on a layer list is exactly the
+        /// duplicated state CLAUDE.md §5 forbids.
+        /// </para>
+        /// </summary>
+        public static int ComputeDefaultCollisionMask()
+        {
+            int mask = 1 << 0;                       // Default (ground / most structures live here)
+            AddNamedLayer(ref mask, "Building");
+            AddNamedLayer(ref mask, "Tower");
+            AddNamedLayer(ref mask, "Structure");    // WO-1751: raid + town wall panels live here
+            return mask;
+        }
+
+        private static void AddNamedLayer(ref int mask, string layerName)
+        {
+            int idx = LayerMask.NameToLayer(layerName);
+            if (idx >= 0) mask |= 1 << idx;
+        }
+
+        /// <summary>Human-readable layer list for one mask — evidence, not decoration.</summary>
+        private static string DescribeMask(int mask)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < 32; i++)
             {
-                int mask = 1 << 0; // Default (walls/ground/most structures live here)
-                int building = LayerMask.NameToLayer("Building");
-                int tower    = LayerMask.NameToLayer("Tower");
-                if (building >= 0) mask |= 1 << building;
-                if (tower    >= 0) mask |= 1 << tower;
-                _collisionMask = mask;
+                if ((mask & (1 << i)) == 0) continue;
+                string nm = LayerMask.LayerToName(i);
+                if (string.IsNullOrEmpty(nm)) nm = "<unnamed>";
+                if (sb.Length > 0) sb.Append('|');
+                sb.Append(i).Append(':').Append(nm);
             }
+            return sb.Length > 0 ? sb.ToString() : "<empty>";
         }
 
         private void OnDestroy()
@@ -1330,7 +1397,66 @@ namespace DeNelle.Village
 
             Vector3 seat = pivot + dir * (fullDist * _distanceFrac);
             TraceOcclusionOutcome(pullingIn, nearestOccluderDist, fullDist * _distanceFrac, fullDist);
+            if (nearestOccluderDist >= float.MaxValue) TraceSeatEmbeddedButUnseen(seat);
             return seat;
+        }
+
+        // WO-1751 — THE INSTRUMENT FOR THE SILENCE. TraceOcclusionOutcome above speaks only on a
+        // pull-in EDGE or a non-empty fade set, so "the cast found NOTHING" is indistinguishable in
+        // a log from "the camera was never running". That ambiguity is what cost the 2026-09-15
+        // triage: the owner's capture showed the camera inside a watchtower and the occluder trace
+        // was simply absent, which reads equally as "collision off", "outside the mask", "no
+        // collider", or "off the pivot->seat segment".
+        //
+        // ⛔ DELIBERATELY NOT A "no occluder found" TRACE. A clear line of sight is the NORMAL case
+        // and tracing it would fire in town forever, evicting the boot window out of the device
+        // logcat ring (memory `logcat-ring-buffer-destroys-evidence`). This speaks ONLY in the
+        // defect shape: the cast saw nothing, yet the camera BODY is overlapping real geometry —
+        // i.e. the seat is inside something the spherecast could not see. It names the collider,
+        // its layer, and whether that layer is in the mask, which separates all four causes above
+        // in ONE line. Throttled, and silent in every healthy frame.
+        //
+        // COST NOTE, stated rather than assumed: the THROTTLE gates only the LOG LINE — the overlap
+        // QUERY itself runs on every clear-line-of-sight frame. That is one non-alloc
+        // OverlapSphereNonAlloc against an 8-slot buffer, which is why it is acceptable here; if a
+        // frame-budget ticket ever names it (per CLAUDE.md sec.12, measure first with the 4-arg
+        // FlowTrace.Measure), gate the query on `Time.frameCount % 8 == 0` rather than deleting it.
+        private void TraceSeatEmbeddedButUnseen(Vector3 seat)
+        {
+            int hits = Physics.OverlapSphereNonAlloc(seat, _collisionRadius, _seatOverlap,
+                ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hits; i++)
+            {
+                Collider col = _seatOverlap[i];
+                if (col == null || col.isTrigger) continue;
+                if (IsTargetCollider(col)) continue;
+                // ⛔ MOVING BODIES ARE NOT THE GEOMETRY THIS DETECTOR EXISTS FOR. In a raid the hero
+                // stands inside a melee — ten troops plus mobs — and every one of them overlaps the
+                // seat sphere constantly. Without this filter the 8-slot buffer fills with bodies
+                // and the tower/wall the detector was written to name never gets reported. A
+                // Rigidbody or a NavMeshAgent in the parents is the cheap, exact test for "this
+                // thing walks"; static world geometry has neither.
+                if (col.attachedRigidbody != null) continue;
+                if (col.GetComponentInParent<UnityEngine.AI.NavMeshAgent>() != null) continue;
+
+                int layer = col.gameObject.layer;
+                bool inMask = (_collisionMask.value & (1 << layer)) != 0;
+                string layerName = LayerMask.LayerToName(layer);
+                if (string.IsNullOrEmpty(layerName)) layerName = "<unnamed>";
+                string cause = inMask
+                    ? "its layer IS in the mask, so the cast should have seen it - suspect the "
+                      + "pivot->seat SEGMENT missing it (the geometry is beside the camera, not on "
+                      + "the line) or a collider added after the cast"
+                    : "its layer is NOT in the occlusion mask, so the spherecast is structurally "
+                      + "blind to it - widen ComputeDefaultCollisionMask";
+
+                DeNelle.Core.Diagnostics.FlowTrace.Throttle("Camera", "seat-embedded", 3f,
+                    "CAMERA SEAT EMBEDDED IN UNSEEN GEOMETRY - the occlusion spherecast returned NO "
+                    + "occluder, yet the camera body overlaps collider '" + col.name + "' on layer "
+                    + layer + ":" + layerName + ". Mask = " + DescribeMask(_collisionMask.value)
+                    + ". Diagnosis: " + cause + ".");
+                return;
+            }
         }
 
         // WO-1734 §12 instrumentation: make "did the camera FADE the wall or PULL IN to it, and
@@ -1390,15 +1516,96 @@ namespace DeNelle.Village
         // Hide an occluder's visible mesh (set ShadowsOnly) so the hero shows through, keeping its
         // shadows. Stores the ORIGINAL shadow casting mode the first time we touch each renderer so
         // restore is exact. Marks every renderer touched this frame in _fadedThisFrame.
+        // ⛔ WO-1751 — THIS FADED ONLY ONE RENDERER, AND A RAID WALL HAS THREE.
+        //
+        // The old body did `GetComponent` then `GetComponentInParent` then
+        // `GetComponentInChildren<Renderer>()` — all SINGULAR, and the last one returns the FIRST
+        // match in the subtree. That is correct for a one-mesh prop and WRONG for every wall in
+        // the game. Read out of the baked scene (Assets/Scenes/RaidBase_IronBastion.unity,
+        // 2026-09-15), the collider's own GameObject `Wall_Outer_SN_0` (layer 8, BoxCollider,
+        // NavMeshObstacle) owns THREE renderer subtrees as DIRECT CHILDREN:
+        //     Wall_Outer_SN_0
+        //       +- steel_wall                (prefab instance, the wall art)
+        //       +- Clad_Wall_Outer_SN_0      (prefab instance, the clad panel the player sees)
+        //       +- Ruin_Wall_Outer_SN_0      -> RuinPiece_0   (the breached-state art)
+        // Fading the first of those left the other two drawing, so the wall still blocked the
+        // view — a fade that does nothing, which is indistinguishable in a capture from no fade
+        // at all.
+        //
+        // ⚠ AND THE CORRECTION THAT MATTERS MORE THAN THE FIX: this lane's own first hand-back
+        // claimed the clad panel was a SIBLING under `Zone_Clad` and that the fade therefore could
+        // not reach it at all. THAT CLAIM WAS WRONG. It was inferred from the GENERATOR's
+        // structure instead of read out of the BAKED TREE, and the two disagree — only the 16
+        // `Clad_Corner_*` hang under `Zone_Clad`; all 158 `Clad_Wall_*` are children of their own
+        // blocker. The real defect was one word (`GetComponentInChildren` vs
+        // `GetComponentsInChildren`), not a missing link. CLAUDE.md's "read the code, not the
+        // comment" applies to a builder's intent exactly as much as to a doc.
+        //
+        // RESOLUTION LADDER, tightest root first, and SILENT-SAFE at every rung: a collider with
+        // no resolvable renderer simply returns, exactly as before — such a wall still pulls in at
+        // the point-blank backstop and nothing throws. Everything faded is registered in `_faded`
+        // + `_fadedThisFrame`, so RestoreFadedNotHitThisFrame un-hides it the instant it stops
+        // occluding, and RestoreAllFaded covers teardown. Nothing can be left permanently hidden.
         private void FadeOccluder(Collider col)
         {
-            if (col == null) return;
+            if (CollectOccluderRenderers(col, _fadeScratch) == 0) return;
+            for (int i = 0; i < _fadeScratch.Count; i++) FadeOneRenderer(_fadeScratch[i]);
+        }
 
-            // Renderer on the collider, or the nearest one up/under its hierarchy (compound colliders).
-            var rend = col.GetComponent<Renderer>();
-            if (rend == null) rend = col.GetComponentInParent<Renderer>();
-            if (rend == null) rend = col.GetComponentInChildren<Renderer>();
-            if (rend == null) return;
+        /// <summary>Bound on one collider's fade set. A pathological root (a zone or base root that
+        /// somehow acquired a collider) must not cost an unbounded walk every frame.</summary>
+        public const int MaxFadedRenderersPerCollider = 32;
+
+        /// <summary>
+        /// THE ONE DECIDER for "which renderers does this occluding collider hide" (WO-1751).
+        /// Fills <paramref name="into"/> (cleared first) and returns the count.
+        /// <para>
+        /// Rung 1 is the collider's OWN object and everything under it — the tightest root that
+        /// still covers a compound body, and the rung every wall and tower takes. Rung 2 (nothing
+        /// renderable below) takes the NEAREST ANCESTOR renderer ONLY, never its whole subtree,
+        /// which could be a zone root holding half the base.
+        /// </para>
+        /// <para>
+        /// <c>GetComponentsInChildren&lt;Renderer&gt;(false)</c> — ACTIVE ONLY, deliberately. A
+        /// breached wall's ruin art is an INACTIVE child: in
+        /// <c>Assets/Scenes/RaidBase_IronBastion.unity</c> all <b>158</b> <c>Ruin_Wall_*</c>
+        /// GameObjects carry <c>m_IsActive: 0</c> (and all 158 <c>Wall_*</c> carry
+        /// <c>m_IsActive: 1</c>) — counted from the file, not assumed. Registering an inactive
+        /// renderer would hand <see cref="RestoreFadedNotHitThisFrame"/> something to "restore",
+        /// REVEALING art the game had deliberately hidden.
+        /// </para>
+        /// <para>
+        /// <c>public static</c> so <c>CameraWallOcclusionRegression</c> can build the baked wall's
+        /// real shape and assert the resolution, rather than grep for a method name. Pure apart
+        /// from the caller's list: no state, no mutation of anything it finds.
+        /// </para>
+        /// </summary>
+        public static int CollectOccluderRenderers(Collider col, List<Renderer> into)
+        {
+            if (into == null) return 0;
+            into.Clear();
+            if (col == null) return 0;
+
+            var owned = col.GetComponentsInChildren<Renderer>(false);
+            if (owned != null)
+            {
+                for (int i = 0; i < owned.Length && into.Count < MaxFadedRenderersPerCollider; i++)
+                {
+                    if (owned[i] != null) into.Add(owned[i]);
+                }
+            }
+            if (into.Count > 0) return into.Count;
+
+            var ancestor = col.GetComponentInParent<Renderer>();
+            if (ancestor != null) into.Add(ancestor);
+            return into.Count;
+        }
+
+        /// <summary>Hide one renderer's mesh, remembering its ORIGINAL shadow mode so the restore is
+        /// exact. True when a live renderer was marked. Null-safe.</summary>
+        private bool FadeOneRenderer(Renderer rend)
+        {
+            if (rend == null) return false;
 
             if (!_faded.ContainsKey(rend))
                 _faded[rend] = rend.shadowCastingMode;
@@ -1406,6 +1613,7 @@ namespace DeNelle.Village
             _fadedThisFrame.Add(rend);
             if (rend.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly)
                 rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+            return true;
         }
 
         // Restore (un-hide) every faded renderer that was NOT an occluder this frame, so walls
