@@ -452,3 +452,46 @@ every line above as a claim until `COMPILE_GATE_OK` and a fresh bake say otherwi
 | Regression failing when courtyard→spire is not `PathComplete` | **DONE, then the criterion was CORRECTED in pass 3** (§4b): `PathComplete` is retired as brittle-by-construction against a solid objective; the suite now fails when the route does not **ARRIVE** within the objective's measured reach. Registration line still handed over unregistered (§5). |
 | Fresh bake reports `PathComplete` for every raid scene | **BLOCKED on the lead's bake** |
 | Device shows `routeObj=PathComplete` after breach | **BLOCKED on a device run** |
+
+---
+
+## 8. §4c FOLLOW-UP — 2026-09-15, appended by the WO-1753 edit-only lane (body above UNCHANGED)
+
+The §4c entry point this RESULT proposed but did not write is now **written, and deliberately NOT run**.
+
+**`DeNelle.Editor.RaidBaseGenerator.ReseatOwnedTownSpire`** —
+`Assets/Editor/WallTools/RaidBaseGenerator.cs:520-631` (menu item
+`Defenders/Walls/Reseat Owned Town Spire (OwnedTown_IronBastion)`, batchmode-callable by that exact
+method name). It opens `Assets/Scenes/OwnedTown_IronBastion.unity`, applies the already-proven
+private `ReseatSpireOnKeepPlatform`, and saves. **One transform moves; nothing is created, deleted,
+re-parented or re-dressed.** The helper is passed the `KeepPlatform`'s own root (it uses `root`
+only to find the slab) and the scene's single `RaidSpire`.
+
+**It REFUSES rather than guesses, and a refusal never saves** (CLAUDE.md §11B) — not exactly one
+`RaidSpire`; not exactly one `KeepPlatform`; or the spire's Y did not move (`|Δy| < 0.001`), which is
+how the helper's four silent-return branches surface. A no-op that still saved would reserialize the
+owner's protected scene for nothing.
+
+**Markers — judge on a FRESH log, never the exit code:**
+`OWNED_TOWN_SPIRE_RESEAT_OK <scene> spire y <before> -> <after> lift=<n>m` on success,
+`OWNED_TOWN_SPIRE_RESEAT_FAIL <why>` otherwise. Both strings were greped before minting and appear
+nowhere else in `Assets/` or `WorkOrders/`.
+
+**Acceptance for the lead, because the scene is owner-authored:** after the run, `git diff --stat` on
+`Assets/Scenes/OwnedTown_IronBastion.unity` should be ONE hunk — the spire's `m_LocalPosition.y`. If
+the save reserializes more than that, stop and show the owner before committing.
+
+### The identity-bake hazard §4c flagged: **NON-EVENT, and now proven rather than suspected**
+
+`OwnedTownScenePose.TryResolve` (`Assets/_Modules/Village/World/Camps/OwnedTownScenePose.cs:55-93`)
+**never compares the node's own position.** With a `templateStructureId` it matches on the id and on
+the **PARENT's** `localToWorldMatrix` (`:73-76`); without one (the identity bake's `legacy` first
+pass) it walks the captured sibling-index path and compares the NAME (`:79-91`). The gate before both
+(`:58`) is `OwnedBaseProgression.ValidatePose`
+(`Assets/_Modules/Core/State/OwnedBaseProgression.cs:231-255`), which checks tokens, path integers,
+finiteness, non-zero scale and quaternion normalization — **no Y bound, no position tolerance at
+all.** `SeatOnSurface` moves the spire's own GameObject, not its parent, so neither the parent frame
+nor the sibling path nor the name changes. **`OwnedTemplateIdentityBake.Run` does NOT throw because
+of the 1.50 m reseat** — and the `poses.Count != 221` census is a count, which a move cannot change.
+(Unproven and out of scope: whether that bake passes for any OTHER reason — it has not been run here.)
+

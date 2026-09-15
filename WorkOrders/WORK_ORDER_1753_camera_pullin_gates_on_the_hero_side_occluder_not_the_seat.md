@@ -1,6 +1,10 @@
 # WORK ORDER 1753 — The camera pull-in is gated on the occluder nearest the HERO, so a raid wall 3.9 m in front of the seat yanks the camera to 1.2 m (a 3.75x zoom)
 
-**Status:** READY TO IMPLEMENT — hold for the owner's felt test on the next tester build
+**Status:** IMPLEMENTED, NOT YET GATED
+
+**Standing hold (unchanged by the flip above):** acceptance item 3 is the owner's felt test of a raid
+corridor on the next tester build. The code has NEVER been compiled by this lane — no Unity, no gate,
+no build. See `WORK_ORDER_1753_camera_pullin_gates_on_the_hero_side_occluder_not_the_seat.RESULT.md`.
 **Minted:** 2026-09-15 by the lead, from WO-1751's arithmetic (its pass-2 hand-back). Not a defect report from the owner — this is a PREDICTED felt regression, minted before it can bite.
 **Silo:** `Assets/_Modules/Village/Hero/SmartMobileCamera.cs` (`ApplyCollision` / the pull-in gate) + `Assets/Editor/Regression/CameraWallOcclusionRegression.cs`. Nothing else.
 

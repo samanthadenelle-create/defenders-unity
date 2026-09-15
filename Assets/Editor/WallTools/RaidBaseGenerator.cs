@@ -517,6 +517,119 @@ namespace DeNelle.Editor
                       "bakes the legacy NavMesh. Without it the hero and every agent have nothing to walk on.");
         }
 
+        // =====================================================================
+        // WO-1753 / WO-1749 §4c — THE OWNER'S CAPTURED TOWN IS NOT A GENERATED SCENE.
+        // ---------------------------------------------------------------------
+        //  `BuildAllRaidScenes` above bakes ONLY the ids in scene-configs.json, so
+        //  Assets/Scenes/OwnedTown_IronBastion.unity never sees the WO-1749 fix and still
+        //  carries the buried objective (goal=(0, 0.02, 0), mappedDy=1.56) — the spire seated on
+        //  the GROUND while the keep slab was raised 1.5 m over it afterwards.
+        //
+        //  ⛔ THAT SCENE IS OWNER-AUTHORED AND PROTECTED. It is NOT regenerated, NOT re-dressed and
+        //  NOT re-laid-out here. This entry point applies the ALREADY-PROVEN
+        //  `ReseatSpireOnKeepPlatform` to that one scene and does nothing else: it moves EXACTLY
+        //  ONE transform (the spire's own, via SeatOnSurface) and creates, deletes and re-parents
+        //  NOTHING. Every other object in the scene is left byte-identical.
+        //
+        //  REFUSES rather than guesses, in four places, because a protected scene must never be
+        //  rewritten on a maybe (CLAUDE.md §11B):
+        //   - not exactly ONE RaidSpire            -> FAIL, no save
+        //   - not exactly ONE KeepPlatform         -> FAIL, no save
+        //   - the reseat helper took one of its own silent-return branches (no measurable slab,
+        //     spire off the footprint, no renderers) so the Y did not move -> FAIL, no save.
+        //     A no-op that still saves would reserialize the owner's scene for nothing.
+        //
+        //  Batchmode: -executeMethod DeNelle.Editor.RaidBaseGenerator.ReseatOwnedTownSpire
+        //  JUDGE IT BY THE MARKER ON A FRESH LOG, never by the exit code (CLAUDE.md §8):
+        //     OWNED_TOWN_SPIRE_RESEAT_OK   ... spire y 0.02 -> 1.52 lift=1.50m
+        //     OWNED_TOWN_SPIRE_RESEAT_FAIL ... <why, and nothing was saved>
+        // =====================================================================
+        private const string OwnedTownScenePath = "Assets/Scenes/OwnedTown_IronBastion.unity";
+        private const string OwnedTownReseatOkMarker = "OWNED_TOWN_SPIRE_RESEAT_OK";
+        private const string OwnedTownReseatFailMarker = "OWNED_TOWN_SPIRE_RESEAT_FAIL";
+
+        [MenuItem("Defenders/Walls/Reseat Owned Town Spire (OwnedTown_IronBastion)")]
+        public static void ReseatOwnedTownSpire()
+        {
+            var scene = EditorSceneManager.OpenScene(OwnedTownScenePath, OpenSceneMode.Single);
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                Debug.LogError(OwnedTownReseatFailMarker + " " + OwnedTownScenePath +
+                               " could not be opened - nothing was touched or saved.");
+                return;
+            }
+
+            RaidSpire spire = null;
+            int spireCount = 0;
+            Transform platform = null;
+            int platformCount = 0;
+            Transform platformRoot = null;
+
+            foreach (var rootGo in scene.GetRootGameObjects())
+            {
+                foreach (var found in rootGo.GetComponentsInChildren<RaidSpire>(true))
+                {
+                    spireCount++;
+                    if (spire == null) spire = found;
+                }
+                foreach (var node in rootGo.GetComponentsInChildren<Transform>(true))
+                {
+                    if (node == null || node.name != KeepPlatformName) continue;
+                    platformCount++;
+                    if (platform != null) continue;
+                    platform = node;
+                    platformRoot = rootGo.transform;
+                }
+            }
+
+            if (spireCount != 1 || spire == null)
+            {
+                Debug.LogError(OwnedTownReseatFailMarker + " " + OwnedTownScenePath + " holds " + spireCount +
+                               " RaidSpire component(s); exactly ONE is required before a protected scene is " +
+                               "rewritten. Nothing was moved or saved.");
+                return;
+            }
+            if (platformCount != 1 || platform == null)
+            {
+                Debug.LogError(OwnedTownReseatFailMarker + " " + OwnedTownScenePath + " holds " + platformCount +
+                               " object(s) named '" + KeepPlatformName + "'; exactly ONE is required so the " +
+                               "lift is measured off an unambiguous slab. Nothing was moved or saved.");
+                return;
+            }
+
+            float before = spire.transform.position.y;
+            // The helper uses `root` ONLY to locate the KeepPlatform, and moves `spire` itself.
+            ReseatSpireOnKeepPlatform(platformRoot, spire);
+            float after = spire.transform.position.y;
+            float lift = after - before;
+
+            if (Mathf.Abs(lift) < 0.001f)
+            {
+                Debug.LogError(OwnedTownReseatFailMarker + " the spire did not move (y " +
+                               before.ToString("F2") + " -> " + after.ToString("F2") + "). The reseat took one " +
+                               "of its own refusal branches - read the [RaidBaseGenerator] SPIRE SEAT line " +
+                               "immediately above for which. " + OwnedTownScenePath +
+                               " was NOT saved: a protected scene is never reserialized for a no-op.");
+                return;
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene))
+            {
+                Debug.LogError(OwnedTownReseatFailMarker + " " + OwnedTownScenePath + " could not be saved " +
+                               "after the reseat (spire y " + before.ToString("F2") + " -> " +
+                               after.ToString("F2") + "). The move is in memory only.");
+                return;
+            }
+
+            Debug.Log(OwnedTownReseatOkMarker + " " + OwnedTownScenePath + " spire y " +
+                      before.ToString("F2") + " -> " + after.ToString("F2") + " lift=" +
+                      lift.ToString("F2") + "m (MEASURED off the " + KeepPlatformName +
+                      " top, never hardcoded). ONE transform moved; nothing created, deleted or re-parented. " +
+                      "WO-1749: the objective point every troop hands to NavMesh.CalculatePath was inside the " +
+                      "keep slab, so no route to it could be complete.");
+        }
+
         /// <summary>
         /// Build ONE config into its own fresh scene (camera + light), saved to
         /// RaidBase_&lt;id&gt;.unity. Deterministic: the same config id always produces

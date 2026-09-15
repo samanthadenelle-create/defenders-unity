@@ -48,6 +48,8 @@ namespace DeNelle.Editor.Regression
             if (Math.Abs(clearCap - 5f) > 0.001f)
                 failures.Add("collision distance exceeded the authored camera boom");
 
+            CheckSeatSidePullInGate(failures);
+
             string path = Path.Combine("Assets", "_Modules", "Village", "Hero", "SmartMobileCamera.cs");
             string source = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
             string method = ExtractMethodBody(source, "private Vector3 ApplyCollision");
@@ -67,8 +69,32 @@ namespace DeNelle.Editor.Regression
             // the real guard below it is correct.
             if (method.Contains("nearestOccluderDist < float.MaxValue"))
                 failures.Add("the DEF-151 hard pull-in is back: ANY occluder at ANY distance pulls in");
-            if (!method.Contains("nearestOccluderDist < _occluderPullInDistance"))
-                failures.Add("pull-in is not gated on the point-blank backstop distance");
+
+            // ── WO-1753: THE GATE MEASURES FROM THE SEAT, AND IT IS THE FARTHEST HIT ─────────
+            //
+            // ⚠ THE ASSERTION BELOW WAS INVERTED ON 2026-09-15, AND THE OLD ONE WAS NOT WRONG WHEN
+            // WRITTEN — it pinned WO-1734's fix (gate on _occluderPullInDistance, not float.MaxValue)
+            // and that half still stands. What changed is WHICH DISTANCE is compared:
+            // `nearestOccluderDist` is measured from the PIVOT (the hero's chest), so with a 4.5 m
+            // boom it fired the backstop for a wall 3.9 m in FRONT of the seat and collapsed the
+            // seat to the 1.2 m floor. Now FORBIDDEN, along with a gap computed from the nearest
+            // hit, which is the same defect wearing the new gate's clothes.
+            if (method.Contains("nearestOccluderDist < _occluderPullInDistance"))
+                failures.Add("the pull-in is gated on the occluder nearest the HERO (a distance from the "
+                    + "pivot), so a wall 3.9 m in front of the seat collapses the camera to the floor - "
+                    + "WO-1753: gate on the seat-side gap to the FARTHEST hit");
+            if (method.Contains("fullDist - nearestOccluderDist"))
+                failures.Add("the seat-side gap is computed from the occluder nearest the HERO - that is a "
+                    + "min, so one occluder behind the hero hides an occluder at the seat and the camera "
+                    + "body embeds in the seat-side wall");
+            if (!method.Contains("SelectOccluderGateDistance(_occluderDistances)"))
+                failures.Add("ApplyCollision no longer reduces the sweep through SelectOccluderGateDistance, "
+                    + "so the FARTHEST-hit rule the behavioural case below pins is not the one that ships");
+            if (!method.Contains("ShouldPullIn(fullDist, occluderGateDist, _occluderPullInDistance)"))
+                failures.Add("the pull-in decision is no longer taken by ShouldPullIn against the seat-side gap");
+            if (!method.Contains("fullDist, occluderGateDist, _collisionSkin, _minCollisionDistance"))
+                failures.Add("the pull-in SEAT is set against a different occluder than the gate judged - "
+                    + "feeding the hero-nearest hit here re-creates the collapse from the other side");
             if (!method.Contains("_minCollisionDistance"))
                 failures.Add("the seat floor is not bounded by the authored _minCollisionDistance");
 
@@ -194,6 +220,79 @@ namespace DeNelle.Editor.Regression
                 ? "CAMERA_WALL_OCCLUSION_OK occluders fade and the seat holds; pull-in is point-blank only"
                 : "CAMERA_WALL_OCCLUSION_FAIL: " + string.Join("; ", failures);
             return failures.Count == 0;
+        }
+
+        /// <summary>
+        /// WO-1753 — BEHAVIOURAL pin on the point-blank backstop's gate: it measures the gap from
+        /// the camera SEAT, and it reduces the sweep with a MAX, never a min.
+        /// </summary>
+        /// <remarks>
+        /// ⛔ WHY THIS IS NOT A SOURCE-TEXT LINT. The defect and the fix differ by one word —
+        /// farthest vs nearest — and a <c>Contains()</c> cannot tell them apart; an implementation
+        /// that folded the sweep with <c>Mathf.Min</c> under the new identifier would sail past
+        /// every string assertion above. So the cases below CALL
+        /// <see cref="SmartMobileCamera.SelectOccluderGateDistance"/> and
+        /// <see cref="SmartMobileCamera.ShouldPullIn"/> with the two-occluder arrangement WO-1753
+        /// names, and a nearest-based implementation FAILS them by arithmetic.
+        ///
+        /// The numbers are the shipped ones, stated rather than assumed: <c>_followOffset.z</c>
+        /// -4.5 and <c>_lookAtHeight</c> 2.5 give a boom of ~4.5 m, and
+        /// <c>_occluderPullInDistance</c> is 0.6 m.
+        /// </remarks>
+        private static void CheckSeatSidePullInGate(List<string> failures)
+        {
+            const float boom = 4.5f;      // the shipped seat distance from the pivot
+            const float backstop = 0.6f;  // _occluderPullInDistance
+
+            // -- Case 1: THE DISCRIMINATING ONE. Two occluders — one 0.5 m from the hero's chest,
+            // one essentially AT the seat. A min returns 0.5 (gap 4.0 -> no pull-in) and the camera
+            // body ends up inside the seat-side wall. The max returns 4.45 (gap 0.05 -> pull in).
+            var twoOccluders = new List<float> { 0.5f, 4.45f };
+            float gate = SmartMobileCamera.SelectOccluderGateDistance(twoOccluders);
+            if (Math.Abs(gate - 4.45f) > 0.001f)
+                failures.Add("the occluder gate distance is " + gate.ToString("0.###") + " for hits {0.5, 4.45}"
+                    + " - it must be the FARTHEST hit (4.45, the occluder nearest the SEAT). A min hides a "
+                    + "wall at the seat behind a wall behind the hero and the camera embeds in it");
+            if (!SmartMobileCamera.ShouldPullIn(boom, gate, backstop))
+                failures.Add("an occluder AT the camera seat did not fire the point-blank backstop while a "
+                    + "second occluder sat behind the hero - the camera body would embed in the seat-side wall");
+
+            // -- Case 2: the ticket's regression case. ONE wall 0.5 m in front of the HERO's chest,
+            // i.e. 4.0 m in front of the seat. `0.5 < 0.6` made the OLD hero-side gate fire here and
+            // collapse the seat to the 1.2 m floor (a 3.75x zoom); the seat-side gap is 4.0 m, so
+            // the fixed gate must not fire.
+            float farWall = SmartMobileCamera.SelectOccluderGateDistance(new List<float> { 0.5f });
+            if (SmartMobileCamera.ShouldPullIn(boom, farWall, backstop))
+                failures.Add("a wall 0.5 m from the hero's chest - 4.0 m in FRONT of the camera seat - still "
+                    + "fires the point-blank backstop, collapsing a 4.5 m boom to the floor (WO-1753)");
+
+            // -- Case 3: an occluder genuinely at the seat, alone, still fires. The backstop must
+            // not be disarmed by the fix; 0.43 m of clearance is needed (radius 0.35 + near clip
+            // 0.08) and the 0.6 m threshold keeps ~0.17 m of margin.
+            float atSeat = SmartMobileCamera.SelectOccluderGateDistance(new List<float> { 4.2f });
+            if (!SmartMobileCamera.ShouldPullIn(boom, atSeat, backstop))
+                failures.Add("an occluder 0.3 m from the camera seat no longer fires the point-blank "
+                    + "backstop - the camera body is free to embed in a mesh");
+
+            // -- Case 4: an empty sweep is never a pull-in, and must not read as an occluder at 0.
+            float none = SmartMobileCamera.SelectOccluderGateDistance(new List<float>());
+            if (none >= 0f)
+                failures.Add("an empty sweep did not return the negative no-occluder sentinel (got "
+                    + none.ToString("0.###") + "), so a clear line of sight can be mistaken for an "
+                    + "occluder at the pivot");
+            if (SmartMobileCamera.ShouldPullIn(boom, none, backstop))
+                failures.Add("a clear line of sight fired the point-blank backstop");
+            if (SmartMobileCamera.ShouldPullIn(boom, SmartMobileCamera.SelectOccluderGateDistance(null), backstop))
+                failures.Add("a null hit list fired the point-blank backstop");
+
+            // -- Case 5: the seat is set against the occluder the gate judged. Same arithmetic the
+            // shipped call uses, so a regression in AllowedCameraDistance's contract shows up here
+            // as the felt symptom (a collapse to the floor) rather than as a bare number.
+            float seat = SmartMobileCamera.AllowedCameraDistance(boom, gate, 0.2f, 1.2f);
+            if (Math.Abs(seat - 4.25f) > 0.001f)
+                failures.Add("the point-blank pull-in seated the camera at " + seat.ToString("0.###")
+                    + "m instead of just in front of the seat-side occluder (4.25m) - a pull-in that "
+                    + "large is the 3.75x zoom WO-1753 exists to delete");
         }
 
         /// <summary>

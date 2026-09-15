@@ -274,6 +274,13 @@ namespace DeNelle.Village
         // WO-1751: scratch for CollectOccluderRenderers — reused every frame, never allocated in
         // the hot path. Capacity matches MaxFadedRenderersPerCollider so it never grows.
         private readonly List<Renderer> _fadeScratch = new List<Renderer>(MaxFadedRenderersPerCollider);
+        // WO-1753: the accepted hit distances of THIS frame's sweep, fed to the pure
+        // SelectOccluderGateDistance below. Cleared (never reallocated) each frame and sized to
+        // _occluderHits, so the frame path stays allocation-light exactly like the buffers above.
+        // It exists so the "farthest, not nearest" reduction has ONE implementation that a
+        // regression can drive directly — a second inline copy is the duplicated state CLAUDE.md
+        // §5 forbids, and a source-text lint cannot tell max from min.
+        private readonly List<float> _occluderDistances = new List<float>(16);
 
         // ── Runtime state ──────────────────────────────────────────────────────
 
@@ -1345,6 +1352,7 @@ namespace DeNelle.Village
             // "hold the seat, fade the wall" contract had no state to hold.
             _fadedThisFrame.Clear();
             float nearestOccluderDist = float.MaxValue;
+            _occluderDistances.Clear();
 
             // SphereCastAll so the camera body — not an infinitely-thin ray — clears the wall,
             // and so we catch EVERY occluder between hero and seat (not just the first), fading
@@ -1361,6 +1369,9 @@ namespace DeNelle.Village
 
                 float hitDist = _occluderHits[i].distance;
                 if (hitDist < nearestOccluderDist) nearestOccluderDist = hitDist;
+                // WO-1753: every accepted hit, so the gate below can pick the occluder nearest the
+                // SEAT. nearestOccluderDist stays because the fade trace names it.
+                _occluderDistances.Add(hitDist);
 
                 // Hide the visible mesh of this occluder (keep its shadows) so the hero shows through.
                 FadeOccluder(col);
@@ -1383,11 +1394,30 @@ namespace DeNelle.Village
             // pull-in that WO-385 existed to delete, reinstated under WO-385's own comment. In a
             // ~4 m raid gate that collapses the seat to the emergency floor, where a small yaw
             // becomes an enormous screen rotation (the owner's "camera spin").
-            bool pullingIn = nearestOccluderDist < _occluderPullInDistance;
+            // ⛔ WO-1753 — THE GATE MEASURES FROM THE SEAT, NOT FROM THE HERO'S CHEST.
+            // The sweep starts at `pivot` (the hero's chest), so `nearestOccluderDist` is a
+            // distance from the HERO. Gating on it made a wall 0.6 m in front of the CHEST fire the
+            // backstop — with a 4.5 m boom that is a wall 3.9 m in FRONT OF THE SEAT, nowhere near
+            // embedding the camera, and it collapsed the seat to the 1.2 m floor (a 3.75x zoom
+            // where a small yaw is an enormous screen rotation: the owner's "camera spin"). Once
+            // WO-1751 put the 158 raid `Wall_*` colliders into the mask, that went from impossible
+            // to constant in a 3.0 m corridor.
+            // The gate is the gap between the seat and the occluder NEAREST THE SEAT, i.e. the
+            // FARTHEST hit along the cast. ⚠ It must be the MAX: with one occluder 0.5 m behind the
+            // hero and another AT the seat, a min yields 4.0 m of clearance, no pull-in fires, and
+            // the camera sits INSIDE the seat-side wall. `_occluderPullInDistance` (0.6 m) is
+            // unchanged and still correct under the new meaning: sphere radius 0.35 + near clip
+            // 0.08 = 0.43 m needed, ~0.17 m margin.
+            float occluderGateDist = SelectOccluderGateDistance(_occluderDistances);
+            bool pullingIn = ShouldPullIn(fullDist, occluderGateDist, _occluderPullInDistance);
             if (pullingIn)
             {
+                // The seat is set against the SAME occluder the gate judged. Handing
+                // nearestOccluderDist here would re-create the collapse from the other side:
+                // the gate would fire on a wall at the seat and then pull in to a wall behind the
+                // hero, i.e. straight to the _minCollisionDistance floor.
                 float allowed = AllowedCameraDistance(
-                    fullDist, nearestOccluderDist, _collisionSkin, _minCollisionDistance);
+                    fullDist, occluderGateDist, _collisionSkin, _minCollisionDistance);
                 targetFrac = allowed / fullDist;
             }
 
@@ -1396,7 +1426,7 @@ namespace DeNelle.Village
             _distanceFrac = Mathf.MoveTowards(_distanceFrac, targetFrac, speed * dt);
 
             Vector3 seat = pivot + dir * (fullDist * _distanceFrac);
-            TraceOcclusionOutcome(pullingIn, nearestOccluderDist, fullDist * _distanceFrac, fullDist);
+            TraceOcclusionOutcome(pullingIn, nearestOccluderDist, occluderGateDist, fullDist * _distanceFrac, fullDist);
             if (nearestOccluderDist >= float.MaxValue) TraceSeatEmbeddedButUnseen(seat);
             return seat;
         }
@@ -1466,17 +1496,27 @@ namespace DeNelle.Village
         // frames and a Throttle window would miss it entirely), plus a Throttle for the ongoing
         // fade so a long occlusion still prints. Per §12 this is a FRAME path, so the steady state
         // is rate-limited and only the transition is unconditional.
-        private void TraceOcclusionOutcome(bool pullingIn, float nearestOccluderDist, float seatDist, float fullDist)
+        // WO-1753: the ENTERED line now names the SEAT-SIDE gap, because that is what the gate
+        // actually tests. It read "nearest occluder Xm is inside the point-blank backstop", which
+        // after the gate moved to the farthest hit would have been a false sentence in the log —
+        // and a trace that misnames its own trigger costs the next triage a session. Both distances
+        // are printed: the gap decides, the nearest is what the fade is working on.
+        private void TraceOcclusionOutcome(bool pullingIn, float nearestOccluderDist, float occluderGateDist,
+            float seatDist, float fullDist)
         {
             string occluder = nearestOccluderDist < float.MaxValue
                 ? nearestOccluderDist.ToString("0.##") + "m" : "none";
+            string seatGap = occluderGateDist >= 0f
+                ? (fullDist - occluderGateDist).ToString("0.##") + "m" : "clear";
 
             if (pullingIn != _wasPullingIn)
             {
                 _wasPullingIn = pullingIn;
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Camera", pullingIn
-                    ? "OCCLUDER PULL-IN ENTERED - nearest occluder " + occluder
-                      + " is inside the point-blank backstop " + _occluderPullInDistance.ToString("0.##")
+                    ? "OCCLUDER PULL-IN ENTERED - the seat-side gap " + seatGap
+                      + " (occluder nearest the seat at " + occluderGateDist.ToString("0.##")
+                      + "m of " + fullDist.ToString("0.##") + "m; nearest to the hero " + occluder
+                      + ") is inside the point-blank backstop " + _occluderPullInDistance.ToString("0.##")
                       + "m; seat " + seatDist.ToString("0.##") + "m of " + fullDist.ToString("0.##")
                       + "m (floor " + _minCollisionDistance.ToString("0.##") + "m)."
                     : "OCCLUDER PULL-IN RELEASED - back to the FADE contract; seat "
@@ -1487,8 +1527,57 @@ namespace DeNelle.Village
             if (!pullingIn && _faded.Count > 0)
                 DeNelle.Core.Diagnostics.FlowTrace.Throttle("Camera", "occluder-fade", 2f,
                     "OCCLUDER FADED x" + _faded.Count + " (nearest " + occluder
+                    + ", seat-side gap " + seatGap
                     + ") - seat HELD at " + seatDist.ToString("0.##") + "m of "
                     + fullDist.ToString("0.##") + "m. WO-385 contract: fade the wall, hold the seat.");
+        }
+
+        /// <summary>
+        /// WO-1753 — the sentinel <see cref="SelectOccluderGateDistance"/> returns when the sweep
+        /// found no occluder at all. Negative on purpose: a <c>RaycastHit.distance</c> is never
+        /// negative, so no real hit can ever collide with it, and <see cref="ShouldPullIn"/> can
+        /// reject it with a sign test instead of a magic float comparison.
+        /// </summary>
+        public const float NoOccluderGateDistance = -1f;
+
+        /// <summary>
+        /// WO-1753 — reduce one frame's accepted occluder distances to the ONE the pull-in gate
+        /// judges: the occluder nearest the camera SEAT, i.e. the <b>FARTHEST</b> hit along a cast
+        /// that starts at the hero's chest.
+        /// <para>
+        /// ⛔ <b>MAX, NEVER MIN — and that is the whole ticket.</b> A min (the old
+        /// <c>nearestOccluderDist</c>) answers "how close is the nearest wall to the HERO", which
+        /// the backstop has no use for. Worse, it is wrong in BOTH directions: a wall 0.6 m in
+        /// front of the chest fires a pull-in the camera did not need (a 3.75x zoom at a 4.5 m
+        /// boom), while an occluder 0.5 m behind the hero paired with one AT the seat yields 4.0 m
+        /// of apparent clearance, fires nothing, and leaves the camera body inside the seat-side
+        /// wall.
+        /// </para>
+        /// <para>
+        /// Public and pure so the regression can DRIVE the reduction rather than grep for it: a
+        /// source-text lint cannot tell a max from a min, and this file has already shipped one
+        /// lint that pinned the defect it was written to prevent.
+        /// </para>
+        /// </summary>
+        public static float SelectOccluderGateDistance(IList<float> hitDistances)
+        {
+            if (hitDistances == null || hitDistances.Count == 0) return NoOccluderGateDistance;
+            float farthest = NoOccluderGateDistance;
+            for (int i = 0; i < hitDistances.Count; i++)
+                if (hitDistances[i] > farthest) farthest = hitDistances[i];
+            return farthest;
+        }
+
+        /// <summary>
+        /// WO-1753 — the point-blank backstop's gate: does the occluder nearest the seat sit within
+        /// <paramref name="pullInDistance"/> of the seat? Measured as the GAP
+        /// (<c>fullDistance - occluderGateDistance</c>), never as a raw distance from the pivot.
+        /// A negative gate distance means the sweep found nothing, which is never a pull-in.
+        /// </summary>
+        public static bool ShouldPullIn(float fullDistance, float occluderGateDistance, float pullInDistance)
+        {
+            if (occluderGateDistance < 0f) return false;
+            return (fullDistance - occluderGateDistance) < pullInDistance;
         }
 
         /// <summary>
@@ -1503,6 +1592,10 @@ namespace DeNelle.Village
         /// <c>Mathf.Min(minDistance, fullDistance)</c> is deliberate: <c>Mathf.Clamp</c> returns
         /// <c>min</c> when <c>min &gt; max</c>, so a 1.2 m floor against a 0.9 m boom would push the
         /// camera FURTHER OUT than its own authored seat. The boom always wins the ceiling.
+        /// </para>
+        /// <para>
+        /// WO-1753: <paramref name="hitDistance"/> is now fed the occluder nearest the SEAT (the
+        /// farthest hit), the same one the gate judged — see <see cref="ShouldPullIn"/>.
         /// </para>
         /// </summary>
         public static float AllowedCameraDistance(
