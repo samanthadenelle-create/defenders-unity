@@ -60,15 +60,44 @@ Carries everything from tester `2026.09.15.371285` plus the Play compliance work
 - **Art —** the arena boundary pillars no longer render as untextured grey slabs (WO-1758); the Field Cleric no longer renders as a white blob (WO-1747).
 - **Analytics —** every player was collapsing into the shared id `unverified` since 09-07; identity headers now ride every event (WO-1733 + WO-1735).
 
-## 5. Play Console "What's new" — paste this (≤500 chars)
+## 5. Play Console "What's new" — paste this (466 chars, limit 500)
+
+⚠ **Framing corrected by the owner 2026-09-15:** raids were never really exposed to players before, so
+this release is a **feature launch, not a bugfix roll-up**. An earlier draft of this section led with
+"fixed a bug that made the enemy spire unreachable" — that is true, and it is also the wrong headline
+for players who never had raids to begin with. Lead with the mode.
 
 ```
-Raids: your troops now ignore walls unless you order a Breach, and they break off to defend you when
-you're attacked. Fixed a bug that made the enemy spire unreachable, so raids can actually be finished.
-Fixed a hero who kept fighting at zero health. The camera now fades walls instead of hiding the fight
-behind them, and tapping is required to target a wall. Fixed untextured grey pillars and a
-white-looking Cleric.
+RAIDS ARE HERE.
+
+Take your warband to enemy strongholds and tear them down before the clock runs out. Bring the spire
+down or wipe the garrison - three stars if you're fast and thorough.
+
+Your troops fight smart: they go for enemies, not masonry, until you tap BREACH - then the whole
+warband commits to the wall. Siege breaks walls on its own. Take a hit and they'll peel off to
+defend you.
+
+Four strongholds, each tougher than the last.
 ```
+
+**The mechanic to lead with is BREACH**, because it is a decision rather than a button: attacking walls
+spends the 180-second clock, so the player chooses between routing around and committing the warband to
+masonry. That is the part someone repeats to a friend.
+
+**X post (277 chars):**
+```
+Raids just went live in Echoes of Elarion.
+
+Take your warband into an enemy stronghold. 180 seconds. Bring down the spire or wipe the garrison.
+
+Your troops won't waste time on walls - until you tap BREACH. Then everyone commits.
+
+Siege does it the hard way regardless.
+```
+
+**Capture (owner, on the next build):** the shot is a Breach tap - the warband peeling off the garrison
+onto one panel, the wall coming down, troops pouring through the gap. That single clip carries the whole
+mechanic without a word of explanation.
 
 ## 6. ⛔ STILL BLOCKING PLAY SIGN-IN — no build can fix this
 
