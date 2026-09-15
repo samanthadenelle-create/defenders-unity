@@ -189,7 +189,33 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-eighty-first pass): main line next free = **1724**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-eighty-third pass): main line next free = **1731**.
+> *(Seat `eoa-ab` minted **1730** 2026-09-14 from TWO live owner rulings given while she felt-tested the
+> WO-1723 Lane A build `2026.09.15.370139` - the build in which she confirmed *"i can now walk through
+> destroyed walls"*, closing Lane A ON THE DEVICE. **1730** = raid troop target PRIORITY: *"should never
+> default to target wall, should always default to aggresive targets nearby first asnd then only then
+> wall"* + *"once the breach is through the troops should continue towards the spire or aggressive mobs
+> not coninute to work down the wall"*. Today `PreferUnit` favours a unit ONLY in Peel
+> (`RaidAssaultAi.cs:286-287`) and Peel needs a hit within 2.5 s or a hostile inside a fixed 6 m leash
+> (`:42-46`), so the live default in Breach phase IS the wall - what the ruling forbids. ⚠ The SECOND
+> ruling may ALREADY be satisfied by Lane A and must be CAPTURED before any code: `ResolvePhase` already
+> leaves Breach once `routeToObjectiveOpen` (`:158-167`) and `Push`/`Finish` already refuse non-objective
+> walls (`:311-315`), but `routeOpen=True` appeared **0 times in 2,517 RaidAI lines** across every 09-14
+> capture because no breach ever opened a real hole. Three open owner rulings. File-disjoint from
+> WO-1723 Lane B.
+> ⛔ **COLLISION, resolved by moving:** this was first written as **1724**, which seat `eoa-ac` had
+> reserved in the same minutes for its town-wall camera RCA lane. Both seats were minting concurrently.
+> `eoa-ab` moved its ticket 1724 -> 1730 rather than duel; **1724 stays with `eoa-ac`** and 1725-1729
+> stay reserved for its F8 triage lane. Bumped 1730 -> 1731 in this SAME edit. Second two-seat collision
+> of the evening - memory `parallel-worktree-lanes-collide-on-wo-numbers`.)*
+>
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-eighty-second pass): main line next free = **1730**.
+> *(Lead PRE-ASSIGNED a block to two parallel lanes 2026-09-14 evening, per memory
+> `parallel-worktree-lanes-collide-on-wo-numbers`: **1724** reserved for the town-wall camera RCA lane
+> (owner flags seq 5231/5232); **1725-1729** reserved for the F8 queue triage lane (141 pending captures,
+> seq 5092-5232). Numbers in the block that the lanes do not use are left burned, never re-issued.)*
+>
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-eighty-first pass): main line next free = **1724**.
 > *(CLI minted **1723** 2026-09-14 - the ROOT CAUSE behind the owner's whole Breach complaint, and it
 > RETIRES the framing of both 1721 and 1722. The wall the player SEES (`Zone_Clad/Clad_*`,
 > `RaidBaseDresser.cs:527`, colliders stripped at `:557`) is a root-level SIBLING of the `WallSegment`,
