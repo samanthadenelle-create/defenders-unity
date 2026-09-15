@@ -757,6 +757,11 @@ namespace DeNelle.Editor
             // defender's awareness radius, and the 180s clock cannot advance before first engagement.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-staging suite", () => { if (!DeNelle.Editor.Regression.RaidStagingMarkerRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-staging] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-base-layout suite", () => { if (!DeNelle.Editor.Regression.RaidBaseLayoutRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-base-layout] " + r); });
+            // WO-1749 - the raid OBJECTIVE must be REACHABLE. PlaceSpire seated the spire on the ground and
+            // RaidBaseDresser.RaiseKeep then dropped a 1.5m platform over it, so every troop pathed to a point
+            // inside solid geometry: the device read routeObj=PathPartial 1650 times and PathComplete ZERO.
+            // Opens each raid scene Single and restores the prior active scene.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-keep-reach suite", () => { if (!DeNelle.Editor.Regression.RaidKeepReachRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-keep-reach] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "reset-full-clear suite", () => { if (!DeNelle.Editor.Regression.ResetToNewGameFullClearRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[reset-full-clear] " + r); });
             // WO-1371 — the OTHER axis. reset-full-clear sweeps GameState FIELDS and says in its own
             // comments that a PlayerPrefs store "is not one"; this sweeps those stores, which is where
@@ -1366,6 +1371,18 @@ namespace DeNelle.Editor
             // kind:"note" straight into break-log.jsonl) and the F8 daemon's skip of note rows --
             // two-sided, so DELETING the dump fails just as loudly as restoring the Fail.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "hero-death-severity suite", () => { if (!DeNelle.Editor.Regression.HeroDeathSeverityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[hero-death-severity] " + r); });
+
+            // --- HERO DOWN, INPUT REFUSED (WO-1750): the death path disables the hero's input
+            // components, but `enabled = false` only stops Unity callbacks - it does not make a
+            // public method unreachable, and the phone's attack button calls TriggerBasicAttack /
+            // TryCast DIRECTLY off FindAnyObjectByType. Owner capture 2026-09-15
+            // (RaidBase_IronBastion): empty HP bar, hero mid-swing, enemy brain logging
+            // IsAlive=false. This suite pins the refusal predicate's truth table, both direct-call
+            // guards, the zero-HP-no-latch watchdog and the live-raid hero-down status line.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "hero-down-input suite", () => { if (!DeNelle.Editor.Regression.HeroDownInputRefusalRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[hero-down-input] " + r); });
+            // WO-1735 - EventTracker built its own UnityWebRequest and sent NO identity header, so every player
+            // collapsed into the literal id "unverified" from 09-07 and the dashboard read "1 active player".
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "analytics-identity suite", () => { if (!DeNelle.Editor.Regression.EventTrackerIdentityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[analytics-identity] " + r); });
 
             // --- DEV GRANT UNCAPPED (audit 2026-08-15): the dev resource grants resolved
             // GetMethod("GrantSpendable") BY STRING -- the TownBankCapacity-clamped path -- so a

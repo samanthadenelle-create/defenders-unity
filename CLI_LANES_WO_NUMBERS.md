@@ -189,7 +189,31 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-15 (CLI, hundred-and-ninety-eighth pass): main line next free = **1749**.
+> ## RECONCILED 2026-09-15 (CLI, two-hundred-and-fourth pass): main line next free = **1756**.
+> *(Minted 1755 (rename DeNelle.Core.Web3 + extend the Play exclusion script) on the owner's ruling
+> "do the rename and extend the exclusion script" - bumped 1755 -> 1756 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundred-and-third pass): main line next free = **1755**.
+> *(Minted 1754 (Play gate chunk-seam false positive + ruled-residual allowlists, from the WO-1740
+> RCA of chain run 14:14:58) - bumped 1754 -> 1755 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundred-and-second pass): main line next free = **1754**.
+> *(Minted 1753 (camera pull-in gates on the hero-side occluder, a predicted felt regression from
+> WO-1751's mask fix) - bumped 1753 -> 1754 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundred-and-first pass): main line next free = **1753**.
+> *(Minted 1752 (troops never attack walls without Breach; defend the hero) from the owner's ruling
+> during the IronBastion felt-test; bumped 1752 -> 1753 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundredth pass): main line next free = **1752**.
+> *(Minted 1750 (hero dead by HeroHealth but still fighting in a raid) and 1751 (grey box prop + camera
+> inside a watchtower) from the owner's IronBastion screenshots; bumped 1750 -> 1752 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninety-ninth pass): main line next free = **1750**.
+> *(Minted 1749 (troops stall at the keep platform edge - every raid route is PathPartial) from the
+> owner's IronBastion felt-test; bumped 1749 -> 1750 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninety-eighth pass): main line next free = **1749**.
 > *(Minted 1747 (raid watchtower / Cleric `glass` material has no albedo, F8 seq 5257) and 1748 (troop
 > spawned with empty id + no Animator, F8 seq 5258) from the owner's IronBastion felt-test; bumped
 > 1747 -> 1749 in this SAME edit.)*
