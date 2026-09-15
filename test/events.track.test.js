@@ -9,10 +9,19 @@
 // the retention/funnel numbers the owner makes business decisions from.
 //
 // The fix, and what this file pins:
-//   1. The row is bound to the CALLER, never to the body. A verified session
-//      (X-Session) names the wallet; an X-Guest-Id binds to that guest id; with
-//      neither, the row lands under the literal id `unverified` so one entry in
+//   1. The row is bound to the CALLER, never to a body-asserted WALLET. A verified
+//      session (X-Session) names the wallet; an X-Guest-Id binds to that guest id;
+//      with neither, the row lands under the literal id `unverified` so one entry in
 //      ANALYTICS_EXCLUDED_PLAYER_IDS removes the whole unproven bucket.
+//
+// ⚠ AMENDED BY WO-1733 (2026-09-15). The client sends NEITHER header, so from
+//   2026-09-07T10:45Z every row in the live DB landed as `unverified` and
+//   COUNT(DISTINCT player_id) read 1 forever. The route now ALSO accepts a
+//   GUEST-SHAPED playerId out of the body when no header was offered (_auth:
+//   'guest-body') — a guest id is a 256-bit bearer credential the server already
+//   trusts in the header, so the same value through the body forges nothing. A
+//   WALLET-shaped body id is STILL refused: a wallet address is public, not a
+//   credential. Section 5 below pins that asymmetry.
 //   2. The shared IP budget (api/_lib/ip-budget.js, WO-1456) rate-limits the
 //      route — FAIL-OPEN, because analytics must never take the game down.
 //   3. The success path still works: ordinary events still land (memory
@@ -229,8 +238,13 @@ test('the route uses the SHARED budget helper, keyed on the one signal a client 
     const executable = trackSrc.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
     assert.doesNotMatch(executable, /INSERT INTO promo_ip_budget/,
         'a second limiter was inlined into the route — duplicated state');
-    assert.doesNotMatch(executable, /ev\.playerId/,
-        'the route still reads a playerId off the event body');
+    // ⚠ A `doesNotMatch(executable, /ev\.playerId/)` lint stood here until WO-1733.
+    // It pinned "the body never names the player"; the invariant is now the narrower
+    // "the body never names a WALLET", which a source-text lint cannot express. The
+    // behavioural pins in section 5 replace it, and they check the property that
+    // actually matters rather than the spelling of the code that implements it.
+    assert.match(trackSrc, /isGuestId\(bodyGuestCandidate\)/,
+        'the body rail no longer runs its candidate through the guest-shape gate');
 });
 
 test('the CORS preflight admits the identity headers it now reads', async () => {
@@ -240,4 +254,105 @@ test('the CORS preflight admits the identity headers it now reads', async () => 
     const allow = String(res.headers['access-control-allow-headers'] || '');
     assert.match(allow, /X-Session/i, 'the browser preflight would strip X-Session');
     assert.match(allow, /X-Guest-Id/i, 'the browser preflight would strip X-Guest-Id');
+});
+
+// ── 5. WO-1733 — the body-guest fallback, and the wallet asymmetry it must keep ─
+//
+// THE BUG IT FIXES: the client sets only Content-Type (EventTracker.cs:290-294), so
+// with header-only identity EVERY event from EVERY build in players' hands landed
+// under `unverified` and the dashboard's COUNT(DISTINCT player_id) read 1.
+
+const GUEST_B = 'guest-local-' + 'b'.repeat(64);
+
+test('a GUEST-shaped body playerId with no headers names the row (the shipped-fleet fix)', async () => {
+    const sql = fakeSql();
+    const res = await run(sql, makeReq([{ playerId: GUEST, eventName: 'session_start', clientTs: 30 }]));
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(insertedPlayerIds(sql), [GUEST],
+        'every shipped build still lands in the one `unverified` bucket — the dashboard stays at 1 player');
+    assert.equal(insertedProps(sql)[0]._auth, 'guest-body',
+        'the body rail is not distinguishable from the header rail — the client fix has no landing signal');
+});
+
+test('⛔ a WALLET-shaped body id is STILL refused — a wallet address is public, not a credential', async () => {
+    const sql = fakeSql();
+    await run(sql, makeReq([{ playerId: WALLET_A, eventName: 'purchase_completed', clientTs: 31 }]));
+    assert.deepEqual(insertedPlayerIds(sql), ['unverified'],
+        'anyone can now write analytics rows under any player\'s wallet — WO-1506\'s hole is back open');
+});
+
+test('a play- shaped body id is refused too (only the guest shape may come from the body)', async () => {
+    const sql = fakeSql();
+    await run(sql, makeReq([{ playerId: 'play-' + 'c'.repeat(64), eventName: 'session_start', clientTs: 32 }]));
+    assert.deepEqual(insertedPlayerIds(sql), ['unverified']);
+});
+
+test('the literal "anonymous" (pre-EnsureAccount events) buys nothing', async () => {
+    const sql = fakeSql();
+    await run(sql, makeReq([{ playerId: 'anonymous', eventName: 'session_start', clientTs: 33 }]));
+    assert.deepEqual(insertedPlayerIds(sql), ['unverified']);
+});
+
+test('the HEADER wins over the body when both name a guest', async () => {
+    const sql = fakeSql();
+    await run(sql, makeReq(
+        [{ playerId: GUEST_B, eventName: 'session_start', clientTs: 34 }],
+        { 'x-guest-id': GUEST },
+    ));
+    assert.deepEqual(insertedPlayerIds(sql), [GUEST], 'the body overrode a proven header');
+    assert.equal(insertedProps(sql)[0]._auth, 'guest');
+});
+
+test('a valid SESSION wins over a guest-shaped body id', async () => {
+    const sql = fakeSql({ sessionRows: [{ wallet: WALLET_B, revoked: false, expired: false }] });
+    await run(sql, makeReq(
+        [{ playerId: GUEST, eventName: 'session_start', clientTs: 35 }],
+        { 'x-session': 'd'.repeat(48) },
+    ));
+    assert.deepEqual(insertedPlayerIds(sql), [WALLET_B]);
+    assert.equal(insertedProps(sql)[0]._auth, 'session');
+});
+
+test('a mixed batch takes the FIRST guest-shaped id, and every row lands under it', async () => {
+    const sql = fakeSql();
+    await run(sql, makeReq([
+        { playerId: 'anonymous', eventName: 'session_start', clientTs: 36 },
+        { playerId: GUEST, eventName: 'wave_completed', clientTs: 37 },
+    ]));
+    assert.deepEqual(insertedPlayerIds(sql), [GUEST, GUEST],
+        'events queued before EnsureAccount dragged the whole batch back to unverified');
+});
+
+test('GUEST_SAVE_ENABLED=false switches off the BODY rail too, not just the header', async () => {
+    const prev = process.env.GUEST_SAVE_ENABLED;
+    process.env.GUEST_SAVE_ENABLED = 'false';
+    try {
+        const sql = fakeSql();
+        await run(sql, makeReq([{ playerId: GUEST, eventName: 'session_start', clientTs: 38 }]));
+        assert.deepEqual(insertedPlayerIds(sql), ['unverified'],
+            'the guest kill switch leaves a second door open through the body');
+    } finally {
+        if (prev === undefined) delete process.env.GUEST_SAVE_ENABLED;
+        else process.env.GUEST_SAVE_ENABLED = prev;
+    }
+});
+
+test('the BODY guest rail never spends the SAVE budget either', async () => {
+    const sql = fakeSql();
+    await run(sql, makeReq([{ playerId: GUEST, eventName: 'session_start', clientTs: 39 }]));
+    assert.equal(sql.calls.filter((c) => /guest_rate_limit/.test(c.text)).length, 0,
+        'analytics is spending the guest save budget — a busy funnel would 429 the player\'s own saves');
+});
+
+test('a surplus event past the batch cap can NOT steer the identity of the rows that land', async () => {
+    const events = [];
+    for (let i = 0; i < 100; i++) events.push({ playerId: 'anonymous', eventName: 'session_start', clientTs: i });
+    events.push({ playerId: GUEST, eventName: 'session_start', clientTs: 999 });   // dropped by the cap
+
+    const sql = fakeSql();
+    const res = await run(sql, makeReq(events));
+    assert.equal(res.body.dropped, 1, 'the cap stopped dropping surplus events');
+    assert.equal(insertedPlayerIds(sql)[0], 'unverified',
+        'a DROPPED event named the batch — identity was read past the cap');
 });

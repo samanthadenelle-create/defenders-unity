@@ -12,16 +12,28 @@
 //           - clientTs   long    (unix epoch MILLISECONDS)
 //   Reply : { "success": true }   (client is fire-and-forget; only checks 2xx)
 //
-// ⛔ THE BODY NO LONGER NAMES THE PLAYER (WO-1506). It used to: the row's
-//    player_id came straight off each event as "BoundWallet | anonymous", with no
-//    auth and no rate limit on the route, so ANY caller could write unbounded rows
-//    attributed to ANY wallet — and those rows feed the retention and funnel
-//    numbers the owner makes business decisions from. The client may still SEND a
-//    playerId; it is ignored. The row is bound to the CALLER instead:
+// ⛔ THE BODY MAY NEVER NAME A WALLET (WO-1506). It used to: the row's player_id
+//    came straight off each event as "BoundWallet | anonymous", with no auth and no
+//    rate limit on the route, so ANY caller could write unbounded rows attributed to
+//    ANY wallet — and those rows feed the retention and funnel numbers the owner
+//    makes business decisions from. The row is bound to the CALLER instead:
 //
 //      X-Session   → wallet-auth.verifySession names the wallet   → _auth:'session'
 //      X-Guest-Id  → a guest-shaped id binds to itself            → _auth:'guest'
+//      body guest  → a GUEST-SHAPED body playerId, no header      → _auth:'guest-body'
 //      neither     → the literal id `unverified`                  → _auth:'unverified'
+//
+// ⚠ THE `body guest` RAIL IS WO-1733, AND IT IS NARROW ON PURPOSE. Between
+//    2026-09-07T10:45Z and that fix EVERY event from EVERY player landed under
+//    `unverified`, because the Unity client sends NEITHER header
+//    (EventTracker.cs:290-294 builds its own UnityWebRequest and sets only
+//    Content-Type; it does not go through BackendRequestSigner, which is what
+//    attaches the headers on the SAVE rail — BackendRequestSigner.cs:198, :426-430).
+//    Measured on the live DB: one "player" with 218 sessions, daily actives pinned
+//    at 1 while sessions ran 14-42/day. The CLIENT fix is the correct long-term one,
+//    but it only ever reaches builds shipped AFTER it; the store build in players'
+//    hands today (2026.08.17.328845) would stay dark forever. The server fallback
+//    reaches every build already installed, on the next API deploy.
 //
 //    `unverified` is ONE bucket on purpose: a single entry in
 //    ANALYTICS_EXCLUDED_PLAYER_IDS (api/admin/stats.js excludedPlayerIds) then
@@ -53,10 +65,14 @@
 // four times with backoff, and an over-budget attempt still increments the counter.
 //
 // ⚠ TWO FOLLOW-UPS THIS SILO CANNOT MAKE, both measured 2026-09-06, not inferred:
-//   1. THE CLIENT SENDS NEITHER HEADER YET. EventTracker.cs:293 sets exactly one
-//      header, "Content-Type". So until a client WO adds X-Session / X-Guest-Id,
-//      EVERY row lands as `unverified` — correct (the server must not trust the
-//      body either way), but the per-player funnel goes dark until that ships.
+//   1. THE CLIENT STILL SENDS NEITHER HEADER (re-read 2026-09-15: EventTracker.cs
+//      :290-294 sets exactly "Content-Type"). WO-1733 covers the shipped fleet from
+//      the server side, but the CLIENT HALF IS STILL OUTSTANDING and is the correct
+//      long-term fix: EventTracker should attach the same headers
+//      BackendRequestSigner.cs:198 does, which restores WALLET attribution too
+//      (a wallet id is NEVER accepted from the body — see resolveIdentity). When
+//      that ships, `_auth:'guest-body'` counts fall toward zero on their own; that
+//      is the signal it landed.
 //   2. `unverified` IS NOT AUTO-EXCLUDED. api/admin/stats.js excludedPlayerIds()
 //      hardcodes only ANON_ID as always-excluded, so this bucket counts as one
 //      "player" in retention until either ANALYTICS_EXCLUDED_PLAYER_IDS=unverified
@@ -87,10 +103,36 @@ const IP_WINDOW_SECONDS = 60;
 const IP_MAX_PER_WINDOW = 60;
 
 /**
+ * The FIRST guest-shaped playerId in a batch, or null.
+ *
+ * A flush can legitimately mix identities: events queued before
+ * GameStateService.EnsureAccount carry the literal "anonymous", events after it
+ * carry the minted guest id. Taking the first guest-shaped one and attributing the
+ * whole batch to it is the least-lossy rule, and it forges nothing — the sender
+ * already controls what it puts in the header, so it cannot reach an id here that
+ * it could not have reached there.
+ *
+ * Called on the CAPPED batch, never the raw array: surplus events past
+ * MAX_EVENTS_PER_BATCH are dropped and must not be able to steer the identity of
+ * the rows that do land.
+ */
+function firstGuestShapedId(batch) {
+    for (const ev of batch) {
+        if (!ev) continue;
+        const id = ev.playerId;
+        if (typeof id === 'string' && isGuestId(id)) return id;
+    }
+    return null;
+}
+
+/**
  * Who is this caller? Never throws: a broken auth table degrades to `unverified`
  * rather than losing the event, because analytics is not a value-granting rail.
+ *
+ * @param bodyGuestCandidate the batch's first guest-shaped playerId, or null. Read
+ *        ONLY when no identity header was accepted. See the rail rules below.
  */
-async function resolveIdentity(sql, headers, sessionVerifier) {
+async function resolveIdentity(sql, headers, sessionVerifier, bodyGuestCandidate) {
     const sessionToken = headers['x-session'];
     if (sessionToken) {
         try {
@@ -105,6 +147,38 @@ async function resolveIdentity(sql, headers, sessionVerifier) {
     const guest = headers['x-guest-id'];
     if (guest && guestEnabled() && isGuestId(String(guest))) {
         return { playerId: String(guest), auth: 'guest' };
+    }
+
+    // ── WO-1733: the GUEST shape, and ONLY the guest shape, may come from the body ──
+    //
+    // ⛔ DO NOT "SIMPLIFY" THIS INTO `accept whatever playerId the body names`. The
+    //    asymmetry is the whole security property, and it is not an oversight:
+    //
+    //    * A guest id is a 256-bit bearer credential minted on the DEVICE
+    //      (GameStateService.EnsureAccount → "guest-local-" + SHA256(deviceId+salt)).
+    //      The server ALREADY extends exactly this value exactly this trust when it
+    //      arrives in X-Guest-Id, ~8 lines up. Accepting the same unguessable string
+    //      through a different channel of the same request forges nothing NEW: an
+    //      attacker who knows a guest id can already present it as the header.
+    //
+    //    * ⛔ A WALLET id is NOT a credential — it is a PUBLIC address. Anyone can
+    //      read one off the chain or a leaderboard. Accepting a wallet-shaped id from
+    //      the body would hand every caller the ability to write analytics rows under
+    //      any player's wallet, which is precisely the hole WO-1506 closed. A wallet
+    //      may therefore ONLY ever be established by X-Session, whose token proves a
+    //      signature. Same for a play- id, whose shape is derived under a server key.
+    //      isGuestId() is the gate, and it is lexically disjoint from both
+    //      (wallet-auth.js:143-153).
+    //
+    // guestEnabled() is checked for the same reason the header path checks it: the
+    // rail's kill switch must switch off the WHOLE rail, or turning it off would
+    // silently leave a second door open.
+    if (bodyGuestCandidate && guestEnabled() && isGuestId(bodyGuestCandidate)) {
+        // Tagged distinctly from the header rail so a reader can tell the two apart:
+        // it makes the post-deploy proof one GROUP BY, and when the client WO lands
+        // this count falls to zero on its own. Nothing in api/ filters on _auth
+        // (grepped 2026-09-15), so a new value drops no existing view.
+        return { playerId: bodyGuestCandidate, auth: 'guest-body' };
     }
 
     return { playerId: UNVERIFIED_PLAYER_ID, auth: 'unverified' };
@@ -153,7 +227,18 @@ function makeHandler(deps = {}) {
         try {
             const sql = getSql();
 
-            const identity = await resolveIdentity(sql, headers, sessionVerifier);
+            // ── Build ONE multi-row insert (security audit 2026-08-15) ──────────
+            // Was: uncapped array, one AWAITED round-trip per element. A single POST
+            // could therefore hold a function open for thousands of sequential
+            // queries. Now the batch is capped and lands in one statement.
+            //
+            // The cap is applied HERE, before identity, so a dropped surplus event
+            // can never be the one that names the batch (WO-1733).
+            const batch = events.slice(0, MAX_EVENTS_PER_BATCH);
+
+            const identity = await resolveIdentity(
+                sql, headers, sessionVerifier, firstGuestShapedId(batch),
+            );
 
             const spend = await reserveIpBudget(sql, hashIp(req), 'EVENTS_TRACK', {
                 windowSeconds: IP_WINDOW_SECONDS,
@@ -165,12 +250,6 @@ function makeHandler(deps = {}) {
                 console.warn('[events/track] REFUSED — IP budget exhausted (grants=' + (spend.grants || '?') + ').');
                 return res.status(200).json({ success: false, error: spend.error || 'RATE_LIMITED', inserted: 0 });
             }
-
-            // ── Build ONE multi-row insert (security audit 2026-08-15) ──────────
-            // Was: uncapped array, one AWAITED round-trip per element. A single POST
-            // could therefore hold a function open for thousands of sequential
-            // queries. Now the batch is capped and lands in one statement.
-            const batch = events.slice(0, MAX_EVENTS_PER_BATCH);
 
             const values = [];
             const params = [];
