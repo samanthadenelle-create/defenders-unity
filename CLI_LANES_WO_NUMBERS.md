@@ -189,7 +189,29 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-15 (CLI, hundred-and-ninety-sixth pass): main line next free = **1746**.
+> ## RECONCILED 2026-09-15 (CLI, hundred-and-ninety-seventh pass): main line next free = **1747**.
+> *(The raid-AI lane was handed **1746** PRE-ASSIGNED BY THE LEAD, and that is the process change:
+> two lanes collided earlier today because each read this banner independently, so the lead now mints
+> the number into the brief and the lane bumps this row in the same edit that creates the WO.
+> **1746** = the owner's WO-1738 ruling implemented — Branch B + the 10% reluctant fallback, and
+> Breach as a PERSISTENT STANCE that auto-chains. `WallSegment.BaseToughness` is untouched: what
+> changed is willingness, not durability. Ordinary troops keep taking a blocking wall when nothing
+> else is reachable (so no warband idles into a dead-end) but swing at
+> `RaidAssaultAi.ReluctantWallDamageMultiplier` = 0.1; siege and any troop under an armed stance stay
+> at full damage. ⛔ **TWO THINGS WOULD HAVE SHIPPED THE RULING BROKEN AND BOTH ARE THE FINDING.**
+> (1) `TroopController.Attack`'s multiplier block is gated on
+> `_preferStructures || _structureDamageMult != 1f || _unitDamageMult != 1f` — a Footman has ALL
+> THREE at default, so a reluctance folded in there would have applied to NOBODY while the new trace
+> printed `mult=0.10`. (2) `RallyHoldsMarch`'s 4th arg had to widen from `HasOrder` to the STANCE:
+> the ordered panel self-clears on death, so with a rally set — "most of the time" mid-raid per
+> WO-1719's own remarks — the march would re-hold, the wall bucket null, `PickBucket` return -1, and
+> the warband walk back to the flag instead of chaining to the next panel. Also closes the trace gap
+> named in WO-1723 §5 and WO-1730 §4 and never closed: `Attack()` emitted NOTHING, and now emits one
+> throttled `SWING target=... kind=... dmg=... mult=...` line. WO-1738 §3 Q2 of WO-1730 is ruled by
+> this. NOT GATED — the lane runs no Unity.
+> Bumped 1746 -> 1747 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninety-sixth pass): main line next free = **1746**.
 > *(WO-1742's Lane A2 minted **1745** = the 409 `SAVE_RESET_STALE` refusal on `/api/game/save` is
 > now audited where an admin query can READ it. ⛔ **THE PARENT WO'S PREMISE WAS WRONG AND THE
 > CORRECTION IS THE FINDING.** WO-1742 §8 says the 409 "is invisible to the dashboard because it is

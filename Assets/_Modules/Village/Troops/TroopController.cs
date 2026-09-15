@@ -961,9 +961,21 @@ namespace DeNelle.Village
             // WO-1719: an explicit player breach order (Breach mode + a wall tap) beats the
             // rally march as well as the automatic wall pick - see the 4-arg overload's own
             // remarks for why phase and rally are independent axes.
-            bool explicitBreachOrder = TroopBreachOrder.HasOrder;
+            //
+            // ⚠ WO-1746 WIDENS THIS FROM HasOrder TO StanceActive, AND WITHOUT THAT THE OWNER'S
+            // AUTO-CHAIN DIES ON THE FIRST WALL. Trace it: the ordered panel collapses ->
+            // TroopBreachOrder.Target self-clears -> HasOrder goes FALSE -> the rally march holds
+            // again -> nearestOtherStruct is nulled below -> Breach phase with no wall and no unit
+            // -> PickBucket returns -1 -> the warband walks back to the flag instead of opening the
+            // next panel. WO-1719's own remarks record that a rally is set "most of the time"
+            // mid-raid, so that is the COMMON case, not an edge.
+            // The rule widens with the ruling: WO-1719 said an explicit ORDER releases the march;
+            // under WO-1738 the STANCE releases it. The implicit ring-farm the suppression exists
+            // to stop (owner 2026-09-12) is untouched - a warband with Breach off and no order has
+            // StanceActive false and still marches to the flag without chewing masonry.
+            bool breachStance = TroopBreachOrder.StanceActive;
             bool rallyMarch = RaidAssaultAi.RallyHoldsMarch(
-                rallySet, arrivedAtRally, peelThreat, explicitBreachOrder);
+                rallySet, arrivedAtRally, peelThreat, breachStance);
 
             Vector3 muster = rallySet ? rallyPt.Value : transform.position;
             if (FocusWallScratch.Count > 0)
@@ -1016,11 +1028,11 @@ namespace DeNelle.Village
 
             _lastPreferUnit = RaidAssaultAi.PreferUnit(
                 _assaultPhase, _preferStructures, hasUnit, hasStruct,
-                unitInAttackRange, _routeToUnitOpen);
+                unitInAttackRange, _routeToUnitOpen, breachStance);
 
             int bucket = RaidAssaultAi.PickBucket(
                 _assaultPhase, _preferStructures, hasUnit, hasObjective, hasOtherStruct,
-                unitInAttackRange, _routeToUnitOpen);
+                unitInAttackRange, _routeToUnitOpen, breachStance);
 
             IDamageable winner;
             switch (bucket)
@@ -1041,11 +1053,37 @@ namespace DeNelle.Village
                 // instrument inside it. Reads as: routeOpen=False with no wall left standing is the
                 // "route never re-evaluates after a collapse" hypothesis (cross-check the adjacent
                 // `routeObj=` status, which names WHY: detour / PartialPath / no-spire / PathComplete).
+                // WO-1746 adds the three inputs the WO-1738 ruling turns on, so "why did this
+                // troop swing at masonry, and how hard" is answerable from one line:
+                //   breachStance= the persistent stance (Breach armed OR a standing order)
+                //   blocked=      no route to the spire - the ruling's dead-end case
+                //   wallDmgMult=  1.00 (siege / stance) or 0.10 (the reluctant fallback)
+                // wallDmgMult is computed from the SAME RaidAssaultAi.WallDamageMultiplier call
+                // Attack() uses - one source, two readouts, so the log cannot disagree with the
+                // damage that actually lands.
+                float tracedWallMult = RaidAssaultAi.WallDamageMultiplier(_preferStructures, breachStance);
+                // stanceYield= answers the one question the fields above cannot: when the stance
+                // was ARMED, did the warband actually end up on the wall, and if not, what took it?
+                // "stance armed" and "stance obeyed" are different facts, and a log that only
+                // carries the first cannot tell a working stance from a stance being overridden
+                // every tick - which is exactly the confusion that made the missed second gate in
+                // PickBucket's Breach branch invisible to reading.
+                string stanceYield = "n/a";
+                if (breachStance)
+                {
+                    if (bucket == 2) stanceYield = "wall";
+                    else if (bucket == 0) stanceYield = "unit";
+                    else if (bucket == 1) stanceYield = "objective";
+                    else stanceYield = "none";
+                }
                 FlowTrace.Throttle("RaidAI", $"raid-ai-phase-{GetInstanceID()}", 1f,
                     $"id={_troopId} job={_assaultJob} phase={_assaultPhase} " +
                     $"in[peel={peelThreat}, routeOpen={_routeToObjectiveOpen}, objInRange={objectiveInAttackRange}] " +
                     $"routeObj={_objectiveRouteStatus} " +
                     $"bucket={bucket} preferUnit={_lastPreferUnit} " +
+                    $"breachStance={breachStance} stanceYield={stanceYield} " +
+                    $"blocked={!_routeToObjectiveOpen} " +
+                    $"wallDmgMult={tracedWallMult:F2} siege={_preferStructures} " +
                     $"has[unit={hasUnit},obj={hasObjective},wall={hasOtherStruct}]");
             }
 
@@ -1421,11 +1459,58 @@ namespace DeNelle.Village
         {
             _attackCdRemaining = _attackCooldown;
             float dmg = _attackDamage;
+            bool isStructure = IsHostileStructure(foe);
+            float catalogMult = 1f;
             if (_preferStructures || _structureDamageMult != 1f || _unitDamageMult != 1f)
             {
-                bool structure = IsHostileStructure(foe);
-                float mult = structure ? _structureDamageMult : _unitDamageMult;
-                if (mult > 0f) dmg *= mult;
+                catalogMult = isStructure ? _structureDamageMult : _unitDamageMult;
+                if (catalogMult > 0f) dmg *= catalogMult;
+                else catalogMult = 1f;
+            }
+
+            // ── WO-1746: the owner's RELUCTANT WALL multiplier (ruling WO-1738, 2026-09-15) ──
+            //
+            // ⚠ THIS DELIBERATELY SITS OUTSIDE THE BLOCK ABOVE, AND THAT IS THE WHOLE BUG IT
+            // AVOIDS. That gate reads `_preferStructures || _structureDamageMult != 1f ||
+            // _unitDamageMult != 1f` - a Footman, an Archer, a Legionnaire have ALL THREE at
+            // default, so the block never runs for exactly the ordinary troops the 10% is written
+            // for. Folding the reluctance in there would have shipped a ruling that applied to
+            // nobody but the catapult, while the trace happily printed wallMult=0.10.
+            //
+            // SCOPED TO WALL PANELS ONLY, on purpose: the ruling says "the nearest blocking WALL".
+            // Towers, the spire and other masonry were never in it and keep full damage, so this
+            // cannot become a silent across-the-board structure nerf.
+            //
+            // Siege is identified by the CATALOG role (_preferStructures is set from
+            // def.Role == "siege" at :432), never by a troop name - so a second siege unit added
+            // to troops.json inherits full wall damage with no code change.
+            float wallMult = 1f;
+            bool isWallPanel = isStructure && (foe is WallSegment);
+            if (isWallPanel)
+            {
+                wallMult = RaidAssaultAi.WallDamageMultiplier(
+                    _preferStructures, TroopBreachOrder.StanceActive);
+                dmg *= wallMult;
+            }
+
+            // ── WO-1746: the SWING trace. This method emitted NOTHING before today. ──
+            // The gap is named in WO-1723 sec.5 and WO-1730 sec.4 and was never closed: the AI
+            // trace proved what a troop INTENDED to hit, and nothing proved a blow ever landed or
+            // at what multiplier. "Did the troop actually swing at the wall, and how hard" is now
+            // answerable from a device log. Throttled per-troop at 1 Hz because troop melee ticks
+            // several times a second and an unthrottled line here would flood the logcat ring and
+            // evict the very boot window the capture exists for (CLAUDE.md sec.12).
+            // Parts are computed into LOCALS first: a nested quote inside an interpolation hole is
+            // the CompileGate brace-scanner trap recorded in CLAUDE.md sec.1.
+            if (FlowTrace.Enabled)
+            {
+                string swingTarget = DescribeTarget(foe);
+                string swingKind = isWallPanel ? "wall" : (isStructure ? "struct" : "unit");
+                FlowTrace.Throttle("TroopAI", $"troop-swing-{GetInstanceID()}", 1f,
+                    $"id={_troopId} SWING target='{swingTarget}' kind={swingKind} " +
+                    $"dmg={dmg:F1} mult={wallMult:F2} base={_attackDamage:F1} " +
+                    $"structMult={catalogMult:F2} siege={_preferStructures} " +
+                    $"breachStance={TroopBreachOrder.StanceActive}");
             }
             // WO-935: mage strike uses unified CombatCast (anim + VFX) then damage.
             Transform foeTf = (foe as Component) != null ? (foe as Component).transform : null;

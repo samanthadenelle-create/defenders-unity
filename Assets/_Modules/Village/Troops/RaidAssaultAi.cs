@@ -60,6 +60,45 @@ namespace DeNelle.Village
         /// <summary>Lateral spacing between same-role slots (m).</summary>
         public const float LateralSpreadMeters = 1.4f;
 
+        /// <summary>
+        /// WO-1746 / owner ruling WO-1738 (2026-09-15) — the RELUCTANT wall multiplier.
+        /// </summary>
+        /// <remarks>
+        /// Owner ruling, verbatim: *"A warband that is BLOCKED (no route to the objective) with
+        /// no Breach active attacks the nearest blocking wall at **10%** structural damage, so it
+        /// never idles into a dead-end."* Branch B of WO-1738: WO-1737's shipped wall toughness is
+        /// KEPT untouched (<c>WallSegment.BaseToughness</c> is not this ticket's file); what
+        /// changes is how willingly an ORDINARY troop spends its time on masonry.
+        ///
+        /// ⛔ THIS IS THE ONE HOME FOR THE NUMBER. Do not write <c>0.1f</c> at a call site — the
+        /// repo's most expensive bugs are all a value copied to a second place and left to rot
+        /// (CLAUDE.md sec.2 / sec.5 / sec.16). The knob block above is already where the raid-AI
+        /// tunables live, so it is where this one lives too.
+        ///
+        /// Who is NOT reluctant, per the same ruling: SIEGE (identified by the catalog role, never
+        /// by a hardcoded troop name) and ANY troop while the Breach STANCE is armed — both at
+        /// full damage. Reluctance is deliberately scoped to WALL panels only; towers and other
+        /// masonry were never part of the ruling and keep full damage.
+        /// </remarks>
+        public const float ReluctantWallDamageMultiplier = 0.1f;
+
+        /// <summary>
+        /// Structural-damage multiplier this troop applies to a WALL panel right now: 1.0 for
+        /// siege or while the Breach stance is armed, <see cref="ReluctantWallDamageMultiplier"/>
+        /// otherwise (the blocked-warband fallback that stops it idling into a dead-end).
+        /// </summary>
+        /// <remarks>
+        /// Pure, so the regression can assert it without a scene, and so the AI trace and the
+        /// swing trace can print the SAME number from the SAME call rather than each deriving
+        /// their own — two readouts, one source.
+        /// </remarks>
+        public static float WallDamageMultiplier(bool preferStructures, bool breachStance)
+        {
+            if (preferStructures) return 1f;
+            if (breachStance) return 1f;
+            return ReluctantWallDamageMultiplier;
+        }
+
         /// <summary>Map authored <c>TroopDef.Role</c> → assault job (no new JSON field).</summary>
         public static RaidAssaultJob JobFromRole(string role)
         {
@@ -283,6 +322,46 @@ namespace DeNelle.Village
             bool unitInAttackRange,
             bool routeToUnitOpen)
         {
+            return PreferUnit(
+                phase, preferStructures, hasUnit, hasStruct,
+                unitInAttackRange, routeToUnitOpen, breachStance: false);
+        }
+
+        /// <summary>
+        /// WO-1746 — the same rule, with the player's BREACH STANCE held as an explicit input.
+        /// </summary>
+        /// <remarks>
+        /// Owner ruling WO-1738 (2026-09-15): *"Breach is a persistent stance that auto-chains.
+        /// One tap = 'we are breaching'; when the ordered wall falls the warband keeps opening
+        /// walls ... until the player toggles Breach off or a hostile pulls aggro."*
+        ///
+        /// ⭐ THE STANCE IS TREATED EXACTLY LIKE <paramref name="preferStructures"/> IN BREACH,
+        /// AND THAT IS THE WHOLE CHANGE. "Until a hostile pulls AGGRO" is already a phase, not a
+        /// bucket rule: aggro means <c>peelThreat</c> means <see cref="RaidAssaultPhase.Peel"/>,
+        /// and Peel returns true at the top of this method before the stance is ever consulted.
+        /// So an aggro'd troop keeps its fight (WO-1719's "all together unless they have aggro"
+        /// survives verbatim) while a merely REACHABLE, non-aggro'd defender no longer peels the
+        /// warband off the panel the player ordered.
+        ///
+        /// ⚠ THE ONE PLACE A READING WAS CHOSEN, FLAGGED RATHER THAN BURIED. WO-1738's status
+        /// line summarises the ruling as "units-first is the default inside it", which would mean
+        /// a reachable unit still wins under an armed stance. The ruling BODY and WO-1719 both say
+        /// "until ... a hostile pulls aggro", i.e. Peel. This implements the two verbatim owner
+        /// sources; flipping to the other reading is deleting the one <c>breachStance</c> line
+        /// below. Pinned by WallBreachOrderRegression Case 8 so the flip cannot happen silently.
+        ///
+        /// The old 6-arg signature is KEPT as a delegating overload (stance = false) so every
+        /// suite that pins the pre-ruling rule compiles and passes untouched.
+        /// </remarks>
+        public static bool PreferUnit(
+            RaidAssaultPhase phase,
+            bool preferStructures,
+            bool hasUnit,
+            bool hasStruct,
+            bool unitInAttackRange,
+            bool routeToUnitOpen,
+            bool breachStance)
+        {
             if (!hasUnit) return false;
             if (phase == RaidAssaultPhase.Peel) return true;
 
@@ -294,6 +373,8 @@ namespace DeNelle.Village
 
             // Breach: siege stays on masonry; others use the existing reachability rule.
             if (preferStructures) return false;
+            // WO-1746: so does a warband under an armed Breach stance.
+            if (breachStance) return false;
             if (!hasStruct) return true;
             return unitInAttackRange || routeToUnitOpen;
         }
@@ -326,9 +407,46 @@ namespace DeNelle.Village
             bool unitInAttackRange,
             bool routeToUnitOpen)
         {
+            return PickBucket(
+                phase, preferStructures, hasUnit, hasObjective, hasOtherStruct,
+                unitInAttackRange, routeToUnitOpen, breachStance: false);
+        }
+
+        /// <summary>
+        /// WO-1746 — the same bucket rule, with the Breach stance passed through to
+        /// <see cref="PreferUnit"/>.
+        /// </summary>
+        /// <remarks>
+        /// ⚠ TWO GATES IN THE BREACH BRANCH READ THE STANCE, NOT ONE — and the second was MISSED
+        /// on the first pass. Teaching <see cref="PreferUnit"/> about the stance is not sufficient:
+        /// the Breach tail carries its own <c>hasUnit &amp;&amp; unitInAttackRange</c> shortcut, so
+        /// a calm defender already inside attack range still stole the warband off the ordered
+        /// panel. Found by EXECUTING the Case 8 red proof against the pure statics, not by reading
+        /// them. If a third unit-beats-wall path is ever added to this branch, it needs the same
+        /// guard — and Case 8 is what will say so.
+        ///
+        /// ⭐ Otherwise this keeps the "one gate in front" shape WO-1719 used at
+        /// <see cref="SelectFocusBreach"/> (see its remarks). In
+        /// particular <see cref="AllowNonObjectiveStructure"/> is UNCHANGED: Breach still returns
+        /// true, which is precisely the ruling's anti-idle fallback. A blocked, stance-less,
+        /// unit-less warband therefore still picks the wall — it just swings at
+        /// <see cref="ReluctantWallDamageMultiplier"/>. The ruling changes WILLINGNESS (the
+        /// multiplier), not the ability to pick; making the bucket return -1 here would have
+        /// produced the dead-end WO-1738 sec.4 names as Branch B's one real cost.
+        /// </remarks>
+        public static int PickBucket(
+            RaidAssaultPhase phase,
+            bool preferStructures,
+            bool hasUnit,
+            bool hasObjective,
+            bool hasOtherStruct,
+            bool unitInAttackRange,
+            bool routeToUnitOpen,
+            bool breachStance)
+        {
             bool preferUnit = PreferUnit(
                 phase, preferStructures, hasUnit, hasOtherStruct || hasObjective,
-                unitInAttackRange, routeToUnitOpen);
+                unitInAttackRange, routeToUnitOpen, breachStance);
 
             if (preferUnit && hasUnit) return 0;
 
@@ -361,7 +479,16 @@ namespace DeNelle.Village
                 return hasUnit ? 0 : -1;
             }
 
-            if (hasUnit && unitInAttackRange) return 0;
+            // ⛔ WO-1746 — THE SECOND GATE, AND IT WAS MISSED ON THE FIRST PASS.
+            // PreferUnit is NOT the only place a unit can beat the wall in Breach: this line is a
+            // separate in-attack-range shortcut, so teaching PreferUnit about the stance and
+            // stopping there left the stance silently broken for exactly the case Case 8 asserts
+            // (a calm defender already within attack range still stole the warband off the ordered
+            // panel). It was found by EXECUTING the Case 8 red proof, not by reading - the suite
+            // would have gone red at the gate. Siege never reaches this line (the preferStructures
+            // branch above returns first), so guarding it with the stance is what makes a
+            // stance-armed troop behave like siege here, which is precisely the ruling.
+            if (!breachStance && hasUnit && unitInAttackRange) return 0;
             if (mayWall) return 2;
             if (hasObjective) return 1;
             return hasUnit ? 0 : -1;

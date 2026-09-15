@@ -1097,6 +1097,12 @@ namespace DeNelle.Village
                 (wasOn ? "DISARMING breach mode." : "ARMING breach mode (next wall tap orders the warband)."));
 
             _breachMode = !_breachMode;
+            // WO-1746 (owner ruling WO-1738): Breach is a persistent STANCE, and this button is
+            // where the player arms it. Armed BEFORE the first wall tap on purpose - "we are
+            // breaching" is the player's declaration, so a blocked warband with no tap yet already
+            // works the automatic most-damaged panel at full damage instead of going reluctant.
+            // The disarm rides on TroopBreachOrder.Clear() in the else branch below.
+            if (_breachMode) TroopBreachOrder.SetStanceArmed(true);
             if (_breachMode)
             {
                 Disarm();               // breach + deploy are exclusive arm states
@@ -1286,6 +1292,10 @@ namespace DeNelle.Village
                 // already committed to a panel, the same way ArmTile leaves TroopRally.Point
                 // alone. Only the Breach toggle, a retreat and teardown drop the order.
                 _breachMode = false;
+                // WO-1746: the MODE flag goes with it, but TroopBreachOrder.StanceActive stays
+                // TRUE while that standing order lives (its `|| HasOrder` half) - aiming a rally
+                // must not silently drop the warband to 10% on the panel it is still ordered onto.
+                TroopBreachOrder.SetStanceArmed(false);
                 RefreshBreachButton();
             }
             else
@@ -2592,6 +2602,9 @@ namespace DeNelle.Village
             // WO-1719: arming a tile turns the breach MODE off (exclusive arm states) but
             // leaves the standing ORDER, exactly as it leaves TroopRally.Point.
             _breachMode = false;
+            // WO-1746: same as the rally arm - the mode flag drops, the STANCE survives for as
+            // long as an explicit order does (TroopBreachOrder.StanceActive).
+            TroopBreachOrder.SetStanceArmed(false);
             RefreshBreachButton();
             _armedDefId = defId;
             RefreshTiles();

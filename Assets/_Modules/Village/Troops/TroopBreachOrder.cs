@@ -23,6 +23,9 @@
 //
 // WRITERS: RaidDeployController only (Breach toggle -> tap sets it; toggling the
 // mode off, retreating and scene teardown clear it), exactly as it owns TroopRally.
+// WO-1746 adds SetStanceArmed to that same writer set - the Breach button arms the
+// STANCE before any tap, and the exclusive-arm sites (rally / tile) disarm the mode
+// flag while a standing order keeps StanceActive true on its own.
 // READERS: TroopController.SharedBreachFocus, via RaidAssaultAi.SelectFocusBreach's
 // explicit-override overload.
 //
@@ -51,6 +54,52 @@ namespace DeNelle.Village
     {
         private static IDamageable _target;
         private static int _version;
+        private static bool _stanceArmed;
+
+        /// <summary>
+        /// WO-1746 — TRUE while the warband is "breaching": the Breach button is armed, OR an
+        /// explicit order still stands. Siege aside, this is the single flag that decides whether
+        /// a troop hits a wall at full damage or at
+        /// <see cref="RaidAssaultAi.ReluctantWallDamageMultiplier"/>.
+        /// </summary>
+        /// <remarks>
+        /// ⭐ THE OR IS THE AUTO-CHAIN, AND IT IS THE WHOLE POINT OF THE RULING.
+        /// Owner, WO-1738 (2026-09-15): *"One tap = 'we are breaching'; when the ordered wall
+        /// falls the warband keeps opening walls ... until the player toggles Breach off or a
+        /// hostile pulls aggro. No per-wall tap tax under the 180 s clock."*
+        ///
+        /// Read the two halves against <see cref="Target"/>'s self-clear, which this ticket KEEPS
+        /// exactly as WO-1719 shipped it:
+        ///   * the ordered panel COLLAPSES -> <see cref="DropInternal"/> nulls the target, so
+        ///     <see cref="HasOrder"/> goes false - but <c>_stanceArmed</c> is UNTOUCHED, so the
+        ///     stance holds, <see cref="RaidAssaultAi.SelectFocusBreach"/>'s automatic
+        ///     most-damaged rule picks the next panel, and the warband keeps opening walls at
+        ///     full damage with no second tap. THAT PATH IS THE AUTO-CHAIN; never disarm there.
+        ///   * the player toggles Breach OFF / retreats / the raid tears down -> the public
+        ///     <see cref="Clear"/> runs, which DOES disarm, and the warband goes reluctant again.
+        ///
+        /// The <c>|| HasOrder</c> half covers the exclusive-arm sites: arming Rally or a deploy
+        /// tile flips the Breach MODE off while deliberately LEAVING a standing order
+        /// (RaidDeployController's own WO-1719 comments). Without it, aiming a rally mid-breach
+        /// would silently drop the warband to 10% against the very panel it is still ordered onto.
+        /// </remarks>
+        public static bool StanceActive { get { return _stanceArmed || HasOrder; } }
+
+        /// <summary>
+        /// Arm / disarm the Breach STANCE. Writer is RaidDeployController only, at exactly the
+        /// points it already owns the Breach button's arm state.
+        /// </summary>
+        public static void SetStanceArmed(bool armed)
+        {
+            if (_stanceArmed == armed) return;
+            _stanceArmed = armed;
+            string state = armed ? "ARMED" : "disarmed";
+            string effect = armed
+                ? "every troop now opens walls at FULL structural damage and keeps chaining to the next panel when one falls"
+                : "ordinary troops go RELUCTANT again (10% on walls) unless an explicit order still stands";
+            FlowTrace.Step("RaidAI",
+                "BREACH STANCE " + state + ": " + effect + ". standingOrder=" + HasOrder);
+        }
 
         /// <summary>
         /// Bumped on every set / clear / self-clear. A resolver that caches a focus
@@ -121,6 +170,12 @@ namespace DeNelle.Village
         /// </summary>
         public static void Clear()
         {
+            // WO-1746: the PUBLIC clear is the player's "stop breaching" - toggle-off, retreat and
+            // teardown all arrive here - so it disarms the stance too. The private DropInternal
+            // does NOT (see StanceActive): a panel collapsing is the auto-chain, not a cancel.
+            // This runs BEFORE the early-out below on purpose, so a toggle-off with no standing
+            // order still disarms a stance that was armed and never tapped.
+            SetStanceArmed(false);
             if (ReferenceEquals(_target, null)) return;
             DropInternal("cleared by the player / raid teardown");
         }

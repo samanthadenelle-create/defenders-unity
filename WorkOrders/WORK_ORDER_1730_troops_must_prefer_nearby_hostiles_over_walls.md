@@ -76,6 +76,26 @@ If a hostile then wanders nearby, does the warband abandon the ordered wall? The
 *"all together unless they have aggro"*, which suggests the order should hold — but this new ruling says
 walls are always last. **These two rulings can conflict and only the owner can settle it.**
 
+> ## ✅ RULED by WO-1738 (owner, 2026-09-15). Q2 IS CLOSED — implemented in WO-1746.
+> **Breach is a persistent STANCE, not a per-wall order.** Units-first is the default *outside* the
+> stance; inside it the warband stays on the panel. **Owner-ruled explicitly 2026-09-15:** only
+> AGGRO breaks the stance — an enemy that actually attacks them or closes to melee (the existing
+> `Peel` trigger). A garrison standing 10 m away watching does **not** pull them off. She first
+> answered "Any nearby hostile breaks the stance", then reversed within a minute to *"wait the other
+> way — the way suggested"*; both answers are recorded verbatim in WO-1746 §4 so this is not
+> re-litigated. ⚠ A paraphrase reading "units-first is the default INSIDE it" circulated on WO-1738's
+> summary line and is RETIRED — it was the lead's wording, not the owner's. The two rulings do not in fact conflict, because
+> the thing that breaks the stance is **aggro**, which is already a PHASE (`peelThreat` → `Peel`) and
+> already outranks every bucket rule — so WO-1719's *"all together unless they have aggro"* survives
+> verbatim while units-first governs everything else. The owner also kept ordinary troops off masonry
+> by making them **reluctant rather than forbidden**: a blocked warband with no stance still takes the
+> nearest blocking wall (so it never idles into a dead-end) at **10%** structural damage; siege and
+> any troop under an armed stance stay at full. See
+> `WorkOrders/WORK_ORDER_1738_wall_durability_concurrency_fork.md` for the ruling record and
+> `WorkOrders/WORK_ORDER_1746_breach_stance_and_reluctant_wall_damage.md` for what shipped.
+> ⚠ **This closes Q2 ONLY.** Q1 (what radius counts as "nearby") and Q3 (spire vs. nearby hostile
+> after the breach) are UNRULED and this ticket stays open on them.
+
 ## 3B. SECOND RULING, SAME SILO — once the breach is OPEN, stop grinding the wall
 
 Owner, verbatim, 2026-09-14, minutes after the ruling in §1:
@@ -192,8 +212,11 @@ unprovable.
 ## 5. OPEN OWNER RULINGS
 
 - **Q1 (§3):** what radius counts as "nearby" — attack range, the 6 m peel leash, or the full scan radius?
-- **Q2 (§3):** does an explicit player Breach order still hold when a hostile comes near, or does the
-  new always-units-first rule outrank the player's own tap?
+- ~~**Q2 (§3):** does an explicit player Breach order still hold when a hostile comes near, or does the
+  new always-units-first rule outrank the player's own tap?~~ **RULED by WO-1738 (owner, 2026-09-15),
+  implemented in WO-1746 — see the ruling box in §3.** Breach is a persistent STANCE; units-first is
+  the default outside it; only AGGRO (`peelThreat` → `Peel`) breaks it. Ordinary troops are reluctant
+  on walls (10%), not forbidden, so no warband idles into a dead-end.
 - **Q3 (§3B):** once through a breach, does the SPIRE or a nearby HOSTILE win? She named both
   (*"the spire or aggressive mobs"*) without ordering them. Today the objective wins in `Push`/`Finish`.
 
