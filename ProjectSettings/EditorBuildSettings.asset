@@ -50,7 +50,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/RaidBase_mage_enclave.unity
     guid: 2f1990e6a3742bc4d81694e2e9ee63da
-  - enabled: 0
+  - enabled: 1
     path: Assets/Scenes/RaidBase_IronBastion.unity
     guid: c03c88937ff8c934c981dd4848f96739
   - enabled: 0
@@ -104,6 +104,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/DungeonCompose/dg_healers_cottage.unity
     guid: 2e6422be7c9a916478fd6302407da1dc
+  - enabled: 1
+    path: Assets/Scenes/OwnedTown_IronBastion.unity
+    guid: db016a66c0f589a42893b2ea07cf8df2
+  - enabled: 1
+    path: Assets/Scenes/ArenaPractice_IronBastion.unity
+    guid: 29a9a293012224f4ca004a6d87c8266f
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 16d06bc18dab1cd408b1472b0382cf8a, type: 2}
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}

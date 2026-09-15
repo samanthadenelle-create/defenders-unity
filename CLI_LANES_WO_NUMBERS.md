@@ -189,7 +189,134 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-eighty-fourth pass): main line next free = **1732**.
+> ## RECONCILED 2026-09-15 (CLI, hundred-and-ninetieth pass): main line next free = **1739**.
+> *(Same wall-durability lane also minted **1738** — the CONCURRENCY FORK, split out of 1737 §7 into its
+> own board row rather than left as prose. Reason, in the lane's own words: WO-1506's RESULT said "this
+> needs a client ticket", that sentence sat inside a closed ticket, the board never saw it, and eight days
+> were lost — recording the same follow-up as a paragraph is how it happens again. 1738 is **AWAITING
+> OWNER RULING** and prices both branches: A (raise the floor for concurrent TTK — cheap, one constant,
+> but a solo hero then needs ~37 s per tier-1 panel and 96 s at tier 3, and the raid-clock verdict flips)
+> vs B (CoC-shaped: ordinary troops stop chewing walls, siege `maxOwned:1` gives a 10.4 s default breach
+> AT THE ALREADY-RULED FLOOR — but it lands in WO-1730's silo and makes the Breach tap a mandatory verb).
+> Ruling it also settles WO-1730 §3 Q2. Bumped 1738 -> 1739 in this SAME edit.)*
+> *(Wall-durability lane minted **1737** 2026-09-15 from an owner ruling on device — *"walls fall with a
+> single hit ... Think of CoC."* The measured cause is NOT a missing HP field: `WallSegment.ToughnessFor`
+> raised the tier step to the power (tier-1), so **tier 1 was step^0 == 1.0 and a base wall took every
+> hit completely unreduced** — no value of the step could ever have fixed it. Landed as one new named
+> constant, `WallSegment.BaseToughness`, deliberately NOT as a larger `MaxHp`: the 0-100 damage track is
+> a contract with `RepairTarget.DamageFraction` (`/100` literal), `RepairTarget.RepairFull` (`Repair(100f)`),
+> `StructureBurn` (hardcoded 100 for walls) and `RaidScoringRegression` (which FAILS the gate on
+> `Damage / 100` in scoring). Tier RATIOS are preserved exactly, so a wall upgrade still buys what it
+> always bought. ⛔ **Also deletes a SECOND toughness table** — `WallTierData.s_toughness`, a "read-only
+> convenience mirror" with zero consumers that would have started lying the moment the real divisor moved
+> (the §2/§5/§8 duplicated-state class). ⛔ **AN OWNER RULING IS STILL OPEN AND THE TICKET LEADS WITH IT:**
+> the ruled hit-count is a SINGLE-attacker measure, but the Breach order focuses the whole warband on one
+> panel, so concurrent time-to-kill at the shipped value is ~1-3 s. The WO lays out both branches with
+> numbers (A: tune for concurrent TTK, which strands the solo hero; B: CoC-shaped, where ordinary troops
+> do not chew walls) and picks NEITHER. Branch B's seam is WO-1730's silo, untouched here by design.
+> Bumped 1737 -> 1738 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-eighty-ninth pass): main line next free = **1737**.
+> *(RCA lane minted **1736** 2026-09-15 — **the project's FIRST bug report from a real external player**
+> ("Sminer", via Discord, Play closed-tester track, hero Lv 45 at **Wave 146**): when a town wave ends the
+> HUD never returns to the peaceful dock — he is left in the combat "Skill Screen" with no build / hero /
+> harvest, and his only recovery is logging out and back in, which works only sometimes. RCA is read-only
+> and ranked: his screenshot DISCRIMINATES the posture, because `hud-areas.json` gives
+> `hostile(postbattle)` and `modal` an EMPTY occupancy row while `hostile(prebattle|activebattle)` keep
+> `waveBlock` (his Start Wave button) and swap `peacefulDock` -> `combatDock` — so a stuck modal and a
+> stuck end-state are EXCLUDED and a latched COMBAT INPUT is the cause. `IsWaveActive()`
+> (`HudContextEvaluator.cs:176`) and the wave's own BattleLock probe (`WaveManager.cs:765`) both reduce to
+> ONE undecaying field, `WaveManager._phase == Active` (pursuit self-expires at 1.5s; the manual target
+> lock clears on target death — both PROVEN excluded). ⛔ **The coverage gap is one grep:
+> `BattleQuiescenceGate.Arm` has exactly ONE caller in `_Modules` — `BattleArena.cs:2814` — so a TOWN WAVE
+> END arms NOTHING**, and WO-1308's purpose-built "the wave loop is LATCHED at phase=Active" dump
+> (`WaveManager.cs:859`) is registered and never fired on the boundary it was written for. That is why
+> this reached us through Discord instead of through F8. Separately flagged, NOT in scope: the DB's max
+> hero level across 63 saves is 20 while he is at 45 — his saves may not be reaching the backend at all.
+> Bumped 1736 -> 1737 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-eighty-eighth pass): main line next free = **1736**.
+> *(Analytics-identity lane minted **1735** 2026-09-15, the CLIENT half of WO-1733 - and the reason it is
+> a TICKET and not a paragraph: WO-1506's RESULT (`:37-38`) already said "this needs a client ticket",
+> that sentence sat in prose inside a CLOSED ticket, the board never saw it, nobody minted it, and the
+> result was eight days of every player's analytics landing under one id. Recording the same follow-up
+> only in WO-1733 §6 (Status: DONE) would be invisible to the derived board in exactly the same way.
+> **1735** = `EventTracker.cs:290-294` builds its own `UnityWebRequest` and sets only `Content-Type`; it
+> should attach the same `X-Session` / `X-Guest-Id` headers `BackendRequestSigner.cs:198` (`:426-430`)
+> attaches on the SAVE rail. WO-1733's server fallback recovers GUEST attribution for the fleet already
+> installed, but a WALLET may NEVER be accepted from the body (a wallet address is PUBLIC, not a
+> credential), so signed-in and PAYING players stay `unverified` until this ships. Unity silo, separate
+> gate. Acceptance is measurable on the live DB: `_auth:'guest-body'` falls toward zero, `'session'` rises.
+> ⚠ This lane ALSO minted 1733 at the 186th pass; a parallel hero-feel lane took 1734 mid-write, so this
+> mint was re-taken off the banner top rather than from the number this lane had read (memory
+> `parallel-worktree-lanes-collide-on-wo-numbers`).
+> Bumped 1735 -> 1736 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-eighty-seventh pass): main line next free = **1735**.
+> *(Hero-feel lane minted **1734** 2026-09-15 and bumped 1734 -> 1735 in this SAME edit. TWO
+> owner-ruled fixes the owner feels as one thing — "the camera spins and it keeps grabbing walls".
+> **(a) CAMERA.** Commit `486cd7b17` (2026-09-01, *"feat: finalize mobile UI combat art and Windows
+> handover"*) replaced WO-385's "fade the occluder, hold the seat" with the DEF-151 hard pull-in that
+> WO-385 existed to DELETE — the gate became `nearestOccluderDist < float.MaxValue`, true for ANY
+> occluder at ANY distance, sitting directly under WO-385's own surviving comment saying normal
+> corner walls are faded and not pulled in. `FadeOccluder` had ZERO callers and
+> `_occluderPullInDistance` / `_minCollisionDistance` / `_collisionApproachSpeed` were referenced only
+> from comments. In a ~4 m raid gate the seat collapsed to the 0.25 m emergency floor, where a small
+> yaw is an enormous screen rotation = the owner's "camera spin". RESTORED to the pre-486cd7b17 body.
+> ⚠ `CameraWallOcclusionRegression` PINNED THE DEFECT — born in that same commit, asserting
+> `!Contains("FadeOccluder(col)")` AND `Contains("nearestOccluderDist < float.MaxValue")`, under a
+> header citing "WO-1289", which is the GROUND-MEADOW REGRADE. Both assertions inverted, with the
+> mis-citation recorded in the file. **(b) HERO TARGETING.** The hero's auto-acquire was pure
+> nearest-wins with enemy walls admitted as hostiles, so a 4 m wall panel 2 m away outranked a mob at
+> 5 m (device build 370139: five `TARGET ACQUIRED (auto) -> 'Wall_Outer_*'` in 626 ms, plus an SS_5
+> <-> SS_6 oscillation). Owner's WO-1730 troop ruling now applies to the hero: any acquirable hostile
+> UNIT outranks a wall, walls stay targetable when no unit stands. Implemented as ONE gate in front
+> of the unchanged nearest-wins body, the WO-1719 seam, plus same-class-only stickiness for the
+> oscillation. NOT GATED BY THIS LANE — edit-only hand-back; the lead owns the gate, build and the
+> owner's felt-test.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-eighty-sixth pass): main line next free = **1734**.
+> *(Analytics-identity lane minted **1733** 2026-09-15. Since 2026-09-07T10:45Z EVERY analytics event
+> from EVERY player landed under the literal id `unverified`, so the Command Center's
+> `COUNT(DISTINCT player_id)` read **1** forever - one "player" with 218 sessions, daily actives pinned
+> at 1 while sessions ran 14-42/day (697 distinct ids all-time BEFORE the cutover, 74 active in 30 days,
+> 63 cloud saves, 2 paying buyers). WO-1506 correctly closed a real hole - the route wrote a
+> client-asserted `playerId` with no auth, so anyone could attribute rows to any wallet - but it took
+> identity ONLY from `X-Session` / `X-Guest-Id`, and the Unity client sends NEITHER:
+> `EventTracker.cs:290-294` builds its own `UnityWebRequest` and sets only `Content-Type`, never going
+> through `BackendRequestSigner` (`:198`, `:426-430`), which is what attaches those headers on the SAVE
+> rail. WO-1506's own RESULT (`:37-38`) PREDICTED this and asked for a client ticket; that ticket was
+> never written. Fixed SERVER-side so it reaches every build already in players' hands - including the
+> public store build `2026.08.17.328845` - on the next API deploy, which a client fix never could:
+> `resolveIdentity` now falls back to the body's `playerId` IF AND ONLY IF it passes `isGuestId()`
+> (`wallet-auth.js:153`, `GUEST_RE` `:132`), tagged `_auth:'guest-body'`. THE ASYMMETRY IS THE POINT: a
+> guest id is a 256-bit bearer credential the server already trusts in the header, so the same value via
+> the body forges nothing new - but a WALLET address is PUBLIC, not a credential, so it stays
+> HEADER-ONLY and a body-asserted wallet still lands `unverified`. NOT retroactive: `track.js` discards
+> `ev.playerId` when building the insert, so rows from 09-07 on are permanently unsplittable. The CLIENT
+> half is still OUTSTANDING and is the correct long-term fix (it also restores WALLET attribution) -
+> recorded in the WO, deliberately NOT implemented here (Unity is a separate silo and a separate gate).
+> Bumped 1733 -> 1734 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-eighty-fifth pass): main line next free = **1733**.
+> *(Raid-generation lane minted **1732** 2026-09-15 from the owner's felt-test of device build
+> `2026.09.15.370203`, F8 seq 5245 in `RaidBase_IronBastion`: *"it works on the first raid tier but on
+> the last raid tier does destroy doesnt show as destroyed can walk through."* `RaidBaseGenerator`'s
+> `RaidConfigIds` was a HARDCODED three-id array and `iron_bastion` was missing from it, so
+> `BuildAllRaidScenes` regenerated three of four raid levels and froze the top tier. Measured on disk
+> this session: the three listed scenes read 58/118/158 walls with a 1:1 `Ruin_Wall_*` each, while
+> `RaidBase_IronBastion` read **210 walls and ZERO ruins** - the pre-WO-1723 3.0 m partition, no rubble.
+> The nav bake DID cover it, so the wall stops blocking and never looks destroyed: exactly her two-part
+> symptom. THE TRAP: config id `iron_bastion` vs scene `RaidBase_IronBastion` (WO-1705 kept the existing
+> path), and `BuildSceneFor` composed `RaidBase_{id}` - so naively adding the id would have written a
+> second, never-loaded scene. Fixed by DERIVING the raid set + the destination from the catalog's
+> authored `sceneName`, which is what `RaidDeployVM.cs:443` hands `GoRaid`; an explicit map would have
+> been a second copy of that field. Gap was already recorded in `WO-1632 RESULT:194` and shipped anyway,
+> so it also ships `RaidSceneCoverageRegression` `[raid-scene-coverage]`. Third copy of the same list
+> still open at `RaidWallContinuityRegression.cs:59`.
+> Bumped 1732 -> 1733 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-eighty-fourth pass): main line next free = **1732**.
 > *(CLI minted **1731** 2026-09-14 from the owner's own challenge - *"what about the rename? Noone should
 > have renamed it that i know of"* - and SHE IS RIGHT: there was no rename, and the lead's earlier
 > "unfinished rename" wording was an INFERENCE from two filenames (CLAUDE.md sec.11B). Unity's
