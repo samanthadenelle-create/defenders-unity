@@ -82,7 +82,7 @@ namespace DeNelle.Editor.Regression
             }
         }
 
-        private const string JupiterSvcRel  = "Assets/_Modules/Core/Web3/IJupiterService.cs";
+        private const string JupiterSvcRel  = "Assets/_Modules/Core/Backend/IJupiterService.cs";
         private const string CoreServicesRel = "Assets/_Modules/Core/CoreServices.cs";
         private const string FlagsRel        = "Assets/_Modules/Core/FeatureFlags.cs";
         private const string Web3AsmdefRel   = "Assets/_Modules/Web3/DeNelle.Web3.asmdef";

@@ -1,6 +1,6 @@
 # WORK ORDER 1754 — The Play compliance gate's 64 KiB chunk seam truncates its own allowlist window, so `cryptography` reads as `crypto`; plus the owner-ruled residuals that need allowlist entries
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED, NOT YET GATED
 **Minted:** 2026-09-15 by the lead, from the WO-1740 RCA of chain run 14:14:58 (that RCA is appended to `WorkOrders/WORK_ORDER_1740_play_aab_forbidden_surface_four_leaks.md` as `## RCA 2026-09-15` — read it first; it carries the byte evidence for everything below).
 **Silo:** `Assets/Editor/Regression/GooglePlayPackagingGate.cs` (`ScanStream`, the allowlist matcher, `:464`) and its PowerShell mirror `assert-google-play-aab-clean.ps1`. ⛔ Do NOT rename any assembly, namespace or identifier in this ticket — §3 below is the owner's ruling, not this lane's work.
 
