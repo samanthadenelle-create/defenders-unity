@@ -189,7 +189,25 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-eighty-third pass): main line next free = **1731**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-eighty-fourth pass): main line next free = **1732**.
+> *(CLI minted **1731** 2026-09-14 from the owner's own challenge - *"what about the rename? Noone should
+> have renamed it that i know of"* - and SHE IS RIGHT: there was no rename, and the lead's earlier
+> "unfinished rename" wording was an INFERENCE from two filenames (CLAUDE.md sec.11B). Unity's
+> `NavMeshSurface` bake writes `NavMesh-<GameObjectName>.asset`; the scene owns a GameObject literally
+> named `OuterWorld_NavMeshSurface` (`Main_Castle_Overworld.unity:16784`), so a bake on 09-14 09:53 wrote
+> `NavMesh-OuterWorld_NavMeshSurface.asset` and removed the prior output - while the scene was NEVER SAVED,
+> so both HEAD (`:17047`) and the tree (`:16820`) still serialize the DELETED guid
+> `6af7dcf896317734a986e2bcc349575d`. Town had no navmesh; `[Flow:HeroOwner] ... ownerAgent=off-mesh`
+> proved it on device, and since `HeroLocomotion` falls back to `transform.position += step` off-mesh
+> (`:1488-1489`, NoObstacleAvoidance at `:999`, zero physics casts), NOTHING constrained the hero - she
+> walked through every wall. It SHIPPED in `2026.09.15.370139` and burned a felt-test. Mitigated by
+> restoring the asset from HEAD (live in `370158`), but that is a restore, not a fix: the next bake
+> repeats it. Real fix = every `BuildNavMesh()` caller must MarkSceneDirty+SaveScene like
+> `RaidNavBake.cs:82-85`, PLUS a gate that fails on a dangling `m_NavMeshData` guid - today the only
+> detector was the owner's eyes. One open ruling on the orphaned asset (delete / adopt / hold).
+> Bumped 1731 -> 1732 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-eighty-third pass): main line next free = **1731**.
 > *(Seat `eoa-ab` minted **1730** 2026-09-14 from TWO live owner rulings given while she felt-tested the
 > WO-1723 Lane A build `2026.09.15.370139` - the build in which she confirmed *"i can now walk through
 > destroyed walls"*, closing Lane A ON THE DEVICE. **1730** = raid troop target PRIORITY: *"should never
