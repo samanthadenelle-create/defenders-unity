@@ -327,15 +327,15 @@ namespace DeNelle.Editor
                 CoreCost c = BuildModeController.CostFor(e);
                 checkedCount++;
 
-                if (c.wood < 0 || c.food < 0 || c.iron < 0 || c.crystals < 0)
-                    failures.Add($"'{e.id}' resolves a NEGATIVE cost slot ({c.wood}/{c.food}/{c.iron}/{c.crystals})");
+                if (c.wood < 0 || c.stone < 0 || c.iron < 0 || c.crystals < 0)
+                    failures.Add($"'{e.id}' resolves a NEGATIVE cost slot ({c.wood}/{c.stone}/{c.iron}/{c.crystals})");
 
                 bool affordGated = e.repo.placement == null || e.repo.placement.checkAffordable;
                 if (affordGated && c.IsZero)
                     failures.Add($"'{e.id}' is affordability-gated but CostFor resolves ZERO " +
                                  "(no repo.cost AND buildCost 0 — placement would be free)");
 
-                log.AppendLine($"  COST {e.id} -> w{c.wood} f{c.food} i{c.iron} c{c.crystals}" +
+                log.AppendLine($"  COST {e.id} -> w{c.wood} f{c.stone} i{c.iron} c{c.crystals}" +
                                (affordGated ? "" : " (checkAffordable=false)"));
             }
             if (checkedCount == 0)
@@ -403,14 +403,14 @@ namespace DeNelle.Editor
                 for (int from = 1; from < maxLevel; from++)
                 {
                     CoreCost step = BuildModeController.UpgradeCostFor(e, from);
-                    int total = step.wood + step.food + step.iron + step.crystals;
+                    int total = step.wood + step.stone + step.iron + step.crystals;
                     if (total <= 0)
                         failures.Add($"'{e.id}' upgrade step L{from}->L{from + 1} resolves ZERO cost (free upgrade — sink broken)");
-                    if (step.wood < 0 || step.food < 0 || step.iron < 0 || step.crystals < 0)
+                    if (step.wood < 0 || step.stone < 0 || step.iron < 0 || step.crystals < 0)
                         failures.Add($"'{e.id}' upgrade step L{from}->L{from + 1} has a negative slot");
                     if (prevTotal >= 0 && total < prevTotal)
                         failures.Add($"'{e.id}' upgrade cost NOT tier-monotonic: L{from}->L{from + 1} total {total} < previous step {prevTotal}");
-                    log.AppendLine($"  UP {e.id} L{from}->L{from + 1}: w{step.wood} f{step.food} i{step.iron} c{step.crystals} (total {total})");
+                    log.AppendLine($"  UP {e.id} L{from}->L{from + 1}: w{step.wood} f{step.stone} i{step.iron} c{step.crystals} (total {total})");
                     prevTotal = total;
                 }
             }
@@ -604,18 +604,18 @@ namespace DeNelle.Editor
                 for (int from = 1; from < level; from++)
                 {
                     var step = BuildModeController.UpgradeCostFor(entry, from);
-                    total.wood += step.wood; total.food += step.food;
+                    total.wood += step.wood; total.stone += step.stone;
                     total.iron += step.iron; total.crystals += step.crystals;
                 }
 
                 var refund = (CoreCost)refundMethod.Invoke(null, new object[] { ps });
-                int ew = Half(total.wood), ef = Half(total.food), ei = Half(total.iron), ec = Half(total.crystals);
-                if (refund.wood != ew || refund.food != ef || refund.iron != ei || refund.crystals != ec)
-                    failures.Add($"sell refund L{level} '{entry.id}' = w{refund.wood} f{refund.food} i{refund.iron} c{refund.crystals}, " +
+                int ew = Half(total.wood), ef = Half(total.stone), ei = Half(total.iron), ec = Half(total.crystals);
+                if (refund.wood != ew || refund.stone != ef || refund.iron != ei || refund.crystals != ec)
+                    failures.Add($"sell refund L{level} '{entry.id}' = w{refund.wood} f{refund.stone} i{refund.iron} c{refund.crystals}, " +
                                  $"expected 50% of invested (w{ew} f{ef} i{ei} c{ec}) — the half-back rule broke");
                 else
-                    log.AppendLine($"  REFUND {entry.id} L{level}: w{refund.wood} f{refund.food} i{refund.iron} c{refund.crystals} " +
-                                   $"== 50% of invested (w{total.wood} f{total.food} i{total.iron} c{total.crystals}) OK");
+                    log.AppendLine($"  REFUND {entry.id} L{level}: w{refund.wood} f{refund.stone} i{refund.iron} c{refund.crystals} " +
+                                   $"== 50% of invested (w{total.wood} f{total.stone} i{total.iron} c{total.crystals}) OK");
             }
         }
 
@@ -1164,14 +1164,14 @@ namespace DeNelle.Editor
                     BuildModeController.InvalidateTowerCount();
                     var refund = (CoreCost)refundMethod.Invoke(null, new object[] { rps });
                     if (refund.wood != archerBase.wood / 2 || refund.iron != archerBase.iron / 2 ||
-                        refund.food != archerBase.food / 2 || refund.crystals != archerBase.crystals / 2)
+                        refund.stone != archerBase.stone / 2 || refund.crystals != archerBase.crystals / 2)
                     {
                         // Only a genuine leak fails here; the WO-676 salvage talent is 0 headless.
                         float salvage = DeNelle.Village.Talents.HeroTalentModifiers.StatSum("knight", "salvage");
                         if (salvage <= 0f)
-                            failures.Add($"[softcap] RefundCostFor L1 = w{refund.wood}/f{refund.food}/i{refund.iron}/c{refund.crystals} " +
+                            failures.Add($"[softcap] RefundCostFor L1 = w{refund.wood}/f{refund.stone}/i{refund.iron}/c{refund.crystals} " +
                                          $"with towers standing, expected 50% of the RAW cost " +
-                                         $"(w{archerBase.wood / 2}/f{archerBase.food / 2}/i{archerBase.iron / 2}/c{archerBase.crystals / 2}) " +
+                                         $"(w{archerBase.wood / 2}/f{archerBase.stone / 2}/i{archerBase.iron / 2}/c{archerBase.crystals / 2}) " +
                                          "-- the softcap leaked into REFUNDS");
                     }
                     else
@@ -1202,7 +1202,7 @@ namespace DeNelle.Editor
             return new CoreCost
             {
                 wood     = rawBase.wood     * scale,
-                food     = rawBase.food     * scale,
+                stone     = rawBase.stone     * scale,
                 iron     = rawBase.iron     * scale,
                 crystals = rawBase.crystals * scale,
             };
@@ -1269,7 +1269,7 @@ namespace DeNelle.Editor
                     if (!eff.IsZero)
                     {
                         failures.Add($"[softcap] archer placement #{placement} costs " +
-                                     $"w{eff.wood}/f{eff.food}/i{eff.iron}/c{eff.crystals} with the softcap armed -- " +
+                                     $"w{eff.wood}/f{eff.stone}/i{eff.iron}/c{eff.crystals} with the softcap armed -- " +
                                      "the freebie MUST short-circuit before the multiplier");
                         break;
                     }
@@ -1313,7 +1313,7 @@ namespace DeNelle.Editor
                     CoreCost c = BuildModeController.EffectiveCostFor(e);
                     walkTotal += Total(c);
                     if (!c.IsZero)
-                        failures.Add($"[softcap] founding step '{id}' costs w{c.wood}/f{c.food}/i{c.iron}/c{c.crystals} " +
+                        failures.Add($"[softcap] founding step '{id}' costs w{c.wood}/f{c.stone}/i{c.iron}/c{c.crystals} " +
                                      "on a fresh 0-wood/0-iron save -- the founding sequence SOFT-LOCKS");
                     throwaway.FreeBuildsUsed.Add(id);
                 }
@@ -1496,23 +1496,40 @@ namespace DeNelle.Editor
                                  "usable divisor, so its contact damage is undefined (divide-by-zero / NaN on the damage track)");
                     continue;
                 }
-                if (t == 1 && !Mathf.Approximately(f, 1f))
-                    failures.Add($"[wall-tier-ceiling] tier 1 toughness is x{f} — a base wall must take damage unreduced (x1)");
+                // WO-1737 — WAS `t == 1 && !Approximately(f, 1f)` with the message "a base wall
+                // must take damage unreduced (x1)". That assertion was a deliberate prior design
+                // statement and the owner OVERRULED it on 2026-09-15 ("the HP should be strong
+                // enough even at lowest level that it takes some damage to get a wall down. Think
+                // of CoC."). The invariant that survives is that tier 1 reads the named constant
+                // rather than a literal, so the floor can never drift away from the ruling.
+                if (t == 1 && !Mathf.Approximately(f, WallSegment.BaseToughness))
+                    failures.Add($"[wall-tier-ceiling] tier 1 toughness is x{f} but WallSegment.BaseToughness is " +
+                                 $"x{WallSegment.BaseToughness} — the bottom rung has stopped reading the constant the " +
+                                 "owner's durability ruling lives in, so a base wall's real toughness is a second value");
                 if (t > 1 && !(f > prev + 0.0001f))
                     failures.Add($"[wall-tier-ceiling] toughness at tier {t} (x{f}) is not greater than tier {t - 1} (x{prev}) — " +
                                  "the upgrade buys the player nothing at that rung (the 1..3 table repeating its top value)");
                 prev = f;
             }
 
-            // -- B. LEGACY PARITY -- the derived curve must reproduce the old table ---
-            //    { 1f, 1.6f, 2.56f } for tiers 1..3, so this fix re-tunes NOTHING that ships.
-            float[] legacy = { 1f, 1.6f, 2.56f };
-            for (int i = 0; i < legacy.Length && i + 1 <= ceiling; i++)
+            // -- B. TIER SPACING -- the RATIOS between tiers are the legacy contract ---
+            //    WO-1480 asserted the ABSOLUTE legacy table { 1f, 1.6f, 2.56f }. WO-1737 moved
+            //    the whole curve's floor to WallSegment.BaseToughness on the owner's 2026-09-15
+            //    ruling, so the absolutes MUST change — asserting them would now pin the very
+            //    defect she reported. What must NOT change is what an UPGRADE buys: tier 2 is
+            //    still exactly 1.6x tier 1 and tier 3 still exactly 2.56x. Testing the ratio
+            //    keeps the original guard's teeth (a re-tuned step still fails here) while
+            //    letting the ruled floor move, and it is immune to the floor's value — so this
+            //    check never needs editing again if she re-tunes the durability.
+            float[] legacyRatios = { 1f, 1.6f, 2.56f };
+            float tier1 = WallSegment.ToughnessFor(1);
+            for (int i = 0; i < legacyRatios.Length && i + 1 <= ceiling; i++)
             {
-                float got = WallSegment.ToughnessFor(i + 1);
-                if (Mathf.Abs(got - legacy[i]) > 0.01f)
-                    failures.Add($"[wall-tier-ceiling] tier {i + 1} toughness is x{got}, was x{legacy[i]} before WO-1480 — " +
-                                 "deriving the divisor must not re-tune the tiers that already shipped");
+                float ratio = tier1 > 0f ? WallSegment.ToughnessFor(i + 1) / tier1 : 0f;
+                if (Mathf.Abs(ratio - legacyRatios[i]) > 0.01f)
+                    failures.Add($"[wall-tier-ceiling] tier {i + 1} is x{ratio:0.000} of tier 1, was x{legacyRatios[i]} — " +
+                                 "the tier SPACING is the shipped upgrade contract; moving the durability floor must not " +
+                                 "re-tune what a wall upgrade buys");
             }
 
             // -- C. THE REAL CLAMP, THROUGH THE REAL COMPONENT ---------------------
@@ -1558,7 +1575,9 @@ namespace DeNelle.Editor
             }
 
             log.AppendLine($"  [wall-tier-ceiling] WallSegment clamps 1..{ceiling} off RepoProps.MaxStructureLevel; divisor derived and " +
-                           $"strictly increasing to x{WallSegment.ToughnessFor(ceiling):0.00} (legacy x1/x1.6/x2.56 preserved) OK");
+                           $"strictly increasing from x{WallSegment.ToughnessFor(1):0.00} (WallSegment.BaseToughness, " +
+                           $"WO-1737 owner ruling) to x{WallSegment.ToughnessFor(ceiling):0.00}; legacy tier SPACING " +
+                           "x1/x1.6/x2.56 preserved as ratios OK");
         }
 
         // =====================================================================
@@ -1893,7 +1912,7 @@ namespace DeNelle.Editor
         }
 
         /// <summary>Flat basket total of a cost (all four slots) -- the comparison scalar for the softcap gates.</summary>
-        private static int Total(CoreCost c) => c.wood + c.food + c.iron + c.crystals;
+        private static int Total(CoreCost c) => c.wood + c.stone + c.iron + c.crystals;
 
         // =====================================================================
         //  Verdict + markers

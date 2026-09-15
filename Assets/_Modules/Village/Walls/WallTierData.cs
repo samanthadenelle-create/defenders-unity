@@ -65,9 +65,15 @@ namespace DeNelle.Village.Walls
         /// <summary>Cost (Wood) to BUILD a fresh Wood wall segment (Phase 2 player placement).</summary>
         public const int BuildWoodCost = 25;
 
-        // Mirror of WallSegment.s_tierToughness (effective-HP multiplier per tier). Kept here
-        // as a read-only convenience for UI; WallSegment remains the authority that APPLIES it.
-        private static readonly float[] s_toughness = { 1f, 1f, 1.6f, 2.56f }; // [_, wood, iron, steel]
+        // WO-1737 — the MIRROR TABLE IS GONE. This used to be
+        // `{ 1f, 1f, 1.6f, 2.56f }`, described in its own comment as a read-only convenience
+        // copy of WallSegment's toughness "kept here for UI". It was duplicated state of exactly
+        // the kind CLAUDE.md §2/§5/§8 each describe in their own words: the moment the owner's
+        // 2026-09-15 durability ruling moved the real divisor, this copy would have gone on
+        // reporting the old numbers, and any UI that ever read it would have quietly lied about
+        // how tough the player's wall is. Nothing consumed it (ToughnessFor below had zero
+        // callers when it was removed), so the copy is deleted rather than re-synced — deleting
+        // the copy is the cure, never a better copy.
 
         private static readonly WallTierDef[] _tiers =
         {
@@ -102,8 +108,14 @@ namespace DeNelle.Village.Walls
         /// <summary>The next tier up (clamped at the max).</summary>
         public static WallTierDef Next(int tier) => Get(Mathf.Min(tier + 1, MaxTier));
 
-        /// <summary>Effective-HP multiplier at a tier (read-only mirror of WallSegment toughness).</summary>
-        public static float ToughnessFor(int tier) => s_toughness[Mathf.Clamp(tier, MinTier, MaxTier)];
+        /// <summary>
+        /// Effective-HP multiplier at a tier. WO-1737: DELEGATES to the single authority
+        /// (<see cref="DeNelle.Village.WallSegment.ToughnessFor"/>) instead of reading a local
+        /// copy of the curve, so this can never disagree with what actually divides the damage.
+        /// Same assembly (DeNelle.Village), so there is no reference to add and no cycle.
+        /// </summary>
+        public static float ToughnessFor(int tier) =>
+            DeNelle.Village.WallSegment.ToughnessFor(Mathf.Clamp(tier, MinTier, MaxTier));
     }
 
     /// <summary>

@@ -181,9 +181,16 @@ namespace DeNelle.Editor
                 f.Step(1f, 0f, out _);   // baseline
 
                 // A tier-3 (ReinforcedSteel) wall taking a 29-damage archer hit absorbs
-                // 29 / 1.6^2 = 11.33 points on the shared 0-100 track. That is what must
+                // 29 / ToughnessFor(3) points on the shared 0-100 track. That is what must
                 // show - NOT the 29 that was requested.
-                const float effective = 29f / (1.6f * 1.6f);
+                //
+                // WO-1737 - READ THROUGH THE REAL CURVE, never a restated literal. This line
+                // was `29f / (1.6f * 1.6f)` with a comment asserting "= 11.33 points". The
+                // owner's 2026-09-15 durability ruling moved the curve's floor, so that
+                // arithmetic became false the moment the floor moved - and because this case
+                // drives a SYNTHETIC fixture (it feeds the fraction it computes), it would
+                // have gone on passing while describing a wall the game no longer has.
+                float effective = 29f / WallSegment.ToughnessFor(3);
                 float after = 1f - effective / WallSegment.MaxHp;
 
                 if (!f.Step(after, 0f, out var hit))

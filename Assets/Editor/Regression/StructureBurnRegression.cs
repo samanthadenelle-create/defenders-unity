@@ -175,10 +175,19 @@ namespace DeNelle.Editor
                         failures.Add($"scuff oracle: an UNDAMAGED wall already reports NeedsRepair " +
                                      $"(damageFraction {target.DamageFraction:0.######}) - the predicate moved");
 
-                    // A hair of damage: on the shared 0..100 wall track this is ~0.05%, an
+                    // A hair of damage: on the shared 0..100 wall track this is ~0.05 points, an
                     // amount no player would call "damaged" - and precisely the amount that
                     // used to be billable and invisible at the same time.
-                    seg.ApplyContactDamage(0.05f);
+                    //
+                    // ⛔ WO-1737 - THE RAW AMOUNT IS SCALED SO THE *LANDED* AMOUNT STAYS 0.05.
+                    // ApplyContactDamage divides by the tier toughness, whose floor moved from
+                    // x1 to WallSegment.BaseToughness on the owner's 2026-09-15 durability
+                    // ruling. A bare 0.05f now lands a quarter of that, which still clears
+                    // NeedsRepair (> 0.0001 fraction) only by a 25% margin - and would fall
+                    // straight through it if she re-tunes the floor again (WO-1738 Branch A
+                    // prices floors up to 8x higher). Deriving the raw amount keeps this oracle
+                    // testing the boundary its own failure message names, at any floor.
+                    seg.ApplyContactDamage(0.05f * WallSegment.ToughnessFor(seg.Tier));
                     float hp = 1f - target.DamageFraction;
                     int ord = StructureDamageVisuals.TellOrdinalFor(hp, false, TypeKey);
                     log.AppendLine($"  first-blood: damageFraction {target.DamageFraction:0.######} " +

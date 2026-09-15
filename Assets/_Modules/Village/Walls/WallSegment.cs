@@ -87,8 +87,9 @@ namespace DeNelle.Village
         [SerializeField] private BoxCollider _blocker;
 
         [Header("Tier (S5 — wood→stone→reinforced→…)")]
-        [Tooltip("Upgrade tier (1..RepoProps.MaxStructureLevel). Higher tiers absorb contact damage " +
-                 "more slowly (effective HP scales x1.6 per tier) — the build-mode wall-tier sink.")]
+        [Tooltip("Upgrade tier (1..RepoProps.MaxStructureLevel). Every tier divides incoming damage " +
+                 "by BaseToughness, and each step up multiplies that by a further x1.6 — the " +
+                 "build-mode wall-tier sink. Read the constants, never a value restated here.")]
         [SerializeField] private int _tier = 1;
 
         [Header("Collapse (WO-853)")]
@@ -100,10 +101,43 @@ namespace DeNelle.Village
         // literal array { 1f, 1f, 1.6f, 2.56f }, which defined a divisor for tiers 1..3 ONLY;
         // paired with SetTier's literal 1..3 clamp that was a NINTH hardcoded structure ceiling
         // (WO-1108b replaced eight of them with RepoProps.MaxStructureLevel = 6 and missed this
-        // one). A geometric step reproduces the old numbers EXACTLY at the tiers that existed
-        // (x1 / x1.6 / x2.56) and keeps every level the ceiling now admits defined, so a level-4
+        // one). A geometric step keeps every level the ceiling now admits defined, so a level-4
         // wall can never silently take level-3 damage reduction.
+        // WO-1737 — the step is the tier SPACING only. The absolute floor is BaseToughness
+        // below; see its essay for why the step alone could never fix tier 1.
         private const float TierToughnessStep = 1.6f;
+
+        /// <summary>
+        /// WO-1737 — the BASE effective-HP divisor, applied at EVERY tier including tier 1.
+        ///
+        /// OWNER RULING 2026-09-15, on device: *"walls fall with a single hit, the HP should be
+        /// strong enough even at lowest level that it takes some damage to get a wall down. Think
+        /// of CoC."* She then ruled the target: a TIER-1 wall should take ~8-10 hits from a
+        /// mid-tier attacker (the battlemage, 42 damage), and siege KEEPS its 2x structure-damage
+        /// multiplier and must still breach clearly faster than anything else without one-shotting.
+        ///
+        /// ⛔ THIS CONSTANT EXISTS BECAUSE <see cref="TierToughnessStep"/> MATHEMATICALLY CANNOT
+        /// FIX TIER 1. <see cref="ToughnessFor"/> raised the step to the power (tier-1), so tier 1
+        /// was step^0 == 1.0 for ANY step — a base wall took its hit completely unreduced, and no
+        /// value of the step could change that. Raising the step only widens the spacing BETWEEN
+        /// tiers while leaving the bottom rung exactly as paper-thin as the owner reported. A
+        /// separate multiplicative base is the only shape that moves tier 1 while keeping every
+        /// tier RATIO (x1.6 per step) exactly as it shipped.
+        ///
+        /// ⛔ AND IT IS DELIBERATELY *NOT* A LARGER <see cref="MaxHp"/>. The 0-100 damage track is
+        /// a CONTRACT with at least four other systems — RepairTarget.DamageFraction divides by a
+        /// literal 100 (RepairTarget.cs:141), RepairTarget.RepairFull calls Repair(100f) as "the
+        /// damage track is 0..100 by contract" (:236), StructureBurn sizes a wall's tick off a
+        /// hardcoded 100 (StructureBurn.cs:447), and RaidScoringRegression FAILS the gate if raid
+        /// scoring is ever written against `Damage / 100` instead of HpFraction. Scaling the
+        /// divisor instead of the track changes durability while every one of those keeps reading
+        /// the same 0-100 numbers it always did.
+        ///
+        /// Effective HP measured in RAW incoming damage = MaxHp * ToughnessFor(tier)
+        /// = 100 * BaseToughness * 1.6^(tier-1). Do not restate that product anywhere: read the
+        /// constant (CLAUDE.md §8 — a number copied into a doc is the bug, not the value in it).
+        /// </summary>
+        public const float BaseToughness = 4f;
 
         /// <summary>Full health on the wall's inverted 0-100 damage track (Damage 0 == MaxHp).</summary>
         public const float MaxHp = 100f;
@@ -158,14 +192,20 @@ namespace DeNelle.Village
 
         /// <summary>
         /// WO-1480 — the effective-HP divisor for a tier, defined for EVERY tier the clamp
-        /// admits (1..<see cref="MaxTier"/>) instead of for a tabled 1..3. Tier 1 is x1 and each
-        /// step multiplies by <see cref="TierToughnessStep"/> (1.6), which reproduces the old
-        /// table exactly: 1 → x1, 2 → x1.6, 3 → x2.56.
+        /// admits (1..<see cref="MaxTier"/>) instead of for a tabled 1..3. Each step multiplies
+        /// by <see cref="TierToughnessStep"/> (1.6).
+        ///
+        /// WO-1737 — the curve is now anchored at <see cref="BaseToughness"/> rather than at 1,
+        /// per the owner's 2026-09-15 "think of CoC" ruling. ⚠ THE TIER *RATIOS* ARE UNCHANGED
+        /// AND THAT IS THE POINT: tier 2 is still exactly 1.6x tier 1 and tier 3 still exactly
+        /// 2.56x, so every wall UPGRADE buys the player precisely what it always bought. Only
+        /// the floor moved. The pre-WO-1737 absolute values (x1 / x1.6 / x2.56) are deliberately
+        /// NOT preserved — they are what made a base wall fall to one volley.
         /// </summary>
         public static float ToughnessFor(int tier)
         {
             int t = Mathf.Clamp(tier, 1, MaxTier);
-            return Mathf.Pow(TierToughnessStep, t - 1);
+            return BaseToughness * Mathf.Pow(TierToughnessStep, t - 1);
         }
 
         /// <summary>
