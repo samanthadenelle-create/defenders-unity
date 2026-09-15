@@ -150,6 +150,101 @@ namespace DeNelle.Editor
         private const float FallbackFootprint = 1.2f;
 
         // =====================================================================
+        //  WO-1758 - THE LIGHT-SWATCH GUARD. Why this exists, and why HERE.
+        //
+        //  The owner's "giant untextured grey box" was NAMED by the WO-1751 census on
+        //  its first device run (build 2026.09.15.371285, F8 seq 5295-5300): a
+        //  `dungeon-pillar-stone-square` at 2.6 x 7.0 x 2.6 m under
+        //  `RaidBase_iron_bastion/ArenaBoundary_Ring/`, slot 1, material
+        //  `M_21_Grey_Light_LPUP`, `albedoSlots=[_BaseMap=EMPTY, _MainTex=EMPTY]`,
+        //  tint (0.65,0.63,0.62). Those bounds are this ring's own arithmetic: the
+        //  measured 0.80 x 0.80 x 3.12 m mesh at the band-fitted ~2.26x is 7.05 m tall
+        //  and 2.56 m across its diagonal under the ring's free yaw. It is us.
+        //
+        //  ⛔ THE FIX CANNOT LIVE IN THE MATERIAL, AND THE PACK IS ONLY HALF THE REASON.
+        //  `M_21_Grey_Light_LPUP` is under `Assets/polyperfect/`, which is GITIGNORED
+        //  (CLAUDE.md sec.4) - an edit there cannot be committed and evaporates on the
+        //  next clone. The other half: the pack's URP repair pass CANNOT reach it and
+        //  never could. `PolyperfectUrpFix.Fix` skips any material already on a URP
+        //  shader (`PolyperfectUrpFix.cs:67`, `if (!builtIn) continue;`), and this one
+        //  is already `Universal Render Pipeline/Lit`; and even on the built-in branch
+        //  it only binds `_BaseMap` when `_MainTex` is NON-null (`:76`), which this
+        //  material's `_MainTex` is not. Re-running the repair is a no-op here. The
+        //  52 materials under `Materials/Colors/` are the pack's PALETTE family - flat
+        //  colour with no texture BY DESIGN, the textured family being `M_Atlas_LPUP`.
+        //  So the missing albedo is not damage: THE TINT IS THE DEFECT.
+        //
+        //  AND THE ARRAY ABOVE ALREADY SAID SO. The palette sweep's stated criterion is
+        //  "every prefab whose materials all sit in luminance 0.15-0.56" (see RockPaths,
+        //  the WHY THESE THREE paragraph) - and the very next lines admit
+        //  `M_21_Grey_Light_LPUP` at 0.636. 0.636 is OUTSIDE the band the sweep declared,
+        //  and it is 0.04 from the sky the ring was re-palletted to beat (ring band 0.670
+        //  vs sky 0.677 on the shipped 2026-09-10 frame). WO-1637 fixed half the ring and
+        //  left the other half reproducing the original finding. Two of the three palette
+        //  prefabs bind this swatch (`Dungeon_Pillar_Stone_Round` slot 0,
+        //  `Dungeon_Pillar_Stone_Square` slot 1), as does the backing module
+        //  `Dungeon_Wall_Stone` (slot 2) - all read out of the .prefab files 2026-09-15.
+        //
+        //  SO THE GUARD IS EXPRESSED IN THE PALETTE'S OWN TERMS, not as a named-material
+        //  patch: any slot a ring piece carries that has NO albedo at all and a luminance
+        //  ABOVE the sweep's own ceiling is rebound, at bake, to one shared stone tone
+        //  inside the band. A future palette edit is policed by the same rule, and no
+        //  gitignored byte is touched.
+        //
+        //  ⚠ THE ALBEDO TEST IS NOT HAND-ROLLED. It calls the SAME
+        //  `DependencyClosureTrace.GetAlbedo` the census's own `ClassifySlot` calls
+        //  (`RaidUntexturedCensus.cs:226`), so the fix and the instrument cannot drift
+        //  into disagreeing about what "untextured" means - the exact drift
+        //  ShaderPredicateSingleAuthorityRegression exists to stop.
+        //
+        //  WHY A SCENE-EMBEDDED MATERIAL RATHER THAN A COMMITTED .mat: this is the same
+        //  move `TintFallback` below already makes, for the reason `InstantiatePiece`'s
+        //  header states - an editor bake SAVES the scene, so a material referenced by a
+        //  ring renderer is serialised into the baked scene and ships. The durable part
+        //  is THIS FILE, which is committed; the material is re-created by every bake.
+        //  Hand-authoring a .mat + a .meta with a pinned GUID would put a second piece of
+        //  state in the tree for the scene to point at - the duplicated-state trap the
+        //  ticket is itself about.
+        // =====================================================================
+
+        /// <summary>
+        /// The palette sweep's OWN upper bound, in the Rec.709 luminance the RockPaths
+        /// measurements are quoted in (0.2126R + 0.7152G + 0.0722B). A ring slot above it,
+        /// with no albedo to carry detail, is the flat light slab.
+        /// <para/>
+        /// It is deliberately STRICTER than the detector: `RaidUntexturedCensus`'s
+        /// `FlatTintLuminanceFloor` is 0.60 on the NTSC weights (`RaidUntexturedCensus.cs:78`).
+        /// A guard set to the detector's threshold would clear the log while leaving art the
+        /// palette's own criterion rejects; 0.56 clears both, with room.
+        /// </summary>
+        private const float PaletteLuminanceCeiling = 0.56f;
+
+        /// <summary>
+        /// The tone a rebound slot gets. Neutral-warm grey, Rec.709 luminance 0.427 (NTSC 0.428
+        /// - for a near-neutral both weightings agree, which is what makes it safe to quote one
+        /// number against two instruments).
+        /// <para/>
+        /// ⚠ IT IS A LUMINANCE DECISION, NOT A COLOUR ONE (memory
+        /// `owner-colorblind-delegate-visual-creative` - greyscale is the gate). It sits at the
+        /// MIDDLE of the sweep's 0.15-0.56 band where `M_20_Grey_LPUP` (0.514) sits at the top,
+        /// so RockPaths' "TWO values instead of one is itself part of the fix" survives intact
+        /// as 0.514 / 0.427 instead of 0.514 / 0.636 - and the ring now reads 0.25 below the
+        /// measured sky (0.677) instead of 0.04 below it. Re-tunable by the owner in one line.
+        /// </summary>
+        private static readonly Color StoneShadowTint = new Color(0.44f, 0.425f, 0.415f);
+
+        private const string StoneShadowName = "ArenaBoundary_Stone_Shadow";
+
+        /// <summary>One shared instance per bake - 500+ ring renderers point at this one material.</summary>
+        private static Material _stoneShadow;
+
+        /// <summary>Distinct swatch names already traced this placement run (one line each, not 500).</summary>
+        private static readonly HashSet<string> _rebindTraced = new HashSet<string>();
+
+        /// <summary>Slots rebound this placement run - reported in the builder's own log line.</summary>
+        private static int _rebindCount;
+
+        // =====================================================================
         //  What PlaceSquarePerimeter resolved, for the caller's build log.
         // =====================================================================
         public struct BoundaryReport
@@ -199,6 +294,8 @@ namespace DeNelle.Editor
         {
             if (parent == null || rng == null || prefabRelPaths == null || prefabRelPaths.Length == 0) return;
 
+            BeginRebindRun();
+
             // WO-1637 step 1: one MAT line per DISTINCT prefab in the palette, not per piece.
             var traced = new HashSet<string>();
 
@@ -210,7 +307,7 @@ namespace DeNelle.Editor
                 var pos = new Vector3(Mathf.Cos(ang) * radius + jx, 0f, Mathf.Sin(ang) * radius + jz);
 
                 string rel = prefabRelPaths[rng.Next(prefabRelPaths.Length)];
-                var go = InstantiatePiece(rel, parent, logTag);
+                var go = InstantiatePiece(rel, parent, logTag, flowSys);
                 go.transform.localPosition = pos;
                 go.transform.localRotation = Quaternion.Euler(0f, (float)(rng.NextDouble() * 360.0), 0f);
                 float s = Mathf.Lerp(scaleMin, scaleMax, (float)rng.NextDouble());
@@ -219,6 +316,8 @@ namespace DeNelle.Editor
                 if (traced.Add(rel)) TraceMaterials(flowSys, label + " (polar)", PrefabRoot + rel, go);
                 placedCounter++;
             }
+
+            ReportRebindRun(logTag, label + " (polar)");
         }
 
         // =====================================================================
@@ -267,6 +366,8 @@ namespace DeNelle.Editor
             var report = new BoundaryReport();
             if (parent == null || rng == null || prefabRelPaths == null || prefabRelPaths.Length == 0)
                 return report;
+
+            BeginRebindRun();
 
             MeasureFootprints(prefabRelPaths, logTag, out float measured, out float measuredMax);
 
@@ -337,7 +438,7 @@ namespace DeNelle.Editor
                     var pos = midpoint + alongDir * (along + tj) + outwardDir * rj;
 
                     string rel = prefabRelPaths[rng.Next(prefabRelPaths.Length)];
-                    var go = InstantiatePiece(rel, parent, logTag);
+                    var go = InstantiatePiece(rel, parent, logTag, flowSys);
                     go.transform.localPosition = pos;
                     go.transform.localRotation = Quaternion.Euler(0f, (float)(rng.NextDouble() * 360.0), 0f);
                     float sc = Mathf.Lerp(appliedScaleMin, appliedScaleMax, (float)rng.NextDouble());
@@ -367,6 +468,10 @@ namespace DeNelle.Editor
             report.AppliedScaleMax = appliedScaleMax;
             report.ScaleFitted = scaleFitted;
             report.RadialJitter = radialJitter;
+
+            // After the backing, so the summary covers every renderer under the ring root -
+            // which is exactly the scope the census reports by path.
+            ReportRebindRun(logTag, label + " (boundary ring)");
             return report;
         }
 
@@ -383,7 +488,10 @@ namespace DeNelle.Editor
             float closureHeight = (skylineTop - parent.position.y) * 0.95f;
             var zone = new GameObject("BoundaryBacking");
             zone.transform.SetParent(parent, false);
-            var probe = InstantiatePiece(module, zone.transform, logTag);
+            // The probe is MEASURED and destroyed, never shipped, so it opts OUT of the guard
+            // entirely - it must not consume the one-line-per-swatch trace budget the placed
+            // panels need, and the rebind cannot change a bounds measurement anyway.
+            var probe = InstantiatePiece(module, zone.transform, logTag, null, false);
             if (!PieceBounds(probe, out Bounds native))
             {
                 Object.DestroyImmediate(probe);
@@ -408,7 +516,7 @@ namespace DeNelle.Editor
                 var rot = Quaternion.Euler(0f, side * 90f, 0f);
                 for (int i = 0; i < count; i++)
                 {
-                    var go = InstantiatePiece(module, zone.transform, logTag);
+                    var go = InstantiatePiece(module, zone.transform, logTag, flowSys);
                     go.name = "BoundaryBacking_" + side + "_" + i;
                     go.transform.localRotation = rot * Quaternion.Euler(0f, longX ? 0f : 90f, 0f);
                     var scale = go.transform.localScale;
@@ -511,7 +619,8 @@ namespace DeNelle.Editor
         //  MagentaGuard registry, an editor bake SAVES the scene, so an unassigned
         //  material would persist as magenta in the shipped raid.
         // =====================================================================
-        public static GameObject InstantiatePiece(string relPath, Transform parent, string logTag)
+        public static GameObject InstantiatePiece(string relPath, Transform parent, string logTag,
+                                                  string flowSys = null, bool rebindLightSwatches = true)
         {
             string path = PrefabRoot + relPath;
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -519,6 +628,13 @@ namespace DeNelle.Editor
             {
                 var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
                 inst.transform.SetParent(parent, false);
+                // WO-1758: every placement path in this file funnels through here, so ONE call
+                // covers the polar ring, the square perimeter and the backing panels. `flowSys`
+                // decides only whether the rebind is TRACED, never whether it happens - a caller
+                // that does not trace still ships correct art. `rebindLightSwatches:false` is for
+                // the measure-and-discard PROBE alone (see PlaceSquareBacking): a probe must not
+                // spend the one-line-per-swatch budget the placed panels need.
+                if (rebindLightSwatches) RebindLightUntexturedSlots(inst, logTag, flowSys);
                 if (inst.GetComponentInChildren<Collider>() == null)
                 {
                     var cap = inst.AddComponent<CapsuleCollider>();
@@ -623,6 +739,147 @@ namespace DeNelle.Editor
                 FlowTrace.Step(flowSys, "MAT " + family + " prefab='" + path + "' renderers=" +
                                rends.Length + " distinct=" + parts.Count + " " + joined);
             });
+        }
+
+        // =====================================================================
+        //  WO-1758 - the guard itself. See the LIGHT-SWATCH GUARD block up top for the
+        //  proof; this is the mechanism.
+        // =====================================================================
+
+        /// <summary>Clears the per-run trace budget + counter. Called by BOTH placement entry points.</summary>
+        private static void BeginRebindRun()
+        {
+            _rebindTraced.Clear();
+            _rebindCount = 0;
+        }
+
+        /// <summary>
+        /// One line per bake naming what the guard did - including ZERO, which is the line that
+        /// proves the guard ran and found nothing rather than never running at all (the vacuous-green
+        /// failure ShaderPredicateSingleAuthorityRegression's case 5 exists to stop).
+        /// </summary>
+        private static void ReportRebindRun(string logTag, string family)
+        {
+            Debug.Log(logTag + " LIGHT-SWATCH GUARD " + family + ": rebound " + _rebindCount +
+                      " slot(s) across " + _rebindTraced.Count + " distinct swatch(es) to '" +
+                      StoneShadowName + "' (Rec.709 " + Rec709(StoneShadowTint).ToString("F3") +
+                      "); ceiling " + PaletteLuminanceCeiling.ToString("F2") +
+                      ", albedo test = DependencyClosureTrace.GetAlbedo (the census's own).");
+        }
+
+        /// <summary>
+        /// Rebind every slot on <paramref name="inst"/> that carries NO albedo at all AND a
+        /// luminance above <see cref="PaletteLuminanceCeiling"/>. Dark untextured swatches
+        /// (<c>M_20_Grey_LPUP</c> 0.514, <c>M_57_Black_LPUP</c> 0.081) and anything actually
+        /// textured are left exactly as the pack authored them.
+        /// <para/>
+        /// ⚠ <c>sharedMaterials</c> returns a COPY of the array. Writing into the value returned
+        /// by the getter changes nothing - the array has to be assigned BACK. And it must be
+        /// <c>sharedMaterials</c>, never <c>materials</c>: `.materials` instantiates per-renderer
+        /// copies, and an editor bake SAVES the scene, so that would serialise ~500 duplicate
+        /// materials into the shipped raid (the same reason TraceMaterials' header gives).
+        /// </summary>
+        private static void RebindLightUntexturedSlots(GameObject inst, string logTag, string flowSys)
+        {
+            if (inst == null) return;
+            var rends = inst.GetComponentsInChildren<Renderer>(true);
+            if (rends == null) return;
+
+            for (int ri = 0; ri < rends.Length; ri++)
+            {
+                var r = rends[ri];
+                if (r == null) continue;
+
+                var mats = r.sharedMaterials;          // a COPY - see the summary above
+                if (mats == null || mats.Length == 0) continue;
+
+                bool changed = false;
+                for (int mi = 0; mi < mats.Length; mi++)
+                {
+                    var m = mats[mi];
+                    if (m == null) continue;   // a NULL slot is MagentaGuard's problem, not this guard's
+
+                    // The SAME albedo authority RaidUntexturedCensus.ClassifySlot uses (:226),
+                    // so the fix and the detector cannot drift apart.
+                    if (DeNelle.Core.DependencyClosureTrace.GetAlbedo(m) != null) continue;
+
+                    float lum = Rec709(TintOf(m));
+                    if (lum <= PaletteLuminanceCeiling) continue;
+
+                    var shadow = StoneShadow();
+                    if (shadow == null) return;   // no URP/Lit - TintFallback's own precondition
+
+                    // The SET is unconditional and the TRACE is gated, never the other way round:
+                    // gating the set would make the summary line below read "0 distinct swatch(es)"
+                    // for any caller that passes no flowSys, while reporting a non-zero rebind
+                    // count - a self-contradicting line is worse than no line.
+                    bool firstOfSwatch = _rebindTraced.Add(m.name);
+                    if (firstOfSwatch && !string.IsNullOrEmpty(flowSys))
+                    {
+                        string before = lum.ToString("F3");
+                        string after = Rec709(StoneShadowTint).ToString("F3");
+                        FlowTrace.Step(flowSys, "REBIND boundary swatch '" + m.name +
+                                       "' slot=" + mi + " had NO albedo at Rec.709 luminance " +
+                                       before + ", above the palette ceiling " +
+                                       PaletteLuminanceCeiling.ToString("F2") +
+                                       " -> '" + StoneShadowName + "' at " + after +
+                                       ". The gitignored pack asset is UNTOUCHED; only this " +
+                                       "renderer's slot moved.");
+                    }
+
+                    mats[mi] = shadow;
+                    changed = true;
+                    _rebindCount++;
+                }
+
+                if (changed) r.sharedMaterials = mats;   // assign BACK, or none of it happened
+            }
+        }
+
+        /// <summary>
+        /// The one shared stone tone, created lazily and re-created after a domain reload (a
+        /// destroyed Material compares equal to null under Unity's fake-null). Not an asset:
+        /// the bake serialises it into the saved scene, exactly as TintFallback's material is.
+        /// </summary>
+        private static Material StoneShadow()
+        {
+            if (_stoneShadow != null) return _stoneShadow;
+
+            var sh = Shader.Find("Universal Render Pipeline/Lit");
+            if (sh == null)
+            {
+                Debug.LogWarning("[ArenaBoundaryRing] 'Universal Render Pipeline/Lit' not found - the " +
+                                 "light-swatch guard cannot build its stone tone, so the ring keeps the " +
+                                 "pack's own swatches this bake.");
+                return null;
+            }
+
+            var m = new Material(sh) { name = StoneShadowName };
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", StoneShadowTint);
+            if (m.HasProperty("_Color")) m.SetColor("_Color", StoneShadowTint);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.1f);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
+            _stoneShadow = m;
+            return m;
+        }
+
+        /// <summary>Same two-property tint read RaidUntexturedCensus.TintOf performs (:235-241).</summary>
+        private static Color TintOf(Material m)
+        {
+            if (m == null) return Color.white;
+            if (m.HasProperty("_BaseColor")) return m.GetColor("_BaseColor");
+            if (m.HasProperty("_Color")) return m.GetColor("_Color");
+            return Color.white;
+        }
+
+        /// <summary>
+        /// Rec.709 luminance - the SAME weighting every measured number in RockPaths' header is
+        /// quoted in (it reproduces M_20 at 0.514 and M_21 at 0.636 exactly), so the ceiling and
+        /// the palette doc can be compared without a conversion step in between.
+        /// </summary>
+        private static float Rec709(Color c)
+        {
+            return 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
         }
 
         private static void TintFallback(GameObject go)
