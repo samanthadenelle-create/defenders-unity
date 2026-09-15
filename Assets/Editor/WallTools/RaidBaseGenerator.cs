@@ -180,6 +180,13 @@ namespace DeNelle.Editor
         /// <summary>Per-piece name prefix - what the regression greps for in the baked scene.</summary>
         private const string ArenaBoundaryPieceLabel = "ArenaBoundary";
 
+        /// <summary>
+        /// WO-1749. The raised keep slab RaidBaseDresser.RaiseKeep builds, by name. This file does
+        /// NOT know - and must never restate - how tall it is: the dresser picks 1.5 m or 0.8 m by
+        /// kit and may retune either. <see cref="ReseatSpireOnKeepPlatform"/> MEASURES the object.
+        /// </summary>
+        private const string KeepPlatformName = "KeepPlatform";
+
         /// <summary>Centre-to-centre stride as a fraction of the smallest piece footprint (&lt;1 = pieces overlap).</summary>
         private const float ArenaBoundaryOverlap = 0.7f;
         /// <summary>CAP on the symmetric radial scatter; the band fit lowers it as needed.</summary>
@@ -671,6 +678,14 @@ namespace DeNelle.Editor
                 GateWidth = Mathf.Max(RaidBaseDresser.MinGateWidth, outer.GateWidth),
                 SegmentWidth = outer.SegmentWidth,
             });
+
+            // WO-1749 — THE SPIRE'S Y IS DECIDED **HERE**, AFTER THE DRESSER, AND NOWHERE ELSE.
+            // Two things the dresser does invalidate the seat PlaceSpire made one screen up: it
+            // RESKINS the spire (RaidBaseDresser.cs:1206-1211 replaces its children with the
+            // config's art), and its LAST act raises a solid keep slab over the very point the
+            // spire was seated on. Both are reasons this call must follow Dress rather than
+            // PlaceSpire being reordered - reordering would only move the problem.
+            ReseatSpireOnKeepPlatform(root, spire);
 
             Debug.Log(
                 $"[RaidBaseGenerator] '{root.name}' ({def.displayName}, {tier.Name}) BUILT: " +
@@ -1812,11 +1827,140 @@ namespace DeNelle.Editor
         /// <summary>Drop an object so its lowest renderer bound sits at y = 0.</summary>
         private static void SeatOnGround(GameObject go)
         {
+            SeatOnSurface(go, 0f, out _);
+        }
+
+        /// <summary>
+        /// Drop <paramref name="go"/> so its lowest RENDERED point rests on <paramref name="surfaceY"/>,
+        /// and report the lift applied. <see cref="SeatOnGround"/> is exactly this with a surface of 0,
+        /// so there is ONE piece of seat arithmetic in this file and no second copy to drift (WO-1749;
+        /// the duplicated-state failure CLAUDE.md §2/§5/§16 each describe in their own words).
+        /// Returns false when the object has no renderers at all - in which case it is NOT moved and
+        /// the caller must say so rather than assume a seat happened.
+        /// </summary>
+        private static bool SeatOnSurface(GameObject go, float surfaceY, out float lift)
+        {
+            lift = 0f;
+            if (go == null) return false;
             var rends = go.GetComponentsInChildren<Renderer>(true);
-            if (rends.Length == 0) return;
+            if (rends.Length == 0) return false;
             var b = rends[0].bounds;
             for (int k = 1; k < rends.Length; k++) b.Encapsulate(rends[k].bounds);
-            go.transform.position += new Vector3(0f, -b.min.y, 0f);
+            lift = surfaceY - b.min.y;
+            if (Mathf.Abs(lift) > 0.0001f) go.transform.position += new Vector3(0f, lift, 0f);
+            return true;
+        }
+
+        // =====================================================================
+        //  WO-1749 — THE ORDERING DEFECT, NAMED.
+        //
+        //  PlaceSpire ends with SeatOnGround(go), which puts the spire's lowest rendered point
+        //  at y = 0. RaidBaseDresser.Dress runs AFTERWARDS, and its LAST act - RaiseKeep - drops
+        //  a SOLID KeepPlatform slab (1.5 m on the castle kits, 0.8 m on dungeon-stone, the
+        //  dresser's choice) centred on the origin: around, and OVER, the point the spire was
+        //  just seated on.
+        //
+        //  So the spire was seated on a ground that stopped existing later in the same build, and
+        //  RaidSpire.WorldPosition - the exact point every troop hands to NavMesh.CalculatePath
+        //  (Assets/_Modules/Village/Troops/TroopController.cs:1144) - ended up INSIDE solid
+        //  geometry. The owner's Seeker session (tester build 2026.09.15.371127, scene
+        //  RaidBase_IronBastion) logged routeObj=PathPartial 1650 times and PathComplete ZERO
+        //  times, and the warband stopped at the platform edge.
+        //
+        //  THE FIX IS THE ORDER, NOT AN OFFSET.
+        //  - Nothing downstream is taught to aim 1.5 m higher. TroopController is untouched.
+        //  - The spire's Y keeps exactly ONE owner and it is this file; it simply makes its
+        //    decision LAST, once the dresser has finished building the ground beneath it.
+        //  - NO height is re-hardcoded here. The lift is MEASURED off the slab the dresser
+        //    actually built, so the dungeon-stone keep (0.8 m) and any future retune of either
+        //    value follow for free, and a doc-style copy of "1.5" can never rot in this file.
+        //
+        //  NOT fixed here, and deliberately so - the same class of defect, different objects,
+        //  each needing its own evidence before anything moves: BossSpawn is authored at
+        //  (0, 0, -bossOffset) with bossOffset = max(4, innermost*0.35), which for IronBastion is
+        //  8.5 m - inside the slab's 13.4 m half-extent, so that marker is buried too (it is
+        //  navmesh-snapped at spawn, which may or may not rescue it). The keep garrison slots
+        //  RaidBaseDresser.PlaceGarrisonSlots authors at r = max(4, Innermost*0.4) are buried on
+        //  the same arithmetic. Reported in WO-1749's RESULT, not touched.
+        // =====================================================================
+        private static void ReseatSpireOnKeepPlatform(Transform root, RaidSpire spire)
+        {
+            if (root == null || spire == null) return;
+
+            Transform platform = null;
+            var all = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] != null && all[i].name == KeepPlatformName) { platform = all[i]; break; }
+            }
+
+            if (platform == null)
+            {
+                // Legitimate: RaidBaseDresser only calls RaiseKeep when InnerLayers > 0, so a camp
+                // with no keep has no slab and the ground seat PlaceSpire made is still correct.
+                Debug.Log("[RaidBaseGenerator] SPIRE SEAT '" + root.name + "': no " + KeepPlatformName +
+                          " in the built tree - this config has no raised keep, so the spire stays " +
+                          "ground-seated at y=" + spire.transform.position.y.ToString("F2") + ".");
+                return;
+            }
+
+            Physics.SyncTransforms();
+            if (!TryMeasuredBounds(platform, out Bounds slab))
+            {
+                Debug.LogWarning("[RaidBaseGenerator] SPIRE SEAT '" + root.name + "': " + KeepPlatformName +
+                                 " has no measurable collider or renderer bounds - REFUSING to guess a " +
+                                 "lift (CLAUDE.md §11B). The spire stays at y=" +
+                                 spire.transform.position.y.ToString("F2") + " and the objective may be buried.");
+                return;
+            }
+
+            Vector3 at = spire.transform.position;
+            bool overSlab = at.x >= slab.min.x && at.x <= slab.max.x &&
+                            at.z >= slab.min.z && at.z <= slab.max.z;
+            if (!overSlab)
+            {
+                Debug.LogWarning("[RaidBaseGenerator] SPIRE SEAT '" + root.name + "': the spire stands at " +
+                                 at.ToString("F2") + ", which is OUTSIDE the " + KeepPlatformName +
+                                 " footprint " + slab.ToString() + " - not lifting it onto a slab it does " +
+                                 "not stand on. Something moved the spire off centre; that is the bug to read.");
+                return;
+            }
+
+            float before = at.y;
+            if (!SeatOnSurface(spire.gameObject, slab.max.y, out float lift))
+            {
+                Debug.LogWarning("[RaidBaseGenerator] SPIRE SEAT '" + root.name + "': the spire has NO " +
+                                 "renderers, so its base cannot be measured and it was NOT moved. The " +
+                                 "objective point is still wherever it was (y=" + before.ToString("F2") + ").");
+                return;
+            }
+
+            Debug.Log("[RaidBaseGenerator] SPIRE SEAT '" + root.name + "': re-seated onto " + KeepPlatformName +
+                      " top y=" + slab.max.y.ToString("F2") + " (MEASURED off the slab, never hardcoded); " +
+                      "lift=" + lift.ToString("F2") + "m; spire y " + before.ToString("F2") + " -> " +
+                      spire.transform.position.y.ToString("F2") + ". WO-1749: PlaceSpire seats on GROUND and " +
+                      "RaidBaseDresser.RaiseKeep raises the keep AFTERWARDS, so without this the objective " +
+                      "point every troop paths to sits inside the slab and no route to it can be complete.");
+        }
+
+        /// <summary>World bounds of one object, collider first (what physics and the player meet),
+        /// renderer second. Returns false rather than handing back an empty box to divide by.</summary>
+        private static bool TryMeasuredBounds(Transform t, out Bounds bounds)
+        {
+            var collider = t.GetComponent<Collider>();
+            if (collider != null && collider.enabled)
+            {
+                bounds = collider.bounds;
+                if (bounds.size.x > 0f && bounds.size.z > 0f) return true;
+            }
+            var renderer = t.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                bounds = renderer.bounds;
+                if (bounds.size.x > 0f && bounds.size.z > 0f) return true;
+            }
+            bounds = default;
+            return false;
         }
 
         /// <summary>

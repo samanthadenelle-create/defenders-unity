@@ -78,6 +78,11 @@ namespace DeNelle.Editor
         public static void BakeAll()
         {
             int ok = 0;
+            // WO-1749. A green RAID_NAV_BAKE_OK only ever proved the triangulation was NON-EMPTY.
+            // Connectivity was never asked, so a keep platform that bakes as a walkable ISLAND
+            // produced an identical green line — which is how the owner's Seeker session logged
+            // routeObj=PathPartial 1650 times and PathComplete ZERO times under a green bake.
+            var reachFailures = new System.Collections.Generic.List<string>();
             foreach (var scenePath in RaidScenes)
             {
                 if (!System.IO.File.Exists(scenePath)) { Debug.LogWarning($"[RaidNavBake] missing {scenePath} — skipped."); continue; }
@@ -130,9 +135,27 @@ namespace DeNelle.Editor
                           $"{(tri.indices != null ? tri.indices.Length / 3 : 0)} tris " +
                           (walkable ? "OK (troops can path)" : "EMPTY (still no walkable floor!)"));
                 if (walkable) ok++;
+
+                // WO-1749 — CONNECTIVITY, asked of the mesh that was just baked and is still live.
+                // Emits the RAID_NAV_REACH / RAID_NAV_REACH_GOAL lines; the single authority for
+                // those legs is RaidKeepReachRegression, so the bake and the regression can never
+                // disagree about what "reaches the spire" means (no second copy — CLAUDE.md §16).
+                if (!DeNelle.Editor.Regression.RaidKeepReachRegression.ProbeScene(scene, out string reachNote))
+                    reachFailures.Add(name + " -> " + reachNote);
             }
             Debug.Log($"[RaidNavBake] DONE — {ok}/{RaidScenes.Length} raid scenes now have a walkable navmesh.");
             if (ok != RaidScenes.Length) throw new System.InvalidOperationException("Navigation bake did not cover every required scene.");
+            if (reachFailures.Count > 0)
+            {
+                // THE MARKER IS WITHHELD, deliberately. WO-1749's ask, verbatim: "so
+                // RAID_NAV_BAKE_OK can never again be green over a spire nobody can reach."
+                // Not thrown — the reach lines above are the diagnosis and must survive to be read.
+                Debug.LogError("RAID_NAV_REACH_FAIL " + reachFailures.Count + " scene(s) — " +
+                               string.Join(" ;; ", reachFailures) +
+                               " (RAID_NAV_BAKE_OK withheld: the mesh is non-empty but the objective is unreachable)");
+                return;
+            }
+            Debug.Log("RAID_NAV_REACH_OK scenes=" + ok + "; courtyard, ramp foot and platform top all reach the spire");
             Debug.Log("RAID_NAV_BAKE_OK scenes=" + ok + "; wall and tower footprints use runtime carving");
         }
 
