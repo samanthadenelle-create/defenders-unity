@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-15 (CLI, hundred-and-ninety-seventh pass): main line next free = **1747**.
+> ## RECONCILED 2026-09-15 (CLI, hundred-and-ninety-eighth pass): main line next free = **1749**.
+> *(Minted 1747 (raid watchtower / Cleric `glass` material has no albedo, F8 seq 5257) and 1748 (troop
+> spawned with empty id + no Animator, F8 seq 5258) from the owner's IronBastion felt-test; bumped
+> 1747 -> 1749 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninety-seventh pass): main line next free = **1747**.
 > *(The raid-AI lane was handed **1746** PRE-ASSIGNED BY THE LEAD, and that is the process change:
 > two lanes collided earlier today because each read this banner independently, so the lead now mints
 > the number into the brief and the lane bumps this row in the same edit that creates the WO.
