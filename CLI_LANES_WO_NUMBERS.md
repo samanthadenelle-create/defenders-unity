@@ -189,7 +189,11 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-15 (CLI, two-hundred-and-sixth pass): main line next free = **1759**.
+> ## RECONCILED 2026-09-15 (CLI, two-hundred-and-seventh pass): main line next free = **1760**.
+> *(Minted 1759 (the LAST AAB offender - the SKR staking surface in the Play build, plus the 3-char
+> skr token matching inside TaskResult/MaskRegion) - bumped 1759 -> 1760 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundred-and-sixth pass): main line next free = **1759**.
 > *(Minted 1758 (arena boundary ring renders as untextured grey slabs - the owner's grey box, NAMED
 > by the census) and CLOSED 1757 as INVALID, the lead's own grep error - bumped 1758 -> 1759 here.)*
 >

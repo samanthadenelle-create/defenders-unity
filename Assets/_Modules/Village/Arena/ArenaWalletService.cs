@@ -47,7 +47,30 @@ namespace DeNelle.Village.Arena
 
         // PlayerPrefs key for the persisted client SKR balance (devnet stub). UNCHANGED
         // on purpose - a renamed key would read as a fresh 500 seed (WO-1366 section 4).
+        //
+        // !! WO-1759 - THE PLAY SPELLING DIFFERS, AND THAT IS NOT A MIGRATION.
+        // MEASURED in the rejected Play AAB (EchoesOfElarion-GooglePlay-20260915-165534,
+        // global-metadata.dat): this literal is TWO of the only THREE `skr` occurrences the
+        // packaging gate's matcher fires on, at offsets 1,587,839 and 10,556,064.
+        // !! WHY WO-1754's ExactIdentifierAllowlist CANNOT SUPPRESS THEM: that rule requires a
+        // NON-IDENTIFIER character on BOTH sides of the ruled key, which a NUL-delimited NAME
+        // table entry satisfies. IL2CPP's STRING-LITERAL table is not NUL-delimited - literals
+        // are packed end to end - so the byte after the key is the `d` of the next literal
+        // (`...dotr-arena-pursedotr-arena-skr-balancedotr-arena-streak...`). The allowlist is
+        // right to refuse there, and it must keep refusing: the whole point of the both-side
+        // rule is that `dotr-arena-skr-balance-v2` still fires. So the leak is removed at the
+        // SOURCE, per this WO's step 1, instead of by widening the gate.
+        //
+        // NOTHING IS MIGRATED. The Play channel resolves WagerCurrency.Crystals, so
+        // EnsureLoaded() / the stub path is unreachable in this variant (file header, WO-1366
+        // section 4) - the Play build has never written this key, so there is no stored value
+        // for a different spelling to orphan. The dApp / Seeker build keeps the ruled key
+        // VERBATIM, which is the half WO-1366 section 4 actually rules on.
+#if GOOGLE_PLAY
+        private const string PrefBalanceKey = "dotr-arena-wager-balance";
+#else
         private const string PrefBalanceKey = "dotr-arena-skr-balance";
+#endif
 
         // Seed balance so a brand-new SKR-stub player can immediately stake a wager.
         private const long SeedBalance = 500L;

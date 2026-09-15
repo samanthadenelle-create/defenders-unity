@@ -167,6 +167,9 @@ namespace DeNelle.Editor.Regression
 
                 // -- CASE G: the WO-1754 exact-identifier allowlist, scope proven both ways. -
                 CheckExactIdentifierScope(failures);
+
+                // -- CASE H: WO-1759, the `skr` verdicts MEASURED in a real rejected AAB. ---
+                CheckMeasuredSkrVerdicts(failures);
             }
             catch (Exception ex)
             {
@@ -181,7 +184,8 @@ namespace DeNelle.Editor.Regression
             }
 
             reason = "PLAY_GATE_CHUNK_SEAM_OK: seam closed on all three vectors, real leaks at the " +
-                     "seam still fire, owner-ruled identifiers suppressed by whole identity only";
+                     "seam still fire, owner-ruled identifiers suppressed by whole identity only, " +
+                     "and the WO-1759 measured `skr` verdicts hold on both sides";
             Debug.Log(Tag + " " + reason);
             return true;
         }
@@ -223,16 +227,124 @@ namespace DeNelle.Editor.Regression
                 "an unruled solana identifier is suppressed");
         }
 
-        private static void Suppressed(string text, string token, bool readable, List<string> failures, string message)
+        /// <summary>
+        /// WO-1759 - CASE H. The `skr` verdicts this gate actually returns, taken from the
+        /// artifact instead of from a reading of the code.
+        ///
+        /// ⛔ HOW THESE FIXTURES WERE OBTAINED, because it is the difference between a pin and
+        /// an opinion. global-metadata.dat was extracted from
+        /// Builds/Android/rejected/EchoesOfElarion-GooglePlay-20260915-165534.REJECTED.aab
+        /// (19,874,336 bytes) and every `skr` occurrence run through this gate's own matcher.
+        /// 43 raw occurrences; the matcher fires on THREE, at offsets 238,770 / 1,587,839 /
+        /// 10,556,064. All three are STRING LITERALS and all three are reproduced below with
+        /// their measured neighbours. Every one of the other 40 - which are IDENTIFIERS - is
+        /// already suppressed, and the second half pins that they stay that way.
+        ///
+        /// ⚠ THE SUPPRESSED HALF IS THE RULING-SENSITIVE HALF, AND IT IS DELIBERATE.
+        /// WO-1759 was written believing `costSkr`, `stakedSkr`, `SkrShowcasePanel` and the
+        /// BCL's `VoidTaskResult` / `colorMaskRtHandle` were all LIVE hits, and asked for a
+        /// camelCase identifier-boundary rule to split them. The measurement says none of them
+        /// ever fired: MatchesTokenInWindow's leading rule rejects a letter before the match
+        /// (`costSkr`, `stakedSkr`, `VoidTaskResult`) and its trailing rule rejects a letter
+        /// after it (`SkrShowcasePanel`, `SkrPreview`), while a bare NUL-packed `Skr` fails the
+        /// MinPrintableRunForShortTokens floor. Adding a camelCase rule would therefore not
+        /// remove a false positive - it would ADD roughly fifteen new offenders across
+        /// DeNelle.Core and DeNelle.Village, including `costSkr`, which is a CRYSTALS cost and
+        /// not a crypto surface at all. That is a STRICTNESS RULING for the owner, not a lane
+        /// call, so this suite pins today's behaviour: if the gate is ever tightened, this half
+        /// goes RED and the ruling has to be made out loud instead of arriving as a surprise
+        /// AAB rejection.
+        /// </summary>
+        private static void CheckMeasuredSkrVerdicts(List<string> failures)
         {
-            if (GooglePlayPackagingGate.MatchesTokenInPayload(text, token, readable))
-                failures.Add("CASE G: " + message);
+            const string H = "CASE H";
+
+            // ---- the three MEASURED live hits. A revert of WO-1759 step 1 must go red. ----
+
+            // offset 238,770. Roslyn folds `" SKR" + ", age="` (VerifiedStakeSnapshot.cs) into
+            // ONE literal, packed here between its alphabetical neighbours in the literal table.
+            Fires("SHARED across every side, one SpawnWave call). SKR, age= STATE-CHANGE SWING",
+                  "skr", false, failures,
+                  "the folded \" SKR, age=\" trace literal no longer fires. It was measured LIVE in the " +
+                  "rejected 16:55 AAB; if this stops firing the gate has been widened, and the fix " +
+                  "belongs at the source (StakeStanding.DefaultCurrencySymbol), never here.", H);
+
+            // offset 1,587,839. ⛔ THE FINDING WO-1754 COULD NOT HAVE SEEN: IL2CPP's STRING
+            // LITERAL table is NOT NUL-delimited - literals are packed end to end - so the byte
+            // after the ruled arena key is the `d` of the next key. IsExactIdentifierAllowlisted
+            // requires a non-identifier character on BOTH sides, so it correctly refuses here,
+            // and it MUST keep refusing: that same both-side rule is what makes
+            // `dotr-arena-skr-balance-v2` fire in CASE G. The allowlist works in the NAME table
+            // (CASE G's NUL-packed fixture) and cannot work in the LITERAL table. This is why
+            // ArenaWalletService spells the key differently under GOOGLE_PLAY.
+            Fires("dotr-arena-pursedotr-arena-skr-balancedotr-arena-streak", "skr", false, failures,
+                  "the arena save key packed in the IL2CPP string-literal table no longer fires. The " +
+                  "exact-identifier allowlist must NOT reach an occurrence whose neighbour is another " +
+                  "literal - widening it to get there would also suppress dotr-arena-skr-balance-v2.", H);
+
+            // offset 10,556,064, with its measured trailing byte 0xF4 - which the gate's Latin-1
+            // view reads as 'o-circumflex', a LETTER. So a binary neighbour also denies the
+            // allowlist its right-hand boundary. Pinned because it is the non-obvious one.
+            Fires("ArenaWallet,dotr-arena-skr-balanceô", "skr", false, failures,
+                  "the serialized copy of the arena key no longer fires. Its trailing byte 0xF4 reads " +
+                  "as a letter in the Latin-1 view, so nothing may treat a binary neighbour as a word " +
+                  "boundary and quietly allowlist a real literal.", H);
+
+            // ---- the 40 that never fired. A silent TIGHTENING must go red. ----------------
+            SuppressedIdentifier("costSkr", failures,
+                "a crystals cost (BuildModeController / TowerPlacementRotateMenu)");
+            SuppressedIdentifier("_costSkr", failures, "the same crystals cost, as a field");
+            SuppressedIdentifier("stakedSkr", failures, "an IStakeQuery out-parameter name");
+            SuppressedIdentifier("SkrShowcasePanel", failures,
+                "the dApp-only showcase type name (already #if !GOOGLE_PLAY at the TYPE level)");
+            SuppressedIdentifier("NativeSkrPolishBonus", failures, "the polish-bonus provider type");
+            SuppressedIdentifier("get_SkrPreview", failures, "the FeatureFlags getter");
+            SuppressedIdentifier("SkrBaseUnits", failures, "a base-units constant");
+            SuppressedIdentifier("_headerSkr", failures, "an ArenaPanel label field");
+            SuppressedIdentifier("skrDelta", failures, "an ArenaVM parameter");
+            SuppressedIdentifier("RewardBearingStakeSkr", failures, "a VerifiedStakeSnapshot accessor");
+            SuppressedIdentifier("Skr", failures,
+                "a bare NUL-packed enum member - suppressed by the printable-run floor, not by a boundary");
+
+            // The BCL's own names. These are in EVERY IL2CPP metadata blob ever produced.
+            SuppressedIdentifier("VoidTaskResult", failures, "System.Threading.Tasks");
+            SuppressedIdentifier("ValueTaskReceive", failures, "System.Threading.Tasks");
+            SuppressedIdentifier("AnyTaskRequiresNotifyDebuggerOfWaitCompletion", failures, "System.Threading.Tasks");
+            SuppressedIdentifier("_userTokenTaskResultProperty", failures, "System.Net.Sockets");
+            SuppressedIdentifier("colorMaskRtHandle", failures, "UnityEngine.Rendering");
+            SuppressedIdentifier("UpdateMaskRegions", failures, "UnityEngine.Rendering");
         }
 
-        private static void Fires(string text, string token, bool readable, List<string> failures, string message)
+        /// <summary>
+        /// One NUL-packed name-table entry that the gate does NOT report, in the exact shape
+        /// IL2CPP writes names. Separate from <see cref="Suppressed"/> only so the failure
+        /// sentence can say WHY a new report here is a tightening and not a catch.
+        /// </summary>
+        private static void SuppressedIdentifier(string identifier, List<string> failures, string what)
+        {
+            if (!GooglePlayPackagingGate.MatchesTokenInPayload("\0" + identifier + "\0", "skr", false)) return;
+
+            failures.Add("CASE H: `" + identifier + "` (" + what + ") now REPORTS as a token:skr hit. " +
+                         "It did NOT fire in the measured 2026-09-15 16:55 artifact, so this is a " +
+                         "STRICTNESS CHANGE to the gate, not a newly-caught leak. It makes roughly " +
+                         "fifteen existing DeNelle.Core / DeNelle.Village identifiers into Play " +
+                         "offenders at once. If that tightening is intended, it needs an owner ruling " +
+                         "and every one of those identifiers compiled out of the Play variant in the " +
+                         "SAME change - otherwise the next AAB is dirtier than before, not cleaner.");
+        }
+
+        private static void Suppressed(string text, string token, bool readable, List<string> failures,
+                                       string message, string caseTag = "CASE G")
+        {
+            if (GooglePlayPackagingGate.MatchesTokenInPayload(text, token, readable))
+                failures.Add(caseTag + ": " + message);
+        }
+
+        private static void Fires(string text, string token, bool readable, List<string> failures,
+                                  string message, string caseTag = "CASE G")
         {
             if (!GooglePlayPackagingGate.MatchesTokenInPayload(text, token, readable))
-                failures.Add("CASE G: " + message);
+                failures.Add(caseTag + ": " + message);
         }
 
         // ---------------------------------------------------------------------------

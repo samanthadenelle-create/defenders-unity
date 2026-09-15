@@ -86,6 +86,68 @@ namespace DeNelle.Editor.Regression
         private const string CoreServicesRel = "Assets/_Modules/Core/CoreServices.cs";
         private const string FlagsRel        = "Assets/_Modules/Core/FeatureFlags.cs";
         private const string Web3AsmdefRel   = "Assets/_Modules/Web3/DeNelle.Web3.asmdef";
+        // WO-1759. The two SOURCES of the only `skr` occurrences the packaging gate's matcher
+        // actually fires on in a Play artifact - measured, see the Pins below.
+        private const string StakeResolverRel = "Assets/_Modules/Core/Platform/StakeRewardsResolver.cs";
+        private const string StakeSnapshotRel = "Assets/_Modules/Core/Platform/VerifiedStakeSnapshot.cs";
+        private const string ArenaWalletRel   = "Assets/_Modules/Village/Arena/ArenaWalletService.cs";
+
+        /// <summary>
+        /// WO-1759. One entry of case 4: a file whose GOOGLE_PLAY arm must carry NO string
+        /// literal containing a short crypto token — stated as THREE assertions (Play carrier
+        /// present, dApp spelling present, token absent), never as one guarded absence.
+        /// <para>
+        /// ⛔ WHY THE TWO PROOF PATTERNS EXIST AT ALL. The first shape of this case asserted
+        /// only the ABSENCE, and `HollowPassScanner` arm D
+        /// (<c>D-vacuous-against-absent-fixture</c>) was right to reject it: every assertion sat
+        /// inside a positive-existence guard, so if the subject had simply VANISHED — someone
+        /// deleting the trace line, or the whole member — the case would have passed over
+        /// nothing and reported OK. A suite that passes because its subject disappeared is worse
+        /// than no suite, and it is precisely how a reverted exclusion ships unnoticed. So each
+        /// entry names what MUST be there in each variant, and those presences are asserted
+        /// outright.
+        /// </para>
+        /// </summary>
+        private readonly struct LiteralPin
+        {
+            /// <summary>The file, repo-relative.</summary>
+            public readonly string RelPath;
+            /// <summary>Must MATCH in the GOOGLE_PLAY arm — the Play-neutral carrier.</summary>
+            public readonly string PlayProof;
+            /// <summary>Must MATCH without GOOGLE_PLAY — the dApp / Seeker spelling.</summary>
+            public readonly string OffPlayProof;
+            public readonly string What;
+
+            public LiteralPin(string relPath, string playProof, string offPlayProof, string what)
+            {
+                RelPath = relPath;
+                PlayProof = playProof;
+                OffPlayProof = offPlayProof;
+                What = what;
+            }
+        }
+
+        private static readonly LiteralPin[] LiteralFreeUnderPlay =
+        {
+            // The trace at VerifiedStakeSnapshot.cs:202 no longer holds the spelling at all: it
+            // reads it from StakeStanding.DefaultCurrencySymbol, which is itself `#if
+            // GOOGLE_PLAY "pts" / #else "SKR"`. So the SAME reference must be present in BOTH
+            // arms, and the Pin above separately holds the const's two spellings. If the trace
+            // is deleted outright, this goes red in both variants.
+            new LiteralPin(StakeSnapshotRel,
+                           @"StakeStanding\.DefaultCurrencySymbol",
+                           @"StakeStanding\.DefaultCurrencySymbol",
+                           "the stake-verification trace's currency symbol (WO-1759: routed through " +
+                           "the one compile-time-neutral symbol, not a literal in this file)"),
+
+            // The Arena stub key swaps spelling per variant, so each arm proves its own.
+            new LiteralPin(ArenaWalletRel,
+                           @"""dotr-arena-wager-balance""",
+                           @"""dotr-arena-skr-balance""",
+                           "ArenaWalletService.PrefBalanceKey (WO-1366 s4 ruled key off-Play, " +
+                           "neutral spelling on Play)"),
+        };
+
 
         /// <summary>
         /// The SAFE SET, proven unpersisted and free of any GOOGLE_PLAY-side consumer in
@@ -104,6 +166,32 @@ namespace DeNelle.Editor.Regression
             new Pin(CoreServicesRel, @"\bUnregisterJupiter\s*\(",           "CoreServices.UnregisterJupiter"),
             new Pin(FlagsRel,        @"bool\s+JupiterSwap\s*=>",            "FeatureFlags.JupiterSwap (the property)"),
             new Pin(FlagsRel,        @"""jupiterswap""",                    "the \"jupiterswap\" PlayerPrefs key literal"),
+
+            // ── WO-1759 ────────────────────────────────────────────────────────────────
+            // MEASURED, not assumed. The 2026-09-15 16:55 rejected Play AAB's
+            // global-metadata.dat (19,874,336 bytes) holds 43 raw `skr` occurrences, and the
+            // packaging gate's own matcher fires on exactly THREE of them. Both pins below are
+            // the SOURCE of one of those three; nothing else in that file fired.
+            //
+            // ⚠ The other 40 - costSkr, stakedSkr, SkrShowcasePanel, NativeSkrPolishBonus,
+            // VoidTaskResult, colorMaskRtHandle and the rest - are ALREADY suppressed by
+            // MatchesTokenInWindow's leading/trailing word-boundary rules and the
+            // MinPrintableRunForShortTokens floor. They are not pinned here because they never
+            // fired; PlayGateChunkSeamRegression pins that they keep not firing.
+
+            // offset 238,770: the folded literal " SKR, age=". Roslyn merges the adjacent
+            // constants `" SKR" + ", age="`, so a reviewer's `strings` pass reads the token.
+            // The spelling now comes from the one compile-time-neutral symbol, so this pin is
+            // on THAT symbol: it must be "SKR" off-Play (the dApp build is unchanged) and must
+            // not survive GOOGLE_PLAY.
+            new Pin(StakeResolverRel, @"DefaultCurrencySymbol\s*=\s*""SKR""",
+                    "StakeStanding.DefaultCurrencySymbol = \"SKR\" (the single owner of the spelling)"),
+
+            // offsets 1,587,839 and 10,556,064: the Arena stub PlayerPrefs key. Not migratable
+            // and not allowlistable - see the reasoning block at ArenaWalletService.cs:47-67 -
+            // so the Play arm spells it differently and the dApp arm keeps the ruled key.
+            new Pin(ArenaWalletRel,   @"""dotr-arena-skr-balance""",
+                    "ArenaWalletService.PrefBalanceKey = \"dotr-arena-skr-balance\" (the WO-1366 s4 ruled key)"),
         };
 
         /// <summary>Standalone batch entry - prints the marker.</summary>
@@ -124,6 +212,7 @@ namespace DeNelle.Editor.Regression
                 CaseIdentifiersCompiledOutOnPlay(failures, log);
                 CaseIdentifiersStillExistOffPlay(failures, log);
                 CaseWeb3AssemblyStillExcluded(failures, log);
+                CaseNoShortTokenLiteralSurvivesPlay(failures, log);
             }
             catch (Exception ex)
             {
@@ -138,7 +227,8 @@ namespace DeNelle.Editor.Regression
             }
 
             reason = Pins.Length + " identifier(s) absent under GOOGLE_PLAY and present without it; " +
-                     "DeNelle.Web3 still !GOOGLE_PLAY-constrained. " +
+                     "DeNelle.Web3 still !GOOGLE_PLAY-constrained; " +
+                     LiteralFreeUnderPlay.Length + " file(s) carry no `skr` string literal under GOOGLE_PLAY. " +
                      "(SOURCE-level only - the global-metadata.dat scan is a ship-chain step.)";
             Debug.Log(log.ToString());
             return true;
@@ -187,9 +277,10 @@ namespace DeNelle.Editor.Regression
                 if (!Regex.IsMatch(src, pin.Pattern))
                 {
                     failures.Add(Tag + " " + pin.What + " NO LONGER EXISTS even without GOOGLE_PLAY (" +
-                                 pin.RelPath + "). WO-1377 says DO NOT DELETE: Jupiter swap is a real " +
-                                 "dApp-lane feature and is only ABSENT on Play. Case 1 passing by " +
-                                 "DELETION is the failure this case exists to catch.");
+                                 pin.RelPath + "). DO NOT DELETE: every pinned surface here (WO-1377's " +
+                                 "Jupiter swap, WO-1759's SKR spelling and the WO-1366 s4 Arena stub key) " +
+                                 "is a real dApp / Seeker-lane surface and is only ABSENT on Play. Case 1 " +
+                                 "passing by DELETION is the failure this case exists to catch.");
                 }
                 else
                 {
@@ -232,6 +323,177 @@ namespace DeNelle.Editor.Regression
         }
 
         // =====================================================================
+        //  CASE 4 - WO-1759: no `skr` STRING LITERAL survives the GOOGLE_PLAY arm
+        // =====================================================================
+        /// <summary>
+        /// The half a two-sided Pin cannot express. Cases 1+2 catch a lost <c>#if</c> around a
+        /// literal that exists in BOTH spellings; they cannot catch a revert that puts a BARE
+        /// literal back where the fix installed a neutral symbol, because "absent under
+        /// GOOGLE_PLAY" would then still pass on the symbol's own pin.
+        /// <para>
+        /// ⚠ Why a literal and not an identifier: this suite's header explains that a `#if`
+        /// inside a method removes neither. The measurement behind WO-1759 is narrower and
+        /// worth stating - in the 16:55 rejected AAB the gate's matcher fired on THREE
+        /// occurrences, and all three were STRING LITERALS. Every `skr`-bearing IDENTIFIER in
+        /// that artifact (costSkr, stakedSkr, SkrShowcasePanel, NativeSkrPolishBonus, and the
+        /// BCL's own VoidTaskResult / colorMaskRtHandle) was already suppressed by
+        /// GooglePlayPackagingGate's word-boundary rules. So the literal is the live axis here.
+        /// </para>
+        /// </summary>
+        private static void CaseNoShortTokenLiteralSurvivesPlay(List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- case 4 with GOOGLE_PLAY defined: no `skr` STRING LITERAL may survive --");
+
+            foreach (LiteralPin pin in LiteralFreeUnderPlay)
+            {
+                string rel = pin.RelPath;
+
+                // ---- 4a. the Play-side carrier EXISTS. Not a guard: an assertion. ----------
+                // This is the half arm D demanded. Absence of a token is only meaningful when
+                // the thing that replaced it is proven present; otherwise a deletion reads as a
+                // pass.
+                // `?? string.Empty` and NOT a `!= null` guard, deliberately: a guard reading
+                // `playArm != null` is itself a POSITIVE-EXISTENCE guard, so wrapping the
+                // assertion in one would land straight back in HollowPassScanner arm D. A
+                // missing file is already a recorded failure, and an empty arm fails the match
+                // below on its own, which is the honest verdict either way.
+                string playArm = ReadPreprocessed(rel, googlePlay: true, failures, log) ?? string.Empty;
+                if (!Regex.IsMatch(playArm, pin.PlayProof))
+                {
+                    failures.Add(Tag + " " + pin.What + " is GONE from the GOOGLE_PLAY arm of " + rel +
+                                 ". Case 4 asserts an ABSENCE (no `skr` literal), and an absence " +
+                                 "means nothing if the subject itself vanished - that is exactly the " +
+                                 "vacuous pass HollowPassScanner arm D rejects. Restore the Play-neutral " +
+                                 "carrier; do not satisfy this by deleting the check.");
+                }
+
+                // ---- 4b. the dApp / Seeker spelling SURVIVES. --------------------------------
+                // The variant-scoping half: this WO is an exclusion, never a deletion, and the
+                // Solana build must still compile its own spelling.
+                string offPlayArm = ReadPreprocessed(rel, googlePlay: false, failures, log) ?? string.Empty;
+                if (!Regex.IsMatch(offPlayArm, pin.OffPlayProof))
+                {
+                    failures.Add(Tag + " " + pin.What + " is GONE from the NON-GOOGLE_PLAY arm of " +
+                                 rel + ". WO-1759 is variant SCOPING, not removal: the dApp Store / " +
+                                 "Seeker build must keep its SKR surface intact (memory " +
+                                 "android-seeker-distribution-and-wallet-strategy), and the WO-1377 " +
+                                 "rule still stands - never renamed, never reordered.");
+                }
+
+                // ---- 4c. and only THEN, the absence itself. ----------------------------------
+                // ⛔ NOT A REGEX OVER THE SOURCE, and the difference is not style.
+                // A quote-to-quote pattern cannot tell a literal from the GAP BETWEEN two
+                // literals: `"stake=" + stakedSkr + "s"` and `$"stake={activeStakeSkr}"` would
+                // both match on the identifier in the middle, which never reaches metadata.
+                // These are staking and arena files, where that shape is the norm -
+                // StakeRewardsResolver.cs:231 already has one - so the regex would have gone
+                // red on working code. RegressionSourceText is LENGTH-PRESERVING by design, so
+                // the string bodies are EXACTLY the indices where the two strippers differ.
+                // Both passes run through the same preprocessor over the same line structure,
+                // so the pair stays index-aligned.
+                string blanked = ReadPreprocessed(rel, googlePlay: true, failures, log,
+                                                  blankStringBodies: true);
+
+                // A missing file was ALREADY reported as a failure by ReadPreprocessed above,
+                // so skipping here double-reports nothing and swallows nothing.
+                string found = FirstSkrBearingLiteral(playArm, blanked);
+                if (found != null)
+                {
+                    failures.Add(Tag + " a string literal containing `skr` SURVIVES GOOGLE_PLAY in " +
+                                 rel + ": " + found + ". IL2CPP writes every literal into " +
+                                 "global-metadata.dat whether its branch runs or not, so a reviewer's " +
+                                 "`strings` pass reads it and GooglePlayPackagingGate rejects the AAB " +
+                                 "with PLAY_ARTIFACT_DIRTY token:skr - measured at offsets 238,770 / " +
+                                 "1,587,839 / 10,556,064 in the 2026-09-15 16:55 rejected build. Put " +
+                                 "the spelling behind a compile-time-neutral symbol (see " +
+                                 "StakeStanding.DefaultCurrencySymbol) or a `#if GOOGLE_PLAY` arm - " +
+                                 "never a runtime guard, and never by deleting the dApp-side spelling.");
+                }
+                else
+                {
+                    log.AppendLine("   no `skr` literal under GOOGLE_PLAY: " + rel + "  OK");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Context around the first <c>skr</c> that is inside a SHIPPED string-literal body, or
+        /// null when there is none.
+        /// <para>
+        /// ⛔ THE TEST IS PER-CHARACTER, NOT PER-RUN, AND THAT WAS A MEASURED CORRECTION.
+        /// The obvious form - take maximal runs where <paramref name="kept"/> and
+        /// <paramref name="blanked"/> differ and call each run a literal body - is WRONG,
+        /// because a SPACE inside a literal is blanked to itself: the two views agree there, so
+        /// one literal splits into several runs and every run loses the <c>$</c> that says it
+        /// was interpolated. The token has no spaces, so the exact question is asked directly
+        /// of its three characters: they are blank in the string-stripped view iff they sit in
+        /// a literal.
+        /// </para>
+        /// Length mismatch is treated as "cannot decide" and returns null rather than guessing;
+        /// cases 1 and 2 still cover these files either way.
+        /// </summary>
+        private static string FirstSkrBearingLiteral(string kept, string blanked)
+        {
+            if (kept == null || blanked == null || kept.Length != blanked.Length) return null;
+
+            int at = -1;
+            while ((at = kept.IndexOf("skr", at + 1, StringComparison.OrdinalIgnoreCase)) >= 0)
+            {
+                if (at + 2 >= blanked.Length) break;
+                if (blanked[at] != ' ' || blanked[at + 1] != ' ' || blanked[at + 2] != ' ') continue;
+                if (InInterpolationHole(kept, blanked, at)) continue;
+
+                int from = Math.Max(0, at - 40);
+                int to = Math.Min(kept.Length, at + 43);
+                return kept.Substring(from, to - from).Replace('\n', ' ').Replace('\r', ' ').Trim();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// True when the hit sits in a <c>{...}</c> hole of an INTERPOLATED literal. A hole is
+        /// compiled away - <c>$"stake={activeStakeSkr}"</c> puts only <c>"stake="</c> into
+        /// global-metadata.dat, never the identifier - so reporting one would be a leak that
+        /// cannot exist, and these are staking and arena files where that shape is the norm
+        /// (StakeRewardsResolver.cs:231 already has one). A plain, un-interpolated
+        /// <c>"{skr}"</c> is still read as the shipped text it is.
+        /// </summary>
+        private static bool InInterpolationHole(string kept, string blanked, int at)
+        {
+            // Back up to the start of the blanked stretch, then take the first quote in the
+            // KEPT view: that is this literal's opening quote (the stripper blanks quotes too,
+            // so the stretch always reaches back past it).
+            int j = at;
+            while (j > 0 && blanked[j - 1] == ' ') j--;
+
+            int q = kept.IndexOf('"', j);
+            if (q < 0 || q > at) return false;
+
+            bool interpolated = (q > 0 && kept[q - 1] == '$') ||
+                                (q > 1 && kept[q - 1] == '@' && kept[q - 2] == '$');
+            if (!interpolated) return false;
+
+            int depth = 0;
+            for (int k = q + 1; k < at; k++)
+            {
+                char c = kept[k];
+                if (c == HoleOpen)
+                {
+                    if (depth == 0 && k + 1 < at && kept[k + 1] == HoleOpen) { k++; continue; }
+                    depth++;
+                }
+                else if (c == HoleClose && depth > 0) depth--;
+            }
+            return depth > 0;
+        }
+
+        // Declared as a balanced PAIR on one line, following HollowPassScanner.cs:143-144:
+        // the compile gate's comment- and string-aware scan reads a lone brace CHAR LITERAL
+        // correctly, but CLAUDE.md rule 1's raw counter does not, and three of them here left
+        // the file reading 61/60 while the gate read 55/55. Named constants settle both.
+        private const char HoleOpen = '{', HoleClose = '}';
+
+        // =====================================================================
         //  Source reading: strip comments, then evaluate the GOOGLE_PLAY arms
         // =====================================================================
 
@@ -247,7 +509,8 @@ namespace DeNelle.Editor.Regression
         /// when the file is missing.
         /// </summary>
         private static string ReadPreprocessed(string relPath, bool googlePlay,
-                                               List<string> failures, StringBuilder log)
+                                               List<string> failures, StringBuilder log,
+                                               bool blankStringBodies = false)
         {
             string path = Path.Combine(RepoRoot(), relPath.Replace('/', Path.DirectorySeparatorChar));
             if (!File.Exists(path))
@@ -273,7 +536,10 @@ namespace DeNelle.Editor.Regression
             // its own call site. Comment bodies MUST go: comments never reach IL2CPP metadata,
             // and WO-1377's own explanatory headers deliberately sit OUTSIDE the guards and name
             // every identifier they removed, so matching comment text would invert the result.
-            return EvaluateGooglePlayArms(RegressionSourceText.StripComments(raw), googlePlay);
+            return EvaluateGooglePlayArms(blankStringBodies
+                                              ? RegressionSourceText.StripCommentsAndStrings(raw)
+                                              : RegressionSourceText.StripComments(raw),
+                                          googlePlay);
         }
 
         /// <summary>

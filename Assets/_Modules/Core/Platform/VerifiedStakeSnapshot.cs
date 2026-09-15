@@ -198,8 +198,22 @@ namespace DeNelle.Core.Platform
             // "why did my perk vanish" is one read and not a theory.
             string entitlement = IsRewardBearing ? "REWARD-BEARING" : "not reward-bearing";
             string amount = RewardBearingStakeSkr.ToString("N0");
+            // ⛔ WO-1759 - MEASURED, NOT THEORISED. This line used to end `+ " SKR" +`, and
+            // Roslyn folds two adjacent string constants into ONE literal: `" SKR, age="`.
+            // That folded literal was found in the REJECTED Play AAB
+            // (EchoesOfElarion-GooglePlay-20260915-165534.REJECTED.aab,
+            // base/assets/bin/Data/Managed/Metadata/global-metadata.dat, offset 238,770) and
+            // is ONE OF ONLY THREE occurrences in that file that the packaging gate's matcher
+            // actually fires on - out of 43 raw `skr` hits. A runtime `#if` inside a method
+            // would not have helped: the literal ships whether the branch runs or not
+            // (PlayMetadataIdentifierRegression's header states the same rule for identifiers).
+            // The fix reuses the symbol that is ALREADY compile-time-neutral per channel,
+            // StakeStanding.DefaultCurrencySymbol ("SKR" off-Play, "pts" under GOOGLE_PLAY,
+            // StakeRewardsResolver.cs) - so there is ONE owner of the spelling, the dApp /
+            // Seeker build is byte-identical to before, and the Play build carries no token.
             FlowTrace.Step(Sys, "server verification accepted: status=" + status +
-                                ", " + entitlement + ", stake=" + amount + " SKR" +
+                                ", " + entitlement + ", stake=" + amount +
+                                " " + StakeStanding.DefaultCurrencySymbol +
                                 ", age=" + _ageSeconds + "s, grace=" + _graceWindowSeconds + "s" +
                                 ", unstaking=" + _unstakingRaw + " raw (ready=" + _unstakingReady + ").");
 
