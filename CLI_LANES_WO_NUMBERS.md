@@ -189,7 +189,119 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-15 (CLI, hundred-and-ninetieth pass): main line next free = **1739**.
+> ## RECONCILED 2026-09-15 (CLI, hundred-and-ninety-sixth pass): main line next free = **1746**.
+> *(WO-1742's Lane A2 minted **1745** = the 409 `SAVE_RESET_STALE` refusal on `/api/game/save` is
+> now audited where an admin query can READ it. ⛔ **THE PARENT WO'S PREMISE WAS WRONG AND THE
+> CORRECTION IS THE FINDING.** WO-1742 §8 says the 409 "is invisible to the dashboard because it is
+> client-side only". It is not: `save.js:539` has written a durable row on every refusal since
+> WO-1598 landed 2026-09-07 — via `logApiEvent(sql, playerId, 'save_reset_refused', …)`, carrying
+> `code`, `incoming`, `stored`, `mode`, `ref`. The blindness was at the VIEW layer:
+> `api/admin/db.js`'s only refusal reader, `view=authrejects`, filtered
+> `event_name IN ('api_auth_reject','auth_failed')` — a list that never contained that name — so no
+> query in the product could return one. **⚠ WO-1742 §3's "ZERO refusals on /api/game/save in seven
+> days" was read off that blind view and is therefore a VIEW ARTIFACT, not a measurement.** Fix:
+> `save.js` writes the refusal through `logAuthReject` like every other refusal (identity, ref,
+> mode, path, ipHash, detail `{incoming, stored, behindBy, stage}`), ONE row not two; `db.js` widens
+> all FOUR of its `event_name IN` sites plus the per-era path label to keep reading the historical
+> `save_reset_refused` rows, exactly as it already carries the pre-2026-08-02 `auth_failed` era. The
+> 409 status, body and the `judgeResetEpoch` guard are UNCHANGED — the refusal is correct, only its
+> observability was missing. `test/game.save.reset-epoch.test.js` 14/14 (was 13), with the view pin
+> RED-PROVEN by removing the name from the IN lists. **Lane A stays BLOCKED on the owner's ruling
+> (a)/(b)/(c) about whose town survives; `GameStateService.cs` is untouched.**
+> Bumped 1745 -> 1746 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninety-fifth pass): main line next free = **1745**.
+> *(The Google-identity RCA lane minted **1744** = the owner cannot sign in to Google on the
+> Play-delivered build and is forced to Guest. **No code defect — the fix is console-side and needs
+> NO rebuild.** The API is named from source AND device: **Google Sign-In for Unity v1.0.4**, NOT
+> Play Games Services and NOT Firebase Auth (`GooglePlayIdentityClient.cs:49` `UseGameSignIn=false`;
+> the device loads `libnative-googlesignin.so` and starts `SignInHubActivity` — seeker log `:760`,
+> `:6336`). **Rank 1 cause: the Android OAuth client bound to the Play App Signing SHA-1 was never
+> created.** `docs/releases/GOOGLE_PLAY_RC_2026-08-30.md:163-166` names that exact step as the
+> outstanding external gate, and `Assets/google-services.json` carries ONE Android client on cert
+> `09:07:83:…` while `:148-150` records the Play cert as `84:D4:D2:…`. Rank 2 (NOT PROVEN, same
+> console trip): the OAuth consent screen still in *Testing* — the only tester list that exists on a
+> GSI path, so it is the direct candidate for the owner's *"even for testers"*. ⚠ **The brief's "it
+> fails on BOTH signing certificates" is UNPROVEN, and that changed the ranking**: the emulator log
+> DOES carry the app (pid 12477, 202 `[Flow:*]` lines over a 50 s window) but its `Flow:Auth` count
+> is **ZERO** — no sign-in was requested, attempted or failed inside that capture — and the literal
+> `DEVELOPER_ERROR`/`TokenPendingResult` strings are in NEITHER log (`grep -ci` = 0/0); what is
+> captured is `SignInException` at `:7518`. The brief used "both certs" to demote SHA-1 mismatch;
+> with it unproven, SHA-1 mismatch is the top cause and the only one with documentary support. The
+> GOOGLE_PLAY-variant-strips-its-own-auth hypothesis is **DISPROVEN** (the quarantine list at
+> `GooglePlayContentExclusion.cs:148-212` is wallet-only; `DeNelle.GooglePlay.asmdef` constrains the
+> identity client **IN**, not out; and the GSI path demonstrably executed on-device). Backend is NOT
+> involved — `grep -c "google-session"` = 0 across the whole log — so do NOT debug Vercel or any
+> `GOOGLE_*` production variable for this. Closes the gap WO-1742's banner left open as *"NOT
+> PROVABLE FROM HERE"* by reducing it to one console read with the page, field and comparison value
+> named. **Minted first as 1743 and ceded** — the Night Market lane put 1743 on the banner in the
+> same minute (§2 first-on-disk-and-referenced-wins); re-minted at 1744 and the files renamed.
+> Bumped 1744 -> 1745 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninety-fourth pass): main line next free = **1744**.
+> *(The Night Market layout lane minted **1743** = the Google Play storefront panel is ILLEGIBLE on
+> the owner's Seeker (device capture `logs/device/store-listing.png`, Play build 2026.09.09.362625):
+> every product row's frame is drawn over its neighbours, the subtitle is half-covered, and CLOSE
+> sits on top of a row. RCA at source, NOT a billing defect: `GooglePlayStorefront.Build`
+> (`GooglePlayStorefront.cs:136-146`) HAND-PLACES 18 fraction-anchored rows at pitch `.095` /
+> height `.082` of a modal body that measures ~542 REFERENCE px at the device's 2670x1200, i.e. a
+> ~51 px pitch on ~44 px rows. `UiKitMinTouchGuard.LateUpdate` (`ElarionUiKit.cs:1179-1184`) then
+> grows every row to `MinTouchPx`=112 SYMMETRICALLY ABOUT ITS CENTRE, so each row spills ~34 px into
+> each neighbour. The kit's own comment at `ElarionUiKitObsidian.cs:574-580` names this exact failure
+> ("the root cause of stacked/overlapping menu buttons ... was every menu HAND-PLACING
+> fraction-anchored buttons"). Compounding it, the loop runs to `y1 = .90 - 17*.095 = -0.715`, so
+> rows 10..18 are anchored BELOW the body and straight through the fixed Restore (.20-.285) and
+> Deletion (.105-.19) bands - index 6 lands at .33 and index 7 at .235, which is precisely where
+> RESTORE PURCHASES appears in the capture. 18x112 + gaps is ~2300 ref px in a ~542 px body, so the
+> fix is the kit's FIT-OR-SCROLL zone, never smaller text. Bumped 1743 -> 1744 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninety-third pass): main line next free = **1743**.
+> *(The save-rail RCA lane minted **1742** = the owner's hypothesis *"is Google sign-in failing the
+> reason we cannot see true usage"* is **KILLED as stated, and a DIFFERENT confirmed mechanism was
+> measured in its place.** Google `DEVELOPER_ERROR` cannot break the save rail, because a failed
+> sign-in leaves `BoundWallet` at the `guest-local-<64hex>` id `EnsureAccount` mints
+> (`GameStateService.cs:2126`), `CanCloudSync()` admits it (`:2256`), and the guest rail is fully
+> live: **56 of 65 `player_data` rows are `trust='guest'`**, newest written 2026-09-15T16:21:41Z,
+> fourteen of them updated over WEEKS. `view=authrejects` shows **ZERO save-path refusals in 168h**.
+> What IS killing progress is **409 `SAVE_RESET_STALE`, measured in the live `web_trace` of external
+> Pi players**: the client classifies it NOT RETRYABLE and **DROPS the marker**
+> (`GameStateService.cs:3270-3273`), so once a device's `resetEpoch` falls behind the stored one
+> EVERY future cloud save is silently discarded forever while local play continues. 2 of 26 sampled
+> trace sessions carry it. Separately recorded as NOT PROVABLE FROM HERE: whether the Play-delivered
+> build's App Signing SHA-1 is registered on the Android OAuth client. Bumped 1742 -> 1743 in this
+> SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninety-second pass): main line next free = **1742**.
+> *(The Play-AAB packaging lane minted **1741** = the IMPLEMENTATION of the two owner rulings of
+> 2026-09-15 on WO-1740, which is now UNBLOCKED. **Ruling 1 (the UniTask ceiling):** most `solana` hits
+> in `global-metadata.dat` are the SOURCE PATHS of vendored UniTask — a general-purpose async library
+> that merely lives under `Packages/com.solana.unity_sdk/Runtime/Plugins/UniTask/`. Allowlisted in
+> `GooglePlayPackagingGate.FalsePositiveAllowlist` with the reason written into the gate, scoped to the
+> UniTask SUBPATH and not the package: UniTask's own siblings in that same `Plugins/` folder are
+> `SolanaWalletAdapterWebGL/` and `Web3AuthSDK/`, so a package-wide allowlist would have suppressed two
+> real crypto surfaces. **Ruling 2 (the Jupiter panel):** QUARANTINE FROM PLAY ONLY —
+> `Assets/_Modules/Web3/Resources` joins `PlayExcludedAssetPaths`; the dApp Store / Solana build KEEPS
+> the panel and every wallet surface. Also fixed in the same lane: the `" skr"` LEADING-SPACE detector
+> defect (a token check that missed values *starting* with the token, which is why two rendered HUD
+> strings shipped past their already-authored neutral copy), and three catalogs outside the sweep —
+> `structures-catalog.json`, the `ad-placements.json` StreamingAssets twin that a stale comment claimed
+> did not exist, and `offline-storage.json`. Bumped 1741 -> 1742 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninety-first pass): main line next free = **1741**.
+> *(The Play-AAB RCA lane minted **1739** and **1740**. **1739 = DONE, this lane**: the 10:22-10:37 AAB
+> run reported `AAB_OK` + `AAB_SIGNING_OK` + `R2_PARITY_OK` over an artifact that
+> `GooglePlayPackagingGate.AssertBuiltArtifact` had **REJECTED** — `google-play-aab-build.ps1` only
+> RECORDED `AAB_BUILD_MARKER_ABSENT ... exit=8` and fell through to every success marker. The freshness
+> check cannot catch it, because the compliance gate runs AFTER `BuildPipeline.BuildPlayer` succeeds
+> (`AndroidBuild.cs:197-204`), so a rejected run still leaves a fresh, release-signed, under-ceiling AAB
+> on disk. **Occurrence TWO, not one** — `Builds/aab-final-chain-runner.log` shows the identical
+> `exit=8 -> AAB_OK -> exit 0` on 2026-09-11. Script now stops at `AAB_REJECTED` (exit 7) and MOVES the
+> artifact to `Builds\Android\rejected\`. **1740 = READY, BLOCKED ON AN OWNER RULING**: the four content
+> leaks the gate actually named, headed by `Assets/_Modules/Web3/Resources/JupiterSwapPanel.uxml` — a
+> live Jupiter token-swap UI force-included past the `!GOOGLE_PLAY` asmdef because it sits in a folder
+> named `Resources`. Bumped 1739 -> 1741 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, hundred-and-ninetieth pass): main line next free = **1739**.
 > *(Same wall-durability lane also minted **1738** — the CONCURRENCY FORK, split out of 1737 §7 into its
 > own board row rather than left as prose. Reason, in the lane's own words: WO-1506's RESULT said "this
 > needs a client ticket", that sentence sat inside a closed ticket, the board never saw it, and eight days
