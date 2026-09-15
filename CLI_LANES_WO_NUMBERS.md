@@ -189,7 +189,15 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-15 (CLI, two-hundred-and-fourth pass): main line next free = **1756**.
+> ## RECONCILED 2026-09-15 (CLI, two-hundred-and-sixth pass): main line next free = **1759**.
+> *(Minted 1758 (arena boundary ring renders as untextured grey slabs - the owner's grey box, NAMED
+> by the census) and CLOSED 1757 as INVALID, the lead's own grep error - bumped 1758 -> 1759 here.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundred-and-fifth pass): main line next free = **1758**.
+> *(Minted 1756 (hero auto-targets walls - owner ruling 'i should need to select it') and 1757
+> (the untextured census's listing is truncated away) - bumped 1756 -> 1758 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundred-and-fourth pass): main line next free = **1756**.
 > *(Minted 1755 (rename DeNelle.Core.Web3 + extend the Play exclusion script) on the owner's ruling
 > "do the rename and extend the exclusion script" - bumped 1755 -> 1756 in this SAME edit.)*
 >

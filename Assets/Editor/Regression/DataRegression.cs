@@ -1383,6 +1383,11 @@ namespace DeNelle.Editor
             // WO-1735 - EventTracker built its own UnityWebRequest and sent NO identity header, so every player
             // collapsed into the literal id "unverified" from 09-07 and the dashboard read "1 active player".
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "analytics-identity suite", () => { if (!DeNelle.Editor.Regression.EventTrackerIdentityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[analytics-identity] " + r); });
+            // WO-1754 - ScanStream read the artifact in 64 KiB chunks and truncated its own allowlist
+            // window at the seam, so system.security.cryptography.hmacsha256 read as a live "crypto"
+            // hit and REJECTED an otherwise clean AAB. A chunk-length multiple also lost its deferred
+            // tail entirely - which would have turned the false positive into a silent MISS.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "play-gate-chunk-seam suite", () => { if (!DeNelle.Editor.Regression.PlayGateChunkSeamRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[play-gate-chunk-seam] " + r); });
 
             // --- DEV GRANT UNCAPPED (audit 2026-08-15): the dev resource grants resolved
             // GetMethod("GrantSpendable") BY STRING -- the TownBankCapacity-clamped path -- so a
