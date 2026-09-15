@@ -254,6 +254,8 @@ namespace DeNelle.Village
         private bool _collisionMaskInit;
         // Smoothed 0..1 fraction of the desired distance currently allowed (1 = no wall, full offset).
         private float _distanceFrac = 1f;
+        // WO-1734: last frame's fade-vs-pull-in verdict, so the trace fires on the TRANSITION only.
+        private bool _wasPullingIn;
 
         // ── Occluder fade (WO-385) ─────────────────────────────────────────────
         // Instead of pulling the camera IN to a wall (which jammed it to a close "lost" angle at
@@ -1250,6 +1252,9 @@ namespace DeNelle.Village
             {
                 _distanceFrac = 1f;
                 RestoreAllFaded();   // never leave a wall invisible when collision is off / target lost
+                // WO-1734: drop the trace edge too, or a pull-in that was live when collision was
+                // switched off would swallow the NEXT "PULL-IN ENTERED" line.
+                _wasPullingIn = false;
                 return desired;
             }
 
@@ -1267,7 +1272,11 @@ namespace DeNelle.Village
 
             Vector3 dir = toCam / fullDist;
 
-            RestoreAllFaded();
+            // WO-1734 RESTORE: mark the frame, do NOT un-hide everything. `RestoreAllFaded()` stood
+            // here from 486cd7b17 until 2026-09-15 and it is what made the fade path inert — it
+            // clears `_faded` every frame, so nothing can stay hidden across two frames and the
+            // "hold the seat, fade the wall" contract had no state to hold.
+            _fadedThisFrame.Clear();
             float nearestOccluderDist = float.MaxValue;
 
             // SphereCastAll so the camera body — not an infinitely-thin ray — clears the wall,
@@ -1287,9 +1296,11 @@ namespace DeNelle.Village
                 if (hitDist < nearestOccluderDist) nearestOccluderDist = hitDist;
 
                 // Hide the visible mesh of this occluder (keep its shadows) so the hero shows through.
+                FadeOccluder(col);
             }
 
             // Restore any renderer we faded on a previous frame that is NOT occluding now.
+            RestoreFadedNotHitThisFrame();
 
             // Target fraction of the full distance we're allowed this frame (1 = full seat).
             // Default: hold the full seat (we faded the wall rather than pulling in).
@@ -1298,25 +1309,82 @@ namespace DeNelle.Village
             // SAFETY BACKSTOP ONLY: if an occluder is point-blank close, still pull in to it so
             // the camera body / near clip never embeds in the mesh. This is the rare last resort
             // — normal corner walls (well beyond _occluderPullInDistance) are faded, not pulled in.
-            if (nearestOccluderDist < float.MaxValue)
+            //
+            // ⛔ WO-1734 — THE GATE IS `_occluderPullInDistance`, NEVER `float.MaxValue`. From
+            // 486cd7b17 (2026-09-01) until 2026-09-15 this read `nearestOccluderDist <
+            // float.MaxValue`, i.e. TRUE for any occluder at any distance — the DEF-151 hard
+            // pull-in that WO-385 existed to delete, reinstated under WO-385's own comment. In a
+            // ~4 m raid gate that collapses the seat to the emergency floor, where a small yaw
+            // becomes an enormous screen rotation (the owner's "camera spin").
+            bool pullingIn = nearestOccluderDist < _occluderPullInDistance;
+            if (pullingIn)
             {
-                float allowed = AllowedCameraDistance(fullDist, nearestOccluderDist, _collisionSkin);
+                float allowed = AllowedCameraDistance(
+                    fullDist, nearestOccluderDist, _collisionSkin, _minCollisionDistance);
                 targetFrac = allowed / fullDist;
             }
 
             // Pull IN fast (avoid a clip frame), ease OUT slowly (no jitter along a wall).
-            _distanceFrac = targetFrac < _distanceFrac
-                ? targetFrac
-                : Mathf.MoveTowards(_distanceFrac, targetFrac, _collisionReturnSpeed * dt);
+            float speed = targetFrac < _distanceFrac ? _collisionApproachSpeed : _collisionReturnSpeed;
+            _distanceFrac = Mathf.MoveTowards(_distanceFrac, targetFrac, speed * dt);
 
-            return pivot + dir * (fullDist * _distanceFrac);
+            Vector3 seat = pivot + dir * (fullDist * _distanceFrac);
+            TraceOcclusionOutcome(pullingIn, nearestOccluderDist, fullDist * _distanceFrac, fullDist);
+            return seat;
         }
 
-        /// <summary>Pure near-side seating contract used by regression coverage.</summary>
-        public static float AllowedCameraDistance(float fullDistance, float hitDistance, float skin)
+        // WO-1734 §12 instrumentation: make "did the camera FADE the wall or PULL IN to it, and
+        // where did the seat end up" readable from ONE log line, with no theory.
+        //
+        // Edge-triggered on the fade<->pull-in TRANSITION via Step (a pull-in episode can last two
+        // frames and a Throttle window would miss it entirely), plus a Throttle for the ongoing
+        // fade so a long occlusion still prints. Per §12 this is a FRAME path, so the steady state
+        // is rate-limited and only the transition is unconditional.
+        private void TraceOcclusionOutcome(bool pullingIn, float nearestOccluderDist, float seatDist, float fullDist)
+        {
+            string occluder = nearestOccluderDist < float.MaxValue
+                ? nearestOccluderDist.ToString("0.##") + "m" : "none";
+
+            if (pullingIn != _wasPullingIn)
+            {
+                _wasPullingIn = pullingIn;
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Camera", pullingIn
+                    ? "OCCLUDER PULL-IN ENTERED - nearest occluder " + occluder
+                      + " is inside the point-blank backstop " + _occluderPullInDistance.ToString("0.##")
+                      + "m; seat " + seatDist.ToString("0.##") + "m of " + fullDist.ToString("0.##")
+                      + "m (floor " + _minCollisionDistance.ToString("0.##") + "m)."
+                    : "OCCLUDER PULL-IN RELEASED - back to the FADE contract; seat "
+                      + seatDist.ToString("0.##") + "m of " + fullDist.ToString("0.##") + "m.");
+                return;
+            }
+
+            if (!pullingIn && _faded.Count > 0)
+                DeNelle.Core.Diagnostics.FlowTrace.Throttle("Camera", "occluder-fade", 2f,
+                    "OCCLUDER FADED x" + _faded.Count + " (nearest " + occluder
+                    + ") - seat HELD at " + seatDist.ToString("0.##") + "m of "
+                    + fullDist.ToString("0.##") + "m. WO-385 contract: fade the wall, hold the seat.");
+        }
+
+        /// <summary>
+        /// Pure near-side seating contract used by regression coverage.
+        /// <para>
+        /// WO-1734: the floor is the AUTHORED <c>_minCollisionDistance</c>, not a bare literal. The
+        /// old 3-arg form hardcoded 0.25f, which is why <c>_minCollisionDistance</c> (1.2 m) sat in
+        /// the inspector referenced by nothing but a comment — and why a point-blank backstop could
+        /// seat the camera a quarter of a metre from the hero's chest.
+        /// </para>
+        /// <para>
+        /// <c>Mathf.Min(minDistance, fullDistance)</c> is deliberate: <c>Mathf.Clamp</c> returns
+        /// <c>min</c> when <c>min &gt; max</c>, so a 1.2 m floor against a 0.9 m boom would push the
+        /// camera FURTHER OUT than its own authored seat. The boom always wins the ceiling.
+        /// </para>
+        /// </summary>
+        public static float AllowedCameraDistance(
+            float fullDistance, float hitDistance, float skin, float minDistance)
         {
             if (fullDistance <= 0f) return 0f;
-            return Mathf.Clamp(hitDistance - Mathf.Max(0f, skin), 0.25f, fullDistance);
+            float floor = Mathf.Min(Mathf.Max(0f, minDistance), fullDistance);
+            return Mathf.Clamp(hitDistance - Mathf.Max(0f, skin), floor, fullDistance);
         }
 
         // Hide an occluder's visible mesh (set ShadowsOnly) so the hero shows through, keeping its

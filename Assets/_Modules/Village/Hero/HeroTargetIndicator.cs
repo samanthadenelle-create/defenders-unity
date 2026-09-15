@@ -207,6 +207,11 @@ namespace DeNelle.Village
             // Release the previous target's pinned HP bar so it isn't left revealed.
             SetBarTargeted(_prevTarget, false);
             _prevTarget = null;
+            // WO-1734: a full clear drops the stickiness state too, or the next LateUpdate could
+            // hold a target this call was explicitly asked to release.
+            _autoPick = null;
+            _autoPickAt = 0f;
+            _tracedAutoPick = null;
             SetVisible(false);
             // WO-1105 R1: the marker is part of the target read — a full clear drops it too.
             if (_marker != null) CastingTelegraphVfx.EndTargetMarker(_marker, "lock cleared");
@@ -352,6 +357,23 @@ namespace DeNelle.Village
 
         private IDamageable _locked;   // manual lock (null = auto-nearest)
         private IDamageable _prevTarget;  // DEF-206: last frame's CurrentTarget, to flip HP bars on change
+
+        // ── WO-1734 — anti-oscillation stickiness on the AUTO pick ──────────────────────────────
+        // The owner felt a straight SS_5 <-> SS_6 flip 30 ms apart between two adjacent wall
+        // panels. These bound how eagerly the auto pick may move; they do NOT gate the unit-over-
+        // wall priority, which crosses classes and is exempt (see HoldsCurrentAutoTarget).
+        [Tooltip("WO-1734: a rival must be closer than the currently held auto target by MORE than " +
+                 "this many metres to displace it. Deliberately small - it exists to stop two " +
+                 "adjacent wall panels trading the reticle, not to make acquisition sluggish.")]
+        [SerializeField, Min(0f)] private float _autoSwitchStickinessMeters = 1f;
+
+        [Tooltip("WO-1734: an auto pick younger than this many seconds is never displaced by " +
+                 "another target of the SAME kind. Kills the sub-100ms flip outright.")]
+        [SerializeField, Min(0f)] private float _autoSwitchMinDwellSeconds = 0.35f;
+
+        private IDamageable _autoPick;        // the auto target currently held by the hysteresis
+        private float       _autoPickAt;      // Time.time the hysteresis last CHANGED _autoPick
+        private IDamageable _tracedAutoPick;  // last pick NAMED in the trace, so it logs on change only
         private readonly List<IDamageable> _candidates = new List<IDamageable>();
         private readonly List<Enemy> _enemyBuf = new List<Enemy>(64);   // TargetManager scratch
 
@@ -1156,12 +1178,169 @@ namespace DeNelle.Village
             _markerRefreshAt = Time.time + MarkerRefreshSeconds;
         }
 
+        /// <summary>
+        /// WO-1734 — the hero gets the SAME rule the owner already gave the troops: any acquirable
+        /// hostile UNIT outranks a wall, always. Walls stay targetable when no unit is available.
+        /// </summary>
+        /// <remarks>
+        /// Owner ruling 2026-09-15, restating her WO-1730 ruling for the hero: *"should never
+        /// default to target wall, should always default to aggresive targets nearby first asnd
+        /// then only then wall"*.
+        ///
+        /// ⭐ THE PRIORITY IS ONE GATE IN FRONT OF THE EXISTING SELECTION, DELIBERATELY — the
+        /// nearest-wins body below is NOT restructured, exactly as WO-1719 did it for the troop
+        /// side (`RaidAssaultAi.SelectFocusBreach`, which explains the same reasoning at
+        /// `RaidAssaultAi.cs:230-241`). The fallback is then literally the code it always was,
+        /// which is why a regression can still pin "nearest wins among equals" against an
+        /// unchanged body.
+        ///
+        /// WHY IT WAS BROKEN: acquisition was pure nearest-wins (the sort at RebuildCandidates
+        /// compares squared distance only, with no type term) while enemy-owned walls are admitted
+        /// as legitimate hostiles — WallSegment is Hostile when the scene is enemy-owned, and Awake
+        /// ORs `Structure` onto `_enemyMask`. So a ~4 m wall panel 2 m away outranked a mob at 5 m.
+        /// Captured on device (build 370139): five
+        /// `[Flow:Reticle] TARGET ACQUIRED (auto) -> 'Wall_Outer_*'` inside 626 ms.
+        ///
+        /// CLASSIFICATION mirrors the troop side verbatim — `is IDamageableStructure`
+        /// (`TroopController.IsHostileStructure`). Walls, gates, towers and the raid spire
+        /// dual-implement it; `EnemyDamageable` and `DragonBoss` do not. ⚠ That means a garrison
+        /// unit also outranks the raid SPIRE, which is the troop rule applied consistently — the
+        /// spire stays acquirable the moment no unit stands.
+        ///
+        /// The second half is the OSCILLATION (a separate defect, also owner-felt): a straight
+        /// SS_5 ⇄ SS_6 flip 30 ms apart. That is handled by <see cref="HoldsCurrentAutoTarget"/>,
+        /// AFTER the priority gate, so stickiness can never delay a unit beating a wall.
+        /// </remarks>
+        private IDamageable NearestCandidate()
+        {
+            // ── THE GATE: a unit first, if any unit at all is acquirable this frame. ──
+            var pick = NearestCandidateOfClass(unitsOnly: true);
+            bool unitWon = pick != null;
+            if (!unitWon) pick = NearestCandidateOfClass(unitsOnly: false);
+
+            pick = ApplyAutoSwitchHysteresis(pick);
+
+            if (!ReferenceEquals(pick, _tracedAutoPick))
+            {
+                _tracedAutoPick = pick;
+                var pmb = pick as MonoBehaviour;
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Reticle",
+                    "AUTO PICK '" + (pmb != null ? pmb.gameObject.name.Replace("(Clone)", "").Trim() : "none")
+                    + "' WHY=" + (pick == null
+                        ? "no acquirable hostile in the engage arc"
+                        : unitWon
+                            ? "unit-over-wall (WO-1734 priority gate: a hostile UNIT was acquirable)"
+                            : "nearest (no unit acquirable; "
+                              + (pick is IDamageableStructure ? "structure" : "unit") + " wins on distance)")
+                    + ".");
+            }
+
+            return pick;
+        }
+
+        /// <summary>
+        /// Pure, side-effect-free stickiness rule used by the auto-acquire hysteresis and pinned by
+        /// regression coverage. TRUE = keep the target already held.
+        /// </summary>
+        /// <remarks>
+        /// WO-1734: sized deliberately SMALL — it exists to kill a 30 ms SS_5 ⇄ SS_6 flip between
+        /// two adjacent wall panels, not to make the reticle sluggish. Two independent holds:
+        /// a minimum dwell (a pick younger than <paramref name="minDwellSeconds"/> is never
+        /// displaced) and a distance margin (a rival must be closer by more than
+        /// <paramref name="stickinessMeters"/> to win).
+        ///
+        /// ⛔ <paramref name="sameClass"/> IS THE WHOLE SAFETY PROPERTY. Stickiness applies ONLY
+        /// between two targets of the same kind, so the WO-1734 priority gate can never be delayed
+        /// by it: a unit displacing a held wall crosses classes and is exempt.
+        /// </remarks>
+        public static bool HoldsCurrentAutoTarget(
+            bool currentStillAcquirable, bool sameClass, float currentDistance, float candidateDistance,
+            float heldSeconds, float stickinessMeters, float minDwellSeconds)
+        {
+            if (!currentStillAcquirable) return false;
+            if (!sameClass) return false;
+            if (heldSeconds < minDwellSeconds) return true;
+            return candidateDistance > currentDistance - Mathf.Max(0f, stickinessMeters);
+        }
+
+        /// <summary>
+        /// WO-1734 — would <paramref name="cand"/> still be ACQUIRED by
+        /// <see cref="NearestCandidateOfClass"/> right now? The stickiness may only hold a target
+        /// the selection itself would still accept.
+        /// </summary>
+        /// <remarks>
+        /// ⛔ `_candidates.Contains(...)` ALONE IS NOT THE TEST, and getting that wrong is a real
+        /// bug rather than a nicety. `RebuildCandidates` applies only `_acquireRange` + faction +
+        /// line-of-sight; the selection body applies TWO more gates on top — the WO-1105 R2
+        /// `AutoEngageRange()` ring and the DEF-269 forward arc. Holding on `Contains` alone means:
+        /// acquire wall A, turn 180 degrees, and A is still "held" while standing BEHIND the hero,
+        /// which is precisely the spam-at-your-back that DEF-269's own header says this method
+        /// returns null to prevent — and it would bite hardest while turning inside a raid gate,
+        /// the exact moment this ticket exists to fix. For a ranged class it would also hold a foe
+        /// inside `_acquireRange` but outside the authored engage range.
+        /// </remarks>
+        private bool IsStillAutoAcquirable(IDamageable cand)
+        {
+            if (cand == null || (cand as UnityEngine.Object) == null || !cand.IsAlive) return false;
+            if (!_candidates.Contains(cand)) return false;
+
+            Vector3 me = transform.position;
+            float engage = AutoEngageRange();
+            if ((cand.WorldPosition - me).sqrMagnitude > engage * engage) return false;
+
+            Vector3 fwd = transform.forward;
+            fwd.y = 0f;
+            if (fwd.sqrMagnitude <= 0.0001f) return true;   // degenerate facing -> don't gate (as the body does)
+            fwd.Normalize();
+
+            Vector3 to = cand.WorldPosition - me;
+            to.y = 0f;
+            if (to.sqrMagnitude < 0.0001f) return true;     // on top of the hero -> in range
+            return Vector3.Dot(fwd, to.normalized) >= _facingDot;
+        }
+
+        // Apply HoldsCurrentAutoTarget to the frame's raw pick. The held target must still be a
+        // target the SELECTION would accept (IsStillAutoAcquirable — range + engage ring + arc), so
+        // a dead, departed, out-of-engage or behind-the-hero foe can never be held by stickiness.
+        private IDamageable ApplyAutoSwitchHysteresis(IDamageable pick)
+        {
+            if (ReferenceEquals(pick, _autoPick))
+                return pick;
+
+            if (_autoPick != null && pick != null)
+            {
+                bool held = IsStillAutoAcquirable(_autoPick);
+                bool sameClass = (_autoPick is IDamageableStructure) == (pick is IDamageableStructure);
+                Vector3 me = transform.position;
+                if (held && HoldsCurrentAutoTarget(
+                        true, sameClass,
+                        Vector3.Distance(_autoPick.WorldPosition, me),
+                        Vector3.Distance(pick.WorldPosition, me),
+                        Time.time - _autoPickAt,
+                        _autoSwitchStickinessMeters, _autoSwitchMinDwellSeconds))
+                {
+                    DeNelle.Core.Diagnostics.FlowTrace.Throttle("Reticle", "auto-switch-held", 2f,
+                        "AUTO SWITCH HELD - keeping the current target; the rival is not closer by more than "
+                        + _autoSwitchStickinessMeters.ToString("0.##") + "m and the hold is "
+                        + (Time.time - _autoPickAt).ToString("0.##") + "s old (WO-1734 anti-oscillation).");
+                    return _autoPick;
+                }
+            }
+
+            _autoPick = pick;
+            _autoPickAt = Time.time;
+            return pick;
+        }
+
         // DEF-269: the AUTO target is the nearest candidate the hero is FACING. _candidates
         // is sorted nearest-first, so walk it and return the first one inside the forward arc.
         // Returns null when every hostile in range is behind the hero — so running away ends
         // the engagement instead of letting the hero spam attacks at a target at their back.
         // (Manual Tab-locks are applied in Update/LateUpdate before this is ever consulted.)
-        private IDamageable NearestCandidate()
+        //
+        // WO-1734: `unitsOnly` is the ONLY change to this body — one `continue`, below. With it
+        // false the method is byte-for-byte the DEF-269 / WO-1105 R2 rule it has always been.
+        private IDamageable NearestCandidateOfClass(bool unitsOnly)
         {
             Vector3 me = transform.position;
             Vector3 fwd = transform.forward;
@@ -1185,10 +1364,19 @@ namespace DeNelle.Village
                 // NRE (owner F8 2026-06-30, ×8/frame in the Dungeon). Cast to UnityEngine.Object so the
                 // == overload catches the dead object, and skip it.
                 if (cand == null || (cand as UnityEngine.Object) == null || !cand.IsAlive) continue;
+                // WO-1734: the unit-first pass. Same classifier as the troop side
+                // (TroopController.IsHostileStructure) — walls/gates/towers/spire dual-implement
+                // IDamageableStructure; pure hostile units do not.
+                if (unitsOnly && cand is IDamageableStructure) continue;
                 // R2 range gate. _candidates is sorted nearest-first, so the first one out of
                 // engage range means every remaining one is too — stop, do not auto-acquire.
                 if ((cand.WorldPosition - me).sqrMagnitude > engageSqr)
                 {
+                    // WO-1734: the unit-first pass returning null is NORMAL (the all-classes pass
+                    // runs next), so it must not print "auto-acquire HELD" — that line means the
+                    // hero acquired nothing at all, and a false one would send the next triage
+                    // hunting a range bug that is not there.
+                    if (unitsOnly) return null;
                     DeNelle.Core.Diagnostics.FlowTrace.Throttle("Reticle", "auto-out-of-range", 2f,
                         "auto-acquire HELD: nearest hostile is "
                         + Vector3.Distance(cand.WorldPosition, me).ToString("0.##")

@@ -411,6 +411,7 @@ namespace DeNelle.Editor
             if (!StructureSeatRegression.Run(out var seatReason)) failures.Add(seatReason); else log.AppendLine("[structure-seat] " + seatReason);
             if (!StructureRemovalHuskRegression.Run(out var removalHuskReason)) failures.Add(removalHuskReason); else log.AppendLine("[removal-husk] " + removalHuskReason);
             if (!StructureFeedbackRegression.Run(out var structFeedbackReason)) failures.Add(structFeedbackReason); else log.AppendLine("[structure-feedback] " + structFeedbackReason);
+            if (!WallDurabilityRegression.Run(out var wallDurabilityReason)) failures.Add(wallDurabilityReason); else log.AppendLine("[wall-durability] " + wallDurabilityReason);
             if (!StructureCadenceRegression.Run(out var cadenceReason)) failures.Add(cadenceReason); else log.AppendLine("[structure-cadence] " + cadenceReason);
             if (!StructureLoadBoundedRegression.Run(out var loadBoundedReason)) failures.Add(loadBoundedReason); else log.AppendLine("[structure-load-bounded] " + loadBoundedReason);
             if (!DeNelle.Editor.Regression.StructureFactoryResidencyRetryRegression.Run(out var residencyRetryReason)) failures.Add(residencyRetryReason); else log.AppendLine("[structure-factory-residency-retry] " + residencyRetryReason);
@@ -745,6 +746,11 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "dynamic-difficulty suite", () => { if (!DeNelle.Editor.Regression.DynamicDifficultyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[dynamic-difficulty] " + r); });
             // --- raid arena shape: footprint is a real fraction of the plane (the 2.4% square can never return), the spire is reachable by the HERO's seam, navmesh present ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-arena-shape suite", () => { if (!DeNelle.Editor.Regression.RaidArenaShapeRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-arena-shape] " + r); });
+            // WO-1732 — EVERY raid config the catalog names must have a generated scene on disk, enabled in build
+            // settings, carrying the CURRENT clad partition (one Ruin_Wall_* per Wall_*). BuildAllRaidScenes used a
+            // hardcoded 3-id list that omitted iron_bastion, so RaidBase_IronBastion froze at 210 walls / 0 ruins:
+            // the owner's top tier went walk-through-with-no-destroyed-visual (F8 seq 5245, build 2026.09.15.370203).
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-scene-coverage suite", () => { if (!DeNelle.Editor.Regression.RaidSceneCoverageRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-scene-coverage] " + r); });
             // WO-1520 — the raid STAGING area: the marker is measured against every turret's reach and every
             // defender's awareness radius, and the 180s clock cannot advance before first engagement.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-staging suite", () => { if (!DeNelle.Editor.Regression.RaidStagingMarkerRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-staging] " + r); });
@@ -1109,6 +1115,7 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "aggro-leash suite", () => { if (!DeNelle.Editor.AggroLeashRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[aggro-leash] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "dungeon-cam-958 suite", () => { if (!DeNelle.Editor.DungeonCameraTightRoomRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[dungeon-cam-958] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "camera-wall-occlusion suite", () => { if (!DeNelle.Editor.Regression.CameraWallOcclusionRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[camera-wall-occlusion] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "hero-unit-over-wall suite", () => { if (!DeNelle.Editor.Regression.HeroUnitOverWallTargetingRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[hero-unit-over-wall] " + r); });
             // --- WO-2001: the Manage screen graph - a prerequisite JUMP returns to its ORIGIN (ruling 28)
             // while a plain BROWSE returns to its tree parent, Manage opens ON a tab (the launcher chooser
             // is retired), and there is exactly ONE Manage art loader. Registered by the COMMITTER, not by
