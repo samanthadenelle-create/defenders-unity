@@ -61,7 +61,7 @@ namespace DeNelle.Village
             !string.IsNullOrEmpty(name) && (
                 name == "Village" || name.StartsWith("Village") || name.Contains("Village") ||
                 name.Contains("Castle") || name.Contains("MainCastle") || name.Contains("CastleHub") ||
-                DeNelle.Core.HubScenes.IsRaid(name)
+                DeNelle.Core.HubScenes.IsRaid(name) || name == DeNelle.Core.SceneRouter.OwnedTownIronBastion || name == DeNelle.Core.Combat.PracticeCombatPolicy.SceneName
             );
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -321,6 +321,8 @@ namespace DeNelle.Village
             // keeps the DontDestroyOnLoad instance), which is exactly what we want here: the
             // baked composed Keeper has no HeroAbilities, the carried town hero does.
             bool carriedSeam = DeNelle.Core.HubScenes.IsRaid(scene)
+                            || scene == DeNelle.Core.SceneRouter.OwnedTownIronBastion
+                            || scene == DeNelle.Core.Combat.PracticeCombatPolicy.SceneName
                             || DeNelle.Core.HubScenes.IsComposedDungeon(scene);
             if (hero != null && carriedSeam
                 && hero.transform.root.gameObject.scene.name == "DontDestroyOnLoad")
@@ -725,8 +727,10 @@ namespace DeNelle.Village
             body.name = "HeroBody";
             body.transform.SetParent(go.transform, false);
 
-            // Drop the primitive collider so HeroLocomotion's CapsuleCast can't
-            // self-block (it sweeps against OTHER colliders for walls).
+            // Drop the primitive collider so it doesn't block the hero. In a raid the NAVMESH is the
+            // only thing that blocks the hero - colliders do not stop her movement (HeroLocomotion is a
+            // kinematically driven NavMeshAgent with NoObstacleAvoidance, containing zero Physics/Raycast
+            // /CapsuleCast references; see HeroLocomotion.cs:1488-1489, :999).
             var col = body.GetComponent<Collider>();
             if (col != null) Destroy(col);
 

@@ -189,7 +189,27 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-14 (CLI, hundred-and-eightieth pass): main line next free = **1723**.
+> ## RECONCILED 2026-09-14 (CLI, hundred-and-eighty-first pass): main line next free = **1724**.
+> *(CLI minted **1723** 2026-09-14 - the ROOT CAUSE behind the owner's whole Breach complaint, and it
+> RETIRES the framing of both 1721 and 1722. The wall the player SEES (`Zone_Clad/Clad_*`,
+> `RaidBaseDresser.cs:527`, colliders stripped at `:557`) is a root-level SIBLING of the `WallSegment`,
+> not a child. So the two systems that must treat a wall as destructible both walk the wrong hierarchy
+> and both silently no-op on it: `RaidNavBake.cs:69-76` exempts only
+> `GetComponentInParent<WallSegment>()`, so all **60/60** clad panels are flagged `NavigationStatic` and
+> BAKED INTO THE NAVMESH as permanent geometry (measured on the shipped scene at `0e656756e`) - a
+> collapsed segment lifts only the redundant runtime carve and the baked hole stays FOREVER; and
+> `WallSegment.CollapseRoutine`'s `GetComponentsInChildren<Renderer>` (`:436`) can only sink the
+> segment's own meshes, which `RaidBaseDresser.HideWallRenderers:485-496` already DISABLED - so the
+> sink moves invisible geometry and the visible wall never changes. Measured: **645/656** breach probes
+> read `holeNavmesh=NOT-WALKABLE>0.60m`; `straightLine=2.1m` vs `pathLength=29.4m`; troops frozen at
+> `dist=32.0m moved=0.00m/s commanded=4.0 agent=onNavMesh`; owner screenshot reads **Razed 28% with an
+> unbroken wall**. `RaidNavBake.cs:154-156` and `WallSegment.cs:475-477` EACH name this exact outcome in
+> advance - the instrumentation was right, it was never read. Also caught: the three raid scenes in the
+> working tree carry **0** NavMeshObstacles (regenerated 18:27, `BakeAll` never re-run) - ship-blocking.
+> Lane A (navmesh) dispatched; Lane B (visual) HELD on an owner ruling, because the ring carries 78
+> segments vs 60 clad panels. Bumped 1723 -> 1724 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-14 (CLI, hundred-and-eightieth pass): main line next free = **1723**.
 > *(CLI minted **1722** 2026-09-14 from a live device capture during the owner's own on-device Breach
 > testing: `Wall_Outer_SE_17` in raid `raider_camp_small` (Regular tier - the SAME tier the WO-1719/1720
 > headed proof called fully clean, 0/78 mismatches) shows a live collider/renderer mismatch far larger

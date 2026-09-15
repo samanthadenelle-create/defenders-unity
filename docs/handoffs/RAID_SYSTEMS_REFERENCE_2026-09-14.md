@@ -176,6 +176,16 @@ check against (`WallSegment.cs:543-544`). This is deliberately unlike `RaidSpire
 "Enemy" layer to be sweep-findable — walls must never leave "Structure," or towers would shoot through
 them (`WallSegment.cs:30-39`).
 
+### Correction — 2026-09-14, WO-1723 Lane A
+
+The statement above ("Walls are not baked into the navmesh") is true of the `WallSegment` GameObject but
+**false of the visible wall** — the `Zone_Clad` ring of clad panels is a sibling of the segments and was
+being baked into the navmesh as permanent geometry (measured at commit `0e656756e`: 60/60 visible panels
+flagged `NavigationStatic`). WO-1723 Lane A (`RaidNavBake.cs` lines 66–77 extended) excludes clad
+descendants from the `NavigationStatic` marking pass via `IsUnderCladZone()`, so the ground beneath the
+visible wall now bakes walkable and a collapsed segment's carve-drop actually opens a hole for troops
+and the hero.
+
 ---
 
 # PART 2 — Raid AI & Troop Targeting

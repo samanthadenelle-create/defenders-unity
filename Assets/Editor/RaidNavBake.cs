@@ -43,6 +43,23 @@ namespace DeNelle.Editor
         private const float  GroundScale = 14f;   // Legacy approach MINIMUM; measured enclosing walls can extend it.
         private const string BoundaryName = "ArenaBoundary_Ring";
         private const string GroundMaterials = "Assets/Generated/RaidGround";
+        private const string CladZoneName = "Zone_Clad";
+
+        /// <summary>
+        /// Checks if a transform (or any of its parents up the chain) is named CladZoneName.
+        /// Used to identify renderer objects that live under Zone_Clad — the visible wall ring
+        /// that must be excluded from NavigationStatic so the ground beneath it bakes walkable.
+        /// </summary>
+        private static bool IsUnderCladZone(Transform t)
+        {
+            while (t != null)
+            {
+                if (t.name == CladZoneName)
+                    return true;
+                t = t.parent;
+            }
+            return false;
+        }
 
         [MenuItem("Defenders/Castle/Bake Raid NavMeshes")]
         public static void BakeAll()
@@ -60,7 +77,10 @@ namespace DeNelle.Editor
 
                 // Mark all renderers + terrains NavigationStatic so the legacy bake includes them
                 // (ground bakes walkable; vertical walls/towers carve out as obstacles).
+                // The visible raid wall (Zone_Clad ring) must also be excluded so the ground beneath it
+                // bakes walkable; WallSegment.Collapse's carve-drop then actually opens a hole (WO-1723).
                 int marked = 0;
+                int cladExcluded = 0;
                 foreach (var root in scene.GetRootGameObjects())
                 {
                     foreach (var r in root.GetComponentsInChildren<Renderer>(true))
@@ -68,13 +88,20 @@ namespace DeNelle.Editor
                         if (r == null) continue;
                         var flags = GameObjectUtility.GetStaticEditorFlags(r.gameObject);
                         bool destructible = r.GetComponentInParent<WallSegment>() != null ||
-                            r.GetComponentInParent<DefenseTower>() != null;
+                            r.GetComponentInParent<DefenseTower>() != null ||
+                            IsUnderCladZone(r.transform);
                         GameObjectUtility.SetStaticEditorFlags(r.gameObject, destructible
                             ? flags & ~StaticEditorFlags.NavigationStatic
                             : flags | StaticEditorFlags.NavigationStatic);
+                        if (destructible && IsUnderCladZone(r.transform))
+                            cladExcluded++;
                         marked++;
                     }
                 }
+
+                // Report clad exclusion so the fix is auditable.
+                if (cladExcluded > 0)
+                    Debug.Log("[RaidNavBake] " + name + ": " + cladExcluded + " clad renderer(s) EXCLUDED from NavigationStatic - the ground under the visible wall now bakes walkable, so WallSegment.Collapse's carve-drop actually opens a hole.");
 
                 UnityEditor.AI.NavMeshBuilder.ClearAllNavMeshes();
                 UnityEditor.AI.NavMeshBuilder.BuildNavMesh();
