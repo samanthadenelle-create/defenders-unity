@@ -111,6 +111,57 @@ walls"*) removes that cause.** The FIRST thing this lane must do is capture a ra
 | `routeOpen=True` still never appears | The hole opens for the hero but not for `NavMesh.CalculatePath` | RCA that first — do NOT "fix" the phase machine to paper over a pathing gap |
 | `routeOpen=True` appears but troops keep hitting the wall anyway | A real defect in `AllowNonObjectiveStructure` / `PickBucket` | Fix THAT, cite the line |
 
+### ✅ THE CAPTURE HAS BEEN RUN — 2026-09-14 20:26, build `2026.09.15.370139`, Seeker `SM02G4061955851`
+
+`logs/device/post-lane-a-370139/logcat_full.txt` (238,048 lines), pulled after the owner played a raid
+on the Lane A build and confirmed *"i can now walk through destroyed walls"*.
+
+**LANE A WORKED, AND IT IS MEASURED — wall probes only (`BREACH: structure 'Wall_`), 261 of them:**
+
+| `holeNavmesh=` | Before Lane A (09-14 captures) | After Lane A | |
+|---|---|---|---|
+| `WALKABLE` | 11 | **166** | |
+| `NOT-WALKABLE` | 645 | 95 | |
+| **walkable rate** | **1.7 %** | **64 %** | the fix is real |
+
+(16 further probes are `RaidSpire` deaths, excluded — the spire's own footprint reading NOT-WALKABLE is
+expected and irrelevant. Counting them in would have overstated the result; they were separated
+deliberately.)
+
+**BUT RULING 2 IS *NOT* SATISFIED. This lands on the BAD branch of the table above:**
+
+```
+routeOpen=True  : 0        (out of 2,670 samples)
+routeOpen=False : 2670
+routeObj=PathPartial : 2470
+routeObj=no-spire    : 200
+```
+
+`routeOpen=True` **still never occurs**, so `ResolvePhase` still never leaves `Breach`, so troops still
+grind the wall after it is open — exactly the behaviour the owner reported. The phase machine is not at
+fault; it is being handed `PathPartial` every single time.
+
+**Therefore, per this ticket's own table: RCA the pathing gap FIRST. Do NOT add a rule.**
+
+### The two residuals are probably ONE cause — treat them together
+
+1. **95 of 261 breaches still read `NOT-WALKABLE`** (36 %).
+2. **`NavMesh.CalculatePath` to the spire never returns `PathComplete`.**
+
+A ring in which roughly a third of breached panels stay sealed is a ring an agent cannot path through,
+which is sufficient to explain `PathPartial` forever. The leading hypothesis — **UNPROVEN, and it must
+be measured, not assumed** — is the **78-segments-vs-60-clad-panels partition mismatch** (WO-1723 §11.4):
+the carving obstacle is sized from the `WallSegment`'s own `BoxCollider`, so it clears only that
+segment's narrow footprint, while the visible panel it belongs to is wider. Killing one segment opens
+less than one panel's width of navmesh.
+
+⚠ **WO-1723 Lane B is already implementing the owner's Q1 ruling — the panel-matched (~4 m / 60-segment)
+repartition — which is precisely the change that would close this.** So:
+
+> **RE-MEASURE AFTER LANE B LANDS AND ITS RE-BAKE RUNS, BEFORE COSTING ANY WORK ON THIS TICKET.**
+> Re-run the two greps above. If `routeOpen=True` starts appearing and the NOT-WALKABLE share collapses,
+> ruling 2 is satisfied for free and this half of the ticket closes with a regression pin and no code.
+
 ⛔ **Do not implement a new "stop attacking walls after a breach" rule before running that capture.**
 Adding a second mechanism on top of a working one is how this system got two wall hierarchies in the
 first place (WO-1723). §12: static reading locates, captured data concludes.
