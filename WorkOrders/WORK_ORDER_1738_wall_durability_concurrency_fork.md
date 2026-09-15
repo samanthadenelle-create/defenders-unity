@@ -1,6 +1,7 @@
 # WORK ORDER 1738 — Wall durability: the concurrency fork (tough walls vs. the Breach order)
 
-**Status: RULED 2026-09-15 — BRANCH B + 10% reluctant fallback; Breach is a PERSISTENT STANCE that auto-chains. Implementation lane dispatched as WO-1746 (RaidAssaultAi / TroopController silo). This ruling ALSO settles WO-1730 §3 Q2 (explicit Breach order vs units-first): Breach is a stance the player toggles, units-first is the default inside it.**
+**Status:** READY TO IMPLEMENT — RULED 2026-09-15: BRANCH B + 10% reluctant fallback; Breach is a PERSISTENT STANCE that auto-chains. Implementation lane dispatched as WO-1746 (RaidAssaultAi / TroopController silo); this ticket closes when 1746 lands and the owner felt-tests. This ruling ALSO settles WO-1730 §3 Q2 (explicit Breach order vs units-first): Breach is a stance the player toggles, units-first is the default inside it.
+*(Board note: an earlier edit wrote `**Status: RULED ...**` — a label the board builder does not recognize and a colon outside the bold — which produced `BOARD_CHECK_FAIL 1 unlabeled`. Corrected to the exact `**Status:** <label>` form; "ruled" is recorded in prose, never as a status.)*
 
 > **RULING RECORD (owner, 2026-09-15, via decision prompt, after the DeepSeek packet
 > `logs/debug/DEEPSEEK_PACKET_wall_durability_fork.md` and its verified answer):**
