@@ -238,8 +238,18 @@ namespace DeNelle.Editor
                 else FlowTrace.Step("WorldMerge", "navMeshData already an asset (updated in place).");
             });
 
+            // ⛔ WO-1731 — THIS IS THE SCENE THE DEFECT SHIPPED IN. Main_Castle_Overworld's
+            // surface was re-baked and its navmesh asset replaced, the scene was NOT written
+            // back, and the saved scene kept the guid of the asset that no longer existed: the
+            // town had no navmesh, HeroLocomotion fell through to `transform.position += step`
+            // (HeroLocomotion.cs:1488-1489) and the hero walked through every wall. Nothing on
+            // screen said so. A bake that cannot persist its own reference THROWS
+            // (RaidNavBake.cs:109-111).
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            if (!EditorSceneManager.SaveScene(scene))
+                throw new System.InvalidOperationException(
+                    "[WorldMerge] could not save navigation for " + MergedScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             FlowTrace.Step("WorldMerge", "BAKE DONE — one continuous navmesh saved + scene saved. Continuous walk: castle floor -> " +
                 "inner ring (y=0) -> natural terrain; no seam, no warp.");

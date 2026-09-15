@@ -274,6 +274,14 @@ namespace DeNelle.Editor
         {
             EditorSceneManager.MarkSceneDirty(scene);
             bool saved = EditorSceneManager.SaveScene(scene, path);
+            // WO-1731: BakeAndVerify wrote this scene's navmesh reference. A save that silently
+            // failed would leave the scene pointing at a navmesh that is not there, and the
+            // scene would ship with nothing constraining anything -- with no error on screen.
+            // A bake that cannot persist its own reference THROWS (RaidNavBake.cs:109-111).
+            if (!saved)
+                throw new System.InvalidOperationException(
+                    "[DungeonChainBuilder] could not save navigation for " + path +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             EnsureInBuildSettings(path);
             // NOTE (proven by data 2026-06-30): in BATCHMODE, EditorSceneManager.SaveScene writes a

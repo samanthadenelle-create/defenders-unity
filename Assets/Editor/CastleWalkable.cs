@@ -94,8 +94,17 @@ namespace DeNelle.Editor
             EnsureHeroControllable(hero);
 
             // --- 7. Save. ---
+            // WO-1731: a bake that cannot PERSIST its own navmesh reference must THROW, not
+            // warn. The bake at step 6a writes a navmesh asset and rewrites the scene's
+            // m_NavMeshData; if the scene is never written back, the asset on disk and the
+            // reference in the scene diverge and the scene ships with NO navmesh -- silently,
+            // because HeroLocomotion falls back to raw transform movement off-mesh. Same
+            // shape as RaidNavBake.cs:109-111.
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene, CastleScenePath);
+            if (!EditorSceneManager.SaveScene(scene, CastleScenePath))
+                throw new System.InvalidOperationException(
+                    "[CastleWalkable] could not save navigation for " + CastleScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
 
             Vector3 p = hero.transform.position;
             Log($"CASTLE_WALKABLE_OK heroAt=({p.x:F2}, {p.y:F2}, {p.z:F2})");

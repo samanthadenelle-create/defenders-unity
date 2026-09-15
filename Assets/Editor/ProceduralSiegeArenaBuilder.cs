@@ -240,8 +240,14 @@ namespace DeNelle.Editor
             // Add + configure a NavMeshSurface on the venue root, then bake the plate once.
             BakeVenueNavMesh(root);
 
+            // WO-1731: BakeVenueNavMesh above wrote the surface's m_NavMeshData. If this save
+            // silently fails the scene points at a navmesh it never persisted and ships with
+            // nothing walkable, with no error on screen. THROW (RaidNavBake.cs:109-111).
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene, ArenaScenePath);
+            if (!EditorSceneManager.SaveScene(scene, ArenaScenePath))
+                throw new InvalidOperationException(
+                    "[ProceduralSiegeArenaBuilder] could not save navigation for " + ArenaScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             // ⛔ DELIBERATELY NOT CALLING EnsureInBuildSettings() - WO-1689, 2026-09-10.
             //
             // This line used to run, and the FIRST time this bake was ever executed it put

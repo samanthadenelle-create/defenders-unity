@@ -145,8 +145,15 @@ namespace DeNelle.Editor
 
             LeanBakeNavMeshSurfaces();   // bake-only: collects the doorjamb colliders, NO BuildInnerWallRing / floor / structure rebuild
 
+            // WO-1731: LeanBakeNavMeshSurfaces() above re-pointed every surface's m_NavMeshData
+            // and deleted the asset each one replaced. If the scene is not written back, the
+            // saved scene keeps the DELETED guid and ships with no navmesh at all -- silently.
+            // A bake that cannot persist its own reference THROWS (RaidNavBake.cs:109-111).
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
-            UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+            if (!UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes())
+                throw new System.InvalidOperationException(
+                    "[CastleWallsFromRecipe] could not save navigation for " + scenePath +
+                    " -- the lean re-bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             Debug.Log("[CastleWallsFromRecipe] T-WALLCOL apply DONE (clean, no inner ring): invisible gate doorjambs + lean re-bake. 5m doorway.");
         }

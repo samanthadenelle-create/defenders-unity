@@ -2039,6 +2039,7 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "seating-preview-shield suite", () => { if (!DeNelle.Editor.Regression.SeatingPreviewShieldRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[seating-preview-shield] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "screen-orientation suite", () => { if (!DeNelle.Editor.Regression.ScreenOrientationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[screen-orientation] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "admin-panel-scale suite", () => { if (!DeNelle.Editor.Regression.AdminPanelScaleRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[admin-panel-scale] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "navmesh-reference suite", () => { if (!DeNelle.Editor.Regression.NavMeshReferenceRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[navmesh-reference] " + r); });
 
             // =====================================================================
             //  >>> REGISTERED ORACLE SUITES — END FENCE <<<  (new lines go ABOVE)

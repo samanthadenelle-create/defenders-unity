@@ -209,7 +209,14 @@ namespace DeNelle.Editor
             // 8. Count children + save.
             int childCount = hostGo.GetComponentsInChildren<Transform>(true).Length - 1;
             EditorSceneManager.MarkSceneDirty(scene);
+            // WO-1731: a bake whose scene is never written back leaves the scene pointing at the
+            // navmesh the bake replaced -- which ships as NO navmesh, silently. THROW, do not log
+            // `saved=False` into a wall of text nobody reads (RaidNavBake.cs:109-111).
             bool saved = EditorSceneManager.SaveScene(scene, ProScenePath);
+            if (!saved)
+                throw new System.InvalidOperationException(
+                    "[CastleBuilderTester] could not save navigation for " + ProScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
 
             log.AppendLine("---- Prefab resolution ----");
             log.AppendLine("RESOLVED: " + (resolved.Count > 0 ? string.Join(", ", resolved) : "(none)"));
@@ -532,7 +539,12 @@ namespace DeNelle.Editor
             // 8. Count children + save.
             int childCount = hostGo.GetComponentsInChildren<Transform>(true).Length - 1;
             EditorSceneManager.MarkSceneDirty(scene);
+            // WO-1731: see the ProScenePath save -- an unsaved post-bake scene ships with no navmesh.
             bool saved = EditorSceneManager.SaveScene(scene, OutpostScenePath);
+            if (!saved)
+                throw new System.InvalidOperationException(
+                    "[CastleBuilderTester] could not save navigation for " + OutpostScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
 
             log.AppendLine("---- Prefab resolution ----");
             log.AppendLine("RESOLVED: " + (resolved.Count > 0 ? string.Join(", ", resolved) : "(none)"));
@@ -674,7 +686,12 @@ namespace DeNelle.Editor
             // 8. Count children + save.
             int childCount = hostGo.GetComponentsInChildren<Transform>(true).Length - 1;
             EditorSceneManager.MarkSceneDirty(scene);
+            // WO-1731: see the ProScenePath save -- an unsaved post-bake scene ships with no navmesh.
             bool saved = EditorSceneManager.SaveScene(scene, EnemyOutpostScenePath);
+            if (!saved)
+                throw new System.InvalidOperationException(
+                    "[CastleBuilderTester] could not save navigation for " + EnemyOutpostScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
 
             log.AppendLine("---- Prefab resolution ----");
             log.AppendLine("RESOLVED: " + (resolved.Count > 0 ? string.Join(", ", resolved) : "(none)"));
@@ -894,7 +911,12 @@ namespace DeNelle.Editor
             // 8. Count children + save.
             int childCount = hostGo.GetComponentsInChildren<Transform>(true).Length - 1;
             EditorSceneManager.MarkSceneDirty(scene);
+            // WO-1731: see the ProScenePath save -- an unsaved post-bake scene ships with no navmesh.
             bool saved = EditorSceneManager.SaveScene(scene, DungeonScenePath);
+            if (!saved)
+                throw new System.InvalidOperationException(
+                    "[CastleBuilderTester] could not save navigation for " + DungeonScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
 
             log.AppendLine("---- Prefab resolution ----");
             log.AppendLine("RESOLVED: " + (resolved.Count > 0 ? string.Join(", ", resolved) : "(none)"));

@@ -51,8 +51,15 @@ namespace DeNelle.Editor
                 Debug.Log("[CastleTroopWallNav] TROOP_WALL_NAV_FAIL :: no NavMeshSurface produced data — nothing to walk on.");
                 return;
             }
+            // WO-1731: BakeSurfaces() rewrote each NavMeshSurface's m_NavMeshData. If the scene
+            // is not written back the reference is lost and the scene keeps pointing at the
+            // asset the bake replaced -- which ships as NO navmesh, with nothing on screen
+            // saying so. A bake that cannot persist its own reference THROWS (RaidNavBake.cs:109-111).
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            if (!EditorSceneManager.SaveScene(scene))
+                throw new InvalidOperationException(
+                    "[CastleTroopWallNav] could not save navigation for " + ScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             Debug.Log($"[CastleTroopWallNav] baked {baked} surface(s) + saved scene.");
 

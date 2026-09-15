@@ -1,6 +1,6 @@
 # WORK ORDER 1731 — A NavMeshSurface bake can silently DELETE the town's navmesh and leave the scene pointing at nothing
 
-**Status: READY TO IMPLEMENT**
+**Status:** DONE — 4a + 4b implemented 2026-09-14, awaiting the lead's gate run; §5 Q1 deliberately untouched (owner's call, not this lane's); see `WORK_ORDER_1731_navmesh_surface_bake_orphans_the_town_navmesh.RESULT.md`
 **Minted:** 2026-09-14, after the owner's F8 flags seq 5231 / 5232 / 5239 (camera inside a town wall,
 `Main_Castle_Overworld`) were root-caused to this, and after she asked directly: *"what about the rename?
 Noone should have renamed it that i know of"* — **she is right, nobody renamed anything.** See §2.

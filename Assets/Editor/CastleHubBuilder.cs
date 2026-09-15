@@ -1700,8 +1700,15 @@ namespace DeNelle.Editor
                 }
             }
 
+            // WO-1731: the bake above re-pointed every surface's m_NavMeshData and deleted the
+            // asset each replaced. An unsaved scene keeps the DELETED guid and ships with NO
+            // navmesh -- silently. A bake that cannot persist its own reference THROWS
+            // (RaidNavBake.cs:109-111).
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            if (!EditorSceneManager.SaveScene(scene))
+                throw new System.InvalidOperationException(
+                    "BATCH-BAKE: could not save navigation for the castle hub scene -- the bake would " +
+                    "leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             Log("BATCH-BAKE: saved scene + assets. Done.");
         }
@@ -1819,9 +1826,14 @@ namespace DeNelle.Editor
                 }
             }
 
-            // 5. Save scene + assets.
+            // 5. Save scene + assets. WO-1731: an unsaved post-bake scene keeps the guid of the
+            //    asset the bake deleted and ships with NO navmesh, silently. THROW instead
+            //    (RaidNavBake.cs:109-111).
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            if (!EditorSceneManager.SaveScene(scene))
+                throw new System.InvalidOperationException(
+                    "BATCH-RECIPE: could not save navigation for the castle hub scene -- the bake would " +
+                    "leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             Log("BATCH-RECIPE: saved scene + assets.");
 
@@ -1867,9 +1879,14 @@ namespace DeNelle.Editor
 
             BakeAllCastleSurfacesAndPersist("REWIRE-REBAKE");
 
-            // 3. Save scene + assets.
+            // 3. Save scene + assets. WO-1731: an unsaved post-bake scene keeps the guid of the
+            //    asset the bake deleted and ships with NO navmesh, silently. THROW instead
+            //    (RaidNavBake.cs:109-111).
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            if (!EditorSceneManager.SaveScene(scene))
+                throw new System.InvalidOperationException(
+                    "REWIRE-REBAKE: could not save navigation for the castle hub scene -- the bake would " +
+                    "leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             Log("REWIRE-REBAKE: saved scene + assets.");
 
@@ -2195,8 +2212,14 @@ namespace DeNelle.Editor
             Log("BRIDGE-SEAM: nav floor rebuilt (Floor_Bridge_Nav collected into the bake set).");
             BakeAllCastleSurfacesAndPersist("BRIDGE-SEAM");
 
+            // WO-1731: BakeAllCastleSurfacesAndPersist re-pointed m_NavMeshData; an unsaved scene
+            // keeps the deleted guid and ships with NO navmesh, silently. THROW
+            // (RaidNavBake.cs:109-111).
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            if (!EditorSceneManager.SaveScene(scene))
+                throw new System.InvalidOperationException(
+                    "BRIDGE-SEAM: could not save navigation for the castle hub scene -- the bake would " +
+                    "leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             Log("BRIDGE-SEAM: saved scene + assets.");
 
