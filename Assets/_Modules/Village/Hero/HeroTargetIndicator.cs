@@ -132,7 +132,36 @@ namespace DeNelle.Village
             {
                 // Pick the nearest hostile from a fresh scan (CurrentTarget may be stale this frame).
                 RebuildCandidates();
-                target = _candidates.Count > 0 ? _candidates[0] : (_locked ?? CurrentTarget);
+
+                // ⛔ WO-1756: THIS BRANCH PICKS FOR HER, so the wall ruling binds here too. An engage
+                // press with no explicit target used to take `_candidates[0]` flat — and with the
+                // garrison dead that index is a wall panel, which is the owner's complaint
+                // (*"i auto target the wall, i should need to select it"*) wearing a different hat.
+                // Same predicate as the reticle's own selection, deliberately NOT a second copy of
+                // the rule: `unitsOnly: false` because this is an engage press, not the WO-1734
+                // unit-first pass — it may still take a tower, a gate or the raid spire, exactly as
+                // it always could. Only WallSegment is skipped.
+                //
+                // ⚠ CycleTarget is intentionally NOT filtered: it steps one target per press and the
+                // player SEES what she landed on, so it IS selecting — and it is the keyboard/pad
+                // route to a wall. Filtering it too would leave a wall reachable only by a raycast
+                // tap, a worse trap than the one this WO fixes.
+                target = null;
+                for (int i = 0; i < _candidates.Count; i++)
+                {
+                    var c = _candidates[i];
+                    if (c == null || (c as UnityEngine.Object) == null || !c.IsAlive) continue;
+                    if (!AutoAcquireAdmits(c is WallSegment, c is IDamageableStructure, false)) continue;
+                    target = c;   // _candidates is sorted nearest-first, so the first admitted one wins
+                    break;
+                }
+
+                // DEGRADE, never "pick index 0 anyway": with ONLY walls in range this leaves `target`
+                // null and falls back to what the player already chose herself (`_locked`) or the
+                // auto reticle's own pick (`CurrentTarget`, which after WO-1756 can never be a wall).
+                // If those are null too, target stays null and the guard below RETURNS — the engage
+                // press is a no-op with no lock and no exception, rather than handing her masonry.
+                if (target == null) target = _locked ?? CurrentTarget;
             }
             if (target == null || !target.IsAlive) return;   // nothing to lock — stay auto-nearest
             _locked = target;
@@ -374,6 +403,10 @@ namespace DeNelle.Village
         private IDamageable _autoPick;        // the auto target currently held by the hysteresis
         private float       _autoPickAt;      // Time.time the hysteresis last CHANGED _autoPick
         private IDamageable _tracedAutoPick;  // last pick NAMED in the trace, so it logs on change only
+        // WO-1756: how many WallSegments the selection refused during the CURRENT NearestCandidate()
+        // call. Reset at the top of that method, read by its AUTO PICK trace, so a "no target" line
+        // can say WHY it is empty instead of leaving the next triage to guess at a range bug.
+        private int _wallsRefusedThisPick;
         private readonly List<IDamageable> _candidates = new List<IDamageable>();
         private readonly List<Enemy> _enemyBuf = new List<Enemy>(64);   // TargetManager scratch
 
@@ -1180,7 +1213,14 @@ namespace DeNelle.Village
 
         /// <summary>
         /// WO-1734 — the hero gets the SAME rule the owner already gave the troops: any acquirable
-        /// hostile UNIT outranks a wall, always. Walls stay targetable when no unit is available.
+        /// hostile UNIT outranks a wall, always.
+        ///
+        /// ⚠ WO-1756 SUPERSEDED THE SECOND HALF OF THAT SENTENCE. It used to read "Walls stay
+        /// targetable when no unit is available", and after WO-1756 that is FALSE for AUTO-acquire:
+        /// with the garrison dead the all-classes fallback was the only branch left, so the reticle
+        /// snapped to masonry, and the owner ruled *"i auto target the wall, i should need to
+        /// select it"*. A wall is now never AUTO-acquired at all. It stays fully targetable by TAP —
+        /// a different path entirely (see <see cref="AutoAcquireAdmits"/>).
         /// </summary>
         /// <remarks>
         /// Owner ruling 2026-09-15, restating her WO-1730 ruling for the hero: *"should never
@@ -1213,6 +1253,8 @@ namespace DeNelle.Village
         /// </remarks>
         private IDamageable NearestCandidate()
         {
+            _wallsRefusedThisPick = 0;   // WO-1756: per-call, read by the traces below
+
             // ── THE GATE: a unit first, if any unit at all is acquirable this frame. ──
             var pick = NearestCandidateOfClass(unitsOnly: true);
             bool unitWon = pick != null;
@@ -1227,7 +1269,10 @@ namespace DeNelle.Village
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Reticle",
                     "AUTO PICK '" + (pmb != null ? pmb.gameObject.name.Replace("(Clone)", "").Trim() : "none")
                     + "' WHY=" + (pick == null
-                        ? "no acquirable hostile in the engage arc"
+                        ? (_wallsRefusedThisPick > 0
+                            ? _wallsRefusedThisPick + " wall(s) REFUSED (WO-1756: walls are select-only, "
+                              + "the player must tap one); no other acquirable hostile in the engage arc"
+                            : "no acquirable hostile in the engage arc")
                         : unitWon
                             ? "unit-over-wall (WO-1734 priority gate: a hostile UNIT was acquirable)"
                             : "nearest (no unit acquirable; "
@@ -1236,6 +1281,49 @@ namespace DeNelle.Village
             }
 
             return pick;
+        }
+
+        /// <summary>
+        /// WO-1756 — may the AUTO selection admit a candidate of this class? Pure and static so the
+        /// rule is pinned by arithmetic rather than by a scene. TRUE = the selection may pick it.
+        /// </summary>
+        /// <remarks>
+        /// Owner ruling 2026-09-15: ***"i auto target the wall, i should need to select it"***.
+        ///
+        /// ⛔ THIS PREDICATE GOVERNS **AUTO-ACQUIRE ONLY**, AND THAT SEPARATION IS THE WHOLE TICKET.
+        /// The danger in "a wall may not be acquired" is that the same rule, applied one frame later
+        /// to a target the player CHOSE, would spit the wall straight back out. It cannot, because
+        /// the manual hold is a structurally different path that never calls this method:
+        ///
+        ///   * LateUpdate resolves `CurrentTarget = _locked ?? NearestCandidate()`. `??` SHORT-CIRCUITS:
+        ///     while a tap-lock lives, <see cref="NearestCandidateOfClass"/> — the only caller of this
+        ///     predicate — is not executed at all.
+        ///   * The ONLY per-frame validation of `_locked` is LateUpdate's three-place clear allow-list:
+        ///     `!_locked.IsAlive || !_candidates.Contains(_locked)`. `_candidates` comes from
+        ///     RebuildCandidates (acquire range + faction + line-of-sight), which WO-1756 did NOT touch,
+        ///     so a wall is still a full member of that list and a held wall still passes.
+        ///   * A tap sets `_locked` from PickEnemyAtScreenPoint's raycast (TryLockAtScreenPoint), never
+        ///     from the selection body.
+        ///   * <see cref="IsStillAutoAcquirable"/> — the other place a target is re-tested — has exactly
+        ///     one caller, the auto hysteresis, and is applied to `_autoPick`, never to `_locked`.
+        ///
+        /// So there was no shared predicate to split: the refusal lives on the auto branch only, by
+        /// construction. A regression pins that this method is referenced in exactly two places (here
+        /// and its single call site) precisely so a future edit cannot quietly wire it into the hold.
+        ///
+        /// ⚠ SCOPE — the owner ruled on WALLS, not on structures. <paramref name="isWall"/> is
+        /// `cand is WallSegment` and nothing else: towers, gates and the raid spire all implement
+        /// IDamageableStructure and stay AUTO-acquirable, exactly as before, behind the unchanged
+        /// WO-1734 unit-first gate.
+        /// </remarks>
+        /// <param name="isWall">the candidate is a <see cref="WallSegment"/> (select-only, WO-1756).</param>
+        /// <param name="isStructure">the candidate implements IDamageableStructure (WO-1734 classifier).</param>
+        /// <param name="unitsOnly">this is the WO-1734 unit-first pass.</param>
+        public static bool AutoAcquireAdmits(bool isWall, bool isStructure, bool unitsOnly)
+        {
+            if (isWall) return false;                      // WO-1756: never auto-acquired, either pass
+            if (unitsOnly && isStructure) return false;    // WO-1734: the unit-first pass
+            return true;
         }
 
         /// <summary>
@@ -1264,11 +1352,21 @@ namespace DeNelle.Village
         }
 
         /// <summary>
-        /// WO-1734 — would <paramref name="cand"/> still be ACQUIRED by
-        /// <see cref="NearestCandidateOfClass"/> right now? The stickiness may only hold a target
-        /// the selection itself would still accept.
+        /// WO-1734 — is <paramref name="cand"/> still inside the selection's POSITIONAL gates
+        /// (candidate list + engage ring + forward arc)? The stickiness may only hold a target the
+        /// selection would still positionally accept.
         /// </summary>
         /// <remarks>
+        /// ⚠ WO-1756 narrowed what this claims. It used to say "would cand still be ACQUIRED by
+        /// NearestCandidateOfClass right now"; that is no longer true word-for-word, because the
+        /// selection now also applies the CLASS gate <see cref="AutoAcquireAdmits"/>, which this
+        /// method deliberately does NOT re-apply. It is moot rather than a hole: this method is only
+        /// ever called on `_autoPick`, and after WO-1756 `_autoPick` can never be a wall in the first
+        /// place. It is stated plainly here because a comment that overclaims is how the next seat
+        /// mis-diagnoses (CLAUDE.md's "comments lie"). ⛔ Do NOT "fix" it by calling
+        /// AutoAcquireAdmits here — this method is reached from the auto path today, but wiring the
+        /// class gate into a HOLD test is the first step toward the hold dropping a player's pick.
+        ///
         /// ⛔ `_candidates.Contains(...)` ALONE IS NOT THE TEST, and getting that wrong is a real
         /// bug rather than a nicety. `RebuildCandidates` applies only `_acquireRange` + faction +
         /// line-of-sight; the selection body applies TWO more gates on top — the WO-1105 R2
@@ -1338,8 +1436,15 @@ namespace DeNelle.Village
         // the engagement instead of letting the hero spam attacks at a target at their back.
         // (Manual Tab-locks are applied in Update/LateUpdate before this is ever consulted.)
         //
-        // WO-1734: `unitsOnly` is the ONLY change to this body — one `continue`, below. With it
-        // false the method is byte-for-byte the DEF-269 / WO-1105 R2 rule it has always been.
+        // WO-1734 added `unitsOnly` as one `continue`; WO-1756 folded that `continue` into the pure
+        // AutoAcquireAdmits predicate and added the wall refusal to it. The nearest-wins body BELOW
+        // the admit check is still byte-for-byte the DEF-269 / WO-1105 R2 rule it has always been —
+        // the admission gate sits in front of it, it does not restructure it.
+        //
+        // ⚠ THIS METHOD IS THE AUTO PATH ONLY. The player's tap lock (`_locked`) never reaches it:
+        // LateUpdate computes `CurrentTarget = _locked ?? NearestCandidate()`, and `??` short-circuits,
+        // so while a tap-lock lives this body is not even called. That is WHY the wall refusal here
+        // cannot drop a wall the player CHOSE — see AutoAcquireAdmits' remarks.
         private IDamageable NearestCandidateOfClass(bool unitsOnly)
         {
             Vector3 me = transform.position;
@@ -1364,10 +1469,40 @@ namespace DeNelle.Village
                 // NRE (owner F8 2026-06-30, ×8/frame in the Dungeon). Cast to UnityEngine.Object so the
                 // == overload catches the dead object, and skip it.
                 if (cand == null || (cand as UnityEngine.Object) == null || !cand.IsAlive) continue;
-                // WO-1734: the unit-first pass. Same classifier as the troop side
-                // (TroopController.IsHostileStructure) — walls/gates/towers/spire dual-implement
-                // IDamageableStructure; pure hostile units do not.
-                if (unitsOnly && cand is IDamageableStructure) continue;
+                // WO-1734 (the unit-first pass) and WO-1756 (a wall is NEVER auto-acquired) are the
+                // SAME question — "may the selection admit this candidate?" — so both are decided by
+                // one pure static, AutoAcquireAdmits. It is pure precisely so a regression can pin
+                // the rule by arithmetic instead of needing a live hero, a live wall and a camera.
+                // The unit/structure half keeps the troop-side classifier verbatim
+                // (TroopController.IsHostileStructure): walls/gates/towers/spire dual-implement
+                // IDamageableStructure; pure hostile units do not. The wall half is narrower ON
+                // PURPOSE — `is WallSegment`, not `is IDamageableStructure` — because the owner
+                // ruled on WALLS. Towers, gates and the raid spire stay auto-acquirable.
+                bool candIsWall = cand is WallSegment;
+                if (!AutoAcquireAdmits(candIsWall, cand is IDamageableStructure, unitsOnly))
+                {
+                    // Trace the WALL refusal only, and only on the all-classes pass: the unit pass
+                    // skipping every structure is normal bookkeeping, and this body runs every
+                    // LateUpdate, so Throttle (not Step) — a per-frame Step here floods the device
+                    // logcat ring and evicts the very evidence it was added to capture (CLAUDE.md §12).
+                    // ⚠ Only the FIRST wall of the pass builds a string. FlowTrace.Throttle takes an
+                    // already-CONCATENATED message, so the caller pays the allocation even on a
+                    // throttled frame — and a raid puts dozens of wall panels inside acquire range,
+                    // every LateUpdate. The count of the rest rides the AUTO PICK line instead, which
+                    // is deduped by _tracedAutoPick and costs nothing per frame.
+                    if (candIsWall && !unitsOnly && ++_wallsRefusedThisPick == 1)
+                    {
+                        var wmb = cand as MonoBehaviour;
+                        DeNelle.Core.Diagnostics.FlowTrace.Throttle("Reticle", "wall-refused-auto", 2f,
+                            "WALL REFUSED for auto-acquire - '"
+                            + (wmb != null ? wmb.gameObject.name.Replace("(Clone)", "").Trim() : "wall")
+                            + "' at " + Vector3.Distance(cand.WorldPosition, me).ToString("0.##")
+                            + "m is SELECT-ONLY (WO-1756, owner ruling: 'i auto target the wall, i should "
+                            + "need to select it'). A player TAP still locks it - the manual lock path "
+                            + "never consults this predicate - but the reticle will never CHOOSE it.");
+                    }
+                    continue;
+                }
                 // R2 range gate. _candidates is sorted nearest-first, so the first one out of
                 // engage range means every remaining one is too — stop, do not auto-acquire.
                 if ((cand.WorldPosition - me).sqrMagnitude > engageSqr)
@@ -1378,10 +1513,16 @@ namespace DeNelle.Village
                     // hunting a range bug that is not there.
                     if (unitsOnly) return null;
                     DeNelle.Core.Diagnostics.FlowTrace.Throttle("Reticle", "auto-out-of-range", 2f,
-                        "auto-acquire HELD: nearest hostile is "
+                        "auto-acquire HELD: nearest AUTO-ACQUIRABLE hostile is "
                         + Vector3.Distance(cand.WorldPosition, me).ToString("0.##")
                         + "m away, outside the primary's authored engage range "
-                        + engage.ToString("0.##") + "m (WO-1105 R2 - closing the distance IS the cue).");
+                        + engage.ToString("0.##") + "m (WO-1105 R2 - closing the distance IS the cue)"
+                        // WO-1756: say it, because a refused wall 2m away makes the distance above
+                        // read like a range bug that is not there.
+                        + (_wallsRefusedThisPick > 0
+                            ? "; " + _wallsRefusedThisPick + " nearer wall(s) were REFUSED as select-only (WO-1756)"
+                            : string.Empty)
+                        + ".");
                     return null;
                 }
                 if (!gate) return cand;   // can't determine facing → nearest wins
