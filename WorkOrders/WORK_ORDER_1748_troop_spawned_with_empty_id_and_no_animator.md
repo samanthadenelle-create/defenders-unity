@@ -1,6 +1,6 @@
 # WORK ORDER 1748 — A troop spawns with an EMPTY id and no Animator under its root (frozen body on device)
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED, NOT YET GATED
 **Minted:** 2026-09-15 by the lead, from the owner's felt-test on the Seeker (tester build `2026.09.15.371127`, scene `RaidBase_IronBastion`).
 **Silo:** `Assets/_Modules/Village/Troops/TroopFactory.cs` (spawn/bind order) and the troop art address it resolved. ⛔ `TroopController.cs` and `RaidAssaultAi.cs` are WO-1746's silo — read them, do not edit them unless the fix is provably there, and then say so.
 

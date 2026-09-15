@@ -39,6 +39,14 @@
 //       survives it, and the automatic rule picks the next panel at full damage.
 //   11. the STANCE (not the standing order) is what releases the rally march.
 //   12. all of it is on the LIVE path, including the Attack() gate placement.
+// WO-1752 (owner, 2026-09-15 felt-test) then REVERSED part of the above and added 13-16:
+//   13. ruling 1 - a non-siege troop with NO stance picks NO wall (-1), a tower is still
+//       legal, and the stance re-opens the panel. Cases 7 and 9 were AMENDED for this:
+//       7's third assertion was inverted (it demanded the wall) and 9 now demands 0.00.
+//   14. ruling 2 - "Siege still hits walls on its own", with and without the stance.
+//   15. ruling 3 - an idle troop adopts the hero's live attacker; a busy one does not;
+//       and adoption still cannot break an armed Breach stance (WO-1746 sec.4 stands).
+//   16. WO-1752 on the live path, including that the adoption runs BEFORE PickBucket.
 //
 // RED PROOF: delete the `if (explicitFocus != null && explicitFocus.IsAlive) return
 // explicitFocus;` early return in RaidAssaultAi.SelectFocusBreach and cases 2 and 4
@@ -322,6 +330,11 @@ namespace DeNelle.Editor
         //      attack walls at full damage. A warband that is BLOCKED (no route to the objective)
         //      with no Breach active attacks the nearest blocking wall at 10% structural damage,
         //      so it never idles into a dead-end."
+        //      ⛔ THE LAST SENTENCE OF RULING 1 IS RETIRED BY WO-1752 (2026-09-15). The owner
+        //      watched it ship and overruled it: "we need to set it so that the troops 100%
+        //      ignore walls, unless explicitly told breach". Kept verbatim above rather than
+        //      edited, because the cases below are what enforce the NEW rule and a doctored
+        //      quote would make case 7's inverted assertion look like a bug. See cases 13-16.
         //   2. "Breach is a persistent stance that auto-chains. One tap = 'we are breaching';
         //      when the ordered wall falls the warband keeps opening walls (today's self-clear ->
         //      most-damaged/nearest behaviour is KEPT) until the player toggles Breach off or a
@@ -363,6 +376,11 @@ namespace DeNelle.Editor
                 Case_StanceAutoChains_WhenTheOrderedWallFalls(failures, log);
                 Case_StanceReleasesTheRallyMarch(failures, log);
                 Case_RulingWiredIntoTheLivePath(failures, log);
+                // WO-1752 — the owner's 2026-09-15 felt-test rulings.
+                Case_WallsOff_NonSiegeWithoutStancePicksNoWall(failures, log);
+                Case_SiegeStillTakesTheWall(failures, log);
+                Case_IdleTroopAdoptsTheHerosAttacker(failures, log);
+                Case_WO1752WiredIntoTheLivePath(failures, log);
             }
             finally
             {
@@ -396,19 +414,29 @@ namespace DeNelle.Editor
                 failures.Add(Tag + " a non-siege troop with a REACHABLE defender must take the unit, " +
                              "not the wall (bucket " + routeOpen + ")");
 
-            // The deliberate exception, stated so it cannot be mistaken for a miss: an UNREACHABLE
-            // unit does NOT win. WO-1438's whole finding is that steering at a foe through an
-            // intact wall freezes the troop on a navmesh edge - strictly worse than chewing. That
-            // troop is the ruling's BLOCKED warband, and it takes the wall at 10% (case 9), which
-            // is the anti-dead-end clause working, not units-first failing.
+            // ⛔ WO-1752 REVERSED THE THIRD ASSERTION THAT USED TO STAND HERE. It read:
+            //   "an UNREACHABLE unit does NOT win ... that troop is the ruling's BLOCKED warband,
+            //    and it takes the wall at 10% (case 9)"
+            // and asserted `unreachable == 2`. The owner watched that ship and overruled it on
+            // 2026-09-15: "we need to set it so that the troops 100% ignore walls, unless
+            // explicitly told breach". A blocked, stance-less, non-siege troop now takes NOTHING.
+            // The assertion is INVERTED rather than deleted, because the old behaviour coming back
+            // is the exact regression the owner is watching for.
+            //
+            // ⚠ The wall is still passed as hasOtherStruct: true AND otherStructIsWall: true on
+            // purpose - the candidate is still SEEN (it still prints as has[wall=True] on device);
+            // what changed is that it is REFUSED. A case that proved the refusal by not offering a
+            // wall would prove nothing.
             int unreachable = RaidAssaultAi.PickBucket(
                 RaidAssaultPhase.Breach, preferStructures: false, hasUnit: true,
                 hasObjective: false, hasOtherStruct: true,
-                unitInAttackRange: false, routeToUnitOpen: false, breachStance: false);
-            if (unreachable != 2)
-                failures.Add(Tag + " a blocked troop whose only foe is UNREACHABLE must still take " +
-                             "the wall (at 10%), never idle - bucket " + unreachable);
-            log.AppendLine("   reachable defender beats the wall; unreachable one falls back to it");
+                unitInAttackRange: false, routeToUnitOpen: false, breachStance: false,
+                otherStructIsWall: true);
+            if (unreachable == 2)
+                failures.Add(Tag + " WO-1752: a stance-less non-siege troop took the WALL (bucket 2) " +
+                             "- the retired 10% reluctant fallback is back. Owner ruling: troops " +
+                             "100% ignore walls unless explicitly told breach");
+            log.AppendLine("   reachable defender beats the wall; unreachable one now takes NO wall");
         }
 
         // ── 7b. (b) The stance holds the warband on the panel ───────────────────
@@ -426,7 +454,12 @@ namespace DeNelle.Editor
             int stanceWall = RaidAssaultAi.PickBucket(
                 RaidAssaultPhase.Breach, preferStructures: false, hasUnit: true,
                 hasObjective: false, hasOtherStruct: true,
-                unitInAttackRange: true, routeToUnitOpen: true, breachStance: true);
+                unitInAttackRange: true, routeToUnitOpen: true, breachStance: true,
+                // WO-1752 strengthens this case: the candidate is declared to BE a wall, so the
+                // assertion now also proves the new MayTargetWall gate lets the stance through.
+                // Before, it passed with otherStructIsWall defaulted to false, i.e. against a
+                // candidate the new gate never inspects.
+                otherStructIsWall: true);
             if (stanceWall != 2)
                 failures.Add(Tag + " with the Breach STANCE armed a non-aggro'd defender must not " +
                              "pull the warband off the panel (bucket " + stanceWall + ")");
@@ -448,11 +481,18 @@ namespace DeNelle.Editor
         {
             log.AppendLine("-- Case_WallDamageMultiplier_TheTenPercentRuling");
 
-            float reluctant = RaidAssaultAi.WallDamageMultiplier(
+            // ⛔ WO-1752: THIS ASSERTION USED TO DEMAND 0.10 AND NOW DEMANDS 0.00. The owner
+            // retired the reluctant fallback outright on 2026-09-15 after watching seven troops
+            // chew masonry at wallDmgMult=0.10 while her hero died (device logcat 09-15 13:40:59).
+            // The zero is a BACKSTOP, not the fix - RaidAssaultAi.MayTargetWall / PickBucket are
+            // what stop the troop walking to the panel at all, and Case "WallsOff" below is the
+            // one that proves THAT. This line exists so a future seat cannot restore the 10% by
+            // "fixing" a number, and so the device token reads 0.00.
+            float noStance = RaidAssaultAi.WallDamageMultiplier(
                 preferStructures: false, breachStance: false);
-            if (Mathf.Abs(reluctant - 0.1f) > 0.0001f)
-                failures.Add(Tag + " a blocked, stance-less, non-siege troop must hit the wall at " +
-                             "10% structural damage (owner ruling 1) - got " + reluctant);
+            if (Mathf.Abs(noStance) > 0.0001f)
+                failures.Add(Tag + " WO-1752: a stance-less non-siege troop must land ZERO wall " +
+                             "damage (the 10% reluctant fallback is retired) - got " + noStance);
 
             float underStance = RaidAssaultAi.WallDamageMultiplier(
                 preferStructures: false, breachStance: true);
@@ -468,12 +508,19 @@ namespace DeNelle.Editor
                 failures.Add(Tag + " SIEGE hits walls at full damage REGARDLESS of the stance " +
                              "(got " + siegeNoStance + " / " + siegeStance + ")");
 
-            // The constant has exactly one home; a call site that re-types 0.1f is the duplicated
-            // state CLAUDE.md sec.2/sec.5/sec.16 each record as this repo's most expensive bug class.
-            if (Mathf.Abs(RaidAssaultAi.ReluctantWallDamageMultiplier - 0.1f) > 0.0001f)
-                failures.Add(Tag + " RaidAssaultAi.ReluctantWallDamageMultiplier is no longer the " +
-                             "owner's 10%");
-            log.AppendLine("   0.10 reluctant / 1.00 under stance / 1.00 siege either way");
+            // WO-1752: the assertion that used to pin RaidAssaultAi.ReluctantWallDamageMultiplier
+            // == 0.1f is GONE because the constant is gone. The predicate that replaced it is
+            // pinned instead - one home, as before, just a different shape.
+            if (RaidAssaultAi.MayTargetWall(preferStructures: false, breachStance: false))
+                failures.Add(Tag + " WO-1752: MayTargetWall said a stance-less non-siege troop may " +
+                             "target a wall - the owner's 'troops 100% ignore walls' is undone");
+            if (!RaidAssaultAi.MayTargetWall(preferStructures: true, breachStance: false))
+                failures.Add(Tag + " WO-1752: SIEGE must keep targeting walls with no stance - " +
+                             "owner, same minute: 'Siege still hits walls on its own'");
+            if (!RaidAssaultAi.MayTargetWall(preferStructures: false, breachStance: true))
+                failures.Add(Tag + " WO-1752: an armed Breach stance must let any troop target the " +
+                             "wall - that is what the button means");
+            log.AppendLine("   0.00 without stance / 1.00 under stance / 1.00 siege either way");
         }
 
         // ── 7d. (e) The stance auto-chains past the panel it just felled ────────
@@ -551,8 +598,8 @@ namespace DeNelle.Editor
             else
             {
                 if (controller.IndexOf("RaidAssaultAi.WallDamageMultiplier(", StringComparison.Ordinal) < 0)
-                    failures.Add(Tag + " TroopController never calls WallDamageMultiplier - the 10% " +
-                                 "ruling is a pure rule with no caller");
+                    failures.Add(Tag + " TroopController never calls WallDamageMultiplier - the wall " +
+                                 "damage ruling is a pure rule with no caller");
                 if (controller.IndexOf("rallySet, arrivedAtRally, peelThreat, breachStance",
                         StringComparison.Ordinal) < 0)
                     failures.Add(Tag + " the rally march is no longer released by the STANCE - the " +
@@ -593,6 +640,220 @@ namespace DeNelle.Editor
                 failures.Add(Tag + " nothing ARMS the breach stance - the Breach button no longer " +
                              "declares 'we are breaching' and every troop stays reluctant");
             log.AppendLine("   multiplier, stance arm, rally release and SWING trace all on the live path");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // WO-1752 — owner rulings from the IronBastion felt-test, 2026-09-15.
+        //   1. "we need to set it so that the troops 100% ignore walls, unless explicitly told
+        //      breach"  -> the WO-1746 10% reluctant fallback is DELETED, not tuned.
+        //   2. Same minute, on the catapult: "Siege still hits walls on its own."
+        //   3. "they are running around attacking walls while i am getting damaged and killed"
+        //      -> a hostile damaging the HERO is acquirable by every troop regardless of its own
+        //      sweep radius. Flagged in WO-1752 as the lead's reading, owner to veto.
+        //
+        // RED PROOF for each case is named on the case itself. What was EXECUTED rather than
+        // reasoned is recorded in WORK_ORDER_1752...RESULT.md - do not read a red proof written
+        // here as a run that happened.
+        // ═══════════════════════════════════════════════════════════════════════
+
+        // ── 13. Ruling 1: walls are OFF for a non-siege troop without the stance ─
+        private static void Case_WallsOff_NonSiegeWithoutStancePicksNoWall(
+            List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- Case_WallsOff_NonSiegeWithoutStancePicksNoWall");
+            // The owner's exact situation, in arguments: Breach phase, no stance, no siege, no
+            // unit this troop can reach, nothing but a blocking wall in front of it. WO-1746
+            // answered 2 (the wall, at 10%). WO-1752 answers -1: the troop stands.
+            int blocked = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: false, hasUnit: false,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: false, routeToUnitOpen: false, breachStance: false,
+                otherStructIsWall: true);
+            if (blocked != -1)
+                failures.Add(Tag + " WO-1752 ruling 1: a non-siege troop with NO stance must pick " +
+                             "NOTHING when the only candidate is a wall - got bucket " + blocked);
+
+            // ⭐ AND THE HALF THAT STOPS THIS BECOMING AN ACROSS-THE-BOARD MASONRY NERF. Bucket 2
+            // also carries TOWERS and gates, which WO-1746 sec.4B.3 records were never in the
+            // ruling (they keep full damage). A troop being shot by a tower must still be able to
+            // hit it back, so the refusal is scoped to the candidate's TYPE, not to the bucket.
+            // RED PROOF: change PickBucket's mayWall clause from `!otherStructIsWall ||
+            // MayTargetWall(...)` to a bare `MayTargetWall(...)` and this assertion fails while
+            // the one above still passes - which is precisely the over-reach it is here to catch.
+            int tower = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: false, hasUnit: false,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: false, routeToUnitOpen: false, breachStance: false,
+                otherStructIsWall: false);
+            if (tower != 2)
+                failures.Add(Tag + " WO-1752: the wall refusal must be scoped to WALL panels - a " +
+                             "TOWER is still a legal target for a stance-less troop (bucket " +
+                             tower + ")");
+
+            // The stance is the door back in, and it is the only one for a non-siege troop.
+            int stanced = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: false, hasUnit: false,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: false, routeToUnitOpen: false, breachStance: true,
+                otherStructIsWall: true);
+            if (stanced != 2)
+                failures.Add(Tag + " WO-1752: with the Breach stance ARMED the same troop must take " +
+                             "the wall - got bucket " + stanced);
+            log.AppendLine("   stance-less non-siege: wall refused (-1), tower still legal, stance re-opens it");
+        }
+
+        // ── 14. Ruling 2: the catapult is untouched ─────────────────────────────
+        private static void Case_SiegeStillTakesTheWall(List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- Case_SiegeStillTakesTheWall");
+            // Owner, verbatim, when asked whether the catapult follows ruling 1: "Siege still hits
+            // walls on its own." With AND without the stance, at FULL damage both ways.
+            int siegeNoStance = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: true, hasUnit: false,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: false, routeToUnitOpen: false, breachStance: false,
+                otherStructIsWall: true);
+            if (siegeNoStance != 2)
+                failures.Add(Tag + " WO-1752 ruling 2: SIEGE must still take the wall with no " +
+                             "stance - got bucket " + siegeNoStance);
+
+            // The one that would be missed by testing siege in isolation: a defender standing in
+            // the catapult's face must STILL not pull it off the masonry (WO-1746's siege rule).
+            int siegeWithDefender = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: true, hasUnit: true,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: true, routeToUnitOpen: true, breachStance: false,
+                otherStructIsWall: true);
+            if (siegeWithDefender != 2)
+                failures.Add(Tag + " WO-1752 must not have changed siege: a defender in range still " +
+                             "does not pull the catapult off the wall (bucket " + siegeWithDefender + ")");
+
+            float siegeMult = RaidAssaultAi.WallDamageMultiplier(
+                preferStructures: true, breachStance: false);
+            if (Mathf.Abs(siegeMult - 1f) > 0.0001f)
+                failures.Add(Tag + " WO-1752 ruling 2: siege wall damage must stay FULL - got " + siegeMult);
+            log.AppendLine("   siege takes the wall with and without the stance, at 1.00");
+        }
+
+        // ── 15. Ruling 3: the warband breaks off to whatever is hitting the hero ─
+        private static void Case_IdleTroopAdoptsTheHerosAttacker(
+            List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- Case_IdleTroopAdoptsTheHerosAttacker");
+            // The captured shape this is written from (WO-1752 evidence, device 09-15 13:55:29):
+            //   id=troop-shieldguard role=tank IDLE/RALLY: no acquirable hostile inside radius=12.0m
+            // - while the hero was being killed. hasUnitInOwnSweep=false + a live hero attacker.
+            if (!RaidAssaultAi.AdoptHeroAttacker(hasUnitInOwnSweep: false, heroAttackerLive: true))
+                failures.Add(Tag + " WO-1752 ruling 3: a troop with NOTHING in its own sweep must " +
+                             "adopt the hero's live attacker - the warband defends the player");
+
+            // A troop already fighting something of its own is NOT yanked across the map: that
+            // would thin the line the owner is standing in. WO-1752 states the rule in exactly
+            // those words ("A troop with no unit in its own radius but a live hero-attacker").
+            if (RaidAssaultAi.AdoptHeroAttacker(hasUnitInOwnSweep: true, heroAttackerLive: true))
+                failures.Add(Tag + " WO-1752 ruling 3: a troop with its own unit in range must keep " +
+                             "that fight, not break off to the hero's attacker");
+
+            if (RaidAssaultAi.AdoptHeroAttacker(hasUnitInOwnSweep: false, heroAttackerLive: false))
+                failures.Add(Tag + " WO-1752 ruling 3: with no live hero attacker there is nothing " +
+                             "to adopt");
+
+            // ⛔ THE HALF THIS CASE EXISTS FOR, AND IT IS WO-1746 sec.4 - DO NOT RE-LITIGATE IT.
+            // Adoption must NOT become a second thing that breaks an armed Breach stance; AGGRO
+            // (the Peel phase) stays the only one. Proven at the selector: an armed stance with an
+            // adopted unit present and even reachable still resolves the WALL, exactly as Case 8
+            // pins for a calm defender - because adoption changes hasUnit, never the phase.
+            int stanceHolds = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: false, hasUnit: true,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: true, routeToUnitOpen: true, breachStance: true,
+                otherStructIsWall: true);
+            if (stanceHolds != 2)
+                failures.Add(Tag + " WO-1752 must not have weakened the Breach stance: an adopted " +
+                             "hero-attacker is still just a unit, and the stance outranks it " +
+                             "(WO-1746 sec.4, bucket " + stanceHolds + ")");
+
+            // And with the stance OFF, the adopted attacker outranks the wall - which is the whole
+            // felt complaint, resolved: "running around attacking walls while i am getting killed".
+            int defendsHer = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: false, hasUnit: true,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: false, routeToUnitOpen: true, breachStance: false,
+                otherStructIsWall: true);
+            if (defendsHer != 0)
+                failures.Add(Tag + " WO-1752 ruling 3: with no stance, a reachable adopted attacker " +
+                             "must beat the wall - got bucket " + defendsHer);
+            log.AppendLine("   adopted when idle only; never breaks the stance; beats the wall without one");
+        }
+
+        // ── 16. WO-1752 is on the LIVE path, not just in the pure rules ─────────
+        private static void Case_WO1752WiredIntoTheLivePath(List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- Case_WO1752WiredIntoTheLivePath");
+            // The failure mode Case 12 exists for, applied to this ticket: a pure rule nothing
+            // calls passes every case above and ships nothing. WO-1752's ruling 3 is especially
+            // exposed to it - AdoptHeroAttacker is a two-line predicate that is trivially green
+            // and trivially unreferenced.
+            string ai = Read("Assets/_Modules/Village/Troops/RaidAssaultAi.cs");
+            if (ai == null)
+            {
+                failures.Add(Tag + " RaidAssaultAi.cs could not be read");
+            }
+            else if (ai.IndexOf("public const float ReluctantWallDamageMultiplier",
+                         StringComparison.Ordinal) >= 0)
+            {
+                failures.Add(Tag + " WO-1752: ReluctantWallDamageMultiplier is back. The owner " +
+                             "deleted the 10% path; re-adding the constant is how the fallback " +
+                             "returns one call site at a time");
+            }
+
+            string controller = Read("Assets/_Modules/Village/Troops/TroopController.cs");
+            if (controller == null)
+            {
+                failures.Add(Tag + " TroopController.cs could not be read");
+                log.AppendLine("   (skipped - controller unreadable)");
+                return;
+            }
+
+            if (controller.IndexOf("otherStructIsWall", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1752: TroopController never tells PickBucket whether the " +
+                             "masonry candidate IS a wall - the selector then treats every wall as " +
+                             "a tower and the ruling applies to nobody");
+            if (controller.IndexOf("nearestOtherStruct is WallSegment", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1752: the wall/not-wall verdict must be read off the LIVE " +
+                             "candidate (nearestOtherStruct is WallSegment), never assumed");
+            if (controller.IndexOf("HeroAggroTarget.Current", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1752 ruling 3: nothing reads HeroAggroTarget - the warband " +
+                             "still cannot see what is hitting the hero");
+            if (controller.IndexOf("RaidAssaultAi.AdoptHeroAttacker(", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1752 ruling 3: AdoptHeroAttacker is a pure rule with no " +
+                             "caller");
+            if (controller.IndexOf("heroAttacker='", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1752 sec.3: the RETARGET line carries no heroAttacker= " +
+                             "token - 'did the warband even know she was being hit' is unprovable " +
+                             "from a device log");
+            if (controller.IndexOf("mayWall=", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1752 sec.3: the AI line carries no mayWall= token - " +
+                             "has[wall=True] alone cannot tell a REFUSED panel from no panel");
+
+            // ⭐ THE ORDERING ASSERTION, AND IT IS THE ONE WITH TEETH. Adopting the hero's attacker
+            // AFTER the bucket has been picked changes nothing at all, compiles, traces correctly
+            // and ships a no-op. So the adoption must appear BEFORE the PickBucket call in the
+            // same file. RED PROOF: move the adoption block below the PickBucket call and this
+            // fails while every pure case above still passes.
+            int adoptAt = controller.IndexOf("RaidAssaultAi.AdoptHeroAttacker(", StringComparison.Ordinal);
+            int pickAt = controller.IndexOf("int bucket = RaidAssaultAi.PickBucket(", StringComparison.Ordinal);
+            if (adoptAt >= 0 && pickAt >= 0 && adoptAt > pickAt)
+                failures.Add(Tag + " WO-1752 ruling 3: the hero-attacker adoption runs AFTER the " +
+                             "bucket is picked - it cannot affect the choice and ships a no-op");
+
+            string publisher = Read("Assets/_Modules/Village/Troops/HeroAggroTarget.cs");
+            if (publisher == null)
+                failures.Add(Tag + " WO-1752: HeroAggroTarget.cs is missing - ruling 3 has no source");
+            else if (publisher.IndexOf("RaidAssaultAi.PeelHurtWindowSeconds", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1752: HeroAggroTarget minted its own hurt window instead of " +
+                             "reusing PeelHurtWindowSeconds - duplicated state (CLAUDE.md sec.2/5/16)");
+            log.AppendLine("   wall type, adoption, ordering, trace tokens and the publisher all on the live path");
         }
 
         private static string Read(string relative)

@@ -148,6 +148,9 @@ namespace DeNelle.Village
         // idle/rally line can say "there WAS a foe at 21 m, my radius is 14 m".
         private IDamageable _lastNearestAny;
         private float _lastNearestAnyDist = -1f;
+        // WO-1752 ruling 3: the hero's attacker THIS troop adopted on the last resolve, or null.
+        // A REFERENCE for the same reason as the fields above - the string is built at emit time.
+        private IDamageable _lastHeroAttacker;
         // Reused by TraceBreachProbe so the once-per-structure-kill path query allocates once.
         private NavMeshPath _breachPath;
         // WO-1569 - the cached foe's world position, recorded WHILE IT WAS STILL LIVE.
@@ -480,6 +483,73 @@ namespace DeNelle.Village
                 $"support={_isSupport} mask={_enemyMask.value} " +
                 $"agent={(_agent != null ? (_agent.isOnNavMesh ? "onNavMesh" : "OFF-NAVMESH") : "none")} " +
                 $"steering=Move(displacement) hasDestination={(_agent != null && _agent.hasPath)}");
+
+            // WO-1748: the animator verdict, now that this troop HAS A NAME. See the note in
+            // Awake for why it cannot be reported there.
+            ReportVisualVerdict();
+        }
+
+        /// <summary>
+        /// WO-1748 — reports the animator verdict cached in <see cref="Awake"/>, from
+        /// <see cref="Configure"/>, where <c>_troopId</c> / <c>_troopRole</c> are set.
+        ///
+        /// §12: splits "no animator" vs "no controller" vs "controller speaks a different
+        /// vocabulary" — the three distinct ways a troop ends up frozen — plus the SIEGE
+        /// carve-out below. One line per spawn.
+        ///
+        /// ⛔ SIEGE IS ANIMATOR-LESS BY DESIGN AND IS NOT A DEFECT. TroopFactory.Build skips
+        /// ApplyTroopAnimator for role "siege" (a siege machine is a prop, not a rig), and the
+        /// asset behind troop-catapult's model address "Structures/Catapult" —
+        /// Assets/StructureContent/Synty/Catapult.prefab — contains ZERO Animator components
+        /// (grep -c Animator returns 0, verified 2026-09-15). So a catapult reached the old
+        /// unconditional Fail on EVERY deploy and logged a ship-blocking-looking error for a
+        /// body that was working exactly as authored. That false alarm — with no id on it — is
+        /// what the owner's IronBastion captures were. Siege now reports Step, not Fail; if a
+        /// siege machine is ever given a real rig, that is a deliberate change and this branch
+        /// is where it gets revisited.
+        /// </summary>
+        private void ReportVisualVerdict()
+        {
+            if (_preferStructures) // role == "siege"
+            {
+                FlowTrace.Step("TroopVisual",
+                    $"id={_troopId} role={_troopRole}: SIEGE machine - animator-less BY DESIGN " +
+                    $"(TroopFactory skips the humanoid bind for role 'siege'); animator=" +
+                    $"{(_animator == null ? "none" : _animator.gameObject.name)}. Not a defect.");
+                return;
+            }
+
+            if (_animator == null)
+            {
+                FlowTrace.Fail("TroopVisual",
+                    $"id={_troopId} role={_troopRole}: NO Animator anywhere under the troop root - the body " +
+                    "cannot animate at all (model missing -> tinted-capsule fallback, or a rig-less prop was " +
+                    "skinned). The [Flow:TroopVisual] line one above this names the address that resolved.");
+            }
+            else if (_animator.runtimeAnimatorController == null)
+            {
+                FlowTrace.Fail("TroopVisual",
+                    $"id={_troopId} role={_troopRole}: Animator on '{_animator.gameObject.name}' has NO " +
+                    "runtimeAnimatorController at Awake - every parameter write is skipped for this troop's " +
+                    "whole life; it will slide/T-pose. TroopFactory.ApplyTroopAnimator must bind BEFORE " +
+                    "AddComponent<TroopController>().");
+            }
+            else if (!_hasSpeed)
+            {
+                FlowTrace.Fail("TroopVisual",
+                    $"id={_troopId} role={_troopRole}: controller '{_animator.runtimeAnimatorController.name}' " +
+                    "declares NO '" + AnimParams.Speed + "' parameter (params=" + DescribeParams(_animator) +
+                    ") - this troop will slide/T-pose. A vendor-pack controller (e.g. Supercyan " +
+                    "StrafeMovement) speaks a different vocabulary; bind a controller built to AnimParams.");
+            }
+            else
+            {
+                FlowTrace.Step("TroopVisual",
+                    $"id={_troopId} role={_troopRole}: driver armed on controller " +
+                    $"'{_animator.runtimeAnimatorController.name}' - Speed={_hasSpeed} Attack={_hasAttack} " +
+                    $"Cast={_hasCast} InCombat={_hasInCombat} Hit={_hasHit} Dead={_hasDead} " +
+                    $"useCastStrike={_useCastStrike}.");
+            }
         }
 
         private void Awake()
@@ -506,36 +576,16 @@ namespace DeNelle.Village
                 }
             }
 
-            // §12: split "no animator" vs "no controller" vs "controller speaks a different
-            // vocabulary" — the three distinct ways this troop ends up frozen. One line per spawn.
-            if (_animator == null)
-            {
-                FlowTrace.Fail("TroopVisual",
-                    $"id={_troopId}: NO Animator anywhere under the troop root - the body cannot animate at all " +
-                    "(model missing -> tinted-capsule fallback, or a rig-less prop was skinned).");
-            }
-            else if (_animator.runtimeAnimatorController == null)
-            {
-                FlowTrace.Fail("TroopVisual",
-                    $"id={_troopId}: Animator on '{_animator.gameObject.name}' has NO runtimeAnimatorController at " +
-                    "Awake - every parameter write is skipped for this troop's whole life; it will slide/T-pose. " +
-                    "TroopFactory.ApplyTroopAnimator must bind BEFORE AddComponent<TroopController>().");
-            }
-            else if (!_hasSpeed)
-            {
-                FlowTrace.Fail("TroopVisual",
-                    $"id={_troopId}: controller '{_animator.runtimeAnimatorController.name}' declares NO '" +
-                    AnimParams.Speed + "' parameter (params=" + DescribeParams(_animator) + ") - this troop " +
-                    "will slide/T-pose. A vendor-pack controller (e.g. Supercyan StrafeMovement) speaks a " +
-                    "different vocabulary; bind a controller built to AnimParams instead.");
-            }
-            else
-            {
-                FlowTrace.Step("TroopVisual",
-                    $"id={_troopId}: driver armed on controller '{_animator.runtimeAnimatorController.name}' " +
-                    $"- Speed={_hasSpeed} Attack={_hasAttack} Cast={_hasCast} InCombat={_hasInCombat} " +
-                    $"Hit={_hasHit} Dead={_hasDead} useCastStrike={_useCastStrike}.");
-            }
+            // §12 verdict USED TO BE REPORTED HERE and that was the defect WO-1748 found.
+            // The caching above MUST stay in Awake (bind-order law, see the header comment) —
+            // but the REPORTING cannot, because this Awake runs synchronously inside
+            // TroopFactory's AddComponent<TroopController>(), i.e. one line BEFORE Configure()
+            // assigns _troopId. So every line this block ever printed carried "id=" EMPTY, and
+            // eight device captures (seq 5057..5258, 2026-09-12..09-15) were unattributable:
+            // the instrument reported a frozen body and could not say whose. The verdict is now
+            // emitted from ReportVisualVerdict(), called at the END of Configure where _troopId,
+            // _troopRole and _preferStructures are all real. Nothing about WHAT is measured
+            // changed — only WHEN it is said, and it is now said with a name attached.
 
             _lastPosition = transform.position;
 
@@ -653,6 +703,11 @@ namespace DeNelle.Village
                         $"dist={_lastRunnerUpDist:F1}m | sweep colliders={_lastOverlapCount} " +
                         $"accepted[unit={_lastAcceptedUnits},struct={_lastAcceptedStructs}] rejected={_lastRejected} " +
                         $"radius={_huntScanRadius:F1}m preferStruct={_preferStructures} " +
+                        // WO-1752 ruling 3. This is the token that answers "did the warband even
+                        // KNOW she was being hit" - the question the 09-15 felt-test could not be
+                        // answered from, because an idle troop's only line said "no acquirable
+                        // hostile inside radius" and said nothing about the hero at all.
+                        $"heroAttacker='{DescribeTarget(_lastHeroAttacker)}' " +
                         // WO-1438 THE GATE'S OWN VERDICT. preferUnit=False with route=PathPartial
                         // beside a struct win is the wall still standing; preferUnit=True the tick
                         // after a segment dies is the breach being taken. Both are one read.
@@ -996,6 +1051,46 @@ namespace DeNelle.Village
             hasOtherStruct = nearestOtherStruct != null;
             hasStruct = hasObjective || hasOtherStruct;
 
+            // ── WO-1752 ruling 3 — DEFEND THE HERO ────────────────────────────────────────────
+            //
+            // Owner, verbatim, watching the tester build: "they are running around attacking walls
+            // while i am getting damaged and killed". The captured line that proves WHY they could
+            // not help her is in WO-1752's evidence block (device 09-15 13:55:29):
+            //   id=troop-shieldguard role=tank IDLE/RALLY: no acquirable hostile inside radius=12.0m
+            // The acquire sweep is a fixed ring around the TROOP, so a hostile eating the hero 20 m
+            // away is INVISIBLE to it and the troop falls through to the wall bucket. This is the
+            // one line that makes the hero's aggro count as the warband's.
+            //
+            // ⛔ peelThreat IS DELIBERATELY NOT RECOMPUTED, AND THAT IS WHAT KEEPS WO-1746 sec.4
+            // INTACT. Peel (aggro) is the ONE thing allowed to break an armed Breach stance, and
+            // re-deriving it from an adopted target would quietly add a second thing. It cannot
+            // fire here anyway: adoption only happens when this troop has NO unit in its own sweep
+            // (RaidAssaultAi.AdoptHeroAttacker), so the adopted body is by construction outside the
+            // acquire radius - 12 m for the shieldguard above - and PeelUnitLeashMeters is 6 m. The
+            // arithmetic is the guarantee; the omission is the guard.
+            //
+            // Under an armed stance the warband therefore STAYS on the panel (PickBucket's stance
+            // gates outrank a merely-acquirable unit - Case 8), which is exactly what WO-1752 asks
+            // for: "does NOT break an active Breach stance unless the existing AGGRO rule says so".
+            IDamageable heroAttacker = HeroAggroTarget.Current;
+            if (heroAttacker != null && !CombatFactionRules.MayAttack(SelfFaction, heroAttacker))
+                heroAttacker = null;
+            _lastHeroAttacker = null;
+            if (RaidAssaultAi.AdoptHeroAttacker(hasUnit, heroAttacker != null))
+            {
+                nearestUnitAny = heroAttacker;
+                Vector3 toAttacker = heroAttacker.WorldPosition - transform.position;
+                toAttacker.y = 0f;
+                // Measured from THIS troop, not from the hero: everything downstream
+                // (unitInAttackRange, the route refresh, the runner-up distance) is a
+                // troop-relative question, and seeding it with the hero's distance would make a
+                // troop standing on the attacker think it was 20 m away.
+                nearestUnitAnySqr = toAttacker.sqrMagnitude;
+                hasUnit = true;
+                unitInAttackRange = nearestUnitAnySqr <= _attackRange * _attackRange;
+                _lastHeroAttacker = heroAttacker;
+            }
+
             if (!_preferStructures && hasUnit && hasStruct && !unitInAttackRange)
             {
                 RefreshRouteToUnit(nearestUnitAny, Mathf.Sqrt(nearestUnitAnySqr));
@@ -1030,9 +1125,16 @@ namespace DeNelle.Village
                 _assaultPhase, _preferStructures, hasUnit, hasStruct,
                 unitInAttackRange, _routeToUnitOpen, breachStance);
 
+            // WO-1752: the 9th argument is the CANDIDATE'S TYPE, and PickBucket needs it because
+            // bucket 2 is "other masonry", not "wall" - towers and gates ride it too and were
+            // never in the owner's wall ruling (WO-1746 sec.4B.3). Passing the type lets the
+            // selector refuse a wall for a stance-less non-siege troop while leaving a tower
+            // that is shooting it perfectly targetable.
+            bool otherStructIsWall = nearestOtherStruct is WallSegment;
+
             int bucket = RaidAssaultAi.PickBucket(
                 _assaultPhase, _preferStructures, hasUnit, hasObjective, hasOtherStruct,
-                unitInAttackRange, _routeToUnitOpen, breachStance);
+                unitInAttackRange, _routeToUnitOpen, breachStance, otherStructIsWall);
 
             IDamageable winner;
             switch (bucket)
@@ -1057,7 +1159,10 @@ namespace DeNelle.Village
                 // troop swing at masonry, and how hard" is answerable from one line:
                 //   breachStance= the persistent stance (Breach armed OR a standing order)
                 //   blocked=      no route to the spire - the ruling's dead-end case
-                //   wallDmgMult=  1.00 (siege / stance) or 0.10 (the reluctant fallback)
+                //   wallDmgMult=  1.00 (siege / stance) or 0.00 (WO-1752: walls are OFF for a
+                //                 non-siege troop without the stance - the old 0.10 reluctant
+                //                 fallback is DELETED, not tuned; a 0.10 token on a fresh log is
+                //                 now proof the build predates this ticket)
                 // wallDmgMult is computed from the SAME RaidAssaultAi.WallDamageMultiplier call
                 // Attack() uses - one source, two readouts, so the log cannot disagree with the
                 // damage that actually lands.
@@ -1084,6 +1189,12 @@ namespace DeNelle.Village
                     $"breachStance={breachStance} stanceYield={stanceYield} " +
                     $"blocked={!_routeToObjectiveOpen} " +
                     $"wallDmgMult={tracedWallMult:F2} siege={_preferStructures} " +
+                    // WO-1752: mayWall is the RULING ITSELF, printed. has[wall=True] with
+                    // mayWall=False is the owner's "100% ignore walls" working - the panel was
+                    // seen and REFUSED - which a has[] token alone can no longer distinguish from
+                    // "there was no wall". wallIsWall names why mayWall could be True on a tower.
+                    $"mayWall={RaidAssaultAi.MayTargetWall(_preferStructures, breachStance)} " +
+                    $"otherStructIsWall={otherStructIsWall} " +
                     $"has[unit={hasUnit},obj={hasObjective},wall={hasOtherStruct}]");
             }
 

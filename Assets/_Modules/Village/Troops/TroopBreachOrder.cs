@@ -59,8 +59,13 @@ namespace DeNelle.Village
         /// <summary>
         /// WO-1746 — TRUE while the warband is "breaching": the Breach button is armed, OR an
         /// explicit order still stands. Siege aside, this is the single flag that decides whether
-        /// a troop hits a wall at full damage or at
-        /// <see cref="RaidAssaultAi.ReluctantWallDamageMultiplier"/>.
+        /// a troop may put a wall in its sights AT ALL - see
+        /// <see cref="RaidAssaultAi.MayTargetWall"/>.
+        /// ⚠ WO-1752 RETIRED THE MEMBER THIS LINE USED TO NAME. It read "...decides whether a
+        /// troop hits a wall at full damage or at ReluctantWallDamageMultiplier"; the owner
+        /// deleted the 10% path on 2026-09-15 ("troops 100% ignore walls, unless explicitly told
+        /// breach"), so the cref no longer resolved. Repointed in the same breath as the deletion
+        /// rather than left to warn (CLAUDE.md sec.15).
         /// </summary>
         /// <remarks>
         /// ⭐ THE OR IS THE AUTO-CHAIN, AND IT IS THE WHOLE POINT OF THE RULING.

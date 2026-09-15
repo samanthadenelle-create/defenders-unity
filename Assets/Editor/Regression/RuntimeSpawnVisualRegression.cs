@@ -111,6 +111,7 @@ namespace DeNelle.Editor.Regression
                 Case(failures, "body-animator", () => Case4_EveryBodyPathBindsAnimator(failures, notes));
                 Case(failures, "animator-order", () => Case5_AnimatorBoundBeforeController(failures));
                 Case(failures, "troop-controllers", () => Case6_TroopControllerAssets(failures, notes));
+                Case(failures, "troop-identity", () => Case7_SpawnIsAttributable(failures, notes));
             }
             catch (Exception ex)
             {
@@ -125,7 +126,10 @@ namespace DeNelle.Editor.Regression
                          "scene-load-only guard), both seams share one recovery, every runtime character-body " +
                          "factory binds an AnimatorController, TroopFactory binds it before TroopController's " +
                          "Awake caches the parameter set, and every troops.json model plus every fallback " +
-                         "controller resolves with a '" + DriveParam + "' parameter" + noteStr;
+                         "controller resolves with a '" + DriveParam + "' parameter, and every troop spawn is " +
+                         "ATTRIBUTABLE - the factory names the id and address before AddComponent, the animator " +
+                         "verdict is reported from Configure (where the id exists) and siege is carved out" +
+                         noteStr;
                 return true;
             }
             reason = "runtime-spawn-visual FAIL x" + failures.Count + ": " + string.Join(" | ", failures) + noteStr;
@@ -529,6 +533,193 @@ namespace DeNelle.Editor.Regression
             int end = text.IndexOf("m_AnimatorLayers:", start, StringComparison.Ordinal);
             string block = end > start ? text.Substring(start, end - start) : text.Substring(start);
             return Regex.IsMatch(block, @"^\s*-\s*m_Name:\s*" + Regex.Escape(param) + @"\s*$", RegexOptions.Multiline);
+        }
+
+        // =====================================================================
+        //  CASE 7 - IDENTITY: a troop spawn can always be attributed (WO-1748)
+        // =====================================================================
+        //
+        // THE DEFECT THIS PINS (captured, not theorised). Eight device captures between
+        // 2026-09-12 and 2026-09-15 (F8 seq 5057, 5062, 5066, 5109, 5118, 5123, 5128, 5258,
+        // all scene RaidBase_IronBastion) carried the identical error:
+        //
+        //     [Flow:TroopVisual] id=: NO Animator anywhere under the troop root ...
+        //
+        // with the id EMPTY. Two separate instrument defects produced that, and neither was a
+        // game defect:
+        //
+        //   (1) UNATTRIBUTABLE. TroopController.Awake reported the verdict, and Awake runs
+        //       SYNCHRONOUSLY inside TroopFactory's AddComponent - one line BEFORE Configure()
+        //       assigns _troopId. So the id was structurally empty on EVERY troop the game has
+        //       ever spawned, and the WO's own inference from it ("the empty id narrows the
+        //       spawn path") was false: the capture's stack named an ordinary
+        //       RaidDeployController.DeployAll deploy.
+        //   (2) FALSE ALARM ON SIEGE. TroopFactory skips ApplyTroopAnimator for role "siege"
+        //       (a siege machine is a prop, not a rig), and troop-catapult's model address
+        //       "Structures/Catapult" resolves to Assets/StructureContent/Synty/Catapult.prefab,
+        //       which contains ZERO Animator components. So a catapult tripped a ship-blocking-
+        //       looking Fail on every single deploy for a body that was working as authored.
+        //
+        // The pins below make both impossible to reintroduce silently. They are deliberately
+        // ORDERING + LOCATION pins over source, plus a data pin on troops.json, because the
+        // thing that broke was WHERE a line was emitted, not WHAT it measured.
+        private static void Case7_SpawnIsAttributable(List<string> failures, List<string> notes)
+        {
+            string factoryRaw = ReadSource(TroopFactorySrc, failures);
+            string ctrlRaw = ReadSource(TroopControllerSrc, failures);
+            if (string.IsNullOrEmpty(factoryRaw) || string.IsNullOrEmpty(ctrlRaw)) return;
+
+            // ---- A. The factory names the troop + the address BEFORE AddComponent --------
+            string factory = StripComments(factoryRaw);
+            var addCtrl = Regex.Match(factory, @"AddComponent\s*<\s*TroopController\s*>\s*\(");
+            int identityAt = factory.IndexOf("AddComponent<TroopController> - address='",
+                                             StringComparison.Ordinal);
+            if (identityAt < 0)
+                failures.Add("[troop-identity] TroopFactory emits no spawn IDENTITY line naming the resolved " +
+                             "address at the AddComponent<TroopController> site. Without it the only line a " +
+                             "failing troop produces is TroopController's verdict, which cannot name the art " +
+                             "that resolved - that is exactly how F8 seq 5057..5258 stayed unattributable");
+            else if (addCtrl.Success && identityAt > addCtrl.Index)
+                failures.Add("[troop-identity] TroopFactory's spawn identity line is emitted AFTER " +
+                             "AddComponent<TroopController>() - AddComponent runs Awake synchronously, so any " +
+                             "failure Awake reports would still print with no identity above it");
+
+            // ---- B. The missing-mesh branch reports through FlowTrace, not Debug ---------
+            // Same reasoning already recorded for the off-mesh branch at the top of TroopFactory:
+            // a Debug.LogWarning is INVISIBLE to the F8 break-capture harness, so the one line
+            // that names WHICH model failed to load never reaches a capture.
+            if (factory.IndexOf("had NO loadable mesh", StringComparison.Ordinal) < 0)
+                failures.Add("[troop-identity] TroopFactory's missing-mesh fallback branch no longer carries its " +
+                             "FlowTrace report - re-verify deliberately that the address that failed still " +
+                             "reaches an F8 capture");
+            if (Regex.IsMatch(factory, @"Debug\s*\.\s*LogWarning\s*\(\s*\$?""\[TroopFactory\] model"))
+                failures.Add("[troop-identity] TroopFactory's missing-mesh fallback reverted to a bare " +
+                             "Debug.LogWarning. The F8 harness captures errors and exceptions, NOT warnings, so " +
+                             "the single most consequential spawn failure would again produce no evidence");
+
+            // ---- C. The verdict is NOT reported from Awake -------------------------------
+            string ctrl = StripComments(ctrlRaw);
+            const string VerdictToken = "NO Animator anywhere";
+            var awakeSig = Regex.Match(ctrl, @"(private|protected|public)?\s*void\s+Awake\s*\(\s*\)");
+            if (!awakeSig.Success)
+            {
+                notes.Add("[troop-identity] TroopController declares no Awake - the location pin was skipped");
+            }
+            else
+            {
+                string awakeBody = ExtractMethodBody(ctrl, awakeSig.Index);
+                if (awakeBody == null)
+                    failures.Add("[troop-identity] TroopController.Awake's body does not brace-balance - the " +
+                                 "location pin cannot be evaluated");
+                else if (awakeBody.IndexOf(VerdictToken, StringComparison.Ordinal) >= 0)
+                    failures.Add("[troop-identity] TroopController reports the animator verdict from Awake " +
+                                 "again. Awake runs inside AddComponent, BEFORE Configure assigns _troopId, so " +
+                                 "every line it prints carries an EMPTY id and no capture can be attributed to " +
+                                 "a troop. Report it from Configure instead");
+                // The caching MUST stay in Awake - that is the bind-order law Case 5 pins.
+                else if (!Regex.IsMatch(awakeBody, @"_animator\s*\.\s*parameters"))
+                    failures.Add("[troop-identity] moving the verdict out of Awake also moved the parameter " +
+                                 "CACHING out. The caching is bind-order-critical and must stay in Awake");
+            }
+
+            // ---- D. ...and it IS reported from Configure, after the id is set ------------
+            var configureSig = Regex.Match(ctrl, @"public\s+void\s+Configure\s*\(\s*TroopDef");
+            if (!configureSig.Success)
+            {
+                failures.Add("[troop-identity] TroopController.Configure(TroopDef, ...) is gone - the seam that " +
+                             "gives a troop its id changed shape; re-derive where the verdict must be reported");
+            }
+            else
+            {
+                string cfgBody = ExtractMethodBody(ctrl, configureSig.Index);
+                if (cfgBody == null)
+                {
+                    failures.Add("[troop-identity] TroopController.Configure's body does not brace-balance - " +
+                                 "the attribution pin cannot be evaluated");
+                }
+                else
+                {
+                    int idAt = cfgBody.IndexOf("_troopId", StringComparison.Ordinal);
+                    int reportAt = cfgBody.IndexOf("ReportVisualVerdict", StringComparison.Ordinal);
+                    if (reportAt < 0)
+                        failures.Add("[troop-identity] Configure does not call ReportVisualVerdict - the animator " +
+                                     "verdict is no longer emitted from the only place the troop has a name");
+                    else if (idAt < 0 || idAt > reportAt)
+                        failures.Add("[troop-identity] Configure reports the animator verdict BEFORE it assigns " +
+                                     "_troopId - the line would carry an empty id, which is the original defect");
+                }
+            }
+
+            // ---- E. Siege is carved out of the Fail, not lumped into it -----------------
+            var verdictSig = Regex.Match(ctrl, @"private\s+void\s+ReportVisualVerdict\s*\(\s*\)");
+            if (!verdictSig.Success)
+            {
+                failures.Add("[troop-identity] ReportVisualVerdict is gone - the siege carve-out and the " +
+                             "attribution both lived there; re-derive both deliberately");
+            }
+            else
+            {
+                string vBody = ExtractMethodBody(ctrl, verdictSig.Index);
+                if (vBody == null)
+                {
+                    failures.Add("[troop-identity] ReportVisualVerdict's body does not brace-balance");
+                }
+                else
+                {
+                    int siegeAt = vBody.IndexOf("SIEGE machine", StringComparison.Ordinal);
+                    int failAt = vBody.IndexOf(VerdictToken, StringComparison.Ordinal);
+                    if (siegeAt < 0)
+                        failures.Add("[troop-identity] ReportVisualVerdict has no SIEGE branch. A siege machine " +
+                                     "is animator-less BY DESIGN (TroopFactory skips the humanoid bind for role " +
+                                     "'siege', and Structures/Catapult ships no Animator), so without the " +
+                                     "carve-out every catapult deploy raises a false ship-blocking error");
+                    else if (failAt >= 0 && siegeAt > failAt)
+                        failures.Add("[troop-identity] the SIEGE branch no longer precedes the no-animator Fail - " +
+                                     "a catapult would reach the Fail before the carve-out can return");
+                }
+            }
+
+            // ---- F. DATA: nothing in troops.json can produce an empty id ----------------
+            // Post-Configure, _troopId IS def.Id - so an empty id in the data is the one
+            // remaining way an unattributable troop can exist.
+            if (!File.Exists(TroopsJson))
+            {
+                failures.Add("[troop-identity] " + TroopsJson + " not found - the roster moved");
+                return;
+            }
+            try
+            {
+                var root = JObject.Parse(File.ReadAllText(TroopsJson));
+                var arr = root["troops"] as JArray;
+                if (arr == null || arr.Count == 0)
+                {
+                    failures.Add("[troop-identity] troops.json declares no troops[] array - re-point this oracle");
+                    return;
+                }
+                int siegeSeen = 0;
+                foreach (var t in arr)
+                {
+                    string id = (string)t["id"];
+                    if (string.IsNullOrWhiteSpace(id))
+                    {
+                        failures.Add("[troop-identity] a troops.json entry has an EMPTY id. _troopId is def.Id, " +
+                                     "so that troop is unattributable in every [Flow:*] line it ever emits");
+                        continue;
+                    }
+                    if (string.Equals((string)t["role"], "siege", StringComparison.OrdinalIgnoreCase))
+                        siegeSeen++;
+                    if (string.IsNullOrWhiteSpace((string)t["model"]))
+                        failures.Add("[troop-identity] troop '" + id + "' authors no model - it can only ever " +
+                                     "spawn as an animator-less fallback body");
+                }
+                if (siegeSeen == 0)
+                    notes.Add("[troop-identity] troops.json declares no role 'siege' entry - the carve-out " +
+                              "pinned above currently covers nothing; confirm that is intended");
+            }
+            catch (Exception ex)
+            {
+                failures.Add("[troop-identity] troops.json did not parse: " + ex.GetType().Name + ": " + ex.Message);
+            }
         }
 
         // =====================================================================

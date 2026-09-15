@@ -142,9 +142,17 @@ namespace DeNelle.Village
                 // A body must remain visible while remote art arrives (or is unavailable).
                 // Siege cannot use the humanoid capsule: that vertical oversized silhouette
                 // was the apparent "catapult standing on end" captured for WO-1143.
-                Debug.LogWarning($"[TroopFactory] model '{resourcesPath ?? model}' " +
-                                 $"(id '{(def != null ? def.Id : "?")}') had no loadable mesh — " +
-                                 $"FALLBACK to a {(isSiege ? "siege-machine proxy" : "tinted capsule")}.");
+                // WO-1748: WAS A BARE Debug.LogWarning. A LogWarning is INVISIBLE to the F8
+                // break-capture harness (same reasoning already recorded for the off-mesh branch
+                // at :60-75 of this file), so the one line that names WHICH model failed to load
+                // never reached a capture — and the only line that DID reach one
+                // (TroopController.Awake's "NO Animator anywhere") could not name the troop.
+                // FlowTrace.Fail so a capture SHOWS the address, and the spawn still completes
+                // with a readable body on purpose.
+                FlowTrace.Fail("TroopVisual",
+                    $"id={troopId}: model '{resourcesPath ?? model ?? "<none>"}' had NO loadable mesh - " +
+                    $"FALLBACK to a {(isSiege ? "siege-machine proxy" : "tinted capsule")}. " +
+                    "The fallback body carries no Animator, so this troop cannot animate.");
                 fallbackVisual = isSiege
                     ? BuildSiegeFallback(go.transform)
                     : BuildHumanoidFallback(go.transform, bodyHeight);
@@ -185,6 +193,28 @@ namespace DeNelle.Village
             agent.agentTypeID = 0;
             agent.radius = isSiege ? 0.8f : 0.4f;
             agent.height = bodyHeight;
+
+            // WO-1748 SPAWN IDENTITY LINE. This is the ONLY AddComponent<TroopController>() site
+            // in the game, and AddComponent runs Awake SYNCHRONOUSLY - so every diagnostic Awake
+            // emits is printed BEFORE Configure() on the next line assigns _troopId. That is why
+            // eight device captures (seq 5057..5258) all read "[Flow:TroopVisual] id=: NO Animator
+            // anywhere ..." with an EMPTY id: the id was structurally unset, not missing. The line
+            // below runs IMMEDIATELY BEFORE the AddComponent so the id, the resolved address, the
+            // siege flag and the body's actual animator state are on the log one line above any
+            // Awake failure, whatever the caller. Per-spawn Step, not Once: every troop goes
+            // through here, and Once would name only the first one.
+            var bodyAnimator = go.GetComponentInChildren<Animator>();
+            string bodyKind = vis != null ? "skinned" : (isSiege ? "siege-proxy-fallback" : "capsule-fallback");
+            string animatorState = bodyAnimator == null
+                ? "NONE"
+                : (bodyAnimator.runtimeAnimatorController == null
+                    ? "present-but-unbound"
+                    : "bound:" + bodyAnimator.runtimeAnimatorController.name);
+            FlowTrace.Step("TroopVisual",
+                $"id={troopId} role='{(def != null ? def.Role : "<none>")}' siege={isSiege}: about to " +
+                $"AddComponent<TroopController> - address='{resourcesPath ?? model ?? "<none>"}' " +
+                $"body={bodyKind} animator={animatorState}. Any TroopVisual line printed after this " +
+                "one and before the next deploy belongs to THIS troop.");
 
             var troop = go.AddComponent<TroopController>();
             troop.Configure(def, pos);

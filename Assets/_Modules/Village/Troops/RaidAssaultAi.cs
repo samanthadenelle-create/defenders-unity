@@ -45,6 +45,27 @@ namespace DeNelle.Village
         /// <summary>Leash (m) inside which a hostile unit forces Peel even without recent hurt.</summary>
         public const float PeelUnitLeashMeters = 6f;
 
+        /// <summary>
+        /// WO-1752 ruling 3 — ring (m) around the HERO inside which a live hostile body counts as
+        /// "the thing that is hitting her" (<see cref="HeroAggroTarget"/>).
+        /// </summary>
+        /// <remarks>
+        /// ⚠ THIS IS A NEW AXIS, NOT A COPY OF AN EXISTING ONE, AND THE OBVIOUS CANDIDATE COULD
+        /// NOT BE REUSED. HeroHealth's own contact ring — the radius inside which an adjacent
+        /// enemy actually lands the contact tick — is <c>private const float EngageRadius = 1.5f</c>
+        /// (HeroHealth.cs:45, read read-only; that file belongs to another lane this session, so
+        /// it was not widened to public). 1.5 m would also be too tight to be useful here: an
+        /// attacker that steps back half a metre between swings, or a boss with a longer reach,
+        /// would flicker in and out of the answer every scan and the warband would oscillate.
+        ///
+        /// 8 m is a deliberately GENEROUS "standing on her" ring — wide enough to survive that
+        /// flicker and to catch a mid-swing step-back, narrow enough that it cannot mean "some
+        /// enemy across the courtyard". It is a FELT number and the owner's felt-test is its only
+        /// real verdict; it lives here, with the other raid-AI knobs, so there is one place to
+        /// turn it.
+        /// </remarks>
+        public const float HeroAttackerRingMeters = 8f;
+
         /// <summary>Front line sits this far ahead of the deploy point along the march axis.</summary>
         public const float FrontForwardMeters = 2.0f;
 
@@ -61,42 +82,100 @@ namespace DeNelle.Village
         public const float LateralSpreadMeters = 1.4f;
 
         /// <summary>
-        /// WO-1746 / owner ruling WO-1738 (2026-09-15) — the RELUCTANT wall multiplier.
+        /// WO-1752 (owner ruling 2026-09-15) — MAY this troop put a WALL panel in its sights at
+        /// all? Siege always may; everyone else only while the Breach stance is armed.
         /// </summary>
         /// <remarks>
-        /// Owner ruling, verbatim: *"A warband that is BLOCKED (no route to the objective) with
-        /// no Breach active attacks the nearest blocking wall at **10%** structural damage, so it
-        /// never idles into a dead-end."* Branch B of WO-1738: WO-1737's shipped wall toughness is
-        /// KEPT untouched (<c>WallSegment.BaseToughness</c> is not this ticket's file); what
-        /// changes is how willingly an ORDINARY troop spends its time on masonry.
+        /// Owner ruling, verbatim: *"we need to set it so that the troops 100% ignore walls,
+        /// unless explicitly told breach"*, and in the same minute, on the catapult: *"Siege still
+        /// hits walls on its own."*
         ///
-        /// ⛔ THIS IS THE ONE HOME FOR THE NUMBER. Do not write <c>0.1f</c> at a call site — the
-        /// repo's most expensive bugs are all a value copied to a second place and left to rot
-        /// (CLAUDE.md sec.2 / sec.5 / sec.16). The knob block above is already where the raid-AI
-        /// tunables live, so it is where this one lives too.
+        /// ⛔ THIS SUPERSEDES WO-1746's RELUCTANT 10% PATH, WHICH IS DELETED, NOT ZEROED. The
+        /// WO-1738 ruling this replaces let a BLOCKED, stance-less, non-siege troop take the
+        /// nearest blocking wall at <c>ReluctantWallDamageMultiplier = 0.1f</c> so it never idled
+        /// into a dead-end. The owner watched that ship and overruled it from the felt-test
+        /// (device logcat 09-15 13:40:59, seven non-siege troops all on
+        /// <c>wallDmgMult=0.10</c> while her hero was being killed). The dead-end is her
+        /// deliberate, stated cost: *"a blocked warband with Breach OFF and no siege now stands
+        /// (or defends the hero)"* — WO-1752, DeepSeek's dead-end concern raised and overruled.
         ///
-        /// Who is NOT reluctant, per the same ruling: SIEGE (identified by the catalog role, never
-        /// by a hardcoded troop name) and ANY troop while the Breach STANCE is armed — both at
-        /// full damage. Reluctance is deliberately scoped to WALL panels only; towers and other
-        /// masonry were never part of the ruling and keep full damage.
+        /// ⛔ THE CONSTANT IS GONE ON PURPOSE. Zeroing it alone would have been the wrong fix and
+        /// WO-1752 says so in as many words: *"a zero multiplier still walks troops to walls"* —
+        /// the troop keeps selecting the panel, keeps walking to it, keeps playing the swing, and
+        /// only the number changes. The TARGETING is what had to go, which is why this predicate
+        /// is consumed by <see cref="PickBucket"/> as well as by
+        /// <see cref="WallDamageMultiplier"/>.
+        ///
+        /// Siege is identified by the CATALOG role (<c>preferStructures</c>, set from
+        /// <c>def.Role == "siege"</c>), never by a hardcoded troop name — a second siege unit
+        /// added to troops.json inherits the exemption with no code change.
         /// </remarks>
-        public const float ReluctantWallDamageMultiplier = 0.1f;
+        public static bool MayTargetWall(bool preferStructures, bool breachStance)
+        {
+            return preferStructures || breachStance;
+        }
 
         /// <summary>
-        /// Structural-damage multiplier this troop applies to a WALL panel right now: 1.0 for
-        /// siege or while the Breach stance is armed, <see cref="ReluctantWallDamageMultiplier"/>
-        /// otherwise (the blocked-warband fallback that stops it idling into a dead-end).
+        /// Structural-damage multiplier this troop applies to a WALL panel right now: 1.0 when
+        /// <see cref="MayTargetWall"/> allows the panel at all (siege, or the armed Breach
+        /// stance), 0.0 otherwise.
         /// </summary>
         /// <remarks>
-        /// Pure, so the regression can assert it without a scene, and so the AI trace and the
-        /// swing trace can print the SAME number from the SAME call rather than each deriving
-        /// their own — two readouts, one source.
+        /// ⚠ THE 0.0 IS A BACKSTOP, NOT THE FIX — read <see cref="MayTargetWall"/> first. WO-1752
+        /// is explicit that zeroing the multiplier on its own is NOT the ruling ("a zero
+        /// multiplier still walks troops to walls"), and the actual change is that
+        /// <see cref="PickBucket"/> no longer SELECTS the panel. This returns 0 for two concrete
+        /// reasons, both of them real windows rather than tidiness:
+        ///   * <c>TroopController._cachedFoe</c> is re-resolved on a timer (0.2 s hunt scan), so
+        ///     between the player toggling Breach OFF and the next retarget a troop still holds a
+        ///     wall it was legitimately given. It must land nothing in that window, not 10%.
+        ///   * WO-1752 asks for the trace token itself: *"the `wallDmgMult=` token now prints
+        ///     `0.00` for non-siege without stance (proves 1 on device)"*. One call, two readouts
+        ///     (the AI line and the SWING line) — the log cannot disagree with the damage that
+        ///     lands.
+        ///
+        /// Pure, so the regression can assert it without a scene.
         /// </remarks>
         public static float WallDamageMultiplier(bool preferStructures, bool breachStance)
         {
-            if (preferStructures) return 1f;
-            if (breachStance) return 1f;
-            return ReluctantWallDamageMultiplier;
+            return MayTargetWall(preferStructures, breachStance) ? 1f : 0f;
+        }
+
+        /// <summary>
+        /// WO-1752 ruling 3 — should this troop adopt the hero's live attacker as its target,
+        /// even though that attacker is outside its own acquire sweep?
+        /// </summary>
+        /// <remarks>
+        /// Owner, verbatim: *"they are running around attacking walls while i am getting damaged
+        /// and killed"*. The lead's reading, recorded in WO-1752 for the owner to veto: a hostile
+        /// that is damaging the HERO is an acquirable unit for EVERY troop regardless of that
+        /// troop's own radius — the warband defends the player before anything else. It is
+        /// WO-1719's *"all together unless they have aggro"* with the hero's aggro counting as the
+        /// warband's.
+        ///
+        /// ⭐ THE CONDITION IS DELIBERATELY "NO UNIT OF MY OWN", NOT "ALWAYS". A troop already
+        /// brawling with something inside its own sweep is doing the same job; yanking it across
+        /// the map would thin the line the owner is standing in. WO-1752 states the rule in those
+        /// words: *"A troop with no unit in its own radius but a live hero-attacker targets that
+        /// attacker"*.
+        ///
+        /// ⛔ AND IT CANNOT BREAK AN ARMED BREACH STANCE — WO-1746 sec.4 is NOT re-litigated here.
+        /// The adopted attacker is by construction OUTSIDE the troop's acquire radius (or it would
+        /// already be its <c>nearestUnitAny</c> and this returns false), and every acquire radius
+        /// OBSERVED in the raid trace (12 m tank, 16 m cleric) is wider than
+        /// <see cref="PeelUnitLeashMeters"/> (6 m) — though the radius is DATA
+        /// (<c>TroopDef.HuntScanRadius</c> / <c>stats.AggroRadius</c>, TroopController.cs:372/:432)
+        /// and a future def could author a smaller one, so that arithmetic is a comfort, NOT the
+        /// guard. The guard is that <c>peelThreat</c> is computed from the troop's OWN sweep,
+        /// BEFORE adoption, and adoption never edits it. Under an armed stance
+        /// <see cref="PickBucket"/> then keeps the warband on the panel exactly as Case 8 pins,
+        /// because the stance still beats a merely-acquirable unit. AGGRO remains the one thing
+        /// that breaks the stance.
+        /// </remarks>
+        public static bool AdoptHeroAttacker(bool hasUnitInOwnSweep, bool heroAttackerLive)
+        {
+            if (hasUnitInOwnSweep) return false;
+            return heroAttackerLive;
         }
 
         /// <summary>Map authored <c>TroopDef.Role</c> → assault job (no new JSON field).</summary>
@@ -413,6 +492,25 @@ namespace DeNelle.Village
         }
 
         /// <summary>
+        /// WO-1746's 8-arg form, kept as a delegating overload (the other-structure candidate is
+        /// assumed NOT to be a wall) so every suite written against it compiles unchanged.
+        /// </summary>
+        public static int PickBucket(
+            RaidAssaultPhase phase,
+            bool preferStructures,
+            bool hasUnit,
+            bool hasObjective,
+            bool hasOtherStruct,
+            bool unitInAttackRange,
+            bool routeToUnitOpen,
+            bool breachStance)
+        {
+            return PickBucket(
+                phase, preferStructures, hasUnit, hasObjective, hasOtherStruct,
+                unitInAttackRange, routeToUnitOpen, breachStance, otherStructIsWall: false);
+        }
+
+        /// <summary>
         /// WO-1746 — the same bucket rule, with the Breach stance passed through to
         /// <see cref="PreferUnit"/>.
         /// </summary>
@@ -428,11 +526,17 @@ namespace DeNelle.Village
         /// ⭐ Otherwise this keeps the "one gate in front" shape WO-1719 used at
         /// <see cref="SelectFocusBreach"/> (see its remarks). In
         /// particular <see cref="AllowNonObjectiveStructure"/> is UNCHANGED: Breach still returns
-        /// true, which is precisely the ruling's anti-idle fallback. A blocked, stance-less,
-        /// unit-less warband therefore still picks the wall — it just swings at
-        /// <see cref="ReluctantWallDamageMultiplier"/>. The ruling changes WILLINGNESS (the
+        /// true. What changed is one clause on <c>mayWall</c> — see it below.
+        ///
+        /// ⛔ WO-1752 REVERSED THE PARAGRAPH THAT USED TO STAND HERE, AND IT IS WORTH KNOWING WHY.
+        /// It read: *"A blocked, stance-less, unit-less warband therefore still picks the wall —
+        /// it just swings at ReluctantWallDamageMultiplier. The ruling changes WILLINGNESS (the
         /// multiplier), not the ability to pick; making the bucket return -1 here would have
-        /// produced the dead-end WO-1738 sec.4 names as Branch B's one real cost.
+        /// produced the dead-end WO-1738 sec.4 names as Branch B's one real cost."* The owner
+        /// watched that behaviour on the tester build and ruled the other way: *"we need to set it
+        /// so that the troops 100% ignore walls, unless explicitly told breach"*. The bucket DOES
+        /// return -1 now for that warband, and the dead-end is her accepted cost. See
+        /// <see cref="MayTargetWall"/>.
         /// </remarks>
         public static int PickBucket(
             RaidAssaultPhase phase,
@@ -442,7 +546,8 @@ namespace DeNelle.Village
             bool hasOtherStruct,
             bool unitInAttackRange,
             bool routeToUnitOpen,
-            bool breachStance)
+            bool breachStance,
+            bool otherStructIsWall)
         {
             bool preferUnit = PreferUnit(
                 phase, preferStructures, hasUnit, hasOtherStruct || hasObjective,
@@ -452,8 +557,25 @@ namespace DeNelle.Village
 
             // Live gate for wall-ring farm: Push/Finish refuse non-objective masonry unless
             // AllowNonObjectiveStructure says otherwise (Breach / peel-siege only).
+            //
+            // ⛔ WO-1752 — AND THE WALL CLAUSE, WHICH IS WHY THE BRANCH IS GATED RATHER THAN CUT.
+            // Bucket 2 is "other masonry", NOT "wall": towers, gates and dressed props ride the
+            // same bucket, and WO-1746 sec.4B.3 records that the owner's wall ruling was never
+            // about them (they keep full damage and remain targetable). So the ruling "troops 100%
+            // ignore walls unless explicitly told breach" is applied to the CANDIDATE'S TYPE, fed
+            // in by the caller (TroopController passes `nearestOtherStruct is WallSegment`), not by
+            // deleting the branch — deleting it would also stop a stance-less warband from ever
+            // hitting a tower that is shooting it.
+            //
+            // ⚠ AND NOT BY FILTERING THE WALL OUT OF THE CANDIDATE SET EITHER. If the wall were
+            // dropped upstream, the next-nearest masonry — a TOWER behind it — becomes bucket 2,
+            // and structures carry NO reachability filter (only units do, see PreferUnit's
+            // remarks), so the troop would steer at a tower through an intact wall and freeze on a
+            // navmesh edge: WO-1438's finding, reintroduced by a "cleanup". The wall stays the
+            // candidate, stays visible in the trace as has[wall=True], and is REFUSED here.
             bool mayWall = hasOtherStruct
-                && AllowNonObjectiveStructure(phase, preferStructures);
+                && AllowNonObjectiveStructure(phase, preferStructures)
+                && (!otherStructIsWall || MayTargetWall(preferStructures, breachStance));
 
             if (phase == RaidAssaultPhase.Push || phase == RaidAssaultPhase.Finish)
             {
@@ -491,7 +613,27 @@ namespace DeNelle.Village
             if (!breachStance && hasUnit && unitInAttackRange) return 0;
             if (mayWall) return 2;
             if (hasObjective) return 1;
-            return hasUnit ? 0 : -1;
+            if (!hasUnit) return -1;
+
+            // ⛔ WO-1752 — AND THIS LINE WAS FOUND BY EXECUTING THE RED PROOF, NOT BY READING.
+            // The tail below is the old "nothing else — engage any unit rather than idle"
+            // fallback, and it was harmless while the wall bucket absorbed the blocked warband.
+            // The moment walls were refused it became the DOMINANT path for a stance-less
+            // non-siege troop, and it hands back bucket 0 for a foe that is UNREACHABLE — the
+            // exact steer WO-1438 proved freezes a troop on a navmesh edge, because the thing
+            // making it unreachable is the wall we just refused. Trading "chews a wall at 10%"
+            // for "walks into a navmesh edge and stands there twitching" is not the ruling.
+            //
+            // The owner's own words are the specification here: a blocked warband with Breach
+            // OFF and no siege "now stands (or defends the hero)" — WO-1752, the dead-end
+            // accepted deliberately. So it STANDS. Scoped to `wallRefused`: with no wall in the
+            // picture the tail keeps its pre-WO-1752 answer exactly, which is why
+            // RaidAssaultAiRegression's 7-arg cases do not move.
+            bool wallRefused = hasOtherStruct && otherStructIsWall
+                && !MayTargetWall(preferStructures, breachStance);
+            if (wallRefused && !unitInAttackRange && !routeToUnitOpen) return -1;
+
+            return 0;
         }
     }
 }
