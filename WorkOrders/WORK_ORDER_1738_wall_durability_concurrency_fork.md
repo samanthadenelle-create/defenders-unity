@@ -1,6 +1,33 @@
 # WORK ORDER 1738 — Wall durability: the concurrency fork (tough walls vs. the Breach order)
 
-**Status: BLOCKED - AWAITING OWNER RULING: no implementation until she picks a branch (see §5)**
+**Status: RULED 2026-09-15 — BRANCH B + 10% reluctant fallback; Breach is a PERSISTENT STANCE that auto-chains. Implementation lane dispatched as WO-1746 (RaidAssaultAi / TroopController silo). This ruling ALSO settles WO-1730 §3 Q2 (explicit Breach order vs units-first): Breach is a stance the player toggles, units-first is the default inside it.**
+
+> **RULING RECORD (owner, 2026-09-15, via decision prompt, after the DeepSeek packet
+> `logs/debug/DEEPSEEK_PACKET_wall_durability_fork.md` and its verified answer):**
+> 1. **Branch B, with a 10% reluctant fallback.** Keep WO-1737's shipped durability. Ordinary troops
+>    do NOT auto-attack walls while any hostile unit or reachable non-wall objective exists. Siege, and
+>    any troop under an active Breach stance, attack walls at full damage. A warband that is BLOCKED
+>    (no route to the objective) with no Breach active attacks the nearest blocking wall at **10%**
+>    structural damage, so it never idles into a dead-end — the hero-dead / no-catapult / no-Breach case
+>    DeepSeek named. Verified arithmetic: owner's warband 2.6 s → ~26 s; 15 Legionnaires 1.0 s → ~10 s;
+>    hero and catapult unaffected (hero 4.6 s T1). The raid clock is untouched. Branch A is rejected.
+> 2. **Breach is a persistent stance that auto-chains.** One tap = "we are breaching"; when the ordered
+>    wall falls the warband keeps opening walls (today's self-clear → most-damaged/nearest behaviour
+>    is KEPT) until the player toggles Breach off or a hostile pulls aggro. No per-wall tap tax under
+>    the 180 s clock. Walls stay meaningful because the FALLBACK is what is slow; Breach is the
+>    deliberate ~10x speed-up.
+>
+> **Verified before ruling, by the lead, at source:** `EnemyBrain.cs` carries ZERO references to
+> `RaidAssaultAi` / `TroopBreachOrder` — wave enemies run a separate brain, so Branch B cannot change
+> how waves attack the player's own walls. DeepSeek's largest "unconsidered" item is therefore a
+> non-issue, and the wave-defence pacing caveat in §4 applies to Branch A only.
+>
+> **Still open, deliberately (not ruled here):** Breach commitment/cooldown (DeepSeek: "if Breach is
+> free and spammable, B only adds a tap") — the fallback's 10% is the first lever; add a cost only if
+> telemetry shows Breach-always is the optimal play. And siege identity (the hero out-breaches the
+> catapult 2.3x) stays its own ruling.
+
+*(Prior status, kept for the record:)* BLOCKED - AWAITING OWNER RULING: no implementation until she picks a branch (see §5)
 **Minted:** 2026-09-15, from the owner's own follow-up question during the WO-1737 wall-durability pass.
 **Silo:** design decision first. Branch A is a one-constant change in WO-1737's silo
 (`WallSegment.BaseToughness`); Branch B is a behaviour change in **WO-1730's silo**
