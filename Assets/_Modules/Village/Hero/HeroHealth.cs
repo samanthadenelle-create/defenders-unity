@@ -182,6 +182,16 @@ namespace DeNelle.Village
 
         public float MaxHp    => _maxHp + EffectiveBonus;
         public float Hp       => _hp;
+        public bool PracticeDefeated { get; private set; }
+
+        public void RestoreAfterPractice(float hp)
+        {
+            if (gameObject.scene.name != DeNelle.Core.Combat.PracticeCombatPolicy.SceneName) return;
+            PracticeDefeated = false;
+            _hp = Mathf.Clamp(hp, 1f, MaxHp);
+            OnHealthChanged?.Invoke(_hp, MaxHp);
+            UpdateInjuredState();
+        }
         public float Fraction => MaxHp > 0f ? Mathf.Clamp01(_hp / MaxHp) : 0f;
         public bool  IsAlive  => _hp > 0f;
 
@@ -325,10 +335,211 @@ namespace DeNelle.Village
         private bool _modeChecked;
         private bool _safeTurretMode;
 
+        // ═════════════════════════════════════════════════════════════════════════════════
+        // WO-1750 — "DEAD BY THE HEALTH MODEL, STILL FIGHTING" (§12 instrument-first)
+        // ---------------------------------------------------------------------------------
+        // CAPTURED SYMPTOM (owner felt-test, Seeker tester build 2026.09.15.371127, scene
+        // RaidBase_IronBastion): the HP bar rendered EMPTY while the hero was mid-swing on a
+        // live target, and the enemy brain's own guard reported the contradiction twice —
+        //   09-15 13:46:29.381 [Flow:EnemyAggro] raidboss-iron_bastion: still steered at the
+        //   hero via Enemy.DriveNav/brain while HeroHealth.IsAlive=false ...
+        // IsAlive is `_hp > 0f` (:196), so "IsAlive=false" is exactly "HP is at zero", and the
+        // empty bar agrees with it. What the capture did NOT settle is WHICH of two shapes:
+        //
+        //   (A) HP reached zero through TakeDamage, the death path ran, and something still
+        //       let input through afterwards; or
+        //   (B) HP reached zero WITHOUT TakeDamage — in which case `_isDead` was never set,
+        //       OnDeath/OnDied never fired, HandleDeath never ran, and every consumer that
+        //       reads IsAlive (enemy aggro, the HP bar, the target indicator) sees a corpse
+        //       while every consumer that reads component state sees a living hero.
+        //
+        // (B) has real reachable seams: SyncGearHp's `_hp = Mathf.Min(_hp, MaxHp)` (:324) can
+        // clamp to zero if the effective max ever resolves to zero, and the `_hp = MaxHp`
+        // seeds in Awake (:251) / Start (:304) inherit whatever MaxHp resolves to at that
+        // instant. This watchdog is the discriminator: it fires ONLY in the (B) shape — HP at
+        // or below zero with no death latch — which is a state the game has no legitimate way
+        // to be in outside the practice scene. One Fail, once per entry into the state.
+        //
+        // ⚠ Fail IS THE CORRECT SEVERITY HERE and it does NOT contradict
+        // HeroDeathSeverityRegression. That suite bans Fail on NORMAL-LIFECYCLE prose only —
+        // its banned list is "death freeze armed" / "death pin rebased" / "revive" /
+        // "respawn" — and its own scope note keeps the LateUpdate residual watchdog's Fail for
+        // exactly this reason: a Fail that fires only when something is genuinely broken is a
+        // working alarm. A normal death sets _isDead on the same frame HP hits zero, so a
+        // normal death never reaches this line.
+        // ═════════════════════════════════════════════════════════════════════════════════
+        private bool  _zeroHpNoDeathReported;
+        private float _zeroHpNoDeathSince = -1f;
+
+        /// <summary>
+        /// WO-1750. How long the anomaly must PERSIST before it is converted into a death.
+        /// <para>
+        /// Not a design delay — a debounce. The effective max is assembled across three frames'
+        /// worth of seams (<c>Awake</c> :251, <c>Start</c> :304 and <c>SyncGearHp</c> :323-324,
+        /// which runs one line above this watchdog every frame), and a rig whose
+        /// <c>GearLoadout</c> has not resolved yet can read a transient zero. Killing the hero
+        /// off a single frame of rig assembly would be a far worse defect than the one this
+        /// closes. A quarter of a second is far longer than any assembly transient and far
+        /// shorter than a player could notice.
+        /// </para>
+        /// </summary>
+        private const float ZeroHpNoDeathGraceSeconds = 0.25f;
+
+        private void WatchZeroHpWithoutDeath()
+        {
+            if (_isDead || PracticeDefeated)
+            {
+                _zeroHpNoDeathReported = false;
+                _zeroHpNoDeathSince    = -1f;
+                return;
+            }
+            // The practice scene deliberately floors HP at 1 and never dies; nothing to watch.
+            if (gameObject.scene.name == DeNelle.Core.Combat.PracticeCombatPolicy.SceneName) return;
+            if (_zeroHpNoDeathReported) return;
+
+            // Debounce (see ZeroHpNoDeathGraceSeconds): start the clock on the first frame of the
+            // anomaly and do nothing until it has held. The clock is cleared on the alive path in
+            // Update, so a transient that resolves never reaches the line below.
+            if (_zeroHpNoDeathSince < 0f) { _zeroHpNoDeathSince = Time.unscaledTime; return; }
+            if (Time.unscaledTime - _zeroHpNoDeathSince < ZeroHpNoDeathGraceSeconds) return;
+
+            _zeroHpNoDeathReported = true;
+
+            string stack;
+            try { stack = new System.Diagnostics.StackTrace(1, false).ToString(); }
+            catch { stack = "(stack unavailable)"; }
+
+            DeNelle.Core.Diagnostics.FlowTrace.Fail("HeroDeath",
+                "ZERO HP WITH NO DEATH LATCH (WO-1750 shape B): hp=" + _hp.ToString("F2") +
+                "/" + MaxHp.ToString("F2") + " (base=" + _maxHp.ToString("F0") +
+                " gear=" + GearHpBonus + " talent=" + TalentHpBonus + " cathedral=" + CathedralMageHpBonus + ")" +
+                " isDead=false IsAlive=false" +
+                " scene='" + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name + "'" +
+                " goScene='" + gameObject.scene.name + "'" +
+                " id=" + GetInstanceID() +
+                " raidInProgress=" + DeNelle.Village.RaidScoring.RaidInProgress +
+                " enemyOwned=" + DeNelle.Village.SceneOwnership.IsEnemyOwned +
+                " | OnDeath listeners=[" + ListenerNames(OnDeath) + "]" +
+                " | OnDied listeners=[" + ListenerNames(OnDied) + "]" +
+                " | HP reached zero WITHOUT passing through TakeDamage's lethal branch, so no " +
+                "death event fired and no handler ran. Every IsAlive consumer now reads a corpse " +
+                "while the hero is still under player control. Held for >=" +
+                ZeroHpNoDeathGraceSeconds.ToString("F2") + "s, so this is not an assembly " +
+                "transient. Reached from:\n" + stack);
+
+            // ── RECOVERY: RUN THE RULE CANON ALREADY HAS, RATHER THAN INVENTING ONE ──────────
+            // Owner ruling WO-1526 already says what a hero at zero HP inside a live raid means:
+            // the raid CONTINUES, capped at 2 stars, with "HERO DOWN - your army fights on" on
+            // screen. That outcome is produced by HandleDeath (:1170 -> RaidScoring
+            // .NotifyHeroDied at :1270 and RaidDeployController.NotifyHeroDown at :1306), and the ONLY thing wrong
+            // in this state is that the sequence which starts HandleDeath never ran. So run it.
+            //
+            // ⛔ NOT A SECOND DEATH PATH. BeginDeathSequence is the SAME body TakeDamage calls -
+            // the lethal block, moved, not copied - so the town rule, the arena deferral, the
+            // raid branch, the evac branch and every listener behave identically to a hero who
+            // died to damage. Nothing here decides what death MEANS; it only stops the game from
+            // sitting in a state no ruling describes.
+            //
+            // ⛔ AND IT CANNOT BE DONE VIA TakeDamage. `if (_hp <= 0f || amount <= 0f) return;`
+            // (:685) refuses every call once HP is at zero, which is precisely why this state is
+            // terminal and why the entry has to be direct.
+            //
+            // FIRES EXACTLY ONCE. _zeroHpNoDeathReported is already true above, and
+            // BeginDeathSequence sets _isDead as its first mutation - after which the guard at
+            // the top of this method returns before reaching any of this. Both latches are set
+            // before the first one could be re-read.
+            bool ran = BeginDeathSequence(DeathCauseZeroHpNoLatch);
+            DeNelle.Core.Diagnostics.FlowTrace.Warn("HeroDeath",
+                "zero-hp recovery: BeginDeathSequence(" + DeathCauseZeroHpNoLatch + ") " +
+                (ran ? "RAN - the hero is now properly down and the canon rule for this state " +
+                       "(WO-1526 in a live raid; the town/evac branches elsewhere) is executing."
+                     : "DECLINED - an exemption above refused it (FTUE peace window or practice " +
+                       "scene). The hero stays at zero HP and the input refusal is what holds; " +
+                       "that is the intended outcome for those two states, not a failure."));
+        }
+
+        /// <summary>
+        /// WO-1750. True once the lethal branch has latched this hero as down. Public so the
+        /// direct-call input surfaces can refuse on the SAME state the death path sets, rather
+        /// than on a second copy of the rule.
+        /// </summary>
+        public bool IsDeathLatched => _isDead;
+
+        // ═════════════════════════════════════════════════════════════════════════════════
+        // WO-1750 — THE INPUT-REFUSAL SEAM, AND WHY `enabled = false` WAS NOT ONE.
+        // ---------------------------------------------------------------------------------
+        // EnterDeathFreeze (:~1430) turns the hero's input surfaces OFF by component:
+        //     _pac.enabled = false;   // PlayerAttackController
+        // and HandleDeath does the same for _locomotion and _abilities. That contract holds for
+        // anything driven by Unity's Update loop — which is the ONLY path a keyboard/mouse
+        // build ever takes, and is why this was never felt on desktop.
+        //
+        // IT DOES NOT HOLD FOR A DIRECT CALL. `enabled = false` suppresses Unity's own
+        // callbacks; it does not make a public method unreachable. The phone's one attack
+        // button goes through HudKitCommandBridge, which resolves its target with
+        //     Object.FindAnyObjectByType<PlayerAttackController>()      (HudKitCommandBridge.cs:108)
+        //     Object.FindAnyObjectByType<HeroAbilities>()               (HudKitCommandBridge.cs:109)
+        // and then calls `abilities.TryCast(AbilitySlot.Q)` and `atk.TriggerBasicAttack()`
+        // DIRECTLY. FindAnyObjectByType filters on GameObject ACTIVE state, not on component
+        // ENABLED state, so a disabled component on a living GameObject is found exactly as
+        // before and its methods run exactly as before. Neither method had a dead-hero gate.
+        //
+        // So on mobile the death freeze disabled three components and changed nothing about
+        // what the attack button does. That is a located candidate for the owner's mid-swing
+        // screenshot, not a proven cause — the refusal below is BOTH the guard and the
+        // instrument: when it fires, the Throttle line names which surface was being driven
+        // and the next capture settles it in one read.
+        //
+        // The predicate is a PURE STATIC so a headless regression can test its truth table
+        // with no scene and no play mode — the same shape as HeroLocomotion's
+        // EvaluateInputSuppressed, which DialogueInputGateRegression tests the same way.
+        //
+        // ⛔ DELIBERATELY NOT HeroLocomotion.InputSuppressed. That latch is owned by the
+        // dialogue/tutorial beat and carries a STUCK-GATE WATCHDOG (WO-1714,
+        // HeroLocomotion.cs:412-420) that Fails when it stays raised. A hero who is down for
+        // the rest of a live raid (WO-1526: the raid continues, the hero stays down) would
+        // hold it for minutes and trip that alarm every time. Two owners, one flag = the
+        // duplicated state CLAUDE.md §2/§5/§16 each warn about.
+        // ═════════════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// WO-1750. Pure predicate — "should a direct hero-input call be refused because the
+        /// hero is down?". <paramref name="heroPresent"/> false means there is no health model
+        /// at all (test scenes, headless rigs): that reads as ALIVE and never refuses, the same
+        /// conservative reading BattleArena takes ("bool heroAlive = hh == null || hh.IsAlive").
+        /// </summary>
+        public static bool EvaluateInputRefusedForDeath(bool heroPresent, bool heroIsAlive, bool deathLatched)
+        {
+            if (!heroPresent) return false;
+            return !heroIsAlive || deathLatched;
+        }
+
+        /// <summary>
+        /// WO-1750. The predicate evaluated against a specific hero rig. Resolves the health
+        /// model from <paramref name="heroGo"/> first (the component sitting beside the input
+        /// surface) and falls back to <see cref="Instance"/>, so it is correct both for a
+        /// component asking about itself and for a bridge holding only a found reference.
+        /// </summary>
+        public static bool InputRefusedForDeath(GameObject heroGo)
+        {
+            HeroHealth hh = null;
+            if (heroGo != null) heroGo.TryGetComponent(out hh);
+            if (hh == null) hh = Instance;
+            if (hh == null) return false;
+            return EvaluateInputRefusedForDeath(true, hh.IsAlive, hh.IsDeathLatched);
+        }
+
         private void Update()
         {
             SyncGearHp();   // WO-543: fold equipped HP gear into the effective max (top-up / clamp on change)
-            if (_hp <= 0f) { UpdateInjuredState(); return; }
+            if (_hp <= 0f) { WatchZeroHpWithoutDeath(); UpdateInjuredState(); return; }
+            // WO-1750: HP is back above zero, so re-arm the shape-B alarm. This MUST live on the
+            // alive path: WatchZeroHpWithoutDeath only runs while HP is at zero, so a latch that
+            // could only be cleared inside it would stay set for the lifetime of the hero and the
+            // SECOND occurrence - the one that proves the state is recurring rather than a one-off
+            // - would be silent. An alarm that fires once per process is barely an alarm.
+            _zeroHpNoDeathReported = false;
+            _zeroHpNoDeathSince    = -1f;   // and the debounce clock, so a transient that resolved leaves no residue
 
             // WO-493 #5 / WO-497: re-evaluate the wounded stance every frame off the single
             // HP-fraction source of truth. Cheap: the latch only flips the visuals/anim/slow
@@ -516,6 +727,7 @@ namespace DeNelle.Village
 
         public void TakeDamage(float amount)
         {
+            if (PracticeDefeated && gameObject.scene.name == DeNelle.Core.Combat.PracticeCombatPolicy.SceneName) return;
             // WO-triage 2026-06-27 (HP-desync): owner saw stagger/limp + DEFEAT while the HUD read
             // 100/100. Log WHICH HeroHealth instance + scene actually takes damage — if this id/scene
             // differs from the one the HUD binds (the [Flow:HUD] HP line), the arena spawns a SECOND
@@ -661,8 +873,88 @@ namespace DeNelle.Village
             _impactFeedback?.PlayHaptic(0.25f, 0.12f);
             GameSfx.PlayHeroHit();   // hero took a hit — audible grunt/impact (was silent)
 
-            if (_hp <= 0f && !_isDead)
+            if (_hp <= 0f && !_isDead) BeginDeathSequence(DeathCauseLethalHit);
+            else HitStopManager.DoImpact(HitTier.Light);   // subtle shake per hit
+        }
+
+        /// <summary>WO-1750: the ordinary death — a hit took HP to zero.</summary>
+        internal const string DeathCauseLethalHit = "damage";
+
+        /// <summary>
+        /// WO-1750: the recovery death — HP was found at zero with no death latch, a state
+        /// <see cref="TakeDamage"/> can no longer resolve on its own (see the watchdog's header).
+        /// </summary>
+        internal const string DeathCauseZeroHpNoLatch = "zero-hp-no-latch recovery";
+
+        // ═════════════════════════════════════════════════════════════════════════════════
+        // WO-1750 — THE ONE DEATH SEQUENCE, NOW REACHABLE FROM TWO PLACES.
+        // ---------------------------------------------------------------------------------
+        // WHAT MOVED AND WHAT DID NOT. This method is the lethal block that used to live inline
+        // in TakeDamage, MOVED VERBATIM — every line, comment and ordering below is the original.
+        // It is kept inside its original brace block deliberately, so the diff reads as a move
+        // rather than a rewrite and a reviewer can see that nothing in the sequence changed.
+        // NOTHING WAS COPIED: TakeDamage now calls this, and so does the zero-HP watchdog. There
+        // is exactly one body, which is the whole point — a second hand-written death sequence
+        // would be the duplicated state CLAUDE.md sec.2/5/16 each describe in their own words.
+        //
+        // WHY THE WATCHDOG CANNOT SIMPLY CALL TakeDamage INSTEAD — proven at source, and it is
+        // the same line that makes the defect terminal:
+        //     TakeDamage(float amount):  if (_hp <= 0f || amount <= 0f) return;   (:741)
+        // Once HP is at zero with no latch, EVERY subsequent call to TakeDamage returns at that
+        // line. The lethal branch is permanently unreachable, no matter how many enemies hit the
+        // hero. That is why shape B is self-sustaining for a whole raid and why the recovery has
+        // to enter the sequence directly.
+        //
+        // IDEMPOTENCE IS THE LATCH, AND IT IS SET FIRST. `_isDead = true` is the first mutation
+        // in the block below, before the trace, the VFX, the freeze or the coroutine. So:
+        //   * a second call re-entering here returns at the `_isDead` guard on the first line;
+        //   * the watchdog cannot call twice — WatchZeroHpWithoutDeath returns immediately once
+        //     `_isDead` is set, and it is the only caller besides TakeDamage;
+        //   * even if both somehow fired, RaidScoring.NotifyHeroDied latches on `_heroDied`
+        //     (RaidScoring.cs:622-624) and RaidDeployController.NotifyHeroDown latches on
+        //     `_heroDownAcknowledged` (RaidDeployController.cs:1417-1418).
+        // Three independent latches for one death; the first of them is set here.
+        //
+        // RETURNS true only when the full sequence ran (so a caller can trace the difference
+        // between "died" and "declined"). Never throws by design — every risky step inside the
+        // moved body is already Guard-wrapped or null-safe, which was a precondition of the
+        // original inline block too.
+        // ═════════════════════════════════════════════════════════════════════════════════
+        private bool BeginDeathSequence(string cause)
+        {
+            // IDEMPOTENCE, first and unconditional.
+            if (_isDead) return false;
+            // Only a hero actually at zero dies here. Protects against a caller that raced a heal.
+            if (_hp > 0f) return false;
+
+            // ── EXEMPTION 1: THE FTUE PEACE WINDOW ───────────────────────────────────────
+            // TakeDamage already floors a would-be-lethal blow at 1 HP while the first-time
+            // tutorial is active (the "died in tutorial" F8 safety net), so the game has a
+            // STANDING RULE that the hero cannot die during onboarding. A recovery death that
+            // ignored it would reintroduce exactly the defect that net was built for — by a new
+            // door. Gated on the same condition the spawners and that net use, so it lifts the
+            // instant onboarding completes.
+            if (TutorialFlow.HostilesSuppressedForTutorial)
             {
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("HeroDeath",
+                    "BeginDeathSequence DECLINED (cause=" + cause + "): the FTUE peace window is " +
+                    "open, and the hero may never die during onboarding (the same rule TakeDamage's " +
+                    "1-HP floor enforces). HP is at " + _hp.ToString("F2") + " and is being left " +
+                    "there rather than converted into a tutorial death.");
+                return false;
+            }
+
+            // ── EXEMPTION 2: THE PRACTICE SCENE ──────────────────────────────────────────
+            // Original behaviour, unchanged: local sparring has no death, no penalties and no
+            // global death events. It floors at 1 HP and latches PracticeDefeated instead.
+            {
+                if (gameObject.scene.name == DeNelle.Core.Combat.PracticeCombatPolicy.SceneName)
+                {
+                    // Local sparring defeat: no death penalties, evacuation or global death events.
+                    _hp = 1f; PracticeDefeated = true;
+                    OnHealthChanged?.Invoke(_hp, MaxHp);
+                    return false;   // WO-1750: was a bare `return` when this block was inline in TakeDamage
+                }
                 // Idempotent: _isDead guards re-entry so a swarm landing several
                 // lethal ticks in one frame can't start multiple death coroutines.
                 _isDead = true;
@@ -672,12 +964,23 @@ namespace DeNelle.Village
                 // — the popup spam RCA is these invocation lists + the [Flow:ScreenOpen] lines that
                 // follow. downSeconds = how long the fallen hero holds before respawn/evac.
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Death",
-                    "lethal hit: downSeconds=" + _downSeconds.ToString("F1") +
+                    // WO-1750: the phrase "lethal hit:" is KEPT verbatim - captures and at least one
+                    // regression header already grep for it - and `cause=` is appended so the SAME
+                    // line now says which door the death came through.
+                    "lethal hit: cause=" + cause + " downSeconds=" + _downSeconds.ToString("F1") +
                     " | hero state: hp=" + _hp.ToString("F0") + "/" + MaxHp.ToString("F0") +
                     " pos=" + transform.position + " lastDmgFrom=" + _lastDamageSourceWorld +
                     " enemyOwnedScene=" + DeNelle.Village.SceneOwnership.IsEnemyOwned +
                     " | OnDeath listeners=[" + ListenerNames(OnDeath) + "]" +
-                    " | OnDied listeners=[" + ListenerNames(OnDied) + "]");
+                    " | OnDied listeners=[" + ListenerNames(OnDied) + "]" +
+                    // WO-1750: NAME THE CALLER. The 09-15 IronBastion capture could not tell
+                    // shape (A) "the death path ran and input survived it" from shape (B) "HP
+                    // reached zero without ever entering this branch", because the only death
+                    // evidence in the log was its absence. The top frame makes this line's
+                    // PRESENCE self-describing: if it appears, (A); if the Update watchdog's
+                    // "ZERO HP WITH NO DEATH LATCH" appears instead, (B). Frames-only, no file
+                    // info — cheap, and this runs once per death, never per frame.
+                    " | lethalFrom=" + TopCallerFrame());
                 // F8-15 extension (owner 2026-07-08 "capture why so many screens + moving character
                 // location"): open the DEATH FORENSIC WINDOW. For the next 15s every screen open
                 // (PanelManager / EndStateView), every hero warp/jump (>2m per frame, see
@@ -727,10 +1030,12 @@ namespace DeNelle.Village
                 OnDied?.Invoke();   // legacy event kept for existing listeners
                 StartCoroutine(HandleDeath());
             }
-            else
-            {
-                HitStopManager.DoImpact(HitTier.Light);   // subtle shake per hit
-            }
+            // ⚠ StartCoroutine above requires THIS component enabled and its GameObject active.
+            // Both callers satisfy that by construction: TakeDamage is driven from the hero's own
+            // Update, and the watchdog IS in that same Update. HeroHealth itself is never disabled
+            // by the death path - HandleDeath disables _locomotion / _abilities and EnterDeathFreeze
+            // disables _pac, never this component - so the coroutine always starts.
+            return true;
         }
 
         /// <summary>
@@ -820,6 +1125,38 @@ namespace DeNelle.Village
         /// scene, so that path always fell through to a hard scene reload.
         /// </para>
         /// </summary>
+        /// <summary>
+        /// WO-1750: the first frame OUTSIDE HeroHealth, as "Type.Method". Never throws — a
+        /// stack walk that fails degrades to a marker string rather than breaking the lethal
+        /// path it is instrumenting.
+        /// </summary>
+        private static string TopCallerFrame()
+        {
+            try
+            {
+                var st = new System.Diagnostics.StackTrace(1, false);
+                for (int i = 0; i < st.FrameCount; i++)
+                {
+                    var m = st.GetFrame(i)?.GetMethod();
+                    if (m == null) continue;
+                    var t = m.DeclaringType;
+                    if (t == null) continue;
+                    // A coroutine / lambda frame lives in a compiler-generated NESTED type
+                    // (<HandleDeath>d__57, <>c__DisplayClass...), so the declaring type of the
+                    // frame is the closure, not the class. Walk out one level before both the
+                    // skip test and the name, or a HeroHealth coroutine frame slips the filter
+                    // and an enemy's coroutine prints as "<AttackLoop>d__12.MoveNext".
+                    var owner = t.IsNested && t.DeclaringType != null ? t.DeclaringType : t;
+                    if (owner == typeof(HeroHealth)) continue;
+                    return owner.Name + "." + m.Name;
+                }
+                // Nothing outside HeroHealth on the stack = the hero's OWN contact-damage tick
+                // in Update drove this (HeroHealth.cs:~546), which is the ordinary melee death.
+                return "(HeroHealth self-tick)";
+            }
+            catch { return "(stack unavailable)"; }
+        }
+
         /// <summary>F8-15: readable method names of a death event's subscribers (the popup RCA data).</summary>
         private static string ListenerNames(Action evt)
         {

@@ -453,6 +453,32 @@ namespace DeNelle.Village
         /// </summary>
         public bool TriggerBasicAttack()
         {
+            // ── WO-1750 — A DOWNED HERO REFUSES THE SWING, AND SAYS SO ────────────────────
+            // This is a DIRECT-CALL entry point. HudKitCommandBridge (the phone's one attack
+            // button) reaches it via Object.FindAnyObjectByType<PlayerAttackController>(),
+            // which filters on GameObject ACTIVE state and NOT on component ENABLED state —
+            // so HeroHealth.EnterDeathFreeze's `_pac.enabled = false` stops this component's
+            // Update() and leaves this method fully callable. The keyboard/mouse path goes
+            // through Update and was therefore already covered, which is why the owner only
+            // ever felt this on the Seeker (owner felt-test 2026-09-15, RaidBase_IronBastion:
+            // hero mid-swing with an empty HP bar while the enemy brain logged
+            // "still steered at the hero ... while HeroHealth.IsAlive=false").
+            //
+            // The predicate lives on HeroHealth (EvaluateInputRefusedForDeath) so the refusal
+            // and the death latch are ONE rule, not two copies. It is also the instrument §12
+            // asks for: while a down hero is still being driven, this Throttle names the
+            // surface once a second instead of leaving a silent refusal.
+            if (HeroHealth.InputRefusedForDeath(gameObject))
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Throttle("HeroDeath", "input-while-down-attack", 1f,
+                    "basic attack REFUSED: the hero is down (HeroHealth.IsAlive=false or the death " +
+                    "latch is set) but a direct TriggerBasicAttack call still arrived - component " +
+                    "enabled=" + enabled + " activeInHierarchy=" + gameObject.activeInHierarchy +
+                    ". A caller is reaching this method past the death freeze's component disable " +
+                    "(WO-1750); the swing is refused here so the health model and what the player " +
+                    "can do agree.");
+                return false;
+            }
             if (HeroLocomotion.InputSuppressed) return false;
             if (!BattleLock.IsInBattle()) return false;
             // P1-6: a press that arrives MID-SWING is the perfect-hit second tap, not a dropped

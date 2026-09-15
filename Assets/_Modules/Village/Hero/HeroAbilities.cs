@@ -794,6 +794,24 @@ namespace DeNelle.Village
         /// </summary>
         public bool TryCast(AbilitySlot slot)
         {
+            // ── WO-1750 — THE SAME DIRECT-CALL HOLE AS PlayerAttackController.TriggerBasicAttack ──
+            // HandleDeath sets `_abilities.enabled = false` on the lethal hit, which stops this
+            // component's Update and nothing else. HudKitCommandBridge resolves its target with
+            // Object.FindAnyObjectByType<HeroAbilities>() (HudKitCommandBridge.cs:109) — a filter
+            // on GameObject ACTIVE state, not component ENABLED state — and then calls
+            // TryCast(AbilitySlot.Q) directly, one line BEFORE it falls through to the melee
+            // sweep. Guarding only the sweep would have left a downed ranger/mage still firing
+            // its locked Q from the phone's one attack button. Same predicate, same owner: the
+            // refusal reads off HeroHealth's own death state, never a second copy of it.
+            if (HeroHealth.InputRefusedForDeath(gameObject))
+            {
+                FlowTrace.Throttle("HeroDeath", "input-while-down-cast", 1f,
+                    "cast REFUSED slot=" + slot + ": the hero is down (HeroHealth.IsAlive=false or " +
+                    "the death latch is set) but a direct TryCast call still arrived - component " +
+                    "enabled=" + enabled + " activeInHierarchy=" + gameObject.activeInHierarchy +
+                    " (WO-1750).");
+                return false;
+            }
             var def = Resolve(slot);
             if (def == null)
             {
