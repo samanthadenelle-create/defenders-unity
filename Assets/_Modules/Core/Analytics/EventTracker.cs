@@ -165,7 +165,15 @@ namespace DeNelle.Core.Analytics
 
         private void Enqueue(string eventName, object properties)
         {
-            string playerId = DeNelle.Core.State.GameStateService.Instance?.State?.BoundWallet ?? "anonymous";
+            // WO-1735. ONE identity source for this file: the same accessor the save rail
+            // uses (BackendRequestSigner.CurrentPlayerId -> GameState.BoundWallet, trimmed,
+            // empty when there is no account at all). Reading BoundWallet directly here was
+            // a SECOND copy of the identity rule; CLAUDE.md §2/§5/§16 all name duplicated
+            // state as the defect. "anonymous" is preserved for the no-account case because
+            // the server's guest-shape regex rejects it either way, so nothing changes for
+            // events queued before EnsureAccount mints the guest id.
+            string resolvedId = DeNelle.Core.Web3.BackendRequestSigner.CurrentPlayerId();
+            string playerId   = string.IsNullOrEmpty(resolvedId) ? "anonymous" : resolvedId;
 
             string propsJson = properties != null
                 ? JsonConvert.SerializeObject(properties)
@@ -292,6 +300,33 @@ namespace DeNelle.Core.Analytics
             req.downloadHandler = new DownloadHandlerBuffer();
             req.SetRequestHeader("Content-Type", "application/json");
 
+            // ── WO-1735: IDENTITY HEADERS ────────────────────────────────────────────
+            // Until now this request carried Content-Type and nothing else, so
+            // api/events/track.js had no header to resolve an identity from and EVERY
+            // player collapsed into the single row id "unverified" (2026-09-07 onward).
+            //
+            // The seam REUSED (never a second copy of the header names):
+            //   BackendRequestSigner.TryAttachCachedSession(req, playerId)
+            //   (Assets/_Modules/Core/Web3/BackendRequestSigner.cs:421-434)
+            // It attaches X-Guest-Id for a guest id, or X-Session + X-Wallet for a wallet
+            // that already holds a live session. It is the NON-MINTING, NON-SIGNING
+            // variant: it never awaits, never opens a wallet SignMessage sheet, never
+            // touches the network, and never spends the guest_rate_limit budget that
+            // game/save and game/load share (WO-1735 §4).
+            //
+            // ⛔ UNLIKE EVERY OTHER CALLER OF THIS SEAM, WE DO NOT ABORT ON false.
+            //    SkuEntitlementService, CommunityShowcaseVoting and GameStateService all
+            //    fail closed because an unauthenticated read/write of player state is a
+            //    security question. Analytics is fire-and-forget telemetry: a wallet
+            //    player with no session yet (the DOCUMENTED boot state - the token is
+            //    memory-only by design) must still deliver the batch, exactly as it did
+            //    before this change. Returning false here would turn a fixed attribution
+            //    bug into a dropped-telemetry bug.
+            string identityPlayerId = ResolveIdentityPlayerId();
+            bool   identityAttached =
+                DeNelle.Core.Web3.BackendRequestSigner.TryAttachCachedSession(req, identityPlayerId);
+            ReportIdentityMode(identityPlayerId, identityAttached);
+
             try
             {
                 await req.SendWebRequest();
@@ -310,6 +345,104 @@ namespace DeNelle.Core.Analytics
 
             Debug.LogWarning($"[EventTracker] Flush failed ({req.responseCode}): {req.error}");
             return false;
+        }
+
+        // ── WO-1735: identity resolution + instrumentation ────────────────────
+
+        /// <summary>
+        /// The id the identity headers are attached FOR. Same accessor as the save rail
+        /// (BackendRequestSigner.CurrentPlayerId); empty means there is no account at all,
+        /// which the seam correctly refuses rather than inventing an anonymous identity.
+        /// </summary>
+        private static string ResolveIdentityPlayerId()
+        {
+            try { return DeNelle.Core.Web3.BackendRequestSigner.CurrentPlayerId(); }
+            catch { return string.Empty; }
+        }
+
+        /// <summary>
+        /// CLAUDE.md §12. Name the identity mode this tracker is actually sending, ONCE per
+        /// mode per session, so the next reader of a break-log never has to infer from the
+        /// row counts which rail the client used. Keyed on the MODE (not a fixed string) so a
+        /// wallet that mints a session mid-run logs the none -> wallet transition instead of
+        /// staying silent behind the first Once.
+        /// </summary>
+        /// <summary>
+        /// One-shot keys for the 'none' rail. FlowTrace has Once (Step level) and Throttle,
+        /// but NO Fail-level once variant — read at source, FlowTrace.cs:157-238. Without
+        /// this set the Fail below would fire on EVERY flush (every 30s, or every 10 events,
+        /// and again on each of up to 4 retries) for the whole session, which is the log
+        /// firehose CLAUDE.md §12 warns about: it evicts the boot window out of the device
+        /// logcat ring and destroys the very evidence the trace exists to preserve.
+        /// </summary>
+        private static readonly HashSet<string> _identityModeReported = new HashSet<string>();
+
+        private static void ReportIdentityMode(string playerId, bool attached)
+        {
+            try
+            {
+                bool guest = DeNelle.Core.Web3.BackendRequestSigner.IsGuestIdentity(playerId);
+                string mode = attached ? (guest ? "guest" : "wallet") : "none";
+
+                if (attached)
+                {
+                    string header = guest ? "X-Guest-Id" : "X-Session + X-Wallet";
+                    DeNelle.Core.Diagnostics.FlowTrace.Once(
+                        "Analytics", "identity-mode:" + mode,
+                        "EventTracker is sending identity mode '" + mode + "' (" + header +
+                        ") on every /api/events/track POST, via the save rail's own seam " +
+                        "BackendRequestSigner.TryAttachCachedSession. Rows should land as _auth:'" +
+                        (guest ? "guest" : "session") + "', not 'unverified' (WO-1735).");
+                    return;
+                }
+
+                // No header attached. Two DIFFERENT causes, and conflating them is how the
+                // original bug hid for eight days - so the trace names which one it is.
+                bool noAccount = string.IsNullOrEmpty(playerId);
+
+                // Once per CAUSE, for the reason on _identityModeReported. Keyed on the cause
+                // and not on "none" so that a player who starts with no account and later
+                // binds a wallet still gets the second, different, Fail.
+                string causeKey = noAccount ? "none:no-account" : "none:wallet-without-session";
+                lock (_identityModeReported)
+                {
+                    if (!_identityModeReported.Add(causeKey)) return;
+                }
+
+                string why = noAccount
+                    ? "there is no account id at all yet (BoundWallet empty - events queued " +
+                      "before GameStateService.EnsureAccount mints the guest id)"
+                    : "a WALLET identity is bound but no backend session is held in memory. " +
+                      "This is the DOCUMENTED boot state, not a defect: the session token is " +
+                      "memory-only by design and boot never signs (ruling 2026-09-07), so a " +
+                      "fresh process legitimately starts here until a purchase, a promo code " +
+                      "or an explicit Connect tap mints one";
+                if (noAccount)
+                {
+                    DeNelle.Core.Diagnostics.FlowTrace.Fail(
+                        "Analytics",
+                        "EventTracker is sending identity mode 'none' - no X-Guest-Id and no " +
+                        "X-Session on /api/events/track, so these rows land under the shared id " +
+                        "'unverified' and this player is not separable in the dashboard. Cause: " +
+                        why + ". The batch is still delivered ON PURPOSE (analytics is " +
+                        "fire-and-forget; it must never fail closed).");
+                }
+                else
+                {
+                    DeNelle.Core.Diagnostics.FlowTrace.Warn(
+                        "Analytics",
+                        "EventTracker is sending identity mode 'none' - no X-Guest-Id and no " +
+                        "X-Session on /api/events/track, so these rows land under the shared id " +
+                        "'unverified' and this player is not separable in the dashboard. Cause: " +
+                        why + ". The batch is still delivered ON PURPOSE (analytics is " +
+                        "fire-and-forget; it must never fail closed).");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Instrumentation must never be the thing that breaks a flush.
+                Debug.LogWarning("[EventTracker] identity-mode trace failed: " + ex.Message);
+            }
         }
 
         // ── Circuit breaker state transitions ─────────────────────────────────

@@ -1,6 +1,6 @@
 # WORK ORDER 1735 — EventTracker sends no identity headers, so wallet players stay `unverified`
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED, NOT YET GATED
 **Minted:** 2026-09-15 (main line; banner bumped 1735 -> 1736 in the same edit)
 **Silo:** **Unity** — `Assets/_Modules/Core/Analytics/` + `Assets/_Modules/Core/Web3/`. Separate gate
 from `api/`. Do **not** combine with a server change in one lane.

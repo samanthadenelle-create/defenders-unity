@@ -194,7 +194,7 @@ function makeHandler(deps = {}) {
         // preflight strips them and every row silently lands unverified.
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session, X-Guest-Id');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session, X-Guest-Id, X-Wallet');
         if (req.method === 'OPTIONS') { return res.status(204).end(); }
 
         if (req.method !== 'POST') {
