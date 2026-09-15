@@ -73,6 +73,7 @@ using UnityEditor.SceneManagement;
 using Newtonsoft.Json;          // structures-catalog read (same reader shape as CatalogBootstrap)
 using DeNelle.Core;             // CanonicalJson, MagentaGuard
 using DeNelle.Core.Combat;      // DamageElement
+using DeNelle.Core.Diagnostics; // FlowTrace (WO-1722 fit-scale instrumentation)
 using DeNelle.Village;          // WallSegment, SceneConfigCatalog, SceneConfigDef, DefenseTower
 using DeNelle.Village.Walls;    // WallTier, WallTierData
 using DeNelle.Village.World.Camps;  // RaidSpire, RaidGarrisonSpawner
@@ -193,7 +194,20 @@ namespace DeNelle.Editor
         /// <summary>Cost ceiling per side. When it binds the stride widens and the build log says so.</summary>
         private const int ArenaBoundaryMaxPerSide = 100;
 
-        /// <summary>Widest a single wall panel may be stretched before the builder adds panels instead.</summary>
+        /// <summary>
+        /// Widest a single wall panel may be stretched before the builder adds panels instead.
+        /// <para/>
+        /// ⚠ WO-1723 Lane B (owner ruling Q1, 2026-09-14) DEMOTED THIS FROM AUTHORITY TO FALLBACK.
+        /// The wall partition is now driven by the CLAD ART MODULE's measured width
+        /// (<see cref="RaidBaseDresser.WallModuleWidth"/>), so one visible panel maps 1:1 to one
+        /// destructible <c>WallSegment</c>. Owner, verbatim: <i>"match the PANELS"</i>. Before the
+        /// ruling the two partitions were independent and measured 78 segments against 60 panels
+        /// on the same ring, which is why destroying a section could never clear a visible panel.
+        /// <para/>
+        /// ⛔ DO NOT DELETE OR RENAME THIS CONST. It is still the fallback when the art pack is
+        /// gitignored/missing (a fresh clone), AND <c>RaidStagingMarkerRegression.cs:173</c> reads
+        /// it out of this file's SOURCE TEXT by name (<c>ConstFloat(src, "MaxSegmentWidth")</c>).
+        /// </summary>
         private const float MaxSegmentWidth = 3.0f;
         /// <summary>Narrowest a panel may be squeezed (keeps the gate opening walkable).</summary>
         private const float MinSegmentWidth = 1.2f;
@@ -505,8 +519,16 @@ namespace DeNelle.Editor
             WallTier outerTier = ParseTier(def.wallTier, WallTier.Wood);
             bool twoGates = def.entranceCount >= 2;
             var outerGates = new bool[4] { true, false, twoGates, false };
+
+            // WO-1723 Lane B (owner ruling Q1): ask the dresser — the ONE owner of the wall-art
+            // token rule — how wide this camp's wall module actually is, BEFORE partitioning the
+            // collision ring by it. 0 means the pack is missing; BuildRing then falls back to
+            // MaxSegmentWidth and the bake log says so.
+            float outerModule = RaidBaseDresser.WallModuleWidth(def, inner: false);
+            float innerModule = RaidBaseDresser.WallModuleWidth(def, inner: true);
+
             var outer = BuildRing(root, radius, Mathf.Max(3, def.wallSegmentsPerSide), outerTier,
-                                  outerGates, "Outer");
+                                  outerGates, "Outer", outerModule);
 
             // -- INNER keep ring(s) (interiorWallLayers) - the kill-zone. Each layer sits
             //    at 45% of the ring outside it, with a single NORTH gate opposite the outer
@@ -519,7 +541,7 @@ namespace DeNelle.Editor
                 float keepRadius = Mathf.Max(8f, innermost * 0.45f);
                 var innerGates = new bool[4] { false, false, true, false };
                 var keep = BuildRing(root, keepRadius, Mathf.Max(3, def.wallSegmentsPerSide - 2),
-                                     WallTier.ReinforcedSteel, innerGates, $"Keep{layer + 1}");
+                                     WallTier.ReinforcedSteel, innerGates, $"Keep{layer + 1}", innerModule);
                 innermost = keep.HalfExtent;
                 innerLayouts.Add(new RaidBaseDresser.RingLayout
                 {
@@ -1351,7 +1373,8 @@ namespace DeNelle.Editor
         /// ODD so the gate lands on the exact centre panel.
         /// </summary>
         private static RingReport BuildRing(Transform root, float targetHalfExtent, int minSlotsPerSide,
-                                            WallTier tier, bool[] gateSides, string ringName)
+                                            WallTier tier, bool[] gateSides, string ringName,
+                                            float moduleWidth = 0f)
         {
             var towerPrefab = RaidBaseDresser.LoadVisual(FallbackTowerPath);
             float towerHalf = MeasureTowerHalf(towerPrefab);
@@ -1360,8 +1383,17 @@ namespace DeNelle.Editor
             float halfExtent = Mathf.Max(towerHalf + MinSegmentWidth, targetHalfExtent);
             float run = Mathf.Max(MinSegmentWidth, halfExtent * 2f - towerHalf * 2f);
 
+            // ⛔ WO-1723 Lane B, owner ruling Q1: THE ART MODULE PARTITIONS THE RING.
+            // `moduleWidth` is the clad panel's own measured width (RaidBaseDresser.WallModuleWidth,
+            // ~4 m on the shipped kits). Partitioning by it means RaidBaseDresser.CladRing can put
+            // exactly ONE panel on each segment at the module's authored size — so a breach reads
+            // as one clean panel-sized hole instead of the 78-vs-60 mismatch measured on the
+            // shipped ring (WO-1723 §11.4), and no art is squeezed off its module (WO-1704).
+            // MaxSegmentWidth stays as the fallback for a clone with the art pack missing.
+            float widthAuthority = moduleWidth > MinSegmentWidth ? moduleWidth : MaxSegmentWidth;
+
             int n = Mathf.Max(3, minSlotsPerSide);
-            int needed = Mathf.CeilToInt(run / MaxSegmentWidth);
+            int needed = Mathf.CeilToInt(run / widthAuthority);
             if (needed > n) n = needed;
             if ((n & 1) == 0) n++;                       // force ODD so the gate centres
             float segW = Mathf.Max(MinSegmentWidth, run / n);
@@ -1402,9 +1434,17 @@ namespace DeNelle.Editor
                 }
             }
 
+            // WO-1723: the line now names WHICH width partitioned the ring and what the gate cost
+            // was, because the gate span is derived from segW and therefore MOVES with the module.
+            string authority = moduleWidth > MinSegmentWidth ? "cladModule" : "MaxSegmentWidth(fallback)";
             Debug.Log($"[RaidBaseGenerator] ring '{ringName}': target +/-{targetHalfExtent:F1}m -> " +
                       $"+/-{halfExtent:F1}m, {n} panel(s)/side @ {segW:F2}m (floor {minSlotsPerSide}), tier {tier} " +
-                      $"({towers} watchtowers, {segs} wall panels), gates=[{GatesToStr(gateSides)}].");
+                      $"({towers} watchtowers, {segs} wall panels), gates=[{GatesToStr(gateSides)}], " +
+                      $"partitionedBy={authority} {widthAuthority:F2}m, gateSpan={gateSpan} cell(s) = {gateWidth:F2}m.");
+            FlowTrace.Step("RaidBase",
+                $"RING '{ringName}' PARTITION: run={run:F2}m authority={authority} width={widthAuthority:F2}m " +
+                $"-> {n}/side @ {segW:F2}m, {segs} segments total, gateSpan={gateSpan} = {gateWidth:F2}m " +
+                $"(MinGateWidth floor {RaidBaseDresser.MinGateWidth:F2}m). One segment == one clad panel.");
 
             return new RingReport
             {
@@ -1847,6 +1887,18 @@ namespace DeNelle.Editor
                 var b2 = r2[0].bounds;
                 for (int k = 1; k < r2.Length; k++) b2.Encapsulate(r2[k].bounds);
                 seatY = -b2.min.y;                                  // ground-seat offset
+
+                // WO-1722 instrumentation: prove/disprove whether PlaceSegment's own fit-scale
+                // computation is what produces the oversized hidden placeholder renderer a live
+                // capture found under this exact WallSegment ('Wall_Outer_SE_17', Regular tier —
+                // see WORK_ORDER_1722). Logs the PRE-fit raw mesh bounds, the target the fit is
+                // solving for, the resulting scale, and the ACTUAL post-fit world bounds (b2) so a
+                // headed run can compare b2.size against (segWidth, SegSize.y, SegSize.z) directly —
+                // any uniform overshoot on all three axes here (not just Y) proves the defect is
+                // baked in at THIS step, before CladRing/SyncWallColliderHeight ever run.
+                FlowTrace.Step("RaidBase",
+                    $"PLACE SEGMENT '{seg.name}': rawMeshBounds={b.size:F3} target=({segWidth:F3},{SegSize.y:F3},{SegSize.z:F3}) " +
+                    $"fitScale={sc:F3} postFitRenderedBounds={b2.size:F3}");
             }
 
             seg.transform.rotation = sideRot;

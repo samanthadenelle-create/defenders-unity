@@ -1,6 +1,6 @@
 # WORK ORDER 1723 — ROOT CAUSE: the visible raid wall is a SIBLING of the WallSegment, so a destroyed wall neither opens a navmesh hole nor changes visually
 
-**Status: LANE A IMPLEMENTED, NOT YET GATED (nav half: clad excluded from NavigationStatic) / LANE B READY TO IMPLEMENT (visual half — §7 Q1 and Q2 were RULED by the owner 2026-09-14; it is NO LONGER held) / LANE C RE-BAKE OUTSTANDING (§11.6, ship-blocking)**
+**Status: LANE A IMPLEMENTED, NOT YET GATED (nav half: clad excluded from NavigationStatic) / LANE B IMPLEMENTED, NOT YET GATED OR BAKED (visual half: panel-matched partition + clad re-parented under its WallSegment + rubble swap on collapse + ordered-panel highlight — see the Lane B section of the .RESULT.md; ⚠ ONE OPEN OWNER QUESTION, RESULT §B6: the gate opening narrows from ~8.3 m to ~3.9 m as a consequence of the Q1 partition ruling) / LANE C RE-BAKE OUTSTANDING (§11.6, ship-blocking — and now REQUIRED by Lane B, which changes the segment count)**
 **Minted:** 2026-09-14, from the owner's report: *"in a raid I select breach, and target the wall, it shows
 attacked, then moves to next wall segment, however nothing happens as far as being able to travel through the
 hole. There is no visual change whereas I would think you could see that wall segment destroyed."*

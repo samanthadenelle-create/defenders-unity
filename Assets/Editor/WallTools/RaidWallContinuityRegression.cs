@@ -138,16 +138,31 @@ namespace DeNelle.Editor
             }
         }
 
+        /// <summary>
+        /// ⚠ WO-1723 Lane B MOVED THE CLADDING, so this scan had to stop assuming where it lives.
+        /// The visible panels are now CHILDREN of the <c>WallSegment</c> they clad (that re-parent
+        /// is the whole fix: it is what lets <c>RaidNavBake</c> exclude them and
+        /// <c>WallSegment.Collapse</c> own them). Only the corner STUBS still sit directly under
+        /// <c>Zone_Clad</c>. Iterating that zone's direct children — as this did — would therefore
+        /// have measured 2 stubs per side and reported a side-wide seam on a correct bake.
+        /// The panels are gathered BY NAME from the whole tree instead, which is where they are
+        /// regardless of which hierarchy owns them next.
+        /// </summary>
         private static void CheckCladding(Transform root, string id, List<string> failures, StringBuilder notes)
         {
-            var clad = root.Find("Zone_Clad");
-            if (clad == null) { failures.Add(id + " missing actual cladding"); return; }
+            var clad = new List<Transform>();
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == null || t.name == null) continue;
+                if (!t.name.StartsWith("Clad_", StringComparison.Ordinal)) continue;
+                clad.Add(t);
+            }
+            if (clad.Count == 0) { failures.Add(id + " missing actual cladding"); return; }
             // East/west walls have no authored gates. Group by actual radial coordinate,
             // allowing outer and every inner ring to be measured independently.
             var groups = new Dictionary<int, List<Bounds>>();
             foreach (Transform piece in clad)
             {
-                if (!piece.name.StartsWith("Clad_", StringComparison.Ordinal)) continue;
                 Vector3 along = piece.right;
                 if (Mathf.Abs(along.z) < 0.9f) continue;
                 int key = Mathf.RoundToInt(piece.position.x * 100f);
@@ -317,20 +332,36 @@ namespace DeNelle.Editor
 
         private static GameObject CreateMeshProbes(Transform source, Transform parent, out List<MeshCollider> colliders)
         {
+            return CreateMeshProbes(new List<Transform> { source }, parent, out colliders);
+        }
+
+        /// <summary>
+        /// WO-1723: a list overload, because the cladding is no longer one subtree — each panel is
+        /// a child of its own WallSegment. Disabled renderers and inactive objects are skipped
+        /// exactly as before, which is also what keeps the baked (inactive) <c>Ruin_*</c> rubble
+        /// out of a continuity sweep of the INTACT wall.
+        /// </summary>
+        private static GameObject CreateMeshProbes(List<Transform> sources, Transform parent, out List<MeshCollider> colliders)
+        {
             var probes = new GameObject("WO1704_MeshProbes");
             probes.transform.SetParent(parent, false);
             colliders = new List<MeshCollider>();
-            foreach (var filter in source.GetComponentsInChildren<MeshFilter>(true))
+            if (sources == null) return probes;
+            foreach (var source in sources)
             {
-                var renderer = filter.GetComponent<Renderer>();
-                if (filter.sharedMesh == null || renderer == null || !renderer.enabled || !filter.gameObject.activeInHierarchy) continue;
-                var go = new GameObject("Probe_" + filter.name);
-                go.transform.SetParent(probes.transform, false);
-                go.transform.SetPositionAndRotation(filter.transform.position, filter.transform.rotation);
-                go.transform.localScale = filter.transform.lossyScale;
-                var collider = go.AddComponent<MeshCollider>();
-                collider.sharedMesh = filter.sharedMesh;
-                colliders.Add(collider);
+                if (source == null) continue;
+                foreach (var filter in source.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    var renderer = filter.GetComponent<Renderer>();
+                    if (filter.sharedMesh == null || renderer == null || !renderer.enabled || !filter.gameObject.activeInHierarchy) continue;
+                    var go = new GameObject("Probe_" + filter.name);
+                    go.transform.SetParent(probes.transform, false);
+                    go.transform.SetPositionAndRotation(filter.transform.position, filter.transform.rotation);
+                    go.transform.localScale = filter.transform.lossyScale;
+                    var collider = go.AddComponent<MeshCollider>();
+                    collider.sharedMesh = filter.sharedMesh;
+                    colliders.Add(collider);
+                }
             }
             return probes;
         }

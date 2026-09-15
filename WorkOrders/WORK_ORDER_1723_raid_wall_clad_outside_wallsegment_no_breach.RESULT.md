@@ -165,3 +165,144 @@ Debug.Log("[RaidNavBake] " + name + ": " + cladExcluded + " clad renderer(s) EXC
 4. `WorkOrders/WORK_ORDER_1723_raid_wall_clad_outside_wallsegment_no_breach.md` (Status line updated)
 
 Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+
+---
+---
+
+# WORK ORDER 1723 — RESULT (Lane B: THE DESTROYED-WALL VISUAL)
+
+**Date:** 2026-09-14
+**Implementer:** Claude Opus 5 (edit-only lane, dispatched by the CLI lead)
+**Scope:** §4.1 re-parenting on the panel-matched partition (owner ruling Q1), §4.3 rubble swap
+(rulings 2 + 3), §7 Q2 ordered-panel highlight, and the §12 instrumentation on the collapse visual.
+**NOT VERIFIED BY THIS LANE.** No Unity run, no bake, no gate, no git — all held by the lead. The
+acceptance oracle is a re-bake + a screenshot + the headed `Defenders/Raids/Observe Next Combat Breach`
+(§11.7). Everything below is a CLAIM with its source line, not a proven fact.
+
+---
+
+## B1. WHAT CHANGED, FILE BY FILE
+
+| File | Change |
+|---|---|
+| `Assets/Editor/WallTools/RaidBaseDresser.cs` | `CladRing` rewritten to WALK the ring's `WallSegment`s and emit exactly ONE clad panel per segment, parented under it; adds `WallModuleWidth` / `KitOf` / `OuterWallToken` / `ResolveCladModule` (the ONE copy of the wall-token rule, now called by the generator too), `RubbleTokens`, `LoadRubble`, `BuildRuin`, `CladCorners` / `CladStub`, and an explicit `Clad_*`/`Ruin_*` skip in `HideWallRenderers` |
+| `Assets/Editor/WallTools/RaidBaseGenerator.cs` | `BuildRing` takes a `moduleWidth` and partitions by it (`MaxSegmentWidth` demoted to fallback, NOT deleted); `BuildConfigLayout` resolves the outer + inner module widths from the dresser before building either ring; ring log + a new `RING '<name>' PARTITION:` FlowTrace line name which authority partitioned and what the gate cost |
+| `Assets/_Modules/Village/Walls/WallRuinPresenter.cs` | **NEW.** The first runtime subscriber `WallSegment.Collapsed` has ever had (§11.5). Hides the intact panel, shows the baked rubble, re-arms its low step collider, emits the `RUIN SWAP` trace |
+| `Assets/_Modules/Village/Walls/WallSegment.cs` | `Collapse()` skips `CollapseRoutine` when a `WallRuinPresenter` owns the visual, with a `FlowTrace.Once` saying so. Elarion town walls (no presenter) keep the legacy sink byte-identical |
+| `Assets/_Modules/Village/Troops/BreachOrderMarker.cs` | **NEW.** Q2 ordered-panel bracket: ground band + 4 pulsing vertical corner posts, fitted from the ordered segment's BoxCollider, driven by `TroopBreachOrder.Version` |
+| `Assets/_Modules/Village/Troops/RaidDeployController.cs` | One field + `EnsureBreachMarker()`, called when Breach arms. `HandleBreachTap` and the stay-armed behaviour are UNTOUCHED (ruling Q2) |
+| `Assets/Editor/RaidNavBake.cs` | Comment only. `IsUnderCladZone` is KEPT and documented as still load-bearing (see B4) |
+| `Assets/Editor/WallTools/RaidWallContinuityRegression.cs` | `CheckCladding` gathers `Clad_*` by name from the whole tree instead of iterating `Zone_Clad`'s direct children (they moved); `CreateMeshProbes` gains a list overload |
+
+## B2. THE RUBBLE ASSET, AND WHY NOT `wall_broken`
+
+- **`synty-castle`:** `SM_Bld_Castle_DestroyedWall_Rubble_Bottom_01`, then `..._RubblePile_01`, then
+  `..._RubbleBlock_01` (listed present under `Assets/Synty/PolygonFantasyKingdom/Prefabs/Castle/`).
+- **KayKit kits (`dungeon-stone`, `hexagon-green`):** `rubble_large`, then `rubble_half` (listed
+  present in `KayKit Dungeon Remastered 1.1/Assets/fbx(unity)/`; `rubble_large` is already loaded by
+  `DressGateMouth`, so it is proven-resolvable through the existing `LoadVisual` path).
+- ⛔ **`wall_broken` was rejected.** The brief pointed at it, but `DefaultGate`'s own measured note
+  (`RaidBaseDresser.cs:298-300`, WO-1689) records it as **4.00 x 4.00 x 1.00 — the same box as
+  `wall`**. It is a damaged-but-STANDING wall, not something a hero steps over, so shipping it would
+  reproduce the exact symptom this ticket exists to remove. The reasoning is written into
+  `RubbleTokens`' doc comment so the next seat does not re-propose it.
+- The rubble is **TILED at its authored module width, never stretched** (`BuildRuin`), per the
+  WO-1704 ruling the Q1 answer restates: do not squeeze art off its module.
+- Residual collider: ONE `RuinStep` BoxCollider per ruin, height `Clamp(measuredRuinHeight, 0.15,
+  RuinStepOverHeight = 0.45 m)`, on the **Default layer, never "Structure"** — Structure is the
+  tower line-of-sight mask, and rubble there would re-block the shot through the breach the player
+  just paid for. Ruling 3 is therefore satisfied as a NUMBER (0.45 m ceiling), not an adjective.
+
+## B3. THE PARTITION CHANGE — WHAT A RE-BAKE WILL DO
+
+Formula, so the lead can predict it rather than trust a guess:
+
+```
+run   = 2*halfExtent - 2*towerHalf          (unchanged)
+n     = odd( max(3, wallSegmentsPerSide, ceil(run / piece)) )
+segW  = run / n
+total = 4n - (gateSpan * gatedSides)
+```
+`piece` was `MaxSegmentWidth = 3.0`; it is now the clad module width (`WallModuleWidth`, 4.00 m for
+`wall` / `wall_broken`→`wall` / `wall_cracked` on the KayKit kits — `RaidBaseLayoutRegression.cs:417`
+tables `wall_broken` at 4.00 m). For `raider_camp_small` (`baseRadius` 31,
+`wallSegmentsPerSide` 9, two gated sides, the ring measured at 78 segments today) that moves the ring
+from **21 panels/side @ ~2.78 m** to **15 panels/side @ ~3.9 m**, i.e. **~78 → ~60 segments**, which
+is the 1:1 match against the 60 measured `Clad_*` panels the ruling asked for. The exact numbers come
+off the bake log's new `RING '<name>' PARTITION:` line, not off this paragraph.
+
+Re-bake will therefore also: change every `Wall_*_S*_<i>` NAME/index (they are positional), change
+the `!u!208` NavMeshObstacle count (one per segment), leave `Zone_Clad` holding only the 8 corner
+stubs per ring, and shift `PlaceTowers` wall-band slots (it takes `outer.SegmentWidth`).
+**`RaidNavBake.BakeAll` must be re-run after the rebuild — §11.6 already blocks on that.**
+
+## B4. IS `RaidNavBake.IsUnderCladZone` REDUNDANT NOW? **NO — and it is LEFT IN.**
+
+The brief asked. The per-segment panels are now excluded by the existing
+`GetComponentInParent<WallSegment>()` test on their own, so that helper no longer decides THEIR fate.
+But `CladCorners` still leaves the corner STUBS — the span each side hands to its corner post, which
+`BuildRing` deliberately does not cover — directly under `Zone_Clad`, and **no `WallSegment` owns
+those**, so the name test is the only thing that reaches them. It is also kept as a belt-and-braces
+guard on the panels, per the lane brief: a working guard is not removed in the same change that
+replaces it. The reasoning is written at `Assets/Editor/RaidNavBake.cs` on the helper itself.
+
+## B5. GATE
+
+```
+python tools/gate_brace.py <8 files>   ->  GATE_BRACE_SUMMARY bad=0 of 8   (exit 0)
+```
+Raw counts (CLAUDE.md §1 one-liner) + NUL scan, all eight files:
+
+| File | open | close | NUL |
+|---|---|---|---|
+| `Assets/Editor/WallTools/RaidBaseDresser.cs` | 206 | 206 | 0 |
+| `Assets/Editor/WallTools/RaidBaseGenerator.cs` | 360 | 360 | 0 |
+| `Assets/Editor/WallTools/RaidWallContinuityRegression.cs` | 64 | 64 | 0 |
+| `Assets/Editor/RaidNavBake.cs` | 69 | 69 | 0 |
+| `Assets/_Modules/Village/Walls/WallSegment.cs` | 69 | 69 | 0 |
+| `Assets/_Modules/Village/Walls/WallRuinPresenter.cs` | 15 | 15 | 0 |
+| `Assets/_Modules/Village/Troops/BreachOrderMarker.cs` | 20 | 20 | 0 |
+| `Assets/_Modules/Village/Troops/RaidDeployController.cs` | 268 | 268 | 0 |
+
+## B6. ⚠ OPEN — NEEDS AN OWNER RULING BEFORE THIS SHIPS: **THE GATE NARROWS**
+
+`BuildRing.cs:1385` widens the gate by whole CELLS: `while (gateSpan * segW < MinGateWidth) gateSpan += 2`.
+That rule is **unchanged** — but `segW` is not, so its answer moves. At `segW ≈ 2.78` it took **3
+cells = ~8.3 m**; at `segW ≈ 3.9` it takes **1 cell ≈ 3.9 m**. The opening still clears
+`MinGateWidth = 3.5 m` (and `OpenGateAssembly`'s `Mathf.Max` still fits an aperture of ≥ 3.75 m), so
+nothing FAILS — but a raid entrance going from ~8.3 m to ~3.9 m is a felt change the Q1 ruling did not
+cover, and it flows into the gatehouse fit, the approach road half-width, `PlaceGateFlanks` and
+`BuildKeepout.LaneHalf`. **Deliberately NOT "fixed" here:** inventing a new gate-width floor without a
+ruling is exactly what CLAUDE.md §11B forbids. Surfaced instead, with the number, so the owner can
+rule in one word. The new `RING PARTITION` trace prints `gateSpan` and the resulting width on every
+bake so the answer is measured, not predicted.
+
+## B7. WHAT THIS LANE COULD NOT DO
+
+- **Nothing is verified.** No Unity, no bake, no gate, no screenshot, no device capture (lane is
+  edit-only; a build was running).
+- `Assets/Resources/Data/Canonical/scene-configs.json:12` now says something false — *"The generator
+  ADDS panels when needed so none is stretched past 3m."* It is the art module now. **Not edited
+  here** (canonical JSON is binary-edit-only, memory `canonical-json-edits-binary-only-verify-newlines`,
+  and it is out of this lane's file set). Flagged for the lead.
+- `Assets/Editor/RaidWallTierProof.cs` (a menu proof, not a gate) compares each segment's collider
+  against its CHILD renderer bounds. That comparison now measures the real visible panel instead of
+  the hidden twin, which makes it more useful — but its `FootprintMismatchToleranceMetres = 0.75`
+  was calibrated against the old, hidden geometry. Expect its numbers to move; not touched.
+- Ruling 4 (NavMeshLinks) deliberately NOT actioned: Lane A already opened the navmesh and the owner
+  confirmed walking through on device, so no link is added speculatively.
+
+## B8. EVIDENCE INDEX
+
+| Claim | Where |
+|---|---|
+| One clad panel per WallSegment, re-parented world-scale-preserved | `Assets/Editor/WallTools/RaidBaseDresser.cs` `CladRing` |
+| Token rule has ONE copy, called by both halves | `RaidBaseDresser.WallModuleWidth` / `ResolveCladModule`; `RaidBaseGenerator.BuildConfigLayout` |
+| Partition driven by the art module | `RaidBaseGenerator.BuildRing` (`widthAuthority`) |
+| Rubble tiled, step collider capped at 0.45 m, Default layer | `RaidBaseDresser.BuildRuin`, `RuinStepOverHeight` |
+| Swap on collapse + the provable trace | `Assets/_Modules/Village/Walls/WallRuinPresenter.cs` (`RUIN SWAP` line) |
+| Sink suppressed when a presenter owns the visual | `Assets/_Modules/Village/Walls/WallSegment.cs` `Collapse()` |
+| Ordered-panel bracket, shape-first (colourblind-safe) | `Assets/_Modules/Village/Troops/BreachOrderMarker.cs` |
+| Corner stubs are why `IsUnderCladZone` stays | `RaidBaseDresser.CladCorners`; `Assets/Editor/RaidNavBake.cs` |
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

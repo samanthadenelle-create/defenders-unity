@@ -132,6 +132,23 @@ namespace DeNelle.Editor
         private static int _placed;
         private static int _missing;
 
+        /// <summary>Metres of overlap applied to every clad panel so adjacent panels never show a
+        /// float-precision triangle seam (WO-1704 GREEN residual). Applied at BOTH ends now that a
+        /// panel is sized from the WallSegment it clads rather than from a run-relative index.</summary>
+        private const float CladLap = 0.02f;
+
+        /// <summary>
+        /// Ceiling on the rubble's residual collider height, in metres. Owner ruling 2026-09-14
+        /// (WO-1723 §4.3 / §7 ruling 3), verbatim: <i>"that I can step over"</i>. Deliberately
+        /// close to the 0.4 m agent step height <see cref="SeatGateThreshold"/> already cites, so
+        /// the ruin is a kerb, never a blocker — and deliberately NOT zero, because the ruling also
+        /// says the destroyed wall is a THING that is there, not an absence.
+        /// </summary>
+        private const float RuinStepOverHeight = 0.45f;
+
+        /// <summary>Radial thickness of that step collider (metres).</summary>
+        private const float RuinStepThickness = 1.0f;
+
         public static void Dress(SceneConfigDef def, Transform root, LayoutContext ctx)
         {
             if (def == null || root == null) return;
@@ -140,7 +157,7 @@ namespace DeNelle.Editor
             Warned.Clear();
 
             var dress = def.raidDress;
-            string kit = dress != null && !string.IsNullOrEmpty(dress.kit) ? dress.kit : KitFor(def.id);
+            string kit = KitOf(def);
 
             var approach = EnsureZone(root, "Zone_Approach");
             var gatehouse = EnsureZone(root, "Zone_Gatehouse");
@@ -149,7 +166,7 @@ namespace DeNelle.Editor
             Transform keep = ctx.InnerLayers > 0 ? EnsureZone(root, "Zone_Keep") : null;
 
             string gateTok = dress != null && !string.IsNullOrEmpty(dress.gate) ? dress.gate : DefaultGate(kit);
-            string wallTok = dress != null && !string.IsNullOrEmpty(dress.wallModule) ? dress.wallModule : DefaultWall(kit);
+            string wallTok = OuterWallToken(def, kit);
             string floorTok = dress != null && !string.IsNullOrEmpty(dress.floor) ? dress.floor : DefaultFloor(kit);
             string towerTok = dress != null && !string.IsNullOrEmpty(dress.towersVisual) ? dress.towersVisual : DefaultTower(kit);
 
@@ -279,6 +296,69 @@ namespace DeNelle.Editor
             return inst;
         }
 
+        // =====================================================================
+        //  WALL MODULE AUTHORITY (WO-1723 Lane B, owner ruling Q1 2026-09-14)
+        // -----------------------------------------------------------------------------
+        //  Owner, verbatim: "match the PANELS" — drive the collision segments from the art
+        //  module's real width so ONE visible clad panel maps 1:1 to ONE destructible
+        //  WallSegment. Measured before the ruling: 78 `Wall_Outer_*` segments against 60
+        //  `Clad_*` panels on the same ring (WO-1723 §11.4), so destroying one segment could
+        //  never clear one visible panel.
+        //
+        //  ⛔ THE TOKEN RULE LIVES HERE ONCE AND IS CALLED TWICE.
+        //  RaidBaseGenerator.BuildConfigLayout asks for the module WIDTH before it partitions
+        //  the ring; Dress asks for the same TOKEN when it clads it. A second copy of
+        //  "dress.wallModule, else DefaultWall(kit), and wall_broken resolves to wall" is the
+        //  duplicated-state class CLAUDE.md §2/§5/§8/§16 each describe going stale — and it
+        //  would drift into the two halves disagreeing about how wide a panel is, which is
+        //  precisely the defect this ticket exists to close. Do not inline either rule.
+        // =====================================================================
+
+        /// <summary>The dress kit for a config: the authored <c>raidDress.kit</c>, else <see cref="KitFor"/>.</summary>
+        public static string KitOf(SceneConfigDef def)
+        {
+            if (def == null) return "hexagon-green";
+            var dress = def.raidDress;
+            return dress != null && !string.IsNullOrEmpty(dress.kit) ? dress.kit : KitFor(def.id);
+        }
+
+        /// <summary>The OUTER ring's authored wall token (pre-clad-resolution).</summary>
+        private static string OuterWallToken(SceneConfigDef def, string kit)
+        {
+            var dress = def != null ? def.raidDress : null;
+            return dress != null && !string.IsNullOrEmpty(dress.wallModule) ? dress.wallModule : DefaultWall(kit);
+        }
+
+        /// <summary>
+        /// WO-1704 actual triangle RED, kept as the ONE copy of the rule: <c>wall_broken</c> has
+        /// body-level holes even when its bounds touch, so an ENCLOSING ring uses the intact
+        /// sibling. (Rubble stays decor — and, since WO-1723, the ruin swap's own model.)
+        /// </summary>
+        private static string ResolveCladModule(string token)
+        {
+            return token == "wall_broken" ? "wall" : token;
+        }
+
+        /// <summary>
+        /// The art module width one ring's wall panels are actually laid out at, in metres, or
+        /// 0 when the pack is missing / unmeasurable (callers then keep their own fallback).
+        /// This is the number <c>RaidBaseGenerator.BuildRing</c> partitions the collision ring by
+        /// under the Q1 ruling.
+        /// </summary>
+        /// <param name="inner">True for a keep ring (<see cref="InnerWall"/> may substitute a
+        /// different module there), false for the outer perimeter.</param>
+        public static float WallModuleWidth(SceneConfigDef def, bool inner)
+        {
+            if (def == null) return 0f;
+            string kit = KitOf(def);
+            string token = OuterWallToken(def, kit);
+            if (inner) token = InnerWall(kit, token);
+            var model = LoadVisual(ResolveCladModule(token));
+            if (model == null) return 0f;
+            float w = MeasureLongest(model);
+            return w >= 0.2f ? w : 0f;
+        }
+
         // -- kit defaults -----------------------------------------------------
 
         private static string KitFor(string id)
@@ -352,6 +432,31 @@ namespace DeNelle.Editor
         {
             if (kit == "dungeon-stone") return "wall";
             return outer;
+        }
+
+        /// <summary>
+        /// The DESTROYED-wall module, per kit (WO-1723 Lane B, owner ruling 2026-09-14: <i>"replace
+        /// with a destroyed wall ... that I can step over"</i>). Returned as an ordered candidate
+        /// list so a kit whose first choice is missing still ships rubble instead of an empty gap.
+        /// <para/>
+        /// ⛔ <c>wall_broken</c> IS NOT ON THIS LIST, AND THAT IS DELIBERATE. WO-1689 measured it at
+        /// <b>4.00 x 4.00 x 1.00 — the SAME box as <c>wall</c></b> (see <see cref="DefaultGate"/>'s
+        /// note). It is a damaged-but-STANDING wall, not something a hero steps over, so using it
+        /// would reproduce the exact symptom this ticket exists to fix: a destroyed section that
+        /// still reads as a wall. `rubble_large` / `rubble_half` are the KayKit pack's actual ground
+        /// debris (`DressGateMouth` already loads `rubble_large`), and the Synty castle kit ships a
+        /// purpose-built destroyed-wall family.
+        /// </summary>
+        private static string[] RubbleTokens(string kit)
+        {
+            if (kit == "synty-castle")
+                return new[]
+                {
+                    "SM_Bld_Castle_DestroyedWall_Rubble_Bottom_01",
+                    "SM_Bld_Castle_DestroyedWall_RubblePile_01",
+                    "SM_Bld_Castle_DestroyedWall_RubbleBlock_01",
+                };
+            return new[] { "rubble_large", "rubble_half" };
         }
 
         private static string DefaultFloor(string kit)
@@ -482,6 +587,18 @@ namespace DeNelle.Editor
             });
         }
 
+        /// <summary>
+        /// Switch off the WallSegment's own placeholder mesh (the one PlaceSegment sized its
+        /// BoxCollider from). The wall the player sees is the clad panel built by
+        /// <see cref="CladRing"/>.
+        /// <para/>
+        /// ⚠ WO-1723 Lane B made this method's SCOPE load-bearing. The clad panel and the baked
+        /// ruin are now CHILDREN of the <c>Wall_*</c> segment, so an unguarded sweep would blank
+        /// the visible wall itself. Ordering saves it today (Dress calls this BEFORE CladRing),
+        /// but ordering is not a contract — a second Dress pass, or anything that re-hides walls,
+        /// would silently erase the entire wall ring and read as a successful bake. The explicit
+        /// skip is the contract; do not remove it in favour of "it runs first".
+        /// </summary>
         private static void HideWallRenderers(Transform root)
         {
             var walls = root.GetComponentsInChildren<Transform>(true);
@@ -491,8 +608,28 @@ namespace DeNelle.Editor
                 if (!walls[i].name.StartsWith("Wall_")) continue;
                 var rends = walls[i].GetComponentsInChildren<Renderer>(true);
                 for (int r = 0; r < rends.Length; r++)
-                    if (rends[r] != null) rends[r].enabled = false;
+                {
+                    if (rends[r] == null) continue;
+                    if (IsDresserOwnedVisual(rends[r].transform)) continue;
+                    rends[r].enabled = false;
+                }
             }
+        }
+
+        /// <summary>
+        /// True when a transform is (or sits under) a dresser-authored wall visual — the visible
+        /// clad panel or the baked ruin. Both are parented to their WallSegment by WO-1723 §4.1
+        /// and must never be caught by <see cref="HideWallRenderers"/>'s <c>Wall_*</c> sweep.
+        /// </summary>
+        private static bool IsDresserOwnedVisual(Transform t)
+        {
+            while (t != null)
+            {
+                if (t.name != null && (t.name.StartsWith("Clad_") || t.name.StartsWith("Ruin_")))
+                    return true;
+                t = t.parent;
+            }
+            return false;
         }
 
         /// <summary>
@@ -513,68 +650,329 @@ namespace DeNelle.Editor
         /// re-derive the hidden WallSegment colliders' height from THIS method's achievedHeight —
         /// the collider now always tracks whatever height the clad visual actually ends up at,
         /// for any tier/kit/module, not just this one wall id.
+        ///
+        /// =====================================================================================
+        /// ⛔ WO-1723 LANE B — THIS METHOD NO LONGER COMPUTES A PARTITION. IT WALKS THE SEGMENTS.
+        /// =====================================================================================
+        /// ROOT CAUSE it closes (WO-1723 §1, measured on the device): the panel this method used
+        /// to build was instantiated under a root-level <c>Zone_Clad</c> zone — a SIBLING of the
+        /// <c>WallSegment</c>, not a child. Both systems that must treat a wall as destructible
+        /// walk that hierarchy and therefore missed it:
+        ///   * <c>RaidNavBake</c>'s <c>GetComponentInParent&lt;WallSegment&gt;()</c> test found no
+        ///     segment above a clad panel, so the entire VISIBLE ring baked in as permanent,
+        ///     non-carvable navmesh geometry — 645 of 656 live probes read NOT-WALKABLE over a
+        ///     collapsed wall, forever.
+        ///   * <c>WallSegment.CollapseRoutine</c>'s <c>GetComponentsInChildren&lt;Renderer&gt;()</c>
+        ///     walks DOWN, so the collapse sink moved only the segment's own meshes — which
+        ///     <see cref="HideWallRenderers"/> had already DISABLED. 80/80 collapses logged a
+        ///     successful "ruin SETTLED" line while the player watched an unbroken wall
+        ///     (owner screenshot: <c>Razed 28%</c>, wall pristine edge to edge).
+        ///
+        /// ⛔ AND THE TWO PARTITIONS COULD NEVER HAVE BEEN MADE TO AGREE BY ARITHMETIC.
+        /// The old code laid panels out over <c>-radius..+radius</c> at the art module width with
+        /// its own gate cut; <c>BuildRing</c> lays segments out over
+        /// <c>run = 2*halfExtent - 2*towerHalf</c>, forces the count ODD, and removes
+        /// <c>gateSpan</c> CENTRE CELLS. Measured on the shipped ring that was 78 segments against
+        /// 60 panels (§11.4). "Resolve the segment whose footprint contains the panel centre"
+        /// (§4.1's first sketch) therefore produces straddles at every join and orphans at both
+        /// ends. The 1:1 map is only guaranteed by CONSTRUCTION: the generator owns the partition
+        /// (now driven by <see cref="WallModuleWidth"/> per the owner's Q1 ruling), and this method
+        /// emits exactly one panel per segment it finds, sized from that segment's own collider.
+        ///
+        /// ⚠ THE RE-PARENT MUST PRESERVE WORLD SCALE, AND THAT IS NOT OPTIONAL.
+        /// <c>RaidBaseGenerator.PlaceSegment</c> puts a NON-UNIFORM fit scale on the segment ROOT
+        /// (x = segWidth/rawX, y = 3.0/rawY, z = 1.5/rawZ). Instantiating the clad with the segment
+        /// as its parent would inherit that and squash every panel. So each panel is built and
+        /// fitted under the unscaled <c>Zone_Clad</c> zone first and only then re-parented with
+        /// <c>SetParent(segment, worldPositionStays: true)</c> — exact here because the panel and
+        /// the segment carry the SAME yaw, so Unity's component-wise lossy-scale division has no
+        /// shear to lose.
+        ///
+        /// ⚠ <paramref name="twoGates"/>, <paramref name="northGate"/> and
+        /// <paramref name="gateWidth"/> NO LONGER PLACE ANYTHING. BuildRing already removed the
+        /// gate cells, so the gap is simply where no segment exists — the gate cut can no longer
+        /// be described twice and disagree with itself, which is the same 78-vs-60 class of bug
+        /// one paragraph up. They are kept on the signature because <paramref name="gateWidth"/>
+        /// is still REPORTED (the bake log has to state the opening the ring actually has), and
+        /// the two flags keep the call sites readable about which ring is gated where. Do not
+        /// re-derive a cut from them here.
+        /// Likewise <c>piece</c> below is now MEASURED AND REPORTED ONLY: the partition it used to
+        /// drive moved to <see cref="WallModuleWidth"/> and BuildRing.
         /// </summary>
         private static float CladRing(Transform root, string token, float radius, float gateWidth,
                                       bool twoGates, string kit, string ringPrefix, bool northGate = false)
         {
-            // WO-1704 actual triangle RED: wall_broken has body-level holes even when
-            // its bounds touch. Enclosing rings use the intact sibling; rubble stays decor.
-            string resolvedToken = token == "wall_broken" ? "wall" : token;
+            string resolvedToken = ResolveCladModule(token);
             var model = LoadVisual(resolvedToken);
             if (model == null) { WarnMissing(resolvedToken); return 0f; }
             float piece = MeasureLongest(model);
             if (piece < 0.2f) { WarnMissing(resolvedToken + " measurable width"); return 0f; }
             var parent = EnsureZone(root, "Zone_Clad");
             string cladPath = AssetDatabase.GetAssetPath(model);
+
+            // The destroyed-wall model, resolved ONCE per ring. A null here is not fatal: the
+            // ring still clads, WallRuinPresenter is simply not authored, and WallSegment keeps
+            // its legacy sink. The bake log says which happened.
+            string ruinToken;
+            var ruinModel = LoadRubble(kit, out ruinToken);
+            float ruinModule = ruinModel != null ? MeasureLongest(ruinModel) : 0f;
+
+            string namePrefix = "Wall_" + ringPrefix + "_S";
+            var segments = new List<WallSegment>();
+            foreach (var ws in root.GetComponentsInChildren<WallSegment>(true))
+            {
+                if (ws == null || ws.name == null) continue;
+                if (!ws.name.StartsWith(namePrefix)) continue;
+                segments.Add(ws);
+            }
+            if (segments.Count == 0)
+            {
+                FlowTrace.Warn(Sys, "CLAD ring='" + ringPrefix + "' found 0 '" + namePrefix +
+                    "*' WallSegments under '" + root.name + "' - the ring is UNCLAD and nothing " +
+                    "visible exists to destroy. BuildRing must run before Dress.");
+                return 0f;
+            }
+
             bool cladTraced = false;
             float achievedHeight = 0f;
             int placed = 0;
-            for (int s = 0; s < 4; s++)
+            int ruined = 0;
+
+            for (int i = 0; i < segments.Count; i++)
             {
-                bool gated = northGate ? s == 2 : s == 0 || (twoGates && s == 2);
-                var rot = Quaternion.Euler(0f, 90f * s, 0f);
-                var mid = rot * new Vector3(0f, 0f, -radius);
-                var along = rot * Vector3.right;
-                // Partition at the REAL physical gate edges. Skipping by cell centre made
-                // cladding narrow the opening and left unmeasured shoulders beside the gate.
-                int runs = gated ? 2 : 1;
-                for (int run = 0; run < runs; run++)
+                var seg = segments[i];
+                var st = seg.transform;
+                var box = seg.GetComponent<BoxCollider>();
+                if (box == null)
                 {
-                    float start = run == 0 ? -radius : gateWidth * 0.5f;
-                    float end = !gated || run == 1 ? radius : -gateWidth * 0.5f;
-                    float length = end - start;
-                    if (length <= 0f) continue;
-                    int n = Mathf.Max(1, Mathf.CeilToInt(length / piece));
-                    float step = length / n;
-                    for (int i = 0; i < n; i++)
-                    {
-                        // WO-1704 GREEN residual: touching float bounds still left three
-                        // sampled triangle seams per Easy side. Lap INTERNAL joins by 2cm;
-                        // keep both run endpoints exact, especially the authored gate edges.
-                        float panelStart = i == 0 ? start : start + i * step - 0.01f;
-                        float panelEnd = i + 1 == n ? end : start + (i + 1) * step + 0.01f;
-                        var pos = mid + along * ((panelStart + panelEnd) * 0.5f);
-                        var go = InstantiateVisual(model, parent,
-                            "Clad_" + s + "_" + run + "_" + i + "_R" + radius.ToString("F2"), pos, rot, true);
-                        if (go == null) continue;
-                        FitPieceAlong(go, panelEnd - panelStart, pos);
-                        placed++;
-                        if (!cladTraced)
-                        {
-                            cladTraced = true;
-                            achievedHeight = MeasureHeight(go);
-                            ArenaBoundaryRing.TraceMaterials(Sys, "base wall token='" + token +
-                                "' resolved='" + resolvedToken + "' kit=" + kit + " radius=" + radius.ToString("F1"), cladPath, go);
-                        }
-                    }
+                    FlowTrace.Warn(Sys, "CLAD '" + seg.name + "' has no BoxCollider - its panel " +
+                                        "width is unknowable, so it is left unclad.");
+                    continue;
+                }
+
+                // The panel's width IS the segment's collision footprint (owner ruling Q1: one
+                // panel, one destructible section). Read out of the built tree, never recomputed.
+                float segW = Mathf.Abs(box.size.x * st.lossyScale.x);
+                if (segW < 0.2f) continue;
+                var centre = new Vector3(st.position.x, 0f, st.position.z);
+                var rot = st.rotation;
+
+                var go = InstantiateVisual(model, parent, "Clad_" + seg.name, centre, rot, true);
+                if (go == null) continue;
+                // WO-1704 GREEN residual: touching float bounds left sampled triangle seams. The
+                // lap is now applied at BOTH ends of every panel (CladLap total), because a panel
+                // is sized from its segment rather than from a run-relative index that knew which
+                // ends were run endpoints. 1 cm of overhang at a gate edge is far inside the
+                // MinGateWidth floor and is measured by RaidWallContinuityRegression either way.
+                FitPieceAlong(go, segW + CladLap, centre);
+
+                if (!cladTraced)
+                {
+                    cladTraced = true;
+                    achievedHeight = MeasureHeight(go);
+                    ArenaBoundaryRing.TraceMaterials(Sys, "base wall token='" + token +
+                        "' resolved='" + resolvedToken + "' kit=" + kit + " radius=" + radius.ToString("F1"),
+                        cladPath, go);
+                }
+
+                var ruin = BuildRuin(parent, ruinModel, ruinModule, seg.name, centre, rot, segW);
+                float ruinHeight = ruin != null ? MeasureHeight(ruin) : 0f;
+                var ruinStep = ruin != null ? ruin.GetComponentInChildren<BoxCollider>(true) : null;
+
+                // ⚠ RE-PARENT LAST, WORLD TRANSFORM PRESERVED (see the header). Everything above
+                // was measured and fitted under the unscaled zone.
+                go.transform.SetParent(st, true);
+                if (ruin != null)
+                {
+                    ruin.transform.SetParent(st, true);
+                    ruin.SetActive(false);
+                    var presenter = seg.gameObject.GetComponent<WallRuinPresenter>();
+                    if (presenter == null) presenter = seg.gameObject.AddComponent<WallRuinPresenter>();
+                    presenter.Author(seg, go.transform, ruin.transform, ruinStep, ruinToken, ruinHeight);
+                    ruined++;
+                }
+                placed++;
+
+                if (i == 0)
+                {
+                    // §12 — the re-parent is the whole fix, so PROVE it survived rather than
+                    // assuming it: a squashed lossyScale here is the non-uniform-parent trap.
+                    var ls = go.transform.lossyScale;
+                    FlowTrace.Step(Sys, "CLAD REPARENT '" + go.name + "' -> '" + seg.name +
+                        "' segW=" + segW.ToString("F2") + "m panelLossyScale=(" +
+                        ls.x.ToString("F3") + ", " + ls.y.ToString("F3") + ", " + ls.z.ToString("F3") +
+                        ") segmentLossyScale=(" + st.lossyScale.x.ToString("F3") + ", " +
+                        st.lossyScale.y.ToString("F3") + ", " + st.lossyScale.z.ToString("F3") +
+                        ") - GetComponentInParent<WallSegment>() now answers for this panel, so " +
+                        "RaidNavBake excludes it and WallSegment owns its destruction.");
                 }
             }
+
+            int fillers = CladCorners(parent, model, radius, ringPrefix, segments);
+
             FlowTrace.Step(Sys, "WALL token='" + token + "' resolved='" + resolvedToken + "' kit=" + kit +
                 " radius=" + radius.ToString("F1") + "m module=" + piece.ToString("F2") +
                 "m achievedH=" + achievedHeight.ToString("F2") + "m panels=" + placed +
-                " gateWidth=" + gateWidth.ToString("F3") + "m joined=true internalLap=0.020m endpoints=exact");
+                " segments=" + segments.Count + " ruinsBaked=" + ruined + " ruinToken='" + ruinToken +
+                "' cornerFillers=" + fillers + " gateWidth=" + gateWidth.ToString("F3") +
+                "m joined=true panelLap=" + CladLap.ToString("F3") + "m parent=WallSegment(1:1)");
             if (achievedHeight > 0f) SyncWallColliderHeight(root, ringPrefix, achievedHeight);
             return achievedHeight;
+        }
+
+        /// <summary>
+        /// Resolve the kit's destroyed-wall art, trying each candidate in
+        /// <see cref="RubbleTokens"/> in order. Returns null (with the attempted tokens named in
+        /// the warn) when the pack is not imported — the caller then skips the ruin swap rather
+        /// than baking a presenter that points at nothing.
+        /// </summary>
+        private static GameObject LoadRubble(string kit, out string resolved)
+        {
+            var candidates = RubbleTokens(kit);
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                var go = LoadVisual(candidates[i]);
+                if (go != null) { resolved = candidates[i]; return go; }
+            }
+            resolved = "";
+            FlowTrace.Warn(Sys, "RUIN kit=" + kit + " resolved NO destroyed-wall art from [" +
+                string.Join(", ", candidates) + "] - collapsed walls in this kit keep the legacy " +
+                "sink instead of swapping to rubble (art pack not imported?).");
+            return null;
+        }
+
+        /// <summary>
+        /// Build one section's destroyed-wall stand-in: a holder at the panel footprint carrying
+        /// TILED copies of the rubble module plus a single LOW step-over BoxCollider. Returns the
+        /// holder (still ACTIVE, still under <paramref name="zone"/>) so the caller can measure it
+        /// before re-parenting and disabling it.
+        /// <para/>
+        /// ⛔ THE RUBBLE IS TILED, NOT STRETCHED. Owner ruling WO-1704, restated on WO-1723 §7 Q1:
+        /// do NOT squeeze art off its authored module — that is the seam defect WO-1704 was opened
+        /// to fix. A single rubble pile scaled to a ~3.9 m panel reads as a smeared boulder; two or
+        /// three at their authored size read as a collapsed wall.
+        /// <para/>
+        /// ⛔ THE STEP COLLIDER IS DELIBERATELY NOT ON THE "Structure" LAYER. Structure is the mask
+        /// every tower line-of-sight linecast fires against (WallSegment.cs:35-39); putting rubble
+        /// there would re-block the shot through a breach the player just paid for. It is also the
+        /// reason a residual collider is safe at all: WO-1723 §11.3 measured that the hero is a
+        /// kinematically-driven NavMeshAgent with NO physics casts whatsoever, so the navmesh, not
+        /// this box, is what decides whether she can walk through.
+        /// </summary>
+        private static GameObject BuildRuin(Transform zone, GameObject ruinModel, float ruinModule,
+                                            string segName, Vector3 centre, Quaternion rot, float segW)
+        {
+            if (ruinModel == null || zone == null) return null;
+
+            var holder = new GameObject("Ruin_" + segName);
+            holder.transform.SetParent(zone, false);
+            holder.transform.SetPositionAndRotation(centre, rot);
+            holder.transform.localScale = Vector3.one;
+
+            var along = rot * Vector3.right;
+            float module = ruinModule > 0.3f ? ruinModule : segW;
+            int n = Mathf.Clamp(Mathf.RoundToInt(segW / module), 1, 6);
+            float step = segW / n;
+            int seed = StableHash(segName);
+            for (int i = 0; i < n; i++)
+            {
+                float offset = -segW * 0.5f + (i + 0.5f) * step;
+                var pos = centre + along * offset;
+                // Deterministic yaw jitter (a re-bake reproduces the identical ruin), small enough
+                // that the pile still reads as a wall line rather than scattered debris.
+                float yaw = ((seed + i * 97) % 31) - 15f;
+                InstantiateVisual(ruinModel, holder.transform, "RuinPiece_" + i, pos,
+                                  rot * Quaternion.Euler(0f, yaw, 0f), true);
+            }
+
+            // The step-over box. The holder is identity-scaled and carries the segment's yaw, so a
+            // child at local origin maps local box units 1:1 onto world metres along the panel.
+            var stepGo = new GameObject("RuinStep");
+            stepGo.transform.SetParent(holder.transform, false);
+            stepGo.transform.localPosition = Vector3.zero;
+            stepGo.transform.localRotation = Quaternion.identity;
+            stepGo.transform.localScale = Vector3.one;
+            var stepBox = stepGo.AddComponent<BoxCollider>();
+            float measured = MeasureHeight(holder);
+            float h = Mathf.Clamp(measured, 0.15f, RuinStepOverHeight);
+            stepBox.size = new Vector3(segW, h, RuinStepThickness);
+            stepBox.center = new Vector3(0f, h * 0.5f, 0f);
+            stepBox.isTrigger = false;
+            return holder;
+        }
+
+        /// <summary>
+        /// Clad the two stubs at each side's ends — the span between the outermost WallSegment and
+        /// the ring corner, which <c>BuildRing</c> deliberately leaves to the corner post
+        /// (<c>run = 2*halfExtent - 2*towerHalf</c>). These pieces stay under <c>Zone_Clad</c>
+        /// because NO WallSegment owns them: they are behind the corner tower and are not
+        /// destructible.
+        /// <para/>
+        /// ⚠ THIS IS ALSO THE ANSWER TO "is RaidNavBake.IsUnderCladZone redundant now?" — it is
+        /// NOT. The per-segment panels are excluded from NavigationStatic by the
+        /// <c>GetComponentInParent&lt;WallSegment&gt;()</c> test alone, but these corner stubs have
+        /// no segment above them and only the Zone_Clad name test reaches them.
+        /// <para/>
+        /// Without them <c>RaidWallContinuityRegression.CheckCladding</c>'s ray sweep — which
+        /// samples the FULL <c>-radius..+radius</c> span of every ungated side — would report a
+        /// ~towerHalf-wide mesh hole at all eight corners, because its probe set is built from the
+        /// cladding alone and never includes the corner posts.
+        /// </summary>
+        private static int CladCorners(Transform zone, GameObject model, float radius,
+                                       string ringPrefix, List<WallSegment> segments)
+        {
+            if (model == null || zone == null || segments == null) return 0;
+            int made = 0;
+            for (int s = 0; s < 4; s++)
+            {
+                var rot = Quaternion.Euler(0f, 90f * s, 0f);
+                var along = rot * Vector3.right;
+
+                // ⚠ The side's radial line is MEASURED off the segments, never recomputed from
+                // `radius`. BuildRing lays the ring at `halfExtent`, which is Max(towerHalf +
+                // MinSegmentWidth, targetHalfExtent) — equal to the radius on every shipped camp,
+                // but a stub placed on the WRONG line would sit at a different x and read as a
+                // whole-side seam to RaidWallContinuityRegression, which groups panels by x.
+                bool found = false;
+                var mid = Vector3.zero;
+                float minEdge = float.MaxValue;
+                float maxEdge = float.MinValue;
+                for (int i = 0; i < segments.Count; i++)
+                {
+                    var seg = segments[i];
+                    if (seg == null) continue;
+                    if (Quaternion.Angle(seg.transform.rotation, rot) > 1f) continue;
+                    var box = seg.GetComponent<BoxCollider>();
+                    if (box == null) continue;
+                    var p = new Vector3(seg.transform.position.x, 0f, seg.transform.position.z);
+                    float a = Vector3.Dot(p, along);
+                    if (!found) { mid = p - along * a; found = true; }
+                    float half = Mathf.Abs(box.size.x * seg.transform.lossyScale.x) * 0.5f;
+                    minEdge = Mathf.Min(minEdge, a - half);
+                    maxEdge = Mathf.Max(maxEdge, a + half);
+                }
+                if (!found) continue;   // no segments on this side at all
+
+                made += CladStub(zone, model, mid, along, rot, -radius, minEdge, s, "L");
+                made += CladStub(zone, model, mid, along, rot, maxEdge, radius, s, "R");
+            }
+            if (made > 0)
+                FlowTrace.Step(Sys, "CLAD corners ring='" + ringPrefix + "' stubs=" + made +
+                    " (the span each side leaves to its corner post; no WallSegment owns these, so " +
+                    "they stay under Zone_Clad and RaidNavBake.IsUnderCladZone is what excludes them).");
+            return made;
+        }
+
+        private static int CladStub(Transform zone, GameObject model, Vector3 mid, Vector3 along,
+                                    Quaternion rot, float start, float end, int side, string label)
+        {
+            float length = end - start;
+            if (length <= 0.05f) return 0;
+            var pos = mid + along * ((start + end) * 0.5f);
+            var go = InstantiateVisual(model, zone, "Clad_Corner_S" + side + "_" + label, pos, rot, true);
+            if (go == null) return 0;
+            FitPieceAlong(go, length + CladLap, pos);
+            return 1;
         }
 
         /// <summary>

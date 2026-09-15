@@ -96,6 +96,7 @@ namespace DeNelle.Village
         private string _armedDefId;     // the TroopDefId armed for the next ground tap (null = none)
         private bool _rallyMode;        // true while the Rally toggle is on (next tap sets the rally point)
         private bool _breachMode;       // WO-1719: true while Breach is on (next wall tap sets TroopBreachOrder)
+        private BreachOrderMarker _breachMarker;   // WO-1723 Q2: the in-world bracket on the ordered panel
         private bool _retreatPending;   // first Retreat tap, awaiting confirm (when _retreatConfirm)
 
         // ── Tracking deployed troops (controller + owning army id) ────────────
@@ -1102,6 +1103,7 @@ namespace DeNelle.Village
                 _rallyMode = false;     // breach + rally are exclusive arm states
                 RefreshRallyButton();
                 RefreshTiles();
+                EnsureBreachMarker();   // WO-1723 Q2 - the ordered panel gets a visible bracket
                 SetStatus("Breach: tap a wall section to order the assault.");
             }
             else
@@ -1123,6 +1125,20 @@ namespace DeNelle.Village
                     "ToggleBreach OUT - breach mode ARMED. Deploy disarmed, rally disarmed, " +
                     "tiles/rally button refreshed; awaiting a wall tap in HandleBreachTap.");
             }
+        }
+
+        /// <summary>
+        /// WO-1723 Lane B, owner ruling Q2 (2026-09-14): Breach mode STAYS ARMED after a
+        /// successful order, and the ordered panel gets a clear visual highlight so the player can
+        /// see which section the warband is on and that a re-tap MOVED it. Created once, lazily,
+        /// when Breach first arms — the marker then follows <see cref="TroopBreachOrder"/> by its
+        /// own Version poll, including the two transitions no writer here would announce: the
+        /// ordered panel COLLAPSING (the order self-clears) and scene teardown.
+        /// </summary>
+        private void EnsureBreachMarker()
+        {
+            if (_breachMarker != null) return;
+            _breachMarker = BreachOrderMarker.Create(transform);
         }
 
         private void RefreshBreachButton()

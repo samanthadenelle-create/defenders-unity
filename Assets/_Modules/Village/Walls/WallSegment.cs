@@ -422,6 +422,27 @@ namespace DeNelle.Village
             // collapse above. Skipped outside play mode: the edit-mode regression harness
             // drives walls to 100 damage on bare GameObjects, where StartCoroutine cannot run.
             if (!Application.isPlaying) return;
+
+            // ⛔ WO-1723 Lane B — THE SINK AND THE RUIN SWAP ARE MUTUALLY EXCLUSIVE.
+            // A raid wall baked by RaidBaseDresser now carries a WallRuinPresenter, which
+            // subscribed to Collapsed above and has ALREADY replaced the intact clad panel
+            // with a rubble model at this footprint (owner ruling: "remove the destroyed wall
+            // and replace with a destroyed wall ... that I can step over"). Running the sink
+            // as well would drag that fresh rubble underground on the same frame — and by a
+            // LARGER distance than before, because the clad panel is now a CHILD of this
+            // segment, so CollapseRoutine's encapsulated renderer bounds are the ~4 m visible
+            // wall rather than the 3 m hidden twin.
+            // The player's own Elarion perimeter walls have no presenter, so their legacy
+            // sink is byte-identical to before.
+            if (TryGetComponent(out WallRuinPresenter ruin))
+            {
+                FlowTrace.Once(Sys, $"wall-collapse-ruin:{GetInstanceID()}",
+                    $"WallSegment '{name}' collapse tell SKIPPED the sink - WallRuinPresenter " +
+                    $"owns this section's destroyed visual (ruin token '{ruin.RuinToken}'). " +
+                    "The segment transform deliberately does not move; see the RUIN SWAP line.");
+                return;
+            }
+
             Guard.Try(Sys, "wall collapse visual", () => StartCoroutine(CollapseRoutine()));
         }
 

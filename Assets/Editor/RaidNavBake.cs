@@ -49,6 +49,19 @@ namespace DeNelle.Editor
         /// Checks if a transform (or any of its parents up the chain) is named CladZoneName.
         /// Used to identify renderer objects that live under Zone_Clad — the visible wall ring
         /// that must be excluded from NavigationStatic so the ground beneath it bakes walkable.
+        /// <para/>
+        /// ⚠ WO-1723 LANE B CHANGED WHAT THIS REACHES — AND IT IS STILL LOAD-BEARING.
+        /// Lane B re-parented every per-segment clad panel under the <c>WallSegment</c> it clads,
+        /// so those panels are now excluded by the <c>GetComponentInParent&lt;WallSegment&gt;()</c>
+        /// test on its own and this helper no longer decides their fate. It is NOT redundant:
+        /// <c>RaidBaseDresser.CladCorners</c> still leaves the corner STUBS — the span each side
+        /// hands to its corner post — under <c>Zone_Clad</c>, because no WallSegment owns them,
+        /// and this name test is the only thing that reaches those.
+        /// <para/>
+        /// It is deliberately kept as a belt-and-braces guard for the panels too: it costs one
+        /// parent walk per renderer, and removing a working exclusion in the same change that
+        /// replaces it is how a re-parent regression would silently re-seal the ring. Judge by a
+        /// fresh bake log's <c>clad renderer(s) EXCLUDED</c> count, not by this comment.
         /// </summary>
         private static bool IsUnderCladZone(Transform t)
         {
