@@ -414,28 +414,98 @@ namespace DeNelle.Editor
             SceneConfigCatalog.Invalidate();
             InvalidateStructureCatalog();
             const string configId = "iron_bastion";
-            if (SceneConfigCatalog.Find(configId) == null)
+            var def = SceneConfigCatalog.Find(configId);
+            if (def == null)
                 throw new InvalidOperationException("Final raid config is missing.");
+            // WO-1732: the destination comes from the config's authored sceneName via the ONE
+            // resolver, not from a literal repeated here. The literal that used to sit on this
+            // line was a second copy of a path BuildAllRaidScenes never wrote to, which is how
+            // RaidBase_IronBastion drifted a whole partition behind the other three tiers.
+            string path = ScenePathFor(def, configId);
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             BuildFromConfig(configId, null);
-            if (!EditorSceneManager.SaveScene(scene, "Assets/Scenes/RaidBase_IronBastion.unity"))
-                throw new InvalidOperationException("Final raid scene could not be saved.");
+            if (!EditorSceneManager.SaveScene(scene, path))
+                throw new InvalidOperationException($"Final raid scene could not be saved to {path}.");
             Debug.Log("FINAL_RAID_GENERATED_OK config=iron_bastion; navigation bake required");
         }
 
         // == Config-driven entry points ========================================
 
-        /// <summary>The three flagship raid levels, in difficulty order.</summary>
-        private static readonly string[] RaidConfigIds =
-            { "raider_camp_small", "fortified_garrison", "mage_enclave" };
+        /// <summary>
+        /// Every raid level the generator owns, DERIVED from the catalog - never a hand-kept list.
+        ///
+        /// <para>⛔ WO-1732. This was a hardcoded three-id array
+        /// (<c>raider_camp_small / fortified_garrison / mage_enclave</c>) and <c>iron_bastion</c>
+        /// was MISSING from it, so <see cref="BuildAllRaidScenes"/> never regenerated the top
+        /// tier. Measured on disk 2026-09-15: the three listed scenes carried 58/118/158 walls
+        /// with a 1:1 ruin per wall, while RaidBase_IronBastion carried 210 walls and ZERO ruins -
+        /// it still held the pre-WO-1723 3.0 m partition, so a destroyed wall there showed no
+        /// destroyed visual while the nav bake (name-based, and it DID cover IronBastion) let the
+        /// player walk through. That is exactly the owner's device report on
+        /// <c>2026.09.15.370203</c>, F8 seq 5245.</para>
+        ///
+        /// <para>A second hand-kept list is how that happened, so this does not add a third:
+        /// the set is read off <see cref="SceneConfigCatalog"/>, selecting every config whose
+        /// authored <c>sceneName</c> names a RaidBase scene. That predicate is the TWIN of
+        /// <c>RaidVictoryController.KnownRaidConfigIds</c>
+        /// (<c>Assets/_Modules/Village/World/Camps/RaidVictoryController.cs:501</c>), which already
+        /// defines "is a raid tier" the same way at runtime - keep the two visibly paired.</para>
+        ///
+        /// <para>Deliberately EXCLUDED by that predicate, and correctly so:
+        /// <c>village2_enemy_outpost</c> (sceneName <c>Village2</c>, a hand-built scene with its own
+        /// <c>Village2RaidController</c>) and <c>player_outpost</c> (sceneName <c>PlayerOutpost</c>).
+        /// Neither is a generated RaidBase_* level; this generator only ever writes those.</para>
+        /// </summary>
+        private static List<string> RaidConfigIdsFromCatalog()
+        {
+            var ids = new List<string>();
+            var all = SceneConfigCatalog.All;
+            if (all == null) return ids;   // caller refuses an empty set loudly; never a silent no-op bake
+            foreach (var cfg in all)
+            {
+                if (cfg == null || string.IsNullOrEmpty(cfg.id) || string.IsNullOrEmpty(cfg.sceneName)) continue;
+                if (!cfg.sceneName.StartsWith("RaidBase", StringComparison.OrdinalIgnoreCase)) continue;
+                ids.Add(cfg.id);
+            }
+            return ids;
+        }
+
+        /// <summary>
+        /// The scene file a config is generated INTO - always the config's own authored
+        /// <c>sceneName</c>, never a name composed from the id.
+        ///
+        /// <para>⚠ THE ID AND THE SCENE NAME DIFFER FOR THE TOP TIER, and that is deliberate:
+        /// config <c>iron_bastion</c> is authored with sceneName <c>RaidBase_IronBastion</c>,
+        /// because WO-1705 kept the scene path that already existed in EditorBuildSettings and in
+        /// the saves. Composing <c>RaidBase_{id}</c> here would write a SECOND, never-loaded scene
+        /// (<c>RaidBase_iron_bastion.unity</c>) and leave the live one stale - the exact trap
+        /// WO-1732 was opened on.</para>
+        ///
+        /// <para>The authored sceneName is what the game actually loads:
+        /// <c>RaidDeployVM.cs:443</c> calls <c>SceneRouter.GoRaid(_def.sceneName)</c>. Read the
+        /// field; never re-derive the string.</para>
+        /// </summary>
+        private static string ScenePathFor(SceneConfigDef def, string configId)
+        {
+            string sceneName = def != null && !string.IsNullOrEmpty(def.sceneName)
+                ? def.sceneName
+                : $"RaidBase_{configId}";
+            return $"Assets/Scenes/{sceneName}.unity";
+        }
 
         [MenuItem("Defenders/Walls/Build All Raid Scenes (config-driven)")]
         public static void BuildAllRaidScenes()
         {
             SceneConfigCatalog.Invalidate();   // pick up any fresh JSON edit
             InvalidateStructureCatalog();
-            foreach (var id in RaidConfigIds) BuildSceneFor(id);
-            Debug.Log($"[RaidBaseGenerator] baked {RaidConfigIds.Length} raid scene(s) from scene-configs.json. " +
+            var ids = RaidConfigIdsFromCatalog();
+            if (ids.Count == 0)
+                throw new InvalidOperationException(
+                    "[RaidBaseGenerator] the scene-config catalog yielded NO RaidBase_* configs - " +
+                    "refusing a silent no-op bake. Check Assets/Resources/Data/Canonical/scene-configs.json.");
+            foreach (var id in ids) BuildSceneFor(id);
+            Debug.Log($"[RaidBaseGenerator] baked {ids.Count} raid scene(s) from scene-configs.json " +
+                      $"({string.Join(", ", ids)}). " +
                       "NEXT (required): DeNelle.Editor.RaidNavBake.BakeAll - it drops the RaidGround plane and " +
                       "bakes the legacy NavMesh. Without it the hero and every agent have nothing to walk on.");
         }
@@ -447,14 +517,23 @@ namespace DeNelle.Editor
         /// </summary>
         public static void BuildSceneFor(string configId)
         {
+            // WO-1732: resolve the DESTINATION before building, so a config whose scene name
+            // differs from its id (iron_bastion -> RaidBase_IronBastion) is written to the file
+            // the game loads rather than to a new orphan. See ScenePathFor.
+            var def = SceneConfigCatalog.Find(configId);
+            if (def == null)
+                throw new InvalidOperationException(
+                    $"[RaidBaseGenerator] no scene-config '{configId}' - refusing to save an empty raid scene.");
+            string path = ScenePathFor(def, configId);
+
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             var root = new GameObject($"RaidBase_{configId}");
             root.transform.position = Vector3.zero;
             BuildFromConfig(configId, root.transform);
 
-            string path = $"Assets/Scenes/RaidBase_{configId}.unity";
-            EditorSceneManager.SaveScene(scene, path);
-            Debug.Log($"[RaidBaseGenerator] built + saved raid '{configId}' into NEW scene {path}.");
+            if (!EditorSceneManager.SaveScene(scene, path))
+                throw new InvalidOperationException($"[RaidBaseGenerator] raid scene could not be saved to {path}.");
+            Debug.Log($"[RaidBaseGenerator] built + saved raid '{configId}' into scene {path}.");
         }
 
         /// <summary>
