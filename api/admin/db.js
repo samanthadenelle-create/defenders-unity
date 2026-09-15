@@ -449,6 +449,19 @@ module.exports = async (req, res) => {
         // reaching /api/game/save and being refused — and nothing could read them,
         // because the only event view here was web_trace. COALESCE maps the old
         // `reason` onto `code` so both eras answer one query.
+        //
+        // ⛔ AND IT READS 'save_reset_refused' TOO (WO-1745). api/game/save.js has written a
+        // durable row on every 409 SAVE_RESET_STALE since WO-1598 landed (2026-09-07) — but
+        // under an event name this IN list did not contain, so NO admin query in the product
+        // could see one. WO-1742 §3 read "zero refusals on /api/game/save in seven days" off
+        // this very view, and that was a VIEW ARTIFACT, not a measurement. save.js now writes
+        // the refusal through logAuthReject like every other refusal; this third name is kept
+        // so the HISTORICAL rows (2026-09-07 → the WO-1745 deploy) answer the same query,
+        // exactly as 'auth_failed' does for the pre-2026-08-02 era. A frozen cloud row is
+        // otherwise INVISIBLE on Android — WebTrace only POSTs under UNITY_WEBGL — so this
+        // view is the single platform-blind detector for it.
+        //   ?code=SAVE_RESET_STALE  → "how many devices are frozen, and which";
+        //                             `distinct_ids` in the summary IS that number
         //   ?code=<CODE>  filter to one failure class
         //   ?ref=<ref>    resolve one player-reported ref to its row
         //   ?since_hours=N  (default 24, max 168)
@@ -467,7 +480,7 @@ module.exports = async (req, res) => {
                            properties->>'ipHash' AS ip_hash,
                            properties->'detail'  AS detail
                     FROM analytics_events
-                    WHERE event_name IN ('api_auth_reject', 'auth_failed')
+                    WHERE event_name IN ('api_auth_reject', 'auth_failed', 'save_reset_refused')
                       AND properties->>'ref' = ${String(q.ref)}
                     ORDER BY received_at DESC
                     LIMIT 20`;
@@ -477,13 +490,23 @@ module.exports = async (req, res) => {
             // Summary first — the shape of the failure is usually the whole answer.
             const summary = await sql`
                 SELECT COALESCE(properties->>'code', properties->>'reason')  AS code,
-                       COALESCE(properties->>'path', '(legacy auth_failed)') AS path,
+                       -- THE FALLBACK LABEL IS PER-ERA, NOT ONE STRING. A pre-WO-1745
+                       -- save_reset_refused row also carries no path property, and calling
+                       -- it '(legacy auth_failed)' would answer "how often is this
+                       -- happening" with the wrong endpoint entirely.
+                       -- (No backticks in here: this comment sits inside a JS template
+                       --  literal, and one would terminate the query string.)
+                       COALESCE(properties->>'path',
+                                CASE event_name
+                                    WHEN 'save_reset_refused' THEN '/api/game/save (pre-1745)'
+                                    ELSE '(legacy auth_failed)'
+                                END)                                         AS path,
                        COALESCE(properties->>'mode', 'legacy')               AS mode,
                        COUNT(*)::bigint AS hits,
                        COUNT(DISTINCT player_id)::bigint AS distinct_ids,
                        MAX(received_at) AS latest
                 FROM analytics_events
-                WHERE event_name IN ('api_auth_reject', 'auth_failed')
+                WHERE event_name IN ('api_auth_reject', 'auth_failed', 'save_reset_refused')
                   AND received_at > NOW() - (${hours} * INTERVAL '1 hour')
                 GROUP BY 1, 2, 3
                 ORDER BY 4 DESC
@@ -499,7 +522,7 @@ module.exports = async (req, res) => {
                            properties->>'ipHash' AS ip_hash,
                            properties->'detail'  AS detail
                     FROM analytics_events
-                    WHERE event_name IN ('api_auth_reject', 'auth_failed')
+                    WHERE event_name IN ('api_auth_reject', 'auth_failed', 'save_reset_refused')
                       AND COALESCE(properties->>'code', properties->>'reason') = ${String(q.code)}
                       AND received_at > NOW() - (${hours} * INTERVAL '1 hour')
                     ORDER BY received_at DESC
@@ -513,7 +536,7 @@ module.exports = async (req, res) => {
                            properties->>'ipHash' AS ip_hash,
                            properties->'detail'  AS detail
                     FROM analytics_events
-                    WHERE event_name IN ('api_auth_reject', 'auth_failed')
+                    WHERE event_name IN ('api_auth_reject', 'auth_failed', 'save_reset_refused')
                       AND received_at > NOW() - (${hours} * INTERVAL '1 hour')
                     ORDER BY received_at DESC
                     LIMIT ${limit}`;

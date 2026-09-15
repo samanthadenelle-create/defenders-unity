@@ -186,6 +186,11 @@ function writtenState() {
 function eventNames() { return events.map(e => e.name); }
 function eventNamed(name) { return events.find(e => e.name === name) || null; }
 
+// WO-1745 — the 409 refusal moved from logApiEvent('save_reset_refused') to logAuthReject,
+// because api/admin/db.js's `view=authrejects` reads only the logAuthReject event names and
+// therefore could not see a single one of the old rows.
+function rejectNamed(code) { return rejectRows.find(r => r.code === code) || null; }
+
 /**
  * WHAT THE ROW WOULD ACTUALLY HOLD AFTER THE UPSERT.
  *
@@ -383,10 +388,49 @@ test('an OLDER resetEpoch is REFUSED, and nothing is written', async () => {
     assert.equal(res.body.code, 'SAVE_RESET_STALE',
         'the refusal must name a stable code the client can branch on');
     assert.equal(insertCall(), null, 'a refused save still wrote to the row');
-    const refused = eventNamed('save_reset_refused');
-    assert.ok(refused, `the refusal was not audited (events: ${JSON.stringify(eventNames())})`);
-    assert.equal(refused.props.incoming, 2);
-    assert.equal(refused.props.stored, 5);
+    // ⛔ WO-1745 — THE ROW MUST LAND WHERE THE ADMIN VIEW CAN READ IT, not merely exist.
+    // It used to be written by logApiEvent under the name 'save_reset_refused'; that row was
+    // durable and UNREADABLE, because api/admin/db.js filters on the logAuthReject event
+    // names. WO-1742 §3 reported "zero refusals on /api/game/save in seven days" off that
+    // blind view. Asserting the logApiEvent name here would re-pin the invisible shape.
+    const refused = rejectNamed('SAVE_RESET_STALE');
+    assert.ok(refused,
+        `the refusal was not audited through logAuthReject (rejects: ${JSON.stringify(rejectRows)}, ` +
+        `events: ${JSON.stringify(eventNames())})`);
+    assert.equal(refused.ref, res.body.ref,
+        'the audited ref must be the one the player was handed, or a reported ref resolves to nothing');
+    assert.equal(refused.identity, 'p1', 'the row must name WHO is frozen, not just that someone is');
+    assert.equal(refused.detail.incoming, 2);
+    assert.equal(refused.detail.stored, 5);
+    assert.equal(refused.detail.behindBy, 3);
+    assert.ok(!eventNames().includes('save_reset_refused'),
+        'the refusal was written TWICE — one refusal is one row, or the counts double');
+});
+
+// The read half. A row nobody can query is not detection, so the view's filter is pinned by
+// source shape the same way the GREATEST() clamp is: there is no Postgres in this runner.
+test('view=authrejects can actually SEE a SAVE_RESET_STALE row — both eras', async () => {
+    const dbSrc = fs.readFileSync(
+        path.join(__dirname, '..', 'api', 'admin', 'db.js'), 'utf8');
+
+    // ⛔ PARSE IT, DO NOT ONLY READ IT. Caught live on 2026-09-15: the first draft of this
+    // change put a backtick inside an SQL `--` comment that sits INSIDE a JS template
+    // literal, which terminated the query string and made the whole module a SyntaxError.
+    // Every source-shape assertion below still passed, because they read the file as text.
+    // A view that cannot be loaded is even less readable than one with the wrong filter.
+    assert.doesNotThrow(() => require(path.join(__dirname, '..', 'api', 'admin', 'db.js')),
+        'api/admin/db.js does not parse — the authrejects view is dead on arrival');
+
+    const inLists = dbSrc.match(/event_name IN \([^)]*\)/g) || [];
+    assert.ok(inLists.length >= 4,
+        `expected the authrejects view's four event_name filters, found ${inLists.length}`);
+    for (const list of inLists) {
+        assert.ok(list.includes("'api_auth_reject'"),
+            `an authrejects filter lost the live event name: ${list}`);
+        assert.ok(list.includes("'save_reset_refused'"),
+            `an authrejects filter cannot see the pre-WO-1745 409 rows — ` +
+            `the ref lookup and the summary would disagree: ${list}`);
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -405,7 +449,13 @@ test('an ABSENT resetEpoch behaves exactly as today — guarded, and no new audi
     assert.ok(eventNames().includes('save_sanity_reject'));
     assert.ok(!eventNames().includes('save_reset_accepted'),
         'a version-less client wrote a reset audit row — that is a behaviour change for the field');
+    // ⚠ WO-1745 — ASSERT ON THE ROW THAT IS NOW WRITTEN, not the retired name. Left as
+    // `!eventNames().includes('save_reset_refused')` this would pass VACUOUSLY forever,
+    // since nothing writes that name any more, and the "an absent epoch writes no new audit
+    // row" guarantee for every client in the field would quietly stop being pinned.
     assert.ok(!eventNames().includes('save_reset_refused'));
+    assert.equal(rejectNamed('SAVE_RESET_STALE'), null,
+        'a version-less client was refused and audited — that is a behaviour change for the field');
     const state = writtenState();
     assert.equal(state.crystals, undefined,
         'the stripped flat key was written anyway');
@@ -514,4 +564,31 @@ test('/api/game/load returns the stored resetEpoch when the row has one', async 
 
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.resetEpoch, 6, 'the stored epoch was not returned to the client');
+});
+
+test('/api/game/load preserves owned town but never exports local capture recovery intent', async () => {
+    reset();
+    const ownedBase = {
+        baseId: 'captured-iron-bastion', revision: 7,
+        captureReceiptId: 'capture-one', milestoneFlags: 7,
+        structures: [{ instanceId: 'sold-tower', retired: true, condition01: 0 }],
+    };
+    priorRow = {
+        game_state: {
+            ...OLD_TOWN, ownedBase,
+            pendingTownCapture: { receiptId: 'device-a-pending' },
+            PendingTownCapture: { receiptId: 'legacy-device-a-pending' },
+        },
+        schema_version: 41, reset_epoch: 6, updated_at: new Date(),
+    };
+    const before = JSON.stringify(priorRow);
+    const res = await get({ playerId: 'p1' });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.data.ownedBase, ownedBase);
+    assert.deepEqual(res.body.data.baseLayout, OLD_TOWN.baseLayout);
+    assert.equal(Object.hasOwn(res.body.data, 'pendingTownCapture'), false);
+    assert.equal(Object.hasOwn(res.body.data, 'PendingTownCapture'), false);
+    assert.equal(res.body.resetEpoch, 6);
+    assert.equal(res.body.schemaVersion, 41);
+    assert.equal(JSON.stringify(priorRow), before, 'load filtering must not modify the stored record');
 });

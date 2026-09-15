@@ -85,6 +85,8 @@ const RESERVED_KEYS = new Set([
     'playerId', 'PlayerId', 'schemaVersion', 'SchemaVersion',
     'resetEpoch', 'ResetEpoch',
     'wallet', 'nonce', 'signature', 'guestId',
+    // Local crash-recovery intent is never cloud gameplay state or authority to grant another capture.
+    'pendingTownCapture', 'PendingTownCapture',
 ]);
 
 // The numeric fields the anti-tamper guards police. Balances live in TWO places
@@ -533,10 +535,37 @@ async function handler(req, res) {
         // A stale device replaying a town the player has already left. Refused BY NAME
         // and audited, never silently accepted and never silently dropped: this is the
         // one shape that could overwrite a newer new game with an older one.
+        //
+        // ⛔ WO-1745 — THIS ROW MOVED FROM logApiEvent TO logAuthReject, AND THE MOVE IS THE
+        // WHOLE POINT. It used to be written as `save_reset_refused` via logApiEvent. That
+        // row IS durable and always was — but api/admin/db.js's ONLY reader of refusals,
+        // `view=authrejects`, filters `event_name IN ('api_auth_reject','auth_failed')`, so
+        // no admin query in the product could see a single one of them. WO-1742 §3 reported
+        // "ZERO refusals on /api/game/save in seven days" off that view; that was a VIEW
+        // ARTIFACT, not a measurement — the view was structurally blind to this code.
+        // A row nobody can read is not detection.
+        //
+        // ⚠ AND THE BLINDNESS IS PLATFORM-WIDE, WHICH IS WHY THE FIX BELONGS HERE AND NOT ON
+        // THE CLIENT. The only other witness to a 409 is the client's own trace, and
+        // WebTrace.cs:41/:293 gate the remote POST on `#if UNITY_WEBGL` — an Android device
+        // NEVER posts a trace. So a 409 storm on Android leaves no evidence anywhere except
+        // this line. The server is the one vantage point that is platform-blind by nature.
+        //
+        // ONE row, not two: adding a second event name beside the first would be exactly the
+        // duplicated state CLAUDE.md §2/§5/§16 each describe. api/admin/db.js widens its IN
+        // list to keep reading the HISTORICAL 'save_reset_refused' rows (2026-09-07 onward),
+        // the same way it already carries the legacy 'auth_failed' era.
         console.warn('[save] reset epoch refused:', JSON.stringify(resetJudgement));
-        await logApiEvent(sql, playerId, 'save_reset_refused', {
-            ref: ref, mode: auth.mode, code: resetJudgement.code,
-            incoming: resetJudgement.incoming, stored: resetJudgement.stored,
+        await logAuthReject(sql, req, {
+            code: resetJudgement.code, ref: ref, identity: playerId, mode: auth.mode,
+            detail: {
+                incoming: resetJudgement.incoming,
+                stored: resetJudgement.stored,
+                // How far behind this device is, so "one stale device" and "a device that
+                // has been frozen across many resets" are distinguishable in the row itself.
+                behindBy: resetJudgement.stored - resetJudgement.incoming,
+                stage: 'reset_epoch',
+            },
         });
         return quietFail(res, 409, resetJudgement.code, ref);
     }
@@ -1155,6 +1184,7 @@ module.exports.reconcileAccrual = reconcileAccrual;
 module.exports.judgeSchemaVersion = judgeSchemaVersion;
 // WO-1598 — pure, so the four epoch cases are provable without a database.
 module.exports.judgeResetEpoch = judgeResetEpoch;
+module.exports.buildState = buildState;
 module.exports.SaveCode = SaveCode;
 
 // =============================================================================
