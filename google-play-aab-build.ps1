@@ -43,6 +43,18 @@
 # repo exit 0 on refusals and FAILs; memory: gates-report-success-without-proving-it):
 #   AAB_SIGNING_OK / AAB_SIGNING_FAIL     release keystore proven before and after the build
 #   [AndroidBuild] SUCCEEDED              asserted via run-unity-method -ExpectMarker
+#   AAB_REJECTED                          WO-1739. The Play COMPLIANCE gate did not pass:
+#                                         the SUCCEEDED marker is absent from a fresh log,
+#                                         or the log carries PLAY_ARTIFACT_REJECTED /
+#                                         PLAY_ARTIFACT_DIRTY / PLAY_SOURCE_ISOLATION_FAIL /
+#                                         PLAY_NEUTRAL_*. The run STOPS here: no AAB_OK, no
+#                                         AAB_SIGNING_OK, no R2, no size marker, and the
+#                                         artifact is MOVED to Builds\Android\rejected\ so
+#                                         nothing uploadable is left at the build path.
+#                                         Marker ABSENCE is a FAILURE, never an unknown.
+#   AAB_BUILD_UNPROVEN                    why the verdict above was reached (stale log /
+#                                         no marker / no log).
+#   AAB_QUARANTINED                       where the rejected artifact was moved.
 #   AAB_STALE                             newest AAB predates this run => the build made none
 #   R2_PARITY_OK / R2_PARITY_FAILED       from tools\r2-ship.ps1, mirrored into the status file
 #   AAB_SIZE_OK <bytes> (<margin> under <ceiling>)
@@ -52,6 +64,8 @@
 #
 # Exit codes: 0 ok. 1 build produced no fresh AAB. 3 R2 parity failed.
 #             5 signing would be/was DEBUG. 6 size guard failed or could not measure.
+#             7 the Play COMPLIANCE gate did not pass (WO-1739) - the artifact exists, is
+#               release-signed and is under the ceiling, and is STILL not shippable.
 # =============================================================================
 param(
     [string]$Defines = '',
@@ -260,6 +274,7 @@ if (-not (Test-ReleaseSigningReady)) {
 #
 # -ExpectMarker is THE point of item 1 of this ticket. Without it a run that never
 # started, or a stale log from a previous run, reads exactly like a pass.
+$buildProven = $true
 try {
     & (Join-Path $root 'run-unity-method.ps1') `
         -Method DeNelle.Editor.AndroidBuild.BuildGooglePlayAab `
@@ -270,9 +285,119 @@ try {
         -ExpectMarker '[AndroidBuild] SUCCEEDED'
     if ($LASTEXITCODE -ne 0) {
         Say "AAB_BUILD_MARKER_ABSENT run-unity-method exit=$LASTEXITCODE - see $buildLog"
+        $buildProven = $false
     }
 } catch {
     Say "AAB_THREW $($_.Exception.Message)"
+    $buildProven = $false
+}
+
+# -----------------------------------------------------------------------------
+# WO-1739 - THE HARD STOP. THIS BLOCK IS WHY THE FILE EXISTS AT ALL.
+#
+# Until 2026-09-15 the two branches above only RECORDED the failure and fell through,
+# and every marker after them was emitted over a rejected artifact. MEASURED, twice:
+#   Builds/aab-final-chain-runner.log (2026-09-11 18:59) and Builds/aab-status.txt
+#   (2026-09-15 10:22-10:37) both read
+#       AAB_BUILD_MARKER_ABSENT run-unity-method exit=8
+#       AAB_OK ... AAB_SIGNING_OK ... R2_PARITY_OK ... AAB_SIZE_OK ... AAB_DONE
+#   and exited 0, over an AAB that GooglePlayPackagingGate.AssertBuiltArtifact had
+#   REJECTED as carrying a forbidden crypto/wallet surface. A human reading the status
+#   file would have uploaded a policy-violating artifact to Google Play.
+#
+# THE FRESHNESS CHECK BELOW CANNOT CATCH THIS, and that is the whole trap: the Play
+# compliance gate runs AFTER BuildPipeline.BuildPlayer succeeds (AndroidBuild.cs:197-204),
+# so a REJECTED run still leaves a fresh, correctly release-signed, correctly sized AAB
+# at $aabPath. Every existence-and-freshness test passes. The MARKER is the only signal
+# there is - which is exactly CLAUDE.md s8 / memory gates-report-success-without-proving-it:
+# judge by the marker on a fresh log, and treat its ABSENCE as a FAILURE, never an unknown.
+#
+# So the verdict is taken from the LOG, not from the exit code alone:
+#   - the log must postdate this run (a stale log is not evidence of this build), AND
+#   - it must carry '[AndroidBuild] SUCCEEDED', AND
+#   - it must NOT carry a Play compliance rejection.
+# The $LASTEXITCODE test above is KEPT as well, because an unset $LASTEXITCODE is $null
+# and '$null -ne 0' is TRUE - it fails CLOSED (memory prove-the-success-path).
+#
+# On failure the artifact is MOVED OUT of $aabPath into Builds\Android\rejected\. An
+# unusable 434 MiB signed .aab sitting at the path a human has been told to upload from
+# is itself the hazard; nothing shippable-looking may survive a rejected run.
+# -----------------------------------------------------------------------------
+$rejectionPatterns = @(
+    'PLAY_ARTIFACT_REJECTED',
+    'PLAY_ARTIFACT_DIRTY',
+    'PLAY_ARTIFACT_MISSING',
+    'PLAY_SOURCE_ISOLATION_FAIL',
+    'PLAY_NEUTRAL_UNMAPPED_TOKEN',
+    'PLAY_NEUTRAL_REWRITE_FAIL'
+)
+$rejectionHits = @()
+if (-not (Test-Path $buildLog)) {
+    Say "AAB_BUILD_UNPROVEN no build log at $buildLog - this run proved nothing."
+    $buildProven = $false
+} else {
+    if ((Get-Item $buildLog).LastWriteTime -lt $startedAt) {
+        Say "AAB_BUILD_UNPROVEN $buildLog is STALE (predates this run). The proof must postdate the bytes it claims to prove."
+        $buildProven = $false
+    }
+    if (-not (Select-String -Path $buildLog -Pattern '\[AndroidBuild\] SUCCEEDED' -Quiet)) {
+        Say "AAB_BUILD_UNPROVEN the build log carries no '[AndroidBuild] SUCCEEDED' marker. Marker ABSENCE is a FAILURE, not an unknown."
+        $buildProven = $false
+    }
+    foreach ($pattern in $rejectionPatterns) {
+        $found = Select-String -Path $buildLog -Pattern $pattern -SimpleMatch
+        if ($found) {
+            $buildProven = $false
+            $rejectionHits += ($found | Select-Object -First 25 | ForEach-Object { $_.Line.Trim() })
+        }
+    }
+}
+
+if (-not $buildProven) {
+    if ($rejectionHits.Count -gt 0) {
+        Say "AAB_REJECTED $(Get-Date -Format o) - THE PLAY COMPLIANCE GATE REJECTED THIS ARTIFACT. DO NOT UPLOAD ANYTHING FROM THIS RUN."
+    } else {
+        # Keep the marker honest: no compliance rejection was found in the log, so the
+        # failure is the BUILD being unproven (Gradle death, timeout, stale/absent log).
+        # Same stop, same exit code - a different reason, and the reader must not be sent
+        # hunting for a crypto surface that was never named.
+        Say "AAB_REJECTED $(Get-Date -Format o) - no compliance rejection was found in the log; the BUILD ITSELF is unproven (see the AAB_BUILD_UNPROVEN line above). DO NOT UPLOAD ANYTHING FROM THIS RUN."
+    }
+    if ($rejectionHits.Count -gt 0) {
+        Say "  The gate named these offenders (verbatim from $buildLog):"
+        foreach ($hit in $rejectionHits) { Say "    $hit" }
+        # The DIRTY block is a bulleted list under its header; carry it across too so the
+        # status file names the actual entries and tokens without a second log read.
+        $dirty = Select-String -Path $buildLog -Pattern 'PLAY_ARTIFACT_DIRTY' -SimpleMatch -Context 0, 60
+        if ($dirty) {
+            foreach ($line in ($dirty | Select-Object -First 1).Context.PostContext) {
+                $t = "$line".Trim()
+                if ($t -notmatch '^\s*-\s') { break }
+                Say "    $t"
+            }
+        }
+    }
+
+    # Quarantine the artifact. It is signed and correctly sized, so nothing about the
+    # FILE warns a human off it - only its location can.
+    if (Test-Path $aabPath) {
+        $rejectDir = Join-Path $root 'Builds\Android\rejected'
+        New-Item -ItemType Directory -Force -Path $rejectDir | Out-Null
+        $stamp = (Get-Date -Format 'yyyyMMdd-HHmmss')
+        $rejectPath = Join-Path $rejectDir "EchoesOfElarion-GooglePlay-$stamp.REJECTED.aab"
+        try {
+            Move-Item -LiteralPath $aabPath -Destination $rejectPath -Force
+            Say "  AAB_QUARANTINED the artifact was MOVED to $rejectPath so nothing uploadable is left at $aabPath."
+        } catch {
+            Say "  AAB_QUARANTINE_FAILED could not move $aabPath ($($_.Exception.Message)). DELETE IT BY HAND - it is NOT shippable."
+        }
+    }
+
+    Say "  No AAB_OK, no AAB_SIGNING_OK, no size marker will be emitted for this run."
+    Say "  Next: read $buildLog and fix what it names, then rebuild. If the gate named a crypto/wallet"
+    Say "  surface, the GATE IS NOT THE DEFECT - see WorkOrders/WORK_ORDER_1740_play_aab_forbidden_surface_four_leaks.md."
+    Say "AAB_DONE $(Get-Date -Format o)"
+    exit 7
 }
 
 # STOP - FRESHNESS, NOT EXISTENCE. overnight-apk-build.ps1 carries this lesson in its
