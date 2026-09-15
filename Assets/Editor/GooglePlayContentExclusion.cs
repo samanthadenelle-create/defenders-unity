@@ -126,10 +126,42 @@ namespace DeNelle.Editor
         ///    takes a NAMED relative path — so removing one file cannot starve another catalog.
         ///    WalletRegistry additionally falls back to hard-coded public addresses when the
         ///    file is absent, so even the editor path degrades to a warning, never a null-ref.
+        ///  - Assets/_Modules/Web3/Resources (WO-1741, verified at source 2026-09-15) — the
+        ///    JupiterSwapPanel UXML/USS. Its only loader is JupiterSwapPanelController in
+        ///    DeNelle.Web3, whose asmdef carries !GOOGLE_PLAY, so no GOOGLE_PLAY assembly
+        ///    exists to resolve it. A repo-wide grep for "JupiterSwapPanel" outside
+        ///    Assets/_Modules/Web3/ returns exactly ONE hit and it is a COMMENT
+        ///    (PanelDoorRegression.cs:33, editor-only) — no Resources.Load, no scene, no
+        ///    Addressable, no UXML template reference.
+        ///  - Data/Economy/offline-storage.json (WO-1741, verified at source 2026-09-15) —
+        ///    a design/config document with NO runtime reader at all: the only two matches
+        ///    for "offline-storage" anywhere under Assets/_Modules/ are prose comments in
+        ///    WelcomeBackPopup.cs (:354, :903). It is quarantined rather than swept because
+        ///    it carries the VALUE "skr" at premium.currency — a player-facing (non-'_')
+        ///    key with no neutral copy, which the sweep would correctly refuse to ship
+        ///    (PLAY_NEUTRAL_UNMAPPED_TOKEN). Removing the file from the Play artifact is
+        ///    strictly stronger than neutralising its strings, and it cannot starve a reader
+        ///    that does not exist.
         /// </remarks>
         internal static readonly string[] PlayExcludedAssetPaths =
         {
             "Assets/Resources/SolanaUnitySDK",
+            // WO-1741 (owner ruling 2026-09-15). THE LEAK THE .asmdef CANNOT REACH, and the
+            // most serious surface in the whole AAB: a LIVE JUPITER TOKEN-SWAP UI.
+            // DeNelle.Web3.asmdef carries !GOOGLE_PLAY, so the C# controller/service/bootstrap
+            // are correctly compiled out and PLAY_SOURCE_ISOLATION_OK fires HONESTLY — but this
+            // module also contains a folder NAMED Resources, and everything under such a folder
+            // is force-included into EVERY player by construction, reached by name, with no
+            // assembly reference for a define constraint to sever. That is precisely the door
+            // this file's own header documents at the top, and it went unquarantined from
+            // 2026-05-26 until today: JupiterSwapPanel, "Powered by Jupiter Aggregator" and
+            // swap-skr-out shipped in EVERY Play AAB ever produced (WO-1739 s3b).
+            // ⛔ THIS QUARANTINE IS GOOGLE_PLAY-ONLY, BY THE OWNER'S EXPLICIT RULING. The
+            // dApp Store / Solana artifact KEEPS the panel and every wallet surface — it
+            // carries the owner's only real transactions. ApplyForDefines RESTORES this path
+            // on any non-Play Android build; never make the removal unconditional.
+            "Assets/_Modules/Web3/Resources",
+            "Assets/Resources/Data/Economy/offline-storage.json",
             "Assets/Resources/Data/Canonical/wallets.json",
             "Assets/StreamingAssets/Data/Canonical/wallets.json",
             // Crypto-rail catalogs and mixed presentation tables. All are either unused by
@@ -156,11 +188,28 @@ namespace DeNelle.Editor
             new[] { "Assets/Resources/Data/Canonical/packs.json", "Assets/StreamingAssets/Data/Canonical/packs.json" },
             // WO-1363: previously NOT handled at all, and both are compiled into the player via
             // Resources. siege-stakes.json carries an "_comment" naming SKR; ad-placements.json
-            // carries "Crystals are the SKR on-ramp" in two authoring notes. ad-placements.json
-            // has NO StreamingAssets twin (verified 2026-09-04) - a one-element row is legal and
-            // the mirror-equality check skips it.
+            // carries "Crystals are the SKR on-ramp" in two authoring notes.
             new[] { "Assets/Resources/Data/Canonical/siege-stakes.json", "Assets/StreamingAssets/Data/Canonical/siege-stakes.json" },
-            new[] { "Assets/Resources/Data/Canonical/ad-placements.json" },
+            // ⚠ WO-1741 CORRECTION (2026-09-15). The line here used to read "ad-placements.json
+            // has NO StreamingAssets twin (verified 2026-09-04)" and keep this row ONE element
+            // long. THE TWIN EXISTS — and it was created ON 2026-09-04 by 32af7767c (WO-1333),
+            // so that note was stale the day it was written. The result: the StreamingAssets
+            // copy shipped UNSWEPT into base/assets/Data/Canonical/ad-placements.json in every
+            // Play AAB, carrying the SKR on-ramp notes the Resources copy had neutralised.
+            // MEASURED 2026-09-15: both files are 12853 bytes and byte-identical (cmp), so the
+            // pair satisfies ValidateNeutralMirrorEquality. This is the same duplicated-state
+            // failure CLAUDE.md s2/s5/s16 each describe: a fact copied into a comment went
+            // stale while the tree moved on. Do not re-shorten this row — open the path.
+            new[] { "Assets/Resources/Data/Canonical/ad-placements.json", "Assets/StreamingAssets/Data/Canonical/ad-placements.json" },
+            // WO-1741: structures-catalog.json was outside the sweep ENTIRELY, and it is a LIVE
+            // gameplay catalog (StructureFactory reads visualPrefabPath from it) so it must be
+            // SWEPT, never quarantined — removing it would strip every building from the Play
+            // build. Its single token-bearing value is the '_quarryNote' authoring note added by
+            // WO-1416, whose '_' prefix routes it to the neutral-note branch; MEASURED
+            // 2026-09-15 by walking both mirrors with the gate vocabulary, it is the ONLY hit in
+            // the file, so this addition cannot trip PLAY_NEUTRAL_UNMAPPED_TOKEN. Both mirrors
+            // are byte-identical (113776 bytes, cmp).
+            new[] { "Assets/Resources/Data/Canonical/structures-catalog.json", "Assets/StreamingAssets/Data/Canonical/structures-catalog.json" },
         };
 
         // =====================================================================
@@ -404,11 +453,36 @@ namespace DeNelle.Editor
                 "the key with a leading '_' if it is an authoring note). Refusing to ship it.");
         }
 
+        /// <summary>
+        /// WO-1741. THE SWEEP NO LONGER KEEPS ITS OWN VOCABULARY — it consumes the gate's.
+        ///
+        /// ⛔ WHAT WAS WRONG. This method held a fourth, hand-maintained copy of the policy:
+        /// { solana, jupiter, $skr, " skr", usdc, crypto, web3, wallet }. The entry <c>" skr"</c>
+        /// carried A LEADING SPACE, so it matched a token in the MIDDLE of a sentence and never
+        /// at the START of one. canon-strings.json holds two values that begin with it —
+        ///   storeBalanceBoundIdentity = "SKR: identity bound - authorize"
+        ///   storeBalanceUnavailable   = "SKR: unavailable in this build"
+        /// — and both are RENDERED HUD copy, not authoring notes. The detector never fired, so
+        /// NeutralizeForbiddenStrings never consulted the map, so the Play-neutral replacements
+        /// that were ALREADY AUTHORED for exactly those two keys in
+        /// PlayNeutralStringReplacements were never reached, and the Seeker strings shipped in
+        /// every Play AAB ever produced (WO-1739 s3b). A token check that misses values STARTING
+        /// with the token is a detector defect, not a vocabulary gap.
+        ///
+        /// The fix is not a better copy — it is DELETING the copy. GooglePlayPackagingGate owns
+        /// ForbiddenTokens (which carries bare <c>skr</c>), the word-boundary rule and the
+        /// documented false-positive suppressions; this now calls straight into it, so the two
+        /// can no longer drift. That is WO-1364's own ruling that the gate's arrays are the
+        /// SINGLE SOURCE OF TRUTH for this policy, applied to the third copy that drifted.
+        ///
+        /// MEASURED 2026-09-15, before the change, by walking every string value of all five
+        /// swept catalogs under the new vocabulary: every token-bearing value is either mapped
+        /// or '_'-prefixed. The widened list adds NO new PLAY_NEUTRAL_UNMAPPED_TOKEN failure —
+        /// it only starts catching what the old one missed.
+        /// </summary>
         private static bool ContainsForbiddenAuthoringToken(string value)
         {
-            string text = value ?? string.Empty;
-            string[] tokens = { "solana", "jupiter", "$skr", " skr", "usdc", "crypto", "web3", "wallet" };
-            return tokens.Any(token => text.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0);
+            return GooglePlayPackagingGate.ContainsForbiddenAuthoringToken(value);
         }
 
         internal static void RestoreNeutralRewrites(string reason)
@@ -437,8 +511,13 @@ namespace DeNelle.Editor
         {
             foreach (string[] pair in PlayNeutralMirrorPairs)
             {
-                // WO-1363: a one-element row is a catalog with no StreamingAssets twin
-                // (ad-placements.json). There is nothing to compare, not a mismatch.
+                // WO-1363: a one-element row is a catalog with no StreamingAssets twin.
+                // There is nothing to compare, not a mismatch.
+                // ⚠ WO-1741: this comment used to name ad-placements.json as that case. It has
+                // a twin and always did (see PlayNeutralMirrorPairs) — the second copy of the
+                // same stale fact, which is why BOTH were corrected in one edit. NO row is
+                // one-element today; the guard is kept for the next catalog that genuinely has
+                // no mirror, not as a description of the list above.
                 if (pair.Length < 2) continue;
                 byte[] left = File.ReadAllBytes(pair[0]);
                 byte[] right = File.ReadAllBytes(pair[1]);
