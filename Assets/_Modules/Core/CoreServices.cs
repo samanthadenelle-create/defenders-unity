@@ -24,7 +24,7 @@ using DeNelle.Core.Audio;
 using DeNelle.Core.HUD;
 using DeNelle.Core.HudModel;
 using DeNelle.Core.Population;
-using DeNelle.Core.Web3;
+using DeNelle.Core.Backend;
 using UnityEngine;
 
 namespace DeNelle.Core

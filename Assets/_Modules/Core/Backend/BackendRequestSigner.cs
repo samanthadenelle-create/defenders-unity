@@ -40,7 +40,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 
-namespace DeNelle.Core.Web3
+namespace DeNelle.Core.Backend
 {
     /// <summary>
     /// Attaches the backend's identity headers to an outgoing UnityWebRequest.

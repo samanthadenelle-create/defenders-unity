@@ -42,7 +42,7 @@ using System.Threading.Tasks;
 using UnityEngine.Networking;
 using DeNelle.Commerce;
 using DeNelle.Core.Diagnostics;
-using DeNelle.Core.Web3;
+using DeNelle.Core.Backend;
 
 namespace DeNelle.Core.Payments.Providers
 {

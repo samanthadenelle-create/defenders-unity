@@ -1,6 +1,6 @@
 # WORK ORDER 1755 — Rename the `DeNelle.Core.Web3` namespace, and extend the Play build's exclusion script to cover the remaining authored leaks
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED, NOT YET GATED
 **Minted:** 2026-09-15 by the lead, on the owner's ruling this session: *"do the rename and extend the exclusion script"* — after she asked *"can we create a specific one only for play builds?"* and the lead recommended one rename over a Play-only fork.
 **Silo:** the `DeNelle.Core.Web3` namespace (3 declarations, 27 referencing files) and `Assets/Editor/GooglePlayContentExclusion.cs`. ⛔ Do NOT touch the compliance gate's scanner itself — that is **WO-1754** (the 64 KiB chunk-seam false positive) and it runs separately.
 

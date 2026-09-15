@@ -28,7 +28,7 @@ using System.Text;
 using Cysharp.Threading.Tasks;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Jobs;
-using DeNelle.Core.Web3;
+using DeNelle.Core.Backend;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
@@ -149,6 +149,103 @@ namespace DeNelle.Core.State
         /// <summary>The live persisted state. Never null after <see cref="Awake"/>.</summary>
         public GameState State => _state;
 
+        /// <summary>Applies a detached local PvE revision. Caller owns Save and durable-result UX.</summary>
+        public bool TryApplyOwnedBaseRevision(OwnedBaseState incoming, out string reason)
+        {
+            if (_state == null) { reason = "Game state is unavailable."; return false; }
+            if (!OwnedBaseProgression.TryAcceptRevision(_state.OwnedBase, incoming, out var accepted, out reason))
+                return false;
+            _state.OwnedBase = accepted;
+            FlowTrace.Step("OwnedBase", "Applied local property revision " + accepted.revision + ".");
+            return true;
+        }
+
+        /// <summary>Commits a property revision with its supplies and milestones in one save envelope.</summary>
+        public bool TryCommitOwnedBaseRevision(OwnedBaseState incoming, out string reason)
+        {
+            if (_state == null) { reason = "Game state is unavailable."; return false; }
+            if (!OwnedBaseProgression.TryAcceptRevision(_state.OwnedBase, incoming, out var accepted, out reason))
+                return false;
+            var previous = _state.OwnedBase;
+            _state.OwnedBase = accepted;
+            if (TrySave(out reason)) return true;
+            _state.OwnedBase = previous;
+            return false;
+        }
+
+        /// <summary>
+        /// Commit an adapter-validated construction edit and quote together. The caller owns catalog,
+        /// plot, navigation and timer rules; revision checking prevents replaying a confirmed payment.
+        /// </summary>
+        public bool TryCommitOwnedBaseConstruction(int expectedRevision, OwnedBaseState proposed,
+            DeNelle.Core.Catalog.ResourceCost debit, DeNelle.Core.Catalog.ResourceCost refund,
+            out DeNelle.Core.Catalog.ResourceCost credited, out string reason)
+        {
+            credited = default;
+            var current = _state?.OwnedBase;
+            if (current == null || current.revision != expectedRevision || expectedRevision == int.MaxValue ||
+                proposed == null || proposed.revision != expectedRevision + 1)
+            { reason = "The town changed before construction could be saved."; return false; }
+            if (!debit.IsZero && !refund.IsZero)
+            { reason = "A construction operation cannot charge and refund together."; return false; }
+            if (debit.wood < 0 || debit.iron < 0 || debit.stone < 0 || debit.crystals < 0 ||
+                refund.wood < 0 || refund.iron < 0 || refund.stone < 0 || refund.crystals < 0)
+            { reason = "The construction quote is invalid."; return false; }
+            if (!OwnedBaseProgression.TryAcceptRevision(current, proposed, out var accepted, out reason)) return false;
+            int wood = _state.Wood, iron = _state.Iron;
+            var resources = _state.Resources;
+            if (wood < debit.wood || iron < debit.iron || resources.Stone < debit.stone || resources.Crystals < debit.crystals)
+            { reason = "There are not enough resources for construction."; return false; }
+            // Match ordinary structure-sale material storage limits without publishing overflow before durability.
+            var grant = new DeNelle.Core.Catalog.ResourceCost {
+                wood = Math.Min(refund.wood, DeNelle.Core.Economy.TownBankCapacity.RoomFor(DeNelle.Core.Economy.BankResource.Wood, wood)),
+                iron = Math.Min(refund.iron, DeNelle.Core.Economy.TownBankCapacity.RoomFor(DeNelle.Core.Economy.BankResource.Iron, iron)),
+                stone = Math.Min(refund.stone, DeNelle.Core.Economy.TownBankCapacity.RoomFor(DeNelle.Core.Economy.BankResource.Stone, resources.Stone)),
+                crystals = refund.crystals
+            };
+            if ((long)resources.Crystals - debit.crystals + grant.crystals > int.MaxValue ||
+                (long)wood - debit.wood + grant.wood > int.MaxValue ||
+                (long)iron - debit.iron + grant.iron > int.MaxValue ||
+                (long)resources.Stone - debit.stone + grant.stone > int.MaxValue)
+            { reason = "Construction would exceed the resource limit."; return false; }
+            _state.OwnedBase = accepted;
+            _state.Wood = wood - debit.wood + grant.wood;
+            _state.Iron = iron - debit.iron + grant.iron;
+            _state.Resources.Stone = resources.Stone - debit.stone + grant.stone;
+            _state.Resources.Crystals = resources.Crystals - debit.crystals + grant.crystals;
+            if (!TrySave(out reason))
+            {
+                _state.OwnedBase = current; _state.Wood = wood; _state.Iron = iron; _state.Resources = resources;
+                return false;
+            }
+            credited = grant;
+            Guard.Try("OwnedBase", "construction resources changed", () => ResourcesChanged.Invoke());
+            return true;
+        }
+
+        /// <summary>Repair condition, allowance and normal material payment share one durable envelope.</summary>
+        public bool TryCommitOwnedBaseRepair(string instanceId, DeNelle.Core.Catalog.ResourceCost quote, out string reason)
+        {
+            if (_state == null) { reason = "Game state is unavailable."; return false; }
+            var available = new DeNelle.Core.Catalog.ResourceCost {
+                wood = _state.Wood, iron = _state.Iron, stone = _state.Resources.Stone
+            };
+            if (!OwnedBaseProgression.TryRepair(_state.OwnedBase, instanceId, quote, available,
+                out var repaired, out var debit, out reason)) return false;
+            var previous = _state.OwnedBase;
+            _state.OwnedBase = repaired;
+            _state.Wood -= debit.wood; _state.Iron -= debit.iron; _state.Resources.Stone -= debit.stone;
+            if (!TrySave(out reason))
+            {
+                _state.OwnedBase = previous;
+                _state.Wood = available.wood; _state.Iron = available.iron; _state.Resources.Stone = available.stone;
+                return false;
+            }
+            // Notify only after durability; a subscriber exception cannot turn a committed repair into a failed purchase.
+            Guard.Try("OwnedBase", "repair resources changed", () => ResourcesChanged.Invoke());
+            return true;
+        }
+
         /// <summary>
         /// Backend-controlled remote config. Populated on <see cref="LoadFromBackend"/>;
         /// returns <see cref="ServerConfig.Default"/> until the first successful load.
@@ -259,6 +356,48 @@ namespace DeNelle.Core.State
         // =====================================================================
         //  Lifecycle
         // =====================================================================
+
+        public bool TryRecordPendingTownCapture(OwnedBaseState capture, out string reason)
+        {
+            var pending = new PendingTownCapture { capture = capture?.Clone() };
+            if (!pending.Validate(out reason)) return false;
+            if (_state == null) { reason = "Game state is unavailable."; return false; }
+            if (_state.PendingTownCapture != null)
+            {
+                if (JsonConvert.SerializeObject(_state.PendingTownCapture) != JsonConvert.SerializeObject(pending))
+                { reason = "Another settled capture is awaiting recovery."; return false; }
+                return true;
+            }
+            if (_state.OwnedBase != null)
+            { reason = "A personal town is already owned."; return false; }
+            _state.PendingTownCapture = pending;
+            if (TrySave(out reason)) return true;
+            _state.PendingTownCapture = null;
+            return false;
+        }
+
+        public bool TryRecoverPendingTownCapture(out string reason)
+        {
+            reason = null;
+            if (_state == null) { reason = "Game state is unavailable."; return false; }
+            var pending = _state.PendingTownCapture;
+            if (pending == null) return true;
+            if (!pending.Validate(out reason)) return false;
+            var previous = _state.OwnedBase;
+            if (!OwnedBaseProgression.TryCapture(previous, pending.capture.sourceRaidId,
+                pending.capture.captureReceiptId, pending.capture, OwnedBaseProgression.CaptureStarsRequired, out var captured, out reason)) return false;
+            // Ownership, isolated supplies and removal of the consumed intent share one write.
+            _state.OwnedBase = captured;
+            _state.PendingTownCapture = null;
+            if (TrySave(out reason))
+            {
+                FlowTrace.Step("OwnedBase", "Recovered settled town capture " + captured.captureReceiptId);
+                return true;
+            }
+            _state.OwnedBase = previous;
+            _state.PendingTownCapture = pending;
+            return false;
+        }
 
         private void Awake()
         {
@@ -426,6 +565,7 @@ namespace DeNelle.Core.State
             }
 
             // V (verify): the validated payload applied — the load produced live state.
+            _state.PendingTownCapture = validation.Data.PendingTownCapture?.Clone();
             ApplyPersisted(validation.Data);
             _state.SchemaVersion = SaveSchema.CurrentVersion;
             // WO-1448 — re-hydrate the local-save recency stamp from the envelope so the
@@ -435,6 +575,8 @@ namespace DeNelle.Core.State
             // exportedAt must not fail a load that is otherwise valid — it degrades to
             // 0 (= "unknown, let the server win"), said out loud.
             StampLocalSaveClockFromEnvelope(file.ExportedAt);
+            if (_state.PendingTownCapture != null && !TryRecoverPendingTownCapture(out var captureRecoveryReason))
+                FlowTrace.Warn("OwnedBase", "Pending capture retained for retry: " + captureRecoveryReason);
             FlowTrace.Step("Save", $"Load OK — applied save (storeVersion={file.StoreVersion} -> schema v{SaveSchema.CurrentVersion}).");
             // WO-1220 §12 — name the hero progression this load just installed. A Load that
             // runs AFTER a New Game is one of only two ways GameState.HeroLevel can climb back
@@ -489,20 +631,27 @@ namespace DeNelle.Core.State
         /// </summary>
         public void Save()
         {
-            if (_state == null) return;
-            EnsureAccount("local save");   // mint a guest identity if not logged in (offline-first)
+            TrySave(out _);
+        }
 
-            var file = new SaveSchema.SaveFile
+        /// <summary>Reports persistence failure so progression callers can retain a retryable state.</summary>
+        public bool TrySave(out string reason)
+        {
+            reason = null;
+            if (_state == null) { reason = "Game state is unavailable."; return false; }
+            try
             {
+                EnsureAccount("local save");   // mint a guest identity if not logged in (offline-first)
+
+                var file = new SaveSchema.SaveFile
+                {
                 Format = SaveSchema.FileFormat,
                 StoreVersion = SaveSchema.CurrentVersion,
                 ExportedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                 Wallet = _state.BoundWallet,
                 State = Snapshot(),
-            };
+                };
 
-            try
-            {
                 // Serialization stays here; only the raw write is delegated to the
                 // swappable provider (LocalSaveProvider by default — PlayerPrefs).
                 var json = JsonConvert.SerializeObject(file, SaveSchema.JsonSettings);
@@ -516,12 +665,15 @@ namespace DeNelle.Core.State
                 // device that cannot persist would start refusing its own cloud restore.
                 StampLocalSaveClockFromEnvelope(file.ExportedAt);
                 FlowTrace.Step("Save", $"wrote signed save via {Provider.GetType().Name} (len={json.Length}).");
+                return true;
             }
             catch (Exception ex)
             {
                 // §12 TGVRU: a local save write failure is a player-device save
                 // problem — route it to the break-log, not just the console.
                 FlowTrace.Fail("Save", $"local Save FAILED (provider write) — progress not persisted this frame. {ex.GetType().Name}: {ex.Message}");
+                reason = "Local progress could not be saved: " + ex.GetType().Name;
+                return false;
             }
         }
 
@@ -575,17 +727,17 @@ namespace DeNelle.Core.State
         }
 
         /// <summary>
-        /// Adds <paramref name="amount"/> food to the live state (negative to spend;
+        /// Adds <paramref name="amount"/> Stone to the live state (negative to spend;
         /// clamped &gt;= 0), persists, and raises <see cref="ResourcesChanged"/>.
-        /// DEF-121 — Food is one of the four harvestables (Wood/Food/Iron/Crystals);
-        /// it lives on the wallet struct (Resources.Food). Mirrors AddCrystals so
+        /// DEF-121 — Stone is one of the four harvestables (Wood/Stone/Iron/Crystals);
+        /// it lives on the wallet struct (Resources.Stone). Mirrors AddCrystals so
         /// harvest/upgrade callers needn't reach into the Resources struct directly.
         /// </summary>
-        public void AddFood(int amount)
+        public void AddStone(int amount)
         {
             if (_state == null) return;
             var r = _state.Resources;
-            r.Food = Mathf.Max(0, r.Food + amount);
+            r.Stone = Mathf.Max(0, r.Stone + amount);
             _state.Resources = r;
             Save();
             ResourcesChanged.Invoke();
@@ -690,6 +842,8 @@ namespace DeNelle.Core.State
                 RaidCooldowns = s.RaidCooldowns != null ? new List<RaidCooldownRecord>(s.RaidCooldowns) : null,   // WO-728 — per-camp raid cooldown windows (additive default-on-read; NO schema bump)
                 RaidVictories = s.RaidVictories,                       // WO-1375 — monotonic raid WIN count; the one input to the PROGRAM_RAID_ECONOMY section-4 unlock ladder (additive default-on-read; NO schema bump)
                 RaidVictoriesBackfilled = s.RaidVictoriesBackfilled,   // WO-1375 — one-shot claim-flag backfill latch (the claim set is PlayerPrefs, so no migrator step can seed the count)
+                OwnedBase = s.OwnedBase?.Clone(),
+                PendingTownCapture = s.PendingTownCapture?.Clone(),
                 ResetEpoch = s.ResetEpoch,                             // WO-1598 — monotonic New Game reset counter; the server's ONE way to tell a legitimate reset from a rollback (additive default-on-read; NO schema bump)
             };
         }
@@ -716,7 +870,7 @@ namespace DeNelle.Core.State
             if (p.TowerAbilities != null) s.TowerAbilities = ToIntList(p.TowerAbilities);
             if (p.WallLevel.HasValue) s.WallLevel = (int)p.WallLevel.Value;
             // WO-1212 - the `stone` WIRE key is an INBOUND ALIAS onto the ONE live Stone
-            // balance (Resources.Food), never a second field. It lands only when the payload
+            // balance (Resources.Stone), never a second field. It lands only when the payload
             // carries no `resources` block at all - a sender that speaks `stone` and nothing
             // else - so nothing is silently dropped on the floor. When the live slot IS
             // present (every save this client has ever written), the stored number is
@@ -727,17 +881,17 @@ namespace DeNelle.Core.State
                 if (!p.Resources.HasValue)
                 {
                     var aliased = s.Resources;
-                    aliased.Food = (int)p.Stone.Value;
+                    aliased.Stone = (int)p.Stone.Value;
                     s.Resources = aliased;
                     FlowTrace.Warn("Save",
                         $"WO-1212: legacy `stone` wire key ALIASED onto the live Stone slot " +
-                        $"(Resources.Food={aliased.Food}); the payload carried no `resources` block.");
+                        $"(Resources.Stone={aliased.Stone}); the payload carried no `resources` block.");
                 }
                 else
                 {
                     FlowTrace.Step("Save",
                         $"WO-1212: DISCARDED retired balance stone={p.Stone.Value:0}. Nothing read or " +
-                        $"spent it; the live Stone the player sees is Resources.Food={s.Resources.Food}, " +
+                        $"spent it; the live Stone the player sees is Resources.Stone={s.Resources.Stone}, " +
                         "left untouched. Discard by design - the field only ever held a seed or a dev top-up.");
                 }
             }
@@ -839,6 +993,8 @@ namespace DeNelle.Core.State
             // Village-side backfill (RaidVictoryController.BackfillVictoriesFromClaims) then
             // seeds from the per-camp claim flags. Never clamped here: SaveSchema.Validate
             // already floored it through NonNegInt before this runs.
+            if (p.OwnedBase != null) s.OwnedBase = p.OwnedBase.Clone();
+            if (p.PendingTownCapture != null) s.PendingTownCapture = p.PendingTownCapture.Clone();
             if (p.RaidVictories.HasValue) s.RaidVictories = (int)p.RaidVictories.Value;
             if (p.RaidVictoriesBackfilled.HasValue) s.RaidVictoriesBackfilled = p.RaidVictoriesBackfilled.Value;
             // WO-1598 - the New Game reset epoch. Absent on an older wire (or on a row written
@@ -1276,10 +1432,10 @@ namespace DeNelle.Core.State
             s.WallLevel = 0;
             // WO-1212: the invisible Stone seed is REMOVED. It seeded a balance no HUD read
             // and no cost spent, so nothing player-visible changes. It is DROPPED, not folded
-            // into Resources.Food: the ticket's own later correction rules `discard, do not
+            // into Resources.Stone: the ticket's own later correction rules `discard, do not
             // sum`, and folding would quietly raise a fresh town's VISIBLE Stone from 80 to
             // 100 - a founding-economy change on the day WO-1217 ruled that ladder. One line
-            // (`s.Resources.Food += 20;`) restores it if the lead rules the other way.
+            // (`s.Resources.Stone += 20;`) restores it if the lead rules the other way.
             // Owner ruling 2026-07-13 evening — the founding seed is ZERO: the per-id
             // free-first-build flags (FreeBuildsUsed, below) REPLACE the resource seed.
             // Players earn everything beyond the one-free-each kit from production
@@ -1380,6 +1536,8 @@ namespace DeNelle.Core.State
             s.DefenseReports = new List<DeNelle.Core.Defense.DefenseOutcomeRecord>();   // WO-1026 — New Game: no attack history.
             s.LastSiegeUnixMs = 0;                            // WO-1026 — New Game: reseed the siege cadence clock on first evaluation (no retroactive assault).
             s.RaidCooldowns = new List<RaidCooldownRecord>();  // WO-728 — New Game: no camp is recovering, every raid is available. AUDIT NOTE: this line is what stops "Start New" inheriting the previous save's lockouts — exactly the Settlements defect found 2026-08-02 directly below.
+            s.OwnedBase = null; // Explicit New Game only; ordinary missing fields do not erase property.
+            s.PendingTownCapture = null;
             s.RaidVictories = 0;                              // WO-1375 - New Game: no raid has been WON, so the section-4 unlock ladder starts at target 1 only.
             s.RaidVictoriesBackfilled = true;                 // WO-1375 - New Game: there is nothing to backfill, and the latch is SET so the claim-flag seed can never run on a fresh save. This matters because RaidClaimService's claim flags live in PlayerPrefs, which "Start New" does NOT clear - without this line a new game on a veteran's DEVICE would inherit that device's claimed camps as victories. Same class of defect as the Settlements/RaidCooldowns audit notes below.
             s.EverCompletedRaid = false;                      // WO-823 Phase E (v41) - New Game: no raid has ever been finished, so the FIRST raid is softened to 3 deployable slots. RaidDeployController.ReconcileRaidEnd stamps it true at the first raid exit (victory, retreat OR hero death) and the full army cap applies from then on, permanently.
@@ -2087,8 +2245,16 @@ namespace DeNelle.Core.State
         /// server-side). The guest rail exists because the front door offers "Play as Guest" and a tester
         /// who cannot save is a tester we lose. The two rails are chosen by the SHAPE of the bound id, never
         /// by which headers arrive, so a caller can never downgrade a wallet row onto the weak rail.</summary>
-        private bool CanCloudSync() => IsRealWalletConnected() || IsGuestIdentity(_state?.BoundWallet) ||
-                                       IsGooglePlayIdentity(_state?.BoundWallet);
+        #if UNITY_EDITOR
+        public static bool SuppressCloudForIsolatedProof { get; set; }
+        #endif
+
+        private bool CanCloudSync() =>
+        #if UNITY_EDITOR
+            !SuppressCloudForIsolatedProof &&
+        #endif
+            (IsRealWalletConnected() || IsGuestIdentity(_state?.BoundWallet) ||
+                                       IsGooglePlayIdentity(_state?.BoundWallet));
 
         // ── Lifecycle hooks ───────────────────────────────────────────────
         private void OnApplicationPause(bool paused)
@@ -2163,8 +2329,8 @@ namespace DeNelle.Core.State
             // WO-1211: boot reads may use existing proof but may never mint or sign.
             // With no cached wallet session, keep the durable local save and defer proof
             // until the first authenticated action. Guest reads retain their guest header.
-            bool guestLoad = DeNelle.Core.Web3.BackendRequestSigner.IsGuestIdentity(_state.BoundWallet);
-            if (!DeNelle.Core.Web3.BackendRequestSigner.TryAttachCachedSession(req, _state.BoundWallet))
+            bool guestLoad = DeNelle.Core.Backend.BackendRequestSigner.IsGuestIdentity(_state.BoundWallet);
+            if (!DeNelle.Core.Backend.BackendRequestSigner.TryAttachCachedSession(req, _state.BoundWallet))
             {
                 Debug.Log(guestLoad
                     ? "[Sync] Guest cloud LOAD had no usable proof - keeping local save."
@@ -2443,19 +2609,19 @@ namespace DeNelle.Core.State
                     if (!server.Resources.HasValue)
                     {
                         var aliasedCloud = _state.Resources;
-                        aliasedCloud.Food = (int)server.Stone.Value;
+                        aliasedCloud.Stone = (int)server.Stone.Value;
                         server.Resources = aliasedCloud;
                         FlowTrace.Warn("Persist",
                             $"WO-1212: legacy `stone` wire key ALIASED onto the live Stone slot " +
-                            $"(Resources.Food={aliasedCloud.Food}) on the CLOUD row; the payload carried " +
+                            $"(Resources.Stone={aliasedCloud.Stone}) on the CLOUD row; the payload carried " +
                             "no `resources` block. An older sender's value is kept, never dropped.");
                     }
                     else
                     {
                         FlowTrace.Step("Persist",
                             $"WO-1212: DISCARDED retired balance stone={server.Stone.Value:0} on the CLOUD " +
-                            $"row. Nothing read or spent it; the live Stone is the row's Resources.Food=" +
-                            $"{server.Resources.Value.Food}, left untouched. Discard by design - the field " +
+                            $"row. Nothing read or spent it; the live Stone is the row's Resources.Stone=" +
+                            $"{server.Resources.Value.Stone}, left untouched. Discard by design - the field " +
                             "only ever held a seed or a dev top-up.");
                     }
                     server.Stone = null;
@@ -2480,6 +2646,28 @@ namespace DeNelle.Core.State
                     return BackendApplyOutcome.RejectedValidation;
                 }
 
+                // Owned-base revisions are independent of the enclosing save timestamp. A newer
+                // server save must not rewind layout work or replace a different property.
+                if (serverEpoch <= localEpoch && _state.PendingTownCapture != null)
+                {
+                    FlowTrace.Warn("Persist", "backend load deferred while a local captured town awaits recovery.");
+                    return BackendApplyOutcome.RejectedValidation;
+                }
+                // Pending capture is a device-local intent, never a remote replay command.
+                validation.Data.PendingTownCapture = null;
+                if (serverEpoch <= localEpoch && validation.Data.OwnedBase != null &&
+                    !OwnedBaseProgression.TryAcceptRevision(_state.OwnedBase, validation.Data.OwnedBase,
+                        out _, out string ownedBaseConflict))
+                {
+                    FlowTrace.Warn("Persist", "backend ownedBase refused: " + ownedBaseConflict);
+                    return BackendApplyOutcome.RejectedValidation;
+                }
+                // A newer explicit reset epoch is a new game, including absence of ownership.
+                if (serverEpoch > localEpoch)
+                {
+                    _state.OwnedBase = null;
+                    _state.PendingTownCapture = null;
+                }
                 ApplyPersisted(validation.Data);
 
                 // Identity is DEVICE-owned, never payload-owned. ApplyPersisted installs
@@ -2516,7 +2704,7 @@ namespace DeNelle.Core.State
                     $"through MigrateForImport(v{storeVersion}) + Validate + ApplyPersisted (WO-1447). " +
                     $"baseLayout={(_state.BaseLayout != null ? _state.BaseLayout.Count : 0)} record(s), " +
                     $"army={(_state.Army != null && _state.Army.Owned != null ? _state.Army.Owned.Count : 0)} troop(s), " +
-                    $"resources c/f/g={_state.Resources.Crystals}/{_state.Resources.Food}/{_state.Resources.Coins}. " +
+                    $"resources crystals/stone/coins={_state.Resources.Crystals}/{_state.Resources.Stone}/{_state.Resources.Coins}. " +
                     $"resetEpoch server={serverEpoch:0} local-before={localEpoch:0} -> now {_state.ResetEpoch} " +
                     "(WO-1598: the row was at or ahead of this device's New Game, so it was allowed through).");
 
@@ -3051,8 +3239,8 @@ namespace DeNelle.Core.State
 
             // WO-1211: writes use the one shared auth authority and always fail closed.
             // Guests retain their shaped device proof; wallets may reuse or mint a session.
-            bool guestSave = DeNelle.Core.Web3.BackendRequestSigner.IsGuestIdentity(_state.BoundWallet);
-            if (!await DeNelle.Core.Web3.BackendRequestSigner.TryAttachAsync(req, _state.BoundWallet, body))
+            bool guestSave = DeNelle.Core.Backend.BackendRequestSigner.IsGuestIdentity(_state.BoundWallet);
+            if (!await DeNelle.Core.Backend.BackendRequestSigner.TryAttachAsync(req, _state.BoundWallet, body))
             {
                 ReportSaveAuthAborted(guestSave);
                 return new SaveAttemptResult(SaveAttemptCategory.AuthAbsent, 0L,
@@ -3306,7 +3494,7 @@ namespace DeNelle.Core.State
                 // displayed or spent, so a server clamp on it moved a number no player could
                 // ever have seen. The default arm below FAILS loudly if the two lists
                 // disagree again.
-                case "food":  return _state.Resources.Food;
+                case "food":  return _state.Resources.Stone;
                 default:
                     // Not silently skipped: a new TIME_DERIVED_BALANCES entry on the server
                     // with no arm here would clamp on the server and NOT on the device, and
@@ -3332,7 +3520,7 @@ namespace DeNelle.Core.State
                     // ResourceBalance is a STRUCT — mutate a copy and assign it back, or the
                     // write lands on a temporary and vanishes.
                     var wallet = _state.Resources;
-                    wallet.Food = value;
+                    wallet.Stone = value;
                     _state.Resources = wallet;
                     break;
                 }
@@ -3358,7 +3546,7 @@ namespace DeNelle.Core.State
             {
                 var r = cur.Resources ?? default;
                 d.Crystals  = r.Crystals;
-                d.Food      = r.Food;
+                d.Stone     = r.Stone;
                 d.Coins     = r.Coins;
                 d.Voidshards = (int?)cur.Voidshards;
                 // WO-1212: `stone` is no longer sent - one balance, one wire key (`food`).
@@ -3393,6 +3581,15 @@ namespace DeNelle.Core.State
                 any = true;
             }
 
+            // Property edits can be the ONLY change. The delta is a dirty/audit marker;
+            // SendCurrentSnapshot still sends the full current PersistedState.
+            string ownedBaseNow = JsonConvert.SerializeObject(cur.OwnedBase, SaveSchema.JsonSettings);
+            string ownedBaseBefore = prev == null ? null : JsonConvert.SerializeObject(prev.OwnedBase, SaveSchema.JsonSettings);
+            if (prev == null || ownedBaseNow != ownedBaseBefore)
+            {
+                d.OwnedBaseJson = ownedBaseNow;
+                any = true;
+            }
             return any ? d : null;
         }
 
@@ -3401,7 +3598,7 @@ namespace DeNelle.Core.State
             if (b == null) return true;
             var ar = a.Resources; var br = b.Resources;
             return ar?.Crystals != br?.Crystals
-                || ar?.Food     != br?.Food
+                || ar?.Stone    != br?.Stone
                 || ar?.Coins    != br?.Coins
                 || a.Voidshards != b.Voidshards
                 || a.Iron       != b.Iron
@@ -3708,12 +3905,14 @@ namespace DeNelle.Core.State
         /// </summary>
         public sealed class SyncDeltaPayload
         {
+            public string OwnedBaseJson { get; set; } // Dirty/audit marker; wire uses the full snapshot.
             public string PlayerId      { get; set; }
             public int    SchemaVersion { get; set; }
 
             // Resources — null = domain unchanged
             public int? Crystals  { get; set; }
-            public int? Food      { get; set; }
+            // The offline queue and deployed backend still speak the original key.
+            [JsonProperty("Food")] public int? Stone { get; set; }
             public int? Coins     { get; set; }
             public int? Voidshards { get; set; }
             // WO-1212: `public int? Stone` removed - the retired balance is never sent.

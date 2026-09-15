@@ -58,7 +58,7 @@ using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Platform;      // CurrencySkinResolver.WalletConnectionChanged - the connect seam
 using DeNelle.Core.Payments;
 using DeNelle.Core.Promo;
-using DeNelle.Core.Web3;
+using DeNelle.Core.Backend;
 using DeNelle.Commerce;    // WO-1282 - StoreFocusRequest, the rail-neutral focus latch
 // WO-1188 - the confirmation screen reports what ARRIVED, so it reads the ONE authoritative
 // wallet total (TownBankCapacity.CurrentOf) before and after the grant and prints the DELTA.
@@ -3612,7 +3612,7 @@ namespace DeNelle.Wallet
                     AddContentAmount(items, econ.Wood, "wood");
                     AddContentAmount(items, econ.Iron, "iron");
                     AddContentAmount(items, econ.Crystals, "crystals");
-                    AddContentAmount(items, econ.Food, "stone");
+                    AddContentAmount(items, econ.Stone, "stone");
                     AddContentAmount(items, econ.Coins, "coins");
                 }
 
@@ -3724,7 +3724,7 @@ namespace DeNelle.Wallet
                 AppendAmount(sb, econ.Wood, "wood");
                 AppendAmount(sb, econ.Iron, "iron");
                 AppendAmount(sb, econ.Crystals, "crystals");
-                AppendAmount(sb, econ.Food, "stone");
+                AppendAmount(sb, econ.Stone, "stone");
                 AppendAmount(sb, econ.Coins, "coins");
             }
             if (c.Cosmetics != null)
@@ -4397,7 +4397,7 @@ namespace DeNelle.Wallet
             /// <summary>Reads the ONE authoritative wallet total per resource (TownBankCapacity.CurrentOf
             /// -> GameState, WO-842). Nothing here derives or predicts a balance.</summary>
             public static EconomySnapshot Capture() => new EconomySnapshot(
-                Bank.CurrentOf(BankRes.Wood), Bank.CurrentOf(BankRes.Iron), Bank.CurrentOf(BankRes.Food),
+                Bank.CurrentOf(BankRes.Wood), Bank.CurrentOf(BankRes.Iron), Bank.CurrentOf(BankRes.Stone),
                 Bank.CurrentOf(BankRes.Crystals), Bank.CurrentOf(BankRes.Coins));
 
             public int Of(BankRes r)
@@ -4406,7 +4406,7 @@ namespace DeNelle.Wallet
                 {
                     case BankRes.Wood: return _wood;
                     case BankRes.Iron: return _iron;
-                    case BankRes.Food: return _food;
+                    case BankRes.Stone: return _food;
                     case BankRes.Crystals: return _crystals;
                     case BankRes.Coins: return _coins;
                 }
@@ -4416,7 +4416,7 @@ namespace DeNelle.Wallet
 
         private static readonly BankRes[] ReceiptResources =
         {
-            BankRes.Wood, BankRes.Iron, BankRes.Food, BankRes.Crystals, BankRes.Coins,
+            BankRes.Wood, BankRes.Iron, BankRes.Stone, BankRes.Crystals, BankRes.Coins,
         };
 
         private static int AdvertisedAmount(PackDef pack, BankRes r)
@@ -4427,7 +4427,7 @@ namespace DeNelle.Wallet
             {
                 case BankRes.Wood: return Mathf.Max(0, econ.Wood);
                 case BankRes.Iron: return Mathf.Max(0, econ.Iron);
-                case BankRes.Food: return Mathf.Max(0, econ.Food);
+                case BankRes.Stone: return Mathf.Max(0, econ.Stone);
                 case BankRes.Crystals: return Mathf.Max(0, econ.Crystals);
                 case BankRes.Coins: return Mathf.Max(0, econ.Coins);
             }

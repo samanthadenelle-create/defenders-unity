@@ -28,7 +28,11 @@
 // recreate the exact fragility being removed: emitted initializers must track
 // every RepoProps schema change forever, and a field added to RepoProps tomorrow
 // silently stops being mirrored. A string constant is schema-agnostic - it is the
-// catalog, byte for byte.
+// catalog itself. (WO-1755, 2026-09-15: it was byte for byte until that date; the
+// emitted payload is now the catalog with every '_'-prefixed AUTHORING NOTE
+// stripped - see ProjectForFallback / CatalogFallbackProjection.Strip. Every row,
+// id, cost and player-facing key is still the file's, unchanged, so the
+// schema-agnostic property this paragraph is about is untouched.)
 //
 // A string constant is compiled INTO the assembly, so it survives every failure
 // mode RegisterFallback exists for: a missing Resources entry, an unresolvable
@@ -160,7 +164,31 @@ namespace DeNelle.Editor
                     return;
                 }
 
-                string source = BuildSource(json, resHash, rowCount, version, resBytes.Length);
+                // WO-1755. What gets EMBEDDED is the catalog with every '_'-prefixed key removed.
+                // WHY, measured: WO-1740's RCA read the rejected AAB's global-metadata.dat and found
+                // "the game is live on the Solana dApp Store, so renaming it orphans every existing
+                // town" at offset 1,671,082 -- the '_quarryNote' authoring note, shipped into the
+                // Google Play artifact as a COMPILED C# LITERAL out of this file. The Play neutral
+                // sweep (GooglePlayContentExclusion.PlayNeutralMirrorPairs) rewrites the Resources
+                // and StreamingAssets copies and provably works (aab-build.log:9164), but it cannot
+                // reach a third copy that the C# compiler baked into the assembly.
+                //
+                // Stripping at EMISSION closes the door for EVERY future note rather than the one
+                // WO-1416 happened to author -- the sweep's own reasoning, applied one layer down.
+                // It is also correct on its own terms: authoring notes are addressed to whoever
+                // edits the JSON, and the fallback blob is read by CatalogBootstrap.ParseAndRegister
+                // and by nothing else. Measured 2026-09-15: all 61 '_'-prefixed keys in the catalog
+                // carry STRING values, and no runtime type reads one -- the only reader anywhere is
+                // CollectorIncomeRegression.cs:1357, an Editor suite that reads the JSON FILE.
+                //
+                // SourceSha256 / SourceByteLength below stay the SOURCE FILE's, so the staleness
+                // gate (BuildEconomyRegression case B) is unchanged. Case C -- "nobody hand-edited
+                // the generated file" -- can no longer compare the embedded string to that hash, so
+                // it re-derives the expectation by calling THIS method. One projection, two callers,
+                // no second copy of the rule.
+                string embed = ProjectForFallback(json);
+
+                string source = BuildSource(embed, resHash, rowCount, version, resBytes.Length);
 
                 string outAbs = Path.Combine(root, OutputPath.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(outAbs));
@@ -173,7 +201,8 @@ namespace DeNelle.Editor
 
                 Debug.Log($"{MarkerOk} wrote {OutputPath} from {ResourcesCopy} " +
                           $"(rows={rowCount} version={version} bytes={resBytes.Length} sha256={resHash}); " +
-                          $"both canonical copies verified byte-identical.");
+                          $"both canonical copies verified byte-identical; embedded payload is the " +
+                          $"authoring-note-stripped projection ({embed.Length} chars, WO-1755).");
             }
             catch (Exception ex)
             {
@@ -185,6 +214,25 @@ namespace DeNelle.Editor
         {
             Debug.LogError($"{MarkerFail} {why}");
         }
+
+        // ---------------------------------------------------------------------
+        //  WO-1755 - the projection that is embedded, and the SINGLE definition of it
+        // ---------------------------------------------------------------------
+
+        /// <summary>
+        /// The projection that is EMBEDDED: the catalog with every '_'-prefixed authoring note
+        /// removed. Delegates to <see cref="CatalogFallbackProjection.Strip"/> — the ONE
+        /// definition of the rule, shared with BuildEconomyRegression's [fallback-parity] case C.
+        /// <para>
+        /// ⛔ It lives in DeNelle.EditorRegression, not here, because the suite that must agree
+        /// with it cannot reference this assembly: DeNelle.Editor.asmdef already references
+        /// DeNelle.EditorRegression, so the reverse reference would be a CYCLE. Do not
+        /// re-implement the strip here to "keep it local" — a second copy is the duplicated-state
+        /// failure CLAUDE.md §2/§5/§16 each describe, and it would let the gate certify a file
+        /// this generator would not produce.
+        /// </para>
+        /// </summary>
+        internal static string ProjectForFallback(string json) => CatalogFallbackProjection.Strip(json);
 
         private static string Sha256(byte[] bytes)
         {
@@ -200,6 +248,8 @@ namespace DeNelle.Editor
         // ---------------------------------------------------------------------
         //  Emission
         // ---------------------------------------------------------------------
+        /// <param name="json">The payload to embed — the ProjectForFallback projection, NOT the raw file.</param>
+        /// <param name="sha">SHA-256 of the SOURCE FILE's bytes. The staleness gate's evidence; unrelated to the payload.</param>
         private static string BuildSource(string json, string sha, int rowCount, int version, int byteLen)
         {
             var sb = new StringBuilder(json.Length * 3);
@@ -217,8 +267,16 @@ namespace DeNelle.Editor
             sb.Append("//  WO-1137 (owner ruling 2026-08-23). The CatalogBootstrap JSON-load-FAILURE\n");
             sb.Append("//  path used to be a hand-written 3-row mirror of a 28-row catalog, and drift\n");
             sb.Append("//  between the two silently shipped different content. It is now THIS: the\n");
-            sb.Append("//  catalog itself, embedded byte-for-byte and parsed through the same code\n");
-            sb.Append("//  path as the file. Drift is not gated, it is impossible.\n");
+            sb.Append("//  catalog itself, embedded and parsed through the same code path as the\n");
+            sb.Append("//  file. Drift is not gated, it is impossible.\n");
+            sb.Append("//\n");
+            sb.Append("//  WO-1755: the embedded payload is the catalog with every '_'-prefixed\n");
+            sb.Append("//  AUTHORING NOTE removed (CatalogFallbackGenerator.ProjectForFallback).\n");
+            sb.Append("//  Those notes are addressed to whoever edits the JSON and are read by no\n");
+            sb.Append("//  runtime type; one of them shipped \"the Solana dApp Store\" into the\n");
+            sb.Append("//  Google Play AAB as a compiled literal, which the Play neutral sweep\n");
+            sb.Append("//  cannot reach because it rewrites FILES. Values, ids, costs and every\n");
+            sb.Append("//  player-facing key are untouched.\n");
             sb.Append("//\n");
             sb.Append("//  If a value here looks wrong, EDIT " + ResourcesCopy + "\n");
             sb.Append("//  (and its StreamingAssets twin) and re-run the generator. Editing this file\n");
@@ -258,7 +316,8 @@ namespace DeNelle.Editor
             sb.Append("        private static string _json;\n");
             sb.Append("\n");
             sb.Append("        /// <summary>\n");
-            sb.Append("        /// The catalog JSON, byte-identical to <see cref=\"SourcePath\"/> when UTF-8 encoded.\n");
+            sb.Append("        /// The catalog JSON from <see cref=\"SourcePath\"/> with every '_'-prefixed authoring\n");
+            sb.Append("        /// note stripped (WO-1755). Every row, id, cost and player-facing key is unchanged.\n");
             sb.Append("        /// Split into literals purely so the generated file stays diff-readable.\n");
             sb.Append("        /// </summary>\n");
             sb.Append("        public static string Json\n");

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using DeNelle.Core.Entitlements;
-using DeNelle.Core.Web3;
+using DeNelle.Core.Backend;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;

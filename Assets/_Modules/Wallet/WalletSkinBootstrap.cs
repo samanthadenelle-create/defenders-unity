@@ -22,7 +22,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using DeNelle.Core.Auth;
 using DeNelle.Core.Diagnostics;
-using DeNelle.Core.Web3;          // BackendRequestSigner - the handshake/mint at connect (WO-1441)
+using DeNelle.Core.Backend;       // BackendRequestSigner - the handshake/mint at connect (WO-1441)
 using DeNelle.Core.Platform;
 using DeNelle.Core.State;
 

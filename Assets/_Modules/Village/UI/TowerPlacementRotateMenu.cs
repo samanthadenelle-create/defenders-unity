@@ -626,7 +626,14 @@ namespace DeNelle.Village
 
             bar.Add(left);
 
-            var cost = new Label($"{_costSkr:F0} SKR");
+            // WO-1755: this label used to render the wallet-rail currency name after the amount —
+            // the ONE RENDERED forbidden-token literal of the six offenders the WO-1740 RCA
+            // measured in the rejected Play AAB's global-metadata.dat (offset 2,043,262).
+            // This menu is the editor/dev OFFSET tool (BuildModeController.cs:129-131), reached
+            // only by AdminOverlay reflection and AutoPilotDriver, so a rail-neutral word costs
+            // nothing. The FIELD name _costSkr is untouched: it fails the gate's leading
+            // word-boundary rule and renaming it would be churn with no effect on the artifact.
+            var cost = new Label($"{_costSkr:F0} cost");
             cost.style.fontSize = 13;
             cost.style.color    = TitleGold;
             cost.style.unityFontStyleAndWeight = FontStyle.Bold;

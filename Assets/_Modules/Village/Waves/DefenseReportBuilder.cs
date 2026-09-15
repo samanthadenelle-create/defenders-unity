@@ -68,7 +68,7 @@ namespace DeNelle.Village
                     HasCost = e.HasCost,
                     RepairWood = e.HasCost ? Mathf.Max(0, e.RepairCost.wood) : 0,
                     RepairIron = e.HasCost ? Mathf.Max(0, e.RepairCost.iron) : 0,
-                    RepairFood = e.HasCost ? Mathf.Max(0, e.RepairCost.food) : 0,
+                    RepairStone = e.HasCost ? Mathf.Max(0, e.RepairCost.stone) : 0,
                     RepairCrystals = e.HasCost ? Mathf.Max(0, e.RepairCost.crystals) : 0,
                 });
             });
@@ -435,8 +435,8 @@ namespace DeNelle.Village
 
                 FlowTrace.Step("Siege",
                     $"stakes COMPUTED rule={built.StakesRuleId} outcome={outcome} " +
-                    $"-W{built.Wood} -I{built.Iron} -S{built.Food} -G{built.Coins} " +
-                    "(stone is the balance named Food; gold is Coins). CRYSTALS/SKR/PURCHASED GOODS/" +
+                    $"-W{built.Wood} -I{built.Iron} -S{built.Stone} -G{built.Coins} " +
+                    "(stone is the balance named Food; gold is Coins). CRYSTALS/PREMIUM RAIL/PURCHASED GOODS/" +
                     "EQUIPPED GEAR ARE UNTOUCHABLE and have no expression here.");
 
                 return built;
@@ -459,7 +459,7 @@ namespace DeNelle.Village
         {
             BankResource.Wood,
             BankResource.Iron,
-            BankResource.Food,    // "Stone" player-facing -- live save/wire key, never renamed
+            BankResource.Stone,    // "Stone" player-facing -- live save/wire key, never renamed
             BankResource.Coins,   // "Gold" player-facing
         };
 
@@ -497,7 +497,7 @@ namespace DeNelle.Village
             {
                 FlowTrace.Warn("Siege",
                     $"ApplyStakes called AGAIN on report {settled.Id} -- already settled " +
-                    $"(-W{ledger.Wood} -I{ledger.Iron} -S{ledger.Food} -G{ledger.Coins}). " +
+                    $"(-W{ledger.Wood} -I{ledger.Iron} -S{ledger.Stone} -G{ledger.Coins}). " +
                     "Refusing: a siege bills ONCE per attack.");
                 return false;
             }
@@ -510,7 +510,7 @@ namespace DeNelle.Village
             {
                 FlowTrace.Fail("Siege",
                     $"stakes ledger carried crystals={ledger.Crystals} magic={ledger.Magic} -- NEITHER IS " +
-                    "EVER TAKEABLE (owner ruling: crystals/SKR/purchased goods/equipped gear are untouchable " +
+                    "EVER TAKEABLE (owner ruling: crystals/premium rail/purchased goods/equipped gear are untouchable " +
                     "absolutely). Zeroed before the debit.");
                 ledger.Crystals = 0;
                 ledger.Magic = 0;
@@ -518,7 +518,7 @@ namespace DeNelle.Village
 
             ledger.StakesRuleId = StakeRules.RuleId;
 
-            if (ledger.Wood <= 0 && ledger.Iron <= 0 && ledger.Food <= 0 && ledger.Coins <= 0)
+            if (ledger.Wood <= 0 && ledger.Iron <= 0 && ledger.Stone <= 0 && ledger.Coins <= 0)
             {
                 FlowTrace.Step("Siege",
                     $"stakes: nothing was taken (outcome={settled.Outcome}) -- the defence held, or every " +
@@ -530,10 +530,10 @@ namespace DeNelle.Village
             // Re-clamp to what the wallet holds RIGHT NOW, so the report cannot claim more than left.
             ledger.Wood = ClampToBalance(ledger.Wood, BankResource.Wood);
             ledger.Iron = ClampToBalance(ledger.Iron, BankResource.Iron);
-            ledger.Food = ClampToBalance(ledger.Food, BankResource.Food);
+            ledger.Stone = ClampToBalance(ledger.Stone, BankResource.Stone);
             ledger.Coins = ClampToBalance(ledger.Coins, BankResource.Coins);
 
-            if (ledger.Wood <= 0 && ledger.Iron <= 0 && ledger.Food <= 0 && ledger.Coins <= 0)
+            if (ledger.Wood <= 0 && ledger.Iron <= 0 && ledger.Stone <= 0 && ledger.Coins <= 0)
             {
                 FlowTrace.Warn("Siege",
                     "stakes: every bucket clamped to nothing against the live wallet -- the balance moved " +
@@ -552,7 +552,7 @@ namespace DeNelle.Village
                 FlowTrace.Fail("Siege",
                     $"stakes: NO EconomyService -- the debit could not run for report {settled.Id}. " +
                     "Zeroing the ledger so the report cannot claim a loss the wallet never took.");
-                ledger.Wood = ledger.Iron = ledger.Food = ledger.Coins = 0;
+                ledger.Wood = ledger.Iron = ledger.Stone = ledger.Coins = 0;
                 ledger.Applied = true;
                 return false;
             }
@@ -560,7 +560,7 @@ namespace DeNelle.Village
             // *** THE ONE DEBIT. Crystals are deliberately absent from the basket -- not zero, ABSENT.
             var basket = new DeNelle.Village.ResourceCost(
                 wood: ledger.Wood,
-                food: ledger.Food,      // "Stone"
+                stone: ledger.Stone,      // "Stone"
                 iron: ledger.Iron,
                 crystals: 0,            // UNTOUCHABLE, absolutely
                 coins: ledger.Coins);   // "Gold"
@@ -571,9 +571,9 @@ namespace DeNelle.Village
             {
                 FlowTrace.Fail("Siege",
                     $"stakes: TrySpend REFUSED the basket for report {settled.Id} " +
-                    $"(-W{ledger.Wood} -I{ledger.Iron} -S{ledger.Food} -G{ledger.Coins}). Zeroing the " +
+                    $"(-W{ledger.Wood} -I{ledger.Iron} -S{ledger.Stone} -G{ledger.Coins}). Zeroing the " +
                     "ledger: the report must never claim a loss the wallet did not take.");
-                ledger.Wood = ledger.Iron = ledger.Food = ledger.Coins = 0;
+                ledger.Wood = ledger.Iron = ledger.Stone = ledger.Coins = 0;
                 ledger.Applied = true;
                 return false;
             }
@@ -582,8 +582,8 @@ namespace DeNelle.Village
 
             FlowTrace.Step("Siege",
                 $"stakes DEBITED rule={ledger.StakesRuleId} -W{ledger.Wood} -I{ledger.Iron} " +
-                $"-S{ledger.Food} -G{ledger.Coins} (ONE bill for this siege; the floor and the cap held; " +
-                "crystals/SKR/purchased goods/equipped gear untouched).");
+                $"-S{ledger.Stone} -G{ledger.Coins} (ONE bill for this siege; the floor and the cap held; " +
+                "crystals/premium rail/purchased goods/equipped gear untouched).");
 
             return true;
         }

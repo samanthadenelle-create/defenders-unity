@@ -54,7 +54,7 @@ namespace DeNelle.Core.Social
 
         public TownShowcaseClient(string baseUrl = null)
         {
-            _baseUrl = (baseUrl ?? DeNelle.Core.Web3.BackendRequestSigner.BackendBase).TrimEnd('/');
+            _baseUrl = (baseUrl ?? DeNelle.Core.Backend.BackendRequestSigner.BackendBase).TrimEnd('/');
         }
 
         public async UniTask<IReadOnlyList<TopTownVisitEntry>> FetchTopTenAsync(

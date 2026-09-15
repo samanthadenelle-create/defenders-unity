@@ -213,6 +213,44 @@ namespace DeNelle.Editor
         };
 
         // =====================================================================
+        //  WO-1755 - THE THIRD COPY OF THE CATALOG, AND WHY IT IS DELIBERATELY
+        //  *NOT* AN ENTRY IN EITHER ARRAY ABOVE
+        // ---------------------------------------------------------------------
+        //  The row directly above swept structures-catalog.json and it WORKED --
+        //  aab-build.log:9164 of the 2026-09-15 chain run reads
+        //  "PLAY_NEUTRAL_TOKEN_SWEEP - structures-catalog.json: neutralised 1
+        //  token-bearing string(s)", and no Data/Canonical entry for it appears in
+        //  that build's PLAY_ARTIFACT_DIRTY list.
+        //
+        //  The note shipped ANYWAY, from
+        //  Assets/_Modules/Village/Catalog/Generated/CatalogFallbackData.g.cs -- a
+        //  git-tracked GENERATED file that embeds the whole catalog JSON as a
+        //  compiled C# string literal. WO-1740's RCA read it out of the rejected
+        //  AAB's global-metadata.dat at offset 1,671,082. Copies 1 and 2 are FILES,
+        //  which this class rewrites; copy 3 is CODE, which it cannot.
+        //
+        //  ⛔ DO NOT ADD IT TO PlayExcludedAssetPaths OR PlayNeutralMirrorPairs.
+        //  Quarantining it deletes the JSON-load-failure fallback from the Play
+        //  player (WO-1137's entire purpose), and neutral-rewriting a .cs at build
+        //  time would compile something the gate and the suites never saw -- the
+        //  opposite of what every marker in this chain is for.
+        //
+        //  THE FIX LIVES AT THE GENERATOR, one layer up:
+        //  DeNelle.Editor.CatalogFallbackGenerator.ProjectForFallback strips every
+        //  '_'-prefixed authoring note before emission, so the note never becomes
+        //  code in ANY variant -- and no future note does either.
+        //
+        //  ⚠ RESIDUAL, recorded not hidden: if a PLAYER-FACING (non-'_') value in
+        //  structures-catalog.json ever carries a forbidden token, the sweep's
+        //  PlayNeutralStringReplacements branch fixes the two FILES and the .g.cs
+        //  would still carry the authored value. Measured 2026-09-15 (WO-1741):
+        //  the '_quarryNote' was the ONLY token-bearing string in that file, so
+        //  there is nothing in this class today. If that stops being true, the
+        //  answer is still not an entry here -- it is to decide whether the
+        //  fallback blob should be generated from the swept copy.
+        // =====================================================================
+
+        // =====================================================================
         //  WO-1363 - THE RULE THAT REPLACES THE PER-KEY ALLOWLIST
         // ---------------------------------------------------------------------
         //  A hardcoded per-key rewrite is DUPLICATED STATE, and it drifted inside three days:

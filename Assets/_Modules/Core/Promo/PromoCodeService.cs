@@ -51,7 +51,7 @@ using Cysharp.Threading.Tasks;
 using DeNelle.Core.Analytics;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.State;
-using DeNelle.Core.Web3;
+using DeNelle.Core.Backend;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;

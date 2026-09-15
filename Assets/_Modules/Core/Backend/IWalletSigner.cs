@@ -33,7 +33,7 @@
 
 using System.Threading.Tasks;
 
-namespace DeNelle.Core.Web3
+namespace DeNelle.Core.Backend
 {
     /// <summary>
     /// A wallet that can ed25519-sign an arbitrary UTF-8 message and expose its

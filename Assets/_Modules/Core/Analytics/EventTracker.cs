@@ -172,7 +172,7 @@ namespace DeNelle.Core.Analytics
             // state as the defect. "anonymous" is preserved for the no-account case because
             // the server's guest-shape regex rejects it either way, so nothing changes for
             // events queued before EnsureAccount mints the guest id.
-            string resolvedId = DeNelle.Core.Web3.BackendRequestSigner.CurrentPlayerId();
+            string resolvedId = DeNelle.Core.Backend.BackendRequestSigner.CurrentPlayerId();
             string playerId   = string.IsNullOrEmpty(resolvedId) ? "anonymous" : resolvedId;
 
             string propsJson = properties != null
@@ -307,7 +307,7 @@ namespace DeNelle.Core.Analytics
             //
             // The seam REUSED (never a second copy of the header names):
             //   BackendRequestSigner.TryAttachCachedSession(req, playerId)
-            //   (Assets/_Modules/Core/Web3/BackendRequestSigner.cs:421-434)
+            //   (Assets/_Modules/Core/Backend/BackendRequestSigner.cs:421-434)
             // It attaches X-Guest-Id for a guest id, or X-Session + X-Wallet for a wallet
             // that already holds a live session. It is the NON-MINTING, NON-SIGNING
             // variant: it never awaits, never opens a wallet SignMessage sheet, never
@@ -324,7 +324,7 @@ namespace DeNelle.Core.Analytics
             //    bug into a dropped-telemetry bug.
             string identityPlayerId = ResolveIdentityPlayerId();
             bool   identityAttached =
-                DeNelle.Core.Web3.BackendRequestSigner.TryAttachCachedSession(req, identityPlayerId);
+                DeNelle.Core.Backend.BackendRequestSigner.TryAttachCachedSession(req, identityPlayerId);
             ReportIdentityMode(identityPlayerId, identityAttached);
 
             try
@@ -356,7 +356,7 @@ namespace DeNelle.Core.Analytics
         /// </summary>
         private static string ResolveIdentityPlayerId()
         {
-            try { return DeNelle.Core.Web3.BackendRequestSigner.CurrentPlayerId(); }
+            try { return DeNelle.Core.Backend.BackendRequestSigner.CurrentPlayerId(); }
             catch { return string.Empty; }
         }
 
@@ -381,7 +381,7 @@ namespace DeNelle.Core.Analytics
         {
             try
             {
-                bool guest = DeNelle.Core.Web3.BackendRequestSigner.IsGuestIdentity(playerId);
+                bool guest = DeNelle.Core.Backend.BackendRequestSigner.IsGuestIdentity(playerId);
                 string mode = attached ? (guest ? "guest" : "wallet") : "none";
 
                 if (attached)

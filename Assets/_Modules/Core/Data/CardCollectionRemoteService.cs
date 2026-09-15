@@ -24,7 +24,7 @@ namespace DeNelle.Core
             string body = null;
             try
             {
-                string url = DeNelle.Core.Web3.BackendRequestSigner.BackendBase +
+                string url = DeNelle.Core.Backend.BackendRequestSigner.BackendBase +
                     "/api/catalog/collection?collectionId=" + Uri.EscapeDataString(collectionId ?? "") +
                     "&clientVersion=" + Uri.EscapeDataString(clientVersion ?? "0");
                 using var request = UnityWebRequest.Get(url);

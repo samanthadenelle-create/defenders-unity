@@ -3,7 +3,7 @@
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Entitlements;
 using DeNelle.Core.State;
-using DeNelle.Core.Web3;
+using DeNelle.Core.Backend;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 

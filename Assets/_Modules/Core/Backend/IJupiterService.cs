@@ -43,7 +43,7 @@
 using System.Threading.Tasks;
 
 #if !GOOGLE_PLAY
-namespace DeNelle.Core.Web3
+namespace DeNelle.Core.Backend
 {
     /// <summary>
     /// Fetches swap quotes from Jupiter and opens the in-game swap panel.
