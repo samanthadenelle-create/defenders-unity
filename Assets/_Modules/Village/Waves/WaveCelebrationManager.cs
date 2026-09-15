@@ -442,6 +442,64 @@ namespace DeNelle.Village
             {
                 DeNelle.Village.UI.EndStateView.Show(
                     DeNelle.Village.UI.EndStateVM.FromWaveClear(waveNumber));
+
+                // =============================================================
+                // WO-1736 - ARM THE BATTLE-QUIESCENCE GATE ON THE TOWN WAVE-END
+                // BOUNDARY. INSTRUMENTATION: this adds no wave logic and changes
+                // no condition.
+                // -------------------------------------------------------------
+                // THE GAP THIS CLOSES (WO-1736 sec.2.6, PROVEN by one grep):
+                //   grep -rn "BattleQuiescenceGate.Arm" --include=*.cs Assets/_Modules/
+                //   -> Assets/_Modules/Village/Arena/BattleArena.cs:2814   ...and nothing else.
+                // The gate was armed on an ARENA battle end and NOWHERE ELSE, so
+                // A TOWN WAVE ENDING ARMED NOTHING. WO-1308 had already built the
+                // dump for exactly this failure - CheckWavePhaseQuiescence /
+                // DescribeLatchedWavePhase (WaveManager.cs:831/:859), registered as
+                // the "wave-phase" module probe - and BattleLock.DescribeHolders()
+                // (BattleLock.cs:85, printed by BattleQuiescenceGate.Evaluate:214)
+                // is the ONE line that NAMES a latched lock holder. Both were
+                // registered and neither ever fired on the boundary they were
+                // written for, which is why external player "Sminer" (Wave 146)
+                // reached us through Discord with a combat HUD that never returns
+                // to the peaceful dock, and no data to say who was holding it.
+                //
+                // NOT A FIX. WO-1736 sec.3 excluded every combat input with a
+                // documented self-clearing mechanism (pursuit TTL, manual target
+                // lock, sceneCombat, and - by his Start Wave button - the wave
+                // phase itself), leaving a latched BattleLock probe whose HOLDER
+                // IS UNNAMED. CLAUDE.md sec.12 forbids an edit until captured data
+                // names it. This makes that capture happen on the next occurrence.
+                //
+                // WHY HERE AND NOT CompleteWave(): the gate judges with
+                // Evaluate(rewardScreenOpen:false), so it must not settle while a
+                // reward screen is legitimately up. At CompleteWave()+0 this banner
+                // has not shown yet (the routine yields through its VFX bursts
+                // first), a bare IsShowing probe would read FALSE, and the 0.75s
+                // settle would run straight through the slow-mo dip - a FALSE
+                // timeScale failure on EVERY CLEAN WAVE, which the gate's own
+                // header calls the fastest way to teach everyone to ignore it.
+                // EndStateView.Show sets its static synchronously, so ARMED HERE
+                // the probe below is exact with no pending gap and needs none of
+                // BattleArena's pending-or-showing pair.
+                //
+                // Deliberately INSIDE the else: the suppressed branch means an
+                // arena battle owns the screen, and BattleArena.cs:2814 already
+                // arms the gate for that end. Two gates on one resolve would judge
+                // each other's fight.
+                //
+                // FLOOD-SAFE by construction: Arm logs nothing per frame (it only
+                // `yield return null`s). A clean wave costs ONE FlowTrace.Step
+                // (BATTLE_QUIESCENCE_OK) roughly 9s after the clear - the banner's
+                // ~8s auto-dismiss plus the 0.75s settle. Only a genuine latch is
+                // loud. See memory `logcat-ring-buffer-destroys-evidence`.
+                //
+                // Guard.Try wraps it for the same reason BattleArena.cs:2812 does:
+                // a diagnostic must never take down a wave resolve.
+                DeNelle.Core.Diagnostics.Guard.Try("WaveCelebration",
+                    "arm town wave-end quiescence gate",
+                    () => StartCoroutine(DeNelle.Core.Combat.BattleQuiescenceGate.Arm(
+                        () => DeNelle.Village.UI.EndStateView.IsShowing,
+                        "town wave clear")));
             }
 
             // 6. Camera shake.
