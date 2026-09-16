@@ -125,9 +125,10 @@
 //     or a placer-side oracle, and that is a separate ticket.
 //
 // (2) A2 IS NOT ASSERTED ON A BASE VISUAL WHOSE CATALOG ORIENTATION TIPS THE
-//     VERTICAL AXIS (the eight rows still on [-90,0,0]: pet-house, market,
-//     arcane-tower, collector_farm, collector_lumbermill, lumberyard, foundry,
-//     silo). NOT because they are known-good — because for those rows the pipeline
+//     VERTICAL AXIS (rows still on [-90,0,0]: pet-house, market,
+//     arcane-tower, collector_farm, collector_lumbermill). lumberyard/foundry/silo
+//     are KayKit Pallet_Wood_Covered_A at identity (owner 2026-09-12: rot X=0 pos Y=0).
+//     NOT because they are known-good — because for those rows the pipeline
 //     PROVABLY fits a different axis than the one they end up standing on (see the
 //     mechanism block above), so `YHeightVariable * heightMul` is not their
 //     expected height and the catalog does not declare what is. Their whole

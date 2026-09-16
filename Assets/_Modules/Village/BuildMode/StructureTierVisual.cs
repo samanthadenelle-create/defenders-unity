@@ -19,6 +19,8 @@
 // =============================================================================
 
 using System.Collections.Generic;
+using DeNelle.Core.Catalog;
+using DeNelle.Core.Economy;
 using UnityEngine;
 
 namespace DeNelle.Village
@@ -88,6 +90,16 @@ namespace DeNelle.Village
         // collection gone stale), then re-assert scale + the tier emissive accent.
         private void ApplyInternal()
         {
+            // Storage progression is capacity/fill, while its authored pallet retains
+            // its approved dimensions and materials at every level and on save replay.
+            var placed = GetComponent<PlacedStructure>();
+            var entry = placed != null ? CatalogRegistry.Get(placed.itemId) : null;
+            if (TownBankCapacity.IsStorageContainer(entry?.repo))
+            {
+                transform.localScale = _baseScale;
+                return;
+            }
+
             int tier = Mathf.Clamp(CurrentTier, 1, 3);
 
             // Scale from the captured baseline (never compound).

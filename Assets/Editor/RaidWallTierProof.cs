@@ -138,6 +138,22 @@ namespace DeNelle.Editor
                         while (Time.realtimeSinceStartup < wallSettle) yield return null;
 
                         MeasureTier(label, lines, ref anyFail);
+                        MeasureTierChildFootprint(label, lines, ref anyFail);
+
+                        // WO-1722: the live device capture that found Wall_Outer_SE_17's giant
+                        // footprint mismatch happened ~90s INTO COMBAT, not at raid start — and
+                        // the raid-start measurement just above reproduces NONE of that mismatch.
+                        // Re-measure the SAME wall set after a long IDLE settle (no combat, no
+                        // player input) to separate "something drifts over time on its own" from
+                        // "it takes an actual gameplay event (damage, deploy, AI) to trigger it".
+                        // Bounded to the Regular tier only to keep this proof's total runtime sane.
+                        if (label == "Regular")
+                        {
+                            lines.Add("  -- re-measuring child-footprint after 90s IDLE (no combat) --");
+                            float longIdleUntil = Time.realtimeSinceStartup + 90f;
+                            while (Time.realtimeSinceStartup < longIdleUntil) yield return null;
+                            MeasureTierChildFootprint(label + "-after90sIdle", lines, ref anyFail);
+                        }
 
                         string shotPath = Path.Combine(outDir, $"tier-{label}.png");
                         ScreenCapture.CaptureScreenshot(shotPath);
@@ -173,6 +189,28 @@ namespace DeNelle.Editor
                 EditorApplication.Exit(overallFail ? 1 : 0);
             }
 
+            // WO-1722 follow-up (2026-09-14) — PROVEN CAUSE for the "Wall_Outer_SE_35-class"
+            // outlier (headed capture, D:\eoa\Builds\raid-wall-tier-proof-diag1\REPORT.md): it is
+            // NOT a RaidBaseDresser/CladRing art-fit defect. The oversized renderer bounds belong
+            // to a "CastTargetMarker" instance — the Hovl "Marker 2 Pointer Loop" ground VFX
+            // `CastingTelegraphVfx.TryBeginTargetMarker` (Assets/_Modules/Village/Vfx/
+            // CastingTelegraphVfx.cs:257-268) instantiates PARENTED to whatever unit a spell
+            // wind-up is targeting, self-destroying windup+1s later. When an enemy ability targets
+            // a WallSegment's transform (an arcane siege bolt at the wall, observed on
+            // Wall_Outer_SE_35 in mage_enclave AND Wall_Outer_SS_0 in fortified_garrison — two
+            // different walls, two different tiers, same marker children 'CastTargetMarker' ->
+            // 'Flash'/'ShockWave'/'Marker' with matching bounds), its still-live marker is a CHILD
+            // of the wall at the moment this proof measures, and its ground-AoE-scaled bounds (up
+            // to ~14m) get encapsulated into "the wall's visual footprint" by both scans below.
+            // Both measurements must exclude this transient combat VFX generically (by the ONE
+            // literal name that production code assigns it), not per wall id.
+            private static bool IsTransientCastMarker(Transform t)
+            {
+                for (var cur = t; cur != null; cur = cur.parent)
+                    if (cur.name == "CastTargetMarker") return true;
+                return false;
+            }
+
             private static void MeasureTier(string label, List<string> lines, ref bool anyFail)
             {
                 var walls = UnityEngine.Object.FindObjectsByType<WallSegment>(FindObjectsSortMode.None);
@@ -193,6 +231,7 @@ namespace DeNelle.Editor
                     foreach (var r in renderers)
                     {
                         if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                        if (IsTransientCastMarker(r.transform)) continue;
                         var b = r.bounds;
                         float dx = b.center.x - c.x, dz = b.center.z - c.z;
                         if (dx * dx + dz * dz > NearbyRendererRadiusMetres * NearbyRendererRadiusMetres) continue;
@@ -215,6 +254,79 @@ namespace DeNelle.Editor
 
                 lines.Add($"  -> tier {label}: {checkedCount} wall(s) checked (+{collapsedSkipped} collapsed/no-collider skipped), {failCount} mismatch(es)" +
                           (failCount > 0 ? $", worst={worstWall} delta={worstDelta:F2}m" : "") + ".");
+            }
+
+            // WO-1722: re-derives the SAME numbers RaidDeployController.LogBreachTapDiagnostics
+            // captured live (Wall_Outer_SE_17, Regular tier) — GetComponentsInChildren<Renderer>
+            // on the WallSegment ITSELF, never a nearby-radius scan across the whole scene, and
+            // all THREE axes (X/Y/Z), not just Y. This is the check that actually catches the
+            // footprint mismatch MeasureTier's radius scan cannot see (its 1.2m radius can miss or
+            // mis-hit a renderer that isn't actually a child of the wall it is nearest to).
+            private const float FootprintMismatchToleranceMetres = 0.75f;
+
+            private static void MeasureTierChildFootprint(string label, List<string> lines, ref bool anyFail)
+            {
+                var walls = UnityEngine.Object.FindObjectsByType<WallSegment>(FindObjectsSortMode.None);
+                int checkedCount = 0, failCount = 0, collapsedSkipped = 0, noRendererSkipped = 0;
+                float worstDelta = 0f;
+                string worstWall = "";
+                lines.Add($"  -- child-footprint re-derivation (X/Y/Z, own children only) --");
+
+                foreach (var wall in walls)
+                {
+                    var box = wall.GetComponent<BoxCollider>();
+                    if (box == null || !box.enabled) { collapsedSkipped++; continue; }
+
+                    var rends = wall.GetComponentsInChildren<Renderer>(true);
+                    Bounds? rb = null;
+                    foreach (var r in rends)
+                    {
+                        if (r == null) continue;
+                        if (IsTransientCastMarker(r.transform)) continue; // see IsTransientCastMarker header
+                        if (rb == null) rb = r.bounds; else { var bb = rb.Value; bb.Encapsulate(r.bounds); rb = bb; }
+                    }
+                    if (rb == null) { noRendererSkipped++; continue; }
+
+                    Vector3 colliderSize = box.bounds.size;
+                    Vector3 rendererSize = rb.Value.size;
+                    Vector3 delta = new Vector3(
+                        Mathf.Abs(rendererSize.x - colliderSize.x),
+                        Mathf.Abs(rendererSize.y - colliderSize.y),
+                        Mathf.Abs(rendererSize.z - colliderSize.z));
+                    float worstAxis = Mathf.Max(delta.x, delta.y, delta.z);
+
+                    checkedCount++;
+                    bool ok = worstAxis <= FootprintMismatchToleranceMetres;
+                    if (!ok)
+                    {
+                        failCount++;
+                        anyFail = true;
+                        if (worstAxis > worstDelta) { worstDelta = worstAxis; worstWall = wall.name; }
+                    }
+                    lines.Add($"  {(ok ? "ok  " : "FAIL")} {wall.name}: colliderSize={colliderSize:F2} rendererSize={rendererSize:F2} delta={delta:F2}");
+
+                    // WO-1722 follow-up instrumentation: the universal ~1.00m Y residual (the
+                    // hidden WallSegment placeholder mesh, unrelated to this ticket) is NOT worth
+                    // a per-renderer dump. A gross outlier (Wall_Outer_SE_35-class, >3m on any
+                    // axis) is - dump every renderer this WallSegment actually owns as a CHILD
+                    // (name, mesh, local scale, world bounds) so the extra/oversized one can be
+                    // named directly instead of inferred from aggregate encapsulated size alone.
+                    if (worstAxis > 3f)
+                    {
+                        lines.Add($"    -- outlier dump for {wall.name} ({rends.Length} child renderer(s)) --");
+                        foreach (var r in rends)
+                        {
+                            if (r == null) continue;
+                            var mf = r.GetComponent<MeshFilter>();
+                            string meshName = mf != null && mf.sharedMesh != null ? mf.sharedMesh.name : "(none)";
+                            lines.Add($"      renderer '{r.name}' mesh='{meshName}' localScale={r.transform.localScale:F3} " +
+                                      $"worldBounds.size={r.bounds.size:F3} worldBounds.center={r.bounds.center:F3}");
+                        }
+                    }
+                }
+
+                lines.Add($"  -> tier {label} child-footprint: {checkedCount} wall(s) checked (+{collapsedSkipped} collapsed, +{noRendererSkipped} no child renderer), {failCount} mismatch(es)" +
+                          (failCount > 0 ? $", worst={worstWall} worstAxisDelta={worstDelta:F2}m" : "") + ".");
             }
         }
     }

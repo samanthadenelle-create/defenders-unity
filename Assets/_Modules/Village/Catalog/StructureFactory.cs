@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // StructureFactory — the ONE creation path for catalog structures (WO-148).
 // -----------------------------------------------------------------------------
 // Assembly: DeNelle.Village   Namespace: DeNelle.Village
@@ -461,14 +461,17 @@ namespace DeNelle.Village
                 foreach (var m in mats)
                 {
                     if (m == null) continue;
-                    // WO-1327: URP/Lit declares _BaseMap, the built-in path declares _MainTex.
-                    // Setting only one is SILENTLY REJECTED by the other shader family (the same
-                    // mismatch class fixed in UVscroll.cs), and "touched" used to count a material
-                    // that took NEITHER — so the success line could report N materials while
-                    // binding zero textures. Count what actually bound.
                     bool hit = false;
-                    if (m.HasProperty("_BaseMap"))   { m.SetTexture("_BaseMap", tex); hit = true; }
-                    if (m.HasProperty("_MainTex"))   { m.SetTexture("_MainTex", tex); hit = true; }
+                    // Shader families use different names (_BaseMap/_MainTex for URP and
+                    // _Albedo_Map/_Base_Map for Synty graphs). Reuse the project albedo oracle
+                    // instead of maintaining a second allowlist that will drift again.
+                    foreach (var property in m.GetTexturePropertyNames())
+                    {
+                        if (!DeNelle.Core.DependencyClosureTrace.IsAlbedoSlot(property))
+                            continue;
+                        m.SetTexture(property, tex);
+                        hit = true;
+                    }
                     if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
                     if (m.HasProperty("_Color"))     m.SetColor("_Color", Color.white);
                     touched++;
@@ -944,10 +947,10 @@ namespace DeNelle.Village
         /// repo.placement.footprint as a fallback when the visual can't be measured.
         /// The temp object is destroyed before return (no scene side-effects).
         /// </summary>
-        // Cache upright XZ per entry id — ghost loop calls every frame while arming.
-        // Key folds orientation + scale so a live re-orient invalidates.
-        private static readonly System.Collections.Generic.Dictionary<string, Vector2> s_footprintXzCache =
-            new System.Collections.Generic.Dictionary<string, Vector2>();
+        // Successful measurements only. Exact value keys include the resolved art identity;
+        // a missing-art fallback must never survive as a measured footprint after residency.
+        private static readonly Dictionary<(string id, string path, int prefab, float height,
+            float cap, bool preserve, bool manual, Vector3 euler, Vector3 scale), Vector2> s_footprintXzCache = new();
 
         /// <summary>
         /// Scalar max(width,depth) — legacy callers / regressions. Prefer
@@ -970,22 +973,29 @@ namespace DeNelle.Village
             Vector2 authoredV = new Vector2(authored, authored);
             if (entry == null || string.IsNullOrEmpty(entry.visualPrefabPath)) return authoredV;
 
+            // Resolve before probing: an unresolved address creates no temporary object.
+            // The loader deduplicates async requests and checks residency without blocking.
+            var prefab = Guard.Try("Structure", $"resolve footprint '{entry.id}'",
+                () => DeNelle.Core.StructureAssetLoader.LoadStructurePrefab(entry.visualPrefabPath), fallback: null);
+            if (prefab == null) return authoredV;
             var o = entry.orientation;
-            Vector3 es = o != null ? o.EffectiveScale : Vector3.one;
-            string key = o != null && o.manual
-                ? $"{entry.id}|{o.Euler.x:0.#},{o.Euler.y:0.#},{o.Euler.z:0.#}|{es.x:0.##},{es.y:0.##},{es.z:0.##}|xz"
-                : entry.id + "|xz";
+            bool manual = o != null && o.manual;
+            var key = (entry.id, entry.visualPrefabPath, prefab.GetInstanceID(), EffectiveVisualHeight(entry, out _),
+                entry.repo != null ? entry.repo.maxFootprint : 0f,
+                entry.repo != null && entry.repo.preservePrefabRotation, manual,
+                manual ? o.Euler : Vector3.zero, manual ? o.EffectiveScale : Vector3.one);
             if (s_footprintXzCache.TryGetValue(key, out Vector2 cached)) return cached;
 
             var probe = new GameObject("FootprintProbe");
             probe.hideFlags = HideFlags.HideAndDontSave;
             Vector2 result = authoredV;
+            bool measured = false;
             try
             {
                 Guard.Try("Structure", $"measure upright footprint XZ '{entry.id}'", () =>
                 {
                     var opts = OptsFor(entry);
-                    var visual = VisualFactory.Skin(probe.transform, entry.visualPrefabPath, opts);
+                    var visual = VisualFactory.Skin(probe.transform, prefab, opts);
                     if (visual == null)
                     {
                         FlowTrace.Warn("Structure",
@@ -994,17 +1004,20 @@ namespace DeNelle.Village
                     }
                     if (entry.orientation != null && entry.orientation.manual)
                     {
-                        visual.transform.localRotation = Quaternion.Euler(entry.orientation.Euler) * visual.transform.localRotation;
+                        // OptsFor/Skin already applied the manual Euler before fitting, as in Create.
                         visual.transform.localPosition += entry.orientation.Offset;
                         if (entry.orientation.HasScale)
                             visual.transform.localScale = Vector3.Scale(visual.transform.localScale, entry.orientation.EffectiveScale);
                     }
-                    if (TryWorldBounds(visual, out Bounds b))
+                    if (TryWorldBounds(visual, out Bounds b) &&
+                        float.IsFinite(b.size.x) && float.IsFinite(b.size.y) && float.IsFinite(b.size.z) &&
+                        b.size.x > 0f && b.size.y > 0f && b.size.z > 0f)
                     {
                         // World AABB after orientation — CoC claim axes (WO-986).
                         result = new Vector2(
                             Mathf.Max(0.1f, b.size.x),
                             Mathf.Max(0.1f, b.size.z));
+                        measured = true;
                     }
                     else
                         FlowTrace.Warn("Structure",
@@ -1016,7 +1029,7 @@ namespace DeNelle.Village
                 if (Application.isPlaying) Object.Destroy(probe);
                 else                       Object.DestroyImmediate(probe);
             }
-            s_footprintXzCache[key] = result;
+            if (measured) s_footprintXzCache[key] = result;
             return result;
         }
 
@@ -1121,6 +1134,16 @@ namespace DeNelle.Village
 
         // ── behaviorId -> component bridge (the Core/Village boundary) ─────────
         // A plain switch, NOT reflection. Adding a new behaviour = a new case here.
+        /// <summary>Attach the catalog's existing town capabilities without replacing authored art.</summary>
+        public static void AttachAuthoredCapabilities(GameObject root, CatalogEntry entry)
+        {
+            if (root == null || entry == null) return;
+            string behavior = entry.repo != null ? entry.repo.behaviorId : null;
+            if (behavior != "GameplayBuilding" && behavior != "ResourceCollector")
+                throw new System.InvalidOperationException("Unsupported authored town capability: " + entry.id);
+            AttachBehaviorImpl(root, entry, behavior);
+        }
+
         private static void AttachBehavior(GameObject root, CatalogEntry entry)
         {
             string behaviorId = entry.repo != null ? entry.repo.behaviorId : null;
@@ -1213,11 +1236,13 @@ namespace DeNelle.Village
                 // falling back to the entry id when the row omits it.
                 case "ResourceCollector":
                 {
-                    var col = root.AddComponent<DeNelle.Village.Buildings.Progression.ResourceCollector>();
+                    var col = root.GetComponent<DeNelle.Village.Buildings.Progression.ResourceCollector>();
+                    bool newCollector = col == null;
+                    if (newCollector) col = root.AddComponent<DeNelle.Village.Buildings.Progression.ResourceCollector>();
                     var r = entry.repo;
                     string buildingId = !string.IsNullOrEmpty(r != null ? r.collectorBuildingId : null)
                         ? r.collectorBuildingId : entry.id;
-                    col.Configure(buildingId);
+                    if (newCollector || col.BuildingId != buildingId) col.Configure(buildingId);
 
                     // WO-900 Part A - attach the DIEGETIC FILL VIEW. CollectorStackView is a
                     // complete, 437-line CoC "I am full" tell (pooled prop pile / world-space fill
@@ -1348,12 +1373,15 @@ namespace DeNelle.Village
                 // identity is by id, the enum only steers the default panel route.
                 case "GameplayBuilding":
                 {
-                    var b = root.AddComponent<Building>();
-                    b.Configure(BuildingTypeForId(entry.id), entry.id,
+                    var b = root.GetComponent<Building>();
+                    bool newBuilding = b == null;
+                    if (newBuilding) b = root.AddComponent<Building>();
+                    if (newBuilding || b.BuildingId != entry.id)
+                        b.Configure(BuildingTypeForId(entry.id), entry.id,
                                 string.IsNullOrEmpty(entry.displayName) ? entry.id : entry.displayName);
 
                     // Proximity F-prompt / mobile interact button (RequireComponent(Building)).
-                    root.AddComponent<BuildingInteractable>();
+                    if (root.GetComponent<BuildingInteractable>() == null) root.AddComponent<BuildingInteractable>();
 
                     // Register with the live scene controller so the placed building joins
                     // the roster (null-safe: a headless / controller-less scene just skips it).
@@ -1392,7 +1420,7 @@ namespace DeNelle.Village
         /// BuildingInteractable re-resolves the actual route from the id first). Unknown
         /// ids fall back to CrystalMine (ordinal 0 / Upgrade panel), never throwing.
         /// </summary>
-        private static BuildingType BuildingTypeForId(string id)
+        public static BuildingType BuildingTypeForId(string id)
         {
             switch ((id ?? "").ToLowerInvariant())
             {

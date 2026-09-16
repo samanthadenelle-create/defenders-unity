@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // CastleVendorNpcInjector — runtime, NON-DESTRUCTIVE placement of a STATIC vendor
 // NPC at each of the 8 castle storefronts, wired to the existing YarnSpinner
 // structure dialogue. Mirrors VillageNpcInjector's self-bootstrap, but spawns
@@ -147,7 +147,7 @@ namespace DeNelle.Village
                     return new Vendor { BodyRes = BodySmith,    StructureId = "forge",        Label = RoleWord(StructureRole.Weaponsmith, "Forge"), Arch = TownsfolkDialogue.Archetype.Blacksmith };
                 case "arcanetower":
                     // No catalog row claims a role for the Arcane Tower yet — word stays local.
-                    return new Vendor { BodyRes = BodyPeasantB, StructureId = "arcane-tower", Label = "Arcane Tower", Arch = TownsfolkDialogue.Archetype.Elder };
+                    return new Vendor { BodyRes = BodyPeasantB, StructureId = "arcane-tower", Label = DeNelle.Core.Catalog.CatalogRegistry.Get("arcane-tower")?.displayName ?? "Cathedral of Learning", Arch = TownsfolkDialogue.Archetype.Elder };
                 case "jeweler":
                     return new Vendor { BodyRes = BodyMerchant, StructureId = "jeweler",      Label = RoleWord(StructureRole.Jeweler, "Jeweler"),   Arch = TownsfolkDialogue.Archetype.Quartermaster };
                 case "marketplace":
@@ -349,40 +349,9 @@ namespace DeNelle.Village
             ("Lumbermill",    "collector_lumbermill"), // WO-707: Sawmill retires from the palette — anchor to the surviving Lumbermill tile; dialogue structureId stays "lumbermill" (VendorFor)
             ("Windmill",      "collector_farm"),       // WO-707: Mill retires from the palette — anchor to the Farm tile; dialogue structureId stays "farm" (VendorFor)
             ("EchoHollow",    "pet-house"),
-            // ⛔ STALE 2026-08-23 — THIS ROW'S PREMISE WAS RETIRED TODAY AND THE ROW IS
-            // DELIBERATELY LEFT ALONE. Read before touching it.
-            //
-            // The premise (WO-840, owner F8 2026-08-02) was: catalog id "forge" is the
-            // ARMOR-visual building the palette labels "Armorer", so the "forge" building
-            // seats the Blacksmith (armor) vendor and the weapons Forge vendor lives on the
-            // placeable collector_forge tile below. WO-444 law itself still stands —
-            // BLACKSMITH sells armor, FORGE sells weapons — but the LABEL half of that
-            // premise is gone: WO-1161 straightened structures-catalog.json from vendors.json
-            // (function is the authority), so id "forge" now displays "Forge" and SELLS
-            // WEAPONS (vendors.json id "forge", categories ["weapon"]), and id "armorer"
-            // displays "Armorer" and sells armour (categories ["armor"]).
-            //
-            // Read against the corrected names this row now says: when the player places the
-            // FORGE, seat the vendor whose VendorFor("Blacksmith") StructureId is "armorer" —
-            // i.e. standing at the weapons shop opens the ARMOUR shop. Role settle is
-            // first-come and "Blacksmith" also anchors to "armorer" above, so a town that
-            // builds the Forge first can consume its one Blacksmith NPC there; meanwhile the
-            // "Forge" role's only remaining anchor is collector_forge, which build-categories
-            // .json currently LOCKS OUT of the Town palette — so the weapons vendor may have
-            // no reachable anchor at all.
-            //
-            // ⛔ NOT REPOINTED HERE, ON PURPOSE (§12): the truthful table is almost certainly
-            // ("Forge","forge") + ("Blacksmith","armorer"), but that is a FELT change to which
-            // NPC stands at which door and nothing in this session captured a run proving the
-            // live seating. Static reading LOCATES; it never CONCLUDES. Owed: one captured
-            // play/headless run showing which vendor seats at a placed "forge", then the
-            // repoint as its own ticket. Fixing it blind is how this cluster got crossed.
-            ("Blacksmith",    "forge"),
-            ("Forge",         "collector_forge"), // WO-707 palette: the placeable Forge is a ResourceCollector
-                                                  // (structures-catalog id "collector_forge", bare id "forge") — NOT a
-                                                  // Building — so this second Forge anchor lets the widened poll seat it
-                                                  // via the collector scan below. Per-role settle means whichever Forge
-                                                  // (Building "forge" OR collector) exists first gets the one NPC.
+            // Owner 2026-09-13 confirmed distinct authored trade and production hosts.
+            // Weaponsmith owns the weapons vendor; IronMine only owns iron collection.
+            ("Forge",         "forge"),
             ("ArcaneTower",   "arcane-tower"),
             ("Jeweler",       "jeweler"),
             ("Marketplace",   "market"),
@@ -675,9 +644,19 @@ namespace DeNelle.Village
             // Baked storefronts (matched by ROLE token — CastleHubBuilder names them "<Role>_...").
             foreach (var (bakedName, itemId) in StrategicPlacementMigration.BakedStorefronts())
             {
-                if (!FirstTokenEquals(bakedName, role)) continue;
                 var baked = FindByNameInclInactive(bakedName);
                 if (baked == null) continue;                                // not in this scene bake
+                // Authored names describe the owner's art. Explicit gameplay identity selects
+                // the speaker; the old Blacksmith/Forge name tokens describe opposite trades.
+                var authored = baked.GetComponent<AuthoredCastleStorefront>();
+                if (authored != null)
+                {
+                    string tradeId = authored.CanonicalId;
+                    if (tradeId == "collector_farm") tradeId = "farm";
+                    if (tradeId == "collector_lumbermill") tradeId = "lumbermill";
+                    if (!string.Equals(tradeId, VendorFor(role).StructureId, System.StringComparison.OrdinalIgnoreCase)) continue;
+                }
+                else if (!FirstTokenEquals(bakedName, role)) continue;
                 HubStructureVisualInjector.ResurfaceStorefront(bakedName);  // pre-stand: make the store visible
                 return (baked, false);
             }
@@ -713,10 +692,7 @@ namespace DeNelle.Village
         // SetActive(false) under standdown, so the active-only lookups can't see the anchors.
         private static Transform FindByNameInclInactive(string name)
         {
-            if (string.IsNullOrEmpty(name)) return null;
-            foreach (var t in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                if (t != null && t.name == name) return t;
-            return null;
+            return AuthoredCastleStorefront.Find(name, true);
         }
 
         /// <summary>The DISTINCT vendor roles the hub must seat an NPC for (every action

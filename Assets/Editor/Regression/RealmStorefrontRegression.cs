@@ -61,6 +61,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -99,6 +100,52 @@ namespace DeNelle.Editor.Regression
         // floating or sunk.
         private const float SeatToleranceM = 0.35f;
 
+        // Open the SAVED artifact in an isolated preview scene. The old root is retained
+        // inactive for recovery; it cannot serve as evidence for the new, active store door.
+        private static bool RunAuthoredArtifact(string workspace, out string reason)
+        {
+            var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenPreviewScene(ScenePath);
+            try
+            {
+                var roots = scene.GetRootGameObjects();
+                var markers = roots.SelectMany(r => r.GetComponentsInChildren<DeNelle.Village.AuthoredCastleStorefront>(true))
+                    .Where(m => m.LegacyName == ObjectName).ToArray();
+                if (markers.Length != 1) throw new InvalidOperationException("Expected one authored store identity");
+                var store = markers[0];
+                var doors = roots.SelectMany(r => r.GetComponentsInChildren<DeNelle.Village.RealmStoreVendor>(true))
+                    .Where(v => v.enabled && v.gameObject.activeInHierarchy).ToArray();
+                if (doors.Length != 1 || doors[0].gameObject != store.gameObject)
+                    throw new InvalidOperationException("Authored store does not own the only active door");
+                if (!string.IsNullOrEmpty(store.CanonicalId) ||
+                    store.GetComponents<Component>().Any(c => c is IDamageableStructure) ||
+                    store.GetComponent<DeNelle.Village.PlacedStructure>() != null)
+                    throw new InvalidOperationException("Realm Store became damageable or player-placeable");
+                string source = UnityEditor.PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(store.gameObject);
+                if (UnityEditor.AssetDatabase.AssetPathToGUID(source) != "54f795e6004947e488b96d86a60f0ab3")
+                    throw new InvalidOperationException("Authored Realm Store source changed");
+                var recipe = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Village/OwnerCastleStorefrontLayout.prefab");
+                var expected = recipe != null ? recipe.GetComponentsInChildren<DeNelle.Village.AuthoredCastleStorefront>(true)
+                    .SingleOrDefault(m => m.LegacyName == ObjectName) : null;
+                if (expected == null || store.transform.localPosition != expected.transform.localPosition ||
+                    store.transform.localRotation != expected.transform.localRotation || store.transform.localScale != expected.transform.localScale)
+                    throw new InvalidOperationException("Saved store and owner recipe disagree");
+                if (!store.GetComponentsInChildren<Collider>(true).Any(c => c.enabled && !c.isTrigger))
+                    throw new InvalidOperationException("Authored store has no solid collider");
+                var renderers = store.GetComponentsInChildren<Renderer>(true);
+                if (renderers.Length == 0 || renderers.Any(r => !r.enabled || r.sharedMaterials.Any(m => m == null ||
+                    m.shader.name != "Universal Render Pipeline/Lit" || !m.HasProperty("_BaseMap") || m.GetTexture("_BaseMap") == null)))
+                    throw new InvalidOperationException("Authored store lost its visible textured art");
+                foreach (string path in CatalogPaths)
+                    if (FindStorefrontIdValue(File.ReadAllText(Path.Combine(workspace, path))) != null)
+                        throw new InvalidOperationException("Realm Store entered build catalog: " + path);
+                reason = "authored saved store/recipe agree; original art, one active door, textured, not damageable or placeable";
+                Debug.Log("REALM_STOREFRONT_OK " + reason);
+                return true;
+            }
+            catch (Exception error) { reason = "REALM_STOREFRONT_FAIL " + error.Message; return false; }
+            finally { UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(scene); }
+        }
+
         public static bool Run(out string reason)
         {
             var log = new StringBuilder();
@@ -115,6 +162,8 @@ namespace DeNelle.Editor.Regression
                 }
 
                 string yaml = File.ReadAllText(scenePath);
+                if (yaml.Contains("legacyName: RealmStore_Storefront"))
+                    return RunAuthoredArtifact(root, out reason);
                 var docs = ParseDocs(yaml);
                 if (docs.Count == 0)
                 {
@@ -159,6 +208,8 @@ namespace DeNelle.Editor.Regression
                 }
 
                 Doc store = hits[0];
+                if (ReadScalar(store.Body, "m_IsActive") != "1")
+                    return Fail(out reason, log, "Legacy storefront is inactive and no authored replacement was found");
                 var components = ComponentsOf(docs, store.FileId);
                 log.AppendLine($"  found '{ObjectName}' (fileID {store.FileId}) with {components.Count} component document(s)");
 

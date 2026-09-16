@@ -58,6 +58,17 @@ namespace DeNelle.Village
 
         private Transform _root;            // parent for all loaded structures
         private readonly List<PlacedStructure> _loaded = new List<PlacedStructure>();
+        private sealed class AuthoredBinding
+        {
+            public Transform root;
+            public PlacedStructure placed;
+            public Vector3 initialLocalPosition, initialLocalScale;
+            public Quaternion initialLocalRotation;
+            public Vector2Int cell, footprint;
+        }
+        private readonly List<AuthoredBinding> _authoredBindings = new List<AuthoredBinding>();
+        private GameStateService _observedStateService;
+        private bool _hasAuthoredHistory;
 
         // Guard: the persisted set is instantiated exactly ONCE per session. After the
         // initial load, incremental adds go through Spawn() (one piece). LoadFromState()
@@ -72,6 +83,7 @@ namespace DeNelle.Village
         {
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
+            ObserveStateReplacement();
             // F8-39: a FRESH loader instance in Awake means the scene (re)loaded — the death→EVAC
             // GoCastle route or any hub load spins up a new loader whose Start() decides the replay.
             // Capturing the scene here shows whether the respawn came back into a scene that WILL
@@ -83,11 +95,13 @@ namespace DeNelle.Village
 
         private void OnDestroy()
         {
+            if (_observedStateService != null) _observedStateService.StateReplaced.RemoveListener(OnStateReplaced);
             if (Instance == this) Instance = null;
         }
 
         private void Start()
         {
+            ObserveStateReplacement();
             // F8-39: name the count the loader is about to (not) replay, so a post-respawn/reload
             // capture proves whether the visual rebuild fires (Rebuild logs the built count) or is
             // skipped (hub guard / empty layout Warn). Pairs with LoadFromState's own lines.
@@ -127,6 +141,9 @@ namespace DeNelle.Village
         /// </summary>
         public void LoadFromState()
         {
+            // Personal property has its own revisioned records and reconstruction owner.
+            if (SceneManager.GetActiveScene().name == DeNelle.Village.World.Camps.OwnedTownScenePose.SceneName) return;
+            if (SceneManager.GetActiveScene().name == DeNelle.Core.Combat.PracticeCombatPolicy.SceneName) return;
             // Idempotent: only the FIRST call instantiates the persisted set. Any later
             // call early-returns so we never re-run Rebuild()'s destroy-all/respawn-all
             // (which made every prior piece + a stale prior-session building pop on at
@@ -201,6 +218,7 @@ namespace DeNelle.Village
         /// <summary>Build every record in <paramref name="layout"/> into the scene.</summary>
         public void Rebuild(IReadOnlyList<PlacedStructureData> layout)
         {
+            ReconcileAuthoredBindings(layout);
             ClearLoaded();
 
             var grid = PlacementGrid.Instance;
@@ -257,6 +275,195 @@ namespace DeNelle.Village
         /// </summary>
         public PlacedStructure Spawn(PlacedStructureData data, PlacementGrid grid)
         {
+            if (!string.IsNullOrEmpty(data.authoredSourceId))
+                return Guard.Try<PlacedStructure>("BaseLayout", "bind authored adoption record",
+                    () => BindExistingAuthored(data, grid), fallback: null);
+            var placed = SpawnForLayout(data, grid, Root, replayStoryServices: true);
+            if (placed != null) _loaded.Add(placed);
+            return placed;
+        }
+
+        private void ObserveStateReplacement()
+        {
+            var service = GameStateService.Instance;
+            if (service == _observedStateService) return;
+            if (_observedStateService != null) _observedStateService.StateReplaced.RemoveListener(OnStateReplaced);
+            _observedStateService = service;
+            if (service != null) service.StateReplaced.AddListener(OnStateReplaced);
+        }
+
+        private void OnStateReplaced()
+        {
+            if (!_hasAuthoredHistory || gameObject.scene != SceneManager.GetActiveScene() ||
+                SceneManager.GetActiveScene().name != DeNelle.Core.SceneRouter.Castle) return;
+            var layout = _observedStateService != null ? _observedStateService.State?.BaseLayout : null;
+            // State replacement is an explicit reconstruction event, not another
+            // placement-time LoadFromState request. The once-only load latch stays intact.
+            Guard.Try("BaseLayout", "reconstruct after authored state replacement", () =>
+            {
+                Rebuild(layout ?? new List<PlacedStructureData>());
+                StructureSingleton.EnforceAll();
+            });
+        }
+
+        private void ReconcileAuthoredBindings(IReadOnlyList<PlacedStructureData> layout)
+        {
+            var grid = PlacementGrid.Instance;
+            for (int i = _authoredBindings.Count - 1; i >= 0; i--)
+            {
+                var binding = _authoredBindings[i];
+                grid?.Free(binding.cell, binding.footprint);
+                if (binding.root == null) { _authoredBindings.RemoveAt(i); continue; }
+                int records = 0;
+                bool retained = true;
+                if (layout != null)
+                    for (int n = 0; n < layout.Count; n++)
+                        if (layout[n].itemId == "barracks")
+                        {
+                            records++;
+                            retained &= AuthoredCastleStorefront.IsAuthoredBarracksRecord(layout[n]) &&
+                                TryGetAuthoredFootprint(binding.root, grid, layout[n].authoredPose, out var cell, out _) &&
+                                cell.x == layout[n].cellX && cell.y == layout[n].cellZ;
+                        }
+                if (records == 1 && retained) continue;
+                if (binding.placed != null)
+                {
+                    // Runtime Destroy is deferred. Clear identity immediately so a
+                    // singleton sweep cannot count the previous save's metadata.
+                    binding.placed.itemId = null;
+                    binding.placed.authoredSourceId = null;
+                    binding.placed.enabled = false;
+                    if (Application.isPlaying) Destroy(binding.placed); else DestroyImmediate(binding.placed);
+                }
+                binding.root.localPosition = binding.initialLocalPosition;
+                binding.root.localRotation = binding.initialLocalRotation;
+                binding.root.localScale = binding.initialLocalScale;
+                _authoredBindings.RemoveAt(i);
+                FlowTrace.Step("Barracks", "Removed obsolete adoption metadata and restored authored scene pose; original geometry retained.");
+            }
+        }
+
+        /// <summary>Measure the exact proposed authored pose before mutating scene geometry.</summary>
+        public static bool TryGetAuthoredFootprint(Transform root, PlacementGrid grid, AuthoredStructurePose pose,
+            out Vector2Int cell, out Vector2Int footprint)
+        {
+            cell = default;
+            footprint = default;
+            if (root == null || grid == null || pose == null || grid.cellSize <= 0f) return false;
+            bool Finite(float v) => !float.IsNaN(v) && !float.IsInfinity(v);
+            float norm = pose.qx * pose.qx + pose.qy * pose.qy + pose.qz * pose.qz + pose.qw * pose.qw;
+            if (!Finite(pose.x) || !Finite(pose.y) || !Finite(pose.z) || !Finite(norm) || norm < 0.0001f ||
+                !Finite(pose.sx) || !Finite(pose.sy) || !Finite(pose.sz) || pose.sx == 0 || pose.sy == 0 || pose.sz == 0) return false;
+            var position = new Vector3(pose.x, pose.y, pose.z);
+            var rotation = new Quaternion(pose.qx, pose.qy, pose.qz, pose.qw).normalized;
+            var scale = new Vector3(pose.sx, pose.sy, pose.sz);
+            var parent = root.parent;
+            Matrix4x4 proposed = parent == null ? Matrix4x4.TRS(position, rotation, scale)
+                : parent.localToWorldMatrix * Matrix4x4.TRS(parent.InverseTransformPoint(position), Quaternion.Inverse(parent.rotation) * rotation, scale);
+            Matrix4x4 change = proposed * root.worldToLocalMatrix;
+            bool found = false;
+            Bounds bounds = default;
+            foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer)) continue;
+                var local = renderer.localBounds;
+                Matrix4x4 matrix = change * renderer.localToWorldMatrix;
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    var point = matrix.MultiplyPoint3x4(local.center + Vector3.Scale(local.extents,
+                        new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1)));
+                    if (!Finite(point.x) || !Finite(point.y) || !Finite(point.z)) return false;
+                    if (!found) { bounds = new Bounds(point, Vector3.zero); found = true; }
+                    else bounds.Encapsulate(point);
+                }
+            }
+            if (!found || bounds.size.x <= 0 || bounds.size.z <= 0) return false;
+            cell = grid.WorldToCell(bounds.min);
+            int endX = Mathf.CeilToInt((bounds.max.x - grid.origin.x) / grid.cellSize);
+            int endZ = Mathf.CeilToInt((bounds.max.z - grid.origin.z) / grid.cellSize);
+            footprint = new Vector2Int(Mathf.Max(1, endX - cell.x), Mathf.Max(1, endZ - cell.y));
+            return grid.InBounds(cell, footprint);
+        }
+
+        /// <summary>Bind explicit adoption provenance to existing geometry; never loader-owned destruction.</summary>
+        public PlacedStructure BindExistingAuthored(PlacedStructureData data, PlacementGrid grid)
+        {
+            ObserveStateReplacement();
+            if (!AuthoredCastleStorefront.IsAuthoredBarracksRecord(data) || grid == null ||
+                SceneManager.GetActiveScene().name != DeNelle.Core.SceneRouter.Castle)
+            {
+                FlowTrace.Fail("BaseLayout", "Authored adoption record has an unsupported identity, missing pose/grid, or non-story scene; no replacement spawned.");
+                return null;
+            }
+            var root = AuthoredCastleStorefront.Find("CastleBarracks", includeInactive: true);
+            var marker = root != null ? root.GetComponent<AuthoredCastleStorefront>() : null;
+            var building = root != null ? root.GetComponent<Building>() : null;
+            if (marker == null || !marker.PreserveAuthoredVisual || marker.CanonicalId != data.authoredSourceId ||
+                building == null || building.BuildingId != data.itemId ||
+                !AuthoredCastleStorefront.IsBoundAuthoredRoot(root, data.itemId))
+            {
+                FlowTrace.Fail("BaseLayout", "Authored barracks binding requires a unique marked root, matching Building, and explicit saved provenance; no replacement spawned.");
+                return null;
+            }
+            var p = data.authoredPose;
+            if (!TryGetAuthoredFootprint(root, grid, p, out var cell, out var footprint) ||
+                cell.x != data.cellX || cell.y != data.cellZ)
+            {
+                FlowTrace.Fail("BaseLayout", "Authored barracks pose/geometry/grid origin is invalid; leaving scene geometry untouched.");
+                return null;
+            }
+            AuthoredBinding binding = null;
+            for (int i = 0; i < _authoredBindings.Count; i++)
+                if (_authoredBindings[i].root == root) { binding = _authoredBindings[i]; break; }
+            if (binding == null)
+            {
+                binding = new AuthoredBinding
+                {
+                    root = root, initialLocalPosition = root.localPosition,
+                    initialLocalRotation = root.localRotation, initialLocalScale = root.localScale
+                };
+                _authoredBindings.Add(binding);
+                _hasAuthoredHistory = true;
+            }
+            else grid.Free(binding.cell, binding.footprint);
+            root.SetPositionAndRotation(new Vector3(p.x, p.y, p.z), new Quaternion(p.qx, p.qy, p.qz, p.qw));
+            root.localScale = new Vector3(p.sx, p.sy, p.sz);
+            var placed = root.GetComponent<PlacedStructure>();
+            if (placed == null || !placed.enabled) placed = root.gameObject.AddComponent<PlacedStructure>();
+            placed.itemId = data.itemId;
+            placed.authoredSourceId = data.authoredSourceId;
+            placed.gridCell = cell;
+            placed.footprint = footprint;
+            binding.placed = placed;
+            binding.cell = cell;
+            binding.footprint = footprint;
+            placed.yawSteps = data.yawSteps;
+            placed.yawOffset = data.yawOffset;
+            placed.worldY = data.worldY;
+            placed.wallMounted = data.wallMounted;
+            placed.level = Mathf.Max(1, data.level);
+            placed.sellValue = (CatalogRegistry.Get(data.itemId)?.repo?.buildCost ?? 0) / 2;
+            if (root.GetComponent<BuildingInteractable>() == null) root.gameObject.AddComponent<BuildingInteractable>();
+            var controller = Object.FindAnyObjectByType<VillageController>();
+            if (controller != null && controller.gameObject.scene == root.gameObject.scene)
+                controller.RegisterBuilding(building);
+            BuildModeController.ApplyTierStats(placed, placed.level);
+            root.gameObject.SetActive(BarracksUnlock.IsUnlocked);
+            if (BarracksUnlock.IsUnlocked)
+                HubStructureVisualInjector.RestoreBakedTwinPhysics(root.gameObject, marker.LegacyName);
+            grid.Occupy(placed.gridCell, placed.footprint, placed.itemId);
+            if (DeNelle.Core.FeatureFlags.BuildTimers && BuildTimerService.Instance != null &&
+                BuildTimerService.Instance.IsBuilding(UnderConstructionVisual.KeyFor(data)) &&
+                placed.GetComponent<UnderConstructionVisual>() == null)
+                UnderConstructionVisual.Attach(placed, UnderConstructionVisual.KeyFor(data));
+            FlowTrace.Step("Barracks", "Bound explicit authored barracks record to original geometry/pose; excluded from loader destruction and tier reskin.");
+            return placed;
+        }
+
+        // Shared construction replay without a story-layout loader or story timer/vendor side effects.
+        public static PlacedStructure SpawnForLayout(PlacedStructureData data, PlacementGrid grid,
+            Transform parent, bool replayStoryServices = false)
+        {
             var entry = CatalogRegistry.Get(data.itemId);
             if (entry == null)
             {
@@ -292,7 +499,7 @@ namespace DeNelle.Village
             // G(uard the Build): StructureFactory.Create can throw on a corrupt/missing prefab;
             // an unguarded throw aborts the whole Rebuild loop (every LATER building is lost).
             Guard.Try("BaseLayout", $"StructureFactory.Create '{data.itemId}'",
-                () => go = StructureFactory.Create(entry, new Pose(pos, rot), Root));
+                () => go = StructureFactory.Create(entry, new Pose(pos, rot), parent));
             if (go == null)
             {
                 // THE WORST SEAM (was a fully-silent `if (go == null) return null;`): the factory
@@ -415,14 +622,13 @@ namespace DeNelle.Village
                 BuildModeController.ApplyTierStats(ps, ps.level);
 
             grid.Occupy(cell, footprint, data.itemId);
-            _loaded.Add(ps);
 
             // WO-612: a structure saved mid-construction re-arms its scaffold on load.
             // The service's offline-fair sweep runs before this (it completes overdue
             // jobs on state load), so IsBuilding == true only for genuinely unfinished
             // jobs. Fresh placements are keyed AFTER Spawn (Place calls StartBuild
             // post-charge), so this is load-path only — no double-attach.
-            if (DeNelle.Core.FeatureFlags.BuildTimers && BuildTimerService.Instance != null
+            if (replayStoryServices && DeNelle.Core.FeatureFlags.BuildTimers && BuildTimerService.Instance != null
                 && BuildTimerService.Instance.IsBuilding(UnderConstructionVisual.KeyFor(data)))
                 UnderConstructionVisual.Attach(ps, UnderConstructionVisual.KeyFor(data));
 
@@ -439,8 +645,9 @@ namespace DeNelle.Village
             // site so a throwing injector can never abort the layout Rebuild loop.
             FlowTrace.Step("Vendor",
                 $"reload-notify vendor for placed structure id='{data.itemId}' (BaseLayoutLoader.Spawn).");
-            Guard.Try("BaseLayout", "spawn vendor NPC for reloaded building",
-                () => CastleVendorNpcInjector.NotifyBuildingPlaced(data.itemId, ps.transform));
+            if (replayStoryServices)
+                Guard.Try("BaseLayout", "spawn vendor NPC for reloaded building",
+                    () => CastleVendorNpcInjector.NotifyBuildingPlaced(data.itemId, ps.transform));
 
             return ps;
         }

@@ -1,14 +1,34 @@
-# WO-1291 — Building re-theme: catalog + hand-placed storefronts onto Synty
+# WO-1291 ? Preserve original castle storefronts and validate the owner-authored layout
 
-**Status:** IN PROGRESS (2026-09-01: 30 of 33 addresses swapped + gated; 3 unmapped, scene storefronts + runtime visual proof outstanding)
+> **OWNER CORRECTION 2026-09-13: original Tripo castle storefronts are authoritative.**
+> Owner: "Yes—preserve the original Tripo storefronts" and "the synty ones was done by a really bad CLI model that just did without asking".
+> The earlier approval claims below do not authorize replacing the castle storefronts.
+> Preserve the working capture-to-owned-player-town feature. Validate the owner's uncommitted
+> castle scene and corrected buildings; do not regenerate the old template over that work.
+> Validation/assistance artifacts: `Builds/castle-validation-20260913/`.
+> Follow-up owner decision: preserve the saved 13-object selection and layout, adding the original
+> Arcane Tower (Cathedral of Learning). Verify colors and Tripo material fixes. The nine original
+> storefront address bindings were restored through Unity: `RESTORE_ORIGINAL_STOREFRONTS_OK changed=9`.
+> Saved repair passed `OWNER_CASTLE_LAYOUT_APPLY_OK preserved=13 cathedral=1 saved=True`;
+> original scene and prefab backups are retained in the validation folder. The actual empty-scene
+> castle builder and two injector passes passed `OWNER_CASTLE_RUNTIME_OK` (editor proof only).
+> Focused final integration checks passed after orphan-group collider removal, including
+> barracks provenance/state replacement, the active store, and captured-town reconstruction:
+> `OWNER_CASTLE_FINAL_CHECKS_OK` in `castle-validation-20260913-final-checks2.log`.
+> Current results and remaining limits are recorded in the validation folder's
+> `VALIDATION_REPORT.md`. This is an applied local repair, not a shipped/device-accepted fix.
+> The initial missing-legacy-host probe described the pre-repair scene and is superseded by
+> semantic-marker resolution and the fresh focused evidence above.
+
+**Status:** IN PROGRESS ? original Tripo restoration applied and focused checks passed; final night regression and test builds pending (owner correction 2026-09-13).
 **Minted:** 2026-09-01 (CLI, banner bumped 1289 -> 1293 in the same edit)
 **Branch:** `feat/synty-art-retheme`   **Lane:** 3 of 4 (Synty art re-theme)
-**Owner ruling 2026-09-01:** **FULL re-theme, everything Synty** (catalog + storefronts + props).
+**Historical scope, superseded for castle storefronts:** the September 1 re-theme text below is retained as history only. The September 13 owner correction above is the active requirement.
 Lane 3 covers catalog + storefronts; lane 4 (WO-1292) covers environment/props.
 
 ---
 
-## CURRENT STATE (verified 2026-09-01)
+## HISTORICAL STATE (2026-09-01; not the current implementation)
 
 `Assets/Resources/Data/Canonical/structures-catalog.json` — **28 entries, 27 carrying art**, every
 `visualPrefabPath` under `Structures/*`, served through **Addressables / the R2 CDN**:
