@@ -97,6 +97,41 @@ namespace DeNelle.Village
         private string _objectiveRouteStatus = "not-asked";
         private float _objectiveRouteCheckAt;
 
+        // ── WO-1730 §3B — HOW FAR the objective route actually got, in metres. ──────────────
+        // `routeObj=` names the STATUS and nothing else, and across every 2026-09-14 device
+        // capture it reads PathPartial 2,470 times with PathComplete ZERO (WO-1730 §3B; the
+        // WO-1749 commit body measures the same query at 1,650/0 over its own session). A bare
+        // status CANNOT distinguish the two causes that produce it, and they want opposite fixes:
+        //   * the partial path dies at the WALL RING, tens of metres out — the navmesh hole never
+        //     opened, so this is still WO-1723's silo and no targeting rule may be added; or
+        //   * the partial path ARRIVES beside the spire and is refused only because the goal is
+        //     `spire.WorldPosition`, the CENTRE of a footprint the spire itself carves out of the
+        //     navmesh — in which case the CRITERION is the defect and it is in this file.
+        // WO-1749 hit exactly this ambiguity in the BAKE probe and fixed it there, in its own
+        // words: *"PathComplete to an objective's CENTRE is unsatisfiable for anything wide enough
+        // to carve its own footprint"*, and *"lastCornerY cannot tell 'stopped 13 m away at the
+        // platform edge' from 'arrived touching the spire'"* — so it now logs lastCornerDist /
+        // arrivalRadius / arrived, and post-fix every leg arrives 2.00–2.17 m from centre against a
+        // 4.30 m radius. THE RUNTIME CHECK BELOW NEVER GOT THAT TREATMENT and still demands
+        // PathComplete to the centre — see RefreshRouteToObjective, the status test on the
+        // CalculatePath result. (No line number on purpose: that seam sits ~1,100 lines below this
+        // field, and the first draft of THIS COMMENT cited a number its own insertion had already
+        // pushed out of date by 30 lines. CLAUDE.md §8/§11B — a copied line number is hearsay, and
+        // this file is where that lesson was re-learned rather than merely quoted.)
+        // ✅ THE CAPTURE WAS RUN AND IT NAMED THE SECOND BRANCH — `Builds/wo1730-assault-trace.log`
+        // (2026-09-15 21:46, RaidAssaultTraceCapture on raider_camp_small): every sampled troop
+        // reads `routeGap=[last=4.7 straight=48.1..55.1 corners=4]`. They walked the full ~50 m and
+        // stopped 4.7 m from the spire's CENTRE, against the 4.30 m carve radius WO-1749 measured.
+        // So the path reaches the spire and only the PathComplete-to-centre criterion refuses it;
+        // the wall-ring explanation is ruled OUT by the same number (it would have read tens of
+        // metres). That is the captured line that earned the edit — the ARRIVED rule now live in
+        // RefreshRouteToObjective. This token stays permanently (CLAUDE.md §12: instrumentation is
+        // never stripped) and is now printed on the OPEN branch too, so the fix is observable
+        // rather than merely asserted.
+        // `_objectiveRouteStatus` remains PREFIX-compatible (`PathPartial-arrived`), so WO-1730's
+        // existing `routeObj=PathPartial` / `routeOpen=True` greps keep working unchanged.
+        private string _objectiveRouteGap = "n/a";
+
         // WO-771.9 spawn-wiring: the EFFECTIVE baseline the veterancy/perk multipliers re-base
         // from. Set to the def stats in Configure; overwritten by ApplyUpgradeStats when the
         // troop is spawned at an upgrade level, so an upgraded troop's reach/strength survive a
@@ -1185,6 +1220,10 @@ namespace DeNelle.Village
                     $"id={_troopId} job={_assaultJob} phase={_assaultPhase} " +
                     $"in[peel={peelThreat}, routeOpen={_routeToObjectiveOpen}, objInRange={objectiveInAttackRange}] " +
                     $"routeObj={_objectiveRouteStatus} " +
+                    // WO-1730 §3B — routeGap says HOW FAR the refused route got. `routeObj=` alone
+                    // has been PathPartial on every capture ever taken and cannot name which of the
+                    // two causes produced it; see DescribeRouteGap for how to read `last=`.
+                    $"routeGap=[{_objectiveRouteGap}] " +
                     $"bucket={bucket} preferUnit={_lastPreferUnit} " +
                     $"breachStance={breachStance} stanceYield={stanceYield} " +
                     $"blocked={!_routeToObjectiveOpen} " +
@@ -1245,6 +1284,7 @@ namespace DeNelle.Village
             {
                 _routeToObjectiveOpen = false;
                 _objectiveRouteStatus = "no-spire";
+                _objectiveRouteGap = "n/a";
                 return;
             }
             if (Time.time < _objectiveRouteCheckAt) return;
@@ -1256,19 +1296,59 @@ namespace DeNelle.Village
             Vector3 goal = spire.WorldPosition;
             float straight = Vector3.Distance(transform.position, goal);
             bool computed = NavMesh.CalculatePath(transform.position, goal, NavMesh.AllAreas, _routePath);
-            if (!computed || _routePath.status != NavMeshPathStatus.PathComplete)
+            // WO-1730 §3B — measured on EVERY branch now, because it is an input to the verdict and
+            // no longer merely a diagnostic. -1 means "no corners", which RouteArrived never accepts.
+            float lastCornerDist = LastCornerDistance(computed ? _routePath : null, goal);
+            _objectiveRouteGap = DescribeRouteGap(computed ? _routePath : null, goal, straight);
+
+            if (!computed)
             {
-                _objectiveRouteStatus = computed ? _routePath.status.ToString() : "CalculatePath-FAILED";
+                _objectiveRouteStatus = "CalculatePath-FAILED";
                 return;
             }
+
+            // ⛔ WO-1730 §3B — THE ARRIVED RULE, PORTED FROM WO-1749'S BAKE PROBE. READ THIS BEFORE
+            // "TIDYING" THE CONDITION BACK TO `status == PathComplete`.
+            // Requiring PathComplete to `spire.WorldPosition` is UNSATISFIABLE: the spire carves its
+            // own footprint out of the navmesh, so its centre has no polygon and CalculatePath can
+            // only ever return PathPartial with the last corner on the carve edge. That is not a
+            // theory — `Builds/wo1730-assault-trace.log` (2026-09-15 21:46, raider_camp_small) has
+            // every troop at `last=4.7` against WO-1749's measured 4.30 m carve radius, after
+            // walking the full ~50 m. They arrived; the criterion refused them. Consequence, across
+            // 2,670 samples of the 09-14 device captures: routeOpen=True **zero** times, so
+            // ResolvePhase never left Breach, so troops ground the wall forever — WO-1730 §3B's
+            // whole symptom, and WO-1749 fixed the identical criterion on the bake side only.
+            //
+            // ⚠ THE ARRIVAL RADIUS IS MEASURED, NEVER HARDCODED - and the two terms come from the
+            // same places WO-1749's probe reads them, so the bake and the runtime cannot disagree
+            // about whether a scene is playable (a bake that certifies a scene the troops refuse is
+            // the green-marker lie CLAUDE.md §8/§16 exist for).
+            float arrivalRadius = RaidAssaultAi.ArrivalRadius(
+                ObjectiveFootprintRadius(spire), LiveAgentRadius());
+            bool arrived = RaidAssaultAi.RouteArrived(lastCornerDist, arrivalRadius);
+
+            if (_routePath.status != NavMeshPathStatus.PathComplete && !arrived)
+            {
+                _objectiveRouteStatus = _routePath.status.ToString();
+                return;
+            }
+
             float pathLen = PathLength(_routePath);
             if (straight > 0.01f && pathLen > straight * RouteDetourFactor)
             {
+                // (_objectiveRouteGap was already measured above, on every branch — not repeated.)
                 _objectiveRouteStatus = $"detour:{pathLen:F1}/{straight:F1}";
                 return;
             }
             _routeToObjectiveOpen = true;
-            _objectiveRouteStatus = "PathComplete";
+            // ⭐ THE STATUS TOKEN STAYS PREFIX-COMPATIBLE ON PURPOSE. A route that arrived without
+            // PathComplete reports `PathPartial-arrived`, so WO-1730 §3B's existing
+            // `grep -o "routeObj=PathPartial"` keeps matching it, while a reader can still see
+            // WHICH rule opened the route. Writing "PathComplete" here would have been a lie the
+            // next capture could not catch.
+            _objectiveRouteStatus = _routePath.status == NavMeshPathStatus.PathComplete
+                ? "PathComplete"
+                : _routePath.status + "-arrived";
         }
 
         /// <summary>
@@ -1451,6 +1531,102 @@ namespace DeNelle.Village
             for (int i = 1; i < path.corners.Length; i++)
                 total += Vector3.Distance(path.corners[i - 1], path.corners[i]);
             return total;
+        }
+
+        /// <summary>
+        /// WO-1730 §3B — how far a REFUSED objective route actually got, as one compact token for
+        /// the <c>[Flow:RaidAI]</c> line: <c>last=&lt;m from the goal&gt; of straight=&lt;m&gt;
+        /// corners=&lt;n&gt;</c>.
+        /// </summary>
+        /// <remarks>
+        /// ⭐ THE ONE NUMBER THAT SETTLES WO-1730 §3B IS <c>last=</c>, AND IT IS READ AGAINST THE
+        /// SPIRE'S CARVE RADIUS, NOT AGAINST ZERO. WO-1749 measured that radius on the fixed bake
+        /// at <b>4.30 m</b>, with every probe leg arriving 2.00–2.17 m from the spire's centre:
+        ///   * <c>last=</c> a couple of metres  → the troop REACHED the spire and the runtime
+        ///     PathComplete-to-centre criterion (RefreshRouteToObjective) is what refuses it. The
+        ///     defect is in THIS file and WO-1749 already names the correct replacement (ARRIVED:
+        ///     last corner within footprint half-width + agent radius + 0.5 m).
+        ///   * <c>last=</c> tens of metres → the path dies out at the wall ring; the navmesh hole
+        ///     never opened and this is WO-1723's silo. WO-1730's own table forbids adding a
+        ///     targeting rule in that case — "do NOT 'fix' the phase machine to paper over a
+        ///     pathing gap".
+        /// Reading the status alone cannot tell those apart, which is why every capture so far has
+        /// been able to say only "PathPartial, 2,470 times".
+        ///
+        /// ⚠ DELIBERATELY NOT MEASURING THE SPIRE'S FOOTPRINT HERE. Deriving the arrival radius
+        /// per troop per query would mean walking the spire's colliders inside a 0.5 s loop that
+        /// runs per troop — and it would also bake a SECOND arrival rule into the runtime while
+        /// WO-1749's probe already owns one, which is the duplicated-state failure CLAUDE.md §2/§5
+        /// describe. This prints the raw measurement and leaves the threshold to the read.
+        /// </remarks>
+        /// <summary>
+        /// WO-1730 §3B — planar+vertical distance from a path's LAST CORNER to the goal, or -1 when
+        /// the path has no corners (invalid path / failed query). -1 rather than 0 on purpose: zero
+        /// would read as "standing exactly on the spire" and open the route on a broken query.
+        /// </summary>
+        private static float LastCornerDistance(NavMeshPath path, Vector3 goal)
+        {
+            if (path == null || path.corners == null || path.corners.Length == 0) return -1f;
+            return Vector3.Distance(path.corners[path.corners.Length - 1], goal);
+        }
+
+        /// <summary>
+        /// WO-1730 §3B — the objective's footprint radius, measured off its own renderer bounds
+        /// exactly as WO-1749's bake probe measures it (RaidKeepReachRegression.ArrivalRadius).
+        /// </summary>
+        /// <remarks>
+        /// ⚠ CACHED PER SPIRE, AND IT HAS TO BE. This sits inside NearestHostile's route refresh,
+        /// which runs per troop on a 0.5 s throttle; <c>GetComponentsInChildren&lt;Renderer&gt;</c>
+        /// over a whole spire on that cadence, times every troop in the warband, is precisely the
+        /// per-frame allocation CLAUDE.md §12's frame-budget rule exists to stop. The spire's art
+        /// does not move or resize after the dresser has run, so one measurement per spire is
+        /// correct as well as cheap — and WO-1749 re-seats the spire AFTER dressing, so by the time
+        /// any troop asks, the bounds are final.
+        ///
+        /// ⛔ STATIC CACHE KEYED BY INSTANCE ID, not a plain static field: a raid can be re-entered
+        /// and OwnedTown carries its own spire, so a single cached float would leak one scene's
+        /// footprint into the next. The key is compared before the value is trusted.
+        /// </remarks>
+        private static int _cachedSpireFootprintId;
+        private static float _cachedSpireFootprint = -1f;
+        private static float ObjectiveFootprintRadius(RaidSpire spire)
+        {
+            if (spire == null) return 0f;
+            int id = spire.GetInstanceID();
+            if (_cachedSpireFootprint >= 0f && _cachedSpireFootprintId == id)
+                return _cachedSpireFootprint;
+
+            float footprint = 0f;
+            var rends = spire.GetComponentsInChildren<Renderer>(true);
+            if (rends != null && rends.Length > 0)
+            {
+                Bounds b = rends[0].bounds;
+                for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                footprint = Mathf.Max(b.extents.x, b.extents.z);
+            }
+            _cachedSpireFootprintId = id;
+            _cachedSpireFootprint = footprint;
+            return footprint;
+        }
+
+        /// <summary>
+        /// WO-1730 §3B — this troop's LIVE agent radius, falling back to the baked NavMesh settings
+        /// (which is what WO-1749's editor probe reads, since it has no agent).
+        /// </summary>
+        private float LiveAgentRadius()
+        {
+            if (_agent != null && _agent.radius > 0f) return _agent.radius;
+            var settings = NavMesh.GetSettingsByID(0);
+            return settings.agentRadius > 0f ? settings.agentRadius : 0.5f;
+        }
+
+        private static string DescribeRouteGap(NavMeshPath path, Vector3 goal, float straight)
+        {
+            if (path == null || path.corners == null || path.corners.Length == 0)
+                return $"no-corners straight={straight:F1}";
+            Vector3 last = path.corners[path.corners.Length - 1];
+            float remaining = Vector3.Distance(last, goal);
+            return $"last={remaining:F1} straight={straight:F1} corners={path.corners.Length}";
         }
 
         /// <summary>

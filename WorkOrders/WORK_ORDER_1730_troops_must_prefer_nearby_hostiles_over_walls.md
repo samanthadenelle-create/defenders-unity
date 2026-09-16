@@ -1,6 +1,6 @@
 # WORK ORDER 1730 — Raid troops must prefer NEARBY HOSTILES over walls, always; the wall is the last resort
 
-**Status: READY TO IMPLEMENT**
+**Status:** FIXED - awaiting gate 2026-09-15 (§3B: runtime ARRIVED rule ported from WO-1749 on captured routeGap last=4.7m)
 **Minted:** 2026-09-14, from a live owner ruling during on-device testing of build `2026.09.15.370139`
 (the WO-1723 Lane A build, in which she confirmed *"i can now walk through destroyed walls"*).
 **Silo:** raid troop AI targeting (`Assets/_Modules/Village/Troops/RaidAssaultAi.cs`,
@@ -239,5 +239,235 @@ unprovable.
 - The destroyed-wall VISUAL — that is WO-1723 Lane B, a different silo and a different file set.
 - Wall HP, tier toughness, troop damage numbers.
 - The frozen-troop watchdog (WO-1723 §7 Q3, still open and deliberately unasked).
+
+---
+
+## 8. LANE VERIFICATION — 2026-09-15, read at source on `dev`, NO Unity run
+
+⚠ **§2 of this ticket is a 2026-09-14 reading and the tree has moved past it.** Three commits landed
+in this exact silo after this ticket was minted. Everything below was re-read at source today.
+
+### 8.1 §1's ruling is ALREADY SATISFIED — by WO-1752, and MORE STRONGLY than this ticket asked
+
+`d5b0221bb` (*"troops NEVER attack walls without Breach"*) implements the owner's 2026-09-15 felt-test
+ruling *"we need to set it so that the troops 100% ignore walls, unless explicitly told breach"*. Read
+at source:
+
+- `RaidAssaultAi.MayTargetWall(preferStructures, breachStance)`
+  (`Assets/_Modules/Village/Troops/RaidAssaultAi.cs:113-116`) — returns false for a non-siege troop
+  with no stance.
+- `PickBucket`'s `mayWall` clause (`RaidAssaultAi.cs:576-578`) consumes it, so the WALL BUCKET IS
+  UNREACHABLE for that troop **in every phase**, not merely outranked by a nearby unit.
+- The candidate's TYPE is fed in live: `bool otherStructIsWall = nearestOtherStruct is WallSegment;`
+  (`TroopController.cs:1158`), passed as the 9th argument at `:1160-1162`. ⚠ Both numbers are
+  POST-8.5: this lane's own instrumentation inserted ~25 lines above them today, so a pre-09-15
+  citation of this seam is off by that much.
+
+§2's premise — *"the live default in Breach phase IS the wall"* — is therefore **no longer true of this
+tree**. The ticket's own §2 warning ("everything in this section is a dated reading") is what caught it.
+
+**No code was written for §1. It needs none.**
+
+### 8.2 §6's FIRST acceptance bullet is RE-POINTED, and the re-point is called out (as §6 requires)
+
+The bullet demands `bucket=0` whenever `has[unit=True,...,wall=True]` outside Peel. **That is not what
+the shipped tree does in every case, and the difference is an owner ruling, not a defect.** Traced
+through `PickBucket` for non-siege / no stance / Breach / wall present / hostile nearby but
+`!unitInAttackRange && !routeToUnitOpen`: the wall is refused (`mayWall=false`), and the tail at
+`RaidAssaultAi.cs:632-634` returns **-1 (the troop stands)** rather than 0 — because bucket 0 there
+would hand back an UNREACHABLE foe, the steer WO-1438 proved freezes a troop on a navmesh edge. The
+owner accepted that dead-end explicitly (WO-1752: *"a blocked warband with Breach OFF and no siege now
+stands (or defends the hero)"*).
+
+> **Re-pointed bullet:** *the wall bucket is never selected by a stance-less non-siege troop, in any
+> phase; `bucket=0` holds whenever the nearby hostile is actually reachable.* The ruling this ticket
+> exists to enforce — **the wall is never the default** — is satisfied either way.
+
+**Q1 (§5) is MOOT for wall-vs-unit and needs no ruling.** It asked which radius makes a hostile "near
+enough to outrank a wall". The wall is no longer a competitor at any radius, so there is nothing for
+the radius to arbitrate. (It would only revive if the owner ever re-allows stance-less wall targeting.)
+
+### 8.3 NO new regression was added — §1 is already pinned, three times over
+
+Adding a fourth case would be duplicate coverage in a file another lane may be holding:
+- `Assets/Editor/Regression/WallBreachOrderRegression.cs` — the `WallsOff` case (`:646-728`) asserts a
+  stance-less non-siege troop picks **-1, not the wall**; that siege still takes it; that an armed
+  stance still takes it; and that a TOWER on the same bucket stays targetable.
+- Same file, Case 8 — pins that a calm in-range defender does not break an armed stance.
+- `Assets/Editor/Regression/HeroUnitOverWallTargetingRegression.cs`.
+
+### 8.4 §3B is NOT satisfied, its root cause has a landed fix, and ONE MEASUREMENT IS MISSING
+
+`3b4b98834` (WO-1749) found the §3B blocker: **the spire was buried 1.5 m inside the KeepPlatform**, so
+`spire.WorldPosition` — the exact point every troop paths to — sat inside solid geometry. Its own body
+reports the identical symptom this ticket measured (`PathPartial` 1,650, `PathComplete` ZERO) and its
+post-fix bake reports `RAID_NAV_REACH_OK scenes=5`.
+
+⛔ **BUT THAT DOES NOT CLOSE §3B, AND THE REASON IS A SECOND DEFECT WO-1749 FIXED ONLY ON ITS OWN SIDE.**
+WO-1749 retired its bake criterion in these words: *"PathComplete to an objective's CENTRE is
+unsatisfiable for anything wide enough to carve its own footprint"*, replacing it with ARRIVED. **The
+RUNTIME check never got that treatment.** `TroopController.RefreshRouteToObjective` still requires
+`_routePath.status == NavMeshPathStatus.PathComplete` to `spire.WorldPosition` — the centre — at
+`TroopController.cs:1289`, inside `RefreshRouteToObjective` (`:1271`), re-read today. If that criterion is unsatisfiable at runtime for the
+same reason it was unsatisfiable in the probe, `routeOpen=True` stays at 0 even on a post-1749 build,
+`ResolvePhase` never leaves `Breach`, and §3B's symptom survives its own root-cause fix.
+
+**⚠ THAT IS A HYPOTHESIS, NOT A FINDING, AND IT IS HANDED BACK AS ONE (CLAUDE.md §11B/§12).** It is
+measured for the editor probe and has NEVER been measured for a troop. No fix was written.
+
+### 8.5 WHAT WAS WRITTEN: the measurement that settles it in one grep (§12)
+
+`Assets/_Modules/Village/Troops/TroopController.cs` — **instrumentation only, zero behaviour change.**
+A new `routeGap=[...]` token on the existing `[Flow:RaidAI]` line reports how far a REFUSED objective
+route actually got: `last=<m from the spire> straight=<m> corners=<n>`. `_objectiveRouteStatus` is
+left byte-identical, so the existing `routeObj=` / `routeOpen=` greps above keep working.
+
+Read `last=` against the **4.30 m carve radius WO-1749 measured** (its probe legs arrive 2.00–2.17 m
+from centre):
+
+| Capture shows | Meaning | Action |
+|---|---|---|
+| `routeOpen=True` appears | 1749 closed it; §3B satisfied for free | pin with a regression, no behaviour change |
+| `last=` a couple of metres | the troop REACHES the spire; the runtime PathComplete-to-centre criterion is the defect, in `TroopController.cs` | port WO-1749's ARRIVED rule to the runtime check — a costed, ready one-seam fix |
+| `last=` tens of metres | the path dies at the WALL RING; the navmesh hole never opened | WO-1723 silo — per this ticket's §3B table, do NOT add a targeting rule |
+
+**Command for the lead — HEADLESS, ~2 min, no device, no Play Mode.** The path was verified today:
+`Assets/Editor/Regression/RaidAssaultTraceCapture.cs:73` calls `ForceAssaultRescanForTrace()`
+(`TroopController.cs:1861`), which calls `NearestHostile()` (`:921`) — and `RefreshRouteToObjective`
+is called from **inside** `NearestHostile`, so the batch run really does execute
+`NavMesh.CalculatePath` against the baked scene and will print `routeGap=`.
+
+```
+powershell -File run-unity-method.ps1 -Method DeNelle.Editor.RaidAssaultTraceCapture.Run
+# then, on the FRESH Unity log (UTF-16 — read it with PowerShell, per memory):
+Select-String -Path <editor.log> -Pattern 'routeGap=\[[^\]]*\]' -AllMatches |
+  % { $_.Matches } | % { $_.Value } | Group-Object | Sort Count -Desc | Select -First 10
+```
+
+⚠ **Two honest caveats on the headless run, neither of which blocks it:**
+1. `RaidAssaultTraceCapture.ScenePath` is hardcoded to `RaidBase_raider_camp_small` (`:22`) — the ONE
+   scene WO-1749 reports has **no KeepPlatform**, so its spire was never the buried one. That makes it
+   the *clean* test of the carve-footprint question (no burial confound), but the lead should re-point
+   `ScenePath` at `iron_bastion` for a second run to cover the platform scenes.
+2. It is EditMode, so troops spawn without `Awake`. If the numbers look degenerate, fall back to the
+   device capture below — but the route query itself needs only a transform and a baked navmesh.
+
+**Command for the lead — DEVICE fallback** (any raid on a post-`3b4b98834` build):
+
+```
+adb logcat -d > logs/device/wo1730-routegap/logcat_full.txt
+grep -o "routeOpen=[A-Za-z]*"        logs/device/wo1730-routegap/logcat_full.txt | sort | uniq -c
+grep -o "routeGap=\[[^]]*\]"          logs/device/wo1730-routegap/logcat_full.txt | sort | uniq -c | sort -rn | head
+```
+
+⚠ `RaidNavBake`'s `RAID_NAV_REACH_OK` is an EDITOR probe and is **not** a substitute — the whole point
+of 8.4 is that the probe and the runtime now ask different questions.
+
+### 8.6 Reported, not fixed — outside this lane
+
+`WorkOrders/WORK_ORDER_1723_...md` line 3 still reads **"LANE C RE-BAKE OUTSTANDING"**, but WO-1749
+records re-baked scenes at `Builds/raidgen1749` / `Builds/raidbake1749b`. That status line may be
+stale. Not this lane's file (WO-1723 Lane B is a named disjoint silo) — flagged for the lead.
+
+### 8.7 Gates — SUPERSEDED by §9.5 (the capture came back and the fix was implemented)
+
+- `python tools/gate_brace.py Assets/_Modules/Village/Troops/TroopController.cs` → `GATE_BRACE_SUMMARY bad=0 of 1`, exit 0
+- raw brace one-liner → `258 / 258` balanced; NUL bytes → `0`
+- ⛔ **No Unity run, no gate, no commit** — edit-only lane; `COMPILE_GATE_OK` is the lead's.
+
+---
+
+## 9. §3B IMPLEMENTED — the capture came back and it named the branch
+
+⚠ §8 was written BEFORE the capture and handed §3B back as an explicit hypothesis. The lead ran it;
+this section supersedes §8.4/8.5/8.7. §8.1–8.3 (the §1 half) still stand unchanged.
+
+### 9.1 THE PROVING LINE
+
+`Builds/wo1730-assault-trace.log` — 2026-09-15 21:46, `RaidAssaultTraceCapture` on
+`RaidBase_raider_camp_small`. **Four `routeGap` tokens, all identical in shape:**
+
+```
+routeGap=[last=4.7 straight=48.1..55.1 corners=4]
+```
+
+Read against WO-1749's **measured 4.30 m carve radius**, that is §8.5's **middle row**: the troops
+walked the full ~50 m and stopped **4.7 m from the spire's CENTRE** — on the carve edge. They ARRIVED.
+The wall-ring explanation is ruled OUT by the same number: it would have read tens of metres.
+
+**So the defect is the runtime criterion, in `TroopController`, exactly as §8.4 flagged — and §12's
+gate is satisfied: this is captured data, not a static read.**
+
+### 9.2 THE FIX — WO-1749's ARRIVED rule, ported to the runtime
+
+`RefreshRouteToObjective` required `CalculatePath(... spire.WorldPosition ...) == PathComplete`. The
+spire carves its own footprint out of the navmesh, so **its centre has no polygon and that criterion is
+unsatisfiable** — which is why `routeOpen=True` never occurred in 2,670 samples. It is now: *PathComplete
+**or** the path's last corner lands within the objective's arrival radius.*
+
+- `RaidAssaultAi.ArrivalRadius(footprintRadius, agentRadius)` + `RaidAssaultAi.RouteArrived(...)` — new
+  **pure** statics, so the rule is assertable with no scene (the shape every other rule in this file uses).
+- `RaidAssaultAi.ArrivalSlackMeters = 0.5f` — **deliberately the same 0.5 m as
+  `RaidKeepReachRegression.ArrivalSlack`** (`Assets/Editor/Regression/RaidKeepReachRegression.cs:136`).
+  If the bake probe and the runtime used different slack, a bake could certify a scene the troops then
+  refuse to path through — a green marker over a broken game (CLAUDE.md §8/§16). Pinned; see 9.4.
+- **Both real terms are MEASURED, never hardcoded**, from the same places WO-1749's probe reads them:
+  the footprint off the spire's own renderer bounds (`TroopController.ObjectiveFootprintRadius`, cached
+  per spire instance-id — this sits in a 0.5 s-throttled per-troop loop) and the agent radius off the
+  live agent, falling back to the baked NavMesh settings (`LiveAgentRadius`).
+
+### 9.3 TOKEN COMPATIBILITY — kept, and the fix is observable
+
+- `routeOpen=` / `routeObj=` unchanged in shape. A route that arrives without `PathComplete` reports
+  **`PathPartial-arrived`**, which is PREFIX-compatible: the `grep -o "routeObj=PathPartial"` in §8.5
+  still matches it, while a reader can see *which* rule opened the route. Writing `PathComplete` there
+  would have been a lie the next capture could not catch.
+- `routeGap=` is now emitted on the **OPEN** branch too (it was failure-only), so the fix is observable
+  rather than asserted — the next capture should show `routeOpen=True` alongside `last=4.7`.
+- Per CLAUDE.md §12 the instrumentation **stays in permanently**; it is not "cleanup" to remove later.
+
+### 9.4 REGRESSION — `Assets/Editor/Regression/ObjectiveRouteArrivalRegression.cs` (new, 5 cases)
+
+Registered with **ONE** line in `DataRegression.cs:1506`, placed immediately after the
+`wall-breach-order` suite (`:1505`) — well clear of the other lanes' hunks at ~:1780 / ~:1918.
+Marker `OBJECTIVE_ROUTE_ARRIVAL_OK`, log tag `[objective-route-arrival]`.
+
+| Case | Pins | Red proof |
+|---|---|---|
+| `ArrivedAtCarveEdge_IsOpen` | the **captured** 4.7 m vs 4.30 m carve radius reads OPEN | revert `RouteArrived` to `return false` |
+| `StoppedAtWallRing_IsNotOpen` | **10 m** is NOT arrived — the ring is still sealed | make `RouteArrived` return true |
+| `NoCorners_IsNeverArrived` | the -1 sentinel never opens a route on a failed query | return 0 instead of -1 |
+| `SlackMatchesBakeProbe` | runtime slack **== 0.5 m == the bake probe's** | change `ArrivalSlackMeters` |
+| `ArrivalRadiusIsMeasuredNotHardcoded` | the radius scales with BOTH footprint and agent radius | fix the radius to a constant |
+
+That is precisely the pair the lead asked for (arrival-radius+tolerance = open; 10 m = not open), plus
+the three guards that stop the fix from being undone by a plausible-looking tidy-up.
+
+### 9.5 Files touched + gates
+
+| File | Change |
+|---|---|
+| `Assets/_Modules/Village/Troops/RaidAssaultAi.cs` | pure `ArrivalRadius` / `RouteArrived` / `ArrivalSlackMeters` |
+| `Assets/_Modules/Village/Troops/TroopController.cs` | ARRIVED rule in `RefreshRouteToObjective`; `LastCornerDistance` / `ObjectiveFootprintRadius` / `LiveAgentRadius`; `routeGap` on every branch |
+| `Assets/Editor/Regression/ObjectiveRouteArrivalRegression.cs` | **new** suite (5 cases) |
+| `Assets/Editor/Regression/DataRegression.cs` | **one** registration line at `:1506` |
+
+- `python tools/gate_brace.py` on all four → `GATE_BRACE_SUMMARY bad=0 of 4`, exit 0
+- raw brace one-liner → 263/263, 34/34, 28/28, 1229/1229; **NUL bytes = 0** on all four
+- `tasklist | findstr /i Unity.exe` returned **clear** immediately before every write under `Assets/`
+- ⛔ **No Unity run, no gate, no commit** — edit-only lane. `COMPILE_GATE_OK` + `REGRESSION_OK` are the lead's.
+
+### 9.6 ⚠ STILL UNPROVEN — state it, do not assume it
+
+- **`iron_bastion` (and every KeepPlatform scene) was NOT captured.** `RaidAssaultTraceCapture.ScenePath`
+  is hardcoded to `RaidBase_raider_camp_small` (`:22`), the one scene WO-1749 reports has **no
+  KeepPlatform** — so the capture proves the carve-edge case on a ground-seated spire only. A platform
+  scene adds the lift WO-1749 fixed on top of it, and **nothing here proves the ARRIVED rule clears that
+  combination.** The lead is running the second capture; the `ScenePath` change is deliberately left for
+  it and was not made blind.
+- **No device capture on the fixed runtime yet.** The expected reading is `routeOpen=True` with
+  `routeObj=PathPartial-arrived` and `last=` a few metres. Until that log exists, "troops leave the wall
+  for the spire after a breach" is **implemented and unit-pinned, not observed**.
+- **§3B's acceptance is the owner's felt test**, not this lane's (CLAUDE.md §13: the CLI does not close).
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

@@ -178,6 +178,76 @@ namespace DeNelle.Village
             return heroAttackerLive;
         }
 
+        /// <summary>
+        /// WO-1730 §3B — extra planar slack on top of (objective footprint radius + agent radius)
+        /// before a route is called ARRIVED.
+        /// </summary>
+        /// <remarks>
+        /// ⭐ THIS IS WO-1749's <c>ArrivalSlack</c>, DELIBERATELY THE SAME 0.5 m, BECAUSE THE TWO
+        /// ANSWERS MUST NOT BE ABLE TO DISAGREE. `RaidKeepReachRegression.ArrivalSlack`
+        /// (`Assets/Editor/Regression/RaidKeepReachRegression.cs:136`) is the EDITOR probe that
+        /// decides whether a baked scene's objective is reachable and withholds
+        /// `RAID_NAV_BAKE_OK` when it is not. If the runtime used a different number, a bake could
+        /// certify a scene the troops then refuse to path through — a green marker over a broken
+        /// game, which is the failure CLAUDE.md §8/§16 are written against.
+        ///
+        /// Its own reasoning, which applies here verbatim: enough to absorb the last corner landing
+        /// on a polygon edge rather than dead against the art, far too little to hide a 13 m island.
+        /// The two REAL terms are measured, never written down — see <see cref="ArrivalRadius"/>.
+        /// </remarks>
+        public const float ArrivalSlackMeters = 0.5f;
+
+        /// <summary>
+        /// WO-1730 §3B — how close a route's LAST CORNER must get to the objective's CENTRE before
+        /// the route counts as open, given the objective's footprint radius and the agent's radius.
+        /// </summary>
+        /// <remarks>
+        /// ⛔ THE CENTRE IS NOT A REACHABLE POINT AND ASKING FOR IT WAS THE BUG. A spire wide enough
+        /// to carve its own footprint out of the navmesh has NO navmesh polygon at its centre, so
+        /// <c>NavMesh.CalculatePath</c> to <c>spire.WorldPosition</c> can never return
+        /// <c>PathComplete</c> — it returns <c>PathPartial</c> with the last corner sitting on the
+        /// carve edge. WO-1749 diagnosed exactly this for the BAKE probe, in its own words:
+        /// *"PathComplete to an objective's CENTRE is unsatisfiable for anything wide enough to
+        /// carve its own footprint"*, and replaced the criterion with ARRIVED. The RUNTIME check
+        /// kept the old one, which is why `routeOpen=True` never occurred.
+        ///
+        /// ⭐ PROVEN, NOT INFERRED — this is the captured line that earned the edit (CLAUDE.md §12):
+        /// `Builds/wo1730-assault-trace.log` (2026-09-15 21:46, `RaidAssaultTraceCapture` on
+        /// `RaidBase_raider_camp_small`), every sampled troop reading
+        /// `routeGap=[last=4.7 straight=48.1..55.1 corners=4]`. The troops walked the full ~50 m and
+        /// stopped **4.7 m** from the spire's centre — against the **4.30 m** carve radius WO-1749
+        /// measured. They had ARRIVED; only the criterion refused them. A path dying at the wall
+        /// ring would have read `last=` in the tens of metres, and that was the alternative this
+        /// measurement existed to rule out.
+        ///
+        /// ⚠ BOTH REAL TERMS ARE MEASURED BY THE CALLER, AND THAT IS THE POINT. WO-1749's probe
+        /// measures the footprint off the spire's own renderer bounds and the agent radius off the
+        /// live NavMesh settings — because a hardcoded radius is the duplicated state that made the
+        /// spire's own seat wrong (it re-seats with a MEASURED lift, "never a hardcoded 1.5").
+        /// This method stays pure so a regression can assert it without a scene.
+        /// </remarks>
+        public static float ArrivalRadius(float objectiveFootprintRadius, float agentRadius)
+        {
+            float footprint = Mathf.Max(0f, objectiveFootprintRadius);
+            float agent = agentRadius > 0f ? agentRadius : 0.5f;
+            return Mathf.Max(ArrivalSlackMeters, footprint + agent + ArrivalSlackMeters);
+        }
+
+        /// <summary>
+        /// WO-1730 §3B — did this route ARRIVE at the objective? True when the path's last corner
+        /// is within <paramref name="arrivalRadius"/> of the objective centre.
+        /// </summary>
+        /// <remarks>
+        /// A negative <paramref name="lastCornerDistance"/> means "no corners" (an invalid path or a
+        /// failed query) and is never an arrival — the caller passes -1 for that case rather than 0,
+        /// which would read as "standing exactly on the spire".
+        /// </remarks>
+        public static bool RouteArrived(float lastCornerDistance, float arrivalRadius)
+        {
+            if (lastCornerDistance < 0f) return false;
+            return lastCornerDistance <= arrivalRadius;
+        }
+
         /// <summary>Map authored <c>TroopDef.Role</c> → assault job (no new JSON field).</summary>
         public static RaidAssaultJob JobFromRole(string role)
         {
