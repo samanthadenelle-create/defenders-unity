@@ -1,6 +1,6 @@
 # WO-1762: size the hub authored ring to the 4.0 m family and remove the three scenery pallets
 
-**Status:** FIXED - apply+repoint+bake landed 2026-09-15, awaiting gate re-run and the owner felt test
+**Status:** FIXED - gated 2026-09-15 22:00 (COMPILE_GATE_OK, OWNER_CASTLE_RUNTIME_OK, REGRESSION_OK 547/547, HUB_RING_HEIGHT_OK); commit 3369a3f11; awaiting the owner felt test on the next APK
 **Silo:** `Main_Castle_Overworld` authored ring — `Assets/Editor/OwnerCastleLayoutRepair.cs`,
 `Assets/Editor/OwnerCastleRuntimeProof.cs`, one new height oracle. **Disjoint from the catalog**
 (`Assets/Resources/Data/Canonical/structures-catalog.json` is NOT edited by this WO).
