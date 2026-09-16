@@ -1,6 +1,6 @@
 # WORK ORDER 1747 — Raid watchtower / KayKit Cleric: `glass` material ships with NO albedo and NO tint (pink/grey patch on device)
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY - Cleric half landed in commit 7bb0c4291 (re-verified at source 2026-09-15); tower half's "no albedo" title REFUTED by RAIDBASE_MATDIAG_OK 4/4 (21:39), now waiting on the per-renderer probe specced in §H
 **Minted:** 2026-09-15 by the lead, from the owner's felt-test on the Seeker (tester build `2026.09.15.371127`, scene `RaidBase_IronBastion`).
 **Silo:** content / Addressables dependency closure. Files: whichever KayKit material named `glass` is referenced by the `NPCs/KayKit/Cleric` address (and, to be PROVEN not assumed, by the `Watchtower_Archer_*` prefab). Do NOT touch `RaidAssaultAi.cs` / `TroopController.cs` (WO-1746 silo) or any `.unity`.
 
@@ -299,3 +299,213 @@ Authored three files per the diagnosis section 4 / tinted-opaque option (recomme
    ```
 
 **Tower half remains unexecuted.** Run `RaidBaseMatDiag` first per diagnosis §3b.
+
+---
+
+## Edit-only lane 2026-09-15 (verification pass; NO Unity, NO gate, NO commit)
+
+Assigned as an implementation lane. **Nothing was implemented, because there was nothing left to
+implement that this lane is allowed to touch.** Everything below was opened at source this session.
+
+### A. The Cleric half is already on disk and already committed — no re-work needed
+
+`git log -- Assets/Resources/NPCs/KayKit/Cleric.fbx.meta` names commit **`7bb0c4291`**
+("fix(art): WO-1747 — the Field Cleric rendered as a white blob"). All three artefacts the
+Implementation section claims were verified present and tracked:
+
+- `Assets/Resources/NPCs/KayKit/Materials/cleric_glass.mat` — tracked (`git ls-files` hit), and read
+  at source: `m_Name: cleric_glass` (`:23`), URP/Lit shader guid `933532a4fcc9baf4fa0491de14d08ed7`
+  (`:24`), `_BaseMap m_Texture {fileID: 0}` (`:41-42`), `_MainTex {fileID: 0}` (`:65-66`),
+  `_Blend: 0` (`:102`), `_Surface: 0` (`:128`),
+  **`_BaseColor {r: 0.62, g: 0.74, b: 0.85, a: 1}` (`:134`)** and the same on `_Color` (`:135`).
+  Blue 0.85 and green 0.74 are both under the trace's `min(r,g,b) < 0.92` rule, so the oracle is
+  satisfied without editing the oracle — the diagnosis's recommended option 2, faithfully applied.
+- `…/cleric_glass.mat.meta` — `guid: e06480bd2e284dec9404eef7c87c131c`.
+- `Assets/Resources/NPCs/KayKit/Cleric.fbx.meta:6-12` — the `externalObjects` remap is present and
+  points `name: glass` at `{fileID: 2100000, guid: e06480bd2e284dec9404eef7c87c131c, type: 2}`.
+
+`git status` on `Assets/Resources/NPCs/KayKit/` is **clean** — nothing of this is uncommitted.
+
+⚠ **NOT proven by this lane:** that the remap actually takes at import. `externalObjects` is only
+honoured on a reimport, which needs Unity. Acceptance item 2 (zero `dep MISS … NO albedo` for
+`NPCs/KayKit/Cleric` on a fresh headless run) is therefore **still open** and belongs to the lead's
+gate run, not to this lane. The files are right; the render is unverified.
+
+### B. §3a is no longer just a candidate — the two co-located renderers are now disk-proven
+
+⛔ **The §2/§3a line numbers in the diagnosis above are STALE.** The scene has been re-baked since
+(last touched by `3b4b98834`, WO-1749). `RaidBase_IronBastion.unity:83907` is now `RuinPiece_0`, not
+the tower. Re-located and re-read at the CURRENT lines:
+
+- `Assets/Scenes/RaidBase_IronBastion.unity:12185` — `m_Name` → `Watchtower_Archer_3`, on a
+  `PrefabInstance` whose `m_SourcePrefab` (`:12203`) is **guid `fdbdc8e2c3cad234eb116332a5148b42`**
+  (= `Assets/StructureContent/ArcaneSpire_1.fbx`). Uniform `m_LocalScale` 0.047886882 (`:12132-12141`).
+- `:12187` `m_RemovedComponents: []` and `:12188` `m_RemovedGameObjects: []` — **still empty**, and
+  the instance's ENTIRE modification list is only LocalScale / LocalPosition / LocalRotation /
+  LocalEulerAnglesHint / m_Name. **There is no `m_Enabled` override anywhere on it**, so the
+  ArcaneSpire prefab's own renderer is neither removed nor disabled.
+- `:12189-12192` `m_AddedGameObjects` adds `{fileID: 698546328}`, which resolves at
+  **`:36719-36722`** to a Transform whose `m_CorrespondingSourceObject` guid is
+  **`fcf76db4544b7e5498781f360bda601d`** — confirmed this session against
+  `Assets/Models/KayKit/KayKit Medieval Hexagon Pack 1.0.1/Assets/fbx(unity)/buildings/green/building_watchtower_green.fbx.meta:2`.
+
+And the mechanism, re-read at the path the diagnosis never gave — it is
+**`Assets/Editor/WallTools/RaidBaseDresser.cs`**, not `Assets/_Modules/...`:
+
+- `RaidBaseDresser.cs:1275-1291` `ReplaceChildrenWith` collects only `host.transform.GetChild(i)`
+  (`:1278-1282`), `DestroyImmediate`s those (`:1284`), then parents the new visual under the same host
+  (`:1285-1290`). **It never touches a renderer on the host itself** — the diagnosis's claim, now
+  re-proven at the real file.
+- `:1205` `ReplaceChildrenWith(t.gameObject, towerModel, t.name.StartsWith("Watchtower_"))` is the
+  `Watchtower_*` call site.
+- `:1269-1270` `MapCatalogArt` returns `"ArcaneSpire_1"` for any catalog id containing `arcane` — which
+  is how a tower named `Watchtower_Archer_3` comes to be an ArcaneSpire instance in the first place.
+
+**So the baked scene positively records one ArcaneSpire_1 host with its renderer intact, wearing a
+KayKit watchtower shell as an added child, at identical scale.** That is the exact geometry §3a
+described. It is still **NOT** proof that the spire mesh is the white surface in the screenshot —
+it proves the second surface EXISTS, not what colour it renders. Only `RaidBaseMatDiag` closes that.
+
+### C. The device-log check §3a asked for was run, and it is EMPTY
+
+`logs/f8-inbox/capture-device-20260915-134044-seq5257.md` is **48 lines** and contains **zero** matches
+for `ArcaneSpire`, `RemoteProviderException` or `404 Not Found` (grep -c → 0 for both patterns).
+So the §16 remote-bundle branch is **neither confirmed nor refuted from the captured evidence** — the
+harvest window simply does not cover it. Recording this as a finding per §11B-A, not ticking it.
+
+### D. WO-1760 landed AFTER this ticket's diagnosis and touches the same asset — note for the diag run
+
+`f74bf0829` (WO-1760, 2026-09-15 21:03) re-pointed `Structures/ArcaneSpire_{1,2,3}` in
+`Structure_Art.asset` off Synty wrapper prefabs and onto the owner FBXs, and deleted
+`Assets/StructureContent/Synty/ArcaneSpire_*.prefab`. At the capture build (`2026.09.15.371127`) the
+Addressables address for the spire therefore resolved to **the wrong art**. The baked raid scene
+references `ArcaneSpire_1.fbx` **by GUID directly**, not through Addressables, so WO-1760 does not
+change this scene — but whether the device's tower was the baked instance or an Addressables-resolved
+one is a build-output question this lane cannot settle. **Flagged for the diag run, deliberately not
+resolved statically.**
+
+### E. `RaidBaseMatDiag` is intact and is the next action
+
+`Assets/Editor/RaidBaseMatDiag.cs` still lists `Assets/Scenes/RaidBase_IronBastion.unity` in its scene
+list — re-read this session at **`:50`**, with the marker emitted at **`:141`**
+(`RAIDBASE_MATDIAG_OK {scenesRead}/{RaidScenes.Length} scenes`) and the run line at `:23-25`. It is the
+ONLY thing standing between this ticket and its tower half:
+
+```
+powershell tools\run-unity-method.ps1 -Method DeNelle.Editor.RaidBaseMatDiag.Run -LogName raidbase-matdiag.log
+```
+
+Judge by **`RAIDBASE_MATDIAG_OK <scenes>` on a fresh log**, never the exit code. The question it must
+answer: does `Watchtower_Archer_3` report TWO live renderers, and what is the shader + `_BaseMap` +
+`_BaseColor` on each?
+
+### F. Why this lane wrote no code
+
+§12's hard gate. Disabling the spire's host renderer in `RaidBaseDresser` reads as obviously right and
+is exactly the banned inference-fix: the owning renderer of the white patch is still unnamed, and the
+change would additionally need a scene re-bake this lane cannot fire. **No Addressable material or
+texture was touched by this lane, so `tools\r2-ship.ps1` is not owed for anything done here.** If the
+diag confirms the spire, the R2 fork in §4 applies; if it names a `Assets/Models/KayKit/**` asset, it
+does not.
+
+### G. `RaidBaseMatDiag` HAS NOW RUN — the "material has no albedo" title is REFUTED for the tower half
+
+`Builds/raidbase-matdiag.log` (mtime **2026-09-15 21:39**, 74,470 bytes), marker
+**`RAIDBASE_MATDIAG_OK 4/4 scenes`**. The `RaidBase_IronBastion` block begins at **log line 577** and
+reads, measured:
+
+```
+renderers=1237 nullMaterialSlots=0 distinctMaterials=12
+```
+
+All twelve are `Universal Render Pipeline/Lit` — **no error/magenta shader, and no `nullMaterialSlots`
+at all.** The five untextured materials are all polyperfect COLOUR mats, untextured *by design*
+(`albedoProp=_MainTex`, `albedoTex=<null>`, `baseColor` carrying the look):
+
+| x | material | albedo | baseColor | first example path in the log |
+|---|---|---|---|---|
+| 8 | `M_10_Brown_Dark_LPUP` | `<null>` | 0.404,0.286,0.176 | `…/CornerPost_Outer_S` |
+| 8 | `M_12_Brown_LPUP` | `<null>` | 0.659,0.471,0.243 | `…/CornerPost_Outer_S` |
+| 536 | `M_20_Grey_LPUP` | `<null>` | 0.529,0.510,0.510 | `…/ArenaBoundary_Ring/ArenaBoundary_S_0` |
+| 411 | `M_21_Grey_Light_LPUP` | `<null>` | 0.655,0.631,0.620 | `…/ArenaBoundary_Ring/ArenaBoundary_S_1` |
+| 140 | `M_57_Black_LPUP` | `<null>` | 0.073,0.078,0.104 | `…/BoundaryBacking/BoundaryBacking_0_0` |
+
+Every textured material resolves its `_BaseMap`: `steel_wall` x316 (`steel_basecolor`),
+`dungeon_texture_URP` x344 (`dungeon_texture`), `hexagons_medieval_URP` x18 (`hexagons_medieval`),
+**`Color_bcf8a365-0849-42ab-9611-99d7fa0d2f81` x12 with `albedoTex=ArcaneSpire_Albedo`**, and the
+three `Assets/Generated/RaidGround/RaidBase_IronBastion*` mats with `Path_Dirt_BaseColor`.
+
+> ⛔ **CONCLUSION: there is NO albedo-less textured material and NO broken shader anywhere in
+> `RaidBase_IronBastion`. This ticket's title — "`glass` material has NO albedo" — is REFUTED at
+> material level for the tower half.** (It remains the correct description of the Cleric half, which
+> is a `Resources/` FBX and is not in this scene at all.)
+
+**What the diag does NOT answer, and why — the aggregation seam:**
+`RaidBaseMatDiag.cs:93` opens a **per-material** `Dictionary<string, MatFacts> rollup`; the renderer
+walk at `:99-114` increments `renderers++` (`:102`) but folds every renderer into that dictionary,
+keeping only a COUNT and the **first** path it saw (`:112`, `if (acc.Example == null) acc.Example =
+Path(r.transform)`). The emitted lines are therefore one aggregate (`:118`) plus one line per distinct
+material (`:126-130`). The rollup Key (`:187`) is `source|name|shader|albedoTex` — it carries **no
+object identity and no `enabled` state**. So the diag *cannot* say which renderers sit under
+`Watchtower_Archer_3`, and the two-live-renderers question from §B is still open.
+
+**Arithmetically consistent with §B's two-renderer geometry — but NOT per-renderer proven.**
+Counted in the scene this session: **10** `Watchtower_*` hosts (`Watchtower_Archer_0-6`,
+`Watchtower_Mage_0-2`), **8** `CornerPost_*`, **1** `RaidSpire`. Against the log:
+- `hexagons_medieval_URP` = **x18** = 10 Watchtower `/Visual` + 8 CornerPost `/Visual`. Exact.
+- `Color_bcf8a365-…` (the ArcaneSpire material) = **x12** = 10 Watchtower hosts + the `RaidSpire` host
+  + its `RaidSpire/Visual`. Exact.
+- And the log shows the pattern directly on a sibling: `M_10_Brown_Dark_LPUP` / `M_12_Brown_LPUP`
+  example `…/CornerPost_Outer_S` (the HOST) while `hexagons_medieval_URP` example is
+  `…/CornerPost_Outer_S/Visual` (the CHILD) — **the same GameObject appearing as both a host renderer
+  and a dressed child renderer, measured, in one log.**
+
+Two independent exact identities is strong, and it matches `ReplaceChildrenWith`'s child-only destroy
+(§B). It is still an identity of COUNTS, not an enumeration — a lane must not call it proven.
+
+**⚠ Where this leaves the white patch.** In the EDITOR the spire material is fully textured, so the
+patch is **not** reproducible from scene data — which pushes the remaining weight onto the §16 branch
+(`ArcaneSpire_Albedo` is a remote Addressable, `Structure_Art.asset:196-197`) and onto WO-1760 (§D:
+at build `371127` the spire addresses served Synty wrappers). **Neither is proven.** The per-renderer
+probe below is still the cheapest next measurement because it settles the geometry; a device `logcat`
+grep for `ArcaneSpire` settles the shipped half.
+
+### H. Per-renderer probe spec — exact shape for the next Unity lane
+
+Add to `Assets/Editor/RaidBaseMatDiag.cs` as a **second, separate entry point** — do **not** change the
+rollup at `:93-130`, which is correct for its own job (1237 renderers unaggregated is unreadable).
+
+- **Method:** `DeNelle.Editor.RaidBaseMatDiag.RunPerRenderer` (menu
+  `Defenders/Art/Diag Raid Tower Renderers`).
+- **Scenes:** reuse the existing `RaidScenes` array (`:44-50`) unchanged.
+- **Object filter:** for every root, walk `GetComponentsInChildren<Transform>(true)`; select `t` where
+  `t.name.StartsWith("Watchtower_")` **or** `t.name.StartsWith("CornerPost_")` **or**
+  `t.name == "RaidSpire"`. These are the dresser's three `ReplaceChildrenWith` targets
+  (`RaidBaseDresser.cs:1205` and `:1208-1210`) and therefore the only hosts that can carry a stale
+  inner mesh.
+- **Per host, emit one HEADER line:** host name, `childCount`, and the count of
+  `GetComponentsInChildren<Renderer>(true)`.
+- **Then one line PER RENDERER** under that host (include inactive: pass `true`), carrying, in this
+  order — and every field is the thing the rollup drops:
+  `path` (relative to the host, so `<host>` vs `<host>/Visual` is unambiguous) ·
+  `rendererType` · **`enabled`** · **`gameObject.activeInHierarchy`** ·
+  `shader` · `albedoProp` + `albedoTex` (reuse `AlbedoProps` at `:54-57` and the existing `Describe`
+  at `:152`) · `_BaseColor` · `bounds.size` · `sharedMaterial` asset path.
+- **The verdict line the ticket actually needs**, emitted per host:
+  `TWO_LIVE_RENDERERS host='<name>' hostRenderer=<true|false> childRenderer=<true|false>` — where
+  `hostRenderer` means a renderer **on the host transform itself** that is `enabled` and
+  `activeInHierarchy`. Any host printing `hostRenderer=true childRenderer=true` is a co-located
+  double-mesh and is the §3a shape.
+- **Marker, judged on a fresh log, never the exit code** (§8; memory
+  `gates-report-success-without-proving-it`):
+  **`RAIDBASE_RENDERERDIAG_OK <scenesRead>/<RaidScenes.Length> scenes`**, emitted exactly once at the
+  end, mirroring `:141`.
+- **Run line:**
+  `powershell tools\run-unity-method.ps1 -Method DeNelle.Editor.RaidBaseMatDiag.RunPerRenderer -LogName raidbase-rendererdiag.log`
+- **Read-only:** open scenes with `OpenSceneMode.Single`, never save, never mark dirty — same contract
+  as `Run` (`:76`). No `DataRegression` registration (it is a diagnostic, not an oracle).
+
+**Status label left as READY on purpose** (memory `status-label-is-a-fixed-word-rulings-go-in-prose`):
+this lane produced no fix, and `CLOSED` would be false — the tower symptom was captured on the owner's
+device and has never been shown gone. No `.RESULT.md` written, since the ticket is not finished.
+

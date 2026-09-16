@@ -362,3 +362,18 @@ smuggled into Gate A.
   https://docs.solanamobile.com/dapp-store/publisher-policy
 - Support and review follow-up:
   https://docs.solanamobile.com/dapp-store/support
+
+---
+
+## Evidence record — dApp Store UPDATE candidate `2026.09.16.371627` (recorded 2026-09-15 21:2x by the CLI, per §11B "fill the record as you go")
+
+- [x] Regression green on the built tree: `REGRESSION_OK 539/539 suites -- 539 green, 0 red, 0 skipped` (`Builds/data-regression.log`, 2026-09-15 21:01).
+- [x] Built from the tree at commit `f74bf0829` (dev; carries the WO-1760 Arcane Spire re-point; NOT pushed). Chain: `overnight-apk-build.ps1` STORE-shaped, defines `''` (no `TESTER_BUILD`, `grep -c TESTER_BUILD Builds/apk-build.log` = 0).
+- [x] APK path: `Builds/Android/DefendersOfTheRealm.apk` (466,293,778 bytes, built 2026-09-15 20:53).
+- [x] APK SHA-256: `d23f0ac6596a3487dbf472cd0af2621dbd8dd66b5bc720f2ed2a099c070dc475`.
+- [x] `versionName` `2026.09.16.371627` / `versionCode` `371627` (aapt2 dump badging). Strictly higher than the last recorded submission `354266` and than tonight's Play AAB `371610`.
+- [x] `apksigner verify --print-certs`: Signer #1 DN `CN=DeNelle Studios, OU=Games, O=DeNelle Studios, L=NA, ST=NA, C=US`, certificate SHA-256 `733666ce4ce2c872ab6530eb28d6dbf1e19de26d88ed59d1b5c0209c3da62443` — IDENTICAL to the 354266 record above (same `dotr-release.keystore`).
+- [x] Remote content: `R2_PUSH_OK 2 uploaded (0.1 MB), 1123 unchanged` + `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=204` (`Builds/apk-chain-wrapper.out.log`, 20:54); catalog `catalog_2026.09.16.371627`.
+- [ ] `OWNER:` certificate matches the LIVE store release — still the same unprovable-from-here gap as above; the cheap close is unchanged: install this APK OVER the store build on the Seeker; an in-place update IS the proof. Record the observed live cert here when done.
+- [ ] `OWNER:` felt-test on device (WO-1760 spire; the only content change vs 371436-era builds).
+Release record: `docs/releases/GOOGLE_PLAY_2026.09.16.371610.md` (covers both artifacts).

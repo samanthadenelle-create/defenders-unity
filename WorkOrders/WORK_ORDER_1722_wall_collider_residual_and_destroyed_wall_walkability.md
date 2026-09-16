@@ -1,6 +1,9 @@
 # WORK ORDER 1722 — An INTACT wall let the player walk straight through it (same defect as the residual collider mismatch), plus ToggleBreach logging resolved
 
-**Status: READY TO IMPLEMENT (items 1 and 2 below need investigation; item 3 is closed, kept here as the record)**
+**Status:** READY
+Item 1 is PROVEN to be a diagnostic artifact and needs no wall fix (see the RCA section at the bottom,
+2026-09-15). Item 2 is re-opened as UNEXPLAINED — the §2 explanation below rested on item 1 and falls
+with it. Item 3 was already closed and is kept here as the record.
 **Minted:** 2026-09-14, by the CLI lead, from the owner's own live on-device testing session, at her direct
 request: "i want all the data and the screens and the data bundled into a md order."
 **Device:** Solana Seeker, `com.denellestudios.echoesofelarion`, build `2026.09.14.369984`
@@ -174,3 +177,228 @@ re-litigated — it wasn't; the evidence just wasn't being read fast enough rela
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01Wo8roH1dHRWvBXgGaDeGg7
+
+---
+
+## RCA 2026-09-15 (read-only lane)
+
+Read-only RCA lane, main tree, branch `dev`. No `Assets/` edit, no Unity run, no git action — this
+section and line 3 are the only writes. Every file:line below was opened this session; every log line
+was read out of the named capture this session (CLAUDE.md §11B).
+
+Three raid commits landed after this WO was minted, plus two uncommitted lanes, and all five change
+what the two items even measure:
+
+| Commit | Time | What it changed under this ticket |
+|---|---|---|
+| `55e3464b4` WO-1723 Lane B | 09-14 20:58 | `CladRing` stopped computing its own partition: one clad panel per `WallSegment`, sized from that segment's own collider, re-parented onto it (`RaidBaseDresser.cs:741-808`) |
+| `8b88a5053` WO-1723 | 09-14 19:57 | `RaidNavBake.IsUnderCladZone` added — the visible clad ring is now EXCLUDED from `NavigationStatic` (`RaidNavBake.cs:66-75, 105-117`) |
+| `6879f32fa` / `452fc14fd` / `3b4b98834` | 09-14 21:03 → 09-15 15:02 | the three raid scenes regenerated + re-baked (78 → 58 outer segments) |
+| uncommitted `Assets/Editor/RaidWallTierProof.cs` | +112 lines | the WO-1722 follow-up scan (`MeasureTierChildFootprint`, `IsTransientCastMarker`, the 90 s idle re-measure) |
+| uncommitted `Assets/_Modules/Village/Troops/TroopController.cs` | +74 lines | `DescribeRouteGap` path-gap tracing only — reads `NavMeshPath`, touches no wall collider or obstacle. Not in scope here. |
+
+⛔ **`Wall_Outer_SE_17` — the object §1 is about — NO LONGER EXISTS.** Counted this session out of
+`Assets/Scenes/RaidBase_raider_camp_small.unity`: **58** `m_Name: Wall_Outer_*` segments, highest
+`SE` index **9**, zero `Wall_Outer_SE_17`. Also present: **66** `Clad_*` prefab-name overrides
+(58 per-segment panels + 8 `Clad_Corner_*`), **58** `RuinStep`, **62** `NavMeshObstacle`. Any re-run
+of a proof written against the 78-segment ring will not find the WO's wall ids.
+
+---
+
+### ITEM 1 — CLOSED at source. The oversized "renderer" is a combat VFX parented to the wall, not the wall.
+
+**Root cause, proven instance-level, not by inference.** `CastingTelegraphVfx.TryBeginTargetMarker`
+(`Assets/_Modules/Village/Vfx/CastingTelegraphVfx.cs:256-269`) instantiates the target-lock prefab
+**parented to the targeted unit** — `Object.Instantiate(prefab, targetUnit.position,
+Quaternion.identity, targetUnit)` (`:257`), named `"CastTargetMarker"` (`:265`), self-destroying
+`windup + 1 s` later (`:268`). When the target is a `WallSegment`, that marker is a CHILD of the wall,
+and `LogBreachTapDiagnostics` unions **every** child renderer's bounds
+(`RaidDeployController.cs:1051-1057`, `GetComponentsInChildren<Renderer>(true)`), so the AoE-scaled
+marker becomes "the wall's visual footprint".
+
+The proving line already exists and was already captured — `logs/device/watch-wall-collision-check/logcat_live.txt:1371`,
+**1.238 s before** the measurement this ticket quotes (`:1849`):
+
+```
+09-14 17:52:24.207 [Flow:CastTelegraph] target-marker START unit=Wall_Outer_SE_17
+  path=VFX/UI/TalentNodePointer caster=Hero (Blaise) ability='target lock (auto)' windup=6.00s
+```
+
+Same log, `:97` / `:522` / `:945` — the same marker re-armed on `Wall_Outer_SE_17` at 17:52:06, :12,
+:18. The hero had that exact wall target-locked for the whole window. The ticket's giant number is that
+marker's AABB, taken at identity rotation against a yawed wall.
+
+**Independently reproduced in a headed capture** (`Builds/raid-wall-tier-proof-diag1/REPORT.md`, run
+2026-09-14T18:32): `:917` `FAIL Wall_Outer_SE_35: colliderSize=(1.50, 4.00, 2.86)
+rendererSize=(6.26, 16.30, 13.11)`, and its own outlier dump `:918-923` names the children —
+`CastTargetMarker` / `Flash` / `ShockWave`, `mesh='(none)'`, `localScale=(1,1,1)`, worldBounds
+`(5.324, 12.259, 11.145)` / `(4.071, 9.386, 8.523)` / `(6.263, 14.413, 13.111)`, all on the same
+centre. Note the collider size there — **(1.50, 4.00, 2.86)** — is bit-for-bit the WO's own
+`Extents (0.75, 2.00, 1.43)` doubled. Same defect class on two other walls on two other tiers.
+
+**The wall geometry itself is clean on X/Z and always was.** Same report, `:85-163`: all **78**
+Regular-tier walls read `colliderSize=(2.85, 4.00, 1.50)` vs `rendererSize=(2.85, 3.00, 1.50)` —
+`delta=(0.00, 1.00, 0.00)`. X and Z are exact. The 1.00 m Y residual is the WallSegment's own HIDDEN
+placeholder mesh (`SegSize.y = 3.00`, disabled by `RaidBaseDresser.HideWallRenderers:602-617`) against
+a collider deliberately stretched to the clad's achieved height by
+`SyncWallColliderHeight` (`RaidBaseDresser.cs:987-1023`) — i.e. the WO-1719 fix working, not a defect.
+The report's own 90 s-idle re-measure (`:244`) returns the identical numbers, so nothing drifts on its
+own over time either.
+
+**So §1's three open questions are answered:** it is not specific to one wall (three walls, three
+tiers, same marker); nothing rescales or re-parents the wall's art during play (a transient VFX
+attaches and self-destroys); and the WO-1719 rebake never regressed. **No `RaidBaseDresser` change is
+owed.** The residue is instrument hygiene, and it is a code edit, so it belongs to an implementing
+lane, not to this one:
+
+1. `RaidDeployController.LogBreachTapDiagnostics` (`:1051-1057`) has **no** marker exclusion — the
+   uncommitted `RaidWallTierProof.IsTransientCastMarker` (`RaidWallTierProof.cs:207-212`) exists only
+   on the editor side. The device diagnostic will emit the same misleading giant bounds again today.
+2. Worse now than at capture time: post-`55e3464b4` every segment also carries an **inactive** `Ruin_*`
+   child (`RaidBaseDresser.cs:785-788`), and `GetComponentsInChildren<Renderer>(true)` takes inactive
+   renderers, so that union is over-reporting **by construction** on every wall.
+3. `:1045` picks `nearest` by distance from **`ray.origin` (the camera)**, not from the tap, despite
+   the comment at `:1034` saying otherwise. `SE_17` was the wall nearest the camera — not necessarily
+   the wall she was standing at.
+
+### ITEM 2 — STILL OPEN, and its stated explanation is now DISPROVEN. Do not implement §2 as written.
+
+§2 above says the walk-through is "the same bug as section 1" because the real collider is ~1.5 m wide
+against an ~11 m visible wall. **That premise is false**: the 11 m was the VFX marker, and the wall's
+X/Z footprint matched its art exactly on all 78 walls in the same-day headed capture. Item 2 therefore
+loses its mechanism and returns to unexplained.
+
+**What the capture actually shows about movement.** All 20 `[Flow:HeroOwner]` samples in
+`logs/device/watch-wall-collision-check/logcat_live.txt` (`:1257`, `:1339`, `:1490`, …) read
+`pos=(-37.77, 0.02, -29.90)`, `velSelf=0.00 velRoot=0.00`, unchanged across the whole window. **No
+wall crossing is captured anywhere in this log.** Item 2 rests entirely on the owner's prose — which is
+ground truth about what she saw, but it is not a measurement, and nothing here tells us which wall,
+where, or in which direction.
+
+**The seam that decides it, read at source.** `HeroLocomotion.cs:4-8` (the corrected header): the hero
+is a **`NavMeshAgent` driven kinematically by `_agent.Move(step)`** — and the WO's own capture agrees,
+`ownerCC=none ownerAgent=on-mesh`. So **a wall's `BoxCollider` does not stop the hero at all**; the
+only thing that can is the navmesh. Two source facts now combine, and the second landed AFTER her
+report:
+
+* `RaidNavBake.PrepareDestructibleWalls` (`RaidNavBake.cs:220-245`) bakes the ground under walls
+  walkable and gives each `WallSegment` a carving `NavMeshObstacle` sized from its `BoxCollider`
+  (`:236-242`) — a **runtime** carve, enabled while `HpFraction > 0`.
+* `RaidNavBake.cs:105-117` now excludes from `NavigationStatic` anything with a `WallSegment` or
+  `DefenseTower` parent **or under `Zone_Clad`** (`IsUnderCladZone`, `:66-75`, added `8b88a5053`).
+
+⚠ **The live gap that follows, and that no existing check asserts:** the **8 `Clad_Corner_S*_L/R`
+stubs** in the current scene are visible wall with (a) **colliders stripped** —
+`InstantiateVisual(..., stripColliders: true)` at `RaidBaseDresser.cs:972`, stripped at `:292`;
+(b) **no `WallSegment`**, stated in the method's own header at `:904-914`, so
+`PrepareDestructibleWalls` (which iterates `WallSegment` only) gives them **no carving obstacle**; and
+(c) **excluded from the bake** by `IsUnderCladZone`. Every other span of visible wall is covered by
+something; these eight are covered by **nothing that this lane could find**. By construction their
+length is ≈ `towerHalf` (`run = 2*halfExtent - 2*towerHalf`, `:906`) and the corner tower does get a
+collider-enclosing carving obstacle (`RaidNavBake.cs:180-212`), so they are **probably** covered by the
+tower — **and "probably" is exactly what §11B forbids shipping.** It is unmeasured, and it is the one
+thing worth measuring first.
+
+⛔ **Do NOT retro-fit this to her 09-14 session.** `IsUnderCladZone` landed at 19:57, **after** the
+17:52 capture, and the `NavMesh.asset` in that build was the `f06a73600` (04:19) bake — in which the
+clad ring still baked `NavigationStatic`, i.e. nav-solid. **The capture-era mechanism for what she saw
+is UNPROVEN and this lane could not close it from the evidence that exists.** What is described above
+is a live gap in the CURRENT tree, which is the tree the next build ships.
+
+---
+
+### (b) The proving line / method, per item
+
+**Item 1 — already proven; nothing new to run.** The `[Flow:CastTelegraph] target-marker START
+unit=Wall_Outer_*` line (`CastingTelegraphVfx.cs:271-275`) is the existing instrumentation, and
+`logcat_live.txt:1371` is the captured instance. If the lead wants it re-confirmed on the current
+58-segment ring, the oracle already exists uncommitted:
+`RaidWallTierProof.MeasureTierChildFootprint` + `IsTransientCastMarker`
+(`RaidWallTierProof.cs:207-212, 255+`) — its marker exclusion is the fix for the false positive, and
+its `Regular-after90sIdle` pass is the drift control. **No new FlowTrace is needed for item 1.**
+
+**Item 2 — no existing instrument answers it, and the nearest one says so in its own words.**
+`RaidWallContinuityRegression.CheckBoundary` (`Assets/Editor/WallTools/RaidWallContinuityRegression.cs:286-328`)
+ray-sweeps the ring at ankle/torso/head using **temporary `MeshCollider` probes** (`:290`, because the
+clad has no colliders of its own) and states at `:306`: *"This is not a NavMesh claim."* It proves the
+**mesh** is continuous; it never asks whether the **navmesh** is blocked. That is precisely the
+question item 2 asks.
+
+⚠ **Whatever is written must run in PLAY MODE.** `NavMeshObstacle.carving` applies at runtime; an
+edit-mode `NavMesh.SamplePosition` sweep over the ring will read the whole wall line as walkable and
+prove nothing, because `RaidNavBake` deliberately bakes that ground walkable (`:217-219`). The two
+existing templates:
+
+* `RaidBreachRuntimeProof` (`Assets/Editor/RaidBreachRuntimeProof.cs:28-40`) — already does exactly the
+  right sample (`NavMesh.SamplePosition(centre, out _, .3f, _filter)` at each wall's collider centre,
+  skipping walls whose carve already blocks it) but is **MenuItem-armed in a live Play session** and
+  samples **`WallSegment` centres only** — it can never see a `Clad_Corner_*` stub, because no
+  `WallSegment` exists there.
+* `RaidWallTierProof.Run` / `MaybeArm` (`RaidWallTierProof.cs:49-73`) — the SessionState-arm +
+  `EnterPlaymode` + `RuntimeInitializeOnLoadMethod` driver pattern, i.e. a self-driving Play session
+  from one `-executeMethod`. Its "must be headed" rule (`:24-26`) is about **renderer bounds**; a
+  navmesh sample does not need pixels.
+
+**Proposed new probe (one method, no new FlowTrace system needed):** a `RaidWallNavCoverageProof` built
+on the `RaidWallTierProof` arm pattern that, in Play mode after a ~3 s carve settle, walks **every
+renderer under `Zone_Clad`** — panels AND the 8 corner stubs — and at each panel's XZ centre at
+`y = bounds.min.y + 0.15` reports `NavMesh.SamplePosition(..., 0.3f, filter)`. Emit one line per panel,
+tagged so it reads in a device log as well as an editor log:
+
+```
+[Flow:RaidWallNav] panel='<name>' ownerSegment='<WallSegment or NONE>' obstacle=<none|carving|off>
+  centre=<xyz> navSampled=<true|false> -> <BLOCKED|WALKABLE>
+```
+
+`navSampled=true` on any panel whose owner wall is alive = a hole in a standing wall, named. Expected
+today: 58 `BLOCKED`, and the 8 `Clad_Corner_*` stubs are the answer this ticket is waiting for.
+`FlowTrace.Step` is the right verb (once per panel, bake-frequency, not a frame path — the 4-arg
+`Measure` overload of §12 does not apply).
+
+### (c) The minimal batchmode command the lead should run
+
+Item 1 — nothing. It is closed on captured data.
+
+Item 2, once the probe above exists (it is an editor-only `.cs`, so it needs an implementing lane
+first). Entry point mirrors `RaidWallTierProof`, but a nav sample needs no pixels, so it runs
+`-batchmode` and can be judged by a marker on a fresh log:
+
+```powershell
+.\run-unity-method.ps1 -Method DeNelle.Editor.RaidWallNavCoverageProof.Run `
+  -LogFile Builds\raid-wall-nav-1722.log
+Select-String -Path Builds\raid-wall-nav-1722.log -Pattern 'RAID_WALL_NAV_COVERAGE_(OK|FAIL)'
+```
+
+Judge the **marker on a fresh log**, never the exit code (CLAUDE.md §8/§16). Absence of the marker is a
+FAILURE, not an unknown. The scene under test is
+`Assets/Scenes/RaidBase_raider_camp_small.unity` (Regular tier, the tier of the original report) — and
+expect **58** segments there, not the 78 this ticket was written against.
+
+If the lead wants a zero-code answer first, the cheapest partial is to re-run the already-written
+(uncommitted) tier proof headed, which at least re-confirms item 1 on the new ring:
+`RAID_WALL_TIER_PROOF_DIR=Builds\raid-wall-tier-proof-1722b` with
+`-executeMethod DeNelle.Editor.RaidWallTierProof.Run` on a **headed** editor (never inside a batchmode
+gate run, per `RaidWallTierProof.cs:24-26`). That does **not** answer item 2.
+
+### Unproven, stated as unproven
+
+* Whether the 8 `Clad_Corner_*` stub spans are actually walkable at runtime, or covered by the corner
+  tower's own carving obstacle. Geometry says they should be covered; **not measured.** This is the
+  whole point of the probe above.
+* The capture-era mechanism for the owner's 09-14 walk-through. The clad ring was nav-solid in that
+  build's bake, and the log captures no movement at all. **Not closable from the evidence that exists**
+  — it needs a fresh felt-test on the current build, with the wall name and the hero's position
+  captured at the moment of crossing.
+* Whether the hero can be pushed off the navmesh by anything else (knockback, `Warp`,
+  `ForeignMoverOwnsTransform`). Not examined by this lane.
+
+**Not done by this lane (read-only):** the `IsTransientCastMarker` port into
+`RaidDeployController.LogBreachTapDiagnostics`, the `Ruin_*`/inactive-renderer exclusion in that same
+union, the `ray.origin`-vs-tap fix at `:1045`, and the new coverage probe. All four are code edits.
+
+**Also for the lead:** `Assets/Editor/RaidWallTierProof.cs` (+112) and
+`Assets/_Modules/Village/Troops/TroopController.cs` (+74) are **uncommitted in the main tree**. The
+tier-proof half is the WO-1722 oracle this RCA leans on — it is lost if it is not gated and committed.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_019gsRiEvHBgmyXhPf5bEh3J
