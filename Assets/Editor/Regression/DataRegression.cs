@@ -1778,6 +1778,16 @@ namespace DeNelle.Editor
             // structure may carry a NULL material slot (F8 seq 3618 CrystalMine engine-default).
             // Stands down via Skip if the set cannot be enumerated -- never quiet green.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "structure-null-slot suite", () => { if (!DeNelle.Editor.Regression.StructureNullMaterialSlotRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[structure-null-slot] " + r); });
+            // Owner APK felt-test 2026-09-15: the Arcane Spire shipped its Synty stand-ins and the
+            // MIDDLE tier stood upside down (a castle WALL tower). Same double-claimed-address
+            // mechanism as the Tripo watchtowers (1fec556d3), one structure over -- and with no
+            // local fallback for structure art it fails SILENTLY on device.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "arcane-spire-art suite", () => { if (!DeNelle.Editor.Regression.ArcaneSpireArtAuthorityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[arcane-spire-art] " + r); });
+            // WO-1761, owner felt-test 2026-09-15 ("Sylas joined the team ... they don't offer any
+            // benefit"): the three raid victory controllers recruited a companion whom every
+            // SingleHero consumer then hid. Pins the recruit gate, the join-free victory text and
+            // the hero-only deploy party row -- both sides of ff.singlehero.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "singlehero-victory-join suite", () => { if (!DeNelle.Editor.Regression.SingleHeroVictoryJoinRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[singlehero-victory-join] " + r); });
             // WO-1398: the store has ONE player-facing name (canon-strings storeWordmark) and every
             // face that opens PanelId.RealmStore renders it; no "Night Market" / "Realm Store"
             // literal survives in module code.

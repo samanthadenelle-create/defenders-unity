@@ -189,7 +189,21 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-15 (CLI, two-hundred-and-seventh pass): main line next free = **1760**.
+> ## RECONCILED 2026-09-15 (CLI, two-hundred-and-ninth pass): main line next free = **1763**.
+> *(Lead PRE-ASSIGNED 1761 (raid victory still prints "<Sylas|Grom> joins your party" - the three victory
+> controllers were never gated by ff.singlehero; owner ruling 2026-09-15: drop the join) and 1762 (authored
+> hub ring heights: lumber mill / iron mine / quarry / cathedral read far below the 4.0 m family; owner asked
+> to scale them up to the Crystal Mine) to two worktree lanes in the SAME edit - parallel lanes minted the
+> same number on 09-10, so the lead now hands numbers out in the brief. Bumped 1761 -> 1763.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundred-and-eighth pass): main line next free = **1761**.
+> *(Minted 1760 (the Arcane Spire shipped its Synty stand-ins in the 09-15 APK - the owner's
+> ArcaneSpire_{1,2,3}.fbx were dropped from Structure_Art by the 09-13 21:33 dedup, which kept the
+> WRAPPER half of each double-claimed address; the MIDDLE tier stood upside down because
+> ArcaneSpire_2 alone was mapped onto a castle WALL tower. Same mechanism as the Tripo watchtowers,
+> 1fec556d3, one structure over) - bumped 1760 -> 1761 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundred-and-seventh pass): main line next free = **1760**.
 > *(Minted 1759 (the LAST AAB offender - the SKR staking surface in the Play build, plus the 3-char
 > skr token matching inside TaskResult/MaskRegion) - bumped 1759 -> 1760 in this SAME edit.)*
 >

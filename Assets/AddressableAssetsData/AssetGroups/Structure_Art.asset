@@ -55,48 +55,19 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 25918c0207a46b542ae5a4e538ce7b82
-    m_Address: Structures/store
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 273e557956bd0e44e958c97175c902eb
     m_Address: Structures/HealingCaravan
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 294d8adbb92adaf4b915a77edf0ecc1a
-    m_Address: Structures/Wall_Medieval_Wood
+  - m_GUID: 33277f738e5de0b4c9f2a2274b4dd245
+    m_Address: Structures/OwnerStorage/Iron_Pallet
     m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 29729cc57916b9a469bccf69e2221474
-    m_Address: Structures/armorer
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 2bed26b46123b3c47af97ff975b1c7f7
-    m_Address: Structures/Ballista_L2
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 32357939d93e6044c83712678c1d74d8
-    m_Address: Structures/arcane tower
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 33656d4c1def7684cb6ef673115174c2
-    m_Address: Structures/ShopAndCrafting
-    m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - Structure_Art
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 33e8158e1b664284f8914c043af78cd5
     m_Address: Structures/Catapult
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 3c5d0584b7cd64649a972c3851bd1617
-    m_Address: Structures/CrystalMine
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -110,43 +81,19 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 4825b1172e379f34db7ced2a2e8e4526
-    m_Address: Structures/GenericContainer
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4981110a7d0140d4dab5cd46f967fee7
     m_Address: Structures/Synty_Tower_Castle_Wall_M
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 4e7028782b403834ea6ab7ba048abf8c
-    m_Address: Structures/Gate_Medieval_Medium
+  - m_GUID: 4da844ac8a4eaef489e149c8cbca66d5
+    m_Address: Structures/OwnerStorage/Wood_Pallet
     m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 51c2d614deea3824ea0b5a4be3417a90
-    m_Address: Structures/House_Medieval_Medium
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 52dc3423d7b4ba14a9575c9da821afff
-    m_Address: Structures/ArcaneSpire_3
-    m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - Structure_Art
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 53af0b3d70696f7479412f01909ed72c
     m_Address: Structures/Watermill_Medieval
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 546d6b75804e15f4da8d58503d4c461f
-    m_Address: Structures/ArcaneSpire_1
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 585f03e5d6ce6cd428531f7ee9b3f225
-    m_Address: Structures/IronMine
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -160,23 +107,8 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 6254865297bb0bc4094ca766dc12c0d3
-    m_Address: Structures/Torche_Wall
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 627ba0ec3c9ac5841898e5cd267a013b
-    m_Address: Structures/Well
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 64d2e32ef4d217f4f8dc3d2d63fc6c62
-    m_Address: Structures/jeweler
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 6e45956185e5e83438f9db36d971ee6a
-    m_Address: Structures/Ballista_L1
+  - m_GUID: 6d6e7bf602d57574784cd00938f83419
+    m_Address: Structures/GenericContainer
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -185,8 +117,8 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 7f7d4fe86bedeb54a9c82b36e3632c25
-    m_Address: Structures/Catapult
+  - m_GUID: 7cbbbecc07323564cb4b309e1a8414d0
+    m_Address: Structures/IronMine
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -200,23 +132,8 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 8ca1b2bfa79f57d4d8e66a3632fec68c
-    m_Address: Structures/Windmill_Medieval
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 8e38bac6a566a9c4ab37974ab7713c38
     m_Address: Structures/Wall_Medieval_Wood
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 8eacc921b6ad8fd4fa37999bc16efa5f
-    m_Address: Structures/Forge
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 9344d038811ee5140b3bc0e20bca8c7a
-    m_Address: Structures/lumbermill
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -230,23 +147,8 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 9bd160f93232e2d4893a5592f5c66985
-    m_Address: Structures/Ballista_L3
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: a7316b6d3a3d152429a1d51cd2265c9a
-    m_Address: Structures/PetHouse2
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: a9c0bcd1950049f4fbedb98421747c5c
     m_Address: Structures/House_Medieval_Medium
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: af1e28122bbdb04458702b7707fb4b6a
-    m_Address: Structures/HealingCaravan
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -275,10 +177,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: be3addb50ab81f14b84c7c06859c1768
-    m_Address: Structures/Ballista
+  - m_GUID: be5c38b9bbaac6944a19f0d0ef2fdce1
+    m_Address: Structures/OwnerStorage/Stone_Pallet
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - Structure_Art
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c4ed130479453c248b10b01818cf19e5
     m_Address: Structures/building_tower_base_green
@@ -287,6 +190,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c83598997a5b4f1797e66e82b1a8fb7a
     m_Address: Structures/ArcaneSpire_Albedo
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d3e59c4ea1b9db94185a404a62fcfa72
+    m_Address: Structures/CrystalMine
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -305,11 +213,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: deb6db9f252b94f4d941b57c198b636d
-    m_Address: Structures/Watermill_Medieval
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e34019f42d3cd5640b4cc43d656ff9dd
     m_Address: Structures/Ballista_L3
     m_ReadOnly: 0
@@ -317,16 +220,6 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e4c188fd6dccc59448c6930e7643e48e
     m_Address: Structures/ShopAndCrafting
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: e637a34e1eb0d134ba2aeb78da73f131
-    m_Address: Structures/barracks
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: e7a9f1020edfad347be71f29521bc5ed
-    m_Address: Structures/ArcaneSpire_2
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -352,16 +245,6 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f7d39bbe3a3cb574aa61580f34b7fdc2
     m_Address: Structures/Ballista
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: f8b351bb6b391f94094953f40b8a8b12
-    m_Address: Structures/Wall_Medieval_Stone
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: fa343765121bb4f4eab8c1fac15c6f53
-    m_Address: Structures/farm
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
