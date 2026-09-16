@@ -1503,6 +1503,7 @@ namespace DeNelle.Editor
             // DataRegression.cs also carried a WO-1593 suite that does not exist here).
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-assault-ai suite", () => { if (!DeNelle.Editor.RaidAssaultAiRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-assault-ai] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "wall-breach-order suite", () => { if (!DeNelle.Editor.WallBreachOrderRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[wall-breach-order] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "objective-route-arrival suite", () => { if (!DeNelle.Editor.ObjectiveRouteArrivalRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[objective-route-arrival] " + r); });
 
             // --- COLLECTOR STACK PROPS (2026-08-16): CollectorStackPropCatalog.cs told
             // everyone to "place the asset at Assets/Resources/Collectors/..." and nobody
@@ -1916,6 +1917,11 @@ namespace DeNelle.Editor
             // collapsing them is a decision about another suite's file, so the oracle is
             // registered under its OWN tag and the duplication is ticketed for the lead.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "gear-addressable-group-oracle suite", () => { if (!DeNelle.Editor.GearAddressableGroupRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[gear-addressable-group-oracle] " + r); });
+            // WO-1762: the authored hub ring's roots ignore the catalog's fit-to-height entirely
+            // (HubStructureVisualInjector.cs:804-808 returns early on PreserveAuthoredVisual), and
+            // StructureCadenceRegression is upper-bound-only (:107-114) so "too small" was invisible.
+            // STANDS DOWN via Skip until HubRingHeightApply.Run lands - see the file header.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "hub-ring-height suite", () => { if (!DeNelle.Editor.Regression.HubRingHeightRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[hub-ring-height] " + r); });
             // MOVED, NOT ADDED (WO-1496): this call sat at line ~170, ABOVE the START FENCE. It
             // ran on every batch, but uncounted - its [move-manifest] line landed in the
             // pre-fence baseline and it exposed no `.Run(out` call-site for the denominator to
