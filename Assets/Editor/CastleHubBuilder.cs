@@ -68,6 +68,7 @@ namespace DeNelle.Editor
         private const string MenuPath = "Defenders/Scenes/Build CastleHub_MainKeep";
         private const string RootName = "CastleHubRoot";
         public const string OwnerLayoutPrefabPath = "Assets/Prefabs/Village/OwnerCastleStorefrontLayout.prefab";
+        public const int OwnerRingChildCount = 11; // 11 marker roots; was 14 with the pallets (WO-1762, 2026-09-15)
         private const string NavFloorName = "NavMeshFloor_Invisible_Walkable";
 
         // WO-593 castle-island raise height. A tunable VARIABLE (owner directive: NOT a const) so the
@@ -139,7 +140,9 @@ namespace DeNelle.Editor
                 .Any(t => t.name == RootName || t.GetComponent<AuthoredCastleStorefront>() != null)))
                 throw new System.InvalidOperationException("Existing castle preserved. Use OwnerCastleLayoutRepair for additive repairs; create a new empty scene for generation.");
             var ownerLayout = AssetDatabase.LoadAssetAtPath<GameObject>(OwnerLayoutPrefabPath);
-            if (ownerLayout == null || ownerLayout.transform.childCount != 14)
+            // WO-1762 (owner ruling 2026-09-15): the three scenery pallets left the ring, 14 -> 11. This literal is the
+            // ring-shape pin the recipe is validated against; it moves WITH the ruling, never on its own.
+            if (ownerLayout == null || ownerLayout.transform.childCount != OwnerRingChildCount)
                 throw new System.InvalidOperationException("Validated owner castle layout prefab is absent/incomplete. Run OwnerCastleLayoutRepair.Apply first.");
 
             LoadFootprintLiftY();   // WO-593: refresh the base height from PlayerPrefs before authoring
