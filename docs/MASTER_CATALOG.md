@@ -31,7 +31,8 @@
 > assert the DECISION. The old doc sentence "server wins on BestWave; local wins on Towers and
 > Pets" is RETIRED  -  there was never a per-field merge. -> `core.md` (GameStateService).
 >
-> **A TRANSIENT 500 NO LONGER DESTROYS THE SESSION** (`Core/Web3/BackendRequestSigner.cs`,
+> **A TRANSIENT 500 NO LONGER DESTROYS THE SESSION** (`Core/Backend/BackendRequestSigner.cs` — the
+> folder was `Core/Web3/` until WO-1755, 2026-09-15,
 > WO-1454): renewal failures are now CLASSIFIED  -  only 401/403 clear the token; 5xx, timeouts,
 > unparseable bodies and empty-token 2xx keep it and back off. -> `economy-meta.md`.
 >

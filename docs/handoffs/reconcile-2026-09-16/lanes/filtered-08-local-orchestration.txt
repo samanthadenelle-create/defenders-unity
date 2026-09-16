@@ -1,0 +1,12 @@
+.ai/architecture.md
+.ai/conventions.md
+.ai/decisions.md
+.ai/glossary.md
+.ai/project-rules.md
+.claude/skills/run-defenders/SKILL.md
+tools/art/REQUIRED_PACKS.md
+tools/art/verify-runtime-art.ps1
+tools/capture-seeker-screen.ps1
+tools/regression/checkin_gate.ps1
+tools/run-unity-playmode.ps1
+tools/status-post.mjs

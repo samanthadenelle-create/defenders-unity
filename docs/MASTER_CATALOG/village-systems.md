@@ -1,5 +1,40 @@
 # Master Catalog — Village Systems
 
+> **Footprint cache follow-up, 2026-09-13:** `StructureFactory.MeasureUprightFootprintXZ`
+> now resolves art before caching, caches only successful finite measurements, and keys exact
+> sizing/orientation inputs plus resolved prefab identity. Manual Euler is applied once through
+> `OptsFor`/`Skin`, matching `Create`. Eight before-fix fixture failures are captured in
+> `Builds/footprint-cache-baseline.log`; `footprint-cache-after.log` has `FOOTPRINT_CACHE_OK`.
+> `footprint-cache-castle-guardrails.log` has `OWNER_CASTLE_FINAL_CHECKS_OK`. This does not
+> migrate existing claims, choose storage sizes, or enable authored Barracks movement.
+
+> **Owner castle correction, 2026-09-13:** preserve the saved thirteen objects in
+> `Main_Castle_Overworld`, adding the original Arcane Tower as **Cathedral of Learning**.
+> Synty storefront substitutions were explicitly rejected as unauthorized. The repaired
+> layout is captured in `Assets/Prefabs/Village/OwnerCastleStorefrontLayout.prefab`.
+> `AuthoredCastleStorefront` carries semantic identity separately from the owner's names,
+> models, and transforms; marked visuals bypass legacy injector replacement/rotation.
+> Stone Quarry/LumberMill/IronMine use the existing `farm`/`lumbermill`/`forge` collector
+> keys for stone/wood/iron. IronMine is not a weapons vendor. Crafting uses `workshop`;
+> RealmStore retains its direct panel door, outside the build catalog. Weaponsmith and
+> Armorer retain distinct `forge` and `armorer` trade identities.
+> New marked barracks adoption preserves explicit source identity and exact pose; older
+> provenance-free records keep their existing behavior. Authored barracks upgrades retain
+> their art. Moving that preserved building currently refuses before changing occupancy;
+> an accurate authored-geometry preview is required before enabling that operation.
+> Local preview follow-up: `GhostPreview.SetAuthoredEntry` now builds a render-only static
+> URP/Lit snapshot with exact ancestor transforms; `MoveToAuthored` takes a full candidate
+> quaternion. Entry explicitly refreshes, source hierarchy changes invalidate, and owned
+> geometry/materials are cleaned up on disable/destruction. Movement remains disabled:
+> this presentation API is not yet connected to the move/occupancy transaction.
+> `AUTHORED_GHOST_PREVIEW_OK` in `Builds/castle-preview-local-20260914-third.log` verifies
+> independent geometry, texture/tint, refresh/refusal, cleanup and actual catalog transition
+> in Edit Mode, plus captures of the actual saved Barracks. Callback bodies were invoked
+> explicitly where Edit Mode does not dispatch them; no Play Mode lifecycle claim is made.
+> Existing unlock rules remain. These corrections supersede conflicting legacy name/skin
+> descriptions below. Evidence and bounded DeepSeek work orders are in
+> `Builds/castle-validation-20260913/`; device/Play Mode acceptance is separate from editor proofs.
+
 **Dated 2026-08-02; BuildMode UI row refreshed from source 2026-08-09. Verified from source
 (file:line cites), NOT from comments.**
 
@@ -527,7 +562,7 @@ they cannot pay, and backs out having spent taps to learn nothing.
 - **`static string AffordabilityWords(int)`** (`:322`)  -  `"nothing affordable yet"` / `"1 you can
   build now"` / `"N you can build now"`. **Never a bare number and never a colour** (colourblind law);
   "nothing affordable yet" says the door is still worth remembering rather than reading as an error.
-- **`readonly struct PlacementSummary` + `static PlacementSummaryFor(CatalogEntry)`** (`:271`,`:285`)  - 
+- **`readonly struct PlacementSummary` + `static PlacementSummaryFor(CatalogEntry)`** (`:271`,`:285`)  -
   `CostWords` / `Seconds` / `CrewWords` / `Line`. (!) **This widens the VM's game-state read,
   deliberately and in one place**  -  the class header's "the sole game-state read stays in
   `CreateForEntry`" is now **two** seams, both HERE in the model. That is the **RULING, not a

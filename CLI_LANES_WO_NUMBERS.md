@@ -189,7 +189,65 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-15 (CLI, two-hundred-and-ninth pass): main line next free = **1763**.
+> ## RECONCILED 2026-09-16 (CLI, two-hundred-and-eighteenth pass): main line next free = **1777**.
+> *(Lead PRE-ASSIGNED **1776** (Mage kit VFX for the hackathon video: owner 2026-09-16 "right now the
+> fireball is the only thing decent"; ruled Arcane Bolt <- her existing tag Lightningspellmaybe_Cast ->
+> Hovl "Lightning strike"; Void Rift + Wither get candidate lists for her to tag). Bumped 1776 -> 1777
+> in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-seventeenth pass): main line next free = **1776**.
+> *(Lead PRE-ASSIGNED **1775** (owner: "can we use some of those tools to better test scenarios, like
+> scrcpy" - a device scenario harness: scenario deep-link/intent into the dev kit + scrcpy h264 record +
+> logcat pull + frame read, on the emulator AVD or a guest profile, never the owner's save). Bumped
+> 1775 -> 1776 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-sixteenth pass): main line next free = **1775**.
+> *(Lead PRE-ASSIGNED **1773** (external tester's 2:25 Seeker video `DefenderDemoRun.mp4`: a Lv 51-52 Mage
+> stands in town waves 2-3 and "nothing can damage him" - hero HP never moves against Hollow Skirmisher /
+> Ogre / Cave Troll; owner relayed 2026-09-16) and **1774** (same video: a large untextured beige slab
+> standing in the town courtyard in front of the hero, frames f_002/f_004). Bumped 1773 -> 1775 in this
+> SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-fifteenth pass): main line next free = **1773**.
+> *(Lead PRE-ASSIGNED **1769-1772** to the four WO-1765 follow-ups its RESULT §12 names: 1769 baked town
+> `_enemyMask: 256` is the Structure layer (ships together with globalising IsFramingSubject; owner-felt);
+> 1770 Garrison_*/Outpost raids still run the town camera + 220 deg/s whip; 1771 town hub flaps the
+> point-blank pull-in ~78x/min (ask if felt first); 1772 re-shape the two dungeon source-text lints so the
+> R1 rename is free. Bumped 1769 -> 1773 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-fourteenth pass): main line next free = **1769**.
+> *(Lead PRE-ASSIGNED **1768** (same Seeker capture, 13:26:05: VICTORY finalized at 13:26:05.330 with the
+> army "settled for the WIN (stars 2) and saved", then 0.28 s later "HERO DOWN ... army settled as a
+> failure (0 stars); the troops still standing break and flee" - a post-finalize hero death re-settles
+> the army as a loss after a won raid). Bumped 1768 -> 1769 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirteenth pass): main line next free = **1768**.
+> *(Lead PRE-ASSIGNED **1767** (owner's Seeker run today, build 371701, logged `[BREAK] error: [Flow:Raid]
+> Precombat capture census failed: Captured structure lacks a baked stable identity: Wall_Outer_SS_0` at
+> 13:24:27 - the WO-1705 owned-town capture census dies on RaidBase_IronBastion before the fight starts).
+> Bumped 1767 -> 1768 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twelfth pass): main line next free = **1767**.
+> *(Lead PRE-ASSIGNED **1766** (owner asked for minitap-ai/mobile-use + scrcpy so agents can felt-test on the
+> Seeker from the PC; scrcpy installs now, mobile-use is a scoped pilot because it drives the accessibility
+> tree and a Unity surface exposes none). Bumped 1766 -> 1767 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-eleventh pass): main line next free = **1766**.
+> *(Lead PRE-ASSIGNED **1764** (troops still prefer walls over nearby targets in the Iron Bastion - owner
+> felt report on APK 371627, which carries WO-1746/1752 but NOT WO-1730's ba13b93ef) and **1765** (Bastion
+> camera still rotates with the walls - same build, which DOES carry the 09-15 camera fixes 1734/1751/1753)
+> to two read-only RCA lanes. Bumped 1764 -> 1766 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-tenth pass): main line next free = **1764**.
+> *(Minted **1763** - per-camp REMOTE raid-difficulty overrides. The owner nearly 3-starred the Iron
+> Bastion with a level-4 hero and believed raid difficulty was already DB-tunable; it is not - every
+> `raid.*` key in `RemoteTunables.cs` is loot/honor/heartfire, and `iron_bastion` is a field-for-field
+> clone of `mage_enclave` on every difficulty field in `scene-configs.json`. 1763 puts
+> `raid.difficultyMultPct<Camp>` + `raid.levelOffset<Camp>` on the EXISTING client_tunables rail for the
+> four flagship camps, defaults identity, and applies the owner's 2026-09-16 ruled Bastion seed
+> (160 / 5). Bumped 1763 -> 1764.)*
+>
+> ### superseded: RECONCILED 2026-09-15 (CLI, two-hundred-and-ninth pass): main line next free = **1763**.
 > *(Lead PRE-ASSIGNED 1761 (raid victory still prints "<Sylas|Grom> joins your party" - the three victory
 > controllers were never gated by ff.singlehero; owner ruling 2026-09-15: drop the join) and 1762 (authored
 > hub ring heights: lumber mill / iron mine / quarry / cathedral read far below the 4.0 m family; owner asked

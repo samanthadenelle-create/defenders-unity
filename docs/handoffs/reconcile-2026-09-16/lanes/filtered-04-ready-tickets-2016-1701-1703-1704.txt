@@ -1,0 +1,10 @@
+Assets/Editor/KnightGearProofCapture.cs
+Assets/Editor/Regression/AuthoredGhostPreviewRegression.cs
+Assets/Editor/Regression/AuthoredGhostPreviewRegression.cs.meta
+Assets/Editor/Regression/UiTouchClampRegression.cs
+Assets/_Modules/Core/Addressables/DependencyClosureTrace.cs
+Assets/_Modules/Core/Manage/ManageWorkspacePanel.cs
+Assets/_Modules/Core/UI/LayoutOracle.cs
+Assets/_Modules/Village/Progression/ProgressionManager.cs
+WorkOrders/WORK_ORDER_1701_webgl_hero_art_falls_back_to_blink_base_sync_addressables_load.md
+test/webgl-offline-content-surface.test.js

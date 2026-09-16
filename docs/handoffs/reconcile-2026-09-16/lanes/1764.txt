@@ -1,0 +1,7 @@
+Assets/_Modules/Village/Troops/RaidAssaultAi.cs
+Assets/_Modules/Village/Troops/TroopController.cs
+Assets/_Modules/Village/Troops/TroopBreachOrder.cs
+Assets/Editor/Regression/WallBreachOrderRegression.cs
+WorkOrders/WORK_ORDER_1764_troops_still_prefer_walls_over_nearby_targets_bastion.md
+WorkOrders/WORK_ORDER_1764_troops_still_prefer_walls_over_nearby_targets_bastion.RESULT.md
+WorkOrders/WORK_ORDER_1738_wall_durability_concurrency_fork.md

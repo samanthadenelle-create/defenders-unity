@@ -1,5 +1,12 @@
 # Weapon / Armor / Item Auto-Orient Logic — BINDING CANON
 
+> **Owner sheath ruling, 2026-09-13:** "it should sit opposite hip of the shield (if shield is offhand the sword should sit hilt up edge down on main hand hip".
+> This supersedes the old cross-body sword carry: the sheathed sword belongs on the main-hand hip
+> (right for the current RightHand sword / LeftHand shield rig), hilt up and blade down. The drawn
+> sword pose remains approved. Apply this sword-only rule to the runtime and the weapon seating
+> preview through the same authority; preserve per-mesh tip derivation and authored manual overrides.
+> Implementation and current visual proof: `docs/handoffs/SWORD_SHEATH_HIP_RESULT.md`.
+
 > **Owner mandate (2026-06-13):** this logic was worked out in detail and **prior sessions never
 > applied it** — weapons got slapped onto the hand at identity and sat wrong (blade flat / pointing
 > forward, gripped by the blade). **Do NOT re-derive this worse. Apply it. Manual corrections are

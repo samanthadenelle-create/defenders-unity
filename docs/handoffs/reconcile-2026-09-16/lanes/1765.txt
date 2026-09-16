@@ -1,0 +1,4 @@
+Assets/_Modules/Village/Hero/SmartMobileCamera.cs
+Assets/Editor/Regression/CameraRaidFramingRegression.cs
+WorkOrders/WORK_ORDER_1765_bastion_camera_rotates_with_walls.md
+WorkOrders/WORK_ORDER_1765_bastion_camera_rotates_with_walls.RESULT.md

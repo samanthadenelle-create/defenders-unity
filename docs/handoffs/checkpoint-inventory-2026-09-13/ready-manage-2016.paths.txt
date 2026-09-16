@@ -1,0 +1,13 @@
+Assets/Editor/Regression/ManageBuildDoorRegression.cs
+Assets/Editor/Regression/ManageBuildingsCardRegression.cs
+Assets/Editor/Regression/ManageDefenseCardRegression.cs
+Assets/Editor/Regression/ManageProgressiveDisclosureRegression.cs
+Assets/Editor/Regression/ManageResearchCardRegression.cs
+Assets/Editor/Regression/ManageRowBenefitRegression.cs
+Assets/Editor/Regression/ManageTroopsTrainDoorRegression.cs
+Assets/Editor/Regression/UiTouchClampRegression.cs
+Assets/Editor/UICaptureLaunch.cs
+Assets/_Modules/Core/UI/LayoutOracle.cs
+Assets/_Modules/Village/Progression/ProgressionManager.cs
+Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs
+Assets/_Modules/Village/Waves/WaveManager.cs

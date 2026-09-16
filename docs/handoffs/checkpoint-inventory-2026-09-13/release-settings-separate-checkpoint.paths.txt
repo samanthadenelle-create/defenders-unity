@@ -1,0 +1,2 @@
+ProjectSettings/EditorBuildSettings.asset
+ProjectSettings/ProjectSettings.asset

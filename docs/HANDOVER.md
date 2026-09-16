@@ -1,3 +1,16 @@
+> **2026-09-16 RAID DIFFICULTY — WHAT IS TUNABLE AND WHAT IS NOT: `docs/RAID_DIFFICULTY_LEVERS_2026-09-16.md`.**
+> The Iron Bastion is a field-for-field clone of the Veiled Enclave on every difficulty field (it only
+> differs by faction, which the spawner ignores, and by a missing `raidDress` block — so the top tier
+> also ships with no authored cover). Difficulty splits into RUNTIME knobs (`RaidGarrisonSpawner`) and
+> BAKE-TIME knobs (`RaidBaseGenerator.TierFor`, needing `BuildAllRaidScenes` then `RaidNavBake.BakeAll`).
+> The remote tunables rail is LIVE (proven by a GET today) but **no `raid.*` key is a difficulty knob**;
+> the remote-catalog seam is compiled in but DORMANT (flag off, `/api/client-catalogs` 404, arming key
+> unregistered, and its allowlist excludes `scene-configs.json`). Today's one change:
+> `raid.honorThirdStarSeconds` 90 → **60**, GLOBAL to all four camps — it lowers a slow raid's payout
+> *and* tightens the 3-star capture gate, because both read the same `min(settle, honor)` clamp. Undo =
+> `clear`. Per-camp difficulty is **WO-1763** (READY; owner ruling: Bastion 160% / offset 5, REPLACE) and
+> needs the next APK **plus** an api deploy. Resume there.
+
 > **2026-09-10 (CLI lead Fable, two sessions: overnight + day): READ `docs/HANDOVER_2026-09-10_overnight.md` FIRST - its section 8 (evening Pi session: testnet purchase PASSED 23:42Z, two Pi app records, the key that works) and section 7 (wrap-down record) name HEAD, the six open owner rulings, what is device-proven (nothing in wave 10 yet) and the READY-not-dispatched tickets WO-1697 / WO-1698.**
 > *(earlier banner)* **2026-09-10 OVERNIGHT (owner asleep; CLI lead Fable): READ `docs/HANDOVER_2026-09-10_overnight.md` FIRST.**
 > 30+ commits on `dev`, every one gated on fresh logs (last: `Builds/wave2-compile7` / `Builds/wave2-reg7`).

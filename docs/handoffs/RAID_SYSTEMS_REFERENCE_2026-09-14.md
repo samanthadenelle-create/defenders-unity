@@ -190,6 +190,25 @@ and the hero.
 
 # PART 2 — Raid AI & Troop Targeting
 
+> ## ⚠ STALE 2026-09-15 for §2.3 and §2.5 — superseded by the owner's WO-1738 ruling (WO-1746).
+> **Body deliberately NOT rewritten** (CLAUDE.md §15: a dated point-in-time reference gets a banner,
+> not an edit). What this Part describes is the pre-ruling state. Two things changed:
+> 1. **Breach is now a persistent STANCE, not a one-shot order.** §2.3's flow still holds for the
+>    tap itself, but the stance (`TroopBreachOrder.StanceActive` = the Breach button armed **OR** a
+>    standing order) survives the ordered panel collapsing, so the warband **auto-chains** to the
+>    next most-damaged wall with no second tap. §2.3's self-clear is kept exactly as described —
+>    it is now the auto-chain's trigger rather than the end of the order.
+> 2. **§2.5's 4-arg `RallyHoldsMarch` now takes the STANCE, not `hasExplicitBreachOrder`.** With
+>    the order-only argument the auto-chain died on the first wall any time a rally was set — the
+>    exact failure §2.5 itself describes, one step later in the sequence.
+> 3. **Ordinary troops are RELUCTANT on walls.** Non-siege troops with no stance armed hit
+>    `WallSegment` panels at `RaidAssaultAi.ReluctantWallDamageMultiplier` (0.1); siege and any
+>    troop under an armed stance stay at full. `WallSegment` toughness itself is unchanged.
+>
+> §2.1, §2.2, §2.4 (aggro still wins — unchanged, and still pinned by the same regression lines),
+> §2.6 and §2.7 are current. See `WorkOrders/WORK_ORDER_1738_wall_durability_concurrency_fork.md`
+> (the ruling) and `WorkOrders/WORK_ORDER_1746_breach_stance_and_reluctant_wall_damage.md`.
+
 ## 2.1 Assault Phases: Peel, Breach, Push, Finish
 
 Troop behavior runs through four enumerated phases, in strict priority order —

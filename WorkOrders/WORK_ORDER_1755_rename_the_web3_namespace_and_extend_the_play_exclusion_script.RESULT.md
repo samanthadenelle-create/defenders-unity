@@ -181,6 +181,17 @@ logs — rewriting a captured log would be falsifying evidence) · `docs/READY_R
 `docs/handoffs/SESSION_HANDOVER_2026-09-15_play_track_and_wall_fork.md` ·
 `WorkOrders/WORK_ORDER_{43,44,210,1160,1377,1377.RESULT,1440.RESULT,1441,1441.RESULT,1454.RESULT,1583,1583.RESULT,1733,1735,1735.RESULT,1740,1741,1741.RESULT,1754,1755}*.md`.
 
+**`Builds/` — 300+ hits, ALL stale build ARTIFACTS, and none is a source surface.** A whole-repo
+`grep -rl` (314 files total) surfaced the old namespace inside `Builds/{Windows,Windows-Dev-RaidSmoke,
+EchoesOfElarion-Windows-Tester-2026.09.09.362377}/DefendersOfTheRealm_Data/Managed/*.dll` + `*.pdb` +
+`globalgamemanagers.assets`, and inside a stale copy of the Assets tree at
+`Builds/loc-manifest-store-buy-runtime-2/Assets/_Modules/Core/Web3/`. **`Builds/` is gitignored and
+`git ls-files Builds` returns nothing**, so none of it is tracked, committed, or compiled from.
+⚠ Worth one sentence anyway: `Builds/Windows/…/DeNelle.Core.dll` is a **shipped player carrying the old
+namespace**, so it is now out of date with the tree. Memory `wipe-rebuild-exe-on-ready` already says to
+wipe `Builds\Windows` and rebuild after a gate-green wave — this is one more reason not to skip it.
+Outside `Builds/` and the frozen records above, the whole-repo scan surfaced **nothing else**.
+
 One further occurrence is **mine and deliberate**: `Assets/_Modules/Core/README.md:22` now carries
 `DeNelle.Core.Web3 → DeNelle.Core.Backend` inside its "was" note, so that a future seat grepping the old
 name lands on the explanation instead of on nothing. It is a `.md`; it reaches no artifact.

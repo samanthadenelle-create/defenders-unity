@@ -121,6 +121,11 @@ separately in `../PROJECT_INDEX.md`.
   or the owner's own device logs that day, ticket references pushed to an appendix. Read it with
   the north-star map `PROGRAM_RAID_ECONOMY_2026-09-04.md`, which is the ruling; this is the
   measurement underneath it.
+  `RAID_DIFFICULTY_LEVERS_2026-09-16.md` - which raid-difficulty knobs are RUNTIME vs BAKE-TIME, and
+  which can change without a build (the tunables rail is live and carries no difficulty key; the
+  remote-catalog seam is dormant and its allowlist excludes `scene-configs.json`); the Iron
+  Bastion/Veiled Enclave clone, the 2026-09-16 `raid.honorThirdStarSeconds` change and its capture
+  side effect, and the WO-1763 per-camp plan.
 
 - **Manage redesign (WO-1418+) flow & prerequisites:** `manage-flow-map/MAP.md` — the redesign's dataflow lanes and mock-up mapping; `PREREQUISITE_REGISTRY_2026-09-06.md` — the audit of every gate and cost in the system, with the container singletons ruling (Ruling 23) and barracks/Heart Level unification (Ruling 21) reflected; `ART_DELIVERY_2026-09-06_manage_assets.md` — Synty building portraits checklist; `ART_REQUEST_2026-09-06_manage_tab_portraits.md` — owner art request for the redesigned tabs
 - **ARCHIVED (path fixed 2026-09-06 - these seven moved under `_archive/docs/` and the index still

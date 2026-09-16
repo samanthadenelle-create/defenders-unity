@@ -91,6 +91,7 @@ and **429** = the owner's "store stock from DB" spec renumbered from a colliding
 8. ▶ Migrate Enemy/Pet/Dragon/DungeonHero to `ActorAnimator` — deferred from WO-284.
 9. ★ **WO-295** — Legendary "Aegis of Elarion" set + Oathweld ward + per-class weapon perks (combat feel of the set).
 10. ★ **WO-319** — Defend the Tower: town hero model parity + firing-to-target animation + faster fire rate.
+11. ✔ **WO-1734** — Restore the camera occluder FADE (the DEF-151 hard pull-in came back in `486cd7b17` under WO-385's own comment = the owner's "camera spin"), and give the hero the troops' unit-over-wall acquisition rule + anti-oscillation stickiness. FIXED 2026-09-15, awaiting gate + felt-test. *(Number from the `CLI_LANES_WO_NUMBERS.md` banner, not from this doc.)*
 
 ## Lane 4 — UI / HUD  (parallel-safe)
 

@@ -1,0 +1,22 @@
+Assets/AddressableAssetsData/AddressableAssetSettings.asset
+Assets/Editor/NavMeshBakeFinal.cs
+Assets/Editor/Regression/NavMeshReferenceRegression.cs.meta
+Assets/Resources/VFX/_Shared/Materials/Glow.mat
+Assets/Resources/VFX/_Shared/Materials/Spell 4.mat
+Assets/Scenes/MainCastle_Hall.unity
+Assets/Scenes/Main_Castle_Overworld/NavMesh-OuterWorld_NavMeshSurface.asset
+Assets/Scenes/Main_Castle_Overworld/NavMesh-OuterWorld_NavMeshSurface.asset.meta
+Assets/StructureContent/Synty/CrystalMine.prefab
+Assets/StructureContent/Synty/CrystalMine.prefab.meta
+Assets/StructureContent/Synty/GenericContainer.prefab
+Assets/StructureContent/Synty/GenericContainer.prefab.meta
+Assets/StructureContent/Synty/IronMine.prefab
+Assets/StructureContent/Synty/IronMine.prefab.meta
+Assets/StructureContent/Synty/Watermill_Medieval.prefab
+Assets/StructureContent/Synty/arcane tower.prefab
+Assets/StructureContent/Synty/armorer.prefab
+Assets/StructureContent/Synty/barracks.prefab
+Assets/StructureContent/Synty/lumbermill.prefab
+Assets/_Modules/Core/Backend.meta
+Assets/_Modules/Village/Troops/BreachOrderMarker.cs.meta
+Assets/_Modules/Village/Walls/WallRuinPresenter.cs.meta

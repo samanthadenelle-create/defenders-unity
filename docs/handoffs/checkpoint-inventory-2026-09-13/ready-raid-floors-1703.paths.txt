@@ -1,0 +1,4 @@
+Assets/Editor/RaidGroundSavedSceneRegression.cs
+Assets/Editor/RaidGroundSavedSceneRegression.cs.meta
+Assets/Editor/Regression/RaidGroundCoverageRegression.cs
+Assets/Editor/Regression/RaidGroundCoverageRegression.cs.meta

@@ -74,7 +74,8 @@ save is neither.
 > re-authenticated by hand. The 500 was not hypothetical: `api/auth/session.js:104` returns
 > `SERVER_ERROR` when the renewal query throws, e.g. while the `signed_at` column is missing from a
 > database that has not had `api/schema.sql` applied  -  a DEPLOYMENT state, not a verdict on the
-> player's credential. Read at source: `Assets/_Modules/Core/Web3/BackendRequestSigner.cs:558-700`.
+> player's credential. Read at source: `Assets/_Modules/Core/Backend/BackendRequestSigner.cs:558-700`
+(the folder was `Core/Web3/` and the namespace `DeNelle.Core.Web3` until WO-1755, 2026-09-15).
 
 - **`IsCredentialRefusal(long status)`** `:678`  -  **`401 || 403` and nothing else.** STOP: **5xx IS NOT
   ON THIS LIST AND MUST NEVER BE ADDED**; the server's real refusals are its

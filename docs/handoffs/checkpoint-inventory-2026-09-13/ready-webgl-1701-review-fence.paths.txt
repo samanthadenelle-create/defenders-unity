@@ -1,0 +1,9 @@
+Assets/Editor/KnightGearProofCapture.cs
+Assets/Editor/Regression/HeroAssetLoaderWebGlRegression.cs
+Assets/_Modules/Core/Addressables/DependencyClosureTrace.cs
+Assets/_Modules/Core/Addressables/HeroContentPrewarmer.cs
+Assets/_Modules/Village/HubStructureVisualInjector.cs
+WorkOrders/WORK_ORDER_1701_webgl_hero_art_falls_back_to_blink_base_sync_addressables_load.RESULT.md
+WorkOrders/WORK_ORDER_1701_webgl_hero_art_falls_back_to_blink_base_sync_addressables_load.md
+Assets/Editor/Regression/AuthoredGhostPreviewRegression.cs
+Assets/Editor/Regression/AuthoredGhostPreviewRegression.cs.meta

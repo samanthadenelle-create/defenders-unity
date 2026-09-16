@@ -1,0 +1,6 @@
+Assets/_Modules/Village/Hero/HeroHealth.cs
+Assets/_Modules/Village/World/Camps/RaidVictoryController.cs
+Assets/_Modules/Village/Troops/RaidDeployController.cs
+Assets/Editor/Regression/RaidExitParityRegression.cs
+WorkOrders/WORK_ORDER_1768_hero_down_after_victory_resettles_army_as_failure.md
+WorkOrders/WORK_ORDER_1768_hero_down_after_victory_resettles_army_as_failure.RESULT.md

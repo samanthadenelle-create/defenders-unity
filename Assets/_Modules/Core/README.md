@@ -19,7 +19,7 @@ Every other module may reference Core; Core references nothing first-party.
 | `World/` | `ZoneManager`, `RegionZone`, `RegionSpawnTable`, `GameClock`, `CrystalGrade`, ward/world content |
 | `UI/` | `PanelManager`, `PanelRouter`, `AddressableUIManager`, `ShopTheme`, `ElarionUi` (shared in-game UI theme: palette + UI-Toolkit helpers + swappable `Resources/UI/panel_bg`/`menu_bg` hook) |
 | `Quests/` `Promo/` `Referral/` `Analytics/` | DailyQuests, promo codes, referrals, EventTracker |
-| `Web3/` | `IJupiterService`, `IWalletSigner` (interfaces only; impls in Wallet/Web3 modules) |
+| `Backend/` | `BackendRequestSigner`, `IWalletSigner`, `IJupiterService` (interfaces only; impls in Wallet/Web3 modules). ⚠ **Was `Web3/` until WO-1755 (2026-09-15)** — folder AND namespace (`DeNelle.Core.Web3` → `DeNelle.Core.Backend`) were renamed together because IL2CPP writes the SOURCE PATH into `global-metadata.dat`, so the folder name was itself a live `web3` hit in the Google Play artifact |
 | `Addressables/` | Group config, memory profiler, `SkinController` |
 | `Events/` `Theme/` `Debug/` | DialogueEventBus, Theme, DebugCanvasUI |
 | `Tests/` | Save/load round-trip, migrator, schema validation |
