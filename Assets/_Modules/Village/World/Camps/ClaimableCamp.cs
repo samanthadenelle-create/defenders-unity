@@ -499,7 +499,7 @@ namespace DeNelle.Village.World.Camps
         // OuterWorld, so they are effectively persistent / seamed into the world.
         // =====================================================================
         private static readonly MineResource[] CampNodeResources =
-            { MineResource.Wood, MineResource.Iron, MineResource.Food, MineResource.AetherCrystal };
+            { MineResource.Wood, MineResource.Iron, MineResource.Stone, MineResource.AetherCrystal };
         private bool _nodesSpawned;
 
         private void SpawnHarvestNodes()

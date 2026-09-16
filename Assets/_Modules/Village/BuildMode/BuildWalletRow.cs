@@ -35,7 +35,7 @@ namespace DeNelle.Village
         {
             ElarionUiKit.CurrencyKind.Wood,
             ElarionUiKit.CurrencyKind.Iron,
-            ElarionUiKit.CurrencyKind.Food,     // Stone (concept id via ConceptIdFor)
+            ElarionUiKit.CurrencyKind.Stone,     // Stone (concept id via ConceptIdFor)
             ElarionUiKit.CurrencyKind.Crystal,
             ElarionUiKit.CurrencyKind.Gold,
         };

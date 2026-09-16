@@ -99,7 +99,7 @@ namespace DeNelle.Editor
         private static readonly Pick[] OwnerPicks =
         {
             new Pick(HarvestResource.Wood, "Wood_Log_A.fbx"),
-            new Pick(HarvestResource.Food, "Food_Flour.fbx"),
+            new Pick(HarvestResource.Stone, "Food_Flour.fbx"),
             new Pick(HarvestResource.Iron, "Iron_Bar.fbx"),
             // HarvestResource.Crystals: deliberately absent - see the header. Falls back to the bar.
         };

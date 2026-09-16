@@ -155,7 +155,7 @@ namespace DeNelle.Editor
                 throwaway.Wood = 0;
                 throwaway.Iron = 0;
                 var bal = throwaway.Resources;
-                bal.Food = 0;
+                bal.Stone = 0;
                 bal.Crystals = 0;
                 bal.Coins = 0;
                 throwaway.Resources = bal;
@@ -192,20 +192,20 @@ namespace DeNelle.Editor
                                      $"({(int)ChannelId.Train}).");
                 }
                 var after = throwaway.Resources;
-                if (after.Coins != 0 || throwaway.Wood != 0 || throwaway.Iron != 0 || after.Food != 0 || after.Crystals != 0)
+                if (after.Coins != 0 || throwaway.Wood != 0 || throwaway.Iron != 0 || after.Stone != 0 || after.Crystals != 0)
                     failures.Add($"[case A] the wallet MOVED on a free train: coins={after.Coins} wood={throwaway.Wood} " +
-                                 $"iron={throwaway.Iron} food={after.Food} crystals={after.Crystals}. Nothing may be debited.");
+                                 $"iron={throwaway.Iron} food={after.Stone} crystals={after.Crystals}. Nothing may be debited.");
 
                 // -- CASE B: upgrade with nothing ------------------------------
                 int level = BarracksService.TroopLevel(TroopId);
                 var upgradeCost = BarracksProgression.TroopUpgradeCost(TroopId, level + 1);
                 float upgradeSeconds = BarracksProgression.TroopUpgradeSeconds(TroopId, level + 1);
                 bool canUpgrade = BarracksService.CanUpgradeTroop(TroopId, out string upgradeReason);
-                log.AppendLine($"  case B - TroopUpgradeCost(L{level + 1}) wood={upgradeCost.Wood} food={upgradeCost.Food} " +
+                log.AppendLine($"  case B - TroopUpgradeCost(L{level + 1}) wood={upgradeCost.Wood} food={upgradeCost.Stone} " +
                                $"iron={upgradeCost.Iron} crystals={upgradeCost.Crystals} coins={upgradeCost.Coins}; " +
                                $"seconds={upgradeSeconds}; CanUpgradeTroop={canUpgrade} (\"{upgradeReason}\")");
 
-                if (upgradeCost.Wood != 0 || upgradeCost.Food != 0 || upgradeCost.Iron != 0 ||
+                if (upgradeCost.Wood != 0 || upgradeCost.Stone != 0 || upgradeCost.Iron != 0 ||
                     upgradeCost.Crystals != 0 || upgradeCost.Coins != 0)
                     failures.Add("[case B] BarracksProgression.TroopUpgradeCost is NOT empty. Owner 2026-09-04 23:16: " +
                                  "\"just time\" - the only price of a troop upgrade is TroopUpgradeSeconds. The " +
@@ -238,9 +238,9 @@ namespace DeNelle.Editor
                                      $"{upgradeSeconds * 1000.0}ms (TroopUpgradeSeconds).");
                 }
                 var afterB = throwaway.Resources;
-                if (afterB.Coins != 0 || throwaway.Wood != 0 || throwaway.Iron != 0 || afterB.Food != 0 || afterB.Crystals != 0)
+                if (afterB.Coins != 0 || throwaway.Wood != 0 || throwaway.Iron != 0 || afterB.Stone != 0 || afterB.Crystals != 0)
                     failures.Add($"[case B] the wallet MOVED on a free upgrade: coins={afterB.Coins} wood={throwaway.Wood} " +
-                                 $"iron={throwaway.Iron} food={afterB.Food} crystals={afterB.Crystals}.");
+                                 $"iron={throwaway.Iron} food={afterB.Stone} crystals={afterB.Crystals}.");
 
                 // -- CASE E: REBALANCING AN ARMY YOU ALREADY OWN QUOTES NO GOLD (WO-1586) --
                 // Owner, 2026-09-07 (Seeker 2026.09.07.359076): "i couldnt seem to rebalance my army

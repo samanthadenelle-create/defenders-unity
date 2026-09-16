@@ -60,7 +60,8 @@ namespace DeNelle.Village
         // Shop integration (resource costs). Vendor SHOPS charge GOLD via GearAppraisal;
         // these legacy fields are carried for parity with WeaponDef / ArmorDef.
         public int buyWood;
-        public int buyFood;
+        [UnityEngine.Serialization.FormerlySerializedAs("buyFood")]
+        [Newtonsoft.Json.JsonProperty("buyFood")] public int buyStone;
         public int buyIron;
         public int buyCrystals;
 

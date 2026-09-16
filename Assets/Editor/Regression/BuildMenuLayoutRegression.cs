@@ -405,29 +405,29 @@ namespace DeNelle.Editor.Regression
             public int Coins { get; set; }
             public int Wood { get; set; }
             public int Iron { get; set; }
-            public int Food { get; set; }
+            public int Stone { get; set; }
             public int Crystals { get; set; }
 
             public event Action<ResourceSnapshot> OnChanged;
 
             public bool CanAfford(DeNelle.Village.ResourceCost cost)
-                => Wood >= cost.Wood && Food >= cost.Food && Iron >= cost.Iron
+                => Wood >= cost.Wood && Stone >= cost.Stone && Iron >= cost.Iron
                    && Crystals >= cost.Crystals && Coins >= cost.Coins;
 
             public bool TrySpend(DeNelle.Village.ResourceCost cost)
             {
                 if (!CanAfford(cost)) return false;
-                Wood -= cost.Wood; Food -= cost.Food; Iron -= cost.Iron;
+                Wood -= cost.Wood; Stone -= cost.Stone; Iron -= cost.Iron;
                 Crystals -= cost.Crystals; Coins -= cost.Coins;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 return true;
             }
 
             public DeNelle.Village.ResourceCost Grant(DeNelle.Village.ResourceCost amount)
             {
-                Wood += amount.Wood; Food += amount.Food; Iron += amount.Iron;
+                Wood += amount.Wood; Stone += amount.Stone; Iron += amount.Iron;
                 Crystals += amount.Crystals; Coins += amount.Coins;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 // Uncapped fake ledger: every requested unit lands, so applied == requested.
                 return amount;
             }
@@ -435,7 +435,7 @@ namespace DeNelle.Editor.Regression
 
         private static void CaseCostLine(List<string> failures, List<string> notes)
         {
-            var ledger = new FakeLedger { Wood = 250, Iron = 12, Food = 0, Crystals = 0 };
+            var ledger = new FakeLedger { Wood = 250, Iron = 12, Stone = 0, Crystals = 0 };
             var vm = new BuildMenuVM(ledger, new PlacedTowerListVM(() => new Tower[0]), null, 0, null);
             var cost = new CoreCost { wood = 70, iron = 40 };
 

@@ -323,7 +323,7 @@ namespace DeNelle.Village.UI
             // every axis ("accrued over 13221s: worker-owned=0 node(s), total=0"), which is why
             // no haul row drew -- correctly.
             AddResourceRow(body, ref y, _result.AetherCrystals, "AETHER CRYSTALS");
-            AddResourceRow(body, ref y, _result.Food, "STONE");
+            AddResourceRow(body, ref y, _result.Stone, "STONE");
             AddResourceRow(body, ref y, _result.Iron, "IRON");
             AddResourceRow(body, ref y, _result.Wood, "WOOD");
             // WO-1408 -- THE DOORS COME BEFORE THE INFORMATIONAL LINES, and that ordering is the

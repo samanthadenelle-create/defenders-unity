@@ -15,7 +15,7 @@
 // impossible). So all three are measured separately:
 //   1. the OUTCOME is AlreadyClaimed;
 //   2. all THREE wallet deltas are ZERO, measured off the same fields the grant
-//      writes (GameState.Wood / .Iron / .Resources.Food) -- not inferred from (1);
+//      writes (GameState.Wood / .Iron / .Resources.Stone) -- not inferred from (1);
 //   3. a [Flow:HonestFeedback] line carrying HonestFeedbackGrant.AlreadyClaimedTrace
 //      was actually emitted.
 // (3) is captured by swapping FlowTrace.Sink for a recorder that forwards to the
@@ -94,7 +94,7 @@ namespace DeNelle.Editor
                 // ── FIRST claim: must pay, and must set the flag ───────────────
                 var first = HonestFeedbackGrant.TryApply(out var firstApplied);
                 log.AppendLine($"  first claim: outcome={first} applied W{firstApplied.Wood}/" +
-                               $"F{firstApplied.Food}/I{firstApplied.Iron}");
+                               $"F{firstApplied.Stone}/I{firstApplied.Iron}");
                 if (first != ThankYouGrantOutcome.Applied)
                 {
                     failures.Add(Tag + " [first-claim-pays] the FIRST TryApply returned " + first +
@@ -113,7 +113,7 @@ namespace DeNelle.Editor
                 }
 
                 // ── SECOND claim: must move nothing, and must SAY so ───────────
-                int wBefore = throwaway.Wood, fBefore = throwaway.Resources.Food, iBefore = throwaway.Iron;
+                int wBefore = throwaway.Wood, fBefore = throwaway.Resources.Stone, iBefore = throwaway.Iron;
 
                 FlowTrace.Sink = recorder;
                 recorder.Lines.Clear();
@@ -121,7 +121,7 @@ namespace DeNelle.Editor
                 FlowTrace.Sink = priorSink;
 
                 int dWood = throwaway.Wood - wBefore;
-                int dFood = throwaway.Resources.Food - fBefore;
+                int dFood = throwaway.Resources.Stone - fBefore;
                 int dIron = throwaway.Iron - iBefore;
                 log.AppendLine($"  second claim: outcome={second} measured deltas wood=+{dWood} " +
                                $"stone(Food)=+{dFood} iron=+{dIron}; trace lines captured={recorder.Lines.Count}");
@@ -137,9 +137,9 @@ namespace DeNelle.Editor
                     failures.Add(Tag + " [second-claim-moves-nothing] the second claim MOVED the wallet by W" +
                                  dWood + "/stone" + dFood + "/I" + dIron + ". A refused claim must be a no-op " +
                                  "in the wallet, not only in the return value");
-                if (secondApplied.Wood != 0 || secondApplied.Food != 0 || secondApplied.Iron != 0)
+                if (secondApplied.Wood != 0 || secondApplied.Stone != 0 || secondApplied.Iron != 0)
                     failures.Add(Tag + " [second-claim-reports-nothing] the second claim reported an applied " +
-                                 "basket of W" + secondApplied.Wood + "/F" + secondApplied.Food + "/I" +
+                                 "basket of W" + secondApplied.Wood + "/F" + secondApplied.Stone + "/I" +
                                  secondApplied.Iron + " -- a refused claim must report an empty basket, or a " +
                                  "caller will announce resources nobody received");
 

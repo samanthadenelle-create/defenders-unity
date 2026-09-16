@@ -95,11 +95,11 @@ namespace DeNelle.Core.Tests
             Assert.That(reloaded.Onboarded, Is.False);
             Assert.That(reloaded.BestWave, Is.EqualTo(0));
             Assert.That(reloaded.Resources.Crystals, Is.EqualTo(250));
-            Assert.That(reloaded.Resources.Food, Is.EqualTo(80));
+            Assert.That(reloaded.Resources.Stone, Is.EqualTo(80));
             Assert.That(reloaded.Resources.Coins, Is.EqualTo(StartingBudget.StrategicGold),
                 "reset/relaunch preserves the owner-ruled founding gold seed");
             Assert.That(reloaded.Voidshards, Is.EqualTo(5));
-            // WO-1212: GameState.Stone is retired. The live Stone slot (Resources.Food = 80)
+            // WO-1212: GameState.Stone is retired. The live Stone slot (Resources.Stone = 80)
             // is asserted above and is deliberately UNCHANGED by the retirement.
             // WO-682: strategic placement is always on - New Game seeds the core-kit budget.
             Assert.That(reloaded.Iron, Is.EqualTo(StartingBudget.StrategicIron));
@@ -500,7 +500,7 @@ namespace DeNelle.Core.Tests
             // #5 resources
             Assert.That(a.Resources.Crystals, Is.EqualTo(e.Resources.Value.Crystals),
                 "#5 resources.crystals");
-            Assert.That(a.Resources.Food, Is.EqualTo(e.Resources.Value.Food), "#5 resources.food");
+            Assert.That(a.Resources.Stone, Is.EqualTo(e.Resources.Value.Stone), "#5 resources.food");
             Assert.That(a.Resources.Coins, Is.EqualTo(e.Resources.Value.Coins), "#5 resources.coins");
 
             // #6..#8

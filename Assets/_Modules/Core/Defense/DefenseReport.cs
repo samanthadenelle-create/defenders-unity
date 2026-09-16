@@ -31,7 +31,7 @@
 //   LOOTING. A siege bills ONCE per attack: structural damage, a repair bill, and theft
 //   of a PERCENTAGE of UNPROTECTED bank resources under a PROTECTED FLOOR and a
 //   PER-ATTACK CAP.
-//       LOOTABLE      Wood, Iron, Stone (the balance internally NAMED Food), Coins
+//       LOOTABLE      Wood, Iron, Stone (the balance internally NAMED Stone), Coins
 //       UNTOUCHABLE   Crystals, SKR, purchased goods, equipped gear
 //   DefenseReportBuilder.BuildStakes computes the ledger from the bank's standing;
 //   ApplyStakes performs THE SINGLE DEBIT, of exactly those numbers, and seals it. What
@@ -311,7 +311,8 @@ namespace DeNelle.Core.Defense
         /// <summary>Flattened repair cost.</summary>
         [JsonProperty("ri")] public int RepairIron;
         /// <summary>Flattened repair cost.</summary>
-        [JsonProperty("rf")] public int RepairFood;
+        [UnityEngine.Serialization.FormerlySerializedAs("RepairFood")]
+        [JsonProperty("rf")] public int RepairStone;
         /// <summary>Flattened repair cost.</summary>
         [JsonProperty("rc")] public int RepairCrystals;
         /// <summary>False = nothing alive could price the row. Cost is OMITTED, never faked
@@ -389,10 +390,11 @@ namespace DeNelle.Core.Defense
         [JsonProperty("w")] public int Wood;
         /// <summary>Iron taken from the bank. 0 on a held defence or a balance under the floor.</summary>
         [JsonProperty("i")] public int Iron;
-        /// <summary>STONE taken from the bank -- the balance internally NAMED Food (owner ruling
+        /// <summary>STONE taken from the bank -- the balance internally NAMED Stone (owner ruling
         /// 2026-08-27: "food was depreicated and is stone"). The wire key stays "f" because it is a
         /// live save key; the player-facing word is "stone".</summary>
-        [JsonProperty("f")] public int Food;
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [JsonProperty("f")] public int Stone;
         /// <summary>GOLD taken from the bank -- <c>GameState.Resources.Coins</c>. Additive on the
         /// wire (owner ruling 2026-08-27 added coins to the lootable set): an older record with no
         /// "g" key deserialises to 0, which is correct -- no coin was ever taken under the earlier
@@ -429,7 +431,7 @@ namespace DeNelle.Core.Defense
 
         /// <summary>True when every bucket is zero — a held defence, or a pre-ruling record.</summary>
         [JsonIgnore]
-        public bool IsEmpty => Wood == 0 && Iron == 0 && Food == 0 && Coins == 0
+        public bool IsEmpty => Wood == 0 && Iron == 0 && Stone == 0 && Coins == 0
                                && Crystals == 0 && Magic == 0;
 
         /// <summary>The interim ledger: nothing taken, stamped with the interim rule id. Still the

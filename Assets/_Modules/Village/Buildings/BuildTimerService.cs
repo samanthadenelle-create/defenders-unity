@@ -671,6 +671,119 @@ namespace DeNelle.Village
             => StartBuilderJob(structureId, BuildJobType.Upgrade, JobKind.Upgrade,
                                Mathf.Max(0, targetLevel - 2), targetLevel, paid: paid);
 
+        /// <summary>Owned property, payment and queued job share one save; no story cell key is used.</summary>
+        public bool TryStartOwnedTownUpgrade(string instanceId, out BuildJobData? queuedJob, out string reason)
+        {
+            queuedJob = null;
+            var service = GameStateService.Instance;
+            var property = service?.State?.OwnedBase;
+            var record = property?.structures.Find(s => s.instanceId == instanceId);
+            if (record == null) { reason = "The owned upgrade target is missing."; return false; }
+            var entry = DeNelle.Core.Catalog.CatalogRegistry.Get(record.placement.itemId);
+            int maximum = Buildings.Progression.PlacedStructureUpgradeService.MaxLevelFor(entry);
+            if (!OwnedBaseConstruction.TryUpgrade(property, property.revision, instanceId, record.placement.level, maximum,
+                out var completed, out reason) ||
+                !World.Camps.OwnedTownLayoutSnapshot.TryCreate(completed, service.State.HeroClass, out _, out reason)) return false;
+            var price = Buildings.Progression.PlacedStructureUpgradeService.CostForNext(entry, record.placement.level);
+            string key = OwnedTownJobKey.Compose(property.baseId, instanceId);
+            var channel = Builder;
+            if (channel == null || IndexInChannel(channel, key) >= 0)
+            { reason = "The upgrade queue is unavailable or this structure already has a job."; return false; }
+            if (!DeNelle.Core.FeatureFlags.BuildTimers)
+                return service.TryCommitOwnedBaseConstruction(property.revision, completed, price, default, out _, out reason);
+            var staged = new ChannelState {
+                BoughtSlots = channel.BoughtSlots, TemporarySlotClaimed = channel.TemporarySlotClaimed,
+                TemporarySlotEndsAtUnixMs = channel.TemporarySlotEndsAtUnixMs,
+                ActiveJobs = new List<BuildJobData>(channel.ActiveJobs), PendingQueue = new List<BuildJobData>(channel.PendingQueue)
+            };
+            float haste = Mathf.Clamp01(Talents.HeroTalentModifiers.StatSum(HeroTalentClassReader.Slug(), "buildTime"));
+            var job = new BuildJobData {
+                StructureId = key, JobType = (int)BuildJobType.Upgrade, Kind = (int)JobKind.Upgrade,
+                Channel = (int)ChannelId.Builder, TargetTier = record.placement.level + 1, Paid = ToJobCost(price),
+                DurationMs = Config.DurationSecondsForTier(Mathf.Max(0, record.placement.level - 1), BuildJobKind.Upgrade) * 1000.0 * (1.0 - haste)
+            };
+            var originalInventory = service.State.GearInventory;
+            Dictionary<string, int> tokenInventory = null;
+            if (job.DurationMs > 0 && ConvenienceRedeemer.TryPlanInstantBuildConsumption(out tokenInventory, out var tokenKey))
+            { job.DurationMs = 0; job.InstantBuildTokenKey = tokenKey; }
+            bool started = ObsidianQueueEngine.Enqueue(staged, BuilderSlots, job, TimeSource.NowUnixMs(), QueueDepthLimit(ChannelId.Builder), out bool accepted);
+            if (!accepted) { reason = LineFullMessage(ChannelId.Builder); return false; }
+            var scheduled = property.Clone(); scheduled.revision++;
+            Queue.Channels[ChannelId.Builder] = staged;
+            if (tokenInventory != null) service.State.GearInventory = tokenInventory;
+            if (!service.TryCommitOwnedBaseConstruction(property.revision, scheduled, price, default, out _, out reason))
+            { Queue.Channels[ChannelId.Builder] = channel; service.State.GearInventory = originalInventory; return false; }
+            queuedJob = FindInChannel(staged, key, out _);
+            if (started && queuedJob.HasValue) JobStarted?.Invoke(queuedJob.Value);
+            RaiseQueueChanged();
+            if (started && job.DurationMs <= 0) CompleteJob(key);
+            return true;
+        }
+
+        /// <summary>Placement adapter calls after catalog/plot/navigation and displayed-price validation.</summary>
+        internal bool TryStartOwnedTownBuild(string instanceId, PlacedStructureData placement, int expectedRevision,
+            DeNelle.Core.Catalog.ResourceCost price, bool consumeFreeBuild, BuildGraceReason grace,
+            out BuildJobData? queuedJob, out string reason)
+        {
+            queuedJob = null;
+            var service = GameStateService.Instance;
+            var property = service?.State?.OwnedBase;
+            if (!OwnedBaseConstruction.TryBeginBuild(property, expectedRevision, instanceId, placement, out var proposed, out reason) ||
+                !World.Camps.OwnedTownLayoutSnapshot.TryCreate(proposed, service.State.HeroClass, out _, out reason)) return false;
+            var entry = DeNelle.Core.Catalog.CatalogRegistry.Get(placement.itemId);
+            if (consumeFreeBuild && (!price.IsZero || !BuildModeController.FreeBuildAvailable(entry)))
+            { reason = "The free construction allowance changed; review the placement again."; return false; }
+            string key = OwnedTownJobKey.Compose(property.baseId, instanceId);
+            var channel = Builder;
+            if (channel == null || IndexInChannel(channel, key) >= 0)
+            { reason = "The construction queue is unavailable or this identity is already queued."; return false; }
+            var staged = new ChannelState {
+                BoughtSlots = channel.BoughtSlots, TemporarySlotClaimed = channel.TemporarySlotClaimed,
+                TemporarySlotEndsAtUnixMs = channel.TemporarySlotEndsAtUnixMs,
+                ActiveJobs = new List<BuildJobData>(channel.ActiveJobs), PendingQueue = new List<BuildJobData>(channel.PendingQueue)
+            };
+            float haste = Mathf.Clamp01(Talents.HeroTalentModifiers.StatSum(HeroTalentClassReader.Slug(), "buildTime"));
+            double duration = Config.DurationSecondsForTier(Config.TierForCost(BuildModeController.CostFor(entry)), BuildJobKind.Build) * 1000.0;
+            duration = GraceAdjustedDurationMs(duration, grace, false, Config.firstBuildSeconds) * (1.0 - haste);
+            var job = new BuildJobData { StructureId = key, JobType = (int)BuildJobType.Build, Kind = (int)JobKind.Build,
+                Channel = (int)ChannelId.Builder, TargetTier = 1, Paid = ToJobCost(price), DurationMs = duration };
+            var originalInventory = service.State.GearInventory;
+            var originalFreeBuilds = service.State.FreeBuildsUsed;
+            var originalEverBuilt = service.State.EverBuiltStructureIds;
+            Dictionary<string, int> tokenInventory = null;
+            bool timed = DeNelle.Core.FeatureFlags.BuildTimers;
+            if (timed && job.DurationMs > 0 && ConvenienceRedeemer.TryPlanInstantBuildConsumption(out tokenInventory, out var tokenKey))
+            { job.DurationMs = 0; job.InstantBuildTokenKey = tokenKey; }
+            bool started = false;
+            if (timed)
+            {
+                started = ObsidianQueueEngine.Enqueue(staged, BuilderSlots, job, TimeSource.NowUnixMs(), QueueDepthLimit(ChannelId.Builder), out bool accepted);
+                if (!accepted) { reason = LineFullMessage(ChannelId.Builder); return false; }
+                Queue.Channels[ChannelId.Builder] = staged;
+            }
+            else proposed.structures.Find(s => s.instanceId == instanceId).constructionPending = false;
+            if (tokenInventory != null) service.State.GearInventory = tokenInventory;
+            if (consumeFreeBuild)
+            {
+                service.State.FreeBuildsUsed = originalFreeBuilds != null ? new List<string>(originalFreeBuilds) : new List<string>();
+                service.State.FreeBuildsUsed.Add(placement.itemId);
+            }
+            service.State.EverBuiltStructureIds = originalEverBuilt != null ? new List<string>(originalEverBuilt) : new List<string>();
+            service.State.MarkEverBuilt(placement.itemId);
+            if (!service.TryCommitOwnedBaseConstruction(expectedRevision, proposed, price, default, out _, out reason))
+            {
+                Queue.Channels[ChannelId.Builder] = channel;
+                service.State.GearInventory = originalInventory; service.State.FreeBuildsUsed = originalFreeBuilds;
+                service.State.EverBuiltStructureIds = originalEverBuilt;
+                return false;
+            }
+            if (timed) queuedJob = FindInChannel(staged, key, out _);
+            if (started && queuedJob.HasValue) JobStarted?.Invoke(queuedJob.Value);
+            RaiseQueueChanged();
+            if (started && job.DurationMs <= 0) CompleteJob(key);
+            return true;
+        }
+
         /// <summary>
         /// True when a NEW Builder job would start immediately (a free Builder slot exists).
         /// With the queue a full slot no longer rejects — it queues — so callers may skip this
@@ -1015,7 +1128,7 @@ namespace DeNelle.Village
 
         /// <summary>WO-911 — the catalog cost shape (structures-catalog / upgradeCost) as a paid basket.</summary>
         public static JobCost ToJobCost(DeNelle.Core.Catalog.ResourceCost c)
-            => new JobCost(c.wood, c.food, c.iron, c.crystals);
+            => new JobCost(c.wood, c.stone, c.iron, c.crystals);
 
         /// <summary>WO-911/v39 — the EconomyService cost shape as a fully refundable paid basket.</summary>
         /// <remarks>
@@ -1025,7 +1138,7 @@ namespace DeNelle.Village
         /// </remarks>
         public static JobCost ToJobCost(DeNelle.Village.ResourceCost c)
         {
-            return new JobCost(c.Wood, c.Food, c.Iron, c.Crystals, coins: c.Coins);
+            return new JobCost(c.Wood, c.Stone, c.Iron, c.Crystals, coins: c.Coins);
         }
 
         /// <summary>WO-911 — a ledger cost-line list (+ optional magic) as a paid basket.</summary>
@@ -1040,7 +1153,7 @@ namespace DeNelle.Village
                 switch (line.Resource)
                 {
                     case Ledger.HarvestResource.Wood: jc.Wood += line.Amount; break;
-                    case Ledger.HarvestResource.Food: jc.Food += line.Amount; break;
+                    case Ledger.HarvestResource.Stone: jc.Stone += line.Amount; break;
                     case Ledger.HarvestResource.Iron: jc.Iron += line.Amount; break;
                     case Ledger.HarvestResource.Crystals: jc.Crystals += line.Amount; break;
                 }
@@ -1375,6 +1488,9 @@ namespace DeNelle.Village
                 return false;
             }
 
+            if (OwnedTownJobKey.IsOwned(structureId))
+                return TryFinishOwnedTownUpgrade(channel, structureId, price, out failure);
+
             // ⛔ WO-1372 Lane D — THE WALLET BRANCH. A TrainTroop job is paid in GOLD (owner
             // 2026-09-04: "gold buys hire mercenaries instead of waiting on time"); every other
             // kind pays crystals below, byte-for-byte as before. This is the ONE place a coins
@@ -1555,12 +1671,13 @@ namespace DeNelle.Village
             if (i < 0) return;
 
             var job = ch.ActiveJobs[i];
+            if (!BeforeJobRemoval(job)) return;
             ch.ActiveJobs.RemoveAt(i);
             OnJobCompleted(job);
 
             // The freed slot pulls the next queued job; then resolve any newly-due (cascade).
             ObsidianQueueEngine.PullIntoFreeSlots(ch, SlotCount(channel), TimeSource.NowUnixMs());
-            ObsidianQueueEngine.Resolve(ch, SlotCount(channel), TimeSource.NowUnixMs(), OnJobCompleted);
+            ObsidianQueueEngine.Resolve(ch, SlotCount(channel), TimeSource.NowUnixMs(), OnJobCompleted, BeforeJobRemoval);
             Persist();
             RaiseQueueChanged();
         }
@@ -1617,13 +1734,14 @@ namespace DeNelle.Village
             }
 
             var job = ch.PendingQueue[p];
+            if (!BeforeJobRemoval(job)) return;
             ch.PendingQueue.RemoveAt(p);            // the rest shift up; pending jobs hold no slot
             DeNelle.Core.Diagnostics.FlowTrace.Step("Obsidian",
                 $"Complete Now on a QUEUED job '{structureId}' ({channel}) — lifted from position {p} of the line.");
             OnJobCompleted(job);
 
             ObsidianQueueEngine.PullIntoFreeSlots(ch, SlotCount(channel), TimeSource.NowUnixMs());
-            ObsidianQueueEngine.Resolve(ch, SlotCount(channel), TimeSource.NowUnixMs(), OnJobCompleted);
+            ObsidianQueueEngine.Resolve(ch, SlotCount(channel), TimeSource.NowUnixMs(), OnJobCompleted, BeforeJobRemoval);
             Persist();
             RaiseQueueChanged();
         }
@@ -1634,8 +1752,47 @@ namespace DeNelle.Village
         // the extensible kinds (Repair/TrainTroop/UnlockTier/LearnMagic/…) — a no-op for Build/
         // Upgrade so they never double-apply; (3) the JobCompleted event (UnderConstructionVisual
         // reveal etc.). Guarded so one bad apply logs + never blocks the cascade.
+        private bool TryFinishOwnedTownUpgrade(ChannelId channel, string key, int price, out string reason)
+        {
+            reason = null;
+            var ch = GetChannel(channel);
+            var found = FindInChannel(ch, key, out _);
+            if (channel != ChannelId.Builder || !found.HasValue || price <= 0)
+            { reason = "The owned upgrade is unavailable."; return false; }
+            if (!World.Camps.OwnedTownUpgradeCompletion.TryPlan(found.Value, out var completed, out reason)) return false;
+            // A durable level with an old queue record is cleanup work, never another paid finish.
+            if (completed == null) { CompleteAnyJob(channel, key); return true; }
+            var service = GameStateService.Instance;
+            if (service.State.Resources.Crystals < price)
+            { reason = InsufficientCrystalsPrefix + price + " needed, " + service.State.Resources.Crystals + " held."; return false; }
+            var staged = new ChannelState {
+                BoughtSlots = ch.BoughtSlots, TemporarySlotClaimed = ch.TemporarySlotClaimed,
+                TemporarySlotEndsAtUnixMs = ch.TemporarySlotEndsAtUnixMs,
+                ActiveJobs = new List<BuildJobData>(ch.ActiveJobs), PendingQueue = new List<BuildJobData>(ch.PendingQueue)
+            };
+            staged.ActiveJobs.RemoveAll(j => j.StructureId == key);
+            staged.PendingQueue.RemoveAll(j => j.StructureId == key);
+            ObsidianQueueEngine.PullIntoFreeSlots(staged, SlotCount(channel), TimeSource.NowUnixMs());
+            Queue.Channels[channel] = staged;
+            if (!service.TryCommitOwnedBaseConstruction(service.State.OwnedBase.revision, completed,
+                new DeNelle.Core.Catalog.ResourceCost { crystals = price }, default, out _, out reason))
+            { Queue.Channels[channel] = ch; return false; }
+            World.Camps.OwnedTownUpgradeCompletion.RefreshLive(found.Value);
+            OnJobCompleted(found.Value); RaiseQueueChanged();
+            return true;
+        }
+
+        private bool BeforeJobRemoval(BuildJobData job)
+        {
+            if (!OwnedTownJobKey.IsOwned(job.StructureId)) return true;
+            if (World.Camps.OwnedTownUpgradeCompletion.TryCommit(job, out var reason)) return true;
+            DeNelle.Core.Diagnostics.FlowTrace.Warn("OwnedTown", "Upgrade remains queued for retry: " + reason);
+            return false;
+        }
+
         private void OnJobCompleted(BuildJobData job)
         {
+            if (OwnedTownJobKey.IsOwned(job.StructureId)) { JobCompleted?.Invoke(job); return; }
             if (job.Type == BuildJobType.Upgrade && job.TargetTier > 0)
                 DeNelle.Core.Diagnostics.Guard.Try("BuildTimer", "apply completed upgrade",
                     () => Buildings.Progression.CompletedUpgradeApplier.Apply(job));
@@ -1685,6 +1842,8 @@ namespace DeNelle.Village
         /// <summary>Cancel a job on <paramref name="channel"/> without completing it. Auto-pulls the queue on success.</summary>
         public bool CancelChannelJob(ChannelId channel, string structureId)
         {
+            // Owned construction cancellation must commit its refund with removal, never through the caller-refunds path.
+            if (OwnedTownJobKey.IsOwned(structureId)) return false;
             var ch = GetChannel(channel);
             if (ch == null) return false;
 
@@ -1772,6 +1931,8 @@ namespace DeNelle.Village
         {
             refunded = default;
             unrefundedCurrency = "";
+            if (OwnedTownJobKey.IsOwned(structureId))
+                return TryCancelOwnedTownUpgrade(channel, structureId, out refunded, out _);
             var ch = GetChannel(channel);
             if (ch == null) return false;
 
@@ -1809,7 +1970,7 @@ namespace DeNelle.Village
                 state.Iron += paid.Iron;
                 state.Magic += paid.Magic;
                 var wallet = state.Resources;
-                wallet.Food += paid.Food;
+                wallet.Stone += paid.Stone;
                 wallet.Crystals += paid.Crystals;
                 wallet.Coins += paid.Coins;
                 state.Resources = wallet;
@@ -1821,6 +1982,75 @@ namespace DeNelle.Village
             DeNelle.Core.Diagnostics.FlowTrace.Step("Obsidian",
                 $"cancelled {(wasActive ? "ACTIVE" : "queued")} '{structureId}' on {channel} — " +
                 $"refunded 100% ({paid.Describe()}).");
+            return true;
+        }
+
+        public bool TryCancelOwnedTownUpgrade(ChannelId channel, string key, out JobCost refunded, out string reason)
+        {
+            refunded = default; reason = null;
+            var service = GameStateService.Instance;
+            var state = service?.State;
+            if (channel != ChannelId.Builder || !OwnedTownJobKey.TryParse(key, out var baseId, out var instanceId) ||
+                state?.OwnedBase == null || state.OwnedBase.baseId != baseId)
+            { reason = "The upgrade does not belong to this town."; return false; }
+            var ch = GetChannel(channel);
+            var found = FindInChannel(ch, key, out _);
+            var record = state.OwnedBase.structures.Find(s => s.instanceId == instanceId);
+            bool newBuild = found.HasValue && found.Value.Type == BuildJobType.Build;
+            if (!found.HasValue || record == null || record.retired ||
+                (newBuild ? !record.constructionPending : found.Value.Type != BuildJobType.Upgrade || record.placement.level >= found.Value.TargetTier))
+            { reason = "This upgrade is missing or already completed."; return false; }
+            var previousProperty = state.OwnedBase;
+            OwnedBaseState cancelledBuild = null;
+            if (newBuild && (!OwnedBaseConstruction.TryRetire(previousProperty, previousProperty.revision, instanceId, out cancelledBuild, out reason) ||
+                !World.Camps.OwnedTownLayoutSnapshot.TryCreate(cancelledBuild, state.HeroClass, out _, out reason))) return false;
+            var paid = found.Value.Paid;
+            int wood = state.Wood, iron = state.Iron, magic = state.Magic;
+            var resources = state.Resources;
+            if (paid.Wood < 0 || paid.Iron < 0 || paid.Stone < 0 || paid.Crystals < 0 || paid.Magic < 0 || paid.Coins < 0 ||
+                (long)wood + paid.Wood > int.MaxValue || (long)iron + paid.Iron > int.MaxValue ||
+                (long)magic + paid.Magic > int.MaxValue || (long)resources.Stone + paid.Stone > int.MaxValue ||
+                (long)resources.Crystals + paid.Crystals > int.MaxValue || (long)resources.Coins + paid.Coins > int.MaxValue)
+            { reason = "The full cancellation refund cannot fit in the resource ledger."; return false; }
+            var originalInventory = state.GearInventory;
+            Dictionary<string, int> tokenRefund = null;
+            string tokenKey = found.Value.InstantBuildTokenKey;
+            if (!string.IsNullOrEmpty(tokenKey))
+            {
+                if (!ConvenienceRedeemer.IsInstantBuildInventoryKey(tokenKey))
+                { reason = "The job's instant-build receipt is invalid."; return false; }
+                tokenRefund = originalInventory != null ? new Dictionary<string, int>(originalInventory) : new Dictionary<string, int>();
+                tokenRefund.TryGetValue(tokenKey, out int tokens);
+                if (tokens < 0 || tokens == int.MaxValue)
+                { reason = "The instant-build refund cannot fit in the inventory."; return false; }
+                tokenRefund[tokenKey] = tokens + 1;
+            }
+            var staged = new ChannelState {
+                BoughtSlots = ch.BoughtSlots, TemporarySlotClaimed = ch.TemporarySlotClaimed,
+                TemporarySlotEndsAtUnixMs = ch.TemporarySlotEndsAtUnixMs,
+                ActiveJobs = new List<BuildJobData>(ch.ActiveJobs), PendingQueue = new List<BuildJobData>(ch.PendingQueue)
+            };
+            staged.ActiveJobs.RemoveAll(j => j.StructureId == key);
+            staged.PendingQueue.RemoveAll(j => j.StructureId == key);
+            ObsidianQueueEngine.PullIntoFreeSlots(staged, SlotCount(channel), TimeSource.NowUnixMs());
+            Queue.Channels[channel] = staged;
+            // Cancellation returns paid resources in full, including balances above production storage caps.
+            state.Wood += paid.Wood; state.Iron += paid.Iron; state.Magic += paid.Magic;
+            state.Resources.Stone += paid.Stone; state.Resources.Crystals += paid.Crystals; state.Resources.Coins += paid.Coins;
+            if (tokenRefund != null) state.GearInventory = tokenRefund;
+            if (cancelledBuild != null) state.OwnedBase = cancelledBuild;
+            if (!service.TrySave(out reason))
+            {
+                Queue.Channels[channel] = ch;
+                state.Wood = wood; state.Iron = iron; state.Magic = magic; state.Resources = resources;
+                state.GearInventory = originalInventory;
+                state.OwnedBase = previousProperty;
+                return false;
+            }
+            if (newBuild) World.Camps.OwnedTownConstructionService.RefreshRetiredBody(instanceId);
+            refunded = paid;
+            DeNelle.Core.Diagnostics.Guard.Try("OwnedTown", "cancel resources changed", () => service.ResourcesChanged.Invoke());
+            RaiseQueueChanged(); RaiseJobCancelled(found.Value);
             return true;
         }
 
@@ -1856,7 +2086,7 @@ namespace DeNelle.Village
             for (int i = 0; i < ids.Count; i++)
             {
                 var ch = q.Channel(ids[i]);
-                totalCompleted += ObsidianQueueEngine.Resolve(ch, SlotCount(ids[i]), now, OnJobCompleted);
+                totalCompleted += ObsidianQueueEngine.Resolve(ch, SlotCount(ids[i]), now, OnJobCompleted, BeforeJobRemoval);
             }
             if (totalCompleted > 0)
             {

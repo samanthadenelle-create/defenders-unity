@@ -21,17 +21,17 @@ namespace DeNelle.Tests.EditMode
         public int Coins { get; set; }
         public int Wood { get; set; }
         public int Iron { get; set; }
-        public int Food { get; set; }
+        public int Stone { get; set; }
         public int Crystals { get; set; }
 
         public bool CanAfford(ResourceCost cost)
-            => Wood >= cost.Wood && Food >= cost.Food && Iron >= cost.Iron
+            => Wood >= cost.Wood && Stone >= cost.Stone && Iron >= cost.Iron
                && Crystals >= cost.Crystals && Coins >= cost.Coins;
 
         public bool TrySpend(ResourceCost cost)
         {
             if (!CanAfford(cost)) return false;
-            Wood -= cost.Wood; Food -= cost.Food; Iron -= cost.Iron;
+            Wood -= cost.Wood; Stone -= cost.Stone; Iron -= cost.Iron;
             Crystals -= cost.Crystals; Coins -= cost.Coins;
             Fire();
             return true;
@@ -39,7 +39,7 @@ namespace DeNelle.Tests.EditMode
 
         public ResourceCost Grant(ResourceCost amount)
         {
-            Wood += amount.Wood; Food += amount.Food; Iron += amount.Iron;
+            Wood += amount.Wood; Stone += amount.Stone; Iron += amount.Iron;
             Crystals += amount.Crystals; Coins += amount.Coins;
             Fire();
             // Uncapped fake: every requested unit lands, so the applied basket IS the request.
@@ -49,7 +49,7 @@ namespace DeNelle.Tests.EditMode
         public event Action<ResourceSnapshot> OnChanged;
 
         /// <summary>Raise OnChanged with the current totals (tests use this to prove live rebinds).</summary>
-        public void Fire() => OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+        public void Fire() => OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
     }
 
     /// <summary>A fake placed tower for TowerUpgradeVM tests (no scene Tower needed).</summary>

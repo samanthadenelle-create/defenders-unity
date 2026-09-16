@@ -204,7 +204,7 @@ namespace DeNelle.Core.Tests
                     ReadLore = new List<string> { "lore-1" },
                     Loot = new LootStash
                     {
-                        Crystals = 50, Food = 20, Coins = 10, Stone = 5, Iron = 2, Wood = 8,
+                        Crystals = 50, LegacyFood = 20, Coins = 10, Stone = 5, Iron = 2, Wood = 8,
                         PetBondShards = new Dictionary<string, double> { { "flame-pup", 3 } },
                         SkillPoints = new Dictionary<string, double> { { "skill-a", 1 } },
                     },

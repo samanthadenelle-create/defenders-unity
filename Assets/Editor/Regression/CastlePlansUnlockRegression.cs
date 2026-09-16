@@ -56,7 +56,7 @@ namespace DeNelle.Editor
                 reason = Finish(failures, log);
                 return failures.Count == 0;
             }
-            log.AppendLine($"  catalog row '{SpireId}': wood={rowCost.wood} food={rowCost.food} iron={rowCost.iron} crystals={rowCost.crystals}");
+            log.AppendLine($"  catalog row '{SpireId}': wood={rowCost.wood} food={rowCost.stone} iron={rowCost.iron} crystals={rowCost.crystals}");
 
             // ⭐ RE-POINTED BY OWNER RULING 2026-08-26 (WO-1217 Slice C), verbatim: "i think only
             // tier 3 should cost crystals on the arcane tower". The BUILD cost's 200 crystals were
@@ -179,7 +179,7 @@ namespace DeNelle.Editor
                     if (card.EffectiveCost.IsZero)
                         failures.Add("[castle-plans] unlocked card cost is ZERO -- reads as FREE, the exact D20 violation");
                     else if (card.EffectiveCost.crystals < rowCost.crystals || card.EffectiveCost.wood < rowCost.wood
-                        || card.EffectiveCost.iron < rowCost.iron || card.EffectiveCost.food < rowCost.food)
+                        || card.EffectiveCost.iron < rowCost.iron || card.EffectiveCost.stone < rowCost.stone)
                         failures.Add($"[castle-plans] unlocked card cost {CostStr(card.EffectiveCost)} fell BELOW catalog row {CostStr(rowCost)} (normal cost must display)");
                 }
                 vm.Dispose();
@@ -270,18 +270,18 @@ namespace DeNelle.Editor
                 }
 
                 int woodBefore = throwaway.Wood, ironBefore = throwaway.Iron;
-                int foodBefore = throwaway.Resources.Food, crystalsBefore = throwaway.Resources.Crystals;
+                int foodBefore = throwaway.Resources.Stone, crystalsBefore = throwaway.Resources.Crystals;
 
                 bool first = CastleDefensePlansPickup.TryCollect();
                 if (!first) failures.Add("[castle-plans] first TryCollect() returned false on a fresh state");
 
                 int woodD = throwaway.Wood - woodBefore;
                 int ironD = throwaway.Iron - ironBefore;
-                int foodD = throwaway.Resources.Food - foodBefore;
+                int foodD = throwaway.Resources.Stone - foodBefore;
                 int crysD = throwaway.Resources.Crystals - crystalsBefore;
                 log.AppendLine($"  granted deltas: wood=+{woodD} food=+{foodD} iron=+{ironD} crystals=+{crysD}");
                 if (woodD != rowCost.wood) failures.Add($"[castle-plans] wood delta {woodD} != catalog {rowCost.wood}");
-                if (foodD != rowCost.food) failures.Add($"[castle-plans] food delta {foodD} != catalog {rowCost.food}");
+                if (foodD != rowCost.stone) failures.Add($"[castle-plans] food delta {foodD} != catalog {rowCost.stone}");
                 if (ironD != rowCost.iron) failures.Add($"[castle-plans] iron delta {ironD} != catalog {rowCost.iron}");
                 if (crysD != rowCost.crystals) failures.Add($"[castle-plans] crystals delta {crysD} != catalog {rowCost.crystals}");
 
@@ -294,7 +294,7 @@ namespace DeNelle.Editor
                 bool second = CastleDefensePlansPickup.TryCollect();
                 if (second) failures.Add("[castle-plans] second TryCollect() returned true -- collect-once-ever broken");
                 if (throwaway.Wood - woodBefore != woodD || throwaway.Resources.Crystals - crystalsBefore != crysD
-                    || throwaway.Iron - ironBefore != ironD || throwaway.Resources.Food - foodBefore != foodD)
+                    || throwaway.Iron - ironBefore != ironD || throwaway.Resources.Stone - foodBefore != foodD)
                     failures.Add("[castle-plans] second TryCollect() mutated the wallet -- double grant");
             }
             catch (Exception ex)
@@ -374,7 +374,7 @@ namespace DeNelle.Editor
                 cost = new CoreCost
                 {
                     wood = c["wood"]?.Value<int>() ?? 0,
-                    food = c["food"]?.Value<int>() ?? 0,
+                    stone = c["food"]?.Value<int>() ?? 0,
                     iron = c["iron"]?.Value<int>() ?? 0,
                     crystals = c["crystals"]?.Value<int>() ?? 0,
                 };
@@ -385,7 +385,7 @@ namespace DeNelle.Editor
         }
 
         private static string CostStr(CoreCost c)
-            => $"W{c.wood}/F{c.food}/I{c.iron}/C{c.crystals}";
+            => $"W{c.wood}/F{c.stone}/I{c.iron}/C{c.crystals}";
 
         // ---- reflection helpers (the PackGrantRegression shape) -----------------
 

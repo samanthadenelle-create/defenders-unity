@@ -63,7 +63,7 @@ namespace DeNelle.Editor
                 // and lift any village-tier gate so the only variable under test is the write target.
                 throwaway.Wood = 9_000_000;
                 throwaway.Iron = 9_000_000;
-                var bal = throwaway.Resources; bal.Food = 9_000_000; bal.Crystals = 9_000_000;
+                var bal = throwaway.Resources; bal.Stone = 9_000_000; bal.Crystals = 9_000_000;
                 bal.Coins = 9_000_000; throwaway.Resources = bal;
                 throwaway.VillageTier = 99;
 

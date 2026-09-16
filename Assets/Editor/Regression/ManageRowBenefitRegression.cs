@@ -120,7 +120,7 @@ namespace DeNelle.Editor.Regression
                 fixture.Wood = 100000;
                 fixture.Iron = 100000;
                 var balances = fixture.Resources;
-                balances.Food = 100000;
+                balances.Stone = 100000;
                 balances.Coins = 100000;
                 balances.Crystals = 100000;
                 fixture.Resources = balances;
@@ -331,7 +331,7 @@ namespace DeNelle.Editor.Regression
             fixture.Wood = 0;
             fixture.Iron = 0;
             var broke = fixture.Resources;
-            broke.Food = 0;
+            broke.Stone = 0;
             broke.Coins = 0;
             broke.Crystals = 0;
             fixture.Resources = broke;

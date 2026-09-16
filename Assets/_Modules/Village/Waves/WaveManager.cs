@@ -105,27 +105,27 @@ namespace DeNelle.Village
         public readonly int WaveId;
         public readonly int Wood;
         public readonly int Iron;
-        public readonly int Food;
+        [Newtonsoft.Json.JsonProperty("Food")] public readonly int Stone;
         public readonly int Crystals;
 
         public WaveClearPayout(int waveId, int wood, int iron, int food, int crystals)
         {
             WaveId = waveId;
-            Wood = wood; Iron = iron; Food = food; Crystals = crystals;
+            Wood = wood; Iron = iron; Stone = food; Crystals = crystals;
         }
 
         /// <summary>True when at least one resource actually landed in the wallet.</summary>
-        public bool Any => Wood > 0 || Iron > 0 || Food > 0 || Crystals > 0;
+        public bool Any => Wood > 0 || Iron > 0 || Stone > 0 || Crystals > 0;
 
         /// <summary>How many DISTINCT resource lines this payout would render (0..4).
         /// The end-state banner budgets its rows against this before it builds any.</summary>
         public int LineCount =>
-            (Wood > 0 ? 1 : 0) + (Iron > 0 ? 1 : 0) + (Food > 0 ? 1 : 0) + (Crystals > 0 ? 1 : 0);
+            (Wood > 0 ? 1 : 0) + (Iron > 0 ? 1 : 0) + (Stone > 0 ? 1 : 0) + (Crystals > 0 ? 1 : 0);
 
         /// <summary>Same payout with the boss/event crystal faucet folded in (that faucet
         /// runs after the wood/iron/food grant, on the same wave, in the same breath).</summary>
         public WaveClearPayout WithCrystals(int crystals) =>
-            new WaveClearPayout(WaveId, Wood, Iron, Food, crystals);
+            new WaveClearPayout(WaveId, Wood, Iron, Stone, crystals);
     }
 
     /// <summary>
@@ -261,14 +261,14 @@ namespace DeNelle.Village
         [Tooltip("Iron pays out every Nth wave (WO-361 default: every 4th). 0/1 = every wave.")]
         [SerializeField, Min(0)] private int _ironRewardInterval = 4;
 
-        [Tooltip("Base Food granted on a food-payout wave (before scaling). WO-361: food pays out " +
+        [Tooltip("Base Stone granted on a food-payout wave (before scaling). WO-361: food pays out " +
                  "every Nth wave (FoodInterval), in the range [Base .. Base+Spread], scaled by wave.")]
         [SerializeField, Min(0)] private int _foodRewardBase = 30;
 
         [Tooltip("Random spread added on top of the food base (0 = flat). Final = Random[Base..Base+Spread] * scale.")]
         [SerializeField, Min(0)] private int _foodRewardSpread = 20;
 
-        [Tooltip("Food pays out every Nth wave (WO-361 default: every 2nd). 0/1 = every wave.")]
+        [Tooltip("Stone pays out every Nth wave (WO-361 default: every 2nd). 0/1 = every wave.")]
         [SerializeField, Min(0)] private int _foodRewardInterval = 2;
 
         [Tooltip("Reward scaling: amounts grow by this fraction every ScalePer waves (WO-361: +20% per 5 waves). " +
@@ -3497,14 +3497,14 @@ namespace DeNelle.Village
 
         /// <summary>
         /// WO-330 — the city-defense fundamental loop's payout: clearing a wave grants
-        /// BUILD RESOURCES (Wood/Iron, optional Food) into the player's wallet via
+        /// BUILD RESOURCES (Wood/Iron, optional Stone) into the player's wallet via
         /// <see cref="EconomyService.Grant(ResourceCost)"/> — the same pool the BuildMenu /
         /// upgrade paths spend from. This is the primary economy income: defend the city →
         /// defeat the wave → earn the resources you build/upgrade defenses with → harder
         /// waves → repeat.
         ///
         /// WO-361 — the payout is STAGGERED by interval rather than every wave:
-        ///   • Food  every <see cref="_foodRewardInterval"/>th wave (default 2nd), 30–50
+        ///   • Stone  every <see cref="_foodRewardInterval"/>th wave (default 2nd), 30–50
         ///   • Wood  every <see cref="_woodRewardInterval"/>th wave (default 3rd), 20–30
         ///   • Iron  every <see cref="_ironRewardInterval"/>th wave (default 4th), 15–25
         /// Each amount is randomized in [Base .. Base+Spread] and SCALES with the wave
@@ -3573,7 +3573,7 @@ namespace DeNelle.Village
 
             if (wood <= 0 && iron <= 0 && food <= 0) return;
 
-            economy.Grant(new ResourceCost(wood: wood, food: food, iron: iron));
+            economy.Grant(new ResourceCost(wood: wood, stone: food, iron: iron));
 
             // PUBLISH WHAT WAS BANKED — the same three integers Grant just took, captured on
             // the line after the grant so the record and the wallet can never disagree. The

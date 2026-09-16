@@ -34,27 +34,27 @@ namespace DeNelle.Tests.EditMode
             public int Coins { get; set; }
             public int Wood { get; set; }
             public int Iron { get; set; }
-            public int Food { get; set; }
+            public int Stone { get; set; }
             public int Crystals { get; set; }
             public int SpendCalls;
             public event Action<ResourceSnapshot> OnChanged;
 
             public bool CanAfford(ResourceCost c) =>
-                Coins >= c.Coins && Wood >= c.Wood && Iron >= c.Iron && Food >= c.Food && Crystals >= c.Crystals;
+                Coins >= c.Coins && Wood >= c.Wood && Iron >= c.Iron && Stone >= c.Stone && Crystals >= c.Crystals;
 
             public bool TrySpend(ResourceCost c)
             {
                 if (!CanAfford(c)) return false;
-                Coins -= c.Coins; Wood -= c.Wood; Iron -= c.Iron; Food -= c.Food; Crystals -= c.Crystals;
+                Coins -= c.Coins; Wood -= c.Wood; Iron -= c.Iron; Stone -= c.Stone; Crystals -= c.Crystals;
                 SpendCalls++;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 return true;
             }
 
             public ResourceCost Grant(ResourceCost a)
             {
-                Coins += a.Coins; Wood += a.Wood; Iron += a.Iron; Food += a.Food; Crystals += a.Crystals;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                Coins += a.Coins; Wood += a.Wood; Iron += a.Iron; Stone += a.Stone; Crystals += a.Crystals;
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 // Uncapped fake: every requested unit lands, so the applied basket IS the request.
                 return a;
             }
@@ -146,16 +146,16 @@ namespace DeNelle.Tests.EditMode
             // Read through BarracksProgression, then pin the current canonical L2 basket.
             var cost = BarracksProgression.BarracksUpgradeCost(1);
             Assert.That(cost.Wood, Is.EqualTo(300));
-            Assert.That(cost.Food, Is.EqualTo(80));
+            Assert.That(cost.Stone, Is.EqualTo(80));
             Assert.That(cost.Iron, Is.EqualTo(120));
 
-            var exact = new FakeEconomy { Wood = cost.Wood, Food = cost.Food, Iron = cost.Iron };
+            var exact = new FakeEconomy { Wood = cost.Wood, Stone = cost.Stone, Iron = cost.Iron };
             Assert.That(exact.TrySpend(cost), Is.True, "an exactly-funded wallet affords the upgrade");
             Assert.That(exact.Wood, Is.EqualTo(0));
-            Assert.That(exact.Food, Is.EqualTo(0));
+            Assert.That(exact.Stone, Is.EqualTo(0));
             Assert.That(exact.Iron, Is.EqualTo(0));
 
-            var broke = new FakeEconomy { Wood = cost.Wood - 1, Food = cost.Food, Iron = cost.Iron };
+            var broke = new FakeEconomy { Wood = cost.Wood - 1, Stone = cost.Stone, Iron = cost.Iron };
             Assert.That(broke.CanAfford(cost), Is.False, "a wallet short by one wood cannot afford it");
             Assert.That(broke.TrySpend(cost), Is.False, "and TrySpend refuses (no mutation)");
             Assert.That(broke.Wood, Is.EqualTo(cost.Wood - 1), "a failed spend deducts nothing");

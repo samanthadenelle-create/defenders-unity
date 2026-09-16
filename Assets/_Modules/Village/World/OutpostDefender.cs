@@ -136,7 +136,7 @@ namespace DeNelle.Village.World
             {
                 // Symbolic support: small positive grant to the economy (represents "inspired gathering"
                 // or minor supply line). Real healer would restore HP on friendlies.
-                EconomyService.Instance?.Grant(food: 1);
+                EconomyService.Instance?.Grant(stone: 1);
             }
         }
 

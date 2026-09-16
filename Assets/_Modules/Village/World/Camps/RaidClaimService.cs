@@ -281,9 +281,9 @@ namespace DeNelle.Village.World.Camps
         {
             int rw = RetainAxis(configId, BankResource.Wood, requested.Wood, credited.Wood);
             int ri = RetainAxis(configId, BankResource.Iron, requested.Iron, credited.Iron);
-            int rf = RetainAxis(configId, BankResource.Food, requested.Food, credited.Food);
+            int rf = RetainAxis(configId, BankResource.Stone, requested.Stone, credited.Stone);
 
-            var retained = new ResourceCost(wood: rw, food: rf, iron: ri);
+            var retained = new ResourceCost(wood: rw, stone: rf, iron: ri);
             if (rw > 0 || ri > 0 || rf > 0)
             {
                 PlayerPrefs.Save();
@@ -291,7 +291,7 @@ namespace DeNelle.Village.World.Camps
                     "RAID CACHE: the bank refused part of '" + (configId ?? "(none)") + "' payout and it was " +
                     "RETAINED, not burned - wood " + rw + " / iron " + ri + " / stone " + rf +
                     ". Cache now holds wood " + Cached(BankResource.Wood) + " / iron " +
-                    Cached(BankResource.Iron) + " / stone " + Cached(BankResource.Food) +
+                    Cached(BankResource.Iron) + " / stone " + Cached(BankResource.Stone) +
                     " against a per-resource cap of " + CacheCapPerResource +
                     ". Upgrade or spend, then claim it.");
             }
@@ -401,7 +401,7 @@ namespace DeNelle.Village.World.Camps
             {
                 if (crystals == loot.Crystals) return loot;
                 return new ResourceCost(
-                    wood: loot.Wood, food: loot.Food, iron: loot.Iron,
+                    wood: loot.Wood, stone: loot.Stone, iron: loot.Iron,
                     crystals: crystals, coins: loot.Coins);
             }
 
@@ -414,7 +414,7 @@ namespace DeNelle.Village.World.Camps
             // premium payout is exactly the kind of number that quietly becomes a faucet.
             return new ResourceCost(
                 wood:     Mathf.FloorToInt(loot.Wood     * m),
-                food:     Mathf.FloorToInt(loot.Food     * m),
+                stone:     Mathf.FloorToInt(loot.Stone     * m),
                 iron:     Mathf.FloorToInt(loot.Iron     * m),
                 crystals: crystals,
                 coins:    Mathf.FloorToInt(loot.Coins    * m));

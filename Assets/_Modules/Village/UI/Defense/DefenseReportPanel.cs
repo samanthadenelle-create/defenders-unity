@@ -706,7 +706,7 @@ namespace DeNelle.Village.UI
             var parts = new List<string>();
             if (l.RepairWood > 0) parts.Add(l.RepairWood + " wood");
             if (l.RepairIron > 0) parts.Add(l.RepairIron + " iron");
-            if (l.RepairFood > 0) parts.Add(l.RepairFood + " stone");
+            if (l.RepairStone > 0) parts.Add(l.RepairStone + " stone");
             if (l.RepairCrystals > 0) parts.Add(l.RepairCrystals + " crystals");
             return parts.Count == 0 ? "free" : string.Join(", ", parts);
         }
@@ -745,7 +745,7 @@ namespace DeNelle.Village.UI
             var parts = new List<string>();
             if (s.Wood > 0) parts.Add(s.Wood + " wood");
             if (s.Iron > 0) parts.Add(s.Iron + " iron");
-            if (s.Food > 0) parts.Add(s.Food + " stone");
+            if (s.Stone > 0) parts.Add(s.Stone + " stone");
             if (s.Coins > 0) parts.Add(s.Coins + " gold");
             // Crystals/Magic can NEVER be taken. They are listed only so that if one ever appeared
             // it would be VISIBLE on screen rather than silently hidden by a renderer that "knows"

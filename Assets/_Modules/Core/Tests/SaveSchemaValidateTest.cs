@@ -221,7 +221,7 @@ namespace DeNelle.Core.Tests
         {
             var raw = new SaveSchema.PersistedState
             {
-                Resources = new ResourceBalance { Crystals = -10, Food = 80, Coins = 15 },
+                Resources = new ResourceBalance { Crystals = -10, Stone = 80, Coins = 15 },
             };
             var result = SaveSchema.Validate(raw);
 

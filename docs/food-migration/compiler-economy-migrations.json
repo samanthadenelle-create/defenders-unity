@@ -1,0 +1,2195 @@
+[
+  {
+    "log": "Builds\\stone-economy-api-2.log",
+    "references": [
+      {
+        "path": "Assets/_Modules/Village/BuildMode/LiveWalletSource.cs",
+        "line": 87,
+        "column": 56,
+        "owner": "IEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/BuildTimerService.cs",
+        "line": 1028,
+        "column": 42,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/NPCUpgradeStation.cs",
+        "line": 63,
+        "column": 74,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/NPCUpgradeStation.cs",
+        "line": 188,
+        "column": 39,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/NPCUpgradeStation.cs",
+        "line": 196,
+        "column": 113,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/NPCUpgradeVM.cs",
+        "line": 54,
+        "column": 55,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/BuildingUpgradeService.cs",
+        "line": 140,
+        "column": 33,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/BuildingUpgradeVM.cs",
+        "line": 820,
+        "column": 42,
+        "owner": "IEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/BuildingUpgradeVM.cs",
+        "line": 1205,
+        "column": 25,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/BuildingUpgradeVM.cs",
+        "line": 1415,
+        "column": 25,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/BuildingUpgradeVM.cs",
+        "line": 1642,
+        "column": 62,
+        "owner": "IEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/BuildingUpgradeVM.cs",
+        "line": 1804,
+        "column": 113,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/BuildingUpgradeVM.cs",
+        "line": 1809,
+        "column": 101,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/UI/BuildMenuVM.cs",
+        "line": 215,
+        "column": 56,
+        "owner": "IEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Dev/ResourceDevTool.cs",
+        "line": 288,
+        "column": 88,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Enemies/Enemy.cs",
+        "line": 3562,
+        "column": 48,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Enemies/Enemy.cs",
+        "line": 3564,
+        "column": 47,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Enemies/Enemy.cs",
+        "line": 3567,
+        "column": 48,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Enemies/Enemy.cs",
+        "line": 3570,
+        "column": 59,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Feedback/HonestFeedbackGrant.cs",
+        "line": 196,
+        "column": 54,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Feedback/HonestFeedbackGrant.cs",
+        "line": 200,
+        "column": 70,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Feedback/HonestFeedbackGrant.cs",
+        "line": 210,
+        "column": 57,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Feedback/HonestFeedbackService.cs",
+        "line": 429,
+        "column": 41,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/HUD/HudModelProducers.cs",
+        "line": 378,
+        "column": 88,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/EchoService.cs",
+        "line": 510,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/EchoService.cs",
+        "line": 518,
+        "column": 120,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/EchoService.cs",
+        "line": 521,
+        "column": 32,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Heart/HeartHudBridge.cs",
+        "line": 216,
+        "column": 41,
+        "owner": "ResourceSnapshot",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Heart/HeartHudBridge.cs",
+        "line": 223,
+        "column": 26,
+        "owner": "ResourceSnapshot",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Heart/HeartHudBridge.cs",
+        "line": 226,
+        "column": 44,
+        "owner": "ResourceSnapshot",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Heart/HeartHudBridge.cs",
+        "line": 228,
+        "column": 94,
+        "owner": "ResourceSnapshot",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/GearProgression.cs",
+        "line": 423,
+        "column": 22,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/GearProgression.cs",
+        "line": 423,
+        "column": 103,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/PartyShopVM.cs",
+        "line": 587,
+        "column": 42,
+        "owner": "IEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/PartyShopVM.cs",
+        "line": 1632,
+        "column": 96,
+        "owner": "IEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/PartyShopVM.cs",
+        "line": 1883,
+        "column": 54,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/PartyShopVM.cs",
+        "line": 1889,
+        "column": 166,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/PartyShopVM.cs",
+        "line": 1898,
+        "column": 28,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/RaidSelectionVM.cs",
+        "line": 497,
+        "column": 43,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/TroopTrainingVM.cs",
+        "line": 220,
+        "column": 42,
+        "owner": "IEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/TroopTrainingVM.cs",
+        "line": 319,
+        "column": 96,
+        "owner": "IEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Quests/DailyQuestRewardBridge.cs",
+        "line": 235,
+        "column": 38,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Quests/DailyQuestRewardBridge.cs",
+        "line": 236,
+        "column": 31,
+        "owner": "Grant",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Quests/DailyQuestRewardBridge.cs",
+        "line": 237,
+        "column": 40,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Quests/DailyQuestRewardBridge.cs",
+        "line": 239,
+        "column": 72,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/BarracksService.cs",
+        "line": 113,
+        "column": 22,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/BarracksService.cs",
+        "line": 113,
+        "column": 103,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1163,
+        "column": 38,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1293,
+        "column": 45,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1295,
+        "column": 50,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1297,
+        "column": 63,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1298,
+        "column": 67,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1314,
+        "column": 26,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1314,
+        "column": 54,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1316,
+        "column": 53,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1317,
+        "column": 73,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1325,
+        "column": 80,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1340,
+        "column": 74,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidDeployController.cs",
+        "line": 1343,
+        "column": 74,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidScoring.cs",
+        "line": 858,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Troops/RaidScoring.cs",
+        "line": 1842,
+        "column": 22,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/UI/EndState/EndStateVM.cs",
+        "line": 469,
+        "column": 51,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/UI/EndState/EndStateVM.cs",
+        "line": 611,
+        "column": 51,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/UI/Manage/ManageScreenVM.cs",
+        "line": 2452,
+        "column": 42,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Walls/HubRepairAffordance.cs",
+        "line": 477,
+        "column": 41,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Walls/HubRepairAffordance.cs",
+        "line": 495,
+        "column": 55,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Walls/WallRepairController.cs",
+        "line": 576,
+        "column": 72,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Walls/WallRepairController.cs",
+        "line": 747,
+        "column": 44,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Walls/WallRepairController.cs",
+        "line": 1217,
+        "column": 55,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 563,
+        "column": 17,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/WaveManager.cs",
+        "line": 3576,
+        "column": 56,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/Outpost.cs",
+        "line": 145,
+        "column": 65,
+        "owner": "Grant",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidClaimService.cs",
+        "line": 284,
+        "column": 72,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidClaimService.cs",
+        "line": 284,
+        "column": 87,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidClaimService.cs",
+        "line": 286,
+        "column": 55,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidClaimService.cs",
+        "line": 404,
+        "column": 38,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidClaimService.cs",
+        "line": 404,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidClaimService.cs",
+        "line": 417,
+        "column": 17,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidClaimService.cs",
+        "line": 417,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 330,
+        "column": 97,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 331,
+        "column": 92,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 332,
+        "column": 89,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 706,
+        "column": 30,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 719,
+        "column": 45,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 721,
+        "column": 50,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 723,
+        "column": 56,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 724,
+        "column": 60,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 739,
+        "column": 26,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 739,
+        "column": 54,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 743,
+        "column": 46,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 746,
+        "column": 66,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 773,
+        "column": 74,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 777,
+        "column": 52,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/RaidVictoryController.cs",
+        "line": 794,
+        "column": 57,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/MineNode.cs",
+        "line": 597,
+        "column": 65,
+        "owner": "Grant",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/OutpostDefender.cs",
+        "line": 139,
+        "column": 48,
+        "owner": "Grant",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/OutpostHub.cs",
+        "line": 46,
+        "column": 61,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/OutpostHub.cs",
+        "line": 47,
+        "column": 61,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/OutpostHub.cs",
+        "line": 48,
+        "column": 63,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/OutpostHub.cs",
+        "line": 56,
+        "column": 73,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/OutpostHub.cs",
+        "line": 282,
+        "column": 17,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/OutpostHub.cs",
+        "line": 282,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/OutpostHub.cs",
+        "line": 330,
+        "column": 26,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/OutpostHub.cs",
+        "line": 330,
+        "column": 41,
+        "owner": "ResourceCost",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-economy-api-4.log",
+    "references": [
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/ResourceCollector.cs",
+        "line": 544,
+        "column": 80,
+        "owner": "GrantSpendable",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/ResourceCollector.cs",
+        "line": 756,
+        "column": 76,
+        "owner": "GrantSpendable",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Dev/ResourceDevTool.cs",
+        "line": 158,
+        "column": 68,
+        "owner": "GrantSpendableUncapped",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Feedback/HonestFeedbackGrant.cs",
+        "line": 191,
+        "column": 69,
+        "owner": "GrantSpendablePurchased",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/EchoService.cs",
+        "line": 498,
+        "column": 62,
+        "owner": "GrantSpendable",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Quests/QuestRewardBridge.cs",
+        "line": 128,
+        "column": 53,
+        "owner": "GrantSpendable",
+        "token": "food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-economy-api-5.log",
+    "references": [
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/ResourceCollector.cs",
+        "line": 544,
+        "column": 95,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/ResourceCollector.cs",
+        "line": 756,
+        "column": 88,
+        "owner": "ResourceCost",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-economy-api-6.log",
+    "references": [
+      {
+        "path": "Assets/_Modules/DevTools/AutoPilotDriver.cs",
+        "line": 5219,
+        "column": 71,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/AutoPilotDriver.cs",
+        "line": 5221,
+        "column": 113,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/AutoPilotDriver.cs",
+        "line": 5228,
+        "column": 68,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/AutoPilotDriver.cs",
+        "line": 5240,
+        "column": 63,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/AutoPilotDriver.cs",
+        "line": 5247,
+        "column": 55,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/DevPanelController.cs",
+        "line": 1235,
+        "column": 57,
+        "owner": "GrantSpendableUncapped",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/DevPanelController.cs",
+        "line": 1269,
+        "column": 56,
+        "owner": "ResourceSnapshot",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/DevPanelController.cs",
+        "line": 1528,
+        "column": 77,
+        "owner": "GrantSpendableUncapped",
+        "token": "food"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/DevPanelController.cs",
+        "line": 1644,
+        "column": 61,
+        "owner": "ResourceSnapshot",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-economy-api-7.log",
+    "references": [
+      {
+        "path": "Assets/Editor/Regression/ArmedHeroInvariantRegression.cs",
+        "line": 525,
+        "column": 62,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuLayoutRegression.cs",
+        "line": 414,
+        "column": 41,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuLayoutRegression.cs",
+        "line": 414,
+        "column": 54,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuLayoutRegression.cs",
+        "line": 420,
+        "column": 36,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuLayoutRegression.cs",
+        "line": 420,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuLayoutRegression.cs",
+        "line": 422,
+        "column": 62,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuLayoutRegression.cs",
+        "line": 428,
+        "column": 38,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuLayoutRegression.cs",
+        "line": 428,
+        "column": 53,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuLayoutRegression.cs",
+        "line": 430,
+        "column": 62,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 285,
+        "column": 41,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 285,
+        "column": 54,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 293,
+        "column": 36,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 293,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 295,
+        "column": 62,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 301,
+        "column": 38,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 301,
+        "column": 53,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 303,
+        "column": 62,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 309,
+        "column": 40,
+        "owner": "renamed economy implementation",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/DataRegression.cs",
+        "line": 4998,
+        "column": 38,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/HonestFeedbackClaimOnceRegression.cs",
+        "line": 97,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/HonestFeedbackClaimOnceRegression.cs",
+        "line": 140,
+        "column": 62,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/HonestFeedbackClaimOnceRegression.cs",
+        "line": 142,
+        "column": 92,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/HonestFeedbackGrantRegression.cs",
+        "line": 142,
+        "column": 97,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/HonestFeedbackGrantRegression.cs",
+        "line": 169,
+        "column": 110,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/HonestFeedbackGrantRegression.cs",
+        "line": 191,
+        "column": 54,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/HonestFeedbackGrantRegression.cs",
+        "line": 193,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 307,
+        "column": 39,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 308,
+        "column": 72,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 309,
+        "column": 38,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 311,
+        "column": 33,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 312,
+        "column": 118,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 319,
+        "column": 66,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 322,
+        "column": 86,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 336,
+        "column": 39,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 337,
+        "column": 72,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 338,
+        "column": 38,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 340,
+        "column": 33,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 342,
+        "column": 49,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 349,
+        "column": 82,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 268,
+        "column": 26,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 268,
+        "column": 43,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 269,
+        "column": 96,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 270,
+        "column": 39,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 297,
+        "column": 28,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 297,
+        "column": 47,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 299,
+        "column": 41,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 299,
+        "column": 68,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 320,
+        "column": 44,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 321,
+        "column": 99,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidGoldArrowRegression.cs",
+        "line": 346,
+        "column": 97,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidLootCurrencyRegression.cs",
+        "line": 211,
+        "column": 74,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidLootCurrencyRegression.cs",
+        "line": 211,
+        "column": 95,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidLootCurrencyRegression.cs",
+        "line": 213,
+        "column": 74,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidLootCurrencyRegression.cs",
+        "line": 214,
+        "column": 68,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidLootCurrencyRegression.cs",
+        "line": 347,
+        "column": 21,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidLootCurrencyRegression.cs",
+        "line": 349,
+        "column": 45,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidPayoutVisibilityRegression.cs",
+        "line": 155,
+        "column": 54,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidPayoutVisibilityRegression.cs",
+        "line": 307,
+        "column": 55,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 156,
+        "column": 52,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 159,
+        "column": 50,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 159,
+        "column": 63,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 166,
+        "column": 60,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 166,
+        "column": 73,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 170,
+        "column": 34,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 170,
+        "column": 55,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 175,
+        "column": 51,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 175,
+        "column": 63,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 195,
+        "column": 58,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 210,
+        "column": 63,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 212,
+        "column": 78,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 225,
+        "column": 63,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidRepeatClearRegression.cs",
+        "line": 227,
+        "column": 47,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 155,
+        "column": 74,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 156,
+        "column": 67,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 156,
+        "column": 112,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 157,
+        "column": 54,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 158,
+        "column": 101,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 161,
+        "column": 28,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 161,
+        "column": 44,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 161,
+        "column": 61,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 161,
+        "column": 77,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 162,
+        "column": 79,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 162,
+        "column": 103,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 162,
+        "column": 127,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 176,
+        "column": 26,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 176,
+        "column": 42,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 177,
+        "column": 89,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/RaidScoringRegression.cs",
+        "line": 177,
+        "column": 110,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SpoilsAreBankableRegression.cs",
+        "line": 374,
+        "column": 58,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SpoilsAreBankableRegression.cs",
+        "line": 375,
+        "column": 58,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SpoilsAreBankableRegression.cs",
+        "line": 399,
+        "column": 58,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SpoilsAreBankableRegression.cs",
+        "line": 401,
+        "column": 39,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SpoilsAreBankableRegression.cs",
+        "line": 443,
+        "column": 57,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SpoilsAreBankableRegression.cs",
+        "line": 528,
+        "column": 52,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/TrainingCostsTimeOnlyRegression.cs",
+        "line": 204,
+        "column": 118,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/TrainingCostsTimeOnlyRegression.cs",
+        "line": 208,
+        "column": 58,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/VillageEconomyRegression.cs",
+        "line": 139,
+        "column": 77,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Editor/Regression/WO1191OverCapIncomeRegression.cs",
+        "line": 328,
+        "column": 57,
+        "owner": "EconomyService",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-economy-api-8.log",
+    "references": [
+      {
+        "path": "Assets/Editor/Regression/BuildMenuLayoutRegression.cs",
+        "line": 438,
+        "column": 66,
+        "owner": "BuildMenuLayoutRegression.FakeLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 322,
+        "column": 63,
+        "owner": "BuildMenuRealEconomyRegression.FakeLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 329,
+        "column": 107,
+        "owner": "BuildMenuRealEconomyRegression.FakeLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 455,
+        "column": 17,
+        "owner": "BuildMenuRealEconomyRegression.FakeLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 485,
+        "column": 17,
+        "owner": "BuildMenuRealEconomyRegression.FakeLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 530,
+        "column": 53,
+        "owner": "BuildMenuRealEconomyRegression.FakeLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 544,
+        "column": 68,
+        "owner": "BuildMenuRealEconomyRegression.FakeLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/BuildMenuRealEconomyRegression.cs",
+        "line": 616,
+        "column": 21,
+        "owner": "BuildMenuRealEconomyRegression.FakeLedger",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-economy-api-10.log",
+    "references": [
+      {
+        "path": "Assets/Tests/EditMode/DevGrantSpendableTests.cs",
+        "line": 126,
+        "column": 42,
+        "owner": "GrantSpendableUncapped",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/DevGrantSpendableTests.cs",
+        "line": 133,
+        "column": 31,
+        "owner": "EconomyService",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/DevGrantSpendableTests.cs",
+        "line": 149,
+        "column": 52,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/DevGrantSpendableTests.cs",
+        "line": 172,
+        "column": 55,
+        "owner": "GrantSpendableUncapped",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/LiveWalletSourceTests.cs",
+        "line": 22,
+        "column": 62,
+        "owner": "FakeEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/NPCUpgradeVMTests.cs",
+        "line": 69,
+        "column": 72,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/NPCUpgradeVMTests.cs",
+        "line": 84,
+        "column": 72,
+        "owner": "ResourceCost",
+        "token": "food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/RaidScoringTests.cs",
+        "line": 115,
+        "column": 37,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/RaidScoringTests.cs",
+        "line": 127,
+        "column": 33,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/RaidScoringTests.cs",
+        "line": 127,
+        "column": 44,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/RaidScoringTests.cs",
+        "line": 128,
+        "column": 33,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/RaidScoringTests.cs",
+        "line": 128,
+        "column": 44,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/RaidScoringTests.cs",
+        "line": 137,
+        "column": 47,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/RaidScoringTests.cs",
+        "line": 167,
+        "column": 37,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/RaidScoringTests.cs",
+        "line": 193,
+        "column": 33,
+        "owner": "ResourceCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Tests/EditMode/RaidScoringTests.cs",
+        "line": 193,
+        "column": 44,
+        "owner": "ResourceCost",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-bank-enum.log",
+    "references": [
+      {
+        "path": "Assets/_Modules/Wallet/PackStore.cs",
+        "line": 4400,
+        "column": 100,
+        "owner": "BankResource",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Wallet/PackStore.cs",
+        "line": 4409,
+        "column": 34,
+        "owner": "BankResource",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Wallet/PackStore.cs",
+        "line": 4419,
+        "column": 49,
+        "owner": "BankResource",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Wallet/PackStore.cs",
+        "line": 4430,
+        "column": 30,
+        "owner": "BankResource",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-reward-harvest-dtos.log",
+    "references": [
+      {
+        "path": "Assets/_Modules/Core/Defense/StakeRules.cs",
+        "line": 321,
+        "column": 50,
+        "owner": "StakesLedger",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-reward-harvest-dtos-2.log",
+    "references": [
+      {
+        "path": "Assets/_Modules/Commerce/PackStoreVM.cs",
+        "line": 109,
+        "column": 47,
+        "owner": "PackEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Commerce/ShortfallPackOffer.cs",
+        "line": 233,
+        "column": 19,
+        "owner": "PackEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/HUD/DailyQuestHud.cs",
+        "line": 406,
+        "column": 19,
+        "owner": "DailyQuestVM.RewardInfo",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/HUD/DailyQuestHud.cs",
+        "line": 408,
+        "column": 29,
+        "owner": "DailyQuestVM.RewardInfo",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/HUD/Kit/HudKitController.cs",
+        "line": 3942,
+        "column": 61,
+        "owner": "EconomyModel",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-reward-harvest-dtos-3.log",
+    "references": [
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/BuildingUpgradePanelMvvm.cs",
+        "line": 800,
+        "column": 69,
+        "owner": "BuildingUpgradeVM",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Crafting/GearCraftingService.cs",
+        "line": 81,
+        "column": 78,
+        "owner": "GearRecipeCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Crafting/GearCraftingService.cs",
+        "line": 164,
+        "column": 78,
+        "owner": "GearRecipeCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Crafting/JewelerCraftingService.cs",
+        "line": 73,
+        "column": 78,
+        "owner": "JewelerRecipeCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Crafting/JewelerCraftingService.cs",
+        "line": 141,
+        "column": 78,
+        "owner": "JewelerRecipeCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/OfflineHarvestService.cs",
+        "line": 1171,
+        "column": 102,
+        "owner": "OfflineHarvestResult",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/OfflineHarvestService.cs",
+        "line": 1179,
+        "column": 66,
+        "owner": "OfflineHarvestResult",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/OfflineHarvestService.cs",
+        "line": 1203,
+        "column": 95,
+        "owner": "OfflineHarvestResult",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/OfflineHarvestService.cs",
+        "line": 1210,
+        "column": 102,
+        "owner": "OfflineHarvestResult",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/OfflineHarvestService.cs",
+        "line": 1223,
+        "column": 39,
+        "owner": "OfflineHarvestResult",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/UI/WelcomeBackPopup.cs",
+        "line": 326,
+        "column": 49,
+        "owner": "OfflineHarvestResult",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/RealmMapVM.cs",
+        "line": 213,
+        "column": 23,
+        "owner": "RealmClearReward",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Hero/RealmMapVM.cs",
+        "line": 213,
+        "column": 45,
+        "owner": "RealmClearReward",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Items/JewelerVM.cs",
+        "line": 295,
+        "column": 98,
+        "owner": "JewelerRecipeCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Items/JewelerVM.cs",
+        "line": 302,
+        "column": 119,
+        "owner": "JewelerRecipeCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/UI/Defense/DefenseReportPanel.cs",
+        "line": 748,
+        "column": 19,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/UI/Defense/DefenseReportPanel.cs",
+        "line": 748,
+        "column": 41,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/UI/EndState/EndStateVM.cs",
+        "line": 969,
+        "column": 21,
+        "owner": "WaveClearPayout",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/UI/EndState/EndStateVM.cs",
+        "line": 969,
+        "column": 91,
+        "owner": "WaveClearPayout",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/UI/EndState/EndStateVM.cs",
+        "line": 983,
+        "column": 66,
+        "owner": "WaveClearPayout",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 438,
+        "column": 62,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 500,
+        "column": 66,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 521,
+        "column": 64,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 533,
+        "column": 20,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 533,
+        "column": 49,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 536,
+        "column": 64,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 555,
+        "column": 52,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 563,
+        "column": 31,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 574,
+        "column": 66,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 576,
+        "column": 52,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Village/Waves/DefenseReportBuilder.cs",
+        "line": 585,
+        "column": 29,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Wallet/PackStore.cs",
+        "line": 3615,
+        "column": 50,
+        "owner": "PackEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Wallet/PackStore.cs",
+        "line": 3727,
+        "column": 39,
+        "owner": "PackEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Wallet/PackStore.cs",
+        "line": 4430,
+        "column": 62,
+        "owner": "PackEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Wallet/RewardGrantWriter.cs",
+        "line": 137,
+        "column": 39,
+        "owner": "RewardEconomy",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-reward-harvest-dtos-4.log",
+    "references": [
+      {
+        "path": "Assets/Editor/Regression/DataRegression.cs",
+        "line": 4240,
+        "column": 97,
+        "owner": "JewelerRecipeCost",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/DefenseReportContractRegression.cs",
+        "line": 225,
+        "column": 36,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/DefenseReportContractRegression.cs",
+        "line": 225,
+        "column": 60,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/DefenseReportContractRegression.cs",
+        "line": 228,
+        "column": 91,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SiegeLossStakesRegression.cs",
+        "line": 394,
+        "column": 19,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SiegeLossStakesRegression.cs",
+        "line": 394,
+        "column": 78,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SiegeLossStakesRegression.cs",
+        "line": 618,
+        "column": 69,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SiegeLossStakesRegression.cs",
+        "line": 683,
+        "column": 26,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SiegeLossStakesRegression.cs",
+        "line": 685,
+        "column": 61,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SiegeUntouchableRegression.cs",
+        "line": 460,
+        "column": 24,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SiegeUntouchableRegression.cs",
+        "line": 460,
+        "column": 62,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/SiegeUntouchableRegression.cs",
+        "line": 474,
+        "column": 56,
+        "owner": "StakesLedger",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/Editor/Regression/StoreSkuGrantRegression.cs",
+        "line": 340,
+        "column": 58,
+        "owner": "PackEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/DevPanelController.cs",
+        "line": 1354,
+        "column": 29,
+        "owner": "PackEconomy",
+        "token": "Food"
+      },
+      {
+        "path": "Assets/_Modules/Wallet/Tests/PackStoreVMTests.cs",
+        "line": 36,
+        "column": 70,
+        "owner": "PackEconomy",
+        "token": "Food"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-reward-harvest-dtos-5.log",
+    "references": [
+      {
+        "path": "Assets/Editor/UICaptureLaunch.cs",
+        "line": 2187,
+        "column": 21,
+        "owner": "OfflineHarvestResult",
+        "token": "Food"
+      }
+    ]
+  }
+]

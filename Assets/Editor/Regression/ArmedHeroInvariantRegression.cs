@@ -522,7 +522,7 @@ namespace DeNelle.Editor.Regression
                                  " to " + Fmt(scaledAfter) + " defense - the very first purchase is already a no-op");
 
                 var cost = GearProgression.ImproveCost(shield.rarity, after);
-                if (cost.Wood <= 0 && cost.Iron <= 0 && cost.Food <= 0 && cost.Crystals <= 0)
+                if (cost.Wood <= 0 && cost.Iron <= 0 && cost.Stone <= 0 && cost.Crystals <= 0)
                     failures.Add("[shield-improvement] ImproveCost('" + shield.rarity + "', L" + after + ") charges " +
                                  "NOTHING - either the ladder is free (and the economy is broken) or the cost curve " +
                                  "does not cover this band while Improve still reports success");

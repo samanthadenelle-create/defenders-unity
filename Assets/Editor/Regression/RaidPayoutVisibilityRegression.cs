@@ -152,7 +152,7 @@ namespace DeNelle.Editor.Regression
             log.AppendLine("[case G] WO-1561 - retreat and timeout show a result");
 
             // A half-razed retreat that banked a partial basket and wounded two troops.
-            var banked = new ResourceCost(wood: 420, food: 300, iron: 0, crystals: 0, coins: 180);
+            var banked = new ResourceCost(wood: 420, stone: 300, iron: 0, crystals: 0, coins: 180);
             var vm = EndStateVM.FromRaidRetreat(EndStateVM.RetreatReason, null, 30f,
                                                 stars: 1, destructionPercent: 62, elapsedSeconds: 96f,
                                                 credited: banked, rewardShort: false,
@@ -304,7 +304,7 @@ namespace DeNelle.Editor.Regression
 
             // The section-1 perfect Camp I basket, so the numbers under test are the
             // numbers the programme actually specifies.
-            var basket = new ResourceCost(wood: 1800, food: 3000, iron: 1100, crystals: 25, coins: 2200);
+            var basket = new ResourceCost(wood: 1800, stone: 3000, iron: 1100, crystals: 25, coins: 2200);
             var full = EndStateVM.FromRaidVictory(null, null, 20f, 3, 100, 42f, basket);
 
             if (full == null) { fails.Add("[A] FromRaidVictory returned null on a full basket"); return; }

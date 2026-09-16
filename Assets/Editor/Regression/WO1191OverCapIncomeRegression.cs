@@ -325,7 +325,7 @@ namespace DeNelle.Editor.Regression
             {
                 case BankResource.Wood:     return econ.Wood;
                 case BankResource.Iron:     return econ.Iron;
-                case BankResource.Food:     return econ.Food;
+                case BankResource.Stone:     return econ.Stone;
                 case BankResource.Crystals: return econ.Crystals;
                 case BankResource.Coins:    return econ.Coins;
             }
@@ -338,7 +338,7 @@ namespace DeNelle.Editor.Regression
             {
                 case BankResource.Wood:     return new ResourceCost(amount, 0, 0, 0, 0);
                 case BankResource.Iron:     return new ResourceCost(0, 0, amount, 0, 0);
-                case BankResource.Food:     return new ResourceCost(0, amount, 0, 0, 0);
+                case BankResource.Stone:     return new ResourceCost(0, amount, 0, 0, 0);
                 case BankResource.Crystals: return new ResourceCost(0, 0, 0, amount, 0);
                 case BankResource.Coins:    return new ResourceCost(0, 0, 0, 0, amount);
             }

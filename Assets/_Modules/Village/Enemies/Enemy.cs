@@ -3258,6 +3258,8 @@ namespace DeNelle.Village
         /// </param>
         private void Die(bool killed, bool dealtByHero = false)
         {
+            // Freeze before Died callbacks can resolve a match or change scenes.
+            bool grantsProgression = DeNelle.Core.Combat.PracticeCombatPolicy.AllowsProgression(this);
             _dead = true;
             _telegraphing = false;   // audit 2026-05-30: clear the wind-up latch on death (safe for future pooling)
             // POOL-RESET AUDIT (2026-08-02, P0-1): the 2026-05-30 audit cleared the wind-up latch
@@ -3407,7 +3409,7 @@ namespace DeNelle.Village
             // Kill-XP attribution: a genuine kill shares this enemy's XP across
             // the combatants that damaged it; a forced removal (breach) just
             // discards its damage ledger so nothing leaks and no XP is granted.
-            if (killed) DeNelle.Village.Progression.ProgressionManager.ReportKill(this);
+            if (killed && grantsProgression) DeNelle.Village.Progression.ProgressionManager.ReportKill(this);
             else DeNelle.Core.Combat.DamageAttribution.Forget(this);
 
             // WO-1103: per-enemy BASE + bounded VARIANCE kill grants (owner directive
@@ -3415,7 +3417,7 @@ namespace DeNelle.Village
             // DEF-88 XP + WO-432/433 GOLD both roll through the ONE authority
             // (EnemyDef.RollReward); variance is the def's data-driven rewardVariance
             // trickle, not part of the combat-economy variance surface).
-            if (killed && _def != null)
+            if (killed && grantsProgression && _def != null)
             {
                 float variance = _def.RewardVariance;
 
@@ -3474,8 +3476,8 @@ namespace DeNelle.Village
                 //
                 // ⛔⛔ THE STONE TRAP (WO-1212, CLOSED 2026-08-26): there USED to be two Stone
                 // balances and only ONE of them was the player's. The HUD chip labelled "Stone"
-                // (HudKitController.cs:1596 pairs CurrencyKind.Food with the name "Stone") reads
-                // GameState.Resources.Food via EconomyService.Food — DEF-121 repurposed the
+                // (HudKitController.cs:1596 pairs CurrencyKind.Stone with the name "Stone") reads
+                // GameState.Resources.Stone via EconomyService.Food — DEF-121 repurposed the
                 // retired Stone axis onto Food, and that is the balance every cost actually
                 // spends. GameState.Stone WAS a second persisted balance displayed NOWHERE and
                 // spent by NOTHING; granting there meant the player was told they earned Stone
@@ -3557,15 +3559,15 @@ namespace DeNelle.Village
                         // failed to bank.
                         int woodBefore  = econ.Wood;
                         int ironBefore  = econ.Iron;
-                        int stoneBefore = econ.Food;
+                        int stoneBefore = econ.Stone;
                         var applied = econ.Grant(new ResourceCost(
-                            wood: rolledWood, food: rolledStone, iron: rolledIron));
+                            wood: rolledWood, stone: rolledStone, iron: rolledIron));
                         appliedWood  = applied.Wood;
                         appliedIron  = applied.Iron;
-                        appliedStone = applied.Food;   // WO-1212: Stone rides the Food axis
+                        appliedStone = applied.Stone;   // WO-1212: Stone rides the Food axis
                         creditedWood  = Mathf.Max(0, econ.Wood - woodBefore);
                         creditedIron  = Mathf.Max(0, econ.Iron - ironBefore);
-                        creditedStone = Mathf.Max(0, econ.Food - stoneBefore);
+                        creditedStone = Mathf.Max(0, econ.Stone - stoneBefore);
                     }
                 }
 

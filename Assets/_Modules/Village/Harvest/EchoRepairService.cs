@@ -494,7 +494,7 @@ namespace DeNelle.Village
             var missing = new System.Collections.Generic.List<string>(4);
             if (cost.wood > 0 && !repair.CanAffordMaterials(new CoreCost { wood = cost.wood })) missing.Add("Wood");
             if (cost.iron > 0 && !repair.CanAffordMaterials(new CoreCost { iron = cost.iron })) missing.Add("Iron");
-            if (cost.food > 0 && !repair.CanAffordMaterials(new CoreCost { food = cost.food })) missing.Add("Stone");
+            if (cost.stone > 0 && !repair.CanAffordMaterials(new CoreCost { stone = cost.stone })) missing.Add("Stone");
             if (cost.crystals > 0 && !repair.CanAffordMaterials(new CoreCost { crystals = cost.crystals })) missing.Add("Crystals");
             if (missing.Count == 0) return "";
             if (missing.Count == 1) return missing[0];

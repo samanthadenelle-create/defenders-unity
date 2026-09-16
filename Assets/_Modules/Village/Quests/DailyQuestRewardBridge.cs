@@ -23,7 +23,7 @@
 //
 // Grant routes (all the canonical earn sites):
 //   crystals  -> GameStateService.AddCrystals (Resources.Crystals wallet)
-//   food      -> GameStateService.AddFood      (Resources.Food wallet)
+//   food      -> GameStateService.AddStone      (Resources.Stone wallet)
 //   wisdom    -> WisdomCurrencyService.Grant         (talent currency)
 //   item      -> VillageInventory.Add  (persisted larder/gear store -> GameState.GearInventory)
 //
@@ -184,7 +184,7 @@ namespace DeNelle.Village.Quests
         /// <summary>
         /// Dispenses every axis of the slot reward, counting how many were REQUESTED and how
         /// many actually CREDITED. WO-978: not one of these APIs returns a credited amount
-        /// (<c>AddCrystals</c>/<c>AddFood</c>/<c>EconomyService.Grant</c> are all <c>void</c>;
+        /// (<c>AddCrystals</c>/<c>AddStone</c>/<c>EconomyService.Grant</c> are all <c>void</c>;
         /// each grant is measured as a
         /// BEFORE/AFTER delta on the wallet it targets — a measured quantity, never the catalog
         /// number we asked for. Every null service now names its consequence rather than
@@ -217,39 +217,39 @@ namespace DeNelle.Village.Quests
                 }
             }
 
-            // Food -> the food wallet (Resources.Food).
+            // Food -> the food wallet (Resources.Stone).
             // WO-857 Phase F: a daily-quest payout is EARNED income, the same category as the story
             // quest rewards QuestRewardBridge already routes through EconomyService.Grant, so it is
             // subject to the town bank cap (clamp-and-warn, owner ruling WO-901 §5). It used to call
-            // GameStateService.AddFood directly, which is BELOW the cap seam - an unclamped back door
-            // that would have let dailies alone push food past a full bank with no warn. AddFood stays
+            // GameStateService.AddStone directly, which is BELOW the cap seam - an unclamped back door
+            // that would have let dailies alone push food past a full bank with no warn. AddStone stays
             // as the no-EconomyService fallback only (EditMode / headless boots).
             // WO-978: this is THE axis the cap actually bites — so it is the one that most needed to
             // stop printing the catalog number.
-            if (reward.RewardFood > 0)
+            if (reward.RewardStone > 0)
             {
                 requestedAxes++;
                 var eco = EconomyService.Instance;
                 if (eco != null)
                 {
-                    int before = eco.Food;
-                    eco.Grant(food: reward.RewardFood);
-                    int credited = eco.Food - before;
+                    int before = eco.Stone;
+                    eco.Grant(stone: reward.RewardStone);
+                    int credited = eco.Stone - before;
                     if (credited > 0) paidAxes++;
-                    Report(q, "food", credited, reward.RewardFood, eco.Food);
+                    Report(q, "food", credited, reward.RewardStone, eco.Stone);
                 }
                 else if (state != null)
                 {
-                    int before = state.Resources.Food;
-                    gs.AddFood(reward.RewardFood);
-                    int credited = state.Resources.Food - before;
+                    int before = state.Resources.Stone;
+                    gs.AddStone(reward.RewardStone);
+                    int credited = state.Resources.Stone - before;
                     if (credited > 0) paidAxes++;
-                    Report(q, "food (no-EconomyService fallback)", credited, reward.RewardFood, state.Resources.Food);
+                    Report(q, "food (no-EconomyService fallback)", credited, reward.RewardStone, state.Resources.Stone);
                 }
                 else
                 {
                     FlowTrace.Fail("Economy", $"DailyQuest '{q.TemplateId}' food LOST — no EconomyService and no GameState; " +
-                                              $"{reward.RewardFood} food was never credited.");
+                                              $"{reward.RewardStone} food was never credited.");
                 }
             }
 

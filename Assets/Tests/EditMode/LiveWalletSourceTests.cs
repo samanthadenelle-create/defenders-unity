@@ -19,7 +19,7 @@ namespace DeNelle.Tests.EditMode
         [Test]
         public void wallet_dto_projects_all_five_pools_in_order()
         {
-            var econ = new FakeEconomy { Wood = 5, Iron = 3, Food = 7, Crystals = 9, Coins = 11 };
+            var econ = new FakeEconomy { Wood = 5, Iron = 3, Stone = 7, Crystals = 9, Coins = 11 };
             var src = new LiveWalletSource(econ);
             var entries = src.Wallet.Entries;
 

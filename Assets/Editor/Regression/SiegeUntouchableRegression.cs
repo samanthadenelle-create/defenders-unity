@@ -100,7 +100,7 @@ namespace DeNelle.Editor.Regression
         {
             BankResource.Wood,
             BankResource.Iron,
-            BankResource.Food,    // "STONE" player-facing -- BankResource has no Stone member
+            BankResource.Stone,    // "STONE" player-facing -- BankResource has no Stone member
             BankResource.Coins,   // "GOLD" player-facing
         };
 
@@ -457,7 +457,7 @@ namespace DeNelle.Editor.Regression
 
             if (ledger.Wood != 0) { nonZero = $"Wood={ledger.Wood}"; return false; }
             if (ledger.Iron != 0) { nonZero = $"Iron={ledger.Iron}"; return false; }
-            if (ledger.Food != 0) { nonZero = $"Food={ledger.Food}"; return false; }
+            if (ledger.Stone != 0) { nonZero = $"Food={ledger.Stone}"; return false; }
             if (ledger.Coins != 0) { nonZero = $"Coins={ledger.Coins}"; return false; }
             if (ledger.Crystals != 0) { nonZero = $"Crystals={ledger.Crystals}"; return false; }
             if (ledger.Magic != 0) { nonZero = $"Magic={ledger.Magic}"; return false; }
@@ -471,7 +471,7 @@ namespace DeNelle.Editor.Regression
             {
                 case BankResource.Wood: return ledger.Wood;
                 case BankResource.Iron: return ledger.Iron;
-                case BankResource.Food: return ledger.Food;
+                case BankResource.Stone: return ledger.Stone;
                 case BankResource.Coins: return ledger.Coins;
                 case BankResource.Crystals: return ledger.Crystals;
                 default: return -1;

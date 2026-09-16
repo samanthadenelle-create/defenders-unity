@@ -414,7 +414,7 @@ namespace DeNelle.Village.Feedback
         {
             var sb = new StringBuilder();
             AppendOverCap(sb, BankResource.Wood);
-            AppendOverCap(sb, BankResource.Food);
+            AppendOverCap(sb, BankResource.Stone);
             AppendOverCap(sb, BankResource.Iron);
             return sb.ToString();
         }

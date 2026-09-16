@@ -299,7 +299,7 @@ namespace DeNelle.Village
             if (c.IsZero) return "nothing";
             string s = string.Empty;
             if (c.wood     > 0) s += (s.Length > 0 ? "+" : string.Empty) + c.wood     + "w";
-            if (c.food     > 0) s += (s.Length > 0 ? "+" : string.Empty) + c.food     + "f";
+            if (c.stone     > 0) s += (s.Length > 0 ? "+" : string.Empty) + c.stone     + "f";
             if (c.iron     > 0) s += (s.Length > 0 ? "+" : string.Empty) + c.iron     + "i";
             if (c.crystals > 0) s += (s.Length > 0 ? "+" : string.Empty) + c.crystals + "c";
             return s;

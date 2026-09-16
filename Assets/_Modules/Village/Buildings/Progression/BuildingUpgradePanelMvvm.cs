@@ -726,7 +726,7 @@ namespace DeNelle.Village.Buildings.Progression
             // WO-1195 criterion 5: the icon resolves through the ONE data path
             // (ConceptIconResolver -> concept-icons.json), never a hardcoded sprite name.
             // The switch that used to live here was a SECOND icon registry, and it carried the
-            // same bug the kit had: it returned "currency_food" for CurrencyKind.Food, which
+            // same bug the kit had: it returned "currency_food" for CurrencyKind.Stone, which
             // canon §7 retired for Stone.
             var icon = UiStyle.Icon(ElarionUiKit.ConceptIdFor(kind));
             if (icon != null)
@@ -776,7 +776,7 @@ namespace DeNelle.Village.Buildings.Progression
             var list = new List<ElarionUiKit.CurrencyKind>();
             if (gold)    list.Add(ElarionUiKit.CurrencyKind.Gold);
             if (wood)    list.Add(ElarionUiKit.CurrencyKind.Wood);
-            if (food)    list.Add(ElarionUiKit.CurrencyKind.Food);
+            if (food)    list.Add(ElarionUiKit.CurrencyKind.Stone);
             if (iron)    list.Add(ElarionUiKit.CurrencyKind.Iron);
             if (crystal) list.Add(ElarionUiKit.CurrencyKind.Crystal);
 
@@ -784,7 +784,7 @@ namespace DeNelle.Village.Buildings.Progression
             {
                 list.Add(ElarionUiKit.CurrencyKind.Gold);
                 list.Add(ElarionUiKit.CurrencyKind.Wood);
-                list.Add(ElarionUiKit.CurrencyKind.Food);
+                list.Add(ElarionUiKit.CurrencyKind.Stone);
                 list.Add(ElarionUiKit.CurrencyKind.Crystal);
             }
             return list;
@@ -797,7 +797,7 @@ namespace DeNelle.Village.Buildings.Progression
             {
                 case ElarionUiKit.CurrencyKind.Gold:    return _vm.Coins;
                 case ElarionUiKit.CurrencyKind.Wood:    return _vm.Wood;
-                case ElarionUiKit.CurrencyKind.Food:    return _vm.Food;
+                case ElarionUiKit.CurrencyKind.Stone:    return _vm.Stone;
                 case ElarionUiKit.CurrencyKind.Iron:    return _vm.Iron;
                 case ElarionUiKit.CurrencyKind.Crystal: return _vm.Crystals;
                 default:                                return 0;
@@ -1043,7 +1043,7 @@ namespace DeNelle.Village.Buildings.Progression
 
             var kicker = ElarionUiKit.Label(header,
                 "NEXT UPGRADE - " + _vm.TierWord.ToUpperInvariant() + " " + _vm.NextTier,
-                0.58f, 0.98f, ElarionUi.ParchmentDim, ElarionUi.FontLabel,
+                0.50f, 1f, ElarionUi.ParchmentDim, ElarionUi.FontLabel,
                 TMPro.TextAlignmentOptions.BottomLeft, textX0, 1f, bold: true);
             kicker.characterSpacing = 5f;
             kicker.raycastTarget = false;
@@ -1051,7 +1051,7 @@ namespace DeNelle.Village.Buildings.Progression
 
             var nameLbl = ElarionUiKit.Label(header,
                 !string.IsNullOrEmpty(_vm.NextTierName) ? _vm.NextTierName : (_vm.TierWord + " " + _vm.NextTier),
-                0.02f, 0.56f, ElarionUi.Gilt, ElarionUi.FontHead,
+                0f, 0.50f, ElarionUi.Gilt, ElarionUi.FontHead,
                 TMPro.TextAlignmentOptions.TopLeft, textX0, 1f, bold: true);
             nameLbl.raycastTarget = false;
             ElarionUiKit.FitBlock(nameLbl);
@@ -1492,7 +1492,7 @@ namespace DeNelle.Village.Buildings.Progression
             // -- LEFT (or full width): the DEAD state + the SHORTFALL IN WORDS + the harvest path.
             // Composed in FULL before the button is built: BuildLockButton runs FitBlock, which
             // sizes to the string it is handed, so a later .text assignment would leave a stale fit.
-            float deadX1 = offering ? x0 + (x1 - x0) * 0.60f : x1;
+            float deadX1 = offering ? x0 + (x1 - x0) * 0.52f : x1;
             // WO-1391 — the FACE is the shortfall sentence itself ("Short 94 Gold", or "Short 300
             // Iron, 120 Crystals"), composed by the VM from the same lines the chips draw. The
             // CopyKeyShortDetail line that used to repeat it underneath is therefore gone; the
@@ -1526,8 +1526,11 @@ namespace DeNelle.Village.Buildings.Progression
                 offer.PriceLabel);
             offerText += "\n" + Copy(CopyKeyShortPackSoon, "Coming soon - tap to dismiss");
 
+            // Keep every authored word; use natural wrapping in this narrow plate.
+            offerText = offerText.Replace("\n", " ");
+
             var offerLbl = BuildLockButton(card, offerText, deadX1 + 0.015f, x1, 0f, 1f,
-                                           OnDismissShortfallOffer, RpgUiCatalog.ElementArrowBox);
+                                           OnDismissShortfallOffer);
             PinActionBand((RectTransform)offerLbl.transform.parent);
 
             FlowTrace.Step("UpgradeUI", "shortfall band on '" + _vm.Title + "': short " + worstMissing
@@ -1690,6 +1693,7 @@ namespace DeNelle.Village.Buildings.Progression
             }
             btn.gameObject.name = "LockBtn";
             btn.interactable = onClick != null;
+            ElarionUiKit.ApplyMultilineButtonPlate(btn);
 
             var glyph = string.IsNullOrEmpty(glyphKey) ? null : RpgUiCatalog.Get(RpgUiCatalog.RoleElement, glyphKey);
             float textX0 = 0.06f;

@@ -487,7 +487,7 @@ namespace DeNelle.Editor
                 failures.Add($"SaveSchema.CurrentVersion is {SaveSchema.CurrentVersion} — WO-911's paid basket requires >= 37");
 
             var t = typeof(BuildJobData);
-            foreach (var f in new[] { "PaidWood", "PaidFood", "PaidIron", "PaidCrystals", "PaidMagic", "PaidCoins" })
+            foreach (var f in new[] { "PaidWood", "PaidStone", "PaidIron", "PaidCrystals", "PaidMagic", "PaidCoins" })
                 if (t.GetField(f) == null)
                     failures.Add($"BuildJobData.{f} missing — a cancel cannot refund what the job does not remember (WO-911 M2)");
 
@@ -497,7 +497,7 @@ namespace DeNelle.Editor
                 failures.Add("a job with no recorded cost does not report a zero basket — a legacy cancel would mint resources");
 
             var round = new BuildJobData { StructureId = "x", Paid = new JobCost(400, 200, 0, 0, coins: 75) };
-            if (round.PaidWood != 400 || round.PaidFood != 200 || round.PaidCoins != 75)
+            if (round.PaidWood != 400 || round.PaidStone != 200 || round.PaidCoins != 75)
                 failures.Add("BuildJobData.Paid does not round-trip through the persisted fields");
 
             // v39 refund baskets: pure-Gold training and mixed material+Gold upgrades must both
@@ -1037,7 +1037,7 @@ namespace DeNelle.Editor
 
                     if (!cancelled)
                         failures.Add("[wo1479/c] the paid fixture job would not cancel, so the quote is unverified.");
-                    if (refunded.Wood != live.Basket.Wood || refunded.Food != live.Basket.Food ||
+                    if (refunded.Wood != live.Basket.Wood || refunded.Stone != live.Basket.Stone ||
                         refunded.Iron != live.Basket.Iron || refunded.Crystals != live.Basket.Crystals ||
                         refunded.Magic != live.Basket.Magic || refunded.Coins != live.Basket.Coins)
                         failures.Add("[wo1479/c] the QUOTED basket (" + live.Basket.Describe() + ") is not what " +

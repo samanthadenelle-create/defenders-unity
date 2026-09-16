@@ -86,7 +86,7 @@ namespace DeNelle.Data.Tests
         public void every_weapon_is_priced_not_free()
         {
             foreach (var w in GearCatalog.AllWeapons())
-                Assert.That(w.buyWood + w.buyFood + w.buyIron + w.buyCrystals, Is.GreaterThan(0),
+                Assert.That(w.buyWood + w.buyStone + w.buyIron + w.buyCrystals, Is.GreaterThan(0),
                     $"{w.id} must have a buy cost (regression to all-Free shop).");
         }
 
@@ -94,7 +94,7 @@ namespace DeNelle.Data.Tests
         public void every_armor_is_priced_not_free()
         {
             foreach (var a in GearCatalog.AllArmors())
-                Assert.That(a.buyWood + a.buyFood + a.buyIron + a.buyCrystals, Is.GreaterThan(0),
+                Assert.That(a.buyWood + a.buyStone + a.buyIron + a.buyCrystals, Is.GreaterThan(0),
                     $"{a.id} must have a buy cost (regression to all-Free shop).");
         }
     }

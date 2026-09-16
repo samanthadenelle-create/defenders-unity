@@ -349,7 +349,7 @@ namespace DeNelle.Village.Monetization
             // TownBankCapacity is the ONE bank reader (WO-857 Phase F); do not re-derive a cap here.
             return TownBankCapacity.HasHeadroom(BankResource.Wood)
                 || TownBankCapacity.HasHeadroom(BankResource.Iron)
-                || TownBankCapacity.HasHeadroom(BankResource.Food);
+                || TownBankCapacity.HasHeadroom(BankResource.Stone);
         }
 
         // The three-line seam the save-schema migration replaces (see header). Doubles are stored

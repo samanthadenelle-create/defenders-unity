@@ -112,7 +112,7 @@ namespace DeNelle.Tests.EditMode
         {
             var loot = RaidScoring.ComputeLoot(0, 0f, 40, 60, 15, 20);
             Assert.AreEqual(0, loot.Crystals);
-            Assert.AreEqual(0, loot.Food);
+            Assert.AreEqual(0, loot.Stone);
         }
 
         [Test]
@@ -124,8 +124,8 @@ namespace DeNelle.Tests.EditMode
 
             Assert.Greater(half.Crystals, none.Crystals);
             Assert.Greater(full.Crystals, half.Crystals);
-            Assert.Greater(half.Food, none.Food);
-            Assert.Greater(full.Food, half.Food);
+            Assert.Greater(half.Stone, none.Stone);
+            Assert.Greater(full.Stone, half.Stone);
         }
 
         [Test]
@@ -134,7 +134,7 @@ namespace DeNelle.Tests.EditMode
             // 100% destruction => full base; +3x per-star bonus.
             var full = RaidScoring.ComputeLoot(3, 1f, 40, 60, 15, 20);
             Assert.AreEqual(40 + 3 * 15, full.Crystals);   // 85
-            Assert.AreEqual(60 + 3 * 20, full.Food);        // 120
+            Assert.AreEqual(60 + 3 * 20, full.Stone);        // 120
         }
 
         // ── THE MISSING ARROW: troops -> raids -> GOLD ────────────────────────
@@ -164,7 +164,7 @@ namespace DeNelle.Tests.EditMode
             var loot = RaidScoring.ComputeLoot(0, 0f, 20, 60, 2, 20, 1f, 1800, 1100, 2200);
             Assert.AreEqual(396, loot.Coins);     // 18% of 2200
             Assert.AreEqual(0, loot.Crystals);    // nothing razed
-            Assert.AreEqual(0, loot.Food);
+            Assert.AreEqual(0, loot.Stone);
         }
 
         /// <summary>
@@ -190,7 +190,7 @@ namespace DeNelle.Tests.EditMode
             var flat = RaidScoring.ComputeLoot(3, 1f, 25, 60, 10, 20, 1f);
             var hard = RaidScoring.ComputeLoot(3, 1f, 25, 60, 10, 20, 1.5f);
             Assert.AreEqual(flat.Crystals, hard.Crystals);
-            Assert.Greater(hard.Food, flat.Food);
+            Assert.Greater(hard.Stone, flat.Stone);
         }
     }
 }

@@ -40,6 +40,8 @@ namespace DeNelle.Village
     /// </summary>
     public sealed class BuildModeController : MonoBehaviour
     {
+        private static bool IsOwnedTown => UnityEngine.SceneManagement.SceneManager.GetActiveScene().name ==
+            World.Camps.OwnedTownScenePose.SceneName;
         public static BuildModeController Instance { get; private set; }
 
         /// <summary>
@@ -560,7 +562,10 @@ namespace DeNelle.Village
             }
 
             if (IsActive) return;
+            if (IsOwnedTown && World.Camps.OwnedTownConstructionService.FindGrid() == null)
+            { BuildFeedbackToast.Show("Reenter your town before opening construction."); return; }
             IsActive = true;
+            if (IsOwnedTown) UnityEngine.Object.FindAnyObjectByType<World.Camps.OwnedTownPanel>()?.HideForBuild();
             // WO-702 truce seam: publish "builder open" into Core so TutorialFlow can
             // defer step-intro dialogues and DialogueView (HUD, Core-only) can hide an
             // already-open dialogue until Exit. Village writes, everyone else reads.
@@ -586,6 +591,7 @@ namespace DeNelle.Village
             //   unaccounted = replayable records with NO live body at their (itemId, cell)
             // Only unaccounted > 0 is a loss, and only that is a Fail - a founding load never Warns.
             // Classification is pure (BaseLayoutCensus.Classify) so the regression pins it headless.
+            if (!IsOwnedTown)
             {
                 var liveBodies = FindObjectsByType<PlacedStructure>();
                 int liveNow = liveBodies.Length;
@@ -689,6 +695,7 @@ namespace DeNelle.Village
         public void Exit()
         {
             if (!IsActive) return;
+            if (IsOwnedTown) World.Camps.OwnedTownConstructionService.CancelPreview();
             IsActive = false;
             // WO-702 truce seam: builder closed — TutorialFlow releases any deferred
             // intro and DialogueView re-shows a hidden conversation next frame.
@@ -701,6 +708,7 @@ namespace DeNelle.Village
             _selectionUi?.Hide();
             _hud?.Hide();
             _grid?.SetGridVisible(false);
+            if (IsOwnedTown) UnityEngine.Object.FindAnyObjectByType<World.Camps.OwnedTownPanel>()?.Show();
             DeNelle.Core.UI.TutorialSkipUi.SetSuppressed(false);
 
             // Stop the Lean.Touch driver + hide its button bar; revert to the desktop
@@ -1346,6 +1354,7 @@ namespace DeNelle.Village
         /// </summary>
         private string ReasonLabelText(BuildRejectReason reason)
         {
+            if (IsOwnedTown && !string.IsNullOrEmpty(_lastRejectDetail)) return _lastRejectDetail;
             if (reason == BuildRejectReason.CannotAfford) return ShortfallMessage(EffectiveCostFor(_armed));
 
             string text = BuildFeedbackToast.MessageFor(reason);
@@ -1896,6 +1905,13 @@ namespace DeNelle.Village
             //    entries fall back to a Crystals cost. A move is free, so the cost gate
             //    is skipped for it. EffectiveCostFor: a live first-build freebie is a
             //    zero cost, so the ghost/validator agrees with the Place() commit.
+            if (IsOwnedTown && !ignoreCost)
+            {
+                var preview = new OwnedBaseStructure { placement = new PlacedStructureData(entry.id, cell.x, cell.y,
+                    ArmedYawQuarterSteps, 1, ArmedYawOffsetDeg, seatY, wallMounted) };
+                if (!World.Camps.OwnedTownLayoutSnapshot.TryGridBounds(preview, out _, out _lastRejectDetail))
+                { reason = BuildRejectReason.OutOfBounds; return false; }
+            }
             if (!ignoreCost)
             {
                 DeNelle.Core.Catalog.ResourceCost cost = EffectiveCostFor(entry);
@@ -2070,6 +2086,22 @@ namespace DeNelle.Village
         /// </summary>
         private void Place(Vector2Int cell, Vector2Int footprint, Vector3 snapped, bool wallMounted = false)
         {
+            if (IsOwnedTown)
+            {
+                if (_armed == null) return;
+                var ownedData = new PlacedStructureData(_armed.id, cell.x, cell.y, ArmedYawQuarterSteps, 1,
+                    ArmedYawOffsetDeg, snapped.y, wallMounted);
+                if (!World.Camps.OwnedTownConstructionService.TryBeginBuild(ownedData, (saved, failure) => {
+                    if (this == null) return;
+                    if (!saved) BuildFeedbackToast.Show(failure);
+                    else
+                    {
+                        DeNelle.Core.Tutorial.TutorialSignals.Raise(DeNelle.Core.Tutorial.TutorialSignals.OwnedTownDesigned);
+                        CancelArmed(); _hud?.RefreshResources();
+                    }
+                }, out var refusal)) BuildFeedbackToast.Show(refusal);
+                return;
+            }
             FlowTrace.Step("Build", $"Place() — tower spawn (id='{_armed?.id}', cell=({cell.x},{cell.y}))");
             // Re-check affordability AT commit through the same ledger the validity gate
             // used — never spawn if the player can't pay (defensive: balance may have
@@ -2361,6 +2393,8 @@ namespace DeNelle.Village
                 FlowTrace.Warn("Build", $"ArmById: '{id}' not found in CatalogRegistry — cannot arm.");
                 return false;
             }
+            string locationReason = World.Camps.OwnedTownLayoutSnapshot.PlacementBlockReason(entry);
+            if (!string.IsNullOrEmpty(locationReason)) { BuildFeedbackToast.Show(locationReason); return false; }
             if (SingletonAlreadyBuilt(entry)) { BuildFeedbackToast.Show(BuildRejectReason.Singleton); return false; }
             Arm(entry);
             return true;
@@ -2406,6 +2440,8 @@ namespace DeNelle.Village
 
         private void Arm(CatalogEntry entry)
         {
+            string locationReason = World.Camps.OwnedTownLayoutSnapshot.PlacementBlockReason(entry);
+            if (!string.IsNullOrEmpty(locationReason)) { BuildFeedbackToast.Show(locationReason); return; }
             if (SingletonAlreadyBuilt(entry)) { BuildFeedbackToast.Show(BuildRejectReason.Singleton); return; }
             FlowTrace.Step("Build", $"Armed placement for '{entry?.id}'");
             // Entering CREATE mode clears any active selection / move (P2).
@@ -2553,6 +2589,26 @@ namespace DeNelle.Village
         private void SelectStructure(PlacedStructure ps)
         {
             if (ps == null) return;
+            if (IsOwnedTown)
+            {
+                var identity = ps.GetComponent<World.Camps.OwnedTownPlacedIdentity>();
+                if (identity == null) { BuildFeedbackToast.Show("This fitted structure cannot be edited."); return; }
+                var ownedRecord = GameStateService.Instance?.State?.OwnedBase?.structures.Find(s => s.instanceId == identity.InstanceId);
+                if (ownedRecord != null && !ownedRecord.retired && ownedRecord.constructionPending)
+                {
+                    string jobKey = OwnedTownJobKey.Compose(GameStateService.Instance.State.OwnedBase.baseId, ownedRecord.instanceId);
+                    Exit();
+                    if (!DeNelle.Core.UI.PanelRouter.Open(DeNelle.Core.UI.PanelId.BuildingUpgrade, jobKey))
+                        BuildFeedbackToast.Show("The construction page could not open. Please try again.");
+                    return;
+                }
+                if (World.Camps.OwnedTownTemplateManifest.Load()?.IsEditableStructure(ownedRecord) != true)
+                { BuildFeedbackToast.Show("Choose a completed defense tower or a wall you built."); return; }
+                Exit();
+                var townPanel = UnityEngine.Object.FindAnyObjectByType<World.Camps.OwnedTownPanel>();
+                townPanel?.SelectStructure(identity.InstanceId);
+                return;
+            }
             CancelArmed();
             ClearSelection();   // drop any prior highlight before re-selecting
 
@@ -2605,7 +2661,7 @@ namespace DeNelle.Village
             if (level < maxLevel)
             {
                 DeNelle.Core.Catalog.ResourceCost up = UpgradeCostFor(entry, level);
-                upgradeTotal = up.wood + up.food + up.iron + up.crystals;
+                upgradeTotal = up.wood + up.stone + up.iron + up.crystals;
                 canAfford = CanAfford(up);
             }
 
@@ -2793,8 +2849,11 @@ namespace DeNelle.Village
             // when the catalog authors a per-tier model (upgradeVisualPath), SWAP the visual and
             // skip the legacy scale-step (the model IS the progression). No tier model = legacy
             // scale + accent, unchanged. Reskin BEFORE Apply so Apply re-collects new renderers.
-            bool swapped = StructureFactory.ReskinForLevel(ps.gameObject, entry, newLevel);
-            if (ps.TierVisual != null) { ps.TierVisual.Apply(swapped ? 1 : newLevel); ps.TierVisual.Refresh(); }
+            if (string.IsNullOrEmpty(ps.authoredSourceId))
+            {
+                bool swapped = StructureFactory.ReskinForLevel(ps.gameObject, entry, newLevel);
+                if (ps.TierVisual != null) { ps.TierVisual.Apply(swapped ? 1 : newLevel); ps.TierVisual.Refresh(); }
+            }
 
             // Step the gameplay stats per tier (range/damage for towers, toughness for walls).
             ApplyTierStats(ps, newLevel);
@@ -2966,7 +3025,7 @@ namespace DeNelle.Village
             return new DeNelle.Core.Catalog.ResourceCost
             {
                 wood     = baseCost.wood     * scale,
-                food     = baseCost.food     * scale,
+                stone     = baseCost.stone     * scale,
                 iron     = baseCost.iron     * scale,
                 crystals = baseCost.crystals * scale,
             };
@@ -3002,6 +3061,14 @@ namespace DeNelle.Village
                 return;
             }
 
+            // The catalog ghost does not represent the owner's preserved geometry or
+            // its measured footprint. Refuse before freeing cells; never commit blind.
+            if (!string.IsNullOrEmpty(_selected.authoredSourceId))
+            {
+                BuildFeedbackToast.Show("This original building cannot be moved yet.");
+                FlowTrace.Warn("BuildMove", "Authored building move refused: an exact geometry/footprint preview is required; pose and occupancy remain unchanged.");
+                return;
+            }
             _moveOriginCell = _selected.gridCell;
             // FIX #2 (2026-07-16) — seed the move target at the structure's current spot so
             // an arrow/d-pad nudge starts from where it stands (not from the last pointer
@@ -3132,7 +3199,7 @@ namespace DeNelle.Village
         private static int RefundFor(PlacedStructure ps)
         {
             var r = RefundCostFor(ps);
-            return r.wood + r.food + r.iron + r.crystals;
+            return r.wood + r.stone + r.iron + r.crystals;
         }
 
         /// <summary>
@@ -3144,18 +3211,23 @@ namespace DeNelle.Village
         private static DeNelle.Core.Catalog.ResourceCost RefundCostFor(PlacedStructure ps)
         {
             if (ps == null) return default;
-            var entry = CatalogRegistry.Get(ps.itemId);
+            return RefundCostFor(ps.itemId, ps.level);
+        }
+
+        public static DeNelle.Core.Catalog.ResourceCost RefundCostFor(string itemId, int currentLevel)
+        {
+            var entry = CatalogRegistry.Get(itemId);
 
             // Base build cost…
             var total = CostFor(entry);
 
             // …plus each upgrade step paid to reach the current level (L1→L2, …, (lvl-1)→lvl).
-            int level = Mathf.Max(1, ps.level);
+            int level = Mathf.Max(1, currentLevel);
             for (int from = 1; from < level; from++)
             {
                 var step = UpgradeCostFor(entry, from);
                 total.wood     += step.wood;
-                total.food     += step.food;
+                total.stone     += step.stone;
                 total.iron     += step.iron;
                 total.crystals += step.crystals;
             }
@@ -3173,7 +3245,7 @@ namespace DeNelle.Village
             return new DeNelle.Core.Catalog.ResourceCost
             {
                 wood     = ApplySalvage(total.wood     / 2, salvage),
-                food     = ApplySalvage(total.food     / 2, salvage),
+                stone     = ApplySalvage(total.stone     / 2, salvage),
                 iron     = ApplySalvage(total.iron     / 2, salvage),
                 crystals = ApplySalvage(total.crystals / 2, salvage),
             };
@@ -3462,7 +3534,7 @@ namespace DeNelle.Village
             var scaled = new DeNelle.Core.Catalog.ResourceCost
             {
                 wood     = Mathf.CeilToInt(baseCost.wood     * mult),
-                food     = Mathf.CeilToInt(baseCost.food     * mult),
+                stone     = Mathf.CeilToInt(baseCost.stone     * mult),
                 iron     = Mathf.CeilToInt(baseCost.iron     * mult),
                 crystals = Mathf.CeilToInt(baseCost.crystals * mult),
             };
@@ -3473,8 +3545,8 @@ namespace DeNelle.Village
                 $"tower softcap x{mult:0.##} on '{entry.id}' -- placement #{ordinal} " +
                 $"(live towers {liveTowerCount}, startAt {TowerSoftcapStartAtOrdinal}, " +
                 $"perExtra {TowerSoftcapMultPerExtra:0.##}, cap x{TowerSoftcapMaxMult:0.##}): " +
-                $"w{baseCost.wood}/f{baseCost.food}/i{baseCost.iron}/c{baseCost.crystals} -> " +
-                $"w{scaled.wood}/f{scaled.food}/i{scaled.iron}/c{scaled.crystals}");
+                $"w{baseCost.wood}/f{baseCost.stone}/i{baseCost.iron}/c{baseCost.crystals} -> " +
+                $"w{scaled.wood}/f{scaled.stone}/i{scaled.iron}/c{scaled.crystals}");
             return scaled;
         }
 
@@ -3503,7 +3575,7 @@ namespace DeNelle.Village
 
         /// <summary>Map the Core cost to EconomyService.ResourceCost (1:1 field copy).</summary>
         public static ResourceCost ToEconomy(DeNelle.Core.Catalog.ResourceCost c)
-            => new ResourceCost(c.wood, c.food, c.iron, c.crystals);
+            => new ResourceCost(c.wood, c.stone, c.iron, c.crystals);
 
         /// <summary>
         /// Affordability via the persisted multi-resource ledger (EconomyService). Falls
@@ -3551,7 +3623,7 @@ namespace DeNelle.Village
             {
                 if (cost.wood     > 0 && !econ.CanAfford(new ResourceCost(cost.wood, 0, 0, 0)))     return $"Not enough Wood ({cost.wood})";
                 if (cost.iron     > 0 && !econ.CanAfford(new ResourceCost(0, 0, cost.iron, 0)))     return $"Not enough Iron ({cost.iron})";
-                if (cost.food     > 0 && !econ.CanAfford(new ResourceCost(0, cost.food, 0, 0)))     return $"Not enough Stone ({cost.food})";
+                if (cost.stone     > 0 && !econ.CanAfford(new ResourceCost(0, cost.stone, 0, 0)))     return $"Not enough Stone ({cost.stone})";
                 if (cost.crystals > 0 && !econ.CanAfford(new ResourceCost(0, 0, 0, cost.crystals))) return $"Not enough Crystals ({cost.crystals})";
             }
             else if (cost.crystals > 0 && CrystalBalance < cost.crystals)
@@ -3583,7 +3655,7 @@ namespace DeNelle.Village
             var blocks = new List<DeNelle.Core.Economy.TownBankCapacity.StorageBlock>(3);
             TryAddCapBlock(DeNelle.Core.Economy.BankResource.Wood, cost.wood, blocks);
             TryAddCapBlock(DeNelle.Core.Economy.BankResource.Iron, cost.iron, blocks);
-            TryAddCapBlock(DeNelle.Core.Economy.BankResource.Food, cost.food, blocks);   // displayed "Stone"
+            TryAddCapBlock(DeNelle.Core.Economy.BankResource.Stone, cost.stone, blocks);   // displayed "Stone"
             if (blocks.Count == 0) return "";
 
             int worst = 0;
@@ -3676,7 +3748,7 @@ namespace DeNelle.Village
             if (c.IsZero) return "nothing";
             var parts = new List<string>(4);
             if (c.wood     > 0) parts.Add($"{c.wood} wood");
-            if (c.food     > 0) parts.Add($"{c.food} stone");
+            if (c.stone     > 0) parts.Add($"{c.stone} stone");
             if (c.iron     > 0) parts.Add($"{c.iron} iron");
             if (c.crystals > 0) parts.Add($"{c.crystals} crystals");
             return string.Join(", ", parts);
@@ -3777,6 +3849,7 @@ namespace DeNelle.Village
         /// </summary>
         private void SeedBaseLayoutIfFirstEntry()
         {
+            if (IsOwnedTown) return;
             var state = GameStateService.Instance != null ? GameStateService.Instance.State : null;
             if (state == null) return;
             if (state.BaseLayout != null && state.BaseLayout.Count > 0) return;
@@ -3792,6 +3865,7 @@ namespace DeNelle.Village
 
         private void CommitLayout()
         {
+            if (IsOwnedTown) return; // owned operations already save payment and layout atomically
             // BaseLayout is mutated live as structures are placed; persist it now.
             // §12 CAPTURE (do NOT blind-guard hub scenes here — MainCastle_Hall is the HOME hub
             // where the player's base IS built; a blanket hub-skip would BREAK base persistence,
@@ -4216,6 +4290,7 @@ namespace DeNelle.Village
 
         private void EnsureGrid()
         {
+            if (IsOwnedTown) { _grid = World.Camps.OwnedTownConstructionService.FindGrid(); return; }
             _grid = PlacementGrid.Instance;
             if (_grid == null)
                 _grid = new GameObject("PlacementGrid").AddComponent<PlacementGrid>();

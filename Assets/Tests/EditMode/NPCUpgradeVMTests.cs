@@ -10,7 +10,7 @@
 //   * TryPurchaseUpgrade spends atomically when affordable.
 //   * TryPurchaseUpgrade returns false + does NOT spend when short.
 //   * TryPurchaseUpgrade returns false with a null economy.
-//   * GrantFirstHarvestBonus adds +5 Wood / +5 Food.
+//   * GrantFirstHarvestBonus adds +5 Wood / +5 Stone.
 // =============================================================================
 
 using System;
@@ -27,7 +27,7 @@ namespace DeNelle.Tests.EditMode
             public int Coins { get; set; }
             public int Wood { get; set; }
             public int Iron { get; set; }
-            public int Food { get; set; }
+            public int Stone { get; set; }
             public int Crystals { get; set; }
 
             public int SpendCalls;
@@ -37,24 +37,24 @@ namespace DeNelle.Tests.EditMode
 
             public bool CanAfford(ResourceCost cost) =>
                 Coins >= cost.Coins && Wood >= cost.Wood && Iron >= cost.Iron &&
-                Food >= cost.Food && Crystals >= cost.Crystals;
+                Stone >= cost.Stone && Crystals >= cost.Crystals;
 
             public bool TrySpend(ResourceCost cost)
             {
                 if (!CanAfford(cost)) return false;
                 Coins -= cost.Coins; Wood -= cost.Wood; Iron -= cost.Iron;
-                Food -= cost.Food; Crystals -= cost.Crystals;
+                Stone -= cost.Stone; Crystals -= cost.Crystals;
                 SpendCalls++;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 return true;
             }
 
             public ResourceCost Grant(ResourceCost amount)
             {
                 Coins += amount.Coins; Wood += amount.Wood; Iron += amount.Iron;
-                Food += amount.Food; Crystals += amount.Crystals;
+                Stone += amount.Stone; Crystals += amount.Crystals;
                 GrantCalls++;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 // Uncapped fake: every requested unit lands, so the applied basket IS the request.
                 return amount;
             }
@@ -63,25 +63,25 @@ namespace DeNelle.Tests.EditMode
         [Test]
         public void try_purchase_spends_when_affordable()
         {
-            var eco = new FakeEconomy { Wood = 100, Food = 100, Iron = 100 };
+            var eco = new FakeEconomy { Wood = 100, Stone = 100, Iron = 100 };
             var vm = new NPCUpgradeVM(eco);
 
-            bool ok = vm.TryPurchaseUpgrade(new ResourceCost(wood: 30, food: 20, iron: 10));
+            bool ok = vm.TryPurchaseUpgrade(new ResourceCost(wood: 30, stone: 20, iron: 10));
 
             Assert.That(ok, Is.True, "an affordable upgrade must spend");
             Assert.That(eco.SpendCalls, Is.EqualTo(1));
             Assert.That(eco.Wood, Is.EqualTo(70));
-            Assert.That(eco.Food, Is.EqualTo(80));
+            Assert.That(eco.Stone, Is.EqualTo(80));
             Assert.That(eco.Iron, Is.EqualTo(90));
         }
 
         [Test]
         public void try_purchase_fails_when_short_no_spend()
         {
-            var eco = new FakeEconomy { Wood = 5, Food = 5, Iron = 5 };
+            var eco = new FakeEconomy { Wood = 5, Stone = 5, Iron = 5 };
             var vm = new NPCUpgradeVM(eco);
 
-            bool ok = vm.TryPurchaseUpgrade(new ResourceCost(wood: 30, food: 20, iron: 10));
+            bool ok = vm.TryPurchaseUpgrade(new ResourceCost(wood: 30, stone: 20, iron: 10));
 
             Assert.That(ok, Is.False, "an unaffordable upgrade must not spend");
             Assert.That(eco.SpendCalls, Is.EqualTo(0));
@@ -99,14 +99,14 @@ namespace DeNelle.Tests.EditMode
         [Test]
         public void grant_first_harvest_bonus_adds_5_wood_5_food()
         {
-            var eco = new FakeEconomy { Wood = 10, Food = 10 };
+            var eco = new FakeEconomy { Wood = 10, Stone = 10 };
             var vm = new NPCUpgradeVM(eco);
 
             vm.GrantFirstHarvestBonus();
 
             Assert.That(eco.GrantCalls, Is.EqualTo(1));
             Assert.That(eco.Wood, Is.EqualTo(15), "+5 Wood");
-            Assert.That(eco.Food, Is.EqualTo(15), "+5 Food");
+            Assert.That(eco.Stone, Is.EqualTo(15), "+5 Stone");
         }
     }
 }

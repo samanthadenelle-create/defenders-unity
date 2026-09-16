@@ -141,7 +141,7 @@ namespace DeNelle.Village
             // The raw MineNodes remain for autonomous PetHarvester fallbacks.
             MineNode woodNode = SpawnNode("Wood",     MineResource.Wood,         new Vector3( 11f, 0f,  11f), new Color(0.45f, 0.30f, 0.16f));
             MineNode ironNode = SpawnNode("Iron",     MineResource.Iron,         new Vector3(-12f, 0f,   9f), new Color(0.55f, 0.57f, 0.62f));
-            MineNode foodNode = SpawnNode("Food",     MineResource.Food,         new Vector3(  9f, 0f, -12f), new Color(0.70f, 0.62f, 0.28f));
+            MineNode foodNode = SpawnNode("Food",     MineResource.Stone,         new Vector3(  9f, 0f, -12f), new Color(0.70f, 0.62f, 0.28f));
             MineNode crystalNode = SpawnNode("Crystals", MineResource.AetherCrystal, new Vector3(-9f, 0f, -11f), new Color(0.45f, 0.72f, 0.95f));
 
             // Wrap them as proper HarvestSites (priority 1) so claiming + assigned-pet

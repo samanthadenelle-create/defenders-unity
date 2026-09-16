@@ -264,7 +264,7 @@ namespace DeNelle.Tests.EditMode
             // player must be told - a door that silently does nothing is worse than no door.
             var b = Seed();
             b.DailyQuests.Add(ClaimableDaily("d1", "combat", "A"));
-            b.SlotRewards["combat"] = new DailyQuestSlotReward { Slot = "combat", RewardFood = 500 };
+            b.SlotRewards["combat"] = new DailyQuestSlotReward { Slot = "combat", RewardStone = 500 };
             b.ClaimPaysNothing = true;
 
             using var vm = new RumorBoardVM(b, null);

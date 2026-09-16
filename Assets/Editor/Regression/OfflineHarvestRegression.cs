@@ -160,7 +160,7 @@ namespace DeNelle.Editor
                     {
                         case DeNelle.Village.Buildings.Progression.HarvestResource.Wood: return 258;
                         case DeNelle.Village.Buildings.Progression.HarvestResource.Iron: return 5000;
-                        case DeNelle.Village.Buildings.Progression.HarvestResource.Food: return 0;
+                        case DeNelle.Village.Buildings.Progression.HarvestResource.Stone: return 0;
                         default: return int.MaxValue;
                     }
                 };

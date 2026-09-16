@@ -2087,6 +2087,14 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "screen-orientation suite", () => { if (!DeNelle.Editor.Regression.ScreenOrientationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[screen-orientation] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "admin-panel-scale suite", () => { if (!DeNelle.Editor.Regression.AdminPanelScaleRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[admin-panel-scale] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "navmesh-reference suite", () => { if (!DeNelle.Editor.Regression.NavMeshReferenceRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[navmesh-reference] " + r); });
+            // --- 2026-09-16: WO-1763 per-camp remote raid difficulty (identity defaults, fold arithmetic,
+            // unknown-camp fallback) and WO-1765 raid camera profile + wall-framing exclusion. Registered
+            // by the committer per §11.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-difficulty suite", () => { if (!DeNelle.Editor.Regression.RaidDifficultyTunablesRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-difficulty] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "camera-raid-framing suite", () => { if (!DeNelle.Editor.Regression.CameraRaidFramingRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[camera-raid-framing] " + r); });
+            // WO-1767: raid scene, owned-town scene and manifest carry the same stamped template-id
+            // set (the lint that would have gone red on the WO-1732 regeneration). Registered by the committer.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "owned-town-template-identity suite", () => { if (!DeNelle.Editor.Regression.OwnedTownTemplateIdentityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[owned-town-template-identity] " + r); });
 
             // =====================================================================
             //  >>> REGISTERED ORACLE SUITES — END FENCE <<<  (new lines go ABOVE)

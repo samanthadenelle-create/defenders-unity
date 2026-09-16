@@ -1074,7 +1074,7 @@ namespace DeNelle.Village
         {
             return CostFormat.Parts(new[]
             {
-                ("wood", "Wood", c.wood), ("stone", "Stone", c.food),
+                ("wood", "Wood", c.wood), ("stone", "Stone", c.stone),
                 ("iron", "Iron", c.iron), ("crystal", "Crystals", c.crystals)
             });
         }

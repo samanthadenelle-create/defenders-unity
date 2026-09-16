@@ -20,10 +20,10 @@
 // ----------------------------------------------------------------------------
 //    Owner verbatim: "food was depreicated and is stone."
 //    BankResource has NO Stone member -- it is Wood, Iron, Food, Crystals, Coins.
-//    The HUD labels GameState.Resources.Food as "Stone", TownBankCapacity.WordOf
-//    (BankResource.Food) literally returns "stone", and WO-1212 confirmed that slot
+//    The HUD labels GameState.Resources.Stone as "Stone", TownBankCapacity.WordOf
+//    (BankResource.Stone) literally returns "stone", and WO-1212 confirmed that slot
 //    is the LIVE authority (the field actually NAMED Stone was dead code and has
-//    been retired). So BankResource.Food IS Stone.
+//    been retired). So BankResource.Stone IS Stone.
 //    DO NOT rename it -- it is a live SAVE AND WIRE key. DO NOT add a Stone member.
 //    DO NOT read the name and conclude Stone is unimplemented, or that Food is some
 //    SEPARATE lootable resource: that misreading is exactly how a siege would either
@@ -156,7 +156,7 @@ namespace DeNelle.Core.Defense
         {
             return resource == BankResource.Wood
                 || resource == BankResource.Iron
-                || resource == BankResource.Food     // "Stone" player-facing -- live save key
+                || resource == BankResource.Stone     // "Stone" player-facing -- live save key
                 || resource == BankResource.Coins;   // "Gold" player-facing
         }
 
@@ -318,7 +318,7 @@ namespace DeNelle.Core.Defense
             {
                 case BankResource.Wood:  ledger.Wood += amount;  return true;
                 case BankResource.Iron:  ledger.Iron += amount;  return true;
-                case BankResource.Food:  ledger.Food += amount;  return true;   // "Stone"
+                case BankResource.Stone:  ledger.Stone += amount;  return true;   // "Stone"
                 case BankResource.Coins: ledger.Coins += amount; return true;   // "Gold"
                 default: return false;
             }

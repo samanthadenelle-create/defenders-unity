@@ -112,7 +112,7 @@ namespace DeNelle.Editor
         // so it is attached by reflection and its public fields are set by name — the
         // same asmdef-free pattern OuterWorldBuilder uses. Resource is set via the
         // MineResource enum's underlying int (Iron=0, Wood=1, Food=2, AetherCrystal=3).
-        private const int MineResourceFood = 2;   // DeNelle.Village.MineResource.Food
+        private const int MineResourceFood = 2;   // DeNelle.Village.MineResource.Stone
 
         private static void PlaceFarmFoodNode(Transform parent, BuildingPlacement b)
         {

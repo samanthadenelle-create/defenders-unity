@@ -539,7 +539,7 @@ namespace DeNelle.Village
         /// lower-case JSON field names) so the number on the line is the number charged.
         /// </summary>
         private static string DescribeCost(DeNelle.Core.Catalog.ResourceCost cost)
-            => $"wood={cost.wood} iron={cost.iron} food={cost.food} crystals={cost.crystals}";
+            => $"wood={cost.wood} iron={cost.iron} food={cost.stone} crystals={cost.crystals}";
 
         private static Row BuildRow(Component c, string typeName, string name, float hp, bool broken)
         {

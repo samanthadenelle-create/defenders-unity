@@ -309,7 +309,7 @@ namespace DeNelle.Village.World
             // never disagree about how that model stands.
             bool authoredPose = ResourceType == MineResource.Wood
                 || ResourceType == MineResource.Iron
-                || ResourceType == MineResource.Food
+                || ResourceType == MineResource.Stone
                 || ResourceType == MineResource.AetherCrystal;
             var model = string.IsNullOrEmpty(modelPath) ? null : VisualFactory.Skin(transform, modelPath,
                 new SkinOptions { FitLargest = 2.4f, SeatOnGround = true, FixTripoMaterials = true,
@@ -360,7 +360,7 @@ namespace DeNelle.Village.World
                     top.transform.localScale = new Vector3(1.3f, 0.9f, 1.3f);
                     top.transform.localPosition = new Vector3(0f, 2.15f, 0f);
                     break;
-                case MineResource.Food:
+                case MineResource.Stone:
                     top = GameObject.CreatePrimitive(PrimitiveType.Capsule);
                     top.name = "HarvestVisual_Grain";
                     top.transform.localScale = new Vector3(1.1f, 0.7f, 1.1f);
@@ -391,7 +391,7 @@ namespace DeNelle.Village.World
             // WO-1163/PROD-016: the ENUM member stays Food (frozen persistence vocabulary), but the
             // model the player sees is STONE. Resources/Harvest/stone.fbx has existed since WO-1163
             // landed - it ships with its own texture folder, so this route is art-complete.
-            MineResource.Food          => "Harvest/stone",
+            MineResource.Stone          => "Harvest/stone",
             MineResource.AetherCrystal => "Harvest/crystals",
             _ => null,
         };
@@ -402,7 +402,7 @@ namespace DeNelle.Village.World
             {
                 MineResource.Wood => new Color(0.55f, 0.38f, 0.22f),
                 MineResource.Iron => new Color(0.48f, 0.50f, 0.55f),
-                MineResource.Food => new Color(0.72f, 0.62f, 0.28f),
+                MineResource.Stone => new Color(0.72f, 0.62f, 0.28f),
                 MineResource.AetherCrystal => new Color(0.35f, 0.72f, 0.95f),
                 _ => Color.gray
             };

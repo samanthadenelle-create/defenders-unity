@@ -6,7 +6,7 @@
 // Assembly: DeNelle.Village   Namespace: DeNelle.Village
 //
 // Resource buckets map 1:1 to MineNode.MineResource / the GameState wallet fields
-// (Iron / Wood / Food / AetherCrystals) so the popup can render +N rows without
+// (Iron / Wood / Stone / AetherCrystals) so the popup can render +N rows without
 // re-deriving anything. Pet harvest (WO-111 Phase 4) folds into the same buckets
 // when it lands — no shape change needed.
 // =============================================================================
@@ -25,8 +25,9 @@ namespace DeNelle.Village
         public int Iron;
         /// <summary>Wood banked this claim.</summary>
         public int Wood;
-        /// <summary>Food banked this claim (the retired "Stone" axis, repurposed — DEF-121).</summary>
-        public int Food;
+        /// <summary>Stone banked this claim (the retired "Stone" axis, repurposed — DEF-121).</summary>
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [Newtonsoft.Json.JsonProperty("Food")] public int Stone;
         /// <summary>Aether Crystals banked this claim.</summary>
         public int AetherCrystals;
 
@@ -75,7 +76,7 @@ namespace DeNelle.Village
         public string ClockSource => ServerAnchored ? "server-anchored" : "device";
 
         /// <summary>Total units banked across every resource (popup-trigger gate: show only when &gt; 0).</summary>
-        public int Total => Iron + Wood + Food + AetherCrystals;
+        public int Total => Iron + Wood + Stone + AetherCrystals;
 
         // =====================================================================
         //  WO-1231 — WHAT PASSIVE ECHO MENDING DID WITH THE SAME WINDOW
@@ -291,7 +292,7 @@ namespace DeNelle.Village
             {
                 case MineResource.Iron:          Iron += amount;           break;
                 case MineResource.Wood:          Wood += amount;           break;
-                case MineResource.Food:          Food += amount;          break;
+                case MineResource.Stone:          Stone += amount;          break;
                 case MineResource.AetherCrystal: AetherCrystals += amount; break;
             }
         }

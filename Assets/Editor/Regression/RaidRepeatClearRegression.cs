@@ -153,26 +153,26 @@ namespace DeNelle.Editor.Regression
                           ") - a repeat clear would compute a negative payout");
 
             // --- A2: the gate ARITHMETIC, run for real against the pure static ---
-            var full = new ResourceCost(wood: 400, food: 600, iron: 300, crystals: 500, coins: 200);
+            var full = new ResourceCost(wood: 400, stone: 600, iron: 300, crystals: 500, coins: 200);
 
             var first = RaidClaimService.ScaleLootForClear(full, false, false);
-            if (first.Wood != full.Wood || first.Food != full.Food || first.Iron != full.Iron
+            if (first.Wood != full.Wood || first.Stone != full.Stone || first.Iron != full.Iron
                 || first.Crystals != full.Crystals || first.Coins != full.Coins)
                 fails.Add("ScaleLootForClear(loot, isRepeatClear:false, crystalsAlreadyPaidToday:false) altered " +
                           "a FIRST clear's payout (crystals " + first.Crystals + " of " + full.Crystals +
                           ") - the gate must be invisible on the clear that claims the base");
 
             var repeat = RaidClaimService.ScaleLootForClear(full, true, true);
-            if (repeat.Crystals >= full.Crystals || repeat.Food >= full.Food || repeat.Wood >= full.Wood
+            if (repeat.Crystals >= full.Crystals || repeat.Stone >= full.Stone || repeat.Wood >= full.Wood
                 || repeat.Iron >= full.Iron || repeat.Coins >= full.Coins)
                 fails.Add("ScaleLootForClear(loot, isRepeatClear:true, crystalsAlreadyPaidToday:true) did NOT " +
                           "reduce the payout (crystals " + repeat.Crystals + " of " + full.Crystals + ", food " +
-                          repeat.Food + " of " + full.Food + ") - re-clearing a claimed base still pays what the " +
+                          repeat.Stone + " of " + full.Stone + ") - re-clearing a claimed base still pays what the " +
                           "first clear paid, which is the infinite-faucet defect this pin exists to stop");
 
             // The absolute floor, independent of whatever curve the owner later sets: a repeat
             // may never out-earn the first clear on ANY axis.
-            if (repeat.Wood > full.Wood || repeat.Food > full.Food || repeat.Iron > full.Iron
+            if (repeat.Wood > full.Wood || repeat.Stone > full.Stone || repeat.Iron > full.Iron
                 || repeat.Crystals > full.Crystals || repeat.Coins > full.Coins)
                 fails.Add("a REPEAT clear out-earns the FIRST clear on at least one axis - the multiplier " +
                           "knob has been set above 1 and the defensive clamp in ScaleLootForClear is gone");
@@ -192,7 +192,7 @@ namespace DeNelle.Editor.Regression
             // reduced ordinary resources AND full crystals. A single overloaded flag cannot
             // express that case, which is exactly what the old two-arg signature got wrong.
             int expectRepeatWood = Mathf.FloorToInt(full.Wood * mult);
-            int expectRepeatFood = Mathf.FloorToInt(full.Food * mult);
+            int expectRepeatFood = Mathf.FloorToInt(full.Stone * mult);
 
             // Case 1 - FIRST clear of the day (and of the base): everything in full.
             var dayCase1 = RaidClaimService.ScaleLootForClear(full, false, false);
@@ -207,9 +207,9 @@ namespace DeNelle.Editor.Regression
                 fails.Add("crystal day-stamp case 2 (repeat clear, same UTC day): paid " + dayCase2.Crystals +
                           " crystals - a camp that has already paid crystals today must pay ZERO. Crystals " +
                           "are the one unbounded faucet in the game and the day stamp is what bounds them");
-            if (dayCase2.Wood != expectRepeatWood || dayCase2.Food != expectRepeatFood)
+            if (dayCase2.Wood != expectRepeatWood || dayCase2.Stone != expectRepeatFood)
                 fails.Add("crystal day-stamp case 2 (repeat clear, same UTC day): ordinary resources came " +
-                          "back wood " + dayCase2.Wood + "/food " + dayCase2.Food + ", expected " +
+                          "back wood " + dayCase2.Wood + "/food " + dayCase2.Stone + ", expected " +
                           expectRepeatWood + "/" + expectRepeatFood + " - the crystal axis has been allowed " +
                           "to disturb the x" + mult.ToString("0.##") + " repeat-clear scaling it must not touch");
 
@@ -222,9 +222,9 @@ namespace DeNelle.Editor.Regression
                           "daily under the owner ruling, so a long-claimed camp pays them again tomorrow. This " +
                           "is the case the old two-arg signature got silently wrong by hardcoding crystals:0 " +
                           "on every repeat");
-            if (dayCase3.Wood != expectRepeatWood || dayCase3.Food != expectRepeatFood)
+            if (dayCase3.Wood != expectRepeatWood || dayCase3.Stone != expectRepeatFood)
                 fails.Add("crystal day-stamp case 3: ordinary resources came back wood " + dayCase3.Wood +
-                          "/food " + dayCase3.Food + ", expected " + expectRepeatWood + "/" + expectRepeatFood +
+                          "/food " + dayCase3.Stone + ", expected " + expectRepeatWood + "/" + expectRepeatFood +
                           " - a new crystal day must NOT restore the full ordinary payout; the two axes are " +
                           "independent and repeatClear still governs wood/food/iron/coins");
 

@@ -21,12 +21,13 @@ namespace DeNelle.Core.Catalog
     public struct ResourceCost
     {
         public int wood;
-        public int food;
+        [UnityEngine.Serialization.FormerlySerializedAs("food")]
+        [Newtonsoft.Json.JsonProperty("food")] public int stone;
         public int iron;
         public int crystals;
 
         /// <summary>True when every slot is zero — no multi-resource cost was authored.</summary>
-        public bool IsZero => wood == 0 && food == 0 && iron == 0 && crystals == 0;
+        public bool IsZero => wood == 0 && stone == 0 && iron == 0 && crystals == 0;
     }
 
     /// <summary>
@@ -53,11 +54,12 @@ namespace DeNelle.Core.Catalog
     public struct RepairCrystalRate
     {
         public float perWood;
-        public float perFood;
+        [UnityEngine.Serialization.FormerlySerializedAs("perFood")]
+        [Newtonsoft.Json.JsonProperty("perFood")] public float perStone;
         public float perIron;
 
         /// <summary>True when no rate at all was authored -- repair cannot be paid in crystals.</summary>
-        public bool IsZero => perWood <= 0f && perFood <= 0f && perIron <= 0f;
+        public bool IsZero => perWood <= 0f && perStone <= 0f && perIron <= 0f;
     }
 
     [System.Serializable]

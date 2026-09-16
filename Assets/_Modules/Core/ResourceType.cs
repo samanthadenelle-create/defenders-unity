@@ -13,7 +13,7 @@
 //
 //   ResourceType.Iron          → GameState.Iron
 //   ResourceType.Wood          → GameState.Wood
-//   ResourceType.Food          → GameState.Resources.Food   (DEF-121: retired "Stone" axis)
+//   ResourceType.Stone          → GameState.Resources.Stone   (DEF-121: retired "Stone" axis)
 //   ResourceType.AetherCrystal → GameState.AetherCrystals
 //
 // Banking itself stays in MineNode (the single source of truth); this enum only
@@ -29,7 +29,8 @@ namespace DeNelle.Core
     {
         Iron = 0,
         Wood = 1,
-        Food = 2,
+        [System.Runtime.Serialization.EnumMember(Value = "Food")]
+        Stone = 2,
         AetherCrystal = 3,
     }
 }

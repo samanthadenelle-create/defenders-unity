@@ -974,9 +974,9 @@ namespace DeNelle.Village.Hero
                 // WO-1521: a daily slot pays Wisdom directly, so the kind exists in its own right
                 // now. It lands on the SAME CurrencyKind as Magic - one concept, one icon.
                 case RumorBoardVM.RewardKind.Wisdom: return ElarionUiKit.CurrencyKind.Wisdom;
-                // Canon sec.7: the authored `food` slot IS Stone, and CurrencyKind.Food is the
+                // Canon sec.7: the authored `food` slot IS Stone, and CurrencyKind.Stone is the
                 // enum member that maps to the "stone" concept id.
-                default: return ElarionUiKit.CurrencyKind.Food;
+                default: return ElarionUiKit.CurrencyKind.Stone;
             }
         }
 

@@ -281,7 +281,7 @@ namespace DeNelle.Editor.Regression
             st.ResetEpoch = 9000;            // this device started a new game
             var fresh = st.Resources;
             fresh.Crystals = 36;             // ...and the new town has the owner's 36 crystals
-            fresh.Food = 12;
+            fresh.Stone = 12;
             st.Resources = fresh;
             st.BestWave = 0;
             svc.Save();
@@ -297,9 +297,9 @@ namespace DeNelle.Editor.Regression
                 failures.Add($"[C] a row from BEFORE this device's New Game was not refused (outcome={outcome}) - " +
                              "the old town's 901 crystals come back over the reset on the next scene enter, which is " +
                              "the reported defect");
-            if (st.Resources.Crystals != 36 || st.Resources.Food != 12)
+            if (st.Resources.Crystals != 36 || st.Resources.Stone != 12)
                 failures.Add($"[C] the refused row still wrote resources (crystals={st.Resources.Crystals}, " +
-                             $"food={st.Resources.Food}; expected the new town's 36/12)");
+                             $"food={st.Resources.Stone}; expected the new town's 36/12)");
             if (st.BestWave != 0)
                 failures.Add($"[C] the refused row still wrote bestWave (got {st.BestWave}, expected the reset's 0)");
             if (st.ResetEpoch != 9000)
@@ -548,7 +548,7 @@ namespace DeNelle.Editor.Regression
             return new SaveSchema.PersistedState
             {
                 BestWave = 40,
-                Resources = new ResourceBalance { Crystals = 901, Food = 500, Coins = 300 },
+                Resources = new ResourceBalance { Crystals = 901, Stone = 500, Coins = 300 },
                 Wood = 15,
                 Iron = 5,
                 ResetEpoch = epoch,

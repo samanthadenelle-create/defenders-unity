@@ -60,7 +60,7 @@ namespace DeNelle.Village
         public int MaxTier = 3;
 
         [Header("Economy Costs (base, scaled by tier)")]
-        public ResourceCost BaseUpgradeCost = new ResourceCost(wood: 30, food: 20, iron: 10);
+        public ResourceCost BaseUpgradeCost = new ResourceCost(wood: 30, stone: 20, iron: 10);
 
         [Header("Visual Root")]
         [Tooltip("The building visual root that will be upgraded (tier children or StructureTierVisual).")]
@@ -185,7 +185,7 @@ namespace DeNelle.Village
             float scale = 1f + (CurrentTier - 1) * 0.6f;
             return new ResourceCost(
                 (int)(BaseUpgradeCost.Wood * scale),
-                (int)(BaseUpgradeCost.Food * scale),
+                (int)(BaseUpgradeCost.Stone * scale),
                 (int)(BaseUpgradeCost.Iron * scale),
                 (int)(BaseUpgradeCost.Crystals * scale)
             );
@@ -193,7 +193,7 @@ namespace DeNelle.Village
 
         private string CostString(ResourceCost c)
         {
-            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.Wood), ("stone", "Stone", c.Food), ("iron", "Iron", c.Iron), ("crystal", "Crystals", c.Crystals) });
+            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.Wood), ("stone", "Stone", c.Stone), ("iron", "Iron", c.Iron), ("crystal", "Crystals", c.Crystals) });
             return parts.Count > 0 ? DeNelle.Core.UI.CostFormat.Words(parts) : "Free";
         }
 

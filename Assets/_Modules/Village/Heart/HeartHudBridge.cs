@@ -213,19 +213,19 @@ namespace DeNelle.Village
             }
             _resourceArgs[0] = snapshot.Wood;
             _resourceArgs[1] = snapshot.Iron;
-            _resourceArgs[2] = snapshot.Food;
+            _resourceArgs[2] = snapshot.Stone;
             _resourceArgs[3] = snapshot.Crystals;
             _setResources.Invoke(_hud, _resourceArgs);
             // §12: this runs every frame — log ONLY when the wallet changes, else the trace floods the
             // capture (it drowned the seam-cross lines in the owner's F8 grab) and allocs a string/frame.
             // The HUD push itself stays every-frame (unchanged behavior); only the trace is gated.
             if (snapshot.Wood != _lastLoggedWood || snapshot.Iron != _lastLoggedIron ||
-                snapshot.Food != _lastLoggedFood || snapshot.Crystals != _lastLoggedCrystals)
+                snapshot.Stone != _lastLoggedFood || snapshot.Crystals != _lastLoggedCrystals)
             {
                 _lastLoggedWood = snapshot.Wood; _lastLoggedIron = snapshot.Iron;
-                _lastLoggedFood = snapshot.Food; _lastLoggedCrystals = snapshot.Crystals;
+                _lastLoggedFood = snapshot.Stone; _lastLoggedCrystals = snapshot.Crystals;
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Eco",
-                    $"HeartHudBridge pushed HUD W{snapshot.Wood} I{snapshot.Iron} F{snapshot.Food} C{snapshot.Crystals}");
+                    $"HeartHudBridge pushed HUD W{snapshot.Wood} I{snapshot.Iron} F{snapshot.Stone} C{snapshot.Crystals}");
             }
         }
 

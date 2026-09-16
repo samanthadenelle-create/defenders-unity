@@ -197,7 +197,7 @@ namespace DeNelle.Editor
             }
 
             // The full WO-830 affinity table (owner-approved, amended 2026-08-02).
-            AssertEntry(Fail, "echo-frosthowl", HarvestTarget.Food, ResourceType.Food);
+            AssertEntry(Fail, "echo-frosthowl", HarvestTarget.Stone, ResourceType.Stone);
             AssertEntry(Fail, "echo-verdant-stag", HarvestTarget.Wood, ResourceType.Wood);
             AssertEntry(Fail, "echo-voidwing-raven", HarvestTarget.Gold, null);
             AssertEntry(Fail, "echo-stormcoil-serpent", HarvestTarget.Gold, null);
@@ -288,7 +288,7 @@ namespace DeNelle.Editor
             float crystalsCombined = EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Crystals, 1);
             float[] others =
             {
-                EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Food, 1),
+                EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Stone, 1),
                 EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Wood, 1),
                 EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Gold, 1),
                 EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Iron, 1),
@@ -434,7 +434,7 @@ namespace DeNelle.Editor
             if (EchoAssignments.ResourceTokenOf(0) != EchoAssignments.ResFood)
                 Fail($"stored 'repair:3' migrated to resource '{EchoAssignments.ResourceTokenOf(0)}' "
                    + "(expected 'food' — Aldwin's affinity; it must land on a REAL resource)");
-            if (!EchoAssignments.TryTargetOf(0, out var migrated) || migrated != HarvestTarget.Food)
+            if (!EchoAssignments.TryTargetOf(0, out var migrated) || migrated != HarvestTarget.Stone)
                 Fail("stored 'repair:3' does not resolve to a typed HarvestTarget — that Echo would earn nothing");
             if (EchoAssignments.LevelOf(0) != 3)
                 Fail($"stored 'repair:3' lost its level: {EchoAssignments.LevelOf(0)} (expected 3 — level survives the migration)");
@@ -601,7 +601,7 @@ namespace DeNelle.Editor
             // (d) WEIGHTS: 5-way split by ACTUAL assignment; crystals the smallest share.
             state.EchoLanes = AllMatchedL1;
             var w = EchoBonusCalculator.HarvestTargetWeights();
-            float rAld = EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Food, 1);
+            float rAld = EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Stone, 1);
             float rElo = EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Wood, 1);
             float rCor = EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Gold, 1);
             float rBra = EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Gold, 1);
@@ -629,13 +629,13 @@ namespace DeNelle.Editor
             float bBra = EchoBalanceCatalog.BaseRateFor("echo-stormcoil-serpent");
             float bDor = EchoBalanceCatalog.BaseRateFor("echo-stonewarden-bear");
             float bMar = EchoBalanceCatalog.BaseRateFor("echo-ember-phoenix");
-            AssertClose(Fail, GetW(w, HarvestTarget.Food), rAld * bAld, "HarvestTargetWeights[Food]");
+            AssertClose(Fail, GetW(w, HarvestTarget.Stone), rAld * bAld, "HarvestTargetWeights[Food]");
             AssertClose(Fail, GetW(w, HarvestTarget.Wood), rElo * bElo, "HarvestTargetWeights[Wood]");
             AssertClose(Fail, GetW(w, HarvestTarget.Gold), rCor * bCor + rBra * bBra, "HarvestTargetWeights[Gold]");
             AssertClose(Fail, GetW(w, HarvestTarget.Iron), rDor * bDor, "HarvestTargetWeights[Iron]");
             AssertClose(Fail, GetW(w, HarvestTarget.Crystals), rMar * bMar, "HarvestTargetWeights[Crystals]");
             float crystalsW = GetW(w, HarvestTarget.Crystals);
-            foreach (var t in new[] { HarvestTarget.Wood, HarvestTarget.Iron, HarvestTarget.Food, HarvestTarget.Gold })
+            foreach (var t in new[] { HarvestTarget.Wood, HarvestTarget.Iron, HarvestTarget.Stone, HarvestTarget.Gold })
                 if (crystalsW >= GetW(w, t))
                 {
                     Fail($"crystals weight {crystalsW:0.###} not the smallest (>{GetW(w, t):0.###} for {t}) — combined double-crystal trickle must stay slowest");
@@ -701,11 +701,11 @@ namespace DeNelle.Editor
             const int fullRosterOneHour = 12604;
             state.SiloResources = fullRosterOneHour;
             int woodBefore = state.Wood, ironBefore = state.Iron;
-            int foodBefore = state.Resources.Food, coinsBefore = state.Resources.Coins, crysBefore = state.Resources.Crystals;
+            int foodBefore = state.Resources.Stone, coinsBefore = state.Resources.Coins, crysBefore = state.Resources.Crystals;
             int banked = echo.DumpSilos();
             int dWood = state.Wood - woodBefore;
             int dIron = state.Iron - ironBefore;
-            int dFood = state.Resources.Food - foodBefore;
+            int dFood = state.Resources.Stone - foodBefore;
             int dGold = state.Resources.Coins - coinsBefore;
             int dCrys = state.Resources.Crystals - crysBefore;
             if (dWood <= 0) Fail($"Dump: Wood wallet did not move (+{dWood})");

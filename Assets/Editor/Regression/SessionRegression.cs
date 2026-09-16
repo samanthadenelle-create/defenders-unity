@@ -455,7 +455,7 @@ namespace DeNelle.Editor
 
             // ── ECONOMY persistence ──────────────────────────────────────────────
             if (!r.Resources.HasValue ||
-                r.Resources.Value.Crystals != 250 || r.Resources.Value.Food != 80 || r.Resources.Value.Coins != 15)
+                r.Resources.Value.Crystals != 250 || r.Resources.Value.Stone != 80 || r.Resources.Value.Coins != 15)
                 failures.Add("save round-trip: Resources (crystals/food/coins) did not survive");
             if ((int?)r.Stone != 40 || (int?)r.Iron != 25 || (int?)r.Wood != 60 || (int?)r.Magic != 5)
                 failures.Add($"save round-trip: harvestables/Magic did not survive (stone={r.Stone} iron={r.Iron} wood={r.Wood} magic={r.Magic})");

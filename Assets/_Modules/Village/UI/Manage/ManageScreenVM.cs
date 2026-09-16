@@ -1248,7 +1248,7 @@ namespace DeNelle.Village.UI
                     return;
                 }
                 var cost = repair.RepairAllCost();
-                if (cost.wood <= 0 && cost.food <= 0 && cost.iron <= 0 && cost.crystals <= 0) return;
+                if (cost.wood <= 0 && cost.stone <= 0 && cost.iron <= 0 && cost.crystals <= 0) return;
                 RepairOfferText = "Repair all (instant): " + DescribeCost(cost);
             });
         }
@@ -1954,13 +1954,13 @@ namespace DeNelle.Village.UI
         }
 
         /// <summary>The four-material cost parts for a placed-structure upgrade. Uses the SAME
-        /// concept ids the rest of the screen uses — note "stone" carries <c>cost.food</c>, which is
+        /// concept ids the rest of the screen uses — note "stone" carries <c>cost.stone</c>, which is
         /// the shipped icon key (<see cref="DescribeCost"/> and
         /// <see cref="BuildingUpgradeCostParts"/> both do it); it looks like a typo and is not.</summary>
         private static IReadOnlyList<CostPart> PlacedUpgradeCostParts(CoreCost cost)
             => CostFormat.Parts(new[]
             {
-                ("wood", "Wood", cost.wood), ("stone", "Stone", cost.food),
+                ("wood", "Wood", cost.wood), ("stone", "Stone", cost.stone),
                 ("iron", "Iron", cost.iron), ("crystal", "Crystals", cost.crystals)
             });
 
@@ -2202,7 +2202,7 @@ namespace DeNelle.Village.UI
             var cost = BuildingTierBasket(tier);
             return CostFormat.Parts(new[]
             {
-                ("wood", "Wood", cost.wood), ("stone", "Stone", cost.food),
+                ("wood", "Wood", cost.wood), ("stone", "Stone", cost.stone),
                 ("iron", "Iron", cost.iron), ("crystal", "Crystals", cost.crystals),
                 ("gold", "Gold", tier != null ? tier.CostGold : 0)
             });
@@ -2449,7 +2449,7 @@ namespace DeNelle.Village.UI
                     var cost = new CoreCost
                     {
                         wood = econCost.Wood,
-                        food = econCost.Food,
+                        stone = econCost.Stone,
                         iron = econCost.Iron,
                         crystals = econCost.Crystals,
                     };
@@ -3231,7 +3231,7 @@ namespace DeNelle.Village.UI
             var state = GameStateService.Instance != null ? GameStateService.Instance.State : null;
             if (state == null) return false;
             return state.Wood >= cost.wood && state.Iron >= cost.iron
-                && state.Resources.Food >= cost.food && state.Resources.Crystals >= cost.crystals;
+                && state.Resources.Stone >= cost.stone && state.Resources.Crystals >= cost.crystals;
         }
 
         private static string ShortfallOf(CoreCost cost)
@@ -3280,7 +3280,7 @@ namespace DeNelle.Village.UI
         /// <summary>ASCII cost summary ("400 wood, 200 food"); "free" when nothing is charged.</summary>
         public static string DescribeCost(CoreCost c)
         {
-            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.wood), ("stone", "Stone", c.food), ("iron", "Iron", c.iron), ("crystal", "Crystals", c.crystals) });
+            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.wood), ("stone", "Stone", c.stone), ("iron", "Iron", c.iron), ("crystal", "Crystals", c.crystals) });
             return parts.Count > 0 ? DeNelle.Core.UI.CostFormat.Words(parts) : "free";
         }
 
@@ -3304,7 +3304,7 @@ namespace DeNelle.Village.UI
             BrowseRows.Add(new BrowseRowVM {
                 Label = label, CostText = costText, Affordable = affordable,
                 StateText = affordable ? "Ready" : "Short on resources",
-                CostWeight = materials.wood + materials.food + materials.iron + materials.crystals + gold,
+                CostWeight = materials.wood + materials.stone + materials.iron + materials.crystals + gold,
                 ActionText = actionText, Activate = activate
             });
         }
@@ -3315,7 +3315,7 @@ namespace DeNelle.Village.UI
             int primary = tier.PrimaryMaterialCost;
             return new CoreCost {
                 wood = tier.Tier == 1 ? primary : 0,
-                food = tier.Tier == 2 ? primary : 0,
+                stone = tier.Tier == 2 ? primary : 0,
                 iron = tier.Tier >= 3 ? primary : 0,
             };
         }
@@ -6040,8 +6040,8 @@ namespace DeNelle.Village.UI
             {
                 case "wood": return state.Wood;
                 case "iron": return state.Iron;
-                case "stone": return state.Resources.Food;   // stone is banked on the Food field
-                case "food": return state.Resources.Food;
+                case "stone": return state.Resources.Stone;   // stone is banked on the Food field
+                case "food": return state.Resources.Stone;
                 case "crystal":
                 case "crystals": return state.Resources.Crystals;
                 case "gold": return GoldBalance();

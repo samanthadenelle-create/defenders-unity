@@ -292,7 +292,7 @@ namespace DeNelle.Editor
                 // it, so the next vocabulary ruling cannot break this suite again. The assertion is
                 // unchanged in strength: the hint must still name the partner AND their resource.
                 string aldwinResource = DeNelle.Village.EchoRosterCatalog.TargetLabel(
-                    DeNelle.Village.HarvestTarget.Food);
+                    DeNelle.Village.HarvestTarget.Stone);
                 if (!sy.Contains("Aldwin") || !sy.Contains(aldwinResource))
                     Fail($"broken-pair SynergyText '{sy}' must hint the partner and its resource " +
                          $"(Aldwin / {aldwinResource})");
@@ -441,7 +441,7 @@ namespace DeNelle.Editor
                      $"'{weaponShopName}' (role '{DeNelle.Core.Catalog.StructureRole.Weaponsmith}') — the " +
                      "name inversion is back: the player would be sent to build a weapons roof to mine iron.");
             // WO-1416 (owner 2026-09-05: "quarry pays stone"): the stored slot is still the
-            // persisted HarvestResource.Food / collectorBuildingId "farm", but the player's word is
+            // persisted HarvestResource.Stone / collectorBuildingId "farm", but the player's word is
             // the STONE-PRODUCER role row's displayName ("Quarry") - read off the role table like
             // the armorer check above, never a literal, so the next rename carries this oracle too.
             string stoneShopName = DeNelle.Core.Catalog.StructureRoles

@@ -134,7 +134,7 @@ namespace DeNelle.Wallet
             if (e == null || e.IsEmpty) return true;
 
             int wood = Mathf.Max(0, e.Wood), iron = Mathf.Max(0, e.Iron);
-            int food = Mathf.Max(0, e.Food), crystals = Mathf.Max(0, e.Crystals);
+            int food = Mathf.Max(0, e.Stone), crystals = Mathf.Max(0, e.Crystals);
             int coins = Mathf.Max(0, e.Coins);
 
             bool ok = true;

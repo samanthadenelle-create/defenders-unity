@@ -58,7 +58,7 @@ namespace DeNelle.Core.State
         public int AetherCrystals = 0;
         // WO-1212 (2026-08-26) - `public int Stone = 20;` LIVED HERE AND IS RETIRED.
         // There were TWO Stone balances. The one the player sees, spends and is granted
-        // into is Resources.Food: WO-1163 reused the legacy Food slot for the Stone
+        // into is Resources.Stone: WO-1163 reused the legacy Food slot for the Stone
         // vocabulary, and EconomyService.Food (Assets/_Modules/Village/EconomyService.cs:162)
         // is its only reader and spender. This field was the OTHER one - no HUD read it, no
         // cost spent it, and nothing but the new-game seed and a dev top-up ever wrote it -
@@ -66,7 +66,7 @@ namespace DeNelle.Core.State
         // obvious `food -> stone` rename would therefore have routed real, purchasable value
         // into a balance the player can never see, with no error and no red test.
         //
-        // ONE authority now: Resources.Food. The `stone` WIRE key survives on
+        // ONE authority now: Resources.Stone. The `stone` WIRE key survives on
         // SaveSchema.PersistedState as an INBOUND ALIAS ONLY (GameStateService.FromPersisted,
         // BackendLoadResponse) so a sender that speaks only `stone` is not dropped on the
         // floor - never as a second balance. A STORED value is DISCARDED, not migrated:
@@ -643,6 +643,10 @@ namespace DeNelle.Core.State
         /// would have the ladder taken away from them.</para>
         /// </summary>
         public int RaidVictories = 0;
+
+        // Separate personal property; old saves have none. Never backfilled from raid counts.
+        public OwnedBaseState OwnedBase;
+        public PendingTownCapture PendingTownCapture;
 
         /// <summary>
         /// Latch for the ONE-SHOT backfill of <see cref="RaidVictories"/> from the persisted

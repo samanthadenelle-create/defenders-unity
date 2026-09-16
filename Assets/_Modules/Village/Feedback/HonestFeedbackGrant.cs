@@ -8,7 +8,7 @@
 // backend has confirmed in a response that it stored the player's feedback.
 //
 // -----------------------------------------------------------------------------
-// ⛔ THERE IS NO `Stone` BALANCE. STONE **IS** `Resources.Food`.
+// ⛔ THERE IS NO `Stone` BALANCE. STONE **IS** `Resources.Stone`.
 // -----------------------------------------------------------------------------
 // GameState.cs:59-71 records the retirement: `public int Stone = 20;` lived there
 // and was DELETED by WO-1212 because there were TWO Stone balances and the one
@@ -24,7 +24,7 @@
 // verbatim. Nothing here is broken by that, because this file never touches a
 // field directly - it goes through the economy seam, which already knows:
 //   EconomyService.GrantInternal writes gsw.State.Wood / gsw.State.Iron and
-//   routes Food through GameStateService.AddFood (EconomyService.cs:416-490).
+//   routes Food through GameStateService.AddStone (EconomyService.cs:416-490).
 // The nit is recorded rather than silently worked around (CLAUDE.md sec.11B).
 //
 // -----------------------------------------------------------------------------
@@ -104,7 +104,7 @@ namespace DeNelle.Village.Feedback
         /// <summary>Wood granted. Owner, verbatim: "1000 of wood stone and Iron".</summary>
         public const int GrantWood = 1000;
 
-        /// <summary>STONE. Written to Resources.Food - read the file header before
+        /// <summary>STONE. Written to Resources.Stone - read the file header before
         /// "correcting" this to a Stone field; there is not one.</summary>
         public const int GrantStone = 1000;
 
@@ -188,16 +188,16 @@ namespace DeNelle.Village.Feedback
 
             // Signature order is (wood, food, iron, crystals) - EconomyService.cs:558.
             // food IS stone. PurchasedOrPromised, so the town bank cap does not apply.
-            applied = econ.GrantSpendablePurchased(wood: GrantWood, food: GrantStone, iron: GrantIron);
+            applied = econ.GrantSpendablePurchased(wood: GrantWood, stone: GrantStone, iron: GrantIron);
 
             // A line that can embarrass us: it prints what LANDED, per axis, against what was
             // promised. If law 5 is ever broken the shortfall is in the log before it is in a
             // support ticket. (INSTRUMENTATION_STANDARD sec.1.4b - assert outcomes, not intent.)
-            if (applied.Wood != GrantWood || applied.Food != GrantStone || applied.Iron != GrantIron)
+            if (applied.Wood != GrantWood || applied.Stone != GrantStone || applied.Iron != GrantIron)
             {
                 FlowTrace.Warn(Sys,
                     $"PROMISED-QUANTITY SHORTFALL: promised W{GrantWood}/S{GrantStone}/I{GrantIron} but the " +
-                    $"economy seam applied W{applied.Wood}/S{applied.Food}/I{applied.Iron}. A " +
+                    $"economy seam applied W{applied.Wood}/S{applied.Stone}/I{applied.Iron}. A " +
                     $"{nameof(BankGrantKind.PurchasedOrPromised)} grant must never clamp " +
                     "(TownBankCapacity law 5) - the screen said a number and the wallet did not get it.");
             }
@@ -207,8 +207,8 @@ namespace DeNelle.Village.Feedback
 
             FlowTrace.Step(Sys,
                 $"thank-you APPLIED as {nameof(BankGrantKind.PurchasedOrPromised)}: " +
-                $"applied W{applied.Wood} Stone{applied.Food} I{applied.Iron} -> wallet now " +
-                $"Wood={gs.State.Wood} Stone={gs.State.Resources.Food} Iron={gs.State.Iron}; " +
+                $"applied W{applied.Wood} Stone{applied.Stone} I{applied.Iron} -> wallet now " +
+                $"Wood={gs.State.Wood} Stone={gs.State.Resources.Stone} Iron={gs.State.Iron}; " +
                 $"one-time flag set ({HonestFeedbackKeys.GrantClaimedKey}).");
 
             return ThankYouGrantOutcome.Applied;

@@ -584,7 +584,7 @@ namespace DeNelle.Village.Hero
         public int Coins    => _economy?.Coins ?? 0;
         public int Wood     => _economy?.Wood ?? 0;
         public int Iron     => _economy?.Iron ?? 0;
-        public int Food     => _economy?.Food ?? 0;
+        public int Stone     => _economy?.Stone ?? 0;
         public int Crystals => _economy?.Crystals ?? 0;
 
         /// <summary>The store's ACTUAL built stock (id + category) - for an AutoPilot bot assertion.</summary>
@@ -1629,7 +1629,7 @@ namespace DeNelle.Village.Hero
         private void PushHud()
         {
             if (_economy == null) return;
-            DeNelle.Core.CoreServices.Hud?.SetResources(_economy.Wood, _economy.Iron, _economy.Food, _economy.Crystals);
+            DeNelle.Core.CoreServices.Hud?.SetResources(_economy.Wood, _economy.Iron, _economy.Stone, _economy.Crystals);
         }
 
         // -- Title ----------------------------------------------------------------
@@ -1880,13 +1880,13 @@ namespace DeNelle.Village.Hero
 
         private ResourceCost ScaleCost(ResourceCost c, float f) =>
             new ResourceCost(
-                RoundToInt(c.Wood * f), RoundToInt(c.Food * f), RoundToInt(c.Iron * f),
+                RoundToInt(c.Wood * f), RoundToInt(c.Stone * f), RoundToInt(c.Iron * f),
                 RoundToInt(c.Crystals * f), RoundToInt(c.Coins * f));
 
         private static string CostString(ResourceCost c)
         {
             // WO-697: cost numbers through the ONE kit formatter (compact >= 10k).
-            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("gold", "Gold", c.Coins), ("wood", "Wood", c.Wood), ("iron", "Iron", c.Iron), ("stone", "Stone", c.Food), ("crystal", "Crystals", c.Crystals) });
+            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("gold", "Gold", c.Coins), ("wood", "Wood", c.Wood), ("iron", "Iron", c.Iron), ("stone", "Stone", c.Stone), ("crystal", "Crystals", c.Crystals) });
             return parts.Count == 0 ? "Free" : DeNelle.Core.UI.CostFormat.Words(parts);
         }
 
@@ -1895,7 +1895,7 @@ namespace DeNelle.Village.Hero
         // carries wood/iron/food/crystals, and whether the amount is sane vs huge.
         private static string DescribeCost(ResourceCost c) =>
             "{coins=" + c.Coins + " wood=" + c.Wood + " iron=" + c.Iron
-            + " food=" + c.Food + " crystals=" + c.Crystals + "}";
+            + " food=" + c.Stone + " crystals=" + c.Crystals + "}";
 
         private static string Cap(string s)
         {

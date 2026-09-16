@@ -152,14 +152,14 @@ namespace DeNelle.Editor
             var lootNone = RaidScoring.ComputeLoot(0, 0f, 40, 60, 15, 20);
             var lootHalf = RaidScoring.ComputeLoot(1, 0.5f, 40, 60, 15, 20);
             var lootFull = RaidScoring.ComputeLoot(3, 1f, 40, 60, 15, 20);
-            log.AppendLine($"  loot none=({lootNone.Crystals}c/{lootNone.Food}f) " +
-                           $"half=({lootHalf.Crystals}c/{lootHalf.Food}f) full=({lootFull.Crystals}c/{lootFull.Food}f)");
-            if (!(lootNone.Crystals == 0 && lootNone.Food == 0))
-                failures.Add($"ComputeLoot(0,0) should be empty, got {lootNone.Crystals}c/{lootNone.Food}f");
+            log.AppendLine($"  loot none=({lootNone.Crystals}c/{lootNone.Stone}f) " +
+                           $"half=({lootHalf.Crystals}c/{lootHalf.Stone}f) full=({lootFull.Crystals}c/{lootFull.Stone}f)");
+            if (!(lootNone.Crystals == 0 && lootNone.Stone == 0))
+                failures.Add($"ComputeLoot(0,0) should be empty, got {lootNone.Crystals}c/{lootNone.Stone}f");
             if (!(lootFull.Crystals > lootHalf.Crystals && lootHalf.Crystals > lootNone.Crystals))
                 failures.Add($"ComputeLoot crystals not monotonic: none {lootNone.Crystals} <= half {lootHalf.Crystals} <= full {lootFull.Crystals}");
-            if (!(lootFull.Food > lootHalf.Food && lootHalf.Food > lootNone.Food))
-                failures.Add($"ComputeLoot food not monotonic: none {lootNone.Food} <= half {lootHalf.Food} <= full {lootFull.Food}");
+            if (!(lootFull.Stone > lootHalf.Stone && lootHalf.Stone > lootNone.Stone))
+                failures.Add($"ComputeLoot food not monotonic: none {lootNone.Stone} <= half {lootHalf.Stone} <= full {lootFull.Stone}");
 
             // Honesty: scene rewardMultiplier scales the FOOD payout (Hard x1.5 / Extreme x2.2).
             //
@@ -173,8 +173,8 @@ namespace DeNelle.Editor
             // anyone re-applies the multiplier to crystals.
             var lootBase = RaidScoring.ComputeLoot(3, 1f, 40, 60, 15, 20, 1f);
             var lootHard = RaidScoring.ComputeLoot(3, 1f, 40, 60, 15, 20, 1.5f);
-            if (lootHard.Food < lootBase.Food * 1.4f)
-                failures.Add($"ComputeLoot x1.5 mult did not scale food: base {lootBase.Food} hard {lootHard.Food}");
+            if (lootHard.Stone < lootBase.Stone * 1.4f)
+                failures.Add($"ComputeLoot x1.5 mult did not scale food: base {lootBase.Stone} hard {lootHard.Stone}");
             if (lootHard.Crystals != lootBase.Crystals)
                 failures.Add($"ComputeLoot applied the camp multiplier to CRYSTALS (x1 {lootBase.Crystals} " +
                              $"vs x1.5 {lootHard.Crystals}). Crystals are timer compression and are ruled OUT " +
@@ -284,10 +284,10 @@ namespace DeNelle.Editor
                         "GrantLoot", "RaidScoring", "Finalize");
                     bool grantsToEconomy = victoryCode.Contains("EconomyService")
                                         || victoryCode.Contains("AddCrystals")
-                                        || victoryCode.Contains("AddFood");
+                                        || victoryCode.Contains("AddStone");
                     if (!grantsToEconomy)
                         failures.Add("RaidVictoryController.cs GrantLoot does not reach the village economy in LIVE CODE " +
-                                     "(EconomyService/AddCrystals/AddFood appear nowhere outside comments) - the raid pays nothing");
+                                     "(EconomyService/AddCrystals/AddStone appear nowhere outside comments) - the raid pays nothing");
                 }
 
                 // (C) a live raid HUD view exists, code-built (uGUI) — NOT uxml.
@@ -495,10 +495,10 @@ namespace DeNelle.Editor
             // =================================================================
             const string proseOnly =
                 "/// <summary>Reuses <see cref=\"EconomyService\"/>; calls GrantLoot after Finalize.</summary>\n" +
-                "// RaidScoring drives it. AddCrystals / AddFood are the fallback.\n" +
+                "// RaidScoring drives it. AddCrystals / AddStone are the fallback.\n" +
                 "public sealed class Deleted { void Nothing() { } }\n";
             string proseStripped = StripComments(proseOnly);
-            foreach (var ghost in new[] { "EconomyService", "GrantLoot", "RaidScoring", "AddCrystals", "AddFood", "Finalize" })
+            foreach (var ghost in new[] { "EconomyService", "GrantLoot", "RaidScoring", "AddCrystals", "AddStone", "Finalize" })
             {
                 if (proseStripped.Contains(ghost))
                     failures.Add($"[falsifiability] StripComments left '{ghost}' behind on a comment-only sample - " +

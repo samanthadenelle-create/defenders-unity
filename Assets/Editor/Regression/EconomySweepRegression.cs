@@ -208,7 +208,7 @@ namespace DeNelle.Editor.Regression
 
                 // ...and fed back into the locals the log + pops read.
                 string after = Slice(echo, call, 1400);
-                foreach (string reassign in new[] { "wood = applied.Wood", "iron = applied.Iron", "food = applied.Food" })
+                foreach (string reassign in new[] { "wood = applied.Wood", "iron = applied.Iron", "food = applied.Stone" })
                 {
                     if (after.IndexOf(reassign, StringComparison.Ordinal) < 0)
                         failures.Add($"[econ-sweep/2] EchoService.DumpSilos does not reassign '{reassign}' after banking - "

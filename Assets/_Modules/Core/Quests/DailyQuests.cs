@@ -49,7 +49,8 @@ namespace DeNelle.Core.Quests
     {
         [JsonProperty("slot")] public string Slot;
         [JsonProperty("rewardCrystals")] public int RewardCrystals;
-        [JsonProperty("rewardFood")] public int RewardFood;
+        [UnityEngine.Serialization.FormerlySerializedAs("RewardFood")]
+        [JsonProperty("rewardFood")] public int RewardStone;
         [JsonProperty("rewardWisdom")] public int RewardWisdom;
         [JsonProperty("rewardRandomItem")] public bool RewardRandomItem;
     }

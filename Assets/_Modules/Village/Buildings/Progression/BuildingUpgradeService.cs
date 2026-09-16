@@ -137,7 +137,7 @@ namespace DeNelle.Village.Buildings.Progression
                                 // `def.Tier >= 1 ? ... : none` preserves the old else-chain exactly
                                 // for a Tier-0 def (which matched no branch and paid nothing).
                                 wood: def.Tier >= 1 && BuildingTierChargeLane.For(def) == HarvestResource.Wood ? def.PrimaryMaterialCost : 0,
-                                food: def.Tier >= 1 && BuildingTierChargeLane.For(def) == HarvestResource.Food ? def.PrimaryMaterialCost : 0,
+                                stone: def.Tier >= 1 && BuildingTierChargeLane.For(def) == HarvestResource.Stone ? def.PrimaryMaterialCost : 0,
                                 iron: def.Tier >= 1 && BuildingTierChargeLane.For(def) == HarvestResource.Iron ? def.PrimaryMaterialCost : 0,
                                 coins: gold))) != null)
                     {
@@ -166,7 +166,7 @@ namespace DeNelle.Village.Buildings.Progression
                 FlowTrace.Capture("Upgrade", id + " tier-" + targetTier + " spend REJECTED - need W"
                     + def.PrimaryMaterialCost + " primary/G" + def.CostGold + ", wallet W"
                     + ResourceLedger.Balance(HarvestResource.Wood) + "/S"
-                    + ResourceLedger.Balance(HarvestResource.Food) + "/I"
+                    + ResourceLedger.Balance(HarvestResource.Stone) + "/I"
                     + ResourceLedger.Balance(HarvestResource.Iron) + "/G" + (state != null ? state.Resources.Coins : 0)
                     + (state == null ? " (no GameState)" : ""));
                 return false;

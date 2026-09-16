@@ -214,7 +214,7 @@ namespace DeNelle.Editor
                 throwaway.Iron = 100000;
                 throwaway.ObsidianQueue = ObsidianQueueState.Empty();
                 var bal = throwaway.Resources;
-                bal.Food = 100000;
+                bal.Stone = 100000;
                 bal.Crystals = 0;          // ⚠ THE ACCEPTANCE FIXTURE: broke on crystals ...
                 bal.Coins = 100000;        // ... and rich in gold.
                 throwaway.Resources = bal;

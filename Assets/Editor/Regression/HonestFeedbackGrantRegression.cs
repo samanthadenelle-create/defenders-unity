@@ -33,16 +33,16 @@
 // WHAT IS MEASURED, AND WHY IT IS NOT `Resources.Wood`
 // -----------------------------------------------------------------------------
 // The deltas are read off GameState.Wood, GameState.Iron and
-// GameState.Resources.Food -- the fields the economy seam actually writes
+// GameState.Resources.Stone -- the fields the economy seam actually writes
 // (EconomyService.GrantInternal writes State.Wood/State.Iron and routes Food
-// through GameStateService.AddFood).
+// through GameStateService.AddStone).
 //
 // ⚠ WO-1432 section 2a's table says wood -> `Resources.Wood` and iron ->
 // `Resources.Iron`. THOSE MEMBERS DO NOT EXIST: ResourceBalance (NestedTypes.cs:41)
 // carries only Crystals / Food / Coins, and Wood/Iron are top-level GameState
 // scalars. An oracle that measured `Resources.Wood` would read delta 0 forever.
 // The WO is right about the important half -- there is no Stone balance and the
-// player-facing Stone IS Resources.Food (GameState.cs:59-71, WO-1212/WO-1163).
+// player-facing Stone IS Resources.Stone (GameState.cs:59-71, WO-1212/WO-1163).
 //
 // Marker: HONEST_FEEDBACK_GRANT_OK / HONEST_FEEDBACK_GRANT_FAIL. Expected: GREEN.
 //
@@ -110,7 +110,7 @@ namespace DeNelle.Editor
                 // ── the ceilings the fixture will park just under ──────────────
                 int maxWood = TownBankCapacity.MaxOf(BankResource.Wood);
                 int maxIron = TownBankCapacity.MaxOf(BankResource.Iron);
-                int maxFood = TownBankCapacity.MaxOf(BankResource.Food);
+                int maxFood = TownBankCapacity.MaxOf(BankResource.Stone);
                 log.AppendLine($"  ceilings: wood={maxWood} iron={maxIron} stone(Food)={maxFood}");
 
                 // A MISSING FIXTURE FAILS AND NAMES ITSELF -- it never silently passes. If a
@@ -139,7 +139,7 @@ namespace DeNelle.Editor
                 int ctlFood = ctlAfter.food - ctlBefore.food;
                 int ctlIron = ctlAfter.iron - ctlBefore.iron;
                 log.AppendLine($"  CONTROL (EarnedIncome) measured deltas: wood=+{ctlWood} stone(Food)=+{ctlFood} " +
-                               $"iron=+{ctlIron} (seam reported W{ctlApplied.Wood}/F{ctlApplied.Food}/I{ctlApplied.Iron})");
+                               $"iron=+{ctlIron} (seam reported W{ctlApplied.Wood}/F{ctlApplied.Stone}/I{ctlApplied.Iron})");
 
                 if (ctlWood >= HonestFeedbackGrant.GrantWood ||
                     ctlFood >= HonestFeedbackGrant.GrantStone ||
@@ -166,7 +166,7 @@ namespace DeNelle.Editor
                 int dFood = after.food - before.food;
                 int dIron = after.iron - before.iron;
                 log.AppendLine($"  SUBJECT (TryApply) outcome={outcome} measured deltas: wood=+{dWood} " +
-                               $"stone(Food)=+{dFood} iron=+{dIron} (seam reported W{applied.Wood}/F{applied.Food}/I{applied.Iron})");
+                               $"stone(Food)=+{dFood} iron=+{dIron} (seam reported W{applied.Wood}/F{applied.Stone}/I{applied.Iron})");
 
                 if (outcome != ThankYouGrantOutcome.Applied)
                     failures.Add(Tag + " [thank-you-applies] TryApply returned " + outcome +
@@ -177,8 +177,8 @@ namespace DeNelle.Editor
                                  " != " + HonestFeedbackGrant.GrantWood + ". A PurchasedOrPromised grant is " +
                                  "NEVER clamped (TownBankCapacity law 5) -- the screen promised an exact number");
                 if (dFood != HonestFeedbackGrant.GrantStone)
-                    failures.Add(Tag + " [stone-exactly-1000] MEASURED GameState.Resources.Food delta " + dFood +
-                                 " != " + HonestFeedbackGrant.GrantStone + ". Stone IS Resources.Food " +
+                    failures.Add(Tag + " [stone-exactly-1000] MEASURED GameState.Resources.Stone delta " + dFood +
+                                 " != " + HonestFeedbackGrant.GrantStone + ". Stone IS Resources.Stone " +
                                  "(GameState.cs:59-71) -- there is no Stone balance to write instead");
                 if (dIron != HonestFeedbackGrant.GrantIron)
                     failures.Add(Tag + " [iron-exactly-1000] MEASURED GameState.Iron delta " + dIron +
@@ -188,16 +188,16 @@ namespace DeNelle.Editor
                 // The seam's own reported basket must agree with the wallet. They can only differ
                 // if a grant path reports what it was ASKED for rather than what it APPLIED --
                 // the ECON-SWEEP 2026-08-16 defect-2 class, and the reason the panel reads it.
-                if (applied.Wood != dWood || applied.Food != dFood || applied.Iron != dIron)
+                if (applied.Wood != dWood || applied.Stone != dFood || applied.Iron != dIron)
                     failures.Add(Tag + " [reported-matches-measured] the economy seam reported W" + applied.Wood +
-                                 "/F" + applied.Food + "/I" + applied.Iron + " but the wallet MOVED by W" + dWood +
+                                 "/F" + applied.Stone + "/I" + applied.Iron + " but the wallet MOVED by W" + dWood +
                                  "/F" + dFood + "/I" + dIron + ". A caller showing the player the reported number " +
                                  "would be naming resources they did not receive");
 
                 // Over-cap is the EXPECTED end state here and is legitimate
                 // (FOUNDATIONAL_RULINGS.md section 7). Recorded, never asserted against.
                 log.AppendLine($"  post-grant over-cap units: wood={HonestFeedbackGrant.OverCapUnits(BankResource.Wood)} " +
-                               $"stone(Food)={HonestFeedbackGrant.OverCapUnits(BankResource.Food)} " +
+                               $"stone(Food)={HonestFeedbackGrant.OverCapUnits(BankResource.Stone)} " +
                                $"iron={HonestFeedbackGrant.OverCapUnits(BankResource.Iron)} " +
                                "(above the cap is a legitimate paid state -- nothing is lost)");
             }
@@ -227,14 +227,14 @@ namespace DeNelle.Editor
         private struct Balances { public int wood, food, iron; }
 
         private static Balances Snapshot(GameState s)
-            => new Balances { wood = s.Wood, food = s.Resources.Food, iron = s.Iron };
+            => new Balances { wood = s.Wood, food = s.Resources.Stone, iron = s.Iron };
 
         private static void ParkNearCap(GameState s, int maxWood, int maxIron, int maxFood)
         {
             s.Wood = maxWood - Headroom;
             s.Iron = maxIron - Headroom;
             var r = s.Resources;
-            r.Food = maxFood - Headroom;
+            r.Stone = maxFood - Headroom;
             s.Resources = r;
         }
 
@@ -252,7 +252,7 @@ namespace DeNelle.Editor
                 Debug.Log(log.ToString() + "HONEST_FEEDBACK_GRANT_OK");
                 return "HONEST FEEDBACK GRANT OK -- against a bank parked " + Headroom + " units under its " +
                        "ceiling, an EarnedIncome control grant CLAMPED while HonestFeedbackGrant.TryApply " +
-                       "delivered exactly 1000 wood / 1000 stone(Resources.Food) / 1000 iron, and the seam's " +
+                       "delivered exactly 1000 wood / 1000 stone(Resources.Stone) / 1000 iron, and the seam's " +
                        "reported basket matched the measured wallet movement on all three axes";
             }
             string reason = "honest-feedback-grant: " + string.Join("; ", failures);

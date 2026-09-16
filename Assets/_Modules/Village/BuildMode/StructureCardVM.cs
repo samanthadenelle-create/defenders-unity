@@ -178,7 +178,7 @@ namespace DeNelle.Village
         //  its own model already carries the words - its View drops them. This block
         //  is the same shape for THIS VM's consumer (BuildStructureInfoPanel), which
         //  today formats the basket itself at BuildStructureInfoPanel.cs:347-350 with
-        //  hardcoded ("stone", "Stone", c.food) literals. A View re-spelling a
+        //  hardcoded ("stone", "Stone", c.stone) literals. A View re-spelling a
         //  resource name is how one screen ends up naming a slot differently from the
         //  wallet chip beside it.
         //
@@ -369,7 +369,7 @@ namespace DeNelle.Village
             if (entry == null) return string.Empty;
             if (BuildModeController.FreeBuildAvailable(entry)) return string.Empty;
             var c = BuildModeController.SoftcappedCostFor(entry);
-            // WO-1570: was a hand-typed ("stone", "Stone", c.food) tuple - the fifth copy of a
+            // WO-1570: was a hand-typed ("stone", "Stone", c.stone) tuple - the fifth copy of a
             // word the bank already spells. Re-pointed at PartsOf, which reads
             // TownBankCapacity.DisplayName. Output is IDENTICAL (Wood/Stone/Iron/Crystals both
             // ways), which matters: CostBasketSeparationRegression.cs:662 reads CostWords.
@@ -539,7 +539,7 @@ namespace DeNelle.Village
             return DeNelle.Core.UI.CostFormat.Parts(new[]
             {
                 ("wood",    Word(DeNelle.Core.Economy.BankResource.Wood),     c.wood),
-                ("stone",   Word(DeNelle.Core.Economy.BankResource.Food),     c.food),
+                ("stone",   Word(DeNelle.Core.Economy.BankResource.Stone),     c.stone),
                 ("iron",    Word(DeNelle.Core.Economy.BankResource.Iron),     c.iron),
                 ("crystal", Word(DeNelle.Core.Economy.BankResource.Crystals), c.crystals)
             });
@@ -568,7 +568,7 @@ namespace DeNelle.Village
         {
             var keys = new List<string>(4);
             if (c.wood > 0) keys.Add("wood=" + c.wood);
-            if (c.food > 0) keys.Add("food=" + c.food);
+            if (c.stone > 0) keys.Add("food=" + c.stone);
             if (c.iron > 0) keys.Add("iron=" + c.iron);
             if (c.crystals > 0) keys.Add("crystals=" + c.crystals);
             return keys.Count == 0 ? "none" : string.Join(",", keys.ToArray());

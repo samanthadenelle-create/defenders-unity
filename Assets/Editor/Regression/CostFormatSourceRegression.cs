@@ -290,7 +290,7 @@ namespace DeNelle.Editor.Regression
 
         // =====================================================================
         //  WO-1195 - the owner's four art rulings, and the one translator that
-        //  makes CurrencyKind.Food render STONE.
+        //  makes CurrencyKind.Stone render STONE.
         // ---------------------------------------------------------------------
         //  ⭐ WHY THIS IS AN ORACLE AND NOT A LOOK: WO-1205 dropped the NAME label
         //  from the town resource rows on the ruled path, so the icon is now the
@@ -318,7 +318,7 @@ namespace DeNelle.Editor.Regression
             string kit = StripComments(File.ReadAllText(kitPath));
             if (kit.Contains("UiStyle.Icon(kind.ToString()"))
                 failures.Add("ElarionUiKitObsidian resolves a concept id from the CurrencyKind NAME "
-                             + "(CurrencyKind.Food is the Stone slot - canon sec.7); use ConceptIdFor");
+                             + "(CurrencyKind.Stone is the Stone slot - canon sec.7); use ConceptIdFor");
             if (!kit.Contains("public static string ConceptIdFor(CurrencyKind kind)"))
                 failures.Add("ElarionUiKit.ConceptIdFor is gone - the CurrencyKind->concept translator");
 
@@ -367,8 +367,8 @@ namespace DeNelle.Editor.Regression
                 // ⛔ The one hardcoded expectation in this file, and it is deliberate: canon sec.7
                 // retired Food for Stone. If ConceptIdFor ever answers "food" here the town rail's
                 // Stone row silently becomes a tractor again.
-                if (kind == ElarionUiKit.CurrencyKind.Food && concept != "stone")
-                    failures.Add("CurrencyKind.Food must map to the concept 'stone' (canon sec.7), not '" + concept + "'");
+                if (kind == ElarionUiKit.CurrencyKind.Stone && concept != "stone")
+                    failures.Add("CurrencyKind.Stone must map to the concept 'stone' (canon sec.7), not '" + concept + "'");
 
                 string expected = "currency_" + concept;
                 if ((string)map?[concept]?["role"] != "currency" || (string)map?[concept]?["name"] != expected)

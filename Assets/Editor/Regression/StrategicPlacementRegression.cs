@@ -334,8 +334,8 @@ namespace DeNelle.Editor
             state.StrategicPlacementMigrated = true;
             if (StrategicPlacementMigration.StanddownActive)
                 failures.Add("StanddownActive == true outside the home hub — standdown/replay must be castle-scoped");
-            if (StrategicPlacementMigration.ShouldReplayRecord("forge") != StrategicPlacementMigration.StanddownActive)
-                failures.Add("ShouldReplayRecord('forge') disagrees with StanddownActive — replay must key strictly off the one standdown authority (bake-owns XOR record-replays)");
+            if (StrategicPlacementMigration.ShouldReplayRecord("forge"))
+                failures.Add("ring storefront 'forge' must NEVER catalog-replay — injector owns the ring on every load");
             state.StrategicPlacementMigrated = false;
             if (StrategicPlacementMigration.ShouldReplayRecord("forge"))
                 failures.Add("marker cleared but the managed record would still replay — ownership must return to the bakes (no double-spawn)");
@@ -408,11 +408,11 @@ namespace DeNelle.Editor
             if (forge == null || forge.repo == null)
             { failures.Add("catalog row 'forge' missing — the placed functional structure has no cost/pricing source"); return; }
             var buildCost = forge.repo.cost;
-            if (buildCost.wood + buildCost.iron + buildCost.food <= 0)
-                failures.Add($"'forge' repo.cost has NO materials (w{buildCost.wood}/i{buildCost.iron}/f{buildCost.food}) — placement would fall back to crystals-only and repair could not price it");
+            if (buildCost.wood + buildCost.iron + buildCost.stone <= 0)
+                failures.Add($"'forge' repo.cost has NO materials (w{buildCost.wood}/i{buildCost.iron}/f{buildCost.stone}) — placement would fall back to crystals-only and repair could not price it");
             var collForge = CatalogRegistry.Get("collector_forge");
             if (collForge == null || collForge.repo == null ||
-                collForge.repo.cost.wood + collForge.repo.cost.iron + collForge.repo.cost.food <= 0)
+                collForge.repo.cost.wood + collForge.repo.cost.iron + collForge.repo.cost.stone <= 0)
                 failures.Add("'collector_forge' catalog row missing or material-less — the collector half of the chain is unpriced");
 
             // 5b. The REAL repair pricing path resolves that row for a live Building.
@@ -429,9 +429,9 @@ namespace DeNelle.Editor
             building.Configure(BuildingType.Forge, "forge", "Armorer");
 
             var priced = (DeNelle.Core.Catalog.ResourceCost)buildCostFor.Invoke(null, new object[] { building });
-            if (priced.wood != buildCost.wood || priced.iron != buildCost.iron || priced.food != buildCost.food)
-                failures.Add($"repair pricing resolved (w{priced.wood}/i{priced.iron}/f{priced.food}) for the placed forge — expected its own catalog row (w{buildCost.wood}/i{buildCost.iron}/f{buildCost.food}); it fell through to a fallback row");
-            else log.AppendLine($"  Building('forge') prices from its own row (w{priced.wood}/i{priced.iron}/f{priced.food}) ok");
+            if (priced.wood != buildCost.wood || priced.iron != buildCost.iron || priced.stone != buildCost.stone)
+                failures.Add($"repair pricing resolved (w{priced.wood}/i{priced.iron}/f{priced.stone}) for the placed forge — expected its own catalog row (w{buildCost.wood}/i{buildCost.iron}/f{buildCost.stone}); it fell through to a fallback row");
+            else log.AppendLine($"  Building('forge') prices from its own row (w{priced.wood}/i{priced.iron}/f{priced.stone}) ok");
 
             // Half damage → non-zero in-kind cost; destroyed → the FULL build cost
             // (the rebuild price); crystals are NEVER charged on repair.
@@ -441,8 +441,8 @@ namespace DeNelle.Editor
             if (half.crystals != 0)
                 failures.Add($"repair charged {half.crystals} crystals — crystals are never spent on repair (owner ruling 2026-07-11)");
             var full = WallRepairController.CostForFraction(1f, priced);
-            if (full.wood != priced.wood || full.iron != priced.iron || full.food != priced.food)
-                failures.Add($"destroyed forge rebuild price (w{full.wood}/i{full.iron}/f{full.food}) != its full build cost (w{priced.wood}/i{priced.iron}/f{priced.food})");
+            if (full.wood != priced.wood || full.iron != priced.iron || full.stone != priced.stone)
+                failures.Add($"destroyed forge rebuild price (w{full.wood}/i{full.iron}/f{full.stone}) != its full build cost (w{priced.wood}/i{priced.iron}/f{priced.stone})");
             else log.AppendLine($"  repair: half=(w{half.wood}/i{half.iron}) full=(w{full.wood}/i{full.iron}) crystals=0 ok");
 
             // 5c. Catalog integrity: every censused id that HAS a row renders resolvable,

@@ -335,7 +335,7 @@ namespace DeNelle.Editor.Regression
 
             if (!Regex.IsMatch(body, @"GrantSpendable\(wood:\s*amount\)\s*\.Wood") ||
                 !Regex.IsMatch(body, @"GrantSpendable\(iron:\s*amount\)\s*\.Iron") ||
-                !Regex.IsMatch(body, @"GrantSpendable\(food:\s*amount\)\s*\.Food"))
+                !Regex.IsMatch(body, @"GrantSpendable\(stone:\s*amount\)\s*\.Stone"))
                 failures.Add("[tap-still-works] Collect no longer reads the APPLIED basket back from GrantSpendable for " +
                              "wood/iron/food - it is trusting its own request local again, which is how a silent loss hides");
             if (body.IndexOf("SettleCollect(_pending, banked", StringComparison.Ordinal) < 0)

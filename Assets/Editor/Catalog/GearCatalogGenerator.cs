@@ -16,7 +16,7 @@
 //
 // WHAT IT STUBS (rarity-TEMPLATED placeholders, FLAGGED generated:true for human
 // authoring — NEVER fabricated as final balance):
-//   damageMult  defense  hpBonus  req.level  buyWood/buyFood/buyIron/buyCrystals
+//   damageMult  defense  hpBonus  req.level  buyWood/buyStone/buyIron/buyCrystals
 // A human authors these, then sets manual:true on the row to lock it forever.
 //
 // IDEMPOTENT + MANUAL-PRESERVING (§4):

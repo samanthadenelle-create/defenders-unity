@@ -75,18 +75,18 @@ namespace DeNelle.Tests.EditMode
             public int Coins { get; set; }
             public int Wood { get; set; }
             public int Iron { get; set; }
-            public int Food { get; set; }
+            public int Stone { get; set; }
             public int Crystals { get; set; }
             public event Action<ResourceSnapshot> OnChanged;
             public bool CanAfford(ResourceCost cost) => Coins >= cost.Coins;
-            public bool TrySpend(ResourceCost cost) { if (!CanAfford(cost)) return false; Coins -= cost.Coins; OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals)); return true; }
+            public bool TrySpend(ResourceCost cost) { if (!CanAfford(cost)) return false; Coins -= cost.Coins; OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals)); return true; }
             // Coins-only fake: it credits ONLY amount.Coins, so the applied basket it returns must
             // carry only those coins. Returning the full request would make the fake lie about
             // wood/food/iron/crystals it never banked.
             public ResourceCost Grant(ResourceCost amount)
             {
                 Coins += amount.Coins;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 return new ResourceCost(coins: amount.Coins);
             }
         }

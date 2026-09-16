@@ -66,7 +66,7 @@ namespace DeNelle.Village
             MineResource.Iron          => "Harvest/iron",
             // WO-1163/PROD-016: enum frozen, DISPLAY moves. Same route as HarvestSite - the two must
             // never disagree about which model a node wears.
-            MineResource.Food          => "Harvest/stone",
+            MineResource.Stone          => "Harvest/stone",
             MineResource.AetherCrystal => "Harvest/crystals",
             _                          => null,
         };
@@ -77,7 +77,7 @@ namespace DeNelle.Village
         {
             MineResource.Wood          => new Color(0.42f, 0.28f, 0.15f),
             MineResource.Iron          => new Color(0.52f, 0.54f, 0.58f),
-            MineResource.Food          => new Color(0.85f, 0.70f, 0.28f),
+            MineResource.Stone          => new Color(0.85f, 0.70f, 0.28f),
             MineResource.AetherCrystal => new Color(0.35f, 0.78f, 1.00f),
             _                          => Color.gray,
         };
@@ -178,7 +178,7 @@ namespace DeNelle.Village
                     // true and still do, so their SkinOptions are identical before and after.
                     bool authoredPose = Resource == MineResource.Wood
                         || Resource == MineResource.Iron
-                        || Resource == MineResource.Food
+                        || Resource == MineResource.Stone
                         || Resource == MineResource.AetherCrystal;
                     var skinned = VisualFactory.Skin(_visual.transform, path,
                         new SkinOptions
@@ -249,7 +249,7 @@ namespace DeNelle.Village
             {
                 case MineResource.Wood:          BuildLog(parent);     break;
                 case MineResource.Iron:          BuildOre(parent);     break;
-                case MineResource.Food:          BuildGrain(parent);   break;
+                case MineResource.Stone:          BuildGrain(parent);   break;
                 case MineResource.AetherCrystal: BuildCrystal(parent); break;
                 default:                         BuildOre(parent);     break;
             }
@@ -298,7 +298,7 @@ namespace DeNelle.Village
         // Food: a wheat/grain mound — a rounded golden heap with a couple of sheaf spikes.
         private static void BuildGrain(Transform parent)
         {
-            Color grain = Tint(MineResource.Food);
+            Color grain = Tint(MineResource.Stone);
             Color sheaf = new Color(0.92f, 0.80f, 0.40f);
 
             // Low wide mound (squashed sphere reads as a heap, not a ball).

@@ -52,7 +52,7 @@ namespace DeNelle.Core.Tests
 
             Assert.That(migrated.Resources.HasValue, Is.True, "v1->v2 seeds resources");
             Assert.That(migrated.Resources.Value.Crystals, Is.EqualTo(250));
-            Assert.That(migrated.Resources.Value.Food, Is.EqualTo(80));
+            Assert.That(migrated.Resources.Value.Stone, Is.EqualTo(80));
             Assert.That(migrated.Resources.Value.Coins, Is.EqualTo(15));
             Assert.That(migrated.OwnedItemIds, Is.Not.Null.And.Empty,
                 "v1->v2 seeds ownedItemIds = []");
@@ -604,7 +604,7 @@ namespace DeNelle.Core.Tests
             var migrated = SaveMigrator.Migrate(s, 10);
 
             Assert.That(migrated.Resources.Value.Crystals, Is.EqualTo(1), "resources.crystals not clobbered");
-            Assert.That(migrated.Resources.Value.Food, Is.EqualTo(2), "resources.food not clobbered");
+            Assert.That(migrated.Resources.Value.Stone, Is.EqualTo(2), "resources.food not clobbered");
             Assert.That(migrated.Resources.Value.Coins, Is.EqualTo(3), "resources.coins not clobbered");
             Assert.That((int)migrated.Wood.Value, Is.EqualTo(999), "wood not clobbered");
             Assert.That(migrated.HeroClass.Value, Is.EqualTo(HeroClass.Knight), "heroClass not clobbered");

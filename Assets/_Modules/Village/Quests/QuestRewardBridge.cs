@@ -125,7 +125,7 @@ namespace DeNelle.Village
                 {
                     // Prefer GrantSpendable when wood/iron present; Grant(crystals,food) for
                     // the legacy two-arg path when only those are set — GrantSpendable covers all.
-                    econ.GrantSpendable(wood: wood, food: food, iron: iron, crystals: crystals);
+                    econ.GrantSpendable(wood: wood, stone: food, iron: iron, crystals: crystals);
                     FlowTrace.Step("Economy",
                         $"Story quest granted resources wood={wood} iron={iron} food={food} crystals={crystals}");
                 }

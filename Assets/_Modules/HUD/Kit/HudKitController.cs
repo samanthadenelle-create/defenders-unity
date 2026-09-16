@@ -3474,11 +3474,11 @@ namespace DeNelle.HUD.Kit
             // resource with no other town readout at all. Note Crystals is UNCAPPABLE by design
             // (TownBankCapacity.UncappableResources, owner ruling WO-901 §6), so its row is fed by
             // the chip's own SetAmount in OnEconomy — SetCappedResourceValue early-returns on it.
-            // The word "Stone" stays paired with CurrencyKind.Food (canon §7 naming).
+            // The word "Stone" stays paired with CurrencyKind.Stone (canon §7 naming).
             var kinds = new[]
             {
                 ElarionUiKit.CurrencyKind.Wood, ElarionUiKit.CurrencyKind.Iron,
-                ElarionUiKit.CurrencyKind.Food, ElarionUiKit.CurrencyKind.Crystal,
+                ElarionUiKit.CurrencyKind.Stone, ElarionUiKit.CurrencyKind.Crystal,
             };
             var names = new[] { "Wood", "Iron", "Stone", "Crystals" };
 
@@ -3939,7 +3939,7 @@ namespace DeNelle.HUD.Kit
             // Count-tween only — the no-flash law lives in CurrencyChip.SetAmount.
             SetCappedResourceValue(0, BankResource.Wood, e.Wood);
             SetCappedResourceValue(1, BankResource.Iron, e.Iron);
-            SetCappedResourceValue(2, BankResource.Food, e.Food);
+            SetCappedResourceValue(2, BankResource.Stone, e.Stone);
             // WO-1221: Crystals is uncapped by design, so SetCappedResourceValue early-returns on
             // it (TownBankCapacity.IsCapped == false). Feed the chip directly, or the row would
             // sit at its built value of 0 forever — a silently-wrong number, which is worse than

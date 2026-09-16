@@ -51,7 +51,7 @@ namespace DeNelle.Village
         /// </summary>
         public void GrantFirstHarvestBonus()
         {
-            _economy?.Grant(new ResourceCost(wood: 5, food: 5));
+            _economy?.Grant(new ResourceCost(wood: 5, stone: 5));
         }
     }
 }

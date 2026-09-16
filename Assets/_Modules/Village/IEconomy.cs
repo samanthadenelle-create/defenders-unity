@@ -27,7 +27,7 @@ namespace DeNelle.Village
         int Coins { get; }
         int Wood { get; }
         int Iron { get; }
-        int Food { get; }
+        int Stone { get; }
         int Crystals { get; }
 
         /// <summary>True when every resource pool covers <paramref name="cost"/>.</summary>

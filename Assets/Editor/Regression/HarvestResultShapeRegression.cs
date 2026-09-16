@@ -106,7 +106,7 @@ namespace DeNelle.Editor.Regression
 
         private static List<BankOverflowStatus> OwnerFrame() => new List<BankOverflowStatus>
         {
-            Row("Stone", "Stoneyard",  BankResource.Food, 0,    32307, 3000,  3000,  Collectors),
+            Row("Stone", "Stoneyard",  BankResource.Stone, 0,    32307, 3000,  3000,  Collectors),
             Row("Wood",  "Lumberyard", BankResource.Wood, 2814, 26167, 23186, 26000, Collectors),
             Row("Iron",  "Foundry",    BankResource.Iron, 792,  13083, 9208,  10000, Collectors),
         };
@@ -313,7 +313,7 @@ namespace DeNelle.Editor.Regression
                 // and that is a REAL signal, not a fixture bug - the tail line would be unreachable.
                 var allResources = new[]
                 {
-                    BankResource.Wood, BankResource.Iron, BankResource.Food,
+                    BankResource.Wood, BankResource.Iron, BankResource.Stone,
                     BankResource.Crystals, BankResource.Coins,
                 };
                 var many = new List<BankOverflowStatus>();
@@ -362,11 +362,11 @@ namespace DeNelle.Editor.Regression
                     // Collector rows: Requested = the pending snapshot, Current = store BEFORE the tap.
                     Row("Wood",  "Lumberyard", BankResource.Wood, WoodBanked,  15142, 23094, 26000, Collectors),
                     Row("Iron",  "Foundry",    BankResource.Iron, IronBanked,   7570,  8465, 10000, Collectors),
-                    Row("Stone", "Stoneyard",  BankResource.Food, StoneBanked, 30932,  3000,  3000, Collectors),
+                    Row("Stone", "Stoneyard",  BankResource.Stone, StoneBanked, 30932,  3000,  3000, Collectors),
                     // Echo silo rows: the SAME three resources, measured after the collectors banked.
                     Row("Wood",  "Lumberyard", BankResource.Wood, 0, 28736, 26000, 26000, Silo),
                     Row("Iron",  "Foundry",    BankResource.Iron, 0, 15808, 10000, 10000, Silo),
-                    Row("Stone", "Stoneyard",  BankResource.Food, 0, 14325,  3000,  3000, Silo),
+                    Row("Stone", "Stoneyard",  BankResource.Stone, 0, 14325,  3000,  3000, Silo),
                 };
                 var dev = HarvestResultVM.Build(device, BuiltFor);
                 if (dev.TotalRowCount != 3 || dev.Rows.Count != 3)
@@ -444,7 +444,7 @@ namespace DeNelle.Editor.Regression
                 // =====================================================================
                 var noRoom = HarvestResultVM.Build(new List<BankOverflowStatus>
                 {
-                    Row("Stone", "Stoneyard", BankResource.Food, 0, 32307, 3000, 3000, Collectors),
+                    Row("Stone", "Stoneyard", BankResource.Stone, 0, 32307, 3000, 3000, Collectors),
                 }, BuiltFor);
                 if (noRoom.Rows.Count != 1 || noRoom.Rows[0].BankedText != "0" ||
                     noRoom.Rows[0].WaitingText != "32,307 waiting, safe" ||
@@ -455,7 +455,7 @@ namespace DeNelle.Editor.Regression
                                   noRoom.Rows[0].WaitingText + "' / '" + noRoom.Rows[0].StorageText : "no row") + "'");
                 var someRoom = HarvestResultVM.Build(new List<BankOverflowStatus>
                 {
-                    Row("Stone", "Stoneyard", BankResource.Food, 2100, 32307, 900, 3000, Collectors),
+                    Row("Stone", "Stoneyard", BankResource.Stone, 2100, 32307, 900, 3000, Collectors),
                 }, BuiltFor);
                 if (someRoom.Rows.Count != 1 || someRoom.Rows[0].BankedText != "+2,100" ||
                     someRoom.Rows[0].WaitingText != "30,207 waiting, safe" ||

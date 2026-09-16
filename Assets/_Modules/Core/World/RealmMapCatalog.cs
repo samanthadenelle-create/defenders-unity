@@ -67,7 +67,8 @@ namespace DeNelle.Core.World
     public sealed class RealmClearReward
     {
         [JsonProperty("crystals")] public int Crystals;
-        [JsonProperty("food")]     public int Food;
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [JsonProperty("food")]     public int Stone;
         [JsonProperty("coins")]    public int Coins;
     }
 

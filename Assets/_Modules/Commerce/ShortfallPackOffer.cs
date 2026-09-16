@@ -230,7 +230,7 @@ namespace DeNelle.Wallet
             var nonZero = new List<string>();
             if (e.Wood     > 0) nonZero.Add("wood");
             if (e.Iron     > 0) nonZero.Add("iron");
-            if (e.Food     > 0) nonZero.Add("stone");
+            if (e.Stone     > 0) nonZero.Add("stone");
             if (e.Crystals > 0) nonZero.Add("crystals");
             if (e.Coins    > 0) nonZero.Add("coins");
 

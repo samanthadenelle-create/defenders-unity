@@ -156,7 +156,7 @@ namespace DeNelle.Editor
         {
             BankResource.Wood,
             BankResource.Iron,
-            BankResource.Food,    // "STONE"
+            BankResource.Stone,    // "STONE"
             BankResource.Coins,   // "GOLD"
         };
 
@@ -272,11 +272,11 @@ namespace DeNelle.Editor
                               Outcome = DefenseOutcome.Overrun, Expected = 0 },
 
                 new Fixture { Note = "STONE, a maxed L6 store: raw 2550 CLIPPED BY THE PER-ATTACK CAP to 1700",
-                              Resource = BankResource.Food, Banked = 34000, Capacity = 34000,
+                              Resource = BankResource.Stone, Banked = 34000, Capacity = 34000,
                               Outcome = DefenseOutcome.Overrun, Expected = 1700 },
 
                 new Fixture { Note = "STONE, a grandfathered OVER-cap save: still clipped to 1700",
-                              Resource = BankResource.Food, Banked = 40000, Capacity = 34000,
+                              Resource = BankResource.Stone, Banked = 40000, Capacity = 34000,
                               Outcome = DefenseOutcome.Overrun, Expected = 1700 },
 
                 new Fixture { Note = "GOLD is uncapped: flat floor 500, 10% of the 4500 above it",
@@ -385,13 +385,13 @@ namespace DeNelle.Editor
             StakeRules.Add(l, BankResource.Wood, 400);
             StakeRules.Add(l, BankResource.Wood, 150);
             StakeRules.Add(l, BankResource.Iron, 25);
-            StakeRules.Add(l, BankResource.Food, 60);
+            StakeRules.Add(l, BankResource.Stone, 60);
             StakeRules.Add(l, BankResource.Coins, 30);
 
             if (l.Wood != 550) f.Add($"writer [GOOD PATH]: two wood adds summed to {l.Wood}, hand-worked 550 " +
                                      "-- a second add must ADD, not overwrite");
             if (l.Iron != 25) f.Add($"writer [GOOD PATH]: iron bucket is {l.Iron}, expected 25");
-            if (l.Food != 60) f.Add($"writer [GOOD PATH]: stone bucket is {l.Food}, expected 60");
+            if (l.Stone != 60) f.Add($"writer [GOOD PATH]: stone bucket is {l.Stone}, expected 60");
             if (l.Coins != 30) f.Add($"writer [GOOD PATH]: gold bucket is {l.Coins}, expected 30");
             if (l.Crystals != 0 || l.Magic != 0)
                 f.Add($"[HARD-RULE]writer: an untouchable bucket moved (c{l.Crystals} m{l.Magic})");
@@ -501,7 +501,7 @@ namespace DeNelle.Editor
 
                 s.Wood = 12000;
                 s.Iron = 9000;
-                var r = s.Resources; r.Food = 7000; r.Crystals = 4242; r.Coins = 5000; s.Resources = r;
+                var r = s.Resources; r.Stone = 7000; r.Crystals = 4242; r.Coins = 5000; s.Resources = r;
 
                 HeldTakesNothingCase(f, s);
                 TheSingleDebitCase(f, s);
@@ -591,7 +591,7 @@ namespace DeNelle.Editor
             var record = Record(DefenseOutcome.Overrun);
             var ledger = StakeRules.Empty();
             StakeRules.Add(ledger, BankResource.Wood, 700);
-            StakeRules.Add(ledger, BankResource.Food, 250);
+            StakeRules.Add(ledger, BankResource.Stone, 250);
             StakeRules.Add(ledger, BankResource.Coins, 450);
             record.ResourcesLost = ledger;
 
@@ -615,7 +615,7 @@ namespace DeNelle.Editor
             // ** A + E. THE WALLET MOVED BY EXACTLY THE LEDGER, AND BY EXACTLY NOTHING ELSE.
             AssertMoved(f, "wood", before.Wood, after.Wood, ledger.Wood);
             AssertMoved(f, "iron", before.Iron, after.Iron, ledger.Iron);
-            AssertMoved(f, "stone", before.Food, after.Food, ledger.Food);
+            AssertMoved(f, "stone", before.Food, after.Food, ledger.Stone);
             AssertMoved(f, "gold", before.Coins, after.Coins, ledger.Coins);
 
             // ! C. CRYSTALS. Not "moved by the ledger" -- NOT MOVED AT ALL, at any amount.
@@ -680,9 +680,9 @@ namespace DeNelle.Editor
                       "would then refuse to bill it and the siege would silently cost nothing");
 
             if (built.Wood > before.Wood || built.Iron > before.Iron
-                || built.Food > before.Food || built.Coins > before.Coins)
+                || built.Stone > before.Food || built.Coins > before.Coins)
                 f.Add($"[HARD-RULE]build: a bucket claims more than the bank holds (w{built.Wood}/{before.Wood} " +
-                      $"i{built.Iron}/{before.Iron} s{built.Food}/{before.Food} g{built.Coins}/{before.Coins})");
+                      $"i{built.Iron}/{before.Iron} s{built.Stone}/{before.Food} g{built.Coins}/{before.Coins})");
 
             // BuildStakes is a READ plus arithmetic. It must not move a single point on its own.
             Bank.AssertUnchanged(f, "build (compute must not take)", before, s);
@@ -746,7 +746,7 @@ namespace DeNelle.Editor
             {
                 Wood = s.Wood,
                 Iron = s.Iron,
-                Food = s.Resources.Food,
+                Food = s.Resources.Stone,
                 Crystals = s.Resources.Crystals,
                 Coins = s.Resources.Coins,
             };

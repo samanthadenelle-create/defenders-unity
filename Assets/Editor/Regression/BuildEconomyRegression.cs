@@ -1601,8 +1601,8 @@ namespace DeNelle.Editor
         //  shipped a fundamentally smaller game, silently. A gate cannot fix that.
         //
         //  The owner's ruling removed the authoring instead. RegisterFallback now parses
-        //  CatalogFallbackData.Json -- the catalog embedded byte-for-byte as a string
-        //  constant by DeNelle.Editor.CatalogFallbackGenerator -- through the SAME
+        //  CatalogFallbackData.Json -- the catalog embedded as a string constant by
+        //  DeNelle.Editor.CatalogFallbackGenerator -- through the SAME
         //  ParseAndRegister method the file path uses. Field-level parity is now true BY
         //  CONSTRUCTION and there is nothing left for a field-compare to disagree about.
         //
@@ -1613,8 +1613,9 @@ namespace DeNelle.Editor
         //    A. the two canonical copies (Resources + StreamingAssets) are byte-identical;
         //    B. CatalogFallbackData.SourceSha256 equals the SHA-256 of the catalog on disk
         //       -- i.e. the generated file is NOT STALE;
-        //    C. the embedded string itself still hashes to that same SHA -- i.e. nobody
-        //       hand-edited the generated file (its banner says not to);
+        //    C. the embedded string still equals the generator's own projection of the file
+        //       (WO-1755: authoring notes stripped) -- i.e. nobody hand-edited the generated
+        //       file (its banner says not to), and it is not a pre-WO-1755 blob;
         //    D. the declared row count / schema version match the file; and
         //    E. RegisterFallback actually REGISTERS every one of those rows, by id, when
         //       invoked -- so a fallback that compiles but parses to nothing cannot pass.
@@ -1679,16 +1680,57 @@ namespace DeNelle.Editor
             }
 
             // C. the generated file was hand-edited (its banner says DO NOT EDIT).
+            //
+            // ⚠ WO-1755 CHANGED WHAT THIS COMPARES AGAINST, AND THE REASON IS THE POINT.
+            // Until 2026-09-15 the embedded string WAS the file byte-for-byte, so this case could
+            // simply re-hash it and expect SourceSha256. The generator now embeds the catalog with
+            // every '_'-prefixed AUTHORING NOTE stripped, because one of those notes ("the game is
+            // live on the Solana dApp Store...") shipped into the rejected Google Play AAB as a
+            // COMPILED C# LITERAL -- a third copy of the catalog that the Play neutral sweep, which
+            // rewrites FILES, provably cannot reach (WO-1740 RCA, offset 1,671,082).
+            //
+            // So the expectation is re-derived by calling the SAME projection the generator calls
+            // -- CatalogFallbackProjection.Strip, which lives in THIS assembly precisely so both
+            // sides can reach it (DeNelle.Editor.asmdef references DeNelle.EditorRegression, so
+            // the generator can call down; the reverse would be a cycle). If the rule ever
+            // changes, both sides move together by construction; a hand-copied rule in this file
+            // would be the exact duplicated state CLAUDE.md §2/§5/§16 keep paying for.
+            //
+            // A hand edit of the .g.cs still fails, as before. What ALSO fails now -- correctly --
+            // is a .g.cs generated before this change: its embedded payload still carries the
+            // notes. That failure is the signal to run the regeneration command, not a defect.
             string embedded = CatalogFallbackData.Json;
             byte[] embeddedBytes = new System.Text.UTF8Encoding(false).GetBytes(embedded);
             string embeddedSha = Sha256Hex(embeddedBytes);
-            if (embeddedSha != CatalogFallbackData.SourceSha256)
+
+            string expectedPayload;
+            try
             {
-                failures.Add($"[fallback-parity] CatalogFallbackData.Json does not hash to its own declared " +
-                             $"SourceSha256 (embedded={embeddedSha} {embeddedBytes.Length} bytes vs declared=" +
-                             $"{CatalogFallbackData.SourceSha256} {CatalogFallbackData.SourceByteLength} bytes) -- " +
-                             "the GENERATED file has been hand-edited, which is exactly what its DO-NOT-EDIT banner " +
-                             "forbids. Edit " + CanonicalResourcesCopy + " instead, then run " + regen);
+                expectedPayload = CatalogFallbackProjection.Strip(
+                    new System.Text.UTF8Encoding(false).GetString(resBytes));
+            }
+            catch (System.Exception pex)
+            {
+                expectedPayload = null;
+                failures.Add($"[fallback-parity] the catalog on disk could not be projected for the embedded-" +
+                             $"payload comparison: {pex.GetType().Name}: {pex.Message}. " + CanonicalResourcesCopy +
+                             " must be parseable JSON before the generated fallback can be judged at all.");
+            }
+
+            if (expectedPayload != null)
+            {
+                byte[] expectedBytes = new System.Text.UTF8Encoding(false).GetBytes(expectedPayload);
+                string expectedSha = Sha256Hex(expectedBytes);
+                if (embeddedSha != expectedSha)
+                {
+                    failures.Add($"[fallback-parity] CatalogFallbackData.Json is not the authoring-note-stripped " +
+                                 $"projection of {CanonicalResourcesCopy} (embedded={embeddedSha} " +
+                                 $"{embeddedBytes.Length} bytes vs expected={expectedSha} {expectedBytes.Length} " +
+                                 "bytes). Either the GENERATED file was hand-edited -- which its DO-NOT-EDIT " +
+                                 "banner forbids -- or it predates WO-1755 and still embeds the '_'-prefixed " +
+                                 "authoring notes, one of which reached the Google Play artifact as a compiled " +
+                                 "literal. Edit " + CanonicalResourcesCopy + " if a VALUE is wrong, then run " + regen);
+                }
             }
 
             // D. declared shape.

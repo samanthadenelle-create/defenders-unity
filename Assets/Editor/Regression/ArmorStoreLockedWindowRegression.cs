@@ -314,7 +314,7 @@ namespace DeNelle.Editor.Regression
             public int Coins => 999999;
             public int Wood => 999999;
             public int Iron => 999999;
-            public int Food => 999999;
+            public int Stone => 999999;
             public int Crystals => 999999;
             public bool CanAfford(ResourceCost cost) => true;
             public bool TrySpend(ResourceCost cost) { SpendCalls++; return true; }

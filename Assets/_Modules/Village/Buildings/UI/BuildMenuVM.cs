@@ -25,7 +25,7 @@
 // FREE. The View also carried its own 4-row TowerVariantDef balance table (crystal/wood/
 // stone cost + build time + upgrade cost + DPS + HP), a SECOND cost authority divergent
 // from the catalog. Both are DELETED. The economy surface now lives here:
-//   * balances        -> <see cref="Wood"/>/<see cref="Iron"/>/<see cref="Food"/>/
+//   * balances        -> <see cref="Wood"/>/<see cref="Iron"/>/<see cref="Stone"/>/
 //                        <see cref="Crystals"/> + <see cref="MaterialCount"/>, all read
 //                        straight off IEconomy (EconomyService == the ONE GameState-backed
 //                        wallet since WO-842; there is no second material store --
@@ -97,7 +97,7 @@ namespace DeNelle.Village
             public bool IsEmpty => string.IsNullOrEmpty(Id);
 
             /// <summary>Sum of every cost slot — the cheap-first ordering key.</summary>
-            public int CostTotal => Cost.wood + Cost.food + Cost.iron + Cost.crystals;
+            public int CostTotal => Cost.wood + Cost.stone + Cost.iron + Cost.crystals;
         }
 
         /// <summary>How many catalog tower rows the Build-Tower radio offers (layout fits four).</summary>
@@ -211,8 +211,8 @@ namespace DeNelle.Village
         /// the catalog/ledger axis is IRON (the retired Stone axis became FOOD, DEF-121).</summary>
         public int Iron => _economy != null ? _economy.Iron : 0;
 
-        /// <summary>Live Food on hand.</summary>
-        public int Food => _economy != null ? _economy.Food : 0;
+        /// <summary>Live Stone on hand.</summary>
+        public int Stone => _economy != null ? _economy.Stone : 0;
 
         /// <summary>
         /// On-hand count of one resource axis, BY ID, straight off the live ledger. This
@@ -229,7 +229,7 @@ namespace DeNelle.Village
                 case "wood":     return Wood;
                 case "iron":
                 case "stone":    return Iron;   // legacy UI label -> the real Iron axis
-                case "food":     return Food;
+                case "food":     return Stone;
                 case "crystal":
                 case "crystals": return Crystals;
                 default:         return 0;
@@ -476,7 +476,7 @@ namespace DeNelle.Village
             if (cost.IsZero) return true;
             if (_economy != null) return _economy.CanAfford(BuildModeController.ToEconomy(cost));
             return Crystals >= cost.crystals && Wood >= cost.wood
-                   && Iron >= cost.iron && Food >= cost.food;
+                   && Iron >= cost.iron && Stone >= cost.stone;
         }
 
         /// <summary>The concrete "Not enough &lt;Resource&gt; (N)" line for an unaffordable cost
@@ -505,7 +505,7 @@ namespace DeNelle.Village
             AppendAxis(sb, "Crystals", cost.crystals, MaterialCount("crystals"));
             AppendAxis(sb, "Wood",     cost.wood,     MaterialCount("wood"));
             AppendAxis(sb, "Iron",     cost.iron,     MaterialCount("iron"));
-            AppendAxis(sb, "Stone",    cost.food,     MaterialCount("food"));
+            AppendAxis(sb, "Stone",    cost.stone,     MaterialCount("food"));
             return sb.Length > 0 ? sb.ToString() : "Costs nothing.";
         }
 

@@ -23,9 +23,9 @@ namespace DeNelle.Village
     /// <summary>What a mine node yields. Maps 1:1 to a GameState wallet field.
     /// DEF-121 / WO-230: the four harvestables are Wood / Food / Iron / Crystals.
     /// Food replaces the retired "Stone" harvest axis and banks into
-    /// GameState.Resources.Food (the existing wallet field) — Stone is no longer a
+    /// GameState.Resources.Stone (the existing wallet field) — Stone is no longer a
     /// player-facing harvestable (Magic is a building-upgrade tech axis, not a node).</summary>
-    public enum MineResource { Iron, Wood, Food, AetherCrystal }
+    public enum MineResource { Iron = 0, Wood = 1, [System.Runtime.Serialization.EnumMember(Value = "Food")] Stone = 2, AetherCrystal = 3 }
 
     [DisallowMultipleComponent]
     public sealed class MineNode : MonoBehaviour
@@ -40,7 +40,7 @@ namespace DeNelle.Village
             switch (r)
             {
                 case MineResource.Wood:          return "Chop Wood";
-                case MineResource.Food:          return "Mine Stone";
+                case MineResource.Stone:          return "Mine Stone";
                 case MineResource.Iron:          return "Mine Iron";
                 case MineResource.AetherCrystal: return "Mine Crystals";
                 default:                         return "Harvest";
@@ -594,7 +594,7 @@ namespace DeNelle.Village
                         econ.GrantSpendable(wood: amount);
                         break;
                     // Food/Crystals are already GameState-backed (single wallet) — plain Grant is correct.
-                    case MineResource.Food:          econ.Grant(food: amount); break;
+                    case MineResource.Stone:          econ.Grant(stone: amount); break;
                     case MineResource.AetherCrystal: econ.Grant(crystals: amount); break;
                 }
                 return;
@@ -612,10 +612,10 @@ namespace DeNelle.Village
             {
                 case MineResource.Iron:          state.Iron += amount;          break;
                 case MineResource.Wood:          state.Wood += amount;          break;
-                case MineResource.Food:
+                case MineResource.Stone:
                 {
                     var bal = state.Resources;
-                    bal.Food += amount;
+                    bal.Stone += amount;
                     state.Resources = bal;
                     break;
                 }
@@ -657,7 +657,7 @@ namespace DeNelle.Village
             {
                 MineResource.Wood          => "Wood",
                 MineResource.Iron          => "Iron",
-                MineResource.Food          => "Stone",
+                MineResource.Stone          => "Stone",
                 MineResource.AetherCrystal => "Crystals",
                 _                          => res.ToString()
             };
@@ -671,7 +671,7 @@ namespace DeNelle.Village
             {
                 MineResource.Wood          => new Color(0.55f, 0.38f, 0.22f),
                 MineResource.Iron          => new Color(0.62f, 0.64f, 0.70f),
-                MineResource.Food          => new Color(0.72f, 0.62f, 0.28f),
+                MineResource.Stone          => new Color(0.72f, 0.62f, 0.28f),
                 MineResource.AetherCrystal => new Color(0.35f, 0.72f, 0.95f),
                 _                          => Color.white
             };

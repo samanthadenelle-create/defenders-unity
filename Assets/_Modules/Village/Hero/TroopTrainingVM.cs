@@ -217,7 +217,7 @@ namespace DeNelle.Village.Hero
         public int Gold     => _economy?.Coins ?? 0;
         public int Wood     => _economy?.Wood ?? 0;
         public int Iron     => _economy?.Iron ?? 0;
-        public int Food     => _economy?.Food ?? 0;
+        public int Stone     => _economy?.Stone ?? 0;
         public int Crystals => _economy?.Crystals ?? 0;
 
         /// <summary>The selected troop's full detail projection; default(TroopDetail) for an unknown id.</summary>
@@ -316,7 +316,7 @@ namespace DeNelle.Village.Hero
         private void PushHudResources()
         {
             if (_economy == null) return;
-            DeNelle.Core.CoreServices.Hud?.SetResources(_economy.Wood, _economy.Iron, _economy.Food, _economy.Crystals);
+            DeNelle.Core.CoreServices.Hud?.SetResources(_economy.Wood, _economy.Iron, _economy.Stone, _economy.Crystals);
         }
 
         // ── Build the ladder + per-troop detail (no Unity types) ─────────────────

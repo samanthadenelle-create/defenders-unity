@@ -49,7 +49,8 @@ namespace DeNelle.Village.Crafting
     public sealed class JewelerRecipeCost
     {
         [JsonProperty("wood")] public int Wood;
-        [JsonProperty("food")] public int Food;
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [JsonProperty("food")] public int Stone;
         [JsonProperty("iron")] public int Iron;
         [JsonProperty("crystals")] public int Crystals;
     }

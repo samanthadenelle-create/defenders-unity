@@ -1093,7 +1093,7 @@ namespace DeNelle.Editor
                 fixture.Wood = 1000000;
                 fixture.Iron = 1000000;
                 var balances = fixture.Resources;
-                balances.Food = 1000000;
+                balances.Stone = 1000000;
                 balances.Coins = 1000000;
                 balances.Crystals = 1000000;
                 fixture.Resources = balances;

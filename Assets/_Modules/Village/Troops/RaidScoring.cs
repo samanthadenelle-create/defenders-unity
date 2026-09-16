@@ -855,7 +855,7 @@ namespace DeNelle.Village
             // THE ARROW: troops -> raids -> gold. Same ladder, per-camp base, NO mult.
             int coins = Mathf.RoundToInt(Mathf.Max(0, coinsBase) * ladder);
 
-            return new ResourceCost(wood: wood, food: food, iron: iron, crystals: crystals, coins: coins);
+            return new ResourceCost(wood: wood, stone: food, iron: iron, crystals: crystals, coins: coins);
         }
 
         /// <summary>
@@ -1839,7 +1839,7 @@ namespace DeNelle.Village
                 result.DestructionPct.ToString("P0") + " ladder=" +
                 RaidLootTunables.Fraction(result.Stars, result.DestructionPct).ToString("P0") +
                 " mult=x" + mult.ToString("0.##") + " -> " + loot.Wood + "w " + loot.Iron + "i " +
-                loot.Food + "f " + loot.Crystals + "c " + loot.Coins + "g (bases w=" + woodBase +
+                loot.Stone + "f " + loot.Crystals + "c " + loot.Coins + "g (bases w=" + woodBase +
                 " i=" + ironBase + " g=" + coinsBase + " camp='" + (campId ?? "(none)") +
                 "' c=" + crystalsBase + "+" + crystalsPerStar + "/star). Gold and crystals do " +
                 "NOT ride the camp multiplier - gold escalates through its per-camp base, and " +

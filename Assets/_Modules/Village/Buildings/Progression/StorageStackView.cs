@@ -21,6 +21,8 @@ namespace DeNelle.Village.Buildings.Progression
         private CollectorStackPropCatalog _catalog;
         private GameObject[] _props;
         private Vector3[] _homes;
+        private Vector3[] _fullScales;
+        private Coroutine[] _animations;
         private ElarionUiKit.BarHandle _bar;
         private Transform _barRoot;
         private Transform _camera;
@@ -74,7 +76,7 @@ namespace DeNelle.Village.Buildings.Progression
         private void Build(string resourceWord)
         {
             HarvestResource harvest;
-            if (!System.Enum.TryParse(resourceWord, true, out harvest) || _catalog == null ||
+            if (!HarvestResourceNames.TryParse(resourceWord, out harvest) || _catalog == null ||
                 !_catalog.TryGet(harvest, out var row) || row.Prop == null)
             {
                 // CLAUDE.md 12: this degradation was SILENT. The abstract bar and the diegetic
@@ -85,44 +87,93 @@ namespace DeNelle.Village.Buildings.Progression
                 FlowTrace.Warn("Storage",
                     $"'{(_placed != null ? _placed.itemId : "?")}' fell back to the abstract fill " +
                     $"bar instead of the pallet stack: resourceWord='{resourceWord}' " +
-                    $"parsed={System.Enum.TryParse(resourceWord, true, out HarvestResource _)} " +
+                    $"parsed={HarvestResourceNames.TryParse(resourceWord, out HarvestResource _)} " +
                     $"catalog={(_catalog == null ? "NULL" : "ok")} " +
                     $"prop={(_catalog != null && _catalog.TryGet(harvest, out var probe) && probe.Prop != null ? "ok" : "MISSING")}.");
                 BuildFallback();
                 return;
             }
 
-            Vector3 slot = row.SlotSize.sqrMagnitude > 0.001f ? row.SlotSize : new Vector3(1.2f, 1f, 0.8f);
-            float scale = row.PropScale > 0f ? row.PropScale : 1f;
-            // The old anchor was local zero, exactly the centre of GenericContainer's
-            // raised deck. Every visible sack/ingot therefore occupied the building
-            // instead of reading as its pallet. Seat the stack wholly beyond the
-            // authored structure footprint, on the approach (-Z) edge.
-            float footprint = _placed != null && CatalogRegistry.Get(_placed.itemId)?.repo?.placement != null
-                ? CatalogRegistry.Get(_placed.itemId).repo.placement.footprint
-                : 0f;
+            // Seat fill on the owner's preserved pallet without changing its body.
+            // Measure before adding any stack or fallback UI.
+            if (!TryBoundsIn(transform, transform, out var deck))
+            {
+                FlowTrace.Warn("Storage", "Cannot measure authored pallet for " + _placed.itemId);
+                BuildFallback();
+                return;
+            }
             var root = new GameObject("StorageFillStack").transform;
             root.SetParent(transform, false);
-            root.localPosition = StackAnchor(footprint, slot.z * scale);
             _props = new GameObject[VisibleProps[4]];
             _homes = new Vector3[_props.Length];
+            _fullScales = new Vector3[_props.Length];
+            _animations = new Coroutine[_props.Length];
             for (int i = 0; i < _props.Length; i++)
             {
-                int col = i % 4;
-                int layer = i / 4;
-                // The final two props deliberately spill beyond the tidy frame silhouette.
-                float spill = i >= 12 ? (i == 12 ? -0.62f : 0.62f) : 0f;
-                Vector3 home = new Vector3((col - 1.5f) * slot.x / 4f + spill,
-                    layer * slot.y / 4f, (layer % 2 == 0 ? 0.12f : -0.12f) * slot.z);
                 var prop = Instantiate(row.Prop, root);
                 prop.name = $"StorageProp_{i:D2}";
+                prop.transform.localPosition = Vector3.zero;
+                prop.transform.localRotation = Quaternion.identity;
+                prop.transform.localScale = Vector3.one;
+                if (!TryBoundsIn(prop.transform, root, out var propBounds) ||
+                    !TryDeckSeat(deck, propBounds, i, out var home, out float scale))
+                {
+                    FlowTrace.Warn("Storage", "Invalid fill mesh bounds for " + _placed.itemId);
+                    Destroy(root.gameObject);
+                    _props = null;
+                    BuildFallback();
+                    return;
+                }
                 prop.transform.localPosition = home;
                 prop.transform.localScale = Vector3.one * scale;
                 foreach (var c in prop.GetComponentsInChildren<Collider>(true)) c.enabled = false;
-                prop.SetActive(false);
                 _props[i] = prop;
                 _homes[i] = home;
+                _fullScales[i] = prop.transform.localScale;
+                prop.SetActive(false);
             }
+        }
+
+        // Transform renderer-local bound corners instead of inverse-transforming a
+        // world AABB, which inflates the deck whenever its placed yaw is nonzero.
+        private static bool TryBoundsIn(Transform subject, Transform frame, out Bounds bounds)
+        {
+            bounds = default;
+            bool found = false;
+            foreach (var renderer in subject.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer.enabled || !renderer.gameObject.activeInHierarchy ||
+                    (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer))) continue;
+                var local = renderer.localBounds;
+                var matrix = frame.worldToLocalMatrix * renderer.transform.localToWorldMatrix;
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    var point = matrix.MultiplyPoint3x4(local.center + Vector3.Scale(local.extents,
+                        new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1)));
+                    if (!found) { bounds = new Bounds(point, Vector3.zero); found = true; }
+                    else bounds.Encapsulate(point);
+                }
+            }
+            return found;
+        }
+
+        /// <summary>Four supported props per layer, with two centred across the top layer.</summary>
+        public static bool TryDeckSeat(Bounds deck, Bounds prop, int index, out Vector3 position, out float scale)
+        {
+            position = Vector3.zero; scale = 1f;
+            if (index < 0 || index >= 14 || deck.size.x <= 0 || deck.size.z <= 0 ||
+                prop.size.x <= 0 || prop.size.y <= 0 || prop.size.z <= 0) return false;
+            // Ten percent of the deck remains clear around the compact stack.
+            scale = Mathf.Min(deck.size.x * .9f / (2f * prop.size.x), deck.size.z * .9f / (2f * prop.size.z));
+            if (!float.IsFinite(scale) || scale <= 0) return false;
+            Vector3 size = prop.size * scale;
+            int layer = index / 4;
+            float x = (index % 2 == 0 ? -.5f : .5f) * size.x;
+            float z = layer == 3 ? 0f : (index % 4 < 2 ? -.5f : .5f) * size.z;
+            // Contact is measured from mesh bottom, not its possibly off-centre pivot.
+            position = new Vector3(deck.center.x + x, deck.max.y + layer * size.y, deck.center.z + z)
+                - new Vector3(prop.center.x, prop.min.y, prop.center.z) * scale;
+            return true;
         }
 
         /// <summary>
@@ -173,9 +224,13 @@ namespace DeNelle.Village.Buildings.Progression
             for (int i = 0; i < _props.Length; i++)
             {
                 bool on = i < visible;
-                if (_props[i].activeSelf == on) continue;
+                if (_props[i].activeSelf == on && _animations[i] == null) continue;
                 if (immediate || upgraded || old < 0) SetShown(i, on);
-                else StartCoroutine(Animate(i, on));
+                else
+                {
+                    if (_animations[i] != null) StopCoroutine(_animations[i]);
+                    _animations[i] = StartCoroutine(Animate(i, on));
+                }
             }
         }
 
@@ -192,19 +247,11 @@ namespace DeNelle.Village.Buildings.Progression
             return raw;
         }
 
-        /// <summary>Local pallet seat, fully outside the structure's authored footprint.</summary>
-        public static Vector3 StackAnchor(float footprintMetres, float propDepthMetres)
-        {
-            float halfStructure = Mathf.Max(1f, footprintMetres) * 0.5f;
-            float halfStack = Mathf.Max(0.1f, propDepthMetres) * 0.5f;
-            return new Vector3(0f, 0.05f, -(halfStructure + halfStack + 0.15f));
-        }
-
         private IEnumerator Animate(int index, bool show)
         {
             var prop = _props[index];
             if (prop == null) yield break;
-            Vector3 full = prop.transform.localScale;
+            Vector3 full = _fullScales[index];
             if (show) { prop.SetActive(true); prop.transform.localScale = full * .6f; prop.transform.localPosition = _homes[index] + Vector3.up * .2f; }
             float start = Time.unscaledTime;
             while (Time.unscaledTime - start < .15f)
@@ -214,17 +261,21 @@ namespace DeNelle.Village.Buildings.Progression
                 prop.transform.localPosition = Vector3.Lerp(show ? _homes[index] + Vector3.up * .2f : _homes[index], show ? _homes[index] : _homes[index] - Vector3.up * .1f, t);
                 yield return null;
             }
+            prop.transform.localScale = full;
+            prop.transform.localPosition = _homes[index];
             if (!show) prop.SetActive(false);
-            else { prop.transform.localScale = full; prop.transform.localPosition = _homes[index]; }
+            _animations[index] = null;
         }
 
         private void SetShown(int i, bool shown)
         {
+            if (_animations[i] != null) { StopCoroutine(_animations[i]); _animations[i] = null; }
+            _props[i].transform.localScale = _fullScales[i];
+            _props[i].transform.localPosition = _homes[i];
             _props[i].SetActive(shown);
-            if (shown) _props[i].transform.localPosition = _homes[i];
         }
 
         private static bool TryResource(string word, out BankResource resource)
-            => System.Enum.TryParse(word, true, out resource) && resource <= BankResource.Food;
+            => TownBankCapacity.TryParseResource(word, out resource) && resource <= BankResource.Stone;
     }
 }

@@ -89,7 +89,7 @@ namespace DeNelle.Core.Catalog
         /// That is why one building answered to three different words.</para>
         /// <para>STOP - THE CATALOG ID DOES NOT MOVE. <c>collector_farm</c> is a LIVE SAVE KEY
         /// (everBuiltStructureIds / BaseLayout / baked twins); only the ROLE and the
-        /// RESOURCE changed. Likewise <c>HarvestResource.Food</c> stays as the frozen
+        /// RESOURCE changed. Likewise <c>HarvestResource.Stone</c> stays as the frozen
         /// persisted Stone wallet slot - see ResourceBuildingProgression.LabelFor.</para>
         /// <para>The retired <c>FoodProducer = "food_producer"</c> constant is DELETED
         /// rather than kept: a named role that no row claims is a trap that resolves to

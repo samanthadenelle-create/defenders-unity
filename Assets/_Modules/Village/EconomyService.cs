@@ -4,7 +4,7 @@
 // Assembly: DeNelle.Village   Namespace: DeNelle.Village
 //
 // WHAT IT DOES:
-//   Owns the four build-economy resources — Wood, Food, Iron, Crystals — and
+//   Owns the four build-economy resources — Wood, Stone, Iron, Crystals — and
 //   exposes a clean API for spending, earning, and checking affordability across
 //   any combination of them. Previously a Wood-only stub; this pass completes
 //   the full spec.
@@ -23,16 +23,16 @@
 // STARTING RESOURCES: editable in the Inspector. Defaults match the existing
 //   stub (Wood 200, Iron 80) so existing scenes are unaffected.
 //
-// DEF-121 / WO-230 — the four harvestables are Wood / Food / Iron / Crystals.
-//   The retired "Stone" axis is repurposed to FOOD. Like Crystals, Food is now
-//   GameState-backed (GameState.Resources.Food) — the single wallet field the HUD,
+// DEF-121 / WO-230 — the four harvestables are Wood / Stone / Iron / Crystals.
+//   The retired "Stone" axis is repurposed to FOOD. Like Crystals, Stone is now
+//   GameState-backed (GameState.Resources.Stone) — the single wallet field the HUD,
 //   BuildingUpgradePanel and harvest paths all share — so the build economy and the
 //   harvest/upgrade economy never diverge. No "Magic" harvestable exists: Magic is
 //   a building-UPGRADE tech axis only (see ResourceBuildingProgression).
 //
 // PERSISTENCE (WO-842 — SINGLE WALLET, all five resources): Wood/Iron are now
 //   GameState-backed (GameState.Wood / GameState.Iron — the SAME fields the
-//   building-upgrade flow's ResourceLedger reads and spends), exactly like Food/
+//   building-upgrade flow's ResourceLedger reads and spends), exactly like Stone/
 //   Crystals/Coins (GameState.Resources.*). Every read/spend/grant here reads/
 //   writes THROUGH GameStateService, so the wallet the HUD shows, the wallet the
 //   shop charges, and the wallet the upgrade ledger spends are ONE store and can
@@ -62,14 +62,14 @@ namespace DeNelle.Village
     public readonly struct ResourceSnapshot
     {
         public readonly int Wood;
-        public readonly int Food;
+        [Newtonsoft.Json.JsonProperty("Food")] public readonly int Stone;
         public readonly int Iron;
         public readonly int Crystals;
 
-        public ResourceSnapshot(int wood, int food, int iron, int crystals)
+        public ResourceSnapshot(int wood, int stone, int iron, int crystals)
         {
             Wood     = wood;
-            Food     = food;
+            Stone     = stone;
             Iron     = iron;
             Crystals = crystals;
         }
@@ -82,30 +82,31 @@ namespace DeNelle.Village
     public struct ResourceCost
     {
         [Min(0)] public int Wood;
-        [Min(0)] public int Food;
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [Newtonsoft.Json.JsonProperty("Food"), Min(0)] public int Stone;
         [Min(0)] public int Iron;
         [Min(0)] public int Crystals;
         // GOLD (Coins) — the player-facing currency the vendor SHOPS charge (gear + potions).
         // Backed by GameState.Resources.Coins (the canonical coin store the town HUD reads),
         // NOT an in-session pool. Added last with a default of 0 so every existing caller of
-        // the (wood,food,iron,crystals) constructor compiles unchanged (split-economy: building
+        // the (wood,stone,iron,crystals) constructor compiles unchanged (split-economy: building
         // UPGRADES stay on Wood/Iron/Crystals; shops move to Gold).
         [Min(0)] public int Coins;
 
-        public ResourceCost(int wood = 0, int food = 0, int iron = 0, int crystals = 0, int coins = 0)
+        public ResourceCost(int wood = 0, int stone = 0, int iron = 0, int crystals = 0, int coins = 0)
         {
             Wood     = wood;
-            Food     = food;
+            Stone     = stone;
             Iron     = iron;
             Crystals = crystals;
             Coins    = coins;
         }
 
         /// <summary>True when all values are zero — a free action.</summary>
-        public bool IsZero => Wood == 0 && Food == 0 && Iron == 0 && Crystals == 0 && Coins == 0;
+        public bool IsZero => Wood == 0 && Stone == 0 && Iron == 0 && Crystals == 0 && Coins == 0;
 
         public static ResourceCost WoodOnly(int amount)     => new ResourceCost(wood:     amount);
-        public static ResourceCost FoodOnly(int amount)     => new ResourceCost(food:     amount);
+        public static ResourceCost StoneOnly(int amount)     => new ResourceCost(stone:     amount);
         public static ResourceCost IronOnly(int amount)     => new ResourceCost(iron:     amount);
         public static ResourceCost CrystalsOnly(int amount) => new ResourceCost(crystals: amount);
     }
@@ -155,16 +156,16 @@ namespace DeNelle.Village
         }
 
         /// <summary>
-        /// DEF-121 — Food is GameState-backed (GameState.Resources.Food), the single
+        /// DEF-121 — Stone is GameState-backed (GameState.Resources.Stone), the single
         /// wallet field the HUD / BuildingUpgradePanel / harvest paths share. Reads
         /// through GameStateService; returns 0 when state is absent.
         /// </summary>
-        public int Food
+        public int Stone
         {
             get
             {
                 var state = GameStateService.Instance?.State;
-                return state != null ? state.Resources.Food : 0;
+                return state != null ? state.Resources.Stone : 0;
             }
         }
 
@@ -196,7 +197,7 @@ namespace DeNelle.Village
             }
         }
 
-        public ResourceSnapshot Snapshot => new ResourceSnapshot(Wood, Food, Iron, Crystals);
+        public ResourceSnapshot Snapshot => new ResourceSnapshot(Wood, Stone, Iron, Crystals);
 
         // ── Pet / Outpost territory (WO-106: pet resource farming + outpost system) ──
         // These let the economy be the single source for passive rates, secured count,
@@ -236,11 +237,16 @@ namespace DeNelle.Village
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
+            => EnsureAvailable();
+
+        /// <summary>Restore the normal economy authority when a scene arrives before bootstrap.</summary>
+        public static EconomyService EnsureAvailable()
         {
-            if (Instance != null) return;
+            if (Instance != null) return Instance;
             var go = new GameObject("[EconomyService]");
-            DontDestroyOnLoad(go);
+            if (Application.isPlaying) DontDestroyOnLoad(go);
             Instance = go.AddComponent<EconomyService>();
+            return Instance;
         }
 
         private void Awake()
@@ -255,7 +261,7 @@ namespace DeNelle.Village
         private void Start()     => AttachResourcesBridge();   // retry: GameStateService may not have existed at OnEnable
 
         /// <summary>
-        /// HUD-refresh bridge: crystal/food gains from harvest/mine/empower/camp paths
+        /// HUD-refresh bridge: crystal/stone gains from harvest/mine/empower/camp paths
         /// write GameState.Resources and raise GameStateService.ResourcesChanged (Core),
         /// NOT this service's OnChanged. The village HUD listens to OnChanged, so without
         /// this bridge it would not visually update on those GameState-backed gains.
@@ -279,7 +285,7 @@ namespace DeNelle.Village
         }
 
         /// <summary>Re-emit <see cref="OnChanged"/> when the Core resource wallet changes
-        /// (crystal/food gains route through GameStateService, not this service's methods).</summary>
+        /// (crystal/stone gains route through GameStateService, not this service's methods).</summary>
         private void OnGameStateResourcesChanged() => NotifyChanged();
 
         private void OnDestroy()
@@ -298,7 +304,7 @@ namespace DeNelle.Village
         public bool CanAfford(ResourceCost cost)
         {
             return Wood   >= cost.Wood        // WO-842 — GameState-backed (fallback pool when no save service)
-                && Food   >= cost.Food        // DEF-121 — GameState-backed
+                && Stone   >= cost.Stone        // DEF-121 — GameState-backed
                 && Iron   >= cost.Iron        // WO-842 — GameState-backed
                 && Crystals >= cost.Crystals  // WO-131 — GameState-backed
                 && Coins  >= cost.Coins;      // GOLD — GameState.Resources.Coins (shops)
@@ -308,7 +314,7 @@ namespace DeNelle.Village
         /// Atomically spends <paramref name="cost"/> if affordable. Returns true on
         /// success, false (no mutation) when any resource is short. WO-842: EVERY slot
         /// is deducted from the single GameState-backed wallet (Wood/Iron from
-        /// GameState.Wood/Iron — the same fields ResourceLedger spends; Food/Crystals/
+        /// GameState.Wood/Iron — the same fields ResourceLedger spends; Stone/Crystals/
         /// Coins from GameState.Resources). The in-session pool is debited only in the
         /// no-GameState fallback (EditMode tests / headless boots).
         /// </summary>
@@ -351,8 +357,8 @@ namespace DeNelle.Village
                         $"TrySpend debited FALLBACK pool (no GameState) -W{cost.Wood} -I{cost.Iron} -> W{_wood} I{_iron}");
                 }
             }
-            if (cost.Food > 0)
-                GameStateService.Instance?.AddFood(-cost.Food);           // DEF-121 — GameState-backed spend
+            if (cost.Stone > 0)
+                GameStateService.Instance?.AddStone(-cost.Stone);           // DEF-121 — GameState-backed spend
             if (cost.Crystals > 0)
                 GameStateService.Instance?.AddCrystals(-cost.Crystals);   // GameState-backed spend
             if (cost.Coins > 0)
@@ -368,7 +374,7 @@ namespace DeNelle.Village
         /// (wave rewards / harvest ticks) — persistence rides the next Save; GrantSpendable is the
         /// persist-now dev seam. Falls back to the in-session pool when no save service exists.
         ///
-        /// <para>WO-857 / WO-901 Phase F — THE TOWN BANK CAP. Wood/Iron/Food are clamped to the
+        /// <para>WO-857 / WO-901 Phase F — THE TOWN BANK CAP. Wood/Iron/Stone are clamped to the
         /// storage ceiling (<see cref="DeNelle.Core.Economy.TownBankCapacity"/>): baseCap + the
         /// storageCapacity of every built lumberyard / foundry / silo. Overflow is LOST and the
         /// player is WARNED (owner ruling 2026-08-04 — clamp-and-warn, uniformly). CRYSTALS AND
@@ -383,7 +389,7 @@ namespace DeNelle.Village
         /// entitlements, promo-code redemptions, referral payouts, battle-pass tiers. It is NEVER
         /// clamped by the town bank cap: an advertised quantity always arrives in full.
         /// <para>WHY THIS EXISTS (2026-08-04): the first cut clamped this path too, and a pack
-        /// advertising 5,000 food delivered 1,920 into a starter wallet — caught by
+        /// advertising 5,000 stone delivered 1,920 into a starter wallet — caught by
         /// PackGrantRegression. That is not balance, it is selling something and not delivering it.
         /// The owner's clamp-and-warn ruling (WO-901 §5) governs what the player EARNS; storage
         /// pressure must never become a mechanism that under-delivers a purchase.</para>
@@ -462,16 +468,16 @@ namespace DeNelle.Village
                 }
             }
 
-            int food = Mathf.Max(0, amount.Food);
-            if (food > 0)
+            int stone = Mathf.Max(0, amount.Stone);
+            if (stone > 0)
             {
                 if (applyBankCap)
-                    food = DeNelle.Core.Economy.TownBankCapacity.ClampGrant(
-                        DeNelle.Core.Economy.BankResource.Food,
-                        DeNelle.Core.Economy.TownBankCapacity.CurrentOf(DeNelle.Core.Economy.BankResource.Food),
-                        food, "Grant", out _);
-                if (food > 0)
-                    GameStateService.Instance?.AddFood(food);       // DEF-121 — GameState-backed grant
+                    stone = DeNelle.Core.Economy.TownBankCapacity.ClampGrant(
+                        DeNelle.Core.Economy.BankResource.Stone,
+                        DeNelle.Core.Economy.TownBankCapacity.CurrentOf(DeNelle.Core.Economy.BankResource.Stone),
+                        stone, "Grant", out _);
+                if (stone > 0)
+                    GameStateService.Instance?.AddStone(stone);       // DEF-121 — GameState-backed grant
             }
             // CRYSTALS + COINS: NEVER upper-clamped. Owner ruling 2026-08-04 (WO-901 §6) — premium /
             // bottleneck currency is uncapped (CoC precedent: gems uncapped, gold/elixir storage-capped).
@@ -486,7 +492,7 @@ namespace DeNelle.Village
             NotifyChanged();
             // ECON-SWEEP 2026-08-16 (defect 2) — every local above is POST-clamp, so this is the
             // APPLIED basket. Return it so a caller can log/pop what actually landed.
-            return new ResourceCost(wood, food, iron, crystals, coins);
+            return new ResourceCost(wood, stone, iron, crystals, coins);
         }
 
         /// <summary>
@@ -514,9 +520,9 @@ namespace DeNelle.Village
         }
 
         /// <summary>Convenience overload — specify only the resources you want to grant.</summary>
-        public void Grant(int wood = 0, int food = 0, int iron = 0, int crystals = 0)
+        public void Grant(int wood = 0, int stone = 0, int iron = 0, int crystals = 0)
         {
-            Grant(new ResourceCost(wood, food, iron, crystals));
+            Grant(new ResourceCost(wood, stone, iron, crystals));
         }
 
         /// <summary>
@@ -524,7 +530,7 @@ namespace DeNelle.Village
         /// this is no longer a "write both stores" shim).
         /// <para>
         /// <see cref="Grant(ResourceCost)"/> already lands Wood/Iron in the single
-        /// GameState-backed wallet (and Food/Crystals/Coins via AddFood/AddCrystals/
+        /// GameState-backed wallet (and Stone/Crystals/Coins via AddStone/AddCrystals/
         /// AddCoins), but on the hot income path it deliberately does not Save() the
         /// Wood/Iron write. This dev seam adds the stronger guarantee: persist + announce
         /// immediately so a dev grant survives reload and every GameState-bound listener
@@ -535,12 +541,12 @@ namespace DeNelle.Village
         /// ECON-SWEEP 2026-08-16 (defect 2) — RETURNS THE APPLIED BASKET (post town-bank-cap), not
         /// the request. Any caller that shows the player a number for this grant (a log line, a
         /// "+N" pop, a toast) MUST read the return value: with a full store the applied wood/iron/
-        /// food are smaller than asked, and popping the requested figure tells her she received
+        /// stone are smaller than asked, and popping the requested figure tells her she received
         /// resources she did not get. Statement-style calls that ignore the value still compile.
         /// </remarks>
-        public ResourceCost GrantSpendable(int wood = 0, int food = 0, int iron = 0, int crystals = 0)
+        public ResourceCost GrantSpendable(int wood = 0, int stone = 0, int iron = 0, int crystals = 0)
         {
-            var applied = Grant(new ResourceCost(wood, food, iron, crystals));
+            var applied = Grant(new ResourceCost(wood, stone, iron, crystals));
             var gs = GameStateService.Instance;
             if (gs != null && gs.State != null && (wood > 0 || iron > 0))
             {
@@ -555,9 +561,9 @@ namespace DeNelle.Village
         /// path (PackStoreVM.ApplyPackContents resolves THIS method by name). Never clamped by the
         /// town bank cap: what the player bought lands in full. See <see cref="GrantPurchased"/>.
         /// </summary>
-        public ResourceCost GrantSpendablePurchased(int wood = 0, int food = 0, int iron = 0, int crystals = 0)
+        public ResourceCost GrantSpendablePurchased(int wood = 0, int stone = 0, int iron = 0, int crystals = 0)
         {
-            var applied = GrantPurchased(new ResourceCost(wood, food, iron, crystals));
+            var applied = GrantPurchased(new ResourceCost(wood, stone, iron, crystals));
             var gs = GameStateService.Instance;
             if (gs != null && gs.State != null && (wood > 0 || iron > 0))
             {
@@ -581,9 +587,9 @@ namespace DeNelle.Village
         /// it. Both overlays now resolve <c>GrantSpendableUncapped</c>, and
         /// DevGrantUncappedRegression FAILS if a dev surface is re-bound to the capped grant.
         /// </summary>
-        public ResourceCost GrantSpendableUncapped(int wood = 0, int food = 0, int iron = 0, int crystals = 0)
+        public ResourceCost GrantSpendableUncapped(int wood = 0, int stone = 0, int iron = 0, int crystals = 0)
         {
-            var applied = GrantUncapped(new ResourceCost(wood, food, iron, crystals));
+            var applied = GrantUncapped(new ResourceCost(wood, stone, iron, crystals));
             var gs = GameStateService.Instance;
             if (gs != null && gs.State != null && (wood > 0 || iron > 0))
             {
@@ -601,7 +607,7 @@ namespace DeNelle.Village
 
         /// <summary>
         /// Preferred unified entry point for all harvesting / passive income.
-        /// Maps the Core-canonical ResourceType (Iron/Wood/Food/AetherCrystal) to
+        /// Maps the Core-canonical ResourceType (Iron/Wood/Stone/AetherCrystal) to
         /// the correct bucket and calls Grant. Negative amounts are clamped.
         /// </summary>
         public void AddResource(DeNelle.Core.ResourceType type, int amount)
@@ -615,8 +621,8 @@ namespace DeNelle.Village
                 case DeNelle.Core.ResourceType.Wood:
                     Grant(wood: amount);
                     break;
-                case DeNelle.Core.ResourceType.Food:
-                    Grant(food: amount);
+                case DeNelle.Core.ResourceType.Stone:
+                    Grant(stone: amount);
                     break;
                 case DeNelle.Core.ResourceType.AetherCrystal:
                     Grant(crystals: amount);
@@ -639,8 +645,8 @@ namespace DeNelle.Village
                 case MineResource.Wood:
                     Grant(wood: amount);
                     break;
-                case MineResource.Food:
-                    Grant(food: amount);
+                case MineResource.Stone:
+                    Grant(stone: amount);
                     break;
                 case MineResource.AetherCrystal:
                     Grant(crystals: amount);
@@ -693,7 +699,7 @@ namespace DeNelle.Village
             var snap = Snapshot;
             int subs = OnChanged?.GetInvocationList()?.Length ?? 0;
             DeNelle.Core.Diagnostics.FlowTrace.Step("Eco",
-                $"OnChanged fired W{snap.Wood} I{snap.Iron} F{snap.Food} C{snap.Crystals} (subscribers={subs})");
+                $"OnChanged fired W{snap.Wood} I{snap.Iron} F{snap.Stone} C{snap.Crystals} (subscribers={subs})");
             OnChanged?.Invoke(snap);
         }
     }

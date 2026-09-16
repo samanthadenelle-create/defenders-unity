@@ -143,7 +143,7 @@ namespace DeNelle.Editor
             {
                 DisplayName = "Lumbermill", DamageFraction = 0.4f, State = StructureState.Damaged,
                 IsCollector = true, LootStolen = 120, HasCost = true,
-                RepairWood = 80, RepairIron = 40, RepairFood = 0, RepairCrystals = 0,
+                RepairWood = 80, RepairIron = 40, RepairStone = 0, RepairCrystals = 0,
             });
 
             // A POPULATED stakes basket, so the round-trip actually exercises every bucket's wire
@@ -153,7 +153,7 @@ namespace DeNelle.Editor
             r.ResourcesLost = StakeRules.Empty();
             StakeRules.Add(r.ResourcesLost, DeNelle.Core.Economy.BankResource.Wood, 700);
             StakeRules.Add(r.ResourcesLost, DeNelle.Core.Economy.BankResource.Iron, 40);
-            StakeRules.Add(r.ResourcesLost, DeNelle.Core.Economy.BankResource.Food, 250);
+            StakeRules.Add(r.ResourcesLost, DeNelle.Core.Economy.BankResource.Stone, 250);
             StakeRules.Add(r.ResourcesLost, DeNelle.Core.Economy.BankResource.Coins, 450);
             return r;
         }
@@ -214,7 +214,7 @@ namespace DeNelle.Editor
                 if (x.DisplayName != y.DisplayName || x.Destroyed != y.Destroyed
                     || x.IsCollector != y.IsCollector || x.LootStolen != y.LootStolen
                     || x.HasCost != y.HasCost || x.RepairWood != y.RepairWood
-                    || x.RepairIron != y.RepairIron || x.RepairFood != y.RepairFood
+                    || x.RepairIron != y.RepairIron || x.RepairStone != y.RepairStone
                     || x.RepairCrystals != y.RepairCrystals
                     || !Mathf.Approximately(x.DamageFraction, y.DamageFraction))
                     f.Add($"{tag}: Rows[{i}] drifted");
@@ -222,10 +222,10 @@ namespace DeNelle.Editor
 
             if (a.ResourcesLost.StakesRuleId != b.ResourcesLost.StakesRuleId) f.Add($"{tag}: ResourcesLost.StakesRuleId drifted");
             if (a.ResourcesLost.Wood != b.ResourcesLost.Wood || a.ResourcesLost.Iron != b.ResourcesLost.Iron
-                || a.ResourcesLost.Food != b.ResourcesLost.Food || a.ResourcesLost.Coins != b.ResourcesLost.Coins
+                || a.ResourcesLost.Stone != b.ResourcesLost.Stone || a.ResourcesLost.Coins != b.ResourcesLost.Coins
                 || a.ResourcesLost.Crystals != b.ResourcesLost.Crystals
                 || a.ResourcesLost.Magic != b.ResourcesLost.Magic) f.Add($"{tag}: ResourcesLost basket drifted");
-            if (b.ResourcesLost.Wood == 0 && b.ResourcesLost.Iron == 0 && b.ResourcesLost.Food == 0
+            if (b.ResourcesLost.Wood == 0 && b.ResourcesLost.Iron == 0 && b.ResourcesLost.Stone == 0
                 && b.ResourcesLost.Coins == 0)
                 f.Add($"{tag}: the stakes basket came back ALL ZERO -- the fixture populates four " +
                       "buckets, so this comparison would be asserting nothing");

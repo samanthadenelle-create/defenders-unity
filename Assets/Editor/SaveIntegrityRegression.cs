@@ -49,7 +49,7 @@ namespace DeNelle.Editor
                 Wallet = "guest-local-regression",
                 State = new SaveSchema.PersistedState
                 {
-                    Resources = new ResourceBalance { Crystals = 100, Food = 50, Coins = 25 },
+                    Resources = new ResourceBalance { Crystals = 100, Stone = 50, Coins = 25 },
                     BestWave = 7,
                     OwnedItemIds = new System.Collections.Generic.List<string> { "blink_armor_basic1" },
                 },

@@ -271,7 +271,7 @@ namespace DeNelle.Editor.Regression
             public int Coins { get; set; }
             public int Wood { get; set; }
             public int Iron { get; set; }
-            public int Food { get; set; }
+            public int Stone { get; set; }
             public int Crystals { get; set; }
 
             /// <summary>When true, TrySpend always refuses (and never mutates) even if affordable.</summary>
@@ -282,7 +282,7 @@ namespace DeNelle.Editor.Regression
             public event Action<ResourceSnapshot> OnChanged;
 
             public bool CanAfford(DeNelle.Village.ResourceCost cost)
-                => Wood >= cost.Wood && Food >= cost.Food && Iron >= cost.Iron
+                => Wood >= cost.Wood && Stone >= cost.Stone && Iron >= cost.Iron
                    && Crystals >= cost.Crystals && Coins >= cost.Coins;
 
             public bool TrySpend(DeNelle.Village.ResourceCost cost)
@@ -290,23 +290,23 @@ namespace DeNelle.Editor.Regression
                 SpendCalls++;
                 if (DeclineEverySpend) return false;
                 if (!CanAfford(cost)) return false;
-                Wood -= cost.Wood; Food -= cost.Food; Iron -= cost.Iron;
+                Wood -= cost.Wood; Stone -= cost.Stone; Iron -= cost.Iron;
                 Crystals -= cost.Crystals; Coins -= cost.Coins;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 return true;
             }
 
             public DeNelle.Village.ResourceCost Grant(DeNelle.Village.ResourceCost amount)
             {
-                Wood += amount.Wood; Food += amount.Food; Iron += amount.Iron;
+                Wood += amount.Wood; Stone += amount.Stone; Iron += amount.Iron;
                 Crystals += amount.Crystals; Coins += amount.Coins;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 // Uncapped fake ledger: every requested unit lands, so applied == requested.
                 return amount;
             }
 
             public string Describe()
-                => "W" + Wood + " F" + Food + " I" + Iron + " C" + Crystals;
+                => "W" + Wood + " F" + Stone + " I" + Iron + " C" + Crystals;
         }
 
         private static BuildMenuVM MakeVm(IEconomy ledger, int fallbackCrystals = 0)
@@ -319,14 +319,14 @@ namespace DeNelle.Editor.Regression
         {
             // Values chosen so that a surviving stub is unmistakable: neither equals
             // the retired 20 / 5 literals.
-            var ledger = new FakeLedger { Wood = 3, Iron = 2, Food = 11, Crystals = 7 };
+            var ledger = new FakeLedger { Wood = 3, Iron = 2, Stone = 11, Crystals = 7 };
             var vm = MakeVm(ledger, fallbackCrystals: 999);
             if (vm == null) { failures.Add("[ledger-read] BuildMenuVM could not be constructed"); return; }
 
             AssertInt(failures, "[ledger-read] MaterialCount(\"wood\")", vm.MaterialCount("wood"), ledger.Wood);
             AssertInt(failures, "[ledger-read] MaterialCount(\"stone\") (legacy UI label for the Iron axis)", vm.MaterialCount("stone"), ledger.Iron);
             AssertInt(failures, "[ledger-read] MaterialCount(\"iron\")", vm.MaterialCount("iron"), ledger.Iron);
-            AssertInt(failures, "[ledger-read] MaterialCount(\"food\")", vm.MaterialCount("food"), ledger.Food);
+            AssertInt(failures, "[ledger-read] MaterialCount(\"food\")", vm.MaterialCount("food"), ledger.Stone);
             AssertInt(failures, "[ledger-read] MaterialCount(\"crystals\")", vm.MaterialCount("crystals"), ledger.Crystals);
             AssertInt(failures, "[ledger-read] Wood", vm.Wood, ledger.Wood);
             AssertInt(failures, "[ledger-read] Iron", vm.Iron, ledger.Iron);
@@ -452,7 +452,7 @@ namespace DeNelle.Editor.Regression
             {
                 Wood     = Math.Max(0, cost.wood - 1),
                 Iron     = Math.Max(0, cost.iron - 1),
-                Food     = Math.Max(0, cost.food - 1),
+                Stone     = Math.Max(0, cost.stone - 1),
                 Crystals = Math.Max(0, cost.crystals - 1),
             };
             string before = poor.Describe();
@@ -482,7 +482,7 @@ namespace DeNelle.Editor.Regression
             var liar = new FakeLedger
             {
                 Wood = cost.wood + 100, Iron = cost.iron + 100,
-                Food = cost.food + 100, Crystals = cost.crystals + 100,
+                Stone = cost.stone + 100, Crystals = cost.crystals + 100,
                 DeclineEverySpend = true,
             };
             string liarBefore = liar.Describe();
@@ -527,7 +527,7 @@ namespace DeNelle.Editor.Regression
 
             var funded = new FakeLedger
             {
-                Wood = cost.wood, Iron = cost.iron, Food = cost.food, Crystals = cost.crystals,
+                Wood = cost.wood, Iron = cost.iron, Stone = cost.stone, Crystals = cost.crystals,
             };
             var vm = MakeVm(funded);
             if (!vm.CanAfford(cost))
@@ -541,7 +541,7 @@ namespace DeNelle.Editor.Regression
             }
             else
             {
-                if (funded.Wood != 0 || funded.Iron != 0 || funded.Food != 0 || funded.Crystals != 0)
+                if (funded.Wood != 0 || funded.Iron != 0 || funded.Stone != 0 || funded.Crystals != 0)
                     failures.Add("[funded-spend] after an exactly funded spend the ledger reads " + funded.Describe() +
                                  " - expected every axis at 0 (the debit did not match the displayed cost)");
                 else
@@ -613,7 +613,7 @@ namespace DeNelle.Editor.Regression
                 {
                     Wood     = cost.wood     + 1000,
                     Iron     = cost.iron     + 1000,
-                    Food     = cost.food     + 1000,
+                    Stone     = cost.stone     + 1000,
                     Crystals = cost.crystals + 1000,
                 };
                 string start = wallet.Describe();
@@ -1154,10 +1154,10 @@ namespace DeNelle.Editor.Regression
         }
 
         private static bool SameCost(CoreCost a, CoreCost b)
-            => a.wood == b.wood && a.food == b.food && a.iron == b.iron && a.crystals == b.crystals;
+            => a.wood == b.wood && a.stone == b.stone && a.iron == b.iron && a.crystals == b.crystals;
 
         private static string Describe(CoreCost c)
-            => "w" + c.wood + " f" + c.food + " i" + c.iron + " c" + c.crystals;
+            => "w" + c.wood + " f" + c.stone + " i" + c.iron + " c" + c.crystals;
 
         private static void AssertInt(List<string> failures, string what, int got, int expected)
         {

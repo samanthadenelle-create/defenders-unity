@@ -43,9 +43,9 @@ namespace DeNelle.Village.World
         public int ThreatLevel = 1;
 
         [Tooltip("Base recruitment costs (will be scaled by threat/distance).")]
-        public ResourceCost BaseTankCost = new ResourceCost(food: 25, iron: 12);
-        public ResourceCost BaseDpsCost  = new ResourceCost(food: 15, iron: 8, wood: 5);
-        public ResourceCost BaseHealerCost = new ResourceCost(food: 30, crystals: 4);
+        public ResourceCost BaseTankCost = new ResourceCost(stone: 25, iron: 12);
+        public ResourceCost BaseDpsCost  = new ResourceCost(stone: 15, iron: 8, wood: 5);
+        public ResourceCost BaseHealerCost = new ResourceCost(stone: 30, crystals: 4);
 
         [Header("Defense Grid")]
         public int MaxDefenders = 4;                 // one per radial post
@@ -53,7 +53,7 @@ namespace DeNelle.Village.World
 
         [Header("Upkeep")]
         [Tooltip("Resources drained from Economy every upkeep interval per living defender (keeps economy honest).")]
-        public ResourceCost UpkeepPerDefenderPerTick = new ResourceCost(food: 1);
+        public ResourceCost UpkeepPerDefenderPerTick = new ResourceCost(stone: 1);
 
         [Tooltip("Seconds between upkeep drains.")]
         public float UpkeepInterval = 18f;
@@ -279,7 +279,7 @@ namespace DeNelle.Village.World
             float scale = 1f + (ThreatLevel * 0.15f) + (Vector3.Distance(transform.position, Vector3.zero) / 140f);
             return new ResourceCost(
                 wood: Mathf.RoundToInt(baseCost.Wood * scale),
-                food: Mathf.RoundToInt(baseCost.Food * scale),
+                stone: Mathf.RoundToInt(baseCost.Stone * scale),
                 iron: Mathf.RoundToInt(baseCost.Iron * scale),
                 crystals: Mathf.RoundToInt(baseCost.Crystals * scale)
             );
@@ -327,7 +327,7 @@ namespace DeNelle.Village.World
                 var upkeep = UpkeepPerDefenderPerTick;
                 // For simplicity we silently deduct from the persisted side via the service if possible.
                 // In a fuller version we would have an "Upkeep" event or a dedicated method.
-                if (econ.Food >= upkeep.Food && econ.Wood >= upkeep.Wood)
+                if (econ.Stone >= upkeep.Stone && econ.Wood >= upkeep.Wood)
                 {
                     econ.TrySpend(upkeep); // best effort
                 }

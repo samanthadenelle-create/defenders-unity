@@ -71,7 +71,7 @@ namespace DeNelle.Editor
                 fixture.Wood = 100000;
                 fixture.Iron = 100000;
                 var balances = fixture.Resources;
-                balances.Food = 100000;
+                balances.Stone = 100000;
                 balances.Coins = 100000;
                 balances.Crystals = 100000;
                 fixture.Resources = balances;
@@ -244,7 +244,7 @@ namespace DeNelle.Editor
                 fixture.Wood = 1000000;
                 fixture.Iron = 1000000;
                 var balances = fixture.Resources;
-                balances.Food = 1000000;
+                balances.Stone = 1000000;
                 balances.Coins = 1000000;
                 balances.Crystals = 1000000;
                 fixture.Resources = balances;

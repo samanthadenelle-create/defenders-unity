@@ -110,7 +110,7 @@ namespace DeNelle.Village
         {
             var list = new System.Collections.Generic.List<Ledger.ResourceCost>(4);
             if (cost.Wood > 0)     list.Add(new Ledger.ResourceCost(Ledger.HarvestResource.Wood, cost.Wood));
-            if (cost.Food > 0)     list.Add(new Ledger.ResourceCost(Ledger.HarvestResource.Food, cost.Food));
+            if (cost.Stone > 0)     list.Add(new Ledger.ResourceCost(Ledger.HarvestResource.Stone, cost.Stone));
             if (cost.Iron > 0)     list.Add(new Ledger.ResourceCost(Ledger.HarvestResource.Iron, cost.Iron));
             if (cost.Crystals > 0) list.Add(new Ledger.ResourceCost(Ledger.HarvestResource.Crystals, cost.Crystals));
             if (cost.Coins > 0)    FlowTrace.Warn("Barracks", "cost carries Coins — not ledger-charged (barracks data should never price in Coins).");

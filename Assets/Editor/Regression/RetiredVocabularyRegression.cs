@@ -22,38 +22,10 @@ namespace DeNelle.Editor.Regression
             "displayName", "name", "title", "label", "description", "objectiveText", "tagline",
             "message", "copy", "buttonText", "emptyText", "statusText", "toast"
         };
-        // ── DATED, TICKETED BASELINE - known debt, NOT an exemption ─────────────────────────
-        // 2026-08-25: this suite's FIRST run found TWELVE player-visible Food leaks. Eight were
-        // fixed at source the same night (four display labels, two world-node model routes, three
-        // dead en.json keys). These four remain because they are PROSE, and prose is the owner's:
-        // the guide tips explain food as a concept ("the wheat and apples the Heart wills into
-        // being"), a quest objective is written around it, and the Mill's description raises a
-        // design question (what does a gristmill produce once food is retired?).
-        //
-        // ⛔ THIS IS A RATCHET, NOT A PARDON. Anything NOT on this list still fails, so a NEW leak
-        // cannot hide behind the old ones - the WO-910 dead-node and HudUiRegression missing-resource
-        // precedent. ⛔ Removing a row from this list must mean the copy was FIXED, never that the
-        // suite was quietened. When the owner authors the replacement copy, delete the row and let
-        // it prove green.
-        //
-        // NOTE: THE VALUE IS AN EXACT COUNT, AND THAT IS THE WHOLE POINT (tightened 2026-08-26).
-        // The first version of this ledger was a HashSet of file:surface keys, so it tolerated
-        // ANY number of leaks in a surface it had ever forgiven: a third retired word authored
-        // into guide-content.json's tips[] would have been waved through by a row minted for two
-        // OTHER tips. That is precisely the "a new leak cannot hide behind the old ones" claim
-        // the comment above makes, and the HashSet could not keep it. Counts are the ratchet:
-        //   * the (count+1)th hit in a baselined surface FAILS like any other leak;
-        //   * a row that matches FEWER than its count fails as DRIFT - lower it, the debt shrank;
-        //   * a row that matches NOTHING fails as STALE - the copy was fixed, delete the row.
-        // Measured 2026-08-26 against the canonical tree: 2 / 1 / 1, four in total, which is the
-        // same four the 2026-08-25 first run left as owner-owed prose.
+        // The owner authorized retiring Food throughout the game on 2026-09-11.
+        // All previously tolerated copy has been corrected; retain zero exceptions.
         private static readonly Dictionary<string, int> KnownCopyDebt2026_08_25 = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
-            // 2026-09-05 WO-1416: the building_farm tip was rewritten to Stone, so the debt shrank
-            // 2 -> 1 (the remaining hit is the quests tip's "Crystals, Wood, Iron, Food" list).
-            { "Assets/Resources/Data/Canonical/guide-content.json:tips[]", 1 },
-            { "Assets/Resources/Data/Canonical/quests.json:objectiveText", 1 },
-            { "Assets/Resources/Data/Canonical/structures-catalog.json:description", 1 },
         };
 
         // Populated per run so the SUCCESS string can name the debt it tolerated - a green
@@ -64,7 +36,7 @@ namespace DeNelle.Editor.Regression
             "(?i)(JsonProperty\\s*\\(|\\bconst\\s+string\\b|\\bcase\\s+\\\"|FlowTrace\\.|Debug\\.|PlayerPrefs|Regex\\.)",
             RegexOptions.Compiled);
         private static readonly Regex VisibleSourceHint = new Regex(
-            @"(?i)(label|text|toast|popup|display|option|entry|title|message|resourcegain|Harvest/|\bPop\s*\()",
+            @"(?i)(label|text|toast|popup|display|option|entry|title|message|resourcegain|AddCurrencyRow|SetReadout|Harvest/|\bPop\s*\()",
             RegexOptions.Compiled);
 
         public static void RunAll()
@@ -307,6 +279,8 @@ namespace DeNelle.Editor.Regression
 
             // ---- Source half: display surfaces that MUST be caught ----------------------------
             red += ExpectSource(failures, "assignment to a label", 1, "hud.label = \"Food\";");
+            red += ExpectSource(failures, "tester currency row", 1, "AddCurrencyRow(\"Food\", Currency.Stone);");
+            red += ExpectSource(failures, "tester wallet readout", 1, "SetReadout($\"Food {economy.Stone}\");");
             red += ExpectSource(failures, "toast copy", 1, "ShowToast(\"Food is running low\");");
 
             // ---- Source half: frozen syntax that MUST NOT be caught ---------------------------
@@ -397,7 +371,7 @@ namespace DeNelle.Editor.Regression
         private static bool RecentVisibleDeclaration(string[] lines, int index)
         {
             // Switch-return labels commonly place the method name several lines above the literal
-            // (TargetLabel -> case HarvestTarget.Food -> "Food"). Carry only a short method-local
+            // (TargetLabel -> case HarvestTarget.Stone -> "Food"). Carry only a short method-local
             // window; frozen TargetToken is a different declaration and remains outside it.
             int floor = Math.Max(0, index - 10);
             for (int i = index - 1; i >= floor; i--)

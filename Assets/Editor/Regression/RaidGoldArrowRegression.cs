@@ -265,9 +265,9 @@ namespace DeNelle.Editor.Regression
                              "w/" + flatLoot.Iron + "i -> " + hardLoot.Wood + "w/" + hardLoot.Iron +
                              "i). Excluding gold and crystals must not quietly exclude the two axes that " +
                              "were always meant to carry it.");
-            if (hardLoot.Food <= flatLoot.Food)
-                failures.Add("[B4] the x1.5 camp multiplier stopped scaling FOOD (" + flatLoot.Food + " -> " +
-                             hardLoot.Food + ") - food was never part of this lane's exclusions");
+            if (hardLoot.Stone <= flatLoot.Stone)
+                failures.Add("[B4] the x1.5 camp multiplier stopped scaling FOOD (" + flatLoot.Stone + " -> " +
+                             hardLoot.Stone + ") - food was never part of this lane's exclusions");
         }
 
         // =====================================================================
@@ -294,9 +294,9 @@ namespace DeNelle.Editor.Regression
                              "accelerate the already-too-short progression curve.' An escalating camp must " +
                              "raise gold, wood and iron - never instant-finish.");
             // ...while FOOD in that same legacy shape still carries it.
-            if (legacyHard.Food <= legacyFlat.Food)
+            if (legacyHard.Stone <= legacyFlat.Stone)
                 failures.Add("[C1] the camp multiplier stopped scaling FOOD in the legacy call shape (" +
-                             legacyFlat.Food + " -> " + legacyHard.Food + ")");
+                             legacyFlat.Stone + " -> " + legacyHard.Stone + ")");
 
             // C2 - THE CUT ITSELF. A perfect clear must land inside the map's 20-30 band.
             int perfectCrystals = RaidScoring.ComputeLoot(
@@ -317,8 +317,8 @@ namespace DeNelle.Editor.Regression
             var lost = RaidScoring.ComputeLoot(0, 0f, RaidLootTunables.CrystalsBase, 60,
                                                RaidLootTunables.CrystalsPerStar, 20,
                                                1f, 1800, 1100, MapCoinsCamp1);
-            if (lost.Crystals != 0 || lost.Food != 0)
-                failures.Add("[C3] a total failure paid " + lost.Crystals + " crystals / " + lost.Food +
+            if (lost.Crystals != 0 || lost.Stone != 0)
+                failures.Add("[C3] a total failure paid " + lost.Crystals + " crystals / " + lost.Stone +
                              " food - both must stay zero on a raid that razed nothing");
             if (lost.Coins <= 0 || lost.Wood <= 0 || lost.Iron <= 0)
                 failures.Add("[C3] a total failure paid " + lost.Coins + " gold / " + lost.Wood + " wood / " +
@@ -343,7 +343,7 @@ namespace DeNelle.Editor.Regression
                 RaidLootTunables.CrystalsBase, 60, RaidLootTunables.CrystalsPerStar, 20,
                 1f, RaidLootTunables.WoodBase, RaidLootTunables.IronBase, coinsBase);
             log.AppendLine("  acceptance (Camp I, 3 stars): " + threeStar.Coins + "g " + threeStar.Wood +
-                           "w " + threeStar.Iron + "i " + threeStar.Crystals + "c " + threeStar.Food + "f");
+                           "w " + threeStar.Iron + "i " + threeStar.Crystals + "c " + threeStar.Stone + "f");
 
             if (threeStar.Coins != MapCoinsCamp1)
                 failures.Add("[D] a 3-star Camp I clear paid " + threeStar.Coins + " gold, expected " +

@@ -41,13 +41,17 @@ namespace DeNelle.Core.State
     public struct ResourceBalance
     {
         [JsonProperty("crystals")] public int Crystals;
-        [JsonProperty("food")] public int Food;
+        // Save migration slice 1: Stone is the runtime authority. Keep the shipped
+        // JSON key until the backend/old-client protocol migration is coordinated.
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [JsonProperty("food")] public int Stone;
+
         [JsonProperty("coins")] public int Coins;
 
-        public ResourceBalance(int crystals, int food, int coins)
+        public ResourceBalance(int crystals, int stone, int coins)
         {
             Crystals = crystals;
-            Food = food;
+            Stone = stone;
             Coins = coins;
         }
 
@@ -191,7 +195,9 @@ namespace DeNelle.Core.State
     public sealed class LootStash
     {
         [JsonProperty("crystals")] public int Crystals;
-        [JsonProperty("food")] public int Food;
+        // Historical dungeon payload only; keep separate from its existing Stone value.
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [JsonProperty("food")] public int LegacyFood;
         [JsonProperty("coins")] public int Coins;
         [JsonProperty("stone")] public int Stone;
         [JsonProperty("iron")] public int Iron;

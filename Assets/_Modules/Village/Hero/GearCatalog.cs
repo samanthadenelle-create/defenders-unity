@@ -127,7 +127,8 @@ namespace DeNelle.Village
 
         // Shop integration (basic): resource costs. Populated from canonical JSON.
         public int buyWood;
-        public int buyFood;
+        [UnityEngine.Serialization.FormerlySerializedAs("buyFood")]
+        [Newtonsoft.Json.JsonProperty("buyFood")] public int buyStone;
         public int buyIron;
         public int buyCrystals;
 
@@ -279,7 +280,8 @@ namespace DeNelle.Village
 
         // Shop integration (basic): resource costs. Populated from canonical JSON.
         public int buyWood;
-        public int buyFood;
+        [UnityEngine.Serialization.FormerlySerializedAs("buyFood")]
+        [Newtonsoft.Json.JsonProperty("buyFood")] public int buyStone;
         public int buyIron;
         public int buyCrystals;
 

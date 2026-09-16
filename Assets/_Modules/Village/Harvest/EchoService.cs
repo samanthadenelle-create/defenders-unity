@@ -352,7 +352,7 @@ namespace DeNelle.Village
             var weights = EchoBonusCalculator.HarvestTargetWeights();
             wW = weights.TryGetValue(HarvestTarget.Wood, out var vw) ? vw : 0.0;
             wI = weights.TryGetValue(HarvestTarget.Iron, out var vi) ? vi : 0.0;
-            wF = weights.TryGetValue(HarvestTarget.Food, out var vf) ? vf : 0.0;
+            wF = weights.TryGetValue(HarvestTarget.Stone, out var vf) ? vf : 0.0;
             wG = weights.TryGetValue(HarvestTarget.Gold, out var vg) ? vg : 0.0;
             wC = weights.TryGetValue(HarvestTarget.Crystals, out var vc) ? vc : 0.0;
             if (wW + wI + wF + wG + wC <= 0.0)
@@ -495,7 +495,7 @@ namespace DeNelle.Village
                     ? DeNelle.Core.UI.BankOverflowToastPresenter.BeginWarnScope("EchoService.DumpSilos")
                     : default(DeNelle.Core.UI.BankOverflowToastPresenter.WarnScope))
                 {
-                    applied = eco.GrantSpendable(wood: wood, food: food, iron: iron, crystals: crystals);
+                    applied = eco.GrantSpendable(wood: wood, stone: food, iron: iron, crystals: crystals);
                 }
                 if (gold > 0) eco.AddCoins(gold);
                 // WO-1392 (owner's Seeker, 2026-09-04): the silo SETTLES AGAINST THE APPLIED BASKET.
@@ -507,7 +507,7 @@ namespace DeNelle.Village
                 // is named in the trace, not inferred from a delta.
                 int stayedWood = wood - applied.Wood;
                 int stayedIron = iron - applied.Iron;
-                int stayedFood = food - applied.Food;
+                int stayedFood = food - applied.Stone;
                 if (stayedWood > 0)
                     FlowTrace.Warn("Harvest", $"silo dump: {stayedWood} wood stayed in the silo - Wood storage full");
                 if (stayedIron > 0)
@@ -515,10 +515,10 @@ namespace DeNelle.Village
                 if (stayedFood > 0)
                     FlowTrace.Warn("Harvest", $"silo dump: {stayedFood} food stayed in the silo - Food storage full");
                 if (stayedWood <= 0 && stayedIron <= 0 && stayedFood <= 0)
-                    FlowTrace.Step("Harvest", $"silo dump: everything fit -- W{applied.Wood}/I{applied.Iron}/F{applied.Food} banked in full.");
+                    FlowTrace.Step("Harvest", $"silo dump: everything fit -- W{applied.Wood}/I{applied.Iron}/F{applied.Stone} banked in full.");
                 wood = applied.Wood;
                 iron = applied.Iron;
-                food = applied.Food;
+                food = applied.Stone;
                 crystals = applied.Crystals;
             }
             else

@@ -136,7 +136,7 @@ namespace DeNelle.Village
 
             FlowTrace.Step("Progression",
                 $"plans-unlocked: tower_arcane_spire visible-lock lifts on next palette Configure; " +
-                $"funding granted wood={cost.wood} food={cost.food} iron={cost.iron} crystals={cost.crystals} " +
+                $"funding granted wood={cost.wood} food={cost.stone} iron={cost.iron} crystals={cost.crystals} " +
                 "(live catalog row, arcane basket -- WO-1013)");
 
             Guard.Try("Progression", "plans-collected beat seam", () => PlansCollected?.Invoke());

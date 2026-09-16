@@ -111,7 +111,7 @@ namespace DeNelle.Village
         {
             SpentWood += Mathf.Max(0, cost.wood);
             SpentIron += Mathf.Max(0, cost.iron);
-            SpentStone += Mathf.Max(0, cost.food);
+            SpentStone += Mathf.Max(0, cost.stone);
             SpentCrystals += Mathf.Max(0, cost.crystals);
         }
     }

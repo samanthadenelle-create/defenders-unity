@@ -335,7 +335,7 @@ namespace DeNelle.Core.Catalog
         /// Pure; used as the structure's economic WEIGHT when deriving its build tier.
         /// </summary>
         public static float CostBasket(ResourceCost cost)
-            => cost.wood + 1.5f * cost.iron + 1.0f * cost.food + 2.0f * cost.crystals;
+            => cost.wood + 1.5f * cost.iron + 1.0f * cost.stone + 2.0f * cost.crystals;
 
         /// <summary>
         /// WO-855 Phase 4 -- the BUILD TIER for a structure of <paramref name="cost"/>.

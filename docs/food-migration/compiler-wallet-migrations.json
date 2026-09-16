@@ -1,0 +1,330 @@
+[
+  {
+    "log": "Builds\\stone-wallet-no-alias.log",
+    "references": [
+      {
+        "path": "Assets/_Modules/Core/Tests/SaveSchemaValidateTest.cs",
+        "line": 224,
+        "column": 67,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/ResourceBuildingProgression.cs",
+        "line": 577,
+        "column": 52,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/ResourceBuildingProgression.cs",
+        "line": 616,
+        "column": 56,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/Village/Buildings/Progression/ResourceBuildingProgression.cs",
+        "line": 667,
+        "column": 48,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/Village/Harvest/OfflineHarvestService.cs",
+        "line": 1187,
+        "column": 21,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/Camps/Outpost.cs",
+        "line": 165,
+        "column": 25,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/Village/World/MineNode.cs",
+        "line": 618,
+        "column": 25,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-wallet-no-alias-retry.log",
+    "references": [
+      {
+        "path": "Assets/Editor/Regression/BuildingUpgradeAuthorityRegression.cs",
+        "line": 66,
+        "column": 52,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/CloudLoadRestoreRegression.cs",
+        "line": 216,
+        "column": 19,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/CloudLoadRestoreRegression.cs",
+        "line": 308,
+        "column": 67,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/CoreSaveRegression.cs",
+        "line": 251,
+        "column": 68,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/CoreSaveRegression.cs",
+        "line": 252,
+        "column": 108,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/HireReinforcementsRegression.cs",
+        "line": 217,
+        "column": 21,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/HonestFeedbackGrantRegression.cs",
+        "line": 237,
+        "column": 15,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/KillGrantShortfallReasonRegression.cs",
+        "line": 374,
+        "column": 15,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ManageBuildDoorRegression.cs",
+        "line": 134,
+        "column": 26,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ManageBuildingsCardRegression.cs",
+        "line": 74,
+        "column": 26,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ManageBuildingsCardRegression.cs",
+        "line": 247,
+        "column": 26,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ManageDefenseCardRegression.cs",
+        "line": 120,
+        "column": 26,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ManageProgressiveDisclosureRegression.cs",
+        "line": 1096,
+        "column": 26,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ManageResearchCardRegression.cs",
+        "line": 132,
+        "column": 26,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ManageRowBenefitRegression.cs",
+        "line": 123,
+        "column": 26,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ManageRowBenefitRegression.cs",
+        "line": 334,
+        "column": 19,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ManageTroopsTrainDoorRegression.cs",
+        "line": 141,
+        "column": 21,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/PackGrantRegression.cs",
+        "line": 125,
+        "column": 81,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/PackGrantRegression.cs",
+        "line": 137,
+        "column": 42,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ResetEpochRegression.cs",
+        "line": 284,
+        "column": 19,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/ResetEpochRegression.cs",
+        "line": 551,
+        "column": 67,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/SiegeLossStakesRegression.cs",
+        "line": 504,
+        "column": 40,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/TrainingCostsTimeOnlyRegression.cs",
+        "line": 158,
+        "column": 21,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/TrainingCostsTimeOnlyRegression.cs",
+        "line": 195,
+        "column": 93,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/TrainingCostsTimeOnlyRegression.cs",
+        "line": 197,
+        "column": 70,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/TrainingCostsTimeOnlyRegression.cs",
+        "line": 241,
+        "column": 95,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/TrainingCostsTimeOnlyRegression.cs",
+        "line": 243,
+        "column": 71,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/Regression/VillageEconomyRegression.cs",
+        "line": 138,
+        "column": 52,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/DevPanelController.cs",
+        "line": 615,
+        "column": 37,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/DevPanelController.cs",
+        "line": 618,
+        "column": 45,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/DevPanelController.cs",
+        "line": 1245,
+        "column": 22,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/_Modules/DevTools/DevPanelController.cs",
+        "line": 1354,
+        "column": 15,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-wallet-no-alias-final.log",
+    "references": [
+      {
+        "path": "Assets/Editor/SaveIntegrityRegression.cs",
+        "line": 52,
+        "column": 71,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/UICaptureLaunch.cs",
+        "line": 8478,
+        "column": 30,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/UICaptureLaunch.cs",
+        "line": 8592,
+        "column": 30,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      },
+      {
+        "path": "Assets/Editor/UICaptureLaunch.cs",
+        "line": 9552,
+        "column": 22,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      }
+    ]
+  },
+  {
+    "log": "Builds\\stone-wallet-no-alias-verified.log",
+    "references": [
+      {
+        "path": "Assets/Tests/EditMode/DevGrantSpendableTests.cs",
+        "line": 147,
+        "column": 45,
+        "from": "ResourceBalance.Food",
+        "to": "ResourceBalance.Stone"
+      }
+    ]
+  }
+]

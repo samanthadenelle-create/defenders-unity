@@ -34,7 +34,7 @@ namespace DeNelle.Tests.EditMode
             var s = UnityEngine.ScriptableObject.CreateInstance<GameState>();
             Assert.That(s.SchemaVersion, Is.EqualTo(SaveSchema.CurrentVersion));
             Assert.That(s.Resources.Crystals, Is.EqualTo(250));
-            Assert.That(s.Resources.Food, Is.EqualTo(80));
+            Assert.That(s.Resources.Stone, Is.EqualTo(80));
             Assert.That(s.Resources.Coins, Is.EqualTo(15));
             Assert.That(s.Voidshards, Is.EqualTo(5));
             UnityEngine.Object.DestroyImmediate(s);
@@ -59,7 +59,7 @@ namespace DeNelle.Tests.EditMode
             Assert.That(back.State.Stone, Is.EqualTo(88));
             Assert.That(back.State.Resources.HasValue, Is.True);
             Assert.That(back.State.Resources.Value.Crystals, Is.EqualTo(900));
-            Assert.That(back.State.Resources.Value.Food, Is.EqualTo(320));
+            Assert.That(back.State.Resources.Value.Stone, Is.EqualTo(320));
             Assert.That(back.State.Resources.Value.Coins, Is.EqualTo(64));
         }
 

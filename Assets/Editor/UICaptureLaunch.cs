@@ -548,6 +548,7 @@ namespace DeNelle.Editor
         public static void RunCaptureHeadless()
         {
             int count = 0;
+            bool captureThrew = false;
             _fidelityOk = 0;
             _fidelityDegraded = 0;
             _fidelityReasons.Clear();
@@ -647,6 +648,7 @@ namespace DeNelle.Editor
             }
             catch (Exception e)
             {
+                captureThrew = true;
                 Debug.LogError("[UICap-HL] capture run threw: " + e);
             }
 
@@ -661,8 +663,17 @@ namespace DeNelle.Editor
                                    // prints marker-absent there, read here as a FAILURE not an unknown.
             ReportEndStateFit();
 
-            // The marker a headless caller greps to confirm the run produced pixels.
-            Debug.Log("UI_CAPTURE_OK " + count);
+            // A pixel count cannot override a failed subordinate oracle.
+            if (!captureThrew && count > 0 && _fidelityDegraded == 0 &&
+                _geoFailures.Count == 0 && _touchFailures.Count == 0 &&
+                _glyphFailures.Count == 0 && _endStateFits.Count > 0 &&
+                _endStateFitFailures.Count == 0)
+                Debug.Log("UI_CAPTURE_OK " + count);
+            else
+                Debug.LogError("UI_CAPTURE_FAIL frames=" + count + " threw=" + captureThrew +
+                    " fidelity=" + _fidelityDegraded + " geometry=" + _geoFailures.Count +
+                    " touch=" + _touchFailures.Count + " glyph=" + _glyphFailures.Count +
+                    " endStateMeasured=" + _endStateFits.Count + " endStateFailures=" + _endStateFitFailures.Count);
 
             // WO-1080: LAST, because it carries every Report*'s totals. This is the line a
             // reviewer diffs a ticket's quoted baseline against.
@@ -2099,7 +2110,7 @@ namespace DeNelle.Editor
                     },
                     new BankOverflowStatus
                     {
-                        Available = true, Resource = BankResource.Food,
+                        Available = true, Resource = BankResource.Stone,
                         ResourceName = "Stone", ContainerName = "Stoneyard",
                         Requested = 30932, Granted = 0, Lost = 30932,
                         Current = 3000, Max = 3000, Source = Collectors
@@ -2120,7 +2131,7 @@ namespace DeNelle.Editor
                     },
                     new BankOverflowStatus
                     {
-                        Available = true, Resource = BankResource.Food,
+                        Available = true, Resource = BankResource.Stone,
                         ResourceName = "Stone", ContainerName = "Stoneyard",
                         Requested = 14325, Granted = 0, Lost = 14325,
                         Current = 3000, Max = 3000, Source = Silo
@@ -2184,7 +2195,7 @@ namespace DeNelle.Editor
                     AwaySeconds = 9.5 * 3600.0,
                     WasCapped = true,
                     AetherCrystals = 240,
-                    Food = 610,
+                    Stone = 610,
                     Iron = 480,
                     Wood = 920,
                     Mend = new EchoMendReport
@@ -4627,35 +4638,35 @@ namespace DeNelle.Editor
         {
             public CaptureLedger(int each)
             {
-                Coins = each; Wood = each; Iron = each; Food = each; Crystals = each;
+                Coins = each; Wood = each; Iron = each; Stone = each; Crystals = each;
             }
 
             public int Coins { get; private set; }
             public int Wood { get; private set; }
             public int Iron { get; private set; }
-            public int Food { get; private set; }
+            public int Stone { get; private set; }
             public int Crystals { get; private set; }
 
             public event Action<DeNelle.Village.ResourceSnapshot> OnChanged;
 
             public bool CanAfford(DeNelle.Village.ResourceCost cost)
-                => Wood >= cost.Wood && Food >= cost.Food && Iron >= cost.Iron
+                => Wood >= cost.Wood && Stone >= cost.Stone && Iron >= cost.Iron
                    && Crystals >= cost.Crystals && Coins >= cost.Coins;
 
             public bool TrySpend(DeNelle.Village.ResourceCost cost)
             {
                 if (!CanAfford(cost)) return false;
-                Wood -= cost.Wood; Food -= cost.Food; Iron -= cost.Iron;
+                Wood -= cost.Wood; Stone -= cost.Stone; Iron -= cost.Iron;
                 Crystals -= cost.Crystals; Coins -= cost.Coins;
-                OnChanged?.Invoke(new DeNelle.Village.ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new DeNelle.Village.ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 return true;
             }
 
             public DeNelle.Village.ResourceCost Grant(DeNelle.Village.ResourceCost amount)
             {
-                Wood += amount.Wood; Food += amount.Food; Iron += amount.Iron;
+                Wood += amount.Wood; Stone += amount.Stone; Iron += amount.Iron;
                 Crystals += amount.Crystals; Coins += amount.Coins;
-                OnChanged?.Invoke(new DeNelle.Village.ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new DeNelle.Village.ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 // Uncapped fake ledger: every requested unit lands, so applied == requested.
                 return amount;
             }
@@ -5691,35 +5702,35 @@ namespace DeNelle.Editor
             return saved;
         }
 
-        /// <summary>The worst-case wave-clear banner as DATA. Row/label shapes mirror
-        /// EndStateVM.FromWaveClear's own output (rewards + a damage report, capped at its
-        /// CompactMaxSpoilRows = 4); the live factory is not callable headlessly because it
-        /// reads the wall-damage ledger and the wallet.</summary>
+        /// <summary>Use the live factory's current modal/header/action shape, then replace
+        /// scene-dependent report data with deterministic rewards and two wide damage rows.
+        /// The old compact/two-line/narrow-amount fixture no longer described FromWaveClear.</summary>
         private static EndStateVM BuildWaveClearFixture(bool withCta)
         {
-            var vm = new EndStateVM
-            {
-                Kind = EndStateKind.WaveResults,
-                Title = "Wave 7 Cleared!",
-                Subtitle = "The wave broke against your walls.\nThe north gate took the worst of it.",
-                Compact = true,
-                PrimaryLabel = null,      // compact banners auto-dismiss; no primary CTA
-                PrimaryRoute = "dismiss",
-                AutoDismissSeconds = 0f,  // no coroutine to leave pending in edit mode
-                Stars = -1,
-                TimeSeconds = -1f,
-            };
-
+            var vm = EndStateVM.FromWaveClear(7);
+            vm.Spoils.Clear();
+            vm.AutoDismissSeconds = 0f; // edit-mode capture has no reveal/timer loop
+            // Geometry-only capture: an unawakened EditMode view may never receive
+            // OnDestroy, so it must not acquire a runtime WorldHold requiring that release.
+            vm.HoldWorld = false;
+            vm.Primary = null;
+            vm.Cta = null; // never retain a live repair-controller closure in a capture
+            vm.CtaLabel = null;
+            vm.CtaRoute = "cta";
+            vm.CtaEnabled = true;
+            vm.Subtitle = withCta ? "The realm holds - but it took damage."
+                                 : "The realm holds. Spoils claimed.";
             vm.Spoils.Add(new SpoilRowVM { Label = "Wood", Amount = "+240" });
             vm.Spoils.Add(new SpoilRowVM { Label = "Iron", Amount = "+85" });
             if (withCta)
             {
-                // The CTA path: a full damage report (4 rows = the banner's hard cap) under a
-                // Repair-All button. This is the shape that produced need=276px / well=249px.
-                vm.Spoils.Add(new SpoilRowVM { Label = "North Gate", Amount = "DESTROYED, looted 120" });
-                vm.Spoils.Add(new SpoilRowVM { Label = "Wall x3", Amount = "damaged" });
+                var shield = DeNelle.Core.UI.RpgUiCatalog.Get(
+                    DeNelle.Core.UI.RpgUiCatalog.RoleIcons, DeNelle.Core.UI.RpgUiCatalog.IconShield);
+                vm.Spoils.Add(new SpoilRowVM { Icon = shield,
+                    Label = "North Gate - DESTROYED, looted 120", Amount = "Rebuild 100 wood, 30 iron", Wide = true });
+                vm.Spoils.Add(new SpoilRowVM { Icon = shield,
+                    Label = "Wall x3 - damaged 50%", Amount = "Repair 20 wood, 10 iron", Wide = true });
                 vm.CtaLabel = "Repair All - 120 wood, 40 iron";
-                vm.CtaEnabled = true;
                 vm.CtaRoute = "repair-all";
             }
             return vm;
@@ -7242,6 +7253,176 @@ namespace DeNelle.Editor
         //  their canvas from a code path with no scene dependency, so a RaidBase_* load
         //  would add a shared-tree corruption risk for nothing.
         // ---------------------------------------------------------------------
+        public static void RunOwnedTownPanelCapture()
+        {
+            Directory.CreateDirectory(OutDir);
+            _fidelityOk = 0; _fidelityDegraded = 0; _fidelityReasons.Clear();
+            _geoFailures.Clear(); _geoCanvasesChecked = 0;
+            _touchFailures.Clear(); _touchPanelsChecked = 0; _touchPanelsClean = 0;
+            ResetGlyphOracle();
+            var prior = GameStateService.Instance;
+            if (prior != null) throw new InvalidOperationException("Town capture requires an isolated editor scene.");
+            bool hydratedCatalog = DeNelle.Core.Catalog.CatalogRegistry.Count == 0;
+            var fixture = ScriptableObject.CreateInstance<GameState>();
+            var stateHost = new GameObject("~OwnedTownCaptureState");
+            int count = 0;
+            try
+            {
+                HydrateCatalogForCapture();
+                fixture.OwnedBase = new OwnedBaseState {
+                    baseId = "personal-iron-bastion", sourceRaidId = "iron_bastion", templateVersion = "iron-bastion-20260911",
+                    captureReceiptId = "capture:ui", suppliesReceiptId = "capture:ui",
+                    structures = new System.Collections.Generic.List<OwnedBaseStructure> {
+                        new OwnedBaseStructure { instanceId = "tower-1", placement = new PlacedStructureData("tower_arcane_spire", 0, 0, 0, 1) }
+                    }
+                };
+                if (!InstallCaptureState(stateHost.AddComponent<GameStateService>(), fixture))
+                    throw new InvalidOperationException("Could not install isolated town fixture.");
+                foreach (string phase in new[] { "Reveal", "Repair", "Design", "MoreRepairs", "Ready", "SaleConfirm" })
+                {
+                    fixture.OwnedBase.milestoneFlags = phase == "Reveal" ? OwnedBaseMilestones.None :
+                        phase == "Repair" ? OwnedBaseMilestones.OwnershipRevealed :
+                        OwnedBaseMilestones.OwnershipRevealed | OwnedBaseMilestones.EssentialRepairCompleted | OwnedBaseMilestones.LayoutChoiceCompleted;
+                    fixture.OwnedBase.structures[0].condition01 = phase == "Reveal" ? 1f : .5f;
+                    fixture.OwnedBase.repairSupplies = new DeNelle.Core.Catalog.ResourceCost { wood = 1, iron = 1, stone = 1 };
+                    if (phase == "Repair")
+                    {
+                        if (!DeNelle.Village.World.Camps.OwnedTownRepairService.TryQuote(fixture.OwnedBase.structures[0], out var initialQuote, out var quoteFailure))
+                            throw new InvalidOperationException(quoteFailure);
+                        fixture.OwnedBase.repairSupplies = initialQuote;
+                    }
+                    fixture.OwnedBase.revision = phase == "Ready" ? 2 : 1;
+                    fixture.OwnedBase.reenteredLayoutRevision = phase == "Ready" ? 1 : 0;
+                    count += ForEachTarget("OwnedTown" + phase, target => {
+                        var host = new GameObject("~OwnedTownPanelCapture");
+                        GameObject canvas = null;
+                        try
+                        {
+                            var panel = host.AddComponent<DeNelle.Village.World.Camps.OwnedTownPanel>();
+                            if (phase == "MoreRepairs") panel.GetType().GetField("_repairMode", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(panel, true);
+                            panel.Show();
+                            canvas = GetPrivateGameObject(panel, "_ui");
+                            if (canvas == null) throw new InvalidOperationException("Owned town panel did not build.");
+                            if (phase == "Design" || phase == "Ready")
+                            {
+                                var actions = canvas.GetComponentsInChildren<UnityEngine.UI.Button>(true);
+                                foreach (string key in new[] { "nextTower", "upgrade", "sell", "build", "moveWest", "moveEast" })
+                                    if (!Array.Exists(actions, b => Array.Exists(b.GetComponentsInChildren<TMPro.TMP_Text>(true), t =>
+                                        string.Equals(t.text, LocalText.Get("ownedTown." + key), StringComparison.OrdinalIgnoreCase))))
+                                        throw new InvalidOperationException("Missing owned-town design action: " + key);
+                            }
+                            if (phase == "Repair" || phase == "MoreRepairs")
+                            {
+                                var labels = canvas.GetComponentsInChildren<TMPro.TMP_Text>(true);
+                                var buttons = canvas.GetComponentsInChildren<UnityEngine.UI.Button>(true);
+                                foreach (string key in phase == "Repair" ? new[] { "repair" } : new[] { "repair", "nextRepair", "backToDesign" })
+                                    if (!Array.Exists(buttons, b => Array.Exists(b.GetComponentsInChildren<TMPro.TMP_Text>(true), t =>
+                                        string.Equals(t.text, LocalText.Get("ownedTown." + key), StringComparison.OrdinalIgnoreCase))))
+                                        throw new InvalidOperationException("Missing owned-town repair action: " + key);
+                                if (!Array.Exists(labels, t => t.text.Contains("50%")) ||
+                                    !Array.Exists(labels, t => t.text.Contains("\n") && t.text.Contains("1")))
+                                    throw new InvalidOperationException("Repair selection or payment breakdown is missing.");
+                            }
+                            if (phase == "SaleConfirm")
+                            {
+                                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                                panel.GetType().GetMethod("OpenSaleConfirmation", flags).Invoke(panel, new object[] {
+                                    "tower-1", fixture.OwnedBase.revision,
+                                    new DeNelle.Core.Catalog.ResourceCost { wood = 12500, iron = 9800, stone = 12000, crystals = 250 }
+                                });
+                                var confirmation = (ElarionUiKit.ConfirmModal)panel.GetType().GetField("_saleConfirm", flags).GetValue(panel);
+                                if (confirmation == null || !confirmation.message.text.Contains("250") ||
+                                    !confirmation.message.text.Contains("Storage limits"))
+                                    throw new InvalidOperationException("Sale confirmation is missing refund or storage-limit copy.");
+                                try { return RenderCanvasToPng(confirmation.canvas, OutDir + "OwnedTown" + phase + "_" + target.Tag + ".png", target.W, target.H) ? 1 : 0; }
+                                finally { UnityEngine.Object.DestroyImmediate(confirmation.canvas); }
+                            }
+                            return RenderCanvasToPng(canvas, OutDir + "OwnedTown" + phase + "_" + target.Tag + ".png", target.W, target.H) ? 1 : 0;
+                        }
+                        finally
+                        {
+                            if (canvas != null) UnityEngine.Object.DestroyImmediate(canvas);
+                            UnityEngine.Object.DestroyImmediate(host);
+                        }
+                    });
+                }
+                count += ForEachTarget("OwnedTownRealm", target =>
+                    CapturePlayerDeckOnce(target, "OpenRealm", "OwnedTownRealm"));
+                foreach (bool running in new[] { true, false })
+                    count += ForEachTarget("TownPractice", target => {
+                        var host = new GameObject("~TownPracticeCapture");
+                        GameObject canvas = null;
+                        try
+                        {
+                            var panel = host.AddComponent<DeNelle.Village.Arena.OwnedTownPracticeController>();
+                            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                            panel.GetType().GetField("_running", flags).SetValue(panel, running);
+                            panel.GetType().GetMethod("ShowPanel", flags).Invoke(panel, null);
+                            canvas = GetPrivateGameObject(panel, "_ui");
+                            return RenderCanvasToPng(canvas, OutDir + "TownPractice" + (running ? "Active" : "Result") + "_" + target.Tag + ".png", target.W, target.H) ? 1 : 0;
+                        }
+                        finally
+                        {
+                            if (canvas != null) UnityEngine.Object.DestroyImmediate(canvas);
+                            UnityEngine.Object.DestroyImmediate(host);
+                        }
+                    });
+            }
+            finally
+            {
+                RestoreCaptureState(prior);
+                UnityEngine.Object.DestroyImmediate(stateHost);
+                UnityEngine.Object.DestroyImmediate(fixture);
+                if (hydratedCatalog) DeNelle.Core.Catalog.CatalogRegistry.Clear();
+            }
+            ReportFidelity(); ReportGeometry(); ReportTouchOracle(); ReportGlyphOracle();
+            if (count != LandscapeTargets.Length * 9 || _geoFailures.Count != 0 || _touchFailures.Count != 0 || _glyphFailures.Count != 0)
+                throw new InvalidOperationException("Owned-town panel capture failed its render/layout/touch/text checks.");
+            Debug.Log("OWNED_TOWN_PANEL_CAPTURE_OK frames=" + count + "; reveal, initial repair, design, later repairs, ready, Realm and practice active/result; repair actions and payment present; no player save loaded");
+        }
+
+        public static void RunPopulatedRaidHudCapture()
+        {
+            Directory.CreateDirectory(OutDir);
+            _fidelityOk = 0; _fidelityDegraded = 0; _fidelityReasons.Clear();
+            _geoFailures.Clear(); _geoCanvasesChecked = 0;
+            _touchFailures.Clear(); _touchPanelsChecked = 0; _touchPanelsClean = 0;
+            ResetGlyphOracle();
+            var prior = GameStateService.Instance;
+            GameObject stateHost = null;
+            GameState fixture = null;
+            int count = 0;
+            try
+            {
+                if (prior != null) throw new InvalidOperationException("Populated capture requires an isolated editor scene.");
+                fixture = ScriptableObject.CreateInstance<GameState>();
+                fixture.Army = new DeNelle.Core.State.ArmyStorage();
+                string[] ids = { "militia", "archer", "spearman", "troop-footman" };
+                for (int i = 0; i < ids.Length; i++)
+                    fixture.Army.Owned.Add(new DeNelle.Core.State.PlayerTroop("capture-" + i, ids[i]));
+                stateHost = new GameObject("~RaidHudCaptureState");
+                if (!InstallCaptureState(stateHost.AddComponent<GameStateService>(), fixture))
+                    throw new InvalidOperationException("Could not install isolated army fixture.");
+                foreach (string id in ids)
+                {
+                    var def = TroopCatalog.Find(id);
+                    if (def == null || Resources.Load<Sprite>("RpgUi/troop/" + def.IconId) == null)
+                        throw new InvalidOperationException("Saved troop has no loaded portrait: " + id);
+                }
+                count = CaptureRaidHud() + CaptureRaidDeployHud();
+            }
+            finally
+            {
+                RestoreCaptureState(prior);
+                if (stateHost != null) UnityEngine.Object.DestroyImmediate(stateHost);
+                if (fixture != null) UnityEngine.Object.DestroyImmediate(fixture);
+            }
+            ReportFidelity(); ReportGeometry(); ReportTouchOracle(); ReportGlyphOracle();
+            if (count == LandscapeTargets.Length * 2 && _geoFailures.Count == 0 && _touchFailures.Count == 0 && _glyphFailures.Count == 0)
+                Debug.Log("POPULATED_RAID_HUD_CAPTURE_OK frames=" + count + "; four saved troop IDs load portraits");
+            else Debug.LogError("POPULATED_RAID_HUD_CAPTURE_FAIL frames=" + count + " geometry=" + _geoFailures.Count + " touch=" + _touchFailures.Count);
+        }
+
         private static int CaptureRaidHud()
         {
             return ForEachTarget("RaidHud", CaptureRaidHudOnce);
@@ -7852,12 +8033,13 @@ namespace DeNelle.Editor
                                    // EVERY site that emits the touch marker: one path missing it
                                    // prints marker-absent there, read here as a FAILURE not an unknown.
             const int expected = 36;
-            if (count == expected && _fidelityDegraded == 0 && _geoFailures.Count == 0 && _touchFailures.Count == 0)
+            if (count == expected && _fidelityDegraded == 0 && _geoFailures.Count == 0 &&
+                _touchFailures.Count == 0 && _glyphFailures.Count == 0)
                 Debug.Log("REGISTERED_SECONDARY_CAPTURE_OK 36/36 frames; routes=12; touch=clean");
             else
                 Debug.LogError("REGISTERED_SECONDARY_CAPTURE_FAIL frames=" + count + "/" + expected +
                     " fidelity=" + _fidelityDegraded + " geometry=" + _geoFailures.Count +
-                    " touch=" + _touchFailures.Count);
+                    " touch=" + _touchFailures.Count + " glyph=" + _glyphFailures.Count);
         }
 
         private static int CaptureReflectedSecondary(string shotName, string typeName, string openMethod,
@@ -8334,6 +8516,8 @@ namespace DeNelle.Editor
         {
             return ForEachTarget("ManageQueue" + tab, target =>
             {
+                using var saveIsolation = new ManageCaptureSaveIsolation();
+                using var lastTab = new ManageLastTabPin();
                 GameStateService prior = GameStateService.Instance;
                 BuildTimerService priorQueue = BuildTimerService.Instance;
                 GameObject stateHost = null, queueHost = null, panelHost = null, canvas = null;
@@ -8352,7 +8536,7 @@ namespace DeNelle.Editor
                     };
                     fixture.Wood = fixture.Iron = 100000;
                     var balances = fixture.Resources;
-                    balances.Food = balances.Crystals = balances.Coins = 100000;
+                    balances.Stone = balances.Crystals = balances.Coins = 100000;
                     fixture.Resources = balances;
                     fixture.ObsidianQueue = ObsidianQueueState.Empty();
                     fixture.BuildingTiers["barracks"] = 3;
@@ -8403,6 +8587,7 @@ namespace DeNelle.Editor
             string shotName = ManageOperationalShotName(tab, schoolPerks);
             return ForEachTarget(shotName, target =>
             {
+                using var saveIsolation = new ManageCaptureSaveIsolation();
                 GameStateService prior = GameStateService.Instance;
                 BuildTimerService priorQueue = BuildTimerService.Instance;
                 GameObject stateHost = null;
@@ -8466,7 +8651,7 @@ namespace DeNelle.Editor
                     fixture.Wood = 100000;
                     fixture.Iron = 100000;
                     var balances = fixture.Resources;
-                    balances.Food = 100000;
+                    balances.Stone = 100000;
                     balances.Crystals = 100000;
                     balances.Coins = 100000;
                     fixture.Resources = balances;
@@ -8637,6 +8822,41 @@ namespace DeNelle.Editor
             // "Troop Upgrade:militia - Level 2" (Builds/cap-manage-wave3.log:3739). WO-1564.
             queue.Enqueue(JobKind.TroopUpgrade, ChannelId.Research, "troop-upgrade:troop-footman", 720d, 2);
             queue.Enqueue(JobKind.LearnMagic, ChannelId.Research, "magic:frost-nova", 480d);
+        }
+
+        // Queue seeding uses the real Enqueue -> Save path. A throwaway singleton
+        // does not isolate its IO: keep serialized fixture saves in memory and
+        // prove the previous provider's save slot survived each capture unchanged.
+        private sealed class ManageCaptureSaveIsolation : ISaveProvider, IDisposable
+        {
+            private readonly ISaveProvider _prior = GameStateService.Provider;
+            private readonly Dictionary<string, string> _slots = new Dictionary<string, string>();
+            private readonly bool _hadSave;
+            private readonly string _save;
+            private int _writes;
+
+            public ManageCaptureSaveIsolation()
+            {
+                _hadSave = _prior.Exists(SaveSchema.PlayerPrefsKey);
+                _save = _hadSave ? _prior.Read(SaveSchema.PlayerPrefsKey) : null;
+                GameStateService.Provider = this;
+            }
+
+            public bool Exists(string slot) => _slots.ContainsKey(slot);
+            public string Read(string slot) => _slots.TryGetValue(slot, out string value) ? value : string.Empty;
+            public void Write(string slot, string json) { _slots[slot] = json; _writes++; }
+            public void Delete(string slot) => _slots.Remove(slot);
+
+            public void Dispose()
+            {
+                GameStateService.Provider = _prior;
+                bool unchanged = _prior.Exists(SaveSchema.PlayerPrefsKey) == _hadSave &&
+                    (!_hadSave || string.Equals(_prior.Read(SaveSchema.PlayerPrefsKey), _save, StringComparison.Ordinal));
+                if (!unchanged || _writes == 0)
+                    throw new InvalidOperationException("MANAGE_CAPTURE_SAVE_ISOLATION_FAIL unchanged=" +
+                        unchanged + " fixtureWrites=" + _writes);
+                Debug.Log("MANAGE_CAPTURE_SAVE_ISOLATION_OK fixtureWrites=" + _writes + " originalSlotUnchanged=True");
+            }
         }
 
         private static bool InstallCaptureState(GameStateService service, GameState state)
@@ -8976,7 +9196,10 @@ namespace DeNelle.Editor
         //  chip-present state gets its own shot with its own fixture tier rather than being
         //  smuggled into the frame the owner compares against panel 1.
         private enum ManageFlowFrame
-        { Hub, HubHeart, GridTop, GridBottom, QueueDrawer, ActionDetail, LockedDetail, MaxDetail, SchoolPerks }
+        { Hub, HubHeart, GridTop, GridBottom, QueueDrawer, ActionDetail, LockedDetail, MaxDetail, SchoolPerks,
+          SyntheticOverflowTop, SyntheticOverflowBottom, CategoryTop, CategoryBottom,
+          EmptyQueue, UnaffordableDetail, InProgressDetail, QueueBlockedDetail, MaxTrainableDetail,
+          HeartReady, HeartMissingCrystals, HeartMax, HeartPrerequisite }
 
         /// <summary>One planned shot. The PLAN is the only place the frame set is written down,
         /// and <c>Expected</c> is its Length -- never a constant beside it (CLAUDE.md §2/§5:
@@ -8985,8 +9208,9 @@ namespace DeNelle.Editor
         {
             public readonly DeNelle.Core.Manage.ManageTabId Tab;
             public readonly ManageFlowFrame Frame;
-            public ManageFlowShot(DeNelle.Core.Manage.ManageTabId tab, ManageFlowFrame frame)
-            { Tab = tab; Frame = frame; }
+            public readonly string Category;
+            public ManageFlowShot(DeNelle.Core.Manage.ManageTabId tab, ManageFlowFrame frame, string category = null)
+            { Tab = tab; Frame = frame; Category = category; }
         }
 
         private static string ManageFlowStateWord(ManageFlowFrame frame)
@@ -9001,13 +9225,27 @@ namespace DeNelle.Editor
                 case ManageFlowFrame.ActionDetail: return "action";
                 case ManageFlowFrame.LockedDetail: return "locked";
                 case ManageFlowFrame.MaxDetail: return "max";
+                case ManageFlowFrame.SyntheticOverflowTop: return "synthetic-overflow-top";
+                case ManageFlowFrame.SyntheticOverflowBottom: return "synthetic-overflow-bottom";
+                case ManageFlowFrame.CategoryTop: return "category-top";
+                case ManageFlowFrame.CategoryBottom: return "category-bottom";
+                case ManageFlowFrame.EmptyQueue: return "queue-empty";
+                case ManageFlowFrame.UnaffordableDetail: return "unaffordable";
+                case ManageFlowFrame.InProgressDetail: return "in-progress";
+                case ManageFlowFrame.QueueBlockedDetail: return "queue-blocked";
+                case ManageFlowFrame.MaxTrainableDetail: return "max-trainable";
+                case ManageFlowFrame.HeartReady: return "heart-ready";
+                case ManageFlowFrame.HeartMissingCrystals: return "heart-missing-crystals";
+                case ManageFlowFrame.HeartMax: return "heart-max";
+                case ManageFlowFrame.HeartPrerequisite: return "heart-synthetic-prerequisite";
                 default: return "school";
             }
         }
 
         private static string ManageFlowShotName(ManageFlowShot shot)
         {
-            return "ManageFlow_" + ManageScreenVM.TabWordOf(shot.Tab) + "_" + ManageFlowStateWord(shot.Frame);
+            return "ManageFlow_" + ManageScreenVM.TabWordOf(shot.Tab) + "_" + ManageFlowStateWord(shot.Frame) +
+                (shot.Category == null ? "" : "-" + shot.Category);
         }
 
         /// <summary>
@@ -9026,7 +9264,7 @@ namespace DeNelle.Editor
                 string tab = ManageScreenVM.TabWordOf(plan[i].Tab);
                 if (!states.TryGetValue(tab, out var list))
                 { list = new List<string>(8); states[tab] = list; order.Add(tab); }
-                list.Add(ManageFlowStateWord(plan[i].Frame));
+                list.Add(ManageFlowStateWord(plan[i].Frame) + (plan[i].Category == null ? "" : "-" + plan[i].Category));
             }
             var parts = new List<string>(order.Count);
             for (int i = 0; i < order.Count; i++)
@@ -9096,6 +9334,24 @@ namespace DeNelle.Editor
                     plan.Add(new ManageFlowShot(tabs[t], frames[f]));
                 }
             plan.Add(new ManageFlowShot(DeNelle.Core.Manage.ManageTabId.Research, ManageFlowFrame.SchoolPerks));
+            plan.Add(new ManageFlowShot(DeNelle.Core.Manage.ManageTabId.Build, ManageFlowFrame.SyntheticOverflowTop));
+            plan.Add(new ManageFlowShot(DeNelle.Core.Manage.ManageTabId.Build, ManageFlowFrame.SyntheticOverflowBottom));
+            foreach (string category in BuildFilter.Membership)
+            {
+                plan.Add(new ManageFlowShot(DeNelle.Core.Manage.ManageTabId.Build, ManageFlowFrame.CategoryTop, category));
+                plan.Add(new ManageFlowShot(DeNelle.Core.Manage.ManageTabId.Build, ManageFlowFrame.CategoryBottom, category));
+            }
+            foreach (var tab in tabs)
+            {
+                plan.Add(new ManageFlowShot(tab, ManageFlowFrame.EmptyQueue));
+                plan.Add(new ManageFlowShot(tab, ManageFlowFrame.InProgressDetail));
+                plan.Add(new ManageFlowShot(tab, ManageFlowFrame.QueueBlockedDetail));
+            }
+            plan.Add(new ManageFlowShot(DeNelle.Core.Manage.ManageTabId.Build, ManageFlowFrame.UnaffordableDetail));
+            plan.Add(new ManageFlowShot(DeNelle.Core.Manage.ManageTabId.Army, ManageFlowFrame.MaxTrainableDetail));
+            foreach (var heart in new[] { ManageFlowFrame.HeartReady, ManageFlowFrame.HeartMissingCrystals,
+                ManageFlowFrame.HeartMax, ManageFlowFrame.HeartPrerequisite })
+                plan.Add(new ManageFlowShot(DeNelle.Core.Manage.ManageTabId.Build, heart));
             return plan.ToArray();
         }
 
@@ -9121,9 +9377,11 @@ namespace DeNelle.Editor
         // RenderCanvasToPng, cleared in the body's finally -- never read anywhere else.
         private static ScrollRect _flowGridScroll;
         private static bool _flowGridToBottom;
+        private static bool _flowRequireOverflow;
         private static bool _flowMeasureGrid;
         private static string _flowMeasureTab;
         private static int _flowVmGridTiles;
+        private static int _flowVmVisibleCapacity;
         private static int _flowVmQueueRows;
         private static string _flowQueueChannel;
         private static readonly List<string> _flowInventory = new List<string>();
@@ -9261,6 +9519,16 @@ namespace DeNelle.Editor
                 : ((RectTransform)scroll.transform).rect.height;
             float contentHeightPx = scroll.content.rect.height;
 
+            if (_flowRequireOverflow || contentHeightPx > viewPx + LayoutOracle.ContainSlackPx)
+            {
+                var scrollFindings = LayoutOracle.AuditVerticalScroll(scroll, _flowGridToBottom, _flowRequireOverflow,
+                    out string scrollMeasurement);
+                if (scrollFindings.Count > 0)
+                    throw new InvalidOperationException("MANAGE_SCROLL_FAIL " + label + ": " +
+                        string.Join(" | ", scrollFindings.ConvertAll(f => f.Message).ToArray()));
+                Debug.Log("MANAGE_SCROLL_OK " + label + " synthetic=" + _flowRequireOverflow + " " + scrollMeasurement);
+            }
+
             // A "gridbottom" frame whose grid ALREADY FITS has no bottom to scroll to, so it is the
             // same picture as its "gridtop" sibling BY CONSTRUCTION -- and the mockup's screen 4
             // ("all 9 troops visible, no scrolling") makes that the desired state, not a defect.
@@ -9296,6 +9564,11 @@ namespace DeNelle.Editor
             // Whenever the renderer grows a third shape, add its name HERE - a counter that silently
             // ignores what it cannot name will keep reporting healthy screens as broken.
             int rendered = 0;
+            int fullyVisible = 0;
+            var viewRect = scroll.viewport != null ? scroll.viewport : (RectTransform)scroll.transform;
+            var measureRoot = (RectTransform)scroll.transform;
+            if (!LayoutOracle.TryRectInRoot(viewRect, measureRoot, out Rect visibleBounds))
+                throw new InvalidOperationException("Manage grid viewport is unmeasurable");
             for (int i = 0; i < scroll.content.childCount; i++)
             {
                 var child = scroll.content.GetChild(i) as RectTransform;
@@ -9303,7 +9576,19 @@ namespace DeNelle.Editor
                 if (!string.Equals(child.name, "ManageTile", StringComparison.Ordinal) &&
                     !string.Equals(child.name, "ManageListRow", StringComparison.Ordinal)) continue;
                 rendered++;
+                if (LayoutOracle.TryRectInRoot(child, measureRoot, out Rect childBounds) &&
+                    LayoutOracle.OutsideBy(childBounds, visibleBounds) <= LayoutOracle.ContainSlackPx)
+                    fullyVisible++;
             }
+            int requiredVisible = _flowGridToBottom ? 1 : Mathf.Min(rendered, _flowVmVisibleCapacity);
+            if (rendered != _flowVmGridTiles || fullyVisible < requiredVisible)
+                throw new InvalidOperationException("MANAGE_GRID_CAPACITY_FAIL " + label + " rendered=" + rendered +
+                    " model=" + _flowVmGridTiles + " fullyVisible=" + fullyVisible + " required=" + requiredVisible);
+            if (_flowMeasureTab != null && _flowMeasureTab.StartsWith("BUILD/", StringComparison.Ordinal) &&
+                !_flowRequireOverflow && contentHeightPx > viewPx * 2f + LayoutOracle.ContainSlackPx)
+                throw new InvalidOperationException("BUILD category exceeds one viewport of scrolling: " + label);
+            Debug.Log("MANAGE_GRID_CAPACITY_OK " + label + " rendered=" + rendered +
+                " fullyVisible=" + fullyVisible + " required=" + requiredVisible);
 
             // Rows are DERIVED from the live GridLayoutGroup, never authored here: the model
             // REQUESTS the column count (ManageTabVM.GridColumns) and the renderer sets it on the
@@ -9410,7 +9695,7 @@ namespace DeNelle.Editor
             fixture.Wood = 100000;
             fixture.Iron = 100000;
             var balances = fixture.Resources;
-            balances.Food = 100000;
+            balances.Stone = 100000;
             balances.Crystals = 100000;
             balances.Coins = 100000;
             fixture.Resources = balances;
@@ -9726,9 +10011,13 @@ namespace DeNelle.Editor
             var frame = shot.Frame;
             string state = ManageFlowStateWord(frame);
             string shotName = ManageFlowShotName(shot);
+            if (frame == ManageFlowFrame.HeartReady || frame == ManageFlowFrame.HeartMissingCrystals ||
+                frame == ManageFlowFrame.HeartMax || frame == ManageFlowFrame.HeartPrerequisite)
+                return CaptureManageHeartFrame(shot);
 
             return ForEachTarget(shotName, ManageFlowMapTargets, target =>
             {
+                using var saveIsolation = new ManageCaptureSaveIsolation();
                 GameStateService prior = GameStateService.Instance;
                 BuildTimerService priorQueue = BuildTimerService.Instance;
                 GameObject stateHost = null, queueHost = null, panelHost = null, canvas = null;
@@ -9750,6 +10039,13 @@ namespace DeNelle.Editor
                     HydrateCatalogForCapture();
 
                     fixture = BuildManageFlowFixture(frame);
+                    if (frame == ManageFlowFrame.UnaffordableDetail)
+                    {
+                        fixture.Wood = fixture.Iron = 0;
+                        var bank = fixture.Resources;
+                        bank.Stone = bank.Crystals = bank.Coins = 0;
+                        fixture.Resources = bank;
+                    }
 
                     // Capture-only presentation fixture: production canon tops out at Village Tier
                     // 3 requirements, so temporarily raise one REAL next-tier gate to give the
@@ -9768,7 +10064,17 @@ namespace DeNelle.Editor
                     var queueService = queueHost.AddComponent<BuildTimerService>();
                     if (!InstallCaptureQueue(queueService))
                         throw new InvalidOperationException("BuildTimerService capture seam is unavailable");
-                    SeedManageCaptureQueue(queueService);
+                    bool armyProgressFixture = tab == DeNelle.Core.Manage.ManageTabId.Army &&
+                        frame == ManageFlowFrame.InProgressDetail;
+                    if (frame == ManageFlowFrame.EmptyQueue) GameStateService.Instance.Save();
+                    else if (armyProgressFixture)
+                    {
+                        EnqueueFlowJob(queueService, JobKind.TroopUpgrade, ChannelId.Research,
+                            BarracksService.TroopUpgradePrefix + "troop-archer", 720d, 2);
+                        EnqueueFlowJob(queueService, JobKind.TrainTroop, ChannelId.Train,
+                            BarracksService.TrainPrefix + "troop-footman:capture", 240d, 0);
+                    }
+                    else SeedManageCaptureQueue(queueService);
                     // ⛔ THE ACTIONABLE FRAME GETS A LINE WITH ROOM IN IT, AND THAT IS THE WHOLE
                     // REASON WO-1489's FOURTH SCREEN WAS UNPHOTOGRAPHABLE. SeedManageFlowExtraQueue
                     // exists to sit every channel AT the authored depth cap so the queue drawer
@@ -9813,7 +10119,9 @@ namespace DeNelle.Editor
                     // grid and the one the oracle must be handed.
                     bool armyGridNeedsUpgradableState =
                         tab == DeNelle.Core.Manage.ManageTabId.Army && frame == ManageFlowFrame.GridTop;
-                    if (frame != ManageFlowFrame.ActionDetail && !armyGridNeedsUpgradableState)
+                    if (frame != ManageFlowFrame.ActionDetail && frame != ManageFlowFrame.UnaffordableDetail &&
+                        frame != ManageFlowFrame.EmptyQueue && frame != ManageFlowFrame.MaxTrainableDetail &&
+                        !armyGridNeedsUpgradableState && !armyProgressFixture)
                         SeedManageFlowExtraQueue(queueService);
 
                     panelHost = new GameObject("~UICap" + shotName);
@@ -9877,6 +10185,7 @@ namespace DeNelle.Editor
                         throw new InvalidOperationException(
                             "the model refused tab " + tab + " (it is not available in this fixture) -- " +
                             "this frame cannot be shot honestly");
+                    if (shot.Category != null) vm.SetFilter(shot.Category);
 
                     // ⭐ WO-1661 §4C - THE SEEDING IS ASSERTED, NOT HOPED FOR.
                     // ⛔ WITHOUT THIS THROW THE EXEMPTION ABOVE IS WORSE THAN NOTHING. If the
@@ -9926,15 +10235,21 @@ namespace DeNelle.Editor
                     }
 
                     if (frame == ManageFlowFrame.ActionDetail ||
-                        frame == ManageFlowFrame.LockedDetail || frame == ManageFlowFrame.MaxDetail)
+                        frame == ManageFlowFrame.LockedDetail || frame == ManageFlowFrame.MaxDetail ||
+                        frame == ManageFlowFrame.UnaffordableDetail || frame == ManageFlowFrame.InProgressDetail ||
+                        frame == ManageFlowFrame.QueueBlockedDetail || frame == ManageFlowFrame.MaxTrainableDetail)
                     {
                         // The wanted tile state IS the frame. Available is the actionable one -- the
                         // detail screen that carries a before/after stat pair, a cost row, a time
                         // and the primary verb -- and it is the state the plan could not reach
                         // while every line sat at its depth cap (see the seeding note above).
                         var want =
-                            frame == ManageFlowFrame.ActionDetail
+                            frame == ManageFlowFrame.ActionDetail || frame == ManageFlowFrame.UnaffordableDetail
                                 ? DeNelle.Core.Manage.ManageTileVisualState.Available
+                                : frame == ManageFlowFrame.InProgressDetail
+                                    ? DeNelle.Core.Manage.ManageTileVisualState.InProgress
+                                : frame == ManageFlowFrame.QueueBlockedDetail
+                                    ? DeNelle.Core.Manage.ManageTileVisualState.QueueBlocked
                                 : frame == ManageFlowFrame.LockedDetail
                                     ? DeNelle.Core.Manage.ManageTileVisualState.Locked
                                     : DeNelle.Core.Manage.ManageTileVisualState.Max;
@@ -9951,6 +10266,19 @@ namespace DeNelle.Editor
                                 "depth cap turns every actionable tile QueueBlocked, so this frame is the " +
                                 "one that must NOT be seeded to the cap.)");
                         _flowStateNotes.Add(note);
+                        var selection = ActiveManageTabVm(vm)?.Selection;
+                        if (frame == ManageFlowFrame.UnaffordableDetail)
+                        {
+                            bool missingCost = false;
+                            if (selection?.Costs != null)
+                                foreach (var cost in selection.Costs)
+                                    if (cost != null && !cost.Affordable) missingCost = true;
+                            if (!missingCost || selection.PrimaryAction == null || selection.PrimaryAction.Enabled)
+                                throw new InvalidOperationException("Unaffordable fixture did not produce missing cost and disabled primary action");
+                        }
+                        if (frame == ManageFlowFrame.MaxTrainableDetail &&
+                            (selection?.PrimaryAction == null || !selection.PrimaryAction.Visible || !selection.PrimaryAction.Enabled))
+                            throw new InvalidOperationException("Max-track troop lost its available training action");
                     }
                     else if (frame == ManageFlowFrame.SchoolPerks)
                     {
@@ -9959,11 +10287,16 @@ namespace DeNelle.Editor
                                 "no research school could be opened -- the perks screen cannot be shot honestly");
                         _flowStateNotes.Add(schoolNote);
                     }
-                    else if (frame == ManageFlowFrame.QueueDrawer)
+                    else if (frame == ManageFlowFrame.QueueDrawer || frame == ManageFlowFrame.EmptyQueue)
                     {
                         InvokePrivate(panel, "ToggleQueueDrawer");
+                        if (frame == ManageFlowFrame.EmptyQueue && vm.QueueRows.Count != 0)
+                            throw new InvalidOperationException("Empty queue fixture rendered jobs: " + vm.QueueRows.Count);
                     }
 
+                    bool syntheticOverflow = frame == ManageFlowFrame.SyntheticOverflowTop ||
+                                             frame == ManageFlowFrame.SyntheticOverflowBottom;
+                    int syntheticTileCount = syntheticOverflow ? BindManageOverflowFixture(panel, vm) : 0;
                     Canvas.ForceUpdateCanvases();
                     canvas = GetPrivateFieldValue(panel, "_ui") as GameObject;
                     if (canvas == null) return 0;
@@ -9974,25 +10307,37 @@ namespace DeNelle.Editor
                     // no grid either (FillActiveTab hands it Tiles = empty and a visible Selection).
                     bool frameHasGrid = frame == ManageFlowFrame.GridTop ||
                                         frame == ManageFlowFrame.GridBottom ||
-                                        frame == ManageFlowFrame.SchoolPerks;
+                                        frame == ManageFlowFrame.CategoryTop || frame == ManageFlowFrame.CategoryBottom ||
+                                        frame == ManageFlowFrame.SchoolPerks || syntheticOverflow;
                     _flowGridScroll = frameHasGrid ? FindManageFlowGrid(panel) : null;
-                    _flowGridToBottom = frame == ManageFlowFrame.GridBottom;
+                    _flowGridToBottom = frame == ManageFlowFrame.GridBottom ||
+                                        frame == ManageFlowFrame.CategoryBottom ||
+                                        frame == ManageFlowFrame.SyntheticOverflowBottom;
+                    _flowRequireOverflow = syntheticOverflow;
 
                     // Measure ONCE per tab, on the unscrolled grid-top frame -- AND on the school
                     // perks screen, which is the LONGEST grid in the flow (17 perks over five
                     // ladders in this fixture) and is exactly the "how much data is in Manage"
                     // question this capture exists to answer. Measuring only the tab roots would
                     // have left the deepest screen unmeasured.
-                    if (frame == ManageFlowFrame.GridTop || frame == ManageFlowFrame.SchoolPerks)
+                    if (frame == ManageFlowFrame.GridTop || frame == ManageFlowFrame.CategoryTop ||
+                        frame == ManageFlowFrame.SchoolPerks || syntheticOverflow)
                     {
                         _flowMeasureGrid = true;
                         _flowMeasureTab = frame == ManageFlowFrame.SchoolPerks
                             ? "RESEARCH/school"
                             : ManageScreenVM.TabWordOf(tab);
+                        if (shot.Category != null) _flowMeasureTab += "/" + shot.Category;
                         _flowQueueChannel = ManageFlowChannelName(tab);
                         _flowVmQueueRows = vm.QueueRows.Count;
                         var activeTab = ActiveManageTabVm(vm);
                         _flowVmGridTiles = activeTab != null && activeTab.Tiles != null ? activeTab.Tiles.Count : 0;
+                        _flowVmVisibleCapacity = activeTab != null ? activeTab.GridColumns * activeTab.GridRows : 0;
+                        if (syntheticOverflow)
+                        {
+                            _flowMeasureTab = "BUILD/SYNTHETIC-overflow";
+                            _flowVmGridTiles = syntheticTileCount;
+                        }
                     }
 
                     _settledProbe = ManageFlowRailProbe;
@@ -10009,6 +10354,7 @@ namespace DeNelle.Editor
                     _settledProbe = null;
                     _flowGridScroll = null;
                     _flowGridToBottom = false;
+                    _flowRequireOverflow = false;
                     _flowMeasureGrid = false;
                     if (canvas != null) UnityEngine.Object.DestroyImmediate(canvas);
                     if (panelHost != null) UnityEngine.Object.DestroyImmediate(panelHost);
@@ -10022,6 +10368,115 @@ namespace DeNelle.Editor
                     PanelManager.CloseAll();
                 }
             });
+        }
+
+        private static int CaptureManageHeartFrame(ManageFlowShot shot)
+        {
+            string name = ManageFlowShotName(shot);
+            return ForEachTarget(name, ManageFlowMapTargets, target =>
+            {
+                using var saveIsolation = new ManageCaptureSaveIsolation();
+                var priorState = GameStateService.Instance;
+                var priorEconomy = EconomyService.Instance;
+                GameObject stateHost = null, economyHost = null, panelHost = null, canvas = null;
+                GameState fixture = null;
+                bool synthetic = shot.Frame == ManageFlowFrame.HeartPrerequisite;
+                try
+                {
+                    PanelManager.CloseAll();
+                    fixture = BuildManageFlowFixture(ManageFlowFrame.ActionDetail);
+                    fixture.VillageTier = shot.Frame == ManageFlowFrame.HeartMax ? HeartProgression.MaxLevel : 1;
+                    if (synthetic)
+                    {
+                        var data = new HeartProgressionData { MaxLevel = HeartProgressionCatalog.MaxLevel,
+                            Levels = JsonConvert.DeserializeObject<List<HeartLevelDef>>(
+                                JsonConvert.SerializeObject(HeartProgressionCatalog.Levels)) };
+                        var next = data.Levels.Find(level => level.Level == fixture.VillageTier + 1);
+                        if (next == null) throw new InvalidOperationException("Heart fixture has no next authored level");
+                        next.RequiresBuildings = new List<HeartBuildingRequirement> {
+                            new HeartBuildingRequirement { Id = "barracks", Level = RepoProps.MaxStructureLevel + 1 } };
+                        HeartProgressionCatalog.LoadForTests(JsonConvert.SerializeObject(data));
+                    }
+                    if (shot.Frame == ManageFlowFrame.HeartMissingCrystals)
+                    {
+                        var bank = fixture.Resources;
+                        bank.Crystals = 0;
+                        fixture.Resources = bank;
+                    }
+                    stateHost = new GameObject("~UICapHeartState");
+                    if (!InstallCaptureState(stateHost.AddComponent<GameStateService>(), fixture))
+                        throw new InvalidOperationException("Heart capture state seam unavailable");
+                    economyHost = new GameObject("~UICapHeartEconomy");
+                    InstallCaptureEconomy(economyHost.AddComponent<EconomyService>());
+                    GameStateService.Instance.Save();
+                    var expected = shot.Frame == ManageFlowFrame.HeartMax ? HeartActionState.Max :
+                        synthetic ? HeartActionState.MissingPrerequisite :
+                        shot.Frame == ManageFlowFrame.HeartMissingCrystals ? HeartActionState.MissingCrystals : HeartActionState.Ready;
+                    if (HeartProgression.State != expected)
+                        throw new InvalidOperationException("Heart fixture wanted " + expected + " but composed " + HeartProgression.State);
+                    var bundle = HeartProgression.ResolveBundle(HeartProgression.NextLevel);
+                    if (expected == HeartActionState.Ready && bundle.Unlocks.Count == 0)
+                        throw new InvalidOperationException("Ready Heart fixture has no unlock preview to capture");
+                    panelHost = new GameObject("~UICapHeartPanel");
+                    var panel = panelHost.AddComponent<HeartPanel>();
+                    InvokePrivate(panel, "Awake");
+                    panel.Open();
+                    canvas = GetPrivateFieldValue(panel, "_ui") as GameObject;
+                    _flowStateNotes.Add(name + " state=" + HeartProgression.State + " synthetic=" + synthetic +
+                        " unlockPreviewRows=" + bundle.Unlocks.Count);
+                    return canvas != null && RenderCanvasToPng(canvas, OutDir + name + "_" + target.Tag + ".png",
+                        target.W, target.H) ? 1 : 0;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("[UICap-HL] " + name + " capture threw: " + e);
+                    return 0;
+                }
+                finally
+                {
+                    if (canvas != null) UnityEngine.Object.DestroyImmediate(canvas);
+                    if (panelHost != null) UnityEngine.Object.DestroyImmediate(panelHost);
+                    RestoreCaptureEconomy(priorEconomy);
+                    if (economyHost != null) UnityEngine.Object.DestroyImmediate(economyHost);
+                    RestoreCaptureState(priorState);
+                    if (stateHost != null) UnityEngine.Object.DestroyImmediate(stateHost);
+                    if (fixture != null) UnityEngine.Object.DestroyImmediate(fixture);
+                    if (synthetic) HeartProgressionCatalog.Reload();
+                    PanelManager.CloseAll();
+                }
+            });
+        }
+
+        // WO-2016: category-first BUILD is deliberately small. Aggregate distinct,
+        // genuinely composed catalogue tiles ONLY in this named stress fixture so
+        // the shipped renderer has more than one viewport to scroll. No player route,
+        // invented tile IDs, reduced target sizes or altered catalogue data.
+        private static int BindManageOverflowFixture(ManageScreenPanel panel, ManageScreenVM vm)
+        {
+            var tiles = new List<DeNelle.Core.Manage.ManageTileVM>();
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            DeNelle.Core.Manage.ManageWorkspaceVM workspace = null;
+            foreach (string category in DeNelle.Core.Catalog.BuildFilter.Membership)
+            {
+                vm.SetFilter(category);
+                workspace = vm.ComposeWorkspace();
+                var tab = workspace != null ? workspace.ActiveTab : null;
+                if (tab == null || tab.Tiles == null)
+                    throw new InvalidOperationException("Synthetic overflow: category has no projection: " + category);
+                foreach (var tile in tab.Tiles)
+                    if (tile != null && ids.Add(tile.Id)) tiles.Add(tile);
+            }
+            var active = workspace != null ? workspace.ActiveTab : null;
+            if (active == null || tiles.Count <= active.GridColumns * active.GridRows)
+                throw new InvalidOperationException("Synthetic overflow fixture has insufficient real inventory; " +
+                    "the scroll contract cannot be proved from a fitting grid.");
+            active.Tiles = tiles;
+            var renderer = GetPrivateFieldValue(panel, "_workspace") as DeNelle.Core.Manage.ManageWorkspacePanel;
+            if (renderer == null) throw new InvalidOperationException("Synthetic overflow: no production renderer");
+            renderer.Bind(workspace);
+            Debug.Log("MANAGE_SCROLL_FIXTURE synthetic=True tiles=" + tiles.Count + " columns=" +
+                active.GridColumns + " capacityRows=" + active.GridRows + " ids=" + string.Join(",", ids));
+            return tiles.Count;
         }
 
         private static void InstallCaptureVillageInventory(VillageInventory inventory)

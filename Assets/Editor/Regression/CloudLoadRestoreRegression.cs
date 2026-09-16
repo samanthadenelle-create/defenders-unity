@@ -189,8 +189,8 @@ namespace DeNelle.Editor.Regression
                              "in-flight timed work must survive a device change");
 
             // ...and the currencies still flow, through the SAME path rather than a copy list.
-            if (st.Resources.Crystals != 777 || st.Resources.Food != 42)
-                failures.Add($"[A] cloud load lost the row's resources (crystals={st.Resources.Crystals}, food={st.Resources.Food}; expected 777/42) - " +
+            if (st.Resources.Crystals != 777 || st.Resources.Stone != 42)
+                failures.Add($"[A] cloud load lost the row's resources (crystals={st.Resources.Crystals}, food={st.Resources.Stone}; expected 777/42) - " +
                              "the currency fields must ride ApplyPersisted like every other field, not a bespoke block");
             if (st.BestWave != 19)
                 failures.Add($"[A] cloud load lost bestWave (got {st.BestWave}, expected 19)");
@@ -213,7 +213,7 @@ namespace DeNelle.Editor.Regression
             st.BoundWallet = LocalWallet;
             var spent = st.Resources;
             spent.Crystals = 5;      // the player just SPENT down to 5
-            spent.Food = 3;
+            spent.Stone = 3;
             st.Resources = spent;
             st.BaseLayout = new List<PlacedStructureData>
             {
@@ -231,8 +231,8 @@ namespace DeNelle.Editor.Regression
                 failures.Add($"[B] an OLDER server row was not skipped (outcome={outcome}) - every scene enter would " +
                              "hand the player back resources they already spent");
 
-            if (st.Resources.Crystals != 5 || st.Resources.Food != 3)
-                failures.Add($"[B] a stale server row OVERWROTE local resources (crystals={st.Resources.Crystals}, food={st.Resources.Food}; " +
+            if (st.Resources.Crystals != 5 || st.Resources.Stone != 3)
+                failures.Add($"[B] a stale server row OVERWROTE local resources (crystals={st.Resources.Crystals}, food={st.Resources.Stone}; " +
                              "expected the local 5/3) - WO-1448: newer wins, and nothing is applied when local is newer");
             if (st.BaseLayout == null || st.BaseLayout.Count != 1 || st.BaseLayout[0].itemId != "barracks")
                 failures.Add("[B] a stale server row overwrote the local town layout - a skip must apply NOTHING, not 'everything but resources'");
@@ -305,7 +305,7 @@ namespace DeNelle.Editor.Regression
                 DurationMs = 60000d,
             });
 
-            var resources = new ResourceBalance { Crystals = 777, Food = 42, Coins = 9 };
+            var resources = new ResourceBalance { Crystals = 777, Stone = 42, Coins = 9 };
 
             return new SaveSchema.PersistedState
             {

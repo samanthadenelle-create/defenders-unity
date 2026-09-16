@@ -84,7 +84,7 @@ namespace DeNelle.Village
             // is Stone. The town strip converted; THIS surface did not, and shipped "F 130" to a
             // live build. Same "one fact written twice" class as the WO number block and the
             // assembly table - the conversion was applied per-surface instead of at one seam.
-            int stone    = _economy != null ? _economy.Food : 0;
+            int stone    = _economy != null ? _economy.Stone : 0;
             int crystals = _economy != null ? _economy.Crystals : 0;
             int gold     = _economy != null ? _economy.Coins : 0;
 

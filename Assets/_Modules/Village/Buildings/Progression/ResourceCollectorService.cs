@@ -48,9 +48,9 @@ namespace DeNelle.Village.Buildings.Progression
         }
 
         /// <summary>The HUD rail's fixed order (HudKitController names[] = Wood, Iron, Stone, Crystals;
-        /// HarvestResource.Food IS the Stone slot). Every per-resource surface lists in this order.</summary>
+        /// HarvestResource.Stone IS the Stone slot). Every per-resource surface lists in this order.</summary>
         public static readonly HarvestResource[] RailOrder =
-            { HarvestResource.Wood, HarvestResource.Iron, HarvestResource.Food, HarvestResource.Crystals };
+            { HarvestResource.Wood, HarvestResource.Iron, HarvestResource.Stone, HarvestResource.Crystals };
 
         /// <summary>
         /// THE ONE PRODUCER (WO-1392). What every live collector is holding, grouped by resource, in
@@ -113,7 +113,7 @@ namespace DeNelle.Village.Buildings.Progression
             {
                 case HarvestResource.Wood:     return BankResource.Wood;
                 case HarvestResource.Iron:     return BankResource.Iron;
-                case HarvestResource.Food:     return BankResource.Food;
+                case HarvestResource.Stone:     return BankResource.Stone;
                 default:                       return BankResource.Crystals;
             }
         }

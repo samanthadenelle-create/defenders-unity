@@ -1696,7 +1696,7 @@ namespace DeNelle.Village
             // is exactly how a removed label comes back six months later.
             return CostFormat.Parts(new[]
             {
-                ("wood", "Wood", c.wood), ("stone", "Stone", c.food),
+                ("wood", "Wood", c.wood), ("stone", "Stone", c.stone),
                 ("iron", "Iron", c.iron), ("crystal", "Crystals", c.crystals)
             });
         }

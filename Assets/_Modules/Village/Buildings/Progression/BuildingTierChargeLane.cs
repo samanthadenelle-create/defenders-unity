@@ -12,7 +12,7 @@
 // TIER NUMBER. Measured at source 2026-09-06:
 //
 //     tier 1  -> HarvestResource.Wood
-//     tier 2  -> HarvestResource.Food    // the persisted slot the player sees as STONE
+//     tier 2  -> HarvestResource.Stone    // the persisted slot the player sees as STONE
 //     tier 3+ -> HarvestResource.Iron
 //
 // So EVERY ladder's tier 2 is a STONE cost whatever its JSON says, and the Cathedral
@@ -22,8 +22,8 @@
 // wrong** — crystals are the scarce currency and re-pointing this ladder at them
 // would price the Cathedral out of reach. Do NOT "fix" the code to charge crystals.
 //
-// ⚠ HarvestResource.Food IS THE STONE WALLET. The enum member is a frozen persisted
-// name (ResourceBuildingProgression.cs:45, GameState.Resources.Food); WO-1416 retired
+// ⚠ HarvestResource.Stone IS THE STONE WALLET. The enum member is a frozen persisted
+// name (ResourceBuildingProgression.cs:45, GameState.Resources.Stone); WO-1416 retired
 // FOOD as a resource and the Quarry now pays STONE into that same slot. Renaming the
 // member would orphan every save. Read ResourceBuildingProgression.LabelFor for the
 // player-facing word — never hardcode "Food".
@@ -59,7 +59,7 @@ namespace DeNelle.Village.Buildings.Progression
         public static HarvestResource For(int tier)
         {
             if (tier <= 1) return HarvestResource.Wood;
-            if (tier == 2) return HarvestResource.Food;
+            if (tier == 2) return HarvestResource.Stone;
             return HarvestResource.Iron;
         }
 

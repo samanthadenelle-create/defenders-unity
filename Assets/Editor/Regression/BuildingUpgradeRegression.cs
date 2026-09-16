@@ -303,7 +303,7 @@ namespace DeNelle.Editor
                 DeNelle.Core.State.ModifierService.SetOverride(new DeNelle.Core.State.GameModifiers
                 {
                     WoodProductionMult     = 1.31f,
-                    FoodProductionMult     = 1.37f,
+                    StoneProductionMult     = 1.37f,
                     ResourceEfficiencyMult = 1.43f,
                 });
 
@@ -883,7 +883,7 @@ namespace DeNelle.Editor
             // and only final-Echo crystals pay exactly 1/15m at every level.
             if (Mathf.Abs(EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Wood, 1) - 3600f) > 0.01f ||
                 Mathf.Abs(EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Iron, 1) - 3600f) > 0.01f ||
-                Mathf.Abs(EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Food, 1) - 3600f) > 0.01f)
+                Mathf.Abs(EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Stone, 1) - 3600f) > 0.01f)
                 failures.Add("[echo-scaling] Wood/Iron/Food must each produce 3600/hour (5 every 5 seconds) at level 1");
             if (Mathf.Abs(EchoBonusCalculator.HarvestRatePerHour(HarvestTarget.Gold, 1) - 900f) > 0.01f)
                 failures.Add("[echo-scaling] Gold must remain slower than common materials (900/hour)");

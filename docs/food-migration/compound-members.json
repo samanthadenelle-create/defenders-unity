@@ -1,0 +1,230 @@
+[
+  {
+    "path": "Assets\\_Modules\\HUD\\DailyQuestVM.cs",
+    "line": 262,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Hero\\AccessoryDef.cs",
+    "line": 63,
+    "from": "buyFood",
+    "to": "buyStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Hero\\GearCatalog.cs",
+    "line": 130,
+    "from": "buyFood",
+    "to": "buyStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Hero\\GearCatalog.cs",
+    "line": 282,
+    "from": "buyFood",
+    "to": "buyStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Hero\\RumorBoardVM.cs",
+    "line": 448,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Hero\\RumorBoardVM.cs",
+    "line": 449,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Hero\\RumorBoardVM.cs",
+    "line": 449,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Quests\\DailyQuestRewardBridge.cs",
+    "line": 229,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Quests\\DailyQuestRewardBridge.cs",
+    "line": 236,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Quests\\DailyQuestRewardBridge.cs",
+    "line": 239,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Quests\\DailyQuestRewardBridge.cs",
+    "line": 244,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Quests\\DailyQuestRewardBridge.cs",
+    "line": 247,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Quests\\DailyQuestRewardBridge.cs",
+    "line": 252,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Walls\\WallRepairController.cs",
+    "line": 679,
+    "from": "perFood",
+    "to": "perStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Walls\\WallRepairController.cs",
+    "line": 728,
+    "from": "perFood",
+    "to": "perStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Walls\\WallRepairController.cs",
+    "line": 732,
+    "from": "perFood",
+    "to": "perStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\Waves\\DefenseReportBuilder.cs",
+    "line": 71,
+    "from": "RepairFood",
+    "to": "RepairStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\UI\\Defense\\DefenseReportPanel.cs",
+    "line": 709,
+    "from": "RepairFood",
+    "to": "RepairStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Village\\UI\\Defense\\DefenseReportPanel.cs",
+    "line": 709,
+    "from": "RepairFood",
+    "to": "RepairStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\Catalog\\RepoProps.cs",
+    "line": 57,
+    "from": "perFood",
+    "to": "perStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\Catalog\\RepoProps.cs",
+    "line": 61,
+    "from": "perFood",
+    "to": "perStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\Defense\\DefenseReport.cs",
+    "line": 314,
+    "from": "RepairFood",
+    "to": "RepairStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\Quests\\DailyQuests.cs",
+    "line": 52,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\State\\GameModifiers.cs",
+    "line": 44,
+    "from": "FoodProductionMult",
+    "to": "StoneProductionMult"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\State\\GameModifiers.cs",
+    "line": 134,
+    "from": "FoodProductionMult",
+    "to": "StoneProductionMult"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\State\\GameModifiers.cs",
+    "line": 134,
+    "from": "FoodProductionMult",
+    "to": "StoneProductionMult"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\State\\ModifierService.cs",
+    "line": 64,
+    "from": "FoodProductionMult",
+    "to": "StoneProductionMult"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\State\\ModifierService.cs",
+    "line": 122,
+    "from": "FoodProductionMult",
+    "to": "StoneProductionMult"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\State\\ModifierService.cs",
+    "line": 210,
+    "from": "FoodProductionMult",
+    "to": "StoneProductionMult"
+  },
+  {
+    "path": "Assets\\_Modules\\Core\\State\\ModifierService.cs",
+    "line": 210,
+    "from": "FoodProductionMult",
+    "to": "StoneProductionMult"
+  },
+  {
+    "path": "Assets\\Tests\\EditMode\\RumorBoardVMTests.cs",
+    "line": 267,
+    "from": "RewardFood",
+    "to": "RewardStone"
+  },
+  {
+    "path": "Assets\\Editor\\Catalog\\GearCatalogGenerator.cs",
+    "line": 19,
+    "from": "buyFood",
+    "to": "buyStone"
+  },
+  {
+    "path": "Assets\\Editor\\Regression\\BuildingUpgradeRegression.cs",
+    "line": 306,
+    "from": "FoodProductionMult",
+    "to": "StoneProductionMult"
+  },
+  {
+    "path": "Assets\\Editor\\Regression\\DefenseReportContractRegression.cs",
+    "line": 146,
+    "from": "RepairFood",
+    "to": "RepairStone"
+  },
+  {
+    "path": "Assets\\Editor\\Regression\\DefenseReportContractRegression.cs",
+    "line": 217,
+    "from": "RepairFood",
+    "to": "RepairStone"
+  },
+  {
+    "path": "Assets\\Editor\\Regression\\DefenseReportContractRegression.cs",
+    "line": 217,
+    "from": "RepairFood",
+    "to": "RepairStone"
+  },
+  {
+    "path": "Assets\\Data\\Tests\\GearCatalogTest.cs",
+    "line": 89,
+    "from": "buyFood",
+    "to": "buyStone"
+  },
+  {
+    "path": "Assets\\Data\\Tests\\GearCatalogTest.cs",
+    "line": 97,
+    "from": "buyFood",
+    "to": "buyStone"
+  }
+]

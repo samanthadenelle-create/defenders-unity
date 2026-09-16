@@ -5216,16 +5216,16 @@ namespace DeNelle.DevTools
             }
 
             // Snapshot BEFORE.
-            int wBefore = eco.Wood, iBefore = eco.Iron, fBefore = eco.Food, cBefore = eco.Crystals;
+            int wBefore = eco.Wood, iBefore = eco.Iron, fBefore = eco.Stone, cBefore = eco.Crystals;
             int invBefore = inv.Get(buyId);
-            FlowTrace.Step("Auto", $"AssertEconomyDeduct: buying '{buyId}' ({buyKind}) cost W{cost.Wood} F{cost.Food} I{cost.Iron} C{cost.Crystals} " +
+            FlowTrace.Step("Auto", $"AssertEconomyDeduct: buying '{buyId}' ({buyKind}) cost W{cost.Wood} F{cost.Stone} I{cost.Iron} C{cost.Crystals} " +
                 $"(wallet before W{wBefore} F{fBefore} I{iBefore} C{cBefore}, inv {invBefore}).");
 
             // Perform the buy via the lower-level invariant the private handlers run.
             bool spent = eco.TrySpend(cost);
             if (spent && inv != null) inv.Add(buyId, 1);
 
-            int wAfter = eco.Wood, iAfter = eco.Iron, fAfter = eco.Food, cAfter = eco.Crystals;
+            int wAfter = eco.Wood, iAfter = eco.Iron, fAfter = eco.Stone, cAfter = eco.Crystals;
             int invAfter = inv.Get(buyId);
 
             // ASSERT: spend succeeded, resources dropped by EXACTLY the cost, inventory +1.
@@ -5237,14 +5237,14 @@ namespace DeNelle.DevTools
             {
                 bool deductExact = (wBefore - wAfter) == cost.Wood
                                 && (iBefore - iAfter) == cost.Iron
-                                && (fBefore - fAfter) == cost.Food
+                                && (fBefore - fAfter) == cost.Stone
                                 && (cBefore - cAfter) == cost.Crystals;
                 if (!deductExact)
                 {
                     ok = false;
                     FlowTrace.Fail("Auto", $"AssertEconomyDeduct: economy did not deduct by the exact cost — " +
                         $"deltas W{wBefore - wAfter}/F{fBefore - fAfter}/I{iBefore - iAfter}/C{cBefore - cAfter} " +
-                        $"vs cost W{cost.Wood}/F{cost.Food}/I{cost.Iron}/C{cost.Crystals}.");
+                        $"vs cost W{cost.Wood}/F{cost.Stone}/I{cost.Iron}/C{cost.Crystals}.");
                 }
                 if (invAfter != invBefore + 1)
                 {

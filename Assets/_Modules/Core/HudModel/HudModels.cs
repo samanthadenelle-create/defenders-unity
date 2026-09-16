@@ -115,8 +115,8 @@ namespace DeNelle.Core.HudModel
         public int Wood { get; private set; }
         /// <summary>Iron balance.</summary>
         public int Iron { get; private set; }
-        /// <summary>Food balance.</summary>
-        public int Food { get; private set; }
+        /// <summary>Stone balance.</summary>
+        [Newtonsoft.Json.JsonProperty("Food")] public int Stone { get; private set; }
         /// <summary>Crystals balance.</summary>
         public int Crystals { get; private set; }
 
@@ -129,10 +129,10 @@ namespace DeNelle.Core.HudModel
             Gold = gold;
             Wood = wood;
             Iron = iron;
-            Food = food;
+            Stone = food;
             Crystals = crystals;
             Changed?.Invoke();
-            FlowTrace.Throttle("HUD", "economy", 1f, $"G{Gold} W{Wood} I{Iron} F{Food} C{Crystals}");
+            FlowTrace.Throttle("HUD", "economy", 1f, $"G{Gold} W{Wood} I{Iron} F{Stone} C{Crystals}");
         }
     }
 

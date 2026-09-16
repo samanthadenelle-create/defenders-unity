@@ -147,7 +147,7 @@ namespace DeNelle.Core.Tests
             Assert.That(_state.Onboarded, Is.False, "onboarded wiped");
             Assert.That(_state.BestWave, Is.EqualTo(0), "bestWave wiped");
             Assert.That(_state.Resources.Crystals, Is.EqualTo(250), "resources -> STARTER");
-            Assert.That(_state.Resources.Food, Is.EqualTo(80));
+            Assert.That(_state.Resources.Stone, Is.EqualTo(80));
             Assert.That(_state.Resources.Coins, Is.EqualTo(StartingBudget.StrategicGold),
                 "gold -> owner-ruled founding seed");
             Assert.That(_state.OwnedItemIds, Is.Empty, "ownedItemIds wiped");
@@ -159,7 +159,7 @@ namespace DeNelle.Core.Tests
                 Is.EqualTo(new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 0 }), "towerAbilities -> [0]x9");
             Assert.That(_state.WallLevel, Is.EqualTo(0), "wallLevel -> 0");
             // WO-1212: the retired GameState.Stone field is gone. The live Stone the player
-            // sees is Resources.Food, pinned at the STARTER 80 a few lines above - and it must
+            // sees is Resources.Stone, pinned at the STARTER 80 a few lines above - and it must
             // stay 80: the invisible seed was DISCARDED, never folded in.
             // WO-682: strategic placement is always on — New Game seeds the core-kit
             // budget (StartingBudget constants), not the legacy 5 iron / 15 wood.

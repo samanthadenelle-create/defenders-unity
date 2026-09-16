@@ -729,7 +729,7 @@ namespace DeNelle.Core.UI
         /// <summary>Game soft-currency kinds shown on chips. NESTED inside the kit (deviation from
         /// the doc's namespace-level enum: DeNelle.Wallet.CurrencyKind already exists and 16 files
         /// import both namespaces — a namespace-level twin would ambiguate every one of them).</summary>
-        public enum CurrencyKind { Gold, Crystal, Wood, Iron, Food, Wisdom }
+        public enum CurrencyKind { Gold = 0, Crystal = 1, Wood = 2, Iron = 3, [System.Runtime.Serialization.EnumMember(Value = "Food")] Stone = 4, Wisdom = 5 }
 
         /// <summary>
         /// ⭐ THE ONE TRANSLATOR from a chip's <see cref="CurrencyKind"/> to the concept id that
@@ -760,7 +760,7 @@ namespace DeNelle.Core.UI
                 case CurrencyKind.Wood:    return "wood";
                 case CurrencyKind.Iron:    return "iron";
                 // ⛔ NOT "food". Canon §7: Food was retired for Stone; this enum slot IS Stone.
-                case CurrencyKind.Food:    return "stone";
+                case CurrencyKind.Stone:    return "stone";
                 case CurrencyKind.Wisdom:  return "wisdom";
                 default:                   return kind.ToString().ToLowerInvariant();
             }
@@ -904,7 +904,7 @@ namespace DeNelle.Core.UI
             icon.preserveAspect = true;
             icon.raycastTarget = false;
             // WO-1195: the concept id comes from ConceptIdFor, NEVER from the enum's own name -
-            // CurrencyKind.Food is the STONE slot (canon §7) and asking for "food" here is what
+            // CurrencyKind.Stone is the STONE slot (canon §7) and asking for "food" here is what
             // put the agribusiness logo on the town rail's Stone row.
             string conceptId = ConceptIdFor(kind);
             var iconSprite = UiStyle.Icon(conceptId);

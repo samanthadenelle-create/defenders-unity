@@ -53,12 +53,12 @@ namespace DeNelle.HUD
         public readonly struct RewardInfo
         {
             public readonly int Crystals;
-            public readonly int Food;
+            [Newtonsoft.Json.JsonProperty("Food")] public readonly int Stone;
             public readonly int Wisdom;
             public readonly bool RandomItem;
             public RewardInfo(int crystals, int food, int wisdom, bool randomItem)
             {
-                Crystals = crystals; Food = food;
+                Crystals = crystals; Stone = food;
                 Wisdom = wisdom; RandomItem = randomItem;
             }
         }
@@ -259,7 +259,7 @@ namespace DeNelle.HUD
         {
             var r = _source?.RewardForSlot(slot);
             if (r == null) return default;
-            return new RewardInfo(r.RewardCrystals, r.RewardFood, r.RewardWisdom, r.RewardRandomItem);
+            return new RewardInfo(r.RewardCrystals, r.RewardStone, r.RewardWisdom, r.RewardRandomItem);
         }
 
         private bool Contains(string id)

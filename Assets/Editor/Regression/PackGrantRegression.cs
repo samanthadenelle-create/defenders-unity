@@ -122,7 +122,7 @@ namespace DeNelle.Editor
 
                 // Snapshot before.
                 var resBefore = throwaway.Resources;
-                int crystalsBefore = resBefore.Crystals, foodBefore = resBefore.Food, coinsBefore = resBefore.Coins;
+                int crystalsBefore = resBefore.Crystals, foodBefore = resBefore.Stone, coinsBefore = resBefore.Coins;
 
                 // Build the VM against the live (throwaway) state and APPLY the pack.
                 var vm = vmType.GetMethod("CreateDefault", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
@@ -134,7 +134,7 @@ namespace DeNelle.Editor
                 // Snapshot after + assert every advertised delta.
                 var resAfter = throwaway.Resources;
                 int crystalsDelta = resAfter.Crystals - crystalsBefore;
-                int foodDelta = resAfter.Food - foodBefore;
+                int foodDelta = resAfter.Stone - foodBefore;
                 int coinsDelta = resAfter.Coins - coinsBefore;
                 log.AppendLine($"  granted deltas: crystals=+{crystalsDelta} food=+{foodDelta} coins=+{coinsDelta}");
 
@@ -279,7 +279,7 @@ namespace DeNelle.Editor
                 if (Math.Abs(resolvedSeconds - expectedSeconds) > 0.5)
                     failures.Add(TempTag + $" PackTemporaryBuilderSeconds() resolves {resolvedSeconds:F0}s, not the shipping 6 h ({expectedSeconds:F0}s) - the knob and BuildTimerConfig.packTemporaryBuilderSeconds disagree, or a tunable row leaked into the oracle");
 
-                int woodBefore = throwaway.Wood, ironBefore = throwaway.Iron, stoneBefore = throwaway.Resources.Food;
+                int woodBefore = throwaway.Wood, ironBefore = throwaway.Iron, stoneBefore = throwaway.Resources.Stone;
                 int slotsBefore = svc.SlotCount(ChannelId.Builder);
                 if (svc.IsTemporaryBuilderActive)
                     failures.Add(TempTag + " [fixture] a fresh throwaway state already reports an active temporary builder");
@@ -288,7 +288,7 @@ namespace DeNelle.Editor
                 applyM.Invoke(vm, new[] { pack });
                 int woodDelta = throwaway.Wood - woodBefore;
                 int ironDelta = throwaway.Iron - ironBefore;
-                int stoneDelta = throwaway.Resources.Food - stoneBefore;
+                int stoneDelta = throwaway.Resources.Stone - stoneBefore;
                 bool active1 = svc.IsTemporaryBuilderActive;
                 double remaining1 = svc.TemporaryBuilderSecondsRemaining();
                 int slots1 = svc.SlotCount(ChannelId.Builder);
@@ -298,7 +298,7 @@ namespace DeNelle.Editor
 
                 if (woodDelta != expWood) failures.Add(TempTag + $" Wood delta {woodDelta} != advertised {expWood}");
                 if (ironDelta != expIron) failures.Add(TempTag + $" Iron delta {ironDelta} != advertised {expIron}");
-                if (stoneDelta != expStone) failures.Add(TempTag + $" Stone (Resources.Food) delta {stoneDelta} != advertised {expStone}");
+                if (stoneDelta != expStone) failures.Add(TempTag + $" Stone (Resources.Stone) delta {stoneDelta} != advertised {expStone}");
                 if (!active1)
                     failures.Add(TempTag + " no temporary Builder window is running after the first buy - the '" + TempKind +
                                  "' token was NOT redeemed (mutation a: KindTemporaryBuilder routed nowhere / OnConvenienceTokensGranted not invoked)");

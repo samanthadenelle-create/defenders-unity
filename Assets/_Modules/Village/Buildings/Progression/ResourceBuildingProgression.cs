@@ -15,7 +15,7 @@
 //     of scope for THIS pass which is the per-building upgrade loop).
 //   * Those map onto EXISTING GameState fields — no new currency invented:
 //       Crystals -> GameState.Resources.Crystals
-//       Food     -> GameState.Resources.Food
+//       Food     -> GameState.Resources.Stone
 //       Wood     -> GameState.Wood
 //       Iron     -> GameState.Iron
 //     The ResourceLedger helper below is the single read/spend surface over
@@ -46,12 +46,25 @@ namespace DeNelle.Village.Buildings.Progression
     {
         /// <summary>Crystals — GameState.Resources.Crystals.</summary>
         Crystals = 0,
-        /// <summary>Food — GameState.Resources.Food.</summary>
-        Food = 1,
+        /// <summary>Food — GameState.Resources.Stone.</summary>
+        [System.Runtime.Serialization.EnumMember(Value = "Food")]
+        Stone = 1,
         /// <summary>Wood — GameState.Wood.</summary>
         Wood = 2,
         /// <summary>Iron — GameState.Iron.</summary>
         Iron = 3,
+    }
+
+    public static class HarvestResourceNames
+    {
+        public static bool TryParse(string word, out HarvestResource resource)
+        {
+            string normalized = (word ?? string.Empty).Trim();
+            if (string.Equals(normalized, "food", System.StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "grain", System.StringComparison.OrdinalIgnoreCase))
+                normalized = "Stone";
+            return System.Enum.TryParse(normalized, true, out resource);
+        }
     }
 
     /// <summary>A single resource cost line — <paramref name="Amount"/> of a resource.</summary>
@@ -289,15 +302,15 @@ namespace DeNelle.Village.Buildings.Progression
             // other harvestables to grow its output). 5 levels.
             // STOP - WO-1416, owner ruling 2026-09-05: "quarry pays stone" / "the farm was
             // retired nothiong uses food, was replaced by stone which actually has uses".
-            // The building id stays "farm" and the enum member stays HarvestResource.Food
+            // The building id stays "farm" and the enum member stays HarvestResource.Stone
             // because BOTH are live persisted keys (PlayerPrefs level keys, the catalog's
-            // repo.collectorBuildingId, GameState.Resources.Food). Food IS the Stone wallet
+            // repo.collectorBuildingId, GameState.Resources.Stone). Food IS the Stone wallet
             // slot - LabelFor is the one place that turns it into the player's word.
             // WO-855 Phase 5: yield 20/+12 -> 13/+4 and baseCost 85 -> 130. See the
             // HarvestIntervalByLevel note: the faucet, not the sinks, was the runaway.
             // Per-hour at x1 echo / no perks: L1 936, L3 2,160, L5 5,220 stone.
             dict[FarmId] = MakeBuilding(
-                FarmId, "Quarry", HarvestResource.Food,
+                FarmId, "Quarry", HarvestResource.Stone,
                 baseYield: 13, yieldStep: 4,
                 costResources: new[] { HarvestResource.Wood, HarvestResource.Crystals },
                 baseCost: 130, costStep: 1.9f);
@@ -308,7 +321,7 @@ namespace DeNelle.Village.Buildings.Progression
             dict[LumbermillId] = MakeBuilding(
                 LumbermillId, "Lumbermill", HarvestResource.Wood,
                 baseYield: 10, yieldStep: 3,
-                costResources: new[] { HarvestResource.Food, HarvestResource.Crystals },
+                costResources: new[] { HarvestResource.Stone, HarvestResource.Crystals },
                 baseCost: 125, costStep: 1.9f);
 
             // Forge — produces Iron. Upgraded with Wood + Crystals. 5 harvestable
@@ -490,7 +503,7 @@ namespace DeNelle.Village.Buildings.Progression
         {
             HarvestResource.Crystals => "Crystals",
             // The persisted Food enum/value is the frozen Stone wallet slot.
-            HarvestResource.Food => "Stone",
+            HarvestResource.Stone => "Stone",
             HarvestResource.Wood => "Wood",
             HarvestResource.Iron => "Iron",
             _ => r.ToString(),
@@ -527,7 +540,7 @@ namespace DeNelle.Village.Buildings.Progression
             return r switch
             {
                 HarvestResource.Crystals => s.Resources.Crystals,
-                HarvestResource.Food => s.Resources.Food,
+                HarvestResource.Stone => s.Resources.Stone,
                 HarvestResource.Wood => s.Wood,
                 HarvestResource.Iron => s.Iron,
                 _ => 0,
@@ -574,7 +587,7 @@ namespace DeNelle.Village.Buildings.Progression
                 switch (c.Resource)
                 {
                     case HarvestResource.Crystals: bal.Crystals -= c.Amount; break;
-                    case HarvestResource.Food: bal.Food -= c.Amount; break;
+                    case HarvestResource.Stone: bal.Stone -= c.Amount; break;
                     case HarvestResource.Wood: s.Wood -= c.Amount; break;
                     case HarvestResource.Iron: s.Iron -= c.Amount; break;
                 }
@@ -613,7 +626,7 @@ namespace DeNelle.Village.Buildings.Progression
                     switch (c.Resource)
                     {
                         case HarvestResource.Crystals: bal.Crystals -= c.Amount; break;
-                        case HarvestResource.Food: bal.Food -= c.Amount; break;
+                        case HarvestResource.Stone: bal.Stone -= c.Amount; break;
                         case HarvestResource.Wood: s.Wood -= c.Amount; break;
                         case HarvestResource.Iron: s.Iron -= c.Amount; break;
                     }
@@ -662,9 +675,9 @@ namespace DeNelle.Village.Buildings.Progression
                 {
                     var bal = s.Resources; bal.Crystals += amount; s.Resources = bal; break;
                 }
-                case HarvestResource.Food:
+                case HarvestResource.Stone:
                 {
-                    var bal = s.Resources; bal.Food += amount; s.Resources = bal; break;
+                    var bal = s.Resources; bal.Stone += amount; s.Resources = bal; break;
                 }
                 case HarvestResource.Wood: s.Wood += amount; break;
                 case HarvestResource.Iron: s.Iron += amount; break;

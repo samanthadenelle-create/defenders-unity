@@ -292,14 +292,14 @@ namespace DeNelle.Village.Items
         private static IReadOnlyList<CostPart> BuildCostChips(JewelerRecipeCost cost)
         {
             if (cost == null) return Array.Empty<CostPart>();
-            return CostFormat.Parts(new[] { ("wood", "Wood", cost.Wood), ("stone", "Stone", cost.Food), ("iron", "Iron", cost.Iron), ("crystal", "Crystals", cost.Crystals) });
+            return CostFormat.Parts(new[] { ("wood", "Wood", cost.Wood), ("stone", "Stone", cost.Stone), ("iron", "Iron", cost.Iron), ("crystal", "Crystals", cost.Crystals) });
         }
 
         /// <summary>"Iron 60, Crystals 10" — only the non-zero wallet costs; "" when free.</summary>
         private static string CostLabel(JewelerRecipeCost cost)
         {
             if (cost == null) return "";
-            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", cost.Wood), ("stone", "Stone", cost.Food), ("iron", "Iron", cost.Iron), ("crystal", "Crystals", cost.Crystals) });
+            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", cost.Wood), ("stone", "Stone", cost.Stone), ("iron", "Iron", cost.Iron), ("crystal", "Crystals", cost.Crystals) });
             return DeNelle.Core.UI.CostFormat.Words(parts);
         }
 

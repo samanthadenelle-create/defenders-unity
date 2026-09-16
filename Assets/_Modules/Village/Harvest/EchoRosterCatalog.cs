@@ -85,11 +85,12 @@ namespace DeNelle.Village
     /// Gold is not a ResourceType, and extending the Core enum would ripple the save schema.</summary>
     public enum HarvestTarget
     {
-        Wood,
-        Iron,
-        Food,
-        Gold,
-        Crystals,
+        Wood = 0,
+        Iron = 1,
+        [System.Runtime.Serialization.EnumMember(Value = "Food")]
+        Stone = 2,
+        Gold = 3,
+        Crystals = 4,
     }
 
     /// <summary>One canonical Echo spirit's card identity (immutable data row).</summary>
@@ -158,7 +159,7 @@ namespace DeNelle.Village
                 EmergeLine = "The Heart stirs -- its first-kept soul rises to meet you.",
                 // WO-830: founding card "tend the fields... grain" = winter stores -> Food.
                 ElementType = ElementType.Frost, PreferredLane = LaneType.Harvest,
-                Affinity = HarvestTarget.Food, HarvestResource = ResourceType.Food,
+                Affinity = HarvestTarget.Stone, HarvestResource = ResourceType.Stone,
             },
             new EchoRosterEntry {
                 Id = "echo-verdant-stag", Order = 2,
@@ -257,7 +258,7 @@ namespace DeNelle.Village
             {
                 case HarvestTarget.Wood:     return "wood";
                 case HarvestTarget.Iron:     return "iron";
-                case HarvestTarget.Food:     return "food";
+                case HarvestTarget.Stone:     return "food";
                 case HarvestTarget.Gold:     return "gold";
                 case HarvestTarget.Crystals: return "crystals";
                 default:                     return "wood";
@@ -274,7 +275,7 @@ namespace DeNelle.Village
                 // WO-1163: the ENUM member stays Food - it is frozen persistence vocabulary keyed by
             // saved assignment tokens - but what the PLAYER reads is Stone. Display moves, the
             // token does not (PROD-016 ruling, 2026-08-25).
-            case HarvestTarget.Food:     return "Stone";
+            case HarvestTarget.Stone:     return "Stone";
                 case HarvestTarget.Gold:     return "Gold";
                 case HarvestTarget.Crystals: return "Crystals";
                 default:                     return "Wood";
@@ -289,7 +290,7 @@ namespace DeNelle.Village
             {
                 case "wood":     target = HarvestTarget.Wood;     return true;
                 case "iron":     target = HarvestTarget.Iron;     return true;
-                case "food":     target = HarvestTarget.Food;     return true;
+                case "food":     target = HarvestTarget.Stone;     return true;
                 case "gold":     target = HarvestTarget.Gold;     return true;
                 case "crystals": target = HarvestTarget.Crystals; return true;
                 default:         target = HarvestTarget.Wood;     return false;

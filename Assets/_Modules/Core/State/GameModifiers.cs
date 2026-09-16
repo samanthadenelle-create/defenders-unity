@@ -41,7 +41,8 @@ namespace DeNelle.Core.State
 
         // ── Economy perks (Lumber Mill / Windmill / Forge focus) ────────────
         [JsonProperty("woodProductionMult")] public float WoodProductionMult = 1f;
-        [JsonProperty("foodProductionMult")] public float FoodProductionMult = 1f;
+        [UnityEngine.Serialization.FormerlySerializedAs("FoodProductionMult")]
+        [JsonProperty("foodProductionMult")] public float StoneProductionMult = 1f;
         [JsonProperty("resourceEfficiencyMult")] public float ResourceEfficiencyMult = 1f; // Forge
         [JsonProperty("offlineBonusMult")] public float OfflineBonusMult = 1f;
 
@@ -131,7 +132,7 @@ namespace DeNelle.Core.State
         {
             TowerDamageMult = TowerDamageMult, TowerRangeMult = TowerRangeMult,
             TroopDamageMult = TroopDamageMult, TroopHealthMult = TroopHealthMult,
-            WoodProductionMult = WoodProductionMult, FoodProductionMult = FoodProductionMult,
+            WoodProductionMult = WoodProductionMult, StoneProductionMult = StoneProductionMult,
             ResourceEfficiencyMult = ResourceEfficiencyMult, OfflineBonusMult = OfflineBonusMult,
             ArmyCapBonus = ArmyCapBonus, AutoCollect = AutoCollect,
             ArcaneOverload = ArcaneOverload, BattleForged = BattleForged, Forgefire = Forgefire,

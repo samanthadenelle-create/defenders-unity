@@ -109,6 +109,8 @@ namespace DeNelle.Village.UI
         public string PrimaryRoute = "close";
         /// <summary>Invoked exactly once (button tap OR auto-dismiss), then the view tears down.</summary>
         public Action Primary;
+        // Optional durable-operation prerequisite. A refusal keeps the action available for retry.
+        public Func<bool> PrimaryGate;
 
         /// <summary>&gt; 0 = fire Primary automatically after this many real seconds (softlock guard).</summary>
         public float AutoDismissSeconds;
@@ -464,7 +466,7 @@ namespace DeNelle.Village.UI
             // One row per NON-ZERO currency, ordered as section 1's table orders them.
             AddSpoil(vm, "Wood", credited.Wood);
             AddSpoil(vm, "Iron", credited.Iron);
-            AddSpoil(vm, FoodSpoilLabel, credited.Food);
+            AddSpoil(vm, FoodSpoilLabel, credited.Stone);
             AddSpoil(vm, "Gold", credited.Coins);
             AddSpoil(vm, "Crystals", credited.Crystals);
 
@@ -606,7 +608,7 @@ namespace DeNelle.Village.UI
             // nothing, which is the WO-978 honesty contract, not an oversight.
             AddSpoil(vm, "Wood", credited.Wood);
             AddSpoil(vm, "Iron", credited.Iron);
-            AddSpoil(vm, FoodSpoilLabel, credited.Food);
+            AddSpoil(vm, FoodSpoilLabel, credited.Stone);
             AddSpoil(vm, "Gold", credited.Coins);
             AddSpoil(vm, "Crystals", credited.Crystals);
 
@@ -645,7 +647,10 @@ namespace DeNelle.Village.UI
         /// word is isolated in this ONE constant precisely so the owner's ruling is a one-word
         /// edit here plus three elsewhere, and so nobody has to re-derive the conflict.</para>
         /// </summary>
-        private const string FoodSpoilLabel = "Food";
+        // 2026-09-16 owner ruling ("we completely removed food"): the spoils row reads Stone, the
+        // resource the number then watches rise. The internal field name is kept so the WO-1374
+        // conflict note above stays findable; only the player-facing word changed.
+        private const string FoodSpoilLabel = "Stone";
 
         /// <summary>
         /// Adds one spoils row when <paramref name="amount"/> is positive. Zero and negative are
@@ -964,7 +969,7 @@ namespace DeNelle.Village.UI
             var lines = new List<KeyValuePair<string, int>>(4);
             if (pay.Wood     > 0) lines.Add(new KeyValuePair<string, int>("Wood",     pay.Wood));
             if (pay.Iron     > 0) lines.Add(new KeyValuePair<string, int>("Iron",     pay.Iron));
-            if (pay.Food     > 0) lines.Add(new KeyValuePair<string, int>("Food",     pay.Food));
+            if (pay.Stone     > 0) lines.Add(new KeyValuePair<string, int>(FoodSpoilLabel, pay.Stone));
             if (pay.Crystals > 0) lines.Add(new KeyValuePair<string, int>("Crystals", pay.Crystals));
             if (lines.Count == 0) return 0;
 
@@ -978,7 +983,7 @@ namespace DeNelle.Village.UI
                 foreach (var l in lines) vm.Spoils.Add(ResourceRow(l.Key, l.Value));
                 FlowTrace.Step("EndState",
                     $"wave {waveNumber} clear banner: {lines.Count} reward row(s) from the BANKED payout " +
-                    $"(wood={pay.Wood} iron={pay.Iron} food={pay.Food} crystals={pay.Crystals}), " +
+                    $"(wood={pay.Wood} iron={pay.Iron} food={pay.Stone} crystals={pay.Crystals}), " +
                     $"budget={budget} of {CompactMaxSpoilRows}.");
                 return lines.Count;
             }

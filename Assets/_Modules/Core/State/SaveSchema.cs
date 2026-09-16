@@ -780,6 +780,10 @@ namespace DeNelle.Core.State
             /// during deserialization and lose the whole save. Append-only at the END.</para>
             /// </summary>
             [JsonProperty("resetEpoch")] public double? ResetEpoch;
+
+            // Additive nullable field; no version migration or inferred capture entitlement.
+            [JsonProperty("ownedBase")] public OwnedBaseState OwnedBase;
+            [JsonProperty("pendingTownCapture")] public PendingTownCapture PendingTownCapture;
         }
 
         // =====================================================================
@@ -835,12 +839,16 @@ namespace DeNelle.Core.State
 
             try
             {
+                if (raw.OwnedBase != null && !OwnedBaseProgression.Validate(raw.OwnedBase, out string ownedBaseReason))
+                    return SaveValidationResult.Failure("ownedBase", ownedBaseReason);
+                if (raw.PendingTownCapture != null && !raw.PendingTownCapture.Validate(out string pendingCaptureReason))
+                    return SaveValidationResult.Failure("pendingTownCapture", pendingCaptureReason);
                 // ── Resources / currencies → nonNegInt ───────────────────────
                 if (raw.Resources.HasValue)
                 {
                     var r = raw.Resources.Value;
                     r.Crystals = NonNegInt(r.Crystals, "resources.crystals");
-                    r.Food = NonNegInt(r.Food, "resources.food");
+                    r.Stone = NonNegInt(r.Stone, "resources.food");
                     r.Coins = NonNegInt(r.Coins, "resources.coins");
                     raw.Resources = r;
                 }
@@ -904,7 +912,7 @@ namespace DeNelle.Core.State
                     if (loot != null)
                     {
                         loot.Crystals = NonNegInt(loot.Crystals, "activeDungeonRun.loot.crystals");
-                        loot.Food = NonNegInt(loot.Food, "activeDungeonRun.loot.food");
+                        loot.LegacyFood = NonNegInt(loot.LegacyFood, "activeDungeonRun.loot.food");
                         loot.Coins = NonNegInt(loot.Coins, "activeDungeonRun.loot.coins");
                         loot.Stone = NonNegInt(loot.Stone, "activeDungeonRun.loot.stone");
                         loot.Iron = NonNegInt(loot.Iron, "activeDungeonRun.loot.iron");
@@ -1049,7 +1057,7 @@ namespace DeNelle.Core.State
                 // WO-911 v37 — the PAID BASKET is a refund input, so a corrupt/negative value would
                 // mint resources on cancel. Clamp it exactly like every other economy number.
                 j.PaidWood = NonNegInt(j.PaidWood, $"{fieldPath}.{i}.paidWood");
-                j.PaidFood = NonNegInt(j.PaidFood, $"{fieldPath}.{i}.paidFood");
+                j.PaidStone = NonNegInt(j.PaidStone, $"{fieldPath}.{i}.paidFood");
                 j.PaidIron = NonNegInt(j.PaidIron, $"{fieldPath}.{i}.paidIron");
                 j.PaidCrystals = NonNegInt(j.PaidCrystals, $"{fieldPath}.{i}.paidCrystals");
                 j.PaidMagic = NonNegInt(j.PaidMagic, $"{fieldPath}.{i}.paidMagic");

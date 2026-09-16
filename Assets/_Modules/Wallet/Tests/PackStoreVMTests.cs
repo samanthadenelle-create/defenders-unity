@@ -33,7 +33,7 @@ namespace DeNelle.Wallet.Tests
                 Sku = sku,
                 Contents = new PackContents
                 {
-                    Economy = new PackEconomy { Crystals = crystals, Food = food, Coins = coins },
+                    Economy = new PackEconomy { Crystals = crystals, Stone = food, Coins = coins },
                 }
             };
             if (cosmetics != null)

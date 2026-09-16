@@ -612,10 +612,10 @@ namespace DeNelle.DevTools
                 var st = svc.State;
                 var r = st.Resources;
                 SetMetric("crystals", r.Crystals.ToString("N0"));
-                SetMetric("food", r.Food.ToString("N0"));
+                SetMetric("food", r.Stone.ToString("N0"));
                 SetMetric("coins", r.Coins.ToString("N0"));
-                // WO-1212: Stone reads the live slot (Resources.Food), not the retired field.
-                SetMetric("materials", $"{r.Food} / {st.Iron} / {st.Wood}");
+                // WO-1212: Stone reads the live slot (Resources.Stone), not the retired field.
+                SetMetric("materials", $"{r.Stone} / {st.Iron} / {st.Wood}");
             }
             else { SetMetric("crystals", "—"); SetMetric("food", "—"); SetMetric("coins", "—"); SetMetric("materials", "—"); }
 
@@ -739,6 +739,7 @@ namespace DeNelle.DevTools
             // Wisdom each) in the Hero skill tree. See SetHeroLevelTo().
             AddButton(resources, "Set Level 5 (+skill pts)", () => SetHeroLevelTo(5));
             AddButton(resources, "Set Level 10 (+skill pts)", () => SetHeroLevelTo(10));
+            AddButton(resources, "Set Level 15 (+skill pts)", () => SetHeroLevelTo(15));
             AddTextField(resources, _levelInput.ToString(),
                 v => { if (int.TryParse(v, out var n)) _levelInput = Mathf.Max(1, n); });
             AddButton(resources, "Set hero to level N", SetHeroLevel);
@@ -844,6 +845,12 @@ namespace DeNelle.DevTools
                 () => DevEnterRaid(SceneRouter.RaidBaseFortifiedGarrison));
             AddButton(raids, "Raid: mage enclave",
                 () => DevEnterRaid(SceneRouter.RaidBaseMageEnclave));
+            AddButton(raids, "Raid: Iron Bastion",
+                () => DevEnterRaid(SceneRouter.RaidBaseIronBastion));
+            AddButton(raids, "MAX troop types",
+                () => SetStatus(DeNelle.Village.World.Camps.DevSkipKit.PrepCastlePower()));
+            AddButton(raids, "Grant Iron Bastion town (skip grind)",
+                () => SetStatus(DeNelle.Village.World.Camps.DevSkipKit.GrantCapturedTownAndEnter()));
 
             // ── WALLET ───────────────────────────────────────────────────────
             var wallet = AddGroup("Mock wallet balance");
@@ -1232,7 +1239,7 @@ namespace DeNelle.DevTools
                 // WO-857 Phase F: this is the "fill the tank so I can test something else" button —
                 // it must NOT be storage-gated, or a dev top-up silently becomes baseCap and the
                 // toast the real economy owes the player fires on a tool action. Uncapped by intent.
-                eco.GrantSpendableUncapped(wood: 50000, food: 25000, iron: 50000, crystals: 25000);
+                eco.GrantSpendableUncapped(wood: 50000, stone: 25000, iron: 50000, crystals: 25000);
                 eco.AddCoins(50000);   // Gold — the shop/sell wallet (GameState.Resources.Coins); raises ResourcesChanged so the HUD gold readout updates.
             }
             else
@@ -1242,7 +1249,7 @@ namespace DeNelle.DevTools
                 state.Wood += 50000;
                 state.Iron += 50000;
                 var bal0 = state.Resources;
-                bal0.Food += 25000;
+                bal0.Stone += 25000;
                 bal0.Crystals += 25000;
                 bal0.Coins += 50000;   // Gold
                 state.Resources = bal0;
@@ -1266,18 +1273,18 @@ namespace DeNelle.DevTools
                     var s = ecoSnap.Snapshot;
                     FlowTrace.Step("Eco",
                         $"DevGrant (DevPanel) +W50000 F25000 I50000 C25000 -> " +
-                        $"pool W{s.Wood} I{s.Iron} F{s.Food} C{s.Crystals} | " +
-                        $"GameState W{state.Wood} I{state.Iron} F{state.Resources.Food} C{state.Resources.Crystals}");
+                        $"pool W{s.Wood} I{s.Iron} F{s.Stone} C{s.Crystals} | " +
+                        $"GameState W{state.Wood} I{state.Iron} F{state.Resources.Stone} C{state.Resources.Crystals}");
                 }
                 else
                 {
                     FlowTrace.Step("Eco",
                         $"DevGrant (DevPanel, GameState-fallback) -> " +
-                        $"GameState W{state.Wood} I{state.Iron} F{state.Resources.Food} C{state.Resources.Crystals}");
+                        $"GameState W{state.Wood} I{state.Iron} F{state.Resources.Stone} C{state.Resources.Crystals}");
                 }
             }
 
-            SetStatus($"Topped up — Gold {state.Resources.Coins}, Wood {state.Wood}, Food {state.Resources.Food}, " +
+            SetStatus($"Topped up — Gold {state.Resources.Coins}, Wood {state.Wood}, Food {state.Resources.Stone}, " +
                       $"Iron {state.Iron}, Crystals {state.Resources.Crystals}, Magic {state.Magic}.");
         }
 
@@ -1351,7 +1358,7 @@ namespace DeNelle.DevTools
             if (econ == null) return;
             var r = state.Resources;
             r.Crystals += econ.Crystals;
-            r.Food += econ.Food;
+            r.Stone += econ.Stone;
             r.Coins += econ.Coins;
             state.Resources = r;
         }
@@ -1525,7 +1532,7 @@ namespace DeNelle.DevTools
                 {
                     // Make sure a dev raid always has bodies: top up resources, then train.
                     var eco = EconomyService.Instance;
-                    if (eco != null) eco.GrantSpendableUncapped(wood: 5000, food: 5000, iron: 5000);   // WO-857: dev raid setup, not player income — never storage-gated
+                    if (eco != null) eco.GrantSpendableUncapped(wood: 5000, stone: 5000, iron: 5000);   // WO-857: dev raid setup, not player income — never storage-gated
                     int f = DeNelle.Village.TroopDialogueCommands.Train("troop-footman", 4);
                     int a = DeNelle.Village.TroopDialogueCommands.Train("troop-archer", 3);
                     SetStatus($"Auto-trained {f} footman + {a} archer for the raid.");
@@ -1641,7 +1648,7 @@ namespace DeNelle.DevTools
             {
                 // HUD signature is SetResources(wood, iron, food, gems).
                 var snap = eco.Snapshot;
-                hud.SetResources(snap.Wood, snap.Iron, snap.Food, snap.Crystals);
+                hud.SetResources(snap.Wood, snap.Iron, snap.Stone, snap.Crystals);
                 hud.SetCrystals(snap.Crystals);
                 return;
             }

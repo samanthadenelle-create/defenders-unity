@@ -52,8 +52,9 @@ namespace DeNelle.Core.State
     {
         /// <summary>Wood charged.</summary>
         public int Wood;
-        /// <summary>Food charged.</summary>
-        public int Food;
+        /// <summary>Stone charged.</summary>
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [JsonProperty("Food")] public int Stone;
         /// <summary>Iron charged.</summary>
         public int Iron;
         /// <summary>Crystals charged.</summary>
@@ -64,10 +65,10 @@ namespace DeNelle.Core.State
         public int Coins;
 
         /// <summary>Build a paid basket.</summary>
-        public JobCost(int wood, int food, int iron, int crystals, int magic = 0, int coins = 0)
+        public JobCost(int wood, int stone, int iron, int crystals, int magic = 0, int coins = 0)
         {
             Wood = wood;
-            Food = food;
+            Stone = stone;
             Iron = iron;
             Crystals = crystals;
             Magic = magic;
@@ -75,7 +76,7 @@ namespace DeNelle.Core.State
         }
 
         /// <summary>True when nothing was charged (free build, or a pre-v37 job).</summary>
-        public bool IsZero => Wood == 0 && Food == 0 && Iron == 0 && Crystals == 0 && Magic == 0 && Coins == 0;
+        public bool IsZero => Wood == 0 && Stone == 0 && Iron == 0 && Crystals == 0 && Magic == 0 && Coins == 0;
 
         /// <summary>ASCII, player-readable summary ("400 wood, 200 food"); "nothing" when zero.</summary>
         public string Describe()
@@ -83,7 +84,7 @@ namespace DeNelle.Core.State
             if (IsZero) return "nothing";
             var sb = new System.Text.StringBuilder();
             if (Wood > 0) sb.Append(Wood).Append(" wood");
-            if (Food > 0) { if (sb.Length > 0) sb.Append(", "); sb.Append(Food).Append(" stone"); }
+            if (Stone > 0) { if (sb.Length > 0) sb.Append(", "); sb.Append(Stone).Append(" stone"); }
             if (Iron > 0) { if (sb.Length > 0) sb.Append(", "); sb.Append(Iron).Append(" iron"); }
             if (Crystals > 0) { if (sb.Length > 0) sb.Append(", "); sb.Append(Crystals).Append(" crystals"); }
             if (Magic > 0) { if (sb.Length > 0) sb.Append(", "); sb.Append(Magic).Append(" magic"); }
@@ -142,6 +143,9 @@ namespace DeNelle.Core.State
         /// </summary>
         [JsonProperty("targetTier")] public int TargetTier;
 
+        /// <summary>Owned-job instant-build charge, refundable if the unfinished job is cancelled. Old jobs default null.</summary>
+        [JsonProperty("instantBuildTokenKey", NullValueHandling = NullValueHandling.Ignore)] public string InstantBuildTokenKey;
+
         // ─────────────────────────────────────────────────────────────────────
         //  WO-911 (M2) — THE PAID BASKET. Save schema v37.
         //  -------------------------------------------------------------------
@@ -156,7 +160,7 @@ namespace DeNelle.Core.State
         //  in-flight legacy job cancels cleanly with a ZERO refund. That case is
         //  traced, never silent (see BuildTimerService.CancelChannelJobWithRefund).
         //  Units match the wallet BuildTimerService refunds into
-        //  (ResourceLedger.Credit → GameState.Wood/Iron/Resources.Food/Crystals),
+        //  (ResourceLedger.Credit → GameState.Wood/Iron/Resources.Stone/Crystals),
         //  which is the SAME wallet EconomyService.TrySpend debits.
         // ─────────────────────────────────────────────────────────────────────
 
@@ -164,7 +168,8 @@ namespace DeNelle.Core.State
         [JsonProperty("paidWood")] public int PaidWood;
 
         /// <summary>WO-911 v37 — food actually charged for this job (0 = free/legacy).</summary>
-        [JsonProperty("paidFood")] public int PaidFood;
+        [UnityEngine.Serialization.FormerlySerializedAs("PaidFood")]
+        [JsonProperty("paidFood")] public int PaidStone;
 
         /// <summary>WO-911 v37 — iron actually charged for this job (0 = free/legacy).</summary>
         [JsonProperty("paidIron")] public int PaidIron;
@@ -182,11 +187,11 @@ namespace DeNelle.Core.State
         [JsonIgnore]
         public JobCost Paid
         {
-            get => new JobCost(PaidWood, PaidFood, PaidIron, PaidCrystals, PaidMagic, PaidCoins);
+            get => new JobCost(PaidWood, PaidStone, PaidIron, PaidCrystals, PaidMagic, PaidCoins);
             set
             {
                 PaidWood = value.Wood;
-                PaidFood = value.Food;
+                PaidStone = value.Stone;
                 PaidIron = value.Iron;
                 PaidCrystals = value.Crystals;
                 PaidMagic = value.Magic;

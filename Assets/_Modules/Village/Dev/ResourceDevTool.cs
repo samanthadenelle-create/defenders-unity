@@ -19,9 +19,9 @@
 //   which lives in DeNelle.HUD and cannot reference Village).
 //
 // GRANT API (the real economy path, not a hack):
-//   EconomyService.GrantSpendable(int wood=0, int food=0, int iron=0, int crystals=0)
+//   EconomyService.GrantSpendable(int wood=0, int stone=0, int iron=0, int crystals=0)
 //     - lands Wood/Iron in BOTH wallets (in-session pool + GameState) and routes
-//       Food/Crystals through GameState (persist + ResourcesChanged), and
+//       Stone/Crystals through GameState (persist + ResourcesChanged), and
 //   EconomyService.AddCoins(int) - GOLD via GameState.Resources.Coins (persist + event).
 //   These are the exact methods OwnerDevToolsOverlay.GiveResources already relies on.
 //
@@ -140,7 +140,7 @@ namespace DeNelle.Village.Dev
         // ------------------------------------------------------------------
         // GRANTS - the real EconomyService API (same assembly; null-conditional)
         // ------------------------------------------------------------------
-        private enum Currency { Gold, Wood, Iron, Food, Crystals }
+        private enum Currency { Gold, Wood, Iron, Stone, Crystals }
 
         private void Grant(Currency currency, int amount)
         {
@@ -155,7 +155,7 @@ namespace DeNelle.Village.Dev
                 case Currency.Gold:     eco.AddCoins(amount);                         break; // GameState.Resources.Coins (uncapped by design)
                 case Currency.Wood:     eco.GrantSpendableUncapped(wood: amount);     break; // both wallets
                 case Currency.Iron:     eco.GrantSpendableUncapped(iron: amount);     break; // both wallets
-                case Currency.Food:     eco.GrantSpendableUncapped(food: amount);     break; // GameState-backed
+                case Currency.Stone:     eco.GrantSpendableUncapped(stone: amount);     break; // GameState-backed
                 case Currency.Crystals: eco.GrantSpendableUncapped(crystals: amount); break; // GameState-backed (uncapped by design)
             }
 
@@ -222,7 +222,7 @@ namespace DeNelle.Village.Dev
             AddCurrencyRow("Gold",     Currency.Gold);
             AddCurrencyRow("Wood",     Currency.Wood);
             AddCurrencyRow("Iron",     Currency.Iron);
-            AddCurrencyRow("Food",     Currency.Food);
+            AddCurrencyRow("Stone",     Currency.Stone);
             AddCurrencyRow("Crystals", Currency.Crystals);
 
             // Close row.
@@ -285,7 +285,7 @@ namespace DeNelle.Village.Dev
         {
             var eco = EconomyService.Instance;
             if (eco == null) { SetReadout("EconomyService not alive yet."); return; }
-            SetReadout($"Gold {eco.Coins}  Wood {eco.Wood}  Iron {eco.Iron}  Food {eco.Food}  Crystals {eco.Crystals}");
+            SetReadout($"Gold {eco.Coins}  Wood {eco.Wood}  Iron {eco.Iron}  Stone {eco.Stone}  Crystals {eco.Crystals}");
         }
 
         private void SetReadout(string s)

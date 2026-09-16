@@ -70,7 +70,7 @@ namespace DeNelle.Village.Crafting
             if (economy == null) return CraftResult.Fail("Economy not ready.");
             if (inv == null) return CraftResult.Fail("Inventory not ready.");
 
-            var cost = new ResourceCost(recipe.Cost?.Wood ?? 0, recipe.Cost?.Food ?? 0,
+            var cost = new ResourceCost(recipe.Cost?.Wood ?? 0, recipe.Cost?.Stone ?? 0,
                                         recipe.Cost?.Iron ?? 0, recipe.Cost?.Crystals ?? 0);
 
             // Spend the unified wallet ONCE (atomic inside EconomyService).
@@ -138,7 +138,7 @@ namespace DeNelle.Village.Crafting
             var economy = EconomyService.Instance;
             if (economy == null) return "Economy not ready.";
 
-            var cost = new ResourceCost(recipe.Cost?.Wood ?? 0, recipe.Cost?.Food ?? 0,
+            var cost = new ResourceCost(recipe.Cost?.Wood ?? 0, recipe.Cost?.Stone ?? 0,
                                         recipe.Cost?.Iron ?? 0, recipe.Cost?.Crystals ?? 0);
             if (!cost.IsZero && !economy.CanAfford(cost)) return "Not enough resources.";
 

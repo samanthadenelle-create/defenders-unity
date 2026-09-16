@@ -210,7 +210,7 @@ namespace DeNelle.Village.Hero
                 if (r == null) return "";
                 var parts = new List<string>(3);
                 if (r.Crystals > 0) parts.Add(r.Crystals + " crystals");
-                if (r.Food > 0) parts.Add(r.Food + " food");
+                if (r.Stone > 0) parts.Add(r.Stone + " food");
                 if (r.Coins > 0) parts.Add(r.Coins + " gold");
                 return string.Join(", ", parts);
             }

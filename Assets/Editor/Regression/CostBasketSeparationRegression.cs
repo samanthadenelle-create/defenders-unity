@@ -462,7 +462,7 @@ namespace DeNelle.Editor.Regression
         //  expression that NAMES wood, iron and crystals together produces 10+ false
         //  positives on completely correct code -- EconomyService's own constructor
         //  (wood, food, iron, crystals, coins), BuildModeController re-wrapping (c.wood,
-        //  c.food, c.iron, c.crystals), the crafting services forwarding
+        //  c.stone, c.iron, c.crystals), the crafting services forwarding
         //  (recipe.Cost?.Wood, ... .Iron, ... .Crystals). Those COPY a basket that was
         //  authored elsewhere; they decide nothing. A gate that cries wolf on correct code
         //  gets muted, and a muted gate protects nothing -- so the lint targets the two
@@ -781,7 +781,7 @@ namespace DeNelle.Editor.Regression
                 foreach (var b in baskets)
                 {
                     var c = b.Value;
-                    string where = "'" + e.id + "' " + b.Key + " (w" + c.wood + " f" + c.food + " i" + c.iron + " c" + c.crystals + ")";
+                    string where = "'" + e.id + "' " + b.Key + " (w" + c.wood + " f" + c.stone + " i" + c.iron + " c" + c.crystals + ")";
 
                     // -- CASE 1 [invariant] -- never all three.
                     if (c.wood > 0 && c.iron > 0 && c.crystals > 0)
@@ -940,7 +940,7 @@ namespace DeNelle.Editor.Regression
                                          "been reverted. " + spec.Why);
                     }
 
-                    int total = c.wood + c.food + c.iron + c.crystals;
+                    int total = c.wood + c.stone + c.iron + c.crystals;
                     if (total != spec.Totals[i])
                         failures.Add("[applied] '" + id + "' " + which + " totals " + total + ", expected " +
                                      spec.Totals[i] + " - every WO-947 conversion folded the dropped resource 1:1 " +
@@ -1098,7 +1098,7 @@ namespace DeNelle.Editor.Regression
                              "every structure with no cost row of its own - losing it silently disables both.");
 
             // --- d: repair pricing never emits crystals ----------------------------
-            var withCrystals = new DeNelle.Core.Catalog.ResourceCost { wood = 120, food = 0, iron = 60, crystals = 99 };
+            var withCrystals = new DeNelle.Core.Catalog.ResourceCost { wood = 120, stone = 0, iron = 60, crystals = 99 };
             var fractions = new[] { 0.25f, 0.5f, 1f };
             for (int i = 0; i < fractions.Length; i++)
             {
@@ -1122,9 +1122,9 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[repair-carve-out] a 115-iron shortfall priced " + price.crystals + " crystals " +
                              "(convertible=" + ironOk + ") at the ruled " + RuledCrystalsPerIron + "/iron. The " +
                              "owner's own worked example is 115 iron short = 115 crystals.");
-            if (price.wood != 0 || price.food != 0 || price.iron != 0)
+            if (price.wood != 0 || price.stone != 0 || price.iron != 0)
                 failures.Add("[repair-carve-out] the crystal top-up came back carrying materials (" +
-                             price.wood + "w/" + price.food + "f/" + price.iron + "i). It must be crystals ONLY - " +
+                             price.wood + "w/" + price.stone + "f/" + price.iron + "i). It must be crystals ONLY - " +
                              "the in-kind part of the price is the part the wallet already covers.");
 
             var woodShort = new DeNelle.Core.Catalog.ResourceCost { wood = 10 };

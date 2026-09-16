@@ -29,7 +29,7 @@
 //    compiler-invisible landmine WO-1282 was written to avoid. A namespace that a
 //    string resolves at runtime is an interface, and interfaces do not get renamed
 //    for tidiness. (Same reason PackDef.LegacySkus can never be pruned and PackEconomy
-//    keeps the field name `Food` for the authored key `stone`.)
+//    keeps the field name `Stone` for the authored key `stone`.)
 //
 //    C# namespaces and assemblies are orthogonal; the ASSEMBLY is what the Play build
 //    excludes, and the assembly is DeNelle.Commerce. Nothing about the exclusion needs
@@ -86,8 +86,9 @@ namespace DeNelle.Wallet
         [JsonProperty("crystals")] public int Crystals;
         /// <summary>Stone. The C# field retains its historic name because this is the reused
         /// economy/save slot; the authored and player-facing JSON key is stone.</summary>
-        [JsonProperty("stone")] public int Food;
-        [JsonProperty("food")] private int LegacyFood { set { if (Food == 0) Food = value; } }
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [JsonProperty("stone")] public int Stone;
+        [JsonProperty("food")] private int LegacyFood { set { if (Stone == 0) Stone = value; } }
         /// <summary>Coins (Gold).</summary>
         [JsonProperty("coins")] public int Coins;
         /// <summary>Wood - build resource (additive; absent in older packs.json rows = 0, no migration break). Granted via EconomyService.GrantSpendable (ECON-01).</summary>
@@ -264,8 +265,8 @@ namespace DeNelle.Wallet
                 case "wood":     return e.Wood;
                 case "iron":     return e.Iron;
                 case "crystals": return e.Crystals;
-                case "stone":    return e.Food;
-                case "food":     return e.Food;
+                case "stone":    return e.Stone;
+                case "food":     return e.Stone;
                 case "coins":    return e.Coins;
                 default:         return 0;
             }
@@ -309,8 +310,8 @@ namespace DeNelle.Wallet
                 {
                     case "wood":     return e.Wood;
                     case "iron":     return e.Iron;
-                    case "stone":    return e.Food;
-                    case "food":     return e.Food;
+                    case "stone":    return e.Stone;
+                    case "food":     return e.Stone;
                     case "crystals": return e.Crystals;
                     default:         return 0;
                 }

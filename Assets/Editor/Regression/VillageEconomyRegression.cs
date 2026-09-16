@@ -135,8 +135,8 @@ namespace DeNelle.Editor
                 // spend was refused against 985k. Post-unification: CanAfford reads the same
                 // store, TrySpend debits it, and both views agree.
                 state.Wood = 985646;                                       // grant GameState-side only
-                var balB3 = state.Resources; balB3.Food = 988524; state.Resources = balB3;
-                var wo842Cost = new DeNelle.Village.ResourceCost(wood: 800, food: 500);
+                var balB3 = state.Resources; balB3.Stone = 988524; state.Resources = balB3;
+                var wo842Cost = new DeNelle.Village.ResourceCost(wood: 800, stone: 500);
                 if (econ.Wood != 985646)
                     failures.Add($"(B3) EconomyService.Wood={econ.Wood} after a GameState-side set of 985646 — not reading through the single wallet");
                 if (!econ.CanAfford(wo842Cost))

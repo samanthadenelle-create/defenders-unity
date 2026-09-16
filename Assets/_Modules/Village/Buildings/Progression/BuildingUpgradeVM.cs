@@ -30,7 +30,7 @@ using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Jobs;
 using DeNelle.Core.State;
 using DeNelle.Core.UI.Mvvm;
-// Disambiguate the two ResourceCost types in scope: the build-economy cost (Wood/Food/
+// Disambiguate the two ResourceCost types in scope: the build-economy cost (Wood/Stone/
 // Crystals — what IEconomy spends) vs. the legacy harvest cost (Resource/Amount). The
 // unqualified `ResourceCost` in this Progression namespace is the harvest one.
 using EcoCost = DeNelle.Village.ResourceCost;
@@ -189,7 +189,7 @@ namespace DeNelle.Village.Buildings.Progression
             string pid = "";
             int pcx = 0, pcz = 0;
             bool parsed = family == UpgradeFamily.PlacedStructure
-                          && PlacedUpgradeKey.TryParse(_buildingId, out pid, out pcx, out pcz);
+                          && PlacedStructureUpgradeService.TryResolveKey(_buildingId, out pid, out pcx, out pcz);
             _isPlaced = parsed;
             _placedItemId = parsed ? pid : "";
             _placedCellX = parsed ? pcx : 0;
@@ -335,7 +335,7 @@ namespace DeNelle.Village.Buildings.Progression
         public struct UpgradeCostLine
         {
             public string ConceptId;
-            /// <summary>ASCII resource name ("Wood", "Food", "Crystals", "Iron", "Magic").</summary>
+            /// <summary>ASCII resource name ("Wood", "Stone", "Crystals", "Iron", "Magic").</summary>
             public string Label;
             /// <summary>Amount the upgrade charges.</summary>
             public int Amount;
@@ -815,9 +815,9 @@ namespace DeNelle.Village.Buildings.Progression
             UpgradeNext();
         }
 
-        /// <summary>Live wallet readout (View rebuilds its "Wood … Food … Crystals" line from these).</summary>
+        /// <summary>Live wallet readout (View rebuilds its "Wood … Stone … Crystals" line from these).</summary>
         public int Wood     => _economy?.Wood ?? 0;
-        public int Food     => _economy?.Food ?? 0;
+        public int Stone     => _economy?.Stone ?? 0;
         public int Iron     => _economy?.Iron ?? 0;
         public int Crystals => _economy?.Crystals ?? 0;
         public int Coins    => _economy?.Coins ?? 0;
@@ -936,7 +936,7 @@ namespace DeNelle.Village.Buildings.Progression
                             + " UpgradeNext -> TryUpgrade FALSE (needed W" + nextDef.CostWood
                             + "/G" + nextDef.CostGold
                             + ", have W" + ResourceLedger.Balance(HarvestResource.Wood)
-                            + "/F" + ResourceLedger.Balance(HarvestResource.Food)
+                            + "/F" + ResourceLedger.Balance(HarvestResource.Stone)
                             + "/C" + ResourceLedger.Balance(HarvestResource.Crystals) + ")");
                 }
                 Rebuild();
@@ -1202,7 +1202,7 @@ namespace DeNelle.Village.Buildings.Progression
 
                     var cost = new EcoCost {
                         Wood = t.Tier == 1 ? t.PrimaryMaterialCost : 0,
-                        Food = t.Tier == 2 ? t.PrimaryMaterialCost : 0,
+                        Stone = t.Tier == 2 ? t.PrimaryMaterialCost : 0,
                         Iron = t.Tier >= 3 ? t.PrimaryMaterialCost : 0,
                         Coins = t.CostGold
                     };
@@ -1346,7 +1346,7 @@ namespace DeNelle.Village.Buildings.Progression
                         if (prevCost != null) _costPartsById[id] = ResourceCostParts(prevCost.UpgradeCost, prevCost.MagicCost);
                     }
                     // Legacy levels have no authored effect string — derive the concrete yield line
-                    // ("+6 Food per tick") from the level def, the owner's "Farm +25% yield" shape.
+                    // ("+6 Stone per tick") from the level def, the owner's "Farm +25% yield" shape.
                     _effectById[id] = "+" + lvl.YieldPerTick + " "
                                       + ResourceBuildingProgression.LabelFor(lvl.Yields) + " per tick";
                     // WO-680 — the level tile is the building-upgrade key too (level 1 is owned
@@ -1386,7 +1386,7 @@ namespace DeNelle.Village.Buildings.Progression
             var entry = DeNelle.Core.Catalog.CatalogRegistry.Get(_placedItemId);
             Title = entry != null && !string.IsNullOrEmpty(entry.displayName)
                 ? entry.displayName : Titleize(_placedItemId);
-            CurrentTier = PlacedStructureUpgradeService.LevelOf(_placedItemId, _placedCellX, _placedCellZ);
+            CurrentTier = PlacedStructureUpgradeService.LevelOfKey(_buildingId);
             MaxTier = PlacedStructureUpgradeService.MaxLevelFor(entry);
 
             FlowTrace.Step("Upgrade", _buildingId + " band-state IN: curLevel=" + CurrentTier
@@ -1412,7 +1412,7 @@ namespace DeNelle.Village.Buildings.Progression
                     costStr = CostString(new EcoCost
                     {
                         Wood = stepCost.wood,
-                        Food = stepCost.food,
+                        Stone = stepCost.stone,
                         Iron = stepCost.iron,
                         Crystals = stepCost.crystals,
                     });
@@ -1424,7 +1424,7 @@ namespace DeNelle.Village.Buildings.Progression
                 if (!isCurrent && level > 1)
                 {
                     var stepParts = PlacedStructureUpgradeService.CostForNext(entry, level - 1);
-                    _costPartsById[id] = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", stepParts.wood), ("stone", "Stone", stepParts.food), ("iron", "Iron", stepParts.iron), ("crystal", "Crystals", stepParts.crystals) });
+                    _costPartsById[id] = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", stepParts.wood), ("stone", "Stone", stepParts.stone), ("iron", "Iron", stepParts.iron), ("crystal", "Crystals", stepParts.crystals) });
                 }
                 _effectById[id] = "Level " + level + " strength and durability";
                 if (level > 1)
@@ -1499,7 +1499,7 @@ namespace DeNelle.Village.Buildings.Progression
 
             // The primary-material LANE is chosen by tier NUMBER because that is what the spend
             // does (BuildingUpgradeService.TierCost :195-197 / TryUpgrade :133-135): T1 Wood,
-            // T2 Stone(Food), T3+ Iron. The page shows what will be CHARGED.
+            // T2 Stone(Stone), T3+ Iron. The page shows what will be CHARGED.
             // WO-2005 — the branch itself moved to BuildingTierChargeLane, the ONE authority the
             // spend also reads. Output is identical for every authored tier (1..6); this file no
             // longer holds a copy that could drift from the charge it is describing.
@@ -1639,7 +1639,7 @@ namespace DeNelle.Village.Buildings.Progression
 
             var cost = PlacedStructureUpgradeService.CostForNext(entry, CurrentTier);
             AddWalletCostLine("Wood", cost.wood, _economy?.Wood ?? 0);
-            AddWalletCostLine("Stone", cost.food, _economy?.Food ?? 0);
+            AddWalletCostLine("Stone", cost.stone, _economy?.Stone ?? 0);
             AddWalletCostLine("Iron", cost.iron, _economy?.Iron ?? 0);
             AddWalletCostLine("Crystals", cost.crystals, _economy?.Crystals ?? 0);
             // WO-1391 — ONE predicate (the lines); the placer's own answer is a cross-check. With no
@@ -1801,12 +1801,12 @@ namespace DeNelle.Village.Buildings.Progression
         // the panel's DeriveSpendableCurrencies keyword scan keeps working.
         private string CostString(EcoCost c)
         {
-            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.Wood), ("stone", "Stone", c.Food), ("iron", "Iron", c.Iron), ("crystal", "Crystals", c.Crystals), ("gold", "Gold", c.Coins) });
+            var parts = DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.Wood), ("stone", "Stone", c.Stone), ("iron", "Iron", c.Iron), ("crystal", "Crystals", c.Crystals), ("gold", "Gold", c.Coins) });
             return parts.Count == 0 ? "Free" : DeNelle.Core.UI.CostFormat.Words(parts);
         }
 
         private static IReadOnlyList<DeNelle.Core.UI.CostPart> CostParts(EcoCost c) =>
-            DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.Wood), ("stone", "Stone", c.Food), ("iron", "Iron", c.Iron), ("crystal", "Crystals", c.Crystals), ("gold", "Gold", c.Coins) });
+            DeNelle.Core.UI.CostFormat.Parts(new[] { ("wood", "Wood", c.Wood), ("stone", "Stone", c.Stone), ("iron", "Iron", c.Iron), ("crystal", "Crystals", c.Crystals), ("gold", "Gold", c.Coins) });
 
         private static string ResourceCostString(IReadOnlyList<ResourceCost> costs, int magic)
         {

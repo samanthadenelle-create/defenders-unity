@@ -321,7 +321,7 @@ namespace DeNelle.Editor.Regression
 
                     // Wood/Iron are GameState scalars, not ResourceBalance fields (NestedTypes.cs).
                     int woodB = throwaway.Wood, ironB = throwaway.Iron;
-                    int foodB = throwaway.Resources.Food, cryB = throwaway.Resources.Crystals;
+                    int foodB = throwaway.Resources.Stone, cryB = throwaway.Resources.Crystals;
                     int coinsB = throwaway.Resources.Coins;
 
                     var applyM = vmType.GetMethod("ApplyPackContents", new[] { pack.GetType() });
@@ -337,7 +337,7 @@ namespace DeNelle.Editor.Regression
 
                     int expWood = def.Contents?.Economy?.Wood ?? 0;
                     int expIron = def.Contents?.Economy?.Iron ?? 0;
-                    int expFood = def.Contents?.Economy?.Food ?? 0;
+                    int expFood = def.Contents?.Economy?.Stone ?? 0;
                     int expCry = def.Contents?.Economy?.Crystals ?? 0;
                     int expCoins = def.Contents?.Economy?.Coins ?? 0;
                     if (throwaway.Wood - woodB < expWood)
@@ -345,7 +345,7 @@ namespace DeNelle.Editor.Regression
                                      (throwaway.Wood - woodB) + ", advertised " + expWood + ")");
                     if (throwaway.Iron - ironB < expIron)
                         failures.Add("[live-grant] '" + sku + "' iron delta short.");
-                    if (throwaway.Resources.Food - foodB < expFood)
+                    if (throwaway.Resources.Stone - foodB < expFood)
                         failures.Add("[live-grant] '" + sku + "' stone delta short.");
                     if (throwaway.Resources.Crystals - cryB < expCry)
                         failures.Add("[live-grant] '" + sku + "' crystals delta short.");

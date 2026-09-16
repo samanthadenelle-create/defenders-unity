@@ -208,10 +208,10 @@ namespace DeNelle.Editor.Regression
             // And the presence of a wood/iron base must not perturb them either.
             var withBases = RaidScoring.ComputeLoot(2, 0.75f, 25, 60, 10, 20, 1f, MapWoodBase, MapIronBase);
             var withoutBases = RaidScoring.ComputeLoot(2, 0.75f, 25, 60, 10, 20, 1f, 0, 0);
-            if (withBases.Crystals != withoutBases.Crystals || withBases.Food != withoutBases.Food)
+            if (withBases.Crystals != withoutBases.Crystals || withBases.Stone != withoutBases.Stone)
                 failures.Add("[C] adding a wood/iron base changed the crystals/food payout (" +
-                             withoutBases.Crystals + "c/" + withoutBases.Food + "f -> " +
-                             withBases.Crystals + "c/" + withBases.Food + "f) - the two axes must be independent");
+                             withoutBases.Crystals + "c/" + withoutBases.Stone + "f -> " +
+                             withBases.Crystals + "c/" + withBases.Stone + "f) - the two axes must be independent");
 
             // =================================================================
             //  (D) THE ARROW. GOLD IS PAID, ON THE SAME LADDER.
@@ -344,9 +344,9 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[C] crystals changed shape at stars=" + stars + " d=" + destruction.ToString("0.00") +
                              ": got " + got.Crystals + ", base*destruction + perStar*stars (NO camp " +
                              "multiplier - crystals are timer compression) gives " + wantCrystals);
-            if (got.Food != wantFood)
+            if (got.Stone != wantFood)
                 failures.Add("[C] food changed shape at stars=" + stars + " d=" + destruction.ToString("0.00") +
-                             ": got " + got.Food + ", the original formula gives " + wantFood);
+                             ": got " + got.Stone + ", the original formula gives " + wantFood);
         }
 
         /// <summary>Reads a file under Assets/_Modules with comments blanked, or null.</summary>

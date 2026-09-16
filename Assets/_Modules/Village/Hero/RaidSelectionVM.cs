@@ -494,7 +494,7 @@ namespace DeNelle.Village.Hero
             var parts = new List<string>(3);
             AppendCachePart(parts, scaled.Wood, woodRoom, woodCacheRoom, "wood");
             AppendCachePart(parts, scaled.Iron, ironRoom, ironCacheRoom, "iron");
-            AppendCachePart(parts, scaled.Food, foodRoom, foodCacheRoom, "stone");
+            AppendCachePart(parts, scaled.Stone, foodRoom, foodCacheRoom, "stone");
             return parts.Count == 0 ? null : CacheNoticePrefix + string.Join(", ", parts) + CacheNoticeSuffix;
         }
 
@@ -1024,10 +1024,10 @@ namespace DeNelle.Village.Hero
                 string cacheNotice = CacheNotice(scaled,
                                                  ResolveBankRoom(DeNelle.Core.Economy.BankResource.Wood),
                                                  ResolveBankRoom(DeNelle.Core.Economy.BankResource.Iron),
-                                                 ResolveBankRoom(DeNelle.Core.Economy.BankResource.Food),
+                                                 ResolveBankRoom(DeNelle.Core.Economy.BankResource.Stone),
                                                  ResolveCacheRoom(DeNelle.Core.Economy.BankResource.Wood),
                                                  ResolveCacheRoom(DeNelle.Core.Economy.BankResource.Iron),
-                                                 ResolveCacheRoom(DeNelle.Core.Economy.BankResource.Food));
+                                                 ResolveCacheRoom(DeNelle.Core.Economy.BankResource.Stone));
                 if (!string.IsNullOrEmpty(d.id))
                 {
                     _spoilsById[d.id] = spoils;

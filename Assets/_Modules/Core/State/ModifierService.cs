@@ -61,7 +61,7 @@ namespace DeNelle.Core.State
         /// collided by luck rather than by design.
         ///
         /// The fix is the ID, not the value: Apply already aggregates BY KIND, so the grant was
-        /// always landing in GameModifiers.FoodProductionMult with nothing asking for it. The
+        /// always landing in GameModifiers.StoneProductionMult with nothing asking for it. The
         /// ladder MOVED to "farm" in building-tiers.json rather than this switch gaining a second
         /// food case, because the windmill is not a separate building — it is the Farm's secondary
         /// prop (VillageSceneBuilder.Content.cs, WO-101: SM_Farm_House primary + Windmill_Medieval
@@ -119,7 +119,7 @@ namespace DeNelle.Core.State
             switch (buildingId)
             {
                 case "lumbermill": return m.WoodProductionMult;
-                case "farm":       return m.FoodProductionMult;
+                case "farm":       return m.StoneProductionMult;
                 case "forge":      return m.ResourceEfficiencyMult;
                 default:           return 1f;
             }
@@ -207,7 +207,7 @@ namespace DeNelle.Core.State
             r.TroopDamageMult        *= m.TroopDamageMult;
             r.TroopHealthMult        *= m.TroopHealthMult;
             r.WoodProductionMult     *= m.WoodProductionMult;
-            r.FoodProductionMult     *= m.FoodProductionMult;
+            r.StoneProductionMult     *= m.StoneProductionMult;
             r.ResourceEfficiencyMult *= m.ResourceEfficiencyMult;
             r.OfflineBonusMult       *= m.OfflineBonusMult;
             r.ArmyCapBonus  += m.ArmyCapBonus;   // additive: +5 troops per owning perk/tier

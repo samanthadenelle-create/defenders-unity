@@ -445,8 +445,8 @@ namespace DeNelle.Village.Hero
                 if (slot.RewardCrystals > 0)
                     chips.Add(new RewardChipVM(RewardKind.Crystals, slot.RewardCrystals, "Crystals " + slot.RewardCrystals));
                 // Canon sec.7: the authored `food` slot IS Stone. Never label it Food.
-                if (slot.RewardFood > 0)
-                    chips.Add(new RewardChipVM(RewardKind.Stone, slot.RewardFood, "Stone " + slot.RewardFood));
+                if (slot.RewardStone > 0)
+                    chips.Add(new RewardChipVM(RewardKind.Stone, slot.RewardStone, "Stone " + slot.RewardStone));
                 if (slot.RewardWisdom > 0)
                     chips.Add(new RewardChipVM(RewardKind.Wisdom, slot.RewardWisdom, "Wisdom " + slot.RewardWisdom));
                 if (slot.RewardRandomItem)

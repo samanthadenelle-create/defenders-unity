@@ -138,7 +138,7 @@ namespace DeNelle.Editor
                 throwaway.Wood = 100000;
                 throwaway.Iron = 100000;
                 var bal = throwaway.Resources;
-                bal.Food = 100000;
+                bal.Stone = 100000;
                 bal.Crystals = 100000;
                 // 2026-09-04 WO-1387: Coins is NOT load-bearing for the door any more - training
                 // charges nothing (owner: "training free ... just time"). Left rich only because this

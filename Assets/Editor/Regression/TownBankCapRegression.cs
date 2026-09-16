@@ -203,7 +203,7 @@ namespace DeNelle.Editor.Regression
                 return;
             }
 
-            foreach (var r in new[] { BankResource.Wood, BankResource.Iron, BankResource.Food })
+            foreach (var r in new[] { BankResource.Wood, BankResource.Iron, BankResource.Stone })
             {
                 int b = TownBankCapacity.BaseCapOf(r);
                 if (b < TownBankCapacity.AbsoluteMinBaseCap)
@@ -231,7 +231,7 @@ namespace DeNelle.Editor.Regression
             // The cap a fresh save has: baseCap alone (BaseLayout is empty, so no container adds).
             int woodCap = TownBankCapacity.BaseCapOf(BankResource.Wood);
             int ironCap = TownBankCapacity.BaseCapOf(BankResource.Iron);
-            int foodCap = TownBankCapacity.BaseCapOf(BankResource.Food);
+            int foodCap = TownBankCapacity.BaseCapOf(BankResource.Stone);
 
             if (!TryReadCatalogCosts(out var rows, out string err))
             {
@@ -283,7 +283,7 @@ namespace DeNelle.Editor.Regression
         // =====================================================================
         private static void CheckSpendNeverClamped(List<string> failures, List<string> notes)
         {
-            foreach (var r in new[] { BankResource.Wood, BankResource.Iron, BankResource.Food })
+            foreach (var r in new[] { BankResource.Wood, BankResource.Iron, BankResource.Stone })
             {
                 int max = TownBankCapacity.MaxOf(r);
 
@@ -364,7 +364,7 @@ namespace DeNelle.Editor.Regression
                 {
                     new { Key = "wood", Res = BankResource.Wood },
                     new { Key = "iron", Res = BankResource.Iron },
-                    new { Key = "food", Res = BankResource.Food },
+                    new { Key = "food", Res = BankResource.Stone },
                 })
                 {
                     if (economy[pair.Key] == null) continue;

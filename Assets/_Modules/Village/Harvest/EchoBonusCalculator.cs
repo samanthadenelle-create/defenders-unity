@@ -193,7 +193,7 @@ namespace DeNelle.Village
             {
                 { HarvestTarget.Wood, 0f },
                 { HarvestTarget.Iron, 0f },
-                { HarvestTarget.Food, 0f },
+                { HarvestTarget.Stone, 0f },
                 { HarvestTarget.Gold, 0f },
                 { HarvestTarget.Crystals, 0f },
             };

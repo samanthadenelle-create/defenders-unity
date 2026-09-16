@@ -375,7 +375,7 @@ namespace DeNelle.Village.Hud
         private void Push()
         {
             if (_econ == null) return;
-            int gold = _econ.Coins, wood = _econ.Wood, iron = _econ.Iron, food = _econ.Food, crystals = _econ.Crystals;
+            int gold = _econ.Coins, wood = _econ.Wood, iron = _econ.Iron, food = _econ.Stone, crystals = _econ.Crystals;
             if (gold == _gold && wood == _wood && iron == _iron && food == _food && crystals == _crystals) return;
             _gold = gold; _wood = wood; _iron = iron; _food = food; _crystals = crystals;
             Model.Economy.Set(gold, wood, iron, food, crystals);
@@ -608,17 +608,9 @@ namespace DeNelle.Village.Hud
                 // falls through to def.Effect/def.Id so the SetIcon default-sprite backstop still fills it.
                 string resolvedKey = equipped ? ConceptIconResolver.ResolveKey(def.Id, def.Effect) : null;
                 string icon = equipped ? (resolvedKey ?? def.Effect ?? def.Id) : null;
-                // OWNER PLACEHOLDER (2026-07-11, verbatim): "for now instead of the heroic leap
-                // image use word Dodge/Attack" — the Q medallion renders TEXT while the leap is
-                // being rebound to a jump+stab dodge/attack move. In-band "text:" IconKey prefix;
-                // HudKitController.OnAbilities routes it to ActionSlotHandle.SetLabel (words on the
-                // standard chrome — meaning carried by text, never color alone). Remove this block
-                // once the rebound ability ships its own icon.
-                if (equipped && slot == AbilitySlot.Q && def.Id == "knight.q")
-                {
-                    icon = "text:Dodge/\nAttack";
-                    resolvedKey = icon;   // deliberate text face — not an unmapped-icon fallback (F8-33)
-                }
+                // WO-1695 follow-up, owner 2026-09-10: retire the July word placeholder.
+                // Knight Q now retains its authored charge_knight concept art, just like
+                // every other mapped ability; the dock's generic text-face support stays.
                 // F8-33 (owner: right-side ability icons hard-coded/placeholder): a slot whose
                 // concept did NOT resolve real art renders the SetIcon default backstop — that
                 // fallback must never be silent. Collected here, warned once below on a loadout

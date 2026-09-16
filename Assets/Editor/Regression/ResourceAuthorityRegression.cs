@@ -2,7 +2,7 @@
 // ResourceAuthorityRegression - WO-1212. ONE balance the player can see, spend
 // and be granted into. Never two.
 // -----------------------------------------------------------------------------
-// THE DEFECT THIS PINS: `GameState.Stone` and `GameState.Resources.Food` were BOTH
+// THE DEFECT THIS PINS: `GameState.Stone` and `GameState.Resources.Stone` were BOTH
 // persisted, BOTH guarded and BOTH time-derived-reconciled, but only Food was ever
 // displayed (as "Stone") or spent. A grant routed to the other one vanished with no
 // error, no log and no red test - on a build that takes real money.
@@ -58,9 +58,21 @@ namespace DeNelle.Editor.Regression
 
                 // (B) No runtime authority for it anywhere in the service.
                 string svcCode = StripComments(service);
-                foreach (var bad in new[] { "_state.Stone", "s.Stone =", "d.Stone ", "Stone = s.Stone" })
-                    if (svcCode.Contains(bad))
-                        failures.Add("GameStateService still reads/writes the retired balance ('" + bad + "')");
+                // Match the complete receiver, not the trailing 's' in Resources.Stone.
+                const string retiredAccess = @"\b(?:_state|s)\s*\.\s*Stone\b";
+                if (Regex.IsMatch(svcCode, retiredAccess))
+                    failures.Add("GameStateService still reads/writes the retired direct Stone balance");
+                if (!Regex.IsMatch("_state.Stone = 1; s . Stone = 2;", retiredAccess) ||
+                    Regex.IsMatch("_state.Resources.Stone = resources.Stone; s.Resources.Stone = 2;", retiredAccess))
+                    failures.Add("Retired-balance classifier cannot distinguish direct state from Resources authority");
+
+                // Runtime Stone is legitimate; only its legacy Food wire slot may
+                // be emitted. Assert the payload, not a local variable spelling.
+                var delta = new DeNelle.Core.State.GameStateService.SyncDeltaPayload { Stone = 37 };
+                var wire = Newtonsoft.Json.Linq.JObject.Parse(Newtonsoft.Json.JsonConvert.SerializeObject(
+                    delta, DeNelle.Core.State.SaveSchema.JsonSettings));
+                if ((int?)wire["Food"] != 37 || wire["Stone"] != null || wire["stone"] != null)
+                    failures.Add("sync delta must emit one Stone amount under the legacy Food key, never a second stone balance");
 
                 // (C) The client switch and the server list must name the SAME keys.
                 string clientRead  = Method(service, "ReadTimeDerivedBalance");
@@ -103,7 +115,7 @@ namespace DeNelle.Editor.Regression
                 }
 
                 // (E) The inbound legacy alias + the loud discard must both survive.
-                if (!service.Contains("aliased.Food") || !service.Contains("aliasedCloud.Food"))
+                if (!service.Contains("aliased.Stone") || !service.Contains("aliasedCloud.Stone"))
                     failures.Add("the inbound `stone` -> live-slot alias was removed - an older sender's value " +
                                  "would now be dropped on the floor silently");
                 if (Regex.Matches(service, "DISCARDED retired").Count < 2)

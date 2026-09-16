@@ -104,7 +104,7 @@ namespace DeNelle.Editor.Regression
         {
             Row("Wood",  "Lumberyard", BankResource.Wood, 0, 4213, 732031, L6Ceiling, Collectors, overCap: true),
             Row("Iron",  "Foundry",    BankResource.Iron, 0, 2031, 639336, L6Ceiling, Collectors, overCap: true),
-            Row("Stone", "Stoneyard",  BankResource.Food, 0, 4441, 411480, L6Ceiling, Collectors, overCap: true),
+            Row("Stone", "Stoneyard",  BankResource.Stone, 0, 4441, 411480, L6Ceiling, Collectors, overCap: true),
         };
 
         /// <summary>The AT-CAP control (WO-1525's own owner frame): full, not over. It must keep

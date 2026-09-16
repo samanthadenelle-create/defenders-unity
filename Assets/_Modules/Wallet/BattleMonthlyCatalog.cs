@@ -96,13 +96,14 @@ namespace DeNelle.Wallet
     {
         [JsonProperty("wood")]     public int Wood;
         [JsonProperty("iron")]     public int Iron;
-        [JsonProperty("stone")]    public int Food;
-        [JsonProperty("food")] private int LegacyFood { set { if (Food == 0) Food = value; } }
+        [UnityEngine.Serialization.FormerlySerializedAs("Food")]
+        [JsonProperty("stone")]    public int Stone;
+        [JsonProperty("food")] private int LegacyFood { set { if (Stone == 0) Stone = value; } }
         [JsonProperty("crystals")] public int Crystals;
         [JsonProperty("coins")]    public int Coins;
 
         /// <summary>True when this payload would move nothing.</summary>
-        public bool IsEmpty => Wood <= 0 && Iron <= 0 && Food <= 0 && Crystals <= 0 && Coins <= 0;
+        public bool IsEmpty => Wood <= 0 && Iron <= 0 && Stone <= 0 && Crystals <= 0 && Coins <= 0;
     }
 
     /// <summary>One convenience token grant: a sanctioned kind and a count.</summary>
@@ -182,7 +183,7 @@ namespace DeNelle.Wallet
             var parts = new List<string>();
             if (e.Wood > 0)     parts.Add(e.Wood + " Wood");
             if (e.Iron > 0)     parts.Add(e.Iron + " Iron");
-            if (e.Food > 0)     parts.Add(e.Food + " Stone");
+            if (e.Stone > 0)     parts.Add(e.Stone + " Stone");
             if (e.Crystals > 0) parts.Add(e.Crystals + " Crystals");
             if (e.Coins > 0)    parts.Add(e.Coins + " Coins");
             return string.Join("  ", parts.ToArray());

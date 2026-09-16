@@ -667,8 +667,12 @@ namespace DeNelle.Village
         // identical: add the component once, never twice.
         private static void TryAddTripoFixer(GameObject go)
         {
-            if (go.GetComponent<DeNelle.Core.TripoMaterialFixer>() == null)
-                go.AddComponent<DeNelle.Core.TripoMaterialFixer>();
+            var fixer = go.GetComponent<DeNelle.Core.TripoMaterialFixer>();
+            if (fixer == null) fixer = go.AddComponent<DeNelle.Core.TripoMaterialFixer>();
+            // Same stone miss-tint StructureFactory sets. Hub LightSkins go through THIS
+            // path, not StructureFactory, so a remaining texture miss degrades to stone
+            // instead of bright white (Default Town 365875).
+            fixer.SetMissTint(new Color(0.60f, 0.58f, 0.54f, 1f));
         }
     }
 }

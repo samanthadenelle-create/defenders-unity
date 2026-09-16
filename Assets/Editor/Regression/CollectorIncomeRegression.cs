@@ -1022,7 +1022,7 @@ namespace DeNelle.Editor.Regression
                 new KeyValuePair<HarvestResource, double>(HarvestResource.Wood, 500.9),
                 new KeyValuePair<HarvestResource, double>(HarvestResource.Wood, 172.7),
                 new KeyValuePair<HarvestResource, double>(HarvestResource.Iron, 403.2),
-                new KeyValuePair<HarvestResource, double>(HarvestResource.Food, 874.99),
+                new KeyValuePair<HarvestResource, double>(HarvestResource.Stone, 874.99),
                 new KeyValuePair<HarvestResource, double>(HarvestResource.Crystals, 0.4),
             };
             var agg = ResourceCollectorService.AggregatePending(samples);
@@ -1038,7 +1038,7 @@ namespace DeNelle.Editor.Regression
                 failures.Add($"[popup-and-result-agree] line 0 = {agg[0].Resource}/{agg[0].Pending}/{agg[0].Collectors}; expected Wood/672/2 (per-collector floor)");
             if (agg[1].Resource != HarvestResource.Iron || agg[1].Pending != 403)
                 failures.Add($"[popup-and-result-agree] line 1 = {agg[1].Resource}/{agg[1].Pending}; expected Iron/403");
-            if (agg[2].Resource != HarvestResource.Food || agg[2].Pending != 874)
+            if (agg[2].Resource != HarvestResource.Stone || agg[2].Pending != 874)
                 failures.Add($"[popup-and-result-agree] line 2 = {agg[2].Resource}/{agg[2].Pending}; expected Food(Stone)/874 - rail order Wood/Iron/Stone");
 
             // The popup's rows, from the same lines.
@@ -1053,9 +1053,9 @@ namespace DeNelle.Editor.Regression
 
             // The result's rows: wood partly fit (258 of 672), iron fit entirely, stone banked nothing.
             var bankedBy = new Dictionary<HarvestResource, int>
-                { { HarvestResource.Wood, 258 }, { HarvestResource.Iron, 403 }, { HarvestResource.Food, 0 } };
+                { { HarvestResource.Wood, 258 }, { HarvestResource.Iron, 403 }, { HarvestResource.Stone, 0 } };
             var store = new Dictionary<HarvestResource, int>
-                { { HarvestResource.Wood, 3742 }, { HarvestResource.Iron, 100 }, { HarvestResource.Food, 3000 } };
+                { { HarvestResource.Wood, 3742 }, { HarvestResource.Iron, 100 }, { HarvestResource.Stone, 3000 } };
             var rows = ResourceCollectorService.BuildCollectorRows(agg, bankedBy, store);
             if (rows == null || rows.Count != 2)
             {
@@ -1148,7 +1148,7 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[overflow-stays-pending] Collect does not settle the pool through SettleCollect(_pending, banked, ...)");
             if (!Regex.IsMatch(code, @"GrantSpendable\(wood:\s*amount\)\s*\.Wood") ||
                 !Regex.IsMatch(code, @"GrantSpendable\(iron:\s*amount\)\s*\.Iron") ||
-                !Regex.IsMatch(code, @"GrantSpendable\(food:\s*amount\)\s*\.Food"))
+                !Regex.IsMatch(code, @"GrantSpendable\(stone:\s*amount\)\s*\.Stone"))
                 failures.Add("[overflow-stays-pending] Collect does not read the APPLIED basket back from GrantSpendable for wood/iron/food - " +
                              "it is trusting its own request local, which is how a silent loss hides");
         }
@@ -1216,8 +1216,8 @@ namespace DeNelle.Editor.Regression
         //  this case pins the three READ SITES, not a new map.
         //
         //  STOP - AND IT PINS WHAT MUST NOT MOVE: the id `collector_farm` and the enum member
-        //  HarvestResource.Food are LIVE PERSISTED KEYS. Food IS the Stone wallet slot
-        //  (LabelFor). A HarvestResource.Food site in C# is a STONE site - never "fix" it.
+        //  HarvestResource.Stone are LIVE PERSISTED KEYS. Food IS the Stone wallet slot
+        //  (LabelFor). A HarvestResource.Stone site in C# is a STONE site - never "fix" it.
         //
         //  NAMED MUTATION (the one-line proof this case discriminates): in
         //  ResourceBuildingHarvester.cs revert the HELD trace to `{def.Yields}` - check
@@ -1322,7 +1322,7 @@ namespace DeNelle.Editor.Regression
                 if (!string.Equals(word, "Stone", StringComparison.Ordinal))
                     failures.Add(Tag + "the ONE producer words '" + ResourceBuildingProgression.FarmId +
                                  "' as '" + word + "', not 'Stone' - owner ruling 2026-09-05 'quarry pays stone'. " +
-                                 "(HarvestResource.Food is the FROZEN persisted Stone slot; fix LabelFor or the " +
+                                 "(HarvestResource.Stone is the FROZEN persisted Stone slot; fix LabelFor or the " +
                                  "row's Yields, never the enum member - it is a live save key)");
             }
 

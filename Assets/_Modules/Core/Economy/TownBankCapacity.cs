@@ -152,7 +152,8 @@ namespace DeNelle.Core.Economy
     {
         Wood = 0,
         Iron = 1,
-        Food = 2,
+        [System.Runtime.Serialization.EnumMember(Value = "Food")]
+        Stone = 2,
         Crystals = 3,
         Coins = 4,
     }
@@ -329,7 +330,7 @@ namespace DeNelle.Core.Economy
             {
                 case BankResource.Wood:     return "wood";
                 case BankResource.Iron:     return "iron";
-                case BankResource.Food:     return "stone";
+                case BankResource.Stone:     return "stone";
                 case BankResource.Crystals: return "crystals";
                 case BankResource.Coins:    return "coins";
             }
@@ -346,9 +347,9 @@ namespace DeNelle.Core.Economy
             {
                 case "wood":          r = BankResource.Wood;     return true;
                 case "iron":          r = BankResource.Iron;     return true;
-                case "food":          r = BankResource.Food;     return true;
-                case "grain":         r = BankResource.Food;     return true;
-                case "stone":         r = BankResource.Food;     return true;
+                case "food":          r = BankResource.Stone;     return true;
+                case "grain":         r = BankResource.Stone;     return true;
+                case "stone":         r = BankResource.Stone;     return true;
                 case "crystal":
                 case "crystals":
                 case "aethercrystal": r = BankResource.Crystals; return true;
@@ -366,7 +367,7 @@ namespace DeNelle.Core.Economy
             {
                 case BankResource.Wood:     return "Wood";
                 case BankResource.Iron:     return "Iron";
-                case BankResource.Food:     return "Stone";
+                case BankResource.Stone:     return "Stone";
                 case BankResource.Crystals: return "Crystals";
                 case BankResource.Coins:    return "Gold";
             }
@@ -472,7 +473,7 @@ namespace DeNelle.Core.Economy
             {
                 case BankResource.Wood:     return state.Wood;
                 case BankResource.Iron:     return state.Iron;
-                case BankResource.Food:     return state.Resources.Food;
+                case BankResource.Stone:     return state.Resources.Stone;
                 case BankResource.Crystals: return state.Resources.Crystals;
                 case BankResource.Coins:    return state.Resources.Coins;
             }
@@ -540,7 +541,7 @@ namespace DeNelle.Core.Economy
             /// exceeds <see cref="CurrentMax"/>. False for Crystals/Coins, unconditionally.</summary>
             public bool Blocked;
             public BankResource Resource;
-            /// <summary>Player-facing resource word ("Wood"; "Stone" for BankResource.Food).</summary>
+            /// <summary>Player-facing resource word ("Wood"; "Stone" for BankResource.Stone).</summary>
             public string ResourceName;
             /// <summary>The cost that does not fit.</summary>
             public int Amount;

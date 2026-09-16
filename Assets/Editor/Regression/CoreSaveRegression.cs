@@ -248,8 +248,8 @@ namespace DeNelle.Editor
             if (full == null) { failures.Add("Migrate(v1) returned null — semantics checks skipped"); return; }
 
             var r = full.Resources ?? ResourceBalance.Zero;
-            if (!full.Resources.HasValue || r.Crystals != 250 || r.Food != 80 || r.Coins != 15)
-                failures.Add($"v2 step: resources not seeded to STARTER {{250,80,15}} (got {r.Crystals}/{r.Food}/{r.Coins})");
+            if (!full.Resources.HasValue || r.Crystals != 250 || r.Stone != 80 || r.Coins != 15)
+                failures.Add($"v2 step: resources not seeded to STARTER {{250,80,15}} (got {r.Crystals}/{r.Stone}/{r.Coins})");
             if (full.OwnedItemIds == null) failures.Add("v2 step: ownedItemIds not seeded to []");
             if (full.HeroClass != HeroClass.Mage) failures.Add("v3 step: heroClass not defaulted to Mage on a pre-hero-select save");
             if (!full.Wood.HasValue || full.Wood.Value != 15) failures.Add("v4 step: wood not seeded to 15");
@@ -328,7 +328,7 @@ namespace DeNelle.Editor
                 EquippedRingId = "ring_gold",
             };
             var kept = SaveMigrator.Migrate(carried, 3);   // runs steps 4..30
-            if (!kept.Resources.HasValue || kept.Resources.Value.Crystals != 1 || kept.Resources.Value.Food != 2 || kept.Resources.Value.Coins != 3)
+            if (!kept.Resources.HasValue || kept.Resources.Value.Crystals != 1 || kept.Resources.Value.Stone != 2 || kept.Resources.Value.Coins != 3)
                 failures.Add("migration CLOBBERED carried resources (steps must be additive-only)");
             if (!kept.HeroLevel.HasValue || (int)kept.HeroLevel.Value != 9) failures.Add("migration CLOBBERED carried heroLevel=9");
             if (!kept.Wood.HasValue || (int)kept.Wood.Value != 999) failures.Add("migration CLOBBERED carried wood=999");
@@ -639,9 +639,9 @@ namespace DeNelle.Editor
                 // ⛔ ResourceBalance.Starter itself is deliberately UNCHANGED (still coins 15) —
                 // SaveMigrator uses it as the default for resource-less legacy saves, so editing it
                 // would silently hand 200 gold to every migrating save. Nobody ruled that.
-                if (st.Resources.Crystals != 250 || st.Resources.Food != 80
+                if (st.Resources.Crystals != 250 || st.Resources.Stone != 80
                     || st.Resources.Coins != DeNelle.Core.State.StartingBudget.StrategicGold)
-                    failures.Add($"ResetToNewGame did not restore STARTER resources (got {st.Resources.Crystals}/{st.Resources.Food}/{st.Resources.Coins}; expected 250/80/{DeNelle.Core.State.StartingBudget.StrategicGold})");
+                    failures.Add($"ResetToNewGame did not restore STARTER resources (got {st.Resources.Crystals}/{st.Resources.Stone}/{st.Resources.Coins}; expected 250/80/{DeNelle.Core.State.StartingBudget.StrategicGold})");
                 if (st.BestWave != 0) failures.Add("ResetToNewGame did not zero bestWave");
                 if (st.HeroLevel != 1 || st.HeroXp != 0f) failures.Add("ResetToNewGame did not reset hero level/XP to 1/0");
                 if (st.HeroClass.ToNullable().HasValue) failures.Add("ResetToNewGame did not clear HeroClass (onboarding must re-prompt)");

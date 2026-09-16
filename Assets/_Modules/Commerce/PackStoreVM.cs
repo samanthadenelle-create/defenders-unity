@@ -106,12 +106,12 @@ namespace DeNelle.Wallet
             {
                 gWood     = Mathf.Max(0, econ.Wood);
                 gIron     = Mathf.Max(0, econ.Iron);
-                gFood     = Mathf.Max(0, econ.Food);
+                gFood     = Mathf.Max(0, econ.Stone);
                 gCrystals = Mathf.Max(0, econ.Crystals);
                 gCoins    = Mathf.Max(0, econ.Coins);
 
                 // Wood/Iron/Food/Crystals land in a single GrantSpendable (mirrors Wood/Iron to the
-                // persisted GameState ledger AND routes Food/Crystals through AddFood/AddCrystals ->
+                // persisted GameState ledger AND routes Food/Crystals through AddStone/AddCrystals ->
                 // Save + ResourcesChanged); Coins(Gold) land via AddCoins.
                 if (gWood > 0 || gIron > 0 || gFood > 0 || gCrystals > 0)
                     TryGrantResources(gWood, gFood, gIron, gCrystals, pack.Sku);

@@ -75,7 +75,7 @@ namespace DeNelle.Editor.Regression
         private static readonly HarvestResource[] RequiredWired =
         {
             HarvestResource.Wood,
-            HarvestResource.Food,
+            HarvestResource.Stone,
             HarvestResource.Iron,
         };
 

@@ -120,17 +120,17 @@ namespace DeNelle.Tests.EditMode
         [Test]
         public void crystals_and_food_route_through_the_single_gamestate_wallet()
         {
-            int food0 = _state.Resources.Food;
+            int food0 = _state.Resources.Stone;
             int crystals0 = _state.Resources.Crystals;
 
-            _econ.GrantSpendableUncapped(food: 25000, crystals: 25000);
+            _econ.GrantSpendableUncapped(stone: 25000, crystals: 25000);
 
-            Assert.That(_state.Resources.Food, Is.EqualTo(food0 + 25000),
+            Assert.That(_state.Resources.Stone, Is.EqualTo(food0 + 25000),
                 "Food is GameState-backed; the dev grant must land it there");
             Assert.That(_state.Resources.Crystals, Is.EqualTo(crystals0 + 25000),
                 "Crystals are GameState-backed; the dev grant must land them there");
             // EconomyService reads Food/Crystals THROUGH GameState, so its view agrees.
-            Assert.That(_econ.Food, Is.EqualTo(food0 + 25000), "EconomyService.Food mirrors GameState");
+            Assert.That(_econ.Stone, Is.EqualTo(food0 + 25000), "EconomyService.Food mirrors GameState");
             Assert.That(_econ.Crystals, Is.EqualTo(crystals0 + 25000), "EconomyService.Crystals mirrors GameState");
         }
 
@@ -144,9 +144,9 @@ namespace DeNelle.Tests.EditMode
         public void gamestate_side_riches_are_spendable_through_the_economy_wo842()
         {
             _state.Wood = 985646;                       // GameState-side grant ONLY (no EconomyService call)
-            var bal = _state.Resources; bal.Food = 988524; _state.Resources = bal;
+            var bal = _state.Resources; bal.Stone = 988524; _state.Resources = bal;
 
-            var cost = new ResourceCost(wood: 800, food: 500);
+            var cost = new ResourceCost(wood: 800, stone: 500);
             Assert.That(_econ.Wood, Is.EqualTo(985646),
                 "EconomyService.Wood must read through GameState.Wood (single wallet)");
             Assert.That(_econ.CanAfford(cost), Is.True,
@@ -157,7 +157,7 @@ namespace DeNelle.Tests.EditMode
                 "the debit must land on GameState.Wood (the ledger the upgrade flow spends)");
             Assert.That(_econ.Wood, Is.EqualTo(_state.Wood),
                 "post-spend the economy view and GameState must agree (one store)");
-            Assert.That(_state.Resources.Food, Is.EqualTo(988024),
+            Assert.That(_state.Resources.Stone, Is.EqualTo(988024),
                 "the food slot debits the same single GameState wallet");
         }
 
@@ -166,10 +166,10 @@ namespace DeNelle.Tests.EditMode
         {
             int wood0 = _econ.Wood, iron0 = _econ.Iron;
             int gsWood0 = _state.Wood, gsIron0 = _state.Iron;
-            int food0 = _state.Resources.Food, crystals0 = _state.Resources.Crystals;
+            int food0 = _state.Resources.Stone, crystals0 = _state.Resources.Crystals;
 
             // The exact full-base load both dev buttons fire.
-            _econ.GrantSpendableUncapped(wood: 50000, food: 25000, iron: 50000, crystals: 25000);
+            _econ.GrantSpendableUncapped(wood: 50000, stone: 25000, iron: 50000, crystals: 25000);
 
             // Shop / HUD wallet.
             Assert.That(_econ.Wood, Is.EqualTo(wood0 + 50000));
@@ -178,7 +178,7 @@ namespace DeNelle.Tests.EditMode
             Assert.That(_state.Wood, Is.EqualTo(gsWood0 + 50000));
             Assert.That(_state.Iron, Is.EqualTo(gsIron0 + 50000));
             // Shared GameState harvestables.
-            Assert.That(_state.Resources.Food, Is.EqualTo(food0 + 25000));
+            Assert.That(_state.Resources.Stone, Is.EqualTo(food0 + 25000));
             Assert.That(_state.Resources.Crystals, Is.EqualTo(crystals0 + 25000));
         }
 

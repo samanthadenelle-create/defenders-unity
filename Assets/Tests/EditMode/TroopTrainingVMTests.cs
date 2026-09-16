@@ -37,7 +37,7 @@ namespace DeNelle.Tests.EditMode
             public int Coins { get; set; }
             public int Wood { get; set; }
             public int Iron { get; set; }
-            public int Food { get; set; }
+            public int Stone { get; set; }
             public int Crystals { get; set; }
 
             public int SpendCalls;
@@ -46,30 +46,30 @@ namespace DeNelle.Tests.EditMode
 
             public bool CanAfford(ResourceCost cost) =>
                 Coins >= cost.Coins && Wood >= cost.Wood && Iron >= cost.Iron &&
-                Food >= cost.Food && Crystals >= cost.Crystals;
+                Stone >= cost.Stone && Crystals >= cost.Crystals;
 
             public bool TrySpend(ResourceCost cost)
             {
                 if (!CanAfford(cost)) return false;
                 Coins -= cost.Coins; Wood -= cost.Wood; Iron -= cost.Iron;
-                Food -= cost.Food; Crystals -= cost.Crystals;
+                Stone -= cost.Stone; Crystals -= cost.Crystals;
                 SpendCalls++;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 return true;
             }
 
             public ResourceCost Grant(ResourceCost amount)
             {
                 Coins += amount.Coins; Wood += amount.Wood; Iron += amount.Iron;
-                Food += amount.Food; Crystals += amount.Crystals;
-                OnChanged?.Invoke(new ResourceSnapshot(Wood, Food, Iron, Crystals));
+                Stone += amount.Stone; Crystals += amount.Crystals;
+                OnChanged?.Invoke(new ResourceSnapshot(Wood, Stone, Iron, Crystals));
                 // Uncapped fake: every requested unit lands, so the applied basket IS the request.
                 return amount;
             }
         }
 
         private static FakeEconomy Rich() =>
-            new FakeEconomy { Coins = 1000000, Wood = 1000000, Iron = 1000000, Food = 1000000, Crystals = 1000000 };
+            new FakeEconomy { Coins = 1000000, Wood = 1000000, Iron = 1000000, Stone = 1000000, Crystals = 1000000 };
 
         // The first trainable (unlocked) troop in the projection, or null if none.
         private static string FirstTrainable(TroopTrainingVM vm)

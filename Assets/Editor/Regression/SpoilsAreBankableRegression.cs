@@ -124,7 +124,7 @@ namespace DeNelle.Editor.Regression
             {
                 keptWood = RaidClaimService.Cached(BankResource.Wood);
                 keptIron = RaidClaimService.Cached(BankResource.Iron);
-                keptFood = RaidClaimService.Cached(BankResource.Food);
+                keptFood = RaidClaimService.Cached(BankResource.Stone);
                 snapped = true;
             }
             catch (Exception ex)
@@ -159,7 +159,7 @@ namespace DeNelle.Editor.Regression
                     {
                         RaidClaimService.SetCached(BankResource.Wood, keptWood);
                         RaidClaimService.SetCached(BankResource.Iron, keptIron);
-                        RaidClaimService.SetCached(BankResource.Food, keptFood);
+                        RaidClaimService.SetCached(BankResource.Stone, keptFood);
                     }
                     catch (Exception ex)
                     {
@@ -368,11 +368,11 @@ namespace DeNelle.Editor.Regression
         {
             RaidClaimService.SetCached(BankResource.Wood, 0);
             RaidClaimService.SetCached(BankResource.Iron, 0);
-            RaidClaimService.SetCached(BankResource.Food, 0);
+            RaidClaimService.SetCached(BankResource.Stone, 0);
 
             // The logged case: 1080 wood asked for, 25 credited by a full bank.
-            var requested = new ResourceCost(wood: 1080, food: 0, iron: 660, crystals: 26, coins: 2200);
-            var credited  = new ResourceCost(wood: 25,   food: 0, iron: 0,   crystals: 26, coins: 2200);
+            var requested = new ResourceCost(wood: 1080, stone: 0, iron: 660, crystals: 26, coins: 2200);
+            var credited  = new ResourceCost(wood: 25,   stone: 0, iron: 0,   crystals: 26, coins: 2200);
             var retained = RaidClaimService.RetainOverflow(ScratchId, requested, credited);
 
             if (retained.Wood != 1055)
@@ -396,9 +396,9 @@ namespace DeNelle.Editor.Regression
             // A payout the bank took in full retains nothing and says so.
             RaidClaimService.SetCached(BankResource.Wood, 0);
             var full = RaidClaimService.RetainOverflow(ScratchId, requested, requested);
-            if (full.Wood != 0 || full.Iron != 0 || full.Food != 0)
+            if (full.Wood != 0 || full.Iron != 0 || full.Stone != 0)
                 fails.Add("RetainOverflow retained something (" + full.Wood + "w/" + full.Iron +
-                          "i/" + full.Food + "f) from a payout the bank credited IN FULL");
+                          "i/" + full.Stone + "f) from a payout the bank credited IN FULL");
 
             // At the ceiling: the cache takes what it can and the remainder is REFUSED by a
             // stated cap the player can raise - the only path on which a unit leaves the world.
@@ -440,7 +440,7 @@ namespace DeNelle.Editor.Regression
 
                 // The arithmetic, through the real gate. 1800 at the ruled share is 1080; at the
                 // shipped-and-wrong 0.25 it was 450, which is the number in the owner's log.
-                var loot = new ResourceCost(wood: 1800, food: 0, iron: 1100, crystals: 26, coins: 2200);
+                var loot = new ResourceCost(wood: 1800, stone: 0, iron: 1100, crystals: 26, coins: 2200);
                 var repeat = RaidClaimService.ScaleLootForClear(loot, true, false);
                 int wantWood = Mathf.FloorToInt(1800f * (RuledRepeatPct / 100f));
                 if (repeat.Wood != wantWood)
@@ -525,7 +525,7 @@ namespace DeNelle.Editor.Regression
 
         private static void CheckQuote(string vm, List<string> fails)
         {
-            var est = new ResourceCost(wood: 1800, food: 0, iron: 1100, crystals: 26, coins: 2200);
+            var est = new ResourceCost(wood: 1800, stone: 0, iron: 1100, crystals: 26, coins: 2200);
 
             // A first clear quotes the estimate untouched.
             var quotedFirst = RaidSelectionVM.RepeatScaled(est, false);

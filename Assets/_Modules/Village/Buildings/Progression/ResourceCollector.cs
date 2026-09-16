@@ -541,7 +541,7 @@ namespace DeNelle.Village.Buildings.Progression
                 {
                     case HarvestResource.Wood:     banked = eco.GrantSpendable(wood: amount).Wood;         break;
                     case HarvestResource.Iron:     banked = eco.GrantSpendable(iron: amount).Iron;         break;
-                    case HarvestResource.Food:     banked = eco.GrantSpendable(food: amount).Food;         break;
+                    case HarvestResource.Stone:     banked = eco.GrantSpendable(stone: amount).Stone;         break;
                     case HarvestResource.Crystals: banked = eco.GrantSpendable(crystals: amount).Crystals; break;
                 }
             }
@@ -753,7 +753,7 @@ namespace DeNelle.Village.Buildings.Progression
             {
                 case HarvestResource.Wood:     banked = eco.GrantSpendable(wood: ask).Wood;         break;
                 case HarvestResource.Iron:     banked = eco.GrantSpendable(iron: ask).Iron;         break;
-                case HarvestResource.Food:     banked = eco.GrantSpendable(food: ask).Food;         break;
+                case HarvestResource.Stone:     banked = eco.GrantSpendable(stone: ask).Stone;         break;
                 case HarvestResource.Crystals: banked = eco.GrantSpendable(crystals: ask).Crystals; break;
             }
             if (banked <= 0)
@@ -793,7 +793,7 @@ namespace DeNelle.Village.Buildings.Progression
             {
                 case HarvestResource.Wood:     return new Color(0.55f, 0.38f, 0.22f);
                 case HarvestResource.Iron:     return new Color(0.62f, 0.64f, 0.70f);
-                case HarvestResource.Food:     return new Color(0.72f, 0.62f, 0.28f);
+                case HarvestResource.Stone:     return new Color(0.72f, 0.62f, 0.28f);
                 case HarvestResource.Crystals: return new Color(0.35f, 0.72f, 0.95f);
                 default:                       return Color.white;
             }

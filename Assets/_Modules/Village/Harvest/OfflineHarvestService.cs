@@ -658,7 +658,7 @@ namespace DeNelle.Village
             // (EchoService.ShareGold) is coins, which the rail does not carry.
             AddSiloLine(result, HarvestResource.Wood,     split[EchoService.ShareWood]);
             AddSiloLine(result, HarvestResource.Iron,     split[EchoService.ShareIron]);
-            AddSiloLine(result, HarvestResource.Food,     split[EchoService.ShareFood]);
+            AddSiloLine(result, HarvestResource.Stone,     split[EchoService.ShareFood]);
             AddSiloLine(result, HarvestResource.Crystals, split[EchoService.ShareCrystals]);
 
             var echo = EchoService.Instance;
@@ -1168,7 +1168,7 @@ namespace DeNelle.Village
             {
                 iron = TownBankCapacity.ClampGrant(BankResource.Iron, state.Iron, result.Iron, "OfflineHarvest", out lostIron);
                 wood = TownBankCapacity.ClampGrant(BankResource.Wood, state.Wood, result.Wood, "OfflineHarvest", out lostWood);
-                food = TownBankCapacity.ClampGrant(BankResource.Food, state.Resources.Food, result.Food, "OfflineHarvest", out lostFood);
+                food = TownBankCapacity.ClampGrant(BankResource.Stone, state.Resources.Stone, result.Stone, "OfflineHarvest", out lostFood);
             }
 
             // PERMANENT, per resource, and NEVER throttled: a discard on this path used to be
@@ -1176,15 +1176,15 @@ namespace DeNelle.Village
             // "away haul NOT ADDED" now names every unit this path could not bank.
             WarnDiscarded("Iron", state.Iron, result.Iron, iron, lostIron);
             WarnDiscarded("Wood", state.Wood, result.Wood, wood, lostWood);
-            WarnDiscarded("Stone", state.Resources.Food, result.Food, food, lostFood);
+            WarnDiscarded("Stone", state.Resources.Stone, result.Stone, food, lostFood);
 
             if (iron > 0) state.Iron += iron;
             if (wood > 0) state.Wood += wood;
             if (food > 0)
             {
-                // Food lives on the wallet struct (Resources.Food) — DEF-121.
+                // Food lives on the wallet struct (Resources.Stone) — DEF-121.
                 var bal = state.Resources;
-                bal.Food += food;
+                bal.Stone += food;
                 state.Resources = bal;
             }
             if (result.AetherCrystals > 0)
@@ -1200,14 +1200,14 @@ namespace DeNelle.Village
 
             // Report what was actually BANKED (post-bank-cap), and name the accrual separately when
             // the two differ — a log that shows the pre-clamp number is how a silent loss hides.
-            bool bankTruncated = iron != result.Iron || wood != result.Wood || food != result.Food;
+            bool bankTruncated = iron != result.Iron || wood != result.Wood || food != result.Stone;
             Debug.Log($"[OfflineHarvest] Banked +{iron} iron, +{wood} wood, " +
                       $"+{food} food, +{result.AetherCrystals} crystals over " +
                       $"{Mathf.RoundToInt((float)result.AwaySeconds)}s away" +
                       (result.WasCapped ? " (away-cap)." : ".") +
                       $" clock={result.ClockSource}{(result.IsProvisional ? " (provisional until sync)" : "")}." +
                       (bankTruncated
-                          ? $" BANK FULL - accrued {result.Iron} iron / {result.Wood} wood / {result.Food} food; " +
+                          ? $" BANK FULL - accrued {result.Iron} iron / {result.Wood} wood / {result.Stone} food; " +
                             "the surplus was NOT ADDED (there is no store that holds away node yield - see the WO-1445 block above)."
                           : ""));
 
@@ -1220,7 +1220,7 @@ namespace DeNelle.Village
                 $"away claim banked: away={result.AwaySeconds:0}s capped={result.WasCapped} | " +
                 $"WOOD asked={result.Wood} banked={wood} notAdded={lostWood} cap={TownBankCapacity.MaxOf(BankResource.Wood)} | " +
                 $"IRON asked={result.Iron} banked={iron} notAdded={lostIron} cap={TownBankCapacity.MaxOf(BankResource.Iron)} | " +
-                $"STONE asked={result.Food} banked={food} notAdded={lostFood} cap={TownBankCapacity.MaxOf(BankResource.Food)} | " +
+                $"STONE asked={result.Stone} banked={food} notAdded={lostFood} cap={TownBankCapacity.MaxOf(BankResource.Stone)} | " +
                 $"CRYSTALS asked={result.AetherCrystals} banked={result.AetherCrystals} notAdded=0 cap=uncapped. " +
                 "The HARVEST RESULT screen composes its figures from these same clamp events " +
                 "(HarvestResultVM.Build), so screen == banked by construction.");

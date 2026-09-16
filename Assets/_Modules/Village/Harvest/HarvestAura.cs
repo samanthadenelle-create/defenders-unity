@@ -455,7 +455,7 @@ namespace DeNelle.Village
             {
                 case MineResource.Iron:          return VFXType.Harvest_Iron;
                 case MineResource.Wood:          return VFXType.Harvest_Wood;
-                case MineResource.Food:          return VFXType.Harvest_Food;
+                case MineResource.Stone:          return VFXType.Harvest_Food;
                 case MineResource.AetherCrystal: return VFXType.Harvest_Crystal;
                 default:                         return VFXType.None;
             }
@@ -471,7 +471,7 @@ namespace DeNelle.Village
                     return VFXType.Harvest_Iron;
                 case DeNelle.Village.Buildings.Progression.HarvestResource.Wood:
                     return VFXType.Harvest_Wood;
-                case DeNelle.Village.Buildings.Progression.HarvestResource.Food:
+                case DeNelle.Village.Buildings.Progression.HarvestResource.Stone:
                     return VFXType.Harvest_Food;
                 case DeNelle.Village.Buildings.Progression.HarvestResource.Crystals:
                     return VFXType.Harvest_Crystal;

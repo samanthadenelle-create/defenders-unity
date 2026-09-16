@@ -194,7 +194,7 @@ namespace DeNelle.Editor.Regression
         // =====================================================================
         private static void CheckStoneAxisClamp(List<string> failures, List<string> notes)
         {
-            const BankResource Stone = BankResource.Food;   // WO-1212: Stone rides the Food axis
+            const BankResource Stone = BankResource.Stone;   // WO-1212: Stone rides the Food axis
             const int Ask = 8;                              // the ticket's own number
 
             if (!TownBankCapacity.IsCapped(Stone))
@@ -250,7 +250,7 @@ namespace DeNelle.Editor.Regression
         // =====================================================================
         private static void CheckMeasuredStoneGrant(List<string> failures, List<string> notes)
         {
-            const BankResource Stone = BankResource.Food;   // WO-1212: Stone rides the Food axis
+            const BankResource Stone = BankResource.Stone;   // WO-1212: Stone rides the Food axis
             const int Ask = 8;                              // the ticket's own number
 
             var gs = GameStateService.Instance;
@@ -304,22 +304,22 @@ namespace DeNelle.Editor.Regression
                     return;
                 }
 
-                int beforeRoom = econ.Food;
-                var appliedRoom = econ.Grant(new ResourceCost(wood: 0, food: Ask, iron: 0));
-                int afterRoom = econ.Food;
+                int beforeRoom = econ.Stone;
+                var appliedRoom = econ.Grant(new ResourceCost(wood: 0, stone: Ask, iron: 0));
+                int afterRoom = econ.Stone;
 
-                if (appliedRoom.Food != Ask)
-                    failures.Add($"[uncapped-banks-full] with {max} headroom the applied basket reports {appliedRoom.Food} "
+                if (appliedRoom.Stone != Ask)
+                    failures.Add($"[uncapped-banks-full] with {max} headroom the applied basket reports {appliedRoom.Stone} "
                                + $"of {Ask} Stone -- an earned grant into an empty store must arrive in full");
                 if (afterRoom - beforeRoom != Ask)
                     failures.Add($"[uncapped-banks-full] the WALLET moved {afterRoom - beforeRoom} for a {Ask} Stone grant "
                                + $"({beforeRoom} -> {afterRoom}) -- the applied basket and the wallet disagree");
 
                 // With nothing lost there must be no shortfall sentence at all to compose.
-                if (afterRoom - beforeRoom >= Ask && appliedRoom.Food >= Ask)
+                if (afterRoom - beforeRoom >= Ask && appliedRoom.Stone >= Ask)
                 {
                     string clean = Enemy.DescribeMaterialShortfall("oracle",
-                        0, 0, -1, 0, 0, -1, Ask, afterRoom - beforeRoom, appliedRoom.Food);
+                        0, 0, -1, 0, 0, -1, Ask, afterRoom - beforeRoom, appliedRoom.Stone);
                     if (clean.IndexOf("BANK FULL", StringComparison.Ordinal) >= 0)
                         failures.Add("[uncapped-banks-full] a grant that banked in full still composes a BANK FULL "
                                    + "sentence -- a false cap alarm is as misleading as a missed one: " + clean);
@@ -333,20 +333,20 @@ namespace DeNelle.Editor.Regression
                     return;
                 }
 
-                int beforeFull = econ.Food;
-                var appliedFull = econ.Grant(new ResourceCost(wood: 0, food: Ask, iron: 0));
-                int afterFull = econ.Food;
+                int beforeFull = econ.Stone;
+                var appliedFull = econ.Grant(new ResourceCost(wood: 0, stone: Ask, iron: 0));
+                int afterFull = econ.Stone;
 
-                if (appliedFull.Food != 0)
+                if (appliedFull.Stone != 0)
                     failures.Add($"[capped-banks-zero] at the cap ({beforeFull}/{max}) the applied basket reports "
-                               + $"{appliedFull.Food} Stone banked of {Ask} (expected 0)");
+                               + $"{appliedFull.Stone} Stone banked of {Ask} (expected 0)");
                 if (afterFull != beforeFull)
                     failures.Add($"[capped-banks-zero] at the cap the wallet moved {afterFull - beforeFull} "
                                + $"({beforeFull} -> {afterFull}) -- the bank accepted above its own ceiling");
 
                 // THE POINT OF THE TICKET: those real numbers must compose the CAP sentence, not the guess.
                 string composed = Enemy.DescribeMaterialShortfall("oracle",
-                    0, 0, -1, 0, 0, -1, Ask, afterFull - beforeFull, appliedFull.Food);
+                    0, 0, -1, 0, 0, -1, Ask, afterFull - beforeFull, appliedFull.Stone);
                 if (composed.IndexOf("BANK FULL", StringComparison.Ordinal) < 0)
                     failures.Add("[capped-banks-zero] the MEASURED cap outcome does not compose a BANK FULL reason: " + composed);
                 if (composed.IndexOf(RetiredGuess, StringComparison.OrdinalIgnoreCase) >= 0)
@@ -371,12 +371,12 @@ namespace DeNelle.Editor.Regression
         {
             why = null;
             var r = state.Resources;
-            r.Food = Mathf.Max(0, value);
+            r.Stone = Mathf.Max(0, value);
             state.Resources = r;
-            int readBack = TownBankCapacity.CurrentOf(BankResource.Food);
+            int readBack = TownBankCapacity.CurrentOf(BankResource.Stone);
             if (readBack != Mathf.Max(0, value))
             {
-                why = $"wrote {value} to GameState.Resources.Food and TownBankCapacity.CurrentOf(Food) read back {readBack}";
+                why = $"wrote {value} to GameState.Resources.Stone and TownBankCapacity.CurrentOf(Food) read back {readBack}";
                 return false;
             }
             return true;
