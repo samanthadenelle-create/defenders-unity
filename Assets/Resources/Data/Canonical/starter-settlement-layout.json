@@ -1,15 +1,5 @@
 {
-  "version": 1,
-  "_comment": "Canonical ready-settlement placement table. Rows contain stable structure catalog ids and grid transforms only; CatalogRegistry resolves each id to the current prefab/art, so an art swap never requires layout code changes. Keep byte-identical with StreamingAssets/Data/Canonical/starter-settlement-layout.json.",
-  "entries": [
-    { "id": "workshop",             "x": 9,  "z": 18, "yawQuarterTurns": 0 },
-    { "id": "collector_forge",     "x": 11, "z": 18, "yawQuarterTurns": 0 },
-    { "id": "lumberyard",          "x": 13, "z": 18, "yawQuarterTurns": 0 },
-    { "id": "foundry",             "x": 15, "z": 18, "yawQuarterTurns": 0 },
-    { "id": "silo",                "x": 17, "z": 18, "yawQuarterTurns": 0 },
-    { "id": "tower_ground_archer", "x": 14, "z": 5,  "yawQuarterTurns": 0 },
-    { "id": "tower_ground_archer", "x": 5,  "z": 14, "yawQuarterTurns": 1 },
-    { "id": "tower_ground_archer", "x": 24, "z": 14, "yawQuarterTurns": 3 },
-    { "id": "tower_ground_archer", "x": 14, "z": 25, "yawQuarterTurns": 2 }
-  ]
+  "version": 2,
+  "_comment": "Ready-settlement extras RETIRED 2026-09-12. Both founding paths keep HubStructureVisualInjector models only (the 8 baked storefronts). Catalog GenericContainer / IronMine / ShopAndCrafting / extra archer towers must not spawn here. Keep byte-identical with StreamingAssets/Data/Canonical/starter-settlement-layout.json.",
+  "entries": []
 }

@@ -4,6 +4,7 @@
   "troops": [
     {
       "id": "troop-footman",
+      "legacyIds": ["militia"],
       "displayName": "Footman",
       "role": "melee",
       "slots": 1,
@@ -26,6 +27,7 @@
     },
     {
       "id": "troop-archer",
+      "legacyIds": ["archer"],
       "displayName": "Archer",
       "role": "ranged",
       "slots": 1,
@@ -48,6 +50,7 @@
     },
     {
       "id": "troop-spearman",
+      "legacyIds": ["spearman"],
       "displayName": "Spearman",
       "role": "melee",
       "slots": 1,

@@ -111,7 +111,7 @@
   "crystalMines": "The Crystal Mines",
   "crystalMine": "Crystal Mine",
   "petHouse": "Echo Hollow",
-  "arcaneTower": "Cathedral of Magic",
+  "arcaneTower": "Cathedral of Learning",
   "_buildingWordsNote": "STOP: THESE KEYS ARE catalog ids AND structures-catalog.json IS THE SINGLE NAMING AUTHORITY (WO-1161, straightened 2026-08-23; this block corrected the same day). They are a convenience mirror for surfaces that resolve a building word by id (VillageStrings.Canon) and they must AGREE with that file's displayName, never lead it. WARNING: UNTIL 2026-08-23 THIS BLOCK CARRIED THE RETIRED WO-840 INVERSION - 'workshop' read 'Forge' and 'forge' read 'Armorer' - so a surface reading canon-strings rendered a DIFFERENT word than one reading the catalog for the SAME id, which is exactly how 'Iron - NEEDS: Forge' was printed to a player whose ledger already held 'forge'. Names are derived from what a building DOES (vendors.json): 'forge' sells WEAPONS -> 'Forge'; 'armorer' sells ARMOUR -> 'Armorer'; 'workshop' is not a vendor -> 'Crafting Station'. If a name must move, move it in structures-catalog.json FIRST and mirror it here in the same edit. IDS ARE FROZEN SAVE KEYS - only the words move. ASCII only (TMP renders non-ASCII as tofu).",
   "workshop": "Crafting Station",
   "farm": "Quarry",

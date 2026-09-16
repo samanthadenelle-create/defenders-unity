@@ -1889,6 +1889,190 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143555
+  - m_Id: 41934581304123392
+    m_Localized: Votre Bastion de Fer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677824
+    m_Localized: "S'entra\xEEner \xE0 d\xE9fendre la ville"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677825
+    m_Localized: "Les consommables ne sont pas d\xE9pens\xE9s \xE0 l'entra\xEEnement."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677826
+    m_Localized: "Entra\xEEnement \xE0 la d\xE9fense"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677827
+    m_Localized: "Battez les trois assaillants. Votre ville sauvegard\xE9e est prot\xE9g\xE9e
+      ; l'entra\xEEnement n'offre ni r\xE9compenses ni mises."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677828
+    m_Localized: "D\xE9fense termin\xE9e. Votre le\xE7on d'entra\xEEnement est sauvegard\xE9e."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677829
+    m_Localized: "Entra\xEEnement termin\xE9. Retournez en ville et essayez une autre
+      d\xE9fense."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677830
+    m_Localized: "Quitter l'entra\xEEnement"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677831
+    m_Localized: Sauvegarder et rentrer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677832
+    m_Localized: Entrer dans votre ville
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677833
+    m_Localized: "V\xE9rification des chemins avant de sauvegarder la nouvelle position..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677834
+    m_Localized: "R\xE9essayer la sauvegarde"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677835
+    m_Localized: "Votre ville n'a pas pu \xEAtre sauvegard\xE9e. Essayez d'y entrer
+      \xE0 nouveau."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677836
+    m_Localized: "Cette ville est \xE0 vous. Restaurez une structure endommag\xE9e,
+      puis choisissez un nouvel emplacement pour une tour d\xE9fensive."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677837
+    m_Localized: "Les provisions de conqu\xEAte couvrent votre premi\xE8re r\xE9paration.
+      Si toutes les tours sont tomb\xE9es, restaurez-en une pour pouvoir la d\xE9placer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677838
+    m_Localized: "Votre ville est rest\xE9e intacte. Inspectez ses structures, puis
+      choisissez un nouvel emplacement pour une tour d\xE9fensive."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677839
+    m_Localized: Inspecter les structures
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677840
+    m_Localized: "Choisissez une tour d\xE9fensive debout et d\xE9placez-la vers
+      l'ouest ou l'est. Rentrez en ville pour v\xE9rifier votre plan sauvegard\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677841
+    m_Localized: "Votre ville sauvegard\xE9e a \xE9t\xE9 restaur\xE9e avec succ\xE8s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677842
+    m_Localized: Commencer la restauration
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677843
+    m_Localized: "R\xE9parer une structure"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677844
+    m_Localized: Structure suivante
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677845
+    m_Localized: "D\xE9placer vers l'ouest"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677846
+    m_Localized: "D\xE9placer vers l'est"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677847
+    m_Localized: Sauvegarder et revenir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677848
+    m_Localized: "Retourner au ch\xE2teau"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677849
+    m_Localized: "Aucune structure endommag\xE9e ne peut \xEAtre r\xE9par\xE9e pour
+      le moment."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677850
+    m_Localized: "Choisissez une tour d\xE9fensive debout."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677851
+    m_Localized: "Plan sauvegard\xE9. Rentrez dans votre ville pour le voir restaur\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485410840576
+    m_Localized: Autres r?parations
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395008
+    m_Localized: Structure suivante
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395009
+    m_Localized: Retour au plan
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395010
+    m_Localized: 'Provisions : {0}
+
+      Vos ressources : {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 41956485444395011
+    m_Localized: Choisissez une structure endommag?e. Les provisions sont utilis?es
+      avant vos ressources.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532201807872
+    m_Localized: "Am\xE9liorer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168000
+    m_Localized: Vendre
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168001
+    m_Localized: 'Vendre cette structure ? Remboursement maximal : {0}, selon le
+      stockage disponible.'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 41996532231168002
+    m_Localized: Conserver
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168003
+    m_Localized: "Structure vendue. Re\xE7u : {0}."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 41996532231168004
+    m_Localized: Construire
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170400894976
+    m_Localized: "Une connexion Internet est n\xE9cessaire pour terminer la configuration
+      d\u2019Elarion."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170434449408
+    m_Localized: "R\xE9essayer"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1933,3 +2117,6 @@ MonoBehaviour:
         - id: 41016777618534403
         - id: 41482615928696832
         - id: 41482615958056960
+        - id: 41956485444395010
+        - id: 41996532231168001
+        - id: 41996532231168003

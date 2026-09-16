@@ -1871,6 +1871,187 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143553
+  - m_Id: 41934581304123392
+    m_Localized: "Seu Basti\xE3o de Ferro"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677824
+    m_Localized: Treinar a defesa da cidade
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677825
+    m_Localized: "Consum\xEDveis n\xE3o s\xE3o gastos no treino."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677826
+    m_Localized: Treino de defesa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677827
+    m_Localized: "Derrote os tr\xEAs atacantes. Sua cidade salva est\xE1 segura;
+      o treino n\xE3o oferece recompensas nem apostas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677828
+    m_Localized: "Defesa conclu\xEDda. Sua li\xE7\xE3o de treino foi salva."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677829
+    m_Localized: "Treino conclu\xEDdo. Volte \xE0 cidade e experimente outra defesa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677830
+    m_Localized: Sair do treino
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677831
+    m_Localized: "Salvar e voltar \xE0 cidade"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677832
+    m_Localized: Entrar na sua cidade
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677833
+    m_Localized: "Verificando os caminhos antes de salvar a nova posi\xE7\xE3o..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677834
+    m_Localized: Tentar salvar a cidade novamente
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677835
+    m_Localized: "N\xE3o foi poss\xEDvel salvar sua cidade. Tente entrar novamente."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677836
+    m_Localized: "Esta cidade \xE9 sua. Restaure uma estrutura danificada e escolha
+      uma nova posi\xE7\xE3o para uma torre de defesa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677837
+    m_Localized: "Os suprimentos da conquista cobrem seu primeiro reparo. Se todas
+      as torres ca\xEDram, restaure uma para mudar sua posi\xE7\xE3o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677838
+    m_Localized: "Sua cidade ficou intacta. Inspecione as estruturas e escolha uma
+      nova posi\xE7\xE3o para uma torre de defesa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677839
+    m_Localized: Inspecionar estruturas
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677840
+    m_Localized: "Escolha uma torre de defesa de p\xE9 e mova-a para oeste ou leste.
+      Entre novamente para conferir o projeto salvo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677841
+    m_Localized: Sua cidade salva foi restaurada com sucesso.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677842
+    m_Localized: "Iniciar restaura\xE7\xE3o"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677843
+    m_Localized: Reparar uma estrutura
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677844
+    m_Localized: "Pr\xF3xima estrutura"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677845
+    m_Localized: Mover para oeste
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677846
+    m_Localized: Mover para leste
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677847
+    m_Localized: Salvar e entrar novamente
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677848
+    m_Localized: Voltar ao castelo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677849
+    m_Localized: Nenhuma estrutura danificada pode ser reparada agora.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677850
+    m_Localized: "Selecione uma torre de defesa de p\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677851
+    m_Localized: "Projeto salvo. Entre novamente na cidade para v\xEA-lo restaurado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485410840576
+    m_Localized: Reparar mais
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395008
+    m_Localized: Pr?xima estrutura
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395009
+    m_Localized: Voltar ao projeto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395010
+    m_Localized: 'Suprimentos: {0}
+
+      Seus recursos: {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 41956485444395011
+    m_Localized: Escolha uma estrutura danificada. Os suprimentos s?o usados primeiro,
+      depois seus recursos.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532201807872
+    m_Localized: Melhorar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168000
+    m_Localized: Vender
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168001
+    m_Localized: "Vender esta estrutura? Reembolso de at\xE9 {0}, sujeito ao espa\xE7o
+      dispon\xEDvel."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 41996532231168002
+    m_Localized: Manter
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168003
+    m_Localized: 'Estrutura vendida. Recebido: {0}.'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 41996532231168004
+    m_Localized: Construir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170400894976
+    m_Localized: "\xC9 necess\xE1ria uma conex\xE3o com a internet para concluir
+      a configura\xE7\xE3o de Elarion."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170434449408
+    m_Localized: Tentar novamente
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1915,3 +2096,6 @@ MonoBehaviour:
         - id: 41016777618534403
         - id: 41482615928696832
         - id: 41482615958056960
+        - id: 41956485444395010
+        - id: 41996532231168001
+        - id: 41996532231168003

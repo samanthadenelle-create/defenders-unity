@@ -1687,6 +1687,174 @@ MonoBehaviour:
     m_Key: hud.heart.objective.trainNextRaidOther
     m_Metadata:
       m_Items: []
+  - m_Id: 41934581304123392
+    m_Key: ownedTown.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677824
+    m_Key: ownedTown.practice
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677825
+    m_Key: ownedTown.practiceItems
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677826
+    m_Key: ownedTown.practiceTitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677827
+    m_Key: ownedTown.practiceHint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677828
+    m_Key: ownedTown.practiceWin
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677829
+    m_Key: ownedTown.practiceLoss
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677830
+    m_Key: ownedTown.practiceAbandon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677831
+    m_Key: ownedTown.practiceReturn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677832
+    m_Key: ownedTown.enter
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677833
+    m_Key: ownedTown.checkingMove
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677834
+    m_Key: ownedTown.retrySave
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677835
+    m_Key: ownedTown.captureRetry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677836
+    m_Key: ownedTown.revealHint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677837
+    m_Key: ownedTown.repairHint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677838
+    m_Key: ownedTown.inspectHint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677839
+    m_Key: ownedTown.inspect
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677840
+    m_Key: ownedTown.designHint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677841
+    m_Key: ownedTown.readyHint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677842
+    m_Key: ownedTown.begin
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677843
+    m_Key: ownedTown.repair
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677844
+    m_Key: ownedTown.nextTower
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677845
+    m_Key: ownedTown.moveWest
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677846
+    m_Key: ownedTown.moveEast
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677847
+    m_Key: ownedTown.reenter
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677848
+    m_Key: ownedTown.castle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677849
+    m_Key: ownedTown.noRepair
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677850
+    m_Key: ownedTown.selectTower
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677851
+    m_Key: ownedTown.saved
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485410840576
+    m_Key: ownedTown.repairMore
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395008
+    m_Key: ownedTown.nextRepair
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395009
+    m_Key: ownedTown.backToDesign
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395010
+    m_Key: ownedTown.repairPayment
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395011
+    m_Key: ownedTown.repairChoiceHint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532201807872
+    m_Key: ownedTown.upgrade
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168000
+    m_Key: ownedTown.sell
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168001
+    m_Key: ownedTown.saleQuote
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168002
+    m_Key: ownedTown.keepStructure
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168003
+    m_Key: ownedTown.saleComplete
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168004
+    m_Key: ownedTown.build
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170400894976
+    m_Key: offlineFirstRunInternetRequired
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170434449408
+    m_Key: offlineFirstRunRetry
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

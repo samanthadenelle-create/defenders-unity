@@ -1877,6 +1877,192 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143554
+  - m_Id: 41934581304123392
+    m_Localized: Deine Eisenbastion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677824
+    m_Localized: "Stadtverteidigung \xFCben"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677825
+    m_Localized: "In der \xDCbung werden keine Verbrauchsgegenst\xE4nde verbraucht."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677826
+    m_Localized: "Verteidigungs\xFCbung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677827
+    m_Localized: "Besiege die drei Angreifer. Deine gespeicherte Stadt bleibt sicher;
+      die \xDCbung bietet keine Belohnungen oder Wetteins\xE4tze."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677828
+    m_Localized: "Verteidigung abgeschlossen. Deine \xDCbungslektion wurde gespeichert."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677829
+    m_Localized: "\xDCbung abgeschlossen. Kehre zur Stadt zur\xFCck und versuche
+      eine andere Verteidigung."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677830
+    m_Localized: "\xDCbung verlassen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677831
+    m_Localized: Speichern und zur Stadt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677832
+    m_Localized: Deine Stadt betreten
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677833
+    m_Localized: "Wege werden gepr\xFCft, bevor die neue Turmposition gespeichert
+      wird..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677834
+    m_Localized: Stadt erneut speichern
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677835
+    m_Localized: Deine Stadt konnte nicht gespeichert werden. Versuche erneut, sie
+      zu betreten.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677836
+    m_Localized: "Diese Stadt geh\xF6rt dir. Stelle ein besch\xE4digtes Bauwerk wieder
+      her und w\xE4hle einen neuen Standort f\xFCr einen Verteidigungsturm."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677837
+    m_Localized: "Die Eroberungsvorr\xE4te decken deine erste Reparatur. Sind alle
+      T\xFCrme gefallen, stelle einen wieder her, um ihn versetzen zu k\xF6nnen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677838
+    m_Localized: "Deine Stadt ist unversehrt geblieben. Pr\xFCfe ihre Bauwerke und
+      w\xE4hle einen neuen Standort f\xFCr einen Verteidigungsturm."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677839
+    m_Localized: "Bauwerke pr\xFCfen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677840
+    m_Localized: "W\xE4hle einen stehenden Verteidigungsturm und verschiebe ihn nach
+      Westen oder Osten. Betritt die Stadt erneut, um deinen gespeicherten Entwurf
+      zu pr\xFCfen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677841
+    m_Localized: Deine gespeicherte Stadt wurde erfolgreich wiederhergestellt.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677842
+    m_Localized: Wiederaufbau beginnen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677843
+    m_Localized: Bauwerk reparieren
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677844
+    m_Localized: "N\xE4chstes Bauwerk"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677845
+    m_Localized: Nach Westen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677846
+    m_Localized: Nach Osten
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677847
+    m_Localized: Speichern und neu betreten
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677848
+    m_Localized: "Zur\xFCck zur Burg"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677849
+    m_Localized: "Derzeit kann kein besch\xE4digtes Bauwerk repariert werden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677850
+    m_Localized: "W\xE4hle einen stehenden Verteidigungsturm."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677851
+    m_Localized: Entwurf gespeichert. Betritt deine Stadt erneut, um ihn wiederhergestellt
+      zu sehen.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485410840576
+    m_Localized: Weiter reparieren
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395008
+    m_Localized: N?chstes Bauwerk
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395009
+    m_Localized: Zur?ck zur Planung
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395010
+    m_Localized: 'Vorr?te: {0}
+
+      Deine Ressourcen: {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 41956485444395011
+    m_Localized: W?hle ein besch?digtes Bauwerk. Zuerst werden Vorr?te verbraucht,
+      dann deine Ressourcen.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532201807872
+    m_Localized: Verbessern
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168000
+    m_Localized: Verkaufen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168001
+    m_Localized: "Dieses Bauwerk verkaufen? Erstattung bis zu {0}, abh\xE4ngig vom
+      freien Lagerplatz."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 41996532231168002
+    m_Localized: Behalten
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168003
+    m_Localized: 'Bauwerk verkauft. Erhalten: {0}.'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 41996532231168004
+    m_Localized: Bauen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170400894976
+    m_Localized: "Eine Internetverbindung ist erforderlich, um die Einrichtung von
+      Elarion abzuschlie\xDFen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170434449408
+    m_Localized: Erneut versuchen
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1921,3 +2107,6 @@ MonoBehaviour:
         - id: 41016777618534403
         - id: 41482615928696832
         - id: 41482615958056960
+        - id: 41956485444395010
+        - id: 41996532231168001
+        - id: 41996532231168003

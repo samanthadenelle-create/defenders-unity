@@ -413,7 +413,7 @@
       "stages": [
         {
           "stageId": "restore-mill",
-          "objectiveText": "Restore food flow: open the upgrade for Mother Wren's Mill and raise what it yields.",
+          "objectiveText": "Upgrade Mother Wren's Mill to improve town production.",
           "reward": [
             {
               "kind": "xp",

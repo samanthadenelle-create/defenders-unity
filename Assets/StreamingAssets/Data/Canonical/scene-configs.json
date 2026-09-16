@@ -224,7 +224,7 @@
       "mageTowerCount": 2,
       "eliteCount": 1,
       "shardDropChance": 0.0,
-      "unlockVictories": 3
+      "unlockVictories": 0
     },
     {
       "id": "mage_enclave",
@@ -298,7 +298,7 @@
       "mageTowerCount": 3,
       "eliteCount": 3,
       "shardDropChance": 0.2,
-      "unlockVictories": 10
+      "unlockVictories": 0
     },
     {
       "id": "iron_bastion",
@@ -355,7 +355,7 @@
       "mageTowerCount": 3,
       "eliteCount": 3,
       "shardDropChance": 0.2,
-      "unlockVictories": 20
+      "unlockVictories": 0
     }
   ]
 }

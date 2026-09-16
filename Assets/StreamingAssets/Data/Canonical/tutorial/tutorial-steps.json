@@ -4,6 +4,30 @@
   "flowId": "ftue_v2",
   "steps": [
     {
+      "id": "owned_town_repair", "flowId": "contextual", "order": 810,
+      "scene": "OwnedTown_IronBastion",
+      "trigger": { "type": "signal", "signal": "ownedTown.revealed" },
+      "completion": { "signal": "ownedTown.repaired" },
+      "hint": "Restore a damaged structure with your capture supplies.",
+      "objective": { "text": "Restore your town" }, "oneShot": true, "skippable": false
+    },
+    {
+      "id": "owned_town_design", "flowId": "contextual", "order": 820,
+      "scene": "OwnedTown_IronBastion",
+      "trigger": { "type": "signal", "signal": "ownedTown.repaired" },
+      "completion": { "signal": "ownedTown.designed" },
+      "hint": "Choose a defense tower and give it a new position.",
+      "objective": { "text": "Choose your defense layout" }, "oneShot": true, "skippable": false
+    },
+    {
+      "id": "owned_town_reentry", "flowId": "contextual", "order": 830,
+      "scene": "OwnedTown_IronBastion",
+      "trigger": { "type": "signal", "signal": "ownedTown.designed" },
+      "completion": { "signal": "ownedTown.reentered" },
+      "hint": "Reenter your town to check that your design was saved.",
+      "objective": { "text": "Return to your saved town" }, "oneShot": true, "skippable": false
+    },
+    {
       "id": "founding_greet",
       "order": 10,
       "scene": "MainCastle_Hall",

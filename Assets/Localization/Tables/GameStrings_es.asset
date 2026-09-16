@@ -1868,6 +1868,187 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143552
+  - m_Id: 41934581304123392
+    m_Localized: "Tu Basti\xF3n de Hierro"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677824
+    m_Localized: Practicar la defensa de la ciudad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677825
+    m_Localized: "En la pr\xE1ctica no se gastan consumibles."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677826
+    m_Localized: "Pr\xE1ctica de defensa"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677827
+    m_Localized: "Derrota a los tres atacantes. Tu ciudad guardada est\xE1 a salvo;
+      la pr\xE1ctica no ofrece recompensas ni apuestas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677828
+    m_Localized: "Defensa completada. Tu lecci\xF3n de pr\xE1ctica se ha guardado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677829
+    m_Localized: "Pr\xE1ctica completada. Vuelve a tu ciudad y prueba otra defensa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677830
+    m_Localized: "Salir de la pr\xE1ctica"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677831
+    m_Localized: Guardar y volver a la ciudad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677832
+    m_Localized: Entrar en tu ciudad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677833
+    m_Localized: "Comprobando las rutas antes de guardar el cambio de posici\xF3n..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677834
+    m_Localized: Reintentar guardar la ciudad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677835
+    m_Localized: No se pudo guardar tu ciudad. Intenta entrar de nuevo.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677836
+    m_Localized: "Esta ciudad es tuya. Restaura una estructura da\xF1ada y elige
+      una nueva posici\xF3n para una torre defensiva."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677837
+    m_Localized: "Los suministros de conquista cubren tu primera reparaci\xF3n. Si
+      cayeron todas las torres, restaura una para poder cambiar su posici\xF3n."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677838
+    m_Localized: "Tu ciudad qued\xF3 intacta. Inspecciona sus estructuras y elige
+      una nueva posici\xF3n para una torre defensiva."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677839
+    m_Localized: Inspeccionar estructuras
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677840
+    m_Localized: "Elige una torre defensiva en pie y mu\xE9vela al oeste o al este.
+      Vuelve a entrar para comprobar el dise\xF1o guardado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677841
+    m_Localized: Tu ciudad guardada se ha restaurado correctamente.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677842
+    m_Localized: "Comenzar restauraci\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677843
+    m_Localized: Reparar una estructura
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677844
+    m_Localized: Siguiente estructura
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677845
+    m_Localized: Mover al oeste
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677846
+    m_Localized: Mover al este
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677847
+    m_Localized: Guardar y volver a entrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677848
+    m_Localized: Volver al castillo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677849
+    m_Localized: "Ahora no se puede reparar ninguna estructura da\xF1ada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677850
+    m_Localized: Selecciona una torre defensiva en pie.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41934581337677851
+    m_Localized: "Dise\xF1o guardado. Vuelve a entrar en tu ciudad para verlo restaurado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485410840576
+    m_Localized: M?s reparaciones
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395008
+    m_Localized: Siguiente estructura
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395009
+    m_Localized: Volver al dise?o
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41956485444395010
+    m_Localized: 'Suministros: {0}
+
+      Tus recursos: {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 41956485444395011
+    m_Localized: Elige una estructura da?ada. Primero se usan los suministros y despu?s
+      tus recursos.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532201807872
+    m_Localized: Mejorar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168000
+    m_Localized: Vender
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168001
+    m_Localized: "\xBFVender esta estructura? Reembolso de hasta {0}, sujeto al espacio
+      disponible."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 41996532231168002
+    m_Localized: Conservar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 41996532231168003
+    m_Localized: 'Estructura vendida. Recibiste: {0}.'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 41996532231168004
+    m_Localized: Construir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170400894976
+    m_Localized: "Se necesita conexi\xF3n a Internet para terminar de configurar
+      Elarion."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 42043170434449408
+    m_Localized: Reintentar
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
@@ -1912,3 +2093,6 @@ MonoBehaviour:
         - id: 41016777618534403
         - id: 41482615928696832
         - id: 41482615958056960
+        - id: 41956485444395010
+        - id: 41996532231168001
+        - id: 41996532231168003

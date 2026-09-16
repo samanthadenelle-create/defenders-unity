@@ -1,19 +1,47 @@
 {
+  "offlineFirstRunInternetRequired": "An internet connection is required to finish setting up Elarion.",
+  "offlineFirstRunRetry": "Retry",
+  "ownedTown.title": "Your Iron Bastion",
+  "ownedTown.practice": "Practice defending town",
+  "ownedTown.practiceItems": "Consumables are not spent in practice.",
+  "ownedTown.practiceTitle": "Town defense practice",
+  "ownedTown.practiceHint": "Defeat the three attackers. Your saved town is safe; practice has no rewards or wagers.",
+  "ownedTown.practiceWin": "Defense complete. Your practice lesson is saved.",
+  "ownedTown.practiceLoss": "Practice complete. Return to your town and try another defense.",
+  "ownedTown.practiceAbandon": "Leave practice",
+  "ownedTown.practiceReturn": "Save and return to town",
+  "ownedTown.enter": "Enter your town",
+  "ownedTown.checkingMove": "Checking paths before saving your tower move...",
+  "ownedTown.retrySave": "Retry saving town",
+  "ownedTown.captureRetry": "Your town could not be saved. Please try entering again.",
+  "ownedTown.revealHint": "This town is yours. Restore a damaged structure, then choose a new position for a defense tower.",
+  "ownedTown.repairHint": "Your capture supplies cover your first repair. If every tower fell, restore a tower so you can redesign its position.",
+  "ownedTown.inspectHint": "Your town survived intact. Inspect its structures, then choose a new position for a defense tower.",
+  "ownedTown.inspect": "Inspect structures",
+  "ownedTown.designHint": "Choose a standing defense tower and move it west or east. Reenter the town to check your saved design.",
+  "ownedTown.readyHint": "Your saved town has been restored successfully.",
+  "ownedTown.begin": "Begin restoration",
+  "ownedTown.repair": "Repair a structure",
+  "ownedTown.nextTower": "Next structure",
+  "ownedTown.moveWest": "Move west",
+  "ownedTown.moveEast": "Move east",
+  "ownedTown.reenter": "Save and reenter",
+  "ownedTown.castle": "Return to castle",
+  "ownedTown.noRepair": "No damaged structure can currently be repaired.",
+  "ownedTown.selectTower": "Select a standing defense tower.",
+  "ownedTown.saved": "Design saved. Reenter your town to see it restored.",
   "_comment": "English localizable user-facing strings for Defenders of the Realm. Verbatim from narrative-bible.md §7 and src/content/story.ts. Flat dotted keys suitable for the Unity Localization package string table. Multi-variant lines are numbered .1 .2 etc; pick at random per trigger.",
   "_sources": {
     "narrativeBible": "defenders-unity/docs/narrative-bible.md",
     "storyTs": "defenders-of-the-realm/src/content/story.ts",
     "tooltipsTs": "defenders-of-the-realm/src/content/tooltips.ts"
   },
-
   "title.tagline": "Hold the Chord. Defend the Spire.",
   "title.tagline.legacy.bible": "Tend the Heart. Hold the dark.",
   "title.tagline.legacy.story": "Tend the Lantern. Hold the dark.",
-
   "intro.coldOpen.line1": "In an old valley, an old tree.",
   "intro.coldOpen.line2": "In the dark beyond, a slow cold rot.",
   "intro.coldOpen.line3": "You are the Keeper. The song is yours now.",
-
   "tutorial.firstVillageLoad": "Welcome home, Keeper. The Heart hums for you. Walk a while - the song will tell you what it needs.",
   "tutorial.firstApproachHeart": "This is Elarion. Touch the dais. The crystal will remember you.",
   "tutorial.firstCrystalClaim": "The Heart gives what it can spare. Hold these - you will need them.",
@@ -25,7 +53,6 @@
   "tutorial.firstFrostNovaW": "For when a lane fails. The cold buys you a breath. Use the breath well.",
   "tutorial.firstBeaconE": "Plant light where the dark gathers thickest. The towers within will fight braver.",
   "tutorial.firstMeteorR": "This is the deep magic. Spend it only when the Heart calls for it.",
-
   "tutorial.steps.1": "Welcome home, Keeper. The spire holds the realm's last song. Protect it.",
   "tutorial.steps.2": "The Hollowed come from the dark beyond the walls. They want to extinguish the Light.",
   "tutorial.steps.3": "Build your defenses with what you have. Walk to the Crystal Mine - tap to gather.",
@@ -34,11 +61,9 @@
   "tutorial.steps.6": "Your Wardens fight beside you. Tap one to give them a station.",
   "tutorial.steps.7": "The spire remembers your kindness. Tend it well, Keeper.",
   "tutorial.steps.forceField": "The walls hold a force-field of the Heart's own light - see it shimmer in the gates. It turns the Hollowed back while it shines. But every blow thins it, and a thinned field lets the dark slip through. Keep the walls and gates mended, and the light keeps its strength.",
-
   "gate.firstSeen": "The Heart's light parts for those it knows. Walk through, Keeper - but the Hollow Ones will press against it. Mend the gate as you mend the walls.",
   "gate.firstDestroyed": "The gate has fallen. They come through unhindered. Hold the inner ring and repair the field before the next dark.",
   "gate.firstRepaired": "The light remembers you. The gate holds again.",
-
   "wave.warning.ice.1": "They come from the cold places. They will move slowly, and bite hard.",
   "wave.warning.ice.2": "The frost-marked are at the gates. Keep your fires lit.",
   "wave.warning.fire.1": "The ember-bound come, hungry for the green things. Hold the eastern lanes.",
@@ -51,7 +76,6 @@
   "wave.warning.boss.2": "He returns when the Withering finds purchase. Send him back.",
   "wave.warning.apex.1": "Syndrath the Devourer circles the Heart. The sky itself has turned against us. Keep your eyes up, Keeper.",
   "wave.warning.apex.2": "A black wing crosses the sun. The Devourer hunts where the realm is weakest - do not let it find the Heart wanting.",
-
   "heartVoice.serene.toVigilant": "The song shifts. The dark is at the gates.",
   "heartVoice.vigilant.toWarning": "A lane wavers. The Heart felt it before you did.",
   "heartVoice.warning.toDanger": "The walls are thinning. The Heart calls for you.",
@@ -59,7 +83,6 @@
   "heartVoice.critical.toSerene": "The Heart settles. The folk breathe again.",
   "heartVoice.boss": "He stands within the gate. Time slows. The light dims.",
   "heartVoice.victorious": "The song rises. The valley holds.",
-
   "heartVoice.alt.vigilant.1": "The light shifts. The dark is at the gates.",
   "heartVoice.alt.vigilant.2": "The spire stirs. The watch begins.",
   "heartVoice.alt.warning.1": "A lane wavers. The chord felt it before you did.",
@@ -72,43 +95,36 @@
   "heartVoice.alt.boss.2": "Alduin the Mournful walks the lane. Greet him with steel.",
   "heartVoice.alt.victorious.1": "The light returns. The village breathes again.",
   "heartVoice.alt.victorious.2": "The song rises. Elarion holds.",
-
   "heartDamage.threshold75": "The crystal flickers. The Heart has taken its first blow.",
   "heartDamage.threshold50": "Leaves fall in the wrong season. The song has gone thin.",
   "heartDamage.threshold25": "The bark is cracking. Hold, Keeper. Hold.",
   "heartDamage.threshold10": "The song is almost gone. Spend everything.",
   "heartDamage.threshold0": "...",
-
   "heartDamage.alt.threshold75": "The flame flickers. The Lantern has taken its first blow.",
   "heartDamage.alt.threshold50": "Leaves fall in the wrong season. The warmth has gone thin.",
   "heartDamage.alt.threshold25": "The bark is splitting. Hold, Guardian. Hold.",
   "heartDamage.alt.threshold10": "The light is almost out. Spend everything.",
-
   "victory.wave.1": "They fall back. The Heart steadies. A breath, then the next.",
   "victory.wave.2": "The dark withdraws. Tend your companions. The song is not yet done.",
   "victory.wave.3": "The lanes hold. The folk light a candle for you.",
   "victory.boss.1": "Alduin breaks apart at the Heart's threshold. The Withering crawls home.",
   "victory.boss.2": "The valley sings. The folk weep. You are still the Keeper. The work begins again tomorrow.",
   "victory.personalBest": "None before you held so long. The old Keepers would have nodded.",
-
   "victory.waveCleared.1": "The dark withdraws - for now.",
   "victory.waveCleared.2": "The chord holds. The watch breathes.",
   "victory.waveCleared.3": "The Folk light a candle for you.",
   "victory.waveCleared.4": "The lanes are quiet again. Tend your Wardens.",
   "victory.waveCleared.5": "A breath. A moment. The next tide will come.",
   "victory.waveCleared.6": "The wind cools. Elarion remembers your name.",
-
   "defeat.1": "The song stops. The folk look up. The wind feels cold for the first time.",
   "defeat.2": "The Heart breaks. But the bond does not. Begin again, Keeper - there is no other answer.",
   "defeat.3": "Elarion will return where it is needed. You will too.",
   "defeat.alt.1": "The light stops. The folk look up. The wind feels cold for the first time.",
   "defeat.alt.2": "The chord falters. But the bond does not. Begin again, Keeper.",
-
   "petCaption.aetherSprite": "(a soft musical hum)",
   "petCaption.flamePup": "(a warm yip, like a small bell)",
   "petCaption.iceWolf": "(a low, considered breath)",
   "petCaption.levelUp": "(a long, surprised note)",
-
   "petAmbient.aetherSprite.1": "The Sprite watches you as you work. You do not know what it sees.",
   "petAmbient.aetherSprite.2": "It hums a single note, then forgets it.",
   "petAmbient.aetherSprite.3": "It glows brighter when you smile. You did not know that yet.",
@@ -118,7 +134,6 @@
   "petAmbient.iceWolf.1": "Aldwin came back from the orchard with ice on his muzzle. You did not ask.",
   "petAmbient.iceWolf.2": "Aldwin pads silently. When the Hollowed come, he bares his teeth and does not look away.",
   "petAmbient.iceWolf.3": "His breath does not cloud. You wonder if he is breathing at all.",
-
   "keeperAmbient.1": "The Pup is dreaming of fire again. Its tail twitches.",
   "keeperAmbient.2": "The Mine is full. The Folk left a candle by the door this morning.",
   "keeperAmbient.3": "There is a song in the wood, faint and old. The Heart is humming.",
@@ -127,16 +142,13 @@
   "keeperAmbient.6": "Aldwin came back from the orchard with a scrap of ice on his muzzle. I asked. He did not say.",
   "keeperAmbient.7": "The Tower's lamp has been lit for ten thousand mornings. It is my turn to keep it.",
   "keeperAmbient.8": "I think the Heart sang me to sleep last night. I cannot tell anymore where its voice ends and mine begins.",
-
   "milestone.firstPetLevelUp": "The Sprite glows brighter. Something it could not do yesterday, it can do today.",
   "milestone.firstSkillUnlocked": "A new shape in the song. The Heart taught it while you slept.",
   "milestone.firstBossKill": "Alduin falls. The folk will sing about this evening for a hundred years.",
   "milestone.firstStorePurchase": "The wanderer bows. The folk will know your name in three valleys.",
   "milestone.firstBuildingUpgrade": "The Workshop bell is louder now. The Folk are pleased.",
   "milestone.streak7Days": "Seven mornings tending the song. The old Keepers would have called you 'one of ours' by now.",
-
   "returningPlayer": "Elarion kept your hearth warm. Welcome back, Keeper.",
-
   "heroSelect.title": "Defenders of the Realm",
   "heroSelect.subtitle": "powered by SKR",
   "heroSelect.confirm": "Take Up the Watch",
@@ -154,18 +166,14 @@
   "hero.cleric.name": "Elara",
   "hero.cleric.role": "Divine Healer",
   "hero.cleric.blurb": "A vessel of the Heart's own light, Elara mends the wounded and wraps the faithful in holy ward. The dark cannot outlast a grace that rises faster than it can wound.",
-
   "petSelect.title": "Choose Your First Warden",
   "petSelect.subtitle": "A spirit will walk the watch beside you. Bond with one - it will know your kindness, and your battles.",
   "petSelect.confirm": "Bond With This Warden",
-
   "elementBlurb.aether": "Aether. The Heart's own light, shared and reshared. Mends what the dark has frayed.",
   "elementBlurb.flame": "Flame. The hearth's old defiance. Burns what would creep into the warm places.",
   "elementBlurb.ice": "Ice. The patient cold that holds the dark still until the song catches up.",
-
   "resourceBlurb.crystals": "Crystals. The Heart's slow gift. Mined where its overflow seeps up through the stone.",
   "resourceBlurb.coins": "Coins. Quiet currency, brought by the wanderers from valleys still standing. Spend them on what cannot be grown here.",
-
   "buildingDesc.crystalMine": "Where the Heart's gem-sap seeps into stone. Pets here tend the seam.",
   "buildingDesc.petHouse": "An ancient recess in the world tree's roots. The echoes rest here between battles, their presence a low hum in the stones.",
   "buildingDesc.arcaneTower": "Built by the first Keepers. Holds the ward-stones that answer your call.",
@@ -173,7 +181,6 @@
   "buildingDesc.workshop": "Hammer and forge. The Folk make what the Keeper needs and ask nothing.",
   "buildingDesc.lumbermill": "The sawmill's blade hums against timber the green places of Elarion still spare. Its planks brace the highest walls.",
   "buildingDesc.forge": "The armorer's fire never cools. Here the Folk beat raw iron into plate the Hollowed cannot easily bite through.",
-
   "tooltip.resourceCrystals.title": "Crystals",
   "tooltip.resourceCrystals.body": "The Heart's slow gift. Mined where its overflow seeps up through the stone.",
   "tooltip.resourceCoins.title": "Coins",
@@ -186,7 +193,6 @@
   "tooltip.resourceIron.body": "Cold metal from the deep seams. The Folk forge it into walls the dark cannot easily pass.",
   "tooltip.resourceWood.title": "Wood",
   "tooltip.resourceWood.body": "Fallen timber from the green places the Heart still keeps. It braces the highest walls.",
-
   "tooltip.buttonWalls.title": "The Walls",
   "tooltip.buttonWalls.body": "Raise the perimeter the Folk built around the Heart. Stone, iron and wood mend it higher.",
   "tooltip.buttonTowers.title": "The Towers",
@@ -207,7 +213,6 @@
   "tooltip.waveTimerPill.body": "A tide gathers beyond the walls. Gather what you can and ready your defenses.",
   "tooltip.waveBegin.title": "Call the Wave",
   "tooltip.waveBegin.body": "Do not wait for the dark. Meet it now, on your own watch.",
-
   "tooltip.ability.mage.q.title": "Arcane Bolt",
   "tooltip.ability.mage.q.body": "Your magic, but it is the Heart's gift. Use what is given - it returns when it can.",
   "tooltip.ability.mage.w.title": "Frost Nova",
@@ -232,19 +237,16 @@
   "tooltip.ability.ranger.e.body": "Aim true and far. One shot carries the weight of the dark you turn back.",
   "tooltip.ability.ranger.r.title": "Volley",
   "tooltip.ability.ranger.r.body": "Loose every arrow to the sky at once. They come down like a hard rain on the tide.",
-
   "movementHint.joystick": "Drag the joystick in the bottom-left corner to walk around the village.",
   "movementHint.tap": "Tap anywhere on the ground and your hero will walk there.",
   "movementHint.both": "Drag the joystick to move - or tap the ground to walk somewhere.",
   "realmMap.revealHint": "The realm beyond Elarion stirs. Visit the Wayshrine - the pale standing stone - to set out across the Realm Map.",
-
   "shopkeeperPanic.1": "My lord - ENEMIES! The shop can wait!",
   "shopkeeperPanic.2": "Goods later, glory now! To arms!",
   "shopkeeperPanic.3": "You want to shop? NOW?! Help us, please!",
   "shopkeeperPanic.4": "Coin won't save us from this lot - your magic will!",
   "shopkeeperPanic.5": "My lord, the till is barricaded! Get to the Heart!",
   "shopkeeperPanic.6": "Discounts after the wave, I swear it! Fight!",
-
   "swap.title": "Swap to SKR",
   "swap.inputLabel": "You send",
   "swap.outputLabel": "You receive",
@@ -259,7 +261,6 @@
   "swap.statusSigning": "Sending to wallet for approval...",
   "swap.statusError": "Could not fetch rate. Check connection.",
   "swap.statusFailed": "Swap failed. Please try again.",
-
   "promo.redeem.entry": "Redeem a Code",
   "promo.redeem.title": "REDEEM A CODE",
   "promo.redeem.blurb": "Have a code from an event, a creator or the team? Enter it here.",
@@ -281,7 +282,6 @@
   "promo.redeem.error.identity": "We could not verify your account, so the code was NOT used. Sign in, then try again.",
   "promo.redeem.error.signIn": "Sign in before redeeming a code - rewards are tied to your account.",
   "promo.redeem.error.unknown": "Something went wrong on our end and the code was NOT used. Please try again in a moment.",
-
   "feedback.title": "Tell Us Honestly",
   "feedback.body": "Tell us what works, what does not, and what is missing. We read every response, and the thank-you is the same whatever you write.",
   "feedback.placeholder": "What is working, and what is not?",
@@ -302,7 +302,6 @@
   "feedback.serverRefused": "The server did not accept that. Nothing was sent - please try again.",
   "feedback.networkFailed": "We could not reach the server. Your words were not sent; please try again.",
   "feedback.overCapacity": "Your {Resource} is now {AmountOver} above what your stores can hold. All of it is yours and stays yours; harvests and rewards into {Resource} simply pause until you spend back under.",
-
   "jewelerFtue.title": "JEWELER UNLOCKED",
   "jewelerFtue.body": "A rare item was recovered.\nSable can polish it into a refined gem.",
   "jewelerFtue.openJeweler": "Open Jeweler",
@@ -320,7 +319,6 @@
   "jewelerPolish.revealTitle": "GEM REVEALED",
   "jewelerPolish.revealBody": "Sable reveals a {Gem}. It has been added to your larder.",
   "jewelerPolish.keep": "Keep Gem",
-
   "settings.title": "Settings",
   "settings.section.audio": "Audio",
   "settings.audio.master": "Master",
@@ -372,7 +370,6 @@
   "settings.section.developer": "Developer",
   "settings.developer.panel": "Dev Panel",
   "settings.value.percent": "{Percent}%",
-
   "hudCollectorsTitle": "Harvest",
   "hudCollectorsCount": "Collectors {0}/{1} full",
   "hudCollectorsFullLine": "Collect",
@@ -448,7 +445,6 @@
   "journeyCardRealmMapSubtitle": "Explore the lands beyond the Heart's light.",
   "journeyCardSeasonSubtitle": "Face the challenge shaping the Realm now.",
   "dungeonSealedHeadline": "The way is barred.",
-
   "raidCooldownBadge": "RECOVERING",
   "raidReadyBadge": "READY",
   "raidCooldownCardLine": "Recovering - raidable in {0}",
@@ -457,5 +453,16 @@
   "raidCooldownStarted": "The camp is broken for now. It regroups in {0}.",
   "raidDurationHm": "{0}h {1}m",
   "raidDurationM": "{0}m",
-  "raidDurationSub": "less than a minute"
+  "raidDurationSub": "less than a minute",
+  "ownedTown.repairMore": "Repair more",
+  "ownedTown.nextRepair": "Next structure",
+  "ownedTown.backToDesign": "Back to design",
+  "ownedTown.repairPayment": "Supplies: {0}\nYour resources: {1}",
+  "ownedTown.repairChoiceHint": "Choose a damaged structure. Supplies are spent first, then your resources.",
+  "ownedTown.upgrade": "Upgrade",
+  "ownedTown.sell": "Sell",
+  "ownedTown.saleQuote": "Sell this structure? Refund up to {0}. Storage limits apply.",
+  "ownedTown.keepStructure": "Keep",
+  "ownedTown.saleComplete": "Structure sold. Received: {0}.",
+  "ownedTown.build": "Build"
 }
