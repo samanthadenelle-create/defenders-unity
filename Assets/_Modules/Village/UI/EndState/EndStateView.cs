@@ -389,10 +389,53 @@ namespace DeNelle.Village.UI
         /// wrong size and needed the post-hoc extension that desynchronised every fraction.
         /// Invert the real layout law instead: wellPx = BodyFracOfPanel * panelPx - CanonCtaHeight,
         /// so panelPx = (RequiredBodyPx + CanonCtaHeight) / BodyFracOfPanel.</summary>
+        private static bool HasModalRepair(EndStateVM vm) => vm != null && !vm.Compact
+            && !string.IsNullOrEmpty(vm.PrimaryLabel) && !string.IsNullOrEmpty(vm.CtaLabel);
+
+        private static bool StackModalActions(EndStateVM vm, float canvasH) => HasModalRepair(vm)
+            && SpoilsBodyWidthPx(canvasH, PanelWidthFracFor(vm)) * CtaMaxWidthOfBodyFrac
+               < ModalActionMinWidth(vm.PrimaryLabel) + ModalActionMinWidth(vm.CtaLabel) + CompactCtaGapPx;
+
+        private const float ModalActionPaintInsetPx = 48f;
+        private static TMPro.TMP_FontAsset _actionFont;
+        private static float ModalActionMinWidth(string text)
+        {
+            // The skin uses uppercase Merriweather Title, bold, at a 30..44px floor/ceiling.
+            // Reserve against that actual font, rather than splitting the footer equally
+            // and wrapping two lines across an ornate face painted for one caption.
+            string caption = (text ?? string.Empty).ToUpperInvariant();
+            if (_actionFont == null)
+                _actionFont = Resources.Load<TMPro.TMP_FontAsset>(RpgUiCatalog.FontRoot + RpgUiCatalog.FontTitleAsset);
+            float labelWidth = caption.Length * 30f; // conservative if authored font is absent
+            if (_actionFont != null && _actionFont.faceInfo.pointSize > 0f)
+            {
+                float advance = 0f;
+                bool complete = true;
+                foreach (char c in caption)
+                {
+                    if (!_actionFont.characterLookupTable.TryGetValue(c, out var ch) || ch?.glyph == null)
+                    { complete = false; break; }
+                    advance += ch.glyph.metrics.horizontalAdvance;
+                }
+                if (complete)
+                {
+                    float scale = 30f / _actionFont.faceInfo.pointSize * _actionFont.faceInfo.scale;
+                    labelWidth = (advance * (1f + _actionFont.boldSpacing * 0.01f)
+                                  + 2f * Mathf.Max(0, caption.Length - 1)) * scale;
+                }
+            }
+            return Mathf.Max(ElarionUiKit.CanonCtaWidth, labelWidth / CtaLabelInsetFrac + 2f * ModalActionPaintInsetPx);
+        }
+
+        private static float ActionBandPx(EndStateVM vm, float canvasH) =>
+            StackModalActions(vm, canvasH)
+                ? 2f * ElarionUiKit.CanonCtaHeight + CompactCtaGapPx
+                : ElarionUiKit.CanonCtaHeight;
+
         private static float PanelHalfHeight(EndStateVM vm, float canvasH)
         {
             if (canvasH < 100f) canvasH = 1920f;   // headless / no scaler — the kit's own fallback
-            float panelPx = (RequiredBodyPx(vm, canvasH) + ElarionUiKit.CanonCtaHeight) / BodyFracOfPanel;
+            float panelPx = (RequiredBodyPx(vm, canvasH) + ActionBandPx(vm, canvasH)) / BodyFracOfPanel;
             return Mathf.Clamp(panelPx / (2f * canvasH), MinPanelHalf, MaxPanelHalf);
         }
 
@@ -576,7 +619,7 @@ namespace DeNelle.Village.UI
                 var rootRt = (RectTransform)chrome.root.transform;
                 float panelFracH = Mathf.Max(0.05f, rootRt.anchorMax.y - rootRt.anchorMin.y);
                 float panelPx = _canvasH * panelFracH;
-                float ctaBandH = ElarionUiKit.CanonCtaHeight / Mathf.Max(1f, panelPx);
+                float ctaBandH = ActionBandPx(vm, _canvasH) / Mathf.Max(1f, panelPx);
                 float bodyFloor = CtaBandY0 + ctaBandH + CtaGapY;
 
                 // Header: 0.760-0.985 was ~0.225 of the panel — far more than ONE FontTitle(88)
@@ -868,6 +911,58 @@ namespace DeNelle.Village.UI
                     }
                 }
             }
+            // Full wave results retain their Prepare action AND the explicitly priced repair.
+            // Share a row where two canonical targets fit; narrow surfaces reserve a second
+            // row in the SAME panel/body solve above. Captions stay single-line on the painted face.
+            Button repairBtn = null;
+            if (HasModalRepair(vm) && btn != null)
+            {
+                repairBtn = ElarionUiKit.Button(footer, vm.CtaLabel,
+                    ElarionUiKit.ButtonKind.Gold, Vector2.zero, Vector2.one, FireCta);
+                repairBtn.interactable = vm.CtaEnabled;
+                MedievalUiSkin.ApplyButton(repairBtn, primary: false);
+                ElarionUiKit.PinCanonicalCtaSize(repairBtn);
+                btn.name = "PrimaryAction";
+                repairBtn.name = "RepairAction";
+                bool stacked = StackModalActions(vm, _canvasH);
+                // A stacked action owns the whole body column. Applying the paired-row
+                // 0.92 inset again reduced portrait to 637px and clipped the full price at
+                // the 30px floor. The body already clears the frame's 0.055..0.945 edges;
+                // the label retains its own 0.04..0.96 inset inside the button.
+                float room = SpoilsBodyWidthPx(_canvasH, PanelWidthFracFor(vm))
+                             * (stacked ? 1f : CtaMaxWidthOfBodyFrac);
+                float repairWidth = ModalActionMinWidth(vm.CtaLabel);
+                float primaryWidth = ModalActionMinWidth(vm.PrimaryLabel);
+                float spare = Mathf.Max(0f, room - CompactCtaGapPx - repairWidth - primaryWidth);
+                var widths = stacked ? new[] { room, room }
+                    : new[] { repairWidth + spare * 0.5f, primaryWidth + spare * 0.5f };
+                var actions = new[] { repairBtn, btn };
+                for (int i = 0; i < actions.Length; i++)
+                {
+                    var rt = (RectTransform)actions[i].transform;
+                    rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+                    rt.sizeDelta = new Vector2(widths[i], ElarionUiKit.CanonCtaHeight);
+                    rt.anchoredPosition = stacked
+                        ? new Vector2(0f, (0.5f - i) * (ElarionUiKit.CanonCtaHeight + CompactCtaGapPx))
+                        : new Vector2(i == 0 ? -room * 0.5f + widths[0] * 0.5f
+                                              : room * 0.5f - widths[1] * 0.5f, 0f);
+                    var label = actions[i].GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+                    if (label != null)
+                    {
+                        if (!stacked)
+                        {
+                            // The paired plate has ornamental tips outside its caption face.
+                            // Width reservation AND the real text rect must respect that space.
+                            var labelRt = label.rectTransform;
+                            labelRt.anchorMin = new Vector2(0f, labelRt.anchorMin.y);
+                            labelRt.anchorMax = new Vector2(1f, labelRt.anchorMax.y);
+                            labelRt.offsetMin = new Vector2(ModalActionPaintInsetPx, labelRt.offsetMin.y);
+                            labelRt.offsetMax = new Vector2(-ModalActionPaintInsetPx, labelRt.offsetMax.y);
+                        }
+                        ElarionUiKit.FitSingleLine(label, 30f, 44f);
+                    }
+                }
+            }
             if (vm.Compact && !hasCta)
             {
                 // F8-43: no primary CTA on the compact banner — tap-anywhere on the PANEL
@@ -955,6 +1050,9 @@ namespace DeNelle.Village.UI
             BuildBody(vm, rewardWell);
             if (btn != null)   // F8-43: compact banners build no CTA
                 Track(btn.gameObject, 0.25f + vm.Spoils.Count * 0.05f + 0.08f, 0.92f);
+
+            if (repairBtn != null)
+                Track(repairBtn.gameObject, 0.25f + vm.Spoils.Count * 0.05f + 0.08f, 0.92f);
 
             // Smooth in: whole panel fades+scales, then the staggered content.
             var rootGroup = chrome.root.GetComponent<CanvasGroup>();
@@ -1168,7 +1266,7 @@ namespace DeNelle.Village.UI
             // ESCALATION ONLY: ask the STACKED budget, so a panel that fits keeps its layout.
             // UNTRIMMED (shown = every row): the strip lever is lossless and therefore moves
             // BEFORE the row trim. See the ordering note on RequiredBodyPxAtRows.
-            return RequiredBodyPxAtRows(vm, canvasH, cols, false, vm.Spoils.Count) > MaxBodyWellPx(canvasH);
+            return RequiredBodyPxAtRows(vm, canvasH, cols, false, vm.Spoils.Count) > MaxBodyWellPx(vm, canvasH);
         }
 
         // -- WO-952 REOPEN: THE BODY WELL THE CLAMP ACTUALLY ALLOWS -----------------------
@@ -1182,9 +1280,9 @@ namespace DeNelle.Village.UI
         /// panel 907 px = frac 0.94, pinned exactly at the ceiling; well = 0.740 x 907 - 132 =
         /// 540 px against a need of 578 px, so every band compressed to 0.933.</para>
         /// </summary>
-        private static float MaxBodyWellPx(float canvasH)
+        private static float MaxBodyWellPx(EndStateVM vm, float canvasH)
         {
-            return BodyFracOfPanel * (2f * MaxPanelHalf * canvasH) - ElarionUiKit.CanonCtaHeight;
+            return BodyFracOfPanel * (2f * MaxPanelHalf * canvasH) - ActionBandPx(vm, canvasH);
         }
 
         /// <summary>The most columns this screen's WIDTH can legibly carry. Derived, never picked:
@@ -1272,7 +1370,7 @@ namespace DeNelle.Village.UI
 
             // Bind's OWN well derivation, verbatim (see the geometry pass): the CTA comes off in
             // PIXELS, never as a fraction - that unit mix-up is the 2026-08-05 defect.
-            float ctaBandH = ElarionUiKit.CanonCtaHeight / Mathf.Max(1f, r.PanelPx);
+            float ctaBandH = ActionBandPx(vm, canvasH) / Mathf.Max(1f, r.PanelPx);
             float bodyFloor = CtaBandY0 + ctaBandH + CtaGapY;
             r.WellPx = (BodyTopY - bodyFloor) * r.PanelPx;
 
@@ -1355,7 +1453,7 @@ namespace DeNelle.Village.UI
             // Escalate ONLY when the body genuinely does not fit, and only as far as the width
             // floor allows. In PORTRAIT the floor gives widthCap == 1 and none of this runs, so
             // portrait stays single-column exactly as ruled.
-            float wellCap = MaxBodyWellPx(canvasH);
+            float wellCap = MaxBodyWellPx(vm, canvasH);
             // Asked on the STACKED budget (strip:false) on purpose: the column lever moves
             // first, so the Seeker's gear-drop victory keeps the 3-column layout WO-952 gave it
             // rather than silently swapping to a strip. Only where width caps the columns does
@@ -1491,7 +1589,7 @@ namespace DeNelle.Village.UI
             //      about the same count. One screen, one truth.
             if (vm.Compact) return vm.Spoils.Count;
             int shown = vm.Spoils.Count;
-            float wellCap = MaxBodyWellPx(canvasH);
+            float wellCap = MaxBodyWellPx(vm, canvasH);
             if (wellCap <= 1f) return shown;
             // Step DOWN one row at a time. RequiredBodyPxAtRows re-asks SpoilBandPlan each pass,
             // so the shortfall band's own cost is inside the number being tested — the trim can
@@ -1767,7 +1865,7 @@ namespace DeNelle.Village.UI
                     FlowTrace.Step("EndState",
                         $"narrative bands REFLOWED to a {parts.Count}-cell STRIP: emblem/stars/time " +
                         $"cost {stackedPx:0}px stacked and {stripPx:0}px side by side, against a " +
-                        $"{MaxBodyWellPx(_canvasH):0}px well ceiling at {spoilCols} spoils column(s) " +
+                        $"{MaxBodyWellPx(vm, _canvasH):0}px well ceiling at {spoilCols} spoils column(s) " +
                         $"(cell {cellPx:0}px vs a {MinStripCellPx:0}px floor). Reflowing is the fix; " +
                         "compressing every band below its own content size is the defect (WO-952).");
                 }
@@ -1806,7 +1904,7 @@ namespace DeNelle.Village.UI
                     $"dropped={droppedRows} (+1 shortfall band stating the difference) at " +
                     $"{spoilCols} column(s), strip={strip} - need " +
                     $"{RequiredBodyPxAtRows(vm, _canvasH, spoilCols, strip, vm.Spoils.Count):0}px " +
-                    $"untrimmed vs a {MaxBodyWellPx(_canvasH):0}px well ceiling, trimmed to " +
+                    $"untrimmed vs a {MaxBodyWellPx(vm, _canvasH):0}px well ceiling, trimmed to " +
                     $"{RequiredBodyPxAtRows(vm, _canvasH, spoilCols, strip, shownRows):0}px. " +
                     "Dropping the tail LEGIBLY beats compressing every band below its own " +
                     "content size (WO-952); the count is stated on screen, never silent.");
@@ -2597,6 +2695,7 @@ namespace DeNelle.Village.UI
         private void FirePrimary()
         {
             if (_fired) return;
+            if (_vm.PrimaryGate != null && !_vm.PrimaryGate()) return;
             _fired = true;
             FlowTrace.Step("EndState", $"{_vm.Kind} primary fired: action={_vm.PrimaryRoute}");
             // F8-15: the continue/respawn path OUT of the death screen — name the route the

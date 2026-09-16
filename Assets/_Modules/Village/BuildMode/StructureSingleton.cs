@@ -130,7 +130,7 @@ namespace DeNelle.Village
 
             // 2. Active baked twins (catalog repo.bakedTwins; Find = name lookup, cheap).
             foreach (var bakedName in BakedTwinsOf(itemId))
-                if (GameObject.Find(bakedName) != null)
+                if (AuthoredCastleStorefront.Find(bakedName) != null)
                     return true;
 
             // 3. Live placed structures (a commit the ledger has not recorded yet / replays).
@@ -282,11 +282,23 @@ namespace DeNelle.Village
             EnforceOutcome outcome;
             if (HasPlacedInstance(itemId))
             {
-                // MIGRATION LATCH (WO-673 contract): during the very load the migration
-                // wrote its records, the bake still owns the structure - StanddownActive
-                // stays false and the atomic bake->BaseLayout handover happens on the
-                // NEXT hub load. Standing the twin down mid-session would double-own it.
-                if (StrategicPlacementMigration.IsManagedId(itemId) &&
+                // Owner 2026-09-12: the ring is injector-owned on EVERY hub load. A BaseLayout
+                // record must not SetActive(false) the bake (LightSkin is a child) or the next
+                // load restyles to catalog. Stations still use the WO-673 latch.
+                if (itemId == "barracks" && AuthoredCastleStorefront.IsBoundAuthoredRoot(
+                    AuthoredCastleStorefront.Find("CastleBarracks", includeInactive: true), itemId))
+                {
+                    // Explicit adoption binds the record to THIS root. It is not a rival
+                    // baked twin; unlock visibility remains owned by the barracks gate.
+                    outcome = EnforceOutcome.LatchSkipped;
+                }
+                else if (StrategicPlacementMigration.IsBakedStorefrontId(itemId))
+                {
+                    FlowTrace.Step("Singleton",
+                        $"'{itemId}': ring standdown SKIPPED — injector owns this storefront on every load.");
+                    outcome = EnforceOutcome.LatchSkipped;
+                }
+                else if (StrategicPlacementMigration.IsManagedId(itemId) &&
                     !StrategicPlacementMigration.StanddownActive)
                 {
                     FlowTrace.Step("Singleton",
@@ -301,11 +313,13 @@ namespace DeNelle.Village
                     outcome = EnforceOutcome.StoodDown;
                 }
             }
-            else if (MayBakedTwinSurface(itemId))
+            else if (MayBakedTwinSurface(itemId) || StrategicPlacementMigration.IsManagedId(itemId))
             {
                 // Surfaced ONLY if a twin actually came back: the row may author no twins, its
                 // twin may be absent from this scene bake, or the barracks route may be refused
                 // by its own gates. The gate being OPEN is not the same as work happening.
+                // Owner 2026-09-12: injector-managed storefronts stay up on EMPTY REALM too
+                // (IsManagedId) so both founding paths wear HubStructureVisualInjector models.
                 outcome = ResurfaceBakedTwins(itemId) > 0
                     ? EnforceOutcome.Surfaced : EnforceOutcome.None;
             }
@@ -313,7 +327,7 @@ namespace DeNelle.Village
             {
                 // WO-834 blank-town gate: never player-built on this (migrated) save —
                 // the baked twin may NOT stand in for it. Actively deactivate (the bake
-                // ships ACTIVE), so a Build-Your-Own founding is truly blank.
+                // ships ACTIVE). Barracks / non-injector twins still blank on Build-Your-Own.
                 var tally = StandDownBakedTwins(itemId,
                     $"'{itemId}' never player-built on this save (blank-town gate, WO-834)");
                 outcome = tally.stood > 0        ? EnforceOutcome.Suppressed   // deactivated a standing twin
@@ -410,7 +424,8 @@ namespace DeNelle.Village
             }
             foreach (var bakedName in twins)
             {
-                var baked = GameObject.Find(bakedName);   // active-only lookup
+                var bakedTransform = AuthoredCastleStorefront.Find(bakedName);
+                var baked = bakedTransform != null ? bakedTransform.gameObject : null;
                 if (baked == null)
                 {
                     // Plain Find is blind to inactive objects, so a null here is BOTH
@@ -564,6 +579,7 @@ namespace DeNelle.Village
         /// <summary>True when <paramref name="t"/> sits on/under a baked-twin root of the id.</summary>
         private static bool IsUnderBakedTwin(Transform t, string itemId)
         {
+            if (AuthoredCastleStorefront.MatchesAncestor(t, itemId)) return true;
             var twins = BakedTwinsOf(itemId);
             if (twins.Count == 0) return false;
             for (var cur = t; cur != null; cur = cur.parent)
@@ -587,10 +603,7 @@ namespace DeNelle.Village
         // GameObject.Find can't see it) - the CastleVendorNpcInjector.FindByNameInclInactive pattern.
         private static Transform FindByNameInclInactive(string name)
         {
-            if (string.IsNullOrEmpty(name)) return null;
-            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                if (t != null && t.name == name) return t;
-            return null;
+            return AuthoredCastleStorefront.Find(name, includeInactive: true);
         }
     }
 

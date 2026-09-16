@@ -198,6 +198,7 @@ namespace DeNelle.Village.World.Camps
                 // No collider on the art (or the art fell back to a primitive with one
                 // stripped) - build one from the renderer bounds so the swing connects.
                 float height = _visualHeight, radius = 1.6f;
+                Vector3 worldCentre = transform.position + Vector3.up * (height * .5f);
                 var rends = GetComponentsInChildren<Renderer>(true);
                 if (rends != null && rends.Length > 0)
                 {
@@ -205,12 +206,17 @@ namespace DeNelle.Village.World.Camps
                     for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
                     height = Mathf.Max(1f, b.size.y);
                     radius = Mathf.Max(0.8f, Mathf.Max(b.size.x, b.size.z) * 0.5f);
+                    worldCentre = b.center;
                 }
                 var cap = gameObject.AddComponent<CapsuleCollider>();
                 cap.isTrigger = false;
-                cap.height = height;
-                cap.radius = radius;
-                cap.center = new Vector3(0f, height * 0.5f, 0f);
+                // Renderer bounds are world-space; collider dimensions are local. Raid art
+                // is fitted with a scaled root, so assigning world sizes directly shrinks
+                // the hitbox a second time and hides the attack target inside its own mesh.
+                Vector3 scale = transform.lossyScale;
+                cap.height = height / Mathf.Max(.0001f, Mathf.Abs(scale.y));
+                cap.radius = radius / Mathf.Max(.0001f, Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)));
+                cap.center = transform.InverseTransformPoint(worldCentre);
                 if (enemyLayer >= 0) gameObject.layer = enemyLayer;
                 FlowTrace.Step(Sys, $"RaidSpire '{name}': built a solid capsule hitbox (h={height:0.#} r={radius:0.#}) " +
                                     "- the art carried none.");
@@ -226,7 +232,20 @@ namespace DeNelle.Village.World.Camps
         // =====================================================================
 
         /// <summary>Hostile, so the hero's and every troop's Faction gate accepts it.</summary>
-        public CombatFaction Faction => CombatFaction.Hostile;
+        public CombatFaction Faction => (gameObject.scene.name == OwnedTownScenePose.SceneName ||
+            gameObject.scene.name == DeNelle.Core.Combat.PracticeCombatPolicy.SceneName)
+            ? CombatFaction.Friendly : CombatFaction.Hostile;
+
+        public void RestoreOwnedTownCondition(float condition)
+        {
+            if (gameObject.scene.name != OwnedTownScenePose.SceneName &&
+                gameObject.scene.name != DeNelle.Core.Combat.PracticeCombatPolicy.SceneName)
+                throw new System.InvalidOperationException("Owned-town restoration requires its isolated scene.");
+            if (float.IsNaN(condition) || float.IsInfinity(condition) || condition < 0 || condition > 1 || _destroyed)
+                throw new System.InvalidOperationException("Owned-town condition requires a fresh valid structure.");
+            _hp = _maxHp * condition;
+            if (condition == 0) Raze();
+        }
 
         /// <summary>World position - used by range / nearest-target queries.</summary>
         public Vector3 WorldPosition => transform.position;

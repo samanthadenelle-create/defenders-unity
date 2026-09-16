@@ -1064,8 +1064,12 @@ namespace DeNelle.Core.Geometry
         /// a guess as a derivation — the thing M1d exists to forbid.
         /// </para>
         /// </summary>
+        /// <param name="preferAuthoredGripOrigin">For a native sword with an authored grip origin,
+        /// let a decisive origin-to-end measurement outrank a possibly misleading narrow pommel.
+        /// A centred origin still falls through to the existing taper/ambiguity rules.</param>
         public static bool TryResolveSheathedTipSign(GameObject prop, Transform gripRoot,
-                                                     out SheathedTipResolution resolution)
+                                                     out SheathedTipResolution resolution,
+                                                     bool preferAuthoredGripOrigin = false)
         {
             resolution = default;
             resolution.Decision = SheathedSignDecision.Undecidable;
@@ -1108,7 +1112,21 @@ namespace DeNelle.Core.Geometry
             //       is the hilt. Exact, and it is the rule she stated in her own words.
             var verts = new List<Vector3>();
             CollectLocalVerts(prop, gripRoot, verts);
-            if (verts.Count >= 12)
+            float authoredGripGap = Mathf.Abs(Mathf.Abs(lo) - Mathf.Abs(hi)) / length;
+            if (preferAuthoredGripOrigin && authoredGripGap >= GripEndDecisionMargin)
+            {
+                // Native sword contract: the imported origin is the authored grip. A narrow
+                // pommel can be thinner than the blade's tip band, so taper must not overrule it.
+                // Captured Sword1h_01: grip distances .115/.535 m, taper selected the wrong end.
+                hiltAtMin = Mathf.Abs(lo) < Mathf.Abs(hi);
+                decided = true;
+                source = "authored-grip-origin";
+                resolution.GripRelGap = authoredGripGap;
+                why = $"authored grip on {AxisName(a)}: |-end|={Mathf.Abs(lo):0.####} " +
+                      $"|+end|={Mathf.Abs(hi):0.####} relGap={authoredGripGap:0.###} " +
+                      $"-> hilt at {(hiltAtMin ? "-" : "+")}{AxisName(a)}";
+            }
+            else if (verts.Count >= 12)
             {
                 float loEdge = lo + length * EndBand;
                 float hiEdge = hi - length * EndBand;

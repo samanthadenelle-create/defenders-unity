@@ -63,6 +63,8 @@ namespace DeNelle.Village.Items
         /// </summary>
         public static bool TryUse(string consumableId, bool inFight)
         {
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == DeNelle.Core.Combat.PracticeCombatPolicy.SceneName)
+            { ElarionUiKit.ShowToast(LocalText.Get("ownedTown.practiceItems")); return false; }
             if (!ItemDropSystem.Enabled) return false;      // dark lane: inert when off
             if (string.IsNullOrEmpty(consumableId)) return false;
 

@@ -14,7 +14,9 @@
 // =============================================================================
 
 using System.Collections.Generic;
+using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using DeNelle.Core.Catalog;
 using DeNelle.Core.Diagnostics;
@@ -43,6 +45,204 @@ namespace DeNelle.Village
         // re-arm for the rest of the session.
         private readonly List<Material> _createdMaterials = new List<Material>();
         private MaterialPropertyBlock _mpb;
+        private Transform _authoredSource;
+        private Transform _authoredRootCopy;
+        private readonly List<AuthoredNode> _authoredNodes = new List<AuthoredNode>();
+        private readonly List<Material> _authoredMaterialScratch = new List<Material>();
+
+        // Entry snapshots are explicit: re-enter to refresh art/visibility. A changed
+        // hierarchy invalidates the preview until then; pose updates never rebuild art.
+        private sealed class AuthoredNode
+        {
+            public Transform source, parent;
+            public Vector3 position, scale;
+            public Quaternion rotation;
+            public bool active, enabled;
+            public int children;
+            public MeshRenderer renderer;
+            public MeshFilter filter;
+            public Mesh mesh;
+            public Material[] materials;
+        }
+
+        /// <summary>Build an exact, render-only snapshot. Refusal preserves the prior preview.
+        /// Only static URP/Lit art without property-block overrides is supported.</summary>
+        public bool SetAuthoredEntry(Transform source)
+        {
+            var nodes = new List<AuthoredNode>();
+            try
+            {
+                if (!isActiveAndEnabled || source == null || !gameObject.scene.IsValid() ||
+                    !gameObject.scene.isLoaded || transform.IsChildOf(source)) return false;
+                var ancestors = new List<Transform>();
+                for (var p = source.parent; p != null; p = p.parent) ancestors.Insert(0, p);
+                foreach (var p in ancestors) nodes.Add(SnapshotAuthoredNode(p, false));
+                foreach (var p in source.GetComponentsInChildren<Transform>(true))
+                    nodes.Add(SnapshotAuthoredNode(p, true));
+                if (!nodes.Exists(n => n.renderer != null)) return false;
+            }
+            catch (Exception e)
+            {
+                FlowTrace.Warn("Ghost", "Authored preview refused: " + e.Message);
+                return false;
+            }
+
+            GameObject staged = null;
+            var materials = new List<Material>();
+            var renderers = new List<Renderer>();
+            try
+            {
+                staged = new GameObject("AuthoredGhost") { hideFlags = HideFlags.DontSave };
+                staged.SetActive(false);
+                SceneManager.MoveGameObjectToScene(staged, gameObject.scene);
+                var copies = new Dictionary<Transform, Transform>();
+                foreach (var node in nodes)
+                {
+                    var copy = new GameObject(node.source.name) { hideFlags = HideFlags.DontSave };
+                    copy.transform.SetParent(node.parent != null && copies.TryGetValue(node.parent, out var parent)
+                        ? parent : staged.transform, false);
+                    copy.transform.localPosition = node.position;
+                    copy.transform.localRotation = node.rotation;
+                    copy.transform.localScale = node.scale;
+                    copy.SetActive(node.active);
+                    copies.Add(node.source, copy.transform);
+                    if (node.renderer == null) continue;
+                    copy.AddComponent<MeshFilter>().sharedMesh = node.mesh;
+                    var slots = new Material[node.materials.Length];
+                    for (int i = 0; i < slots.Length; i++)
+                    {
+                        var material = new Material(node.materials[i]) { hideFlags = HideFlags.DontSave };
+                        materials.Add(material);
+                        material.SetFloat("_Surface", 1f);
+                        material.SetFloat("_Blend", 0f);
+                        material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                        material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                        material.SetFloat("_ZWrite", 0f);
+                        material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                        material.DisableKeyword("_ALPHAMODULATE_ON");
+                        material.SetOverrideTag("RenderType", "Transparent");
+                        material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                        slots[i] = material;
+                    }
+                    var renderer = copy.AddComponent<MeshRenderer>();
+                    renderer.sharedMaterials = slots;
+                    renderer.enabled = node.enabled;
+                    renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    renderer.receiveShadows = false;
+                    renderers.Add(renderer);
+                }
+                var candidate = copies[source];
+                bool refreshing = _authoredSource == source && _authoredRootCopy != null;
+                bool visible = !refreshing || (_visual != null && _visual.activeSelf);
+                if (refreshing) candidate.SetPositionAndRotation(_authoredRootCopy.position, _authoredRootCopy.rotation);
+                string reason = BlockedReason;
+                Clear();
+                _visual = staged;
+                _authoredSource = source;
+                _authoredRootCopy = candidate;
+                _authoredNodes.AddRange(nodes);
+                _createdMaterials.AddRange(materials);
+                _renderers.AddRange(renderers);
+                staged = null;
+                _visual.SetActive(visible);
+                SetValid(IsValid);
+                SetReason(reason);
+                FlowTrace.Step("Ghost", $"Authored preview ready: {renderers.Count} static renderer(s).");
+                return true;
+            }
+            catch (Exception e)
+            {
+                if (staged != null) DestroyOwned(staged);
+                foreach (var material in materials) DestroyOwned(material);
+                FlowTrace.Warn("Ghost", "Authored preview construction failed: " + e.Message);
+                return false;
+            }
+        }
+
+        private static AuthoredNode SnapshotAuthoredNode(Transform t, bool includeArt)
+        {
+            if (!FiniteMatrix(t.localToWorldMatrix) || !FiniteMatrix(t.worldToLocalMatrix) ||
+                Mathf.Abs(t.localToWorldMatrix.determinant) < 1e-8f)
+                throw new InvalidOperationException("Invalid or singular transform: " + t.name);
+            var n = new AuthoredNode { source = t, parent = t.parent, position = t.localPosition,
+                rotation = t.localRotation, scale = t.localScale, active = t.gameObject.activeSelf, children = t.childCount };
+            if (!includeArt) return n; // Ancestors contribute transforms, never scene art.
+            foreach (var r in t.GetComponents<Renderer>())
+            {
+                if (!(r is MeshRenderer mr) || n.renderer != null || r.HasPropertyBlock())
+                    throw new InvalidOperationException("Unsupported renderer/override: " + t.name);
+                var mf = t.GetComponent<MeshFilter>();
+                if (mf == null || mf.sharedMesh == null || mf.sharedMesh.vertexCount == 0 ||
+                    !FiniteBounds(mf.sharedMesh.bounds) || mf.sharedMesh.bounds.size.sqrMagnitude <= 0f ||
+                    !FiniteBounds(r.localBounds))
+                    throw new InvalidOperationException("Missing or invalid mesh: " + t.name);
+                var slots = mr.sharedMaterials;
+                if (slots.Length == 0) throw new InvalidOperationException("No materials: " + t.name);
+                foreach (var m in slots)
+                    if (m == null || DeNelle.Core.MagentaGuard.IsBrokenShader(m.shader) ||
+                        m.shader.name != "Universal Render Pipeline/Lit" || !m.HasProperty("_Surface") ||
+                        !m.HasProperty("_Blend") || !m.HasProperty("_SrcBlend") || !m.HasProperty("_DstBlend") ||
+                        !m.HasProperty("_ZWrite"))
+                        throw new InvalidOperationException("Authored preview requires supported URP/Lit materials.");
+                n.renderer = mr; n.filter = mf; n.mesh = mf.sharedMesh; n.materials = slots; n.enabled = mr.enabled;
+            }
+            return n;
+        }
+
+        /// <summary>Candidate position/rotation are world-space; local scale stays authored.
+        /// Source hierarchy changes invalidate the snapshot. Entry explicitly refreshes it.</summary>
+        public bool MoveToAuthored(Vector3 position, Quaternion rotation)
+        {
+            float norm = rotation.x * rotation.x + rotation.y * rotation.y + rotation.z * rotation.z + rotation.w * rotation.w;
+            if (!FiniteVector(position) || !Finite(norm) || norm < 0.0001f) return false;
+            if (!isActiveAndEnabled || !AuthoredSnapshotCurrent()) { if (_authoredRootCopy != null) Clear(); return false; }
+            rotation = rotation.normalized;
+            var parent = _authoredRootCopy.parent;
+            var proposed = parent.localToWorldMatrix * Matrix4x4.TRS(parent.InverseTransformPoint(position),
+                Quaternion.Inverse(parent.rotation) * rotation, _authoredRootCopy.localScale);
+            if (!FiniteMatrix(proposed) || Mathf.Abs(proposed.determinant) < 1e-8f) return false;
+            var delta = proposed * _authoredRootCopy.worldToLocalMatrix;
+            foreach (var r in _renderers)
+            {
+                var matrix = delta * r.localToWorldMatrix;
+                var b = r.localBounds;
+                for (int i = 0; i < 8; i++)
+                    if (!FiniteVector(matrix.MultiplyPoint3x4(b.center + Vector3.Scale(b.extents,
+                        new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))))) return false;
+            }
+            _authoredRootCopy.SetPositionAndRotation(position, rotation);
+            _visual.SetActive(true);
+            return true;
+        }
+
+        private bool AuthoredSnapshotCurrent()
+        {
+            if (_authoredSource == null || _authoredRootCopy == null || _visual == null ||
+                _visual.scene != gameObject.scene) return false;
+            foreach (var n in _authoredNodes)
+            {
+                if (n.source == null || n.source.parent != n.parent || n.source.localPosition != n.position ||
+                    n.source.localRotation != n.rotation || n.source.localScale != n.scale ||
+                    n.source.gameObject.activeSelf != n.active || n.source.childCount != n.children) return false;
+                if (n.materials == null) continue;
+                if (n.renderer == null || n.filter == null || n.filter.sharedMesh != n.mesh || n.renderer.enabled != n.enabled) return false;
+                n.renderer.GetSharedMaterials(_authoredMaterialScratch);
+                if (_authoredMaterialScratch.Count != n.materials.Length) return false;
+                for (int i = 0; i < n.materials.Length; i++)
+                    if (_authoredMaterialScratch[i] != n.materials[i]) return false;
+            }
+            return true;
+        }
+
+        private static bool Finite(float v) => !float.IsNaN(v) && !float.IsInfinity(v);
+        private static bool FiniteVector(Vector3 v) => Finite(v.x) && Finite(v.y) && Finite(v.z);
+        private static bool FiniteBounds(Bounds b) => FiniteVector(b.center) && FiniteVector(b.size);
+        private static bool FiniteMatrix(Matrix4x4 m)
+        {
+            for (int i = 0; i < 16; i++) if (!Finite(m[i])) return false;
+            return true;
+        }
 
         // ── Reject-reason label (owner 2026-07-24 "tell me why it's red") ────────
         // A silent world-space label that floats above the ghost showing WHY it can't be
@@ -143,7 +343,7 @@ namespace DeNelle.Village
                 disc.transform.SetParent(_visual.transform, false);
                 disc.transform.localScale = new Vector3(fit, 0.05f, fit);
                 var c = disc.GetComponent<Collider>();
-                if (c != null) Destroy(c);
+                if (c != null) DestroyOwned(c);
             }
 
             // Collect renderers, strip colliders, and swap to a transparent material.
@@ -196,6 +396,7 @@ namespace DeNelle.Village
         /// (WO-673 L5 — Build Mode rotates in 45° steps, so the controller passes degrees).</summary>
         public void MoveTo(Vector3 snappedWorldPos, float yawDegrees)
         {
+            if (_authoredRootCopy != null) return; // Authored geometry requires the full-pose API.
             if (_visual == null) return;
             _visual.transform.SetPositionAndRotation(
                 snappedWorldPos, Quaternion.Euler(0f, yawDegrees, 0f));
@@ -270,7 +471,8 @@ namespace DeNelle.Village
         /// moves off world origin, so any probe reading <c>transform.position</c> sees a
         /// constant. Falls back to the host position when no visual is built.
         /// </summary>
-        public Vector3 CurrentPosition => _visual != null ? _visual.transform.position : transform.position;
+        public Vector3 CurrentPosition => _authoredRootCopy != null ? _authoredRootCopy.position
+            : _visual != null ? _visual.transform.position : transform.position;
 
         /// <summary>Hide (but keep) the ghost — re-shown on the next MoveTo.</summary>
         public void Hide()
@@ -282,24 +484,40 @@ namespace DeNelle.Village
         /// <summary>Destroy the ghost entirely (placement landed / cancelled).</summary>
         public void Clear()
         {
+            if (_visual != null) _visual.SetActive(false); // Stop drawing before deferred destruction.
             _renderers.Clear();
             // Audit P2 (build-mode): destroy the ghost's owned material instances so re-arming
             // doesn't leak a Material set per entry.
             for (int i = 0; i < _createdMaterials.Count; i++)
-                if (_createdMaterials[i] != null) Destroy(_createdMaterials[i]);
+                if (_createdMaterials[i] != null) DestroyOwned(_createdMaterials[i]);
             _createdMaterials.Clear();
-            if (_visual != null) Destroy(_visual);
+            if (_visual != null) DestroyOwned(_visual);
             _visual = null;
             _builtForId = null;
             _orientation = null;
+            _authoredSource = null;
+            _authoredRootCopy = null;
+            _authoredNodes.Clear();
+            _authoredMaterialScratch.Clear();
             if (_reasonGo != null) _reasonGo.SetActive(false);   // keep the label object; just hide it
         }
 
         private void OnDestroy() => Clear();
+        private void OnDisable() { if (_authoredRootCopy != null) Clear(); }
+        private static void DestroyOwned(UnityEngine.Object obj)
+        {
+            if (obj == null) return;
+            if (Application.isPlaying) Destroy(obj); else DestroyImmediate(obj);
+        }
 
         /// <summary>Keep the reason label floating above the ghost + facing the camera.</summary>
         private void Update()
         {
+            if (_authoredNodes.Count != 0 && !AuthoredSnapshotCurrent())
+            {
+                FlowTrace.Step("Ghost", "Authored source changed or disappeared; preview invalidated.");
+                Clear();
+            }
             if (_reasonGo == null || !_reasonGo.activeSelf) return;
             try
             {
@@ -387,7 +605,7 @@ namespace DeNelle.Village
         private void StripColliders(Transform root)
         {
             foreach (var c in root.GetComponentsInChildren<Collider>(true))
-                if (c != null) Destroy(c);
+                if (c != null) DestroyOwned(c);
         }
 
         private void ApplyTransparentMaterials()

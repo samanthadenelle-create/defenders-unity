@@ -23,8 +23,8 @@
 //   A. The four raid rows exist, keep their LIVE SAVE-KEY ids, and carry the
 //      creative canon's display name + one-line card copy verbatim
 //      (docs/CREATIVE_CANON_ELARION_2026-09-04.md §3).
-//   B. unlockVictories is authored 0 / 3 / 10 / 20, strictly ascending
-//      (docs/PROGRAM_RAID_ECONOMY_2026-09-04.md §4).
+//   B. unlockVictories is authored 0 / 0 / 0 / 0 (owner 2026-09-11: NO win-count
+//      lock was ruled. Capture is a 3-star clear of the highest raid).
 //   C. No superseded FIRST-PASS name survives anywhere in the catalog (creative
 //      canon §2 lists them by name: implementing one is a defect, not a taste).
 //   D. The Resources / StreamingAssets twins are BYTE-IDENTICAL (Resources wins
@@ -80,11 +80,11 @@ namespace DeNelle.Editor
         {
             new Tier { Id = "raider_camp_small",  Unlock = 0,  DisplayName = "The Forsaken Camp",
                        Description = "Scavengers strip an abandoned settlement the Heart can no longer reach." },
-            new Tier { Id = "fortified_garrison", Unlock = 3,  DisplayName = "The Broken Garrison",
+            new Tier { Id = "fortified_garrison", Unlock = 0,  DisplayName = "The Broken Garrison",
                        Description = "Its soldiers still guard their post, though no living commander remains to give the order." },
-            new Tier { Id = "mage_enclave",       Unlock = 10, DisplayName = "The Veiled Enclave",
+            new Tier { Id = "mage_enclave",       Unlock = 0,  DisplayName = "The Veiled Enclave",
                        Description = "Something inside has learned to bend fractured memories into magic." },
-            new Tier { Id = "iron_bastion",       Unlock = 20, DisplayName = "The Iron Bastion",
+            new Tier { Id = "iron_bastion",       Unlock = 0,  DisplayName = "The Iron Bastion",
                        Description = "The Heart remembers no fortress here." },
         };
 
@@ -110,9 +110,9 @@ namespace DeNelle.Editor
             if (failures.Count == 0)
             {
                 Debug.Log(log.ToString() + "RAID_ESCALATION_OK");
-                reason = "RAID ESCALATION OK - four targets authored 0/3/10/20 with the canon names + card lines, " +
+                reason = "RAID ESCALATION OK - four targets authored unlockVictories 0 (no win-count lock), " +
                          "twins byte-identical, no superseded name survives, every raid sceneName registered, " +
-                         "no seatless raid scene enabled, and the VM locks/unlocks by victory count";
+                         "no seatless raid scene enabled, capture remains a 3-star highest-raid clear";
                 return true;
             }
 
@@ -127,7 +127,6 @@ namespace DeNelle.Editor
             // Force a re-read so an editor-time JSON edit cannot be masked by a cached catalog.
             SceneConfigCatalog.Invalidate();
 
-            int previousUnlock = -1;
             foreach (var tier in Ladder)
             {
                 var def = SceneConfigCatalog.Find(tier.Id);
@@ -151,14 +150,9 @@ namespace DeNelle.Editor
                     failures.Add($"'{tier.Id}'.description does not match creative canon §3 verbatim - " +
                                  $"expected \"{tier.Description}\", found \"{def.description}\"");
 
-                if (def.unlockVictories != tier.Unlock)
-                    failures.Add($"'{tier.Id}'.unlockVictories is {def.unlockVictories}, economy map §4 authors " +
-                                 $"{tier.Unlock} - the escalation ladder is the whole point of the tier");
-
-                if (def.unlockVictories <= previousUnlock && tier.Unlock != 0)
-                    failures.Add($"'{tier.Id}' does not escalate: unlockVictories {def.unlockVictories} is not " +
-                                 $"above the previous tier's {previousUnlock}");
-                previousUnlock = def.unlockVictories;
+                if (def.unlockVictories != 0)
+                    failures.Add($"'{tier.Id}'.unlockVictories is {def.unlockVictories} — owner 2026-09-11: " +
+                                 "no win-count lock; capture is a 3-star clear of the highest raid");
 
                 foreach (char c in def.displayName ?? "")
                     if (c > 127)
@@ -290,27 +284,17 @@ namespace DeNelle.Editor
             Func<string, bool> allAvailable = _ => true;
 
             AssertLockState(defs, allAvailable, victories: 0,
-                            expectOpen: new[] { "raider_camp_small" },
-                            expectLocked: new[] { "fortified_garrison", "mage_enclave", "iron_bastion" },
-                            failures, log);
-
-            AssertLockState(defs, allAvailable, victories: 3,
-                            expectOpen: new[] { "raider_camp_small", "fortified_garrison" },
-                            expectLocked: new[] { "mage_enclave", "iron_bastion" },
-                            failures, log);
-
-            AssertLockState(defs, allAvailable, victories: 20,
                             expectOpen: new[] { "raider_camp_small", "fortified_garrison", "mage_enclave", "iron_bastion" },
                             expectLocked: new string[0],
                             failures, log);
 
-            // The availability gate: an EARNED target whose scene cannot load stays locked,
-            // with a DIFFERENT sentence - the player is not told to go win raids they already won.
-            using (var vm = new RaidSelectionVM(defs, null, 20, name => name != "RaidBase_iron_bastion"))
+            // The availability gate: a target whose scene cannot load stays locked,
+            // with a DIFFERENT sentence - the player is not told to go win raids.
+            using (var vm = new RaidSelectionVM(defs, null, 0, name => name != "RaidBase_iron_bastion"))
             {
                 string reason = vm.LockReasonFor("iron_bastion");
                 if (string.IsNullOrEmpty(reason))
-                    failures.Add("RaidSelectionVM leaves 'iron_bastion' OPEN at 20 victories even when its scene " +
+                    failures.Add("RaidSelectionVM leaves 'iron_bastion' OPEN even when its scene " +
                                  "cannot be loaded - tapping it reaches SceneRouter.GoRaid, which refuses the " +
                                  "unregistered scene, and the player gets a dead tap");
                 else if (reason.IndexOf("win ", StringComparison.OrdinalIgnoreCase) >= 0)

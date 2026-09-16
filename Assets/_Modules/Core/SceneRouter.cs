@@ -191,6 +191,8 @@ namespace DeNelle.Core
         public const string RaidBaseFortifiedGarrison = "RaidBase_fortified_garrison";
         /// <summary>A mage enclave — the toughest of the three first-playable raids.</summary>
         public const string RaidBaseMageEnclave       = "RaidBase_mage_enclave";
+        /// <summary>The highest raid — 3-star clear captures the personal town (owner 2026-09-11).</summary>
+        public const string RaidBaseIronBastion       = "RaidBase_IronBastion";
 
         /// <summary>The Week-1 starter dungeon scene name.</summary>
         public const string DungeonHealersCottage   = "Dungeon_HealersCottage";
@@ -591,6 +593,23 @@ namespace DeNelle.Core
         /// no hero, which is now a REAL defect rather than the normal path.
         /// </para>
         /// </summary>
+        public const string OwnedTownIronBastion = "OwnedTown_IronBastion";
+
+        public static void GoTownPractice()
+        {
+            const string scene = DeNelle.Core.Combat.PracticeCombatPolicy.SceneName;
+            LoadSceneWithFade(scene, beforeLoad: () => CarryHeroAcrossSingleLoad("GoTownPractice", scene)).Forget();
+        }
+
+        public static void GoOwnedTown()
+        {
+            var property = DeNelle.Core.State.GameStateService.Instance?.State?.OwnedBase;
+            if (!DeNelle.Core.State.OwnedBaseProgression.Validate(property, out var reason))
+            { FlowTrace.Warn("SceneRouter", "Personal town entry refused: " + reason); return; }
+            LoadSceneWithFade(OwnedTownIronBastion,
+                beforeLoad: () => CarryHeroAcrossSingleLoad("GoOwnedTown", OwnedTownIronBastion)).Forget();
+        }
+
         public static void GoRaid(string sceneName)
         {
             FlowTrace.Step("SceneRouter", $"GoRaid name='{sceneName ?? "<null>"}' — hero carry armed as the pre-load hook.");

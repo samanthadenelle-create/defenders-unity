@@ -581,7 +581,7 @@ namespace DeNelle.Village
         // and sharing it is what buried the shield inside the body: the capture shows both props
         // parented to the single 'SheatheSocket_Back' transform at the same origin. Two transforms
         // on opposite hips make that failure mode structurally impossible, not merely tuned around.
-        private Transform  _sheatheSocketMain;   // main-hand weapon — the hip OPPOSITE the weapon hand
+        private Transform  _sheatheSocketMain;   // sword: main-hand hip; other families keep their carry
         private Transform  _sheatheSocketOff;    // off-hand / shield — the OFF-HAND FOREARM (see below)
         // True when _sheatheSocketOff actually landed on an ARM bone. False = this rig has no mapped
         // forearm and the socket fell back to the hips chain, in which case the HIP offset and the
@@ -589,7 +589,7 @@ namespace DeNelle.Village
         // really resolved, never the anchor that was asked for. (docs/ARCHITECTURE.md: a derived
         // value can be arithmetically perfect and land one transform out.)
         private bool       _sheatheSocketOffIsArm;
-        // Which way each slot's hip offset points, as a multiplier on body.right. The weapon hangs
+        // Legacy non-sword hip offsets, as a multiplier on body.right. The weapon hangs
         // on the hip OPPOSITE the drawing hand (a right-handed hero draws across the body from the
         // left hip) and the shield takes the other one. Constants, not fields: this is the invariant
         // "they are never on the same side", and a field could be set to make them collide again.
@@ -603,6 +603,11 @@ namespace DeNelle.Village
         // weapon-hand-side hip. Both constants are consumed through OffHandSheatheSide(), so no call
         // site can pick the wrong one for the anchor it actually got.
         private const float SheatheSideArmOff = -1f; // -body.right → the hero's LEFT (off-hand) arm
+
+        // Owner 2026-09-13: sword on the MAIN-HAND hip, opposite the shield; hilt up, tip down.
+        // Keep other families' carry unchanged. Runtime and seating preview share this decision.
+        private float MainHandSheatheSide() =>
+            _currentWeaponKind == WeaponClass.Sword ? -SheatheSideArmOff : SheatheSideMain;
 
         // ── SWORD GRIP ORIENTATION (rig-relative) ────────────────────────────────────
         // THE FIX (task #36 follow-up): the grip POINT (handle below the crossguard) is
@@ -3414,7 +3419,7 @@ namespace DeNelle.Village
                     // here was authored against a chest bone, inherited by a spine one, and scaled
                     // by whatever lossyScale that bone happened to carry.
                     _gripRoot.localPosition = ComputeSheathLocalPosition(
-                        sheatheMain, _sheatheWeaponLocalPos, SheatheSideMain);
+                        sheatheMain, _sheatheWeaponLocalPos, MainHandSheatheSide());
                     // DERIVED sheathe rotation (the fix): build the base orientation from the body's
                     // own axes via the SAME LookRotation(flat, blade) construction the correct battle
                     // draw uses (ComputeMeleeGripRotation), then compose the persisted authored nudge —
@@ -3463,7 +3468,7 @@ namespace DeNelle.Village
                             () => WeaponBoundsOrient.ComputeBowHeldRotation(
                                       sheatheMain, _animator != null ? _animator.transform : transform),
                             Quaternion.identity)
-                        : ComputeSheathRotation(sheatheMain, SheatheSideMain);
+                        : ComputeSheathRotation(sheatheMain, MainHandSheatheSide());
                     // Sheathed pose: explicit "<meshKey>@sheathed" wins; else fall back to the drawn
                     // offset ("<meshKey>") as a nudge on this built-in sheathe pose (town carry fix).
                     ApplySheathedOffset(_gripRoot, _currentWeaponMeshKey);
@@ -4072,7 +4077,7 @@ namespace DeNelle.Village
             go.transform.localRotation = Quaternion.identity;
             if (offHand) { _sheatheSocketOff = go.transform; _sheatheSocketOffIsArm = onArm; }
             else _sheatheSocketMain = go.transform;
-            float side = offHand ? (onArm ? SheatheSideArmOff : SheatheSideOff) : SheatheSideMain;
+            float side = offHand ? (onArm ? SheatheSideArmOff : SheatheSideOff) : MainHandSheatheSide();
             string msg = $"ResolveSheatheSocket({(offHand ? "off-hand" : "main-hand")}) on '{name}': " +
                          $"anchor '{go.name}' under bone '{anchor.name}' " +
                          $"(tier={tier}; side={side:+0;-0} * body.right).";
@@ -4274,7 +4279,9 @@ namespace DeNelle.Village
 
             bool ok = Guard.Try("Equip", $"TryResolveSheathedTipSign '{meshKey}'",
                 () => WeaponOrientHelper.TryResolveSheathedTipSign(
-                          prop, gripRoot, out _sheathedTipScratch),
+                          prop, gripRoot, out _sheathedTipScratch,
+                          preferAuthoredGripOrigin: _currentWeaponNative && kind == WeaponClass.Sword &&
+                                                   !FeatureFlags.WeaponGripInfer),
                 false);
             if (!ok || !_sheathedTipScratch.Valid)
             {
@@ -4358,7 +4365,7 @@ namespace DeNelle.Village
         // the persisted authored nudge (_sheatheWeaponLocalEuler, owner felt-tune) composes on top —
         // the sheathe equivalent of _swordGripEuler nudging the drawn seat.
         private Quaternion ComputeSheathRotation(Transform socket) =>
-            ComputeSheathRotation(socket, SheatheSideMain);
+            ComputeSheathRotation(socket, MainHandSheatheSide());
 
         // ⛔ THE BALDRIC DIAGONAL IS RETIRED (owner ruling 2026-08-20). The body of this method used
         // to lean the blade `_sheatheBladeDiagonalDeg` (28) off vertical toward the off shoulder and
@@ -4443,10 +4450,10 @@ namespace DeNelle.Village
             Vector3 bladeWorld = (socket.rotation * result) * Vector3.up;
             float tiltFromVertical = Vector3.Angle(bladeWorld, vertical);
             float longAxisDotUp = Vector3.Dot(bladeWorld, body.up);
-            string slot = sideSign < 0f ? "main" : "off";
-            string propKey = sideSign < 0f
-                ? (!string.IsNullOrEmpty(_currentWeaponMeshKey) ? _currentWeaponMeshKey : (_currentWeaponId ?? "?"))
-                : (!string.IsNullOrEmpty(_currentOffHandMeshKey) ? _currentOffHandMeshKey : (_currentOffHandId ?? "?"));
+            // This method serves the main weapon only. Hip direction is not slot identity.
+            string slot = "main";
+            string propKey = !string.IsNullOrEmpty(_currentWeaponMeshKey)
+                ? _currentWeaponMeshKey : (_currentWeaponId ?? "?");
             string sheatheTraceIdentity = $"sheathe-rot-{slot}-{name}-{propKey}-{socket.name}";
             string sheatheTraceSignature = string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
@@ -5340,7 +5347,7 @@ namespace DeNelle.Village
             // and the side + offset pair must follow the anchor that was really resolved. Reading
             // OffHandSheatheSide() first would sample a stale flag on the very first preview of a
             // session — a preview dialled in the wrong frame is the WO-994 lesson restated.
-            float sideSign = offHand ? OffHandSheatheSide() : SheatheSideMain;
+            float sideSign = offHand ? OffHandSheatheSide() : MainHandSheatheSide();
             if (socket == null)
             {
                 FlowTrace.Warn("Offset", $"ApplySheathedSeatingPreview: no sheathe socket on '{name}' for the " +

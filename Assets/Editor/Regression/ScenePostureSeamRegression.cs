@@ -139,6 +139,7 @@ namespace DeNelle.Editor
                 // scored 180 s clock. It must resolve to the ACTIVE-BATTLE posture from the
                 // moment it loads -- not once something happens to chase the hero.
                 case HubScenes.SceneKind.Raid:
+                case HubScenes.SceneKind.TownPractice:
                     if (posture != HudPosture.HostileActiveBattle)
                         return $"'{scene}' is a RAID but resolves posture " +
                                $"{HudPostureKeys.Key(posture)} (context {ctx}). A raid must declare " +
@@ -152,6 +153,7 @@ namespace DeNelle.Editor
                 // A hub is home. It must NEVER boot hostile -- a wave or a pursuit raises the
                 // posture at runtime, and that path is covered by HudPostureRegression.
                 case HubScenes.SceneKind.Hub:
+                case HubScenes.SceneKind.OwnedTown:
                     if (posture != HudPosture.CalmTown)
                         return $"'{scene}' is a HUB but resolves posture " +
                                $"{HudPostureKeys.Key(posture)} (context {ctx}); a hub at rest must " +

@@ -69,9 +69,26 @@ namespace DeNelle.Village
         /// Used to restore the tier accent after the selection highlight clears.</summary>
         public StructureTierVisual TierVisual;
 
+        public string authoredSourceId;
+
+        public static AuthoredStructurePose CaptureAuthoredPose(Transform target) => new AuthoredStructurePose
+        {
+            x = target.position.x, y = target.position.y, z = target.position.z,
+            qx = target.rotation.x, qy = target.rotation.y, qz = target.rotation.z, qw = target.rotation.w,
+            sx = target.localScale.x, sy = target.localScale.y, sz = target.localScale.z
+        };
+
         /// <summary>Snapshot this live structure into its persisted record.</summary>
-        public PlacedStructureData ToSaveData() =>
-            new PlacedStructureData(itemId, gridCell.x, gridCell.y, yawSteps, level, yawOffset, worldY, wallMounted);
+        public PlacedStructureData ToSaveData()
+        {
+            var data = new PlacedStructureData(itemId, gridCell.x, gridCell.y, yawSteps, level, yawOffset, worldY, wallMounted);
+            if (!string.IsNullOrEmpty(authoredSourceId))
+            {
+                data.authoredSourceId = authoredSourceId;
+                data.authoredPose = CaptureAuthoredPose(transform);
+            }
+            return data;
+        }
 
         // ── F8-39 TEARDOWN / HIDE MONITOR (towers vanish on death, all return on next placement) ──
         // The ticket's split: do the placed structures get DESTROYED / HIDDEN when the hero dies

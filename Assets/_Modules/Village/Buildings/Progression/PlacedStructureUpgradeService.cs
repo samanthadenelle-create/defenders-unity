@@ -132,8 +132,26 @@ namespace DeNelle.Village.Buildings.Progression
         /// <summary>Convenience: the persisted level behind a job key (1 when unknown).</summary>
         public static int LevelOfKey(string jobKey)
         {
+            if (OwnedTownJobKey.TryParse(jobKey, out var baseId, out var instanceId))
+            {
+                var property = GameStateService.Instance?.State?.OwnedBase;
+                var owned = property != null && property.baseId == baseId ? property.structures.Find(s => s.instanceId == instanceId && !s.retired) : null;
+                return owned != null ? owned.placement.level : 1;
+            }
             if (!PlacedUpgradeKey.TryParse(jobKey, out string itemId, out int cx, out int cz)) return 1;
             return LevelOf(itemId, cx, cz);
+        }
+
+        public static bool TryResolveKey(string key, out string itemId, out int cellX, out int cellZ)
+        {
+            itemId = null; cellX = cellZ = 0;
+            if (!OwnedTownJobKey.TryParse(key, out var baseId, out var instanceId))
+                return PlacedUpgradeKey.TryParse(key, out itemId, out cellX, out cellZ);
+            var property = GameStateService.Instance?.State?.OwnedBase;
+            var record = property != null && property.baseId == baseId ? property.structures.Find(s => s.instanceId == instanceId && !s.retired) : null;
+            if (record == null) return false;
+            itemId = record.placement.itemId; cellX = record.placement.cellX; cellZ = record.placement.cellZ;
+            return true;
         }
 
         /// <summary>The next level's cost through the REAL resolver (L -> L+1). Null-safe.</summary>
@@ -149,6 +167,24 @@ namespace DeNelle.Village.Buildings.Progression
         public static PlacedUpgradeResult TryStart(string jobKey)
         {
             var result = new PlacedUpgradeResult { Outcome = PlacedUpgradeOutcome.BadKey };
+
+            if (OwnedTownJobKey.TryParse(jobKey, out var baseId, out var instanceId))
+            {
+                var property = GameStateService.Instance?.State?.OwnedBase;
+                var record = property != null && property.baseId == baseId ? property.structures.Find(s => s.instanceId == instanceId && !s.retired) : null;
+                if (record == null) { result.Message = "That structure does not belong to this town."; return result; }
+                var timer = BuildTimerService.Instance;
+                if (timer == null) { result.Message = "The upgrade service is unavailable."; return result; }
+                result.TargetLevel = record.placement.level + 1;
+                if (!timer.TryStartOwnedTownUpgrade(instanceId, out var ownedJob, out var failure))
+                { result.Outcome = PlacedUpgradeOutcome.ChargeDeclined; result.Message = failure; return result; }
+                result.Outcome = !timer.IsBuilding(jobKey) ? PlacedUpgradeOutcome.AppliedInstantly :
+                    ownedJob.HasValue && ownedJob.Value.StartMs > 0 ? PlacedUpgradeOutcome.Started : PlacedUpgradeOutcome.Queued;
+                result.RemainingSeconds = (int)timer.RemainingSeconds(jobKey);
+                result.Message = result.Outcome == PlacedUpgradeOutcome.AppliedInstantly ? "Upgrade completed." :
+                    result.Outcome == PlacedUpgradeOutcome.Queued ? "Upgrade queued." : "Upgrade started.";
+                return result;
+            }
 
             if (!PlacedUpgradeKey.TryParse(jobKey, out string itemId, out int cx, out int cz))
             {

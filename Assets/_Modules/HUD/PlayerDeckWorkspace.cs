@@ -83,7 +83,7 @@ namespace DeNelle.HUD
         {
             switch (page.Kind)
             {
-                case PlayerDeckKind.Realm: return "Realm services, records, and guidance.";
+                case PlayerDeckKind.Realm: return HasOwnedTown ? "" : "Realm services, records, and guidance.";
                 // WO-1523: the line names what the deck actually carries. While no cosmetic is
                 // unlocked the Wardrobe card is not built, and a purpose line that still promised a
                 // wardrobe would send the player hunting for a section that is not on the screen -
@@ -102,6 +102,27 @@ namespace DeNelle.HUD
 
         protected override void RenderPage(PlayerDeckPage page, RectTransform content)
         {
+            if (page.Kind == PlayerDeckKind.Realm && HasOwnedTown)
+            {
+                var visit = ElarionUiKit.BuildObsidianButton(content, LocalText.Get("ownedTown.enter"),
+                    ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
+                    new Vector2(.30f, .88f), new Vector2(.70f, .88f), () => {
+                        Close(); DeNelle.Core.SceneRouter.GoOwnedTown();
+                    });
+                if (visit != null)
+                {
+                    visit.gameObject.name = "OwnedTownReturn";
+                    ((RectTransform)visit.transform).sizeDelta = new Vector2(0, ElarionUiKit.MinTouchPx + 2f);
+                    var label = visit.GetComponentInChildren<TMP_Text>();
+                    if (label != null)
+                    {
+                        label.rectTransform.anchorMin = Vector2.zero;
+                        label.rectTransform.anchorMax = Vector2.one;
+                        label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
+                        ElarionUiKit.FitSingleLine(label, 30f, 40f);
+                    }
+                }
+            }
             var cards = CardsFor(page.Kind);
             var gridGo = new GameObject(page.Kind + "CardGrid", typeof(RectTransform), typeof(GridLayoutGroup));
             var grid = (RectTransform)gridGo.transform;
@@ -109,7 +130,7 @@ namespace DeNelle.HUD
             grid.anchorMin = new Vector2(0.02f, 0.03f);
             // Reserve the upper body band for the workspace purpose line. The first
             // measured capture proved a .97 top edge let row one cover that line.
-            grid.anchorMax = new Vector2(0.98f, 0.82f);
+            grid.anchorMax = new Vector2(0.98f, page.Kind == PlayerDeckKind.Realm && HasOwnedTown ? .74f : .82f);
             grid.offsetMin = grid.offsetMax = Vector2.zero;
             var layout = gridGo.GetComponent<GridLayoutGroup>();
             layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
@@ -278,7 +299,10 @@ namespace DeNelle.HUD
             if (face != null)
             {
                 var rt = face.rectTransform;
-                rt.anchorMin = new Vector2(TextPlateX0(illustratedCard != null), 0.55f);
+                // This card's dark upper plate extends beyond its narrower paragraph plate.
+                // Keep the canonical store name and give its title the room it needs.
+                float titleX0 = spec.ArtKey == "realm-store" && illustratedCard != null ? .42f : TextPlateX0(illustratedCard != null);
+                rt.anchorMin = new Vector2(titleX0, 0.55f);
                 rt.anchorMax = new Vector2(0.96f, 0.90f);
                 rt.offsetMin = rt.offsetMax = Vector2.zero;
                 face.fontSize = 36f;
@@ -859,13 +883,14 @@ namespace DeNelle.HUD
                     };
                 }
                 default:
-                    return new List<Card>
+                    var realmCards = new List<Card>
                     {
                         Route(HudStrings.StoreFaceLabel("realm-deck"), "Browse clearly priced realm offers", "store", PanelId.RealmStore, "realm-store", openContext: "settings"),
                         Route("Defense Report", "Review attacks against your town", "defense", PanelId.DefenseReport, "defense-report"),
                         Route("Monthly Ledger", "Review non-expiring monthly progress", "ledger", PanelId.MonthlyLedger, "monthly-ledger"),
                         Route("Game Guide", "Read controls, systems, and help", "settings", PanelId.GameGuide, "game-guide")
                     };
+                    return realmCards;
             }
         }
 
@@ -884,6 +909,9 @@ namespace DeNelle.HUD
             FlowTrace.Step("Journey", "deck card=" + card + " subtitle='" + subtitle + "'");
             return subtitle;
         }
+
+        private static bool HasOwnedTown => DeNelle.Core.State.OwnedBaseProgression.Validate(
+            DeNelle.Core.State.GameStateService.Instance?.State?.OwnedBase, out _);
 
         protected override void OnDestroy()
         {

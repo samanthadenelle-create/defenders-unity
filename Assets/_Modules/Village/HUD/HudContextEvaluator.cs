@@ -201,6 +201,7 @@ namespace DeNelle.Village.Hud
         /// </summary>
         private bool IsInTownRing(string scene)
         {
+            if (HubScenes.IsOwnedTown(scene)) return true;
             if (!HubScenes.IsHub(scene)) return false;
 
             if (_hero == null || !_hero) _hero = Object.FindAnyObjectByType<HeroLocomotion>();

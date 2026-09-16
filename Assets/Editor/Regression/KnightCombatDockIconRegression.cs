@@ -54,8 +54,14 @@ namespace DeNelle.Editor.Regression
         /// <summary>The in-band prefix AbilityLoadoutProducer uses for a TEXT face.</summary>
         private const string TextPrefix = "text:";
 
-        /// <summary>The owner's 2026-07-11 placeholder body, as the producer emits it.</summary>
+        /// <summary>A historical text-face example; generic text rendering remains supported.</summary>
         private const string KnightPrimaryPlaceholder = "text:Dodge/\nAttack";
+
+        public static void RunHeadless()
+        {
+            bool ok = Run(out string report);
+            if (ok) Debug.Log(report); else Debug.LogError(report);
+        }
 
         public static bool Run(out string report)
         {
@@ -74,16 +80,18 @@ namespace DeNelle.Editor.Regression
                 return false;
             }
 
-            // ── 1. The producer still emits the placeholder this face has to honour ──────────
-            // If the owner retires the word placeholder, this NOTE tells the next reader that the
-            // text: branch is now unexercised by the Knight — it is not a failure either way.
+            // WO-1695 follow-up: the owner retired the July placeholder after the
+            // 2026-09-10 20:29 device frame showed Dodge/Attack printed over ATTACK.
+            // A note was not a guard: it passed while the authored icon was overridden.
             string producerPath = Path.Combine(Application.dataPath,
                 "_Modules/Village/HUD/HudModelProducers.cs");
-            bool placeholderLive = File.Exists(producerPath) &&
-                                   File.ReadAllText(producerPath).Contains("\"text:Dodge/");
-            notes.Add(placeholderLive
-                ? "knight.q still carries the owner's 2026-07-11 word placeholder (producer emits text:Dodge/Attack)"
-                : "knight.q no longer carries the word placeholder - the primary face now paints its authored icon");
+            if (!File.Exists(producerPath))
+                failures.Add("[knight-combat-dock-icons] producer source missing; its icon contract cannot be verified.");
+            else if (File.ReadAllText(producerPath).Contains("\"text:Dodge/"))
+                failures.Add("[knight-combat-dock-icons] LIVE KNIGHT PLACEHOLDER: the producer overrides knight.q " +
+                             "with text:Dodge/Attack instead of the owner-approved charge_knight art.");
+            else
+                notes.Add("knight.q no longer overrides its authored icon with the retired word placeholder");
 
             // ── 2. The authored knight.q art is reachable, so retiring the placeholder is safe ─
             Sprite knightQ = ConceptIconResolver.Resolve("knight.q");
@@ -96,7 +104,14 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[knight-combat-dock-icons] concept 'knight.q' resolves the icon_combat DEFAULT " +
                              "itself - its concept row is gone or its art is missing.");
             else
+            {
+                string artPath = UnityEditor.AssetDatabase.GetAssetPath(knightQ).Replace('\\', '/');
+                if (!string.Equals(artPath, "Assets/Resources/RpgUi/abilities/charge_knight.png",
+                                   System.StringComparison.OrdinalIgnoreCase))
+                    failures.Add("[knight-combat-dock-icons] knight.q resolves '" + artPath +
+                                 "', not the owner-approved charge_knight.png artwork.");
                 notes.Add("knight.q -> " + knightQ.name);
+            }
 
             // ── 3. THE WIRING, not just the helpers ─────────────────────────────────────────
             // ⚠ WITHOUT THIS SECTION THE SUITE IS A LIE. Everything else here calls the probe
@@ -179,7 +194,7 @@ namespace DeNelle.Editor.Regression
             return failures.Count == 0;
         }
 
-        /// <summary>The owner's word placeholder must render as WORDS, never as a substituted glyph.</summary>
+        /// <summary>Generic text-face support survives retirement of the Knight's specific placeholder.</summary>
         private static void CheckPrimaryTextFace(ElarionUiKit.ActionSlotHandle face, Sprite defaultSprite,
                                                  List<string> failures, List<string> notes)
         {
@@ -199,7 +214,7 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[knight-combat-dock-icons] the PRIMARY text face reads '" + shown.Replace("\n", "\\n") +
                              "', not the owner's 'Dodge/Attack'.");
             else
-                notes.Add("primary text face renders the owner placeholder words");
+                notes.Add("generic primary text-face rendering remains supported");
 
             if (face.icon != null && face.icon.enabled && ReferenceEquals(face.icon.sprite, defaultSprite))
                 failures.Add("[knight-combat-dock-icons] the PRIMARY face is showing the icon_combat DEFAULT " +

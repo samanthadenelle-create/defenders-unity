@@ -89,6 +89,8 @@ namespace DeNelle.Core.State
         /// </summary>
         public static PersistedState Migrate(PersistedState state, int fromVersion)
         {
+            // OwnedBase is additive and nullable. Preserve it verbatim; never infer ownership
+            // from claim flags, RaidVictories, BaseLayout, or a legacy tutorial milestone.
             var s = state ?? new PersistedState();
             foreach (var step in Steps)
             {

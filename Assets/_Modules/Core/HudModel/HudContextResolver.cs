@@ -65,7 +65,7 @@ namespace DeNelle.Core.HudModel
                 modal: false,
                 buildMode: false,
                 combat: HubScenes.SceneDeclaresCombat(sceneName),
-                inVillage: HubScenes.IsHub(sceneName));
+                inVillage: HubScenes.IsHub(sceneName) || HubScenes.IsOwnedTown(sceneName));
         }
     }
 }

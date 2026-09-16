@@ -124,6 +124,8 @@ namespace DeNelle.Core
             Overworld,
             /// <summary>No predicate names this scene. The seam oracle FAILS on this.</summary>
             Unknown,
+            OwnedTown,
+            TownPractice,
         }
 
         /// <summary>Front-end / menu scenes: no world, no posture worth asserting.</summary>
@@ -165,6 +167,8 @@ namespace DeNelle.Core
         public static SceneKind Classify(string sceneName)
         {
             if (string.IsNullOrEmpty(sceneName)) return SceneKind.Unknown;
+            if (IsOwnedTown(sceneName)) return SceneKind.OwnedTown;
+            if (IsTownPractice(sceneName)) return SceneKind.TownPractice;
             if (IsFrontEnd(sceneName)) return SceneKind.FrontEnd;
             if (IsRaid(sceneName)) return SceneKind.Raid;
             // IsDungeon BEFORE IsEnemyOutpost: KayKitChallengeOutpost is a DUNGEON that happens
@@ -190,7 +194,10 @@ namespace DeNelle.Core
         /// pursuit-driven arc. Only the raid is a committed, clocked, scored assault. Widening
         /// this predicate is an owner ruling, not a refactor.</para>
         /// </summary>
-        public static bool SceneDeclaresCombat(string sceneName) => IsRaid(sceneName);
+        public static bool IsOwnedTown(string sceneName) => sceneName == "OwnedTown_IronBastion";
+        public static bool IsTownPractice(string sceneName) => sceneName == DeNelle.Core.Combat.PracticeCombatPolicy.SceneName;
+
+        public static bool SceneDeclaresCombat(string sceneName) => IsRaid(sceneName) || IsTownPractice(sceneName);
 
         // ─────────────────────────────────────────────────────────────────────
         //  Dungeon scene test (WO-920)

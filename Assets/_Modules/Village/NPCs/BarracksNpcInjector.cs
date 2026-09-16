@@ -222,7 +222,7 @@ namespace DeNelle.Village
                     ResetMisburnedOnceTeach();
                     return;
                 }
-                barracks = GameObject.Find(BarracksRootName);
+                barracks = AuthoredCastleStorefront.Find(BarracksRootName)?.gameObject;
             }
 
             if (barracks == null)

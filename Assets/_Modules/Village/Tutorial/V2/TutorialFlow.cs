@@ -626,7 +626,7 @@ namespace DeNelle.Village
                 FlowTrace.Step("Tutorial", $"Bootstrap({reason}): ff.tutorialv2 OFF — dormant.");
                 return;
             }
-            if (!HubScenes.IsHub(scene))
+            if (!HubScenes.IsHub(scene) && scene != SceneRouter.OwnedTownIronBastion)
             {
                 FlowTrace.Step("Tutorial", $"Bootstrap({reason}): scene '{scene}' is not a hub — waiting.");
                 return;
@@ -682,7 +682,8 @@ namespace DeNelle.Village
             _contextual = TutorialStepCatalog.ContextualSteps();
             TutorialSignals.Raised += OnSignal;
 
-            bool firstRun = state != null && !state.Onboarded && !s_ranThisSession;
+            bool firstRun = state != null && !state.Onboarded && !s_ranThisSession &&
+                SceneManager.GetActiveScene().name != SceneRouter.OwnedTownIronBastion;
             if (firstRun && _steps.Count > 0)
             {
                 s_ranThisSession = true;

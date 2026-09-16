@@ -149,6 +149,11 @@ namespace DeNelle.Core.Tutorial
         /// single raise could be swallowed by a hint that happened to be up. Re-raising per open
         /// makes the next visit the retry - no timer, no second mechanism.</para></summary>
         public const string RaidsGridOpened = "raids.grid_opened";
+        public const string OwnedTownRevealed = "ownedTown.revealed";
+        public const string OwnedTownRepaired = "ownedTown.repaired";
+        public const string OwnedTownDesigned = "ownedTown.designed";
+        public const string OwnedTownReentered = "ownedTown.reentered";
+        public const string OwnedTownPracticed = "ownedTown.practiced";
 
         private static readonly HashSet<string> _fired =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase);

@@ -116,10 +116,12 @@ namespace DeNelle.Editor.Regression
         private static readonly Camp[] Ladder =
         {
             new Camp { Id = "raider_camp_small",  Name = "The Forsaken Camp",   Mult = 1.0f, Unlock = 0,  Garrison = new[] { 7, 2 } },
-            new Camp { Id = "fortified_garrison", Name = "The Broken Garrison", Mult = 1.5f, Unlock = 3,  Garrison = new[] { 4, 2, 6, 3 } },
-            new Camp { Id = "mage_enclave",       Name = "The Veiled Enclave",  Mult = 2.2f, Unlock = 10, Garrison = new[] { 7, 5, 7 } },
-            new Camp { Id = "iron_bastion",       Name = "The Iron Bastion",    Mult = 2.2f, Unlock = 20, Garrison = new[] { 7, 5, 7 } },
+            new Camp { Id = "fortified_garrison", Name = "The Broken Garrison", Mult = 1.5f, Unlock = 0,  Garrison = new[] { 4, 2, 6, 3 } },
+            new Camp { Id = "mage_enclave",       Name = "The Veiled Enclave",  Mult = 2.2f, Unlock = 0,  Garrison = new[] { 7, 5, 7 } },
+            new Camp { Id = "iron_bastion",       Name = "The Iron Bastion",    Mult = 2.2f, Unlock = 0,  Garrison = new[] { 7, 5, 7 } },
         };
+
+        public static void RunStandalone() { Run(out _); }
 
         public static bool Run(out string reason)
         {
@@ -422,48 +424,65 @@ namespace DeNelle.Editor.Regression
         // the grid's own lock sentences read: one ladder, no second copy of the thresholds.
         private static void CheckUnlockAnnouncement(List<SceneConfigDef> defs, List<string> failures, StringBuilder log)
         {
-            // A count that crosses nothing stays SILENT. (The trace does the other half: a
-            // crossing and a non-crossing must stay distinguishable in a capture.)
-            foreach (int quiet in new[] { 0, 1, 2, 4, 9, 11, 21 })
-            {
-                string line = RaidSelectionVM.UnlockAnnouncementFor(quiet);
-                if (line != null)
-                    failures.Add($"C3: {quiet} victories crosses no authored rung yet announces \"{line}\" - " +
-                                 "a win that unlocked nothing must say nothing");
-            }
-
-            // The rungs are the CATALOG's, not this suite's: whatever thresholds scene-configs
-            // authors, a count landing exactly on one announces THAT camp.
-            //
-            // THE COUNTER BELOW IS NOT BOOKKEEPING - IT IS THE CASE. Every rung is skipped when
-            // the catalog does not resolve, so without it a SceneConfigCatalog that answers null
-            // in EditMode would make the positive half never run at all and this case would pass
-            // while proving nothing about the announcement. A vacuous green is worse than a red:
-            // it certifies the exact seam that was orphaned for a whole release.
-            int rungsChecked = 0;
+            // Resolve before classifying: zero unlock thresholds are valid authoring,
+            // not missing catalog rows. Fixture IDs supply order; copied thresholds do not.
+            int before = failures.Count;
+            var live = new List<SceneConfigDef>();
+            var thresholds = new SortedSet<int>();
+            int positiveRows = 0;
             foreach (var c in Ladder)
             {
-                if (c.Unlock <= 0) continue;
-                var live = SceneConfigCatalog.Find(c.Id);
-                if (live == null || live.unlockVictories != c.Unlock) continue;   // catalog moved; not this suite's call
-                rungsChecked++;
-                string line = RaidSelectionVM.UnlockAnnouncementFor(c.Unlock);
-                if (string.IsNullOrEmpty(line))
-                {
-                    failures.Add($"C3: {c.Unlock} victories opens '{c.Id}' in the catalog and the victory screen announces " +
-                                 "NOTHING - the ladder is advertised on the grid and silent at the win");
-                    continue;
-                }
-                if (line.IndexOf(RaidSelectionVM.UnlockPrefix, StringComparison.Ordinal) != 0)
-                    failures.Add($"C3: the announcement \"{line}\" does not open with the one authored prefix");
+                var row = SceneConfigCatalog.Find(c.Id);
+                if (row == null) { failures.Add($"C3: missing required flagship '{c.Id}'"); continue; }
+                live.Add(row);
+                if (row.unlockVictories < 0) failures.Add($"C3: negative unlock threshold on '{c.Id}'");
+                if (row.unlockVictories > 0) { positiveRows++; thresholds.Add(row.unlockVictories); }
             }
-            if (rungsChecked == 0)
-                failures.Add("C3: ZERO ladder rungs were checked - SceneConfigCatalog resolved none of the flagship " +
-                             "camps, so the positive half of this case never ran and its green would mean nothing. " +
-                             "The silence half above still passed, which is exactly how a vacuous pass looks. Fix the " +
-                             "catalog load in this context rather than trusting the marker");
-            log.AppendLine("OK: an unlock announcement fires only on a crossed rung, from the catalog's own " +
-                           "unlockVictories (" + rungsChecked + " rung(s) actually exercised)");
+            if (failures.Count != before)
+            {
+                log.AppendLine($"C3 FAIL: resolved {live.Count}/{Ladder.Length}; invalid/missing data; 0 producer assertions.");
+                return;
+            }
+
+            // Bounded, deduplicated samples and neighbours. A formerly quiet sample
+            // that becomes a live threshold must assert its crossing instead of silence.
+            var probes = new SortedSet<int> { int.MinValue, -1, 0, 1, 2, 3, 4, 9, 10, 11, 19, 20, 21, 100, 1000, int.MaxValue };
+            foreach (int t in thresholds)
+            {
+                probes.Add(t); probes.Add(t - 1);
+                if (t < int.MaxValue) probes.Add(t + 1);
+            }
+            int assertions = 0, crossingProbes = 0, silentProbes = 0;
+            foreach (int count in probes)
+            {
+                // Independent expected identity and wording from resolved catalog rows.
+                // First flagship wins ties. Never use one tested producer as the oracle for another.
+                var expected = count > 0 ? live.Find(row => row.unlockVictories == count) : null;
+                string expectedLine = expected == null ? null : RaidSelectionVM.UnlockPrefix +
+                    (string.IsNullOrEmpty(expected.displayName) ? expected.id : expected.displayName) + RaidSelectionVM.UnlockSuffix;
+                var actual = RaidSelectionVM.CampUnlockedAt(count);
+                string line = RaidSelectionVM.UnlockAnnouncementFor(count);
+                assertions += 2; // Both calls and comparisons execute even if the first one fails.
+                if ((expected == null && actual != null) || (expected != null &&
+                    (actual == null || !string.Equals(expected.id, actual.id, StringComparison.Ordinal))))
+                    failures.Add($"C3: CampUnlockedAt({count}) expected '{expected?.id ?? "<null>"}', got '{actual?.id ?? "<null>"}'");
+                if (!string.Equals(expectedLine, line, StringComparison.Ordinal))
+                    failures.Add($"C3: UnlockAnnouncementFor({count}) expected '{expectedLine ?? "<null>"}', got '{line ?? "<null>"}'");
+                if (expected == null) silentProbes++; else crossingProbes++;
+            }
+            int nextProbes = 0;
+            if (thresholds.Count == 0)
+                foreach (int count in new[] { int.MinValue, -1, 0, 1, 1000, int.MaxValue })
+                {
+                    var next = RaidSelectionVM.NextLockedCamp(count);
+                    nextProbes++; assertions++;
+                    if (next != null) failures.Add($"C3: all-unlocked catalog returned next target '{next.id}' at {count}");
+                }
+            bool ok = failures.Count == before;
+            log.AppendLine($"C3 {(ok ? "OK" : "FAIL")}: resolved {live.Count}/{Ladder.Length}; positive rows={positiveRows}; " +
+                $"configured positive rungs={thresholds.Count}; crossing probes={crossingProbes}; silent probes={silentProbes}; " +
+                $"next-target probes={nextProbes}; producer assertions={assertions}." +
+                (ok && thresholds.Count == 0 ? " Intentionally all-unlocked; no positive announcement integration exercised." : ""));
         }
 
         /// <summary>Fixture lookup by id (this suite's def list, never the live catalog).</summary>

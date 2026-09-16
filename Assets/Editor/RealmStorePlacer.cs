@@ -274,6 +274,15 @@ namespace DeNelle.Editor
             EditorSceneManager.OpenScene(HubScene, OpenSceneMode.Single);
             var scene = SceneManager.GetActiveScene();
 
+            var ownerStore = DeNelle.Village.AuthoredCastleStorefront.Find(ObjectName, true);
+            if (ownerStore != null && ownerStore.GetComponent<DeNelle.Village.AuthoredCastleStorefront>() != null)
+            {
+                if (ownerStore.GetComponent<DeNelle.Village.RealmStoreVendor>() == null)
+                    throw new System.InvalidOperationException("Authored Realm Store is missing its door; run OwnerCastleLayoutRepair.");
+                Debug.Log("REALM_STORE_PLACED_OK preserved owner-authored storefront and pose");
+                return;
+            }
+
             // Idempotent: drop any previous instance first, so re-running never stacks storefronts.
             foreach (var existingRoot in scene.GetRootGameObjects())
             {

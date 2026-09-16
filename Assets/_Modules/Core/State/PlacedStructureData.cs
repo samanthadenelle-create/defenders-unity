@@ -73,6 +73,11 @@ namespace DeNelle.Core.State
         /// </summary>
         public bool wallMounted;
 
+        // Additive provenance: absent on legacy/player-built records. Never infer this
+        // from matching coordinates or the presence of an authored scene object.
+        public string authoredSourceId;
+        public AuthoredStructurePose authoredPose;
+
         public PlacedStructureData(string itemId, int cellX, int cellZ, int yawSteps, int level,
             float yawOffset = 0f, float worldY = 0f, bool wallMounted = false)
         {
@@ -84,6 +89,17 @@ namespace DeNelle.Core.State
             this.yawOffset = yawOffset;
             this.worldY = worldY;
             this.wallMounted = wallMounted;
+            authoredSourceId = null;
+            authoredPose = null;
         }
+    }
+
+    /// <summary>Exact authored world pose and local scale in the existing scene hierarchy.</summary>
+    [Serializable]
+    public sealed class AuthoredStructurePose
+    {
+        public float x, y, z;
+        public float qx, qy, qz, qw;
+        public float sx, sy, sz;
     }
 }

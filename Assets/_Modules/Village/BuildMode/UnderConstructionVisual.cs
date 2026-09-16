@@ -44,6 +44,7 @@ namespace DeNelle.Village
     /// </summary>
     public sealed class UnderConstructionVisual : MonoBehaviour
     {
+        private bool _frozenOwnedSnapshot;
         private const float DimFactor = 0.45f;   // scaffold grey-down of the albedo
 
         private string _key;
@@ -111,11 +112,13 @@ namespace DeNelle.Village
         /// placement (through the <see cref="PlacedStructure"/> overload) and by the building
         /// -upgrade seams (through <see cref="AttachToBuildingId"/>).
         /// </summary>
-        public static void Attach(GameObject host, string key)
+        public static void Attach(GameObject host, string key, bool frozenOwnedSnapshot = false)
         {
             if (host == null || string.IsNullOrEmpty(key)) return;
             if (host.GetComponent<UnderConstructionVisual>() != null) return;   // already scaffolded
-            host.AddComponent<UnderConstructionVisual>().Bind(key);
+            var visual = host.AddComponent<UnderConstructionVisual>();
+            visual._frozenOwnedSnapshot = frozenOwnedSnapshot;
+            visual.Bind(key);
         }
 
         /// <summary>
@@ -216,7 +219,7 @@ namespace DeNelle.Village
             // is DECORATION -- it must never be able to break a build.
             Guard.Try("Build", "stand a build worker at the site", () =>
             {
-                _worker = ConstructionWorkerPool.Spawn(this, transform, _key);
+                if (!_frozenOwnedSnapshot) _worker = ConstructionWorkerPool.Spawn(this, transform, _key);
             });
 
             Guard.Try("Build", "scaffold label", () =>
@@ -409,21 +412,22 @@ namespace DeNelle.Village
         }
 
         /// <summary>
-        /// THE one readable answer to "is this structure still under construction?" -- DERIVED,
-        /// never stored: true iff <paramref name="host"/> carries a live scaffold whose job the
-        /// Obsidian queue still reports in flight (<see cref="BuildTimerService.IsBuilding"/>,
-        /// which covers a RUNNING job and one still waiting in the FIFO pending queue alike).
-        ///
-        /// There is no second notion of "is this built" anywhere: the queue owns the fact, this
-        /// component owns the key, and everything else asks here. A baked scene tower, an
-        /// EnemyOwned garrison turret and a finished build all carry no scaffold, so they answer
-        /// false -- which is exactly why they are unaffected by the gate.
+        /// Reads construction from the attached scaffold's authority. Ordinary structures use
+        /// the live queue; owned structures also retain their saved unfinished state. Practice
+        /// scaffolds represent the frozen entry build, independent of the owner's live timer.
         /// </summary>
         public static bool IsUnderConstruction(GameObject host)
         {
             if (host == null) return false;
             var scaffold = host.GetComponentInChildren<UnderConstructionVisual>(true);
             if (scaffold == null) return false;
+            if (scaffold._frozenOwnedSnapshot) return true;
+            if (DeNelle.Core.State.OwnedTownJobKey.TryParse(scaffold._key, out var baseId, out var instanceId))
+            {
+                var property = DeNelle.Core.State.GameStateService.Instance?.State?.OwnedBase;
+                if (property?.baseId == baseId && property.structures.Exists(s => s.instanceId == instanceId && s.constructionPending))
+                    return true;
+            }
             var svc = BuildTimerService.Instance;
             return svc != null && svc.IsBuilding(scaffold._key);
         }
@@ -441,14 +445,21 @@ namespace DeNelle.Village
         private void Update()
         {
             var svc = BuildTimerService.Instance;
-            if (svc == null || !svc.IsBuilding(_key)) { Reveal(); return; }   // self-heal
+            bool savedPending = false;
+            if (DeNelle.Core.State.OwnedTownJobKey.TryParse(_key, out var baseId, out var instanceId))
+            {
+                var property = DeNelle.Core.State.GameStateService.Instance?.State?.OwnedBase;
+                savedPending = property?.baseId == baseId && property.structures.Exists(s => s.instanceId == instanceId && s.constructionPending);
+            }
+            if (!_frozenOwnedSnapshot && !savedPending && (svc == null || !svc.IsBuilding(_key))) { Reveal(); return; }
 
             if (_label != null)
             {
-                double s = svc.RemainingSeconds(_key);
+                double s = !_frozenOwnedSnapshot && svc != null ? svc.RemainingSeconds(_key) : 0;
                 // F8 (owner 2026-07-17): headless proof the countdown SHOWS + TICKS (~1/s).
                 FlowTrace.Throttle("BuildTimerUI", _key, 1f, $"'{_key}' remaining={s:0}s");
-                _label.text = s >= 60 ? $"{(int)(s / 60)}:{(int)(s % 60):00}" : $"{(int)s}s";
+                _label.text = _frozenOwnedSnapshot || (savedPending && (svc == null || !svc.IsBuilding(_key)))
+                    ? "..." : s >= 60 ? $"{(int)(s / 60)}:{(int)(s % 60):00}" : $"{(int)s}s";
             }
 
             // WO-899 §4: billboard the PLATE (not the text) and hold a roughly constant
@@ -473,7 +484,7 @@ namespace DeNelle.Village
 
         private void OnJobCompleted(BuildJobData job)
         {
-            if (job.StructureId == _key) Reveal();
+            if (!_frozenOwnedSnapshot && job.StructureId == _key) Reveal();
         }
 
         /// <summary>

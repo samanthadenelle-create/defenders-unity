@@ -89,6 +89,7 @@ namespace DeNelle.Village
         private readonly Func<CatalogEntry, bool> _freebieProvider;
         private readonly Func<int> _registryCount;
         private readonly Action _onClose;
+        private readonly Func<CatalogEntry, string> _placementBlockReason;
 
         private readonly Action<ResourceSnapshot> _ecoHandler;
         private readonly UnityEngine.Events.UnityAction _stateHandler;
@@ -124,7 +125,8 @@ namespace DeNelle.Village
                 () => CatalogRegistry.Count,
                 initialType,
                 onClose,
-                ProgressionUnlocks.IsUnlocked);   // WO-1013 -- the persisted visible-lock gate
+                ProgressionUnlocks.IsUnlocked,
+                World.Camps.OwnedTownLayoutSnapshot.PlacementBlockReason);
 
             // Subscribe the live wallet feeds (both — TrySpend fires OnChanged but not
             // GameState.ResourcesChanged for a Wood/Iron-only spend, and a crystal grant
@@ -143,7 +145,8 @@ namespace DeNelle.Village
             Func<int> registryCount,
             BuildType initialType,
             Action onClose,
-            Func<string, bool> unlockedProvider = null)   // WO-1013 -- optional so the sec-2c tests keep compiling
+            Func<string, bool> unlockedProvider = null,
+            Func<CatalogEntry, string> placementBlockReason = null)
         {
             _economy = economy;
             _categoryProvider = categoryProvider;
@@ -151,6 +154,7 @@ namespace DeNelle.Village
             _freebieProvider = freebieProvider ?? (_ => false);
             _registryCount = registryCount;
             _onClose = onClose;
+            _placementBlockReason = placementBlockReason;
             // Default = the persisted flag store; a null service inside reads as locked,
             // which is the safe default for a pure-test construction too.
             _unlockedProvider = unlockedProvider ?? ProgressionUnlocks.IsUnlocked;
@@ -359,6 +363,12 @@ namespace DeNelle.Village
                         // unlock-gated rows, and ruling-gated rows like wall_stone (WO-948:
                         // walls build at L1 only — stone is reached by UPGRADE, never placement).
                         (excluded ??= new List<string>()).Add(e.id);
+                        continue;
+                    }
+                    string placementReason = _placementBlockReason?.Invoke(e);
+                    if (!string.IsNullOrEmpty(placementReason))
+                    {
+                        _cards.Add(new StructureCardVM(e, _economy, false, locked: true, lockReason: placementReason));
                         continue;
                     }
                     // WO-1013: a visible-locked row RENDERS (normal cost + reason words) but
