@@ -26,6 +26,18 @@
 # =============================================================================
 
 root=$(git rev-parse --show-toplevel) || exit 1
+
+# LFS (2026-09-15): core.hooksPath REPLACES git-lfs's own pre-push hook, so LFS objects were never
+# uploaded and GitHub's pre-receive rejected dev ("Try to push them with 'git lfs push --all'").
+# stdin (the ref list) is consumed by the loop below, so capture it once and feed both consumers.
+refs_tmp=$(mktemp) || exit 1
+cat > "$refs_tmp"
+lfs_ok_exit() {
+    if command -v git-lfs >/dev/null 2>&1; then
+        git lfs pre-push "$@" < "$refs_tmp" || { rm -f "$refs_tmp"; exit 1; }
+    fi
+    rm -f "$refs_tmp"; exit 0
+}
 server="$root/ServerData"
 proof="$root/Builds/r2-parity.log"
 project_version_file="$root/ProjectSettings/ProjectVersion.txt"
@@ -48,7 +60,7 @@ while read local_ref local_sha remote_ref remote_sha; do
             break 2
         fi
     done
-done
+done < "$refs_tmp"
 
 # WO-1178: a raw editor launch can rewrite this file after every wrapper's
 # pre-run check. The repo cannot prevent that external process, but it can make
@@ -86,9 +98,9 @@ if [ "$schema_changed" -eq 1 ]; then
 fi
 
 # Nothing to serve -> nothing to keep in sync.
-[ -d "$server" ] || exit 0
+[ -d "$server" ] || lfs_ok_exit "$@"
 newest_content=$(find "$server" -type f -printf '%T@\n' 2>/dev/null | sort -n | tail -1)
-[ -n "$newest_content" ] || exit 0
+[ -n "$newest_content" ] || lfs_ok_exit "$@"
 
 fail() {
     echo ""
@@ -125,4 +137,4 @@ if [ "$(printf '%s\n%s\n' "$proof_time" "$newest_content" | sort -n | tail -1)" 
 fi
 
 echo "[pre-push] R2 parity proof is fresh (postdates every file under ServerData/). OK."
-exit 0
+lfs_ok_exit "$@"
