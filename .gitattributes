@@ -82,3 +82,6 @@ api/_lib/vfx-pick-options.generated.json text eol=lf
 # content that had not changed at all.
 api/_lib/tunable-manifest.generated.json text eol=lf
 Assets/Resources/VFX/vfx-pick-options.generated.json text eol=lf
+
+# Generated SKU contract is LF-only, including a fresh Windows checkout.
+api/_lib/sku-catalog.generated.json text eol=lf
