@@ -1692,6 +1692,26 @@ namespace DeNelle.Village
         private bool _reconciled;
 
         /// <summary>
+        /// WO-1768 — HAS THIS RAID'S ARMY ALREADY BEEN SETTLED? The latch above, made
+        /// ANSWERABLE so a caller can narrate what its own call actually did.
+        ///
+        /// <para>THE CAPTURED DEFECT (owner Seeker, build 2026.09.16.371701, logcat
+        /// pull-20260916-143101 lines 3059910/3059911): the hero's death path called
+        /// <see cref="ReconcileRaidEnd"/> on an already-won raid, this latch no-oped and
+        /// said so — "raid-end reconcile already ran for this raid - ignoring the duplicate
+        /// call." — and HeroHealth's NEXT line still announced "army settled as a failure
+        /// (0 stars); the troops still standing break and flee home, the fallen are
+        /// wounded." Nothing had happened. The army was intact (army 10, deployable=10 read
+        /// 0.09 s later) and the false line cost the RCA lane its first hour.</para>
+        ///
+        /// <para>A property rather than a bool return from <see cref="ReconcileRaidEnd"/>
+        /// on purpose: no existing call site changes, and a caller reads it BEFORE and AFTER
+        /// its own call to learn whether IT was the one that settled. Read-only — the latch
+        /// keeps exactly one writer.</para>
+        /// </summary>
+        public bool Reconciled => _reconciled;
+
+        /// <summary>
         /// The single raid-exit army reconcile, called by BOTH ends of a raid: the retreat /
         /// timeout exit (<see cref="DoRetreat"/>, starsEarned 0) and the VICTORY exit
         /// (RaidVictoryController, starsEarned = the settled RaidResult.Stars).

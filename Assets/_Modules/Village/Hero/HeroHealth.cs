@@ -430,9 +430,12 @@ namespace DeNelle.Village
             // ── RECOVERY: RUN THE RULE CANON ALREADY HAS, RATHER THAN INVENTING ONE ──────────
             // Owner ruling WO-1526 already says what a hero at zero HP inside a live raid means:
             // the raid CONTINUES, capped at 2 stars, with "HERO DOWN - your army fights on" on
-            // screen. That outcome is produced by HandleDeath (:1170 -> RaidScoring
-            // .NotifyHeroDied at :1270 and RaidDeployController.NotifyHeroDown at :1306), and the ONLY thing wrong
-            // in this state is that the sequence which starts HandleDeath never ran. So run it.
+            // screen. That outcome is produced by BeginDeathSequence's own
+            // RaidScoring.NotifyHeroDied latch plus HandleDeath's RaidDeployController
+            // .NotifyHeroDown (line numbers deliberately NOT quoted here - WO-1768 moved the
+            // latch out of HandleDeath and the old ":1270" citation went stale the same day),
+            // and the ONLY thing wrong in this state is that the sequence which starts
+            // HandleDeath never ran. So run it.
             //
             // ⛔ NOT A SECOND DEATH PATH. BeginDeathSequence is the SAME body TakeDamage calls -
             // the lethal block, moved, not copied - so the town rule, the arena deferral, the
@@ -981,6 +984,45 @@ namespace DeNelle.Village
                     // "ZERO HP WITH NO DEATH LATCH" appears instead, (B). Frames-only, no file
                     // info — cheap, and this runs once per death, never per frame.
                     " | lethalFrom=" + TopCallerFrame());
+
+                // ── WO-1768 — LATCH THE RAID'S HERO-DEATH CAP *AT THE LETHAL HIT* ────────────
+                // This call used to live in HandleDeath, AFTER its 1.75s down-beat
+                // `yield return new WaitForSeconds(...)`. The comment there claimed the scorer
+                // was told "on EVERY path, before any branch is chosen" - true of the BRANCH,
+                // false of the DEATH, and the gap is 1.75 seconds wide.
+                //
+                // MEASURED COST (owner Seeker, build 2026.09.16.371701, logcat
+                // pull-20260916-143101, raid IronBastion):
+                //   13:26:03.396  [HeroHealth] Hero defeated.
+                //   13:26:05.337  [Flow:Raid] stars settled: 2 (earned=3 heroDied=False cap=none
+                //                 honor=2 clamped=min(3,2))
+                // The spire fell 1.93s after the hero died - INSIDE the down-beat - so
+                // RaidScoring.Finalize ran ApplyHeroDeathCap with _heroDied still false and
+                // cap=none. The WO-1526 2-star cap was NOT applied to a raid the hero died in.
+                // It landed on 2 only because honor independently clamped 3 -> 2; with honor=3
+                // that capture pays 3 stars AND veterancy ranks to a player who fell, which is
+                // the owner ruling inverted.
+                //
+                // THERE IS STILL EXACTLY ONE LATCH AND ONE CALL SITE. NotifyHeroDied latches on
+                // RaidScoring._heroDied (RaidScoring.cs:624 `if (_heroDied) return;`) and does
+                // nothing else but that and its own trace (read at source 2026-09-16), so it is
+                // safe to run this early and on every death, raid or not - Instance is null
+                // outside a raid and `?.` no-ops. The former HandleDeath call site is DELETED,
+                // not duplicated (RaidScoring.cs:616-620: "There must never be two latches for
+                // one death").
+                //
+                // It sits here, synchronously, before OnDeath/OnDied fire and before
+                // HandleDeath is even started, so no listener and no raid conclusion can
+                // observe a dead hero whose scorer has not been told.
+                //
+                // ⚠ THE SPELLING IS LOAD-BEARING, NOT STYLE. HeroDownInputRefusalRegression
+                // case 6 [raid-hud] asserts the literal text `raidScorer.NotifyHeroDied()` in
+                // this file (HeroDownInputRefusalRegression.cs:268), so the local keeps the name
+                // the retired call site used. A `RaidScoring.Instance?.NotifyHeroDied()` one-liner
+                // is identical at runtime and turns that suite RED for a cosmetic reason.
+                var raidScorer = DeNelle.Village.RaidScoring.Instance;
+                if (raidScorer != null) raidScorer.NotifyHeroDied();
+
                 // F8-15 extension (owner 2026-07-08 "capture why so many screens + moving character
                 // location"): open the DEATH FORENSIC WINDOW. For the next 15s every screen open
                 // (PanelManager / EndStateView), every hero warp/jump (>2m per frame, see
@@ -1260,14 +1302,18 @@ namespace DeNelle.Village
             //   12:59:47  [Flow:Raid] hero death settle: partial loot for 32% razed
             // 45 seconds into a 180-second raid, with a full army still standing on the field.
             //
-            // LATCH FIRST, BRANCH SECOND. The scorer is told about the death on EVERY path -
-            // live raid, settled raid, enemy-owned non-raid - before any branch is chosen, so the
-            // 2-star cap can never depend on which exit was taken. NotifyHeroDied is idempotent.
-            // (COMPOSE NOTE: WO-1594 on branch grok/raid-1593-1595 adds the same call ~40 lines
-            // below, inside the EVAC branch, for its honor-star snuff. That is the SAME seam -
-            // on merge keep THIS call site, which covers the live-raid branch his cannot reach,
-            // and drop the inner one. Two latches for one death is the duplicated state.)
-            if (raidScorer != null) raidScorer.NotifyHeroDied();
+            // LATCH FIRST, BRANCH SECOND — AND THE LATCH NO LONGER LIVES HERE (WO-1768).
+            // `raidScorer.NotifyHeroDied()` used to be called on this line. That is AFTER the
+            // 1.75s `WaitForSeconds` above, so the cap landed 1.75s after the lethal hit and a
+            // raid that concluded inside the down-beat settled with heroDied=False cap=none
+            // (capture pull-20260916-143101: hero defeated 13:26:03.396, "stars settled: 2
+            // (earned=3 heroDied=False cap=none ...)" 13:26:05.337). The call now lives in
+            // BeginDeathSequence, beside `_isDead = true`, where it is latched at the lethal hit
+            // itself - which is what "before any branch is chosen" was always meant to mean.
+            // ONE latch, ONE call site (RaidScoring.cs:616-620); do not re-add one here.
+            // (COMPOSE NOTE: WO-1594 on branch grok/raid-1593-1595 adds the same call for its
+            // honor-star snuff. Same seam - on merge take his BODY inside RaidScoring and keep
+            // the single BeginDeathSequence call site.)
 
             // ⛔ THIS TEST MUST PRECEDE THE `enemyOwnedScene ||` BELOW, AND THAT IS THE WHOLE FIX.
             // RaidScoring.RaidDeathEndsRaid's own doc used to claim "flipping it is the whole
@@ -1318,6 +1364,100 @@ namespace DeNelle.Village
             bool raidDeathExit = raidInProgress &&
                                  (raidSettled || DeNelle.Village.RaidScoring.RaidDeathEndsRaid);
 
+            // ── WO-1768 — A WON RAID'S VICTORY SCREEN OWNS THE ROUTE HOME ────────────────────
+            // The EVAC branch below assumes (its own header says so) that a SETTLED raid "always
+            // goes home ... there is nothing left to fight on inside". That is true of the RAID
+            // and false of the UI: the victory screen is up, WO-1543 gave it a 30s hold that ANY
+            // touch re-arms, and its one primary action is the player's own Return to Castle.
+            //
+            // MEASURED COST (owner Seeker, build 2026.09.16.371701, logcat
+            // pull-20260916-143101, raid IronBastion - the hero died 1.93s BEFORE the spire fell,
+            // i.e. inside this coroutine's down-beat):
+            //   13:26:05.398  [Flow:DeathTrace] SCREEN OPENED: EndState 'Victory!'
+            //   13:26:05.594  the owner's finger lands on it; WO-1543 re-arms the full 30s
+            //   13:26:05.617  [Flow:DeathTrace] HERO MOVED: SceneRouter.GoCastle() by
+            //                 HeroHealth.HandleDeath              <- THIS BRANCH, over the top
+            //   13:26:06.180  SCREEN CLOSED: EndState 'Victory!' by EndStateView.OnDestroy
+            //                 (torn down without firing)
+            // The victory screen was readable for 0.78 SECONDS, mid-touch. spoils=4 was never
+            // read and the CTA never fired.
+            //
+            // ⛔ THE GATE IS "THE SCREEN IS ACTUALLY UP", NEVER `_handled` AND NEVER `_returning`
+            // ALONE - the reasoning is written at source on VictoryOwnsTheReturn, and both of the
+            // wrong gates would strand a dead hero on an enemy field (WO-1437).
+            //
+            // ⛔ AND IT IS A YIELD WITH A BELT, NOT A `yield break`. RaidVictoryController
+            // .ReturnHome opens `if (!CanEnterCapturedTown()) return;`, which legitimately
+            // REFUSES and toasts when the captured-town census commit has to be retried - so a
+            // route home is not unconditional even with the screen up. If the return has not
+            // happened within the watchdog, this falls through to the EVAC below exactly as it
+            // does today and SAYS WHY. A dead hero is never stranded on an enemy-owned field.
+            var victory = FindAnyObjectByType<DeNelle.Village.World.Camps.RaidVictoryController>();
+            if (victory != null && victory.VictoryOwnsTheReturn)
+            {
+                // 45s = comfortably above the 30s auto-dismiss observed in the capture
+                // ("'Victory!' auto-dismiss armed at 30s WITH HOLD-ON-TOUCH", logcat 3059807)
+                // plus a grace for one re-arm's worth of slack. Deliberately NOT derived from
+                // RaidVictoryController._autoReturnSeconds, which is private and serialized -
+                // a hold-on-touch screen can outlive ANY fixed window anyway, so the belt is
+                // sized to "the guard has plainly failed", not to the guard.
+                const float VictoryYieldWatchdogSeconds = 45f;
+                string raidSceneName = SceneManager.GetActiveScene().name;
+
+                // Step, never Warn: yielding to a won raid's screen is the CORRECT outcome, and
+                // a normal hero death must not raise an F8 severity.
+                //
+                // ⛔ THE PROSE IN THE NEXT THREE TRACES MAY NOT NAME `GoCastle`,
+                // `SettlePartialLoot`, `ReconcileRaidEnd` OR `Respawn(` — AND THAT IS A REAL
+                // CONSTRAINT, NOT PEDANTRY. RaidScoringRegression's WO-1526 case takes the FLAT
+                // TEXT SPAN from the first `liveRaidContinues` to the first
+                // `enemyOwnedScene || raidDeathExit` (RaidScoringRegression.cs:362) and fails if
+                // that span CONTAINS any of those four tokens. The span is not brace-matched, so
+                // this whole block sits inside it even though it is not the live-raid branch, and
+                // a string literal reads to the lint exactly like a call (it strips comments, not
+                // strings). The first draft said "no GoCastle from here" and turned the suite RED
+                // at 548/550 with the live-raid-branch message. Say "scene route" instead; put
+                // anything that must name a method in a COMMENT, which the lint does strip.
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Death",
+                    "HandleDeath: down-beat elapsed -> STAND DOWN, THE VICTORY SCREEN OWNS THE RETURN " +
+                    "(WO-1768). VictoryOwnsTheReturn=True on the raid's RaidVictoryController, so the " +
+                    "raid was WON while the hero lay in the down-beat. No loot settle, no army " +
+                    "reconcile, no Save, no scene route from here - the player reads their own victory " +
+                    "screen and leaves by its own button or its own 30s guard. Watchdog armed at " +
+                    VictoryYieldWatchdogSeconds.ToString("F0") + "s realtime; scene='" + raidSceneName +
+                    "'. Signal: enemyOwned=" + enemyOwnedScene + " raidInProgress=" + raidInProgress +
+                    " raidSettled=" + raidSettled + ".");
+
+                float victoryDeadline = Time.realtimeSinceStartup + VictoryYieldWatchdogSeconds;
+                while (Time.realtimeSinceStartup < victoryDeadline)
+                {
+                    // Either the controller went away with its scene, or the active scene changed:
+                    // both mean the victory path completed the return and there is nothing left
+                    // for the death path to do. realtime + `yield return null` on purpose - an
+                    // end-state screen may zero Time.timeScale, which would freeze a scaled wait
+                    // forever.
+                    if (victory == null || SceneManager.GetActiveScene().name != raidSceneName)
+                    {
+                        DeNelle.Core.Diagnostics.FlowTrace.Step("Death",
+                            "HandleDeath: the victory path completed the return (controller gone or " +
+                            "scene left) - the death path stood down with nothing to settle. The hub " +
+                            "load's safe-zone recovery revives the hero, exactly as it does on the " +
+                            "EVAC route.");
+                        yield break;
+                    }
+                    yield return null;
+                }
+
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Death",
+                    "VICTORY YIELD WATCHDOG EXPIRED after " + VictoryYieldWatchdogSeconds.ToString("F0") +
+                    "s realtime: the victory screen claimed the return and no return happened, so the " +
+                    "hero is still dead in raid scene '" + raidSceneName + "'. Most likely the " +
+                    "captured-town census commit is refusing (RaidVictoryController.CanEnterCapturedTown " +
+                    "toasts ownedTown.captureRetry and ReturnHome returns early). FALLING THROUGH to the " +
+                    "EVAC branch below - a dead hero is never left stranded on an enemy-owned field " +
+                    "(WO-1437 / WO-1768).");
+            }
+
             if (enemyOwnedScene || raidDeathExit)
             {
                 // Name the deciding signal: a future divergence between these two must be
@@ -1359,15 +1499,61 @@ namespace DeNelle.Village
                     // retreat/timeout exit uses. It runs BEFORE the reconcile, matching
                     // DoRetreat's order, and is idempotent (RaidScoring.Finalized latch) so a
                     // victory or retreat that already settled makes this a logged no-op.
+                    // WO-1768 — MEASURE, THEN NARRATE. Both settles below are LATCHED and both
+                    // announce their own no-op; what was unguarded was the NARRATION. On the
+                    // 2026-09-16 IronBastion capture this block ran against an already-won raid,
+                    // both calls no-oped ("raid already finalized - loot was paid by the first
+                    // exit." / "raid-end reconcile already ran for this raid - ignoring the
+                    // duplicate call.") and the line after them still announced an army settled
+                    // as a failure. The army was intact - army 10 / deployable=10, read 0.09s
+                    // later. A trace that asserts work that did not happen turns a clean capture
+                    // into a false lead, and it cost that RCA lane its first hour (CLAUDE.md
+                    // sec.12). Both traces are KEPT; the false one is now conditional.
+                    bool lootAlreadySettled = raidScorer != null && raidScorer.Finalized;
+                    bool armyAlreadySettled = raidDeploy.Reconciled;
+
                     DeNelle.Core.Diagnostics.Guard.Try("Raid", "settle partial loot on hero death",
                         () => raidDeploy.SettlePartialLoot("hero death"));
 
                     DeNelle.Core.Diagnostics.Guard.Try("Raid", "settle army on hero death",
                         () => raidDeploy.ReconcileRaidEnd(0));
-                    DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
-                        "hero DOWN in an enemy-owned scene - army settled as a failure (0 stars); " +
-                        "the troops still standing break and flee home, the fallen are wounded.");
-                    DeNelle.Core.State.GameStateService.Instance?.Save();
+
+                    bool reconcileRan   = !armyAlreadySettled && raidDeploy.Reconciled;
+                    bool lootSettledHere = !lootAlreadySettled && raidScorer != null && raidScorer.Finalized;
+                    string lootNote = lootSettledHere ? "settled by this exit"
+                                    : lootAlreadySettled ? "already paid by an earlier exit"
+                                    : "nothing to settle (no scorer)";
+
+                    if (reconcileRan)
+                    {
+                        DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                            "hero DOWN in an enemy-owned scene - army settled as a failure (0 stars); " +
+                            "the troops still standing break and flee home, the fallen are wounded. " +
+                            "Partial loot on this exit: " + lootNote + ".");
+                    }
+                    else
+                    {
+                        // The truthful opposite line. Deliberately a Step, not a Warn: reaching a
+                        // settled raid's EVAC is the ordinary shape of "the hero fell, the raid was
+                        // already over", not an anomaly.
+                        DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                            "hero DOWN after the raid had already settled - the army was NOT re-settled " +
+                            "(reconcile was latched, so this call was a no-op) and nothing new was " +
+                            "written: the earlier exit's survivors stand, its wounded stay wounded and " +
+                            "its veterancy stands. Partial loot on this exit: " + lootNote +
+                            ". (WO-1768)");
+                    }
+
+                    // The Save follows the MEASUREMENT, not the branch: it is issued only when
+                    // this exit actually changed something - the army reconcile ran, or this exit
+                    // was the one that settled the score. A no-op settle writes nothing, so it
+                    // must not claim a write either.
+                    if (reconcileRan || lootSettledHere)
+                        DeNelle.Core.State.GameStateService.Instance?.Save();
+                    else
+                        DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                            "hero-death EVAC: no Save issued - neither the loot nor the army was " +
+                            "settled by this exit, so there is no new state to persist.");
                 }
                 // F8-15: a scene route is a HERO MOVE (the hub load relocates the hero) — name it.
                 DeNelle.Core.Diagnostics.DeathTrace.Note(

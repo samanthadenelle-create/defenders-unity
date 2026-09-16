@@ -72,6 +72,43 @@ namespace DeNelle.Village.World.Camps
         private RaidSpire _spire;  // razing it still wins; garrison wipe also wins (owner 2026-09-09)
         private bool _handled;     // victory handled once (guards a double OnCleared)
         private bool _returning;   // a return is already in flight
+
+        // WO-1768 — THE VICTORY SCREEN IS ACTUALLY ON SCREEN. Set immediately after a
+        // SUCCESSFUL EndStateView.Show (inside ShowVictoryScreen's try), so a build that
+        // threw on the way up never sets it and the catch's direct ReturnHome still owns
+        // the exit.
+        private bool _victoryScreenUp;
+
+        /// <summary>
+        /// WO-1768 — "the victory path owns the route home, so nothing else may route."
+        ///
+        /// <para>THE CAPTURED DEFECT (owner Seeker, build 2026.09.16.371701, logcat
+        /// pull-20260916-143101, raid IronBastion): the spire fell 1.93 s AFTER the hero
+        /// died, i.e. inside the 1.75 s down-beat. The victory screen opened at 13:26:05.398,
+        /// the owner touched it at .594 (re-arming WO-1543's full 30 s hold), and
+        /// HeroHealth's EVAC branch called SceneRouter.GoCastle() at .617 —
+        /// "SCREEN CLOSED: EndState 'Victory!' by EndStateView.OnDestroy (torn down without
+        /// firing)" at 06.180. The screen was readable for 0.78 s and the spoils were never
+        /// read.</para>
+        ///
+        /// <para>⛔ WHY THIS AND NOT <c>_handled</c>: <c>_handled</c> latches on the FIRST
+        /// statement of <see cref="HandleVictory"/>, before Finalize, before the army
+        /// reconcile and before the screen. A throw in between leaves it true with NO screen
+        /// up — and a death path that stood down on it would strand a dead hero on an
+        /// enemy-owned field, which is the WO-1437 stranding the EVAC branch exists to
+        /// prevent. <c>_returning</c> alone is equally wrong: it is set only in
+        /// <see cref="ReturnHome"/>, i.e. AFTER the screen is dismissed — in the capture it
+        /// was FALSE for the whole window that needed protecting. So the gate is the OR of
+        /// "the screen is up" and "a return is already in flight".</para>
+        ///
+        /// <para>ONCE THIS IS TRUE A ROUTE HOME IS GUARANTEED FROM THREE INDEPENDENT PLACES:
+        /// the screen's one primary action (Return to Castle -> <see cref="ReturnHome"/>),
+        /// its <c>AutoDismissSeconds</c> anti-soft-lock guard, and
+        /// <see cref="ShowVictoryScreen"/>'s own catch, which calls ReturnHome directly if
+        /// the build threw. The caller still arms a watchdog on top of that, because
+        /// ReturnHome can legitimately refuse (CanEnterCapturedTown's census retry).</para>
+        /// </summary>
+        public bool VictoryOwnsTheReturn => _victoryScreenUp || _returning;
         private RaidCaptureCensus _captureCensus;
         private bool _captureRequired;
         private bool _captureCommitted;
@@ -928,6 +965,13 @@ namespace DeNelle.Village.World.Camps
                 }
 
                 EndStateView.Show(vm);
+
+                // WO-1768 — THE SCREEN IS UP, AND NOW IT SAYS SO. Set here and nowhere else:
+                // after Show returned without throwing, and INSIDE this try, so a presentation
+                // failure falls to the catch below with the latch still false and the death
+                // path's EVAC keeps its job. Read by HeroHealth.HandleDeath through
+                // VictoryOwnsTheReturn, which is the only reason this latch exists.
+                _victoryScreenUp = true;
 
                 FlowTrace.Step("Raid", $"RETURN — victory screen shown for '{configId}' " +
                     (joinedCompanionName != null ? $"(+{joinedCompanionName})" : "(party already full)") +
