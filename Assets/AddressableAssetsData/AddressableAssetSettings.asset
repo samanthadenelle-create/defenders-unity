@@ -133,6 +133,7 @@ MonoBehaviour:
     - Locale-de
     - Locale-fr
     - Locale-ru
+    - Structure_Art
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: 68a9725f91bb76a4198c31ea0f6c8caa, type: 2}

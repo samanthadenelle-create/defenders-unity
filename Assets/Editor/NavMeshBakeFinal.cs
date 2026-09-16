@@ -88,7 +88,14 @@ namespace DeNelle.Editor
             // and ships the stale carve.
             var scene = SceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveOpenScenes();
+            // WO-1731: BakeOpenScene re-pointed every surface's m_NavMeshData. A save that
+            // silently fails leaves the scene pointing at the asset the bake replaced, and the
+            // scene ships with NO navmesh -- exactly the failure this file's own comments above
+            // are guarding against, one step further on. THROW (RaidNavBake.cs:109-111).
+            if (!EditorSceneManager.SaveOpenScenes())
+                throw new System.InvalidOperationException(
+                    "[NavMeshBakeFinal] could not save navigation for " + scenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
