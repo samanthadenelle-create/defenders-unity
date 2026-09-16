@@ -487,7 +487,7 @@ namespace DeNelle.Village.Hero
             var cr = _contentRoot.GetComponent<RectTransform>();
             // owner 07-04: widened list column (36%->48%). Orchestrator capture 07-06 #3: bottom
             // raised 0.12->0.23 so the action-bar stack clears the shared Close CTA (see below).
-            cr.anchorMin = new Vector2(0.04f, 0.36f); cr.anchorMax = new Vector2(0.52f, 0.525f);
+            cr.anchorMin = new Vector2(0.04f, ColumnBottomY); cr.anchorMax = new Vector2(0.52f, 0.525f);
             cr.offsetMin = Vector2.zero; cr.offsetMax = Vector2.zero;
 
             // The 3D render preview pane (WO-501 owner point 3) beside the slim list.
@@ -584,6 +584,16 @@ namespace DeNelle.Village.Hero
         {
             if (tab == null || tab.button == null) return;
             MedievalUiSkin.ApplyButton(tab.button, primary: true);
+            if (tab.label != null)
+            {
+                // Compact filter chips need the plate width, not a second large inset.
+                var textRect = tab.label.rectTransform;
+                textRect.anchorMin = new Vector2(0.02f, textRect.anchorMin.y);
+                textRect.anchorMax = new Vector2(0.98f, textRect.anchorMax.y);
+                textRect.offsetMin = new Vector2(0f, textRect.offsetMin.y);
+                textRect.offsetMax = new Vector2(0f, textRect.offsetMax.y);
+                tab.label.characterSpacing = 0f;
+            }
             if (tab.button.targetGraphic is Image plate) plate.type = Image.Type.Simple;
             var selected = tab.button.transform.Find("Selected") as RectTransform;
             if (selected == null) return;
@@ -642,6 +652,44 @@ namespace DeNelle.Village.Hero
                 tab.SetSelected(_vm.Type == chip.type);
                 if (tab.label != null) tab.label.color = _vm.Type == chip.type ? ElarionUi.Gilt : ElarionUi.Parchment;
                 _typeTabs.Add((chip.type, tab));
+            }
+
+            // Equal widths wasted space on 1H/2H while SHIELD clipped at the font
+            // floor. Measure the actual styled captions and redistribute spare width.
+            Canvas.ForceUpdateCanvases();
+            float barWidth = _typeBar.GetComponent<RectTransform>().rect.width;
+            var widths = new float[_typeTabs.Count];
+            float required = 0f;
+            for (int i = 0; i < _typeTabs.Count; i++)
+            {
+                var caption = _typeTabs[i].Item2.label;
+                float textWidth = 0f;
+                if (caption != null)
+                {
+                    bool autoSize = caption.enableAutoSizing;
+                    float fontSize = caption.fontSize;
+                    caption.enableAutoSizing = false;
+                    caption.fontSize = caption.fontSizeMin;
+                    textWidth = caption.GetPreferredValues(caption.text).x;
+                    caption.fontSize = fontSize;
+                    caption.enableAutoSizing = autoSize;
+                }
+                widths[i] = Mathf.Max(ElarionUiKit.MinTouchPx, (textWidth + 12f) / 0.96f);
+                required += widths[i];
+            }
+            float available = barWidth * (1f - gap * (_typeTabs.Count + 1));
+            if (barWidth > 0f && required <= available && _typeTabs.Count > 0)
+            {
+                float spare = (available - required) / _typeTabs.Count;
+                float left = gap;
+                for (int i = 0; i < _typeTabs.Count; i++)
+                {
+                    var rect = (RectTransform)_typeTabs[i].Item2.button.transform;
+                    float width = (widths[i] + spare) / barWidth;
+                    rect.anchorMin = new Vector2(left, rect.anchorMin.y);
+                    rect.anchorMax = new Vector2(left + width, rect.anchorMax.y);
+                    left += width + gap;
+                }
             }
         }
 
@@ -932,7 +980,7 @@ namespace DeNelle.Village.Hero
         // enum, because the tab strip follows TabsLocked and the type bar follows the live chip
         // count. A gear vendor with every band up lands on the same band it has today, so this
         // cannot regress the Forge/Armorer.
-        private const float ColumnBottomY = 0.36f;   // clears the action row (buttons top 0.38 draws over)
+        private const float ColumnBottomY = 0.40f;   // actual reseat authority: clears action-row top 0.38
         private const float ColumnTopCeil = 0.88f;   // under the wallet chip (0.905)
         private const float BandGapY      = 0.015f;
 
@@ -1214,7 +1262,7 @@ namespace DeNelle.Village.Hero
             // the item list (0.12→0.645) so the two columns read as side-by-side portrait columns
             // under the filter stack, instead of a short-and-wide landscape pane. Its internal
             // square/specs/price are pane-relative, so they scale with the taller/narrower column.
-            _previewRoot = ElarionUiKit.Well(panel, new Vector2(0.54f, 0.36f), new Vector2(0.96f, 0.67f));
+            _previewRoot = ElarionUiKit.Well(panel, new Vector2(0.54f, ColumnBottomY), new Vector2(0.96f, 0.67f));
             var wImg = _previewRoot.GetComponent<Image>();
             if (wImg != null)
             {

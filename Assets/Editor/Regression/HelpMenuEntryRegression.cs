@@ -91,6 +91,7 @@ namespace DeNelle.Editor.Regression
                 Case(failures, "vm-filter", () => Case1_VmNeverEmitsUnrenderable(failures, notes));
                 Case(failures, "view-binds", () => Case2_ViewStampsOnlyTheVmList(failures, notes));
                 Case(failures, "whole-rows", () => Case3_WholeRowsAndFixedBands(failures, notes));
+                Case(failures, "tester-open", () => Case4_TesterBuildOpensDevTools(failures, notes));
             }
             catch (Exception ex)
             {
@@ -386,6 +387,27 @@ namespace DeNelle.Editor.Regression
             }
 
             notes.Add("rowH=" + rowH + " gap=" + gap + " hint=" + hintH + " minTouch=" + minTouch);
+        }
+
+        // Seeker 365962 22:37:37: Help "Dev Tools" compiled in under TESTER_BUILD, then
+        // AdminOverlay.SetOpen blocked on the store wallet gate (Debug.isDebugBuild false).
+        // Help had already Closed, so the tap bounced to the HUD.
+        private static void Case4_TesterBuildOpensDevTools(List<string> failures, List<string> notes)
+        {
+            string src = ReadSource("Assets/_Modules/HUD/AdminOverlay.cs", failures, "[tester-open]");
+            if (src == null) return;
+            int blocked = src.IndexOf("DevPanel open BLOCKED", StringComparison.Ordinal);
+            if (blocked < 0)
+            {
+                failures.Add("[tester-open] AdminOverlay lost the owner-wallet block warn; re-point this oracle");
+                return;
+            }
+            int guard = src.IndexOf("#if !TESTER_BUILD", StringComparison.Ordinal);
+            int endif = guard >= 0 ? src.IndexOf("#endif", guard, StringComparison.Ordinal) : -1;
+            if (guard < 0 || endif < 0 || blocked < guard || blocked > endif)
+                failures.Add("[tester-open] SetOpen still wallet-blocks TESTER_BUILD APKs — Help Dev Tools will bounce to the HUD");
+            else
+                notes.Add("tester SetOpen bypass present");
         }
 
         // =====================================================================

@@ -433,7 +433,14 @@ namespace DeNelle.Core.Platform
                         return val;
                     }
                     if (!string.IsNullOrEmpty(val))
-                        FlowTrace.Warn("Skin", $"?skin={val} is not an allow-listed skin (pi|skr|wallet) — ignored.");
+                        // WO-1755: this message used to spell out the three allowed skin ids in
+                        // parentheses, and that literal was one of the 13 live forbidden-token hits
+                        // the WO-1740 RCA measured in the Play AAB's global-metadata.dat (one of the
+                        // ids is a gate token). ⛔ The ALLOW-LIST ITSELF -- the condition 8 lines up --
+                        // is deliberately UNCHANGED; only the message's copy of it is gone, so the
+                        // message cannot go stale against the condition either. It still names the
+                        // rejected value, which is the part a reader actually needs.
+                        FlowTrace.Warn("Skin", $"?skin={val} is not an allow-listed skin — ignored.");
                 }
             }
             catch (Exception ex) { FlowTrace.Warn("Skin", "URL skin-override parse skipped: " + ex.Message); }

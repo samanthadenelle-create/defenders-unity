@@ -1038,10 +1038,19 @@ namespace DeNelle.Editor
             UnityEditor.AI.NavMeshBuilder.ClearAllNavMeshes();
             UnityEditor.AI.NavMeshBuilder.BuildNavMesh();
 
+            // WO-1731: the combined bake above rewrote both scenes' navmesh references. An
+            // unsaved post-bake scene keeps the reference the bake replaced and ships with no
+            // navmesh -- silently. THROW (RaidNavBake.cs:109-111).
             EditorSceneManager.MarkSceneDirty(village2);
             EditorSceneManager.MarkSceneDirty(outer);
-            EditorSceneManager.SaveScene(village2, Village2ScenePath);
-            EditorSceneManager.SaveScene(outer, OuterWorldScenePath);
+            if (!EditorSceneManager.SaveScene(village2, Village2ScenePath))
+                throw new System.InvalidOperationException(
+                    "[Village2Playable] could not save navigation for " + Village2ScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
+            if (!EditorSceneManager.SaveScene(outer, OuterWorldScenePath))
+                throw new System.InvalidOperationException(
+                    "[Village2Playable] could not save navigation for " + OuterWorldScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
 
             Log($"VERIFY: obstacles={obstacles} walkableKept={skipped} terrains={terrains}. " +

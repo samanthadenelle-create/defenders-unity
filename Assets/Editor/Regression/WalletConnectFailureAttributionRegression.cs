@@ -38,7 +38,7 @@ namespace DeNelle.Editor.Regression
     {
         private const string WalletServicePath = "Assets/_Modules/Wallet/WalletService.cs";
         private const string AssociationPath   = "Assets/_Modules/Wallet/TargetedLocalAssociationScenario.cs";
-        private const string SignerPath        = "Assets/_Modules/Core/Web3/BackendRequestSigner.cs";
+        private const string SignerPath        = "Assets/_Modules/Core/Backend/BackendRequestSigner.cs";
         private const string BootstrapPath     = "Assets/_Modules/Wallet/WalletSkinBootstrap.cs";
 
         public static void RunAll()

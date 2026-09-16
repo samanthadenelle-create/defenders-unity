@@ -305,8 +305,14 @@ namespace DeNelle.Editor
                 $"torches={_torches} torchLights={_torchLights} props={_props} fogAnchors={_fogAnchors} " +
                 $"missingModels={_missingModels}");
 
+            // WO-1731: surface.BuildNavMesh() above wrote this scene's m_NavMeshData. An unsaved
+            // post-bake scene keeps the reference the bake replaced and ships with no navmesh --
+            // silently, with nothing on screen saying so. THROW (RaidNavBake.cs:109-111).
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene, ScenePath);
+            if (!EditorSceneManager.SaveScene(scene, ScenePath))
+                throw new System.InvalidOperationException(
+                    "[KayKitChallengeOutpostBuilder] could not save navigation for " + ScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             EnsureBuildSettings(ScenePath);
             AssetDatabase.SaveAssets();
 

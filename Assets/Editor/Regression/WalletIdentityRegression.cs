@@ -85,7 +85,7 @@ namespace DeNelle.Editor.Regression
         private const string WalletSrc    = "Assets/_Modules/Wallet/WalletService.cs";
         private const string SkinSrc      = "Assets/_Modules/Wallet/WalletSkinBootstrap.cs";
         private const string StateSrc     = "Assets/_Modules/Core/State/GameStateService.cs";
-        private const string SignerSrc    = "Assets/_Modules/Core/Web3/BackendRequestSigner.cs";
+        private const string SignerSrc    = "Assets/_Modules/Core/Backend/BackendRequestSigner.cs";
         private const string LoginVmSrc   = "Assets/_Modules/Onboarding/LoginViewModel.cs";
         private const string LoginViewSrc = "Assets/_Modules/Onboarding/LoginPanelController.cs";
         private const string BugVmSrc     = "Assets/_Modules/HUD/BugReportVM.cs";

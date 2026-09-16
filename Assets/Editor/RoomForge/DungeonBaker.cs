@@ -592,6 +592,14 @@ namespace DeNelle.Editor.RoomForge
             string scenePath = $"{OutputScenesFolder}/{layout.dungeonId}.unity";
             EditorSceneManager.MarkSceneDirty(scene);
             bool saved = EditorSceneManager.SaveScene(scene, scenePath);
+            // WO-1731: the navmesh bake above wrote this scene's m_NavMeshData. A save that only
+            // reports failure downstream leaves the scene pointing at a navmesh it never
+            // persisted, and the dungeon ships with nothing walkable and no error on screen.
+            // THROW (RaidNavBake.cs:109-111).
+            if (!saved)
+                throw new System.InvalidOperationException(
+                    "[DungeonBaker] could not save navigation for " + scenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             EnsureInBuildSettings(scenePath);
 
             // Force TEXT (YAML) serialization. In -batchmode, EditorSceneManager.SaveScene

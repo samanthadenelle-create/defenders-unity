@@ -91,6 +91,13 @@ namespace DeNelle.Editor
             // --- 5) Save ------------------------------------------------------------
             EditorSceneManager.MarkSceneDirty(scene);
             bool saved = EditorSceneManager.SaveScene(scene, ScenePath);
+            // WO-1731: the bake earlier in this method wrote the scene's m_NavMeshData. Logging
+            // `ok=False` and carrying on leaves the scene pointing at a navmesh it never
+            // persisted -- which ships as no navmesh, silently. THROW (RaidNavBake.cs:109-111).
+            if (!saved)
+                throw new System.InvalidOperationException(
+                    "[Village2MakePlayable] could not save navigation for " + ScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             Log($"Saved '{ScenePath}' (ok={saved}). Colliders+{collidersAdded}, hero={(hero != null ? "yes" : "NO")}, walkable={walkable}.");
             Log("=== Village2 MAKE PLAYABLE DONE — open Village2.unity and Play ===");

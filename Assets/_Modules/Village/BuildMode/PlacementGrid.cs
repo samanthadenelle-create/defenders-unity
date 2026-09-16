@@ -327,7 +327,9 @@ namespace DeNelle.Village
             // EDGES ONLY (owner: "no fill, just edges") — a boundary outline of the buildable area,
             // NOT a solid fill, so the ground + the placement ghost stay visible underneath.
             var go = new GameObject("PlacementGridOverlay");
-            go.transform.SetParent(transform, false);
+            // Imported owned/practice grids stay inactive to avoid replacing the global singleton.
+            // Their explicitly requested build overlay belongs under the active construction root.
+            go.transform.SetParent(gameObject.activeInHierarchy ? transform : transform.parent, false);
 
             float y  = origin.y + 0.05f;
             float x0 = origin.x,                         x1 = origin.x + gridWidth  * cellSize;

@@ -150,10 +150,13 @@ module.exports = async (req, res) => {
         const row = rows[0];
         const state = row.game_state ?? {};
 
-        // Return the stored state VERBATIM (it is already the client's
-        // PersistedState shape), then backfill the legacy keys as explicit nulls
+        // Return the persisted client shape, excluding device-local recovery
+        // intents that must never replay as another device's capture authority.
+        // Then backfill the legacy keys as explicit nulls
         // so an older client never trips over a missing member.
         const data = Object.assign({}, state);
+        delete data.pendingTownCapture;
+        delete data.PendingTownCapture;
         for (const k of LEGACY_KEYS) {
             if (data[k] === undefined) data[k] = null;
         }

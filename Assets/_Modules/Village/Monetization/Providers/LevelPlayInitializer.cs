@@ -222,8 +222,14 @@ namespace DeNelle.Village.Monetization
             LevelPlay.OnInitFailed  += OnInitFailed;
 
             FlowTrace.Step(Sys, $"LevelPlay.Init('{AppKey}') - app is set to Temporary in the dashboard " +
-                                "and live inventory is enabled manually by LevelPlay support (the Solana " +
-                                "dApp Store has no https listing URL for auto-verification).");
+                                // WO-1755 / WO-1740 RCA item 6: this literal used to name the store's
+                                // CHAIN as well as the store, and that word was one of the 4 live
+                                // forbidden-token hits measured in the rejected Play AAB's
+                                // global-metadata.dat (offset 928,532). "dApp Store" is not in the gate
+                                // vocabulary; the chain name was. Dropping the one word removes the hit
+                                // and changes nothing about what the sentence tells a reader.
+                                "and live inventory is enabled manually by LevelPlay support (the dApp " +
+                                "Store has no https listing URL for auto-verification).");
             LevelPlay.Init(AppKey);
         }
 

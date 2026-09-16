@@ -90,6 +90,12 @@ namespace DeNelle.Editor.Regression
             (1080, 1920, "portrait"),
         };
 
+        public static void RunStandalone()
+        {
+            if (!Run(out string result)) throw new InvalidOperationException(result);
+            Debug.Log("ENDSTATE_BODY_FIT_OK " + result);
+        }
+
         public static bool Run(out string result)
         {
             var failures = new List<string>();
@@ -100,6 +106,7 @@ namespace DeNelle.Editor.Regression
                 TheSpoilsLadderNeverCompresses(failures, log);
                 TheGuardsThatMakeTheAboveMeanSomething(failures, log);
                 TheWaveClearDamageReportFits(failures, log);
+                TheModalRepairActionsRemainDistinct(failures, log);
             }
             catch (Exception ex)
             {
@@ -119,6 +126,183 @@ namespace DeNelle.Editor.Regression
                      "surface, including the gear-drop arena victory that reached the owner.\n" +
                      log.ToString().TrimEnd();
             return true;
+        }
+
+        // Inspect the real buttons and runtime UnityEvent listeners. Never invoke the
+        // scene's economy callback (or an edit-mode Destroy) to prove a binding.
+        private static void TheModalRepairActionsRemainDistinct(List<string> failures, StringBuilder log)
+        {
+            foreach (var surface in Surfaces)
+            foreach (bool repair in new[] { false, true })
+            {
+                EndStateView view = null;
+                GameObject ownedEventSystem = null;
+                float entryTimeScale = Time.timeScale;
+                int entryHoldCount = WorldHold.Count;
+                ElarionUiKit.SetSurfaceOverride(surface.w, surface.h);
+                string tag = $"[wave-actions/{surface.name}/repair={repair}]";
+                try
+                {
+                    var vm = EndStateVM.FromWaveClear(7);
+                    vm.Spoils.Clear();
+                    vm.AutoDismissSeconds = 0;
+                    vm.Primary = null;
+                    vm.Cta = null;
+                    vm.CtaLabel = repair ? "Repair All - 120 wood, 40 iron" : null;
+                    vm.CtaRoute = repair ? "repair-all" : "cta";
+                    vm.CtaEnabled = false; // unaffordable must remain visible with cost
+                    vm.Subtitle = "The realm holds - but it took damage.";
+                    vm.Spoils.Add(new SpoilRowVM { Label = "Wood", Amount = "+240" });
+                    vm.Spoils.Add(new SpoilRowVM { Label = "Iron", Amount = "+85" });
+                    vm.Spoils.Add(new SpoilRowVM { Label = "North Gate - DESTROYED, looted 120",
+                        Amount = "Rebuild 100 wood, 30 iron", Wide = true });
+                    vm.Spoils.Add(new SpoilRowVM { Label = "Wall x3 - damaged 50%",
+                        Amount = "Repair 20 wood, 10 iron", Wide = true });
+                    if (vm.Compact || !vm.HoldWorld || vm.PrimaryLabel != "Prepare for Wave 8" || vm.PrimaryRoute != "prepare-next-wave")
+                        failures.Add(tag + " live factory action/modal/hold contract changed");
+                    // Geometry/binding proof only: EditMode does not guarantee OnDestroy on
+                    // an unawakened behaviour. Do not acquire a runtime hold to measure UI.
+                    vm.HoldWorld = false;
+                    // Match the real edit-mode capture: runtime EnsureEventSystem creates a
+                    // persistent object, which Unity correctly rejects outside Play mode.
+                    if (UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+                    {
+                        ownedEventSystem = new GameObject("~EndStateFitEventSystem");
+                        ownedEventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
+                    }
+                    view = EndStateView.Show(vm);
+                    if (view == null) { failures.Add(tag + " view missing"); continue; }
+                    Canvas.ForceUpdateCanvases();
+                    float canvasH = ElarionUiKit.PostScaleCanvasHeight(view.transform);
+                    var fit = EndStateView.ProbeFit(vm, canvasH);
+                    if (fit.Scale < EndStateView.CompressFailBelowFrac || fit.RowsShown != 4)
+                        failures.Add(tag + $" report lost fit/content: scale={fit.Scale} rows={fit.RowsShown}/4");
+                    UnityEngine.UI.Button primary = null, secondary = null;
+                    foreach (var button in view.GetComponentsInChildren<UnityEngine.UI.Button>(true))
+                    {
+                        var label = button.GetComponentInChildren<TMPro.TMP_Text>(true);
+                        if (label == null) continue;
+                        if (string.Equals(label.text, vm.PrimaryLabel, StringComparison.OrdinalIgnoreCase)) primary = button;
+                        if (string.Equals(label.text, "Repair All - 120 wood, 40 iron", StringComparison.OrdinalIgnoreCase)) secondary = button;
+                    }
+                    if (primary == null || !primary.gameObject.activeInHierarchy)
+                        failures.Add(tag + " Prepare control missing/inactive");
+                    else if (!BoundTo(primary, view, "FirePrimary") || BoundTo(primary, view, "FireCta"))
+                        failures.Add(tag + " Prepare is not bound to FirePrimary");
+                    if (!repair && secondary != null) failures.Add(tag + " absent repair became a control");
+                    if (repair)
+                    {
+                        if (secondary == null || !secondary.gameObject.activeInHierarchy)
+                            failures.Add(tag + " priced Repair All control missing/inactive");
+                        else
+                        {
+                            if (secondary.interactable) failures.Add(tag + " unaffordable repair is enabled");
+                            if (!BoundTo(secondary, view, "FireCta") || BoundTo(secondary, view, "FirePrimary")) failures.Add(tag + " repair is not bound to FireCta");
+                            if (primary != null)
+                            {
+                                var a = ButtonBounds(primary, view.transform);
+                                var b = ButtonBounds(secondary, view.transform);
+                                if (a.Intersects(b)) failures.Add(tag + " action rectangles overlap");
+                            }
+                        }
+                    }
+                    foreach (var button in new[] { primary, secondary })
+                    {
+                        if (button == null) continue;
+                        var rt = (RectTransform)button.transform;
+                        if (rt.rect.width < 112f || rt.rect.height < 112f)
+                            failures.Add(tag + " action fell below 112px target floor");
+                        var label = button.GetComponentInChildren<TMPro.TMP_Text>(true);
+                        if (repair && primary != null && secondary != null
+                            && Mathf.Abs(((RectTransform)primary.transform).anchoredPosition.y
+                                - ((RectTransform)secondary.transform).anchoredPosition.y) < 1f)
+                        {
+                            var corners = new Vector3[4];
+                            label.rectTransform.GetWorldCorners(corners);
+                            float left = rt.InverseTransformPoint(corners[0]).x - rt.rect.xMin;
+                            float right = rt.rect.xMax - rt.InverseTransformPoint(corners[2]).x;
+                            if (left < 47.9f || right < 47.9f)
+                                failures.Add(tag + " paired caption consumes the 48px painted-face side inset");
+                        }
+                        label.ForceMeshUpdate(true, true);
+                        if (label.isTextTruncated || label.isTextOverflowing || label.textInfo.characterCount == 0)
+                            failures.Add(tag + " action label clipped/blank: " + label.text
+                                + $" (button={rt.rect.width:0.##}x{rt.rect.height:0.##}, label={label.rectTransform.rect.width:0.##}x{label.rectTransform.rect.height:0.##}, font={label.fontSize:0.##})");
+                        if (label.textInfo.lineCount != 1 || label.fontSize < 30f
+                            || label.textWrappingMode != TMPro.TextWrappingModes.NoWrap)
+                            failures.Add(tag + " action caption must fit one painted-face line at >=30px: " + label.text);
+                    }
+                    log.AppendLine(tag + " real controls/fit/bindings inspected");
+                }
+                finally
+                {
+                    if (view != null) UnityEngine.Object.DestroyImmediate(view.gameObject);
+                    if (ownedEventSystem != null) UnityEngine.Object.DestroyImmediate(ownedEventSystem);
+                    if (WorldHold.Count != entryHoldCount)
+                        failures.Add(tag + " geometry fixture changed WorldHold ownership count");
+                    if (!Mathf.Approximately(Time.timeScale, entryTimeScale))
+                        failures.Add(tag + " geometry fixture changed Time.timeScale");
+                    Time.timeScale = entryTimeScale;
+                    ElarionUiKit.ClearSurfaceOverride();
+                }
+            }
+        }
+
+        private static Bounds ButtonBounds(UnityEngine.UI.Button button, Transform root)
+        {
+            var corners = new Vector3[4];
+            ((RectTransform)button.transform).GetWorldCorners(corners);
+            var bounds = new Bounds(root.InverseTransformPoint(corners[0]), Vector3.zero);
+            for (int i = 1; i < 4; i++) bounds.Encapsulate(root.InverseTransformPoint(corners[i]));
+            return bounds;
+        }
+
+        private static bool BoundTo(UnityEngine.UI.Button button, EndStateView target, string method)
+        {
+            const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
+            var prepare = typeof(UnityEngine.Events.UnityEventBase).GetMethod("PrepareInvoke", flags);
+            var calls = prepare?.Invoke(button.onClick, null) as System.Collections.IEnumerable;
+            if (calls == null) return false;
+            foreach (var call in calls)
+            for (var type = call.GetType(); type != null; type = type.BaseType)
+            foreach (var field in type.GetFields(flags | System.Reflection.BindingFlags.DeclaredOnly))
+            {
+                if (!(field.GetValue(call) is Delegate callback)) continue;
+                if (DelegateReaches(callback, target, method, new HashSet<object>(), 0)) return true;
+            }
+            return false;
+        }
+
+        private static bool DelegateReaches(object value, EndStateView target, string method,
+            HashSet<object> visited, int depth)
+        {
+            if (value == null || depth > 8 || !visited.Add(value)) return false;
+            if (value is Delegate callback)
+            {
+                foreach (var listener in callback.GetInvocationList())
+                {
+                    if (ReferenceEquals(listener.Target, target) && listener.Method.Name == method) return true;
+                    if (DelegateReaches(listener.Target, target, method, visited, depth + 1)) return true;
+                }
+                return false;
+            }
+            // ElarionUiKit wraps Action in () => onClick(). Follow only compiler-generated
+            // closure fields and delegate targets; never traverse arbitrary scene objects,
+            // invoke callbacks/properties, or accept a matching method name on another view.
+            var type = value.GetType();
+            if (!Attribute.IsDefined(type, typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
+                return false;
+            const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
+            foreach (var field in type.GetFields(flags))
+            {
+                var child = field.GetValue(value);
+                if (child is Delegate || (child != null && Attribute.IsDefined(child.GetType(),
+                    typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute))))
+                    if (DelegateReaches(child, target, method, visited, depth + 1)) return true;
+            }
+            return false;
         }
 
         // ---------------------------------------------------------------------

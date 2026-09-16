@@ -53,6 +53,8 @@ namespace DeNelle.Village
             EnsureLoaded();
             foreach (var troop in _data.Troops)
                 if (troop != null && troop.Id == id) return troop;
+            foreach (var troop in _data.Troops)
+                if (troop?.LegacyIds != null && Array.IndexOf(troop.LegacyIds, id) >= 0) return troop;
             return null;
         }
 

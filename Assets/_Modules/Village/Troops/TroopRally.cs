@@ -3,10 +3,10 @@
 // -----------------------------------------------------------------------------
 // Assembly: DeNelle.Village   Namespace: DeNelle.Village
 //
-// The rally verb is a single world point every idle deployed troop walks to.
-// TroopController reads it in its foe==null idle branch: with no foe in range, a
-// troop that is farther than an arrival epsilon from Point moves toward it; a
-// foe in range ALWAYS wins (rally only fills the idle gap, owner-decided default).
+// The rally verb is a single world point every deployed troop walks to.
+// Owner 2026-09-12: nearest exterior walls used to fill the foe slot and starve
+// this walk. RallyHoldsMarch now suppresses wall-ring picks until arrival
+// (Peel still wins). Once at the flag they stack the most-damaged wall.
 //
 // Static + nullable so:
 //   * the rally state survives across the deploy HUD's lifetime without a wiring

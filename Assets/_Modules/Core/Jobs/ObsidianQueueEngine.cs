@@ -111,7 +111,8 @@ namespace DeNelle.Core.Jobs
         /// completed job is passed to <paramref name="onComplete"/> in completion order. Returns
         /// the number completed. Idempotent — a second call with the same nowMs completes nothing.
         /// </summary>
-        public static int Resolve(ChannelState ch, int slotCount, double nowMs, Action<BuildJobData> onComplete)
+        public static int Resolve(ChannelState ch, int slotCount, double nowMs, Action<BuildJobData> onComplete,
+            Func<BuildJobData, bool> beforeRemove = null)
         {
             if (ch == null) return 0;
             ch.EnsureLists();
@@ -142,6 +143,8 @@ namespace DeNelle.Core.Jobs
                 if (best < 0) break;   // nothing due
 
                 var done = ch.ActiveJobs[best];
+                // Durable effect owners can refuse removal until their idempotent result is saved.
+                if (beforeRemove != null && !beforeRemove(done)) break;
                 ch.ActiveJobs.RemoveAt(best);
                 completed++;
                 onComplete?.Invoke(done);

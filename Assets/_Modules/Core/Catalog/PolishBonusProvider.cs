@@ -212,7 +212,7 @@ namespace DeNelle.Core.Catalog
             int used = Math.Max(0, PlayerPrefs.GetInt(WeeklyUsedKey, 0)) + 1;
             PlayerPrefs.SetInt(WeeklyUsedKey, used);
             PlayerPrefs.Save();
-            FlowTrace.Step(Sys, $"native SKR weekly re-roll CONSUMED: {used}/{Math.Max(0, ExtraWeeklyRerolls)} used.");
+            FlowTrace.Step(Sys, $"native stake weekly re-roll CONSUMED: {used}/{Math.Max(0, ExtraWeeklyRerolls)} used.");
             return true;
         }
 
@@ -226,7 +226,7 @@ namespace DeNelle.Core.Catalog
             PlayerPrefs.SetInt(WeeklyPeriodKey, period);
             PlayerPrefs.SetInt(WeeklyUsedKey, 0);
             PlayerPrefs.Save();
-            FlowTrace.Step(Sys, $"native SKR weekly re-roll period advanced to {period}; usage reset.");
+            FlowTrace.Step(Sys, $"native stake weekly re-roll period advanced to {period}; usage reset.");
         }
     }
 

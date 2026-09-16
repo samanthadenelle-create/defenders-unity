@@ -101,6 +101,14 @@ namespace DeNelle.Editor
 
             EditorSceneManager.MarkAllScenesDirty();
             bool saved = EditorSceneManager.SaveOpenScenes();
+            // WO-1731: this tool bakes (BuildNavMesh at :48) before placing crossings, so the open
+            // scenes carry a rewritten m_NavMeshData. Reporting `saved=False` in a log line and
+            // carrying on leaves a scene pointing at a navmesh it never persisted -- which ships
+            // as no navmesh, silently. THROW (RaidNavBake.cs:109-111).
+            if (!saved)
+                throw new InvalidOperationException(
+                    "[V2GateX] could not save navigation for the open scene(s) -- the bake would " +
+                    "leave a scene pointing at a navmesh it never persisted (WO-1731).");
             Debug.Log($"[V2GateX] DONE. gates={gates.Count} pairs_placed={placed} saved={saved}.");
         }
 

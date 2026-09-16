@@ -71,7 +71,13 @@ namespace DeNelle.Village
             Entry[] template = LoadTemplate();
             if (template == null || template.Length == 0)
             {
-                FlowTrace.Fail("Founding", $"starter layout missing/empty: {LayoutRelativePath}");
+                // Owner 2026-09-12: both founding paths keep HubStructureVisualInjector
+                // models only. Catalog extras (GenericContainer / IronMine / ShopAndCrafting)
+                // are retired from ready-settlement. Empty layout is success, not a fail.
+                svc.MarkTutorialSeen(CompletedKey);
+                svc.Save();
+                FlowTrace.Step("Founding",
+                    "starter extras skipped — hub injector owns the 8 storefronts on both founding paths.");
                 Destroy(gameObject);
                 yield break;
             }

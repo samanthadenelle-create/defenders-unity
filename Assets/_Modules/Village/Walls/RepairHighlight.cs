@@ -189,6 +189,14 @@ namespace DeNelle.Village
         }
 
         /// <summary>Switches the marker between the calm repairable and bright selected look.</summary>
+        public void FitTo(Bounds bounds)
+        {
+            _radius = Mathf.Clamp(Mathf.Max(bounds.extents.x, bounds.extents.z) * 1.35f + .6f, 1f, 9f);
+            transform.position = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+            ApplyScale(1f);
+        }
+
+        /// <summary>Switches the marker between the calm repairable and bright selected look.</summary>
         public void SetSelected(bool selected)
         {
             _selected = selected;

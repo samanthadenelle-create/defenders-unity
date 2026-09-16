@@ -17,13 +17,10 @@
 // grace-default "forge" record — GameStateService.ResetToNewGame:839-847/864),
 // then walks the full WO-703 spawner census and asserts every non-allowlisted
 // structure visual / NPC source STANDS DOWN on that state:
-//   - WO-834 (owner F8 seq 592, SUPERSEDES Lever-1 pre-stand for blank founding):
-//     a fresh save (marker true, empty everBuilt, empty BaseLayout) must STAND
-//     DOWN every baked storefront. Lever-1 "stores pre-stand" remains for Default
-//     Town / ever-built ids only. WO-1250: Weaponsmith (forge) and Armorer
-//     (armorer) are the two the owner saw standing on a new load — they are in
-//     BakedRows and MUST stand down here. If a bake host is absent from this
-//     scene, PartialSkip that row (never quiet green).
+//   - Owner 2026-09-12 SUPERSEDES WO-834 hide-on-blank for BakedRows: both founding
+//     paths KEEP HubStructureVisualInjector models. A fresh save (marker true,
+//     empty BaseLayout) must leave the 8 storefronts UP. A BaseLayout record still
+//     stands the bake down (placed wins — no double). Barracks stays WO-834 hidden.
 //   - a storefront that DOES gain a record STILL stands down (placed wins — no
 //     double). The tree/well/walls/gates + runtime-station standdown + Colosseum
 //     flag-gate are unchanged.
@@ -165,30 +162,32 @@ namespace DeNelle.Editor
                         continue;
                     }
 
-                    // 2a. NO record + empty everBuilt => the store MUST stand down (WO-834).
+                    // 2a. NO record => injector KEEP (owner 2026-09-12: both founding paths
+                    // wear HubStructureVisualInjector models). WO-834 hide-on-blank is retired
+                    // for BakedRows; barracks still uses MayBakedTwinSurface separately.
                     bool downNoRecord = StrategicPlacementMigration.StanddownActiveForBaked(bakedName, out string id);
-                    if (!downNoRecord)
-                        failures.Add($"WO-834/WO-1250: baked '{bakedName}' (itemId '{itemId}') STAYS UP on a fresh " +
-                                     "save with NO replacement record and empty everBuilt — blank founding must hide it. " +
-                                     "This is the owner's 'weaponsmith and armorer show as built on new load' if the " +
-                                     "host is Blacksmith_Weapons_Storefront or Forge_Armor_Storefront.");
+                    if (downNoRecord)
+                        failures.Add($"injector-only founding: baked '{bakedName}' (itemId '{itemId}') STANDS DOWN on a " +
+                                     "fresh save with NO replacement record — EMPTY REALM must keep the injector skin. " +
+                                     "Seeker 365996 07:38 hid all 8 with BaseLayout=0.");
                     else
-                        log.AppendLine($"[baked] {bakedName} -> STANDS DOWN on fresh save (WO-834 blank-town; itemId '{id}')");
+                        log.AppendLine($"[baked] {bakedName} -> STAYS UP on fresh save (injector model; itemId '{id}')");
 
-                    // 2b. Add a record for this itemId => the store MUST still stand down (placed
-                    //     wins — the live Building replaces the bake, no double).
+                    // 2b. A BaseLayout record must NOT restyle the ring (owner 2026-09-12).
+                    // Catalog replay is withheld via ShouldReplayRecord, so keeping the bake
+                    // up is not a double-spawn.
                     if (!string.IsNullOrEmpty(itemId))
                     {
                         state.BaseLayout.Add(new PlacedStructureData(itemId, 0, 0, 0, level: 1,
                             yawOffset: 0f, worldY: 0f, wallMounted: false));
                         bool downWithRecord = StrategicPlacementMigration.StanddownActiveForBaked(bakedName, out _);
+                        bool replay = StrategicPlacementMigration.ShouldReplayRecord(itemId);
                         state.BaseLayout.Clear();
-                        if (!downWithRecord)
-                            failures.Add($"DOUBLE-SPAWN RISK: baked '{bakedName}' (itemId '{itemId}') does NOT stand down " +
-                                         "even with a BaseLayout record present — its player-built replacement would " +
-                                         "render on TOP of the baked original (StanddownActiveForBaked must hide it).");
+                        if (downWithRecord || replay)
+                            failures.Add($"ring restyle: baked '{bakedName}' (itemId '{itemId}') would hide or " +
+                                         "catalog-replay on a later load — injector must keep the LightSkin.");
                         else
-                            log.AppendLine($"[baked] {bakedName} -> STANDS DOWN when itemId '{itemId}' has a record (replacement replaces bake — no double)");
+                            log.AppendLine($"[baked] {bakedName} -> STAYS UP with record (no catalog replay; itemId '{itemId}')");
                     }
                 }
                 if (bakedRows.Count > 0 && !sawForgeHost)

@@ -474,6 +474,8 @@ namespace DeNelle.Wallet
                                             new Vector2(0.63f, 0.52f), new Vector2(0.98f, 0.95f),
                                             OnClaimTapped);
             _claimCtaLabel = _claimCta != null ? _claimCta.GetComponentInChildren<TextMeshProUGUI>() : null;
+            if (_claimCtaLabel != null) ElarionUiKit.FitBlock(_claimCtaLabel, ElarionUi.FontFloorMobile);
+            ElarionUiKit.ApplyMultilineButtonPlate(_claimCta);
 
             // The lane-unlock zone. TODAY IT IS A SENTENCE, NOT A BUTTON, and that is the honest
             // state: the season names no purchasable pass SKU, so a Buy control here could not

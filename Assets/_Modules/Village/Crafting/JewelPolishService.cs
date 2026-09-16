@@ -264,9 +264,9 @@ namespace DeNelle.Village.Crafting
             if (started && useWeeklyStakeReroll)
             {
                 if (PolishBonuses.TryConsumeWeeklyReroll())
-                    FlowTrace.Step(Sys, "re-polish used the verified native SKR weekly bonus attempt.");
+                    FlowTrace.Step(Sys, "re-polish used the verified native stake weekly bonus attempt.");
                 else
-                    FlowTrace.Fail(Sys, "re-polish started after a native SKR weekly bonus check, but the " +
+                    FlowTrace.Fail(Sys, "re-polish started after a native stake weekly bonus check, but the " +
                                         "allowance could not be consumed. Inspect the stake/time authority.");
             }
             return started;

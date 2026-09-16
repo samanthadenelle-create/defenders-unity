@@ -118,6 +118,14 @@ namespace DeNelle.Editor
             // --- Save + register ------------------------------------------------------
             EditorSceneManager.MarkSceneDirty(scene);
             bool saved = EditorSceneManager.SaveScene(scene, ScenePath);
+            // WO-1731: the bake above wrote this scene's navmesh reference. A save that only
+            // reports `ok=False` into a log line leaves the scene pointing at a navmesh it never
+            // persisted, and the scene ships with nothing walkable and no error. THROW
+            // (RaidNavBake.cs:109-111).
+            if (!saved)
+                throw new System.InvalidOperationException(
+                    "[DungeonComposer] could not save navigation for " + ScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             EnsureInBuildSettings(ScenePath);
             AssetDatabase.SaveAssets();
             Log($"Saved '{ScenePath}' (ok={saved}). Rooms={rooms.Count} corridors={corridors.Count} encounters={encounters} torches={torches}.");

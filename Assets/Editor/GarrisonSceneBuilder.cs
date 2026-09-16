@@ -133,7 +133,13 @@ namespace DeNelle.Editor
             bool ok = EditorSceneManager.SaveScene(scene, scenePath);
             AssetDatabase.SaveAssets();
             if (ok) Log("Saved scene -> " + scenePath);
-            else Err("SaveScene FAILED for " + scenePath);
+            // WO-1731: BakeNavMesh wrote this scene's m_NavMeshData and deleted the asset it
+            // replaced. A save that only LOGS its failure leaves the scene pointing at a navmesh
+            // that is gone -- which ships silently as no navmesh at all. THROW instead
+            // (RaidNavBake.cs:109-111).
+            else throw new System.InvalidOperationException(
+                "[GarrisonSceneBuilder] could not save navigation for " + scenePath +
+                " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
         }
 
         // ===================================================================

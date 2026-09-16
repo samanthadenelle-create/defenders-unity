@@ -118,6 +118,25 @@ namespace DeNelle.Village.Monetization
         /// <summary>
         /// Builder-job hook: spend one instant-build and skip the timer. False leaves duration alone.
         /// </summary>
+        public static bool TryPlanInstantBuildConsumption(out System.Collections.Generic.Dictionary<string, int> inventory,
+            out string consumedKey)
+        {
+            inventory = null; consumedKey = null;
+            var current = Inventory();
+            if (current == null) return false;
+            foreach (string key in new[] { InventoryKey(KindInstantBuild), AlternateKey(KindInstantBuild) })
+            {
+                if (key == null || !current.TryGetValue(key, out var count) || count <= 0) continue;
+                inventory = new System.Collections.Generic.Dictionary<string, int>(current);
+                inventory[key] = count - 1; consumedKey = key;
+                return true;
+            }
+            return false;
+        }
+
+        public static bool IsInstantBuildInventoryKey(string key) =>
+            key == InventoryKey(KindInstantBuild) || key == AlternateKey(KindInstantBuild);
+
         public static bool TrySkipBuildTimer()
         {
             if (Count(KindInstantBuild) <= 0) return false;

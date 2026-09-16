@@ -405,7 +405,8 @@ namespace DeNelle.Editor
             catch (Exception ex) { failures.Add(Tag + " RaidDeployController.cs unreadable (" + ex.Message + ")"); return; }
 
             if (text.IndexOf("Resources.Load<Sprite>(\"RpgUi/troop/\" + icon)", StringComparison.Ordinal) < 0 ||
-                text.IndexOf("ElarionUiKit.Portrait(portraitSeat.transform", StringComparison.Ordinal) < 0)
+                text.IndexOf("ElarionUiKit.Portrait(square.transform", StringComparison.Ordinal) < 0 ||
+                text.IndexOf("AspectRatioFitter.AspectMode.FitInParent", StringComparison.Ordinal) < 0)
                 failures.Add(Tag + " troop-type buttons no longer use the canonical round troop portraits");
             if (text.IndexOf("private void DeployAll()", StringComparison.Ordinal) < 0 ||
                 text.IndexOf("TroopDeployer.SpawnFromArmy", StringComparison.Ordinal) < 0 ||

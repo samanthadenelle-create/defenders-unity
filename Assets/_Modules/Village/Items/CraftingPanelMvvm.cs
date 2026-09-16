@@ -168,6 +168,9 @@ namespace DeNelle.Village.Items
                         () => { _selectedRecipeId = id; RebuildMasterDetail(); });
                     ElarionUiKit.AddRowStateSuffix(rowBtn, RowState(r),
                         r.CanCraft ? ElarionUi.Affordable : ElarionUi.ParchmentDim);
+                    var recipeLabel = rowBtn != null ? rowBtn.GetComponentInChildren<TMP_Text>() : null;
+                    if (recipeLabel != null) ElarionUiKit.FitBlock(recipeLabel, ElarionUi.FontFloorMobile);
+                    ElarionUiKit.ApplyMultilineButtonPlate(rowBtn);
                 }
             }
 

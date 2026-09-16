@@ -10,7 +10,7 @@ namespace DeNelle.Editor.Regression
     public static class BackendSaveAuthRegression
     {
         private const string StatePath = "Assets/_Modules/Core/State/GameStateService.cs";
-        private const string SignerPath = "Assets/_Modules/Core/Web3/BackendRequestSigner.cs";
+        private const string SignerPath = "Assets/_Modules/Core/Backend/BackendRequestSigner.cs";
         private const string BootstrapPath = "Assets/_Modules/Wallet/WalletSkinBootstrap.cs";
 
         public static void RunAll()
@@ -45,7 +45,7 @@ namespace DeNelle.Editor.Regression
                 // identity problem). The INVARIANT is unchanged and still pinned structurally: a
                 // failed TryAttachAsync must report and refuse INSIDE the same block, never fall
                 // through to the send. AuthAbsent is the categorised form of that refusal.
-                if (!Regex.IsMatch(save, @"!await\s+DeNelle\.Core\.Web3\.BackendRequestSigner\.TryAttachAsync\s*\([^;]+?\)\s*\)\s*\{[^{}]*?ReportSaveAuthAborted[^{}]*?return\s+new\s+SaveAttemptResult\s*\(\s*SaveAttemptCategory\.AuthAbsent", RegexOptions.Singleline))
+                if (!Regex.IsMatch(save, @"!await\s+DeNelle\.Core\.Backend\.BackendRequestSigner\.TryAttachAsync\s*\([^;]+?\)\s*\)\s*\{[^{}]*?ReportSaveAuthAborted[^{}]*?return\s+new\s+SaveAttemptResult\s*\(\s*SaveAttemptCategory\.AuthAbsent", RegexOptions.Singleline))
                     failures.Add("failed shared save auth is not structurally bound to refusal/requeue (expected ReportSaveAuthAborted + return SaveAttemptCategory.AuthAbsent inside the guard)");
 
                 // ⛔ "BOOT NEVER SIGNS" IS BACK — OWNER RULING 2026-09-07 (WO-1583), NARROWER THAN

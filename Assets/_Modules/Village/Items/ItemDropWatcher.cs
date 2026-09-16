@@ -94,7 +94,7 @@ namespace DeNelle.Village.Items
 
         private void OnEnemyDied(Enemy enemy)
         {
-            if (enemy == null) return;
+            if (!DeNelle.Core.Combat.PracticeCombatPolicy.AllowsProgression(enemy)) return;
             string tableId = ResolveEnemyTable(enemy.EnemyDefId);
             // WO-556: data-driven boss-ness — if the resolved table is a BOSS table, its boss-only
             // gem/gear lines roll. This covers a boss-tier Enemy (e.g. orc-warlord, source:"boss")
@@ -105,6 +105,7 @@ namespace DeNelle.Village.Items
 
         private void OnBossDied(DragonBoss boss)
         {
+            if (!DeNelle.Core.Combat.PracticeCombatPolicy.AllowsProgression(boss)) return;
             string tableId = LootTableCatalog.DefaultBossTableId;
             Vector3 at = (boss != null && boss.transform != null) ? boss.transform.position : Vector3.zero;
             DropFor(tableId, at, includeBossOnly: true);   // the dedicated boss path always allows gem/gear

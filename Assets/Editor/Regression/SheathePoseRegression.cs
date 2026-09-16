@@ -297,6 +297,7 @@ namespace DeNelle.Editor
 
             // ── CASE S1: the two hip sides are opposite, by construction ──────────────
             CheckSidesAreOpposite(failures, log);
+            CheckNativeSwordMainHipAndDrawPreserved(failures, log);
 
             // ── CASE M1: the sheathed sign is MEASURED off the mesh, both ways ────────
             CheckPerMeshTipSignIsDerived(failures, log);
@@ -1115,6 +1116,94 @@ namespace DeNelle.Editor
                          "in transform.localScale, which NormalizeInto resets to one by design, and " +
                          "every fixture arrived at the oracle as a 1x1x1 cube.)");
             return false;
+        }
+
+        private static void CheckNativeSwordMainHipAndDrawPreserved(List<string> failures, StringBuilder log)
+        {
+            const string assetPath = "Assets/Blink/Art/Weapons/LowPoly/MegaWeaponPack1/Meshes_MWP1/Sword1h_01.fbx";
+            GameObject host = null;
+            try
+            {
+                var asset = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+                if (asset == null) { failures.Add("SWORD-HIP: captured starter mesh missing: " + assetPath); return; }
+                host = new GameObject("SwordHipRegression");
+                host.transform.rotation = Quaternion.Euler(0, 37, 0);
+                var ec = host.AddComponent<EquipmentController>();
+                var t = typeof(EquipmentController);
+                const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+                Action<string, object> set = (name, value) => t.GetField(name, flags).SetValue(ec, value);
+                var kindField = t.GetField("_currentWeaponKind", flags);
+                object swordKind = Enum.Parse(kindField.FieldType, "Sword");
+                set("_currentWeaponKind", swordKind);
+                set("_currentWeaponNative", true);
+                set("_currentWeaponMeshKey", "__sword_hip_probe__");
+                var socket = new GameObject("SwordHipSocket").transform;
+                socket.SetParent(host.transform, false);
+                socket.localRotation = Quaternion.Euler(17, 83, -21);
+                set("_sheatheSocketMain", socket);
+                var hand = new GameObject("RightHandProbe").transform;
+                hand.SetParent(host.transform, false);
+                set("_weaponHand", hand);
+                var grip = new GameObject("SwordGripProbe").transform;
+                grip.SetParent(host.transform, false);
+                set("_gripRoot", grip);
+                var model = UnityEngine.Object.Instantiate(asset, grip);
+                var drawnPosition = new Vector3(.02f, -.01f, .03f);
+                var drawnRotation = Quaternion.Euler(13, 71, -29);
+                set("_weaponDrawnLocalPos", drawnPosition);
+                set("_baseGripRot", drawnRotation);
+                var resolve = t.GetMethod("ResolveSheathedTipSign", flags);
+                var preview = t.GetMethod("ApplySheathedSeatingPreview", flags);
+                for (int mirror = 0; mirror < 2; mirror++)
+                {
+                    model.transform.localScale = new Vector3(1, mirror == 0 ? 1 : -1, 1);
+                    resolve.Invoke(ec, new object[] { model, grip, "__sword_hip_probe__", swordKind });
+                    ec.SetCombatActive(false);
+                    Vector3 runtimePosition = grip.localPosition;
+                    Quaternion runtimeRotation = grip.localRotation;
+                    var filter = model.GetComponentInChildren<MeshFilter>();
+                    if (filter == null || filter.sharedMesh == null)
+                    { failures.Add("SWORD-HIP: starter mesh bounds not measurable"); continue; }
+                    Bounds localBounds = filter.sharedMesh.bounds;
+                    Bounds bounds = default;
+                    for (int corner = 0; corner < 8; corner++)
+                    {
+                        Vector3 p = localBounds.center + Vector3.Scale(localBounds.extents,
+                            new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1));
+                        Vector3 measured = grip.InverseTransformPoint(filter.transform.TransformPoint(p));
+                        if (corner == 0) bounds = new Bounds(measured, Vector3.zero);
+                        else bounds.Encapsulate(measured);
+                    }
+                    Vector3 size = bounds.size;
+                    int axis = size.x >= size.y && size.x >= size.z ? 0 : size.y >= size.z ? 1 : 2;
+                    Vector3 lo = bounds.center, hi = bounds.center;
+                    lo[axis] -= bounds.extents[axis]; hi[axis] += bounds.extents[axis];
+                    bool hiltLow = Mathf.Abs(lo[axis]) < Mathf.Abs(hi[axis]);
+                    Vector3 hilt = grip.TransformPoint(hiltLow ? lo : hi);
+                    Vector3 tip = grip.TransformPoint(hiltLow ? hi : lo);
+                    if (Vector3.Dot(hilt - socket.position, host.transform.right) <= 0f ||
+                        Vector3.Angle(tip - hilt, -host.transform.up) > AngleTolDeg)
+                        failures.Add("SWORD-HIP: measured starter hilt is not on main-hand hip with blade down (mirror=" + mirror + ")");
+                    preview.Invoke(ec, new object[] { grip, false, Vector3.zero, Vector3.zero, false });
+                    if (Vector3.Distance(grip.localPosition, runtimePosition) > .0001f ||
+                        Quaternion.Angle(grip.localRotation, runtimeRotation) > .01f)
+                        failures.Add("SWORD-HIP: seating preview differs from runtime sheath");
+                    ec.SetCombatActive(true);
+                    if (grip.parent != hand || Vector3.Distance(grip.localPosition, drawnPosition) > .0001f ||
+                        Quaternion.Angle(grip.localRotation, drawnRotation) > .01f)
+                        failures.Add("SWORD-HIP: sheathing or preview altered the saved drawn pose");
+                }
+                var side = t.GetMethod("MainHandSheatheSide", flags);
+                foreach (string family in new[] { "Staff", "Bow" })
+                {
+                    set("_currentWeaponKind", Enum.Parse(kindField.FieldType, family));
+                    if (!Mathf.Approximately((float)side.Invoke(ec, null), -1f))
+                        failures.Add("SWORD-HIP: " + family + " carry side changed outside sword scope");
+                }
+                log.AppendLine("  SWORD-HIP measured native starter + mirror: main hip, blade down, preview parity, drawn pose retained.");
+            }
+            catch (Exception ex) { failures.Add("SWORD-HIP: " + ex); }
+            finally { if (host != null) UnityEngine.Object.DestroyImmediate(host); }
         }
 
         private static void CheckSidesAreOpposite(List<string> failures, StringBuilder log)

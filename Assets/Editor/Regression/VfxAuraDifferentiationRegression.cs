@@ -1,6 +1,6 @@
 // =============================================================================
 // VfxAuraDifferentiationRegression [vfx-aura-diff] — locks the owner's 2026-07-24
-// arcane-aura differentiation + the "Cathedral of Magic" rename + the archer
+// arcane-aura differentiation + the "Cathedral of Learning" rename + the archer
 // perma-fireworks one-shot fix. Before this, the harvest NODES, the combat ARCANE
 // SPIRE (ArcaneTower) and the MAGIC BUILDING (id "arcane-tower") ALL resolved to the
 // SAME "Magic circle sun loop" prefab (via Arcane_Aura / Poi_NodeAura). The owner
@@ -13,8 +13,8 @@
 //       catalog regen);
 //   (c) UpgradeStructureComplete_Aura is isLoop==false in VfxManualPicks.json (the
 //       upgrade fireworks are a fire-and-forget ONE-SHOT, not a perma-loop);
-//   (d) the 'arcaneTower' canon-string == "Cathedral of Magic" AND the id
-//       'arcane-tower' structures-catalog displayName == "Cathedral of Magic",
+//   (d) the 'arcaneTower' canon-string == "Cathedral of Learning" AND the id
+//       'arcane-tower' structures-catalog displayName == "Cathedral of Learning",
 //       while the id 'arcane-tower' itself is UNCHANGED (identifier untouched).
 //       Checked in BOTH the Resources and StreamingAssets canonical copies.
 //
@@ -33,7 +33,7 @@ namespace DeNelle.Editor
         // Old shared keys that all pointed at the single "Magic circle sun loop" prefab.
         private const string OldNodeKey  = "Poi_NodeAura";
         private const string OldArcKey   = "Arcane_Aura";
-        private const string Expected    = "Cathedral of Magic";
+        private const string Expected    = "Cathedral of Learning";
 
         public static bool Run(out string reason)
         {
@@ -119,7 +119,7 @@ namespace DeNelle.Editor
                     fails.Add("UpgradeStructureComplete_Aura isLoop==true — the upgrade fireworks loop forever (owner 'perma-fireworks' bug); must be false (fire-and-forget one-shot)");
             }
 
-            // ── (d) rename to "Cathedral of Magic" in BOTH copies; id unchanged ────
+            // ── (d) rename to "Cathedral of Learning" in BOTH copies; id unchanged ────
             RequireCanonString(canonRes, "canon-strings (Resources)", fails);
             RequireCanonString(canonSa,  "canon-strings (StreamingAssets)", fails);
             RequireCatalogDisplayName(catRes, "structures-catalog (Resources)", fails);
@@ -130,7 +130,7 @@ namespace DeNelle.Editor
                 Debug.Log("VFX_AURA_DIFF_OK");
                 reason = $"VFX AURA DIFF OK — node='{nodeKey}', cathedral='{cathKey}', spire='{spireKey}' " +
                          "are three distinct catalogued auras; UpgradeStructureComplete_Aura is a one-shot; " +
-                         "'arcaneTower'/'arcane-tower' display == \"Cathedral of Magic\" (id unchanged)";
+                         "'arcaneTower'/'arcane-tower' display == \"Cathedral of Learning\" (id unchanged)";
                 return true;
             }
             reason = "vfx-aura-diff: " + string.Join("; ", fails);
@@ -156,7 +156,7 @@ namespace DeNelle.Editor
                 fails.Add($"{label} aura key '{key}' is NOT catalogued (absent from HovlVfxCatalogGenerator Map AND VfxManualPicks) — it will no-op at runtime");
         }
 
-        /// <summary>Assert canon-strings maps 'arcaneTower' to "Cathedral of Magic".</summary>
+        /// <summary>Assert canon-strings maps 'arcaneTower' to "Cathedral of Learning".</summary>
         private static void RequireCanonString(string path, string label, List<string> fails)
         {
             if (!File.Exists(path)) { fails.Add($"{label}: file missing ({path})"); return; }
@@ -167,7 +167,7 @@ namespace DeNelle.Editor
         }
 
         /// <summary>Assert the id 'arcane-tower' entry exists (id untouched) and its displayName is
-        /// "Cathedral of Magic".</summary>
+        /// "Cathedral of Learning".</summary>
         private static void RequireCatalogDisplayName(string path, string label, List<string> fails)
         {
             if (!File.Exists(path)) { fails.Add($"{label}: file missing ({path})"); return; }
@@ -183,7 +183,7 @@ namespace DeNelle.Editor
             // not an invariant of anything — it broke the moment the Manage-redesign lane inserted
             // `manageFilters` and `manageArtKey` between them, on a change that could not possibly
             // affect what this suite is about. The intent was always "the arcane-tower row displays
-            // Cathedral of Magic". It now allows intervening keys but stays inside the SAME row by
+            // Cathedral of Learning". It now allows intervening keys but stays inside the SAME row by
             // refusing to cross a `"id":` boundary, so it cannot drift onto a neighbour's displayName.
             var m = Regex.Match(txt,
                 @"""id""\s*:\s*""arcane-tower""\s*,(?:(?!""id""\s*:).)*?""displayName""\s*:\s*""([^""]+)""",

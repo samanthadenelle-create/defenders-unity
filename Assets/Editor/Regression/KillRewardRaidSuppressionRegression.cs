@@ -291,7 +291,8 @@ namespace DeNelle.Editor.Regression
             if (code.IndexOf("LootFor(", StringComparison.Ordinal) < 0)
                 failures.Add("[payout] RaidVictoryController no longer computes the raid loot " +
                              "(RaidScoring.LootFor) - the payout the ruling points at is gone.");
-            if (code.IndexOf("EconomyService.Instance", StringComparison.Ordinal) < 0)
+            if (code.IndexOf("EconomyService.EnsureAvailable()", StringComparison.Ordinal) < 0
+                || code.IndexOf("eco.Grant(loot)", StringComparison.Ordinal) < 0)
                 failures.Add("[payout] RaidVictoryController's loot no longer reaches EconomyService - " +
                              "the earned-income path the player's wallet actually reads.");
         }

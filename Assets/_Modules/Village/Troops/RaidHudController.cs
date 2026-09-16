@@ -540,14 +540,14 @@ namespace DeNelle.Village
             // Fractions below are OF THE PANEL, so the whole stack follows the band above with
             // no second set of screen literals. Rows are ordered by how often the player looks:
             // the clock is the one thing checked constantly, so it takes the top of the column.
-            const float PadX0 = 0.05f, PadX1 = 0.95f;
+            const float PadX0 = 0.08f, PadX1 = 0.92f;
 
             // ── TIMER (big number + shrinking bar under it) ──────────────────────
             _timerLabel = MakeLabel(barT, "3:00", new Vector2(PadX0, 0.795f), new Vector2(PadX1, 0.985f),
-                ElarionUi.Parchment, ElarionUi.FontBody, TMPro.TextAlignmentOptions.Right, bold: true);
+                ElarionUi.Parchment, ElarionUi.FontBody, TMPro.TextAlignmentOptions.Center, bold: true);
 
             var timerTrack = ElarionUiKit.AddImage(barT, "TimerTrack",
-                new Vector2(PadX0, 0.735f), new Vector2(PadX1, 0.780f), EmptyTrackFill, rounded: false);
+                new Vector2(PadX0, 0.747f), new Vector2(PadX1, 0.765f), EmptyTrackFill, rounded: false);
             timerTrack.GetComponent<Image>().raycastTarget = false;
             var timerFillGo = ElarionUiKit.AddImage(timerTrack.transform, "TimerFill",
                 new Vector2(0f, 0f), new Vector2(1f, 1f), ElarionUi.Gilt, rounded: false);
@@ -560,10 +560,10 @@ namespace DeNelle.Village
             // the spire - and the blended destruction sits under it as the secondary
             // (scoring) number.
             _objLabel = MakeLabel(barT, "SPIRE 100%", new Vector2(PadX0, 0.575f), new Vector2(PadX1, 0.705f),
-                ElarionUi.Gilt, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Right, bold: true);
+                ElarionUi.Parchment, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Left, bold: true);
 
             var objTrack = ElarionUiKit.AddImage(barT, "ObjectiveTrack",
-                new Vector2(PadX0, 0.515f), new Vector2(PadX1, 0.560f), EmptyTrackFill, rounded: false);
+                new Vector2(PadX0, 0.527f), new Vector2(PadX1, 0.545f), EmptyTrackFill, rounded: false);
             objTrack.GetComponent<Image>().raycastTarget = false;
             var objFillGo = ElarionUiKit.AddImage(objTrack.transform, "ObjectiveFill",
                 new Vector2(0f, 0f), new Vector2(1f, 1f), ElarionUi.Gilt, rounded: false);
@@ -572,10 +572,10 @@ namespace DeNelle.Village
 
             // ── RAZED % + its growing bar ────────────────────────────────────────
             _destLabel = MakeLabel(barT, "Razed 0%", new Vector2(PadX0, 0.365f), new Vector2(PadX1, 0.485f),
-                ElarionUi.ParchmentDim, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Right);
+                ElarionUi.Parchment, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Left);
 
             var destTrack = ElarionUiKit.AddImage(barT, "DestTrack",
-                new Vector2(PadX0, 0.310f), new Vector2(PadX1, 0.350f), EmptyTrackFill, rounded: false);
+                new Vector2(PadX0, 0.322f), new Vector2(PadX1, 0.340f), EmptyTrackFill, rounded: false);
             destTrack.GetComponent<Image>().raycastTarget = false;
             var destFillGo = ElarionUiKit.AddImage(destTrack.transform, "DestFill",
                 new Vector2(0f, 0f), new Vector2(0f, 1f), ElarionUi.Affordable, rounded: false);
@@ -608,7 +608,7 @@ namespace DeNelle.Village
             // cannot seat, rendering it BLANK. That is the WO-1519 [seat] finding applied here
             // before it could ship, not after.
             _troopLabel = MakeLabel(barT, "Troops 0/0", new Vector2(PadX0, 0.010f), new Vector2(PadX1, 0.140f),
-                ElarionUi.ParchmentDim, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Right);
+                ElarionUi.Parchment, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Left);
 
             Refresh();
         }

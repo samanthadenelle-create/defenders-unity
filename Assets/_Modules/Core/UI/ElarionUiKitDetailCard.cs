@@ -39,6 +39,44 @@ namespace DeNelle.Core.UI
 {
     public static partial class ElarionUiKit
     {
+        /// <summary>Opaque kit card face for controls whose full caption wraps across lines.</summary>
+        public static void ApplyMultilineButtonPlate(UnityEngine.UI.Button button)
+        {
+            if (button == null) return;
+            var border = button.targetGraphic as Image ?? button.GetComponent<Image>();
+            if (border == null) return;
+            if (border.gameObject.name == "MultilinePlateFill") return;
+            // Ornate button textures paint only the middle of their rect. A wrapping
+            // caption needs the same full-height card surface used by content panels.
+            border.overrideSprite = null;
+            border.sprite = null;
+            ApplyRounded(border, 6f);
+            border.fillCenter = true;
+            border.color = ElarionUi.Gold;
+            var fillGo = new GameObject("MultilinePlateFill", typeof(RectTransform), typeof(Image));
+            fillGo.transform.SetParent(border.transform, false);
+            fillGo.transform.SetAsFirstSibling();
+            var fillRt = (RectTransform)fillGo.transform;
+            fillRt.anchorMin = Vector2.zero;
+            fillRt.anchorMax = Vector2.one;
+            fillRt.offsetMin = new Vector2(2f, 2f);
+            fillRt.offsetMax = new Vector2(-2f, -2f);
+            var fill = fillGo.GetComponent<Image>();
+            ApplyRounded(fill, 4f);
+            fill.color = new Color(.078f, .073f, .066f, 1f);
+            fill.raycastTarget = false;
+            button.transition = Selectable.Transition.ColorTint;
+            button.spriteState = default;
+            button.targetGraphic = fill;
+            var colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.3f, 1.25f, 1.15f, 1f);
+            colors.selectedColor = colors.highlightedColor;
+            colors.pressedColor = new Color(.7f, .7f, .7f, 1f);
+            colors.disabledColor = new Color(.6f, .6f, .6f, 1f);
+            colors.colorMultiplier = 1f;
+            button.colors = colors;
+        }
         // ── Parchment ink palette (dark text ON the parchment well) ──────────
         // Mirrors the values the crafting-family panels carried privately; the
         // card owns them now so every detail surface agrees.
@@ -101,7 +139,7 @@ namespace DeNelle.Core.UI
             /// "" = none. WO-714 P3, additive.</summary>
             public string CountText = "";
             public string RarityText = "";           // "EPIC" etc — chip by the name; "" = none
-            public string Flavor = "";               // ONE line; ellipsized past the floor
+            public string Flavor = "";               // Wrapping content-sized band in the detail scroll.
             public string BestowsHeader = "BESTOWS";
             public List<DetailCardRow> Bestows;
             public string RequiresHeader = "REQUIRES";
@@ -329,7 +367,13 @@ namespace DeNelle.Core.UI
                 var fs = Slot("Flavor", CardFlavorH);
                 var f = CardTmp(fs, spec.Flavor, ElarionUi.FontMicro, ParchmentInkDim,
                     FontStyles.Italic, TextAlignmentOptions.MidlineLeft, 8f, -8f);
-                FitSingleLine(f, ElarionUi.FontFloorMobile);
+                FitBlock(f, ElarionUi.FontFloorMobile);
+                Canvas.ForceUpdateCanvases();
+                float flavorWidth = Mathf.Max(240f, cardRt.rect.width - 16f);
+                float flavorHeight = Mathf.Max(CardFlavorH,
+                    f.GetPreferredValues(spec.Flavor, flavorWidth, float.PositiveInfinity).y + 8f);
+                fs.offsetMin -= new Vector2(0f, flavorHeight - CardFlavorH);
+                y += flavorHeight - CardFlavorH;
             }
 
             // ── BESTOWS -> REQUIRES (each section brings its own divider) ────
@@ -395,7 +439,13 @@ namespace DeNelle.Core.UI
                     spec.CtaEnabled ? ObsidianButtonColor.Green : ObsidianButtonColor.Gray,
                     new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.95f),
                     () => { onCta?.Invoke(); });
-                if (btn != null) btn.interactable = spec.CtaEnabled;
+                if (btn != null)
+                {
+                    btn.interactable = spec.CtaEnabled;
+                    var caption = btn.GetComponentInChildren<TMP_Text>();
+                    if (caption != null) FitBlock(caption, ElarionUi.FontFloorMobile);
+                    ApplyMultilineButtonPlate(btn);
+                }
             }
 
             y += CardBottomPad;

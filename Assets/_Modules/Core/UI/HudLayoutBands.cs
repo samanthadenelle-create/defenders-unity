@@ -330,7 +330,9 @@ namespace DeNelle.Core.UI
         /// The top edge stops one clearance gap under the System mount's bottom edge (0.880),
         /// because hostile(activebattle) DOES occupy System with fleeButton + settingsButton.
         /// </summary>
-        public static readonly Rect RaidReadoutBand = Rect.MinMaxRect(0.780f, 0.510f, 0.995f, 0.870f);
+        public static readonly Rect RaidReadoutBand = Rect.MinMaxRect(0.780f, 0.475f, 0.995f, 0.835f);
+        // Raid exit sits above its readout, clear of the central compass and bottom combat controls.
+        public static readonly Rect RaidRetreatBand = Rect.MinMaxRect(0.780f, 0.850f, 0.995f, 0.970f);
 
         // ── WO-1670 — THE RIGHT COLUMN'S QUEUE BAND AND THE ECHOES CHIP ────────
         //

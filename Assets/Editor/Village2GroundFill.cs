@@ -70,6 +70,13 @@ namespace DeNelle.Editor
 
             EditorSceneManager.MarkSceneDirty(scene);
             bool saved = EditorSceneManager.SaveScene(scene, ScenePath);
+            // WO-1731: the bake earlier in this method wrote the scene's m_NavMeshData. Logging
+            // `ok=False` and carrying on leaves the scene pointing at a navmesh it never
+            // persisted -- which ships as no navmesh, silently. THROW (RaidNavBake.cs:109-111).
+            if (!saved)
+                throw new System.InvalidOperationException(
+                    "[Village2GroundFill] could not save navigation for " + ScenePath +
+                    " -- the bake would leave the scene pointing at a navmesh it never persisted (WO-1731).");
             AssetDatabase.SaveAssets();
             Log($"Saved (ok={saved}). Hand-edit 'ConnectingGround' to reshape the approach; re-run to rebake.");
             Log("=== done ===");

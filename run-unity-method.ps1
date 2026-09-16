@@ -222,7 +222,9 @@ if ($logExists) {
     $logMtimeS = $fi.LastWriteTime.ToString('s')
     $logAgeS   = ('{0:N1}s after run start' -f ($fi.LastWriteTime - $runStart).TotalSeconds)
     if ($ExpectMarker -ne '') {
-        $markerHit = [bool](Select-String -Path $log -Pattern $ExpectMarker -SimpleMatch -Quiet -ErrorAction SilentlyContinue)
+        # Match a complete marker, never a suffix such as COMBAT_FOUNDATION_REGRESSION_OK.
+        $markerPattern = '(?<![A-Za-z0-9_])' + [regex]::Escape($ExpectMarker) + '(?![A-Za-z0-9_])'
+        $markerHit = [bool](Select-String -Path $log -Pattern $markerPattern -Quiet -ErrorAction SilentlyContinue)
     }
 }
 $evidence = "marker='$ExpectMarker' log=$log mtime=$logMtimeS ($logAgeS) sizeBytes=$logSize runStart=$($runStart.ToString('s'))"
@@ -241,7 +243,7 @@ if ($ExpectMarker -eq '') {
         $reason = 'MARKER_ABSENT'
     }
     if ($reason -ne '') {
-        if ($license) {
+        if ($license -and -not $succeeded) {
             # Keep the license-specific signal (exit 7) - it tells the caller to refresh
             # the Hub, not to go hunting for a code defect.
             Write-Verdict "[run] VERDICT=FAIL reason=LICENSE_ERROR (and $reason) - this run is NOT PROVEN. $evidence"

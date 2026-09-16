@@ -348,12 +348,21 @@ namespace DeNelle.HUD
             // FULL rail height (0..1 = the 120 px rung), NOT the old 0.05-0.95 inset: 120 px is
             // already above MinTouchPx (112), so ClampMinTouch never inflates the button out of
             // its band into the balance line above or the card list below.
-            ElarionUiKit.BuildObsidianButton(_tabHost, label,
+            var button = ElarionUiKit.BuildObsidianButton(_tabHost, label,
                 ElarionUiKit.ObsidianButtonStyle.Style1,
                 category == _activeCategory ? ElarionUiKit.ObsidianButtonColor.Yellow
                                             : ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(x0, 0f), new Vector2(x1, 1f),
                 () => { _activeCategory = category; BuildTabs(); Repaint(); });
+            var caption = button != null ? button.GetComponentInChildren<TMPro.TMP_Text>() : null;
+            if (caption != null)
+            {
+                caption.rectTransform.anchorMin = new Vector2(0.03f, 0f);
+                caption.rectTransform.anchorMax = new Vector2(0.97f, 1f);
+                caption.rectTransform.offsetMin = Vector2.zero;
+                caption.rectTransform.offsetMax = Vector2.zero;
+                caption.characterSpacing = 0f;
+            }
         }
 
         private void Repaint()

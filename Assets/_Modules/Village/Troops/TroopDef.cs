@@ -128,5 +128,7 @@ namespace DeNelle.Village
         [JsonProperty("shortDescription")] public string ShortDescription;
         /// <summary>Resources icon key for the tray/portrait (WO-735). Optional; may be empty day-one.</summary>
         [JsonProperty("iconId")] public string IconId;
+        /// <summary>Previous saved roster IDs which resolve to this definition without rewriting owned troops.</summary>
+        [JsonProperty("legacyIds")] public string[] LegacyIds;
     }
 }

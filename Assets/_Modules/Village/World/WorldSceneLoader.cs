@@ -104,6 +104,17 @@ namespace DeNelle.Village
                     var c = td.GetAlphamaps(td.alphamapWidth / 2, td.alphamapHeight / 2, 1, 1);
                     float sum = 0f;
                     for (int k = 0; k < td.alphamapLayers; k++) sum += c[0, 0, k];
+                    var centerLayers = new System.Text.StringBuilder();
+                    for (int k = 0; k < td.alphamapLayers; k++)
+                    {
+                        if (c[0, 0, k] < 0.01f) continue;
+                        string nm = k < TerrainLayerSet.Count ? TerrainLayerSet.Layers[k].Name : ("layer" + k);
+                        if (centerLayers.Length > 0) centerLayers.Append(' ');
+                        centerLayers.Append(nm).Append('=').Append(c[0, 0, k].ToString("0.00"));
+                    }
+                    FlowTrace.Step("World",
+                        "TERRAIN center splat (courtyard) sum=" + sum.ToString("0.00") +
+                        " layers=[" + centerLayers + "]");
                     if (sum < 0.01f)
                     {
                         // DEF-108 FIX: the baked splatmap did NOT persist into the player build

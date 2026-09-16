@@ -252,6 +252,22 @@ namespace DeNelle.Editor.Regression
                              DependencyClosureTrace.DescribeAlbedo(probe));
             }
 
+            // Device 2026-09-11 Default Town: Tripo rebuild asked only _MainTex/_BaseMap, dropped
+            // Synty _Albedo_Map, then printed VERIFY OK. These two sites MUST copy/bind through
+            // the oracle or the LightSkin storefronts go flat white again.
+            checks++;
+            string tripoSrc = File.ReadAllText("Assets/_Modules/Core/TripoMaterialFixer.cs");
+            if (tripoSrc.IndexOf("DependencyClosureTrace.GetAlbedo", StringComparison.Ordinal) < 0)
+                failures.Add("[albedo-oracle] TripoMaterialFixer no longer copies source albedo through " +
+                             "DependencyClosureTrace.GetAlbedo — Default Town LightSkins will rebuild " +
+                             "to URP/Lit with no map and render white.");
+            checks++;
+            string hubSrc = File.ReadAllText("Assets/_Modules/Village/HubStructureVisualInjector.cs");
+            if (hubSrc.IndexOf("DependencyClosureTrace.IsAlbedoSlot", StringComparison.Ordinal) < 0)
+                failures.Add("[albedo-oracle] HubStructureVisualInjector.ApplyForcedAlbedo no longer " +
+                             "binds through DependencyClosureTrace.IsAlbedoSlot — hub re-skin will " +
+                             "skip Synty _Albedo_Map again.");
+
             // NEGATIVE CONTROL: same shader, every albedo slot deliberately EMPTIED.
             // If this reads clean, the fix silenced the detector instead of correcting it.
             Material mutant = null;

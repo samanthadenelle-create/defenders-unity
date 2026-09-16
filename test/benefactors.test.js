@@ -292,7 +292,7 @@ function stripStrings(src) {
 
 /** SQL line comments, stripped by the same chosen policy as the JS stripper. */
 function stripSqlComments(src) {
-    return src.split('\n').map(l => l.replace(/--.*$/, '')).join('\n');
+    return src.replace(/--[^\r\n]*/g, '');
 }
 
 /** Every offending site, never just the first -- a one-site report hides the rest. */
@@ -689,4 +689,14 @@ test('every proof older than the newest content build is reported as needing a p
     // A missing build stamp must THROW, never quietly report "all current".
     await assert.rejects(() => monumentsNeedingRepush(sql), /contentBuildIso is required/);
     await assert.rejects(() => monumentsNeedingRepush(sql, ''), /contentBuildIso is required/);
+});
+
+
+test('SQL comment lint handles CRLF without hiding destructive statements', () => {
+    for (const eol of ['\n', '\r\n']) {
+        const sql = '-- promise: no DROP DELETE TRUNCATE' + eol
+            + 'CREATE TABLE example (id TEXT);' + eol
+            + 'DROP TABLE example; -- actual destructive statement' + eol;
+        assert.deepEqual(allMatches(stripSqlComments(sql), /\bDROP\b|\bDELETE\b|\bTRUNCATE\b/gi), ['DROP']);
+    }
 });

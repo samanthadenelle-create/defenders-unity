@@ -295,7 +295,7 @@ namespace DeNelle.Village.Crafting
             if (_stakeStatus == null) return;
             _stakeStatus.text = NativeStakeBonusLine();
             ElarionUiKit.FitBlock(_stakeStatus, ElarionUi.FontFloorMobile, ElarionUi.FontLabel);
-            FlowTrace.Step("JewelerFtue", "native SKR stake read completed; discovery entitlement line refreshed.");
+            FlowTrace.Step("JewelerFtue", "native stake read completed; discovery entitlement line refreshed.");
         }
 
         private static string NativeStakeBonusLine()

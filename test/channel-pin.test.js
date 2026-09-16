@@ -62,9 +62,20 @@ function readPinFile(dir, name) {
 }
 // stdin is closed ('ignore'): status-post reads stdin when given no body, and a
 // piped-but-open stdin would hang the run forever.
-function run(script, args, cwd) {
+// These subprocesses own temporary fake/loopback credentials. Exercise their
+// behavior independently of the outer runner's outbound-status suppression.
+function fixtureEnv(localOnly = false) {
+    const env = { ...process.env };
+    delete env.EOA_LOCAL_STATUS_ONLY;
+    delete env.DISCORD_WEBHOOK_URL;
+    delete env.DISCORD_BOT_TOKEN;
+    delete env.DISCORD_CHANNEL_ID;
+    if (localOnly) env.EOA_LOCAL_STATUS_ONLY = '1';
+    return env;
+}
+function run(script, args, cwd, localOnly = false) {
     return spawnSync(process.execPath, [script].concat(args), {
-        cwd: cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 20000,
+        cwd: cwd, env: fixtureEnv(localOnly), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 20000,
     });
 }
 
@@ -203,10 +214,10 @@ function serve204() {
         server.listen(0, '127.0.0.1', () => resolve({ server, hits, port: server.address().port }));
     });
 }
-function runAsync(script, args, cwd) {
+function runAsync(script, args, cwd, localOnly = false) {
     const { spawn } = require('node:child_process');
     return new Promise((resolve) => {
-        const p = spawn(process.execPath, [script].concat(args), { cwd: cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+        const p = spawn(process.execPath, [script].concat(args), { cwd: cwd, env: fixtureEnv(localOnly), stdio: ['ignore', 'pipe', 'pipe'] });
         let out = '', err = '';
         p.stdout.on('data', (d) => { out += d; });
         p.stderr.on('data', (d) => { err += d; });
@@ -335,4 +346,18 @@ test('the pin module never logs and never returns the value it was given', async
     const dir = path.join(tmpdir('novalue'), 'pins');
     const out = JSON.stringify(checkPin('n', FAKE_WEBHOOK, dir));
     assert.ok(!out.includes(FAKE_WEBHOOK), 'the returned record must not carry the secret');
+});
+
+
+test('local-only suppression sends no request and creates no channel pin', async () => {
+    const { server, hits, port } = await serve204();
+    const dir = tmpdir('sp-local-only');
+    writeEnv(dir, [`DISCORD_WEBHOOK_URL=http://127.0.0.1:${port}/api/webhooks/1/tok`]);
+    try {
+        const r = await runAsync(STATUS_POST, ['local verification'], dir, true);
+        assert.equal(r.status, 0);
+        assert.equal(r.stdout, '');
+        assert.equal(hits.length, 0);
+        assert.equal(readPinFile(dir, 'status-webhook'), null);
+    } finally { server.close(); }
 });
