@@ -199,6 +199,66 @@ buried the rest (2026-08-10: the owner's seq 2307 + 2308 never reached a seat). 
 
 Legacy: `f8-watch.sh` (bash, exits on first fire, needs manual re-arm).
 
+## Device felt-test from the PC (scrcpy)
+
+`scrcpy` mirrors the Seeker's screen onto this PC so an agent can WATCH a felt-test and record it.
+Installed 2026-09-16 via `winget install --id Genymobile.scrcpy -e --accept-source-agreements
+--accept-package-agreements` -> `scrcpy 4.1`, at
+`%LOCALAPPDATA%\Microsoft\WinGet\Packages\Genymobile.scrcpy_*\scrcpy-win64-v4.1\`. It needs an `adb`
+on PATH; this repo's is the Unity one — put it on PATH for the session, never assume it:
+`$env:PATH = "C:\Program Files\Unity\Hub\Editor\<ver>\Editor\Data\PlaybackEngines\AndroidPlayer\SDK\platform-tools;$env:PATH"`.
+
+### ⛔ SAFETY (verbatim from memory `device-lanes-overlay-apps-and-start-new`) — the device holds the OWNER'S live save
+- Before any scripted taps on the owner's device:
+  `adb shell dumpsys window windows | grep -i "SYSTEM_ALERT\|TYPE_APPLICATION_OVERLAY"`;
+  if an overlay exists, STOP and report — do not disable apps on her device.
+- Never tap the title row by coordinates while a save exists; CONTINUE only after a screencap proves
+  the row layout, and treat START NEW's position as a hazard.
+- Device lanes report every deviation first and leave the device untouched after an incident.
+
+**A scrcpy window forwards every mouse click and keypress to the phone by default.** For an
+observation lane that is exactly the hazard above — so **always pass `--no-control`**. Only a lane
+with explicit owner approval to drive may drop it.
+
+### Mirror (read-only)
+```powershell
+scrcpy -s SM02G4061955851 --no-control --window-title "EoA felt-test (read-only)" --time-limit 3
+# run 2026-09-16 -> "[server] INFO: Device: [Solana Mobile Inc.] solanamobile Seeker (Android 16)",
+#                   "Time limit reached", process gone afterwards. Drop --time-limit for a live watch.
+```
+`--stay-awake` keeps the screen on while mirroring (it flips a device setting, restored on exit) —
+listed as an option; NOT exercised in the install lane, so treat it as unproven here.
+Never leave a scrcpy window running after the lane ends (`Get-Process scrcpy` to confirm it is gone).
+
+### Record a clip
+```powershell
+scrcpy -s SM02G4061955851 --no-control --no-playback --no-audio --video-codec=h264 `
+       --record logs\device\felt-<stamp>.mp4 --time-limit 6
+```
+⚠ **`--video-codec=h264` is load-bearing on this Seeker.** The DEFAULT codec produced
+`WARN: Recording stopped before headers were processed` / `ERROR: Recording failed` and a **0-byte**
+file on three attempts (3 s, 8 s, and 5 s with `repeat-previous-frame-after`); the same command with
+`--video-codec=h264` wrote **155193 bytes**, header `ftyp isom`. A static screen also starves the
+encoder — record while something moves.
+
+### Screenshot
+```bash
+# Bash tool, NOT PowerShell:
+adb -s SM02G4061955851 exec-out screencap -p > logs/device/shot-<stamp>.png
+```
+⚠ PowerShell's `>` **corrupts** this — it wrote a UTF-8 BOM + replacement bytes (`ef bb bf ef bf bd
+50 4e`) over the PNG magic and the file would not open (memory
+`powershell-set-content-mangles-git-show-files`). Use the Bash redirect, or
+`adb shell screencap -p /sdcard/x.png` + `adb pull` + `adb shell rm`. Verified 2026-09-16:
+`logs/device/scrcpy-proof-20260916-143307.png`, 2 829 677 bytes, `PNG image data, 1200 x 2670`.
+
+### Logcat / F8 alongside
+The device's own break-log + flag screenshots already flow into the §14 inbox — start
+`.claude\skills\run-defenders\f8-device-bridge-start.ps1` (auto-started by `f8-watch-start.ps1`) and
+drain with `f8-check-inbox.ps1` / `f8-ack.ps1`; `f8-device-backfill-digest.ps1` for history. For raw
+lines beside the mirror: `adb -s <serial> logcat -v time Unity:V '*:S'` (check `adb logcat -g` first —
+the ring size is per device and the Flow firehose can evict the boot window).
+
 ## Reference
 Full operating SOP + the latest run ledger: `OVERNIGHT_AUTOPILOT_LOG.md`. Build/gate/bake cycle
 table: `docs/HANDOVER.md` §4. Instrumentation method (`FlowTrace`/`Guard`/break-log):

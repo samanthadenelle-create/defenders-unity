@@ -93,6 +93,8 @@ async function readStdin() {
 }
 
 async function main() {
+  // Local verification sessions can suppress outbound status messages in child runners.
+  if (process.env.EOA_LOCAL_STATUS_ONLY === '1') return;
   const args = parseArgs(process.argv.slice(2));
   if (!args.body) args.body = await readStdin();
 

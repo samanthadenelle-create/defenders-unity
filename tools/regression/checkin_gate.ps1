@@ -204,7 +204,7 @@ if ($python) {
 # against a throwaway WorkOrders/ via EOA_WO_DIR. Same one marker still judges it.
 if ($python) {
     Write-Host "`n[gate] owner-validation round trip..."
-    $vOut = & $python.Source (Join-Path $proj 'toolsoard_validation_roundtrip_test.py') 2>&1
+    $vOut = & $python.Source (Join-Path $proj 'tools/board_validation_roundtrip_test.py') 2>&1
     $vOut | Select-Object -Last 4 | ForEach-Object { Write-Host $_ }
     if ($vOut -match 'VALIDATION_ROUNDTRIP_OK') {
         Add-Result 'Owner validations' 'PASS' 'VALIDATION_ROUNDTRIP_OK rebuild preserves sign-offs'

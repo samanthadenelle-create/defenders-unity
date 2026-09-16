@@ -98,7 +98,8 @@ if ($logExists) {
     $compileErr = [bool](Select-String -Path $log -Pattern 'error CS\d+' -Quiet -ErrorAction SilentlyContinue)
     $license    = [bool](Select-String -Path $log -Pattern 'HandshakeResponse reported an error|No valid Unity Editor license' -Quiet -ErrorAction SilentlyContinue)
     if ($ExpectMarker -ne '') {
-        $markerHit = [bool](Select-String -Path $log -Pattern $ExpectMarker -SimpleMatch -Quiet -ErrorAction SilentlyContinue)
+        $markerPattern = '(?<![A-Za-z0-9_])' + [regex]::Escape($ExpectMarker) + '(?![A-Za-z0-9_])'
+        $markerHit = [bool](Select-String -Path $log -Pattern $markerPattern -Quiet -ErrorAction SilentlyContinue)
     }
 }
 Write-Host "[playmode] timedOut=$timedOut license=$license compileErrors=$compileErr sizeBytes=$logSize mtime=$logMtimeS"
@@ -110,7 +111,9 @@ if ($ExpectMarker -eq '') {
     exit 0
 }
 $reason = ''
-if (-not $logExists) { $reason = 'LOG_MISSING' }
+if ($timedOut) { $reason = 'HARNESS_TIMEOUT' }
+elseif ($compileErr) { $reason = 'COMPILE_ERRORS' }
+elseif (-not $logExists) { $reason = 'LOG_MISSING' }
 elseif ((Get-Item $log).LastWriteTime -lt $runStart.AddSeconds(-2)) { $reason = 'LOG_STALE_FROM_EARLIER_RUN' }
 elseif ($logSize -lt $MinLogBytes) { $reason = "LOG_TRUNCATED (under MinLogBytes=$MinLogBytes)" }
 elseif (-not $markerHit) { $reason = 'MARKER_ABSENT' }
