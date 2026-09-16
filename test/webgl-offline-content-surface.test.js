@@ -13,8 +13,11 @@ test('WebGL hides and runtime-blocks the app offline-download flow', () => {
   const service = fs.readFileSync(
     path.join(root, 'Assets/_Modules/Core/Addressables/OfflineContentService.cs'), 'utf8');
 
+  // Check the actual button's preprocessor scope, independently of localized copy.
+  // Staying within a single directive block prevents an unrelated earlier #if
+  // from making an unguarded button appear protected.
   const offlineSection = settings.match(
-    /#if !UNITY_WEBGL[\s\S]*?Caption\(body, "Offline", y\);[\s\S]*?OnOfflineClicked\);[\s\S]*?#endif/);
+    /#if !UNITY_WEBGL\s*\r?\n(?:(?!^\s*#)[\s\S])*?OnOfflineClicked\);(?:(?!^\s*#)[\s\S])*?^\s*#endif/gm);
   assert.ok(offlineSection, 'the Settings offline-download entry must be excluded from WebGL');
 
   const showMethod = panel.match(

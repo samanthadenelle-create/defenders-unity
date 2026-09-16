@@ -107,6 +107,51 @@ namespace DeNelle.Editor
 
         /// <summary>Survives the domain reload that entering play mode triggers.</summary>
         private const string ArmKey = "KnightGearProof.Armed";
+        private const string IsolationKey = "KnightGearProof.Isolated";
+        private const string MainSaveKey = "KnightGearProof.MainSave";
+        private static ISaveProvider _priorProvider;
+        private static bool _priorCloudSuppression;
+        internal static ISaveProvider IsolatedProvider;
+
+        // BeforeSceneLoad creates/loads GameStateService. Isolate earlier, exactly as the
+        // OwnedTownMovePlayProof harness does, so ChooseHero and shutdown autosaves stay in RAM.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void IsolateSaves()
+        {
+            if (!SessionState.GetBool(ArmKey, false)) return;
+            _priorProvider = GameStateService.Provider;
+            _priorCloudSuppression = GameStateService.SuppressCloudForIsolatedProof;
+            IsolatedProvider = new MemorySaveProvider();
+            GameStateService.Provider = IsolatedProvider;
+            GameStateService.SuppressCloudForIsolatedProof = true;
+            SessionState.SetBool(IsolationKey, true);
+        }
+
+        internal static bool MainSaveUnchanged() =>
+            (new LocalSaveProvider().Read(SaveSchema.PlayerPrefsKey) ?? string.Empty) ==
+            SessionState.GetString(MainSaveKey, string.Empty);
+
+        // Never restore while the proof's service is alive: its teardown may save once more.
+        private static void RestoreIsolationAfterPlay(PlayModeStateChange change)
+        {
+            if (change != PlayModeStateChange.EnteredEditMode ||
+                !SessionState.GetBool(IsolationKey, false)) return;
+            GameStateService.Provider = _priorProvider ?? new LocalSaveProvider();
+            GameStateService.SuppressCloudForIsolatedProof = _priorCloudSuppression;
+            IsolatedProvider = null;
+            _priorProvider = null;
+            SessionState.SetBool(IsolationKey, false);
+            EditorApplication.playModeStateChanged -= RestoreIsolationAfterPlay;
+        }
+
+        private sealed class MemorySaveProvider : ISaveProvider
+        {
+            private readonly Dictionary<string, string> _slots = new Dictionary<string, string>();
+            public bool Exists(string slot) => _slots.ContainsKey(slot);
+            public string Read(string slot) => _slots.TryGetValue(slot, out var data) ? data : string.Empty;
+            public void Write(string slot, string data) => _slots[slot] = data;
+            public void Delete(string slot) => _slots.Remove(slot);
+        }
 
         [MenuItem("Defenders/QA/Capture Knight Gear Proof")]
         public static void RunMenu() => Run();
@@ -124,6 +169,8 @@ namespace DeNelle.Editor
                 return;
             }
             // A scratch scene, NEVER one of the curated ones (CLAUDE.md §3) and never saved.
+            SessionState.SetString(MainSaveKey,
+                new LocalSaveProvider().Read(SaveSchema.PlayerPrefsKey) ?? string.Empty);
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             SessionState.SetBool(ArmKey, true);
             // TWO PLANTING PATHS, because which one fires depends on a PROJECT SETTING this harness
@@ -162,6 +209,8 @@ namespace DeNelle.Editor
         [InitializeOnLoadMethod]
         private static void Boot()
         {
+            EditorApplication.playModeStateChanged -= RestoreIsolationAfterPlay;
+            EditorApplication.playModeStateChanged += RestoreIsolationAfterPlay;
             if (!SessionState.GetBool(ArmKey, false)) return;
             if (EditorApplication.isPlaying) { Plant(); return; }
             EditorApplication.playModeStateChanged -= OnPlayModeChanged;
@@ -279,6 +328,13 @@ namespace DeNelle.Editor
         // =====================================================================
         private IEnumerator Body()
         {
+            if (KnightGearProofCapture.IsolatedProvider == null ||
+                !ReferenceEquals(GameStateService.Provider, KnightGearProofCapture.IsolatedProvider) ||
+                !GameStateService.SuppressCloudForIsolatedProof)
+            {
+                _failures.Add("save isolation was not installed before runtime startup; refusing to choose a hero");
+                yield break;
+            }
             _log.AppendLine("KNIGHT GEAR PROOF — the starter sword + shield on the real Knight, drawn and sheathed.");
             _log.AppendLine($"mode=PLAY (batchmode={Application.isBatchMode}) res={ResX}x{ResY} backdrop=mid-grey(0.46)");
             _log.AppendLine($"graphicsDevice={SystemInfo.graphicsDeviceType} screen={Screen.width}x{Screen.height}");
@@ -399,6 +455,10 @@ namespace DeNelle.Editor
                 _failures.Add("the DRAWN half never reached the drawn state — every 'DRAWN' PNG below is really the sheathed pose and proves nothing about the grip.");
             MeasureSlot("DRAWN sword ", weaponProp, rHand, anim.transform, hips, drawn: true, offHand: false);
             MeasureSlot("DRAWN shield", offHandProp, lHand, anim.transform, hips, drawn: true, offHand: true);
+            Transform drawnShieldParent = offHandProp.parent;
+            Vector3 drawnShieldPosition = offHandProp.localPosition;
+            Quaternion drawnShieldRotation = offHandProp.localRotation;
+            Vector3 drawnShieldScale = offHandProp.localScale;
             yield return Shoot("01_DRAWN_front34", hero, FullBodyAim(hero), FullBodyRadius(hero), ThreeQuarter(anim.transform, 0.75f, 0.18f));
             // The hand close-ups frame ON THE BONE with a radius wide enough to hold the hand AND
             // the near end of the prop in one shot — the first cut aimed at a lerp toward the prop
@@ -430,7 +490,15 @@ namespace DeNelle.Editor
                 _failures.Add("the SHEATHED half never left the drawn state — the sheathed PNGs are not the sheathed pose.");
             var mainSheath = MeasureSlot("SHEATHED sword ", weaponProp, rHand, anim.transform, hips, drawn: false, offHand: false);
             var offSheath = MeasureSlot("SHEATHED shield", offHandProp, lHand, anim.transform, hips, drawn: false, offHand: true);
-            AssertDistinctForearmMount(mainSheath, offSheath);
+            AssertDistinctForearmMount(mainSheath, offSheath, offHandProp, anim);
+            // Locked heater canon (2026-08-30): the same authored strap pose on LeftLowerArm
+            // in both states. The retired vertical-at-hip shield test judged the wrong contract.
+            if (offHandProp.parent != drawnShieldParent ||
+                Vector3.Distance(offHandProp.localPosition, drawnShieldPosition) > .001f ||
+                Quaternion.Angle(offHandProp.localRotation, drawnShieldRotation) > .1f ||
+                Vector3.Distance(offHandProp.localScale, drawnShieldScale) > .001f)
+                _failures.Add("locked shield strap pose changed between drawn and sheathed states");
+            _log.AppendLine("SHIELD STRAP: comparing parent/local position/rotation/scale to the captured drawn pose.");
             yield return Shoot("04_SHEATHED_front34", hero, FullBodyAim(hero), FullBodyRadius(hero), ThreeQuarter(anim.transform, 0.75f, 0.18f));
             yield return Shoot("05_SHEATHED_left34", hero, FullBodyAim(hero), FullBodyRadius(hero), ThreeQuarter(anim.transform, -0.75f, 0.18f));
             yield return Shoot("06_SHEATHED_hips_closeup", hero, HipsAim(hips, weaponProp, offHandProp), 0.55f, ThreeQuarter(anim.transform, 0.75f, 0.05f));
@@ -583,7 +651,7 @@ namespace DeNelle.Editor
                 _failures.Add($"{label}: the hand bone could not be resolved on this rig — the drawn seat cannot be proven.");
             }
 
-            if (!drawn)
+            if (!drawn && !offHand)
             {
                 _log.AppendLine($"{"",-16}  SHEATHED long axis: {angleFromUp:0.#}° from world UP " +
                                 $"({offVertical:0.#}° off vertical) => {(offVertical <= SheathVerticalTolDeg ? "VERTICAL ✓" : "⛔ NOT VERTICAL")}; " +
@@ -595,6 +663,12 @@ namespace DeNelle.Editor
                                   "the owner's ruling is that the longest mesh axis runs up and down at the hip.");
                 if (!offHand && angleFromUp <= 90f)
                     _failures.Add($"{label}: sheathed sword is TIP UP ({angleFromUp:0.#}° from world up) — the ruling is INVERTED (tip down).");
+                float hiltSide = hips != null ? Vector3.Dot(m.hiltWorld - hips.position, bodyT.right) : 0f;
+                float tipDownAngle = Vector3.Angle(m.tipWorld - m.hiltWorld, -bodyT.up);
+                _log.AppendLine($"SWORD MAIN HIP: measured hiltSide={hiltSide:0.###}m centreSide={m.sideOfBody:0.###}m tipDownAngle={tipDownAngle:0.#}deg");
+                if (!hiltIdentified || hips == null || hiltSide <= 0f || m.sideOfBody <= 0f ||
+                    tipDownAngle > SheathVerticalTolDeg)
+                    _failures.Add("sheathed sword must have measured hilt on the main-hand/right hip and blade down (owner 2026-09-13)");
                 // ── IS IT ACTUALLY ON THE HIP? ────────────────────────────────────────────
                 // Angles are not position. The 2026-08-20 shield read "faceOffOutward=0deg
                 // longTiltFromVertical=0deg" — a perfect score — while floating at chest height
@@ -630,7 +704,7 @@ namespace DeNelle.Editor
             return m;
         }
 
-        private void AssertDistinctForearmMount(SlotMeasure main, SlotMeasure off)
+        private void AssertDistinctForearmMount(SlotMeasure main, SlotMeasure off, Transform offGrip, Animator animator)
         {
             if (!main.valid || !off.valid)
             {
@@ -638,7 +712,8 @@ namespace DeNelle.Editor
                 return;
             }
             float sep = Mathf.Abs(main.sideOfBody - off.sideOfBody);
-            bool forearm = off.parentName.IndexOf("ArmOff", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            Transform forearmBone = animator != null ? animator.GetBoneTransform(HumanBodyBones.LeftLowerArm) : null;
+            bool forearm = offGrip != null && forearmBone != null && IsUnder(offGrip, forearmBone);
             _log.AppendLine($"MOUNTS  sword side={main.sideOfBody:+0.###;-0.###}m  shield side={off.sideOfBody:+0.###;-0.###}m  separation={sep:0.###}m");
             _log.AppendLine($"MOUNTS  sword parent='{main.parentName}' shield parent='{off.parentName}' " +
                             $"=> {(main.parentName != off.parentName ? "DISTINCT ✓" : "⛔ SHARED SOCKET")}; " +
@@ -647,6 +722,8 @@ namespace DeNelle.Editor
                 _failures.Add($"sheathed shield is not on the owner-approved forearm socket (parent '{off.parentName}').");
             if (main.parentName == off.parentName)
                 _failures.Add($"sheathed props share ONE socket transform ('{main.parentName}').");
+            if (main.sideOfBody <= 0f || off.sideOfBody >= 0f)
+                _failures.Add("sheathed sword and shield must occupy main/right and off/left sides respectively");
         }
 
         /// <summary>
@@ -1064,6 +1141,9 @@ namespace DeNelle.Editor
         private void Finish(bool ranToCompletion)
         {
             if (!ranToCompletion) _failures.Add("the driver did not run to completion.");
+            if (!KnightGearProofCapture.MainSaveUnchanged())
+                _failures.Add("the original main save changed during the isolated gear proof");
+            else _log.AppendLine("SAVE ISOLATION: original main save unchanged; proof writes stayed in memory.");
 
             _log.AppendLine();
             _log.AppendLine(new string('-', 112));

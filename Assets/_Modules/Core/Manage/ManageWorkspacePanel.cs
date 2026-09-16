@@ -1040,32 +1040,37 @@ namespace DeNelle.Core.Manage
             if (hasRowAction)
             {
                 bool hasCost = !string.IsNullOrEmpty(rowAction.CostText);
-                // The button owns the row's full height when there is no price under it, and the
-                // upper two thirds when there is - so the cost line always has a real band rather
-                // than being squeezed under a control (a sentence with nowhere to sit is a sentence
-                // TMP culls).
+                // Price-bearing rows measured 182px: the old .38.. .90 button was
+                // only94.7px, below the112px touch floor. Reserve its actual pixel
+                // height first, then give the price the remaining separate lower band.
+                float actionTop = hasCost ? 0.98f : 0.90f;
+                float actionBottom = hasCost
+                    ? actionTop - (ElarionUiKit.MinTouchPx + 4f) / Mathf.Max(1f, rowH)
+                    : 0.10f;
                 var cta = ElarionUiKit.Button(row, rowAction.Label,
                     rowAction.Enabled ? ElarionUiKit.ButtonKind.Gold : ElarionUiKit.ButtonKind.Quiet,
-                    new Vector2(0.76f, hasCost ? 0.38f : 0.10f), new Vector2(0.985f, 0.90f),
+                    new Vector2(0.76f, actionBottom), new Vector2(0.985f, actionTop),
                     MakeInvoker(rowAction.Activate));
                 Track(cta);
                 if (cta != null) cta.gameObject.name = "ManageRowAction";
                 if (hasCost)
                 {
-                    var price = ElarionUiKit.Label(row, rowAction.CostText, 0.06f, 0.34f,
+                    var price = ElarionUiKit.Label(row, rowAction.CostText, 0.02f, actionBottom - 0.03f,
                         ElarionUi.Parchment, ElarionUi.FontLabel, TextAlignmentOptions.Center,
                         0.76f, 0.985f);
                     ElarionUiKit.FitSingleLine(price, 16f, 24f);
                 }
             }
 
-            // STATE: the medallion and the model's own word, side by side. It NARROWS when the row
-            // carries an inline action so the two never overprint - the same fact told once.
-            PaintSprite(row, "RowStatus", new Vector2(stateX0, 0.22f),
-                new Vector2(stateX0 + 0.07f, 0.78f), tile.StateIconKey);
-            var state = ElarionUiKit.Label(row, tile.StateText ?? string.Empty, 0.22f, 0.78f,
+            // An action leaves a narrow status column: stack its medallion above the
+            // word so READY gets the full column, not the old42px left after the icon.
+            PaintSprite(row, "RowStatus", new Vector2(stateX0, hasRowAction ? 0.52f : 0.22f),
+                new Vector2(stateX0 + 0.07f, hasRowAction ? 0.94f : 0.78f), tile.StateIconKey);
+            var state = ElarionUiKit.Label(row, tile.StateText ?? string.Empty,
+                hasRowAction ? 0.12f : 0.22f, hasRowAction ? 0.48f : 0.78f,
                 tile.IsSelected ? ElarionUi.Gold : ElarionUi.Parchment,
-                ElarionUi.FontLabel, TextAlignmentOptions.Left, stateX0 + 0.08f, stateX1);
+                ElarionUi.FontLabel, TextAlignmentOptions.Left,
+                hasRowAction ? stateX0 : stateX0 + 0.08f, stateX1);
             ElarionUiKit.FitSingleLine(state, 18f, 26f);
 
             // A running row keeps its bar, same as a tile.

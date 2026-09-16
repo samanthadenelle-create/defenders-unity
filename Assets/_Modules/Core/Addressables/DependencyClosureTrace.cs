@@ -236,6 +236,15 @@ namespace DeNelle.Core
         /// </summary>
         public static bool HasAlbedo(Material mat) => FindAlbedo(mat, out _) != null;
 
+        /// <summary>
+        /// The populated base-colour texture on <paramref name="mat"/>, or null when none is bound.
+        /// Public so TripoMaterialFixer / hub re-skin copy Synty <c>_Albedo_Map</c> (and any future
+        /// pack slot) instead of hard-coding <c>_MainTex</c>/<c>_BaseMap</c>. Device 2026-09-11
+        /// new-save: those two names were empty, VERIFY called OK, LightSkin storefronts rendered
+        /// flat white.
+        /// </summary>
+        public static Texture GetAlbedo(Material mat) => FindAlbedo(mat, out _);
+
         /// <summary>Public evidence line: which albedo-classified slots exist and which are populated.</summary>
         public static string DescribeAlbedo(Material mat) => DescribeAlbedoSlots(mat);
 

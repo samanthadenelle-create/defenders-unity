@@ -101,6 +101,8 @@ namespace DeNelle.Village.Progression
         public static void ReportKill(Enemy enemy)
         {
             if (enemy == null) return;
+            if (!DeNelle.Core.Combat.PracticeCombatPolicy.AllowsProgression(enemy))
+            { DamageAttribution.Forget(enemy); return; }
             EnsureInstance();
             Instance.Distribute(enemy);
         }

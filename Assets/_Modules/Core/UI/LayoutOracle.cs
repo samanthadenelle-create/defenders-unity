@@ -86,6 +86,8 @@ namespace DeNelle.Core.UI
             /// failure. A run where nothing could be measured must never be able to read as a
             /// run where everything fit.</para></summary>
             TextUnmeasured,
+            /// <summary>WO-2016: a settled vertical scroll cannot reach its claimed endpoint.</summary>
+            ScrollBounds,
         }
 
         /// <summary>One defect, already worded for the log.</summary>
@@ -184,9 +186,7 @@ namespace DeNelle.Core.UI
                     if (string.IsNullOrEmpty(t.text) || t.color.a < 0.05f) continue;
                     if (IsDescendantOf(t.transform, b.transform)) continue;   // its own label
                     if (IsDescendantOf(b.transform, t.transform)) continue;
-                    if (ClippedOut(t.transform, canvasGo.transform, root)) continue;
-                    var trt = t.transform as RectTransform;
-                    if (!TryRectInRoot(trt, root, out Rect tr)) continue;
+                    if (!TryVisibleRectInRoot(t.transform, canvasGo.transform, root, out Rect tr)) continue;
                     if (!Overlaps(br, tr, OverlapPadPx, out float ow, out float oh)) continue;
 
                     found.Add(new Finding(FindingKind.ButtonOverText, true,
@@ -208,6 +208,10 @@ namespace DeNelle.Core.UI
             {
                 if (b == null || !b.gameObject.activeInHierarchy) continue;
                 if (!HasMinTouchGuard(b)) continue;      // not a kit button; not this rule's contract
+                // A wholly off-viewport row is not an actionable target in this frame.
+                // Partial rows still use their FULL authored size: a legal scroll cut
+                // must not be mistaken for a band authored under the touch floor.
+                if (!TryVisibleRectInRoot(b.transform, canvasGo.transform, root, out _)) continue;
                 var brt = b.transform as RectTransform;
                 if (!TryRectInRoot(brt, root, out Rect br)) continue;
                 float shortest = Mathf.Min(br.width, br.height);
@@ -453,12 +457,106 @@ namespace DeNelle.Core.UI
         /// <summary>True when the element is clipped and not FULLY inside its clipper (scrolled out).</summary>
         public static bool ClippedOut(Transform t, Transform canvasRoot, RectTransform root)
         {
-            RectTransform clip = NearestClipper(t, canvasRoot);
-            if (clip == null) return false;
             var rt = t as RectTransform;
             if (!TryRectInRoot(rt, root, out Rect er)) return true;
-            if (!TryRectInRoot(clip, root, out Rect cr)) return true;
-            return OutsideBy(er, cr) > ContainSlackPx;
+            if (!TryVisibleRectInRoot(t, canvasRoot, root, out Rect visible)) return true;
+            // Glyph-count auditing still stands down on partially clipped labels.
+            return OutsideBy(er, visible) > ContainSlackPx;
+        }
+
+        /// <summary>Visible intersection in canvas reference px. A partial scroll row
+        /// remains measurable; only fully clipped rows stand down. All enabled ancestor
+        /// masks participate, including RectMask2D padding (UGUI Clipping's convention).</summary>
+        public static bool TryVisibleRectInRoot(Transform t, Transform canvasRoot,
+                                               RectTransform root, out Rect visible)
+        {
+            if (!TryRectInRoot(t as RectTransform, root, out visible)) return false;
+            for (Transform p = t.parent; p != null && p != canvasRoot; p = p.parent)
+            {
+                var rectMask = p.GetComponent<RectMask2D>();
+                var mask = p.GetComponent<Mask>();
+                bool rectangular = rectMask != null && rectMask.IsActive();
+                bool stencil = mask != null && mask.MaskEnabled();
+                if (!rectangular && !stencil) continue;
+                if (!TryRectInRoot(p as RectTransform, root, out Rect clip)) return false;
+                if (rectangular)
+                {
+                    Vector4 padding = rectMask.padding;
+                    clip = Rect.MinMaxRect(clip.xMin + padding.x, clip.yMin + padding.y,
+                                           clip.xMax - padding.z, clip.yMax - padding.w);
+                }
+                float x0 = Mathf.Max(visible.xMin, clip.xMin), y0 = Mathf.Max(visible.yMin, clip.yMin);
+                float x1 = Mathf.Min(visible.xMax, clip.xMax), y1 = Mathf.Min(visible.yMax, clip.yMax);
+                if (x1 - x0 <= 0.5f || y1 - y0 <= 0.5f) { visible = default(Rect); return false; }
+                visible = Rect.MinMaxRect(x0, y0, x1, y1);
+            }
+            return true;
+        }
+
+        /// <summary>WO-2016: independently measure a settled vertical scroll endpoint.
+        /// Never moves content. Callers set the position first, then settle layout.
+        /// Direct layout children own the content extent; authored padding is allowed.</summary>
+        public static List<Finding> AuditVerticalScroll(ScrollRect scroll, bool atBottom,
+                                                        bool requireOverflow, out string measurement)
+        {
+            var found = new List<Finding>();
+            measurement = "scroll missing or unmeasurable";
+            var root = scroll != null ? scroll.transform as RectTransform : null;
+            var view = scroll != null && scroll.viewport != null ? scroll.viewport : root;
+            if (scroll == null || !scroll.gameObject.activeInHierarchy || scroll.content == null ||
+                !TryRectInRoot(view, root, out Rect vr) || !TryRectInRoot(scroll.content, root, out Rect cr))
+            {
+                found.Add(new Finding(FindingKind.ScrollBounds, true, "SCROLL BOUNDS: " + measurement));
+                return found;
+            }
+            float overflow = cr.height - vr.height;
+            measurement = "endpoint=" + (atBottom ? "bottom" : "top") + " viewport=" + RectStr(vr) +
+                          " content=" + RectStr(cr) + " overflow=" + overflow.ToString("F1");
+            string prefix = "SCROLL BOUNDS '" + scroll.name + "': ";
+            if (!scroll.vertical || scroll.movementType != ScrollRect.MovementType.Clamped)
+                found.Add(new Finding(FindingKind.ScrollBounds, true, prefix + "requires vertical Clamped movement; " + measurement));
+            if (requireOverflow && overflow <= ContainSlackPx)
+                found.Add(new Finding(FindingKind.ScrollBounds, true, prefix + "no real overflow was exercised; " + measurement));
+            if (overflow <= ContainSlackPx) return found;
+
+            float endpointError = atBottom ? cr.yMin - vr.yMin : cr.yMax - vr.yMax;
+            if (Mathf.Abs(endpointError) > ContainSlackPx)
+                found.Add(new Finding(FindingKind.ScrollBounds, true, prefix + "endpoint error=" +
+                    endpointError.ToString("F1") + " ref px; " + measurement));
+
+            bool hasChild = false;
+            Rect first = default(Rect), last = default(Rect);
+            foreach (Transform child in scroll.content)
+            {
+                if (!child.gameObject.activeInHierarchy) continue;
+                var layout = child.GetComponent<LayoutElement>();
+                if (layout != null && layout.ignoreLayout) continue;
+                if (!TryRectInRoot(child as RectTransform, root, out Rect row)) continue;
+                if (!hasChild || row.yMax > first.yMax) first = row;
+                if (!hasChild || row.yMin < last.yMin) last = row;
+                hasChild = true;
+            }
+            if (!hasChild)
+            {
+                found.Add(new Finding(FindingKind.ScrollBounds, true, prefix + "no measurable layout children; " + measurement));
+                return found;
+            }
+            var group = scroll.content.GetComponent<LayoutGroup>();
+            // LayoutGroup padding is content-local, unlike RectMask2D padding
+            // (which UGUI applies in canvas space). Match the measured row rectangles.
+            float contentYScale = Mathf.Abs(root.InverseTransformVector(
+                scroll.content.TransformVector(Vector3.up)).y);
+            float topPadding = group != null ? group.padding.top * contentYScale : 0f;
+            float bottomPadding = group != null ? group.padding.bottom * contentYScale : 0f;
+            float topGap = cr.yMax - first.yMax - topPadding;
+            float bottomGap = last.yMin - cr.yMin - bottomPadding;
+            measurement += " first=" + RectStr(first) + " last=" + RectStr(last) +
+                           " topGap=" + topGap.ToString("F1") + " bottomGap=" + bottomGap.ToString("F1");
+            if (Mathf.Abs(topGap) > ContainSlackPx || Mathf.Abs(bottomGap) > ContainSlackPx)
+                found.Add(new Finding(FindingKind.ScrollBounds, true, prefix + "unowned top/bottom gap or escaping child; " + measurement));
+            if (atBottom && OutsideBy(last, vr) > ContainSlackPx)
+                found.Add(new Finding(FindingKind.ScrollBounds, true, prefix + "last row cannot fully reach viewport; " + measurement));
+            return found;
         }
 
         public static bool ButtonUsable(Button b, RectTransform root, Transform canvasRoot,
@@ -469,8 +567,7 @@ namespace DeNelle.Core.UI
             var brt = b.transform as RectTransform;
             if (!TryRectInRoot(brt, root, out r)) return false;
             if (r.width * r.height >= canvasArea * ScrimAreaFraction) return false;   // scrim
-            if (ClippedOut(b.transform, canvasRoot, root)) return false;
-            return true;
+            return TryVisibleRectInRoot(b.transform, canvasRoot, root, out r);
         }
 
         public static bool HasVisibleGraphic(Button b)

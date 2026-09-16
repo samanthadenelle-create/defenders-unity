@@ -103,13 +103,15 @@ namespace DeNelle.Editor.Regression
 
             foreach (var a in Aspects)
             {
-                casesRun += 6;
+                casesRun += 22;
                 CaseSubFloor(a.x, a.y, failures, log);
                 CaseOverlapSiblings(a.x, a.y, failures, log);
                 CaseOverlapCrossParent(a.x, a.y, failures, log);
                 CaseGlyphTruncated(a.x, a.y, failures, log);   // WO-1630 RED-C
                 CaseGlyphFits(a.x, a.y, failures, log);        // WO-1630 GREEN-C
                 CaseClean(a.x, a.y, failures, log);
+                CaseScrollVisibility(a.x, a.y, failures, log);
+                CaseScrollEndpoints(a.x, a.y, failures, log);
             }
 
             if (failures.Count > 0)
@@ -477,6 +479,172 @@ namespace DeNelle.Editor.Regression
             float logH = Mathf.Log(h / RefH, 2f);
             float sf = Mathf.Pow(2f, Mathf.Lerp(logW, logH, Match));
             return (sf > 0f && !float.IsNaN(sf) && !float.IsInfinity(sf)) ? sf : 1f;
+        }
+
+        // WO-2016: these fixtures prove the oracle observes the INTERSECTION with
+        // every active viewport, while legal scroll cuts do not become touch defects.
+        // No TMP or mocked visibility predicate: real masks and production Audit.
+        private static void CaseScrollVisibility(int w, int h, List<string> failures, StringBuilder log)
+        {
+            for (int scenario = 0; scenario < 7; scenario++)
+            {
+                GameObject canvas = null;
+                try
+                {
+                    canvas = BuildCanvas(w, h, out _);
+                    var viewport = Host(canvas.transform, "Viewport");
+                    FixedRect(viewport, Vector2.zero, new Vector2(400f, 300f));
+                    var mask = viewport.gameObject.AddComponent<RectMask2D>();
+                    Transform parent = viewport;
+                    Vector2 position = new Vector2(0f, 130f);
+                    Vector2 size = new Vector2(160f, 160f);
+                    bool wantOverlap = scenario == 0 || scenario == 3 || scenario == 6;
+                    if (scenario == 1) { position.y = 400f; size.y = 20f; } // fully hidden, under floor
+                    if (scenario == 2)
+                    {
+                        parent = Host(viewport, "LargerInnerViewport");
+                        FixedRect(parent, Vector2.zero, new Vector2(800f, 800f));
+                        parent.gameObject.AddComponent<RectMask2D>();
+                        position.y = 240f; // inside nearest mask, wholly outside outer mask
+                    }
+                    if (scenario == 3) { mask.enabled = false; position.y = 300f; }
+                    var a = KitButton(parent, "ScrollA", Vector2.zero, Vector2.one);
+                    FixedRect(a.transform, position, size);
+                    var b = KitButton(parent, "ScrollB", Vector2.zero, Vector2.one);
+                    FixedRect(b.transform, scenario == 4 ? new Vector2(0f, -70f) : position, size);
+                    if (scenario == 5)
+                    {
+                        FixedRect(viewport, new Vector2(-110f, 0f), new Vector2(190f, 300f));
+                        var other = Host(canvas.transform, "OtherViewport");
+                        FixedRect(other, new Vector2(110f, 0f), new Vector2(190f, 300f));
+                        other.gameObject.AddComponent<RectMask2D>();
+                        b.transform.SetParent(other, false);
+                        FixedRect(a.transform, Vector2.zero, new Vector2(400f, 160f));
+                        FixedRect(b.transform, Vector2.zero, new Vector2(400f, 160f));
+                        // Full authored rects overlap; their visible intersections do not.
+                    }
+                    if (scenario == 6)
+                    {
+                        viewport.localScale = new Vector3(1.5f, 2f, 1f);
+                        mask.padding = new Vector4(30f, 40f, 50f, 60f);
+                        FixedRect(a.transform, Vector2.zero, new Vector2(600f, 600f));
+                        FixedRect(b.transform, Vector2.zero, new Vector2(600f, 600f));
+                    }
+                    Settle(canvas);
+                    if (scenario == 6)
+                    {
+                        // Use the installed renderer's clipping utility as the independent
+                        // authority: padding is added AFTER conversion to canvas coordinates.
+                        Rect expectedClip = Clipping.FindCullAndClipWorldRect(
+                            new List<RectMask2D> { mask }, out bool validClip);
+                        var root = (RectTransform)canvas.transform;
+                        bool usable = LayoutOracle.ButtonUsable(a, root, root,
+                            root.rect.width * root.rect.height, out Rect visible);
+                        if (!validClip || !usable ||
+                            Vector2.Distance(visible.min, expectedClip.min) > 0.5f ||
+                            Vector2.Distance(visible.max, expectedClip.max) > 0.5f)
+                            failures.Add("SCALED-MASK @" + w + "x" + h +
+                                ": oracle=" + visible + " renderer=" + expectedClip + ".");
+                    }
+                    var found = LayoutOracle.Audit(canvas, "ScrollVisibility" + scenario, w, h);
+                    var overlap = First(found, LayoutOracle.FindingKind.ButtonsOverlap);
+                    string at = "scroll-" + scenario + " @" + w + "x" + h;
+                    if ((overlap != null) != wantOverlap)
+                        failures.Add(at + ": expected overlap=" + wantOverlap + ", measured " +
+                                     (overlap ?? "NONE") + ". Partially visible controls still compete; hidden pixels do not.");
+                    if (!wantOverlap && found.Count != 0)
+                        failures.Add(at + ": legitimate scrolled state produced " + found[0].Message);
+                    if (scenario == 0 || scenario == 4)
+                    {
+                        var root = (RectTransform)canvas.transform;
+                        bool usable = LayoutOracle.ButtonUsable(a, root, root,
+                            root.rect.width * root.rect.height, out Rect visible);
+                        if (!usable || Mathf.Abs(visible.height - 100f) > 0.5f)
+                            failures.Add(at + ": partial button must expose its 100 px visible intersection; usable=" +
+                                         usable + " height=" + visible.height.ToString("F1") + ".");
+                    }
+                    log.AppendLine("  [" + at + "] overlap=" + (overlap != null) + " findings=" + found.Count);
+                }
+                finally { Kill(canvas); }
+            }
+        }
+
+        // Positive and deliberately broken endpoints exercise the same measurement
+        // used by the Manage overflow capture. No normalized-position-only assertions:
+        // the oracle must observe the actual content and last-row rectangles.
+        private static void CaseScrollEndpoints(int w, int h, List<string> failures, StringBuilder log)
+        {
+            for (int scenario = 0; scenario < 9; scenario++)
+            {
+                GameObject canvas = null;
+                try
+                {
+                    canvas = BuildCanvas(w, h, out _);
+                    var viewport = Host(canvas.transform, "EndpointViewport");
+                    FixedRect(viewport, Vector2.zero, new Vector2(400f, 300f));
+                    viewport.gameObject.AddComponent<RectMask2D>();
+                    var content = Host(viewport, "Content") as RectTransform;
+                    FixedRect(content, Vector2.zero, new Vector2(400f, 600f));
+                    RectTransform last = null;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        last = Host(content, "Row" + i) as RectTransform;
+                        FixedRect(last, new Vector2(0f, 225f - 150f * i), new Vector2(300f, 150f));
+                    }
+                    if (scenario >= 7)
+                    {
+                        content.localScale = new Vector3(1f, 1.5f, 1f);
+                        var group = content.gameObject.AddComponent<VerticalLayoutGroup>();
+                        group.padding = new RectOffset(0, 0, 20, 30);
+                        group.spacing = 0f;
+                        group.childControlWidth = group.childControlHeight = true;
+                        group.childForceExpandWidth = group.childForceExpandHeight = false;
+                        foreach (Transform row in content)
+                        {
+                            var item = row.gameObject.AddComponent<LayoutElement>();
+                            item.preferredWidth = 300f;
+                            item.preferredHeight = 137.5f; // four rows + 20/30 padding fill 600 local px
+                        }
+                    }
+                    var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+                    scroll.viewport = viewport as RectTransform;
+                    scroll.content = content;
+                    scroll.horizontal = false;
+                    scroll.vertical = true;
+                    scroll.movementType = ScrollRect.MovementType.Clamped;
+                    Settle(canvas);
+                    bool bottom = scenario != 6;
+                    scroll.verticalNormalizedPosition = bottom ? 0f : 1f;
+                    Canvas.ForceUpdateCanvases();
+                    if (scenario == 8) last.anchoredPosition += new Vector2(0f, 15f);
+                    if (scenario == 1) content.anchoredPosition += new Vector2(0f, 50f);
+                    if (scenario == 2) last.anchoredPosition += new Vector2(0f, 60f);
+                    if (scenario == 3) scroll.movementType = ScrollRect.MovementType.Unrestricted;
+                    if (scenario == 4) content.sizeDelta = new Vector2(400f, 200f);
+                    if (scenario == 5)
+                        while (content.childCount > 0) Kill(content.GetChild(0).gameObject);
+                    var found = LayoutOracle.AuditVerticalScroll(scroll, bottom, true, out string measured);
+                    string expected = scenario == 1 ? "endpoint error=" : (scenario == 2 || scenario == 8) ? "top/bottom gap" :
+                                      scenario == 3 ? "Clamped" : scenario == 4 ? "no real overflow" :
+                                      scenario == 5 ? "no measurable layout children" : null;
+                    if (expected == null && found.Count != 0)
+                        failures.Add("SCROLL-ENDPOINT-" + scenario + " @" + w + "x" + h + ": " + found[0].Message);
+                    if (expected != null && !found.Exists(f => f.Message.Contains(expected)))
+                        failures.Add("SCROLL-ENDPOINT-" + scenario + " @" + w + "x" + h +
+                                     ": deliberately broken fixture was not identified as '" + expected + "': " + measured);
+                    log.AppendLine("  [scroll-endpoint-" + scenario + " @" + w + "x" + h + "] findings=" +
+                                   found.Count + " " + measured);
+                }
+                finally { Kill(canvas); }
+            }
+        }
+
+        private static void FixedRect(Transform transform, Vector2 position, Vector2 size)
+        {
+            var rt = (RectTransform)transform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = position;
+            rt.sizeDelta = size;
         }
 
         private static Transform Host(Transform parent, string name)
