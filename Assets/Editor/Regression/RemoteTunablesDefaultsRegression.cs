@@ -83,8 +83,11 @@
 //                     .PiRequestTimeoutSeconds == 20 and HeroAbilities
 //                     .DrainReturnPct == 100 - and no consumer has re-hardcoded a
 //                     knob behind the seam.
-//   4 [key-domain]    The 14 keys are identical in RemoteTunables.Registry,
-//                     api/_lib/tunables.js and the docs table.
+//   4 [key-domain]    The key SET is identical in RemoteTunables.Registry,
+//                     api/_lib/tunables.js and the docs table. (No count here on
+//                     purpose - this line carried one for months while the three
+//                     sources had long since grown past it. The set is the contract;
+//                     ExpectedDefaults below is where it is written down.)
 //   5 [doc-parity]    The DEFAULT column in docs/PROD022_TUNABLE_FLAGS.md equals
 //                     Registry, so the owner-facing list cannot drift from code.
 //   6 [never-blocks]  The fetch cannot delay or stall boot: no blocking idiom in
@@ -114,31 +117,43 @@ namespace DeNelle.Editor.Regression
         //  PINNED FACTS. Every one is a literal.
         // ---------------------------------------------------------------------
 
-        /// <summary>The domain is TWENTY-SIX knobs: eight PROD-022 mitigations, the
-        /// WO-1306 balance knob, the three WO-1330 over-time levers, the two WO-1327 VFX
-        /// feel/perf clamps, the four WO-1343 night-store aura knobs, and the seven
-        /// WO-1374 raid-reward knobs (two bases + the five-rung performance ladder), and the
-        /// WO-1374 free-starter-squad size, the two WO-1379 Heartfire pacing knobs, and the
-        /// WO-1388 Builder's Hour crew duration, and the three WO-1384b Night Market glow
-        /// feel knobs, and the four WO-1366 Arena wager price knobs, and the three WO-1594 raid
-        /// HONOR MILESTONES (owner ruling 2026-09-09, "Tunables with those defaults").
-        /// Pinned as a literal, not as Registry.Length - an oracle that measures the thing
-        /// against itself certifies nothing.</summary>
-        // ⚠ 45, and READ THIS BEFORE "CORRECTING" IT. This const sat at 42 while
-        // RemoteTunables.Registry already held 44 — the WO-1461 lane added
-        // raid.lootRepeatClearPct and raid.cacheCapPerResource to the Registry and to
-        // ExpectedDefaults above WITHOUT bumping the count, which makes case [count] RED for a
-        // reason that has nothing to do with either knob. WO-1094 adds the 45th
-        // (hero.playableFallbackHalf) and WO-1095 the 46th (raid.stagingCeilingSeconds), taking
-        // the count to 46 so the combined tree can gate. If the 1461 lane bumps it too, the value
-        // every lane must land on is 46, not 44.
-        // WO-1594 (owner ruling 2026-09-09, "Tunables with those defaults") adds the 47th, 48th
-        // and 49th - the three raid HONOR MILESTONES - taking the count to 49.
-        // WO-1348 adds the 53rd, 54th, 55th and 56th - the four realm.vfx.* PICKS - taking the
-        // count to 56. Measured, not guessed: `node tools/gen-tunable-manifest.mjs` re-parsed
-        // RemoteTunables.Registry on 2026-09-10 and printed
-        // "TUNABLE_MANIFEST_GEN_OK knobs=56".
-        private const int ExpectedKnobCount = 56;
+        /// <summary>
+        /// THE SIZE OF THE DOMAIN, pinned as a LITERAL rather than as <c>Registry.Length</c> -
+        /// an oracle that measures the thing against itself certifies nothing, and the whole
+        /// job of case [defaults] is to notice that a knob arrived or left without its doc row,
+        /// its allowlist row and its entry in <see cref="ExpectedDefaults"/>.
+        /// <para>
+        /// ⛔ DO NOT TRY TO NAME THE FAMILIES OR THEIR SIZES IN THIS COMMENT. It used to carry a
+        /// hand-written tally per work order ("eight PROD-022 mitigations, the three over-time
+        /// levers, the seven raid-reward knobs...") and a running history of which ticket took
+        /// the count to what; every one of those numbers was a second copy of a fact that lives
+        /// in <see cref="ExpectedDefaults"/> below, and they went stale exactly the way
+        /// CLAUDE.md sections 2 / 5 / 8 / 16 each record. The authority for WHICH knobs exist is
+        /// the table below; the authority for HOW MANY is this const; and the only correct way
+        /// to change either is to edit both in the same commit as the knob.
+        /// </para>
+        /// <para>
+        /// ⚠ IT IS A FUNCTIONAL PIN, NOT PROSE. Case [defaults] compares
+        /// <c>RemoteTunables.Registry.Length</c> against it, so adding a knob without bumping it
+        /// makes the suite red for a reason unrelated to the knob. WO-1763 bumped it by eight -
+        /// the per-camp raid difficulty family.
+        /// </para>
+        /// </summary>
+        // ⚠ BEFORE YOU "CORRECT" THIS VALUE: the only honest way to move it is to MEASURE, and
+        // there is a tool that does. `node tools/gen-tunable-manifest.mjs` re-parses
+        // RemoteTunables.Registry and prints the count inside its own marker
+        // ("TUNABLE_MANIFEST_GEN_OK knobs=<n>"); that marker on a fresh run is the evidence, and
+        // a value typed from memory is a guess (CLAUDE.md section 11B). Measured 2026-09-16 for
+        // WO-1763: knobs=64.
+        //
+        // The history this comment used to narrate - which ticket took the count to what, and the
+        // time a lane added two knobs and left the pin behind so the suite went red for an
+        // unrelated reason - is DELIBERATELY NOT REPEATED HERE. Every one of those tallies was a
+        // stale copy the moment the next knob landed. The lesson, which does not go stale: a lane
+        // that adds a knob edits the Registry, ExpectedDefaults, this pin, the allowlist and the
+        // doc table IN THE SAME COMMIT, or the suite is red and the owner-facing list stops
+        // describing the build.
+        private const int ExpectedKnobCount = 64;
 
         /// <summary>
         /// ⭐ THE CONTRACT, STATED INDEPENDENTLY OF THE CODE.
@@ -249,6 +264,30 @@ namespace DeNelle.Editor.Regression
             // most one raid's worth and cannot become a second bank. Recorded here rather than
             // dressed up as a ruling; WO-1461's RESULT carries it as an open item.
             new KeyValuePair<string, int>("raid.cacheCapPerResource", 1800),
+            // WO-1763 - PER-CAMP RAID DIFFICULTY, and this block is the reason the ticket is
+            // safe to ship. Two axes per camp, and BOTH defaults are pure IDENTITY:
+            //   * 100 percent means the consumer short-circuits and hands back the value
+            //     scene-configs.json AUTHORS, without even a float round-trip.
+            //   * -999 is the SENTINEL meaning "use the authored levelOffset"; deleting the
+            //     row does the same thing.
+            // So an empty client_tunables table is the raid that shipped, bit for bit. That is
+            // NOT a stylistic preference: a non-identity default here would silently re-tune
+            // every raid in the game for every player who is offline, times out, or gets a 404,
+            // and it would break INVISIBLY - nothing errors, the game is simply a different
+            // game. This is the ONE family in this table whose whole point is that it does
+            // nothing until the owner sets a row.
+            // ⛔ NO AUTHORED BASELINE IS RESTATED HERE. The camps' authored multipliers and
+            // offsets are content in scene-configs.json; a copy here would go red the first
+            // time she tuned a camp by hand. RaidDifficultyTunablesRegression asserts the
+            // RELATIONSHIP between authored and effective, reading the authored side live.
+            new KeyValuePair<string, int>("raid.difficultyMultPctCamp1", 100),
+            new KeyValuePair<string, int>("raid.difficultyMultPctCamp2", 100),
+            new KeyValuePair<string, int>("raid.difficultyMultPctCamp3", 100),
+            new KeyValuePair<string, int>("raid.difficultyMultPctBastion", 100),
+            new KeyValuePair<string, int>("raid.levelOffsetCamp1", -999),
+            new KeyValuePair<string, int>("raid.levelOffsetCamp2", -999),
+            new KeyValuePair<string, int>("raid.levelOffsetCamp3", -999),
+            new KeyValuePair<string, int>("raid.levelOffsetBastion", -999),
             // The free starter squad (map section 2). 3 is her number and is exactly what
             // 1,650 gold used to buy - the wall this removes. Granted once per save.
             new KeyValuePair<string, int>("raid.starterArmySize", 3),
@@ -425,13 +464,15 @@ namespace DeNelle.Editor.Regression
             string noteStr = notes.Count > 0 ? " [notes: " + string.Join("; ", notes) + "]" : "";
             if (failures.Count == 0)
             {
-                reason = "TUNABLE DEFAULTS OK - all " + ExpectedKnobCount + " knobs (8 PROD-022 mitigations + the WO-1306 balance knob + the three " +
-                         "WO-1330 over-time levers + the two WO-1327 VFX feel/perf clamps + the four " +
-                         "WO-1343 night-store aura knobs + the seven WO-1374 raid-reward knobs + the " +
-                         "WO-1374 starter-squad size + the two WO-1379 Heartfire knobs + the WO-1388 " +
-                         "Builder's Hour crew duration + the three WO-1384b Night Market glow knobs + the " +
-                         "four WO-1366 Arena wager price knobs + the three WO-1594 raid honor " +
-                         "milestones + the three WO-1373 rough-stone chain knobs) resolve to " +
+                // The count comes from the pin, and the FAMILIES are deliberately not listed:
+                // the hand-written roster that used to live in this sentence went stale every
+                // time a knob landed, and RemoteTunables.Registry already names every one of
+                // them in order with its own prose.
+                reason = "TUNABLE DEFAULTS OK - all " + ExpectedKnobCount + " knobs in " +
+                         "RemoteTunables.Registry (PROD-022 mitigations, balance, over-time, VFX, " +
+                         "night-store aura, the raid reward table, the raid difficulty family, " +
+                         "Heartfire, Builder's Hour, Night Market glow, Arena wagers, the honor " +
+                         "milestones, the rough-stone chain and the realm.vfx picks) resolve to " +
                          "their SHIPPING DEFAULTS (today's behaviour, byte for byte) on every failure " +
                          "path: no database row, server-reported readOk=false, malformed JSON, an empty " +
                          "body, a corrupt device cache, values the server would refuse, and garbage " +
@@ -529,13 +570,16 @@ namespace DeNelle.Editor.Regression
         }
 
         /// <summary>
-        /// THE ASSERTION EVERY CASE GOES THROUGH. All nine knobs, every time.
+        /// THE ASSERTION EVERY CASE GOES THROUGH. Every pinned knob, every time - the whole of
+        /// <see cref="ExpectedDefaults"/>, never a subset and never a count written down here.
         /// <para>
         /// It reads through <see cref="RemoteTunables.Int"/> - the same call the game makes -
         /// rather than inspecting the table, so it proves the RESOLVED answer and not merely
         /// the stored one. A knob that is absent from the registry resolves 0 here and is
         /// reported as such, which is why the zero case is called out by name: 0 is a
-        /// legitimate default for three knobs and a silent catastrophe for the other five.
+        /// legitimate default for some of these knobs and a silent catastrophe for others
+        /// (pi.requestTimeoutSeconds at 0 means NO TIMEOUT at all), and the two are
+        /// indistinguishable from the resolved value alone.
         /// </para>
         /// </summary>
         private static void AssertFullTableAtDefaults(List<string> failures, string caseName, string what)

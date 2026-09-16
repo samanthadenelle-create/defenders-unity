@@ -163,8 +163,19 @@ namespace DeNelle.Village.World.Camps
             int playerLevel = HeroProgression.Instance != null
                 ? Mathf.Max(1, HeroProgression.Instance.Level)
                 : 1;
-            int enemyLevel = Mathf.Max(g.baseEnemyLevel, playerLevel + g.levelOffset);
-            float difficulty = g.difficultyMultiplier > 0f ? g.difficultyMultiplier : 1f;
+            // WO-1763 - the two numbers that decide how hard this camp is now ride the
+            // REMOTE rail, per camp (DeNelle.Village.RaidDifficultyTunables, the ONE reader
+            // and the owner of the clamps). With no row, no network and no parse it answers
+            // the AUTHORED values bit for bit, so an empty client_tunables table is exactly
+            // the raid that shipped.
+            //
+            // ⛔ THE >0 GUARD STAYS AHEAD OF THE RESOLVE, not behind it. An authored 0 scaled
+            // by a percent is still 0, and FoldDifficulty NO-OPS at <=0 - so a zero surviving
+            // into the resolve would read as "difficulty applied" while applying nothing.
+            float authoredDifficulty = g.difficultyMultiplier > 0f ? g.difficultyMultiplier : 1f;
+            var diff = RaidDifficultyTunables.Resolve(configId, authoredDifficulty, g.levelOffset);
+            int enemyLevel = Mathf.Max(g.baseEnemyLevel, playerLevel + diff.EffectiveLevelOffset);
+            float difficulty = diff.EffectiveMultiplier;
             float ring = Mathf.Max(2f, def.baseRadius * 0.5f);
             int slotCount = CountGarrisonSlots();
             FlowTrace.Step("Garrison",
@@ -194,10 +205,27 @@ namespace DeNelle.Village.World.Camps
             {
                 // WO-932 Phase 3: loud start line for playtest probes (garrison + objective).
                 var spire = RaidSpire.Active != null ? RaidSpire.Active : FindAnyObjectByType<RaidSpire>();
+
+                // WO-1763 - the SAME single line carries both difficulty numbers and where each
+                // came from. ONE line, and the five grep tokens (config= garrisonAlive=
+                // enemyLevel= difficultyx spire=) are spelled exactly as they were.
+                //
+                // Every fragment is computed into a LOCAL first, deliberately: a nested quote
+                // inside an interpolation hole is the shape CLAUDE.md section 1 records as the
+                // thing the compile gate's brace scanner cannot model (a 210/210 file reading
+                // 175/174 at the gate, which withholds COMPILE_GATE_OK).
+                string spireNote = spire != null ? spire.MaxHp.ToString("0") + "hp" : "NONE";
+                string offsetNote = diff.OffsetSource == RaidDifficultyTunables.SourceJson
+                    ? "(json offset " + g.levelOffset + ", src=" + diff.OffsetSource + ")"
+                    : "(json offset " + g.levelOffset + ", remote offset " +
+                      diff.EffectiveLevelOffset + ", src=" + diff.OffsetSource + ")";
+                string difficultyNote = "(json " + authoredDifficulty.ToString("F2") + " x " +
+                                        diff.MultiplierPct + "%, src=" + diff.MultiplierSource + ")";
                 FlowTrace.Step("Raid",
                     $"RAID START config='{configId}' garrisonAlive={_aliveCount} " +
-                    $"enemyLevel={enemyLevel} difficultyx{difficulty:F2} " +
-                    $"spire={(spire != null ? spire.MaxHp.ToString("0") + "hp" : "NONE")} " +
+                    $"enemyLevel={enemyLevel} {offsetNote} " +
+                    $"difficultyx{difficulty:F2} {difficultyNote} " +
+                    $"spire={spireNote} " +
                     $"scene='{gameObject.scene.name}'.");
                 FlowTrace.Step("Garrison", $"'{configId}' garrison spawned: {_aliveCount} defender(s), " +
                           $"enemyLevel {enemyLevel} (player {playerLevel}), difficulty x{difficulty:F2}, ring {ring:F1}m.");
@@ -432,7 +460,14 @@ namespace DeNelle.Village.World.Camps
 
         // Fold the config's difficultyMultiplier into HP + contact damage (the ONE place
         // it touches combat). >0 guard so a missing/zero value is a no-op (x1).
-        private static void FoldDifficulty(EnemyDef def, float difficulty)
+        //
+        // WO-1763 widened this from private to public for ONE reason, stated so it is not
+        // mistaken for drift: RaidDifficultyTunablesRegression's [folds] case drives THIS
+        // method rather than re-implementing the two multiplies in the oracle. An oracle
+        // that restates the arithmetic it is checking certifies only itself, and reaching
+        // a private member by reflection is forbidden (CLAUDE.md section 10). Nothing else
+        // calls it from outside; it is still static and still stateless.
+        public static void FoldDifficulty(EnemyDef def, float difficulty)
         {
             if (def == null || difficulty <= 0f || Mathf.Approximately(difficulty, 1f)) return;
             def.Hp            *= difficulty;

@@ -457,6 +457,118 @@ namespace DeNelle.Core.Ops
         /// <c>RaidClaimService.CacheCapPerResource</c>, clamped 0..1000000 there.</summary>
         public const string KeyRaidCacheCapPerResource = "raid.cacheCapPerResource";
 
+        // ---------------------------------------------------------------------
+        //  WO-1763 - PER-CAMP RAID DIFFICULTY. Eight knobs: a PERCENT on each
+        //  camp's authored difficultyMultiplier, and a REPLACEMENT for each
+        //  camp's authored levelOffset.
+        //
+        //  WHY THEY EXIST: the owner nearly 3-starred the Iron Bastion with a
+        //  level-4 hero, and the Bastion is a field-for-field clone of Camp III
+        //  on every difficulty axis in scene-configs.json - read the live values
+        //  off that file, never off a number written here. Before this ticket the
+        //  ONLY way to make a camp harder was to edit that JSON and ship a build,
+        //  which is a thirty-minute rebuild per opinion about feel. Her standing
+        //  ruling since 2026-09-02 is that a balance number is a row.
+        //
+        //  THE DEFAULTS ARE TODAY'S BEHAVIOUR, EXACTLY AND DELIBERATELY. 100 is
+        //  identity on the multiplier (the consumer short-circuits at 100 and
+        //  returns the authored float untouched, so there is not even a float
+        //  round-trip), and the offset keys ship at a NEGATIVE SENTINEL meaning
+        //  "use the value scene-configs.json authored". No row, no network, no
+        //  parse => the raid that shipped, byte for byte.
+        //
+        //  THE OFFSET IS REPLACE, NOT ADD, and that is a ruling not a preference:
+        //  the owner's 2026-09-16 seed (levelOffsetBastion = 5) was given against
+        //  REPLACE semantics, and under add-semantics the same 5 would mean an
+        //  effective offset of 8. A levelOffsetDelta<Camp> shape (default 0, no
+        //  sentinel needed) was considered and REJECTED for exactly that reason -
+        //  a ruling that can be read two ways is the failure to avoid.
+        //
+        //  The consumer is DeNelle.Village.RaidDifficultyTunables, which owns the
+        //  clamps and is the ONLY reader - the RaidLootTunables contract. Camp
+        //  suffixes reuse the loot keys' own suffixes so the two families read as
+        //  one table.
+        //
+        //  Bare int consts, because tools/gen-tunable-manifest.mjs resolves ONLY
+        //  that shape (see RaidHeartfireMaxChargesDefault above). The generator's
+        //  int-const regex accepts a leading sign, and so does the doc-parity
+        //  oracle's int.TryParse - which is what makes a negative sentinel safe
+        //  to carry through all six registration places.
+        // ---------------------------------------------------------------------
+
+        /// <summary>
+        /// IDENTITY on the multiplier: 100 percent of whatever scene-configs.json authored.
+        /// <para>⚠ THE EIGHT PER-CAMP DEFAULTS BELOW REPEAT THE LITERAL RATHER THAN ALIASING
+        /// THESE TWO, AND THAT IS FORCED, NOT SLOPPY. tools/gen-tunable-manifest.mjs resolves a
+        /// registry default with a regex that matches a BARE int const and nothing else - a
+        /// default written as another const's name silently FAILS TO PARSE and the knob vanishes
+        /// from the Command Center with no error (the failure mode recorded at
+        /// <see cref="RaidHeartfireMaxChargesDefault"/>, measured 2026-09-04). The two names here
+        /// exist for the CONSUMER, which needs one sentinel however many camps there are;
+        /// RemoteTunablesDefaultsRegression pins all eight defaults against its own literals and
+        /// against the docs table, so a drift between the two shapes goes red rather than
+        /// shipping.</para>
+        /// </summary>
+        public const int RaidDifficultyMultPctIdentity = 100;
+
+        /// <summary>
+        /// The "use the authored levelOffset" SENTINEL. Negative on purpose: a real offset is
+        /// meaningfully -5..+20, so no legitimate value can collide with it, and a sentinel that
+        /// could be typed by accident would silently ignore an operator's row. Same bare-literal
+        /// caveat as <see cref="RaidDifficultyMultPctIdentity"/>.
+        /// </summary>
+        public const int RaidLevelOffsetUseJsonSentinel = -999;
+
+        /// <summary>PERCENT on Camp I's authored difficultyMultiplier. 100 = the JSON value unchanged.</summary>
+        public const int RaidDifficultyMultPctCamp1Default = 100;
+
+        /// <summary>PERCENT on Camp II's authored difficultyMultiplier. 100 = the JSON value unchanged.</summary>
+        public const int RaidDifficultyMultPctCamp2Default = 100;
+
+        /// <summary>PERCENT on Camp III's authored difficultyMultiplier. 100 = the JSON value unchanged.</summary>
+        public const int RaidDifficultyMultPctCamp3Default = 100;
+
+        /// <summary>PERCENT on the Iron Bastion's authored difficultyMultiplier. 100 = unchanged.</summary>
+        public const int RaidDifficultyMultPctBastionDefault = 100;
+
+        /// <summary>REPLACEMENT for Camp I's authored levelOffset. -999 = use the authored value.</summary>
+        public const int RaidLevelOffsetCamp1Default = -999;
+
+        /// <summary>REPLACEMENT for Camp II's authored levelOffset. -999 = use the authored value.</summary>
+        public const int RaidLevelOffsetCamp2Default = -999;
+
+        /// <summary>REPLACEMENT for Camp III's authored levelOffset. -999 = use the authored value.</summary>
+        public const int RaidLevelOffsetCamp3Default = -999;
+
+        /// <summary>REPLACEMENT for the Iron Bastion's authored levelOffset. -999 = use the authored value.</summary>
+        public const int RaidLevelOffsetBastionDefault = -999;
+
+        /// <summary>Int PERCENT on Camp I's authored difficultyMultiplier. Consumer:
+        /// <c>RaidDifficultyTunables</c>, clamped 25..400 there.</summary>
+        public const string KeyRaidDifficultyMultPctCamp1 = "raid.difficultyMultPctCamp1";
+
+        /// <summary>Int PERCENT on Camp II's authored difficultyMultiplier. Clamped 25..400 at the consumer.</summary>
+        public const string KeyRaidDifficultyMultPctCamp2 = "raid.difficultyMultPctCamp2";
+
+        /// <summary>Int PERCENT on Camp III's authored difficultyMultiplier. Clamped 25..400 at the consumer.</summary>
+        public const string KeyRaidDifficultyMultPctCamp3 = "raid.difficultyMultPctCamp3";
+
+        /// <summary>Int PERCENT on the Iron Bastion's authored difficultyMultiplier. Clamped 25..400 at the consumer.</summary>
+        public const string KeyRaidDifficultyMultPctBastion = "raid.difficultyMultPctBastion";
+
+        /// <summary>Int REPLACEMENT for Camp I's authored levelOffset. -999 keeps the authored value;
+        /// any other value is clamped -5..20 at the consumer.</summary>
+        public const string KeyRaidLevelOffsetCamp1 = "raid.levelOffsetCamp1";
+
+        /// <summary>Int REPLACEMENT for Camp II's authored levelOffset. -999 keeps the authored value.</summary>
+        public const string KeyRaidLevelOffsetCamp2 = "raid.levelOffsetCamp2";
+
+        /// <summary>Int REPLACEMENT for Camp III's authored levelOffset. -999 keeps the authored value.</summary>
+        public const string KeyRaidLevelOffsetCamp3 = "raid.levelOffsetCamp3";
+
+        /// <summary>Int REPLACEMENT for the Iron Bastion's authored levelOffset. -999 keeps the authored value.</summary>
+        public const string KeyRaidLevelOffsetBastion = "raid.levelOffsetBastion";
+
         /// <summary>
         /// Int COUNT of free Footmen granted the first time a save has a Barracks
         /// (map section 2, "the first army is free"). 3 = her number, and exactly what
@@ -1193,10 +1305,12 @@ namespace DeNelle.Core.Ops
 
             new TunableSpec(KeyRaidLootCoinsBaseBastion, TunableKind.Int, RaidLootCoinsBaseBastionDefault,
                 "GOLD a PERFECT run pays on the IRON BASTION, the map's fourth and evergreen " +
-                "target. 6500 = the map's number, against a designed 4800-gold army. The scene-configs.json row for " +
-                "'iron_bastion' exists as of 2026-09-04; its rewardMultiplier of 2.8 is deliberately " +
-                "IGNORED by gold, because 2200 x 2.8 is 6160 and her number is 6500. Clamped to " +
-                "0..1000000.",
+                "target. 6500 = the map's number, against a designed 4800-gold army. The " +
+                "scene-configs.json row for 'iron_bastion' exists as of 2026-09-04, and its " +
+                "rewardMultiplier - whatever that file currently authors, READ IT THERE - is " +
+                "deliberately IGNORED by gold: the map publishes a DESIGNED gold target per camp " +
+                "sized against that camp's expected army cost, so no base-times-multiplier pays all " +
+                "four published numbers. Clamped to 0..1000000.",
                 "NOT a PROD-022 hypothesis - the top of the map's per-camp gold ladder, registered " +
                 "now so the number is a knob from the day the Bastion is switched on rather than a " +
                 "literal someone has to find later."),
@@ -1249,6 +1363,85 @@ namespace DeNelle.Core.Ops
                 "size. 1800 is a stated derivation, not a pick, and it is a knob so her number " +
                 "replaces it in seconds. Too small and the cache is a slower burn; too large and " +
                 "it removes the upgrade pressure the cache exists to create."),
+
+            // -- WO-1763. PER-CAMP RAID DIFFICULTY. See the block above the key consts
+            //    for why the offset is REPLACE and why the sentinel is negative.
+            new TunableSpec(KeyRaidDifficultyMultPctCamp1, TunableKind.Int, RaidDifficultyMultPctCamp1Default,
+                "PERCENT applied to CAMP I's authored difficultyMultiplier - the ONE number that " +
+                "scales a raid defender's HP and contact damage (RaidGarrisonSpawner.FoldDifficulty " +
+                "touches both and nothing else). 100 = the value scene-configs.json authors for that " +
+                "camp, unchanged and bit-identical to today: the consumer short-circuits at 100 and " +
+                "never round-trips the float. 160 makes that camp's guards 1.6x as tough on both " +
+                "axes, BEFORE the per-level scale. Read the authored baseline off " +
+                "scene-configs.json, never off a number in this string. Clamped to 25..400 at the " +
+                "consumer. Applies on the NEXT raid entry; nothing already spawned is touched.",
+                "NOT a PROD-022 hypothesis - the lever that did not exist. Until WO-1763 the only " +
+                "way to make a camp harder was to edit a canonical JSON and ship a build, so 'is " +
+                "this camp too easy' cost thirty minutes per opinion. The owner nearly 3-starred " +
+                "the top camp with a level-4 hero, which is the felt evidence that the difficulty " +
+                "curve needs iterating and therefore needs to be a row."),
+
+            new TunableSpec(KeyRaidDifficultyMultPctCamp2, TunableKind.Int, RaidDifficultyMultPctCamp2Default,
+                "PERCENT applied to CAMP II's authored difficultyMultiplier, on the same terms as " +
+                "the Camp I knob above. 100 = today. Clamped to 25..400 at the consumer.",
+                "NOT a PROD-022 hypothesis - its own row rather than one global dial, because the " +
+                "defect this ticket answers is that the camps do not DIFFER enough. A single global " +
+                "multiplier would move all four together and could never separate them."),
+
+            new TunableSpec(KeyRaidDifficultyMultPctCamp3, TunableKind.Int, RaidDifficultyMultPctCamp3Default,
+                "PERCENT applied to CAMP III's authored difficultyMultiplier. 100 = today. Clamped " +
+                "to 25..400 at the consumer.",
+                "NOT a PROD-022 hypothesis - see the Camp II knob. The step between camps is what " +
+                "decides whether unlocking a harder raid reads as progress or as the same raid."),
+
+            new TunableSpec(KeyRaidDifficultyMultPctBastion, TunableKind.Int, RaidDifficultyMultPctBastionDefault,
+                "PERCENT applied to the IRON BASTION's authored difficultyMultiplier. 100 = today. " +
+                "⭐ THIS IS THE KNOB THE TICKET WAS OPENED FOR: the Bastion's garrison block in " +
+                "scene-configs.json is a field-for-field clone of Camp III's on every difficulty " +
+                "axis, so the map's fourth and evergreen target currently fights exactly like its " +
+                "third. Raising this is how the two stop being the same fight without a rebuild and " +
+                "without touching the authored JSON. Clamped to 25..400 at the consumer.",
+                "NOT a PROD-022 hypothesis - the direct answer to a felt report: the owner nearly " +
+                "3-starred the Iron Bastion with a LEVEL-4 hero. How much harder the evergreen " +
+                "target should be than the camp it was cloned from is a question only playing it " +
+                "answers, and the answer will move more than once."),
+
+            new TunableSpec(KeyRaidLevelOffsetCamp1, TunableKind.Int, RaidLevelOffsetCamp1Default,
+                "REPLACES CAMP I's authored levelOffset - how far ABOVE the player's own level that " +
+                "camp's defenders are rolled. The spawner takes max(baseEnemyLevel, playerLevel + " +
+                "offset), so baseEnemyLevel still floors a low-level hero's raid and this only ever " +
+                "raises the ceiling. -999 is the SENTINEL meaning 'use the value " +
+                "scene-configs.json authors', i.e. today exactly; DELETING the row is the same " +
+                "thing and is the table's documented resting state. It REPLACES rather than ADDS, " +
+                "so the number you type is the offset. Any non-sentinel value is clamped -5..20 at " +
+                "the consumer. Applies on the NEXT raid entry.",
+                "NOT a PROD-022 hypothesis - the second of the two difficulty axes, and the one " +
+                "that bites hardest late: level scale adds ~8% HP and up to ~4% contact damage per " +
+                "level on top of the multiplier. Kept separate from the multiplier because 'more " +
+                "levels' and 'tougher for its level' feel completely different to fight and the " +
+                "owner needs to be able to move one without the other."),
+
+            new TunableSpec(KeyRaidLevelOffsetCamp2, TunableKind.Int, RaidLevelOffsetCamp2Default,
+                "REPLACES CAMP II's authored levelOffset, on the same terms as the Camp I knob " +
+                "above. -999 = use the authored value (today). Clamped -5..20 otherwise.",
+                "NOT a PROD-022 hypothesis - see the Camp I offset knob. Per camp rather than " +
+                "global, for the same reason the multipliers are."),
+
+            new TunableSpec(KeyRaidLevelOffsetCamp3, TunableKind.Int, RaidLevelOffsetCamp3Default,
+                "REPLACES CAMP III's authored levelOffset. -999 = use the authored value (today). " +
+                "Clamped -5..20 otherwise.",
+                "NOT a PROD-022 hypothesis - see the Camp I offset knob."),
+
+            new TunableSpec(KeyRaidLevelOffsetBastion, TunableKind.Int, RaidLevelOffsetBastionDefault,
+                "REPLACES the IRON BASTION's authored levelOffset. -999 = use the authored value " +
+                "(today). ⭐ The second half of the Bastion pair: with the multiplier knob it is " +
+                "what separates the evergreen target from the camp it was cloned from. REPLACE, " +
+                "NOT ADD - the number you type is the offset, not a delta on the authored one. " +
+                "Clamped -5..20 otherwise.",
+                "NOT a PROD-022 hypothesis - the axis the felt report actually named. A level-4 " +
+                "hero met the Bastion's authored offset and nearly cleared it; raising the offset " +
+                "is how a high-level hero keeps meeting a fight rather than a formality, and it is " +
+                "the knob most likely to be re-tuned several evenings in a row."),
 
             new TunableSpec(KeyRaidStarterArmySize, TunableKind.Int, RaidStarterArmySizeDefault,
                 "How many FREE Footmen a save receives the first time it has a Barracks. 3 = the " +

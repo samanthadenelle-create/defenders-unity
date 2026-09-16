@@ -163,15 +163,22 @@ namespace DeNelle.Village
         /// / <c>mage_enclave</c>). They are matched, never renamed.
         ///
         /// <para><c>iron_bastion</c> landed in scene-configs.json on 2026-09-04 (scene
-        /// <c>RaidBase_IronBastion</c>, rewardMultiplier 2.8). That multiplier is deliberately
-        /// NOT applied to gold: 2,200 x 2.8 is 6,160 and the map's Bastion number is 6,500.</para>
+        /// <c>RaidBase_IronBastion</c>). Its <c>rewardMultiplier</c> - whatever that file
+        /// currently authors, READ IT THERE - is deliberately NOT applied to gold, because the
+        /// map publishes a DESIGNED gold target per camp sized against that camp's expected army
+        /// cost; no single base times a multiplier pays all four published numbers.
+        /// ⚠ This paragraph restated a reward multiplier as a LITERAL until WO-1763, by which
+        /// date the JSON had moved off it - and the fix is to point at the file, not to swap in
+        /// the new number, which would simply re-arm the same trap.</para>
         /// </summary>
         public const string CampIdCamp1 = "raider_camp_small";
         /// <summary>Camp II's live config id.</summary>
         public const string CampIdCamp2 = "fortified_garrison";
         /// <summary>Camp III's live config id.</summary>
         public const string CampIdCamp3 = "mage_enclave";
-        /// <summary>The Iron Bastion's reserved config id (no scene-config row yet).</summary>
+        /// <summary>The Iron Bastion's live config id. The scene-config row EXISTS and the owner
+        /// has played the raid (WO-1763, 2026-09-16) - this line said "no scene-config row yet"
+        /// until then.</summary>
         public const string CampIdBastion = "iron_bastion";
 
         /// <summary>

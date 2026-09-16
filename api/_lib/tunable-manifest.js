@@ -442,9 +442,8 @@ const PRESENTATION = {
         area: 'misc',
         label: 'Raid reward: gold for a perfect run (Iron Bastion)',
         what: 'The same again for the Iron Bastion, the fourth and endless target. The ' +
-              'game ships at 6500. This dial does nothing yet - the Bastion map is built ' +
-              'but is not switched on in the game. It is here so the number is already a ' +
-              'dial on the day it is.',
+              'game ships at 6500. The Bastion is LIVE - it has a map, it has a camp row, ' +
+              'and it has been played - so this dial pays out now.',
         min: 0,
         max: 1000000,
     },
@@ -470,6 +469,101 @@ const PRESENTATION = {
               'pay more crystals or just more gold.',
         min: 0,
         max: 1000000,
+    },
+    // ---- WO-1763: HOW HARD EACH CAMP IS. Two dials per camp, and the first
+    // difficulty dials on this page at all. Before this, making a camp harder meant
+    // editing a data file and rebuilding the game. The copy deliberately names NO
+    // authored baseline number: the baselines live in scene-configs.json and a number
+    // retyped here would be the fifth copy of a value that has already drifted once.
+    'raid.difficultyMultPctCamp1': {
+        area: 'misc',
+        label: 'Camp I: how tough the defenders are',
+        what: 'How tough the defenders of the FIRST camp are, as a percentage of the ' +
+              'toughness the camp was built with. 100 means exactly what the game ships ' +
+              'with - nothing changes. 160 means every defender in that camp has 1.6 times ' +
+              'the health AND hits 1.6 times as hard. It does not change how MANY defenders ' +
+              'there are, only how hard each one is. It takes effect the next time you enter ' +
+              'that raid; a raid already in progress is untouched. Safe range 25 to 400.',
+        min: 25,
+        max: 400,
+    },
+    'raid.difficultyMultPctCamp2': {
+        area: 'misc',
+        label: 'Camp II: how tough the defenders are',
+        what: 'The same dial for the SECOND camp. 100 is the game as shipped. Each camp has ' +
+              'its own dial on purpose, so you can widen the gap between two camps instead ' +
+              'of moving all of them together. Safe range 25 to 400.',
+        min: 25,
+        max: 400,
+    },
+    'raid.difficultyMultPctCamp3': {
+        area: 'misc',
+        label: 'Camp III: how tough the defenders are',
+        what: 'The same dial for the THIRD camp. 100 is the game as shipped. Safe range 25 ' +
+              'to 400.',
+        min: 25,
+        max: 400,
+    },
+    'raid.difficultyMultPctBastion': {
+        area: 'misc',
+        label: 'Iron Bastion: how tough the defenders are',
+        what: 'The same dial for the Iron Bastion, the fourth and endless target. 100 is the ' +
+              'game as shipped - and as shipped, the Bastion was built with the SAME ' +
+              'toughness and the SAME defender list as Camp III, so today it fights like the ' +
+              'camp below it. This is the dial that separates them without a rebuild. Safe ' +
+              'range 25 to 400.',
+        min: 25,
+        max: 400,
+        risk: 'A full 3-star clear of the Bastion captures a town and a hero death settles ' +
+              'it at 2 stars, so making this harder means fewer captures and more hero ' +
+              'deaths. Move it a little and play it.',
+    },
+    'raid.levelOffsetCamp1': {
+        area: 'misc',
+        label: 'Camp I: how many levels above you its defenders are',
+        what: 'How many levels ABOVE your hero the defenders of the FIRST camp are rolled. ' +
+              'Leave it at -999 and the camp uses the number it was built with - that is the ' +
+              'game as shipped, and clearing the row does the same thing. Any other number ' +
+              'REPLACES that built-in number rather than adding to it, so 5 means five ' +
+              'levels above you, not five more than it already was. The camp also has a ' +
+              'minimum level of its own, so a brand-new hero never meets weaker defenders ' +
+              'than the camp was designed for. Each level adds roughly 8 percent health and ' +
+              'up to 4 percent damage. Anything you type below -5, other than -999, is ' +
+              'treated as -5; anything above 20 is treated as 20. It takes effect the next ' +
+              'time you enter that raid.',
+        min: -999,
+        max: 20,
+    },
+    'raid.levelOffsetCamp2': {
+        area: 'misc',
+        label: 'Camp II: how many levels above you its defenders are',
+        what: 'The same dial for the SECOND camp. -999 means use the number the camp was ' +
+              'built with, which is the game as shipped. Any other number replaces it, and ' +
+              'is held between -5 and 20.',
+        min: -999,
+        max: 20,
+    },
+    'raid.levelOffsetCamp3': {
+        area: 'misc',
+        label: 'Camp III: how many levels above you its defenders are',
+        what: 'The same dial for the THIRD camp. -999 means use the number the camp was ' +
+              'built with, which is the game as shipped. Any other number replaces it, and ' +
+              'is held between -5 and 20.',
+        min: -999,
+        max: 20,
+    },
+    'raid.levelOffsetBastion': {
+        area: 'misc',
+        label: 'Iron Bastion: how many levels above you its defenders are',
+        what: 'The same dial for the Iron Bastion. -999 means use the number it was built ' +
+              'with, which is the game as shipped. This is the dial that answers "I nearly ' +
+              'three-starred the Bastion with a level-4 hero": raising it keeps a strong ' +
+              'hero meeting a real fight instead of a formality. It REPLACES the built-in ' +
+              'number rather than adding to it. Held between -5 and 20.',
+        min: -999,
+        max: 20,
+        risk: 'This is the harsher of the two Bastion dials - levels raise health and damage ' +
+              'on top of the toughness dial, so moving both at once compounds.',
     },
     'raid.lootRepeatClearPct': {
         area: 'misc',

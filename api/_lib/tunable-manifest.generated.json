@@ -168,6 +168,46 @@
             "default": 1800
         },
         {
+            "key": "raid.difficultyMultPctCamp1",
+            "kind": "int",
+            "default": 100
+        },
+        {
+            "key": "raid.difficultyMultPctCamp2",
+            "kind": "int",
+            "default": 100
+        },
+        {
+            "key": "raid.difficultyMultPctCamp3",
+            "kind": "int",
+            "default": 100
+        },
+        {
+            "key": "raid.difficultyMultPctBastion",
+            "kind": "int",
+            "default": 100
+        },
+        {
+            "key": "raid.levelOffsetCamp1",
+            "kind": "int",
+            "default": -999
+        },
+        {
+            "key": "raid.levelOffsetCamp2",
+            "kind": "int",
+            "default": -999
+        },
+        {
+            "key": "raid.levelOffsetCamp3",
+            "kind": "int",
+            "default": -999
+        },
+        {
+            "key": "raid.levelOffsetBastion",
+            "kind": "int",
+            "default": -999
+        },
+        {
             "key": "raid.starterArmySize",
             "kind": "int",
             "default": 3
