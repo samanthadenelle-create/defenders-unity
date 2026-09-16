@@ -114,7 +114,35 @@ namespace DeNelle.Village
         [Tooltip("Speed at which combat zoom transitions (higher = snappier).")]
         [SerializeField, Min(0.1f)] private float _combatZoomSpeed = 2.5f;
 
-        [Tooltip("Layer mask for enemy detection sweeps. Set to the Enemy layer.")]
+        // ⛔ WO-1765 — THIS FIELD SHIPPED AS `~0` (EVERY LAYER) AND THAT IS HALF THE RAID DEFECT.
+        // The tooltip has always said "set to the Enemy layer"; the initialiser says the opposite,
+        // and a RUNTIME AddComponent takes the initialiser. The raid camera IS runtime-attached
+        // (HeroControlEnsurer.cs ~:464 attaches SmartMobileCamera when the gameplay camera has
+        // none, and Assets/Scenes/RaidBase_IronBastion.unity carries no SmartMobileCamera at all),
+        // so in a raid this sweep ran against all 32 layers.
+        //
+        // WHY THE MASK IS LOAD-BEARING AND NOT MERELY TIDY: `_scanBuffer` is THIRTY-TWO slots
+        // (see below) and OverlapSphereNonAlloc fills it in arbitrary order. A raid base holds 158
+        // `Wall_*` colliders on layer 8 ("Structure"); inside a 12 m scan radius they can fill the
+        // buffer outright, so the mobile hostiles the framing exists for may never be seen at all.
+        // Narrowing the mask is therefore a correctness fix, not a micro-optimisation — and it is
+        // the SECOND half of the fix, the first being IsFramingSubject below.
+        //
+        // ⚠ THE MASK IS RESOLVED BY LAYER NAME, NEVER BY A SERIALIZED BIT PATTERN. Read
+        // ProjectSettings/TagManager.asset (2026-09-16): layers are 0 Default, 1 TransparentFX,
+        // 2 Ignore Raycast, 3 Tower, 4 Water, 5 UI, 6 Building, 7 **Enemy**, 8 **Structure**. So
+        // the `m_Bits: 256` the baked town cameras carry (Main_Castle_Overworld.unity:3034-3036,
+        // Village2.unity:3387-3389) is 1<<8 = the STRUCTURE layer, NOT the Enemy layer — a baked
+        // town camera has been scanning walls and nothing else.
+        //
+        // ⛔ AND IT STILL DOES, ON PURPOSE, IN THIS BUILD. Lead ruling 2026-09-16: the TOWN must not
+        // change felt behaviour here. So the narrowing runs ONLY in the raid branch
+        // (ApplyRaidSeat -> ResolveEnemyScanMask, scoped by AppliesRaidScanNarrowing) and
+        // RestoreVillageCameraValues hands the baked value straight back. Correcting `256` in the
+        // scenes is a follow-up for a lane that owns `.unity`; do not "tidy" it from here.
+        [Tooltip("Layer mask for enemy detection sweeps. In a RAID scene only, narrowed at runtime to " +
+                 "Default|Enemy by layer NAME (the runtime-attached camera takes the ~0 initialiser). " +
+                 "Baked town/Village2 values are left exactly as authored - see ResolveEnemyScanMask.")]
         [SerializeField] private LayerMask _enemyMask = ~0;
 
         [Header("Auto-framing")]
@@ -223,8 +251,13 @@ namespace DeNelle.Village
         [SerializeField] private LayerMask _collisionMask = ~0;
 
         // Default collision mask, resolved in Awake from the project's named layers so it
-        // stays correct even if layer indices shift. Default(0) | Building(6) | Tower(3).
-        // Enemy(8), Water(4), Ignore Raycast(2), UI(5), TransparentFX(1) are deliberately OUT.
+        // stays correct even if layer indices shift. Default(0) | Building(6) | Tower(3) |
+        // Structure(8). Enemy(7), Water(4), Ignore Raycast(2), UI(5), TransparentFX(1) are
+        // deliberately OUT.
+        // ⚠ WO-1765 corrected this comment: it read "Enemy(8)" and Enemy is SEVEN
+        // (ProjectSettings/TagManager.asset, read 2026-09-16 — 8 is "Structure"). The wrong index
+        // sat one line above a mask built from NAMES, which is why nothing broke and why it
+        // survived; a seat that trusted it would have excluded the wall layer as "Enemy".
         [Tooltip("Radius of the occlusion spherecast - the camera keeps at least this much clearance " +
                  "from a wall so the near clip plane never punches through the surface.")]
         [SerializeField, Min(0.05f)] private float _collisionRadius = 0.35f;
@@ -417,8 +450,19 @@ namespace DeNelle.Village
 
             ResolveCollisionMask();
 
-            // WO-920: dungeons get a locked, calm seat. Must run AFTER the _forceCameraFix
-            // block above, which rewrites _followOffset and _leadDistance unconditionally.
+            // ⛔ WO-1765 — THE ENEMY-SCAN MASK IS *NOT* RESOLVED HERE, AND THE OMISSION IS THE RULING.
+            // `ResolveEnemyScanMask()` sat on this line and ran for EVERY scene. Owner-protecting lead
+            // ruling 2026-09-16: **the TOWN must not change felt behaviour in this build.** A baked
+            // town camera carries `_enemyMask m_Bits: 256`, which is layer 8 = "Structure" (NOT Enemy,
+            // which is 7) — so in town the combat zoom and auto-framing are driven by masonry, today,
+            // as shipped. Narrowing the mask there would start firing them on mobs for the first time:
+            // a 2.5 m zoom-out and +4 FOV appearing mid-wave, which the owner did not ask for in this
+            // build. The narrowing now happens ONLY in ApplyRaidSeat, and RestoreVillageCameraValues
+            // puts the baked value back on the way out. The baked 256 stays a follow-up for a lane
+            // that owns `.unity` — see the WO §13.
+            // WO-920 / WO-1765: dungeons get a locked calm seat, raids an over-the-shoulder one.
+            // Must run AFTER the _forceCameraFix block above, which rewrites _followOffset and
+            // _leadDistance unconditionally.
             ApplyDungeonProfileIfNeeded("Awake");
         }
 
@@ -427,6 +471,13 @@ namespace DeNelle.Village
         // method (Awake + every sceneLoaded) is idempotent and a dungeon->town transition
         // on a surviving camera restores the village framing instead of staying dark+tight.
         private bool _dungeonProfileActive;
+        // WO-1765: the RAID over-the-shoulder profile, the same seam one scene-kind over. Mutually
+        // exclusive with the dungeon profile by construction (ONE resolver writes both flags, and
+        // HubScenes.IsRaid / IsDungeon cannot both match a name).
+        private bool _raidProfileActive;
+        // The scene name the profile was resolved for, cached on Awake / sceneLoaded so the frame
+        // path never calls SceneManager.GetActiveScene() (WO-1765 instrument §5a).
+        private string _profileSceneName = string.Empty;
         // The village values this camera had before the dungeon profile overwrote them,
         // captured on the first apply so the restore is exact rather than re-typed defaults.
         private Vector3 _villageFollowOffset;
@@ -444,6 +495,9 @@ namespace DeNelle.Village
         private float   _villageFacingRecenterStiffness;
         private float   _villagePanPitchMin;
         private float   _villagePanPitchMax;
+        // WO-1765: the town's own serialized enemy-scan mask, so the raid-only narrowing is exactly
+        // reversible (lead ruling: the town's felt behaviour does not move in this build).
+        private LayerMask _villageEnemyMask;
 
         // ── WO-958: room-aware dungeon framing state (dungeon profile ONLY) ────
         // Current room the hero occupies, resolved from the DungeonRoomSense
@@ -463,6 +517,372 @@ namespace DeNelle.Village
         private int     _dgCeilingClamps;
         private string  _dgYawSource = "hold";
         private float   _dgTraceTimer;
+
+        // ── WO-1765: THE YAW INSTRUMENT (§5b-§5d). Permanent — CLAUDE.md §12. ──
+        //
+        // ⛔ IT MEASURES SCREEN YAW, NOT `_panYaw`, AND THAT IS THE WHOLE POINT. The owner's word
+        // is "rotating"; three of the five WO-1765 candidates (the framing scan, the movement lead,
+        // the pull-in lever arm) move the LOOK-AT and never touch `_panYaw`, so a `panYaw` trace
+        // can neither prove nor refute them. `AimAt` converts a lateral look-at offset into view
+        // yaw at a gain of 1/boom, so the boom, the lateral lever arm and the rate must appear on
+        // the SAME line or the reader is back to theorising.
+        private float _prevViewYaw;
+        private bool  _prevViewYawInit;
+        private float _viewYawRate;        // deg/s this frame
+        private float _viewYawRateMax;     // running |max| since the last heartbeat line
+        private float _panYawAtLastTrace;  // so the line can print dPanYaw for the interval
+        private float _leadLateral;        // signed lateral arm of the look-at, in the camera frame
+        private int   _yawSpikeFrames;     // consecutive frames over the spike threshold
+        private float _yawSpikeCooldown;   // re-arm timer for the edge Warn
+        private int   _snapCount;          // ForceFollowImmediate snaps (candidate C5)
+        private bool  _pullingInNow;       // this frame's pull-in verdict (candidate C4)
+        // The framing subject the scan actually chose, and what it was. `framingTarget` naming a
+        // Wall_* is the C1 verdict in one word; `structsRejected` keeps that verdict readable even
+        // when a profile has framing switched off, because the SCAN still runs.
+        private string _framingTargetName = "none";
+        private string _framingTargetType = "none";
+        private float  _framingTargetDist;
+        private int    _framingTargetSwitches;
+        private int    _framingStructsRejected;
+
+        /// <summary>Spike threshold (deg/s) for the WO-1765 yaw edge Warn.</summary>
+        private const float YawSpikeDegPerSec = 90f;
+        /// <summary>Consecutive frames over <see cref="YawSpikeDegPerSec"/> before the edge fires.</summary>
+        private const int   YawSpikeFrames = 3;
+        /// <summary>Seconds before the spike Warn can fire again (keeps a busy log readable).</summary>
+        private const float YawSpikeCooldownSeconds = 2f;
+        /// <summary>
+        /// WO-1765 — the degrees the facing-recenter actually applied on the LAST frame it stepped.
+        /// This is the field that turns "the camera rotates itself" into a NUMBER: a run of
+        /// <c>yawSrc=recenter step=</c> lines whose steps sum past ~90 degrees while the player's
+        /// thumb is off the screen IS the possessed spin, measured; <c>yawSrc=input</c> throughout
+        /// refutes the recenter and points the ticket at the pull-in instead. Falsifiable both ways,
+        /// which is the whole point of instrumenting rather than theorising.
+        /// </summary>
+        private float _lastRecenterStep;
+
+        /// <summary>
+        /// WO-1765 — the RAID over-the-shoulder camera profile. Owner ruling 2026-09-16: <i>"its the
+        /// clear win when the camera spins about as if possessed and people leave the game."</i>
+        /// <para>
+        /// ⛔ <b>THIS IS A THIRD BRANCH IN THE ONE PROFILE SEAM, NOT A WIDENED DUNGEON GATE — and
+        /// that choice is what makes it safe.</b> The obvious one-line fix is to change the seam's
+        /// test to <c>IsDungeon(scene) || IsRaid(scene)</c> and let a raid run the dungeon profile.
+        /// It installs three ROOM-TOPOLOGY features an open arena has no rooms for: the ceiling clamp
+        /// to <c>heroFeetY + CeilingHeightRef(4) - CeilingClearance(0.5)</c>, the
+        /// <see cref="DungeonRoomSeat"/> room-aware seat damp, and
+        /// <c>DungeonCam.FacingLookAhead</c>. Each is *probably* inert in a raid — and "probably" is
+        /// exactly what CLAUDE.md §11B forbids shipping. A third branch makes the question moot: all
+        /// three stay gated on <c>_dungeonProfileActive</c>, so they are inert BY CONSTRUCTION, with
+        /// nothing left to prove on a device.
+        /// </para>
+        /// <para>
+        /// ⛔ <b>THE SEAT VALUES ARE THE DUNGEON'S, BY REFERENCE AND NOT BY COPY.</b> They are
+        /// already owner-approved (WO-920 / WO-958) and the WO-958 ruling that produced the lazy
+        /// recenter came from the owner reporting <i>this same defect</i> underground ("its auto
+        /// rotating", F8 seq 2289) — a walled raid base is a "small room" in every way that matters
+        /// to this camera. Re-typing the numbers here would be the duplicated state CLAUDE.md §5
+        /// forbids, and it would let the raid drift off a seat the owner has already signed off.
+        /// The raid-ONLY value is the shoulder term below.
+        /// </para>
+        /// <para>
+        /// ⚠ <b>WHY A SHORTER BOOM MATTERS, stated as arithmetic and not as taste.</b> The pull-in
+        /// gate fires when <c>(boom − gateDistance) &lt; _occluderPullInDistance</c> (0.6 m), where
+        /// the gate distance is a spherecast hit measured from the hero's chest, i.e.
+        /// <c>surfaceDistance − _collisionRadius(0.35)</c>. So a wall surface at D metres fires it
+        /// for <c>D ∈ (boom − 0.25, boom + 0.35]</c>. At the town boom (4.501 m) the seat in a ~3 m
+        /// raid space lands 1.9 m BEYOND the far wall — outside the space, that wall faded — while
+        /// the next occluder out sits in the firing band and collapses the seat toward the 1.2 m
+        /// floor: a 3.75x zoom, and since the screen-yaw gain of any lateral look-at offset is
+        /// 1/boom, a 3.7x larger rotation for the same offset. At this profile's boom the same worst
+        /// case is a fraction of a metre. The full arithmetic is in
+        /// <c>WorkOrders/WORK_ORDER_1765_bastion_camera_rotates_with_walls.md</c> §11.
+        /// </para>
+        /// <para>
+        /// Every number is ONE constant so the lead or the owner can move it without reading code,
+        /// and <c>CameraRaidFramingRegression</c> DRIVES these values through the real pull-in
+        /// statics rather than grepping for them.
+        /// </para>
+        /// </summary>
+        public static class RaidCam
+        {
+            // ⚠ THE SHARED VALUES ARE PROPERTIES, NOT `const`, ON PURPOSE. A cross-assembly `const`
+            // is INLINED at compile time into DeNelle.Village, so a later re-tune of
+            // DeNelle.Core's DungeonCameraProfile could leave a stale copy baked in here — a
+            // duplicated-state failure with no visible edit, which is the very thing referencing
+            // the dungeon profile was meant to avoid. A property reads the live value.
+
+            /// <summary>
+            /// Seat height above the hero's feet (m) — the dungeon seat, by reference. Town 2.6.
+            /// </summary>
+            public static float CameraHeight => DungeonCam.CameraHeight;
+            /// <summary>Seat distance BEHIND the hero (m) — the dungeon seat. Town 4.5.</summary>
+            public static float CameraDistance => DungeonCam.CameraDistance;
+            /// <summary>Look-at height above the hero's feet (m) — chest height. Town 2.5.</summary>
+            public static float LookAtHeight => DungeonCam.LookAtHeight;
+
+            /// <summary>
+            /// Lateral shoulder offset (m), +X = the hero's RIGHT in the yawed seat frame. THE ONE
+            /// RAID-ONLY VALUE.
+            /// <para>
+            /// ⚠ WHY IT IS INCLUDED RATHER THAN DEFERRED. The lead's condition was "a shoulder term
+            /// only if the dungeon profile's numbers leave the hero visibly CENTRED". They do, by
+            /// construction and not by opinion: <c>_followOffset.x</c> is the ONLY lateral term in
+            /// this file, the dungeon profile sets it to 0, and <c>AimAt</c> looks at the hero's own
+            /// chest — so the hero renders dead centre and her body occludes the aim line directly
+            /// ahead of her, which is the thing an over-the-shoulder seat exists to fix. 0.6 m is
+            /// the figure the sibling 1765 ticket proposed for exactly this (its R3). At a 3.2 m
+            /// back that is atan(0.6/3.2) ≈ 10.6 degrees off centre.
+            /// </para>
+            /// <para>
+            /// ⚠ It is a FELT number with no capture behind it. If the owner reads it as too far off
+            /// centre, this one constant is the whole knob.
+            /// </para>
+            /// </summary>
+            public static float ShoulderOffset => 0.6f;
+
+            /// <summary>Movement-lead distance (m) — ZERO, which deletes the look-at sway. Town 1.5.</summary>
+            public static float LeadDistance => 0f;
+            /// <summary>
+            /// Combat seat zoom-out (m) — ZERO. Town 2.5, which re-extends the boom the moment a
+            /// hostile enters the 12 m scan, i.e. constantly in a raid, re-arming the pull-in.
+            /// </summary>
+            public static float CombatZoomOut => 0f;
+            /// <summary>Combat FOV boost (deg) — ZERO, same reason as <see cref="CombatZoomOut"/>.</summary>
+            public static float CombatFovBoost => 0f;
+            /// <summary>
+            /// Auto-framing — OFF. Screen-yaw gain is 1/boom: a 0.2 bias toward a hostile 10 m away
+            /// is a 2.0 m lateral arm, which at this profile's boom is ~31 degrees of view yaw versus
+            /// ~24 at the 4.5 m town boom. Shortening the boom makes framing MORE violent, so the
+            /// two ship together.
+            /// ⚠ WITH THIS OFF, <see cref="IsFramingSubject"/> HAS NO VISIBLE EFFECT AT SHIP — AND IT
+            /// IS RAID-SCOPED, SO IT HAS NONE IN TOWN EITHER (lead ruling, see
+            /// <see cref="AppliesRaidScanNarrowing"/>). What it still does in a raid is keep
+            /// <c>_enemyInRange</c> honest and feed the <c>structsRejected</c> evidence, so the rule is
+            /// provably RUNNING in a capture and is correct the day framing is flipped back on. Making
+            /// it global is a follow-up, paired with fixing the baked <c>256</c> in the scenes.
+            /// </summary>
+            public static bool FramingEnabled => false;
+
+            /// <summary>
+            /// Occlusion — ON, and this is the ONE place the raid profile deliberately DIFFERS from
+            /// the dungeon's.
+            /// <para>
+            /// ⛔ THE DUNGEON SETS THIS FALSE, WHICH WOULD BE WRONG IN A RAID. One flag owns BOTH the
+            /// point-blank pull-in AND the WO-385 occluder FADE (the dungeon branch says so in its
+            /// own comment: "no wall pull-in AND no ceiling/wall fade"). A raid hero stands against
+            /// masonry constantly, so switching it off would leave her hidden BEHIND a wall with no
+            /// fade to reveal her — the WO-1751/WO-1734 defect, re-created deliberately.
+            /// </para>
+            /// <para>
+            /// ⚠ AND NO SPLIT SWITCH IS NEEDED TO GET "FADE, NEVER PULL IN EXCEPT POINT-BLANK".
+            /// Read <see cref="ApplyCollision"/>: <c>targetFrac</c> starts at 1 (hold the full
+            /// seat), and the ONLY path that lowers it is already gated by
+            /// <see cref="ShouldPullIn"/> against <c>_occluderPullInDistance</c> — i.e. since
+            /// WO-1734 the point-blank backstop is the only pull-in that exists. Splitting
+            /// <c>_collisionEnabled</c> into a fade flag plus a pull-in flag would add a second
+            /// piece of state whose only distinct setting (fade WITHOUT the backstop) lets the
+            /// camera body embed in a mesh. See the WO §12 for the refusal in full.
+            /// </para>
+            /// </summary>
+            public static bool CollisionEnabled => true;
+
+            /// <summary>Facing-recenter stays enabled — the seat must still trail through a turn.</summary>
+            public static bool FacingRecenterEnabled => DungeonCam.FacingRecenterEnabled;
+            /// <summary>
+            /// Post-drag grace (s) — the dungeon's lazy drift. The town whip is 0.4 s + 220 deg/s +
+            /// stiffness 4, which is a half-turn in 0.82 s starting 0.4 s after the player's thumb
+            /// leaves the screen. That is the shape of "spins about as if possessed", and
+            /// <c>_forceCameraFix</c> switches it ON in every raid.
+            /// </summary>
+            public static float FacingRecenterDelay => DungeonCam.FacingRecenterDelay;
+            /// <summary>Max recenter rate (deg/s) — the dungeon's 70. Town 220: the spin.</summary>
+            public static float FacingRecenterMaxSpeed => DungeonCam.FacingRecenterMaxSpeed;
+            /// <summary>Recenter stiffness (1/s) — the dungeon's. Town 4.</summary>
+            public static float FacingRecenterStiffness => DungeonCam.FacingRecenterStiffness;
+            /// <summary>Player pitch floor (deg) — the dungeon band. Town -10.</summary>
+            public static float PanPitchMin => DungeonCam.PanPitchMin;
+            /// <summary>
+            /// Player pitch ceiling (deg) — the dungeon band. Town 35: positive pitch RAISES the
+            /// seat, so at a short boom 35 degrees stares down at the hero's scalp.
+            /// </summary>
+            public static float PanPitchMax => DungeonCam.PanPitchMax;
+
+            /// <summary>Heartbeat cadence (s) for the raid yaw evidence.</summary>
+            public static float TraceEverySeconds => 1f;
+
+            /// <summary>
+            /// The resting boom: |(shoulder, height − lookAt, −back)|. DERIVED, never typed.
+            /// <para>
+            /// ⛔ IT IS MEASURED FROM THE PIVOT, NOT FROM THE HERO'S FEET, BECAUSE THAT IS WHAT THE
+            /// GATE COMPARES. <see cref="ApplyCollision"/> casts from
+            /// <c>pivot = position + up * _lookAtHeight</c> to the seat, so the town boom is
+            /// |(0, 2.6−2.5, −4.5)| = <b>4.501</b> m and the dungeon's is |(0, 1.9−1.5, −3.2)| =
+            /// <b>3.225</b> m. A feet-relative sqrt(2.6²+4.5²) = 5.199 is a different quantity and
+            /// the pull-in gate never sees it; both 1765 tickets quoted that form at first, and an
+            /// acceptance criterion written to it would fail on correct code.
+            /// </para>
+            /// </summary>
+            public static float Boom => Mathf.Sqrt(
+                ShoulderOffset * ShoulderOffset
+                + (CameraHeight - LookAtHeight) * (CameraHeight - LookAtHeight)
+                + CameraDistance * CameraDistance);
+        }
+
+        /// <summary>
+        /// WO-1765 — which camera profile a scene gets. ONE resolver, so the dungeon and raid
+        /// profiles can never both be live and can never fight over the single village snapshot.
+        /// </summary>
+        private enum CameraSceneProfile { Town, Dungeon, Raid }
+
+        private CameraSceneProfile _activeProfile = CameraSceneProfile.Town;
+
+        /// <summary>
+        /// WO-1765 — the profile a scene name resolves to. Pure and public so the regression drives
+        /// the routing instead of grepping for a gate: <c>IsRaid</c> is tested FIRST, mirroring
+        /// <c>HubScenes.Classify</c> (<c>HubScenes.cs:169-176</c>), so a name that somehow matched
+        /// both can never land on the dungeon seat in a raid.
+        /// </summary>
+        public static bool ResolvesToRaidCameraProfile(string sceneName)
+            => DeNelle.Core.HubScenes.IsRaid(sceneName);
+
+        /// <summary>
+        /// WO-1765 — does this scene emit the <c>[Flow:Camera]</c> yaw heartbeat + spike edge?
+        /// <para>
+        /// ⛔ THE ANSWER USED TO BE "DUNGEONS ONLY", AND THAT SILENCE IS WHY WO-1765 EXISTS. The only
+        /// trace that prints yaw was gated on <c>_dungeonProfileActive</c>, and <c>RaidBase*</c> is a
+        /// different scene kind — so a 32.8 MB device logcat of a raid session contained ZERO camera
+        /// yaw evidence while the owner was reporting that the camera rotates. Pinned by the
+        /// regression so it can never go silent in a raid again.
+        /// </para>
+        /// </summary>
+        public static bool ShouldEmitYawEvidence(string sceneName)
+            => DeNelle.Core.HubScenes.IsRaid(sceneName) || DeNelle.Core.HubScenes.IsDungeon(sceneName);
+
+        /// <summary>
+        /// WO-1765 — does this scene get the NARROWED enemy-scan mask and the structure filter?
+        /// <para>
+        /// ⛔ RAID ONLY, BY RULING (lead, 2026-09-16: <i>"the TOWN must not change felt behaviour in
+        /// this build"</i>). Both halves of the C1 correction are scoped by this one predicate so they
+        /// cannot drift apart: a baked town camera's <c>_enemyMask</c> is <c>m_Bits: 256</c> = layer 8
+        /// "Structure" ONLY, so structures are the only thing its scan can see — narrowing the mask
+        /// there would start firing the combat zoom on mobs for the first time, and filtering
+        /// structures out would retire the town's combat zoom altogether. Either edit changes what the
+        /// owner feels in the hub. The raid camera is runtime-attached and took <c>~0</c>, so it is
+        /// ours to fix, and it is where the defect is reported.
+        /// </para>
+        /// <para>
+        /// Pure and public so the regression drives the SCOPE, not just the rule — a suite that only
+        /// pinned <see cref="IsFramingSubject"/> would stay green if someone applied it globally and
+        /// moved the town.
+        /// </para>
+        /// </summary>
+        public static bool AppliesRaidScanNarrowing(string sceneName)
+            => DeNelle.Core.HubScenes.IsRaid(sceneName);
+
+        private void ApplyDungeonProfileIfNeeded(string why)
+        {
+            string sceneName = SceneManager.GetActiveScene().name;
+            _profileSceneName = sceneName;
+
+            CameraSceneProfile want =
+                ResolvesToRaidCameraProfile(sceneName) ? CameraSceneProfile.Raid
+                : DeNelle.Core.HubScenes.IsDungeon(sceneName) ? CameraSceneProfile.Dungeon
+                : CameraSceneProfile.Town;
+            if (want == _activeProfile) return;
+
+            // Leaving town => snapshot the village values ONCE. Leaving any other profile =>
+            // restore them first, so a Dungeon->Raid hop layers the new profile on the TOWN
+            // baseline rather than on the previous profile's overwritten values.
+            if (_activeProfile == CameraSceneProfile.Town) SnapshotVillageCameraValues();
+            else RestoreVillageCameraValues();
+
+            _activeProfile        = want;
+            _dungeonProfileActive = want == CameraSceneProfile.Dungeon;
+            _raidProfileActive    = want == CameraSceneProfile.Raid;
+
+            if (want == CameraSceneProfile.Dungeon) ApplyDungeonSeat();
+            else if (want == CameraSceneProfile.Raid) ApplyRaidSeat();
+
+            TraceCameraProfile(why, sceneName);
+        }
+
+        /// <summary>Capture the town values ONCE so every restore is exact, never re-typed.</summary>
+        private void SnapshotVillageCameraValues()
+        {
+            _villageFollowOffset     = _followOffset;
+            _villageLookAtHeight     = _lookAtHeight;
+            _villageLeadDistance     = _leadDistance;
+            _villageCombatZoomOut    = _combatZoomOut;
+            _villageCombatFovBoost   = _combatFovBoost;
+            _villageFramingEnabled   = _framingEnabled;
+            _villageCollisionEnabled = _collisionEnabled;
+            _villageFacingRecenterEnabled   = _facingRecenterEnabled;
+            _villageFacingRecenterDelay     = _facingRecenterDelay;
+            _villageFacingRecenterSpeed     = _facingRecenterSpeed;
+            _villageFacingRecenterStiffness = _facingRecenterStiffness;
+            _villagePanPitchMin             = _panPitchMin;
+            _villagePanPitchMax             = _panPitchMax;
+            // WO-1765: the SERIALIZED enemy-scan mask, so the raid narrowing is reversible and the
+            // town gets its baked value back byte-for-byte on the way out.
+            _villageEnemyMask               = _enemyMask;
+        }
+
+        /// <summary>Put the town values back exactly as they were snapshotted.</summary>
+        private void RestoreVillageCameraValues()
+        {
+            _followOffset     = _villageFollowOffset;
+            _lookAtHeight     = _villageLookAtHeight;
+            _leadDistance     = _villageLeadDistance;
+            _combatZoomOut    = _villageCombatZoomOut;
+            _combatFovBoost   = _villageCombatFovBoost;
+            _framingEnabled   = _villageFramingEnabled;
+            _collisionEnabled = _villageCollisionEnabled;
+            _facingRecenterEnabled   = _villageFacingRecenterEnabled;
+            _facingRecenterDelay     = _villageFacingRecenterDelay;
+            _facingRecenterSpeed     = _villageFacingRecenterSpeed;
+            _facingRecenterStiffness = _villageFacingRecenterStiffness;
+            _panPitchMin = _villagePanPitchMin;
+            _panPitchMax = _villagePanPitchMax;
+            // WO-1765: hand the town back its own baked scan mask. Without this, a camera that
+            // survives a raid->town transition would keep the narrowed mask and change town framing
+            // for the rest of the session — the exact felt change the ruling forbids.
+            _enemyMask   = _villageEnemyMask;
+            _dgRoomValid = false;
+            _dgRoomId    = null;
+            _dgRoomSmall = false;
+        }
+
+        /// <summary>
+        /// WO-1765 — the RAID over-the-shoulder seat. Every value comes from <see cref="RaidCam"/>;
+        /// none is typed here. Collision stays ON (occluders FADE, the seat holds — WO-385), and
+        /// NOTHING in this profile rotates the camera on wall proximity: there is no auto-yaw and no
+        /// orbit correction anywhere in the raid path, by ruling.
+        /// </summary>
+        private void ApplyRaidSeat()
+        {
+            _followOffset = new Vector3(RaidCam.ShoulderOffset, RaidCam.CameraHeight, -RaidCam.CameraDistance);
+            _lookAtHeight     = RaidCam.LookAtHeight;
+            _leadDistance     = RaidCam.LeadDistance;
+            _combatZoomOut    = RaidCam.CombatZoomOut;
+            _combatFovBoost   = RaidCam.CombatFovBoost;
+            _framingEnabled   = RaidCam.FramingEnabled;
+            _collisionEnabled = RaidCam.CollisionEnabled;
+            _facingRecenterEnabled   = RaidCam.FacingRecenterEnabled;
+            _facingRecenterDelay     = RaidCam.FacingRecenterDelay;
+            _facingRecenterSpeed     = RaidCam.FacingRecenterMaxSpeed;
+            _facingRecenterStiffness = RaidCam.FacingRecenterStiffness;
+            _panPitchMin = RaidCam.PanPitchMin;
+            _panPitchMax = RaidCam.PanPitchMax;
+            _panPitch    = Mathf.Clamp(_panPitch, _panPitchMin, _panPitchMax);
+            // ⛔ THE SCAN-MASK NARROWING LIVES HERE, IN THE RAID BRANCH, AND NOWHERE ELSE.
+            // Lead ruling 2026-09-16 (owner protection): the town keeps its baked mask and its
+            // present felt behaviour in this build. The raid camera is runtime-attached, so it took
+            // the `~0` field initialiser — every one of the 32 layers — which is what let a raid
+            // base's 158 Structure-layer wall colliders fill a 32-slot non-alloc buffer.
+            ResolveEnemyScanMask();
+            _dgTraceTimer = 0f;
+        }
 
         /// <summary>
         /// WO-920 — applies (or lifts) the LOCKED DUNGEON CAMERA profile based on the active scene.
@@ -516,101 +936,69 @@ namespace DeNelle.Village
         /// needs a new switch in ApplyCollision.
         /// </para>
         /// </summary>
-        private void ApplyDungeonProfileIfNeeded(string why)
+        private void ApplyDungeonSeat()
         {
-            bool wantDungeon = DeNelle.Core.HubScenes.IsDungeon(SceneManager.GetActiveScene().name);
-            if (wantDungeon == _dungeonProfileActive) return;
+            _followOffset = new Vector3(
+                0f,
+                DeNelle.Core.World.DungeonCameraProfile.CameraHeight,
+                -DeNelle.Core.World.DungeonCameraProfile.CameraDistance);
+            _lookAtHeight     = DeNelle.Core.World.DungeonCameraProfile.LookAtHeight;
+            _leadDistance     = 0f;      // (4) no look-at sway
+            _combatZoomOut    = 0f;      // (2) no seat pump
+            _combatFovBoost   = 0f;      // (2) no FOV pump
+            _framingEnabled   = false;   // (3) no look-at yank toward mobs
+            _collisionEnabled = false;   // (1) no wall pull-in AND no ceiling/wall fade
 
-            if (wantDungeon)
-            {
-                // Snapshot the village values ONCE so the restore below is exact.
-                _villageFollowOffset     = _followOffset;
-                _villageLookAtHeight     = _lookAtHeight;
-                _villageLeadDistance     = _leadDistance;
-                _villageCombatZoomOut    = _combatZoomOut;
-                _villageCombatFovBoost   = _combatFovBoost;
-                _villageFramingEnabled   = _framingEnabled;
-                _villageCollisionEnabled = _collisionEnabled;
-                _villageFacingRecenterEnabled   = _facingRecenterEnabled;
-                _villageFacingRecenterDelay     = _facingRecenterDelay;
-                _villageFacingRecenterSpeed     = _facingRecenterSpeed;
-                _villageFacingRecenterStiffness = _facingRecenterStiffness;
-                _villagePanPitchMin             = _panPitchMin;
-                _villagePanPitchMax             = _panPitchMax;
+            // WO-958 (owner F8 seq 2289, "its auto rotating"): her input owns yaw in a
+            // dungeon. The yaw MODEL stays (player pan + damped facing-recenter — see the
+            // WO-920 note above), but the recenter is re-tuned from the village whip
+            // (0.4 s / 220 deg/s / stiffness 4 — a swing at every pause in a small room)
+            // to a lazy idle drift, and the pitch band is narrowed so the rotated seat
+            // can never bed into the WO-919 ceiling slab. All numbers from the one
+            // profile authority; village values restored exactly on exit.
+            _facingRecenterEnabled   = DungeonCam.FacingRecenterEnabled;
+            _facingRecenterDelay     = DungeonCam.FacingRecenterDelay;
+            _facingRecenterSpeed     = DungeonCam.FacingRecenterMaxSpeed;
+            _facingRecenterStiffness = DungeonCam.FacingRecenterStiffness;
+            _panPitchMin = DungeonCam.PanPitchMin;
+            _panPitchMax = DungeonCam.PanPitchMax;
+            _panPitch    = Mathf.Clamp(_panPitch, _panPitchMin, _panPitchMax);
 
-                _followOffset = new Vector3(
-                    0f,
-                    DeNelle.Core.World.DungeonCameraProfile.CameraHeight,
-                    -DeNelle.Core.World.DungeonCameraProfile.CameraDistance);
-                _lookAtHeight     = DeNelle.Core.World.DungeonCameraProfile.LookAtHeight;
-                _leadDistance     = 0f;      // (4) no look-at sway
-                _combatZoomOut    = 0f;      // (2) no seat pump
-                _combatFovBoost   = 0f;      // (2) no FOV pump
-                _framingEnabled   = false;   // (3) no look-at yank toward mobs
-                _collisionEnabled = false;   // (1) no wall pull-in AND no ceiling/wall fade
+            // WO-958: seed the room-aware seat at the standard dungeon framing; the
+            // per-frame damp in DungeonRoomSeat walks it tighter when the room is small.
+            _dgSeatHeight    = DungeonCam.CameraHeight;
+            _dgSeatDist      = DungeonCam.CameraDistance;
+            _dgSeatHeightVel = 0f;
+            _dgSeatDistVel   = 0f;
+            _dgRoomValid     = false;
+            _dgRoomId        = null;
+            _dgRoomSmall     = false;
+            _dgCeilingClamps = 0;
+            _dgTraceTimer    = 0f;
 
-                // WO-958 (owner F8 seq 2289, "its auto rotating"): her input owns yaw in a
-                // dungeon. The yaw MODEL stays (player pan + damped facing-recenter — see the
-                // WO-920 note above), but the recenter is re-tuned from the village whip
-                // (0.4 s / 220 deg/s / stiffness 4 — a swing at every pause in a small room)
-                // to a lazy idle drift, and the pitch band is narrowed so the rotated seat
-                // can never bed into the WO-919 ceiling slab. All numbers from the one
-                // profile authority; village values restored exactly on exit.
-                _facingRecenterEnabled   = DungeonCam.FacingRecenterEnabled;
-                _facingRecenterDelay     = DungeonCam.FacingRecenterDelay;
-                _facingRecenterSpeed     = DungeonCam.FacingRecenterMaxSpeed;
-                _facingRecenterStiffness = DungeonCam.FacingRecenterStiffness;
-                _panPitchMin = DungeonCam.PanPitchMin;
-                _panPitchMax = DungeonCam.PanPitchMax;
-                _panPitch    = Mathf.Clamp(_panPitch, _panPitchMin, _panPitchMax);
+            RestoreAllFaded();   // drop anything the village profile had left hidden
+        }
 
-                // WO-958: seed the room-aware seat at the standard dungeon framing; the
-                // per-frame damp in DungeonRoomSeat walks it tighter when the room is small.
-                _dgSeatHeight    = DungeonCam.CameraHeight;
-                _dgSeatDist      = DungeonCam.CameraDistance;
-                _dgSeatHeightVel = 0f;
-                _dgSeatDistVel   = 0f;
-                _dgRoomValid     = false;
-                _dgRoomId        = null;
-                _dgRoomSmall     = false;
-                _dgCeilingClamps = 0;
-                _dgTraceTimer    = 0f;
-
-                _dungeonProfileActive = true;
-                RestoreAllFaded();   // drop anything the village profile had left hidden
-            }
-            else
-            {
-                _followOffset     = _villageFollowOffset;
-                _lookAtHeight     = _villageLookAtHeight;
-                _leadDistance     = _villageLeadDistance;
-                _combatZoomOut    = _villageCombatZoomOut;
-                _combatFovBoost   = _villageCombatFovBoost;
-                _framingEnabled   = _villageFramingEnabled;
-                _collisionEnabled = _villageCollisionEnabled;
-                // WO-958: exact-restore the yaw/pitch tuning the dungeon overrode.
-                _facingRecenterEnabled   = _villageFacingRecenterEnabled;
-                _facingRecenterDelay     = _villageFacingRecenterDelay;
-                _facingRecenterSpeed     = _villageFacingRecenterSpeed;
-                _facingRecenterStiffness = _villageFacingRecenterStiffness;
-                _panPitchMin = _villagePanPitchMin;
-                _panPitchMax = _villagePanPitchMax;
-                _dgRoomValid = false;
-                _dgRoomId    = null;
-                _dgRoomSmall = false;
-
-                _dungeonProfileActive = false;
-            }
-
+        private void TraceCameraProfile(string why, string sceneName)
+        {
             // §12 instrumentation: one line answers "which camera am I in, and why" from a log
             // or a headless capture, with no playtest. Pairs with DungeonCameraRig's "mode="
             // line — between them, exactly one fires per dungeon, naming which pipeline owns
             // the view. Camera height vs ceiling is printed because that is the WO's acceptance
             // criterion and the thing a future seat change would silently break.
+            // WO-1765: the mode now names three profiles, not two, and prints the SHOULDER arm +
+            // the resting boom — the two numbers the raid ruling turns on.
+            string mode = _dungeonProfileActive ? "LockedOTS(SmartMobileCamera)"
+                        : _raidProfileActive ? "RaidOverShoulder(SmartMobileCamera)"
+                        : "Village(SmartMobileCamera)";
+            float pivotArmY = _followOffset.y - _lookAtHeight;
+            float restingBoom = Mathf.Sqrt(_followOffset.x * _followOffset.x
+                + pivotArmY * pivotArmY + _followOffset.z * _followOffset.z);
             DeNelle.Core.Diagnostics.FlowTrace.Step("DungeonCam",
-                $"mode={(_dungeonProfileActive ? "LockedOTS(SmartMobileCamera)" : "Village(SmartMobileCamera)")} " +
-                $"why={why} scene='{SceneManager.GetActiveScene().name}' " +
-                $"seat=(h {_followOffset.y:F2}, back {-_followOffset.z:F2}) lookAtY={_lookAtHeight:F2} " +
+                $"mode={mode} " +
+                $"why={why} scene='{sceneName}' " +
+                $"seat=(h {_followOffset.y:F2}, back {-_followOffset.z:F2}, shoulder {_followOffset.x:F2}) " +
+                $"boom={restingBoom:F2} lookAtY={_lookAtHeight:F2} " +
                 $"ceilingRef={DeNelle.Core.World.DungeonCameraProfile.CeilingHeightRef:F1} " +
                 $"headroom={DeNelle.Core.World.DungeonCameraProfile.CeilingHeightRef - _followOffset.y:F2} " +
                 $"lead={_leadDistance:F2} zoomOut={_combatZoomOut:F2} fovBoost={_combatFovBoost:F1} " +
@@ -681,22 +1069,139 @@ namespace DeNelle.Village
         // Own timer gates the STRING BUILD (interpolating every frame just to have
         // FlowTrace.Throttle drop it would allocate per frame); the Throttle wrapper's
         // shorter window then never suppresses a line the timer let through.
+        /// <summary>
+        /// WO-1765 §5b/§5d — measure the SCREEN yaw rate and fire the spike edge.
+        /// <para>
+        /// ⛔ WHY THE RATE IS TAKEN FROM <c>transform.eulerAngles.y</c> AND NOT FROM
+        /// <c>_panYaw</c>. <c>_panYaw</c> rotates the SEAT; the view rotation is written only by
+        /// <c>AimAt</c>, as the bearing from the seat to the look-at. So a look-at that slides
+        /// sideways — the framing scan, the movement lead, a pull-in shortening the boom — rotates
+        /// the screen with <c>_panYaw</c> held perfectly still, at a gain of 1/boom. A
+        /// <c>panYaw</c>-only trace is blind to three of the five WO-1765 candidates, and the
+        /// strongest of them is in that blind spot.
+        /// </para>
+        /// <para>
+        /// The spike is an EDGE with a cooldown, never a per-frame log: a per-frame line on a frame
+        /// path evicts the boot window out of the device logcat ring (<c>FlowTrace.cs:293-300</c>;
+        /// memory <c>logcat-ring-buffer-destroys-evidence</c>), destroying the evidence it was added
+        /// to collect. <c>Warn</c> rather than <c>Step</c> so it also has a chance of landing in
+        /// <c>break-log.jsonl</c> beside the owner's F8 screenshot.
+        /// </para>
+        /// </summary>
+        private void MeasureViewYaw(float dt, Vector3 heroVelFlat, Vector3 heroBase)
+        {
+            float yawNow = transform.eulerAngles.y;
+            if (!_prevViewYawInit)
+            {
+                _prevViewYaw = yawNow;
+                _prevViewYawInit = true;
+            }
+            // dt is unscaledDeltaTime and can be 0 on the first frame after a load / a pause —
+            // dividing by it would publish an Infinity as the headline measurement.
+            _viewYawRate = dt > 0.0001f ? Mathf.DeltaAngle(_prevViewYaw, yawNow) / dt : 0f;
+            _prevViewYaw = yawNow;
+            if (Mathf.Abs(_viewYawRate) > Mathf.Abs(_viewYawRateMax)) _viewYawRateMax = _viewYawRate;
+
+            // The lever arm that AimAt converts into view yaw: the look-at's LATERAL offset from
+            // the pivot, measured in the camera's own frame and signed (left/right), in metres.
+            _leadLateral = Vector3.Dot(_leadPoint - heroBase, transform.right);
+
+            if (_yawSpikeCooldown > 0f) _yawSpikeCooldown -= dt;
+
+            if (Mathf.Abs(_viewYawRate) >= YawSpikeDegPerSec) _yawSpikeFrames++;
+            else _yawSpikeFrames = 0;
+
+            if (_yawSpikeFrames < YawSpikeFrames || _yawSpikeCooldown > 0f) return;
+            if (!ShouldEmitYawEvidence(_profileSceneName)) return;
+
+            _yawSpikeFrames  = 0;
+            _yawSpikeCooldown = YawSpikeCooldownSeconds;
+
+            float boom = Vector3.Distance(transform.position, heroBase);
+            float velMag = heroVelFlat.magnitude;
+            // Name the dominant cause from the SAME fields, so the line is a verdict and not a
+            // prompt to go and theorise: a framing subject that is a structure is C1; a large
+            // lateral arm with a small velocity is C2; a live pull-in is C4; a recenter step is C3.
+            string suspect =
+                _framingTargetType != "none" && _framingEnabled && _enemyInRange ? "C1 framing-subject"
+                : _pullingInNow ? "C4 pull-in lever arm"
+                : _dgYawSource == "recenter" ? "C3 facing-recenter"
+                : Mathf.Abs(_leadLateral) > 0.35f && velMag < 1f ? "C2 movement-lead (slow, off-axis)"
+                : _dgYawSource == "input" ? "player input"
+                : "unattributed";
+            DeNelle.Core.Diagnostics.FlowTrace.Warn("Camera",
+                $"YAW SPIKE viewYawRate={_viewYawRate:F0}deg/s over {YawSpikeFrames} frames " +
+                $"(threshold {YawSpikeDegPerSec:F0}) suspect={suspect} " +
+                $"yawSrc={_dgYawSource} panYaw={_panYaw:F0} step={_lastRecenterStep:F2} " +
+                $"recenterSpeed={_facingRecenterSpeed:F0} boom={boom:F2} " +
+                $"leadLateral={_leadLateral:F2}m distanceFrac={_distanceFrac:F2} pullingIn={_pullingInNow} " +
+                $"framingTarget='{_framingTargetName}' type={_framingTargetType} " +
+                $"dist={_framingTargetDist:F1} structsRejected={_framingStructsRejected} " +
+                $"velMag={velMag:F2} snaps={_snapCount} scene='{_profileSceneName}'");
+        }
+
         private void EmitDungeonHeartbeat(float dt)
         {
             _dgTraceTimer -= dt;
             if (_dgTraceTimer > 0f) return;
-            _dgTraceTimer = DungeonCam.TraceEverySeconds;
+            float interval = _dungeonProfileActive ? DungeonCam.TraceEverySeconds : RaidCam.TraceEverySeconds;
+            _dgTraceTimer = interval;
 
             float boom = Vector3.Distance(transform.position,
                 _target.position + Vector3.up * _lookAtHeight);
+            Vector3 vel = GetHeroVelocity();
+            vel.y = 0f;
+            float heroFacingY = _target != null ? _target.eulerAngles.y : 0f;
+            float velDirY = vel.sqrMagnitude > 0.0001f
+                ? Quaternion.LookRotation(vel.normalized).eulerAngles.y : -1f;
+            // WO-1765: the yaw block. viewYawRate is the OWNER'S WORD measured; the rest are the
+            // candidate discriminators on the same line, so one read settles which is moving it.
+            string yawBlock =
+                $"viewYawRate={_viewYawRate:F0}deg/s maxSince={_viewYawRateMax:F0} " +
+                $"dPanYaw={Mathf.DeltaAngle(_panYawAtLastTrace, _panYaw):F0} " +
+                $"heroYaw={heroFacingY:F0} step={_lastRecenterStep:F2} " +
+                $"recenterSpeed={_facingRecenterSpeed:F0} recenterDelay={_facingRecenterDelay:F2} " +
+                $"velMag={vel.magnitude:F2} velDirY={velDirY:F0} " +
+                $"leadLateral={_leadLateral:F2}m " +
+                $"framingTarget='{_framingTargetName}' type={_framingTargetType} " +
+                $"dist={_framingTargetDist:F1} switches={_framingTargetSwitches} " +
+                $"structsRejected={_framingStructsRejected} framing={_framingEnabled} " +
+                $"enemyInRange={_enemyInRange} combatBlend={_combatBlend:F2} " +
+                $"distanceFrac={_distanceFrac:F2} pullingIn={_pullingInNow} snaps={_snapCount}";
+
+            // ⛔ THE PARTS WITH NESTED QUOTES ARE COMPUTED INTO LOCALS FIRST, ON PURPOSE. CLAUDE.md
+            // §1: CompileGate.BraceBalanced has NO interpolated-string model, so a `"` inside a
+            // `$"...{ c ? "a" : "b" }..."` hole ends the string for its scanner and the rest of the
+            // file is read as code — a correct file then reads unbalanced AT THE GATE and the
+            // COMPILE_GATE_OK marker is withheld.
+            string profileName = _dungeonProfileActive ? "dungeon" : "raid";
+            // WO-1765: a raid has no room data and must SAY so rather than invent any.
+            string roomField = "n/a";
+            if (_dungeonProfileActive) roomField = _dgRoomValid ? "'" + _dgRoomId + "'" : "none";
+            // Same reason: the room-aware seat damp is dungeon-only, so printing its zeroed fields in
+            // a raid would read as "the damp is live and has collapsed the seat to 0".
+            string dgSeatField = _dungeonProfileActive
+                ? $"(h {_dgSeatHeight:F2}, d {_dgSeatDist:F2})"
+                : "n/a";
+            string avoidance = _collisionEnabled
+                ? "collision-on"
+                : "collision-off (WO-920: no wall hits by design)";
+
             DeNelle.Core.Diagnostics.FlowTrace.Throttle("Camera", "wo958-heartbeat",
-                DungeonCam.TraceEverySeconds * 0.5f,
-                $"boom={boom:F2} seat=(h {_dgSeatHeight:F2}, d {_dgSeatDist:F2}) " +
+                interval * 0.5f,
+                $"profile={profileName} scene='{_profileSceneName}' " +
+                $"boom={boom:F2} seat=(h {_followOffset.y:F2}, back {-_followOffset.z:F2}, " +
+                $"shoulder {_followOffset.x:F2}) dgSeat={dgSeatField} " +
                 $"yawSrc={_dgYawSource} panYaw={_panYaw:F0} pitch={_panPitch:F1} " +
-                $"room={(_dgRoomValid ? "'" + _dgRoomId + "'" : "none")} " +
+                $"{yawBlock} " +
+                $"room={roomField} " +
                 $"size=({_dgRoomSize.x:F0}x{_dgRoomSize.z:F0}) small={_dgRoomSmall} " +
                 $"ceilClampsTotal={_dgCeilingClamps} " +
-                $"avoidance={(_collisionEnabled ? "collision-on" : "collision-off (WO-920: no wall hits by design)")}");
+                $"avoidance={avoidance}");
+
+            _viewYawRateMax     = 0f;
+            _panYawAtLastTrace  = _panYaw;
+            _framingTargetSwitches = 0;
         }
 
         // DEF-151: build the camera-occlusion mask from the project's NAMED layers so it
@@ -760,6 +1265,126 @@ namespace DeNelle.Village
             AddNamedLayer(ref mask, "Tower");
             AddNamedLayer(ref mask, "Structure");    // WO-1751: raid + town wall panels live here
             return mask;
+        }
+
+        /// <summary>
+        /// WO-1765 — THE ONE PLACE the combat/framing SCAN mask is computed. Enemy + Default, by
+        /// NAME.
+        /// <para>
+        /// <b>Why Enemy:</b> <c>EnemyFactory.cs:51-52</c> sets <c>go.layer =
+        /// LayerMask.NameToLayer("Enemy")</c> on every spawned body, with a TRIGGER capsule (which
+        /// is why the sweep passes <c>QueryTriggerInteraction.Collide</c>).
+        /// </para>
+        /// <para>
+        /// <b>Why Default is kept:</b> not every hostile body is provably relayered —
+        /// <c>DragonBoss.cs</c> contains no <c>gameObject.layer</c> assignment at all (grepped
+        /// 2026-09-16), so a boss may well sit on Default. Excluding Default to be tidy would
+        /// silently blind the framing to exactly the fight that needs it. Ground colliders on
+        /// Default carry no <c>IDamageable</c>, so they cost one null check each.
+        /// </para>
+        /// <para>
+        /// <b>What is excluded, and why it is the fix:</b> Structure, Building and Tower. A raid base
+        /// baked 158 <c>Wall_*</c> colliders on layer 8 "Structure"; with <c>~0</c> those 158 and the
+        /// watchtower capsules all entered a THIRTY-TWO slot non-alloc buffer in arbitrary order, so
+        /// the sweep could be full of masonry before it ever saw a mob. UI / Water /
+        /// Ignore Raycast / TransparentFX are excluded for the same reason they are excluded from the
+        /// occlusion mask.
+        /// </para>
+        /// <para>
+        /// <c>public static</c> so <c>CameraRaidFramingRegression</c> CALLS it and resolves each layer
+        /// through <c>LayerMask.NameToLayer</c> — never a source-text lint on a layer list, which
+        /// would be the second hand-maintained copy CLAUDE.md §5 forbids.
+        /// </para>
+        /// </summary>
+        public static int ComputeDefaultEnemyScanMask()
+        {
+            int mask = 1 << 0;                    // Default — bodies that were never relayered
+            AddNamedLayer(ref mask, "Enemy");     // EnemyFactory puts every spawned body here
+            return mask;
+        }
+
+        /// <summary>
+        /// WO-1765 — resolve <c>_enemyMask</c> at runtime. Replaces the serialized value when it is
+        /// the <c>~0</c> "unset" sentinel OR when it does not contain the Enemy layer at all.
+        /// <para>
+        /// ⛔ THE SECOND CLAUSE IS NOT BELT-AND-BRACES — IT IS A BAKED-SCENE BUG FIX WITH NO REBAKE.
+        /// The baked town cameras serialize <c>_enemyMask m_Bits: 256</c>
+        /// (<c>Main_Castle_Overworld.unity:3034-3036</c>, <c>Village2.unity:3387-3389</c>). 256 is
+        /// <c>1 &lt;&lt; 8</c>, and layer 8 is <b>Structure</b>, not Enemy — Enemy is layer 7
+        /// (<c>ProjectSettings/TagManager.asset</c>, read 2026-09-16). So those cameras have been
+        /// sweeping WALLS and nothing else: the combat zoom and the auto-framing in town were driven
+        /// entirely by masonry, and no mob could ever enter the scan. Honouring a "narrowed mask the
+        /// owner set" (the rule <see cref="ResolveCollisionMask"/> follows) would preserve that, which
+        /// is why the Enemy-layer test is the condition rather than the bare <c>~0</c> sentinel.
+        /// This is the same no-rebake migration pattern Awake already uses for <c>_followOffset</c>
+        /// and <c>_orbitBehind</c>.
+        /// </para>
+        /// <para>
+        /// ⛔ AND THIS IS CALLED FROM THE RAID BRANCH ONLY (<see cref="ApplyRaidSeat"/>), NOT FROM
+        /// Awake. It ran for every scene until the lead's 2026-09-16 ruling: <i>"the TOWN must not
+        /// change felt behaviour in this build."</i> Applying it in town would take the combat zoom and
+        /// the auto-framing from never-firing-on-a-mob to firing on a mob — a 2.5 m zoom-out and +4 FOV
+        /// appearing mid-wave. That is the feature's documented intent ("hero + nearest enemy") and it
+        /// is still the right end state, but it is a felt change the owner did not ask for here, and it
+        /// belongs with the scene-side correction of the baked <c>256</c>. The guard below therefore
+        /// still tests for the missing Enemy layer — but only ever sees a raid camera's mask.
+        /// <see cref="RestoreVillageCameraValues"/> hands the town its baked value back on exit, so a
+        /// camera surviving a raid-&gt;town transition cannot carry the narrowing with it.
+        /// </para>
+        /// </summary>
+        private void ResolveEnemyScanMask()
+        {
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            bool hasEnemyLayer = enemyLayer >= 0 && (_enemyMask.value & (1 << enemyLayer)) != 0;
+            if (_enemyMask.value != ~0 && hasEnemyLayer) return;
+
+            int before = _enemyMask.value;
+            _enemyMask = ComputeDefaultEnemyScanMask();
+            DeNelle.Core.Diagnostics.FlowTrace.Once("Camera", "enemy-scan-mask",
+                "ENEMY SCAN MASK RESOLVED = " + DescribeMask(_enemyMask.value)
+                + " (raw 0x" + _enemyMask.value.ToString("X8") + "), replacing 0x"
+                + before.ToString("X8") + " = " + DescribeMask(before)
+                + ". A mask without the Enemy layer can only ever frame structures; the 32-slot "
+                + "scan buffer is why a raid base's 158 wall colliders had to leave the sweep.");
+        }
+
+        /// <summary>
+        /// WO-1765 — is this damageable a legitimate AUTO-FRAMING subject for the camera?
+        /// <para>
+        /// ⛔ <b>A WALL IS NOT.</b> The method's own documented intent is "hero + nearest enemy"
+        /// (see the <c>_framingEnabled</c> tooltip), and <c>WallSegment.Faction</c> returns
+        /// <c>Hostile</c> in an enemy-owned scene by design (<c>WallSegment.cs:288-289</c> — without
+        /// it a raid wall is indestructible), so a raid base's every standing panel satisfied the old
+        /// admission test. The look-at was then dragged toward the nearest one; with 115+ candidates
+        /// the nearest SWITCHES constantly as the hero walks a wall line, and each switch flips a
+        /// lateral look-at arm whose screen-yaw gain is 1/boom. That is the owner's "rotating".
+        /// </para>
+        /// <para>
+        /// THE TEST IS A SECOND INTERFACE, NOT A CAST UP A HIERARCHY.
+        /// <c>IDamageableStructure</c> does NOT extend <c>IDamageable</c> — it declares its own
+        /// <c>IsAlive</c> and <c>Faction</c> (<c>IDamageableStructure.cs</c>) — and the four dual
+        /// implementers are exactly the scenery the camera must ignore: <c>WallSegment</c>,
+        /// <c>Gate</c>, <c>DefenseTower</c>, <c>RaidSpire</c>. The mobile hostiles are NOT dual:
+        /// <c>EnemyDamageable</c> is <c>IDamageable, IDamageTintable, IHeroDamageMarkable,
+        /// ICombatLayered</c> and <c>DragonBoss</c> is <c>IDamageable, ICombatLayered</c> (both read
+        /// at source 2026-09-16), so neither is rejected here. <c>TroopController</c> IS an
+        /// <c>IDamageableStructure</c> but is Friendly, so it never reached this predicate anyway.
+        /// </para>
+        /// <para>
+        /// ⚠ THIS IS A LAYER-INDEPENDENT TEST ON PURPOSE. The raid camera is attached at runtime and
+        /// took <c>_enemyMask = ~0</c>; a mask-only fix would leave the defect one baked scene or one
+        /// mis-set inspector field away from returning. The mask narrowing above is the second line
+        /// of defence, not the first.
+        /// </para>
+        /// <para>Pure and public so the regression drives the rule instead of grepping for it.</para>
+        /// </summary>
+        public static bool IsFramingSubject(DeNelle.Core.Combat.IDamageable dmg)
+        {
+            if (dmg == null) return false;
+            if (!dmg.IsAlive) return false;
+            if (dmg.Faction != DeNelle.Core.Combat.CombatFaction.Hostile) return false;
+            if (dmg is DeNelle.Core.Combat.IDamageableStructure) return false;
+            return true;
         }
 
         private static void AddNamedLayer(ref int mask, string layerName)
@@ -1021,12 +1646,20 @@ namespace DeNelle.Village
                     if (Mathf.Abs(step) > Mathf.Abs(angleErr)) step = angleErr;
                     _panYaw += step;
                     recenterStepped = Mathf.Abs(step) > 0.001f;
+                    // WO-1765: record the degrees ACTUALLY APPLIED, so a capture can sum them and
+                    // answer "did the camera rotate itself, and by how much" without a theory.
+                    _lastRecenterStep = step;
                 }
+                else _lastRecenterStep = 0f;
 
-                // WO-958 trace: name this frame's yaw authority for the dungeon heartbeat —
+                // WO-958 trace: name this frame's yaw authority for the heartbeat —
                 // "input" (her drag is recent), "recenter" (the idle drift moved the seat),
-                // or "hold" (nothing rotated). Dungeon-gated; town behavior unchanged.
-                if (_dungeonProfileActive)
+                // or "hold" (nothing rotated).
+                // ⛔ WO-1765 §5a: UN-GATED FROM THE DUNGEON. This assignment was
+                // `if (_dungeonProfileActive)`, so in a RAID the one field that names the yaw
+                // authority was never written and the heartbeat could not have reported it even if
+                // it had fired. Town stays silent (no heartbeat consumes it there).
+                if (_dungeonProfileActive || _raidProfileActive)
                     _dgYawSource = _timeSinceLastDrag <= _facingRecenterDelay ? "input"
                                  : recenterStepped ? "recenter" : "hold";
 
@@ -1124,8 +1757,25 @@ namespace DeNelle.Village
 
             AimAt(_leadPoint);
 
-            // WO-958 sec.3: the throttled [Flow:Camera] evidence heartbeat (dungeon only).
+            // ── WO-1765: the yaw instrument. AFTER AimAt, because it measures the rotation AimAt
+            // just wrote — that is the owner's word ("rotating"), and no other quantity in this
+            // file is it. Cheap: two float ops plus a Dot; the string build is timer-gated below.
+            MeasureViewYaw(dt, heroVelFlat, heroBase);
+
+            // WO-958 sec.3 / WO-1765 §5a: the throttled [Flow:Camera] evidence heartbeat. It used
+            // to be dungeon-only, which is why a 32.8 MB raid logcat carried no camera yaw evidence
+            // at all while the owner was reporting that the camera rotates.
+            //
+            // ⚠ THE TWO-BRANCH SHAPE IS DELIBERATE AND IT IS NOT STYLE. `_dungeonProfileActive ||
+            // _raidProfileActive` in one condition is the natural way to write this, and it breaks
+            // an OUT-OF-SCOPE source-text lint: DungeonCameraTightRoomRegression.cs:100 pins the
+            // regex `if\s*\(_dungeonProfileActive\)\s*\n\s*EmitDungeonHeartbeat\(dt\)`. That lint
+            // pins the very dungeon-only gate WO-1765's ruling widens, so the correct fix is to
+            // re-shape the lint — which is another lane's file. Flagged for the lead in the WO;
+            // until then this shape keeps that suite green with identical behaviour.
             if (_dungeonProfileActive)
+                EmitDungeonHeartbeat(dt);
+            else if (_raidProfileActive)
                 EmitDungeonHeartbeat(dt);
 
             // ── Sole-camera check ─────────────────────────────────────────────
@@ -1162,6 +1812,14 @@ namespace DeNelle.Village
                 AimAt(_leadPoint);
                 _posVelocity = Vector3.zero;
                 EnforceSoleCamera();
+                // WO-1765 candidate C5: this snap uses the UNROTATED _followOffset (unlike
+                // SnapBehindTarget, which applies Euler(_panPitch, _panYaw, 0)), so with a
+                // non-zero _panYaw it teleports the seat to the wrong side of the hero and the
+                // SmoothDamp swings it back — a fast rotation with no wall involved. COUNTED here
+                // so the heartbeat can correlate a spike against it. NOT fixed in this lane: the
+                // lead's rulings scope the fix to C1 + the raid profile, and changing this snap's
+                // geometry moves every scene-seam and teleport landing.
+                _snapCount++;
                 Debug.Log("[SmartMobileCamera] ForceFollowImmediate snap executed");
                 // F8-15 death forensic window: an instant camera SNAP during the death window is a
                 // felt "camera jumped" — name who asked for it. Window-gated.
@@ -1288,6 +1946,26 @@ namespace DeNelle.Village
             float closestSqr = float.MaxValue;
             Vector3 closestPos = Vector3.zero;
             bool found = false;
+            // WO-1765 evidence: the winner's identity and how many structures were turned away.
+            // The reject COUNT matters even when a profile has framing switched off, because the
+            // scan still runs — it is what makes a C1 regression visible in a capture.
+            string bestName = "none";
+            string bestType = "none";
+            int structsRejected = 0;
+
+            // ⛔ THE STRUCTURE FILTER IS RAID-ONLY, AND THAT IS A DELIBERATE OWNER-PROTECTION RULING
+            // (lead, 2026-09-16), NOT AN OVERSIGHT.
+            // Rejecting walls globally reads as obviously right — a camera should frame a fight, not
+            // masonry — and it WOULD change the town today. The baked town cameras carry
+            // `_enemyMask m_Bits: 256`, i.e. layer 8 "Structure" ONLY, so the *only* thing their scan
+            // can currently see IS structures. Filter those out and `_enemyInRange` in town goes from
+            // "true near a wall" to "never true", which silently retires the town's combat zoom and
+            // auto-framing — a felt change this build is not taking. So the rule applies where the
+            // defect is reported and where the mask is ours (the runtime-attached raid camera), and
+            // the town keeps its present behaviour byte-for-byte.
+            // ⚠ The GLOBAL correction is still the right end state; it is a follow-up, paired with
+            // fixing the baked 256 in the scenes (WO §13), because the two only make sense together.
+            bool filterStructures = _raidProfileActive;
 
             for (int i = 0; i < count; i++)
             {
@@ -1295,7 +1973,39 @@ namespace DeNelle.Village
                 if (col == null) continue;
                 // Only count live hostile IDamageable targets (avoids counting the hero).
                 var dmg = col.GetComponentInParent<DeNelle.Core.Combat.IDamageable>();
-                if (dmg == null || !dmg.IsAlive || dmg.Faction != DeNelle.Core.Combat.CombatFaction.Hostile) continue;
+                if (dmg == null) continue;
+
+                if (filterStructures)
+                {
+                    // ⛔ WO-1765: A WALL IS NOT A FRAMING SUBJECT. See IsFramingSubject for the whole
+                    // reasoning; the count below is the instrument that proves this clause ran.
+                    if (!IsFramingSubject(dmg))
+                    {
+                        if (dmg is DeNelle.Core.Combat.IDamageableStructure) structsRejected++;
+                        continue;
+                    }
+                }
+                else if (dmg == null || !dmg.IsAlive
+                         || dmg.Faction != DeNelle.Core.Combat.CombatFaction.Hostile)
+                {
+                    // The pre-WO-1765 admission test, unchanged, for every non-raid scene: live +
+                    // hostile, structures included. This is the town's shipped behaviour and the
+                    // ruling says it does not move in this build.
+                    continue;
+                }
+                // Second guard, deliberately NOT inside the pure predicate: a structure whose
+                // IDamageable and IDamageableStructure sit on DIFFERENT components of the same
+                // GameObject would satisfy the interface test above. None does today (all four
+                // dual implementers declare both on one class), so this is the cheap insurance
+                // against the next one — and it stays out of the predicate so the regression can
+                // keep driving a plain object with no GameObject at all.
+                var dmgComponent = dmg as Component;
+                if (dmgComponent != null
+                    && dmgComponent.GetComponent<DeNelle.Core.Combat.IDamageableStructure>() != null)
+                {
+                    structsRejected++;
+                    continue;
+                }
 
                 float sqr = (col.transform.position - _target.position).sqrMagnitude;
                 if (sqr < closestSqr)
@@ -1303,11 +2013,22 @@ namespace DeNelle.Village
                     closestSqr = sqr;
                     closestPos = dmg.WorldPosition + Vector3.up;
                     found = true;
+                    bestName = dmgComponent != null ? dmgComponent.gameObject.name : col.name;
+                    bestType = dmg.GetType().Name;
                 }
             }
 
             _enemyInRange    = found;
             _nearestEnemyPos = found ? closestPos : _target.position + Vector3.up * _lookAtHeight;
+
+            // WO-1765 §5c: framing-subject evidence for the heartbeat. A SWITCH is the thing that
+            // flips the lateral look-at arm, so it is counted, not just reported.
+            if (!string.Equals(bestName, _framingTargetName, System.StringComparison.Ordinal))
+                _framingTargetSwitches++;
+            _framingTargetName      = bestName;
+            _framingTargetType      = bestType;
+            _framingTargetDist      = found ? Mathf.Sqrt(closestSqr) : -1f;
+            _framingStructsRejected = structsRejected;
         }
 
         // WO-385: camera-occlusion pass (replaces the DEF-151 hard pull-in). The old behaviour
@@ -1325,6 +2046,7 @@ namespace DeNelle.Village
             if (!_collisionEnabled || !IsTargetValid())
             {
                 _distanceFrac = 1f;
+                _pullingInNow = false;   // WO-1765: no stale verdict on the heartbeat
                 RestoreAllFaded();   // never leave a wall invisible when collision is off / target lost
                 // WO-1734: drop the trace edge too, or a pull-in that was live when collision was
                 // switched off would swallow the NEXT "PULL-IN ENTERED" line.
@@ -1340,6 +2062,7 @@ namespace DeNelle.Village
             if (fullDist <= 0.0001f)
             {
                 _distanceFrac = 1f;
+                _pullingInNow = false;   // WO-1765: no stale verdict on the heartbeat
                 RestoreFadedNotHitThisFrame();
                 return desired;
             }
@@ -1410,6 +2133,7 @@ namespace DeNelle.Village
             // 0.08 = 0.43 m needed, ~0.17 m margin.
             float occluderGateDist = SelectOccluderGateDistance(_occluderDistances);
             bool pullingIn = ShouldPullIn(fullDist, occluderGateDist, _occluderPullInDistance);
+            _pullingInNow = pullingIn;   // WO-1765: the heartbeat separates rotation from pull-in
             if (pullingIn)
             {
                 // The seat is set against the SAME occluder the gate judged. Handing
