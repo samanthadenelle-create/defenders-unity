@@ -5,7 +5,8 @@
         "DeNelle.Core",
         "DeNelle.Village",
         "DeNelle.Data",
-        "DeNelle.Editor"
+        "DeNelle.Editor",
+        "DeNelle.EditorRegression"
     ],
     "includePlatforms": [
         "Editor"

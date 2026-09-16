@@ -62,11 +62,17 @@
 // Batchmode: DeNelle.Editor.RaidBaseGenerator.BuildInOpenScene
 //            DeNelle.Editor.RaidBaseGenerator.BuildIntoScene  (pass a scene path)
 //            DeNelle.Editor.RaidBaseGenerator.BuildAllRaidScenes
+//   ⛔ WO-1767: for iron_bastion the entry point is NOT one of the above. Regenerating that scene
+//      alone desynchronises the owned-town template pair (OwnedTown_IronBastion.unity +
+//      Assets/Resources/OwnedTown/IronBastionTemplate.json), which is what broke the capture census
+//      in build 2026.09.16.371701. Use the chain:
+//            DeNelle.Editor.OwnedTownChain.RebuildFromRaid   -> OWNED_TOWN_CHAIN_OK / _FAIL
 // Menu:      Defenders/Walls/Build Raid Base - Iron Bastion
 //            Defenders/Walls/Build All Raid Scenes (config-driven)
 // =============================================================================
 using System;                   // Enum.TryParse, StringComparison
 using System.Collections.Generic;
+using System.Globalization;      // WO-1767 deterministic template-id index formatting
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -380,6 +386,92 @@ namespace DeNelle.Editor
             return new RaidTier { Name = "Regular", Footprint = 0.20f, SpireHp = 1200f, TowerDpsBudget = 12f };
         }
 
+        // =====================================================================
+        //  WO-1767 — THE BAKED STABLE IDENTITY IS PART OF THE GENERATOR'S OUTPUT.
+        // ---------------------------------------------------------------------
+        //  A captured town addresses every inherited structure by
+        //  OwnedTemplateIdentity._templateId (OwnedTownScenePose.TryResolve:62-77). Until this
+        //  change the ONLY writer of that field was Assets/Editor/OwnedTemplateIdentityBake.cs,
+        //  which minted `Guid.NewGuid()` and hand-stamped the already-built scene. That is
+        //  hand-maintained state living on a REGENERATED artifact, and it failed exactly the way
+        //  CLAUDE.md §2/§5/§8/§16 each describe:
+        //
+        //    WO-1732 (452fc14fd) added `iron_bastion` to RaidConfigIdsFromCatalog, so
+        //    BuildAllRaidScenes regenerated RaidBase_IronBastion for the first time. The generator
+        //    writes a FRESH scene, so all 221 stamped components went with the old one. The
+        //    owner's Seeker build 2026.09.16.371701 then logged, 625 ms before RAID START:
+        //      [Flow:Raid] Precombat capture census failed: Captured structure lacks a baked
+        //      stable identity: Wall_Outer_SS_0
+        //    (RaidCaptureCensus.cs:38-39). The census was empty for the whole fight, which
+        //    softlocks the victory screen on a 3-star clear (RaidVictoryController:1021-1027).
+        //
+        //  So the id is emitted HERE, at creation, as a pure function of
+        //  (config id + structure role + creation index within that role). Two consequences that
+        //  are the whole point:
+        //   - A regen REPRODUCES the same ids, so a saved town keeps resolving. A random GUID
+        //     would churn every id on every bake and TryResolve:72/:76 would answer
+        //     "migration is required" for every structure the player owns.
+        //   - Nothing can strip them again: they are not a post-pass, they are the output.
+        //
+        //  ⚠ KNOWN NON-INVARIANT, named rather than hidden: PlaceSegment returns 0 without
+        //  creating anything when its tier prefab is missing from Resources, which would shift
+        //  every later wall index. A bake with missing wall art is already broken (the scene has
+        //  no walls), and OwnedTownTemplateIdentityRegression compares the id SETS of the two
+        //  scenes and the manifest, so a shifted set cannot ship silently — but do not read the
+        //  index as a stable address for anything except "which object this is in THIS bake".
+        //
+        //  Roles are deliberately short and stable strings: they appear inside every saved
+        //  instanceId ("owned:capture:<receipt>:<templateId>", RaidCaptureCensus.cs:42).
+        // =====================================================================
+        public const string IdentityRoleWall  = "wall";
+        public const string IdentityRoleTower = "tower";
+        public const string IdentityRoleSpire = "spire";
+
+        private static string _identityScope;
+        private static readonly Dictionary<string, int> _identityIndex =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+
+        /// <summary>Open the deterministic id scope for one config build. Resets every role index.</summary>
+        private static void BeginIdentityScope(string configId)
+        {
+            _identityScope = configId;
+            _identityIndex.Clear();
+        }
+
+        /// <summary>
+        /// Close the scope. Outside a scope <see cref="StampIdentity"/> is a no-op, so the legacy
+        /// menu-only <c>Build()</c> flagship path (which has no config id) never invents ids that
+        /// a later config bake could collide with.
+        /// </summary>
+        private static void EndIdentityScope()
+        {
+            _identityScope = null;
+            _identityIndex.Clear();
+        }
+
+        /// <summary>
+        /// Stamp the baked stable identity on one structure. Id = <c>&lt;configId&gt;.&lt;role&gt;.&lt;index&gt;</c>.
+        /// Written through <see cref="SerializedObject"/> because <c>_templateId</c> is a private
+        /// <c>[SerializeField]</c> with no setter - the field has exactly one writer shape, the same
+        /// one OwnedTemplateIdentityBake.Assign uses.
+        /// </summary>
+        private static void StampIdentity(GameObject go, string role)
+        {
+            if (go == null || string.IsNullOrEmpty(_identityScope) || string.IsNullOrEmpty(role)) return;
+            _identityIndex.TryGetValue(role, out int next);
+            _identityIndex[role] = next + 1;
+            // '.' as the separator, deliberately, NOT ':'. The id is serialized into scene YAML as
+            // a plain scalar and is also embedded in the saved instanceId
+            // ("owned:capture:<receipt>:<templateId>", RaidCaptureCensus.cs:42) - a ':' inside it
+            // would be ambiguous in both places.
+            string id = _identityScope + "." + role + "." + next.ToString(CultureInfo.InvariantCulture);
+            var identity = go.GetComponent<OwnedTemplateIdentity>();
+            if (identity == null) identity = go.AddComponent<OwnedTemplateIdentity>();
+            var serialized = new SerializedObject(identity);
+            serialized.FindProperty("_templateId").stringValue = id;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         // == Entry points ======================================================
 
         [MenuItem("Defenders/Walls/Build Raid Base - Iron Bastion")]
@@ -514,7 +606,14 @@ namespace DeNelle.Editor
             Debug.Log($"[RaidBaseGenerator] baked {ids.Count} raid scene(s) from scene-configs.json " +
                       $"({string.Join(", ", ids)}). " +
                       "NEXT (required): DeNelle.Editor.RaidNavBake.BakeAll - it drops the RaidGround plane and " +
-                      "bakes the legacy NavMesh. Without it the hero and every agent have nothing to walk on.");
+                      "bakes the legacy NavMesh. Without it the hero and every agent have nothing to walk on. " +
+                      "⛔ WO-1767: DO NOT run this entry point ALONE for iron_bastion. Regenerating " +
+                      "RaidBase_IronBastion desynchronises the owned-town template pair " +
+                      "(OwnedTown_IronBastion.unity + Assets/Resources/OwnedTown/IronBastionTemplate.json), " +
+                      "which is what broke the capture census in build 2026.09.16.371701. The ONE sanctioned " +
+                      "chain is DeNelle.Editor.OwnedTownChain.RebuildFromRaid: it runs this bake, re-derives " +
+                      "the town scene, re-bakes the manifest, reseats the town spire and runs the nav bake, " +
+                      "and is judged by OWNED_TOWN_CHAIN_OK / OWNED_TOWN_CHAIN_FAIL on a fresh log.");
         }
 
         // =====================================================================
@@ -525,8 +624,25 @@ namespace DeNelle.Editor
         //  carries the buried objective (goal=(0, 0.02, 0), mappedDy=1.56) — the spire seated on
         //  the GROUND while the keep slab was raised 1.5 m over it afterwards.
         //
-        //  ⛔ THAT SCENE IS OWNER-AUTHORED AND PROTECTED. It is NOT regenerated, NOT re-dressed and
-        //  NOT re-laid-out here. This entry point applies the ALREADY-PROVEN
+        //  ⚠ WO-1767 CORRECTS THE SENTENCE THAT USED TO STAND HERE. It read: "THAT SCENE IS
+        //  OWNER-AUTHORED AND PROTECTED. It is NOT regenerated, NOT re-dressed and NOT
+        //  re-laid-out." That was FALSE at the file level: Assets/Editor/OwnedTownSceneBuilder.cs
+        //  DERIVES OwnedTown_IronBastion.unity from RaidBase_IronBastion.unity (opens the raid
+        //  scene, deletes the one RaidGarrisonSpawner, flips every DefenseTower to PlayerOwned,
+        //  appends OwnedTownController, Save-As). Believing the comment is what let the pair
+        //  desync: WO-1732 regenerated the raid scene to the WO-1723 4.0 m partition (210 walls ->
+        //  158 + 158 ruins) while the town kept the pre-WO-1723 210-wall partition and its 221
+        //  stamped ids, so the raid template, the owned town and the shipped manifest described
+        //  three different buildings.
+        //
+        //  THE TRUTH, and the OWNER'S RULING (2026-09-16, verbatim): "(A) re-derive
+        //  OwnedTown_IronBastion and its manifest from the new 158-wall raid scene", keeping
+        //  WO-1732's partition. So the town IS derived, by the ONE sanctioned chain
+        //  DeNelle.Editor.OwnedTownChain.RebuildFromRaid - never by hand, never by a second
+        //  inlined copy of these steps (CLAUDE.md §3, §16).
+        //
+        //  ⛔ WHAT IS STILL TRUE, AND WHY THIS ENTRY POINT STILL REFUSES RATHER THAN GUESSES:
+        //  this method is not part of the layout. It applies the ALREADY-PROVEN
         //  `ReseatSpireOnKeepPlatform` to that one scene and does nothing else: it moves EXACTLY
         //  ONE transform (the spire's own, via SeatOnSurface) and creates, deletes and re-parents
         //  NOTHING. Every other object in the scene is left byte-identical.
@@ -603,6 +719,28 @@ namespace DeNelle.Editor
             float after = spire.transform.position.y;
             float lift = after - before;
 
+            if (Mathf.Abs(lift) < 0.001f && AlreadySeatedOnPlatform(spire, platform, out float seatedNote, out float slabTopY))
+            {
+                // WO-1767 — THE DERIVED TOWN ARRIVES ALREADY CORRECT, AND THAT IS NOT A FAILURE.
+                // BuildConfigLayout:801 reseats the raid spire during generation, so a town
+                // re-derived from that scene (OwnedTownChain.RebuildFromRaid) inherits the correct
+                // seat and there is nothing left to lift. Before this branch the chain's last step
+                // reported OWNED_TOWN_SPIRE_RESEAT_FAIL on a scene that was right.
+                //
+                // This is NOT a relaxation of the four refusals: the pass is MEASURED, not assumed.
+                // The spire's lowest rendered point must sit within 1 cm of the KeepPlatform's
+                // measured top. Any other no-op reason (no measurable slab, spire off the
+                // footprint, no renderers) still falls through to the FAIL below, and the scene is
+                // still not saved - a correct scene is never reserialized for a no-op.
+                Debug.Log(OwnedTownReseatOkMarker + " " + OwnedTownScenePath + " spire y " +
+                          after.ToString("F2") + " lift=0.00m ALREADY SEATED (MEASURED: base y " +
+                          seatedNote.ToString("F3") + " vs " + KeepPlatformName + " top y " +
+                          slabTopY.ToString("F3") + ", delta " + Mathf.Abs(seatedNote - slabTopY).ToString("F4") +
+                          "m). The generator's own ReseatSpireOnKeepPlatform already ran on the raid " +
+                          "scene this town was derived from, so nothing needed to move and nothing was saved.");
+                return;
+            }
+
             if (Mathf.Abs(lift) < 0.001f)
             {
                 Debug.LogError(OwnedTownReseatFailMarker + " the spire did not move (y " +
@@ -628,6 +766,36 @@ namespace DeNelle.Editor
                       " top, never hardcoded). ONE transform moved; nothing created, deleted or re-parented. " +
                       "WO-1749: the objective point every troop hands to NavMesh.CalculatePath was inside the " +
                       "keep slab, so no route to it could be complete.");
+        }
+
+        /// <summary>
+        /// WO-1767. Is the spire's lowest rendered point ALREADY on the measured KeepPlatform top?
+        /// The proof for the "already seated" pass above - a real measurement, never an assumption.
+        /// False when the slab has no measurable bounds, when the spire stands off the slab
+        /// footprint, or when the spire has no renderers, so every one of
+        /// <see cref="ReseatSpireOnKeepPlatform"/>'s own refusal reasons keeps failing loudly.
+        /// </summary>
+        private static bool AlreadySeatedOnPlatform(RaidSpire spire, Transform platform,
+                                                    out float spireBaseY, out float slabTopY)
+        {
+            spireBaseY = 0f;
+            slabTopY = 0f;
+            if (spire == null || platform == null) return false;
+            Physics.SyncTransforms();
+            if (!TryMeasuredBounds(platform, out Bounds slab)) return false;
+            slabTopY = slab.max.y;
+
+            Vector3 at = spire.transform.position;
+            bool overSlab = at.x >= slab.min.x && at.x <= slab.max.x &&
+                            at.z >= slab.min.z && at.z <= slab.max.z;
+            if (!overSlab) return false;
+
+            var rends = spire.GetComponentsInChildren<Renderer>(true);
+            if (rends == null || rends.Length == 0) return false;
+            var b = rends[0].bounds;
+            for (int k = 1; k < rends.Length; k++) b.Encapsulate(rends[k].bounds);
+            spireBaseY = b.min.y;
+            return Mathf.Abs(spireBaseY - slabTopY) <= 0.01f;
         }
 
         /// <summary>
@@ -680,7 +848,13 @@ namespace DeNelle.Editor
             if (parentRoot != null) root.transform.SetParent(parentRoot, false);
             root.transform.localPosition = Vector3.zero;
 
-            BuildConfigLayout(def, root.transform);
+            // WO-1767: every WallSegment / DefenseTower / RaidSpire built inside this scope gets
+            // its deterministic baked stable identity at creation. try/finally so a throw mid-build
+            // can never leave the scope open for the NEXT config (that would continue this config's
+            // indices into the next scene's ids).
+            BeginIdentityScope(configId);
+            try { BuildConfigLayout(def, root.transform); }
+            finally { EndIdentityScope(); }
 
             // GARRISON WIRING - the runtime spawner that fills this baked base with its
             // config's garrison (boss + composition, player-level-scaled). It carries the
@@ -1043,6 +1217,9 @@ namespace DeNelle.Editor
             var spire = go.GetComponent<RaidSpire>();
             if (spire == null) spire = go.AddComponent<RaidSpire>();
             spire.Configure(def.id, catalogId, tier.SpireHp, built);
+
+            // WO-1767: the captured-town address, emitted at creation (see the IdentityRole* block).
+            StampIdentity(go, IdentityRoleSpire);
 
             Debug.Log($"[RaidBaseGenerator] SPIRE '{catalogId}' placed at centre: {tier.SpireHp:F0} HP, " +
                       $"{built:F1}m tall, art='{(string.IsNullOrEmpty(prefabPath) ? "<primitive>" : prefabPath)}'. " +
@@ -1525,6 +1702,9 @@ namespace DeNelle.Editor
             dt.CanHitAir = plan.CanHitAir;
             dt.Element = plan.Element;
             dt.BoltColor = new Color(0.95f, 0.3f, 0.2f);   // hostile red bolt
+
+            // WO-1767: the captured-town address, emitted at creation (see the IdentityRole* block).
+            StampIdentity(go, IdentityRoleTower);
         }
 
         // Upgrade saved metadata only: never regenerate the owner's approved geometry.
@@ -2242,6 +2422,9 @@ namespace DeNelle.Editor
 
             var ws = seg.AddComponent<WallSegment>();
             ws.SetTier((int)tier);
+
+            // WO-1767: the captured-town address, emitted at creation (see the IdentityRole* block).
+            StampIdentity(seg, IdentityRoleWall);
 
             // SOLID BOUNDARY. Sizes are authored in WORLD units, so they are divided by the
             // fit scale that lives on this transform. WallSegment.Awake adopts this collider
