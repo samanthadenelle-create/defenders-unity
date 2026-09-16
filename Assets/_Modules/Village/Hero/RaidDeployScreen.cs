@@ -589,6 +589,20 @@ namespace DeNelle.Village.Hero
         {
             var classes = _vm != null ? _vm.PartyClasses : new List<string>();
 
+            // WO-1761 (owner 2026-09-15) — DEFENCE IN DEPTH for the single-hero ruling. The
+            // filter's one owner is RaidDeployVM.BuildPartyClasses, but this VM also has a
+            // PUBLIC constructor that takes a party list directly and so bypasses that
+            // resolution site; a caller using it would repaint the dead companion portraits
+            // the owner asked us to remove. Trim here rather than re-deriving from GameState —
+            // the screen must not grow a second opinion about who is in the party.
+            if (DeNelle.Core.FeatureFlags.SingleHero && classes != null && classes.Count > 1)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    "deploy party row: SingleHero ON but the VM supplied " + classes.Count +
+                    " classes — painting the hero ('" + classes[0] + "') only (WO-1761).");
+                classes = new List<string> { classes[0] };
+            }
+
             // Row host — left half of the body zone, below "YOUR FORCES".
             var rowHost = new GameObject("PartyRow", typeof(RectTransform));
             rowHost.transform.SetParent(body, false);

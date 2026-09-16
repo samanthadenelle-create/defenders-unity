@@ -192,8 +192,17 @@ namespace DeNelle.Village.World.Camps
                 // same outpost never re-grants a companion.
                 bool newClaim = RaidClaimService.MarkClaimed(configId);
 
-                // STEP — NEXT COMPANION (NEW claim only). Same path RaidVictoryController uses.
-                string joined = newClaim ? UnlockNextCompanion() : null;
+                // STEP — NEXT COMPANION (NEW claim only). Same path RaidVictoryController uses,
+                // including its WO-1761 SINGLE-HERO gate: the recruit itself is dropped (not just
+                // the toast line) because every companion consumer already hides them, so the
+                // enrolment would persist a party member the player can never see or use.
+                // ff.singlehero=0 restores the join exactly as before.
+                string joined = null;
+                if (newClaim && FeatureFlags.SingleHero)
+                    FlowTrace.Step("Raid", "NEXT COMPANION SKIPPED — SingleHero is ON, so this outpost " +
+                        "claim recruits nobody and the toast carries no join line (WO-1761).");
+                else if (newClaim)
+                    joined = UnlockNextCompanion();
 
                 // Persist immediately so the claim/companion survive an app close.
                 GameStateService.Instance?.Save();

@@ -768,11 +768,34 @@ namespace DeNelle.Village.Hero
 
         // Hero class first, then companion classes from PartyMemberIds (deduped). Always
         // returns at least the hero placeholder so the row never reads empty.
-        private static List<string> BuildPartyClasses(GameState state)
+        //
+        // WO-1761 (owner felt-test 2026-09-15) — UNDER SINGLE-HERO THIS IS THE HERO ALONE.
+        // The deploy screen was the LAST surface still painting companion portraits: the ATB
+        // party (BattleController), the world body (StoryCompanionInjector), the party column
+        // (PartyHudBridge.cs:60-66) and the HUD model (HudModelProducers) had all honoured
+        // ff.singlehero since the 2026-06-22 pivot, so this row advertised teammates who do
+        // not fight, do not spawn and do not appear anywhere else. Filtering HERE — the
+        // documented ONLY resolution site — gives the rule one owner rather than one check
+        // per screen. The flag-OFF path is unchanged, so ff.singlehero=0 restores the party.
+        //
+        // ⚠ PUBLIC on purpose: SingleHeroVictoryJoinRegression calls this as its oracle.
+        // Going through CreateDefault instead would read the live GameStateService, which is
+        // not installed in an editor batchmode run — the suite would test the harness.
+        public static List<string> BuildPartyClasses(GameState state)
         {
             var list = new List<string>();
             if (state != null && state.HeroClass != HeroClassOpt.None)
                 list.Add(state.HeroClass.ToString());
+
+            if (DeNelle.Core.FeatureFlags.SingleHero)
+            {
+                if (list.Count == 0) list.Add("Knight");
+                DeNelle.Core.Diagnostics.FlowTrace.Once("Raid", "deploy-party-singlehero",
+                    "SingleHero ON -> the deploy party row is the hero alone ('" + list[0] +
+                    "'); companion portraits are not painted (WO-1761).");
+                return list;
+            }
+
             if (state != null && state.PartyMemberIds != null)
                 foreach (var id in state.PartyMemberIds)
                 {

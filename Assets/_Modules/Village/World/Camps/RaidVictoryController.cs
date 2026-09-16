@@ -72,6 +72,11 @@ namespace DeNelle.Village.World.Camps
         private RaidSpire _spire;  // razing it still wins; garrison wipe also wins (owner 2026-09-09)
         private bool _handled;     // victory handled once (guards a double OnCleared)
         private bool _returning;   // a return is already in flight
+        private RaidCaptureCensus _captureCensus;
+        private bool _captureRequired;
+        private bool _captureCommitted;
+        private bool _waitingForCapture;
+        private int _victoryStars;
 
         // =====================================================================
         //  Self-install — one controller per RaidBase_* scene
@@ -103,6 +108,8 @@ namespace DeNelle.Village.World.Camps
             if (FindAnyObjectByType<RaidVictoryController>() != null) return;
 
             var go = new GameObject("RaidVictoryController");
+            var raidScene = UnityEngine.SceneManagement.SceneManager.GetSceneByName(sceneName);
+            if (raidScene.IsValid()) UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, raidScene);
             go.AddComponent<RaidVictoryController>();
             FlowTrace.Step("Raid", $"RaidVictoryController self-installed in raid scene '{sceneName}'.");
         }
@@ -114,6 +121,11 @@ namespace DeNelle.Village.World.Camps
 
         private void Start()
         {
+            if (gameObject.scene.name == "RaidBase_IronBastion" && GameStateService.Instance?.State?.OwnedBase == null)
+            {
+                try { _captureCensus = new RaidCaptureCensus(gameObject.scene); }
+                catch (System.Exception ex) { FlowTrace.Fail("Raid", "Precombat capture census failed: " + ex.Message); }
+            }
             StartCoroutine(BindRoutine());
         }
 
@@ -209,6 +221,7 @@ namespace DeNelle.Village.World.Camps
         private void HandleVictory(string reason)
         {
             if (_handled) { FlowTrace.Step("Raid", "victory already handled — ignoring duplicate signal."); return; }
+            if (_waitingForCapture) return;
             _handled = true;
             if (_spawner != null) _spawner.OnCleared -= HandleCleared;
             if (_spire != null) _spire.OnDestroyedEvent -= HandleSpireRazed;
@@ -266,7 +279,18 @@ namespace DeNelle.Village.World.Camps
             RaidCooldownService.BeginAfterClear(configId);
 
             // STEP 3 — on a NEW claim, unlock the next companion (the rescue beat).
-            string joined = newClaim ? UnlockNextCompanion() : null;
+            // WO-1761 (owner felt-test 2026-09-15: "It doesn't make any sense why they join
+            // the team if they don't offer any benefit"). Under SINGLE-HERO the recruit is
+            // DROPPED, not just its banner line: BattleController, StoryCompanionInjector,
+            // PartyHudBridge and HudModelProducers all already hide companions, so enrolling
+            // one into the persisted roster only makes the save disagree with every screen.
+            // The flag-OFF path below is untouched — ff.singlehero=0 restores the whole beat.
+            string joined = null;
+            if (newClaim && FeatureFlags.SingleHero)
+                FlowTrace.Step("Raid", "NEXT COMPANION SKIPPED — SingleHero is ON, so a new claim " +
+                    "recruits nobody and the victory banner carries no join line (WO-1761).");
+            else if (newClaim)
+                joined = UnlockNextCompanion();
 
             // STEP 3.5 (WO-771.6) — settle the V1 SCORE (0-3 stars from the real-time
             // clear/clock) and GRANT the loot. This is the win/stars/loot half that was
@@ -274,6 +298,22 @@ namespace DeNelle.Village.World.Camps
             // back to the star-less banner and no loot is granted.
             RaidScoring scoring = RaidScoring.Instance;
             RaidResult result = scoring != null ? scoring.Finalize(true) : null;
+            // Owner 2026-09-11: the personal town is a 3-star clear of the HIGHEST raid,
+            // not a 20-win counter. WO-1526 still caps a hero-down settle at 2 stars, so
+            // a death-win cannot capture. Stars are only known AFTER Finalize.
+            string captureRaidId = ResolveConfigId(spawner);
+            _victoryStars = result != null ? result.Stars : 0;
+            _captureRequired = captureRaidId == OwnedBaseProgression.FinalRaidId &&
+                GameStateService.Instance?.State?.OwnedBase == null &&
+                _victoryStars >= OwnedBaseProgression.CaptureStarsRequired;
+            if (_captureRequired)
+            {
+                FlowTrace.Step("Raid", "CAPTURE ELIGIBLE — " + _victoryStars + "-star clear of '" + captureRaidId + "'.");
+                TryCommitCapturedTown(_victoryStars);
+            }
+            else if (captureRaidId == OwnedBaseProgression.FinalRaidId)
+                FlowTrace.Step("Raid", "highest raid settled at " + _victoryStars + " star(s) — capture requires " +
+                               OwnedBaseProgression.CaptureStarsRequired + ".");
             ResourceCost loot = scoring != null ? scoring.LootFor(result) : default(ResourceCost);
             loot = ApplyFirstClearGate(loot, repeatClear, crystalsPaidToday, configId);
             GrantLoot(loot);
@@ -289,9 +329,9 @@ namespace DeNelle.Village.World.Camps
             // on those is not an overflow. Call exactly once per settle - it is not idempotent.
             ResourceCost retained = RaidClaimService.RetainOverflow(configId, loot, _credited);
             FlowTrace.Step("Raid",
-                "RAID CACHE at settle: requested " + loot.Wood + "w " + loot.Iron + "i " + loot.Food +
-                "f, credited " + _credited.Wood + "w " + _credited.Iron + "i " + _credited.Food +
-                "f, RETAINED " + retained.Wood + "w " + retained.Iron + "i " + retained.Food +
+                "RAID CACHE at settle: requested " + loot.Wood + "w " + loot.Iron + "i " + loot.Stone +
+                "f, credited " + _credited.Wood + "w " + _credited.Iron + "i " + _credited.Stone +
+                "f, RETAINED " + retained.Wood + "w " + retained.Iron + "i " + retained.Stone +
                 "f for camp '" + (configId ?? "(none)") + "'. Anything the bank refused and the " +
                 "cache could not hold is named by RaidClaimService's own line above this one.");
 
@@ -665,7 +705,7 @@ namespace DeNelle.Village.World.Camps
             // NOTHING still says so — a silent nothing is what a suppressed faucet looks like.
             DeNelle.Core.Diagnostics.FlowTrace.Step("Reward",
                 $"RAID END PAYOUT (the ONE raid grant, WO-1227) crystals={loot.Crystals} " +
-                $"food={loot.Food} wood={loot.Wood} iron={loot.Iron} coins={loot.Coins} " +
+                $"stone={loot.Stone} wood={loot.Wood} iron={loot.Iron} coins={loot.Coins} " +
                 $"zero={loot.IsZero} - per-kill materials were withheld for the whole raid on " +
                 "purpose; this grant is the payout.");
 
@@ -673,53 +713,25 @@ namespace DeNelle.Village.World.Camps
 
             _credited = default(ResourceCost); _rewardShort = false;
 
-            var eco = EconomyService.Instance;
-            if (eco != null)
+            var gs = GameStateService.Instance;
+            if (gs == null || gs.State == null)
             {
-                // The wallet properties read straight through to the single GameState-backed
-                // store (WO-842), so before/after is a real measurement of what was credited.
-                int w0 = eco.Wood, f0 = eco.Food, i0 = eco.Iron, c0 = eco.Crystals, g0 = eco.Coins;
-                eco.Grant(loot);
-                int dw = eco.Wood - w0, df = eco.Food - f0, di = eco.Iron - i0,
-                    dc = eco.Crystals - c0, dg = eco.Coins - g0;
-                _credited = new ResourceCost(wood: dw, food: df, iron: di, crystals: dc, coins: dg);
-                _rewardShort = dw < loot.Wood || df < loot.Food || di < loot.Iron
-                            || dc < loot.Crystals || dg < loot.Coins;
-                LogCredit("EconomyService", loot, dw, df, di, dc, dg);
+                _rewardShort = true;
+                FlowTrace.Fail("Raid", "LOOT NOT CREDITED ? no loaded GameState; " + Describe(loot));
                 return;
             }
 
-            var gs = GameStateService.Instance;
-            var state = gs != null ? gs.State : null;
-            if (gs != null && state != null)
-            {
-                // AddCrystals/AddFood are void too — measure GameState.Resources either side.
-                // Note this fallback route has NO wood/iron/gold mover at all, so any of those
-                // axes in the loot are DROPPED; LogCredit will say so instead of hiding it.
-                int c0 = state.Resources.Crystals, f0 = state.Resources.Food;
-                if (loot.Crystals != 0) gs.AddCrystals(loot.Crystals);
-                if (loot.Food != 0) gs.AddFood(loot.Food);
-                int dcF = state.Resources.Crystals - c0, dfF = state.Resources.Food - f0;
-                // This fallback route has NO wood/iron/gold mover, so those axes are genuinely
-                // zero credited - the basket says so rather than leaving them unset.
-                _credited = new ResourceCost(food: dfF, crystals: dcF);
-                // This route has no wood/iron/gold mover, so those axes are dropped outright —
-                // that counts as short for the player-facing caveat, not just for the log.
-                _rewardShort = dcF < loot.Crystals || dfF < loot.Food
-                            || loot.Wood != 0 || loot.Iron != 0 || loot.Coins != 0;
-                LogCredit("GameStateService fallback", loot,
-                          0, dfF, 0, dcF, 0);
-            }
-            else if (gs != null)
-            {
-                FlowTrace.Fail("Raid", "LOOT LOST — GameStateService is present but has no loaded State; " +
-                                       $"the win awarded {Describe(loot)} and NONE of it was credited.");
-            }
-            else
-            {
-                FlowTrace.Fail("Raid", "LOOT LOST — no EconomyService and no GameStateService present; " +
-                                       $"the win awarded {Describe(loot)} and NONE of it was credited.");
-            }
+            // Recreate the normal authority if scene/bootstrap ordering left it absent.
+            // Every axis follows the same cap and notification rules as a normal raid payout.
+            var eco = EconomyService.EnsureAvailable();
+            int w0 = eco.Wood, s0 = eco.Stone, i0 = eco.Iron, c0 = eco.Crystals, g0 = eco.Coins;
+            eco.Grant(loot);
+            int dw = eco.Wood - w0, ds = eco.Stone - s0, di = eco.Iron - i0,
+                dc = eco.Crystals - c0, dg = eco.Coins - g0;
+            _credited = new ResourceCost(wood: dw, stone: ds, iron: di, crystals: dc, coins: dg);
+            _rewardShort = dw < loot.Wood || ds < loot.Stone || di < loot.Iron
+                        || dc < loot.Crystals || dg < loot.Coins;
+            LogCredit("EconomyService", loot, dw, ds, di, dc, dg);
         }
 
         /// <summary>
@@ -732,11 +744,11 @@ namespace DeNelle.Village.World.Camps
                                       int dWood, int dFood, int dIron, int dCrystals, int dCoins)
         {
             string measured =
-                $"wood {dWood}/{requested.Wood}, food {dFood}/{requested.Food}, iron {dIron}/{requested.Iron}, " +
+                $"wood {dWood}/{requested.Wood}, food {dFood}/{requested.Stone}, iron {dIron}/{requested.Iron}, " +
                 $"crystals {dCrystals}/{requested.Crystals}, gold {dCoins}/{requested.Coins} (credited/requested)";
 
             bool shortfall = dWood     < requested.Wood
-                          || dFood     < requested.Food
+                          || dFood     < requested.Stone
                           || dIron     < requested.Iron
                           || dCrystals < requested.Crystals
                           || dCoins    < requested.Coins;
@@ -753,7 +765,7 @@ namespace DeNelle.Village.World.Camps
 
         /// <summary>Human-readable requested loot, for the never-credited failure lines.</summary>
         private static string Describe(ResourceCost loot)
-            => $"requested wood {loot.Wood}, food {loot.Food}, iron {loot.Iron}, " +
+            => $"requested wood {loot.Wood}, food {loot.Stone}, iron {loot.Iron}, " +
                $"crystals {loot.Crystals}, gold {loot.Coins}";
 
         // =====================================================================
@@ -900,6 +912,12 @@ namespace DeNelle.Village.World.Camps
                     // ("The Broken Garrison"), never the superseded "Ironwatch Garrison" pass.
                     ResolveUnlockLine(victories));
 
+                if (_captureRequired && vm != null)
+                {
+                    vm.PrimaryLabel = LocalText.Get("ownedTown.enter");
+                    vm.PrimaryGate = CanEnterCapturedTown;
+                }
+
                 if (_rewardShort && vm != null)
                 {
                     // WORDS, never colour alone — the owner is red/green colourblind, so a dimmed
@@ -913,7 +931,7 @@ namespace DeNelle.Village.World.Camps
 
                 FlowTrace.Step("Raid", $"RETURN — victory screen shown for '{configId}' " +
                     (joinedCompanionName != null ? $"(+{joinedCompanionName})" : "(party already full)") +
-                    "; tap or auto-dismiss routes to the castle.");
+                    (_captureRequired ? "; continue to the captured town." : "; return to the castle."));
             }
             catch (System.Exception e)
             {
@@ -972,13 +990,49 @@ namespace DeNelle.Village.World.Camps
         private void ReturnHome()
         {
             if (_returning) return;
+            if (!CanEnterCapturedTown()) return;
             _returning = true;
-            FlowTrace.Step("Raid", "RETURN -> SceneRouter.GoCastle() (loop continues, no soft-lock).");
+            FlowTrace.Step("Raid", _captureRequired ? "RETURN -> captured personal town." : "RETURN -> castle.");
             GameStateService.Instance?.Save();
             // Clear the runtime enemy-owned flag before we leave so the home hub never
             // inherits a stale enemy-owned read from this raid.
             SceneOwnership.SetEnemyOwned(false);
-            SceneRouter.GoCastle();
+            if (_captureRequired) SceneRouter.GoOwnedTown();
+            else SceneRouter.GoCastle();
+        }
+
+        private bool CanEnterCapturedTown()
+        {
+            if (!_captureRequired || _captureCommitted || TryCommitCapturedTown()) return true;
+            ElarionUiKit.ShowToast(LocalText.Get("ownedTown.captureRetry"));
+            return false;
+        }
+
+        private IEnumerator RetryCaptureAfterDismissal(string reason)
+        {
+            yield return new WaitForSecondsRealtime(_autoReturnSeconds);
+            if (_handled || _returning) yield break;
+            _waitingForCapture = false;
+            HandleVictory(reason);
+        }
+
+        private bool TryCommitCapturedTown() => TryCommitCapturedTown(_victoryStars);
+
+        private bool TryCommitCapturedTown(int stars)
+        {
+            if (_captureCommitted) return true;
+            try
+            {
+                if (_captureCensus == null)
+                { FlowTrace.Fail("Raid", "Final victory cannot capture: precombat census is missing."); return false; }
+                if (!_captureCensus.TryCommit(GameStateService.Instance, stars, out var reason))
+                { FlowTrace.Warn("Raid", "Captured town save awaits retry: " + reason); return false; }
+                _captureCommitted = true;
+                FlowTrace.Step("Raid", "OWNED_TOWN_CAPTURED: final victory, settled condition and one-time repair supplies saved.");
+                return true;
+            }
+            catch (System.Exception ex)
+            { FlowTrace.Fail("Raid", "Captured town save awaits retry: " + ex.Message); return false; }
         }
     }
 }

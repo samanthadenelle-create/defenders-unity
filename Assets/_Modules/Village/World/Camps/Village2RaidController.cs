@@ -250,7 +250,19 @@ namespace DeNelle.Village.World.Camps
             RaidCooldownService.BeginAfterClear(ConfigId);
 
             bool newClaim = ClaimBase();
-            string joined = newClaim ? UnlockNextCompanion() : null;
+
+            // WO-1761 (owner 2026-09-15) — the SINGLE-HERO gate the other two victory
+            // controllers now carry. The recruit is dropped, not merely unannounced: a
+            // companion enrolled here is hidden by BattleController, StoryCompanionInjector,
+            // PartyHudBridge and HudModelProducers alike. Note this banner's text is built
+            // INLINE in BuildVictoryBanner (not through EndStateVM), so this gate is the only
+            // thing standing between the player and "<name> joins your party" on line 356.
+            string joined = null;
+            if (newClaim && FeatureFlags.SingleHero)
+                FlowTrace.Step("Raid", "NEXT COMPANION SKIPPED — SingleHero is ON, so clearing the " +
+                    "Village2 stronghold recruits nobody and the banner carries no join line (WO-1761).");
+            else if (newClaim)
+                joined = UnlockNextCompanion();
 
             BuildVictoryBanner(joined);
             StartCoroutine(AutoReturnRoutine());
