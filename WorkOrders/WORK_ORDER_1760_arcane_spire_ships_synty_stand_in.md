@@ -1,6 +1,6 @@
 # WORK ORDER 1760 — The Arcane Spire ships its Synty stand-ins; the middle tier stands upside down
 
-**Status:** FIXED - gated REGRESSION_OK 539/539 2026-09-15 21:01; shipped in AAB 2026.09.16.371610 + APK 371627; awaiting the owner felt test
+**Status:** CLOSED - owner felt-test PASS on Seeker APK 371627, 2026-09-15 21:3x ("spire is good close it"); device log 21:29 shows all three ArcaneSpire addresses resident from catalog 2026.09.16.371627
 **Minted:** 2026-09-15 (CLI main line; banner bumped 1760 -> 1761 in the same edit)
 **Silo:** Art / Addressables. File-disjoint from gameplay, HUD and save.
 **Branch:** dev

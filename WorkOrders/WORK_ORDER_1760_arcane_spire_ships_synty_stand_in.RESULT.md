@@ -1,6 +1,6 @@
 # WO-1760 RESULT — Arcane Spire re-pointed to the owner's FBX art
 
-**Status:** FIXED - awaiting the owner felt test (2026-09-15)
+**Status:** CLOSED - owner felt-test PASS 2026-09-15 on Seeker APK 371627 ("spire is good close it")
 
 - Cause (proven at source): the uncommitted 2026-09-13 dedup of `Structure_Art.asset` kept the Synty
   wrapper GUID for each of `Structures/ArcaneSpire_{1,2,3}` and dropped the owner's FBX GUIDs;
