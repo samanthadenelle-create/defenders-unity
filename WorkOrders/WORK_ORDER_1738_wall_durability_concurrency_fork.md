@@ -1,5 +1,24 @@
 # WORK ORDER 1738 — Wall durability: the concurrency fork (tough walls vs. the Breach order)
 
+> ## ⚠ SUPERSEDED IN PART 2026-09-16 — the "only AGGRO breaks the stance" half is REVERSED by a later owner ruling (WO-1764)
+> The owner felt-tested the shipped behaviour on **Iron Bastion**, APK `2026.09.16.371701`, and ruled,
+> **verbatim: *"Units first even inside Breach"*** — any **reachable** defender beats the wall, even
+> under a Breach order; walls only when **no** defender is reachable.
+>
+> **So the clause this ticket's status line spent a paragraph RETIRING is the one that is now live.**
+> That paragraph is left exactly as written (§15 — dated tickets are frozen, never rewritten): it is
+> the record of a real 09-15 ruling, which a later 09-16 ruling reversed after the owner saw it in the
+> game. It was not a paraphrase error the second time round.
+>
+> What is unchanged: Breach is still a **persistent, auto-chaining stance**; **siege** still takes
+> walls on its own; **aggro** still peels (it always did, via `Peel`, before the stance is consulted);
+> and with **no defender reachable** the armed stance is still what opens the panel. What changed is
+> the *priority* inside the stance. Implemented by
+> `WorkOrders/WORK_ORDER_1764_troops_still_prefer_walls_over_nearby_targets_bastion.md`; the ruling now
+> lives in ONE guard, `RaidAssaultAi.StanceOutranksReachableUnit`, read at both stance gates, and
+> `WallBreachOrderRegression` Case 8 was rewritten (not deleted) to pin the new reading in both
+> directions.
+
 **Status:** FIXED via WO-1746 (gated 2026-09-15: `COMPILE_GATE_OK` cg1746b, `REGRESSION_OK 534/534` reg1746; awaiting the owner's felt test) — RULED 2026-09-15: BRANCH B + 10% reluctant fallback; Breach is a PERSISTENT STANCE that auto-chains. Implemented by `WorkOrders/WORK_ORDER_1746_breach_stance_and_reluctant_wall_damage.md` (RaidAssaultAi / TroopController silo); compiled and gated 2026-09-15, NOT yet felt-tested; this ticket closes when the owner felt-tests. ⚠ **CORRECTION 2026-09-15 — the summary clause "units-first is the default inside it" was the LEAD'S PARAPHRASE and it is WRONG; it is retired.** It contradicted this ticket's own ruling body. WO-1746 flagged the disagreement rather than picking silently, the owner ruled on it, and her FINAL answer is the ruling body as written: **the stance holds until the player toggles Breach OFF or a hostile pulls AGGRO** (the existing `Peel` trigger — actually attacked, or closed to melee). A nearby hostile merely standing and watching does NOT break it; units-first is the default **OUTSIDE** the stance. She first answered "Any nearby hostile breaks the stance" and reversed herself within a minute — both answers are recorded verbatim in WO-1746 §4 so this is not re-litigated. `WallBreachOrderRegression` Case 8 pins the ruled behaviour, and its red proof has been EXECUTED (WO-1746 §4A/§4B-RED — it caught a real bug: the stance needed TWO gates, not one). This ruling ALSO settles WO-1730 §3 Q2 (explicit Breach order vs units-first): Breach is a stance the player toggles, and units-first is the default **OUTSIDE** it — inside it only AGGRO breaks the warband off the wall.
 
 > ⚠ **SUPERSEDED IN PART 2026-09-15 (owner ruling, later the same day): the 10% reluctant wall-damage fallback is RETIRED** — *"the troops 100% ignore walls, unless explicitly told breach"*; siege (catapult) still auto-attacks walls. Implemented by `WorkOrders/WORK_ORDER_1752_troops_never_attack_walls_without_breach_and_defend_the_hero.md`. The Breach stance itself (persistent, auto-chaining, only AGGRO breaks it) is unchanged.

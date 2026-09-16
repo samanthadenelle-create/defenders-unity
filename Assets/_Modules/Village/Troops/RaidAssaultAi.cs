@@ -141,6 +141,212 @@ namespace DeNelle.Village
             return MayTargetWall(preferStructures, breachStance) ? 1f : 0f;
         }
 
+        // =====================================================================
+        //  WO-1764 — THE ONE RULING GUARD for "does an armed Breach stance outrank a
+        //  REACHABLE defender?"  (owner ruling 2026-09-16)
+        // =====================================================================
+
+        /// <summary>
+        /// WO-1764 — FALSE: a reachable defender beats the wall even under an armed Breach stance.
+        /// Walls are for when no defender is reachable.
+        /// </summary>
+        /// <remarks>
+        /// ⭐ OWNER RULING 2026-09-16, VERBATIM: *"Units first even inside Breach"* — any reachable
+        /// defender beats the wall, even under a Breach order; walls only when no defender is
+        /// reachable.
+        ///
+        /// ⚠ THIS SETTLES THE ONE READING WO-1746 FLAGGED AND COULD NOT DECIDE. WO-1738's status
+        /// line summarised the ruling as *"units-first is the default inside it"*; its ruling BODY
+        /// and WO-1719 said the stance runs *"until ... a hostile pulls aggro"*, i.e. only Peel
+        /// breaks it. WO-1746 implemented the second reading, flagged the dispute in
+        /// <see cref="PreferUnit"/>'s remarks rather than burying it, and pinned it with
+        /// WallBreachOrderRegression Case 8. The owner watched THAT ship on Iron Bastion
+        /// (APK 2026.09.16.371627) and ruled for the first reading. Status line and body now agree.
+        ///
+        /// ⭐ WHY A NAMED PREDICATE AND NOT A DELETION. Two independent sites in the Breach branch
+        /// let a unit beat masonry — <see cref="PreferUnit"/>'s reachability rule and
+        /// <see cref="PickBucket"/>'s in-attack-range shortcut — and WO-1746 shipped with the second
+        /// one MISSED, which is why the stance looked broken for a whole ticket. Deleting the two
+        /// <c>breachStance</c> clauses would leave a future re-flip having to find both sites again
+        /// from scratch. Reading ONE predicate at both sites makes the ruling literally one line:
+        /// return true here and the stance outranks a calm defender again, at both gates, with
+        /// WallBreachOrderRegression Case 8 naming which reading is live.
+        ///
+        /// ⛔ AGGRO IS UNAFFECTED AND WAS NEVER IN QUESTION. peelThreat -> <see cref="ResolvePhase"/>
+        /// returns <see cref="RaidAssaultPhase.Peel"/> -> <see cref="PreferUnit"/> returns true at
+        /// the top, before the stance is consulted at all. And SIEGE is unaffected: the
+        /// <c>preferStructures</c> branches return before either guard.
+        /// </remarks>
+        public static bool StanceOutranksReachableUnit { get { return false; } }
+
+        // =====================================================================
+        //  WO-1764 D1 — THE ROUTE-TO-UNIT DETOUR RULE, RE-DERIVED ON IRON BASTION
+        // =====================================================================
+
+        /// <summary>
+        /// WO-1438's ratio bound on a route to a UNIT: a PathComplete longer than this multiple of
+        /// the straight line was refused as "a lap of the wall ring". Kept as the widening half of
+        /// <see cref="RouteToUnitOpen"/>; see <see cref="RouteDetourSlackMeters"/> for why a ratio
+        /// alone is the wrong SHAPE, not merely the wrong number.
+        /// </summary>
+        /// <remarks>
+        /// ⚠ THIS CONSTANT USED TO LIVE IN TroopController (`RouteDetourFactor = 1.5f`, its line
+        /// 213) and was read by BOTH the unit gate and the objective gate. It moved here so the
+        /// rule is one home and a regression can execute it without a scene — the objective gate
+        /// still reads THIS constant, deliberately unchanged (see <see cref="RouteToUnitOpen"/>).
+        /// Calibrated on the 2026-09-06 raider_camp_small capture, whose worst real route measured
+        /// 8.1/7.1 = 1.14x.
+        /// </remarks>
+        public const float RouteDetourFactor = 1.5f;
+
+        /// <summary>
+        /// WO-1764 — ABSOLUTE extra walking (metres) a complete route may cost over the straight
+        /// line and still count as OPEN, whatever the ratio says.
+        /// </summary>
+        /// <remarks>
+        /// ⭐ THE RATIO'S SHAPE IS INVERTED RELATIVE TO THE FAILURE IT GUARDS, AND THAT — NOT THE
+        /// NUMBER — IS THE DEFECT. Steering is <c>_agent.Move(displacement)</c>, a straight-line
+        /// push with no SetDestination (TroopController's own locomotion comment), so the thing that
+        /// makes a troop grind against masonry instead of arriving is the ABSOLUTE excess the
+        /// straight line does not account for. The ratio scales that allowance with the distance to
+        /// the foe, which is backwards:
+        ///   * captured 2026-09-14 on Iron Bastion, straight = 5.7 m -> allowance 2.85 m of excess,
+        ///     less than one go-around of a single 3.0 m wall module;
+        ///   * same session, straight = 28.3 m -> allowance 14.2 m of excess, enough to round a
+        ///     whole tower band.
+        /// So the gate is tightest exactly where a detour is walkable and loosest exactly where it
+        /// is not. The fix is an ABSOLUTE budget; the ratio is kept as an OR so the rule is
+        /// WIDENING-ONLY and no route that is open today can start failing.
+        ///
+        /// ⭐ THE ARITHMETIC, ON IRON BASTION'S OWN GEOMETRY (all sources read 2026-09-16):
+        ///   Authored: baseRadius 54, wallSegmentsPerSide 13, entranceCount 1
+        ///   (Resources/Data/Canonical/scene-configs.json, id `iron_bastion`). Generated:
+        ///   outer ring half-extent 54 m -> side 108 m with ONE south gate
+        ///   (RaidBaseGenerator.cs:720 `{true,false,twoGates,false}`); keep ring at
+        ///   54 x 0.45 = 24.3 m half-extent -> side 48.6 m with ONE north gate (`:740`, `:741`);
+        ///   no wall panel wider than 3.0 m (scene-configs.json:12, the WO-1723 partition rule).
+        ///
+        ///   MUST COUNT AS OPEN — same courtyard, only a CONVEX obstacle between (a 3.0 m module,
+        ///   a corner post, a tower base). A NavMesh route round a convex obstacle of width d costs
+        ///   at most (pi/2 - 1)*d ~= 0.57*d of excess; two 3.0 m pieces in series plus agent-radius
+        ///   inflation on each side is ~= 2*1.7 + ~2 = 5.4 m.
+        ///   MUST STAY REFUSED — the straight line crosses a RING. The keep's south face has to
+        ///   route to the north gate and back: excess ~= 2*(24.3 + 48.6 + 24.3) ~= 194 m. The outer
+        ///   ring's north face to the south gate: excess ~= 2*108 = 216 m.
+        ///   8 m sits more than an order of magnitude below the smallest ring crossing and above the
+        ///   largest convex go-around — the margin the ratio never had at close range.
+        ///
+        /// ⛔ DERIVED, NOT MEASURED, AND SAID SO (CLAUDE.md sec.11B). The convex term uses the
+        /// AUTHORED 3.0 m module cap; this lane did NOT measure a tower base footprint or the baked
+        /// agent radius on RaidBase_IronBastion, and 8 m is rounded up to cover them. The
+        /// falsifiable readout is the `routeUnit=[len= straight= excess= ...]` token added to the
+        /// [Flow:RaidAI] line in the same change: the next Bastion logcat prints the real
+        /// len/straight pairs this constant is guessing at, and it can be re-derived from measured
+        /// numbers instead of authored ones.
+        ///
+        /// ⚠ WHAT THIS DOES NOT CLAIM. The 09-14 proving lines carry `route=PathComplete-detour`
+        /// but NEITHER length, so it is unprovable from here whether the 5.7 m / 14.4 m footman
+        /// line flips: its excess is only known to be > 7.2 m. That gap is exactly why the lengths
+        /// are now printed. And Q2 stays OPEN: a slack-opened route is still steered straight-line,
+        /// so read `moved=` against `commanded=` on the adjacent [Flow:TroopAI] line to see whether
+        /// those troops actually arrive.
+        /// </remarks>
+        public const float RouteDetourSlackMeters = 8f;
+
+        /// <summary>
+        /// WO-1764 — is a COMPLETE NavMesh route to a unit "open" for selection purposes?
+        /// True when the extra walking is within <see cref="RouteDetourSlackMeters"/> OR the route
+        /// is within <see cref="RouteDetourFactor"/> of the straight line.
+        /// </summary>
+        /// <remarks>
+        /// Pure so the regression executes the arithmetic with no scene. Callers must only ask this
+        /// for a <c>PathComplete</c> route — an incomplete path is not "open" at any length.
+        /// <para/>
+        /// ⛔ THE OBJECTIVE ROUTE DELIBERATELY DOES NOT CALL THIS. TroopController's
+        /// RefreshRouteToObjective keeps the bare <see cref="RouteDetourFactor"/> test, because
+        /// <c>routeToObjectiveOpen</c> is <see cref="ResolvePhase"/>'s input: widening it moves the
+        /// whole warband from Breach into Push/Finish, which is a DIFFERENT bucket ordering
+        /// (WO-1764 D4) and is not what the owner's report is about. One constant, two rules, the
+        /// difference stated rather than left to be discovered.
+        /// </remarks>
+        public static bool RouteToUnitOpen(float routeLen, float straightLine)
+        {
+            if (routeLen <= 0f || straightLine <= 0.01f) return false;
+            if (routeLen - straightLine <= RouteDetourSlackMeters) return true;
+            return routeLen <= straightLine * RouteDetourFactor;
+        }
+
+        /// <summary>
+        /// WO-1764 D3 — does the nearest NON-WALL structure in this troop's own sweep survive as the
+        /// bucket-2 candidate, instead of being displaced by the warband's shared wall focus?
+        /// </summary>
+        /// <remarks>
+        /// ⭐ THE BUG THIS REPLACES WAS AN UNCONDITIONAL OVERWRITE. TroopController read the
+        /// scene-wide shared wall focus (FindObjectsByType&lt;WallSegment&gt;, walls=210 on the
+        /// 09-14 Iron Bastion device capture) and assigned it over <c>nearestOtherStruct</c> with no
+        /// test at all — not on stance, not on distance, not on whether this troop's own sweep even
+        /// held a wall. Two consequences, both of them the owner's felt report:
+        ///   * a DefenseTower standing right next to the troop could never be bucket 2; and
+        ///   * with the stance off, that tower was replaced BY a wall, so
+        ///     <c>otherStructIsWall</c> went true, <c>mayWall</c> went false and
+        ///     <see cref="PickBucket"/> returned -1 — the troop stood still with a shootable tower
+        ///     in range.
+        /// It also made <see cref="PickBucket"/>'s own "a TOWER behind it becomes bucket 2" remark
+        /// false upstream: the tower had already been discarded before the bucket was picked.
+        ///
+        /// ⛔ AND THIS IS *NOT* "PREFER ANY NON-WALL STRUCTURE", WHICH WOULD REINTRODUCE WO-1438.
+        /// PickBucket's remarks record why the wall is refused in place rather than filtered out:
+        /// structures carry NO reachability filter, so promoting a tower that stands BEHIND intact
+        /// masonry steers the troop into a navmesh edge and freezes it. The test is therefore
+        /// GEOMETRIC: the non-wall structure survives only when it is NEARER than any wall this
+        /// troop can see. A tower nearer than every wall in the sweep is not behind one. A tower
+        /// further away than a wall keeps losing to the wall focus exactly as it does today, which
+        /// is also what keeps WO-1746's auto-chain intact for the troops actually on the panel.
+        /// <para/>
+        /// ⭐ THE SECOND CLAUSE, AND IT IS THE ONE THE 09-16 CAPTURE FORCED. The geometric test
+        /// ALONE does not answer the owner's felt case, and the device log says so in one line
+        /// (logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt:3053030,
+        /// 09-16 13:25:34.656, build 2026.09.16.371701):
+        /// <code>
+        /// [Flow:TroopAI] id=troop-footman role=melee IDLE/RALLY: no acquirable hostile inside
+        ///  radius=14.0m (last sweep colliders=12, accepted[unit=0,struct=11], rejected=1;
+        ///  nearestHostileAnyKind='Watchtower_Mage_1(DefenseTower)' @7.4m) rally=... action=stand-still
+        /// </code>
+        /// On the tick before it (`:3053025`) the nearest hostile is `Wall_Keep1_SS_3` at **7.1 m**.
+        /// So the refused wall is 0.3 m NEARER than a DefenseTower the owner's own WO-1752 ruling
+        /// keeps legal for a stance-less troop, and the troop stands still. A 0.3 m difference is not
+        /// "the tower is behind the wall" — and with the wall refused outright the troop's only
+        /// alternative to the tower is <c>bucket=-1</c>, a guaranteed zero. Promoting the tower is
+        /// therefore no worse than standing even in the mis-steer case, and may actually land damage.
+        /// So: when the wall candidate may not be targeted AT ALL, the nearest non-wall structure
+        /// survives regardless of relative distance.
+        /// <para/>
+        /// ⚠ AND THE RESIDUAL WO-1438 RISK IS NAMED, NOT WISHED AWAY. That promoted tower may stand
+        /// behind intact masonry, and steering is straight-line, so the troop can grind on the wall
+        /// instead of arriving. It is falsifiable on the next capture, from one pair of tokens on the
+        /// adjacent [Flow:TroopAI] line: <c>moved=</c> against <c>commanded=</c>. A route probe is
+        /// NOT the answer here and that is measured, not assumed — WO-1569 recorded 133 of 133
+        /// structure probes returning <c>CalculatePath-FAILED</c>, because a structure's
+        /// WorldPosition sits inside solid geometry.
+        /// <para/>
+        /// Stance-independent for the geometric half on purpose: the displacement is wrong with the
+        /// stance ON too (a nearer tower could never be bucket 2). Under an armed stance / siege the
+        /// wall IS targetable, so only the geometric half applies and WO-1746's auto-chain is intact
+        /// for every troop whose nearest masonry is the panel. That is a reading taken from the
+        /// WO-1764 brief, NOT an owner ruling — flagged here rather than buried, exactly as WO-1746
+        /// flagged its own.
+        /// </remarks>
+        public static bool NonWallStructSurvives(
+            bool hasNonWallStruct, float nonWallSqr,
+            bool hasWallInSweep, float wallSqr,
+            bool wallMayBeTargeted)
+        {
+            if (!hasNonWallStruct) return false;
+            if (!hasWallInSweep) return true;
+            if (!wallMayBeTargeted) return true;
+            return nonWallSqr < wallSqr;
+        }
+
         /// <summary>
         /// WO-1752 ruling 3 — should this troop adopt the hero's live attacker as its target,
         /// even though that attacker is outside its own acquire sweep?
@@ -492,12 +698,26 @@ namespace DeNelle.Village
         /// survives verbatim) while a merely REACHABLE, non-aggro'd defender no longer peels the
         /// warband off the panel the player ordered.
         ///
-        /// ⚠ THE ONE PLACE A READING WAS CHOSEN, FLAGGED RATHER THAN BURIED. WO-1738's status
-        /// line summarises the ruling as "units-first is the default inside it", which would mean
-        /// a reachable unit still wins under an armed stance. The ruling BODY and WO-1719 both say
-        /// "until ... a hostile pulls aggro", i.e. Peel. This implements the two verbatim owner
-        /// sources; flipping to the other reading is deleting the one <c>breachStance</c> line
-        /// below. Pinned by WallBreachOrderRegression Case 8 so the flip cannot happen silently.
+        /// ✅ THE ONE PLACE A READING WAS CHOSEN IS NOW **RULED** — WO-1764, owner 2026-09-16,
+        /// verbatim: *"Units first even inside Breach"*. Any reachable defender beats the wall, even
+        /// under a Breach order; walls only when no defender is reachable. The flag below therefore
+        /// resolves the OTHER way from WO-1746, and it does so through
+        /// <see cref="StanceOutranksReachableUnit"/> — read at this gate AND at
+        /// <see cref="PickBucket"/>'s in-attack-range shortcut, which is the gate WO-1746 missed.
+        /// Kept as a record rather than deleted: WO-1738's status line said "units-first is the
+        /// default inside it" while its ruling BODY and WO-1719 said "until ... a hostile pulls
+        /// aggro"; WO-1746 implemented the body, the owner watched it on Iron Bastion
+        /// (APK 2026.09.16.371701) and ruled for the status line. Body and status line now agree.
+        /// Pinned by WallBreachOrderRegression Case 8, rewritten in the same change to pin the NEW
+        /// reading in both directions (reachable -> unit; unreachable -> wall).
+        /// <para/>
+        /// The proving line from the build she played
+        /// (logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt:3047672-3047673):
+        /// <c>breachStance=True stanceYield=wall ... has[unit=True,obj=False,wall=True]</c> with
+        /// <c>SWING target='Wall_Keep1_SS_0' dist=1.3m</c> while
+        /// <c>runnerUpOtherKind='RaidGuard (hollow-warrior-Lv7-16)' dist=10.1m</c> and
+        /// <c>accepted[unit=1,struct=9]</c> — the stance holding the panel with a live defender in
+        /// the sweep, which is the report, printed.
         ///
         /// The old 6-arg signature is KEPT as a delegating overload (stance = false) so every
         /// suite that pins the pre-ruling rule compiles and passes untouched.
@@ -522,8 +742,11 @@ namespace DeNelle.Village
 
             // Breach: siege stays on masonry; others use the existing reachability rule.
             if (preferStructures) return false;
-            // WO-1746: so does a warband under an armed Breach stance.
-            if (breachStance) return false;
+            // WO-1746 made an armed Breach stance behave like siege here. WO-1764's owner ruling
+            // (2026-09-16, "Units first even inside Breach") reverses that, and the reversal is
+            // ONE predicate read at BOTH stance gates - see StanceOutranksReachableUnit for why a
+            // named predicate rather than a deletion.
+            if (breachStance && StanceOutranksReachableUnit) return false;
             if (!hasStruct) return true;
             return unitInAttackRange || routeToUnitOpen;
         }
@@ -680,7 +903,15 @@ namespace DeNelle.Village
             // would have gone red at the gate. Siege never reaches this line (the preferStructures
             // branch above returns first), so guarding it with the stance is what makes a
             // stance-armed troop behave like siege here, which is precisely the ruling.
-            if (!breachStance && hasUnit && unitInAttackRange) return 0;
+            //
+            // ⭐ WO-1764 (owner ruling 2026-09-16, "Units first even inside Breach") REVERSES the
+            // `!breachStance` half of this guard, and does it through the SAME predicate as
+            // PreferUnit's so the two gates can never again disagree - which is the failure WO-1746
+            // shipped. A defender already inside attack range now beats the panel with the stance
+            // armed as well as without it; the wall is what the troop takes when no defender is
+            // reachable. Siege never reaches this line (the preferStructures branch above returns
+            // first), so the catapult is untouched.
+            if ((!breachStance || !StanceOutranksReachableUnit) && hasUnit && unitInAttackRange) return 0;
             if (mayWall) return 2;
             if (hasObjective) return 1;
             if (!hasUnit) return -1;

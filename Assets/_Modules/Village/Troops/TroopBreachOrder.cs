@@ -81,12 +81,17 @@ namespace DeNelle.Village
         ///     most-damaged rule picks the next panel, and the warband keeps opening walls at
         ///     full damage with no second tap. THAT PATH IS THE AUTO-CHAIN; never disarm there.
         ///   * the player toggles Breach OFF / retreats / the raid tears down -> the public
-        ///     <see cref="Clear"/> runs, which DOES disarm, and the warband goes reluctant again.
+        ///     <see cref="Clear"/> runs, which DOES disarm, and the warband stops targeting walls
+        ///     entirely. (⚠ WO-1764: this line said "goes RELUCTANT again"; WO-1752 deleted the
+        ///     reluctant 10% path, so a disarmed non-siege troop now lands 0.00 on a panel and
+        ///     <see cref="RaidAssaultAi.PickBucket"/> will not select one at all.)
         ///
         /// The <c>|| HasOrder</c> half covers the exclusive-arm sites: arming Rally or a deploy
         /// tile flips the Breach MODE off while deliberately LEAVING a standing order
         /// (RaidDeployController's own WO-1719 comments). Without it, aiming a rally mid-breach
-        /// would silently drop the warband to 10% against the very panel it is still ordered onto.
+        /// would silently stop the warband damaging the very panel it is still ordered onto.
+        /// (⚠ WO-1764: this read "drop the warband to 10%" — post-WO-1752 the number is 0.00 and the
+        /// panel is not even selected, so the consequence is worse than the retired prose implied.)
         /// </remarks>
         public static bool StanceActive { get { return _stanceArmed || HasOrder; } }
 
@@ -99,9 +104,17 @@ namespace DeNelle.Village
             if (_stanceArmed == armed) return;
             _stanceArmed = armed;
             string state = armed ? "ARMED" : "disarmed";
+            // ⛔ WO-1764 RIDER — THIS STRING PRINTED A NUMBER THAT NO LONGER EXISTS, AND THE TRACE
+            // IT WOULD HAVE POISONED IS THE ONE THAT DATES A BUILD. It said ordinary troops "go
+            // RELUCTANT again" and printed the retired one-tenth multiplier. WO-1752 DELETED
+            // the 10% path (RaidAssaultAi.WallDamageMultiplier now returns 1 or 0), and
+            // TroopController's own selector comment tells the next seat that "a 0.10 token on a
+            // fresh log is now proof the build predates this ticket" — so this line would have
+            // forged that proof on every disarm, on a build that carries the fix. Corrected in the
+            // same change as the ruling it belongs to (CLAUDE.md §12/§15).
             string effect = armed
                 ? "every troop now opens walls at FULL structural damage and keeps chaining to the next panel when one falls"
-                : "ordinary troops go RELUCTANT again (10% on walls) unless an explicit order still stands";
+                : "walls are OFF (0.00) for non-siege troops without the stance unless an explicit order still stands";
             FlowTrace.Step("RaidAI",
                 "BREACH STANCE " + state + ": " + effect + ". standingOrder=" + HasOrder);
         }

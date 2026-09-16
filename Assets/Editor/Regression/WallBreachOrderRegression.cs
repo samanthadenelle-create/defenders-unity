@@ -44,9 +44,21 @@
 //       legal, and the stance re-opens the panel. Cases 7 and 9 were AMENDED for this:
 //       7's third assertion was inverted (it demanded the wall) and 9 now demands 0.00.
 //   14. ruling 2 - "Siege still hits walls on its own", with and without the stance.
-//   15. ruling 3 - an idle troop adopts the hero's live attacker; a busy one does not;
-//       and adoption still cannot break an armed Breach stance (WO-1746 sec.4 stands).
+//   15. ruling 3 - an idle troop adopts the hero's live attacker; a busy one does not.
 //   16. WO-1752 on the live path, including that the adoption runs BEFORE PickBucket.
+// WO-1764 (owner ruling 2026-09-16, after the Iron Bastion felt-test on APK 2026.09.16.371701)
+// SETTLED the reading cases 8 and 15 were flagging, VERBATIM: "Units first even inside Breach" -
+// any reachable defender beats the wall, even under a Breach order; walls only when no defender is
+// reachable. Cases 8 and 15 are therefore INVERTED (rewritten, not deleted - the history is in
+// their own comments) and 17-19 are new:
+//   17. D1 - the route-to-unit detour rule re-derived on Iron Bastion's geometry: a same-courtyard
+//       detour is OPEN, the MEASURED ring crossing (routeObj=detour:156.5/33.3, device 09-16) stays
+//       REFUSED, and the rule is widening-only over WO-1438's ratio.
+//   18. D3 - the scene-wide shared WALL focus no longer erases a nearer non-wall structure, so
+//       PickBucket's own "a TOWER behind it becomes bucket 2" premise is true upstream as well.
+//   19. WO-1764 on the LIVE path: ONE ruling guard read at BOTH stance gates (the second is the gate
+//       WO-1746 missed), D1/D3 wired and TRACED, and the rider - TroopBreachOrder no longer prints
+//       the retired 10% multiplier, which would have forged proof that the build predates WO-1752.
 //
 // RED PROOF: delete the `if (explicitFocus != null && explicitFocus.IsAlive) return
 // explicitFocus;` early return in RaidAssaultAi.SelectFocusBreach and cases 2 and 4
@@ -346,8 +358,12 @@ namespace DeNelle.Editor
         //     that was ALREADY correct (a reachable defender beating the wall) so this ruling
         //     cannot regress it. Its red proof is to make PreferUnit's Breach branch return false
         //     for a reachable unit; both assertions then fail.
-        //   * Case 8  — delete `if (breachStance) return false;` from the 7-arg PreferUnit: the
-        //     stance case resolves bucket 0 and the case fails.
+        //   * Case 8  — ⚠ WO-1764 INVERTED THIS CASE, so its red proof inverted with it. The old
+        //     proof read "delete `if (breachStance) return false;` from the 7-arg PreferUnit: the
+        //     stance case resolves bucket 0 and the case fails" — bucket 0 is now what the case
+        //     DEMANDS. The current red proof is to return true from
+        //     RaidAssaultAi.StanceOutranksReachableUnit: the in-range and reachable assertions fail
+        //     while the "no defender reachable -> wall" one still passes.
         //   * Case 9  — change WallDamageMultiplier to `return 1f;` unconditionally: the 0.10
         //     assertion fails. Change it to always return the reluctant value: the siege and
         //     stance assertions fail. The two halves cannot both be satisfied by a constant.
@@ -381,6 +397,10 @@ namespace DeNelle.Editor
                 Case_SiegeStillTakesTheWall(failures, log);
                 Case_IdleTroopAdoptsTheHerosAttacker(failures, log);
                 Case_WO1752WiredIntoTheLivePath(failures, log);
+                // WO-1764 — the Iron Bastion detour rule, the displaced tower, and the rider.
+                Case_RouteToUnitOpen_AtIronBastionGeometry(failures, log);
+                Case_NonWallStructSurvivesTheSharedWallFocus(failures, log);
+                Case_WO1764WiredIntoTheLivePath(failures, log);
             }
             finally
             {
@@ -444,25 +464,71 @@ namespace DeNelle.Editor
             List<string> failures, StringBuilder log)
         {
             log.AppendLine("-- Case_BreachStance_HoldsTheWarbandOnMasonry");
-            // ⚠ THIS IS THE ONE PLACE A READING OF THE RULING WAS CHOSEN - pinned here so a flip
-            // cannot be silent. Ruling 2 and WO-1719 both say the stance runs "until the player
-            // toggles Breach off or a hostile pulls AGGRO"; aggro is peelThreat, i.e. Peel phase.
-            // A merely reachable, non-aggro'd defender therefore does NOT pull the warband off the
-            // wall. (WO-1738's one-line status summary reads "units-first is the default inside
-            // it", which would be the opposite; the two verbatim owner sources win. Flipping is
-            // deleting `if (breachStance) return false;` in RaidAssaultAi.PreferUnit.)
-            int stanceWall = RaidAssaultAi.PickBucket(
+            // ⭐ WO-1764 REWROTE THIS CASE - IT IS NOT DELETED, IT IS INVERTED, AND THE HISTORY IS
+            // THE POINT. It used to assert the OPPOSITE (bucket 2 for a stance-armed troop with a
+            // reachable defender), because WO-1746 had to choose between two owner sources that
+            // disagreed: WO-1738's status line said "units-first is the default inside it" while its
+            // ruling BODY and WO-1719 said the stance runs "until ... a hostile pulls AGGRO".
+            // WO-1746 implemented the body and flagged the dispute here so a flip could not be
+            // silent. The owner watched that ship on Iron Bastion (APK 2026.09.16.371701) and ruled,
+            // 2026-09-16, VERBATIM:
+            //     "Units first even inside Breach"
+            //   - any reachable defender beats the wall, even under a Breach order; walls only when
+            //     no defender is reachable.
+            // The proving line from the build she played
+            // (logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt:3047672):
+            //   breachStance=True stanceYield=wall ... has[unit=True,obj=False,wall=True]
+            // with the paired SWING on 'Wall_Keep1_SS_0' at 1.3 m while a RaidGuard sat 10.1 m away
+            // and accepted[unit=1,struct=9]. That is the report, printed.
+            //
+            // RED PROOF: return true from RaidAssaultAi.StanceOutranksReachableUnit (the ONE ruling
+            // guard, read at both stance gates) and the first two assertions below fail while the
+            // third still passes - which is exactly the "walls only when no defender is reachable"
+            // half, and is why all three are here.
+            int stanceUnitInRange = RaidAssaultAi.PickBucket(
                 RaidAssaultPhase.Breach, preferStructures: false, hasUnit: true,
                 hasObjective: false, hasOtherStruct: true,
-                unitInAttackRange: true, routeToUnitOpen: true, breachStance: true,
-                // WO-1752 strengthens this case: the candidate is declared to BE a wall, so the
-                // assertion now also proves the new MayTargetWall gate lets the stance through.
-                // Before, it passed with otherStructIsWall defaulted to false, i.e. against a
-                // candidate the new gate never inspects.
+                unitInAttackRange: true, routeToUnitOpen: false, breachStance: true,
+                // The candidate is declared to BE a wall, so this also exercises the MayTargetWall
+                // gate rather than passing against a candidate that gate never inspects.
                 otherStructIsWall: true);
-            if (stanceWall != 2)
-                failures.Add(Tag + " with the Breach STANCE armed a non-aggro'd defender must not " +
-                             "pull the warband off the panel (bucket " + stanceWall + ")");
+            if (stanceUnitInRange != 0)
+                failures.Add(Tag + " WO-1764: 'Units first even inside Breach' - a defender IN ATTACK " +
+                             "RANGE must beat the panel with the stance ARMED (bucket " +
+                             stanceUnitInRange + ")");
+
+            int stanceUnitReachable = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: false, hasUnit: true,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: false, routeToUnitOpen: true, breachStance: true,
+                otherStructIsWall: true);
+            if (stanceUnitReachable != 0)
+                failures.Add(Tag + " WO-1764: a merely REACHABLE defender must also beat the panel " +
+                             "under an armed stance - 'any reachable defender' (bucket " +
+                             stanceUnitReachable + ")");
+
+            // ⭐ AND THE HALF THAT STOPS THIS BECOMING "THE BREACH BUTTON DOES NOTHING". The ruling
+            // is units-FIRST, not units-only: with no defender reachable the stance is still what
+            // opens the panel, and the auto-chain still runs. WO-1752's Case 13 pins the same shape
+            // from the stance-less side (-1 without, 2 with).
+            int stanceWallWhenNoneReachable = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: false, hasUnit: true,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: false, routeToUnitOpen: false, breachStance: true,
+                otherStructIsWall: true);
+            if (stanceWallWhenNoneReachable != 2)
+                failures.Add(Tag + " WO-1764: with NO defender reachable the armed stance must still " +
+                             "take the wall - 'walls only when no defender is reachable' is a " +
+                             "priority, not a ban (bucket " + stanceWallWhenNoneReachable + ")");
+
+            // The ruling is ONE guard by construction, and a future re-flip must move that guard
+            // rather than one of the two gates. RED PROOF: hardcode `false` at either
+            // breachStance site in RaidAssaultAi and this assertion goes stale silently - which is
+            // why case 12/16's source-text half asserts BOTH sites read the predicate.
+            if (RaidAssaultAi.StanceOutranksReachableUnit)
+                failures.Add(Tag + " WO-1764: StanceOutranksReachableUnit is TRUE - the owner ruled " +
+                             "'Units first even inside Breach' on 2026-09-16; flipping it back needs " +
+                             "a new ruling recorded in the WO, not a code change");
 
             // Aggro still wins, exactly as WO-1719 shipped it: peelThreat -> Peel -> bucket 0.
             int aggro = RaidAssaultAi.PickBucket(
@@ -758,20 +824,35 @@ namespace DeNelle.Editor
                 failures.Add(Tag + " WO-1752 ruling 3: with no live hero attacker there is nothing " +
                              "to adopt");
 
-            // ⛔ THE HALF THIS CASE EXISTS FOR, AND IT IS WO-1746 sec.4 - DO NOT RE-LITIGATE IT.
-            // Adoption must NOT become a second thing that breaks an armed Breach stance; AGGRO
-            // (the Peel phase) stays the only one. Proven at the selector: an armed stance with an
-            // adopted unit present and even reachable still resolves the WALL, exactly as Case 8
-            // pins for a calm defender - because adoption changes hasUnit, never the phase.
-            int stanceHolds = RaidAssaultAi.PickBucket(
+            // ⛔ WO-1764 INVERTED THIS ASSERTION, AND WO-1752's OWN RULING 3 IS THE PART SUPERSEDED.
+            // It used to assert that an armed stance holds the WALL even with an adopted, reachable
+            // hero-attacker present ("adoption must NOT become a second thing that breaks the
+            // stance"; WO-1752 ruling 3 said it "does NOT break an active Breach stance unless the
+            // existing AGGRO rule says so"). The owner's 2026-09-16 ruling - "Units first even
+            // inside Breach" - makes REACHABILITY, not aggro, the thing that breaks the stance, so
+            // an adopted attacker the troop can reach now wins. Adoption still changes only hasUnit
+            // and never the phase; what changed is what the selector does with hasUnit.
+            int stanceYieldsToAdopted = RaidAssaultAi.PickBucket(
                 RaidAssaultPhase.Breach, preferStructures: false, hasUnit: true,
                 hasObjective: false, hasOtherStruct: true,
                 unitInAttackRange: true, routeToUnitOpen: true, breachStance: true,
                 otherStructIsWall: true);
-            if (stanceHolds != 2)
-                failures.Add(Tag + " WO-1752 must not have weakened the Breach stance: an adopted " +
-                             "hero-attacker is still just a unit, and the stance outranks it " +
-                             "(WO-1746 sec.4, bucket " + stanceHolds + ")");
+            if (stanceYieldsToAdopted != 0)
+                failures.Add(Tag + " WO-1764: an adopted hero-attacker the troop can reach must beat " +
+                             "the panel even with the stance armed - 'Units first even inside " +
+                             "Breach' (bucket " + stanceYieldsToAdopted + ")");
+
+            // And the stance still means something: an adopted attacker it CANNOT reach leaves the
+            // warband on the panel, so the Breach button is not silently dead.
+            int stanceHoldsWhenUnreachable = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: false, hasUnit: true,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: false, routeToUnitOpen: false, breachStance: true,
+                otherStructIsWall: true);
+            if (stanceHoldsWhenUnreachable != 2)
+                failures.Add(Tag + " WO-1764: an UNREACHABLE adopted attacker must not empty the " +
+                             "stance - the warband keeps opening the panel (bucket " +
+                             stanceHoldsWhenUnreachable + ")");
 
             // And with the stance OFF, the adopted attacker outranks the wall - which is the whole
             // felt complaint, resolved: "running around attacking walls while i am getting killed".
@@ -854,6 +935,223 @@ namespace DeNelle.Editor
                 failures.Add(Tag + " WO-1752: HeroAggroTarget minted its own hurt window instead of " +
                              "reusing PeelHurtWindowSeconds - duplicated state (CLAUDE.md sec.2/5/16)");
             log.AppendLine("   wall type, adoption, ordering, trace tokens and the publisher all on the live path");
+        }
+
+        // ── 17. WO-1764 D1: the detour rule, on Iron Bastion's own geometry ─────
+        private static void Case_RouteToUnitOpen_AtIronBastionGeometry(
+            List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- Case_RouteToUnitOpen_AtIronBastionGeometry");
+            // THE GEOMETRY, read at source 2026-09-16 and NOT copied from a doc:
+            //   Resources/Data/Canonical/scene-configs.json id 'iron_bastion' -> baseRadius 54,
+            //   wallSegmentsPerSide 13, entranceCount 1, interiorWallLayers 1; no panel wider than
+            //   3.0 m (that file's own field doc, the WO-1723 partition rule).
+            //   RaidBaseGenerator.cs:720 -> the outer ring carries ONE south gate; :740 -> the keep
+            //   ring sits at 54 * 0.45 = 24.3 m half-extent; :741 -> ONE north gate.
+            // So: outer side 108 m, keep side 48.6 m, one gate each, opposite faces.
+
+            // (a) A COMPLETE ROUTE TO A UNIT IN THE SAME COURTYARD IS OPEN. The obstacle between
+            // two troops sharing a courtyard is convex - a 3.0 m module, a corner post, a tower
+            // base - and a route round a convex obstacle of width d costs at most (pi/2-1)*d of
+            // excess. The captured pairing this exists for (09-14 Iron Bastion): a guard at 14.4 m
+            // refused while a wall at 5.7 m won. At 5.7 m the OLD ratio allowed 2.85 m of excess -
+            // less than one go-around of a single panel.
+            if (!RaidAssaultAi.RouteToUnitOpen(5.7f + 4f, 5.7f))
+                failures.Add(Tag + " WO-1764 D1: a 4 m detour at 5.7 m must be OPEN - the old ratio " +
+                             "allowed only 2.85 m there, less than one 3.0 m module's go-around");
+            if (!RaidAssaultAi.RouteToUnitOpen(14.4f + 7f, 14.4f))
+                failures.Add(Tag + " WO-1764 D1: a 7 m detour at 14.4 m must be OPEN (the captured " +
+                             "footman/RaidGuard pairing)");
+
+            // (b) A RING CROSSING STAYS REFUSED, AND THE NUMBER IS MEASURED, NOT REASONED. The
+            // 09-16 device capture printed the objective route's own detour on this very scene:
+            //   logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt:3047672
+            //   routeObj=detour:156.5/33.3   ->   excess 123.2 m, ratio 4.7x
+            // That is a keep-ring crossing, and it is 15x above the slack. Straight-line steering
+            // cannot walk it, so it must keep failing.
+            if (RaidAssaultAi.RouteToUnitOpen(156.5f, 33.3f))
+                failures.Add(Tag + " WO-1764 D1: the MEASURED Bastion ring crossing 156.5/33.3 " +
+                             "(excess 123.2 m) must stay REFUSED - straight-line Move cannot walk it");
+            if (RaidAssaultAi.RouteToUnitOpen(60f, 20f))
+                failures.Add(Tag + " WO-1764 D1: a 40 m excess must stay refused");
+
+            // (c) THE RULE IS WIDENING-ONLY. Anything the bare ratio accepted must still be open, or
+            // this ticket regressed WO-1438's calibration instead of correcting its shape.
+            if (!RaidAssaultAi.RouteToUnitOpen(30f * RaidAssaultAi.RouteDetourFactor, 30f))
+                failures.Add(Tag + " WO-1764 D1: a route exactly at the ratio bound must stay open - " +
+                             "the slack is an OR, never a replacement");
+
+            // (d) Degenerate inputs are NOT open. A zero/negative length or a zero straight line is
+            // "no answer", and answering True there would hand PreferUnit a reachable verdict for a
+            // probe that never ran.
+            if (RaidAssaultAi.RouteToUnitOpen(0f, 10f))
+                failures.Add(Tag + " WO-1764 D1: a zero-length route must not read open");
+            if (RaidAssaultAi.RouteToUnitOpen(5f, 0f))
+                failures.Add(Tag + " WO-1764 D1: a zero straight line must not read open");
+
+            // (e) The two constants have ONE home. TroopController used to declare the factor
+            // itself, which is the duplicated state CLAUDE.md §2/§5/§16 all describe.
+            if (Mathf.Abs(RaidAssaultAi.RouteDetourFactor - 1.5f) > 0.0001f)
+                failures.Add(Tag + " WO-1764 D1: RouteDetourFactor moved off 1.5 - WO-1438's " +
+                             "calibration was not re-measured by this ticket, only widened");
+            if (RaidAssaultAi.RouteDetourSlackMeters <= 0f)
+                failures.Add(Tag + " WO-1764 D1: the absolute slack must be positive");
+            log.AppendLine("   same-courtyard detours open; the measured 156.5/33.3 ring crossing refused");
+        }
+
+        // ── 18. WO-1764 D3: the shared wall focus no longer erases a tower ──────
+        private static void Case_NonWallStructSurvivesTheSharedWallFocus(
+            List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- Case_NonWallStructSurvivesTheSharedWallFocus");
+            // The captured line this case is written from, on the build the owner played
+            // (2026.09.16.371701):
+            //   logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt:3053030
+            //   [Flow:TroopAI] id=troop-footman IDLE/RALLY: no acquirable hostile inside radius=14.0m
+            //    (... accepted[unit=0,struct=11] ...;
+            //     nearestHostileAnyKind='Watchtower_Mage_1(DefenseTower)' @7.4m) action=stand-still
+            //   selector line :3049493 -> bucket=-1 mayWall=False otherStructIsWall=True
+            //                             has[unit=False,obj=False,wall=True]
+            // 242 such selector lines in one raid. A DefenseTower at 7.4 m is a legal, full-damage
+            // target for a stance-less troop (case 13 pins that) and the troop stood still.
+
+            // (a) A tower NEARER than any wall in the sweep survives. This is the geometric half:
+            // nothing nearer than it can be masonry it stands behind.
+            if (!RaidAssaultAi.NonWallStructSurvives(true, 7.4f * 7.4f, true, 9.0f * 9.0f, true))
+                failures.Add(Tag + " WO-1764 D3: a tower NEARER than every wall in the sweep must " +
+                             "survive the shared wall focus - it cannot be behind masonry");
+
+            // (b) With the wall REFUSED outright (stance-less non-siege), the tower survives even
+            // when the wall is marginally nearer - the 7.1 m wall / 7.4 m tower pairing above. The
+            // alternative is bucket -1, a guaranteed zero, so promoting it is no worse.
+            if (!RaidAssaultAi.NonWallStructSurvives(true, 7.4f * 7.4f, true, 7.1f * 7.1f, false))
+                failures.Add(Tag + " WO-1764 D3: with the wall not targetable at all, the nearest " +
+                             "non-wall structure must survive - standing still is a guaranteed zero " +
+                             "(captured 7.1 m wall vs 7.4 m Watchtower_Mage_1)");
+
+            // (c) ⭐ AND THE HALF THAT KEEPS WO-1438 AND WO-1746 INTACT. When the wall IS targetable
+            // (armed stance or siege) and it is NEARER, the wall focus keeps winning: the auto-chain
+            // survives, and a tower behind intact masonry is not promoted into a straight-line steer
+            // that freezes the troop on a navmesh edge. RED PROOF: drop the final distance
+            // comparison and return true, and this assertion fails while (a) and (b) still pass.
+            if (RaidAssaultAi.NonWallStructSurvives(true, 20f * 20f, true, 3f * 3f, true))
+                failures.Add(Tag + " WO-1764 D3: a tower 20 m away must NOT displace a targetable " +
+                             "wall 3 m away - that is WO-1438's navmesh-edge freeze, reintroduced");
+
+            // (d) Nothing to survive, nothing claimed; and with no wall in the sweep the non-wall
+            // candidate is simply the nearest masonry, as it always was.
+            if (RaidAssaultAi.NonWallStructSurvives(false, float.MaxValue, true, 4f, false))
+                failures.Add(Tag + " WO-1764 D3: with no non-wall structure there is nothing to keep");
+            if (!RaidAssaultAi.NonWallStructSurvives(true, 30f * 30f, false, float.MaxValue, true))
+                failures.Add(Tag + " WO-1764 D3: with no wall in the sweep the non-wall structure is " +
+                             "the candidate, whatever its distance");
+
+            // (e) The premise PickBucket states in its own comments must now be TRUE end-to-end: a
+            // surviving tower reaches bucket 2 for a stance-less troop.
+            int towerBucket = RaidAssaultAi.PickBucket(
+                RaidAssaultPhase.Breach, preferStructures: false, hasUnit: false,
+                hasObjective: false, hasOtherStruct: true,
+                unitInAttackRange: false, routeToUnitOpen: false, breachStance: false,
+                otherStructIsWall: false);
+            if (towerBucket != 2)
+                failures.Add(Tag + " WO-1764 D3: a surviving tower must land bucket 2 - PickBucket's " +
+                             "'a TOWER behind it becomes bucket 2' remark has to be true upstream " +
+                             "too (bucket " + towerBucket + ")");
+            log.AppendLine("   nearer tower survives; refused wall yields; targetable nearer wall still wins");
+        }
+
+        // ── 19. WO-1764 on the LIVE path, plus the rider string ─────────────────
+        private static void Case_WO1764WiredIntoTheLivePath(List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("-- Case_WO1764WiredIntoTheLivePath");
+            string ai = Read("Assets/_Modules/Village/Troops/RaidAssaultAi.cs");
+            string controller = Read("Assets/_Modules/Village/Troops/TroopController.cs");
+            string order = Read("Assets/_Modules/Village/Troops/TroopBreachOrder.cs");
+            if (ai == null || controller == null || order == null)
+            {
+                failures.Add(Tag + " WO-1764: one of the three Troops files could not be read");
+                log.AppendLine("   (skipped - source unreadable)");
+                return;
+            }
+
+            // ⭐ ONE RULING GUARD, READ AT BOTH GATES. WO-1746 shipped with the second gate missed;
+            // the whole point of the named predicate is that a re-flip cannot miss it again. Both
+            // sites must consult it by name.
+            int guardReads = 0;
+            int at = 0;
+            while (true)
+            {
+                int hit = ai.IndexOf("StanceOutranksReachableUnit", at, StringComparison.Ordinal);
+                if (hit < 0) break;
+                guardReads++;
+                at = hit + 1;
+            }
+            // ⚠ THE FLOOR IS DELIBERATELY LOW (declaration + at least one read) AND THE REAL PINS
+            // ARE THE TWO LITERAL GATE EXPRESSIONS BELOW. A higher count would be a source-text
+            // tripwire on PROSE - the remarks name the predicate too - and a harmless comment tidy
+            // would redden the suite for nothing. That is the duplicated-state trap CLAUDE.md §5
+            // describes, inside a regression instead of a doc.
+            if (guardReads < 2)
+                failures.Add(Tag + " WO-1764: StanceOutranksReachableUnit appears " + guardReads +
+                             " time(s) - the ruling guard must be DECLARED once and READ at both " +
+                             "stance gates");
+            if (ai.IndexOf("if (breachStance && StanceOutranksReachableUnit) return false;",
+                    StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1764: PreferUnit's Breach branch no longer reads the ruling " +
+                             "guard - a hardcoded stance gate is how the two sites drift apart again");
+            if (ai.IndexOf("if ((!breachStance || !StanceOutranksReachableUnit) && hasUnit && unitInAttackRange) return 0;",
+                    StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1764: PickBucket's in-attack-range shortcut no longer reads " +
+                             "the ruling guard - this is the exact gate WO-1746 missed");
+
+            // D1 must be wired into the UNIT probe and must NOT have been applied to the objective
+            // probe (that would move the phase - WO-1764 D4 - which is a different ticket).
+            if (controller.IndexOf("RaidAssaultAi.RouteToUnitOpen(len, straightLine)",
+                    StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1764 D1: RefreshRouteToUnit no longer calls " +
+                             "RaidAssaultAi.RouteToUnitOpen - a pure rule with no caller ships nothing");
+            if (controller.IndexOf("private const float RouteDetourFactor", StringComparison.Ordinal) >= 0)
+                failures.Add(Tag + " WO-1764 D1: TroopController re-declared RouteDetourFactor - the " +
+                             "constant has ONE home on RaidAssaultAi (duplicated state, CLAUDE.md §5)");
+            // ⚠ AND THE OBJECTIVE PROBE MUST STILL READ THE BARE RATIO. Widening it moves the whole
+            // warband from Breach into Push/Finish, a different bucket ordering (WO-1764 D4), which
+            // is a ticket of its own and not what the owner reported.
+            if (controller.IndexOf("pathLen > straight * RaidAssaultAi.RouteDetourFactor",
+                    StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1764 D1: RefreshRouteToObjective no longer applies the bare " +
+                             "ratio - the slack must NOT reach the phase input (D4)");
+
+            // D3 must be the arbiter, and the unconditional overwrite must be GONE. The overwrite
+            // was literally `nearestOtherStruct = shared;`, so its absence is the assertion: the
+            // shared panel now lands in `wallFocus` and NonWallStructSurvives arbitrates.
+            if (controller.IndexOf("RaidAssaultAi.NonWallStructSurvives(", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1764 D3: nothing calls NonWallStructSurvives - the shared " +
+                             "wall focus is still overwriting the tower");
+            if (controller.IndexOf("nearestOtherStruct = shared;", StringComparison.Ordinal) >= 0)
+                failures.Add(Tag + " WO-1764 D3: the unconditional shared-focus overwrite of " +
+                             "nearestOtherStruct is back - a nearer tower can never be bucket 2 again");
+            if (controller.IndexOf("wallFocus = shared;", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1764 D3: the shared panel no longer resolves into its own " +
+                             "wall candidate - the arbiter has nothing to arbitrate against");
+
+            // §12: the D1 verdict and the D3 source must be on the ONE line the next logcat pull
+            // greps, or this ticket cannot be judged on a device.
+            if (controller.IndexOf("routeUnit=[status=", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1764 §12: the [Flow:RaidAI] line carries no routeUnit= token " +
+                             "- 'refused as a detour, by how much' stays unprovable from a device log, " +
+                             "which is exactly why this ticket needed two captures to open");
+            if (controller.IndexOf("structSrc=", StringComparison.Ordinal) < 0)
+                failures.Add(Tag + " WO-1764 §12: the [Flow:RaidAI] line carries no structSrc= token " +
+                             "- has[wall=] cannot tell 'the shared panel won' from 'the tower survived'");
+
+            // ⛔ THE RIDER. WO-1752 deleted the 10% path; this string still printed it, on a build
+            // that carries the fix, next to a comment telling the next seat that a 0.10 token dates
+            // the build. A trace that can forge its own provenance is worse than no trace.
+            if (order.IndexOf("10% on walls", StringComparison.Ordinal) >= 0)
+                failures.Add(Tag + " WO-1764 rider: TroopBreachOrder still PRINTS '10% on walls' - " +
+                             "WO-1752 deleted that path, so the disarm trace forges proof that the " +
+                             "build predates the fix");
+            log.AppendLine("   one ruling guard at both gates; D1/D3 wired + traced; the 10% string is gone");
         }
 
         private static string Read(string relative)

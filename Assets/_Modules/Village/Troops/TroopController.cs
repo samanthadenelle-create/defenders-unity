@@ -203,17 +203,28 @@ namespace DeNelle.Village
         // How often a troop may ask the NavMesh whether the defender it can SEE is a defender it
         // can REACH. NearestHostile runs 5x/s per troop; this is the only non-free query in it.
         private const float RouteCheckInterval = 0.5f;
-        // A PathComplete longer than this multiple of the straight line is a detour round the
-        // wall ring, not a route through the breach — and a detour is precisely the case the
-        // gate exists to refuse, because steering is straight-line Move(displacement): a route
-        // that has to go round is a route this troop cannot walk. Calibrated on the 09-06
-        // capture, whose worst real route measured 8.1/7.1 = 1.14x (the rest within 1.01x), so
-        // 1.5 leaves headroom over every measured route and still rejects a lap of the ring.
-        private const float RouteDetourFactor = 1.5f;
+        // ⚠ WO-1764 MOVED THE DETOUR CONSTANT OUT OF THIS FILE. It was declared here as a private
+        // const 1.5f named RouteDetourFactor (spelled out rather than quoted: case 19's source-text
+        // assertion refuses that declaration, and quoting it would redden the suite) and was read by
+        // BOTH the unit gate and the objective gate; it now lives once, at
+        // RaidAssaultAi.RouteDetourFactor, beside the rule
+        // that consumes it (RaidAssaultAi.RouteToUnitOpen) so a regression can execute the
+        // arithmetic with no scene. The two gates deliberately differ now — the UNIT gate is the
+        // OR of the ratio and RouteDetourSlackMeters, the OBJECTIVE gate keeps the bare ratio
+        // because routeToObjectiveOpen is ResolvePhase's input and widening it moves the whole
+        // warband into Push/Finish (WO-1764 D4). Read RouteDetourSlackMeters' remarks for the
+        // Iron Bastion arithmetic; do NOT re-declare a factor here.
         private NavMeshPath _routePath;
         private float _routeCheckAt;
         private bool _routeToUnitOpen;
         private string _routeStatus = "not-asked";
+        // WO-1764 §12 — the two numbers the 09-14 AND 09-16 Iron Bastion captures both LACK. Every
+        // `route=PathComplete-detour` line in both logs proves a route was refused and neither says
+        // by how much, so the detour rule could not be re-derived from the device. Recorded on every
+        // probe and printed on the [Flow:RaidAI] line; -1 means "never asked".
+        private float _routeLenMeters = -1f;
+        private float _routeStraightMeters = -1f;
+        private bool _routeDetourRefused;
         private bool _lastPreferUnit;
         // Sample radii for the repaired BREACH probe. Tight where the wall stood (roughly the
         // agent radius — a hit at 1.5 m is not "the breach is walkable"), loose at the target,
@@ -993,6 +1004,12 @@ namespace DeNelle.Village
             IDamageable nearestObjective = null;
             IDamageable nearestOtherStruct = null;
             float nearestObjectiveSqr = float.MaxValue, nearestOtherStructSqr = float.MaxValue;
+            // WO-1764 D3 — the two candidates the shared wall focus used to erase before the
+            // selector ever saw them. Measured from THIS troop's own sweep (not scene-wide), so
+            // "is that tower nearer than any wall I can see" is answerable without a second scan.
+            IDamageable nearestNonWallStruct = null;
+            IDamageable nearestSweepWall = null;
+            float nearestNonWallStructSqr = float.MaxValue, nearestSweepWallSqr = float.MaxValue;
             FocusWallScratch.Clear();
             var activeSpire = RaidSpire.Active;
             if (nearestStructAny != null)
@@ -1020,6 +1037,22 @@ namespace DeNelle.Village
                         {
                             nearestOtherStructSqr = sqr;
                             nearestOtherStruct = dmg;
+                        }
+                        // WO-1764 D3 — split the SAME pass by type. No extra scan, no extra
+                        // allocation: the nearest wall and the nearest not-a-wall are both needed
+                        // below and both were being thrown away.
+                        if (dmg is WallSegment)
+                        {
+                            if (sqr < nearestSweepWallSqr)
+                            {
+                                nearestSweepWallSqr = sqr;
+                                nearestSweepWall = dmg;
+                            }
+                        }
+                        else if (sqr < nearestNonWallStructSqr)
+                        {
+                            nearestNonWallStructSqr = sqr;
+                            nearestNonWallStruct = dmg;
                         }
                     }
                 }
@@ -1068,20 +1101,74 @@ namespace DeNelle.Village
                 rallySet, arrivedAtRally, peelThreat, breachStance);
 
             Vector3 muster = rallySet ? rallyPt.Value : transform.position;
+            // ── WO-1764 D3 — THE WARBAND'S WALL IS A CANDIDATE, NOT AN OVERWRITE ──────────────
+            //
+            // ⛔ WHAT THIS REPLACED, AND WHY IT WAS THE OWNER'S FELT BUG. The two focus results
+            // were assigned STRAIGHT ONTO nearestOtherStruct, the second one unconditionally:
+            //     IDamageable shared = SharedBreachFocus(muster);
+            //     if (shared is alive)  ->  nearestOtherStruct := shared     // no test at all
+            // (written with `:=` deliberately: the exact old statement is what case 19's source-text
+            // assertion refuses, and quoting it verbatim in a comment would redden the suite.)
+            // SharedBreachFocus builds its candidate set from FindObjectsByType<WallSegment> —
+            // WALLS ONLY, SCENE-WIDE (walls=210 on the Iron Bastion device captures) — so a
+            // DefenseTower standing beside the troop was erased by a panel that might be on the far
+            // side of the base, every tick, with no test on stance, distance or type. Downstream
+            // that made otherStructIsWall true, mayWall false and PickBucket return -1: the troop
+            // stood still with a legal, full-damage target in its own sweep. It also made
+            // PickBucket's own "a TOWER behind it becomes bucket 2" remark false UPSTREAM.
+            //
+            // Proven on the build the owner played (2026.09.16.371701), 242 lines of it:
+            //   logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt:3053030
+            //   [Flow:TroopAI] id=troop-footman IDLE/RALLY: no acquirable hostile inside radius=14.0m
+            //    (... accepted[unit=0,struct=11] ...; nearestHostileAnyKind='Watchtower_Mage_1
+            //    (DefenseTower)' @7.4m) action=stand-still
+            //   and the adjacent selector line (:3049493) reading
+            //   bucket=-1 mayWall=False otherStructIsWall=True has[unit=False,obj=False,wall=True].
+            //
+            // The wall focus now resolves into its OWN local and RaidAssaultAi.NonWallStructSurvives
+            // arbitrates — geometrically (a tower nearer than any wall this troop can see is not
+            // behind one) plus the refused-wall clause. Read that method's remarks before touching
+            // this; the WO-1438 freeze it is steering around is real.
+            IDamageable wallFocus = null;
             if (FocusWallScratch.Count > 0)
             {
                 var focus = RaidAssaultAi.SelectFocusBreach(
                     FocusWallScratch, muster, TroopBreachOrder.Target);
-                if (focus != null) nearestOtherStruct = focus;
+                if (focus != null) wallFocus = focus;
             }
             IDamageable shared = SharedBreachFocus(muster);
             if (shared != null && shared.IsAlive)
-                nearestOtherStruct = shared;
+                wallFocus = shared;
+
+            // ⭐ ONE ARBITER, AND THE SOURCE IS PRINTED. `structSrc=` on the [Flow:RaidAI] line is
+            // what makes this falsifiable from a device log: "the tower survived" and "the shared
+            // panel won" are different facts and no has[] token can tell them apart.
+            bool wallMayBeTargeted = RaidAssaultAi.MayTargetWall(_preferStructures, breachStance);
+            string structSrc;
+            if (RaidAssaultAi.NonWallStructSurvives(
+                    nearestNonWallStruct != null, nearestNonWallStructSqr,
+                    nearestSweepWall != null, nearestSweepWallSqr,
+                    wallMayBeTargeted))
+            {
+                nearestOtherStruct = nearestNonWallStruct;
+                nearestOtherStructSqr = nearestNonWallStructSqr;
+                structSrc = "sweep-nonwall";
+            }
+            else if (wallFocus != null)
+            {
+                nearestOtherStruct = wallFocus;
+                structSrc = ReferenceEquals(wallFocus, shared) ? "wall-shared" : "wall-sweep";
+            }
+            else
+            {
+                structSrc = nearestOtherStruct != null ? "sweep-nearest" : "none";
+            }
 
             if (rallyMarch)
             {
                 nearestOtherStruct = null;
                 nearestOtherStructSqr = float.MaxValue;
+                structSrc = "rally-march";
             }
             hasOtherStruct = nearestOtherStruct != null;
             hasStruct = hasObjective || hasOtherStruct;
@@ -1096,17 +1183,31 @@ namespace DeNelle.Village
             // away is INVISIBLE to it and the troop falls through to the wall bucket. This is the
             // one line that makes the hero's aggro count as the warband's.
             //
-            // ⛔ peelThreat IS DELIBERATELY NOT RECOMPUTED, AND THAT IS WHAT KEEPS WO-1746 sec.4
-            // INTACT. Peel (aggro) is the ONE thing allowed to break an armed Breach stance, and
-            // re-deriving it from an adopted target would quietly add a second thing. It cannot
+            // ⚠ WO-1764 (owner ruling 2026-09-16, "Units first even inside Breach") RETIRED THE
+            // PREMISE OF THE PARAGRAPH BELOW. It read "Peel (aggro) is the ONE thing allowed to
+            // break an armed Breach stance"; that is now FALSE — any REACHABLE defender breaks it,
+            // aggro'd or not, so an adopted hero-attacker that is reachable WILL take bucket 0 with
+            // the stance armed. The code below is unchanged and still correct for a different
+            // reason, stated so the next seat does not "fix" it to match the old prose: peelThreat
+            // must not be re-derived from an adopted target because peelThreat also drives the PHASE
+            // (Peel suppresses the wall bucket entirely and releases the rally march), and a
+            // 20-m-away body the troop adopted is not this troop being attacked.
+            //
+            // ⛔ peelThreat IS DELIBERATELY NOT RECOMPUTED. Re-deriving it from an adopted target
+            // would quietly change the phase for a troop nothing is hitting. It cannot
             // fire here anyway: adoption only happens when this troop has NO unit in its own sweep
             // (RaidAssaultAi.AdoptHeroAttacker), so the adopted body is by construction outside the
             // acquire radius - 12 m for the shieldguard above - and PeelUnitLeashMeters is 6 m. The
             // arithmetic is the guarantee; the omission is the guard.
             //
-            // Under an armed stance the warband therefore STAYS on the panel (PickBucket's stance
-            // gates outrank a merely-acquirable unit - Case 8), which is exactly what WO-1752 asks
-            // for: "does NOT break an active Breach stance unless the existing AGGRO rule says so".
+            // ⚠ AND THE SENTENCE THAT USED TO CLOSE THIS BLOCK IS RETIRED BY THE SAME RULING. It
+            // read: "Under an armed stance the warband therefore STAYS on the panel (PickBucket's
+            // stance gates outrank a merely-acquirable unit - Case 8)". WO-1764 reverses that: with
+            // the stance armed, a REACHABLE adopted attacker now takes bucket 0. WO-1752's own
+            // ruling 3 ("does NOT break an active Breach stance unless the existing AGGRO rule says
+            // so") is therefore superseded on that one clause by a later owner ruling, not by a
+            // seat's reading — recorded here rather than silently overwritten, and re-pinned by
+            // WallBreachOrderRegression case 15.
             IDamageable heroAttacker = HeroAggroTarget.Current;
             if (heroAttacker != null && !CombatFactionRules.MayAttack(SelfFaction, heroAttacker))
                 heroAttacker = null;
@@ -1216,6 +1317,23 @@ namespace DeNelle.Village
                     else if (bucket == 1) stanceYield = "objective";
                     else stanceYield = "none";
                 }
+                // ── WO-1764 §12 — THE D1 VERDICT, PRINTED. ────────────────────────────────────
+                // Every `route=PathComplete-detour` on the 09-14 AND 09-16 Iron Bastion captures
+                // proved a route was refused and NEITHER log carried a single length, so the
+                // detour rule could not be re-derived from the device and WO-1764's slack had to be
+                // derived from authored geometry instead. These four tokens close that: len,
+                // straight, the excess the rule actually tests, and whether it refused. Built into
+                // LOCALS first - a `?:` with quoted branches inside an interpolation hole is what
+                // CLAUDE.md §1 says the compile gate's brace scanner mis-reads.
+                string routeLenTok = _routeLenMeters >= 0f ? _routeLenMeters.ToString("F1") : "n/a";
+                string routeStraightTok = _routeStraightMeters >= 0f
+                    ? _routeStraightMeters.ToString("F1")
+                    : "n/a";
+                string routeExcessTok = "n/a";
+                if (_routeLenMeters >= 0f && _routeStraightMeters >= 0f)
+                    routeExcessTok = (_routeLenMeters - _routeStraightMeters).ToString("F1");
+                string sweepWallTok = nearestSweepWall != null ? "True" : "False";
+                string nonWallTok = nearestNonWallStruct != null ? "True" : "False";
                 FlowTrace.Throttle("RaidAI", $"raid-ai-phase-{GetInstanceID()}", 1f,
                     $"id={_troopId} job={_assaultJob} phase={_assaultPhase} " +
                     $"in[peel={peelThreat}, routeOpen={_routeToObjectiveOpen}, objInRange={objectiveInAttackRange}] " +
@@ -1234,6 +1352,15 @@ namespace DeNelle.Village
                     // "there was no wall". wallIsWall names why mayWall could be True on a tower.
                     $"mayWall={RaidAssaultAi.MayTargetWall(_preferStructures, breachStance)} " +
                     $"otherStructIsWall={otherStructIsWall} " +
+                    // WO-1764 D1: the unit-route verdict, in full, so "was the defender refused as a
+                    // detour and by how much" is one read instead of a re-derivation.
+                    $"routeUnit=[status={_routeStatus} len={routeLenTok} straight={routeStraightTok} " +
+                    $"excess={routeExcessTok} slack={RaidAssaultAi.RouteDetourSlackMeters:F1} " +
+                    $"factor={RaidAssaultAi.RouteDetourFactor:F2} refused={_routeDetourRefused}] " +
+                    // WO-1764 D3: WHERE bucket 2's candidate came from, and whether the sweep held a
+                    // wall and a not-a-wall at all. has[wall=] cannot distinguish "the shared panel
+                    // won" from "the tower survived", and that distinction is the whole fix.
+                    $"structSrc={structSrc} sweepWall={sweepWallTok} sweepNonWall={nonWallTok} " +
                     $"has[unit={hasUnit},obj={hasObjective},wall={hasOtherStruct}]");
             }
 
@@ -1334,7 +1461,7 @@ namespace DeNelle.Village
             }
 
             float pathLen = PathLength(_routePath);
-            if (straight > 0.01f && pathLen > straight * RouteDetourFactor)
+            if (straight > 0.01f && pathLen > straight * RaidAssaultAi.RouteDetourFactor)
             {
                 // (_objectiveRouteGap was already measured above, on every branch — not repeated.)
                 _objectiveRouteStatus = $"detour:{pathLen:F1}/{straight:F1}";
@@ -1368,6 +1495,9 @@ namespace DeNelle.Village
             _routeCheckAt = Time.time + RouteCheckInterval;
             _routeToUnitOpen = false;
             _routeStatus = "no-unit";
+            _routeLenMeters = -1f;
+            _routeStraightMeters = straightLine;
+            _routeDetourRefused = false;
             if (unit == null) return;
 
             Guard.Try("TroopAI", $"route-probe id={_troopId}", () =>
@@ -1382,14 +1512,24 @@ namespace DeNelle.Village
                 if (_routePath.status != NavMeshPathStatus.PathComplete) return;
 
                 float len = PathLength(_routePath);
-                // A PathComplete far longer than the straight line is the squad walking the
-                // whole way round the wall ring — not "through the breach". The factor is
-                // measured, not assumed: every PathComplete in
-                // logs/debug/troop-ai-blind-2026-09-06.log came back within ~1.05x of its
-                // straightLine (20.7/20.7, 20.3/20.4, 7.1/8.1), so this rejects detours without
-                // rejecting anything that capture showed as a real route.
-                _routeToUnitOpen = len > 0f && straightLine > 0.01f && len <= straightLine * RouteDetourFactor;
+                _routeLenMeters = len;
+                // ⭐ WO-1764 — THE RULE MOVED AND THE SHAPE CHANGED; the number did not merely get
+                // tuned. The old test was `len <= straightLine * RouteDetourFactor` alone, which
+                // grants an allowance PROPORTIONAL to how far away the foe is — backwards, because
+                // straight-line steering fails on the ABSOLUTE extra walking. RaidAssaultAi.
+                // RouteToUnitOpen is the OR of that ratio and an absolute slack; its remarks carry
+                // the Iron Bastion arithmetic and the two captured lines it was derived from.
+                _routeToUnitOpen = RaidAssaultAi.RouteToUnitOpen(len, straightLine);
+                _routeDetourRefused = !_routeToUnitOpen;
+                // ⚠ THE TOKENS STAY GREPPABLE, AND ONE OF THEM IS NEW ON PURPOSE. WO-1764 §5's
+                // verdict table greps `route=PathComplete-detour`, so a refusal keeps that exact
+                // token. A route the RATIO would have refused and the SLACK opened prints
+                // `-slack` instead, so the next capture can say WHICH rule opened it — the same
+                // reason RefreshRouteToObjective prints `PathPartial-arrived` rather than lying
+                // about the status.
                 if (!_routeToUnitOpen) _routeStatus += "-detour";
+                else if (straightLine > 0.01f && len > straightLine * RaidAssaultAi.RouteDetourFactor)
+                    _routeStatus += "-slack";
             });
         }
 
