@@ -1313,10 +1313,20 @@ namespace DeNelle.Village
                 Bounds? rBounds = null;
                 int counted = 0;
                 int skipped = 0;
+                int transientSkipped = 0;
                 for (int i = 0; i < rends.Length; i++)
                 {
                     var r = rends[i];
                     if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) { skipped++; continue; }
+                    // WO-1722 item 1 — proven cause (CastingTelegraphVfx.TryBeginTargetMarker
+                    // parents a transient "CastTargetMarker" AoE-scaled VFX onto whatever unit a
+                    // spell wind-up targets). When the target is this WallSegment, that marker is
+                    // a live, ACTIVE child during the windup window, so the active-only filter
+                    // above does not exclude it — it must be named and skipped explicitly, the
+                    // same way RaidWallTierProof.IsTransientCastMarker already does on the editor
+                    // side (Assets/Editor/RaidWallTierProof.cs:207-212). Same ONE literal name,
+                    // not per-wall-id.
+                    if (IsTransientCastMarker(r.transform)) { transientSkipped++; continue; }
                     if (rBounds == null) rBounds = r.bounds;
                     else { var b = rBounds.Value; b.Encapsulate(r.bounds); rBounds = b; }
                     counted++;
@@ -1342,6 +1352,7 @@ namespace DeNelle.Village
                     " activeRendererBounds=" + activeRendererBoundsText +
                     " activeRenderersCounted=" + counted +
                     " renderersSkippedInactiveOrDisabled=" + skipped +
+                    " renderersSkippedTransientCastMarker=" + transientSkipped +
                     " colliderBoundsIntersectsRay=" + colliderIntersects +
                     " activeRendererBoundsIntersectsRay=" + rendererIntersects +
                     " - MEASURED ONLY. nearestWallDistToRay is the perpendicular distance from the " +
@@ -1350,6 +1361,22 @@ namespace DeNelle.Village
                     "here.";
                 DeNelle.Core.Diagnostics.FlowTrace.Throttle("Raid", "breach-tap-diag-nearest", 0.25f, nearestLine);
             }
+        }
+
+        /// <summary>
+        /// WO-1722 item 1 — the ONE literal name production code assigns the transient combat-VFX
+        /// target-lock marker (<c>CastingTelegraphVfx.TryBeginTargetMarker</c>,
+        /// Assets/_Modules/Village/Vfx/CastingTelegraphVfx.cs:257-268), instantiated PARENTED to
+        /// whatever unit a spell wind-up is targeting and self-destroying windup+1s later. Ported
+        /// from the editor-side proof (RaidWallTierProof.IsTransientCastMarker) so this RUNTIME
+        /// diagnostic stops reporting an AoE-scaled VFX's bounds as "the wall's visual footprint".
+        /// Excludes generically, by name, never by wall id.
+        /// </summary>
+        private static bool IsTransientCastMarker(Transform t)
+        {
+            for (var cur = t; cur != null; cur = cur.parent)
+                if (cur.name == "CastTargetMarker") return true;
+            return false;
         }
 
         /// <summary>

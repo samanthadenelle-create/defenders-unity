@@ -1,6 +1,6 @@
 # WORK ORDER 1722 — An INTACT wall let the player walk straight through it (same defect as the residual collider mismatch), plus ToggleBreach logging resolved
 
-**Status:** READY
+**Status:** READY FOR LEAD REVIEW
 Item 1 is PROVEN to be a diagnostic artifact and needs no wall fix (see the RCA section at the bottom,
 2026-09-15). Item 2 is re-opened as UNEXPLAINED — the §2 explanation below rested on item 1 and falls
 with it. Item 3 was already closed and is kept here as the record.
@@ -402,3 +402,98 @@ tier-proof half is the WO-1722 oracle this RCA leans on — it is lost if it is 
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_019gsRiEvHBgmyXhPf5bEh3J
+
+---
+
+## IMPLEMENTATION RECORD (2026-09-17) — the four "not done by this lane" items, three closed here
+
+This lane read the RCA's own "Not done by this lane (read-only)" list (four items) and the "(b)"/"(c)"
+proposed-probe section, then went to source for each before writing anything (CLAUDE.md §12 — static
+read first, no fix on inference).
+
+**Files touched**
+- `Assets/_Modules/Village/Troops/RaidDeployController.cs` — added `IsTransientCastMarker` (ported
+  verbatim from `Assets/Editor/RaidWallTierProof.cs:207-212`) and applied it inside
+  `LogBreachTapDiagnostics`'s active-renderer union, plus a new `renderersSkippedTransientCastMarker=`
+  field on the `nearestLine` log so a live capture can show the exclusion firing.
+- `Assets/Editor/RaidWallNavCoverageProof.cs` (new) — the item-2 nav-coverage probe the RCA's §(b)
+  designed but did not write.
+
+**Item 1 residue, re-checked at source before touching anything (two of the RCA's three listed residue
+items were ALREADY FIXED by an intervening commit, `fc893f894` "WO-1777 + WO-1790", landed AFTER this
+RCA was written on 09-15):**
+1. `ray.origin`-vs-tap bug (`:1045` in the RCA's line numbering) — FIXED by WO-1790. The nearest-wall
+   search now measures perpendicular distance from the tap ray (`DistanceFromRay`, ported comment cites
+   "WO-1790 sec.3 item 1"), not distance from the camera. Verified by reading the live method: the loop
+   at `RaidDeployController.cs:1300-1308` calls `DistanceFromRay(ray, walls[i].transform.position)`.
+2. `Ruin_*`/inactive-renderer over-reporting — FIXED by WO-1790. The union at (what is now)
+   `RaidDeployController.cs:1312-1325` already filters `!r.enabled || !r.gameObject.activeInHierarchy`
+   before encapsulating, which excludes both the disabled placeholder mesh and the `SetActive(false)`
+   `Ruin_*` rubble (`RaidBaseDresser.cs:789`). Confirmed by reading `RaidBaseDresser.CladRing` at source:
+   `ruin.SetActive(false)` is unconditional on every ruin it builds.
+3. **The one residue item still live, and the one this lane actually fixed:** `IsTransientCastMarker`
+   had NOT been ported. The active/enabled filter alone does not exclude
+   `CastingTelegraphVfx.TryBeginTargetMarker`'s `"CastTargetMarker"` child — it is fully active and
+   enabled for the whole windup+1s it lives, per `CastingTelegraphVfx.cs:256-269` read at source this
+   session. A hero target-locking a wall while the player is aiming the breach tap at (or near) that
+   same wall would still inflate `activeRendererBounds` with the AoE-scaled marker mesh, reproducing the
+   exact "wall reads 7x oversized" symptom item 1 diagnosed — the runtime diagnostic was NOT immune to
+   its own root cause until this change. Ported the identical name-walk helper
+   (`for (var cur = t; cur != null; cur = cur.parent) if (cur.name == "CastTargetMarker") return true;`)
+   and wired it into the loop; added a `transientSkipped` counter surfaced on the log line so a future
+   capture can show it firing rather than inferring it.
+
+**Item 2 — the coverage probe, built exactly to the RCA's §(b)/(c) spec, not run this session:**
+`RaidWallNavCoverageProof.Run()` (mirrors `RaidWallTierProof`'s SessionState-arm +
+`EnterPlaymode` + `RuntimeInitializeOnLoadMethod` driver pattern) routes through the real production
+flow (`SceneRouter.GoCastle()` then `GoRaid("RaidBase_raider_camp_small")`, Regular tier only — the
+tier of the owner's original report; the mechanism under test, `RaidNavBake`/`RaidBaseDresser`, is
+identical across tiers, read at source), waits 3s for carving to settle, then for every `Renderer` whose
+transform name starts with `"Clad_"` under the scene's `Zone_Clad` root:
+- resolves its owning `WallSegment` via `GetComponentInParent<WallSegment>()` (null for the 8
+  `Clad_Corner_*` stubs, by design — `RaidBaseDresser.cs:904-914`'s own header),
+- reads that owner's `NavMeshObstacle` state (`none|carving|off|disabled`),
+- samples `NavMesh.SamplePosition` at the piece's XZ centre, `y = bounds.min.y + 0.15`,
+- emits one `[Flow:RaidWallNav] panel=… ownerSegment=… obstacle=… centre=… navSampled=… -> BLOCKED|WALKABLE`
+  line (`FlowTrace.Step`, matching the RCA's proposed shape exactly) and the same text to the written
+  `REPORT.md`.
+
+Fails the run (`RAID_WALL_NAV_COVERAGE_FAIL`) only when a piece with a **live** owning `WallSegment`
+(`HpFraction > 0`) samples walkable — that is the named, provable version of "an intact wall you can
+walk through". An ownerless corner-stub gap is reported (with its own `ownerlessWalkable` tally in the
+per-tier summary line) but does NOT fail the marker on its own, because whether the corner tower's own
+carving obstacle covers that span is the RCA's own explicitly-unproven question, not something this lane
+is entitled to assume true or false.
+
+**NOT RUN THIS SESSION — flagged, not claimed.** Per this lane's brief ("do not run the Unity compile
+gate or DataRegression yourself... the lead will batch-gate"), `RaidWallNavCoverageProof.Run` has not
+been executed. `RAID_WALL_NAV_COVERAGE_OK`/`FAIL` on a fresh log is therefore still open — the lead (or
+the next lane) should run:
+```
+.\run-unity-method.ps1 -Method DeNelle.Editor.RaidWallNavCoverageProof.Run -LogFile Builds\raid-wall-nav-1722.log
+Select-String -Path Builds\raid-wall-nav-1722.log -Pattern 'RAID_WALL_NAV_COVERAGE_(OK|FAIL)'
+```
+and read `Builds\raid-wall-nav-coverage\REPORT.md` for the per-panel lines. **Whether the 8
+`Clad_Corner_*` stubs are actually covered by the corner tower's obstacle remains unmeasured until that
+run happens** — this lane built the oracle, it did not fire it.
+
+**Verification performed this lane (read-only, no Unity run):**
+- `python tools/gate_brace.py Assets/_Modules/Village/Troops/RaidDeployController.cs` →
+  `GATE_BRACE_SUMMARY bad=0 of 1`.
+- `python tools/gate_brace.py Assets/Editor/RaidWallNavCoverageProof.cs` →
+  `GATE_BRACE_SUMMARY bad=0 of 1`.
+- NUL-byte scan (`data.count(b'\x00')`) on both files → `0` on each.
+- Confirmed namespaces/usings by grep at source: `WallSegment` and `RaidDeployController` both
+  `namespace DeNelle.Village`; `SceneRouter` is `namespace DeNelle.Core` (`public static class
+  SceneRouter`, `SceneRouter.cs:37,119`) — matches the `using DeNelle.Core;` in the new probe file, same
+  as the existing `RaidWallTierProof.cs`.
+- Did **not** touch `Assets/Editor/RaidWallTierProof.cs` or
+  `Assets/_Modules/Village/Troops/TroopController.cs` — both were already flagged uncommitted by the RCA
+  and are out of this lane's silo (WO-1719/1720 overlap risk named in this WO's own header).
+- No `.unity` scene file touched. No git action taken (staging/commit is the lead's, per this lane's
+  brief).
+
+**Open for the lead:** run the new probe (command above), read the marker + `REPORT.md`, and decide
+whether the corner-stub gap (if any) needs its own fix (e.g. giving `Clad_Corner_*` stubs their own
+carving obstacle, or widening the corner tower's obstacle to provably enclose that span) before this WO
+can close for real. Until that run happens, item 2 is **instrumented, not closed**.
