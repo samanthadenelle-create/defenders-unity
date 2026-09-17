@@ -211,6 +211,7 @@ namespace DeNelle.Editor.Regression
                 Case(failures, "heart-objective-state", () => Case13_HeartObjectiveState(failures, notes));
                 Case(failures, "countdown-minutes", () => Case14_CountdownMinutes(failures, notes));
                 Case(failures, "builders-chip-idle", () => Case15_BuildersChipIdle(failures, notes));
+                Case(failures, "hud-font-floor",   () => Case16_FontFloorAuthored(failures, notes));
             }
             catch (Exception ex)
             {
@@ -2650,7 +2651,16 @@ namespace DeNelle.Editor.Regression
             // upper-cased the build-time word, so the drawn glyphs are "Builders idle 2", not
             // "BUILDERS IDLE 2". Measured 2026-09-10: 157.1 x 1.15 = 180.6 px in a 202.4 px rect.
             float boxW = RailChipWidthPx * ButtonLabelInset;
-            const float chipFloor = 22f;   // BuildRailChip: FitSingleLine(lbl, 22f, 30f)
+            // ⚠ WO-1823 (2026-09-17) RAISED BuildRailChip's floor to ElarionUi.FontFloorMobile (30),
+            // so 22f is NO LONGER the chip's floor - it is kept here DELIBERATELY as a lower bound,
+            // and the gap is a stated open item, not an oversight. At 30 this dormant chip's word
+            // measures ~246 px (180.6 x 30/22) against a 202.4 px rect, i.e. it would ellipsize the
+            // count. Raising this const would RED the gate on a surface that DOES NOT BUILD (15d),
+            // so the ruling - ellipsize, or wrap it with FitBlock as BuildRailChip's own header
+            // argues - is the lead's, and it is recorded in WORK_ORDER_1823's RESULT, not checked
+            // here. 15d still reds the day the chip is un-retired, which is when this box has to be
+            // re-read anyway. (Case 16 pins the FLOOR at its source; it does NOT measure this word.)
+            const float chipFloor = 22f;   // WAS the chip's floor; see the WO-1823 note above
             string detail;
             float w = MeasureFacePx(SkinnedFaceRole, idleText, chipFloor, out detail);
             if (w < 0f) notes.Add("builders idle word not measurable headlessly: " + detail);
@@ -2661,6 +2671,156 @@ namespace DeNelle.Editor.Regression
                              ") - it would ellipsise the count, the one number that carries the state");
             else notes.Add("builders idle chip '" + idleText + "' " + w.ToString("0.0") + " px " + SkinnedFaceWhy() +
                            " in " + boxW.ToString("0") + " px (DORMANT SURFACE, pre-emptive pin - see 15d)");
+        }
+
+        // =====================================================================
+        // CASE 16  [hud-font-floor]  NO HUD LABEL IS AUTHORED TO AUTO-SHRINK BELOW
+        //          ElarionUi.FontFloorMobile.                    (WO-1823, 2026-09-17)
+        // ---------------------------------------------------------------------
+        // WHAT WAS REPORTED: build 2026.09.16.371701, honest-feedback flow, Main_Castle_Overworld,
+        // a new player who had just finished the tutorial, verbatim: "Text is too small to read".
+        // Not a clipped label, not an ellipsis - too SMALL. Every other case in this suite proves a
+        // string FITS its box; none of them proved the string was big enough to read, and an audit
+        // then found five town-HUD labels whose authored auto-size MINIMUM was under the kit's own
+        // named mobile floor. Under-floor mins are invisible to a fit oracle by construction: the
+        // smaller the font, the better every width check passes.
+        //
+        // WHY A SOURCE LINT AND NOT A LIVE READ: the sites are `fontSizeMin` assignments inside
+        // private HudKitController builders, and batchmode runs no layout pass, so a built label's
+        // fontSizeMin is only what was assigned - the same number this lint reads, with an
+        // instantiation's worth of extra failure modes. Case 0 says which boxes are measured and
+        // which are linted, and this one says LINT, out loud. The BANDS below, however, are real
+        // arithmetic against the typed WaveBandHeightPx and RailChipHeightPx: a floor the band
+        // cannot seat is worse than a sub-floor min, because the post-layout guard
+        // (ElarionUiKitObsidian FitGuard) then relaxes the font back under the floor anyway.
+        //
+        // WHAT IT PINS:
+        //   16a  the four raised sites NAME ElarionUi.FontFloorMobile rather than a literal, so the
+        //        floor cannot be re-typed as a number that later goes stale;
+        //   16b  no `fontSizeMin`/`fontSizeMax` literal under the floor survives anywhere in the
+        //        wave block or the rail chip - this is the check that catches the NEXT seat, not
+        //        just today's five sites;
+        //   16c  each raised site's band seats a floor line (floor x LineHeightFactor);
+        //   16d  the Heart plate EXCEPTION is still documented in HudKitController. Those four
+        //        consts stay at 20..26 because the plate is 27.5 ref px per row and a 30 px line
+        //        needs 36 (Case 10c's arithmetic) - the remedy is growing HudLayoutBands.HeartMount
+        //        in DeNelle.Core, which is an owner/lead ruling, NOT a HudKitController edit. This
+        //        case FAILS if that explanation is deleted, so the exception can never become a
+        //        silent omission, and notes the gap on every run.
+        // RED, one line each: put `_waveCountdown.fontSizeMin = 18f` back (16a + 16b); shrink
+        // WaveBandHeightPx so a 30 px line no longer seats (16c); delete the WO-1823 block above
+        // HeartNameFontMin (16d).
+        // =====================================================================
+        private static void Case16_FontFloorAuthored(List<string> failures, List<string> notes)
+        {
+            const string tag = "[hud-font-floor]";
+            string src = ReadSrc(HudSrc);
+            if (src == null) { failures.Add(tag + " cannot read " + HudSrc); return; }
+
+            float floor = ElarionUi.FontFloorMobile;
+            if (floor < ElarionUiKit.FontHardFloor)
+                failures.Add(tag + " ElarionUi.FontFloorMobile is " + floor + ", BELOW the kit's own last-resort " +
+                             "ElarionUiKit.FontHardFloor " + ElarionUiKit.FontHardFloor + " - the named mobile " +
+                             "floor can never be the smaller of the two, or naming it buys nothing");
+
+            // 16a - the four sites raised by WO-1823 name the floor, never a literal.
+            string[] pins =
+            {
+                "_waveLabel.fontSizeMin = ElarionUi.FontFloorMobile;",
+                "_waveCountdown.fontSizeMin = ElarionUi.FontFloorMobile;",
+                "_waveCountdown.fontSizeMax = ElarionUi.FontFloorMobile;",
+                "startWaveLabel.fontSizeMin = ElarionUi.FontFloorMobile;",
+                "lbl.fontSizeMin = ElarionUi.FontFloorMobile;",
+                "ElarionUiKit.FitSingleLine(lbl, ElarionUi.FontFloorMobile, 30f);",
+            };
+            foreach (string p in pins)
+                RequirePin(failures, tag, src, p,
+                           "the WO-1823 player report was sub-floor HUD text; this site must NAME " +
+                           "ElarionUi.FontFloorMobile, so raising the floor moves every site at once");
+
+            // 16b - and no sub-floor literal anywhere in the two builders that owned them.
+            // Anchors deliberately carry NO quote characters (a quoted anchor is one escaping
+            // mistake from re-scanning code as a string) and each is UNIQUE in HudKitController,
+            // so a slice cannot silently land on the wrong body. A rename reds 16b's own guard.
+            string waveBody = Between(src, "private void BuildWaveBlock", "TutorialHighlightRegistry.Register(");
+            string chipBody = Between(src, "btn.gameObject.name = ", "private static RectTransform RailBand");
+            ScanSubFloorLiterals(failures, notes, tag, "BuildWaveBlock", waveBody, floor);
+            ScanSubFloorLiterals(failures, notes, tag, "BuildRailChip", chipBody, floor);
+
+            // 16c - every raised band seats a floor line.
+            float need = floor * LineHeightFactor;
+            var bands = new List<KeyValuePair<string, float>>();
+            bands.Add(new KeyValuePair<string, float>("wave headline (y 0.02..0.60 of the wave band)",
+                                                     WaveLabelBandFrac * WaveBandHeightPx));
+            bands.Add(new KeyValuePair<string, float>("wave countdown (y 0.16..0.48 of the wave band)",
+                                                     (0.48f - 0.16f) * WaveBandHeightPx));
+            bands.Add(new KeyValuePair<string, float>("Start Wave CTA (y 0.03..0.93 of the wave band)",
+                                                     WaveCtaBandFrac * WaveBandHeightPx));
+            bands.Add(new KeyValuePair<string, float>("rail chip (RailChipHeightPx)", RailChipHeightPx));
+            foreach (var b in bands)
+            {
+                if (b.Value < need)
+                    failures.Add(tag + " the " + b.Key + " is " + b.Value.ToString("0.0") + " ref px tall but a " +
+                                 floor + "px floor line needs " + need.ToString("0.0") + " - the FitGuard would " +
+                                 "relax the font back under the floor, which is the reported defect. Grow the " +
+                                 "band, never the floor down");
+                else
+                    notes.Add(b.Key + " " + b.Value.ToString("0") + " px seats the " + floor + "px floor");
+            }
+
+            // 16d - the Heart plate exception is documented, and still open.
+            RequirePin(failures, tag, src, "WO-1823 EXCEPTION",
+                       "the Heart plate's four 20..26 font consts are the ONE site WO-1823 could not raise " +
+                       "(Case 10c: a 27.5 px row cannot seat a 36 px line). That explanation must stay in the " +
+                       "source, or the next audit reads them as an oversight and raises them into a red gate");
+            float heartNameMin;
+            if (TryFloatConst(src, "HeartNameFontMin", out heartNameMin) && heartNameMin < floor)
+                notes.Add("OPEN (WO-1823, owner/lead ruling): HeartNameFontMin is " + heartNameMin +
+                          ", under the " + floor + "px floor. Raising it needs HudLayoutBands.HeartMount " +
+                          "(DeNelle.Core) grown first - see the WO-1823 EXCEPTION block in " + HudSrc);
+        }
+
+        /// <summary>Every `fontSizeMin = &lt;n&gt;f` / `fontSizeMax = &lt;n&gt;f` NUMERIC literal in one
+        /// builder body, failed if it is under the floor. A symbolic assignment has no digit after
+        /// the `= `, so it is skipped - which is the whole point: naming the floor passes, retyping
+        /// a number does not.</summary>
+        private static void ScanSubFloorLiterals(List<string> failures, List<string> notes, string tag,
+                                                 string where, string body, float floor)
+        {
+            if (string.IsNullOrEmpty(body))
+            {
+                failures.Add(tag + " cannot slice " + where + " out of " + HudSrc + " - this lint asserted " +
+                             "NOTHING for that builder this run (a renamed method is not a pass)");
+                return;
+            }
+            string[] props = { "fontSizeMin", "fontSizeMax" };
+            int found = 0;
+            foreach (string prop in props)
+            {
+                int at = 0;
+                while (true)
+                {
+                    int i = body.IndexOf(prop + " = ", at, StringComparison.Ordinal);
+                    if (i < 0) break;
+                    at = i + prop.Length;
+                    int v = i + prop.Length + 3;
+                    int end = v;
+                    while (end < body.Length && (char.IsDigit(body[end]) || body[end] == '.')) end++;
+                    if (end == v) continue;                      // symbolic - ElarionUi.FontFloorMobile
+                    float parsed;
+                    if (!float.TryParse(body.Substring(v, end - v),
+                                        System.Globalization.NumberStyles.Float,
+                                        System.Globalization.CultureInfo.InvariantCulture, out parsed)) continue;
+                    found++;
+                    if (parsed < floor)
+                        failures.Add(tag + " " + where + " authors " + prop + " = " + parsed + "f, under the " +
+                                     floor + "px ElarionUi.FontFloorMobile - that is exactly the WO-1823 " +
+                                     "player report ('Text is too small to read'). Name the floor, and if the " +
+                                     "string then ellipsizes, widen the box or wrap it (FitBlock)");
+                }
+            }
+            notes.Add(where + ": " + found + " numeric font-size literal(s) checked against the " +
+                      floor + "px floor");
         }
 
         private static void RequirePin(List<string> failures, string tag, string src, string literal, string why)

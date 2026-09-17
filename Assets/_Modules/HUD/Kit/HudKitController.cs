@@ -1788,13 +1788,25 @@ namespace DeNelle.HUD.Kit
             _waveLabel = ElarionUiKit.Label(_waveBlockRoot.transform, "", 0.50f, 0.96f,
                 ElarionUi.Parchment, ElarionUi.FontHead, TextAlignmentOptions.Center, 0.02f, 0.60f, bold: true);
             _waveLabel.enableAutoSizing = true;
-            _waveLabel.fontSizeMin = 22f;
+            // WO-1823 (player report, build 2026.09.16.371701, honest-feedback flow, new player
+            // who had just finished the tutorial: "Text is too small to read"). The authored min
+            // was 22f — UNDER the kit's own named mobile floor, so auto-sizing was allowed to
+            // shrink the wave headline below the size the floor exists to guarantee. The min now
+            // NAMES the floor instead of a literal (the band seats it: 0.02..0.60 of the 128 px
+            // WaveBandHeightPx == 74 ref px, and a 30 px line needs 36).
+            _waveLabel.fontSizeMin = ElarionUi.FontFloorMobile;
             _waveLabel.fontSizeMax = 30f;
             _waveCountdown = ElarionUiKit.Label(_waveBlockRoot.transform, "", 0.16f, 0.48f,
                 ElarionUi.Gilt, ElarionUi.FontLabel, TextAlignmentOptions.Center, 0.02f, 0.60f, bold: true);
             _waveCountdown.enableAutoSizing = true;
-            _waveCountdown.fontSizeMin = 18f;
-            _waveCountdown.fontSizeMax = 24f;
+            // WO-1823 — the WORST offender on the town HUD: authored 18..24, a whole RANGE that
+            // sat under ElarionUi.FontFloorMobile, so "Next wave in 14m 15s" could never render at
+            // a legible size no matter how much room it had. Max is raised to the floor too (it was
+            // 24f, BELOW the new min, and a max under the min is not a range). Band: 0.16..0.48 of
+            // 128 px == 41 ref px, and a 30 px line needs 36 — it seats. Case 4(c) of
+            // HudLabelFitRegression already MEASURES this string at the floor against its column.
+            _waveCountdown.fontSizeMin = ElarionUi.FontFloorMobile;
+            _waveCountdown.fontSizeMax = ElarionUi.FontFloorMobile;
             _waveProgress = ElarionUiKit.BuildObsidianBar(_waveBlockRoot.transform,
                 ElarionUiKit.ObsidianBarKind.Stat, new Vector2(0.03f, 0.08f), new Vector2(0.59f, 0.18f),
                 withValue: false, framed: false);
@@ -1811,7 +1823,9 @@ namespace DeNelle.HUD.Kit
                 ? _startWaveButton.GetComponentInChildren<TMP_Text>(true) : null;
             if (startWaveLabel != null)
             {
-                startWaveLabel.fontSizeMin = 20f;
+                // WO-1823 (same player report) — was 20f, under the floor. The CTA band is 115 ref
+                // px tall (0.03..0.93 of 128), so nothing about the box forced the sub-floor min.
+                startWaveLabel.fontSizeMin = ElarionUi.FontFloorMobile;
                 startWaveLabel.fontSizeMax = 30f;
             }
             // Carry-over (WO-T2 working-tree intent): the tutorial spotlight target.
@@ -2329,16 +2343,34 @@ namespace DeNelle.HUD.Kit
             // of the Echoes chip it must match, and "Builders 1/2 | Train 3" cannot seat 22
             // characters on one 200 px line above the kit's 30 px legibility floor — it would
             // ellipsize the Train count away, and the collapsed chip is the only HUD surface that
-            // reports it. The chip is 112 px TALL, so the label wraps instead: FitBlock keeps the
-            // same bounded auto-size and legibility floor, uses the height we already reserved,
-            // and nothing is clipped or dropped. Single-word chips ("Resources") are unaffected.
+            // reports it. ⛔ CORRECTED WO-1824 (2026-09-17): the next sentence used to read "The chip
+            // is 112 px TALL, so the label wraps instead: FitBlock keeps the..." — THE CODE BELOW HAS
+            // NEVER CALLED FitBlock, it calls FitSingleLine, so the paragraph described a wrap this
+            // method does not do and argued the case AGAINST its own line. The chip is 112 px TALL and
+            // the wrap remains the right answer for a two-part caption; making it so is a behaviour
+            // change and is the lead's call (WORK_ORDER_1823 RESULT, open finding 2). Until then the
+            // honest reading is: FitSingleLine keeps the bounded auto-size and the legibility floor,
+            // does NOT use the height we reserved, and ELLIPSIZES a caption too wide for one line.
+            // Single-word chips ("Resources") are unaffected either way.
             MedievalUiSkin.ApplyButton(btn, primary: true);
             var lbl = btn.GetComponentInChildren<TMP_Text>(true);
             if (lbl != null)
             {
-                lbl.fontSizeMin = 22f;
+                // WO-1823 (player report, build 2026.09.16.371701: "Text is too small to read") —
+                // the rail-chip floor was 22f, under ElarionUi.FontFloorMobile. It now NAMES the
+                // floor. ⚠ THE TRADE IS DELIBERATE AND IT IS THE LEAD'S TO REVISIT, NOT MINE TO
+                // HIDE: FitSingleLine is a WIDTH fit, so a long multi-part caption that used to
+                // shrink to 22 and fit will now ellipsize instead. HudLabelFitRegression Case 15c
+                // recorded "Builders idle 2" at 157.1 px (x1.15 slack = 180.6) in a 202.4 px rect
+                // AT 22 — scaled to the floor that is ~246 px, i.e. it would ellipsize. That chip
+                // is the DORMANT surface (Case 15d), and Case 2 already measures the LIVE
+                // Collectors chip at the floor and passes, which is why the floor is applied here
+                // rather than the chip being special-cased. If a live chip is ever seen to
+                // ellipsize a count, the fix is FitBlock (this method's own header argues for the
+                // wrap) — NOT dropping the floor back under the kit's minimum.
+                lbl.fontSizeMin = ElarionUi.FontFloorMobile;
                 lbl.fontSizeMax = 30f;
-                ElarionUiKit.FitSingleLine(lbl, 22f, 30f);
+                ElarionUiKit.FitSingleLine(lbl, ElarionUi.FontFloorMobile, 30f);
             }
             return btn;
         }
@@ -2488,6 +2520,24 @@ namespace DeNelle.HUD.Kit
         private const float HeartRowX0 = 0.05f;
         private const float HeartRowX1 = 0.95f;
         /// <summary>The plate's name size - and, by the owner's ruling, the Heartfire row's.</summary>
+        // ⛔ WO-1823 EXCEPTION - THESE FOUR STAY AT 20..26 AND THAT IS A BLOCKED ITEM, NOT AN
+        // OVERSIGHT. The WO-1823 player report ("Text is too small to read") named the Heart
+        // nameplate among the sub-floor labels, and every other site in that ticket was raised to
+        // ElarionUi.FontFloorMobile (30). This one CANNOT be, from this file: the plate simply does
+        // not have the height. HudLabelFitRegression Case 10c asserts each Heart row band seats
+        // floor x LineHeightFactor(1.2) at BOTH landscape aspects, and the arithmetic is
+        //   plate = HudLayoutBands.HeartMount.height(0.135) x refH x HeartPlateOfMount(0.96)
+        //         = 125 ref px at 2670x1200 (140 at 1920x1080)
+        //   name band 0.74..0.96 = 0.22 x 125 = 27.5 ref px, but a 30 px line needs 36.
+        // Worse, all four rows at a 30 px floor need 36 + 21.6 + 36 + 21.6 = 115.2 px inside a
+        // visible frame (0.06..0.97) that is only 113.75 px at the capture aspect - it does not fit
+        // with ZERO gaps. Case 10c's own remedy is the right one and it is NOT in this assembly:
+        // "Grow HudLayoutBands.HeartMount, never the font down" (DeNelle.Core). Raising these
+        // literals alone would RED the gate and, on a device, hand the post-layout guard a band it
+        // cannot seat - the relax path back under the floor, i.e. the captured defect again.
+        // Owner/lead ruling needed on growing the mount; tracked in WORK_ORDER_1823's RESULT.
+        // (Do NOT alias these to ElarionUi.FontFloorMobile either: Case 10 parses them as float
+        // LITERALS out of this source, see the note under HeartNameFontMax.)
         private const float HeartNameFontMin = 20f;
         private const float HeartNameFontMax = 26f;
         // (Literals, not aliases of the name constants: the regression pin parses these as

@@ -189,7 +189,19 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fortieth pass): main line next free = **1823**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-second pass): main line next free = **1825**.
+> *(Lead PRE-ASSIGNED **1824** Heart name/Heartfire labels stay below the mobile font floor - WO-1823 raised every other
+> sub-floor HUD label to `ElarionUi.FontFloorMobile` (30) but the Heart plate is 125 ref px and its four rows already
+> use 113.75 of it at today's 20/26 sizes; `HudLabelFitRegression` Case 10c pins the remedy as growing
+> `HudLayoutBands.HeartMount` (DeNelle.Core), not the font. Bumped 1824 -> 1825 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-first pass): main line next free = **1824**.
+> *(Lead PRE-ASSIGNED **1823** player honest-feedback report #10 on build 371701: "Text is too small to read" (Main_Castle_Overworld,
+> 2026-09-17 08:15Z, a new player who finished the tutorial, two waves, barracks + army) - legibility audit of every
+> player-facing text size on the Seeker. Reports #7-9 "it is very not intuitive" (same build, one player, 22:37Z) are
+> logged against the onboarding/army work already shipped in 373339. Bumped 1823 -> 1824 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-fortieth pass): main line next free = **1823**.
 > *(Lead PRE-ASSIGNED **1821** the raid dresser clads catapult hosts with the kit tower and leaves green fallback
 > pills under the siege art (Builds/raid-post-audit/RaidBase_IronBastion_RaidSpire.png, WO-1617 class; WO-1817 §4) and
 > **1822** CornerPost_* render clad-native (1.11 / 7.52 / 17.96 m) with no authored height (WO-1817 §4). Bumped
