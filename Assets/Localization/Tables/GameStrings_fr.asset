@@ -1791,7 +1791,7 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143555
   - m_Id: 41009956753289222
-    m_Localized: "Connectez un portefeuille pour acheter - prix affich\xE9s en USD"
+    m_Localized: "Connectez un portefeuille pour acheter - prix affich\xE9s en SKR"
     m_Metadata:
       m_Items: []
   - m_Id: 41016777593368576
@@ -2073,6 +2073,163 @@ MonoBehaviour:
     m_Localized: "R\xE9essayer"
     m_Metadata:
       m_Items: []
+  - m_Id: 43874653861097472
+    m_Localized: "Arm\xE9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263296
+    m_Localized: "Arm\xE9e {0} sur {1}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263297
+    m_Localized: "{0} en convalescence - pr\xEAts dans {1}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263298
+    m_Localized: Place pour {0} de plus
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263299
+    m_Localized: "Arm\xE9e compl\xE8te"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263300
+    m_Localized: "Arm\xE9e compl\xE8te - {0} en convalescence"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263301
+    m_Localized: "Aucun entra\xEEnement"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263302
+    m_Localized: "Entra\xEEnement de {0} - {1} restant"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263303
+    m_Localized: "File d'entra\xEEnement pleine - {0} sur {1}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263304
+    m_Localized: '{0} chacun - {1} actifs, {2} en reserve'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263305
+    m_Localized: "Entra\xEEner"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263306
+    m_Localized: EN FORMATION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263307
+    m_Localized: "Arm\xE9e pr\xEAte - partez au raid"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263308
+    m_Localized: "Entra\xEEnez {0} de plus pour le raid"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263309
+    m_Localized: Formations
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263310
+    m_Localized: "Touchez Entra\xEEner pour ajouter une troupe. Elles s'entra\xEEnent
+      pendant que vous jouez."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263311
+    m_Localized: "{0} ajout\xE9 \xE0 l'entra\xEEnement"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263312
+    m_Localized: Aucune troupe
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263313
+    m_Localized: +{0} a l'entrainement
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263314
+    m_Localized: Reserve {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263315
+    m_Localized: Plus
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263316
+    m_Localized: '{0} actifs, {1} en reserve. Les troupes en reserve restent entrainees
+      mais ne partent pas en raid.'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263317
+    m_Localized: Mettre en reserve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263318
+    m_Localized: Renvoyer pour {0} d'or
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263319
+    m_Localized: Renvoyer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263320
+    m_Localized: Retour a l'armee
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263321
+    m_Localized: Annuler
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263322
+    m_Localized: '{0} mis en reserve'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263323
+    m_Localized: '{0} de retour dans l''armee'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263324
+    m_Localized: '{0} renvoye - {1} d''or'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263325
+    m_Localized: Plus de place - deplacez ou renvoyez-en un d'abord
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263326
+    m_Localized: "Pr\xEAt quand {0} seront r\xE9tablis"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263327
+    m_Localized: "Entra\xEEnez {0} de plus, {1} en convalescence"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 43874653886263328
+    m_Localized: "{0} renvoy\xE9"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
   references:
     version: 2
     RefIds:
@@ -2120,3 +2277,22 @@ MonoBehaviour:
         - id: 41956485444395010
         - id: 41996532231168001
         - id: 41996532231168003
+        - id: 43874653886263296
+        - id: 43874653886263297
+        - id: 43874653886263298
+        - id: 43874653886263300
+        - id: 43874653886263302
+        - id: 43874653886263303
+        - id: 43874653886263304
+        - id: 43874653886263308
+        - id: 43874653886263311
+        - id: 43874653886263313
+        - id: 43874653886263314
+        - id: 43874653886263316
+        - id: 43874653886263318
+        - id: 43874653886263322
+        - id: 43874653886263323
+        - id: 43874653886263324
+        - id: 43874653886263326
+        - id: 43874653886263327
+        - id: 43874653886263328

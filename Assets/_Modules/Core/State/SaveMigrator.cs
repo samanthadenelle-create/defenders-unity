@@ -80,6 +80,7 @@ namespace DeNelle.Core.State
                 { 39, MigrateToV39 },
                 { 40, MigrateToV40 },
                 { 41, MigrateToV41 },
+                { 42, MigrateToV42 },
             };
 
         /// <summary>
@@ -811,6 +812,37 @@ namespace DeNelle.Core.State
                     "stronghold, which never calls ReconcileRaidEnd) they get ONE softened raid and the flag " +
                     "self-corrects at the next raid end. Fail-open by design: the gate is a floor, never a lock.");
 
+            return s;
+        }
+
+        /// <summary>
+        /// v41 -> v42 (WO-1811, THE ARMY RESERVE). A DOCUMENTED NO-OP that only seeds the empty
+        /// list. There is nothing to derive: before this version no troop could be set aside, so
+        /// every existing save's correct reserve is EMPTY - and <c>ArmyStorage.EnsureReserve</c>
+        /// already answers null with an empty list at runtime. The step exists so the CORE_SAVE
+        /// version-triple stays aligned (SaveMigrator's top step == SaveSchema.CurrentVersion),
+        /// which is the same reason MigrateToV37 exists.
+        /// </summary>
+        private static PersistedState MigrateToV42(PersistedState s)
+        {
+            // ⛔ FIRST, THE PHASE E DERIVATION - AND THIS IS THE WHOLE LESSON OF THIS BUMP.
+            // The chain runs `if (fromVersion < step.Key)`, so a save at v41 migrating to current
+            // runs ONLY this step: the WO-823 Phase E derive (step 41) is skipped and
+            // everCompletedRaid stays null on exactly the saves written by the build that shipped
+            // it. Adding a version on top of a DERIVING step silently orphans that derivation for
+            // the one version below it - three FirstRaidSoftGateRegression cases caught it, and the
+            // cost of the miss would have been a veteran handed a softened first raid again.
+            // Idempotent by construction: MigrateToV41 returns immediately when the flag already
+            // carries a value, so a save that came up through the full chain is untouched here.
+            s = MigrateToV41(s);
+
+            if (s?.Army == null) return s;
+            if (s.Army.Reserve == null)
+            {
+                s.Army.EnsureReserve();
+                FlowTrace.Step("Save", "v41->v42 (WO-1811): army reserve seeded EMPTY - no troop " +
+                                       "could be set aside before this version, so there is nothing to derive.");
+            }
             return s;
         }
 

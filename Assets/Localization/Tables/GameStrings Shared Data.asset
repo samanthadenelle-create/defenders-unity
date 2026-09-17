@@ -1855,6 +1855,142 @@ MonoBehaviour:
     m_Key: offlineFirstRunRetry
     m_Metadata:
       m_Items: []
+  - m_Id: 43874653861097472
+    m_Key: armyScreen.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263296
+    m_Key: armyScreen.armyLine
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263297
+    m_Key: armyScreen.recovering
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263298
+    m_Key: armyScreen.roomFor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263299
+    m_Key: armyScreen.armyFull
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263300
+    m_Key: armyScreen.armyFullRecovering
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263301
+    m_Key: armyScreen.nothingTraining
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263302
+    m_Key: armyScreen.training
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263303
+    m_Key: armyScreen.queueFull
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263304
+    m_Key: armyScreen.rowMeta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263305
+    m_Key: armyScreen.trainButton
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263306
+    m_Key: armyScreen.inTrainingTitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263307
+    m_Key: armyScreen.ready
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263308
+    m_Key: armyScreen.notReady
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263309
+    m_Key: armyScreen.loadouts
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263310
+    m_Key: armyScreen.tip
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263311
+    m_Key: armyScreen.trainedOne
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263312
+    m_Key: armyScreen.noTroops
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263313
+    m_Key: armyScreen.rowTraining
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263314
+    m_Key: armyScreen.reserveLine
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263315
+    m_Key: armyScreen.manage
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263316
+    m_Key: armyScreen.manageBody
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263317
+    m_Key: armyScreen.moveToReserve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263318
+    m_Key: armyScreen.dismissFor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263319
+    m_Key: armyScreen.dismissFree
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263320
+    m_Key: armyScreen.recall
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263321
+    m_Key: armyScreen.cancel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263322
+    m_Key: armyScreen.movedToReserve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263323
+    m_Key: armyScreen.recalled
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263324
+    m_Key: armyScreen.dismissed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263325
+    m_Key: armyScreen.noRoomToRecall
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263326
+    m_Key: armyScreen.readyWhenRecovered
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263327
+    m_Key: armyScreen.notReadyRecovering
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263328
+    m_Key: armyScreen.dismissedFree
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

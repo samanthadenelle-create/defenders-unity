@@ -229,6 +229,14 @@ namespace DeNelle.Editor
             new CaptureTarget(2670, 1200),
         };
 
+        // WO-1815: the SKR-only / sale-promo proof is shot ONLY at the owner's real device surface. One
+        // target, two frames (no-sale + 30% off) - the ladder and the sale sign are content, not layout,
+        // and the layout at every other width is already NightMarketTargets' job.
+        private static readonly CaptureTarget[] SkrFlatTargets =
+        {
+            new CaptureTarget(2670, 1200),   // THE SEEKER'S REAL SURFACE
+        };
+
         // Fidelity bookkeeping (reported as UI_CAPTURE_FIDELITY_OK / _DEGRADED).
         private static int _fidelityOk;
         private static int _fidelityDegraded;
@@ -3129,6 +3137,90 @@ namespace DeNelle.Editor
                                "; touchFailures=" + _touchFailures.Count);
         }
 
+        /// <summary>
+        /// WO-1815 — the OWNER'S OWN ASK, as two frames at the Seeker's real surface: the SKR-only shelf
+        /// with no sale, and the same shelf with a 30% deal on (verbatim: <i>"and test with sales promos"</i>
+        /// / <i>"so you can see screenshots of discounts"</i>).
+        ///
+        /// <para>⛔ ITS OWN ENTRY POINT AND ITS OWN MARKER (<c>STORE_SKR_FLAT_CAPTURE_OK</c>), for the same
+        /// arithmetic reason WO-1800 records one method above: the Night Market's markers judge themselves
+        /// on <c>NightMarketTargets.Length</c> and on counters that increment per rendered frame. Two extra
+        /// frames inside that gate would turn it RED with nothing wrong on screen.</para>
+        ///
+        /// <para>⛔ BOTH PASSES INJECT DISPLAY ROWS. There is no server in batchmode, and the SKR-only
+        /// shelf prints the SERVED figure; an uninjected control frame would be photographing the
+        /// authored-rung FALLBACK instead of the path a player sees. Both frames are therefore stubbed,
+        /// the amounts come from the authored ladder through the ONE rounding rule, and the teardown is in
+        /// a finally — the display cache is static and a leaked fabricated price would outlive this run.</para>
+        ///
+        /// <para>⚠ WHAT THESE STILLS CANNOT PROVE, SAID PLAINLY: the PULSE. The capture composes the panel
+        /// by Awake -> EnsureBuilt -> Render and never ticks <c>Update</c>, so every card sits at its
+        /// authored scale. Motion needs play mode or a device.</para>
+        /// </summary>
+        public static void RunStoreSkrFlatCaptureHeadless()
+        {
+            Directory.CreateDirectory(OutDir);
+            _fidelityOk = 0;
+            _fidelityDegraded = 0;
+            _fidelityReasons.Clear();
+            _screenStuckBuilds = 0;
+            _screenStuckAt = null;
+            _geoMoveProof = null;
+            _geoMoveFailure = null;
+            _geoFailures.Clear();
+            _geoCanvasesChecked = 0;
+            _touchFailures.Clear();
+            ResetGlyphOracle();
+            _touchPanelsChecked = 0;
+            _touchPanelsClean = 0;
+            ProveGeometryMoves();
+
+            const int ExpectedFrames = 2;   // one no-sale + one 30%-off, both at 2670x1200
+            int count = 0;
+            try
+            {
+                _injectFlatSkrRows = true;
+
+                _injectNightMarketSale = false;
+                _skrFlatShotPrefix = "Store_SkrFlat_NoSale_";
+                count += ForEachTarget("StoreSkrFlatNoSale", SkrFlatTargets, CaptureNightMarketStoreOnce);
+
+                _injectNightMarketSale = true;
+                _skrFlatShotPrefix = "Store_SkrFlat_Sale30_";
+                count += ForEachTarget("StoreSkrFlatSale30", SkrFlatTargets, CaptureNightMarketStoreOnce);
+            }
+            finally
+            {
+                // Unconditional, all three: every one of them is STATIC, so a leaked value would put a
+                // fabricated price or a wrong filename on later frames in this same batchmode run.
+                _injectNightMarketSale = false;
+                _injectFlatSkrRows = false;
+                _skrFlatShotPrefix = null;
+                ClearInjectedSaleDisplayPrices();
+            }
+
+            ReportFidelity();
+            ReportGeometry();
+            ReportTouchOracle();
+            ReportGlyphOracle();
+
+            bool clean = count == ExpectedFrames
+                         && _fidelityDegraded == 0
+                         && _geoFailures.Count == 0
+                         && _geoCanvasesChecked == ExpectedFrames
+                         && _touchPanelsChecked == ExpectedFrames
+                         && _touchPanelsClean == _touchPanelsChecked
+                         && _touchFailures.Count == 0;
+            if (clean)
+                Debug.Log("STORE_SKR_FLAT_CAPTURE_OK " + count + "/" + ExpectedFrames +
+                          "; geometry=clean; touch=clean");
+            else
+                Debug.LogError("STORE_SKR_FLAT_CAPTURE_FAIL " + count + "/" + ExpectedFrames +
+                               "; fidelityDegraded=" + _fidelityDegraded +
+                               "; geometryFailures=" + _geoFailures.Count +
+                               "; touchFailures=" + _touchFailures.Count);
+        }
+
         /// <summary>Focused current-state proof for the approved Night Market handoff.</summary>
         public static void RunNightMarketCaptureHeadless()
         {
@@ -4385,9 +4477,14 @@ namespace DeNelle.Editor
                 // therefore change nothing at all on screen, and the frame would quietly prove the
                 // opposite of what it was shot for.
                 _saleRowsInjected = 0;
-                if (_injectNightMarketSale && !InjectSaleDisplayPrices(3000, "30% OFF", out _saleRowsInjected))
-                    Debug.LogWarning("[UICap-HL] the sale state could NOT be injected - this frame " +
-                                     "proves nothing about the sale signs.");
+                // WO-1815 adds the NO-SALE flat pass through the same door: both passes need injected
+                // rows, because without a server the SKR-only shelf has no served figure and would fall
+                // back to the authored rung - which is a different thing from what the server sends, and
+                // a screenshot must show the served path.
+                if ((_injectNightMarketSale || _injectFlatSkrRows) &&
+                    !InjectSaleDisplayPrices(_injectNightMarketSale ? 3000 : 0, "30% OFF", out _saleRowsInjected))
+                    Debug.LogWarning("[UICap-HL] the display rows could NOT be injected - this frame " +
+                                     "proves nothing about the prices or the sale signs.");
 
                 // Render() fills the priced bands from PackCatalog. Guarded separately: a catalogue
                 // failure must still leave the CHROME shot, because "the store opened empty" and
@@ -4404,7 +4501,8 @@ namespace DeNelle.Editor
                     Debug.Log("[UICap-HL] NightMarket SALE pass: ribbons measured in the built tree = " +
                               CountSaleRibbons(canvasGo) + " (injected on " + _saleRowsInjected + " sku(s))");
 
-                string shotName = _injectNightMarketSale ? "NightMarket_Sale_" : "NightMarket_";
+                string shotName = _skrFlatShotPrefix
+                                  ?? (_injectNightMarketSale ? "NightMarket_Sale_" : "NightMarket_");
                 if (RenderCanvasToPng(canvasGo, OutDir + shotName + target.Tag + ".png",
                     target.W, target.H)) saved++;
 
@@ -4431,7 +4529,7 @@ namespace DeNelle.Editor
                 // unconditional Clear() here would wipe a real LIST response that a future capture
                 // (or a play session that had already fetched prices) was relying on - this harness
                 // must not be able to change what it is photographing when it was not asked to.
-                if (_injectNightMarketSale) ClearInjectedSaleDisplayPrices();
+                if (_injectNightMarketSale || _injectFlatSkrRows) ClearInjectedSaleDisplayPrices();
 
                 // Awake() registered the panel with the arbiter; release it by hand -- the store's
                 // own CloseStore path uses runtime Destroy, which is edit-illegal.
@@ -4481,7 +4579,21 @@ namespace DeNelle.Editor
             return field != null ? field.GetValue(null) as System.Collections.IDictionary : null;
         }
 
-        /// <summary>Puts a fabricated on-sale display row on every shelf pack. Editor-only.</summary>
+        /// <summary>Set by <see cref="RunStoreSkrFlatCaptureHeadless"/> for its NO-SALE pass (WO-1815).</summary>
+        private static bool _injectFlatSkrRows;
+
+        /// <summary>Overrides the shot filename prefix; null ⇒ the Night Market's own naming.</summary>
+        private static string _skrFlatShotPrefix;
+
+        /// <summary>
+        /// Puts a fabricated display row on every shelf pack. Editor-only.
+        /// <para>WO-1815: the amount comes from the pack's AUTHORED FLAT rung, discounted by the ONE
+        /// rounding rule (<see cref="DeNelle.Editor.Regression.StoreSkrFlatLadderRegression.DiscountedFlatSkr"/>),
+        /// so the PNG cannot show a figure the server's rule would not produce. ⛔ A second copy of that
+        /// rule here is exactly how a screenshot starts lying.</para>
+        /// <para><paramref name="saleBps"/> 0 ⇒ an ordinary, full-price row with NO sale fields at all —
+        /// the no-sale shelf, priced, which is the control frame the sale frame is judged against.</para>
+        /// </summary>
         private static bool InjectSaleDisplayPrices(int saleBps, string saleLabel, out int injected)
         {
             injected = 0;
@@ -4504,14 +4616,26 @@ namespace DeNelle.Editor
                 // for the server, which is exactly why it lives here and not in PackStore.
                 double anchor = pack.Pricing != null && pack.Pricing.Usd > 0d ? pack.Pricing.Usd : 4.99d;
                 double effective = Math.Round(anchor * (1d - saleBps / 10000d), 2);
+
+                // ⭐ WO-1815 — THE SKR FIGURE, from the authored flat rung through the one rounding rule.
+                // A pack with no authored rung keeps the old 1-SKR placeholder rather than inventing one:
+                // it is visibly a placeholder, which is what an unpriced row should look like in a proof.
+                double flat = pack.Pricing != null ? pack.Pricing.SkrFlat : 0d;
+                double skr = DeNelle.Editor.Regression.StoreSkrFlatLadderRegression
+                    .DiscountedFlatSkr(flat, saleBps);
+                long baseUnits = skr > 0d ? (long)skr * 1000000L : 1000000L;   // 6 dp on the SKR rail
+
+                bool onSale = saleBps > 0;
                 string json = "{\"sku\":\"" + pack.Sku + "\",\"network\":\"devnet\"," +
-                              "\"amountBaseUnits\":\"1000000\",\"decimals\":6," +
+                              "\"amountBaseUnits\":\"" + baseUnits.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\",\"decimals\":6," +
                               "\"usdAnchor\":" + anchor.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "," +
-                              "\"usdEffective\":" + effective.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "," +
-                              "\"saleBps\":" + saleBps.ToString(System.Globalization.CultureInfo.InvariantCulture) + "," +
-                              "\"saleLabel\":\"" + saleLabel + "\"," +
-                              "\"saleEndsAt\":\"" + DateTime.UtcNow.AddDays(2).AddHours(4)
-                                  .ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture) + "\"}";
+                              "\"usdEffective\":" + effective.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) +
+                              (onSale
+                                  ? ",\"saleBps\":" + saleBps.ToString(System.Globalization.CultureInfo.InvariantCulture) +
+                                    ",\"saleLabel\":\"" + saleLabel + "\"" +
+                                    ",\"saleEndsAt\":\"" + DateTime.UtcNow.AddDays(2).AddHours(4)
+                                        .ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture) + "\""
+                                  : string.Empty) + "}";
                 DeNelle.Wallet.PurchaseQuote row;
                 try { row = Newtonsoft.Json.JsonConvert.DeserializeObject<DeNelle.Wallet.PurchaseQuote>(json); }
                 catch (Exception e)
@@ -7611,6 +7735,121 @@ namespace DeNelle.Editor
             if (count == LandscapeTargets.Length * 2 && _geoFailures.Count == 0 && _touchFailures.Count == 0 && _glyphFailures.Count == 0)
                 Debug.Log("POPULATED_RAID_HUD_CAPTURE_OK frames=" + count + "; four saved troop IDs load portraits");
             else Debug.LogError("POPULATED_RAID_HUD_CAPTURE_FAIL frames=" + count + " geometry=" + _geoFailures.Count + " touch=" + _touchFailures.Count);
+        }
+
+        // ---------------------------------------------------------------------
+        //  WO-1811 -- THE ARMY SCREEN, in the state the owner photographed.
+        //
+        //  This panel had NEVER been in this harness (grep "ArmyMuster" over this
+        //  file before WO-1811 returned two comments and a touch-baseline row, no
+        //  capture entry), so every audit inside RenderCanvasToPng was structurally
+        //  blind to it and the only eyes on it were the owner's -- which is the
+        //  thing CLAUDE.md §14 exists to never rely on.
+        //
+        //  The fixture is the owner's own 2026-09-16 state, seeded rather than
+        //  described: SEVEN owned troops of which THREE are wounded (so the army
+        //  bar must read "Army 7 of 10" with "3 recovering" beside it) and an EMPTY
+        //  train queue. EverCompletedRaid is stamped so ArmyReadiness judges against
+        //  the full cap rather than the WO-823 softened first-raid bar.
+        //
+        //  HONEST LIMIT, stated rather than dressed up: BuildTimerService is a
+        //  runtime MonoBehaviour, so in edit mode the queue reads EMPTY (depth 0,
+        //  one train slot). The "queue busy" wording is therefore proved by
+        //  ArmyScreenCopyRegression, not by this shot.
+        // ---------------------------------------------------------------------
+        public static void RunArmyScreenCapture()
+        {
+            Directory.CreateDirectory(OutDir);
+            _fidelityOk = 0; _fidelityDegraded = 0; _fidelityReasons.Clear();
+            _geoFailures.Clear(); _geoCanvasesChecked = 0;
+            _touchFailures.Clear(); _touchPanelsChecked = 0; _touchPanelsClean = 0;
+            ResetGlyphOracle();
+
+            var prior = GameStateService.Instance;
+            GameObject stateHost = null;
+            GameState fixture = null;
+            bool hydratedCatalog = DeNelle.Core.Catalog.CatalogRegistry.Count == 0;
+            int count = 0;
+            try
+            {
+                if (prior != null)
+                    throw new InvalidOperationException("Army screen capture requires an isolated editor scene.");
+                HydrateCatalogForCapture();
+
+                fixture = ScriptableObject.CreateInstance<GameState>();
+                fixture.EverCompletedRaid = true;
+                // Barracks 2 is what the owner's device had: footman + archer + spearman offered,
+                // which is the three-row ladder her capture shows.
+                fixture.BarracksLevel = 2;
+                fixture.Army = new DeNelle.Core.State.ArmyStorage();
+                string[] ids = { "troop-footman", "troop-footman", "troop-footman", "troop-archer",
+                                 "troop-archer", "troop-spearman", "troop-spearman" };
+                for (int i = 0; i < ids.Length; i++)
+                    fixture.Army.Owned.Add(new DeNelle.Core.State.PlayerTroop("capture-" + i, ids[i]));
+                for (int i = 4; i < 7; i++)
+                    fixture.Army.MarkWounded(fixture.Army.Owned[i], 1140f);   // 19m, the owner's number
+
+                stateHost = new GameObject("~ArmyScreenCaptureState");
+                if (!InstallCaptureState(stateHost.AddComponent<GameStateService>(), fixture))
+                    throw new InvalidOperationException("Could not install the isolated army fixture.");
+
+                count += ForEachTarget("ArmyScreen", t => CaptureArmyScreenOnce(t, false));
+                count += ForEachTarget("ArmyScreenLoadouts", t => CaptureArmyScreenOnce(t, true));
+            }
+            finally
+            {
+                RestoreCaptureState(prior);
+                if (stateHost != null) UnityEngine.Object.DestroyImmediate(stateHost);
+                if (fixture != null) UnityEngine.Object.DestroyImmediate(fixture);
+                if (hydratedCatalog) DeNelle.Core.Catalog.CatalogRegistry.Clear();
+            }
+
+            ReportFidelity(); ReportGeometry(); ReportTouchOracle(); ReportGlyphOracle();
+            if (count == LandscapeTargets.Length * 2 && _geoFailures.Count == 0 && _touchFailures.Count == 0)
+                Debug.Log("ARMY_SCREEN_CAPTURE_OK frames=" + count +
+                          "; primary + loadouts drawer, army 7 of 10 with 3 recovering");
+            else
+                Debug.LogError("ARMY_SCREEN_CAPTURE_FAIL frames=" + count +
+                               " geometry=" + _geoFailures.Count + " touch=" + _touchFailures.Count);
+        }
+
+        private static int CaptureArmyScreenOnce(CaptureTarget target, bool drawer)
+        {
+            var host = new GameObject("~ArmyScreenCapture");
+            GameObject canvas = null;
+            GameObject tempEventSystem = null;
+            try
+            {
+                if (UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+                {
+                    tempEventSystem = new GameObject("~UICapEventSystem");
+                    tempEventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
+                }
+
+                var panel = host.AddComponent<DeNelle.Village.ArmyMusterPanel>();
+                panel.Open();
+                if (drawer)
+                {
+                    // The drawer is a DIFFERENT partition, so the panel rebuilds outright rather
+                    // than painting one surface into the other's bands (see ArmyMusterPanel.Open).
+                    var vm = GetPrivateFieldValue(panel, "_vm") as DeNelle.Village.ArmyMusterVM;
+                    if (vm == null) throw new InvalidOperationException("Army panel built no ViewModel.");
+                    vm.ToggleLoadouts();
+                    panel.Open();
+                }
+                canvas = GetPrivateGameObject(panel, "_ui");
+                if (canvas == null) throw new InvalidOperationException("Army panel did not build a canvas.");
+
+                string name = drawer ? "ArmyScreenLoadouts" : "ArmyScreen";
+                return RenderCanvasToPng(canvas, OutDir + name + "_" + target.Tag + ".png",
+                                         target.W, target.H) ? 1 : 0;
+            }
+            finally
+            {
+                if (canvas != null) UnityEngine.Object.DestroyImmediate(canvas);
+                UnityEngine.Object.DestroyImmediate(host);
+                if (tempEventSystem != null) UnityEngine.Object.DestroyImmediate(tempEventSystem);
+            }
         }
 
         private static int CaptureRaidHud()

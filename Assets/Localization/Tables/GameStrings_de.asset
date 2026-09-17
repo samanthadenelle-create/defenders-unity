@@ -1782,7 +1782,7 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143554
   - m_Id: 41009956753289222
-    m_Localized: Wallet zum Kaufen verbinden - Preise in USD
+    m_Localized: Wallet zum Kaufen verbinden - Preise in SKR
     m_Metadata:
       m_Items: []
   - m_Id: 41016777593368576
@@ -2063,6 +2063,163 @@ MonoBehaviour:
     m_Localized: Erneut versuchen
     m_Metadata:
       m_Items: []
+  - m_Id: 43874653861097472
+    m_Localized: Armee
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263296
+    m_Localized: Armee {0} von {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263297
+    m_Localized: '{0} in Genesung - bereit in {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263298
+    m_Localized: "Platz f\xFCr {0} weitere"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263299
+    m_Localized: Armee voll
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263300
+    m_Localized: Armee voll - {0} in Genesung
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263301
+    m_Localized: Keine Ausbildung
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263302
+    m_Localized: Bildet {0} aus - noch {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263303
+    m_Localized: Ausbildungsliste voll - {0} von {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263304
+    m_Localized: je {0} - {1} aktiv, {2} in Reserve
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263305
+    m_Localized: Ausbilden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263306
+    m_Localized: IN AUSBILDUNG
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263307
+    m_Localized: Armee bereit - auf zum Angriff
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263308
+    m_Localized: "Bilde {0} weitere f\xFCr den Angriff aus"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263309
+    m_Localized: Aufstellungen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263310
+    m_Localized: "Tippe auf Ausbilden, um eine Einheit hinzuzuf\xFCgen. Sie bilden
+      sich aus, w\xE4hrend du spielst."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263311
+    m_Localized: "{0} zur Ausbildung hinzugef\xFCgt"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263312
+    m_Localized: Noch keine Truppen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263313
+    m_Localized: +{0} in Ausbildung
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263314
+    m_Localized: Reserve {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263315
+    m_Localized: Mehr
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263316
+    m_Localized: '{0} aktiv, {1} in Reserve. Reserve-Einheiten bleiben ausgebildet,
+      ziehen aber nicht in den Angriff.'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263317
+    m_Localized: In die Reserve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263318
+    m_Localized: Fuer {0} Gold entlassen
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263319
+    m_Localized: Entlassen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263320
+    m_Localized: Zurueck zur Armee
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263321
+    m_Localized: Abbrechen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263322
+    m_Localized: '{0} in die Reserve verschoben'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263323
+    m_Localized: '{0} kehrt zur Armee zurueck'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263324
+    m_Localized: '{0} entlassen - {1} Gold'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263325
+    m_Localized: Kein Platz - verschiebe oder entlasse zuerst eine Einheit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263326
+    m_Localized: Bereit, sobald {0} genesen
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263327
+    m_Localized: Bilde {0} weitere aus, {1} in Genesung
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 43874653886263328
+    m_Localized: '{0} entlassen'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
   references:
     version: 2
     RefIds:
@@ -2110,3 +2267,22 @@ MonoBehaviour:
         - id: 41956485444395010
         - id: 41996532231168001
         - id: 41996532231168003
+        - id: 43874653886263296
+        - id: 43874653886263297
+        - id: 43874653886263298
+        - id: 43874653886263300
+        - id: 43874653886263302
+        - id: 43874653886263303
+        - id: 43874653886263304
+        - id: 43874653886263308
+        - id: 43874653886263311
+        - id: 43874653886263313
+        - id: 43874653886263314
+        - id: 43874653886263316
+        - id: 43874653886263318
+        - id: 43874653886263322
+        - id: 43874653886263323
+        - id: 43874653886263324
+        - id: 43874653886263326
+        - id: 43874653886263327
+        - id: 43874653886263328

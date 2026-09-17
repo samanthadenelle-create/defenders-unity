@@ -1775,7 +1775,7 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143553
   - m_Id: 41009956753289222
-    m_Localized: "Conecte uma carteira para comprar - pre\xE7os em USD"
+    m_Localized: "Conecte uma carteira para comprar - pre\xE7os em SKR"
     m_Metadata:
       m_Items: []
   - m_Id: 41016777593368576
@@ -2052,6 +2052,163 @@ MonoBehaviour:
     m_Localized: Tentar novamente
     m_Metadata:
       m_Items: []
+  - m_Id: 43874653861097472
+    m_Localized: "Ex\xE9rcito"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263296
+    m_Localized: "Ex\xE9rcito {0} de {1}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263297
+    m_Localized: "{0} em recupera\xE7\xE3o - prontos em {1}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263298
+    m_Localized: "Espa\xE7o para mais {0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263299
+    m_Localized: "Ex\xE9rcito cheio"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263300
+    m_Localized: "Ex\xE9rcito cheio - {0} em recupera\xE7\xE3o"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263301
+    m_Localized: Nada em treinamento
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263302
+    m_Localized: Treinando {0} - faltam {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263303
+    m_Localized: Fila de treinamento cheia - {0} de {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263304
+    m_Localized: '{0} cada - {1} ativos, {2} na reserva'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263305
+    m_Localized: Treinar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263306
+    m_Localized: EM TREINAMENTO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263307
+    m_Localized: "Ex\xE9rcito pronto - partir para o ataque"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263308
+    m_Localized: Treine mais {0} para atacar
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263309
+    m_Localized: "Forma\xE7\xF5es"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263310
+    m_Localized: "Toque em Treinar para adicionar uma tropa. Elas treinam enquanto
+      voc\xEA joga."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263311
+    m_Localized: '{0} adicionado ao treinamento'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263312
+    m_Localized: Ainda sem tropas
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263313
+    m_Localized: +{0} treinando
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263314
+    m_Localized: Reserva {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263315
+    m_Localized: Mais
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263316
+    m_Localized: '{0} ativos, {1} na reserva. Tropas na reserva continuam treinadas
+      mas nao entram no ataque.'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263317
+    m_Localized: Mover para a reserva
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263318
+    m_Localized: Dispensar por {0} de ouro
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263319
+    m_Localized: Dispensar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263320
+    m_Localized: Voltar ao exercito
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263321
+    m_Localized: Cancelar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263322
+    m_Localized: '{0} movido para a reserva'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263323
+    m_Localized: '{0} voltou ao exercito'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263324
+    m_Localized: '{0} dispensado - {1} de ouro'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263325
+    m_Localized: Sem espaco - mova ou dispense um primeiro
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263326
+    m_Localized: Pronto quando {0} se recuperarem
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263327
+    m_Localized: "Treine mais {0}, {1} em recupera\xE7\xE3o"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 43874653886263328
+    m_Localized: '{0} dispensado'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
   references:
     version: 2
     RefIds:
@@ -2099,3 +2256,22 @@ MonoBehaviour:
         - id: 41956485444395010
         - id: 41996532231168001
         - id: 41996532231168003
+        - id: 43874653886263296
+        - id: 43874653886263297
+        - id: 43874653886263298
+        - id: 43874653886263300
+        - id: 43874653886263302
+        - id: 43874653886263303
+        - id: 43874653886263304
+        - id: 43874653886263308
+        - id: 43874653886263311
+        - id: 43874653886263313
+        - id: 43874653886263314
+        - id: 43874653886263316
+        - id: 43874653886263318
+        - id: 43874653886263322
+        - id: 43874653886263323
+        - id: 43874653886263324
+        - id: 43874653886263326
+        - id: 43874653886263327
+        - id: 43874653886263328

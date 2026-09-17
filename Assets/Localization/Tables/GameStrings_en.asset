@@ -1744,7 +1744,7 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888474672496640
   - m_Id: 41009956753289222
-    m_Localized: Connect a wallet to buy - prices shown in USD
+    m_Localized: Connect a wallet to buy - priced in SKR
     m_Metadata:
       m_Items: []
   - m_Id: 41016777593368576
@@ -2017,6 +2017,162 @@ MonoBehaviour:
     m_Localized: Retry
     m_Metadata:
       m_Items: []
+  - m_Id: 43874653861097472
+    m_Localized: Army
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263296
+    m_Localized: Army {0} of {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263297
+    m_Localized: '{0} recovering - ready in {1}'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263298
+    m_Localized: Room for {0} more
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263299
+    m_Localized: Army full
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263300
+    m_Localized: Army full - {0} recovering
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263301
+    m_Localized: Nothing training
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263302
+    m_Localized: Training {0} - {1} left
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263303
+    m_Localized: Training queue full - {0} of {1}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263304
+    m_Localized: '{0} each - {1} active, {2} reserve'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263305
+    m_Localized: Train
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263306
+    m_Localized: IN TRAINING
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263307
+    m_Localized: Army ready - go raid
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263308
+    m_Localized: Train {0} more to raid
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263309
+    m_Localized: Loadouts
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263310
+    m_Localized: Tap Train to add one troop. They train while you play.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263311
+    m_Localized: '{0} added to training'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263312
+    m_Localized: No troops yet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263313
+    m_Localized: +{0} training
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263314
+    m_Localized: Reserve {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263315
+    m_Localized: More
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263316
+    m_Localized: '{0} active, {1} in reserve. Reserve troops stay trained but do
+      not join a raid.'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263317
+    m_Localized: Move to Reserve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263318
+    m_Localized: Dismiss for {0} gold
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263319
+    m_Localized: Dismiss
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263320
+    m_Localized: Return to army
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263321
+    m_Localized: Cancel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263322
+    m_Localized: '{0} moved to Reserve'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263323
+    m_Localized: '{0} returned to the army'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263324
+    m_Localized: '{0} dismissed - {1} gold'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263325
+    m_Localized: No room - move or dismiss one first
+    m_Metadata:
+      m_Items: []
+  - m_Id: 43874653886263326
+    m_Localized: Ready when {0} recover
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263327
+    m_Localized: Train {0} more, {1} recovering
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 43874653886263328
+    m_Localized: '{0} dismissed'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
   references:
     version: 2
     RefIds:
@@ -2064,3 +2220,22 @@ MonoBehaviour:
         - id: 41956485444395010
         - id: 41996532231168001
         - id: 41996532231168003
+        - id: 43874653886263296
+        - id: 43874653886263297
+        - id: 43874653886263298
+        - id: 43874653886263300
+        - id: 43874653886263302
+        - id: 43874653886263303
+        - id: 43874653886263304
+        - id: 43874653886263308
+        - id: 43874653886263311
+        - id: 43874653886263313
+        - id: 43874653886263314
+        - id: 43874653886263316
+        - id: 43874653886263318
+        - id: 43874653886263322
+        - id: 43874653886263323
+        - id: 43874653886263324
+        - id: 43874653886263326
+        - id: 43874653886263327
+        - id: 43874653886263328
