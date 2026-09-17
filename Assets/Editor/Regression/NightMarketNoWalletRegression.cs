@@ -80,6 +80,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using Newtonsoft.Json;          // WO-1819: the null-rate envelope case parses real wire JSON.
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -162,6 +163,7 @@ namespace DeNelle.Editor.Regression
 
             // ── The copy law + the width budget run with or without a canvas ──
             Case(failures, "banner-source", () => CaseBannerSource(failures, log));
+            Case(failures, "null-rate-envelope", () => CaseNullRateEnvelope(failures, log));
             Case(failures, "badge-budget", () => CaseBadgeBudget(packs, failures, notes, log));
 
             // ── The live panel. No canvas => a DECLARED stand-down, never a pass ──
@@ -531,12 +533,30 @@ namespace DeNelle.Editor.Regression
                     continue;
                 }
                 string text = label.text ?? string.Empty;
-                if (text.IndexOf('$') < 0)
-                    failures.Add("[anchors] card '" + kv.Key + "' prices as '" + text + "' - no currency " +
-                                 "anchor. Browsing without a wallet must still say what the pack costs.");
+                // ⭐ WO-1815 — THE ANCHOR IS A CURRENCY, NOT A DOLLAR SIGN. This case demanded a literal
+                // '$' until 2026-09-16, when the owner ruled the store SKR-ONLY ("change the store to SKR
+                // only and set to flat amounts"): the walletless card now reads "300 SKR" and a '$' test
+                // would have failed the shelf for obeying the ruling. WO-1409's actual rule is unchanged
+                // and is what is asserted here - a shelf must NOT decline to say a price it holds - so
+                // either currency passes and a blank or worded-refusal label still fails.
+                // ⛔ THIS CASE ONLY EVER RUNS ON THE WALLETLESS SOLANA SHELF - its caller stands down on
+                // anything where WalletlessBrowsing reads false (the Pi skin, a signing wallet), and the
+                // Google Play rail prices through its own provider. So on the tree this case can see,
+                // the ONE right currency is SKR and a dollar sign is a DEFECT, not an alternative.
+                if (text.IndexOf("SKR", StringComparison.Ordinal) < 0)
+                    failures.Add("[anchors] card '" + kv.Key + "' prices as '" + text + "' - no SKR figure. " +
+                                 "Browsing without a wallet must still say what the pack costs (WO-1409), and " +
+                                 "the owner ruled on 2026-09-16 that it says it in SKR: \"change the store to " +
+                                 "SKR only and set to flat amounts\".");
+                else if (text.IndexOf('$') >= 0)
+                    failures.Add("[anchors] card '" + kv.Key + "' prices as '" + text + "' - it carries BOTH a " +
+                                 "'$' and an SKR figure. Two currencies on one card is precisely what WO-1815 " +
+                                 "removed (\"if we just list the SKR does it feel more impulse less cost\"); the " +
+                                 "USD path is kept COMPILED behind PackStore.ShowUsdAlongsideSkr, never drawn.");
                 else priced++;
             }
-            log.AppendLine("  [anchors] " + priced + "/" + handles.Count + " composed cards carry a $ anchor.");
+            log.AppendLine("  [anchors] " + priced + "/" + handles.Count + " composed cards price in SKR and " +
+                           "carry no '$'.");
         }
 
         // =====================================================================
@@ -684,6 +704,80 @@ namespace DeNelle.Editor.Regression
         // =====================================================================
         //  Plumbing
         // =====================================================================
+
+        // =====================================================================
+        //  CASE — A LIST ENVELOPE WHOSE `rate` IS NULL MUST PARSE (WO-1819/WO-1818).
+        // ---------------------------------------------------------------------
+        //  ⛔ THIS IS THE SHELF-BLANKING BUG, CAUGHT BEFORE IT SHIPPED FOR THE
+        //  SECOND TIME. The first time, `PurchaseQuote.UsdAnchor` was a bare
+        //  `double`, the server legitimately sent null for the pinned canary,
+        //  Newtonsoft threw on the WHOLE response, and every pack on the shelf
+        //  read "Price unavailable" — one null row priced nothing. That was fixed
+        //  by making the ROW nullable plus a per-row try.
+        //
+        //  ⚠ THE ENVELOPE'S OWN `rate` STAYED A BARE double, AND THE PER-ROW GUARD
+        //  CANNOT REACH IT — the envelope is deserialized in ONE call, outside that
+        //  try. WO-1818's server now sends `rate: null` for a flat-priced SKU, so
+        //  the day the list goes all-flat the envelope throws and the shelf blanks
+        //  through the identical door under a different field name.
+        //
+        //  ⛔ ASSERTED TWO WAYS ON PURPOSE. The PARSE proves today's Newtonsoft
+        //  accepts it; the DECLARED TYPE proves the intent, so a seat "tidying" the
+        //  `?` away fails here even if some future serializer were lenient about
+        //  it. Reflection is used because these envelopes are private nested types
+        //  — which is right: they are wire shapes, not API. Testing the real type
+        //  is the whole point; a local copy of the shape would pass forever.
+        // =====================================================================
+        private static void CaseNullRateEnvelope(List<string> failures, StringBuilder log)
+        {
+            const string Json = "{\"success\":true,\"rate\":null,\"rateSource\":\"flat-skr\"," +
+                                "\"prices\":[{\"sku\":\"starters-hand\",\"amountBaseUnits\":\"300000000\"," +
+                                "\"decimals\":6,\"usdAnchor\":4.99,\"rate\":null}]}";
+
+            var service = typeof(DeNelle.Wallet.PurchaseQuoteService);
+            foreach (string typeName in new[] { "ListEnvelope", "ListResponse" })
+            {
+                var t = service.GetNestedType(typeName, BindingFlags.NonPublic);
+                if (t == null)
+                {
+                    failures.Add("[null-rate-envelope] PurchaseQuoteService." + typeName + " not found - it " +
+                                 "was renamed. RE-POINT THIS CASE IN THE SAME CHANGE: an oracle that cannot " +
+                                 "find its subject passes silently, which is worse than the bug it guards.");
+                    continue;
+                }
+
+                var rate = t.GetField("Rate", BindingFlags.Instance | BindingFlags.Public);
+                if (rate == null)
+                    failures.Add("[null-rate-envelope] " + typeName + " has no public Rate field.");
+                else if (Nullable.GetUnderlyingType(rate.FieldType) == null)
+                    failures.Add("[null-rate-envelope] " + typeName + ".Rate is '" + rate.FieldType.Name +
+                                 "', not a nullable double. The server sends rate:null for a FLAT-priced " +
+                                 "SKU (no market rate was used), Newtonsoft cannot put null into a double, " +
+                                 "and the envelope is parsed OUTSIDE the per-row guard - so one flat list " +
+                                 "blanks the entire shelf. This is the UsdAnchor defect, one field out.");
+
+                try
+                {
+                    object parsed = JsonConvert.DeserializeObject(Json, t);
+                    if (parsed == null)
+                        failures.Add("[null-rate-envelope] " + typeName + " parsed to null from a well-formed " +
+                                     "envelope.");
+                    else if (rate != null && Nullable.GetUnderlyingType(rate.FieldType) != null &&
+                             rate.GetValue(parsed) != null)
+                        failures.Add("[null-rate-envelope] " + typeName + ".Rate came back non-null from a " +
+                                     "payload whose rate IS null - the absence of a rate must survive the " +
+                                     "wire, or the trace will print a rate nobody quoted.");
+                }
+                catch (Exception ex)
+                {
+                    failures.Add("[null-rate-envelope] " + typeName + " THREW " + ex.GetType().Name +
+                                 " on an envelope with rate:null - this is the blank shelf, reproduced: " +
+                                 ex.Message);
+                }
+            }
+            log.AppendLine("  [null-rate-envelope] both list envelopes declare a nullable Rate and parse " +
+                           "rate:null without throwing (a flat-priced list cannot blank the shelf)");
+        }
 
         private static void Case(List<string> failures, string name, Action body)
         {

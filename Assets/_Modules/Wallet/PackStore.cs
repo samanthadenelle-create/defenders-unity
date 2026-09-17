@@ -2663,13 +2663,33 @@ namespace DeNelle.Wallet
             // badge is the single gate for both, which is what makes `rowHasSale` one predicate.
             if (string.IsNullOrEmpty(quote.SaleBadgeText)) return string.Empty;
             var sb = new StringBuilder();
-            if (quote.HasStruckAnchor)
+            // ⭐ WO-1815 — THE STRUCK FIGURE IS SKR, BECAUSE THE PRICE IS SKR. Striking "$4.99" beside a
+            // "210 SKR" headline would cross out a number that appears nowhere else on the card, in a
+            // currency the shelf no longer quotes. The anchor is the AUTHORED FLAT rung - a constant, not
+            // a rate - and HasStruckSkr refuses to draw it unless the served figure is strictly LOWER, so
+            // a not-yet-flat server produces no strike rather than a backwards one.
+            double flatAnchor = FlatSkrFor(pack);
+            if (quote.HasStruckSkr(flatAnchor))
+                sb.Append(StorePackCard.Strike(quote.SkrAnchorLabel(flatAnchor)));
+            else if (ShowUsdAlongsideSkr && quote.HasStruckAnchor)
                 sb.Append("was ").Append(StorePackCard.Strike(quote.SaleAnchorLabel));
-            string ends = quote.SaleCountdownLabel(DateTime.UtcNow);
-            if (ends.Length > 0)
+
+            // ⛔ THE STRIKE AND THE COUNTDOWN NO LONGER SHARE THIS LINE, AND THAT IS A MEASUREMENT, NOT
+            // A PREFERENCE. Shot at the Seeker's real 2670x1200 on 2026-09-16, the combined form
+            // "was <s>1000 SKR</s> - ends in 2d 3h" drew 11 of 21 printable glyphs in the card's 272 px
+            // sale box at font 30 / NoWrap / Ellipsis - on THREE cards at once (patron-of-elarion,
+            // founders-vow, permanent-builder; glyph-oracle lines in Builds/store-skr-flat-capture2.log).
+            // An SKR anchor is simply longer than the "$4.99" WO-1800 wrote this line for, so the line it
+            // composed has never fitted; no Unity run had judged it before today.
+            //
+            // The strike WINS when there is one, and it drops the "was " prefix with it: struck text
+            // already reads as a former price, and the four glyphs bought nothing at this width. The
+            // countdown is not lost - it is what the line SAYS when there is no anchor to strike, which
+            // is exactly the case where urgency is the only thing left to say.
+            if (sb.Length == 0)
             {
-                if (sb.Length > 0) sb.Append(" - ");
-                sb.Append(ends);
+                string ends = quote.SaleCountdownLabel(DateTime.UtcNow);
+                if (ends.Length > 0) sb.Append(ends);
             }
             return sb.ToString();
         }
@@ -3724,6 +3744,101 @@ namespace DeNelle.Wallet
             return provider != null && provider.CanBuy(pack.Sku, out _);
         }
 
+        // =====================================================================
+        //  ⭐ WO-1815 — SKR-ONLY, FLAT. The two switches and the one label.
+        // ---------------------------------------------------------------------
+        //  ⛔ `static readonly`, NOT `const`, AND THAT IS DELIBERATE: a const
+        //  false makes every line behind it unreachable code the compiler warns
+        //  about, and the USD path must stay COMPILED - this ticket stops
+        //  SHOWING the conversion, it does not delete it. The owner can be given
+        //  the dollars back by flipping one bool.
+        // =====================================================================
+
+        /// <summary>
+        /// Draw the `~ $X` fiat reference beside the SKR figure? ⛔ FALSE by owner ruling 2026-09-16
+        /// ("change the store to SKR only"). The conversion code is untouched and still compiled
+        /// (SolanaPackPricing.UsdApprox, PurchaseQuote.UsdApproxLabel / SaleAnchorLabel /
+        /// SaleEffectiveLabel); it is simply not rendered on the Solana rail. Google Play and Pi are
+        /// NOT affected - each of those rails prices itself in its own currency and says so.
+        /// </summary>
+        private static readonly bool ShowUsdAlongsideSkr = false;
+
+        /// <summary>
+        /// May the shelf print the AUTHORED flat amount when the server has served no figure for a row?
+        ///
+        /// <para>⛔ READ THIS BEFORE FLIPPING IT EITHER WAY. Rendering an authored price is normally the
+        /// WO-1158 defect (PurchaseQuoteService.cs:6-31) - a client opinion about money that /verify
+        /// checks only AFTER the transfer settles. It is admissible here for exactly one reason:
+        /// <c>pricing.skrFlat</c> is a CONSTANT, not a market rate, and the SERVER prices from the SAME
+        /// authored row - packs.json reaches api/_lib/sku-catalog.generated.json through the VERBATIM
+        /// tools/gen-sku-catalog.mjs copy, and StoreSkrFlatLadderRegression pins the two files equal
+        /// per-sku. Two copies of one constant, proven equal by an oracle, are not two opinions.</para>
+        ///
+        /// <para>⚠ AND THE INTERIM IS REAL, SO IT IS INSTRUMENTED RATHER THAN ASSUMED. Until WO-1815 §6
+        /// lands server-side the quote is still rate-derived, so a served figure can differ from the
+        /// ladder rung. The SERVED figure always wins on the card (this is a gap-filler, never an
+        /// override), and <see cref="WarnIfServedFigureIsNotFlat"/> names both numbers in the trace the
+        /// first time they disagree - so the interim shows up in a log rather than in a player's
+        /// surprise at the confirm step, which states the server's exact SKR before any signature.</para>
+        /// </summary>
+        private static readonly bool SkrFlatShelfPrices = true;
+
+        /// <summary>The authored flat SKR amount for a pack, or 0. A CONSTANT, never a rate.</summary>
+        private static double FlatSkrFor(PackDef pack) =>
+            pack != null && pack.Pricing != null && pack.Pricing.SkrFlat > 0d ? pack.Pricing.SkrFlat : 0d;
+
+        /// <summary>
+        /// The ONE figure the Solana shelf prints: the server's served SKR when it has one (the
+        /// discounted figure on a sale, because the server already priced the sale into it), else the
+        /// authored flat ladder rung, else EMPTY so the caller falls through to the worded refusal.
+        /// </summary>
+        private string SkrShelfLabel(PackDef pack)
+        {
+            if (pack == null) return string.Empty;
+
+            var quote = PurchaseQuoteService.DisplayPrice(pack.Sku);
+            if (quote != null && !string.IsNullOrEmpty(quote.SkrEffectiveLabel))
+            {
+                WarnIfServedFigureIsNotFlat(pack, quote);
+                return quote.SkrEffectiveLabel;
+            }
+
+            if (!SkrFlatShelfPrices) return string.Empty;
+            double flat = FlatSkrFor(pack);
+            if (flat <= 0d) return string.Empty;
+            // ⛔ SAY SO. This is the ONE branch where the number on screen did not come off the wire, and
+            // a silent fallback is how "the shelf showed 300 and the till asked for 431" becomes something
+            // only the owner's eyes could catch (CLAUDE.md §12/§14). The charge is still safe - the binding
+            // quote and the confirm line both state the server's own figure before any signature - but the
+            // SHELF was authored locally and the trace has to be able to prove it afterwards.
+            FlowTrace.Once("Store", "skr-flat-fallback/" + pack.Sku,
+                           $"no SERVER figure for '{pack.Sku}': the shelf printed the AUTHORED flat rung " +
+                           $"{flat:0.######} SKR. Admissible only because the rung is a constant and the " +
+                           "server prices from the same authored row (StoreSkrFlatLadderRegression pins " +
+                           "packs.json == api/_lib/sku-catalog.generated.json). If the list is simply down, " +
+                           "this is the honest browse price; if it is down OFTEN, that is the bug to chase.");
+            return flat.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture) + " SKR";
+        }
+
+        /// <summary>
+        /// Says ONCE, per session, that the server is not yet pricing from the flat ladder. ⛔ NOT a
+        /// refusal and not a correction: the served figure is the price either way. It exists so the
+        /// interim between this client ticket and its server half is a captured line naming BOTH
+        /// numbers, instead of something only the owner's eyes could catch (CLAUDE.md §14).
+        /// </summary>
+        private void WarnIfServedFigureIsNotFlat(PackDef pack, PurchaseQuote quote)
+        {
+            double flat = FlatSkrFor(pack);
+            if (flat <= 0d || quote == null || quote.Pinned || quote.IsOnSale) return;
+            if (System.Math.Abs(quote.UiAmount - flat) < 1d) return;
+            FlowTrace.Once("Store", "skr-flat-not-live/" + pack.Sku,
+                                    $"SKR-FLAT NOT LIVE on the server for '{pack.Sku}': authored ladder rung " +
+                                    $"{flat:0.######} SKR, served {quote.UiAmount:0.######} SKR " +
+                                    $"(rate {(quote.Rate.HasValue ? quote.Rate.Value.ToString("0.########") : "none")}). " +
+                                    "The SERVED figure is what the card shows and what the till charges; " +
+                                    "WO-1815 §6 is the server change that makes the two equal.");
+        }
+
         private string StorePriceMajor(PackDef pack)
         {
             var provider = PaymentProviders.Current;
@@ -3743,21 +3858,21 @@ namespace DeNelle.Wallet
                 return pack != null ? pack.UsdReference : string.Empty;
             }
 
-            // WO-1409: without a signing wallet the authored USD anchor is still known. It is the
-            // honest browse price; the unavailable SKR quote is not repeated on every card.
-            if (WalletlessBrowsing)
-            {
-                // ⛔ WO-1800 — ON SALE, THE HEADLINE NUMBER IS THE EFFECTIVE PRICE, NOT THE ANCHOR.
-                // Without this branch a walletless sale card printed "$4.99" as its one large figure
-                // while the line beneath it read "was $4.99" - the pre-sale price shown AS the price,
-                // with a sale sign over it. That is not a layout defect, it is a wrong price on a
-                // shelf, and it is the exact reason the anchor gets STRUCK rather than reused.
-                // Still the SERVER's number: usdEffective, transported, never derived from saleBps.
-                var saleQuote = SaleQuoteFor(pack, out _);
-                if (saleQuote != null && !string.IsNullOrEmpty(saleQuote.SaleEffectiveLabel))
-                    return saleQuote.SaleEffectiveLabel;
-                return pack != null ? pack.UsdReference : string.Empty;
-            }
+            // ⭐ WO-1815 — THE SOLANA SHELF IS SKR-ONLY (owner 2026-09-16, verbatim: "change the store
+            // to SKR only and set to flat amounts" / "if we just list the SKR does it feel more impulse
+            // less cost"). ONE figure, in the currency the player actually sends.
+            //
+            // ⛔ THE WALLETLESS DOLLAR BRANCH IS RETIRED, NOT MOVED. WO-1409 printed `pack.UsdReference`
+            // here - a DOLLAR figure on a shelf that charges SKR - because at that time the price list
+            // required a wallet, so a walletless card had no SKR figure to show. WO-1190 made the LIST
+            // public and unauthenticated (PurchaseQuoteService.RefreshPricesAsync, requireAuth:false),
+            // so that premise is gone: a browsing player gets the same served figure a connected one
+            // does. Keeping the dollar would now print one currency and charge another.
+            //
+            // WO-1409's actual RULE - "the shelf must not decline to say a price it holds" - is the one
+            // thing SkrShelfLabel exists to keep, and it now holds an SKR figure instead of a dollar one.
+            string skrShelf = SkrShelfLabel(pack);
+            if (!string.IsNullOrEmpty(skrShelf)) return skrShelf;
 
             return pack != null ? pack.AmountLabel(_defaultCurrency) : string.Empty;
         }
@@ -3783,6 +3898,16 @@ namespace DeNelle.Wallet
 
 
             if (WalletlessBrowsing) return string.Empty;
+
+            // ⭐ WO-1815 — SKR-ONLY: the Solana card carries NO fiat line at all. The owner asked for
+            // one figure ("if we just list the SKR does it feel more impulse less cost"), and a "~ $5.24"
+            // under a "300 SKR" headline is precisely the second number she asked to remove.
+            //
+            // ⛔ NOTHING BELOW IS DELETED AND NOTHING BELOW IS DEAD. The USD path stays compiled behind
+            // ShowUsdAlongsideSkr so the dollars are one bool away, and every formatter it reaches
+            // (UsdApprox, SaleEffectiveLabel) is still pinned by NightMarketUiRegression and
+            // StorePiSkinCurrencyRegression. Stop SHOWING the conversion; never strip it (CLAUDE.md §12).
+            if (!ShowUsdAlongsideSkr) return string.Empty;
 
             // ⛔ WO-1800 — SAME DEFECT, THE OTHER LANE. UsdApprox() resolves the ANCHOR
             // (PurchaseQuoteService.UsdAnchorFor), so on a sale card the fiat reference beside the
@@ -4469,16 +4594,30 @@ namespace DeNelle.Wallet
                 // exact (the quote pins it to the base unit) and the DOLLARS float, because the rate
                 // moves. Every part of it is WORDS and DIGITS - the owner is red/green colourblind,
                 // so no hue carries any of this and the greyscale capture is the acceptance test.
+                // ⭐ WO-1815 — A FLAT QUOTE OWES THE PLAYER NO RATE, AND MUST NOT IMPLY ONE. When the
+                // server priced from the flat SKR ladder it sends no `rate` at all (IsFlatPriced), so
+                // "at $0.00000000 per SKR ()" is the only sentence the old line could have produced -
+                // a fabricated rate on the confirm screen. A rate-derived quote keeps BOTH clauses
+                // verbatim, because a rate that priced the charge must always be disclosed.
+                //
+                // ⛔ THE DOLLARS GO WITH IT, AND ONLY ON THE FLAT PATH. Under SKR-only the shelf quotes
+                // no fiat; carrying "(~ $5.24)" into the confirm step would re-introduce the second
+                // number at the one moment the player is deciding, which is the worst place for it.
                 string rateLine = quote.Pinned
                     ? "Fixed test amount - no market rate is used."
-                    : $"at ${(quote.Rate ?? 0d):0.########} per SKR ({quote.RateSource}).";
+                    : quote.IsFlatPriced
+                        ? "A flat SKR price - no market rate is used."
+                        : $"at ${(quote.Rate ?? 0d):0.########} per SKR ({quote.RateSource}).";
                 string discountLine = string.IsNullOrEmpty(quote.DiscountLabel)
                     ? string.Empty : $" {quote.DiscountLabel} applied.";
                 string savingLine = string.IsNullOrEmpty(quote.UsdSavingLabel)
                     ? string.Empty : $"; {quote.UsdSavingLabel}";
+                bool sayDollars = ShowUsdAlongsideSkr && !quote.IsFlatPriced
+                                  && !string.IsNullOrEmpty(quote.UsdApproxLabel);
+                string fiatClause = sayDollars ? $" ({quote.UsdApproxLabel}{savingLine})" : string.Empty;
                 SetCommerceState(CommerceState.AwaitingApproval,
-                    $"{pack.Name}: you will send exactly {quote.ExactSkrLabel} " +
-                    $"({quote.UsdApproxLabel}{savingLine}) on {_wallet.NetworkLabel}.{discountLine} {rateLine} " +
+                    $"{pack.Name}: you will send exactly {quote.ExactSkrLabel}" +
+                    $"{fiatClause} on {_wallet.NetworkLabel}.{discountLine} {rateLine} " +
                     "Human approval has no countdown.");
 
                 var result = await _wallet.Pay(pack, currency);

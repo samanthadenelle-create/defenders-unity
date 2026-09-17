@@ -236,9 +236,34 @@ namespace DeNelle.Wallet
         private static float MinorFont(StorePackCardVariant v) =>
             v == StorePackCardVariant.LandscapeStandard ? 25f : FontMinor;
 
+        /// <summary>
+        /// The name's block. Two lines at full size everywhere but Compact and LandscapeStandard, which
+        /// are dense rungs and get one.
+        ///
+        /// <para>⭐ WO-1819 — THE ONE-LINE VARIANTS NOW GET "ONE LINE AT FULL SIZE **OR TWO AT THE
+        /// FLOOR**", and that is a measurement, not a preference. Shot at 2670x1200 on 2026-09-16,
+        /// `"Raise the Barracks"` drew **14 of its 16 printable glyphs** on the Compact card
+        /// (`Builds/store-skr-flat-capture6.log`). Nothing in the fit rule was broken: the label already
+        /// wraps and <c>FitBlock</c> already auto-shrank it to <c>FontFloorMobile</c> — but at 30 px two
+        /// lines need <c>BlockPx(30, 2)</c> = 75 px and the BOX was <c>BlockPx(44, 1)</c> = 55, so TMP
+        /// wrapped and then truncated the line it had wrapped to. The box was a line short.</para>
+        ///
+        /// <para>⛔ THE FIX IS NOT A SHORTER NAME. WO-1801 made <c>name</c> the one goal-copy slot a
+        /// browsing player reads and chose that string deliberately; trimming it to fit would undo that
+        /// ticket to avoid fixing this one. Nor is it a full second line at 44 px (+55 px on every
+        /// Compact card) — <c>Max</c> buys the second line only at the floor, so the card grows by
+        /// exactly 20 px and a name that already fits at full size is unaffected.</para>
+        /// </summary>
+        /// <para>⚠ SCOPED TO Compact ON PURPOSE. LandscapeStandard is the other one-line variant, but it
+        /// renders the name at 28 px, its cards showed NO truncation in either capture, and applying the
+        /// same Max there would grow that card by 40 px to fix a defect nobody has measured. The rule
+        /// goes where the evidence is; widen it when a capture says to.</para>
         public static float NameBlockPx(StorePackCardVariant v) =>
-            BlockPx(NameFont(v), v == StorePackCardVariant.Compact ||
-                               v == StorePackCardVariant.LandscapeStandard ? 1 : 2);
+            v == StorePackCardVariant.Compact
+                ? Mathf.Max(BlockPx(NameFont(v), 1), BlockPx(ElarionUi.FontFloorMobile, 2))
+                : v == StorePackCardVariant.LandscapeStandard
+                    ? BlockPx(NameFont(v), 1)
+                    : BlockPx(NameFont(v), 2);
 
         /// <summary>Contents block: two lines. Absent on Compact.</summary>
         public static float ContentsBlockPx(StorePackCardVariant v) => BlockPx(BodyFont(v), 2);
@@ -344,21 +369,58 @@ namespace DeNelle.Wallet
         // ---------------------------------------------------------------------
         //  The owner is red/green colourblind, so the ribbon may not rely on hue
         //  for a single thing it says. It carries FOUR non-colour carriers — the
-        //  words ("30% OFF"), the tilt, the position (top-LEFT, where nothing else
-        //  on this card sits) and the POLARITY: the state pill is a LIGHT plate
-        //  with DARK ink, and this is its exact inverse. Desaturate the capture
-        //  and the two badges remain unmistakable.
+        //  words ("30% OFF"), the WEIGHT and corner radius, the position (top-LEFT,
+        //  where nothing else on this card sits), and the PLATE.
         //
-        //  ⛔ PUBLIC BECAUSE THE CONTRAST IS AN ASSERTION, NOT AN OPINION. The
-        //  regression computes the WCAG relative-luminance ratio of these two
-        //  values and fails under 4.5:1. An oracle that re-typed the hex could
-        //  not fail when this changed; one that reads the fields can.
+        //  ⚠ "the tilt" WAS LISTED HERE AS A CARRIER WHILE THE TAG WAS AXIS-ALIGNED
+        //  - a comment describing a flourish two tickets had already removed. It is
+        //  struck rather than re-earned: WO-1819 re-added a -8 deg slant and the
+        //  regression removed it the same day. Carriers listed here must be ones
+        //  the code actually draws.
+        //
+        //  ⚠ THE POLARITY CLAIM THAT USED TO END THIS LIST IS RETIRED (WO-1819).
+        //  It read "the state pill is a LIGHT plate with DARK ink, and this is its
+        //  exact inverse" — and the inverse of a light pill, on a near-black card,
+        //  is a plate that cannot be seen at all: MEASURED 1.20:1 against the card
+        //  behind it on the shipped frame. The two badges never share a card anyway
+        //  (the ranking at the pill site makes them mutually exclusive), so the
+        //  rule was protecting against a collision that cannot occur, at the cost
+        //  of the sign the owner actually asked for.
+        //
+        //  ⛔ PUBLIC BECAUSE THE CONTRAST IS AN ASSERTION, NOT AN OPINION — AND IT
+        //  IS NOW TWO ASSERTIONS, WHICH IS THE WHOLE LESSON. A badge has to clear
+        //  its own ink (so the words read) AND clear the surface behind it (so the
+        //  badge reads). The old oracle measured only the first pair and passed at
+        //  17:1 while the sign was invisible. Both are pinned now.
         // =====================================================================
 
-        /// <summary>The ribbon's fill — near-black, the card's own substrate pushed darker.</summary>
-        public static readonly Color SaleRibbonFill = Hex(0x0A, 0x09, 0x0C);
-        /// <summary>The ribbon's ink — parchment. Paired with the fill above at ~18:1.</summary>
-        public static readonly Color SaleRibbonInk  = Hex(0xF7, 0xF1, 0xE1);
+        /// <summary>
+        /// The ribbon's fill — the palette's OWN patronage gold (<c>NightMarketPalette.Patronage</c>).
+        ///
+        /// <para>⭐ WO-1819 INVERTED THIS, AND THE REASON IS A MEASUREMENT OFF THE SHIPPED FRAME. The
+        /// near-black fill this used to be scored a superb <b>17.00:1 against its own ink</b> and a
+        /// useless <b>1.20:1 against the card behind it</b> (greyscale, measured on
+        /// <c>Store_SkrFlat_Sale30_2670x1200.png</c>): the words read perfectly and the SIGN did not
+        /// exist. The owner asked for "big sales signs with x% off!!!! you know some flash" and got
+        /// legible text on an invisible plate — a contrast pass that measured the wrong pair.</para>
+        ///
+        /// <para>⛔ THE HUE IS MAPPED, NEVER PICKED. The owner is red/green colourblind and is never
+        /// asked to choose one (memory: <c>owner-colorblind-delegate-visual-creative</c>), so this is the
+        /// palette's existing patronage gold rather than a new value chosen for looks. What is CHOSEN
+        /// here is the luminance relationship, and it is asserted on both pairs: ink-vs-fill and
+        /// fill-vs-card.</para>
+        /// </summary>
+        public static readonly Color SaleRibbonFill = NightMarketPalette.Patronage;
+        /// <summary>The ribbon's ink — the near-black the fill used to be. Paired with the gold above at
+        /// ~11.5:1, and the plate itself clears the card at ~11:1.</summary>
+        public static readonly Color SaleRibbonInk  = Hex(0x0A, 0x09, 0x0C);
+
+        // ⚠ WO-1819 ALSO ADDED A -8 deg TILT HERE AND IT IS GONE AGAIN — removed the same day, by the
+        // regression rather than by an argument (NIGHT_MARKET_UI_FAIL, fresh log 21:40). The constants
+        // it needed (a fixed plate width, a tilt angle, derived half-extents) are deleted with it rather
+        // than left behind unused: a dormant geometry that nothing calls is the next seat's invitation to
+        // re-litigate a rule that has now won twice. The reasoning is recorded at the BuildSaleRibbon
+        // site, where the next person to want a slant will actually be standing.
 
         // =====================================================================
         //  ⭐ THE "FLASH" — ONE PURE FUNCTION, SO IT IS PINNABLE WITHOUT PLAY MODE.
@@ -1053,18 +1115,22 @@ namespace DeNelle.Wallet
             rt.anchorMin = new Vector2(RibbonX0, 1f);
             rt.anchorMax = new Vector2(RibbonX1, 1f);
             rt.pivot = new Vector2(0.5f, 1f);
-            // Sits a little lower than the pill's -12 so the tilt's rising corner clears the card's
-            // own rounded top edge instead of poking through it.
             rt.anchoredPosition = new Vector2(0f, -16f);
             rt.sizeDelta = new Vector2(0f, RibbonHeightPx);
-            // ⛔ NOT ROTATED, AND THE TILT WAS REMOVED ON ARITHMETIC RATHER THAN ON TASTE. A -9 deg
-            // rotation about a (0.5, 1) pivot LIFTS the plate's left end by halfWidth * sin(9 deg) —
-            // ~23 px on a 500 px card — against a top offset of only 16, so the corner leaves the
-            // card root and the capture harness's containment audit is right to report it. The brief
-            // allows either carrier ("a diagonal ribbon OR a bold rounded tag"); the tag is the one
-            // that is containable at every measured card width by construction, which matters more
-            // than the slant. The shape carriers that remain are the tag's WEIGHT, its corner radius,
-            // its font (38 vs the pill's 30) and its polarity — see the colour block above.
+            // ⛔ NOT ROTATED, AND THE TILT HAS NOW BEEN REMOVED TWICE — ONCE ON ARITHMETIC AND ONCE ON
+            // EVIDENCE. WO-1800 took it out because a -9 deg rotation about a (0.5, 1) pivot LIFTS the
+            // plate's left end by halfWidth * sin(9 deg) — ~23 px on a 500 px card — against a top
+            // offset of only 16, so the corner leaves the card root. WO-1819 tried to buy the slant back
+            // with a FIXED-width plate whose clearances were derived from the angle; the regression
+            // refused it (NIGHT_MARKET_UI_FAIL on a fresh 21:40 log) and the coordinator ruled the slant
+            // dropped rather than the oracle re-pointed. ⭐ THAT IS THE RIGHT CALL AND IT IS THE SECOND
+            // TIME THE SAME ARGUMENT LOST: "the tag is containable at every card width by construction"
+            // is a stronger property than a slant is a flourish, and an invariant that has survived two
+            // attempts is not a rule to keep re-litigating.
+            //
+            // The shape carriers that remain are the tag's WEIGHT, its corner radius, its font (38 vs
+            // the pill's 30), its position (top-LEFT) and — new in WO-1819, and the one that fixes what
+            // the owner actually saw — a PLATE that clears the card behind it at ~11:1 instead of 1.2:1.
 
             var img = go.GetComponent<Image>();
             img.color = SaleRibbonFill;

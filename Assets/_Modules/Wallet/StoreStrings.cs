@@ -53,8 +53,13 @@ namespace DeNelle.Wallet
         /// <para>ASCII only: the separator is a HYPHEN, not an en dash. The store's copy oracle
         /// rejects non-ASCII, and an en dash here would fail the whole shelf's ASCII pass.</para>
         /// </summary>
+        /// <para>⭐ WO-1819: the tail says SKR, not USD. The owner ruled the store SKR-only on
+        /// 2026-09-16 and WO-1815 shipped the shelf that way — this sentence then sat over ten cards
+        /// reading "300 SKR" and told the player the prices were in dollars. It is a SECOND COPY of the
+        /// localized `storeWalletlessBrowsingBanner` row, so it moves in the same change as all ten
+        /// locales or it rots; the PREFIX the probe matches is deliberately unchanged.</para>
         public const string WalletlessBrowsingBanner =
-            "Connect a wallet to buy - prices shown in USD";
+            "Connect a wallet to buy - priced in SKR";
 
         /// <summary>
         /// The stable PREFIX of <see cref="WalletlessBrowsingBanner"/>, and the only thing the trace

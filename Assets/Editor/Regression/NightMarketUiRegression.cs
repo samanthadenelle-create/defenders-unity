@@ -135,6 +135,10 @@ namespace DeNelle.Editor.Regression
         /// <summary>The standard's text-contrast bar: WCAG AA, 4.5:1 (memory: mobile-ui-touch-contrast-standard).</summary>
         private const double MinBadgeContrastRatio = 4.5d;
 
+        /// <summary>WO-1819: a badge PLATE must also separate from the surface it sits on. 3:1 is the
+        /// standard's bar for a non-text graphical object, and it is the pair this suite used to omit.</summary>
+        private const double MinPlateVsSurfaceRatio = 3.0d;
+
         private static void CheckStorewideSale(string store, string card, List<string> failures)
         {
             // ── 1. NO SALE ⇒ NO BADGE. The server's ordinary row, unchanged. ──
@@ -216,12 +220,26 @@ namespace DeNelle.Editor.Regression
                 failures.Add($"sale ribbon fill vs ink is {ratio:0.0}:1 - the standard's bar is " +
                              $"{MinBadgeContrastRatio:0.0}:1 (it must read in greyscale).");
 
-            // The ribbon must also be DISTINGUISHABLE from the state pill by POLARITY, not only by
-            // position: the pill is a light plate with dark ink, so this one must be the inverse.
-            if (Luminance(DeNelle.Wallet.StorePackCard.SaleRibbonFill) >=
-                Luminance(DeNelle.Wallet.StorePackCard.SaleRibbonInk))
-                failures.Add("the sale ribbon is a LIGHT plate with DARK ink, the same polarity as " +
-                             "the state pill - desaturated, the two badges become one shape.");
+            // ⭐ WO-1819 — THE SECOND PAIR, AND IT IS THE ONE THAT WAS MISSING. A badge has to clear its
+            // own ink so the WORDS read, and clear the surface behind it so the BADGE reads. This case
+            // measured only the first pair and passed at 17:1 while the plate scored a MEASURED 1.20:1
+            // against the card on the shipped frame - legible text on an invisible sign, which is not
+            // what "big sales signs ... you know some flash" asks for. Both pairs are pinned now.
+            double vsCard = ContrastRatio(DeNelle.Wallet.StorePackCard.SaleRibbonFill,
+                                          DeNelle.Wallet.NightMarketPalette.GroundRaised);
+            if (vsCard < MinPlateVsSurfaceRatio)
+                failures.Add($"sale ribbon fill vs the card surface is {vsCard:0.0}:1 - the bar is " +
+                             $"{MinPlateVsSurfaceRatio:0.0}:1. A plate this close to its own background " +
+                             "is not a sign, it is text with extra steps (WO-1819, measured 1.20:1).");
+
+            // ⚠ THE POLARITY RULE THAT STOOD HERE IS RETIRED (WO-1819), not weakened by accident.
+            // It required the ribbon to be the state pill's exact inverse - a DARK plate - so the two
+            // could never read as one shape desaturated. But the two badges CANNOT SHARE A CARD: the
+            // ranking at the pill site (state word > sale ribbon > merchandising badge) draws exactly
+            // one. The rule was guarding a collision that cannot occur, and the cost was the invisible
+            // plate above. The two ratio gates that replace it are measurements of what the owner
+            // actually asked for, and the ribbon is still unmistakable from the pill by plate, by
+            // ANGLE (only the ribbon is rotated - the case below) and by position.
 
             // ── 8. THE PULSE CURVE — seats at 1, peaks at the midpoint, and an
             //      undiscounted card's single beat NEVER repeats. ──────────────
@@ -311,6 +329,14 @@ namespace DeNelle.Editor.Regression
             // trap as case 10: a proximity window is not a control-flow or ownership fact. The honest
             // invariant is simpler AND stronger anyway - this template authors every element in
             // axis-aligned reference px, so ANY rotation here is the defect, whoever added it.
+            //
+            // ⭐ AND THIS CASE HAS NOW CAUGHT THE SAME MISTAKE TWICE — WO-1800 authored it after removing
+            // a -9 deg tilt, and it went RED again on 2026-09-16 when WO-1819 re-added one at -8 deg with
+            // clearances derived from the angle. The coordinator ruled the SLANT dropped rather than this
+            // oracle re-pointed, and that is the right way round: "containable at every card width by
+            // construction" is a stronger property than a slant is a flourish. ⛔ A rule that has survived
+            // two attempts is not one to re-litigate a third time - if a future ticket wants the tilt, it
+            // needs the owner, not a cleverer derivation.
             if (cardCode.Contains("localRotation") || cardCode.Contains("localEulerAngles"))
                 failures.Add("StorePackCard rotates an element - a rotated child's corner leaves the " +
                              "card rect at the measured card widths, which the capture's containment " +

@@ -76,6 +76,26 @@ namespace DeNelle.Wallet
         [JsonProperty("sol")] public double Sol;
         /// <summary>SKR (Solana Seeker token) wallet-rail amount.</summary>
         [JsonProperty("skr")] public double Skr;
+
+        /// <summary>
+        /// The FLAT, market-independent SKR amount for this pack — the owner's 100 / 200 / 300 / 500 /
+        /// 9999 ladder (WO-1815, 2026-09-16: <i>"change the store to SKR only and set to flat amounts"</i>).
+        /// 0 on a pack that is not sold (the two promo rows).
+        ///
+        /// <para>⛔ THIS IS AN AUTHORING FIELD, NOT A CLIENT PRICE, AND THE DIFFERENCE IS THE WHOLE
+        /// REASON <see cref="Skr"/> ABOVE IS DEAD DATA. The server is the price authority
+        /// (PurchaseQuoteService.cs's header records why: a client-resolved price and a server-checked
+        /// one cannot both be right, and /verify runs AFTER the transfer settles, so the failure is
+        /// paid-and-not-granted). This field reaches the server as authored, through the VERBATIM
+        /// <c>tools/gen-sku-catalog.mjs</c> copy into <c>api/_lib/sku-catalog.generated.json</c>, and the
+        /// server prices from it — one authoring surface, no second table.</para>
+        ///
+        /// <para>The client may use it for exactly three things, none of which is "the price": the
+        /// STRUCK anchor on a sale card (legitimate because a flat amount is a CONSTANT, not a
+        /// market-derived figure, and only when the served figure is strictly lower), the ladder oracle
+        /// in <c>StoreSkrFlatLadderRegression</c>, and the headless capture's stub row.</para>
+        /// </summary>
+        [JsonProperty("skrFlat")] public double SkrFlat;
     }
 
     /// <summary>One in-game currency top-up — mirrors PackDef.contents.economy (§5.2).</summary>
@@ -389,7 +409,11 @@ namespace DeNelle.Wallet
         /// <summary>The permanent wallet-rail purchase disclaimer (§4.1).</summary>
         public static string CurrencyDisclaimer
         {
-            get { EnsureLoaded(); return _data.CurrencyDisclaimer ?? "Token price moves with the market."; }
+            // ⚠ THE FALLBACK IS A SECOND COPY OF AN AUTHORED SENTENCE, so it moves WITH the data or it
+            // rots. Re-worded with packs.json's own `currencyDisclaimer` on 2026-09-16 (WO-1815): the old
+            // "Token price moves with the market." reads as a disclaimer about the PRICE, which under a
+            // flat SKR ladder no longer moves - what moves is the token's value behind it.
+            get { EnsureLoaded(); return _data.CurrencyDisclaimer ?? "Priced in SKR - token value moves."; }
         }
 
         /// <summary>

@@ -140,8 +140,11 @@ namespace DeNelle.Editor.Regression
         private static readonly HashSet<string> AllowedContentsKeys =
             new HashSet<string>(StringComparer.Ordinal) { "cosmetics", "economy", "convenience" };
 
+        // `skrFlat` reviewed and admitted 2026-09-16 (WO-1815, owner: "change the store to SKR only and
+        // set to flat amounts") - the authored flat SKR rung the server prices from via the generated
+        // mirror; it grants nothing, so the resources-only covenant this list guards is untouched.
         private static readonly HashSet<string> AllowedPricingKeys =
-            new HashSet<string>(StringComparer.Ordinal) { "usd", "usdc", "sol", "skr" };
+            new HashSet<string>(StringComparer.Ordinal) { "usd", "usdc", "sol", "skr", "skrFlat" };
 
         /// <summary>Standalone batch entry - prints the marker.</summary>
         public static void RunAll()
@@ -483,7 +486,8 @@ namespace DeNelle.Editor.Regression
                     foreach (var prop in pricing.Properties())
                         if (!AllowedPricingKeys.Contains(prop.Name))
                             failures.Add("[resources-only] '" + sku + "' pricing carries the UNREVIEWED key '" +
-                                         prop.Name + "' (allowed: usd, usdc, sol, skr).");
+                                         prop.Name + "' (allowed: " +
+                                         string.Join(", ", AllowedPricingKeys) + ").");
             }
             log.AppendLine("  [resources-only] " + impulse.Count + " SKU(s): no cosmetics, no convenience, " +
                            "no unreviewed keys anywhere in the object");
