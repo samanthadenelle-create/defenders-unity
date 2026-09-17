@@ -52,10 +52,18 @@
 //     most of the playerbase", not as "one very busy player".
 //
 //   GET /api/admin/stats?view=overview[&days=N]
-//   GET /api/admin/stats?view=retention[&days=N]
-//   GET /api/admin/stats?view=funnel[&days=N]
+//   GET /api/admin/stats?view=retention[&days=N][&app_version=V][&platform=P]
+//   GET /api/admin/stats?view=funnel[&days=N][&app_version=V][&platform=P]
 //   GET /api/admin/stats?view=economy[&days=N]
-//   GET /api/admin/stats?view=purchases[&days=N]
+//   GET /api/admin/stats?view=purchases[&days=N][&app_version=V][&platform=P]
+//   GET /api/admin/stats?view=active[&days=N][&platform=P]
+//                                               (WO-1843: DAU/WAU/MAU + stickiness)
+//   GET /api/admin/stats?view=monetization[&days=N]
+//                                               (WO-1843: payer rate, ARPU, ARPDAU,
+//                                                ARPPU — pre-revenue, and it says so)
+//   GET /api/admin/stats?view=stability[&days=N][&platform=P]
+//                                               (WO-1843: error/exception/softlock
+//                                                RATES against traffic, not counts)
 //   GET /api/admin/stats?view=ops[&days=N]      (WO-1244 Command Center: toggles,
 //                                                 promos, player issues - ALL READ)
 //   GET /api/admin/stats?view=players[&limit=N][&player=<id>|&ref=<12hex>]
@@ -208,7 +216,96 @@ const NOT_PLAY_EVENTS = [
     'rewarded_ad_unavailable', 'playtest_break', 'maintenance_refusal', 'admin_ops_write',
     // WO-1388 store funnel: browsing and a checkout attempt are not play.
     'store_opened', 'pack_tapped', 'checkout_started', 'checkout_failed',
+    // WO-1842 session duration. A heartbeat is the OPPOSITE of an act - it fires
+    // BECAUSE the app is open, whether or not anybody touched it - and session_end
+    // is bookkeeping. Counting either as play would put every install that reached
+    // the title screen into the "played" denominator, which is the exact mistake
+    // the WO-1281 note above this list was written to prevent.
+    'session_heartbeat', 'session_end',
 ];
+
+// =============================================================================
+// WO-1842 - MEASURED SESSION DURATION
+// -----------------------------------------------------------------------------
+// The client now reports how long it was in front of the player.
+// Assets/_Modules/Core/Analytics/EventTracker.cs emits:
+//   session_heartbeat  every 60s of FOREGROUND time
+//   session_end        on OnApplicationPause(true) / OnApplicationQuit
+// Both carry { sessionId, elapsedSeconds } where elapsedSeconds is CUMULATIVE for
+// that sessionId. So a session's duration is MAX(elapsedSeconds) over its rows -
+// no ordering rule, no join, and a duplicate or late arrival cannot corrupt it.
+//
+// ⛔ THESE TWO NAMES MUST BE EXCLUDED FROM ANY QUERY THAT MEANS SOMETHING ELSE,
+// and two in this file did. The gap-based session_length estimate scans EVERY row
+// with no event_name filter, so an unfiltered 60s heartbeat would quietly convert
+// it from "span between a player's acts" into "foreground time" - the same number
+// twice, one of them mislabelled. And early_exit_step, "the LAST thing each
+// now-quiet player did", excluded only session_start, so session_end would have
+// become every departing player's last act and erased the signal entirely.
+const SESSION_DURATION_EVENTS = ['session_heartbeat', 'session_end'];
+
+// Hard scan ceiling for ?view=playtime, for the same reason SESSION_SCAN_CAP exists:
+// analytics_events only grows and an unbounded scan is a self-inflicted outage later.
+// When it bites, the response SAYS the sample was truncated rather than quietly
+// describing a slice as if it were the window.
+const PLAYTIME_SESSION_CAP = 50000;
+
+// The owner's ask, 2026-09-17: "1-5 minutes, 5-30, 30-60, 60+". Edges are a FIRST
+// PASS she can move, so they live here as data rather than as SQL scattered
+// through a CASE. `min` is inclusive, `max` exclusive, in SECONDS.
+//
+// ⚠ THE "under 1 minute" BAND IS DELIBERATE AND IS NOT IN THE ASK. Her list
+// starts at one minute, but a bounce is the single most important number on a
+// retention surface and dropping it would silently shrink the denominator until
+// every other band read high. It is reported, labelled, and kept out of nothing.
+const PLAYTIME_BUCKETS = [
+    { band: 'Under 1 minute',   min: 0,    max: 60 },
+    { band: '1 to 5 minutes',   min: 60,   max: 300 },
+    { band: '5 to 30 minutes',  min: 300,  max: 1800 },
+    { band: '30 to 60 minutes', min: 1800, max: 3600 },
+    { band: '60 minutes and up', min: 3600, max: null },
+];
+
+/**
+ * Sorts measured session durations (seconds) into PLAYTIME_BUCKETS.
+ *
+ * Pure, and exported for the oracle: the bucket EDGES are the thing the owner
+ * will move, and a test that re-implements the boundary rule proves nothing about
+ * this function. Every session lands in exactly one band - the bands tile
+ * [0, infinity) with no gap and no overlap - so `sum(players) === durations.length`
+ * is an invariant the test can assert rather than a property we hope for.
+ *
+ * @param {number[]} durations seconds per session
+ * @returns {{band:string,min:number,max:(number|null),sessions:number,pct:number}[]}
+ */
+function bucketPlaytime(durations) {
+    const list = Array.isArray(durations) ? durations : [];
+    const clean = [];
+    for (const d of list) {
+        const n = Number(d);
+        // A NaN, a null or a negative is not a zero-second session, it is an
+        // unreadable row. Counting it as zero would inflate the bounce band.
+        if (!Number.isFinite(n) || n < 0) continue;
+        clean.push(n);
+    }
+    const total = clean.length;
+    return PLAYTIME_BUCKETS.map(b => {
+        let n = 0;
+        for (const d of clean) {
+            if (d < b.min) continue;
+            if (b.max !== null && d >= b.max) continue;
+            n++;
+        }
+        return {
+            band: b.band,
+            min_seconds: b.min,
+            max_seconds: b.max,
+            sessions: n,
+            pct: pct(n, total),
+            low_n: n > 0 && n < LOW_N_THRESHOLD,
+        };
+    });
+}
 
 // WO-1388 - THE STORE FUNNEL, in the order a player walks it. Emitters (read in
 // Assets/, not from a doc): store_opened / pack_tapped / checkout_started /
@@ -270,6 +367,115 @@ function trendWord(current, prior) {
     return 'FLAT';
 }
 
+// =============================================================================
+// WO-1843 — BUILD / PLATFORM SLICING, AND THE ONE AXIS THE DATA CANNOT SERVE
+// -----------------------------------------------------------------------------
+// The ask: slice retention / funnel / revenue by app_version, platform and
+// locale, because this project ships several builds a day and no metric could
+// previously be attributed to one of them.
+//
+// ⛔ LOCALE IS NOT IN THE DATA, SO IT IS REFUSED RATHER THAN FILTERED.
+// Measured read-only against the live database 2026-09-17:
+//   SELECT COUNT(*) FROM analytics_events WHERE properties ? 'locale'
+//     AND received_at > NOW() - INTERVAL '60 days'   ->   0
+// EventTracker.cs:162-166 emits { platform, appVersion, unityVersion } on
+// session_start and nothing else carries a language. A `locale` filter would
+// therefore match NOTHING, and a view returning zeros under a locale label reads
+// as "no players in that locale" — a fabricated finding, which §11B forbids more
+// firmly than it forbids a missing feature. So ?locale= answers 400 and NAMES the
+// reason, and every sliceable view carries the gap in `data_gaps`. The cheap
+// close is one client emit (Application.systemLanguage on session_start); that is
+// new instrumentation and therefore a separate ticket, not this lane.
+//
+// ⚠ app_version AND platform LIVE ON session_start ONLY, so slicing any other
+// table is a PER-PLAYER JOIN and is AMBIGUOUS for a player who booted two builds
+// in the window — they match every build they booted. This is the same ambiguity
+// api/admin/db.js?view=events already prints in its legend, stated the same way
+// rather than re-decided here. It is a filter on PLAYERS, never on rows.
+const SLICE_AMBIGUITY = 'app_version / platform live on the session_start payload ONLY '
+    + '(EventTracker.cs emits { platform, appVersion, unityVersion } there and nowhere else). '
+    + 'Slicing is therefore a PER-PLAYER join — it selects players who booted that '
+    + 'build/platform at least once, and a player who booted two builds matches BOTH. '
+    + 'Read a sliced number as "players who ever ran X", not "rows produced by X".';
+
+const LOCALE_GAP = 'locale: NOT COLLECTED. Zero rows in analytics_events carry a `locale` key '
+    + '(measured read-only 2026-09-17 over 60 days). ?locale= is refused rather than answered '
+    + 'with zeros. Closing it needs one client emit on session_start — a separate ticket.';
+
+// Reads the slice off the query string. Values are LENGTH-CLAMPED and returned as
+// plain strings or null; they reach SQL only as bound parameters, using the
+// `(${v}::text IS NULL OR ...)` null-means-no-filter idiom already used by
+// api/admin/db.js, so ONE query text serves both the filtered and unfiltered case.
+function parseSlice(q) {
+    const one = (raw, cap) => {
+        if (raw == null) return null;
+        const s = String(raw).trim();
+        if (!s) return null;
+        return s.slice(0, cap);
+    };
+    return {
+        app_version: one(q.app_version, 64),
+        platform: one(q.platform, 32),
+        locale_requested: one(q.locale, 32),
+    };
+}
+
+// Hard ceiling on a resolved slice cohort. The funnel and purchases views each
+// issue SIX-TO-EIGHT queries, so re-running the build EXISTS sub-select inside
+// every one of them is the same condition copy-pasted eight times — the
+// duplicated-state failure CLAUDE.md §2/§5/§16 each describe. Instead the slice is
+// resolved ONCE to a player-id set and bound as a single array parameter, the same
+// `ANY(${EXCLUDED}::text[])` idiom this file already uses. The cap is what keeps
+// that array bounded; when it bites the view SAYS the cohort was truncated rather
+// than quietly reporting on part of it.
+const SLICE_PLAYER_CAP = 5000;
+
+// Resolves app_version / platform to the set of player ids that booted it.
+// Returns ids:null when NO slice was asked for, which the callers bind straight
+// into `(${ids}::text[] IS NULL OR player_id = ANY(${ids}::text[]))` so one query
+// text serves both cases.
+//
+// ⚠ AN EMPTY ARRAY IS NOT "NO FILTER". A slice that matches nobody resolves to []
+// and correctly filters everything out; `matched_players: 0` is returned so that
+// reads as "this build has no players", never as "the metric is broken".
+async function resolveSlicePlayers(sql, slice) {
+    if (!slice.app_version && !slice.platform) {
+        return { ids: null, matched_players: null, truncated: false };
+    }
+    const rows = await sql`
+        SELECT DISTINCT player_id
+        FROM analytics_events
+        WHERE event_name = 'session_start'
+          AND player_id <> ${ANON_ID}
+          AND (${slice.app_version}::text IS NULL OR properties->>'appVersion' = ${slice.app_version})
+          AND (${slice.platform}::text IS NULL OR properties->>'platform' = ${slice.platform})
+        LIMIT ${SLICE_PLAYER_CAP}`;
+    const ids = rows.map(r => r.player_id);
+    return { ids: ids, matched_players: ids.length, truncated: ids.length >= SLICE_PLAYER_CAP };
+}
+
+// The `slice` block every sliceable view returns, so an operator can never mistake
+// a filtered number for the whole playerbase. `active` is the load-bearing field:
+// it says OUT LOUD whether a filter was applied at all.
+function sliceMeta(slice, filteredParts, unfilteredParts, resolved) {
+    return {
+        active: !!(slice.app_version || slice.platform),
+        app_version: slice.app_version,
+        platform: slice.platform,
+        locale: null,
+        ambiguity: SLICE_AMBIGUITY,
+        filters: filteredParts,
+        not_filtered: unfilteredParts,
+        matched_players: resolved ? resolved.matched_players : null,
+        cohort_truncated: resolved ? resolved.truncated : false,
+        cohort_cap: resolved ? SLICE_PLAYER_CAP : null,
+        data_gaps: [LOCALE_GAP],
+        how: 'Add &app_version=2026.09.16.371701 and/or &platform=Android. Read the live value '
+            + 'set off ?view=active -> by_build before guessing one; an app_version that never '
+            + 'shipped filters to an empty cohort, which is not the same finding as a bad build.',
+    };
+}
+
 module.exports = async (req, res) => {
     // CORS: site/admin.html is deployed on the `echoes-of-elarion` Vercel project
     // and this function on `defenders-of-the-realm-v2` — the dashboard is ALWAYS
@@ -328,6 +534,40 @@ module.exports = async (req, res) => {
     const days = clampLimit(q.days, 30, 180);   // analysis window, hard-capped
     const now = new Date();
     const meta = { view: view, generated_at: now.toISOString(), window_days: days };
+
+    // WO-1843. The slice is parsed for EVERY view so the locale refusal is one
+    // check in one place rather than three copies inside the sliceable blocks.
+    const slice = parseSlice(q);
+
+    // ⛔ A SLICE THE VIEW CANNOT HONOUR MUST SAY SO, NOT BE SWALLOWED. Only the
+    // views listed here filter on app_version/platform. Asking for
+    // ?view=overview&app_version=X used to return the UNFILTERED number under a
+    // build label the caller believes was applied — the worst failure mode this
+    // whole ticket is about, because it looks exactly like a working answer. This
+    // lands in `meta`, which is Object.assign'd into every response below, so a
+    // future view added without slicing inherits the honesty for free. (Same
+    // instinct as the ?view=skus block telling the caller ?days was ignored.)
+    const SLICEABLE_VIEWS = ['retention', 'funnel', 'purchases', 'active', 'stability'];
+    if ((slice.app_version || slice.platform) && SLICEABLE_VIEWS.indexOf(view) < 0) {
+        meta.slice_ignored = {
+            app_version: slice.app_version,
+            platform: slice.platform,
+            note: 'IGNORED: ?view=' + view + ' does not support build/platform slicing, so the figures '
+                + 'below are UNFILTERED. Sliceable views: ' + SLICEABLE_VIEWS.join(', ') + '.',
+        };
+    }
+    if (slice.locale_requested) {
+        // ⛔ REFUSED, NOT ANSWERED. See the LOCALE_GAP note above: nothing in
+        // analytics_events carries a locale, so the only honest answers are a
+        // refusal or a lie. 400 is this API's one refusal status.
+        refuse('SLICE_AXIS_NOT_COLLECTED');
+        return res.status(400).json({
+            error: 'locale slicing is not available: no event payload carries a locale.',
+            axis: 'locale',
+            detail: LOCALE_GAP,
+            available_axes: ['app_version', 'platform'],
+        });
+    }
 
     // =========================================================================
     // ================================================================== skus
@@ -495,9 +735,25 @@ module.exports = async (req, res) => {
                     GROUP BY player_id
                 ),
                 cohort AS (
-                    SELECT player_id, date_trunc('day', first_seen)::date AS cohort_day
-                    FROM firsts
-                    WHERE first_seen > NOW() - (${days} * INTERVAL '1 day')
+                    SELECT f.player_id, date_trunc('day', f.first_seen)::date AS cohort_day
+                    FROM firsts f
+                    WHERE f.first_seen > NOW() - (${days} * INTERVAL '1 day')
+                      -- WO-1843 build/platform slice. NULL means NO FILTER, so this one
+                      -- query text serves both cases and the value never becomes SQL.
+                      -- It selects PLAYERS who booted that build at least once, which is
+                      -- ambiguous for a player who booted two. That ambiguity is printed in
+                      -- the response slice block, never left implicit.
+                      -- (No backticks in SQL comments: they terminate this template literal.)
+                      AND (${slice.app_version}::text IS NULL OR EXISTS (
+                          SELECT 1 FROM analytics_events sv
+                           WHERE sv.event_name = 'session_start'
+                             AND sv.player_id = f.player_id
+                             AND sv.properties->>'appVersion' = ${slice.app_version}))
+                      AND (${slice.platform}::text IS NULL OR EXISTS (
+                          SELECT 1 FROM analytics_events sp
+                           WHERE sp.event_name = 'session_start'
+                             AND sp.player_id = f.player_id
+                             AND sp.properties->>'platform' = ${slice.platform}))
                 ),
                 sessions_by_day AS (
                     SELECT DISTINCT e.player_id,
@@ -550,6 +806,9 @@ module.exports = async (req, res) => {
                 definition: 'Day-N retention: of players whose FIRST-EVER event landed on cohort_day, '
                     + 'the share that fired a session_start on EXACTLY cohort_day + N.',
                 low_n_threshold: LOW_N_THRESHOLD,
+                slice: sliceMeta(slice,
+                    ['cohort membership (which players are counted at all)'],
+                    ['nothing — the slice narrows the cohort, so every figure below is sliced']),
                 rollup: {
                     d1: roll('d1_players', 'd1_mature'),
                     d7: roll('d7_players', 'd7_mature'),
@@ -575,6 +834,13 @@ module.exports = async (req, res) => {
         // numerically in JS — never cast in SQL, because the value is client
         // JSONB and one malformed row would fail the whole query.
         if (view === 'funnel') {
+            // WO-1843. Resolved ONCE and bound as one array into all six queries
+            // below; ids === null means no slice was asked for and nothing is
+            // filtered. See resolveSlicePlayers for why this is not six copies of
+            // an EXISTS sub-select.
+            const sliceResolved = await resolveSlicePlayers(sql, slice);
+            const sliceIds = sliceResolved.ids;
+
             const flow = await sql`
                 SELECT event_name,
                        COUNT(*)::bigint                  AS events,
@@ -583,6 +849,9 @@ module.exports = async (req, res) => {
                 FROM analytics_events
                 WHERE event_name IN ('tutorial_started', 'tutorial_completed', 'tutorial_skipped_all')
                   AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  -- WO-1843 slice. A NULL id set is NO filter, so this one query text
+                  -- serves the sliced and unsliced case and the value is never SQL.
+                  AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))
                 GROUP BY 1
                 LIMIT 10`;
 
@@ -595,6 +864,7 @@ module.exports = async (req, res) => {
                 FROM analytics_events
                 WHERE event_name = 'tutorial_step_enter'
                   AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))   -- WO-1843 slice
                 GROUP BY 1
                 ORDER BY 3 DESC
                 LIMIT 200`;
@@ -606,6 +876,7 @@ module.exports = async (req, res) => {
                 FROM analytics_events
                 WHERE event_name = 'tutorial_step_complete'
                   AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))   -- WO-1843 slice
                 GROUP BY 1
                 LIMIT 200`;
 
@@ -616,6 +887,7 @@ module.exports = async (req, res) => {
                 FROM analytics_events
                 WHERE event_name = 'tutorial_step_skip'
                   AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))   -- WO-1843 slice
                 GROUP BY 1
                 LIMIT 200`;
 
@@ -631,6 +903,7 @@ module.exports = async (req, res) => {
                 FROM analytics_events
                 WHERE event_name = 'tutorial_step_drop'
                   AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))   -- WO-1843 slice
                 GROUP BY 1
                 ORDER BY 2 DESC
                 LIMIT 200`;
@@ -642,6 +915,7 @@ module.exports = async (req, res) => {
                 FROM analytics_events
                 WHERE event_name = 'contextual_step_enter'
                   AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))   -- WO-1843 slice
                 GROUP BY 1
                 ORDER BY 2 DESC
                 LIMIT 100`;
@@ -697,6 +971,10 @@ module.exports = async (req, res) => {
 
             return res.status(200).json(Object.assign(meta, {
                 low_n_threshold: LOW_N_THRESHOLD,
+                slice: sliceMeta(slice,
+                    ['flow totals', 'every per-step row', 'contextual hints'],
+                    ['nothing — all six queries carry the same player filter'],
+                    sliceResolved),
                 flow: {
                     started_players: started,
                     completed_players: finished,
@@ -915,6 +1193,38 @@ module.exports = async (req, res) => {
                     note: 'CLIENT-REPORTED counts per event name (PackStore.cs emits one Track per step). '
                         + 'Fixed 7d/30d windows, independent of ?days=, so weeks compare. A step missing '
                         + 'from analytics_events is reported as 0, never omitted.',
+                    // WO-1841. The owner's question was "did anyone open the store, and how many of
+                    // those went on to ask for a price". Step 1 (store_opened) is right here; the
+                    // PRICE-QUOTE step is a SERVER row in purchase_quotes and is reported by
+                    // ?view=purchases -> quote_funnel.
+                    //
+                    // ⛔ THE TWO ARE NOT JOINED, AND THAT IS THE HONEST ANSWER, NOT A GAP.
+                    // analytics_events keys on player_id; purchase_quotes keys on `wallet`
+                    // (api/schema.sql:1395). There is no bridge between those identity spaces, so a
+                    // per-player "opened -> quoted" conversion CANNOT be computed from these tables —
+                    // and this file's own contract (see the `see_also` on this response) is that
+                    // client-reported intent and server settlement are never blended. A ratio across
+                    // the two would look like a conversion rate and be an artifact of two different
+                    // denominators, which is worse than no number at all.
+                    //
+                    // Also load-bearing, read at source: opening the store does NOT mint a quote row.
+                    // PackStore.Open -> RefreshQuotedPrices (PackStore.cs:571) hits the LIST mode of
+                    // api/purchases/quote.js, which "binds nothing, persists nothing" (quote.js:353).
+                    // The INSERTs (quote.js:471, :519) happen only on a single-SKU quote, i.e. when
+                    // the player actually reaches for the till. So quote-issued IS a genuine step
+                    // DOWNSTREAM of store_opened, not something co-fired by the screen appearing.
+                    quote_step: {
+                        where: '?view=purchases -> quote_funnel (issued / consumed / expired_unconsumed '
+                            + '/ live / wallets_quoted), plus by_sku and per_day.',
+                        source: 'purchase_quotes — SERVER rows, not analytics_events.',
+                        joinable_to_store_opened: false,
+                        why_not: 'analytics_events keys on player_id, purchase_quotes on wallet. No '
+                            + 'bridge exists, so there is no per-player opened->quoted conversion to '
+                            + 'report. Read the two counts side by side; do not divide one by the other.',
+                        not_a_quote: 'Opening the store refreshes DISPLAY prices through the LIST mode '
+                            + 'of api/purchases/quote.js, which persists nothing — so store opens do '
+                            + 'not inflate issued.',
+                    },
                 },
                 promo_codes: promos,
                 referrals: referrals[0] || null,
@@ -978,6 +1288,20 @@ module.exports = async (req, res) => {
                 }
             };
 
+            // WO-1843. The build/platform slice, resolved to a player-id set.
+            //
+            // ⚠ THIS CROSSES TWO ID SPACES ON PURPOSE AND IT IS NOT A JOIN ANY MORE
+            // THAN IT HAS TO BE. purchase_entitlements is keyed on `wallet`;
+            // app_version lives on analytics_events.player_id. Those are the same
+            // string only for a WALLET-BOUND player (WO-1791 identity tiers), so a
+            // sliced revenue figure can only ever see wallet-bound buyers. Measured
+            // read-only 2026-09-17: 2 of 2 all-time payer wallets DO appear in
+            // analytics_events, so the join holds today — but it is reported as a
+            // caveat rather than assumed, because a guest-rail purchase would be
+            // invisible to it.
+            const sliceResolved = await resolveSlicePlayers(sql, slice);
+            const sliceIds = sliceResolved.ids;
+
             // ---- settled totals (purchase_entitlements) ---------------------
             const totals = await probe('entitlements_totals', () => sql`
                 SELECT COUNT(*)::bigint                                   AS settled_all_time,
@@ -990,6 +1314,8 @@ module.exports = async (req, res) => {
                        MIN(created_at) AS first_settled_at,
                        MAX(created_at) AS last_settled_at
                 FROM purchase_entitlements
+                -- WO-1843 slice. NULL id set = no filter. Wallet-vs-player_id caveat above.
+                WHERE (${sliceIds}::text[] IS NULL OR wallet = ANY(${sliceIds}::text[]))
                 LIMIT 1`);
 
             // ---- counts by settlement status --------------------------------
@@ -1005,6 +1331,7 @@ module.exports = async (req, res) => {
                        COALESCE(SUM(usd_anchor), 0)::float8 AS usd_anchor_total,
                        MAX(created_at)                      AS latest
                 FROM purchase_entitlements
+                WHERE (${sliceIds}::text[] IS NULL OR wallet = ANY(${sliceIds}::text[]))   -- WO-1843 slice
                 GROUP BY 1
                 ORDER BY 2 DESC
                 LIMIT 10`);
@@ -1025,6 +1352,7 @@ module.exports = async (req, res) => {
                        MIN(created_at)                                          AS first_settled_at,
                        MAX(created_at)                                          AS last_settled_at
                 FROM purchase_entitlements
+                WHERE (${sliceIds}::text[] IS NULL OR wallet = ANY(${sliceIds}::text[]))   -- WO-1843 slice
                 GROUP BY 1, 2, 3
                 ORDER BY 4 DESC
                 LIMIT 100`);
@@ -1037,6 +1365,7 @@ module.exports = async (req, res) => {
                        COALESCE(SUM(usd_anchor), 0)::float8      AS usd_anchor_total
                 FROM purchase_entitlements
                 WHERE created_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${sliceIds}::text[] IS NULL OR wallet = ANY(${sliceIds}::text[]))   -- WO-1843 slice
                 GROUP BY 1
                 ORDER BY 1 DESC
                 LIMIT 181`);
@@ -1176,6 +1505,21 @@ module.exports = async (req, res) => {
                     + 'client-reported. ?view=economy reports the client side; the two are '
                     + 'deliberately never blended.',
                 low_n_threshold: LOW_N_THRESHOLD,
+                // WO-1843. THE SLICE IS PARTIAL AND SAYS SO. The revenue aggregates are
+                // filtered; the operational lists deliberately are NOT — a build filter
+                // must never hide an unfulfilled sale a human still has to act on.
+                slice: sliceMeta(slice,
+                    ['settled totals', 'by_status', 'by_sku', 'per_day'],
+                    ['needs_attention.rows (an unfulfilled sale must NEVER be hidden by a filter)',
+                     'recent_settlements',
+                     'quote_funnel (purchase_quotes — the quote rail is not sliced)',
+                     'disagreement (the client-vs-server alert must stay whole)'],
+                    sliceResolved),
+                slice_identity_caveat: 'Slicing revenue crosses two id spaces: purchase_entitlements '
+                    + 'is keyed on `wallet`, app_version on analytics_events.player_id. They match '
+                    + 'only for WALLET-BOUND players, so a sliced revenue figure cannot see a '
+                    + 'guest-rail purchase at all. Measured read-only 2026-09-17: 2 of 2 all-time '
+                    + 'payer wallets do appear in analytics_events.',
                 revenue_note: 'Revenue is SUM(usd_anchor) — the authored ladder price persisted onto '
                     + 'the row at verify time. usd_anchor is NULL on the CANARY skus (pinned protocol '
                     + 'constants with no rate behind them), so rows_without_usd_anchor > 0 means the '
@@ -1200,6 +1544,15 @@ module.exports = async (req, res) => {
                     definition: 'A quote is issued when the wallet prompt opens and consumed when the '
                         + 'payment verifies (5-minute TTL). consumed/issued falling is players TRYING '
                         + 'TO BUY AND FAILING — the earliest warning this rail has.',
+                    // WO-1841 — the reverse pointer. `issued` is the step AFTER "the player opened
+                    // the store at all"; that earlier step is store_opened, counted in
+                    // ?view=economy -> store_funnel. Named here so an operator reading a low
+                    // `issued` can tell "nobody opened the store" from "they opened it and never
+                    // reached the till" — which is the whole question, and it needs BOTH views.
+                    // Deliberately a pointer, not a computed ratio: see store_funnel.quote_step.
+                    preceding_step: '?view=economy -> store_funnel (store_opened / pack_tapped / '
+                        + 'checkout_started). Those are CLIENT-reported and keyed on player_id; these '
+                        + 'are SERVER rows keyed on wallet. Compare the counts; they cannot be joined.',
                     issued: issued,
                     consumed: consumed,
                     expired_unconsumed: Number(f.expired_unconsumed || 0),
@@ -1589,13 +1942,29 @@ module.exports = async (req, res) => {
                 LIMIT 181`);
 
             // ------------------------------------------- AVERAGE ONLINE TIME
-            // ⛔ SESSION LENGTH IS NOT INSTRUMENTED AND THIS BLOCK SAYS SO.
-            // EventTracker.cs emits session_start on boot (Start(), line 143) and
-            // there is NO session_end anywhere in Assets/: OnApplicationPause and
-            // OnApplicationQuit only flush the queue to PlayerPrefs. So the game
-            // never reports how long anybody stayed.
+            // ⚠ THIS BLOCK IS THE GAP-BASED ESTIMATE, AND IT IS NO LONGER THE ONLY
+            // ANSWER. It is kept, unchanged in meaning, ON PURPOSE.
             //
-            // What IS derivable is the SPAN BETWEEN A PLAYER'S TELEMETRY EVENTS,
+            // WO-1842 (2026-09-17) added real instrumentation: EventTracker.cs now
+            // emits session_heartbeat + session_end carrying a cumulative
+            // FOREGROUND elapsedSeconds, and ?view=playtime reports the measured
+            // durations and the owner's buckets from them. The paragraph that used
+            // to stand here - "SESSION LENGTH IS NOT INSTRUMENTED", "there is NO
+            // session_end anywhere in Assets/" - was true when it was written and
+            // is now false; it is corrected in the same change that falsified it
+            // (CLAUDE.md §15) rather than left to be read as current.
+            //
+            // The two figures measure DIFFERENT things and neither replaces the
+            // other, so the card carries both and says which is which:
+            //   this block     span between a player's ACTS. Idling with the game
+            //                  open does not count, because nothing is emitted.
+            //   ?view=playtime FOREGROUND time. Idling with the game open DOES
+            //                  count, because the app was in front of the player.
+            // ⛔ The heartbeat/end rows are EXCLUDED from the scan below. Leaving
+            // them in would have converted this estimate into the other one while
+            // keeping this label - the same number twice, one of them mislabelled.
+            //
+            // What this block derives is the SPAN BETWEEN A PLAYER'S TELEMETRY EVENTS,
             // cut wherever they went quiet for SESSION_GAP_MINUTES. That is an
             // ESTIMATE and it is labelled one. Crucially it is the estimate that
             // does NOT count a backgrounded phone as engagement: a locked device
@@ -1616,6 +1985,7 @@ module.exports = async (req, res) => {
                     SELECT player_id, received_at
                     FROM analytics_events
                     WHERE NOT (player_id = ANY(${EXCLUDED}::text[]))
+                      AND NOT (event_name = ANY(${SESSION_DURATION_EVENTS}::text[]))
                       AND received_at > NOW() - (${days} * INTERVAL '1 day')
                     ORDER BY player_id, received_at
                     LIMIT ${SESSION_SCAN_CAP}
@@ -1701,6 +2071,10 @@ module.exports = async (req, res) => {
                     FROM analytics_events
                     WHERE NOT (player_id = ANY(${EXCLUDED}::text[]))
                       AND event_name <> 'session_start'
+                      -- WO-1842. session_end is now the LAST row of almost every
+                      -- session, so without this every departing player's "last act"
+                      -- would read session_end and this view would say nothing at all.
+                      AND NOT (event_name = ANY(${SESSION_DURATION_EVENTS}::text[]))
                     ORDER BY player_id, received_at DESC
                 )
                 SELECT event_name,
@@ -1883,13 +2257,22 @@ module.exports = async (req, res) => {
                         instrumented: false,
                         estimated: true,
                         backing: 'analytics_events received_at, cut into sessions wherever a player went '
-                            + 'quiet for ' + SESSION_GAP_MINUTES + ' minutes.',
-                        how_sessions_end: 'THEY DO NOT. The game emits session_start on boot '
-                            + '(EventTracker.cs) and there is NO session_end anywhere in the client: '
-                            + 'OnApplicationPause and OnApplicationQuit only flush the event queue. So '
-                            + 'this is an ESTIMATE of time between a player telemetry events, not a '
-                            + 'measured session. It deliberately does NOT count a backgrounded phone as '
-                            + 'engagement - a locked device sends nothing, so the gap ends the session.',
+                            + 'quiet for ' + SESSION_GAP_MINUTES + ' minutes. Excludes the WO-1842 '
+                            + 'session_heartbeat / session_end rows, which would otherwise turn this '
+                            + 'estimate into the measured foreground figure under this label.',
+                        // WO-1842. This field previously read "THEY DO NOT ... there is NO
+                        // session_end anywhere in the client". That was true until
+                        // 2026-09-17 and is now false; corrected here in the same change.
+                        how_sessions_end: 'FOR THIS FIGURE, by a ' + SESSION_GAP_MINUTES + '-minute '
+                            + 'silence - so this remains an ESTIMATE of the span between a player\'s '
+                            + 'ACTS, not a measured session, and it deliberately does NOT count a '
+                            + 'backgrounded phone as engagement (a locked device sends nothing, so the '
+                            + 'gap ends the session). The client DOES now report real durations: '
+                            + 'WO-1842 added session_heartbeat + session_end to EventTracker.cs. Those '
+                            + 'are on ?view=playtime, which measures FOREGROUND time and therefore '
+                            + 'counts idling with the game open. The two are complementary, not '
+                            + 'rivals; neither is corrected into the other.',
+                        measured_alternative: '?view=playtime',
                         median_seconds: Number(sl.median_seconds || 0),
                         mean_seconds: Number(sl.mean_seconds || 0),
                         p90_seconds: Number(sl.p90_seconds || 0),
@@ -2036,6 +2419,889 @@ module.exports = async (req, res) => {
                 },
 
                 errors: errors,
+            }));
+        }
+
+        // ============================================================ playtime
+        // WO-1842 - HOW LONG IS A SESSION, MEASURED. Owner ask, 2026-09-17:
+        // playtime in buckets - "1-5 minutes, 5-30, 30-60, 60+".
+        //
+        // ⛔ THIS COULD NOT BE ANSWERED BY A QUERY ALONE, and the owner's opening
+        // assumption was that it could. Until 2026-09-17 the client emitted
+        // session_start on boot and NOTHING marked when a session stopped - this
+        // file said so itself, a few hundred lines up. No amount of SQL over rows
+        // with no end timestamp can produce a duration. So WO-1842 is mostly a
+        // CLIENT change; this view is its reader.
+        //
+        // ── WHAT A DURATION IS HERE ──────────────────────────────────────────
+        // FOREGROUND SECONDS: the app was in front of the player. Accumulated on
+        // the device between resume and pause, never from wall-clock boot time,
+        // because Android keeps the clock running on a phone in a pocket.
+        // ⚠ It therefore INCLUDES idling with the game open. That is stated on the
+        // response rather than silently corrected, and the gap-based estimate on
+        // ?view=command is the complementary "between acts" reading. Two honest
+        // numbers, each labelled.
+        //
+        // ── WHY MAX(elapsedSeconds), AND WHY NO JOIN TO session_start ────────
+        // Every heartbeat and the end event carry the CUMULATIVE figure for their
+        // sessionId, so MAX is the duration and arrival order is irrelevant. We do
+        // NOT join session_start: that row is often attributed to 'anonymous'
+        // (queued before the account id is minted, EventTracker.cs) while later
+        // rows carry the real id, so a join would drop exactly the new players this
+        // view exists to describe. sessionId is the key; player_id is reported
+        // beside it, never used to assemble the session.
+        //
+        // ── THE HONEST DENOMINATOR ───────────────────────────────────────────
+        // A session only appears here if a heartbeat or an end event reached the
+        // server. So `coverage` sets measured sessions against the session_start
+        // count in the same window, and `unmeasured_sessions` is printed. ⛔ THAT
+        // NUMBER WILL BE ~100% OF THE WINDOW UNTIL A BUILD CARRYING WO-1842 HAS
+        // BEEN IN PLAYERS' HANDS FOR THE WHOLE WINDOW - every session that predates
+        // the client change is unmeasurable, and the response says so instead of
+        // showing a bucket distribution assembled from nothing.
+        if (view === 'playtime') {
+            // Operator/test traffic exclusion, same server-side source as every other
+            // view. Declared HERE because it is scoped per view block (the command
+            // view has its own); reaching for that one would be a cross-block
+            // reference that only throws at request time.
+            const EXCLUDED = excludedPlayerIds();
+
+            // Per-session durations, capped. The bucket EDGES live in ONE place
+            // (PLAYTIME_BUCKETS) and are applied by bucketPlaytime() in JS, so
+            // moving an edge for the owner is a one-line data change and cannot
+            // drift between a SQL CASE and a doc.
+            const sessionRows = await sql`
+                WITH sig AS (
+                    SELECT properties->>'sessionId'            AS session_id,
+                           player_id,
+                           event_name,
+                           received_at,
+                           properties->>'elapsedSeconds'       AS elapsed_raw
+                    FROM analytics_events
+                    WHERE event_name = ANY(${SESSION_DURATION_EVENTS}::text[])
+                      AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                      AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                      AND properties->>'sessionId' IS NOT NULL
+                      -- ⛔ THE CAST GUARD. properties is JSONB written by a client we
+                      -- do not control; one malformed elapsedSeconds would make
+                      -- ::float8 throw and take the WHOLE view down, not one row.
+                      -- Filtering on the shape first means a bad row is DROPPED and
+                      -- counted (malformed_rows below), never fatal.
+                      -- Double-backslash, not single. In a JS template literal a single
+                      -- backslash-dot collapses to a bare dot, which in a POSIX regex
+                      -- matches ANY character - so the guard would admit "12x34" and the
+                      -- cast it exists to protect would throw anyway. Same spelling as the
+                      -- one existing guard of this shape in the codebase, db.js:268.
+                      AND properties->>'elapsedSeconds' ~ '^[0-9]+(\\.[0-9]+)?$'
+                    -- ⚠ ORDER BEFORE THE LIMIT. A bare LIMIT drops ARBITRARY rows when
+                    -- the cap bites, which would SPLIT a session across the boundary and
+                    -- understate its MAX - a silently wrong duration is worse than a
+                    -- declared truncation. Newest-first keeps whole recent sessions, and
+                    -- scan_truncated says when the edge was reached.
+                    ORDER BY received_at DESC
+                    LIMIT ${PLAYTIME_SESSION_CAP}
+                )
+                SELECT session_id,
+                       MIN(player_id)                                        AS player_id,
+                       MAX(elapsed_raw::float8)::float8                      AS duration_seconds,
+                       BOOL_OR(event_name = 'session_end')::boolean          AS ended_cleanly,
+                       COUNT(*) FILTER (WHERE event_name = 'session_heartbeat')::int AS heartbeats,
+                       MAX(received_at)                                      AS last_signal
+                FROM sig
+                GROUP BY session_id
+                ORDER BY 6 DESC
+                LIMIT ${PLAYTIME_SESSION_CAP}`;
+
+            // Coverage + the malformed count, in one statement so the denominator
+            // and the numerator describe the same window.
+            const coverRows = await sql`
+                SELECT
+                    COUNT(*) FILTER (WHERE event_name = 'session_start')::bigint AS session_starts,
+                    COUNT(*) FILTER (WHERE event_name = ANY(${SESSION_DURATION_EVENTS}::text[])
+                        )::bigint                                                AS duration_rows,
+                    COUNT(*) FILTER (WHERE event_name = ANY(${SESSION_DURATION_EVENTS}::text[])
+                        AND (properties->>'sessionId' IS NULL
+                          OR properties->>'elapsedSeconds' !~ '^[0-9]+(\\.[0-9]+)?$')
+                        )::bigint                                                AS malformed_rows,
+                    MIN(received_at) FILTER (WHERE event_name = ANY(${SESSION_DURATION_EVENTS}::text[])
+                        )                                                        AS first_duration_signal
+                FROM analytics_events
+                WHERE NOT (player_id = ANY(${EXCLUDED}::text[]))
+                  AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                LIMIT 1`;
+
+            const cvg = (coverRows && coverRows[0]) || {};
+            const allRows = (sessionRows || []).map(r => ({
+                duration_seconds: Number(r.duration_seconds),
+                ended_cleanly: r.ended_cleanly === true,
+                heartbeats: Number(r.heartbeats || 0),
+            }));
+            // ⛔ DROPPED, NOT COERCED TO ZERO. A NaN or a negative duration is an
+            // UNREADABLE ROW, not a zero-second session, and folding one into the
+            // bounce band is the most misleading place it could land. Dropping here
+            // rather than inside the bucketer is what makes "the bands sum to
+            // sessions_measured" a fact this response can state: the denominator and
+            // the bands are then computed from the same filtered array.
+            const sessions = allRows.filter(
+                s => Number.isFinite(s.duration_seconds) && s.duration_seconds >= 0);
+            const unreadableRows = allRows.length - sessions.length;
+            const durations = sessions.map(s => s.duration_seconds);
+
+            // Median FIRST and mean second, for the reason the command view already
+            // states out loud: one long tail session drags a mean and leaves a
+            // median alone. Computed over the same array the buckets are - one
+            // population, so the headline and the distribution can never disagree.
+            const sorted = durations.slice().sort((a, b) => a - b);
+            const quantile = (p) => {
+                if (sorted.length === 0) return 0;
+                const idx = (sorted.length - 1) * p;
+                const lo = Math.floor(idx), hi = Math.ceil(idx);
+                if (lo === hi) return sorted[lo];
+                return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+            };
+            const measured = sorted.length;
+            const starts = Number(cvg.session_starts || 0);
+            const truncated = Number(cvg.duration_rows || 0) >= PLAYTIME_SESSION_CAP;
+
+            return res.status(200).json(Object.assign(meta, {
+                state: measured === 0 ? 'empty' : 'ok',
+                instrumented: true,
+                estimated: false,
+                backing: 'analytics_events session_heartbeat + session_end, grouped by '
+                    + "properties->>'sessionId', duration = MAX(elapsedSeconds). Emitted by "
+                    + 'Assets/_Modules/Core/Analytics/EventTracker.cs (WO-1842).',
+                definition: 'FOREGROUND SECONDS - the app was in front of the player, accumulated on '
+                    + 'the device between resume and pause. It INCLUDES idling with the game open, '
+                    + 'and it EXCLUDES time backgrounded. A stretch backgrounded for longer than '
+                    + SESSION_GAP_MINUTES + ' minutes starts a NEW session on the client, matching '
+                    + 'the gap rule the estimate on ?view=command uses.',
+                floor_note: 'A session that dies without a pause or quit callback (a crash, an OS '
+                    + 'kill) reports its LAST HEARTBEAT, so its duration is a FLOOR, not an exact '
+                    + 'figure - understated by up to the heartbeat interval. ended_cleanly_pct says '
+                    + 'what share of the sample is exact.',
+                delivery_note: 'A session_end raised at pause is persisted to PlayerPrefs and is '
+                    + 'often delivered on the NEXT launch, so a very recent window can under-report '
+                    + 'and then fill in. Each event carries its own clientTs.',
+
+                median_seconds: Math.round(quantile(0.5) * 10) / 10,
+                median_minutes: Math.round(quantile(0.5) / 6) / 10,
+                mean_seconds: measured === 0 ? 0
+                    : Math.round((durations.reduce((a, b) => a + b, 0) / measured) * 10) / 10,
+                p90_seconds: Math.round(quantile(0.9) * 10) / 10,
+                longest_seconds: measured === 0 ? 0 : sorted[measured - 1],
+
+                buckets: bucketPlaytime(durations),
+                bucket_note: 'The owner\'s ask was "1-5, 5-30, 30-60, 60+ minutes". The '
+                    + '"Under 1 minute" band is ADDED, not in the ask: a bounce is the most '
+                    + 'important number on a retention surface and dropping it would shrink the '
+                    + 'denominator until every other band read high. Edges are a FIRST PASS - they '
+                    + 'live in PLAYTIME_BUCKETS in api/admin/stats.js and are one data change to move.',
+                bands_tile: 'The bands cover [0, infinity) with no gap and no overlap, so the '
+                    + 'bucket sessions always sum to sessions_measured.',
+
+                sessions_measured: measured,
+                low_n: measured < LOW_N_THRESHOLD,
+                low_n_threshold: LOW_N_THRESHOLD,
+                ended_cleanly: sessions.filter(s => s.ended_cleanly).length,
+                ended_cleanly_pct: pct(sessions.filter(s => s.ended_cleanly).length, measured),
+
+                coverage: {
+                    session_starts_in_window: starts,
+                    sessions_measured: measured,
+                    unmeasured_sessions: Math.max(0, starts - measured),
+                    measured_pct: pct(measured, starts),
+                    duration_rows: Number(cvg.duration_rows || 0),
+                    malformed_rows: Number(cvg.malformed_rows || 0),
+                    unreadable_sessions_dropped: unreadableRows,
+                    first_duration_signal: cvg.first_duration_signal || null,
+                    scan_truncated: truncated,
+                    scan_cap: PLAYTIME_SESSION_CAP,
+                    // ⚠ measured_pct CAN EXCEED 100%, legitimately. A background stretch
+                    // longer than the gap mints a NEW sessionId on the client without a
+                    // second session_start (see the client note above), so one boot can
+                    // produce several measured sessions. Said here so that a >100% reading
+                    // is understood rather than raised as a defect.
+                    over_100_pct_is_possible: 'A boot can yield SEVERAL measured sessions: a '
+                        + 'resume after more than ' + SESSION_GAP_MINUTES + ' minutes '
+                        + 'backgrounded starts a new session on the client, and deliberately '
+                        + 'does not emit a second session_start. So measured_pct above 100 is a '
+                        + 'valid state, not a bug.',
+                    note: 'Coverage travels WITH the figure. ⛔ EXPECT unmeasured_sessions to be '
+                        + 'nearly the whole window until a build carrying WO-1842 has been in '
+                        + 'players\' hands for the full window: every session that predates the '
+                        + 'client change emitted no end signal and can never be measured '
+                        + 'retroactively. A low measured_pct here means this describes a MINORITY '
+                        + 'of sessions, not that sessions got shorter.',
+                },
+
+                gaps: [
+                    'A SESSION KILLED BY THE OS MID-PLAY reports its last heartbeat, so it is a '
+                    + 'floor. Shortening the heartbeat interval tightens the floor and costs rows; '
+                    + 'it is HeartbeatIntervalSeconds in EventTracker.cs.',
+                    'ACTIVE vs OPEN is not separated here. This is foreground time, so a player who '
+                    + 'left the game on the title screen counts. The between-acts estimate on '
+                    + '?view=command is the other half of that question.',
+                    'PRE-WO-1842 SESSIONS ARE PERMANENTLY UNMEASURABLE. No backfill is possible - '
+                    + 'the end timestamps were never recorded. Anything claiming a bucket '
+                    + 'distribution for a window before the client shipped is fabricated.',
+                ],
+            }));
+        }
+
+        // ============================================================== active
+        // WO-1843 #1 — DAU / WAU / MAU AND STICKINESS, the one thing a live-ops
+        // dashboard is expected to open on and the one thing this page could not
+        // show. `active_players` existed only as a column inside the overview's
+        // per-day table; nobody could read "how many people played this week".
+        //
+        // ⛔ THE MEASURE IS "OPENED THE GAME", NOT WO-1281 "PLAYING". A distinct
+        // player_id that fired session_start. That is the industry definition of
+        // DAU and it is deliberately NOT the QUALIFYING_PLAY_EVENTS definition the
+        // ?view=command card uses — those two numbers are different on purpose and
+        // blending them would make both useless. Both definitions are printed.
+        //
+        // ⚠ THE 1/7/30 WINDOWS ARE TRAILING AND FIXED, never clipped by ?days —
+        // the same rule the overview block states: a "last 7 days" selection must
+        // not silently render MAU as a 7-day number under a 30-day label. ?days
+        // drives the per-day series and the build table only.
+        //
+        // THE SLICE HERE IS A ROW FILTER, NOT A PLAYER FILTER, AND THAT IS MORE
+        // PRECISE than anywhere else in this file: session_start is the very row
+        // that CARRIES appVersion/platform, so no per-player join and no
+        // multi-build ambiguity is involved.
+        if (view === 'active') {
+            const EXCLUDED = excludedPlayerIds();
+
+            const windows = await sql`
+                SELECT
+                    COUNT(DISTINCT player_id) FILTER (WHERE received_at > NOW() - INTERVAL '1 day')::bigint   AS dau,
+                    COUNT(DISTINCT player_id) FILTER (WHERE received_at > NOW() - INTERVAL '7 days')::bigint  AS wau,
+                    COUNT(DISTINCT player_id) FILTER (WHERE received_at > NOW() - INTERVAL '30 days')::bigint AS mau,
+                    COUNT(*) FILTER (WHERE received_at > NOW() - INTERVAL '1 day')::bigint   AS sessions_today,
+                    COUNT(*) FILTER (WHERE received_at > NOW() - INTERVAL '7 days')::bigint  AS sessions_7d,
+                    COUNT(*) FILTER (WHERE received_at > NOW() - INTERVAL '30 days')::bigint AS sessions_30d,
+                    MAX(received_at) AS latest_session_start
+                FROM analytics_events
+                WHERE event_name = 'session_start'
+                  AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                  AND received_at > NOW() - INTERVAL '30 days'
+                  AND (${slice.app_version}::text IS NULL OR properties->>'appVersion' = ${slice.app_version})
+                  AND (${slice.platform}::text IS NULL OR properties->>'platform' = ${slice.platform})
+                LIMIT 1`;
+
+            // Week over week, so stickiness has a DIRECTION and not just a level.
+            // Reported through trendWord — a word, never a colour (CLAUDE.md section 7).
+            const trend = await sql`
+                SELECT
+                    COUNT(DISTINCT player_id) FILTER (WHERE received_at > NOW() - INTERVAL '7 days')::bigint AS wau_now,
+                    COUNT(DISTINCT player_id) FILTER (WHERE received_at <= NOW() - INTERVAL '7 days'
+                          AND received_at > NOW() - INTERVAL '14 days')::bigint AS wau_prior,
+                    COUNT(DISTINCT player_id) FILTER (WHERE received_at > NOW() - INTERVAL '1 day')::bigint AS dau_now,
+                    COUNT(DISTINCT player_id) FILTER (WHERE received_at <= NOW() - INTERVAL '1 day'
+                          AND received_at > NOW() - INTERVAL '2 days')::bigint AS dau_prior
+                FROM analytics_events
+                WHERE event_name = 'session_start'
+                  AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                  AND received_at > NOW() - INTERVAL '14 days'
+                  AND (${slice.app_version}::text IS NULL OR properties->>'appVersion' = ${slice.app_version})
+                  AND (${slice.platform}::text IS NULL OR properties->>'platform' = ${slice.platform})
+                LIMIT 1`;
+
+            const perDay = await sql`
+                SELECT date_trunc('day', received_at)::date::text AS day,
+                       COUNT(DISTINCT player_id)::bigint          AS dau,
+                       COUNT(*)::bigint                           AS sessions
+                FROM analytics_events
+                WHERE event_name = 'session_start'
+                  AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                  AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${slice.app_version}::text IS NULL OR properties->>'appVersion' = ${slice.app_version})
+                  AND (${slice.platform}::text IS NULL OR properties->>'platform' = ${slice.platform})
+                GROUP BY 1
+                ORDER BY 1 DESC
+                LIMIT 181`;
+
+            // ⭐ THE VALUE SET FOR EVERY OTHER VIEW'S SLICE. An operator guessing an
+            // app_version filters to an empty cohort and reads it as a dead build, so
+            // the live list of builds and platforms is published HERE and pointed at
+            // from every slice block. Never sliced itself — it is the menu.
+            const byBuild = await sql`
+                SELECT properties->>'appVersion' AS app_version,
+                       properties->>'platform'   AS platform,
+                       COUNT(DISTINCT player_id)::bigint AS players,
+                       COUNT(*)::bigint                  AS sessions,
+                       MIN(received_at)                  AS first_seen,
+                       MAX(received_at)                  AS latest
+                FROM analytics_events
+                WHERE event_name = 'session_start'
+                  AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                  AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                GROUP BY 1, 2
+                ORDER BY 3 DESC
+                LIMIT 60`;
+
+            const w = windows[0] || {};
+            const tr = trend[0] || {};
+            const dau = Number(w.dau || 0);
+            const wau = Number(w.wau || 0);
+            const mau = Number(w.mau || 0);
+            // user-days: the ARPDAU denominator, summed here so ?view=monetization
+            // and this view can never disagree about it.
+            const userDays = perDay.reduce((s, r) => s + Number(r.dau || 0), 0);
+
+            return res.status(200).json(Object.assign(meta, {
+                definition: 'DAU / WAU / MAU = DISTINCT player_id that fired session_start inside a '
+                    + 'TRAILING 1 / 7 / 30-day window. session_start is one row per app boot '
+                    + '(EventTracker.cs Start), so this measures OPENED THE GAME. This is the SAME '
+                    + 'measure as ?view=overview -> active, which stays the one authority for the tile; '
+                    + 'the only difference is that overview excludes "anonymous" alone while this view '
+                    + 'also excludes operator/test ids, so the two differ by the excluded-id count '
+                    + 'whenever ANALYTICS_EXCLUDED_PLAYER_IDS is set.',
+                not_this: 'This is NOT the WO-1281 "playing" definition (?view=command), which requires '
+                    + 'the player to have DONE something (wave cleared, tutorial step completed, '
+                    + 'purchase, ad). That number is smaller and the two are never blended.',
+                window_note: 'The 1/7/30 tiles are FIXED trailing windows and ignore ?days on purpose — '
+                    + 'otherwise a 7-day selection would render MAU as a 7-day number. ?days drives '
+                    + 'per_day and by_build only.',
+                low_n_threshold: LOW_N_THRESHOLD,
+                dau: dau,
+                wau: wau,
+                mau: mau,
+                sessions: {
+                    today: Number(w.sessions_today || 0),
+                    d7: Number(w.sessions_7d || 0),
+                    d30: Number(w.sessions_30d || 0),
+                    sessions_per_dau: dau > 0 ? Math.round((Number(w.sessions_today || 0) / dau) * 100) / 100 : null,
+                    latest_session_start: w.latest_session_start || null,
+                },
+                stickiness: {
+                    definition: 'DAU/MAU is the headline stickiness ratio — the share of the monthly '
+                        + 'playerbase present on an average day. WAU/MAU is reported beside it because '
+                        + 'a session-a-week game reads healthy on one and thin on the other.',
+                    dau_over_mau_pct: pct(dau, mau),
+                    wau_over_mau_pct: pct(wau, mau),
+                    dau_over_wau_pct: pct(dau, wau),
+                    // ⛔ The flag is on MAU because MAU is the DENOMINATOR. A ratio over a
+                    // handful of monthly players is noise whatever the numerator looks like.
+                    low_n: mau < LOW_N_THRESHOLD,
+                    low_n_reason: mau < LOW_N_THRESHOLD
+                        ? 'MAU (' + mau + ') is below the ' + LOW_N_THRESHOLD + '-player threshold — '
+                          + 'these ratios are not reportable, read the raw counts instead.'
+                        : null,
+                },
+                trend: {
+                    note: 'Stated as a WORD, never a colour or an arrow. A base too small to carry '
+                        + 'a direction says TOO FEW TO CALL rather than printing one.',
+                    wau_word: trendWord(tr.wau_now, tr.wau_prior),
+                    wau_now: Number(tr.wau_now || 0),
+                    wau_prior_week: Number(tr.wau_prior || 0),
+                    dau_word: trendWord(tr.dau_now, tr.dau_prior),
+                    dau_now: Number(tr.dau_now || 0),
+                    dau_prior_day: Number(tr.dau_prior || 0),
+                },
+                user_days: {
+                    value: userDays,
+                    days_with_activity: perDay.length,
+                    note: 'SUM of per-day DAU over ?days — "user-days", the correct ARPDAU denominator. '
+                        + 'It is NOT distinct players and NOT sessions; ?view=monetization divides by '
+                        + 'this exact figure.',
+                },
+                per_day: perDay,
+                by_build: {
+                    note: '⭐ THE MENU FOR EVERY OTHER VIEW SLICE. Copy an app_version/platform from '
+                        + 'here into &app_version= / &platform= on retention, funnel or purchases. '
+                        + 'Deliberately NOT sliced itself. A value absent here has no players in the '
+                        + 'window, which is a different finding from a build whose metrics look bad.',
+                    rows: byBuild,
+                },
+                slice: {
+                    active: !!(slice.app_version || slice.platform),
+                    app_version: slice.app_version,
+                    platform: slice.platform,
+                    locale: null,
+                    precision: 'ROW-LEVEL AND EXACT here, unlike every other sliceable view: '
+                        + 'session_start is the row that carries appVersion/platform, so no per-player '
+                        + 'join and no multi-build ambiguity is involved.',
+                    data_gaps: [LOCALE_GAP],
+                },
+                excluded_ids: {
+                    excluded_id_count: EXCLUDED.length,
+                    note: 'Operator/test ids plus the always-excluded "anonymous" shared bucket. The '
+                        + 'ids come from the deployment environment, never from a query parameter.',
+                },
+            }));
+        }
+
+        // ======================================================== monetization
+        // WO-1843 #2 — PAYER RATE, ARPU, ARPDAU, ARPPU. Revenue had a numerator
+        // and no denominator anywhere on this page: ?view=purchases sums usd_anchor
+        // per day and never divides it by the players who could have spent it.
+        //
+        // ⛔ THIS PROJECT IS PRE-REVENUE AND THE VIEW SAYS SO IN WORDS. Measured
+        // read-only 2026-09-17: 4 settled entitlements, 2 distinct payer wallets,
+        // $10.97 of usd_anchor all-time — of which mainnet-beta is $5.98 (2 rows),
+        // the Pi rail $4.99 (1 row, status verified), and devnet $0 (1 row, no
+        // anchor). Every ratio below is therefore computed AND flagged
+        // reportable:false, with the WO's literal "insufficient payer volume"
+        // caveat, rather than printed as a confident decimal. A four-decimal ARPU
+        // over two buyers is not a measurement of anything.
+        //
+        // ⛔ DEVNET IS NOT REVENUE AND IS SPLIT OUT, NOT SUMMED. usd_all includes
+        // every network; usd_real excludes devnet. A dashboard that reports test
+        // money as income is the money version of section 16's silent capsule enemies.
+        //
+        // ⚠ THE DENOMINATORS ARE NOT THE SAME AXIS AND EACH NAMES ITS OWN:
+        //   payer rate  payers ÷ active players (both over ?days)
+        //   ARPU        revenue ÷ active players
+        //   ARPDAU      revenue ÷ USER-DAYS (SUM of per-day DAU) — NOT ÷ DAU, which
+        //               would divide a window's revenue by one day's players
+        //   ARPPU       revenue ÷ paying players only
+        // Numerator and denominator share the same ?days window throughout; mixing
+        // a fixed-30-day MAU with a ?days revenue sum is how these get silently wrong.
+        //
+        // ⚠ IDENTITY: payers are wallet on purchase_entitlements, active players
+        // are player_id on analytics_events. Those coincide only for wallet-bound
+        // players (WO-1791 tiers), so the overlap is MEASURED and returned rather
+        // than assumed — if it falls, the payer rate is dividing two different
+        // populations and the response has to be able to say so.
+        //
+        // ⛔ NOT BUILT, ON PURPOSE (WO-1843 scope): LTV and churn modelling. There is
+        // no payer cohort to fit them to. Do not add them here without a ruling.
+        if (view === 'monetization') {
+            const EXCLUDED = excludedPlayerIds();
+            const errors = [];
+            const probe = async (label, run) => {
+                try {
+                    return await run();
+                } catch (err) {
+                    console.error('[admin/stats] monetization probe failed:', label, err);
+                    errors.push({ probe: label, error: String((err && err.message) || err) });
+                    return null;
+                }
+            };
+
+            const revenue = await probe('revenue_window', () => sql`
+                SELECT COUNT(*)::bigint                                          AS settled,
+                       COUNT(DISTINCT wallet)::bigint                            AS payers_all,
+                       COALESCE(SUM(usd_anchor), 0)::float8                      AS usd_all,
+                       COUNT(*) FILTER (WHERE COALESCE(network, '') <> 'devnet')::bigint AS settled_real,
+                       COUNT(DISTINCT wallet) FILTER (WHERE COALESCE(network, '') <> 'devnet')::bigint AS payers_real,
+                       COALESCE(SUM(usd_anchor) FILTER (WHERE COALESCE(network, '') <> 'devnet'), 0)::float8 AS usd_real,
+                       COUNT(*) FILTER (WHERE usd_anchor IS NULL)::bigint         AS rows_without_usd_anchor,
+                       MIN(created_at)                                           AS first_settled_at,
+                       MAX(created_at)                                           AS last_settled_at
+                FROM purchase_entitlements
+                WHERE created_at > NOW() - (${days} * INTERVAL '1 day')
+                  -- ⛔ THE OPERATOR EXCLUSION MUST BE ON BOTH SIDES OF EVERY RATIO.
+                  -- The denominator below already excludes operator/test ids (WO-1281
+                  -- acceptance 9). Leaving it off the numerator would count an OWNER's
+                  -- own test purchase against a playerbase that does not contain them —
+                  -- which, at 2 payers, would roughly double the payer rate. The whole
+                  -- ledger, operator rows included, stays readable at ?view=purchases.
+                  AND NOT (wallet = ANY(${EXCLUDED}::text[]))
+                LIMIT 1`);
+
+            const byNetwork = await probe('revenue_by_network', () => sql`
+                SELECT COALESCE(network, '(none)') AS network,
+                       status,
+                       COUNT(*)::bigint                                  AS settled,
+                       COUNT(DISTINCT wallet)::bigint                    AS payers,
+                       COALESCE(SUM(usd_anchor), 0)::float8              AS usd_anchor_total,
+                       COUNT(*) FILTER (WHERE usd_anchor IS NULL)::bigint AS rows_without_usd_anchor,
+                       MAX(created_at)                                   AS latest
+                FROM purchase_entitlements
+                WHERE created_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND NOT (wallet = ANY(${EXCLUDED}::text[]))   -- both sides of every ratio
+                GROUP BY 1, 2
+                ORDER BY 3 DESC
+                LIMIT 30`);
+
+            // The denominator, computed the same way ?view=active computes it so the
+            // two views can never disagree about how many people were here.
+            const denom = await probe('active_denominators', () => sql`
+                WITH d AS (
+                    SELECT date_trunc('day', received_at)::date AS day, player_id
+                    FROM analytics_events
+                    WHERE event_name = 'session_start'
+                      AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                      AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                    GROUP BY 1, 2
+                )
+                SELECT COUNT(DISTINCT player_id)::bigint AS active_players,
+                       COUNT(*)::bigint                  AS user_days,
+                       COUNT(DISTINCT day)::bigint       AS days_with_activity
+                FROM d
+                LIMIT 1`);
+
+            // ⭐ THE TIE-BREAK ON WHETHER THESE RATIOS ARE EVEN COMPARING LIKE WITH
+            // LIKE. A payer whose wallet never appears in analytics_events is not in
+            // the denominator at all, so payer rate would understate.
+            const overlap = await probe('payer_identity_overlap', () => sql`
+                SELECT COUNT(DISTINCT p.wallet)::bigint AS payers,
+                       COUNT(DISTINCT p.wallet) FILTER (WHERE EXISTS (
+                           SELECT 1 FROM analytics_events e WHERE e.player_id = p.wallet))::bigint
+                           AS payers_seen_in_telemetry
+                FROM purchase_entitlements p
+                WHERE p.created_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND NOT (p.wallet = ANY(${EXCLUDED}::text[]))   -- both sides of every ratio
+                LIMIT 1`);
+
+            const perDay = await probe('arpdau_per_day', () => sql`
+                WITH a AS (
+                    SELECT date_trunc('day', received_at)::date AS day,
+                           COUNT(DISTINCT player_id)::bigint    AS dau
+                    FROM analytics_events
+                    WHERE event_name = 'session_start'
+                      AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                      AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                    GROUP BY 1
+                ),
+                r AS (
+                    SELECT date_trunc('day', created_at)::date AS day,
+                           COALESCE(SUM(usd_anchor), 0)::float8 AS usd,
+                           COUNT(DISTINCT wallet)::bigint       AS payers
+                    FROM purchase_entitlements
+                    WHERE created_at > NOW() - (${days} * INTERVAL '1 day')
+                      AND COALESCE(network, '') <> 'devnet'
+                      AND NOT (wallet = ANY(${EXCLUDED}::text[]))   -- both sides of every ratio
+                    GROUP BY 1
+                )
+                SELECT a.day::text AS day,
+                       a.dau::bigint AS dau,
+                       COALESCE(r.usd, 0)::float8 AS usd_real,
+                       COALESCE(r.payers, 0)::bigint AS payers
+                FROM a LEFT JOIN r ON r.day = a.day
+                ORDER BY 1 DESC
+                LIMIT 181`);
+
+            const rv = (revenue && revenue[0]) || {};
+            const dn = (denom && denom[0]) || {};
+            const ov = (overlap && overlap[0]) || {};
+
+            const payersAll = Number(rv.payers_all || 0);
+            const payersReal = Number(rv.payers_real || 0);
+            const usdReal = Number(rv.usd_real || 0);
+            const activePlayers = Number(dn.active_players || 0);
+            const userDays = Number(dn.user_days || 0);
+
+            // Money to 4 dp, and NEVER presented as reportable while the payer count
+            // is under the threshold. The value is still returned — hiding it would
+            // just move the guess somewhere else — but it is returned WITH the reason
+            // it cannot be trusted, which is the whole honesty convention of this file.
+            const money = (v) => (v == null ? null : Math.round(Number(v) * 10000) / 10000);
+            const INSUFFICIENT = 'INSUFFICIENT PAYER VOLUME: ' + payersReal + ' paying wallet(s) in this '
+                + 'window against a ' + LOW_N_THRESHOLD + '-payer threshold. This figure is arithmetic, '
+                + 'not a measurement — one more sale moves it by more than any change to the game would. '
+                + 'Read the raw counts (settled / payers / usd_real) instead.';
+
+            const ratio = (label, numerator, denominator, denomLabel, formula) => {
+                const ok = denominator > 0;
+                const reportable = ok && payersReal >= LOW_N_THRESHOLD;
+                return {
+                    metric: label,
+                    formula: formula,
+                    value: ok ? money(numerator / denominator) : null,
+                    numerator_usd: money(numerator),
+                    denominator: denominator,
+                    denominator_label: denomLabel,
+                    reportable: reportable,
+                    low_n: !reportable,
+                    caveat: !ok
+                        ? 'NO DENOMINATOR: ' + denomLabel + ' is zero in this window, so the ratio is '
+                          + 'undefined and returned as null rather than as 0.'
+                        : (reportable ? null : INSUFFICIENT),
+                };
+            };
+
+            return res.status(200).json(Object.assign(meta, {
+                source: 'purchase_entitlements (SERVER-VERIFIED settlement) over analytics_events '
+                    + 'session_start (the active-player denominator). ?view=economy is the CLIENT own '
+                    + 'word and carries no money — never use it as a numerator here.',
+                headline: payersReal === 0
+                    ? 'NO REVENUE IN WINDOW'
+                    : (payersReal < LOW_N_THRESHOLD ? 'PRE-REVENUE — RATIOS NOT REPORTABLE' : 'REVENUE MEASURABLE'),
+                low_n_threshold: LOW_N_THRESHOLD,
+                revenue: {
+                    operator_exclusion: '⛔ OPERATOR/TEST WALLETS ARE EXCLUDED FROM BOTH SIDES of every '
+                        + 'ratio here (ANALYTICS_EXCLUDED_PLAYER_IDS, WO-1281 acceptance 9). Counting an '
+                        + 'operator\'s own test purchase against a playerbase that excludes them would '
+                        + 'roughly double the payer rate at this sample size. The COMPLETE ledger, '
+                        + 'operator rows included, is ?view=purchases — this view is the ratios.',
+                    note: 'usd_anchor is the authored ladder price persisted at verify time. It is NULL '
+                        + 'on CANARY skus, so rows_without_usd_anchor > 0 means the total UNDERSTATES '
+                        + 'the row count — not that those sales were free.',
+                    settled: Number(rv.settled || 0),
+                    payers_all_networks: payersAll,
+                    usd_all_networks: money(rv.usd_all),
+                    settled_real: Number(rv.settled_real || 0),
+                    payers_real: payersReal,
+                    usd_real: money(usdReal),
+                    devnet_note: '⛔ usd_real / payers_real EXCLUDE network = devnet. Devnet money is '
+                        + 'test money and reporting it as income would be a fabricated revenue figure. '
+                        + 'Every ratio below is computed on usd_real.',
+                    rows_without_usd_anchor: Number(rv.rows_without_usd_anchor || 0),
+                    first_settled_at: rv.first_settled_at || null,
+                    last_settled_at: rv.last_settled_at || null,
+                    by_network: byNetwork || [],
+                },
+                denominators: {
+                    active_players: activePlayers,
+                    user_days: userDays,
+                    days_with_activity: Number(dn.days_with_activity || 0),
+                    definition: 'active_players = DISTINCT player_id with a session_start in ?days '
+                        + '(same measure as ?view=active). user_days = SUM of per-day DAU over the '
+                        + 'same window — the ARPDAU denominator, and NOT the same thing as DAU.',
+                    low_n: activePlayers < LOW_N_THRESHOLD,
+                },
+                payer_rate: {
+                    metric: 'payer rate',
+                    formula: 'paying wallets (excl. devnet) ÷ active players, both over ?days',
+                    pct: pct(payersReal, activePlayers),
+                    payers: payersReal,
+                    active_players: activePlayers,
+                    reportable: payersReal >= LOW_N_THRESHOLD && activePlayers >= LOW_N_THRESHOLD,
+                    low_n: payersReal < LOW_N_THRESHOLD || activePlayers < LOW_N_THRESHOLD,
+                    caveat: payersReal < LOW_N_THRESHOLD ? INSUFFICIENT : null,
+                },
+                arpu: ratio('ARPU', usdReal, activePlayers, 'active players (?days)',
+                    'usd_real ÷ active players'),
+                arpdau: ratio('ARPDAU', usdReal, userDays, 'user-days (SUM of per-day DAU)',
+                    'usd_real ÷ user-days. ⛔ NOT ÷ today DAU — that would divide a whole '
+                    + 'window of revenue by one day of players and overstate it by roughly the '
+                    + 'number of days in the window.'),
+                arppu: ratio('ARPPU', usdReal, payersReal, 'paying wallets (excl. devnet)',
+                    'usd_real ÷ paying wallets'),
+                identity: {
+                    note: 'Payers are wallet on purchase_entitlements; active players are player_id '
+                        + 'on analytics_events. They are the same string only for a WALLET-BOUND player '
+                        + '(WO-1791 identity tiers), so the overlap is measured rather than assumed. '
+                        + 'payers_seen_in_telemetry < payers means some buyers are NOT in the '
+                        + 'denominator and the payer rate understates.',
+                    payers_in_window: Number(ov.payers || 0),
+                    payers_seen_in_telemetry: Number(ov.payers_seen_in_telemetry || 0),
+                    fully_attributable: Number(ov.payers || 0) === Number(ov.payers_seen_in_telemetry || 0),
+                },
+                per_day: (perDay || []).map(r => {
+                    const d = Number(r.dau || 0);
+                    const u = Number(r.usd_real || 0);
+                    return {
+                        day: r.day,
+                        dau: d,
+                        usd_real: money(u),
+                        payers: Number(r.payers || 0),
+                        arpdau: d > 0 ? money(u / d) : null,
+                        low_n: Number(r.payers || 0) < LOW_N_THRESHOLD,
+                    };
+                }),
+                out_of_scope: 'LTV and churn modelling are deliberately NOT built (WO-1843). With '
+                    + payersReal + ' payer(s) in the window there is no cohort to fit them to, and a '
+                    + 'model over this sample would be fiction wearing a decimal point.',
+                errors: errors,
+            }));
+        }
+
+        // =========================================================== stability
+        // WO-1843 #3 — ERRORS AS A RATE AGAINST TRAFFIC, NOT AS A RAW COUNT.
+        // ?view=events (api/admin/db.js) counts break rows by kind. A count cannot
+        // answer "is it getting better": 33,198 errors across a growing playerbase
+        // may be an improvement, and the same number across a shrinking one is a
+        // collapse. This divides by the traffic that produced it.
+        //
+        // ⛔ THERE IS NO CRASH REPORTER IN THIS GAME, SO "CRASH-FREE" IS NOT
+        // MEASURABLE AND IS NOT CLAIMED. The only stability signal that exists is
+        // the F8 BreakCaptureHarness playtest_break row. An unhandled Unity
+        // exception does NOT terminate the process, and a process the OS killed
+        // emits nothing at all — so a hard-crash rate is UNPROVABLE from here. What
+        // is returned is an EXCEPTION-FREE rate, named as a proxy. Recording that
+        // it cannot be proven is the finding; a "99.x% crash-free" tile built on
+        // this data would be invented (CLAUDE.md section 11B).
+        //
+        // ⛔ THE THREE KINDS ARE REPORTED SEPARATELY AND NEVER SUMMED INTO ONE
+        // "crash" NUMBER. Measured read-only 2026-09-17 over 30 days:
+        //   kind=error              33,198 rows / 166 ids — the Debug.LogError
+        //                           firehose, present in essentially every session
+        //   kind=exception              32 rows /   3 ids — the crash-adjacent one
+        //   kind=possible_softlock    110 rows /  13 ids — a third axis entirely
+        // Blending those would let the firehose bury the 32 rows that matter.
+        //
+        // ⚠ THE DENOMINATOR IS KNOWN TO BE INCOMPLETE AND THE VIEW PROVES IT RATHER
+        // THAN HIDING IT. Same 30-day read: 211 player-days carried a session_start
+        // while 228 player-days carried an error — MORE error-days than
+        // session-days, because a break can be recorded for a player whose
+        // session_start never landed (queued events, an excluded/anon boot). So a
+        // rate here CAN exceed 100%, and when it does denominator_incomplete says
+        // so instead of the number being quietly clamped into looking sane.
+        if (view === 'stability') {
+            const EXCLUDED = excludedPlayerIds();
+            const sliceResolved = await resolveSlicePlayers(sql, slice);
+            const sliceIds = sliceResolved.ids;
+
+            // Player-DAYS, not sessions: playtest_break rows cannot be attributed to
+            // an individual session (they carry no session id), so the finest honest
+            // unit shared by both sides is the player-day. Session ROWS are returned
+            // beside it for the per-session intensity figure only.
+            const traffic = await sql`
+                SELECT COUNT(*)::bigint                          AS session_starts,
+                       COUNT(DISTINCT player_id)::bigint         AS players,
+                       COUNT(DISTINCT (player_id || '|' || date_trunc('day', received_at)::date::text))::bigint
+                           AS player_days
+                FROM analytics_events
+                WHERE event_name = 'session_start'
+                  AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                  AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))
+                LIMIT 1`;
+
+            const kinds = await sql`
+                SELECT COALESCE(properties->>'kind', '(none)') AS kind,
+                       COUNT(*)::bigint                         AS events,
+                       COUNT(DISTINCT player_id)::bigint        AS players,
+                       COUNT(DISTINCT (player_id || '|' || date_trunc('day', received_at)::date::text))::bigint
+                           AS player_days,
+                       MAX(received_at)                         AS latest
+                FROM analytics_events
+                WHERE event_name = 'playtest_break'
+                  AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                  AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))
+                GROUP BY 1
+                ORDER BY 2 DESC
+                LIMIT 20`;
+
+            const perDay = await sql`
+                WITH s AS (
+                    SELECT date_trunc('day', received_at)::date AS day,
+                           COUNT(DISTINCT player_id)::bigint    AS players
+                    FROM analytics_events
+                    WHERE event_name = 'session_start'
+                      AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                      AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                      AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))
+                    GROUP BY 1
+                ),
+                b AS (
+                    SELECT date_trunc('day', received_at)::date AS day,
+                           COUNT(*) FILTER (WHERE properties->>'kind' = 'error')::bigint     AS error_events,
+                           COUNT(*) FILTER (WHERE properties->>'kind' = 'exception')::bigint AS exception_events,
+                           COUNT(DISTINCT player_id) FILTER (WHERE properties->>'kind' = 'exception')::bigint
+                               AS players_with_exception,
+                           COUNT(DISTINCT player_id) FILTER (WHERE properties->>'kind' = 'possible_softlock')::bigint
+                               AS players_with_softlock
+                    FROM analytics_events
+                    WHERE event_name = 'playtest_break'
+                      AND NOT (player_id = ANY(${EXCLUDED}::text[]))
+                      AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                      AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))
+                    GROUP BY 1
+                )
+                SELECT s.day::text AS day,
+                       s.players::bigint AS players,
+                       COALESCE(b.error_events, 0)::bigint          AS error_events,
+                       COALESCE(b.exception_events, 0)::bigint      AS exception_events,
+                       COALESCE(b.players_with_exception, 0)::bigint AS players_with_exception,
+                       COALESCE(b.players_with_softlock, 0)::bigint  AS players_with_softlock
+                FROM s LEFT JOIN b ON b.day = s.day
+                ORDER BY 1 DESC
+                LIMIT 181`;
+
+            const tf = traffic[0] || {};
+            const sessionStarts = Number(tf.session_starts || 0);
+            const playerDays = Number(tf.player_days || 0);
+
+            const kindRows = kinds.map(k => {
+                const affected = Number(k.player_days || 0);
+                const over = playerDays > 0 && affected > playerDays;
+                return {
+                    kind: k.kind,
+                    events: Number(k.events || 0),
+                    players: Number(k.players || 0),
+                    player_days_affected: affected,
+                    affected_pct: pct(affected, playerDays),
+                    // The complement, only where it is actually a complement. Above 100%
+                    // there is no meaningful "free" share and null is the honest answer.
+                    free_pct: (playerDays > 0 && !over) ? Math.round((100 - (affected / playerDays) * 100) * 10) / 10 : null,
+                    events_per_session_start: sessionStarts > 0
+                        ? Math.round((Number(k.events || 0) / sessionStarts) * 100) / 100 : null,
+                    low_n: playerDays < LOW_N_THRESHOLD,
+                    denominator_incomplete: over,
+                    denominator_note: over
+                        ? 'MORE affected player-days (' + affected + ') than player-days carrying a '
+                          + 'session_start (' + playerDays + '). The denominator is incomplete — a break '
+                          + 'can be recorded for a player whose session_start never landed — so this rate '
+                          + 'is an UPPER bound and is deliberately not clamped to 100%.'
+                        : null,
+                    latest: k.latest,
+                };
+            });
+
+            const byKind = {};
+            for (const r of kindRows) byKind[r.kind] = r;
+            const exception = byKind['exception'] || null;
+
+            return res.status(200).json(Object.assign(meta, {
+                definition: 'Break rates from the F8 BreakCaptureHarness playtest_break event, '
+                    + 'divided by the traffic that produced them. The unit is the PLAYER-DAY: a '
+                    + 'playtest_break row carries no session id, so it cannot be attributed to one '
+                    + 'session, and the player-day is the finest unit both sides honestly share.',
+                // ⛔ The most load-bearing string in this view.
+                crash_free_caveat: '⛔ A TRUE CRASH-FREE RATE IS NOT MEASURABLE FROM THIS DATA AND IS '
+                    + 'NOT CLAIMED. This game ships no crash reporter; an unhandled Unity exception does '
+                    + 'not terminate the app, and a process the OS killed emits nothing at all. What is '
+                    + 'below is an EXCEPTION-FREE player-day rate — a PROXY. Closing the gap needs a '
+                    + 'crash SDK, which is new instrumentation and a separate ticket.',
+                kinds_note: '⛔ The kinds are never summed into one "crash" number. kind=error is the '
+                    + 'Debug.LogError firehose and fires in nearly every session; kind=exception is the '
+                    + 'crash-adjacent one; kind=possible_softlock is a third axis. Blending them lets '
+                    + 'the firehose bury the handful of rows that matter. kind=scene_loaded and '
+                    + 'kind=note are bookkeeping, not breaks, and are listed for completeness only.',
+                low_n_threshold: LOW_N_THRESHOLD,
+                traffic: {
+                    session_starts: sessionStarts,
+                    players: Number(tf.players || 0),
+                    player_days: playerDays,
+                    low_n: playerDays < LOW_N_THRESHOLD,
+                },
+                headline: {
+                    metric: 'exception-free player-day rate (PROXY, not crash-free)',
+                    exception_free_pct: exception ? exception.free_pct : (playerDays > 0 ? 100 : null),
+                    player_days_with_exception: exception ? exception.player_days_affected : 0,
+                    player_days: playerDays,
+                    reportable: playerDays >= LOW_N_THRESHOLD && !(exception && exception.denominator_incomplete),
+                    low_n: playerDays < LOW_N_THRESHOLD,
+                    caveat: playerDays < LOW_N_THRESHOLD
+                        ? 'Fewer than ' + LOW_N_THRESHOLD + ' player-days in this window — not reportable.'
+                        : (exception && exception.denominator_incomplete ? exception.denominator_note : null),
+                },
+                by_kind: kindRows,
+                per_day: (perDay || []).map(r => {
+                    const p = Number(r.players || 0);
+                    return {
+                        day: r.day,
+                        players: p,
+                        error_events: Number(r.error_events || 0),
+                        exception_events: Number(r.exception_events || 0),
+                        players_with_exception: Number(r.players_with_exception || 0),
+                        players_with_softlock: Number(r.players_with_softlock || 0),
+                        // ⛔ NOT CLAMPED. The by_kind rule above applies per row too: if
+                        // more players hit an exception than fired a session_start that
+                        // day, the denominator is incomplete and the honest output is a
+                        // negative "free" share plus the flag — a Math.min here would
+                        // have silently printed a plausible 0% and contradicted the very
+                        // rule this view states.
+                        exception_free_pct: p > 0
+                            ? Math.round((100 - (Number(r.players_with_exception || 0) / p) * 100) * 10) / 10
+                            : null,
+                        denominator_incomplete: p > 0 && Number(r.players_with_exception || 0) > p,
+                        errors_per_player: p > 0 ? Math.round((Number(r.error_events || 0) / p) * 100) / 100 : null,
+                        low_n: p < LOW_N_THRESHOLD,
+                    };
+                }),
+                slice: sliceMeta(slice,
+                    ['traffic denominators', 'by_kind', 'per_day'],
+                    ['nothing — the same player filter is applied to both sides of every rate'],
+                    sliceResolved),
+                raw_rows_pointer: 'For the rows behind a kind: GET /api/admin/db?view=events'
+                    + '&name=playtest_break&group=kind. This view is the RATE; that one is the evidence.',
             }));
         }
 
@@ -2392,6 +3658,16 @@ module.exports = async (req, res) => {
             return res.status(200).json(Object.assign(meta, {
                 limit: limit,
                 note: 'Ids are masked. Use player_ref with ?view=players&ref=<handle> to open one player.',
+                // WO-1842. Said out loud rather than left for someone to discover: this
+                // ranking is by RAW EVENT COUNT, and since 2026-09-17 a 60s
+                // session_heartbeat means that count tracks TIME PLAYED more than acts
+                // performed. The ordering is arguably more useful now, but it is a
+                // different question than it was, and an unannounced change of meaning is
+                // the thing this file spends its comments preventing.
+                ordering_note: 'Ordered by raw event COUNT. Since WO-1842 added a 60-second '
+                    + 'session_heartbeat, that count is driven largely by time spent in the '
+                    + 'app rather than by actions taken. For measured playtime itself use '
+                    + '?view=playtime; for acts, the qualifying-play allowlist on ?view=command.',
                 rows: rows.map(r => ({
                     player_masked: maskId(r.player_id),
                     player_ref: r.player_ref,
@@ -2406,7 +3682,13 @@ module.exports = async (req, res) => {
         }
 
         return res.status(400).json({
-            error: 'Unknown view. Use: overview | retention | funnel | economy | purchases | ops | players | command',
+            // WO-1842 added playtime. `skus` was already live and had never been
+            // listed here - a view nobody can discover is a view nobody uses, and
+            // this hint is the only discovery surface the endpoint has.
+            // WO-1843 adds active | monetization | stability, named here in the SAME
+            // edit that added them for exactly the reason above.
+            error: 'Unknown view. Use: overview | retention | funnel | economy | purchases | '
+                + 'playtime | ops | players | command | skus | active | monetization | stability',
         });
     } catch (err) {
         console.error('[admin/stats] error:', err);

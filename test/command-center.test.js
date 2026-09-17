@@ -199,7 +199,22 @@ test('the ops READ view exists on the read endpoint and is reachable', () => {
     const src = stripComments(readSrc('api/admin/stats.js'));
     assert.match(src, /if \(view === 'ops'\) \{/);
     // A view that is not in the "unknown view" hint is a view nobody finds.
-    assert.match(src, /purchases \| ops \| players/);
+    // ⚠ ASSERTED PER-NAME, NOT AS AN ADJACENT RUN. This line read
+    // /purchases \| ops \| players/ until WO-1842, so inserting one view name into
+    // the middle of the hint failed a test about `ops` being DISCOVERABLE - an
+    // assertion that was really about word order. Each name is checked on its own,
+    // so the hint can gain a view or be reordered without a false failure, and the
+    // thing the test is named for still cannot regress.
+    // Scoped to the HINT ITSELF, not to the file: every view name also appears as a
+    // `view === '...'` dispatch, so a whole-file search would pass even with an empty
+    // hint and prove nothing.
+    const at = src.indexOf('Unknown view. Use:');
+    assert.ok(at > 0, 'the unknown-view hint must exist');
+    const hint = src.slice(at, at + 400);
+    for (const v of ['overview', 'retention', 'funnel', 'economy', 'purchases',
+                     'playtime', 'ops', 'players', 'command']) {
+        assert.ok(hint.includes(v), v + ' must be in the unknown-view hint; got: ' + hint.slice(0, 200));
+    }
 });
 
 test('the WRITE half is a DIFFERENT FILE, and the read files never reach it', () => {
@@ -823,7 +838,13 @@ test('the command view exists on the READ endpoint and is still SELECT-only', ()
     const src = stripComments(readSrc('api/admin/stats.js'));
     assert.match(src, /if \(view === 'command'\) \{/);
     // A view that is not in the "unknown view" hint is a view nobody finds.
-    assert.match(src, /purchases \| ops \| players \| command/);
+    // Per-name and scoped to the hint, for the reason written out at the `ops`
+    // case above: /purchases \| ops \| players \| command/ was an assertion about
+    // WORD ORDER wearing the name of an assertion about discoverability.
+    const at = src.indexOf('Unknown view. Use:');
+    assert.ok(at > 0, 'the unknown-view hint must exist');
+    assert.ok(src.slice(at, at + 400).includes('command'),
+        'command must be in the unknown-view hint');
     // The read/write boundary is not relaxed by adding an area to it.
     assert.deepEqual(writeVerbsIn('api/admin/stats.js'), []);
 });
@@ -880,7 +901,20 @@ test('a failed query renders as WORDS, never as a trustworthy zero', () => {
 test('session length says it is an ESTIMATE and says how sessions end', () => {
     const src = stripComments(readSrc('api/admin/stats.js'));
     assert.match(src, /instrumented: false/);
-    assert.match(src, /how_sessions_end: 'THEY DO NOT/);
+    // WO-1842 RE-POINTED THIS ASSERTION, and the re-point is the whole ticket.
+    // It used to pin the literal sentence "how_sessions_end: 'THEY DO NOT" - which
+    // was TRUE until 2026-09-17, when EventTracker.cs gained session_heartbeat +
+    // session_end. Leaving it pinned would have made this oracle enforce a false
+    // statement about the client, i.e. it would fail the fix and pass the bug.
+    //
+    // What the assertion protects is UNCHANGED and is the thing that matters: this
+    // block is still the GAP-BASED ESTIMATE, it still says so, and it must not be
+    // quietly upgraded into a claim of measurement. So we pin (a) that it still
+    // calls itself an estimate of the span between ACTS, and (b) that it hands the
+    // reader the measured view instead of pretending to be it.
+    assert.match(src, /how_sessions_end: 'FOR THIS FIGURE, by a/);
+    assert.match(src, /remains an ESTIMATE of the span between a player/);
+    assert.match(src, /measured_alternative: '\?view=playtime'/);
     // Median AND mean, with the median as the headline.
     assert.match(src, /median_seconds/);
     assert.match(src, /mean_seconds/);
