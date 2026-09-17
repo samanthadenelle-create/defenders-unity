@@ -63,6 +63,9 @@ namespace DeNelle.Editor
                 CheckDeployBarKitButton(failures, notes);
                 CheckInWorldTroopControls(failures, notes);
                 CheckDeployToastAboveModal(failures, notes);
+                CheckRaidUiGuardBand(failures, notes);
+                CheckRaidUiGuardIsComponentLevel(failures, notes);
+                CheckBreachDiagnosticIsTruthful(failures, notes);
             }
             catch (Exception ex)
             {
@@ -553,6 +556,262 @@ namespace DeNelle.Editor
             if (failures.Count == before)
                 notes.Add("deploy toasts ride sortingOrder " + toastOrder + " above the panel's " + modalOrder +
                           " modal band, and the BEGIN ASSAULT tap is traced on arrival");
+        }
+
+        // =====================================================================
+        //  WO-1777 / WO-1790 — the raid world-tap UI guard, and a truthful breach diagnostic
+        // ---------------------------------------------------------------------
+        //  Three cases, all headless:
+        //    6. [raid-ui-guard-band]      PURE ORACLE over the real decision function
+        //       (RaidDeployController.IsInReservedThumbBand), driven with the ACTUAL screen
+        //       points from the owner's Bastion capture. Not a source-lint: it calls the
+        //       shipped code. A live EventSystem raycast is deliberately NOT built here —
+        //       overlay-canvas raycasting depends on Screen.* and display state and is flaky
+        //       in EditMode, which is why this file's own header settles on pure oracles.
+        //    7. [raid-ui-guard-component] SOURCE-LINT that the guard is component-level and
+        //       crosses canvases WITHOUT a DeNelle.HUD reference (CLAUDE.md §5).
+        //    8. [breach-diag-truthful]    SOURCE-LINT that the breach diagnostic reports what
+        //       it measured and no longer picks its "nearest" wall by camera distance nor
+        //       prints an includes-inactive renderer union (WO-1790).
+        // =====================================================================
+
+        const string GuardTag = "[raid-ui-guard]";
+
+        // ⭐ THE MEASURED EVIDENCE, kept as data so the case cannot drift from the capture it
+        // was written against. Logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt,
+        // screen 2670x1200: 40 failed breach taps inside x 774-876 / y 78-130, and the ONE
+        // success at (1333, 573) on 'Wall_Keep1_SS_0'.
+        const float CaptureW = 2670f;
+        const float CaptureH = 1200f;
+
+        static void CheckRaidUiGuardBand(List<string> failures, List<string> notes)
+        {
+            int before = failures.Count;
+
+            // The four corners of the measured 100x50 px failed-tap box. Every one must be
+            // consumed by the guard, or WO-1777's forty taps deploy a troop again.
+            var failedTapCorners = new[]
+            {
+                new Vector2(774f, 78f), new Vector2(876f, 78f),
+                new Vector2(774f, 130f), new Vector2(876f, 130f),
+                new Vector2(820f, 105f),   // the centre of the box — the face whose identity is UNPROVEN
+            };
+            for (int i = 0; i < failedTapCorners.Length; i++)
+            {
+                Vector2 p = failedTapCorners[i];
+                float nx = p.x / CaptureW;
+                float ny = p.y / CaptureH;
+                if (!RaidDeployController.IsInReservedThumbBand(nx, ny))
+                    failures.Add(GuardTag + " the measured failed-tap point (" + p.x + ", " + p.y + ") of " +
+                                 CaptureW + "x" + CaptureH + " = norm (" + nx.ToString("0.000") + ", " +
+                                 ny.ToString("0.000") + ") is NOT consumed by the reserved ability-row band. " +
+                                 "That is one of the forty presses in the owner's Bastion capture that also " +
+                                 "deployed a troop (WO-1777) — the band clause is what catches them WITHOUT " +
+                                 "knowing which ability face sits there, which was never established.");
+            }
+
+            // The genuine mid-screen wall tap, and open ground, must still reach the world.
+            var worldTaps = new[]
+            {
+                new Vector2(1333f, 573f),    // the ONE success in the capture: 'Wall_Keep1_SS_0'
+                new Vector2(1335f, 600f),    // open ground, mid-screen
+                new Vector2(1335f, 1080f),   // open ground, high on the screen
+            };
+            for (int i = 0; i < worldTaps.Length; i++)
+            {
+                Vector2 p = worldTaps[i];
+                float nx = p.x / CaptureW;
+                float ny = p.y / CaptureH;
+                if (RaidDeployController.IsInReservedThumbBand(nx, ny))
+                    failures.Add(GuardTag + " the world tap (" + p.x + ", " + p.y + ") = norm (" +
+                                 nx.ToString("0.000") + ", " + ny.ToString("0.000") + ") is being consumed as " +
+                                 "UI. The guard is OVER-rejecting: a mid-screen wall tap must still order a " +
+                                 "breach and open ground must still deploy (WO-1777 acceptance 3).");
+            }
+
+            // The band is x-bounded, so the movement stick's corner is left exactly as it was —
+            // the lead's instruction was to keep the joystick exclusion unchanged, and the stick
+            // is raycast-transparent (VirtualJoystick.cs:219), so no clause here may claim it.
+            if (RaidDeployController.IsInReservedThumbBand(0.05f, 0.08f))
+                failures.Add(GuardTag + " the band now claims the bottom-LEFT corner (norm 0.05, 0.08), which is " +
+                             "the movement stick's mount (HudLayoutBands.MoveClusterMount), not the ability row. " +
+                             "The band must start at MoveClusterMount.xMax.");
+
+            // Non-vacuous: a function that always returned false would pass every negative above.
+            if (!RaidDeployController.IsInReservedThumbBand(0.5f, 0.08f))
+                failures.Add(GuardTag + " IsInReservedThumbBand consumes NOTHING at norm (0.5, 0.08), dead centre " +
+                             "of the reserved ability row. The band clause is inert and this case proves nothing.");
+
+            if (failures.Count == before)
+                notes.Add("world-tap guard consumes all 5 measured ability-row points and none of the 3 world " +
+                          "taps; the stick corner is untouched");
+        }
+
+        static void CheckRaidUiGuardIsComponentLevel(List<string> failures, List<string> notes)
+        {
+            int before = failures.Count;
+            string path = Path.Combine(Application.dataPath, "_Modules/Village/Troops/RaidDeployController.cs");
+            if (!File.Exists(path)) { failures.Add(GuardTag + " RaidDeployController.cs not found at " + path); return; }
+            string text;
+            try { text = File.ReadAllText(path); }
+            catch (Exception ex) { failures.Add(GuardTag + " RaidDeployController.cs unreadable (" + ex.Message + ")"); return; }
+
+            // (a) The guard must reach FOREIGN canvases by COMPONENT identity.
+            if (text.IndexOf("GetComponentInParent<Selectable>", StringComparison.Ordinal) < 0)
+                failures.Add(GuardTag + " the guard no longer resolves a foreign canvas' Selectable. WO-1777's " +
+                             "forty presses were on kit ability faces (Image + Button, built by " +
+                             "ElarionUiKitObsidian.BuildActionSlot) on a canvas this assembly cannot name.");
+            if (text.IndexOf("IEventSystemHandler", StringComparison.Ordinal) < 0)
+                failures.Add(GuardTag + " the guard no longer tests IEventSystemHandler, so a foreign canvas' " +
+                             "pointer handler that carries no Selectable falls through to a world tap.");
+            if (text.IndexOf("GraphicRaycaster", StringComparison.Ordinal) < 0)
+                failures.Add(GuardTag + " the guard has no GraphicRaycaster fallback, so with no EventSystem " +
+                             "present (headless / a scene that never built one) it measures nothing at all.");
+
+            // (b) The OWN-canvas condition must survive: any hit on this HUD consumes, including a
+            //     backing plate between two tray tiles.
+            if (text.IndexOf("IsChildOf(_ui.transform)", StringComparison.Ordinal) < 0)
+                failures.Add(GuardTag + " the own-canvas condition (IsChildOf(_ui.transform)) is gone. It was not " +
+                             "the WO-1777 bug — being the ONLY condition was. Dropping it lets a press on this " +
+                             "HUD's own non-interactable backing plate deploy a troop behind it.");
+
+            // (c) ⛔ CLAUDE.md §5: DeNelle.Village may not reference DeNelle.HUD, in code or asmdef.
+            // ⚠ Match a REFERENCE, not the word: this file's comments legitimately NAME
+            // DeNelle.HUD four times to record why the boundary exists. A using-directive or a
+            // qualified type is the violation; prose about the rule is not.
+            if (text.IndexOf("using DeNelle.HUD", StringComparison.Ordinal) >= 0
+                || text.IndexOf("DeNelle.HUD.", StringComparison.Ordinal) >= 0
+                || text.IndexOf("HudKitController", StringComparison.Ordinal) >= 0)
+                failures.Add(GuardTag + " RaidDeployController now names DeNelle.HUD / HudKitController. That is " +
+                             "the assembly boundary CLAUDE.md §5 forbids, and it is exactly why the guard has to " +
+                             "be component-level in the first place (WO-1777 §3b).");
+
+            // (d) The band comes from SHARED DATA, never a literal typed into this file.
+            if (text.IndexOf("HudLayoutBands.ThumbActionRowBand", StringComparison.Ordinal) < 0)
+                failures.Add(GuardTag + " the reserved band is no longer read from " +
+                             "HudLayoutBands.ThumbActionRowBand. A matching literal on each side is the " +
+                             "duplicated-state failure CLAUDE.md §2/§5/§16 each describe.");
+
+            // (e) The rejection must be TRACED, and throttled — the Mage casts constantly, and the
+            //     logcat ring evicting the boot window is a recorded memory.
+            if (text.IndexOf("world-tap-rejected-ui", StringComparison.Ordinal) < 0)
+                failures.Add(GuardTag + " the guard rejects silently. CLAUDE.md §12 forbids a silent skip: the " +
+                             "trace has to name WHICH element consumed the press, or the next reader is back to " +
+                             "guessing which is what produced WO-1777's retracted collider theory.");
+            int rejectAt = text.IndexOf("world-tap-rejected-ui", StringComparison.Ordinal);
+            if (rejectAt >= 0)
+            {
+                int lineStart = text.LastIndexOf('\n', rejectAt) + 1;
+                string callLine = text.Substring(lineStart, Math.Min(240, text.Length - lineStart));
+                if (callLine.IndexOf("Throttle", StringComparison.Ordinal) < 0)
+                    failures.Add(GuardTag + " the world-tap rejection trace is not Throttled. Every ability press " +
+                                 "during a raid hits this path (the capture shows 54 Mage casts in ~100 s), and an " +
+                                 "un-throttled line evicts the boot window out of the logcat ring.");
+            }
+
+            // (f) The deploy path must trace its arrival — WO-1777 acceptance 1 greps this prefix,
+            //     and without the line the acceptance passes vacuously.
+            if (text.IndexOf("HandleDeployTap IN", StringComparison.Ordinal) < 0)
+                failures.Add(GuardTag + " HandleDeployTap emits no 'HandleDeployTap IN' arrival trace, so " +
+                             "WO-1777 acceptance 1 (zero deploy taps with y < 200) cannot distinguish 'the guard " +
+                             "works' from 'the line does not exist'.");
+
+            if (failures.Count == before)
+                notes.Add("world-tap guard is component-level (Selectable / IEventSystemHandler / " +
+                          "GraphicRaycaster + shared band data), keeps the own-canvas condition, names no " +
+                          "DeNelle.HUD type, and traces its rejection under a throttle");
+        }
+
+        const string DiagTag = "[breach-diag-truthful]";
+
+        static void CheckBreachDiagnosticIsTruthful(List<string> failures, List<string> notes)
+        {
+            int before = failures.Count;
+            string path = Path.Combine(Application.dataPath, "_Modules/Village/Troops/RaidDeployController.cs");
+            if (!File.Exists(path)) { failures.Add(DiagTag + " RaidDeployController.cs not found at " + path); return; }
+            string text;
+            try { text = File.ReadAllText(path); }
+            catch (Exception ex) { failures.Add(DiagTag + " RaidDeployController.cs unreadable (" + ex.Message + ")"); return; }
+
+            int start = text.IndexOf("private void LogBreachTapDiagnostics(", StringComparison.Ordinal);
+            if (start < 0)
+            {
+                failures.Add(DiagTag + " LogBreachTapDiagnostics is gone. Instrumentation is PERMANENT " +
+                             "(CLAUDE.md §12, owner ruling 2026-08-09) — it may be flagged off, never stripped. " +
+                             "WO-1790's fix was to make it truthful.");
+                return;
+            }
+            int end = text.IndexOf("private static float DistanceFromRay(", start, StringComparison.Ordinal);
+            if (end < 0) end = Math.Min(start + 9000, text.Length);
+            string block = text.Substring(start, end - start);
+
+            // (a) WO-1790 §3.1 — the "nearest" wall must be nearest THE RAY, not the camera.
+            if (block.IndexOf("- ray.origin).sqrMagnitude", StringComparison.Ordinal) >= 0)
+                failures.Add(DiagTag + " the diagnostic still picks its nearest WallSegment by distance to " +
+                             "ray.origin — the CAMERA. For a tap that never went near a wall that is an arbitrary " +
+                             "wall, and its two IntersectsRay=False values are noise the message then read as a " +
+                             "diagnosis (WO-1790 §2b). Pick by distance from the ray.");
+            if (block.IndexOf("DistanceFromRay(ray", StringComparison.Ordinal) < 0)
+                failures.Add(DiagTag + " the diagnostic does not call DistanceFromRay, so nothing establishes that " +
+                             "the reported wall is anywhere near the tap.");
+            if (block.IndexOf("nearestWallDistToRay=", StringComparison.Ordinal) < 0)
+                failures.Add(DiagTag + " the trace does not print nearestWallDistToRay. Without it the reader " +
+                             "cannot tell a relevant wall from an arbitrary one — which is the whole of WO-1790 §2b.");
+
+            // (b) WO-1790 §3.2 — no includes-inactive renderer union under a name that means
+            //     "what the player sees". WO-1723 §6 had already retired that reading once.
+            if (block.IndexOf("GetComponentsInChildren<Renderer>(true)", StringComparison.Ordinal) >= 0)
+                failures.Add(DiagTag + " the diagnostic still unions INCLUDES-INACTIVE renderers. On an " +
+                             "IronBastion segment that swallows the inactive placeholder twin and the Ruin_* " +
+                             "tiles, which is how a 2.00 m collider read as half of an 8.24 m wall and produced a " +
+                             "P0 that had to be retracted (WO-1790 §2a; WO-1723 §6 retired it nine days earlier).");
+            if (block.IndexOf("activeRendererBounds=", StringComparison.Ordinal) < 0)
+                failures.Add(DiagTag + " the renderer union is not reported as activeRendererBounds. The name has " +
+                             "to say what was measured.");
+            if (block.IndexOf("activeRenderersCounted=", StringComparison.Ordinal) < 0
+                || block.IndexOf("renderersSkippedInactiveOrDisabled=", StringComparison.Ordinal) < 0)
+                failures.Add(DiagTag + " the trace does not report how many renderers it counted and skipped, so a " +
+                             "reader cannot tell an empty union from a full one.");
+
+            // (c) WO-1790 §3.4 — the screen point's normalised position and the band flag. This is
+            //     the single field that would have named WO-1777's real cause on first read.
+            if (block.IndexOf("screenNorm=", StringComparison.Ordinal) < 0
+                || block.IndexOf("inReservedThumbBand=", StringComparison.Ordinal) < 0)
+                failures.Add(DiagTag + " the diagnostic does not report screenNorm and inReservedThumbBand. Those " +
+                             "two fields are what turn 'the tap resolved nothing' into 'the finger was on the " +
+                             "ability row' (WO-1790 §3.4).");
+
+            // (d) WO-1790 §3.3 / §4 — the block states measurements, not causes.
+            if (block.IndexOf("MEASURED ONLY", StringComparison.Ordinal) < 0)
+                failures.Add(DiagTag + " no line in the block marks itself MEASURED ONLY. CLAUDE.md §11B: an " +
+                             "instrument that states an unproven cause as fact converts 'we do not know' into " +
+                             "'we know, wrongly', and the reader cannot tell which they are holding.");
+            if (block.IndexOf("Splits the remaining causes", StringComparison.Ordinal) >= 0)
+                failures.Add(DiagTag + " the retired 'Splits the remaining causes' inference is back. That comment " +
+                             "is the one that told a reader two expected Falses meant the ray was wrong.");
+
+            // (e) The sibling OUT line must carry the same measured fields and claim nothing.
+            int outAt = text.IndexOf("outcome=not_wall_segment", StringComparison.Ordinal);
+            if (outAt < 0)
+                failures.Add(DiagTag + " the not_wall_segment OUT line is gone — WO-1777's evidence grep keys on " +
+                             "'HandleBreachTap OUT: outcome=<token>' and on that token.");
+            else
+            {
+                string outBlock = text.Substring(outAt, Math.Min(1400, text.Length - outAt));
+                if (outBlock.IndexOf("screenNorm=", StringComparison.Ordinal) < 0
+                    || outBlock.IndexOf("hitLayer=", StringComparison.Ordinal) < 0)
+                    failures.Add(DiagTag + " the not_wall_segment OUT line does not report screenNorm and hitLayer. " +
+                                 "It is the line a reader greps first, and in the owner's capture it already " +
+                                 "carried the coordinates that named the real cause — unread (WO-1790 §1).");
+                if (outBlock.IndexOf("invites", StringComparison.Ordinal) >= 0)
+                    failures.Add(DiagTag + " the not_wall_segment OUT line still editorialises. It may state what " +
+                                 "was measured and nothing more (WO-1790 §3.3).");
+            }
+
+            if (failures.Count == before)
+                notes.Add("breach diagnostic picks its nearest wall by ray distance, reports " +
+                          "activeRendererBounds with counts, prints screenNorm + inReservedThumbBand, and " +
+                          "asserts no unmeasured cause");
         }
 
         static string Join(IReadOnlyList<string> lines)

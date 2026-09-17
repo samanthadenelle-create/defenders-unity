@@ -723,22 +723,229 @@ namespace DeNelle.Village
             return false;
         }
 
+        // ═════════════════════════════════════════════════════════════════════
+        // ⛔ WO-1777 — THE UI GUARD USED TO SEE ONLY THIS CONTROLLER'S OWN CANVAS.
+        // ---------------------------------------------------------------------
+        // MEASURED, not theorised (owner Bastion capture
+        // Logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt): of 41 distinct
+        // `HandleBreachTap IN - screenPoint=` values, FORTY sat in one ~100x50 px box at
+        // x 774-876, y 78-130 of a 2670x1200 screen - i.e. normalised x 0.290-0.328,
+        // y 0.065-0.108 - and every one resolved the not-a-wall outcome on 'RaidGround'.
+        // Forty presses inside one small box is a finger on a fixed button, and that box is
+        // inside HudLayoutBands.ThumbActionRowMinY..MaxY (0.015-0.150), the band the owner
+        // reserved for the kit ability row on 2026-09-06. With Breach armed those presses were
+        // harmless noise; with Deploy armed the SAME press also drops a troop on the ground in
+        // front of the hero, because both paths share this one guard.
+        //
+        // WHY THE GUARD COULD NOT SEE IT: the old body kept only hits satisfying
+        // `IsChildOf(_ui.transform)` - this controller's own canvas. The ability faces are built
+        // by the kit in DeNelle.HUD, on a different canvas, and DeNelle.Village may not
+        // reference DeNelle.HUD (CLAUDE.md sec.5). So the test is now made by COMPONENT IDENTITY
+        // (Selectable / IEventSystemHandler / Canvas / GraphicRaycaster - all UnityEngine.UI or
+        // UnityEngine.EventSystems types) plus the SHARED BAND DATA in DeNelle.Core.UI. No type
+        // reference into DeNelle.HUD is added, and none is needed.
+        //
+        // ⚠ THE BAND CLAUSE IS WHAT MAKES THE FIX INDEPENDENT OF AN UNPROVEN FACT. Which ability
+        // FACE sits at x ~ 820 was NOT established by the audit lane (WO-1777 sec.5 acceptance 4
+        // records it as open). The band clause catches all forty taps by arithmetic alone, so the
+        // fix never has to know. It is derived from HudLayoutBands - never a literal typed here
+        // (the duplicated-state failure CLAUDE.md sec.2 / sec.5 / sec.16 each describe).
+        //
+        // ⚠ AND IT IS DELIBERATELY NOT AN ALL-GRAPHICS RULE. RaidHudController's readout is
+        // tap-transparent by design; a rule that consumed ANY raycast hit would swallow
+        // legitimate world taps under a backing plate. Only an INTERACTABLE component consumes -
+        // and `interactable`/`enabled` are NOT tested, because a cooldown-locked ability face
+        // must still eat the press (otherwise "press a greyed face -> a troop deploys" replaces
+        // the bug with a subtler one).
+        //
+        // ⛔ THE JOYSTICK IS LEFT EXACTLY AS IT WAS (lead instruction, 2026-09-16). It needs no
+        // clause here: VirtualJoystick polls UnityEngine.Input directly and sets
+        // `img.raycastTarget = false` (VirtualJoystick.cs:12-13, :219), so it never appears in a
+        // graphic raycast at all and this guard cannot change its behaviour. WO-1777 sec.4 item 3
+        // (also calling VirtualJoystick.IsInZone here) is therefore DEFERRED, not done.
+        // ═════════════════════════════════════════════════════════════════════
+
+        /// <summary>Guard verdict: the hit was on this controller's own canvas.</summary>
+        public const string UiRuleOwnCanvas = "own-canvas-hit";
+        /// <summary>Guard verdict: a foreign canvas' Selectable (button / toggle / slider) was under the finger.</summary>
+        public const string UiRuleSelectable = "foreign-selectable";
+        /// <summary>Guard verdict: a foreign canvas' pointer-event handler was under the finger.</summary>
+        public const string UiRuleEventHandler = "foreign-event-handler";
+        /// <summary>Guard verdict: the point fell inside the reserved kit ability-row band.</summary>
+        public const string UiRuleThumbBand = "reserved-thumb-band";
+        /// <summary>Guard verdict: nothing consumed the point — it is a world tap.</summary>
+        public const string UiRuleNone = "none";
+
         /// <summary>
-        /// True when a screen point is over one of THIS HUD's interactable graphics (the
-        /// tray tiles / Rally / Retreat). Uses the canvas GraphicRaycaster so a tap meant
-        /// for a button never falls through to a ground deploy. Null-safe.
+        /// True when a screen point is consumed by UI and must NEVER become a world tap.
+        /// Covers EVERY canvas the player can press during a raid (this HUD's tray, the kit
+        /// ability row / dock, the raid readout, toasts) plus the reserved ability-row band.
+        /// Traces WHAT consumed it — measured, never inferred (CLAUDE.md sec.11B). Null-safe.
         /// </summary>
         private bool IsPointerOverUi(Vector2 screenPoint)
         {
-            var es = UnityEngine.EventSystems.EventSystem.current;
-            if (es == null) return false;
-            var data = new UnityEngine.EventSystems.PointerEventData(es) { position = screenPoint };
+            bool consumed = TryFindUiConsumer(screenPoint, out string consumerName, out string canvasName,
+                                              out bool ownCanvas, out string rule, out int hitCount);
+            if (!consumed) return false;
+
+            // Nested quotes are built into LOCALS first: CompileGate.BraceBalanced has no
+            // interpolated-string model, so a '"' inside an interpolation hole ends the string
+            // for its scanner and the file reads unbalanced (CLAUDE.md sec.1, WO-1096).
+            string scope = ownCanvas ? "own" : "foreign";
+            string consumerQuoted = "'" + consumerName + "'";
+            string canvasQuoted = "'" + canvasName + "'";
+            DeNelle.Core.Diagnostics.FlowTrace.Throttle("Raid", "world-tap-rejected-ui", 0.25f,
+                "world tap REJECTED as UI: screenPoint=" + screenPoint +
+                " screenNorm=" + DescribeScreenNorm(screenPoint) +
+                " uiHits=" + hitCount +
+                " consumer=" + consumerQuoted +
+                " canvas=" + canvasQuoted +
+                " scope=" + scope +
+                " rule=" + rule +
+                " - MEASURED ONLY: consumer/canvas are what the graphic raycast reported under " +
+                "this point, or the reserved band when rule=" + UiRuleThumbBand + ". No deploy, " +
+                "no rally, no breach this frame.");
+            return true;
+        }
+
+        /// <summary>
+        /// The guard's measurement. Raycasts every registered GraphicRaycaster through
+        /// EventSystem.current (which iterates ALL of them, not just this canvas'), falling back
+        /// to resolving the raycasters BY COMPONENT when no EventSystem exists (headless /
+        /// EditMode). Then decides consumption by component identity, and last by the reserved
+        /// ability-row band. Out-params name what was found so the trace can state it.
+        /// </summary>
+        private bool TryFindUiConsumer(Vector2 screenPoint, out string consumerName, out string canvasName,
+                                       out bool ownCanvas, out string rule, out int hitCount)
+        {
+            consumerName = "<none>";
+            canvasName = "<none>";
+            ownCanvas = false;
+            rule = UiRuleNone;
+            hitCount = 0;
+
             var hits = new List<UnityEngine.EventSystems.RaycastResult>();
-            es.RaycastAll(data, hits);
-            foreach (var h in hits)
-                if (h.gameObject != null && _ui != null && h.gameObject.transform.IsChildOf(_ui.transform))
+            var es = UnityEngine.EventSystems.EventSystem.current;
+            if (es != null)
+            {
+                // Deliberately RaycastAll and not IsPointerOverGameObject(): the latter needs a
+                // per-touch pointerId under the new Input System and warns when called outside
+                // event processing. RaycastAll also hands back WHICH object was hit, which the
+                // trace above has to report.
+                var data = new UnityEngine.EventSystems.PointerEventData(es) { position = screenPoint };
+                es.RaycastAll(data, hits);
+            }
+            else
+            {
+                var casters = FindObjectsByType<GraphicRaycaster>(FindObjectsSortMode.None);
+                var probe = new UnityEngine.EventSystems.PointerEventData(null) { position = screenPoint };
+                for (int i = 0; i < casters.Length; i++)
+                {
+                    var caster = casters[i];
+                    if (caster == null || !caster.isActiveAndEnabled) continue;
+                    DeNelle.Core.Diagnostics.Guard.Try("Raid", "ui guard: raycast a GraphicRaycaster",
+                        () => caster.Raycast(probe, hits));
+                }
+            }
+            hitCount = hits.Count;
+
+            for (int i = 0; i < hits.Count; i++)
+            {
+                var go = hits[i].gameObject;
+                if (go == null) continue;
+
+                // This HUD's own canvas: ANY hit consumes, unchanged from the pre-WO-1777
+                // behaviour — a press on the tray's backing plate between two tiles must not
+                // fall through to the ground either.
+                if (_ui != null && go.transform.IsChildOf(_ui.transform))
+                {
+                    consumerName = go.name;
+                    canvasName = DescribeCanvas(go);
+                    ownCanvas = true;
+                    rule = UiRuleOwnCanvas;
                     return true;
+                }
+
+                // A foreign canvas: consume only an INTERACTABLE component, by type identity.
+                var sel = go.GetComponentInParent<Selectable>(true);
+                if (sel != null)
+                {
+                    consumerName = sel.gameObject.name;
+                    canvasName = DescribeCanvas(sel.gameObject);
+                    rule = UiRuleSelectable;
+                    return true;
+                }
+                var handler = go.GetComponentInParent<UnityEngine.EventSystems.IEventSystemHandler>(true);
+                var handlerComponent = handler as Component;
+                if (handlerComponent != null)
+                {
+                    consumerName = handlerComponent.gameObject.name;
+                    canvasName = DescribeCanvas(handlerComponent.gameObject);
+                    rule = UiRuleEventHandler;
+                    return true;
+                }
+            }
+
+            // Last: the band the owner reserved for the kit ability row. A round medallion does
+            // not fill its cell, so a press in the gap BETWEEN two faces raycasts nothing — and
+            // that press is still the player reaching for an ability, not for the ground.
+            if (IsInReservedThumbBand(screenPoint))
+            {
+                consumerName = "<reserved ability-row band>";
+                canvasName = "<kit actionBar band (shared data, not a raycast hit)>";
+                rule = UiRuleThumbBand;
+                return true;
+            }
             return false;
+        }
+
+        /// <summary>
+        /// True when a screen point (px, origin bottom-left) falls inside the band reserved for
+        /// the kit ability row. Screen-space wrapper; the arithmetic lives in the pure overload.
+        /// </summary>
+        public static bool IsInReservedThumbBand(Vector2 screenPoint)
+        {
+            int w = Screen.width;
+            int h = Screen.height;
+            if (w <= 0 || h <= 0) return false;
+            return IsInReservedThumbBand(screenPoint.x / w, screenPoint.y / h);
+        }
+
+        /// <summary>
+        /// Normalised-coordinate form of the reserved ability-row band test. PURE — no screen, no
+        /// canvas, no scene — so a headless oracle can drive it. The band is read from
+        /// <see cref="HudLayoutBands"/>: y from ThumbActionRowMinY to ThumbActionRowMaxY, x from
+        /// MoveClusterMount.xMax (documented there as also the actionBar's left edge, and pinned
+        /// equal to it by RaidHudThumbBandRegression) to the right screen edge. NEVER a literal.
+        /// </summary>
+        public static bool IsInReservedThumbBand(float nx, float ny)
+        {
+            Rect band = HudLayoutBands.ThumbActionRowBand(HudLayoutBands.MoveClusterMount.xMax, 1f);
+            return band.Contains(new Vector2(nx, ny));
+        }
+
+        /// <summary>Root canvas name for a hit object, or a stated reason there is none.</summary>
+        private static string DescribeCanvas(GameObject go)
+        {
+            if (go == null) return "<null>";
+            var c = go.GetComponentInParent<Canvas>(true);
+            if (c == null) return "<no canvas>";
+            var root = c.rootCanvas;
+            return root != null ? root.name : c.name;
+        }
+
+        /// <summary>
+        /// A screen point as a normalised "x,y" pair. WO-1790 sec.3 item 4: this is the ONE field
+        /// that would have made WO-1777's real cause obvious on first read.
+        /// </summary>
+        private static string DescribeScreenNorm(Vector2 screenPoint)
+        {
+            int w = Screen.width;
+            int h = Screen.height;
+            if (w <= 0 || h <= 0) return "<no screen>";
+            float nx = screenPoint.x / w;
+            float ny = screenPoint.y / h;
+            return nx.ToString("0.000") + "," + ny.ToString("0.000");
         }
 
         /// <summary>
@@ -759,6 +966,15 @@ namespace DeNelle.Village
 
         private void HandleDeployTap(Vector2 screenPoint)
         {
+            // WO-1777 acceptance 1 greps this exact prefix to prove no deploy tap survives the UI
+            // guard in the bottom band, so the line must exist and must carry the screen point.
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                "HandleDeployTap IN - screenPoint=" + screenPoint +
+                " screenNorm=" + DescribeScreenNorm(screenPoint) +
+                " inReservedThumbBand=" + IsInReservedThumbBand(screenPoint) +
+                " armedDefId='" + _armedDefId + "' (a true inReservedThumbBand here would mean the " +
+                "WO-1777 UI guard regressed - the guard refuses that band before this method runs).");
+
             if (!RaycastGround(screenPoint, out RaycastHit hit))
             {
                 return;
@@ -889,8 +1105,12 @@ namespace DeNelle.Village
         {
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                 $"HandleBreachTap IN - screenPoint={screenPoint}, breachModeOn={_breachMode} " +
-                "(sanity trace only - Update's _breachMode gate means this should always read true; " +
-                "a false here would mean this method was reached with breach mode already off).");
+                "screenNorm=" + DescribeScreenNorm(screenPoint) +
+                " inReservedThumbBand=" + IsInReservedThumbBand(screenPoint) +
+                " (sanity trace only - Update's _breachMode gate means this should always read true; " +
+                "a false here would mean this method was reached with breach mode already off. " +
+                "WO-1777: a true inReservedThumbBand here would mean the UI guard regressed - the " +
+                "guard refuses that band before this method runs).");
 
             // 2026-09-14 breach-tap-miss investigation (do NOT strip — CLAUDE.md §12):
             // captured "hit 'RaidGround'" on a tap squarely on a rendered wall, while the
@@ -911,10 +1131,13 @@ namespace DeNelle.Village
                 LogBreachTapDiagnostics(screenPoint, false, default);
                 SetStatus("Breach: tap a wall section to order the assault.");
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
-                    $"HandleBreachTap OUT: outcome=raycast_miss screenPoint={screenPoint} - " +
-                    "RaycastGround found nothing at all (masked mask/fallback ~0 both missed). " +
-                    "No wall resolved, standing order (if any) UNCHANGED. See breach-tap-diag-* " +
-                    "lines above for the raycast/collider detail.");
+                    $"HandleBreachTap OUT: outcome=raycast_miss screenPoint={screenPoint} " +
+                    "screenNorm=" + DescribeScreenNorm(screenPoint) +
+                    " inReservedThumbBand=" + IsInReservedThumbBand(screenPoint) +
+                    " - MEASURED: RaycastGround matched no collider at all (masked mask and the ~0 " +
+                    "fallback both returned false). No wall resolved, standing order (if any) " +
+                    "UNCHANGED. See breach-tap-diag-* lines above for the raycast/collider detail; " +
+                    "no cause is asserted here.");
                 return;
             }
 
@@ -929,15 +1152,26 @@ namespace DeNelle.Village
                 // stray tap on the ground is the failure the player cannot see or undo; the
                 // Breach toggle is the visible cancel (ToggleBreach), mirroring ToggleRally.
                 SetStatus("Breach: that is not a wall - tap a wall section.");
+                // WO-1790: locals first (CompileGate has no interpolated-string model, CLAUDE.md
+                // sec.1), and the message states ONLY what was measured.
+                string hitName = hit.collider != null ? hit.collider.name : "nothing";
+                string hitLayer = hit.collider != null
+                    ? LayerMask.LayerToName(hit.collider.gameObject.layer) : "<n/a>";
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
-                    "breach tap missed every WallSegment (hit '" +
-                    (hit.collider != null ? hit.collider.name : "nothing") +
+                    "breach tap resolved no WallSegment (hit '" + hitName +
                     "') - the standing order, if any, is UNCHANGED.");
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
-                    $"HandleBreachTap OUT: outcome=not_wall_segment hitCollider=" +
-                    $"'{(hit.collider != null ? hit.collider.name : "nothing")}' - the raycast hit " +
-                    "something, but GetComponentInParent<WallSegment>() found no wall on it. No " +
-                    "order placed, standing order (if any) UNCHANGED.");
+                    "HandleBreachTap OUT: outcome=not_wall_segment hitCollider='" + hitName +
+                    "' hitLayer=" + hitLayer +
+                    " hitPoint=" + hit.point +
+                    " hitDistance=" + hit.distance.ToString("0.00") +
+                    " screenPoint=" + screenPoint +
+                    " screenNorm=" + DescribeScreenNorm(screenPoint) +
+                    " inReservedThumbBand=" + IsInReservedThumbBand(screenPoint) +
+                    " - MEASURED: the ray resolved that collider and GetComponentInParent" +
+                    "<WallSegment>() found no WallSegment on it or its parents. Nothing more is " +
+                    "claimed: this line does NOT say the wall hierarchy, the collider or the ray " +
+                    "is at fault. No order placed, standing order (if any) UNCHANGED.");
                 return;
             }
 
@@ -1002,7 +1236,9 @@ namespace DeNelle.Village
                 $"mask=0x{maskValue:X8} ({maskLayers}) rayDistance={_rayDistance:0} " +
                 $"queriesHitTriggers={Physics.queriesHitTriggers} camera='{camName}' " +
                 $"isCameraMain={camIsMain} camPixelRect={camPixelRect} screenSize={Screen.width}x{Screen.height} " +
-                $"screenPoint={screenPoint} rayOrigin={ray.origin} rayDir={ray.direction} " +
+                $"screenPoint={screenPoint} screenNorm={DescribeScreenNorm(screenPoint)} " +
+                $"inReservedThumbBand={IsInReservedThumbBand(screenPoint)} " +
+                $"rayOrigin={ray.origin} rayDir={ray.direction} " +
                 $"maskedCallMatched={groundHit}" +
                 (groundHit
                     ? $" hitPoint={hit.point} hitName='{(hit.collider != null ? hit.collider.name : "<null>")}' " +
@@ -1031,41 +1267,99 @@ namespace DeNelle.Village
             if (shown == 0) sb.Append("(no colliders along the ray at all)");
             DeNelle.Core.Diagnostics.FlowTrace.Throttle("Raid", "breach-tap-diag-rayall", 0.25f, sb.ToString());
 
-            // -- nearest WallSegment to the tap, independent of what the ray hit --------
-            // Splits the remaining causes: if a wall's collider AABB intersects the ray but
-            // Physics never reported it, the collider is disabled/trigger-ignored/stale; if
-            // only the RENDERER bounds intersect, it is a collider/render size mismatch (and
-            // the wall's name says which generator built it); if NEITHER intersects, the ray
-            // itself is wrong (camera or screen-point coordinate space), not the wall.
+            // -- WallSegment nearest THE RAY (WO-1790) ---------------------------------
+            // ⛔ THIS BLOCK USED TO DRAW A CONCLUSION IT HAD NOT MEASURED, AND IT COST A WRONG P0.
+            // Three defects, all fixed here, recorded so neither comes back:
+            //
+            //   1. It picked the wall nearest the CAMERA — the squared magnitude of the wall's
+            //      position minus the RAY ORIGIN. For a tap that never went near a wall that is an
+            //      ARBITRARY wall, so both `…IntersectsRay=False` values were expected noise about
+            //      a wall nobody aimed at. It now picks the wall nearest THE RAY (perpendicular
+            //      distance to the ray, t clamped >= 0) and PRINTS that distance, so the reader can
+            //      see for themselves whether the wall is relevant at all.
+            //   2. It unioned the segment's child renderers with includeInactive set TRUE, and
+            //      printed that under a name reading as "what the player sees". On an IronBastion
+            //      segment that union swallows the inactive placeholder twin and the Ruin_* rubble
+            //      tiles, which is how 2.00 m of collider read as "half of a 8.24 m wall".
+            //      WO-1723 sec.6 had already retired that exact reading nine days earlier. It now
+            //      reports ACTIVE, ENABLED renderers only, under the name activeRendererBounds,
+            //      with the counted/skipped tally beside it.
+            //   3. The comment here told the reader that two Falses meant "the ray itself is
+            //      wrong", and the sibling OUT line invited suspicion of the wall hierarchy. Both
+            //      inferences are DELETED. This block states measurements; the reader concludes.
+            //
+            // ⛔ Do NOT strip this block (CLAUDE.md sec.12, owner ruling 2026-08-09). It may be
+            // flagged off. The fix for a lying instrument is to make it truthful, never to delete it.
             var walls = FindObjectsByType<WallSegment>(FindObjectsSortMode.None);
             WallSegment nearest = null;
-            float nearestSqr = float.MaxValue;
+            float nearestRayDist = float.MaxValue;
             for (int i = 0; i < walls.Length; i++)
             {
-                float d = (walls[i].transform.position - ray.origin).sqrMagnitude;
-                if (d < nearestSqr) { nearestSqr = d; nearest = walls[i]; }
+                if (walls[i] == null) continue;
+                float d = DistanceFromRay(ray, walls[i].transform.position);
+                if (d < nearestRayDist) { nearestRayDist = d; nearest = walls[i]; }
             }
             if (nearest != null)
             {
                 var col = nearest.GetComponent<Collider>();
-                var rends = nearest.GetComponentsInChildren<Renderer>(true);
+                var rends = nearest.GetComponentsInChildren<Renderer>(false);
                 Bounds? rBounds = null;
+                int counted = 0;
+                int skipped = 0;
                 for (int i = 0; i < rends.Length; i++)
                 {
-                    if (rBounds == null) rBounds = rends[i].bounds;
-                    else { var b = rBounds.Value; b.Encapsulate(rends[i].bounds); rBounds = b; }
+                    var r = rends[i];
+                    if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) { skipped++; continue; }
+                    if (rBounds == null) rBounds = r.bounds;
+                    else { var b = rBounds.Value; b.Encapsulate(r.bounds); rBounds = b; }
+                    counted++;
                 }
                 bool colliderIntersects = col != null && col.bounds.IntersectRay(ray);
                 bool rendererIntersects = rBounds.HasValue && rBounds.Value.IntersectRay(ray);
+
+                // Locals first — CompileGate's brace scanner has no interpolated-string model.
+                string colliderEnabledText = (col != null && col.enabled).ToString();
+                string colliderTriggerText = (col != null && col.isTrigger).ToString();
+                string colliderLayerText = col != null ? LayerMask.LayerToName(col.gameObject.layer) : "<n/a>";
+                string colliderBoundsText = col != null ? col.bounds.ToString() : "<n/a>";
+                string activeRendererBoundsText = rBounds.HasValue ? rBounds.Value.ToString() : "<none active>";
                 string nearestLine =
-                    $"nearest WallSegment='{nearest.name}' colliderPresent={col != null} " +
-                    $"colliderEnabled={(col != null && col.enabled)} colliderIsTrigger={(col != null && col.isTrigger)} " +
-                    $"colliderLayer={(col != null ? LayerMask.LayerToName(col.gameObject.layer) : "<n/a>")} " +
-                    $"colliderBounds={(col != null ? col.bounds.ToString() : "<n/a>")} " +
-                    $"rendererBounds={(rBounds.HasValue ? rBounds.Value.ToString() : "<n/a>")} " +
-                    $"colliderBoundsIntersectsRay={colliderIntersects} rendererBoundsIntersectsRay={rendererIntersects}";
+                    "WallSegment nearest THE RAY='" + nearest.name + "'" +
+                    " nearestWallDistToRay=" + nearestRayDist.ToString("0.00") +
+                    " wallsInScene=" + walls.Length +
+                    " colliderPresent=" + (col != null) +
+                    " colliderEnabled=" + colliderEnabledText +
+                    " colliderIsTrigger=" + colliderTriggerText +
+                    " colliderLayer=" + colliderLayerText +
+                    " colliderBounds=" + colliderBoundsText +
+                    " activeRendererBounds=" + activeRendererBoundsText +
+                    " activeRenderersCounted=" + counted +
+                    " renderersSkippedInactiveOrDisabled=" + skipped +
+                    " colliderBoundsIntersectsRay=" + colliderIntersects +
+                    " activeRendererBoundsIntersectsRay=" + rendererIntersects +
+                    " - MEASURED ONLY. nearestWallDistToRay is the perpendicular distance from the " +
+                    "ray to that wall's origin: a large value means this wall was never aimed at, " +
+                    "and its two IntersectsRay flags say nothing about the tap. No cause is asserted " +
+                    "here.";
                 DeNelle.Core.Diagnostics.FlowTrace.Throttle("Raid", "breach-tap-diag-nearest", 0.25f, nearestLine);
             }
+        }
+
+        /// <summary>
+        /// Perpendicular distance from <paramref name="ray"/> to <paramref name="point"/>, with the
+        /// ray parameter clamped to t &gt;= 0 so geometry BEHIND the camera measures from the ray
+        /// origin instead of reporting a false near miss. WO-1790 sec.3 item 1.
+        /// </summary>
+        private static float DistanceFromRay(Ray ray, Vector3 point)
+        {
+            Vector3 dir = ray.direction;
+            float len = dir.magnitude;
+            if (len <= 0.0001f) return (point - ray.origin).magnitude;
+            dir /= len;
+            float t = Vector3.Dot(point - ray.origin, dir);
+            if (t < 0f) t = 0f;
+            Vector3 closest = ray.origin + dir * t;
+            return (point - closest).magnitude;
         }
 
         /// <summary>Names the layers a mask value resolves to (0..31), for a diagnostic line.</summary>
