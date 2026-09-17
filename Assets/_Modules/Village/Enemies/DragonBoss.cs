@@ -414,6 +414,18 @@ namespace DeNelle.Village
         private Vector3 _anchorFallback;                // home position if no anchor is wired
         private float _shownSpeed;                      // smoothed Speed pushed to the Animator
 
+        // -- Swoop ground clearance (WO-1836) --------------------------------------
+        // The dive-swoop used to take its low point from a flat 4.5m above the
+        // TARGET's transform, so uneven terrain / rooftops under the dragon's own
+        // body were never consulted and the mesh clipped through them (owner
+        // screenshot, wave 21). These cache the body-extent renderers and throttle
+        // the clip warning; the clamp itself is ResolveSwoopLowY.
+        private Renderer[] _bodyRenderers;              // MESH renderers only - never VFX
+        private bool _bodyRenderersResolved;
+        private float _lastClipWarnTime = -99f;
+        private readonly RaycastHit[] _groundHits = new RaycastHit[8];
+        private const float BodyExtentFallback = 2.5f;  // mirrors EnsureHitCollider's no-renderer radius
+
         // -- Animation -------------------------------------------------------------
         // Dragon.controller (DragonAnimatorSetup) - parameter names MUST match the
         // DragonAnim contract. Presence is cached into _params so a controller that
@@ -815,13 +827,25 @@ namespace DeNelle.Village
             _swoopElapsed += dt;
             float t = Mathf.Clamp01(_swoopElapsed / _swoopDuration);
 
+            Vector3 prev = transform.position;
+
             // Dive arc: cruise height at the ends, low over the tower at mid-pass.
+            // GROUND-AWARE LOW POINT (WO-1836): the low point used to be a flat
+            // _swoopLowHeight above the TARGET's transform, so terrain and rooftops
+            // under the dragon's OWN body were never consulted and the mesh clipped
+            // through them. Sample both the ground under the body and the ground under
+            // the arc's low point (the tower XZ) - the second one matters because nextY
+            // only chases wantY at a finite descend speed, so a rooftop discovered when
+            // the dragon is already over it arrives too late to avoid.
             float arc = 1f - 4f * (t - 0.5f) * (t - 0.5f);
             float cruiseY = AnchorPosition().y + _orbitHeight;
-            float lowY = tp.y + _swoopLowHeight;
+            float groundY = Mathf.Max(
+                SampleGroundYExcludingSelf(prev),
+                SampleGroundYExcludingSelf(tp));
+            float extent = BodyUnderExtent();
+            float lowY = ResolveSwoopLowY(groundY, tp.y, cruiseY, _swoopLowHeight, extent);
             float wantY = Mathf.Lerp(cruiseY, lowY, arc);
 
-            Vector3 prev = transform.position;
             Vector3 hereXZ = new Vector3(prev.x, 0f, prev.z);
             Vector3 tpXZ = new Vector3(tp.x, 0f, tp.z);
             // FLY-THROUGH GEOMETRY (F8 2026-07-30 "dragon stuck going vertical"): the old
@@ -839,7 +863,9 @@ namespace DeNelle.Village
             FlowTrace.Throttle("DragonBoss", $"airgeo:{GetInstanceID()}", 0.5f,
                 $"'{_bossId}' AirAttack t={t:0.00} pos={transform.position} " +
                 $"dXZ={Vector2.Distance(new Vector2(prev.x, prev.z), new Vector2(transform.position.x, transform.position.z)):0.0000} " +
-                $"dY={transform.position.y - prev.y:+0.000;-0.000} wantY={wantY:0.0} pitch={transform.eulerAngles.x:0.0}");
+                $"dY={transform.position.y - prev.y:+0.000;-0.000} wantY={wantY:0.0} pitch={transform.eulerAngles.x:0.0} " +
+                $"ground={groundY:0.00} low={lowY:0.00} extent={extent:0.00}");
+            WarnIfBelowGround(groundY, extent, wantY, "AirAttack");
 
             // Strike at the low point of the pass - reuse the ONE fire payload.
             if (!_swoopStruck && arc > 0.85f)
@@ -1227,6 +1253,120 @@ namespace DeNelle.Village
         }
 
         // -------------------------------------------------------------------------
+        // Swoop ground clearance (WO-1836)
+        // -------------------------------------------------------------------------
+
+        /// <summary>
+        /// Ground height at <paramref name="xz"/> with the dragon's OWN colliders
+        /// excluded. This is deliberately NOT <see cref="SampleGroundY"/>: that cast
+        /// starts 50m directly above the dragon's pivot, and
+        /// <see cref="EnsureHitCollider"/> guarantees a non-trigger SphereCollider
+        /// centred on the rig - so casting under the dragon's own XZ would hit the
+        /// dragon first and feed a runaway climb back into the clamp.
+        /// <see cref="LandSpotNear"/> only escapes that because its XZ is offset by
+        /// the landing standoff. Falls back to y = 0 (no NavMesh dependency, WO-760).
+        /// </summary>
+        private float SampleGroundYExcludingSelf(Vector3 xz)
+        {
+            float y = 0f;
+            Guard.Try("DragonBoss", "sample ground height (self-excluded)", () =>
+            {
+                Vector3 from = new Vector3(xz.x, transform.position.y + 50f, xz.z);
+                int n = Physics.RaycastNonAlloc(from, Vector3.down, _groundHits, 400f,
+                    ~0, QueryTriggerInteraction.Ignore);
+                bool any = false;
+                for (int i = 0; i < n; i++)
+                {
+                    var c = _groundHits[i].collider;
+                    if (c == null) continue;
+                    if (c.transform == transform || c.transform.IsChildOf(transform)) continue;
+                    float hy = _groundHits[i].point.y;
+                    if (!any || hy > y) { y = hy; any = true; }
+                }
+            });
+            return y;
+        }
+
+        /// <summary>
+        /// Metres from the dragon's pivot DOWN to the lowest point of its mesh - the
+        /// wing/tail reach the pivot alone does not describe. Measured live from the
+        /// cached MESH renderers (particle/trail renderers are excluded: a fire-breath
+        /// or aura plume reaches the ground and would balloon the extent, launching the
+        /// dragon skyward mid-attack). Renderers are cached; the bounds are read fresh
+        /// each call because <see cref="FaceTravel"/> pitches the body during a dive.
+        /// </summary>
+        private float BodyUnderExtent()
+        {
+            if (!_bodyRenderersResolved)
+            {
+                _bodyRenderersResolved = true;
+                Guard.Try("DragonBoss", "cache body renderers", () =>
+                {
+                    var all = GetComponentsInChildren<Renderer>(true);
+                    var keep = new List<Renderer>();
+                    if (all != null)
+                        foreach (var r in all)
+                            if (r is MeshRenderer || r is SkinnedMeshRenderer) keep.Add(r);
+                    _bodyRenderers = keep.ToArray();
+                });
+                if (_bodyRenderers == null || _bodyRenderers.Length == 0)
+                    FlowTrace.Once("DragonBoss", "bodyextent:" + GetInstanceID(),
+                        $"'{_bossId}' has no mesh renderers - swoop clearance falls back to " +
+                        $"{BodyExtentFallback}m of body extent.");
+            }
+
+            if (_bodyRenderers == null || _bodyRenderers.Length == 0) return BodyExtentFallback;
+
+            float pivotY = transform.position.y;
+            float lowest = float.MaxValue;
+            for (int i = 0; i < _bodyRenderers.Length; i++)
+            {
+                var r = _bodyRenderers[i];
+                if (r == null) continue;
+                float m = r.bounds.min.y;
+                if (m < lowest) lowest = m;
+            }
+            if (lowest >= float.MaxValue) return BodyExtentFallback;
+            return Mathf.Max(0f, pivotY - lowest);
+        }
+
+        /// <summary>
+        /// THE SWOOP CLEARANCE CLAMP (WO-1836). The low point of a dive-swoop is the
+        /// HIGHEST floor in play - sampled ground under the dragon's own body, ground
+        /// under the arc's low point, and the target's own transform - plus the
+        /// authored clearance AND the model's own under-extent, so the visible mesh
+        /// clears geometry rather than just the pivot. Never rises above
+        /// <paramref name="cruiseY"/>: a floor taller than cruise height would invert
+        /// the arc and make the "dive" climb.
+        /// Pure + static so <c>ApexDragonSpawnRegression</c> can pin it with no scene.
+        /// </summary>
+        public static float ResolveSwoopLowY(
+            float groundY, float targetY, float cruiseY, float lowHeight, float bodyUnderExtent)
+        {
+            float floor = Mathf.Max(groundY, targetY);
+            float low = floor + lowHeight + Mathf.Max(0f, bodyUnderExtent);
+            return Mathf.Min(low, cruiseY);
+        }
+
+        /// <summary>
+        /// Fail-loud check that the dragon's MESH (not its pivot) is still above the
+        /// sampled ground after the clamp. A genuine terrain/rooftop edge case shows up
+        /// in an F8 capture instead of silently clipping again (WO-1836 §4). Throttled
+        /// to ~1/sec per instance so a bad frame cannot flood the logcat ring (§12).
+        /// </summary>
+        private void WarnIfBelowGround(float groundY, float extent, float wantY, string site)
+        {
+            float meshY = transform.position.y - extent;
+            if (meshY >= groundY - 0.05f) return;
+            if (Time.time - _lastClipWarnTime < 1f) return;
+            _lastClipWarnTime = Time.time;
+            FlowTrace.Warn("DragonBoss",
+                $"'{_bossId}' {site} mesh BELOW ground after clamp: meshY={meshY:0.00} " +
+                $"ground={groundY:0.00} pivotY={transform.position.y:0.00} " +
+                $"extent={extent:0.00} wantY={wantY:0.00}");
+        }
+
+        // -------------------------------------------------------------------------
         // Phase resolution (HP aggression - aura + boss-bar label)
         // -------------------------------------------------------------------------
 
@@ -1346,21 +1486,36 @@ namespace DeNelle.Village
             Vector3 centre = AnchorPosition();
 
             float arc = 1f - 4f * (t - 0.5f) * (t - 0.5f);
-            float height = Mathf.Lerp(_orbitHeight, _swoopLowHeight, arc);
 
             float r = Mathf.Lerp(CurrentOrbitRadius(), _strikeRadius * 0.5f, arc);
             float rad = _orbitAngleDeg * Mathf.Deg2Rad;
             _orbitAngleDeg += CurrentOrbitSpeed() * 0.5f * dt;
 
-            Vector3 target = centre + new Vector3(
-                Mathf.Cos(rad) * r,
-                height,
-                Mathf.Sin(rad) * r);
-
             Vector3 prev = transform.position;
+            Vector3 ringXZ = centre + new Vector3(Mathf.Cos(rad) * r, 0f, Mathf.Sin(rad) * r);
+
+            // GROUND-AWARE LOW POINT (WO-1836) - see TickAirAttack for the reasoning.
+            // The old low point was centre.y + _swoopLowHeight, a flat clearance above
+            // the anchor (the Heart) that ignored the ground under the dragon itself.
+            // centre.y stays in as the target floor so anchor parity is preserved; the
+            // sampled ground and the mesh's own under-extent can only raise it.
+            float cruiseY = centre.y + _orbitHeight;
+            float groundY = Mathf.Max(
+                SampleGroundYExcludingSelf(prev),
+                SampleGroundYExcludingSelf(ringXZ));
+            float extent = BodyUnderExtent();
+            float lowY = ResolveSwoopLowY(groundY, centre.y, cruiseY, _swoopLowHeight, extent);
+            float wantY = Mathf.Lerp(cruiseY, lowY, arc);
+
+            Vector3 target = new Vector3(ringXZ.x, wantY, ringXZ.z);
+
             float swoopSpeed = _cruiseSpeed * 1.8f;
             transform.position = Vector3.MoveTowards(prev, target, swoopSpeed * dt);
             FaceTravel(transform.position - prev);
+            FlowTrace.Throttle("DragonBoss", $"swoopgeo:{GetInstanceID()}", 0.5f,
+                $"'{_bossId}' Swoop t={t:0.00} arc={arc:0.00} pivotY={transform.position.y:0.00} " +
+                $"wantY={wantY:0.00} ground={groundY:0.00} low={lowY:0.00} extent={extent:0.00}");
+            WarnIfBelowGround(groundY, extent, wantY, "Swoop");
 
             if (!_swoopStruck && arc > 0.85f)
             {

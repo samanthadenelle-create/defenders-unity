@@ -53,9 +53,47 @@ namespace DeNelle.Editor.Regression
             if (!source.Contains("waveId > FirstDragonWave ? null : current"))
                 failures.Add("legacy endless replay can still add an off-cadence dragon (for example wave 37)");
 
+            // -- WO-1836: the dive-swoop's ground-clearance clamp -------------------
+            // Calls the REAL clamp (DragonBoss.ResolveSwoopLowY) - pure + static, so no
+            // scene, no raycast. Proves the math only; the self-excluded ground cast and
+            // the live mesh extent are proven by a headless [Flow:DragonBoss] capture.
+            const float lowHeight = 4.5f;
+            const float cruise = 100f;   // high enough that the Min(cruise) cap never bites here
+
+            // Ground higher than the target's transform -> the GROUND wins.
+            float groundWins = DragonBoss.ResolveSwoopLowY(12f, 0f, cruise, lowHeight, 2f);
+            if (Math.Abs(groundWins - 18.5f) > 0.001f)
+                failures.Add($"swoop low point ignores the sampled ground: {groundWins} (want 18.5)");
+
+            // Target higher than the ground (on a rooftop) -> the TARGET wins.
+            float targetWins = DragonBoss.ResolveSwoopLowY(0f, 12f, cruise, lowHeight, 2f);
+            if (Math.Abs(targetWins - 18.5f) > 0.001f)
+                failures.Add($"swoop low point ignores the target floor: {targetWins} (want 18.5)");
+
+            // The model's own under-extent must ADD clearance, never be dropped.
+            float noExtent = DragonBoss.ResolveSwoopLowY(10f, 0f, cruise, lowHeight, 0f);
+            float withExtent = DragonBoss.ResolveSwoopLowY(10f, 0f, cruise, lowHeight, 3f);
+            if (!(withExtent > noExtent && Math.Abs(withExtent - noExtent - 3f) < 0.001f))
+                failures.Add($"the mesh under-extent is not added to swoop clearance: {noExtent}/{withExtent}");
+
+            // A negative extent (degenerate bounds) must never LOWER the clamp.
+            if (Math.Abs(DragonBoss.ResolveSwoopLowY(10f, 0f, cruise, lowHeight, -5f) - noExtent) > 0.001f)
+                failures.Add("a negative mesh extent lowers the swoop clamp below ground");
+
+            // The clamp can never exceed cruise height - a floor above cruise would
+            // invert the arc and turn the dive into a climb.
+            if (DragonBoss.ResolveSwoopLowY(500f, 500f, 40f, lowHeight, 6f) > 40f + 0.001f)
+                failures.Add("the swoop low point can rise above cruise height (inverted dive)");
+
+            // And the clamp is never below the sampled ground for any of these cases.
+            foreach (float g in new[] { 0f, 3.5f, 20f, 47.25f })
+                if (DragonBoss.ResolveSwoopLowY(g, 0f, cruise, lowHeight, 1.75f) < g)
+                    failures.Add($"swoop low point falls below sampled ground at groundY={g}");
+
             reason = failures.Count == 0
                 ? "APEX_DRAGON_SPAWN_OK GameObject address resolved; pending load holds clear gate; " +
-                  "dragon waves=20/25/30/... with progressive HP/damage/attack cadence"
+                  "dragon waves=20/25/30/... with progressive HP/damage/attack cadence; " +
+                  "swoop low point clamps to max(ground,target)+clearance+mesh extent, capped at cruise"
                 : "APEX_DRAGON_SPAWN_FAIL x" + failures.Count + " :: " + string.Join(" | ", failures);
             return failures.Count == 0;
         }
