@@ -1,6 +1,16 @@
 # WORK ORDER 1784 — **412 of 1439 material slots** in the Bastion raid scene have no albedo, and the census names only **12 of them**
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
+
+**Lane note (2026-09-17):** verified NOT stale at source — `RaidUntexturedCensus.cs` was last touched by
+`4d3ec15c5` (WO-1751, its creation) and still carried `MaxReportedPerPass = 12` with no grouping. The
+board's drift flag named `RaidBase_IronBastion.unity` + `RaidBaseDresser.cs`, which are this ticket's
+DO-NOT-TOUCH list; `bca258130` (the WO-1767 re-bake this ticket asks to re-run against) is confirmed an
+ancestor of HEAD, so §3-item-3 is now satisfiable by a fresh run. Census code widened this lane:
+grouped `(material, shader, verdict)` rows with slot/renderer counts + largest-example path, a
+reconciliation statement on the header line, and a COMPLETE (uncapped) grouped + per-instance registry
+appended to `<persistentDataPath>/raid-untextured-census-<scene>.md`. **No Unity run fired by this lane**
+— the fresh-capture acceptance (§4 bullets 1-3) and the committed registry artefact are the lead's run.
 
 Scope note: the census widening is clear from source; the ~400 unnamed offenders cannot be fixed until they are named, which is what this ticket delivers.
 

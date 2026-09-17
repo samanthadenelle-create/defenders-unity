@@ -54,10 +54,22 @@
 // so a bad scene cannot flood the logcat ring (memory
 // `logcat-ring-buffer-destroys-evidence`), and the census runs a small BOUNDED
 // ladder rather than every frame.
+//
+// WO-1784 (2026-09-17): THE CAP NAMED ONLY 12 OF 412, SO ~400 OFFENDERS WERE
+// UNFIXABLE. Measured on device
+// (Logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt):
+//   [Flow:RaidArt] UNTEXTURED CENSUS (deferred+20s) scene='RaidBase_IronBastion':
+//   412 offending slot(s) across 880 mesh renderer(s) / 1439 slot(s).
+// 412 slots over 880 renderers is a handful of SHARED materials repeated, so the
+// census now ALSO emits one row per (material, shader, verdict) group with a slot
+// count and the largest example path, and appends the COMPLETE grouped +
+// per-instance registry to a file next to break-log.jsonl. The per-instance log
+// cap stays exactly as it was — the ring buffer is still the constraint.
 // =============================================================================
 
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using DeNelle.Core;
@@ -71,6 +83,23 @@ namespace DeNelle.Core.Diagnostics
         /// <summary>Most offenders printed individually per pass. Biggest-first, so the cap
         /// drops the noise and keeps the thing the owner can actually see.</summary>
         private const int MaxReportedPerPass = 12;
+
+        /// <summary>
+        /// WO-1784. The per-INSTANCE cap above is correct and stays: 412 individual lines would
+        /// evict the boot window out of the device logcat ring (memory
+        /// `logcat-ring-buffer-destroys-evidence`). But capping instances left ~400 offenders with
+        /// NO NAME AT ALL, which is unfixable by the art lane.
+        /// <para>
+        /// The measured shape (device capture
+        /// <c>Logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt</c>, scene
+        /// <c>RaidBase_IronBastion</c>): <b>412 offending slots across 880 mesh renderers</b> — i.e.
+        /// a handful of SHARED materials repeated hundreds of times. So the census now also emits
+        /// one row per <c>(material, shader, verdict)</c> GROUP. That turns 412 unnameable
+        /// instances into a couple of dozen fixable rows at a fraction of the log volume, and the
+        /// group counts RECONCILE against the offender total on the same line.
+        /// </para>
+        /// </summary>
+        private const int MaxReportedGroupsPerPass = 40;
 
         /// <summary>A white-ish tint is what makes an unmapped URP material read as the flat
         /// grey slab. A deliberately DARK miss-tint is a designed degrade, not this defect —
@@ -277,6 +306,83 @@ namespace DeNelle.Core.Diagnostics
             return o;
         }
 
+        /// <summary>
+        /// WO-1784. One row of the grouped census: a shared material/shader/verdict triple plus how
+        /// many slots carry it and ONE example path. This — not the instance list — is the artefact
+        /// the art lane works from.
+        /// </summary>
+        private sealed class OffenderGroup
+        {
+            public string MaterialName;
+            public string Shader;
+            public string Verdict;
+            public string AlbedoSlots;
+            public Color Tint;
+            public int Slots;                        // offending slot count in this group
+            public string ExamplePath;               // the LARGEST instance's path — most likely visible
+            public string ExampleMesh;
+            public Vector3 ExampleSize;
+            public Vector3 ExampleCenter;
+            public float MaxVolume;
+            public readonly HashSet<string> Renderers = new HashSet<string>();
+        }
+
+        /// <summary>
+        /// Groups the flat offender list by <c>(material, shader, verdict)</c>. Deliberately keys on
+        /// the material NAME rather than the instance: two renderers sharing one broken material are
+        /// ONE authoring defect, and reporting them twice is what made the old census unusable.
+        /// Each group keeps its LARGEST instance as the example, so the row the art lane opens first
+        /// is the one most likely to be on screen.
+        /// </summary>
+        private static List<OffenderGroup> GroupOffenders(List<Offender> offenders)
+        {
+            var byKey = new Dictionary<string, OffenderGroup>();
+            var ordered = new List<OffenderGroup>();
+
+            for (int i = 0; i < offenders.Count; i++)
+            {
+                var o = offenders[i];
+                string key = o.MaterialName + "" + o.Shader + "" + o.Verdict;
+                OffenderGroup g;
+                if (!byKey.TryGetValue(key, out g))
+                {
+                    g = new OffenderGroup
+                    {
+                        MaterialName = o.MaterialName,
+                        Shader = o.Shader,
+                        Verdict = o.Verdict,
+                        AlbedoSlots = o.AlbedoSlots,
+                        Tint = o.Tint,
+                        MaxVolume = -1f
+                    };
+                    byKey[key] = g;
+                    ordered.Add(g);
+                }
+
+                g.Slots++;
+                g.Renderers.Add(o.Path);
+                if (o.Volume > g.MaxVolume)
+                {
+                    g.MaxVolume = o.Volume;
+                    g.ExamplePath = o.Path;
+                    g.ExampleMesh = o.Mesh;
+                    g.ExampleSize = o.Size;
+                    g.ExampleCenter = o.Center;
+                    g.AlbedoSlots = o.AlbedoSlots;
+                    g.Tint = o.Tint;
+                }
+            }
+
+            // Worst offender first = the material that costs the most slots; ties broken by the
+            // biggest example, because that is the one the player is most likely looking at.
+            ordered.Sort((a, b) =>
+            {
+                int c = b.Slots.CompareTo(a.Slots);
+                return c != 0 ? c : b.MaxVolume.CompareTo(a.MaxVolume);
+            });
+            return ordered;
+        }
+
         private static string SafeDescribeAlbedo(Material m)
         {
             if (m == null) return "<no material>";
@@ -323,8 +429,143 @@ namespace DeNelle.Core.Diagnostics
 
             if (offenders.Count > n)
                 FlowTrace.Step(Sys, "  ... " + (offenders.Count - n) + " further offending slot(s) not listed "
-                    + "(cap " + MaxReportedPerPass + " per pass, biggest-first). The cap is deliberate: an "
-                    + "unbounded list evicts the boot window out of the device logcat ring.");
+                    + "INDIVIDUALLY (cap " + MaxReportedPerPass + " per pass, biggest-first). The cap is "
+                    + "deliberate: an unbounded instance list evicts the boot window out of the device logcat "
+                    + "ring. Every one of them IS named by material in the grouped rows below.");
+
+            // ---- WO-1784: the grouped, COMPLETE census. -----------------------------------------
+            // This is the deliverable: no offender goes unnamed any more, because every instance is
+            // accounted for by its material group and the counts reconcile against the total.
+            var groups = GroupOffenders(offenders);
+            int shownGroups = Mathf.Min(groups.Count, MaxReportedGroupsPerPass);
+            int coveredSlots = 0;
+            for (int i = 0; i < shownGroups; i++) coveredSlots += groups[i].Slots;
+
+            FlowTrace.Fail(Sys, "UNTEXTURED CENSUS BY MATERIAL (" + why + ") scene='" + sceneName + "': "
+                + offenders.Count + " offending slot(s) collapse to " + groups.Count
+                + " distinct (material, shader, verdict) group(s). Listing " + shownGroups
+                + " of " + groups.Count + " = " + coveredSlots + "/" + offenders.Count
+                + " slot(s) accounted for"
+                + (coveredSlots == offenders.Count ? " (RECONCILED)."
+                                                   : " (" + (offenders.Count - coveredSlots) + " slot(s) WITHHELD by the group cap of "
+                                                     + MaxReportedGroupsPerPass + ").")
+                + " Fix the material, not the instance.");
+
+            for (int i = 0; i < shownGroups; i++)
+            {
+                var g = groups[i];
+                string size = g.ExampleSize.x.ToString("0.0") + "x" + g.ExampleSize.y.ToString("0.0") + "x" + g.ExampleSize.z.ToString("0.0");
+                string pos = g.ExampleCenter.x.ToString("0.0") + "," + g.ExampleCenter.y.ToString("0.0") + "," + g.ExampleCenter.z.ToString("0.0");
+                string tint = g.Tint.r.ToString("0.00") + "," + g.Tint.g.ToString("0.00") + "," + g.Tint.b.ToString("0.00");
+                FlowTrace.Fail(Sys, "  G" + (i + 1) + " material='" + g.MaterialName + "' shader='" + g.Shader
+                    + "' verdict='" + g.Verdict + "' slots=" + g.Slots + " renderers=" + g.Renderers.Count
+                    + " tint=(" + tint + ") albedoSlots=[" + g.AlbedoSlots + "]"
+                    + " example='" + g.ExamplePath + "' mesh='" + g.ExampleMesh + "'"
+                    + " bounds=" + size + "m at (" + pos + ")");
+            }
+
+            WriteDurableRegistry(sceneName, why, renderersScanned, slotsScanned, offenders, groups);
+        }
+
+        /// <summary>
+        /// WO-1784 acceptance: "the resulting list committed as a durable registry, not a one-off
+        /// report" (memory <c>audit-outputs-as-known-dictionaries</c>). The log is bounded by the
+        /// ring buffer; a FILE is not — so the complete grouped census plus EVERY offending instance
+        /// is appended next to <c>break-log.jsonl</c> in <c>Application.persistentDataPath</c>, where
+        /// the existing device-pull path already collects it.
+        /// <para>
+        /// Append, never overwrite: each deferred pass adds its own section, so the ladder's
+        /// disagreement (880 vs 893 renderers across passes on 2026-09-16) stays visible instead of
+        /// being clobbered by the last pass.
+        /// </para>
+        /// <para>⛔ Fully guarded and never fatal — a diagnostic that throws is worse than no
+        /// diagnostic. Skipped on WebGL, where the sandbox filesystem is unreliable (the same
+        /// exclusion <c>BreakCaptureHarness.Awake</c> makes at <c>:146</c>).</para>
+        /// </summary>
+        private static void WriteDurableRegistry(string sceneName, string why, int renderersScanned,
+                                                 int slotsScanned, List<Offender> offenders,
+                                                 List<OffenderGroup> groups)
+        {
+            if (Application.platform == RuntimePlatform.WebGLPlayer) return;
+
+            string path = null;
+            try
+            {
+                path = Path.Combine(Application.persistentDataPath,
+                                    "raid-untextured-census-" + SanitizeFileName(sceneName) + ".md");
+
+                var sb = new System.Text.StringBuilder(4096);
+                sb.Append("\n## PASS ").Append(why)
+                  .Append("  scene=").Append(sceneName)
+                  .Append("  utc=").Append(System.DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"))
+                  .Append("  app=").Append(Application.version).Append('\n');
+                sb.Append("offendingSlots=").Append(offenders.Count)
+                  .Append("  meshRenderers=").Append(renderersScanned)
+                  .Append("  slots=").Append(slotsScanned)
+                  .Append("  groups=").Append(groups.Count).Append('\n');
+
+                sb.Append("\n### GROUPS (material | shader | verdict | slots | renderers | tint | albedoSlots | largest example | bounds)\n");
+                int sum = 0;
+                for (int i = 0; i < groups.Count; i++)
+                {
+                    var g = groups[i];
+                    sum += g.Slots;
+                    sb.Append("| ").Append(g.MaterialName)
+                      .Append(" | ").Append(g.Shader)
+                      .Append(" | ").Append(g.Verdict)
+                      .Append(" | ").Append(g.Slots)
+                      .Append(" | ").Append(g.Renderers.Count)
+                      .Append(" | ").Append(g.Tint.r.ToString("0.00")).Append(',')
+                                    .Append(g.Tint.g.ToString("0.00")).Append(',')
+                                    .Append(g.Tint.b.ToString("0.00"))
+                      .Append(" | ").Append(g.AlbedoSlots)
+                      .Append(" | ").Append(g.ExamplePath)
+                      .Append(" | ").Append(g.ExampleSize.x.ToString("0.0")).Append('x')
+                                    .Append(g.ExampleSize.y.ToString("0.0")).Append('x')
+                                    .Append(g.ExampleSize.z.ToString("0.0")).Append("m |\n");
+                }
+                sb.Append("groupSlotSum=").Append(sum).Append("  offendingSlots=").Append(offenders.Count)
+                  .Append(sum == offenders.Count ? "  RECONCILED\n" : "  MISMATCH\n");
+
+                sb.Append("\n### EVERY OFFENDING SLOT (path | slot | material | shader | verdict | bounds)\n");
+                for (int i = 0; i < offenders.Count; i++)
+                {
+                    var o = offenders[i];
+                    sb.Append("| ").Append(o.Path)
+                      .Append(" | ").Append(o.Slot)
+                      .Append(" | ").Append(o.MaterialName)
+                      .Append(" | ").Append(o.Shader)
+                      .Append(" | ").Append(o.Verdict)
+                      .Append(" | ").Append(o.Size.x.ToString("0.0")).Append('x')
+                                    .Append(o.Size.y.ToString("0.0")).Append('x')
+                                    .Append(o.Size.z.ToString("0.0")).Append("m |\n");
+                }
+
+                File.AppendAllText(path, sb.ToString());
+                FlowTrace.Step(Sys, "UNTEXTURED CENSUS REGISTRY written (" + why + ") -> '" + path
+                    + "' (" + groups.Count + " group(s), " + offenders.Count
+                    + " instance row(s); COMPLETE, no cap). Pull it with adb and commit it as the art lane's input.");
+            }
+            catch (System.Exception e)
+            {
+                // No silent failures (§12): if the registry could not be written, the log says so
+                // and the grouped rows above are still the evidence.
+                FlowTrace.Warn(Sys, "RaidUntexturedCensus.WriteDurableRegistry could not write '"
+                    + (path ?? "<unresolved>") + "': " + e.GetType().Name + ": " + e.Message
+                    + ". The grouped census lines above are unaffected.");
+            }
+        }
+
+        private static string SanitizeFileName(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "unknown-scene";
+            var sb = new System.Text.StringBuilder(s.Length);
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                sb.Append(char.IsLetterOrDigit(c) || c == '_' || c == '-' || c == '.' ? c : '_');
+            }
+            return sb.ToString();
         }
 
         private static string MeshName(Renderer r)
