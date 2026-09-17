@@ -153,7 +153,7 @@ namespace DeNelle.Editor.Regression
         // that adds a knob edits the Registry, ExpectedDefaults, this pin, the allowlist and the
         // doc table IN THE SAME COMMIT, or the suite is red and the owner-facing list stops
         // describing the build.
-        private const int ExpectedKnobCount = 75;   // 2026-09-16: +4 dungeon.lantern* rows (WO-1805) on top of WO-1763/1773/1803's 71 - measured knobs=75 by the manifest generator
+        private const int ExpectedKnobCount = 78;   // 2026-09-16: +1 army.dismissReturnPercent (WO-1811) on top of WO-1810's 77 - measured knobs=78 by the manifest generator
 
         /// <summary>
         /// ⭐ THE CONTRACT, STATED INDEPENDENTLY OF THE CODE.
@@ -348,6 +348,17 @@ namespace DeNelle.Editor.Regression
             // 900 is exactly what RaidDeployController already answers for itself while the key
             // has no TunableSpec, so registering it is behaviour-neutral by construction.
             new KeyValuePair<string, int>("raid.stagingCeilingSeconds", 900),
+            // WO-1810 - what losing a raid COSTS. ⚠ Both are the owner's RULING, not the value the
+            // build shipped (which was 0% permanent loss on every exit); the departure is stated in
+            // the doc table and at the Registry entries.
+            new KeyValuePair<string, int>("raid.lossPctFail", 100),
+            new KeyValuePair<string, int>("raid.lossPctRetreat", 60),
+            // WO-1811 - the PROPOSED price of dismissing a trained troop, as a percent of its
+            // catalog gold value. The owner ruled the VERB ("either return them to gold or to a
+            // staged ready troop", 2026-09-16) and not the number, so 50 is a proposal behind a
+            // knob rather than a price invented in code. Training charges nothing (WO-1387), so
+            // there is no paid price to refund - this is a value on the way OUT.
+            new KeyValuePair<string, int>("army.dismissReturnPercent", 50),
             // WO-1594 - THE RAID HONOR MILESTONES, owner ruling 2026-09-09, verbatim choice:
             // "Tunables with those defaults". 90 / 150 / 50 are what RaidScoring hardcoded as
             // 90f / 150f / 0.50f, so an empty table narrates and PAYS exactly what this build

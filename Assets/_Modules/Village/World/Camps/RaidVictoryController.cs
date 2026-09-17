@@ -260,6 +260,21 @@ namespace DeNelle.Village.World.Camps
             if (_handled) { FlowTrace.Step("Raid", "victory already handled — ignoring duplicate signal."); return; }
             if (_waitingForCapture) return;
             _handled = true;
+
+            // WO-1810 - DECLARE THE WIN NOW, NOT AT ReconcileArmy. The army settlement is priced on
+            // the declared exit outcome, and an undeclared exit prices as a FAIL (which loses the
+            // whole warband). HeroHealth settles a dead hero with ReconcileRaidEnd(0) and only stands
+            // down once the victory SCREEN is up, so a hero dying between this latch and
+            // ReconcileArmy below would otherwise wipe a WON warband. Declaring here closes that
+            // window; the declaration is latched, so it cannot be overwritten afterwards.
+            Guard.Try("Raid", "declare the victory exit outcome", () =>
+            {
+                var deployNow = FindAnyObjectByType<RaidDeployController>();
+                if (deployNow != null)
+                    deployNow.DeclareRaidExitOutcome(DeNelle.Village.RaidExitOutcome.Victory,
+                                                     "base cleared: " + reason);
+            });
+
             if (_spawner != null) _spawner.OnCleared -= HandleCleared;
             if (_spire != null) _spire.OnDestroyedEvent -= HandleSpireRazed;
 
@@ -818,6 +833,11 @@ namespace DeNelle.Village.World.Camps
         /// is real. Persists immediately so the cost and the reward cannot be lost if the
         /// player closes the app on the victory screen.
         /// </summary>
+        // WO-1810 - what this WIN cost in troops, captured at the reconcile and stated on the
+        // victory screen. -1 = no deploy ledger reconciled (a raid nothing was deployed into),
+        // and the screen then says nothing rather than printing a zero it cannot prove.
+        private int _troopsLostThisRaid = -1;
+
         private void ReconcileArmy(RaidResult result)
         {
             var deploy = FindAnyObjectByType<RaidDeployController>();
@@ -833,8 +853,16 @@ namespace DeNelle.Village.World.Camps
                 FlowTrace.Warn("Raid", "victory: no RaidResult (no scorer) - reconciling at 0 stars, no veterancy granted.");
 
             Guard.Try("Raid", "victory army reconcile", () => deploy.ReconcileRaidEnd(stars));
+
+            // WO-1810 - CARRY THE COST TO THE SCREEN. A win now kills troops for good ("any troop
+            // killed is dead"), and ShowVictoryScreen runs AFTER this method, so the count is read
+            // here, from the one writer, rather than re-derived anywhere else.
+            _troopsLostThisRaid = deploy.LastTroopsLost;
+
             GameStateService.Instance?.Save();
-            FlowTrace.Step("Raid", $"army settled for the WIN (stars {stars}) and saved.");
+            FlowTrace.Step("Raid", $"army settled for the WIN (stars {stars}) and saved. " +
+                                   $"Troops lost for good on this win: {_troopsLostThisRaid} " +
+                                   "(-1 = this raid never reconciled a deploy ledger).");
         }
 
         // The raid's scene-config id: prefer the spawner's stored id (via the public
@@ -947,7 +975,10 @@ namespace DeNelle.Village.World.Camps
                     // Null until that lane fills it, and the VM renders nothing for null. The
                     // target NAMES it will use are CREATIVE_CANON_ELARION_2026-09-04 section 3
                     // ("The Broken Garrison"), never the superseded "Ironwatch Garrison" pass.
-                    ResolveUnlockLine(victories));
+                    ResolveUnlockLine(victories),
+                    // WO-1810 - the troops this win cost for good, read off the reconcile that
+                    // already ran (ReconcileArmy). The VM states it only when it is above zero.
+                    _troopsLostThisRaid);
 
                 if (_captureRequired && vm != null)
                 {

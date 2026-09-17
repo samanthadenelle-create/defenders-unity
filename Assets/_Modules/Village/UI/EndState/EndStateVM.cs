@@ -101,6 +101,18 @@ namespace DeNelle.Village.UI
         /// </summary>
         public string UnlockLine;
 
+        /// <summary>
+        /// WO-1810 - troops this raid lost PERMANENTLY (killed + whatever the exit charged on the
+        /// survivors). &lt; 0 = unknown/not applicable, and no screen states it.
+        ///
+        /// <para>Its own field, not only a sentence inside <see cref="Subtitle"/>, for the same
+        /// reason <see cref="UnlockLine"/> is: a view that grows a dedicated band binds THIS and
+        /// drops the subtitle append in the same edit. Carried by BOTH raid end states - a victory
+        /// can now cost dead troops too ("any troop killed is dead"), and a win that quietly
+        /// deleted three troops would be the same silence the non-victory screen was built to end.</para>
+        /// </summary>
+        public int TroopsLost = -1;
+
         public readonly List<SpoilRowVM> Spoils = new List<SpoilRowVM>();
 
         /// <summary>The ONE primary action (owner button law: an end-state has exactly one way out).</summary>
@@ -414,7 +426,10 @@ namespace DeNelle.Village.UI
         public static EndStateVM FromRaidVictory(string joinedCompanionName,
             Action onReturn, float autoReturnSeconds = 20f,
             int stars = -1, int destructionPercent = -1, float elapsedSeconds = -1f,
-            ResourceCost credited = default(ResourceCost), string unlockLine = null)
+            ResourceCost credited = default(ResourceCost), string unlockLine = null,
+            // WO-1810 - troops lost for good on a WON raid. Trailing + optional, so every existing
+            // positional caller keeps its exact behaviour; < 0 = unknown and the line is omitted.
+            int troopsLost = -1)
         {
             // WO-771.6: the LOCKED-V1 scoring/loot now rides the raid victory screen —
             // stars (0-3), the %-destruction of the base, the clear time, and the loot
@@ -426,11 +441,23 @@ namespace DeNelle.Village.UI
             if (destructionPercent >= 0)
                 body += "\n" + destructionPercent + "% razed.";
 
+            // WO-1810 - A WIN CAN NOW COST DEAD TROOPS, SO THE WIN SAYS SO. Owner ruling
+            // 2026-09-16: "any troop killed is dead" - that applies to victory as much as to a
+            // retreat, and a screen that congratulates the player while three troops are quietly
+            // gone from the barracks is the same silence the non-victory screen was built to end.
+            // ONLY when lost > 0: a clean sweep must not be handed a "0 troops lost" consolation
+            // line, and this screen already carries stars, razed %, up to five spoils rows and an
+            // unlock line inside the same compressing band budget.
+            if (troopsLost > 0)
+                body += "\n" + troopsLost + (troopsLost == 1 ? " troop lost" : " troops lost") +
+                        " taking the base.";
+
             var vm = new EndStateVM
             {
                 Kind = EndStateKind.Victory,
                 Title = "Victory!",
                 Subtitle = body,
+                TroopsLost = troopsLost,
                 Stars = stars >= 0 ? Mathf.Clamp(stars, 0, 3) : -1,
                 TimeSeconds = elapsedSeconds >= 0f ? elapsedSeconds : -1f,
                 Emblem = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconCombat),
@@ -552,10 +579,17 @@ namespace DeNelle.Village.UI
         /// <param name="rewardShort">True when the wallet took less than the raid awarded.</param>
         /// <param name="troopsDeployed">Bodies committed to this raid (&lt; 0 = unknown, line omitted).</param>
         /// <param name="troopsSurvived">Bodies that walked off the field (&lt; 0 = unknown).</param>
+        /// <param name="troopsLost">
+        /// WO-1810 — troops this raid lost PERMANENTLY: the killed plus the share of the survivors
+        /// the exit charged (<c>RaidCasualtyPolicy</c>). &lt; 0 = unknown, and the sentence then
+        /// falls back to <paramref name="troopsDeployed"/> minus <paramref name="troopsSurvived"/>
+        /// — the killed, who are dead either way — rather than printing a number it cannot prove.
+        /// </param>
         public static EndStateVM FromRaidRetreat(string reason, Action onReturn,
             float autoReturnSeconds = 30f, int stars = -1, int destructionPercent = -1,
             float elapsedSeconds = -1f, ResourceCost credited = default(ResourceCost),
-            bool rewardShort = false, int troopsDeployed = -1, int troopsSurvived = -1)
+            bool rewardShort = false, int troopsDeployed = -1, int troopsSurvived = -1,
+            int troopsLost = -1)
         {
             bool timedOut = string.Equals(reason, TimeoutReason, StringComparison.OrdinalIgnoreCase);
 
@@ -572,18 +606,50 @@ namespace DeNelle.Village.UI
             if (destructionPercent >= 0)
                 body += "\n" + destructionPercent + "% razed.";
 
-            // TROOPS LOST / WOUNDED, in words. RaidDeployController marks every deployed body that
-            // did not survive as WOUNDED (never deleted) with a difficulty-scaled recovery, so the
-            // honest word is "wounded", not "lost" - and a raid that lost nobody says so, because
-            // "0 wounded" is the reassurance a player who retreated early has earned.
-            if (troopsDeployed >= 0 && troopsSurvived >= 0)
+            // TROOPS LOST, IN WORDS, WITH THE REASON FOLDED IN (WO-1810).
+            //
+            // ⚠ THIS LINE USED TO SAY "N troops return wounded", AND IT WAS TRUE UNTIL THIS TICKET.
+            // RaidDeployController marked every deployed body that did not survive as WOUNDED with a
+            // difficulty-scaled recovery, so "wounded" was the honest word. Owner ruling 2026-09-16:
+            // "there is no cost to losing a raid" / "any troop killed is dead so 60% of whats left" -
+            // the fallen are now REMOVED from the roster, and a non-victory exit also takes a share of
+            // the survivors. So the word is "lost", and the sentence carries WHY, because a player who
+            // has just lost real troops must not have to work out what charged them.
+            //
+            // ONE SENTENCE, REPLACING the old one rather than joining it: this subtitle can already
+            // carry four facts (the lead, the razed %, this line and the bank-short caveat) and
+            // EndStateView uniform-compresses every band past that (see the note above / the
+            // EndStateBodyFitRegression contract). A fifth line would crush the whole stack.
+            int lost = troopsLost;
+            if (lost < 0 && troopsDeployed >= 0 && troopsSurvived >= 0)
+                lost = troopsDeployed - troopsSurvived;      // the killed: dead under either model
+            // lost < 0 = nothing measurable, so the line is OMITTED: a raid that never reconciled
+            // must not print a zero it cannot prove (the same contract the -1 sentinels carry at
+            // the caller).
+            if (lost >= 0)
             {
-                int wounded = troopsDeployed - troopsSurvived;
-                if (wounded < 0) wounded = 0;
-                body += wounded == 0
-                    ? "\nEvery troop came home."
-                    : "\n" + wounded + (wounded == 1 ? " troop returns wounded." : " troops return wounded.");
+                if (lost == 0)
+                {
+                    body += "\nEvery troop came home.";
+                }
+                else
+                {
+                    string noun = lost == 1 ? " troop lost" : " troops lost";
+                    body += "\n" + lost + noun + (timedOut
+                        ? " - the assault failed and the warband did not make it back."
+                        : " - the cost of covering the retreat.");
+                }
             }
+
+            // OWNER RULING 2026-09-16 ~21:20 - A FAILED RAID PAYS NO LOOT, AND THE SCREEN SAYS SO
+            // IN WORDS. With nothing credited the spoils grid is empty (AddSpoil suppresses zeros),
+            // and an empty grid alone reads as "the screen is broken" rather than "you lost the
+            // haul". One sentence, and only on the FAIL exit: a RETREAT that simply razed nothing
+            // banked nothing for a different reason and must not be told the warband was lost.
+            // It occupies the slot rewardShort would have used - a fail credits nothing, so the
+            // bank-short caveat can never fire on the same screen, and the four-fact budget holds.
+            if (timedOut && credited.IsZero)
+                body += "\nNo spoils - the warband was lost.";
 
             if (rewardShort) body += "\n" + RewardShortSentence;
 
@@ -601,6 +667,9 @@ namespace DeNelle.Village.UI
                 Primary = onReturn,
                 AutoDismissSeconds = Mathf.Max(2f, autoReturnSeconds),
                 HoldOnInteraction = true,
+                // WO-1810 - the same count the sentence above states, bindable by a view that
+                // grows a band for it (see the field's own note).
+                TroopsLost = lost,
             };
 
             // SPOILS - the same five rows, the same order, the same AddSpoil suppression the
@@ -616,7 +685,9 @@ namespace DeNelle.Village.UI
                 "RAID NON-VICTORY RESULT composed (reason=" + (reason ?? "(null)") + "): stars=" + stars +
                 " razed=" + destructionPercent + "% spoilRows=" + vm.Spoils.Count +
                 " deployed=" + troopsDeployed + " survived=" + troopsSurvived +
-                " short=" + rewardShort + ". Before WO-1561 this exit showed NO screen at all.");
+                " lost=" + troopsLost + " short=" + rewardShort +
+                ". Before WO-1561 this exit showed NO screen at all; before WO-1810 it reported the " +
+                "fallen as WOUNDED, which is no longer what happens to them.");
             return vm;
         }
 

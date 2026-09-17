@@ -725,6 +725,30 @@ namespace DeNelle.Core.Ops
         public const string KeyEconomyPackTemporaryBuilderSeconds = "economy.packTemporaryBuilderSeconds";
 
         // ---------------------------------------------------------------------
+        //  WO-1811 - DISMISSING A TRAINED TROOP. Owner ruling 2026-09-16: a player
+        //  rebalancing a FULL army must be able to remove a troop and send it
+        //  "either to gold or to a staged ready troop" (= the Reserve).
+        //
+        //  ⚠ THERE IS NO PRICE TO REFUND. Training has charged NOTHING since
+        //  WO-1387 (BarracksService.EnqueueTraining spends nothing;
+        //  MusterPreview.Cost is hardcoded zero and prints "Free"), so a refund
+        //  cannot be "what you paid" - it would be zero. The refund is therefore a
+        //  PERCENT OF THE TROOP'S CATALOG GOLD VALUE (TroopDef.CostGold, which the
+        //  catalog still authors and the legacy instant-train path still spends).
+        //  That is a PROPOSED price, put behind this knob rather than invented in
+        //  code, exactly as the ruling required. A bare int const, because
+        //  tools/gen-tunable-manifest.mjs resolves ONLY that shape.
+        // ---------------------------------------------------------------------
+
+        /// <summary>PROPOSED dismiss refund: 50 % of the troop's catalog gold value. Half, because a
+        /// full refund makes rebalancing free (and a full army becomes a gold tap), while zero makes
+        /// the only way out of a wrong composition a punishment. The owner has not ruled the number.</summary>
+        public const int ArmyDismissReturnPercentDefault = 50;
+
+        /// <summary>Int percent (0..100). Gold returned when a trained troop is dismissed.</summary>
+        public const string KeyArmyDismissReturnPercent = "army.dismissReturnPercent";
+
+        // ---------------------------------------------------------------------
         //  WO-1384b - THE NIGHT MARKET CARD'S GLOW. Three FEEL knobs for the HUD
         //  card's animated rim light (a soft rounded ring plus three comets that
         //  chase the card's perimeter). Every one is a felt question about a phone
@@ -835,6 +859,46 @@ namespace DeNelle.Core.Ops
 
         /// <summary>Int, SECONDS. Wall-clock ceiling on raid staging before the stranding watchdog fires.</summary>
         public const string KeyRaidStagingCeilingSeconds = "raid.stagingCeilingSeconds";
+
+        // ---------------------------------------------------------------------
+        //  WO-1810 - WHAT LOSING A RAID COSTS. Owner ruling 2026-09-16 ~20:05,
+        //  verbatim: "there is no cost to losing a raid" / "loss should lose
+        //  troops and then rebuild" / "maybe lose 100 on fail, lose 60% on
+        //  retreat" / "but any troop killed is dead so 60% of whats left".
+        //
+        //  ⛔ THESE TWO DEFAULTS ARE THE OWNER'S RULING, NOT TODAY'S BEHAVIOUR,
+        //  and that departure is stated rather than hidden (same shape as #9 /
+        //  #19 / #43). Before WO-1810 a raid loss removed NOTHING: every fallen
+        //  troop came home "wounded" and healed free on a 5-45 minute timer
+        //  (measured on the owner's Seeker, build 372984, 19:59:01 - "deployed 10,
+        //  survivors 7, wounded 3 ... recovery 1200s", and the army screen read
+        //  10/10 a minute later). A row of 0 on BOTH keys restores that
+        //  no-permanent-loss behaviour exactly.
+        //
+        //  The KILLED are deliberately NOT on the rail: "any troop killed is
+        //  dead" is a ruling, not a dial. These two percents apply only to the
+        //  SURVIVORS, on top of the killed.
+        //
+        //  Percents, because the rail is integer-only. The consumer
+        //  (DeNelle.Village.RaidCasualtyPolicy) reads SpecFor(key) FIRST so an
+        //  unregistered key answers the shipping default instead of Int()'s
+        //  0-for-unknown - a 0 here would silently restore the free loss.
+        //
+        //  Bare int consts, because tools/gen-tunable-manifest.mjs resolves ONLY
+        //  that shape.
+        // ---------------------------------------------------------------------
+
+        /// <summary>RULED: percent of the SURVIVORS a FAILED raid loses (100 = the whole warband).</summary>
+        public const int RaidLossPctFailDefault = 100;
+
+        /// <summary>RULED: percent of the SURVIVORS the player's own RETREAT loses.</summary>
+        public const int RaidLossPctRetreatDefault = 60;
+
+        /// <summary>Int, PERCENT. Survivors lost when a raid FAILS (clock expiry, wipe, watchdog, death settlement).</summary>
+        public const string KeyRaidLossPctFail = "raid.lossPctFail";
+
+        /// <summary>Int, PERCENT. Survivors lost when the PLAYER retreats.</summary>
+        public const string KeyRaidLossPctRetreat = "raid.lossPctRetreat";
 
         // ---------------------------------------------------------------------
         //  WO-1594 - THE HONOR MILESTONES. Owner ruling 2026-09-09, verbatim
@@ -1746,6 +1810,17 @@ namespace DeNelle.Core.Ops
                 "Whether six hours is the number that turns a first tap into a habit is felt, not " +
                 "derived, and a rebuild per opinion is the wrong price for finding out."),
 
+            new TunableSpec(KeyArmyDismissReturnPercent, TunableKind.Int, ArmyDismissReturnPercentDefault,
+                "Percent of a troop's CATALOG gold value (TroopDef.CostGold) returned when the player " +
+                "dismisses a trained troop from the army screen (WO-1811). Ships at 50. 0 makes a " +
+                "dismissal pure deletion - the troop still leaves the army, it just pays nothing; 100 " +
+                "makes rebalancing free. Training itself charges nothing (WO-1387), so this is a " +
+                "PROPOSED price on the way OUT, not a refund of anything the player paid.",
+                "NOT a PROD-022 hypothesis - the owner ruled the VERB ('either return them to gold or " +
+                "to a staged ready troop', 2026-09-16) and not the number. Whether half is generous " +
+                "enough to make a player willing to fix a wrong army is felt, and a rebuild per " +
+                "opinion is the wrong price for finding out."),
+
             new TunableSpec(KeyHudNightMarketGlowLapSec, TunableKind.Int, HudNightMarketGlowLapSecDefault,
                 "Seconds for the Night Market card's comets to make ONE lap of the card's perimeter " +
                 "(WO-1384b). Ships at 5. Clamped to 1..60 at the consumer - never frozen, never a blur. " +
@@ -1819,6 +1894,34 @@ namespace DeNelle.Core.Ops
                 "watchdog routes the player home.",
                 "WO-1095 - staging is free on the raid clock, so only a dead session should trip " +
                 "a wall-clock bound."),
+
+            new TunableSpec(KeyRaidLossPctFail, TunableKind.Int, RaidLossPctFailDefault,
+                "PERCENT of the SURVIVORS a FAILED raid loses PERMANENTLY - clock expiry, a wiped " +
+                "warband, the stranding watchdog or a hero-death settlement (WO-1810). Troops KILLED " +
+                "on the field are dead on every outcome and are not on this axis; this is what happens " +
+                "to the ones still standing when the raid failed. 100 = the whole warband is lost. " +
+                "0 restores the pre-WO-1810 behaviour, in which a lost raid removed NOTHING. Clamped " +
+                "0..100 at RaidCasualtyPolicy, read through SpecFor first so an unregistered key " +
+                "answers 100 rather than Int()'s 0.",
+                "NOT a PROD-022 hypothesis - the owner's ruling 2026-09-16, verbatim: 'there is no " +
+                "cost to losing a raid' / 'maybe lose 100 on fail'. ⛔ THIS DEFAULT IS THAT RULING, " +
+                "NOT TODAY'S BEHAVIOUR: measured on her Seeker (build 372984, 19:59:01) a timed-out " +
+                "raid reported 'deployed 10, survivors 7, wounded 3 ... recovery 1200s' and the army " +
+                "screen read 'Army is full. 10/10' one minute later - the loss cost nothing at all. " +
+                "Whether a total wipe is too harsh for a first camp is exactly the felt question a " +
+                "row answers without a 30-minute rebuild."),
+
+            new TunableSpec(KeyRaidLossPctRetreat, TunableKind.Int, RaidLossPctRetreatDefault,
+                "PERCENT of the SURVIVORS the player's OWN Retreat loses permanently (WO-1810) - the " +
+                "price of pulling out, charged on 'whats left' after the killed are already gone. The " +
+                "rest come home HEALTHY, with no recovery timer. Rounded to the NEAREST troop with a " +
+                "floor of one, so a lone survivor of a retreat is never a free save. Clamped 0..100 " +
+                "at RaidCasualtyPolicy; 0 makes retreating free again.",
+                "NOT a PROD-022 hypothesis - the owner's ruling 2026-09-16, verbatim: 'lose 60% on " +
+                "retreat' / 'but any troop killed is dead so 60% of whats left'. ⛔ Also a departure " +
+                "from today's behaviour, which was 0%. The gap between this and the FAIL rate is the " +
+                "whole reason to press Retreat rather than run the clock out, so the two are separate " +
+                "rows: if retreating is not visibly cheaper than failing, the button is decoration."),
 
             new TunableSpec(KeyRaidHonorThirdStarSeconds, TunableKind.Int, RaidHonorThirdStarSecondsDefault,
                 "Elapsed RAID seconds after which the THIRD honor star goes dark (WO-1594) - the " +

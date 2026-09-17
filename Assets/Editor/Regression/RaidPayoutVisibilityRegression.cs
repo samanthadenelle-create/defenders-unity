@@ -156,7 +156,8 @@ namespace DeNelle.Editor.Regression
             var vm = EndStateVM.FromRaidRetreat(EndStateVM.RetreatReason, null, 30f,
                                                 stars: 1, destructionPercent: 62, elapsedSeconds: 96f,
                                                 credited: banked, rewardShort: false,
-                                                troopsDeployed: 6, troopsSurvived: 4);
+                                                // WO-1810: 2 killed + 60% of the 4 survivors (2) = 4 lost.
+                                                troopsDeployed: 6, troopsSurvived: 4, troopsLost: 4);
             if (vm == null) { fails.Add("[G] FromRaidRetreat returned null on a normal retreat"); return; }
 
             // RAZED %, STARS, TIME - the three facts a losing player earned and was never told.
@@ -179,17 +180,27 @@ namespace DeNelle.Editor.Regression
                     fails.Add("[G] a retreat crediting " + expected.ToLowerInvariant() + " showed no " + expected +
                               " row. Rows were: " + string.Join(",", labels.ToArray()));
 
-            // TROOPS LOST / WOUNDED, in words.
-            if (vm.Subtitle == null || vm.Subtitle.IndexOf("2 troops return wounded", StringComparison.Ordinal) < 0)
-                fails.Add("[G] 6 deployed and 4 survivors did not produce '2 troops return wounded'. Subtitle was: " +
-                          (vm.Subtitle ?? "<null>"));
+            // TROOPS LOST, in words.
+            //
+            // ⚠ RE-POINTED 2026-09-16 (WO-1810), and the re-point moves WITH an owner ruling, not
+            // against a passing test. This pinned "2 troops return wounded" - correct until this
+            // ticket, because a fallen troop came home wounded and healed free. Owner ruling:
+            // "any troop killed is dead so 60% of whats left", so the honest word is LOST.
+            // 6 deployed / 4 survivors on a RETREAT = 2 killed + 60% of 4 survivors (2) = 4 lost.
+            if (vm.Subtitle == null || vm.Subtitle.IndexOf("4 troops lost", StringComparison.Ordinal) < 0)
+                fails.Add("[G] a retreat that lost 4 troops did not say '4 troops lost' - the COUNT is pinned, " +
+                          "not just the word, because an oracle that passes on any number pins nothing. " +
+                          "Subtitle was: " + (vm.Subtitle ?? "<null>"));
 
+            // A raid that lost NOBODY still says so - the reassurance an early retreat has earned.
+            // troopsLost is passed EXPLICITLY as 0 here: under WO-1810 a retreat with 3 survivors
+            // charges 60% of them, so "deployed 3 / survived 3" alone is no longer a zero-loss raid.
             var clean = EndStateVM.FromRaidRetreat(EndStateVM.RetreatReason, null, 30f, 0, 10, 20f,
-                                                   default(ResourceCost), false, 3, 3);
+                                                   default(ResourceCost), false, 3, 3, 0);
             if (clean == null || clean.Subtitle == null ||
                 clean.Subtitle.IndexOf("Every troop came home", StringComparison.Ordinal) < 0)
                 fails.Add("[G] a retreat that lost nobody does not say so - that is the reassurance an early " +
-                          "retreat has earned, and 'wounded: 0' is not a sentence.");
+                          "retreat has earned, and 'lost: 0' is not a sentence.");
             if (clean != null && clean.Spoils.Count != 0)
                 fails.Add("[G] a retreat that banked NOTHING drew " + clean.Spoils.Count +
                           " spoil row(s). A screen must never advertise a payout that did not land.");

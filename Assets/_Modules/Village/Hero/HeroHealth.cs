@@ -1623,8 +1623,15 @@ namespace DeNelle.Village
                     {
                         DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                             "hero DOWN in an enemy-owned scene - army settled as a failure (0 stars); " +
-                            "the troops still standing break and flee home, the fallen are wounded. " +
-                            "Partial loot on this exit: " + lootNote + ".");
+                            // WO-1810 - CORRECTED COPY. This said "the troops still standing break and
+                            // flee home, the fallen are wounded", which stopped being true the moment the
+                            // owner ruled "any troop killed is dead" (2026-09-16): this exit declares
+                            // nothing, so the settlement prices it as a FAIL - the fallen are removed from
+                            // the roster and so is every troop still standing. A trace that describes a
+                            // settlement the code no longer performs is exactly the false lead WO-1768 paid
+                            // an hour for. The NUMBERS are on the reconcile's own casualties line.
+                            "the fallen are DEAD and the warband does not come home - the player retrains " +
+                            "at the barracks. Partial loot on this exit: " + lootNote + ".");
                     }
                     else
                     {

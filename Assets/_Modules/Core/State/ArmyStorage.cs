@@ -132,6 +132,103 @@ namespace DeNelle.Core.State
             return Loadouts[index];
         }
 
+        // ── v42 — THE RESERVE (WO-1811, owner ruling 2026-09-16) ──────────────
+        //
+        // Owner, verbatim: "If you change the you want 3 archers and 2 healers and rest
+        // footman, you need to remove ones from active army, and either return them to
+        // gold or to a staged ready troop". The "staged ready troop" is this list; it is
+        // called the RESERVE in every player-facing string (the word "staged" is banned
+        // from the army screen's copy - it is the vocabulary the owner could not place).
+        //
+        // ⛔ IT IS A SEPARATE LIST ON PURPOSE, AND THAT IS THE WHOLE DESIGN. A reserve
+        // FLAG on PlayerTroop would have forced a change to SlotsUsed / GetDeployable /
+        // CountOfDef - the cap arithmetic every train and raid gate reads (BarracksService
+        // .cs:385, ArmyReadiness.cs) - so a bug in it would show up as a wrong army cap.
+        // Keeping reserved troops OUT of Owned means the cap math is untouched, and
+        // "not counted against the raid cap" is true by construction rather than by a
+        // filter somebody has to remember to add.
+        //
+        // The two moves below are the ONLY writers, and both go through the existing
+        // mutation seams: RemoveOwned (WO-1810, the first deletion path in the game) on
+        // the way out, and a plain Owned.Add on the way back. Nothing here mints or
+        // destroys a troop - a reserved troop keeps its Id, its veterancy and its wound.
+
+        /// <summary>
+        /// Trained troops the player has set aside. They are NOT part of the active army:
+        /// they hold no cap slot, they never deploy, and no raid gate counts them.
+        /// Additive on the nested Army JSON (v42) - absent on an older save reads as null
+        /// and is seeded empty by <see cref="EnsureReserve"/>, which is exactly the prior
+        /// behaviour (no reserve at all).
+        /// </summary>
+        [JsonProperty("reserve")] public List<PlayerTroop> Reserve;
+
+        /// <summary>Null-safe accessor/seed for <see cref="Reserve"/>. Safe every read.</summary>
+        public List<PlayerTroop> EnsureReserve()
+        {
+            if (Reserve == null) Reserve = new List<PlayerTroop>();
+            return Reserve;
+        }
+
+        /// <summary>Reserved troops of one def id (0 when none).</summary>
+        public int ReserveCountOf(string troopDefId)
+        {
+            if (Reserve == null || string.IsNullOrEmpty(troopDefId)) return 0;
+            int n = 0;
+            for (int i = 0; i < Reserve.Count; i++)
+                if (Reserve[i] != null && Reserve[i].TroopDefId == troopDefId) n++;
+            return n;
+        }
+
+        /// <summary>
+        /// Moves ONE troop of <paramref name="troopDefId"/> out of the active army and into the
+        /// reserve, freeing its cap slot. Prefers a HEALTHY troop so a move never silently parks
+        /// the one that was about to recover. Returns false (and changes nothing) when the player
+        /// owns none. The caller persists.
+        /// </summary>
+        public bool MoveToReserve(string troopDefId)
+        {
+            if (Owned == null || string.IsNullOrEmpty(troopDefId)) return false;
+
+            // ⛔ A WOUNDED TROOP IS NEVER MOVED, and that is a data rule, not a preference:
+            // AdvanceRecovery iterates Owned ONLY (see TickRecovery below), so a wounded body
+            // parked in the reserve would stop healing forever and nothing on screen would say
+            // why. Only a HEALTHY troop with a real id can be set aside; a player who wants the
+            // wounded one gone dismisses it instead.
+            PlayerTroop pick = null;
+            foreach (var t in Owned)
+            {
+                if (t == null || t.Wounded || t.TroopDefId != troopDefId) continue;
+                if (string.IsNullOrEmpty(t.Id)) continue;   // RemoveOwned keys on Id - a blank id
+                pick = t;                                   // would leave it in BOTH lists
+                break;
+            }
+            if (pick == null) return false;
+
+            EnsureReserve().Add(pick);
+            RemoveOwned(new[] { pick.Id });     // the WO-1810 seam, not a second deletion path
+            return true;
+        }
+
+        /// <summary>
+        /// Moves ONE reserved troop of <paramref name="troopDefId"/> back into the active army.
+        /// Returns false when there is none reserved; the CAP CHECK IS THE CALLER'S - this method
+        /// is the move, not the rule (the army screen asks <see cref="SlotsRemaining"/> first).
+        /// </summary>
+        public bool RecallFromReserve(string troopDefId)
+        {
+            if (Reserve == null || string.IsNullOrEmpty(troopDefId)) return false;
+            for (int i = 0; i < Reserve.Count; i++)
+            {
+                var t = Reserve[i];
+                if (t == null || t.TroopDefId != troopDefId) continue;
+                Reserve.RemoveAt(i);
+                if (Owned == null) Owned = new List<PlayerTroop>();
+                Owned.Add(t);
+                return true;
+            }
+            return false;
+        }
+
         // ── Capacity ─────────────────────────────────────────────────────────
 
         /// <summary>
@@ -248,12 +345,29 @@ namespace DeNelle.Core.State
                 if (t != null && t.IsDeployable) yield return t;
         }
 
-        // ── Loss / recovery (wounded-recovery model — NEVER deletes) ──────────
+        // ── Loss / recovery ───────────────────────────────────────────────────
+        //
+        // ⚠ CORRECTED 2026-09-16 (WO-1810). This heading read "wounded-recovery model
+        // — NEVER deletes", and the whole family below is still written that way,
+        // because until this ticket that WAS the model: a troop killed on a raid came
+        // home wounded and healed for free on a timer. The owner ruled that out —
+        // "any troop killed is dead" — so the RAID path now REMOVES the fallen
+        // (see RemoveOwned below and DeNelle.Village.RaidCasualtyPolicy).
+        //
+        // MarkWounded / TickRecovery / AdvanceRecovery are KEPT and are not dead code:
+        // they are the backstop the raid reconcile still runs after the removal (a
+        // deployed body that somehow escaped removal is wounded rather than silently
+        // healthy), and they are pinned by ArmyRecoveryRegression. What changed is that
+        // a raid no longer PRODUCES wounded troops.
 
         /// <summary>
-        /// The raid-loss path: marks <paramref name="t"/> wounded and starts its
-        /// recovery countdown. NEVER removes the troop (no permadeath). Clamps the
+        /// Marks <paramref name="t"/> wounded and starts its recovery countdown. Clamps the
         /// recovery seconds to &gt;= 0; a non-positive value recovers it immediately.
+        ///
+        /// <para>⚠ NO LONGER THE RAID-LOSS PATH (WO-1810). A troop killed on a raid is now
+        /// REMOVED from the roster (<see cref="RemoveOwned"/>); this is the backstop for a
+        /// deployed body that was not removed, and the seam any future non-lethal downed
+        /// state would use.</para>
         /// </summary>
         public void MarkWounded(PlayerTroop t, float recoverySeconds)
         {
@@ -272,10 +386,20 @@ namespace DeNelle.Core.State
         /// The raid-EXIT reconcile (WO-453 Step 4): given the ids of every troop that was
         /// DEPLOYED into the raid and the ids of the SURVIVORS (still alive at retreat), marks
         /// every deployed-but-not-survivor troop wounded (recovery countdown) and leaves the
-        /// survivors untouched. The wounded-recovery loss model — NEVER deletes a troop. Both
-        /// id sets are null-safe (a null set reads as empty); a non-positive
+        /// survivors untouched.
+        ///
+        /// <para>⚠ WO-1810 — THIS IS NO LONGER THE WHOLE RAID SETTLEMENT, AND IT NO LONGER
+        /// NORMALLY DOES ANYTHING. <c>RaidDeployController.ReconcileRaidEnd</c> now removes the
+        /// killed (and, on a fail/retreat, the policy's share of the survivors) through
+        /// <see cref="RemoveOwned"/> BEFORE calling this, so by the time this runs there is
+        /// typically no deployed-but-not-survivor troop left in <see cref="Owned"/> to wound. It
+        /// is kept as the BACKSTOP: a deployed body that escaped removal is wounded rather than
+        /// silently healthy. Its own behaviour is unchanged and stays pinned by
+        /// ArmyRecoveryRegression.</para>
+        ///
+        /// <para>Both id sets are null-safe (a null set reads as empty); a non-positive
         /// <paramref name="recoverySeconds"/> recovers a downed troop immediately (per
-        /// <see cref="MarkWounded"/>). Lookup is by <see cref="PlayerTroop.Id"/>.
+        /// <see cref="MarkWounded"/>). Lookup is by <see cref="PlayerTroop.Id"/>.</para>
         /// </summary>
         public void ReconcileAfterRaid(IEnumerable<string> deployedIds, IEnumerable<string> survivorIds, float recoverySeconds)
         {
@@ -298,6 +422,48 @@ namespace DeNelle.Core.State
                 if (survivors.Contains(t.Id)) continue;        // came home — untouched
                 MarkWounded(t, recoverySeconds);               // deployed + fell → wounded
             }
+        }
+
+        /// <summary>
+        /// WO-1810 — <b>THE FIRST TROOP DELETION PATH IN THE GAME.</b> Removes every roster entry
+        /// whose <see cref="PlayerTroop.Id"/> appears in <paramref name="ids"/> and returns how
+        /// many were actually removed.
+        ///
+        /// <para>OWNER RULING 2026-09-16, verbatim: <i>"loss should lose troops and then rebuild"</i>
+        /// / <i>"any troop killed is dead so 60% of whats left"</i>. Until this method existed the
+        /// only raid-loss outcome was <see cref="MarkWounded"/> — a free 5-45 minute timer — so a
+        /// lost raid cost the player nothing and the army came back whole. The player now rebuilds
+        /// by TRAINING at the barracks, which is the cost the loop was missing.</para>
+        ///
+        /// <para>⛔ TREAT THIS AS THE SEAM, NOT AS ONE OF SEVERAL. <c>grep '\.Owned\.Remove'</c> over
+        /// <c>Assets/</c> returned NOTHING before this ticket, so nothing in the tree was written to
+        /// survive a troop disappearing. Two things were checked at source rather than assumed:
+        /// the WO-934 loadout bank stores <b>def-id + count rows</b> (<c>ArmyLoadoutBank.cs:52-68</c>),
+        /// never instance ids, so a removal cannot orphan a preset; and
+        /// <c>TroopController.OwnedTroopId</c> is per-raid runtime state on a body that is destroyed
+        /// with the scene. Any FUTURE system that keys on a troop id must be pruned HERE.</para>
+        ///
+        /// <para>NO SAVE-SCHEMA BUMP: <see cref="Owned"/> is a serialized <c>List&lt;PlayerTroop&gt;</c>
+        /// (<c>SaveSchema.CurrentVersion</c> v22 note: "owned troops + cap + wounded/recovery/
+        /// veterancy"). Removing entries changes no field and no shape, so an older or newer save
+        /// reads identically — there is nothing for a migrator to do. The CALLER persists (every raid
+        /// exit already calls <c>GameStateService.Save()</c>).</para>
+        ///
+        /// <para>Null-safe and idempotent: a null/empty id set, a null roster and an id that is
+        /// already gone are all no-ops, so a duplicated raid-exit call cannot remove twice.</para>
+        /// </summary>
+        public int RemoveOwned(IEnumerable<string> ids)
+        {
+            if (Owned == null || ids == null) return 0;
+
+            var doomed = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var id in ids)
+                if (!string.IsNullOrEmpty(id)) doomed.Add(id);
+            if (doomed.Count == 0) return 0;
+
+            int before = Owned.Count;
+            Owned.RemoveAll(t => t != null && !string.IsNullOrEmpty(t.Id) && doomed.Contains(t.Id));
+            return before - Owned.Count;
         }
 
         /// <summary>

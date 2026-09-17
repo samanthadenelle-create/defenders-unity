@@ -22,7 +22,11 @@
 //             most-damaged pick; that pick stays the fallback when no order stands.
 //             A wall tap with Breach OFF is unchanged - it still falls through to Rally.
 //   RETREAT — survivors = the living deployed bodies' OwnedTroopIds; reconcile the
-//             army (deployed-but-not-survivor → wounded) and evac home via GoCastle.
+//             army and evac home via GoCastle. WO-1810: deployed-but-not-survivor is
+//             REMOVED from the roster (it used to be "→ wounded", healed free on a
+//             timer, which is the defect the owner reported), and the exit itself also
+//             costs a share of the survivors — 60% on a chosen retreat, all of them on
+//             a fail. See RaidCasualtyPolicy.
 //
 // Code-built uGUI (NO UXML — repo rule). NON-modal: a bottom tray + Rally/Retreat
 // buttons that never blacken the screen. Input is the NEW Input System (Mouse.current,
@@ -651,6 +655,9 @@ namespace DeNelle.Village
         /// </summary>
         private void ForceExitHome(string reason)
         {
+            // WO-1810 - a watchdog exit is not a player retreat: it is a raid that never finalized,
+            // which is a FAIL. Latched, so a retreat that already declared itself is untouched.
+            DeclareRaidExitOutcome(RaidExitOutcome.Failed, "stranding watchdog: " + reason);
             DeNelle.Core.Diagnostics.Guard.Try("Raid", reason + ": settle partial loot",
                 () => SettlePartialLoot(reason));
             DeNelle.Core.Diagnostics.Guard.Try("Raid", reason + ": reconcile army",
@@ -1616,7 +1623,11 @@ namespace DeNelle.Village
             if (_retreatConfirm && !_retreatPending)
             {
                 _retreatPending = true;
-                SetStatus("Retreat? Tap again to confirm — survivors come home, the fallen recover.");
+                // WO-1810 - THIS LINE USED TO PROMISE "the fallen recover", which is no longer true
+                // and was the defect the owner reported: the fallen are dead and the retreat itself
+                // costs a share of the survivors. The player must be told the price BEFORE the tap.
+                SetStatus("Retreat? Tap again to confirm — the fallen are lost, and some survivors " +
+                          "will not make it back.");
                 if (_retreatButton != null)
                 {
                     var lbl = _retreatButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
@@ -1667,6 +1678,16 @@ namespace DeNelle.Village
         /// <param name="reason">EndStateVM.RetreatReason or EndStateVM.TimeoutReason.</param>
         private void DoRetreat(string reason)
         {
+            // WO-1810 - DECLARE THE EXIT BEFORE SETTLING IT. The timeout funnels through this same
+            // method and its toast says "your warband retreats", but a player who ran out of clock
+            // did NOT retreat: the reason string is the only honest discriminator, and a timeout is
+            // a FAIL (100% of the survivors) while a chosen retreat costs 60% of them.
+            bool playerRetreat = !string.Equals(reason, DeNelle.Village.UI.EndStateVM.TimeoutReason,
+                                                System.StringComparison.OrdinalIgnoreCase);
+            DeclareRaidExitOutcome(
+                playerRetreat ? RaidExitOutcome.Retreat : RaidExitOutcome.Failed,
+                playerRetreat ? "the player pressed Retreat" : "the raid clock expired (reason=" + reason + ")");
+
             SettlePartialLoot(reason);
 
             // A retreat / clock-expiry exit is never a 3-star clear -> 0 stars, no veterancy.
@@ -1774,7 +1795,11 @@ namespace DeNelle.Village
                     result != null ? result.DestructionPercent : -1,
                     result != null ? result.ElapsedSeconds : -1f,
                     _retreatCredited, _retreatRewardShort,
-                    _lastDeployedCount, _lastSurvivorCount);
+                    _lastDeployedCount, _lastSurvivorCount,
+                    // WO-1810 - the screen states the COST: how many troops this raid lost for good.
+                    // The REASON half is already the factory's first argument, so the sentence is
+                    // composed by the VM from the exit it was already told about - never here.
+                    _lastLostCount);
 
                 DeNelle.Village.UI.EndStateView.Show(vm);
 
@@ -1786,7 +1811,9 @@ namespace DeNelle.Village
                     _retreatCredited.Stone + "f/" + _retreatCredited.Coins + "g/" +
                     _retreatCredited.Crystals + "c short=" + _retreatRewardShort +
                     " deployed=" + _lastDeployedCount + " survived=" + _lastSurvivorCount +
-                    ". Before WO-1561 this exit routed home with NO screen at all.");
+                    " lost=" + _lastLostCount + " returned=" + _lastReturnedCount +
+                    ". Before WO-1561 this exit routed home with NO screen at all, and before " +
+                    "WO-1810 it cost no troops at all.");
             }
             catch (System.Exception e)
             {
@@ -1836,6 +1863,21 @@ namespace DeNelle.Village
         private int _lastDeployedCount = -1;
         private int _lastSurvivorCount = -1;
 
+        // WO-1810 - what this raid actually COST, captured in the same place for the same reason.
+        // -1 = never reconciled, and the screen then omits the line rather than printing a zero it
+        // cannot prove. TotalLost = killed + the policy's share of the survivors; Returned = the
+        // bodies that came home healthy.
+        private int _lastLostCount = -1;
+        private int _lastReturnedCount = -1;
+
+        /// <summary>
+        /// WO-1810 - troops this raid removed from the roster for good (killed + the exit's share of
+        /// the survivors), or -1 if this raid never reconciled. Read by the VICTORY screen: a won raid
+        /// still kills troops, so it has the same duty to say so as the retreat screen does. Read-only
+        /// - <see cref="ReconcileRaidEnd"/> is the one writer.
+        /// </summary>
+        public int LastTroopsLost => _lastLostCount;
+
         /// <summary>
         /// THE ONE partial-loot settlement, shared by EVERY non-victory raid exit
         /// (WO-932 for retreat/timeout; WO-1110 §3 adds hero death).
@@ -1873,8 +1915,47 @@ namespace DeNelle.Village
 
             RaidResult result = _scoring.Finalize(false);
             ResourceCost loot = _scoring.LootFor(result);
+
+            // =================================================================
+            //  OWNER RULING 2026-09-16 ~21:20 - A FAILED RAID PAYS NOTHING
+            // =================================================================
+            //  Verbatim answer to WO-1810's open question: a FAILED raid (timeout
+            //  or wipe - any non-victory that is not a player RETREAT) pays NO
+            //  loot; a player retreat keeps the partial loot scaled by damage
+            //  done, exactly as today; victory is unchanged.
+            //
+            //  ⛔ THE SCORE IS STILL FINALIZED ABOVE, DELIBERATELY. Stars, razed %
+            //  and the clock are what the result screen reports, and the Finalized
+            //  latch is what stops a second exit paying twice - skipping Finalize
+            //  would blank the screen and re-open that door. Only the PAYMENT is
+            //  refused here.
+            //
+            //  ⚠ raid.lootFailPct (PROD022 #21, default 18) is NOT deleted: it
+            //  still prices RaidScoring.LootFor and still pays a 0-star RETREAT.
+            //  The fail branch simply never consults it.
+            //
+            //  ⚠ CONSEQUENCE, RECORDED NOT HIDDEN: the hero-death settlement
+            //  declares no outcome (by design), so it resolves to fail and now
+            //  pays nothing either. That reverses WO-1110's UNRULED default
+            //  ("death pays what retreat pays") - and it is reversed by a RULING,
+            //  which outranks it. Death and timeout are both "the warband did not
+            //  come home"; only a chosen retreat brings the spoils back.
+            bool paysLoot = _exitOutcome == RaidExitOutcome.Retreat;
+            if (!paysLoot)
+            {
+                _retreatCredited = default(ResourceCost);
+                _retreatRewardShort = false;
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    "raid-end loot: outcome=fail paid=0 (owner ruling 2026-09-16). " +
+                    $"Exit '{exitLabel}', declared outcome {RaidCasualtyPolicy.Word(_exitOutcome)}, " +
+                    $"{result?.DestructionPercent ?? 0}% razed - the score is SETTLED (stars/razed/clock " +
+                    "still report) but nothing is granted, so the result screen draws no spoils rows.");
+                return;
+            }
+
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
-                $"{exitLabel} settle: partial loot for {result?.DestructionPercent ?? 0}% razed.");
+                $"{exitLabel} settle: partial loot for {result?.DestructionPercent ?? 0}% razed " +
+                "(outcome=retreat - the player chose to pull out, so the damage-scaled share is paid).");
             GrantRetreatLoot(loot, result);
         }
 
@@ -2017,9 +2098,17 @@ namespace DeNelle.Village
         /// Computes deployed vs. surviving ids from THIS controller's deploy ledger, the only
         /// place the deployed set exists: a fallen troop's body is destroyed a few seconds after
         /// death (TroopController DeathHoldSeconds), so a scene scan finds survivors only and
-        /// could never reconstruct deployedIds. Deployed-but-not-survivor troops are marked
-        /// wounded (never deleted); on a 3-star clear each survivor gains one veterancy rank.
-        /// LATCHED - the second call is a logged no-op.
+        /// could never reconstruct deployedIds.
+        ///
+        /// <para>⚠ WO-1810 - THIS PARAGRAPH USED TO END "Deployed-but-not-survivor troops are marked
+        /// wounded (never deleted)", AND THAT WAS THE DEFECT. Owner ruling 2026-09-16: "any troop
+        /// killed is dead so 60% of whats left". The fallen are REMOVED from the roster; a FAILED
+        /// exit also loses 100% of the survivors and a player RETREAT 60% of them
+        /// (<see cref="RaidCasualtyPolicy"/>, rates on the rail). The wounded/recovery call is kept
+        /// only as the backstop behind that removal.</para>
+        ///
+        /// <para>On a 3-star clear each SURVIVING troop still gains one veterancy rank.
+        /// LATCHED - the second call is a logged no-op.</para>
         /// </summary>
         // =====================================================================
         //  ATTRITION — recovery scales with camp difficulty (owner ruling 2026-08-21)
@@ -2092,6 +2181,48 @@ namespace DeNelle.Village
             return RecoveryForDifficulty(def.difficulty);
         }
 
+        // =====================================================================
+        //  WO-1810 - WHICH EXIT IS SETTLING, DECLARED BY THE EXIT ITSELF
+        // =====================================================================
+        //  The cost of a raid depends on the OUTCOME, and the outcome is NOT
+        //  derivable from starsEarned: a 0-star victory and a retreat both arrive
+        //  as 0. So each exit DECLARES itself, and an exit that never declares
+        //  resolves to Failed (the ruling) while SAYING SO in the trace.
+        //
+        //  ⛔ WHY VICTORY DECLARES EARLY (at RaidVictoryController's _handled latch,
+        //  not at its ReconcileArmy call): HeroHealth settles a dead hero with
+        //  ReconcileRaidEnd(0) and only stands down once the victory SCREEN is up
+        //  (HeroHealth's VictoryOwnsTheReturn gate). A hero dying between the win
+        //  and the screen would otherwise reach this method with the field still
+        //  undeclared and lose 100% of a WON warband. HeroHealth itself is left
+        //  untouched - it does not need to know, because the default is correct
+        //  for it.
+        private RaidExitOutcome _exitOutcome = RaidExitOutcome.Undeclared;
+
+        /// <summary>
+        /// WO-1810 - the raid exit declares WHAT it is before it settles the army. Latched to the
+        /// FIRST declaration: a raid is won or lost once, and a later exit narrating the same raid
+        /// (hero death after a win, the stranding watchdog behind a retreat) must never re-price it.
+        /// </summary>
+        public void DeclareRaidExitOutcome(RaidExitOutcome outcome, string why)
+        {
+            if (_exitOutcome != RaidExitOutcome.Undeclared)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                    "raid exit outcome already declared as " + RaidCasualtyPolicy.Word(_exitOutcome) +
+                    " - ignoring a later '" + RaidCasualtyPolicy.Word(outcome) + "' (" + (why ?? "no reason") +
+                    "). The first exit to declare owns what this raid cost.");
+                return;
+            }
+            _exitOutcome = outcome;
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                "raid exit outcome DECLARED: " + RaidCasualtyPolicy.Word(outcome) + " (" +
+                (why ?? "no reason") + "). This is what the army settlement will be priced on.");
+        }
+
+        /// <summary>The declared exit outcome (test/diagnostic). Undeclared until an exit says so.</summary>
+        public RaidExitOutcome DeclaredExitOutcome => _exitOutcome;
+
         public void ReconcileRaidEnd(int starsEarned)
         {
             if (_reconciled)
@@ -2130,8 +2261,12 @@ namespace DeNelle.Village
                     "first-raid slot floor, permanently.");
             }
 
-            // Survivors = the living deployed bodies' owning ids; everyone else we
-            // deployed fell -> wounded (recovery countdown). NEVER deleted.
+            // Survivors = the living deployed bodies' owning ids; everyone else we deployed FELL.
+            //
+            // ⚠ WO-1810 - the fallen are now DEAD, not wounded. Owner ruling 2026-09-16: "any
+            // troop killed is dead". The lines below used to end "-> wounded (recovery countdown).
+            // NEVER deleted." and that was the defect: three troops died on the owner's Seeker at
+            // 19:59:01, came home wounded, and healed free in 20 minutes.
             var deployedIds = new List<string>();
             var survivorIds = new List<string>();
             foreach (var d in _deployed)
@@ -2150,19 +2285,74 @@ namespace DeNelle.Village
             float recovery = ResolveRecoverySeconds();
 
             // WO-1561 - captured HERE because this is the only place the deployed set exists (see
-            // the deploy-ledger note above). The non-victory result screen states "N troops return
-            // wounded" from these two numbers; a raid that never reconciled leaves them at -1 and
-            // the screen omits the line rather than printing a zero it cannot prove.
+            // the deploy-ledger note above). WO-1810: the non-victory result screen used to state
+            // "N troops return wounded" from these two numbers and now states "N troops lost" from
+            // _lastLostCount below; a raid that never reconciled leaves all of them at -1 and the
+            // screen omits the line rather than printing a zero it cannot prove.
             _lastDeployedCount = deployedIds.Count;
             _lastSurvivorCount = survivorIds.Count;
 
-            DeNelle.Core.Diagnostics.Guard.Try("Raid", "reconcile army after raid",
-                () => army.ReconcileAfterRaid(deployedIds, survivorIds, recovery));
+            // =================================================================
+            //  WO-1810 - THE CASUALTIES. Killed = dead; fail loses the rest too;
+            //  retreat loses the policy's share of the survivors.
+            // =================================================================
+            var outcome = _exitOutcome;
+            if (outcome == RaidExitOutcome.Undeclared)
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                    "raid-end reconcile: NO exit declared an outcome for this raid - pricing it as a " +
+                    "FAIL per the owner ruling 2026-09-16. This is the correct default for the hero-death " +
+                    "settlement, which declares nothing on purpose; on any OTHER exit it means a " +
+                    "declaration went missing and the raid may have been priced too harshly.");
+
+            var casualties = RaidCasualtyPolicy.Decide(deployedIds.Count, survivorIds.Count, outcome);
+
+            // The ids to remove: everyone who fell, plus the policy's share of the survivors
+            // (rookies first, deterministically - never UnityEngine.Random; see PickLostSurvivors).
+            var doomed = new List<string>();
+            var survivorSet = new HashSet<string>(survivorIds, System.StringComparer.Ordinal);
+            foreach (var id in deployedIds)
+                if (!survivorSet.Contains(id)) doomed.Add(id);          // killed on the field
+
+            var lostSurvivors = RaidCasualtyPolicy.PickLostSurvivors(army, survivorIds, casualties.LostByPolicy);
+            doomed.AddRange(lostSurvivors);
+
+            int removed = 0;
+            DeNelle.Core.Diagnostics.Guard.Try("Raid", "remove raid casualties from the roster",
+                () => { removed = army.RemoveOwned(doomed); });
+
+            // The BACKSTOP, and the reason this call is kept rather than deleted: the fallen are
+            // already gone above, so this normally touches NOTHING - but a deployed body that
+            // somehow escaped removal is wounded here instead of walking home silently healthy.
+            // (It is also what keeps the difficulty-scaled recovery above live and honest:
+            // RaidCooldownRegression pins that this method resolves recovery from the camp.)
+            int woundedByBackstop = 0;
+            DeNelle.Core.Diagnostics.Guard.Try("Raid", "reconcile army after raid", () =>
+            {
+                army.ReconcileAfterRaid(deployedIds, survivorIds, recovery);
+                // Count only THIS raid's deployed ids, never every wounded troop in the roster:
+                // a troop wounded by some earlier path is not a casualty of this raid.
+                var deployedSet = new HashSet<string>(deployedIds, System.StringComparer.Ordinal);
+                if (army.Owned != null)
+                    foreach (var t in army.Owned)
+                        if (t != null && t.Wounded && !string.IsNullOrEmpty(t.Id) && deployedSet.Contains(t.Id))
+                            woundedByBackstop++;
+            });
+
+            _lastLostCount = casualties.TotalLost;
+            _lastReturnedCount = casualties.Returned;
+
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
+                $"raid-end casualties: outcome={RaidCasualtyPolicy.Word(outcome)} " +
+                $"deployed={deployedIds.Count} killed={casualties.Killed} survivors={survivorIds.Count} " +
+                $"lostByPolicy={casualties.LostByPolicy} returned={casualties.Returned} " +
+                $"(rate {casualties.LossPctApplied}% of the survivors, removed={removed} of " +
+                $"{doomed.Count} ids). Killed troops are DEAD - the player rebuilds at the barracks.");
 
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                 $"raid-end reconcile - deployed {deployedIds.Count}, survivors {survivorIds.Count}, " +
-                $"wounded {deployedIds.Count - survivorIds.Count} (stars {starsEarned}, " +
-                $"recovery {recovery:F0}s).");
+                $"wounded {woundedByBackstop} (stars {starsEarned}, " +
+                $"recovery {recovery:F0}s). The wounded count is what the BACKSTOP actually left " +
+                "wounded (WO-1810), not deployed-minus-survivors - the fallen were removed.");
 
             GrantVeterancy(army, survivorIds, starsEarned);
         }

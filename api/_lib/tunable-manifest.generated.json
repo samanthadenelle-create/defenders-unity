@@ -263,6 +263,11 @@
             "default": 21600
         },
         {
+            "key": "army.dismissReturnPercent",
+            "kind": "int",
+            "default": 50
+        },
+        {
             "key": "hud.nightMarketGlowLapSec",
             "kind": "int",
             "default": 5
@@ -306,6 +311,16 @@
             "key": "raid.stagingCeilingSeconds",
             "kind": "int",
             "default": 900
+        },
+        {
+            "key": "raid.lossPctFail",
+            "kind": "int",
+            "default": 100
+        },
+        {
+            "key": "raid.lossPctRetreat",
+            "kind": "int",
+            "default": 60
         },
         {
             "key": "raid.honorThirdStarSeconds",

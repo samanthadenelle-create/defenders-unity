@@ -869,6 +869,55 @@ const PRESENTATION = {
               'holding the raid instead of being cleaned up.',
     },
 
+    'raid.lossPctFail': {
+        area: 'misc',
+        label: 'Raid: percent of the surviving troops a FAILED raid loses for good',
+        what: 'When a raid fails - the clock runs out, the warband is wiped, or the hero ' +
+              'falls and the raid settles - this is the percent of the troops STILL ALIVE ' +
+              'that are lost permanently. Troops killed during the fight are always dead, ' +
+              'whatever this says. The game ships at 100, so a failed raid costs the whole ' +
+              'warband and the player retrains at the barracks. Set it to 0 and a failed ' +
+              'raid costs no troops at all, which is how the game behaved before.',
+        min: 0,
+        max: 100,
+        risk: 'Too high and a bad raid wipes an army the player spent an evening training, ' +
+              'which can stall them completely. Too low and losing costs nothing, which is ' +
+              'exactly the problem this was added to fix. Takes effect on the next raid.',
+    },
+
+    'raid.lossPctRetreat': {
+        area: 'misc',
+        label: 'Raid: percent of the surviving troops a RETREAT loses for good',
+        what: 'When the player presses Retreat themselves, this is the percent of the troops ' +
+              'still alive that do not make it home. The rest come back healthy, with no ' +
+              'recovery wait. Troops already killed are dead either way. The game ships at ' +
+              '60. It is rounded to the nearest troop, and at least one is always lost, so ' +
+              'pulling out with one survivor is never free.',
+        min: 0,
+        max: 100,
+        risk: 'This should stay clearly CHEAPER than the failed-raid number above - that gap ' +
+              'is the whole reason to press Retreat instead of running the clock out. If the ' +
+              'two match, the Retreat button stops meaning anything.',
+    },
+
+    'army.dismissReturnPercent': {
+        area: 'misc',
+        label: 'Army: gold paid back when a trained troop is dismissed',
+        what: 'On the army screen a player can remove a troop from a full army in one of two ' +
+              'ways: move it to the Reserve, where it stays trained but holds no army slot, or ' +
+              'dismiss it for good. This is the percent of the gold value listed for that ' +
+              'troop that the dismissal pays. The game ships at 50, so dismissing pays half. ' +
+              'Training itself ' +
+              'costs no gold at all, so this is not a refund of anything spent - it is what the ' +
+              'player gets for letting a trained troop go.',
+        min: 0,
+        max: 100,
+        risk: 'At 0 a wrong army composition can only be fixed by giving troops away for ' +
+              'nothing, which makes players live with a bad army instead of fixing it. At 100 ' +
+              'rebalancing is free and a full army becomes a way to make gold. The Reserve is ' +
+              'always the free option, so this number only ever prices the permanent one.',
+    },
+
     'raid.honorThirdStarSeconds': {
         area: 'misc',
         label: 'Raid: seconds before the third star goes dark',
