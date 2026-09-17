@@ -56,8 +56,85 @@ namespace DeNelle.Village
         /// </summary>
         private const float BaseCharacterSize = 0.11f;
 
+        /// <summary>Font point size baked into every TextMesh this spawner builds. ONE
+        /// literal: WO-1814's world-size arithmetic (<see cref="LabelWorldEmHeight"/>) and the
+        /// TextMesh it describes must never drift apart — a second copy is how the pure
+        /// function the regression trusts stops describing the thing that renders.</summary>
+        private const int LabelFontSize = 96;
+
         /// <summary>Damage value that maps to a "full size" number (caps the scale ramp).</summary>
         private const float BigHitDamage = 40f;
+
+        // ── WO-1814: world-space text needs a CAMERA-DISTANCE term ────────────
+        //
+        // MEASURED, not inferred (owner Seeker capture 2026-09-16 20:51:30,
+        // logs/device/owner-fireball-20260916/Screenshot_20260916-205131.png):
+        //
+        //   A Unity TextMesh renders its em box at  characterSize * fontSize / 10
+        //   world units. The level-up label is BaseCharacterSize 0.11 x fontSize 96
+        //   / 10 x scale 1.4 (ProgressionManager.Grant) = 1.478 m of WORLD HEIGHT.
+        //   The town camera is an over-the-shoulder seat that logs 3.3-4.7 m from
+        //   the hero ([Flow:Camera] "seat 3.9m of 3.9m", 20:50:40). At vfov 60 on a
+        //   2670x1200 device that is 1200 / (2*tan30) = 1039 px per (metre/metre-of-
+        //   distance), so the em box lands at 1.478 * 1039 / 3.5 = 439 px and the cap
+        //   height at ~314 px. The capture measures the green ink at y=160..478,
+        //   318 px of cap. The code was doing EXACTLY what it says.
+        //
+        //   The wrong term is the one that is not there: NOTHING compensates for
+        //   camera distance. A label sized in metres is enormous when the thing it
+        //   is attached to is the closest object in the scene - the hero. Damage
+        //   numbers hide the same defect only because enemies stand further away.
+        //   (A 1.4 -> 1.0 scale clamp, the first attempt at this ticket, only takes
+        //   the em box to 1.056 m = 314 px, still 26% of screen height, and leaves
+        //   the 15-character string ~1.3x wider than the screen. It was reverted.)
+        //
+        // THE FIX: pick the on-screen size and solve backwards for the world size.
+        // k = clamp(distance / LabelReferenceDistance, min, max) makes the on-screen
+        // height CONSTANT inside the band (the distance cancels), which is the whole
+        // point. MaxDistanceFactor is 1.0 on purpose: no label may ever be LARGER in
+        // world units than it is today, so this change can only shrink.
+
+        /// <summary>Camera distance (m) at which a label keeps its historical world
+        /// size. Inside the clamp band the label holds a CONSTANT on-screen height of
+        /// characterSize*fontSize/10 * scale * 1039 / this = ~154 px em (~9% of a
+        /// 1200 px screen) for the 1.4-scale level-up label.</summary>
+        private const float LabelReferenceDistance = 10f;
+
+        /// <summary>Floor on the distance factor — below ~3 m the label stops shrinking
+        /// so a camera jammed against the hero cannot make it vanish.</summary>
+        private const float MinDistanceFactor = 0.30f;
+
+        /// <summary>Ceiling on the distance factor. 1.0 = "never bigger than the
+        /// pre-WO-1814 world size", so distant labels simply read smaller rather than
+        /// growing a new way to fill the screen.</summary>
+        private const float MaxDistanceFactor = 1.0f;
+
+        /// <summary>
+        /// World units of em-box height a TextMesh built by this spawner occupies at
+        /// <paramref name="worldScale"/>. Unity renders a TextMesh at
+        /// characterSize * fontSize / 10 world units per em; this is the pure form of
+        /// that, exposed so a regression can assert the label's world height without
+        /// a scene, a camera or Play mode.
+        /// </summary>
+        public static float LabelWorldEmHeight(float worldScale)
+            => BaseCharacterSize * LabelFontSize / 10f * worldScale;
+
+        /// <summary>
+        /// WO-1814: the missing camera-distance term. Converts a caller's requested
+        /// scale into the world scale that holds a CONSTANT on-screen size, clamped so
+        /// a point-blank camera cannot balloon the label across the screen and a far
+        /// camera cannot grow it past its historical size. Pure — no Unity state — so
+        /// the regression suite can check the band directly.
+        /// </summary>
+        /// <param name="requestedScale">Scale the caller asked for (1.4 for level-up).</param>
+        /// <param name="cameraDistance">Metres from the camera to the label's world point.</param>
+        public static float DistanceCompensatedScale(float requestedScale, float cameraDistance)
+        {
+            if (requestedScale <= 0f) return 0f;
+            float d = Mathf.Max(0f, cameraDistance);
+            float k = Mathf.Clamp(d / LabelReferenceDistance, MinDistanceFactor, MaxDistanceFactor);
+            return requestedScale * k;
+        }
 
         // Normal-hit colour (warm gold) and big-hit colour (hot orange-red). We
         // lerp between them by hit magnitude so a talent-buffed hit reads brighter
@@ -317,7 +394,7 @@ namespace DeNelle.Village
             _text.anchor = TextAnchor.MiddleCenter;
             _text.alignment = TextAlignment.Center;
             _text.characterSize = BaseCharacterSize;
-            _text.fontSize = 96;            // crisp glyphs; size is driven by characterSize + scale
+            _text.fontSize = LabelFontSize; // crisp glyphs; size is driven by characterSize + scale
             _text.fontStyle = FontStyle.Normal;   // reset (a reused label was Bold)
             _text.richText = false;
             _text.color = _startColor;
@@ -343,9 +420,16 @@ namespace DeNelle.Village
             _age = 0f;
             _gainKey = null;   // WO-953: SpawnResourceGain re-stamps this after the build
             _lifetime = 1.6f;   // linger ~2x a damage number so the player reads it
-            _rise = 1.6f;
 
-            _baseScale = scale;
+            // WO-1814: size the label for the SCREEN, not for the world. See the
+            // constants block above for the measured derivation. The rise rides the
+            // same factor — a 1.6 m climb at a 3.5 m camera sweeps ~40% of the screen
+            // and reads as the label flying away, not floating.
+            float camDistance = cam != null
+                ? Vector3.Distance(cam.transform.position, _startPos)
+                : LabelReferenceDistance;
+            _baseScale = DistanceCompensatedScale(scale, camDistance);
+            _rise = 1.6f * (scale > 0f ? _baseScale / scale : 1f);
             _tf.localScale = Vector3.one * _baseScale;
             _startColor = color;
 
@@ -355,7 +439,7 @@ namespace DeNelle.Village
             _text.anchor = TextAnchor.MiddleCenter;
             _text.alignment = TextAlignment.Center;
             _text.characterSize = BaseCharacterSize;
-            _text.fontSize = 96;
+            _text.fontSize = LabelFontSize;
             _text.fontStyle = FontStyle.Bold;
             _text.richText = false;
             _text.color = _startColor;
@@ -368,6 +452,19 @@ namespace DeNelle.Village
                 if (mr.sharedMaterial != null)
                     mr.sharedMaterial.renderQueue = 4000;
             }
+
+            // §12 — WO-1814. The size bug was invisible in the log for one reason: the
+            // old trace printed the TEXT and nothing about its GEOMETRY. Every term that
+            // decides how big this label lands on screen is named here, so the next
+            // "it fills the screen" report is a one-line read instead of a screenshot
+            // and a protractor. Parts are computed into locals: a quote inside a `$"..."`
+            // interpolation hole breaks CompileGate.BraceBalanced (CLAUDE.md §1).
+            string parentName = _tf.parent != null ? _tf.parent.name : "<none, world-space>";
+            float worldEm = LabelWorldEmHeight(_baseScale);
+            FlowTrace.Throttle("Feedback", "label-size", 1f,
+                $"label '{label}' requested={scale:0.00} camDist={camDistance:0.00}m " +
+                $"-> worldScale={_baseScale:0.00} emHeight={worldEm:0.00}m rise={_rise:0.00}m " +
+                $"parent={parentName} (WO-1814 distance-compensated).");
         }
 
         private void LateUpdate()
