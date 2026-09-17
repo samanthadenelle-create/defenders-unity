@@ -71,7 +71,13 @@ namespace DeNelle.Editor.Regression
         private const int MapTwoStarPct = 75;
         private const int MapThreeStarPct = 100;
         private const int MapPerfectPct = 110;
-        private const int MapStarterArmySize = 3;
+        // WO-1803 (owner 2026-09-16): the free starter squad is TEN, not the map's original three -
+        // "Instead of giving them three troops, because that's shit, let's give them ten troops.
+        // Let's give them five footmen and five archers." This literal is the DEFAULT'S pin only;
+        // the COMPOSITION (5 x troop-footman + 5 x troop-archer) is pinned by
+        // StarterArmyGrantRegression, which owns that feature. Kept here as a literal on purpose -
+        // an oracle that read the number off RemoteTunables could never disagree with the code.
+        private const int MapStarterArmySize = 10;
         // The map's Camp I gold target, sized at 125-140% of that camp's designed
         // 1,650-gold army replacement cost. A literal, never RemoteTunables.Int.
         private const int MapCoinsCamp1 = 2200;

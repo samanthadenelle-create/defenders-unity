@@ -10,8 +10,16 @@
 //   behind a velvet rope and handing the player twelve cents."
 //   "On Barracks completion, grant 3 free Footmen (a starter raid squad)."
 //
+// WO-1803 (2026-09-16) re-sized it and made it a COMPOSITION. Owner, verbatim:
+//   "Instead of giving them three troops, because that's shit, let's give them ten
+//    troops. Let's give them five footmen and five archers."
+// So cases A2/A4/D/E were added: the squad is asserted PER TROOP ID (a total-only
+// count would pass ten Footmen, the exact thing she rejected), it must FIT the fresh
+// housing cap, the derived split must lose no body at any knob value, and the ten must
+// actually be fieldable against the first camp's garrison.
+//
 // -----------------------------------------------------------------------------
-// THE THREE WAYS THIS FEATURE CAN GO WRONG, EACH WITH A CASE.
+// THE WAYS THIS FEATURE CAN GO WRONG, EACH WITH A CASE.
 // -----------------------------------------------------------------------------
 //   (A) IT NEVER FIRES  - the player still faces the velvet rope. Case A drives
 //       the real grant against a fixture GameState and counts the roster.
@@ -42,6 +50,7 @@ using System.Text;
 using UnityEngine;
 using DeNelle.Core.State;
 using DeNelle.Village;
+using DeNelle.Village.Hero;
 
 namespace DeNelle.Editor.Regression
 {
@@ -51,8 +60,27 @@ namespace DeNelle.Editor.Regression
     /// </summary>
     public static class StarterArmyGrantRegression
     {
-        /// <summary>The map's number, as a literal. Never read off the knob being checked.</summary>
-        private const int MapStarterCount = 3;
+        /// <summary>
+        /// The OWNER'S number, as a literal. Never read off the knob being checked - a case that
+        /// reads its expectation from the thing under test proves only that the code agrees with
+        /// itself. WO-1803, 2026-09-16: <i>"let's give them ten troops. Let's give them five
+        /// footmen and five archers."</i> (Was 3 from WO-1374 until that ruling.)
+        /// </summary>
+        private const int MapStarterCount = 10;
+
+        /// <summary>The melee half of the owner's composition, as a literal.</summary>
+        private const int MapStarterFootmen = 5;
+
+        /// <summary>The ranged half of the owner's composition, as a literal.</summary>
+        private const int MapStarterArchers = 5;
+
+        /// <summary>
+        /// The FIRST camp the free squad is sized against - the one the FTUE points at.
+        /// Its garrison is AUTHORED (scene-configs.json), deliberately not restated here:
+        /// case E reads it through <c>RaidSelectionVM.GarrisonCount</c> so a re-tune of the
+        /// camp cannot leave a stale copy in this file (CLAUDE.md sections 2/5/8/16).
+        /// </summary>
+        private const string FirstCampConfigId = "raider_camp_small";
 
         public static bool Run(out string reason)
         {
@@ -82,24 +110,92 @@ namespace DeNelle.Editor.Regression
                 log.AppendLine("  first grant -> " + granted + " troop(s), roster " + roster);
 
                 if (granted != MapStarterCount)
-                    failures.Add("[A1] the first Barracks granted " + granted + " troops, the map says " +
-                                 MapStarterCount + " ('On Barracks completion, grant 3 free Footmen')");
+                    failures.Add("[A1] the first Barracks granted " + granted + " troops, the owner said " +
+                                 MapStarterCount + " ('let's give them ten troops', WO-1803 2026-09-16)");
                 if (roster != MapStarterCount)
                     failures.Add("[A1] the roster holds " + roster + " after the grant, expected " + MapStarterCount);
 
+                // =============================================================
+                //  (A2) THE COMPOSITION, BY TROOP ID. WO-1803's whole point.
+                // =============================================================
+                // Counting the roster's TOTAL would pass a squad of ten Footmen, which is the
+                // exact thing the owner rejected ("five footmen and five archers"). So the
+                // assertion is per-id, against literals.
+                int sawFootmen = 0, sawArchers = 0, sawOther = 0;
                 if (state.Army.Owned != null)
                 {
                     foreach (var t in state.Army.Owned)
                     {
                         if (t == null) { failures.Add("[A2] a null troop landed in the roster"); continue; }
-                        if (t.TroopDefId != StarterArmyGrant.StarterTroopId)
-                            failures.Add("[A2] the starter squad contains '" + t.TroopDefId + "', expected '" +
-                                         StarterArmyGrant.StarterTroopId + "' - the map says Footmen");
+                        if (t.TroopDefId == StarterArmyGrant.StarterTroopId) sawFootmen++;
+                        else if (t.TroopDefId == StarterArmyGrant.ArcherTroopId) sawArchers++;
+                        else
+                        {
+                            sawOther++;
+                            failures.Add("[A2] the starter squad contains '" + t.TroopDefId + "', which is " +
+                                         "neither '" + StarterArmyGrant.StarterTroopId + "' nor '" +
+                                         StarterArmyGrant.ArcherTroopId + "' - the owner named exactly two units");
+                        }
                         if (t.Wounded)
                             failures.Add("[A2] a starter troop arrived WOUNDED - the squad must be deployable " +
                                          "immediately, or the first raid is not minutes away");
                     }
                 }
+                log.AppendLine("  composition -> " + sawFootmen + " x footman + " + sawArchers +
+                               " x archer (" + sawOther + " other)");
+                if (sawFootmen != MapStarterFootmen)
+                    failures.Add("[A2] the starter squad holds " + sawFootmen + " x '" +
+                                 StarterArmyGrant.StarterTroopId + "', the owner said " + MapStarterFootmen +
+                                 " ('five footmen and five archers', 2026-09-16)");
+                if (sawArchers != MapStarterArchers)
+                    failures.Add("[A2] the starter squad holds " + sawArchers + " x '" +
+                                 StarterArmyGrant.ArcherTroopId + "', the owner said " + MapStarterArchers +
+                                 " - a squad of ten identical melee bodies teaches nothing about composition");
+
+                // A2b - both ids must be REAL, day-one-trainable defs. A typo'd id would still
+                // land in the roster (GrantTrained is unconditional) and then draw a capsule with
+                // no stats, which is a silent failure of exactly the kind section 12 forbids.
+                foreach (var id in new[] { StarterArmyGrant.StarterTroopId, StarterArmyGrant.ArcherTroopId })
+                {
+                    var def = DeNelle.Village.TroopCatalog.Find(id);
+                    if (def == null)
+                    {
+                        failures.Add("[A2b] '" + id + "' is not in troops.json - the free squad would be " +
+                                     "bodies with no def, drawn as tinted capsules with no stats");
+                        continue;
+                    }
+                    int slots = def.Slots > 0 ? def.Slots : 1;
+                    if (slots != 1)
+                        failures.Add("[A2b] '" + id + "' costs " + slots + " army slots, not 1 - the " +
+                                     "starter squad is sized in BODIES against a housing cap counted in " +
+                                     "SLOTS, so any slot cost above 1 overfills a fresh town");
+                    if (def.UnlockBarracksTier > 1)
+                        failures.Add("[A2b] '" + id + "' needs Barracks tier " + def.UnlockBarracksTier +
+                                     " - the grant fires on the FIRST Barracks, so it would hand over a " +
+                                     "unit the player is not yet allowed to have");
+                }
+
+                // =============================================================
+                //  (A4) IT FITS. The housing proof WO-1803 asks for.
+                // =============================================================
+                // ArmyStorage.DefaultMaxArmySize is the fresh-save cap and both starter ids cost
+                // 1 slot, so ten bodies = ten slots = exactly the cap. Asserted against the const,
+                // never a literal 10, so raising either number without the other goes red here.
+                if (StarterArmyGrant.DefaultStarterCount > ArmyStorage.DefaultMaxArmySize)
+                    failures.Add("[A4] the starter squad is " + StarterArmyGrant.DefaultStarterCount +
+                                 " troops but a fresh save houses only " + ArmyStorage.DefaultMaxArmySize +
+                                 " (ArmyStorage.DefaultMaxArmySize) - the free squad would arrive OVER " +
+                                 "CAP and close training on a brand-new town");
+                int slotsUsed = state.Army.SlotsUsed(_ => 1);
+                if (slotsUsed != MapStarterCount)
+                    failures.Add("[A4] the granted squad occupies " + slotsUsed + " army slots, expected " +
+                                 MapStarterCount + " (both starter units cost 1 slot)");
+                // And the knob's own ceiling is that same const, not a literal that agrees today.
+                string resolveSrc = RaidLootCurrencyRegression.ReadStripped("StarterArmyGrant.cs");
+                if (resolveSrc != null && !resolveSrc.Contains("ArmyStorage.DefaultMaxArmySize"))
+                    failures.Add("[A4] StarterArmyGrant.cs does not clamp the size knob to " +
+                                 "ArmyStorage.DefaultMaxArmySize - a hand-copied ceiling there is the " +
+                                 "duplicated state CLAUDE.md sections 2/5/8/16 each exist to forbid");
 
                 // A3 - the ledger key is what makes it idempotent, and it must be namespaced
                 // so it cannot be mistaken for an item id by VillageInventory's discovery reads.
@@ -164,19 +260,36 @@ namespace DeNelle.Editor.Regression
                                      "'army trained' can be reached by one route and missed by the other");
                 }
 
-                // C2 - the toast counts what it granted. A toast that says three while the
-                // player received five is a small lie that costs trust in every other number
-                // the game prints - and the count is a tunable, so this is reachable.
-                for (int n = 1; n <= 4; n++)
+                // C2 - the toast counts what it granted, BY UNIT. A toast that says "10 Footmen"
+                // while half the squad draws a bow is a small lie that costs trust in every other
+                // number the game prints - and both the size and the split are derived, so this
+                // is reachable, not theoretical.
+                var toastCases = new[]
                 {
-                    string toast = StarterArmyGrant.GrantToastFor(n);
-                    if (string.IsNullOrEmpty(toast)) { failures.Add("[C2] GrantToastFor(" + n + ") is empty"); continue; }
-                    if (!toast.Contains(n.ToString()))
-                        failures.Add("[C2] the grant toast for " + n + " troops does not name that number: \"" + toast + "\"");
-                    if (n == 1 && !toast.Contains("Footman"))
-                        failures.Add("[C2] the single-troop toast does not read 'Footman': \"" + toast + "\"");
-                    if (n > 1 && !toast.Contains("Footmen"))
-                        failures.Add("[C2] the plural toast does not read 'Footmen': \"" + toast + "\"");
+                    new[] { MapStarterFootmen, MapStarterArchers },   // the shipping 5/5
+                    new[] { 2, 1 },                                   // the old size, split
+                    new[] { 1, 1 },                                   // both singular
+                    new[] { 1, 0 },                                   // melee only
+                    new[] { 0, 1 },                                   // ranged only
+                };
+                foreach (var tc in toastCases)
+                {
+                    int f = tc[0], a = tc[1];
+                    string toast = StarterArmyGrant.GrantToastFor(f, a);
+                    string label = f + "f/" + a + "a";
+                    if (string.IsNullOrEmpty(toast)) { failures.Add("[C2] GrantToastFor(" + label + ") is empty"); continue; }
+                    if (f > 0 && !toast.Contains(f + " " + (f == 1 ? "Footman" : "Footmen")))
+                        failures.Add("[C2] the " + label + " toast does not name '" + f + " " +
+                                     (f == 1 ? "Footman" : "Footmen") + "': \"" + toast + "\"");
+                    if (a > 0 && !toast.Contains(a + " " + (a == 1 ? "Archer" : "Archers")))
+                        failures.Add("[C2] the " + label + " toast does not name '" + a + " " +
+                                     (a == 1 ? "Archer" : "Archers") + "': \"" + toast + "\"");
+                    if (f == 0 && toast.IndexOf("Footm", System.StringComparison.Ordinal) >= 0)
+                        failures.Add("[C2] the " + label + " toast promises Footmen the player did not " +
+                                     "receive: \"" + toast + "\"");
+                    if (a == 0 && toast.IndexOf("Archer", System.StringComparison.Ordinal) >= 0)
+                        failures.Add("[C2] the " + label + " toast promises Archers the player did not " +
+                                     "receive: \"" + toast + "\"");
                     // The map's FTUE line points at Journey -> Raids, and it must say the SAME
                     // thing the Game Guide now says. One destination, worded one way.
                     if (toast.IndexOf("Journey", System.StringComparison.Ordinal) < 0 ||
@@ -189,12 +302,104 @@ namespace DeNelle.Editor.Regression
                         { failures.Add("[C2] the grant toast is not 7-bit ASCII (mobile font-atlas law): \"" + toast + "\""); break; }
                 }
 
-                // C3 - the squad size is on the tunable rail, clamped, and answers the map's
+                // C3 - the squad size is on the tunable rail, clamped, and answers the owner's
                 // number with no override present.
                 int resolved = StarterArmyGrant.ResolveCount();
                 if (resolved != MapStarterCount)
                     failures.Add("[C3] ResolveCount() answered " + resolved + " with no override, expected the " +
                                  "shipping default " + MapStarterCount);
+                int resF, resA;
+                StarterArmyGrant.ResolveComposition(out resF, out resA);
+                if (resF != MapStarterFootmen || resA != MapStarterArchers)
+                    failures.Add("[C3] the shipping composition resolves to " + resF + " Footmen + " + resA +
+                                 " Archers, the owner said " + MapStarterFootmen + " + " + MapStarterArchers);
+
+                // =============================================================
+                //  (D) THE SPLIT RULE ITSELF. Total honours the knob, remainder to melee.
+                // =============================================================
+                // Pure and total-driven, so every value the knob can take is checkable without a
+                // tunable override seam. The PROPERTY is what matters: footmen + archers == total
+                // at EVERY value, so no setting of the knob can silently drop a body.
+                var splitCases = new[]
+                {
+                    new[] { 10, 5, 5 },   // the shipping value, the owner's words
+                    new[] {  3, 2, 1 },   // the retired WO-1374 value
+                    new[] {  2, 1, 1 },
+                    new[] {  1, 1, 0 },   // one body -> melee, never a lone archer
+                    new[] {  0, 0, 0 },   // the grant disabled
+                    new[] { -4, 0, 0 },   // a negative knob is not a negative squad
+                    new[] {  7, 4, 3 },
+                };
+                foreach (var sc in splitCases)
+                {
+                    int total = sc[0];
+                    int f, a;
+                    StarterArmyGrant.SplitComposition(total, out f, out a);
+                    int expectTotal = total > 0 ? total : 0;
+                    if (f != sc[1] || a != sc[2])
+                        failures.Add("[D1] SplitComposition(" + total + ") -> " + f + "/" + a +
+                                     ", expected " + sc[1] + "/" + sc[2] + " (even, remainder to Footmen)");
+                    if (f + a != expectTotal)
+                        failures.Add("[D1] SplitComposition(" + total + ") loses bodies: " + f + " + " + a +
+                                     " = " + (f + a) + ", not " + expectTotal + ". The knob is the TOTAL " +
+                                     "and the split must never silently truncate it.");
+                    if (a > f)
+                        failures.Add("[D1] SplitComposition(" + total + ") put the remainder in the RANGED " +
+                                     "half (" + f + "/" + a + ") - a front line the archers can stand " +
+                                     "behind is the readable default");
+                }
+
+                // =============================================================
+                //  (E) THE TEN CAN ACTUALLY MARCH. The deploy + door proof.
+                // =============================================================
+                // A grant that fits housing but cannot be FIELDED would be ten troops the player
+                // watches from the deploy tray, which is worse than three they can use. So this
+                // drives the real readiness formula over the real granted roster (case A's state),
+                // and then the real door word over the real Camp I def.
+                var readiness = ArmyReadiness.Compute(state.Army, slotsUsed, 0);
+                log.AppendLine("  readiness -> deployable " + readiness.DeployableSlots + " / required " +
+                               readiness.RequiredSlots + " / cap " + readiness.CapSlots +
+                               ", ready=" + readiness.Ready);
+                if (readiness.DeployableSlots != MapStarterCount)
+                    failures.Add("[E1] the deploy tray would field " + readiness.DeployableSlots +
+                                 " of the " + MapStarterCount + " granted troops");
+                if (!readiness.Ready)
+                    failures.Add("[E1] a save holding the full free squad reads NOT READY to raid " +
+                                 "(deployable " + readiness.DeployableSlots + " vs required " +
+                                 readiness.RequiredSlots + ") - the grant exists to open that door");
+
+                // E2 - Camp I. Its authored garrison is 9 (scene-configs.json, read at source
+                // 2026-09-16), so ten deployable bodies must clear the door's warning word while
+                // the OLD three did not. Both halves are asserted: a word that never appears is
+                // as broken as one that always does.
+                var campI = SceneConfigCatalog.Find(FirstCampConfigId);
+                if (campI == null)
+                {
+                    failures.Add("[E2] scene config '" + FirstCampConfigId + "' not found - the first " +
+                                 "camp the free squad is sized against cannot be read, and a check that " +
+                                 "silently skips is worse than none");
+                }
+                else
+                {
+                    int garrison = RaidSelectionVM.GarrisonCount(campI);
+                    string wordAtTen = RaidSelectionVM.ArmyWarnWord(campI, MapStarterCount);
+                    string wordAtThree = RaidSelectionVM.ArmyWarnWord(campI, 3);
+                    log.AppendLine("  camp I '" + FirstCampConfigId + "' garrison " + garrison +
+                                   " -> word at " + MapStarterCount + ": " + (wordAtTen ?? "(none)") +
+                                   " | at 3: " + (wordAtThree ?? "(none)"));
+                    if (garrison > MapStarterCount)
+                        failures.Add("[E2] Camp I garrisons " + garrison + " defenders against a free " +
+                                     "squad of " + MapStarterCount + " - the first camp is still above " +
+                                     "the army the game hands out, which is the wall this ticket removes");
+                    if (wordAtTen != null)
+                        failures.Add("[E2] the raid grid still prints \"" + wordAtTen + "\" on Camp I with " +
+                                     "the full free squad fielded - the door's copy disagrees with the " +
+                                     "army the game just gave the player");
+                    if (wordAtThree == null)
+                        failures.Add("[E2] the door prints NO warning on Camp I even at 3 deployable, so " +
+                                     "[E2]'s pass at " + MapStarterCount + " proves nothing - the compare " +
+                                     "has gone inert");
+                }
             }
             finally
             {
@@ -204,10 +409,17 @@ namespace DeNelle.Editor.Regression
             if (failures.Count == 0)
             {
                 reason = "STARTER ARMY OK - the first Barracks grants " + MapStarterCount + " free deployable " +
-                         "Footmen through the one roster owner, latches on the monotonic acquired-ledger so a " +
-                         "second call and a rebuilt Barracks both grant nothing, no-ops on a null state, spends " +
-                         "no resource of any kind, and tells the player where to go (Journey -> Raids) in 7-bit " +
-                         "ASCII with a count that matches what was actually granted";
+                         "troops as an AUTHORED COMPOSITION (" + MapStarterFootmen + " x '" +
+                         StarterArmyGrant.StarterTroopId + "' + " + MapStarterArchers + " x '" +
+                         StarterArmyGrant.ArcherTroopId + "', both 1-slot tier-1 defs in troops.json) through " +
+                         "the one roster owner; the total rides raid.starterArmySize and the split is derived " +
+                         "even-with-remainder-to-melee at every value with no body lost; the squad fits a fresh " +
+                         "town EXACTLY (" + ArmyStorage.DefaultMaxArmySize + " slots, the knob clamped to that " +
+                         "same const); the full squad reads READY and clears Camp I's garrison so the door stops " +
+                         "saying Outmatched; it latches on the monotonic acquired-ledger so a second call, a " +
+                         "rebuilt Barracks and a save that already took the old 3-troop squad all grant nothing; " +
+                         "no-ops on a null state; spends no resource of any kind; and names both units and their " +
+                         "real counts in 7-bit ASCII pointing at Journey -> Raids";
                 Debug.Log(log.ToString() + "STARTER_ARMY_OK");
                 return true;
             }
