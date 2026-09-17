@@ -49,11 +49,19 @@
 //      literals STRIPPED FIRST (both files discuss this ticket at length in prose; an
 //      unstripped match would pass on the comments after the code was gone).
 //
-// DELIBERATELY NOT ASSERTED HERE: that `Main_Castle_Overworld.unity` contains no husk.
-//   The scene still holds the proven `CastleBarracks` ghost until the lead runs
-//   Defenders/Castle/Remove invisible structure husks — a scene-content assertion would be
-//   RED for a known, ticketed reason and would train the next reader to ignore this marker.
-//   The scene repair is a one-time command, never a regression side effect.
+// NOT ASSERTED HERE — THE SCENE. This oracle pins the CODE: the strip pair can no longer MINT
+//   an invisible-but-solid host. The SAVED SCENE is pinned by a second oracle,
+//   HubHuskFreeSceneRegression [hub-husk-free], which opens the hub and asserts its CONTENT.
+//   ⚠ THAT SPLIT IS THE POINT, AND THIS PARAGRAPH USED TO SAY SOMETHING ELSE. Until WO-1809
+//   (2026-09-16) it read "the scene still holds the proven `CastleBarracks` ghost until the lead
+//   runs Defenders/Castle/Remove invisible structure husks" — correct when written, and stale the
+//   moment that command finally ran. It had been true for two days: the WO-1716 code fix landed
+//   with the one-time repair tool WRITTEN AND NEVER FIRED, so the owner went on walking into an
+//   invisible wall at (16,0,-4) and reported it again ("I think it still has the invisible
+//   barracks object"). WO-1809 ran `StructureHuskCleanup.RemoveBatch`
+//   (`STRUCTURE_HUSK_CLEANUP_OK removed 1 husk(s): CastleBarracks @ (16.00, 0.00, -4.00)`) and
+//   re-baked (`NAVMESH_BAKE_OK`), and [hub-husk-free] now keeps that result — which is the whole
+//   reason a one-time command must never be the last word on an invariant.
 //
 // Deterministic: fixture GameObjects + editor source reads. No scene load, no PlayMode.
 //
