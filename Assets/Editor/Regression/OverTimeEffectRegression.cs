@@ -490,9 +490,22 @@ namespace DeNelle.Editor.Regression
                     !Regex.IsMatch(block, "\"vfxCast\"\\s*:\\s*\"PosionCloud_Cast\""))
                     failures.Add("[owner-tag] mage.wither must retain the owner's 2026-09-09 distinct cast pick PosionCloud_Cast");
 
+                // WO-1776 (owner tags 2026-09-16, hackathon MAGE pass): she tagged Sleep_Impact
+                // (Assets/Editor/VfxManualPicks.json -> Lana Studio/Casual RPG VFX/Prefabs/States/
+                // Character_status_sleep.prefab) as Wither's ON-TARGET status marker. RECORDED HERE
+                // rather than assumed, exactly as this rule's own message instructs. It rides
+                // vfxResidual and NOT vfxImpact because its HovlVfxCatalog row is IsLoop: 1
+                // (read at source 2026-09-16) and PlayResidualLoop is the only beat that stops a
+                // loop on a deadline (StopHandleAfter(dotSeconds)) - the impact path would leak one
+                // of the 20 loop slots per cast (the VfxLoopFlagRegression leak).
+                if (id == "mage.wither" &&
+                    !Regex.IsMatch(block, "\"vfxResidual\"\\s*:\\s*\"Sleep_Impact\""))
+                    failures.Add("[owner-tag] mage.wither must retain the owner's 2026-09-16 residual pick Sleep_Impact");
+
                 foreach (var field in new[] { "vfxCast", "vfxProjectile", "vfxImpact", "vfxResidual" })
                 {
                     if (id == "mage.wither" && field == "vfxCast") continue;
+                    if (id == "mage.wither" && field == "vfxResidual") continue;   // WO-1776 owner tag, pinned above
                     if (Regex.IsMatch(block, "\"" + field + "\"\\s*:\\s*\"[^\"]+\""))
                         failures.Add("[owner-tag] '" + id + "' has a NON-EMPTY " + field + ". The owner " +
                                      "tags VFX keys and this seat maps them verbatim - it never picks, " +
@@ -503,7 +516,8 @@ namespace DeNelle.Editor.Regression
                 }
             }
 
-            notes.Add("owner-tag: mage.wither owns PosionCloud_Cast by the 2026-09-09 ruling; other untagged stages remain empty");
+            notes.Add("owner-tag: mage.wither owns PosionCloud_Cast (2026-09-09 ruling) + Sleep_Impact as its " +
+                      "residual status marker (2026-09-16, WO-1776); other untagged stages remain empty");
         }
 
         // =====================================================================

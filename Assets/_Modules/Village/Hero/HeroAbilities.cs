@@ -2644,6 +2644,26 @@ namespace DeNelle.Village
             "MageMeoteorAOE_Cast",
             "Arcane_Cast",
             "PosionCloud_Cast",
+            // WO-1776 (owner tags, hackathon MAGE pass 2026-09-16). Her words: the hackathon video
+            // is built around the MAGE, "right now the fireball is the only thing decent", and she
+            // wants "the animation for the lightning" on Arcane Bolt. All four keys below are HER
+            // OWN tagged rows in Assets/Editor/VfxManualPicks.json (manual:true) - none is a CLI
+            // pick; this seat only chose WHICH SHIPPED HOOK each tag hangs on, and the WO records
+            // every key -> prefab -> hook row so she can retag any of them after the device capture.
+            //   Lightningspellmaybe_Cast      -> mage.arcane-bolt vfxCast   (AOE Magic spells Vol.1/Lightning strike)
+            //   lighteningOnSpellLand_Impact  -> mage.arcane-bolt vfxImpact (RPG VFX Bundle/Electro splash)
+            //   Explosion_Impact              -> mage.void-rift   vfxImpact (ParticlePack/BigExplosion)
+            //   Sleep_Impact                  -> mage.wither      vfxResidual (Lana Studio/Character_status_sleep)
+            // WHY Sleep_Impact is a RESIDUAL and not an impact: its HovlVfxCatalog row is
+            // IsLoop: 1 (read at source 2026-09-16). A loop-flagged row played through the fire-and-forget
+            // impact path registers NO reclaim deadline and leaks one of the 20 loop slots for the
+            // session - the exact leak VfxLoopFlagRegression was written for. PlayResidualLoop is
+            // the ONE slot that stops a loop on a deadline (StopHandleAfter(dotSeconds)), so the
+            // on-target status marker rides the burn window and ends with it.
+            "Lightningspellmaybe_Cast",
+            "lighteningOnSpellLand_Impact",
+            "Explosion_Impact",
+            "Sleep_Impact",
             // WO-1343 (owner tag 2026-09-03, CONFIRMED BY HER as deliberate): KnightShieldBash_Impact
             // -> Hovl Studio/AAA Projectiles Vol 1/Prefabs/Flash and hits/Dragon punch flash.prefab.
             // Mapped VERBATIM to knight.shield-bash's vfxImpact in abilities.json.
@@ -2887,6 +2907,35 @@ namespace DeNelle.Village
                     else DeNelle.Core.Diagnostics.FlowTrace.Once("Vfx", "sfximpact-missing:" + sfx,
                         $"sfxImpact '{sfx}' has no clip at audio key 'Sfx/{sfx}' (AudioAssetLoader: neither " +
                         "Addressables nor Resources) — silent landing.");
+                }
+
+                // OWNER-PICKED impact key (WO-1776). THE GAP THIS CLOSES, stated plainly: until
+                // now registry-only mode read the IMPACT beat ONLY from the motion-castings row for
+                // the current cast keyword, so an individually owner-tagged abilities.json
+                // vfxImpact could never fire - the cast beat (PlayCastVfxKey) and the residual loop
+                // (PlayResidualLoop) each already carry this exemption and the impact beat did not.
+                // Proven at source 2026-09-16: motion-castings.json targets.mage declares ONE row
+                // ("cast", vfxKey firespell_Cast) and NO vfxImpact on it, and HeroAbilities resolves
+                // through TryGetRow (EXACT target, no inherits walk), so EVERY mage landing was
+                // silent by construction and no amount of abilities.json tagging could change that.
+                // Placed AFTER the sfxImpact block on purpose: an early return at the top of the
+                // method would silence the registry landing SOUND for every tagged ability.
+                // The yaw-toward-travel rotation is the same one the registry branch computes
+                // (WO-678 item 4) - a landing reads yawed along the cast, never pitched into the
+                // ground, and never at identity.
+                if (def != null && IsOwnerPickedVfxKey(def.VfxImpact))
+                {
+                    Vector3 ownDir = at - transform.position;
+                    ownDir.y = 0f;
+                    Quaternion ownRot = ownDir.sqrMagnitude > 0.01f
+                        ? Quaternion.LookRotation(ownDir.normalized) : Quaternion.identity;
+                    DeNelle.Core.Diagnostics.FlowTrace.Step("Vfx",
+                        $"owner-picked impact vfx '{def.VfxImpact}' for '{def.Id}' at {at} " +
+                        $"yaw={ownRot.eulerAngles.y:0}deg (RegistryOnlyMotionVfx exemption: " +
+                        "individually owner-tagged key). VFXManager logs the resolved prefab on " +
+                        "the same key as 'hovl-play:<key>'.");
+                    VFXManager.PlayKey(def.VfxImpact, at, ownRot, null, def.UnityColor);
+                    return;
                 }
 
                 string key = TryGetBundleField(_currentCastKeyword, r => r.vfxImpact);

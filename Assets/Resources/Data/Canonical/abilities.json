@@ -539,9 +539,9 @@
           "manaCost": 0,
           "damage": 26,
           "range": 13,
-          "vfxCast": "SimpleCast_Cast",
+          "vfxCast": "Lightningspellmaybe_Cast",
           "vfxProjectile": "SimpleCast_Projectile",
-          "vfxImpact": "FireImpact_Impact"
+          "vfxImpact": "lighteningOnSpellLand_Impact"
         },
         "manaweave": {
           "id": "mage.manaweave",
@@ -577,7 +577,8 @@
           "damage": 40,
           "range": 5,
           "freeze": 1.5,
-          "vfxCast": "RangedSpell-Powerful(Longcast)_Cast"
+          "vfxCast": "RangedSpell-Powerful(Longcast)_Cast",
+          "vfxImpact": "Explosion_Impact"
         },
         "blink": {
           "id": "mage.blink",
@@ -701,7 +702,8 @@
           "range": 14,
           "dotDamage": 8,
           "dotSeconds": 4,
-          "vfxCast": "PosionCloud_Cast"
+          "vfxCast": "PosionCloud_Cast",
+          "vfxResidual": "Sleep_Impact"
         }
       }
     },
@@ -805,9 +807,9 @@
           "manaCost": 0,
           "damage": 22,
           "range": 14,
-          "vfxCast": "SimpleCast_Cast",
+          "vfxCast": "Lightningspellmaybe_Cast",
           "vfxProjectile": "SimpleCast_Projectile",
-          "vfxImpact": "FireImpact_Impact"
+          "vfxImpact": "lighteningOnSpellLand_Impact"
         },
         "mend": {
           "id": "universal.mend",
