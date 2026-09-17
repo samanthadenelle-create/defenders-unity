@@ -36,6 +36,10 @@ const { applyCors, newRef, quietFail, readBodyExact } = require('../_lib/http');
 const { logApiEvent } = require('../_lib/audit');
 const { enforce: maintenanceEnforce, AREA_STORE } = require('../_lib/maintenance');
 const pi = require('../_lib/pi-payments');
+// WO-1799 the storewide sale, read through the SAME helper the SKR rail uses.
+// ⛔ There is NO shortfall discount on the Pi rail (it has never had one), so the
+// sale is the ONLY discount here and resolveDiscount is not needed.
+const { readStoreSale, SALE_REASON } = require('../_lib/store-sale');
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -104,7 +108,10 @@ async function handler(req, res) {
         return refuse(res, 503, 'PURCHASE_RATE_UNAVAILABLE', ref);
     }
 
-    const built = pi.buildPiQuoteBody(sku, rate);
+    // FAILS TO NO SALE: an unreadable knob table charges the ORDINARY Pi price.
+    const sale = await readStoreSale(sql);
+    const built = pi.buildPiQuoteBody(sku, rate,
+        sale.bps > 0 ? sale.bps : null, SALE_REASON);
     if (!built) {
         await logApiEvent(sql, playerId, 'pi_quote_refused', { ref, sku, reason: 'contract_unavailable' });
         return refuse(res, 503, 'PI_SKU_UNAVAILABLE', ref);
@@ -125,7 +132,8 @@ async function handler(req, res) {
             VALUES (${quoteId}, ${playerId}, ${sku}, ${pi.PI_NETWORK}, ${pi.PI_CURRENCY},
                     ${built.amountBaseUnits}, ${built.decimals},
                     NULL, NULL, NULL, ${built.usdAnchor}, ${built.rate}, ${built.rateSource},
-                    NULL, NULL, NOW() + (${pi.QUOTE_TTL_SECONDS} * INTERVAL '1 second'))
+                    ${built.discountBps}, ${built.discountReason},
+                    NOW() + (${pi.QUOTE_TTL_SECONDS} * INTERVAL '1 second'))
             RETURNING quote_ref, expires_at`;
     } catch (_) { return quietFail(res, 500, 'SERVER_ERROR', ref); }
     if (!inserted || !inserted.length) return quietFail(res, 500, 'SERVER_ERROR', ref);
@@ -135,7 +143,8 @@ async function handler(req, res) {
     // the row, so a disputed charge can be reconstructed months later.
     await logApiEvent(sql, playerId, 'pi_quote_issued', { ref, sku, quoteId,
         amountBaseUnits: built.amountBaseUnits, usdAnchor: built.usdAnchor,
-        rate: built.rate, rateSource: built.rateSource, uidProven });
+        rate: built.rate, rateSource: built.rateSource, uidProven,
+        discountBps: built.discountBps, discountReason: built.discountReason });
 
     return res.status(200).json({
         ok: true,
@@ -153,6 +162,20 @@ async function handler(req, res) {
         decimals: built.decimals,
         amountBaseUnits: built.amountBaseUnits,
         usdAnchor: built.usdAnchor,
+        // ── WO-1799 the storewide sale, on the wire ───────────────────────────
+        // ⚠ ADDITIVE. The Pi/WebGL client renders the SERVER's Pi figure and the USD
+        // anchor beside it (PackStore.StorePriceMajor / StorePriceMinor), and it does
+        // NOT read any of the four fields below today — so on Pi a sale shows up as a
+        // LOWER Pi amount with the full-price anchor under it, and a struck-through
+        // shelf anchor needs a client change. Sent so that change never needs a
+        // matching server change.
+        usdEffective: built.usdEffective,
+        usdSaving: built.usdSaving,
+        discountBps: built.discountBps,
+        discountLabel: built.discountLabel,
+        saleBps: built.discountReason === SALE_REASON ? built.discountBps : null,
+        saleEndsAt: built.discountBps != null && sale.endsAtMs
+            ? new Date(sale.endsAtMs).toISOString() : null,
         uid,
         playerId,
         uidProven,

@@ -113,7 +113,13 @@ test('the key domain is identical in the build registry and the server allowlist
     const spine = generated.knobs.map((k) => k.key).slice().sort();
     // serverOnly keys are writable but not registered in any build (WO-1682 D3) -
     // see the note on the area-placement test above. Every other key must match.
-    const allow = TUNABLE_KEYS.map((k) => k.key)
+    // WO-1799: the marker may sit on the ALLOWLIST SPEC as well as on a PRESENTATION
+    // row. A backend-only knob that must never appear on the owner-facing page at all
+    // - a PRICE, which that page's OUT_OF_SCOPE_NOTICE forbids forever - has no
+    // presentation row to carry it. `store.saleBps` is the first of those.
+    const allow = TUNABLE_KEYS
+        .filter((s) => s.serverOnly !== true)
+        .map((k) => k.key)
         .filter((k) => !manifestLib.isServerOnly(manifestLib.PRESENTATION[k]))
         .slice().sort();
     assert.deepEqual(spine, allow,

@@ -284,7 +284,9 @@ test('a quote is issued with the exact amount, the rate and the rate source', ()
             amountBaseUnits: '396000000000', skrAmount: 396, decimals: 9,
             mint: devnetMint, recipient, recipientAta,
             usdAnchor: 2.99, usdEffective: 2.99, usdSaving: null,
-            discountBps: null, discountLabel: null,
+            // WO-1799: the reason that priced the body travels with it, so the caller
+            // persists the same string it labelled with. Null on an undiscounted quote.
+            discountBps: null, discountLabel: null, discountReason: null,
             rate: 0.00755954, rateSource: catalog.RATE_SOURCE,
         });
     });
