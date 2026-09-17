@@ -358,6 +358,7 @@ namespace DeNelle.Editor
             if (!HeroProgressionRegression.Run(out var heroProgReason)) failures.Add(heroProgReason); else log.AppendLine("[hero-prog] " + heroProgReason);
             if (!AegisSetReachabilityRegression.Run(out var aegisReason)) failures.Add(aegisReason); else log.AppendLine("[aegis] " + aegisReason);
             if (!BuildingUpgradeRegression.Run(out var buildUpgReason)) failures.Add(buildUpgReason); else log.AppendLine("[build-upgrade] " + buildUpgReason);
+            if (!DeNelle.Editor.Regression.StructureTapUpgradeRegression.Run(out var tapUpgradeReason)) failures.Add(tapUpgradeReason); else log.AppendLine("[structure-tap-upgrade] " + tapUpgradeReason);
             if (!OfflineHarvestRegression.Run(out var offlineReason)) failures.Add(offlineReason); else log.AppendLine("[offline-harvest] " + offlineReason);
             if (!OfflineClaimFanOutRegression.Run(out var offlineFanOutReason)) failures.Add(offlineFanOutReason); else log.AppendLine("[offline-fanout] " + offlineFanOutReason);
             // --- WO-1026 PvE siege / the defence consequence loop. Three oracles, one lane:
@@ -441,6 +442,7 @@ namespace DeNelle.Editor
             if (!DungeonCameraFeelRegression.Run(out var dungeonCamReason)) failures.Add(dungeonCamReason); else log.AppendLine("[dungeon-camera-feel] " + dungeonCamReason);
             if (!DungeonMovementOwnerRegression.Run(out var dungeonMoveReason)) failures.Add(dungeonMoveReason); else log.AppendLine("[dungeon-movement-owner] " + dungeonMoveReason);
             if (!EnemyTintRegression.Run(out var enemyTintReason)) failures.Add(enemyTintReason); else log.AppendLine("[enemy-tint] " + enemyTintReason);
+            if (!TripoSpriteOverlayRegression.Run(out var tripoSpriteReason)) failures.Add(tripoSpriteReason); else log.AppendLine("[tripo-sprite-overlay] " + tripoSpriteReason);
             if (!EnemyBodyTextureRegression.Run(out var bodyTexReason)) failures.Add(bodyTexReason); else log.AppendLine("[enemy-body-texture] " + bodyTexReason);
             // --- WO-912 sec.9.3 + D4/D7: no ad reward may ever grant a real-money currency ---
             if (!AdPlacementCovenantRegression.Run(out var adCovReason)) failures.Add(adCovReason); else log.AppendLine("[ad-covenant] " + adCovReason);
@@ -593,6 +595,8 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "dungeon-exit suite", () => { if (!DungeonExitRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[dungeon-exit] " + r); });
             // WO-1568 - dungeon doors read as doors: leaf on the hinge, frame + lintel, no letterbox. Registered by the lead 2026-09-07.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "dungeon-door-shape suite", () => { if (!DeNelle.Editor.Regression.DungeonDoorShapeRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[dungeon-door-shape] " + r); });
+            // WO-1837 - the SAME defect class as WO-1829's door, on a WALL: socket seals + Wall_* must block the Structure-masked LoS linecast.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "dungeon-wall-los suite", () => { if (!DeNelle.Editor.Regression.DungeonWallLosRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[dungeon-wall-los] " + r); });
             // WO-1596 - earning the first Rough Stone is a full-screen moment, and the exit WAITS for it.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "rough-stone-fanfare suite", () => { if (!DeNelle.Editor.Regression.RoughStoneFanfareRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[rough-stone-fanfare] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "dungeon-dressing suite", () => { if (!DungeonDressingRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[dungeon-dressing] " + r); });
@@ -1509,6 +1513,8 @@ namespace DeNelle.Editor
             // BEFORE it builds the HUD (an unguarded presentation throw was the raid's only
             // exitless state), and the four named raid catches must not swallow silently again.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-exit-parity suite", () => { if (!DeNelle.Editor.Regression.RaidExitParityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-exit-parity] " + r); });
+            // WO-1778 — a 3-star capture whose census is missing must still reach a scene.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "capture-strand-exit suite", () => { if (!DeNelle.Editor.Regression.CaptureStrandExitRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[capture-strand-exit] " + r); });
 
             // WO-1437 (P0): the sibling above asks whether each raid exit PAYS correctly. This
             // one asks the question none of them did - CAN THE PLAYER GET OUT AT ALL. The owner
@@ -2134,6 +2140,7 @@ namespace DeNelle.Editor
             // WO-1373 (2026-09-09, lane RAID-3, owner ruling): one rough stone; only the top two raid
             // tiers drop it, at most one per UTC day; dungeons 5% off the rail, starter dungeons excluded.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-rough-stone suite", () => { if (!DeNelle.Editor.Regression.RaidRoughStoneDropRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-rough-stone] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "endless-escalation suite", () => { if (!DeNelle.Editor.Regression.EndlessEscalationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[endless-escalation] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "seating-preview-shield suite", () => { if (!DeNelle.Editor.Regression.SeatingPreviewShieldRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[seating-preview-shield] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "screen-orientation suite", () => { if (!DeNelle.Editor.Regression.ScreenOrientationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[screen-orientation] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "admin-panel-scale suite", () => { if (!DeNelle.Editor.Regression.AdminPanelScaleRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[admin-panel-scale] " + r); });
