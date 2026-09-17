@@ -1,32 +1,36 @@
 // =============================================================================
-// ClanChatPanel — toggleable team-chat panel for the Clans stub.
+// ClanChatPanel — a THIN WEBVIEW HOST for Cherry's clan chat embed (WO-1847).
 // -----------------------------------------------------------------------------
-// WO-F conversion (2026-07-03, coverage matrix row #51): UIDocument/UITK panel
-// -> code-built uGUI on the Obsidian master frame (BuildObsidianModal: FrameCore
-// + medallion + the ONE shared Close + tap-outside scrim), per the LeaderboardPanel
-// / HelpMenu reference recipe. Row #51 flagged ClanChat as having NO close at all —
-// the kit chrome's shared Close now fixes that AND it registers with PanelManager
-// so opening closes other panels and the arbiter can dismiss it (was squatting over
-// Talents/Upgrade in every bot capture). Opens via Toggle() (the kit HUD dock calls
-// it directly). Strict MVVM (Silo E): binds a ClanChatVM and reads vm.* only —
-// all ClanService / ChatPhraseCatalog access lives in the VM (DeNelle.HUD -> DeNelle.Core).
+// ⛔ WHAT THIS PANEL STOPPED DOING. Until WO-1847 it rendered clan chat itself: a
+// scrollable message list, a phrase-chip rail built from ChatPhraseCatalog, a custom
+// free-text composer, and the create/leave clan form. ALL OF IT IS GONE. Cherry owns
+// message rendering, delivery and persistence now, so a native renderer here would be a
+// second, always-stale view of a list this game no longer holds. What is left is the
+// Obsidian frame (chrome, the ONE shared Close, the tap-outside scrim, PanelManager
+// membership) wrapped around a web surface — nothing more.
 //
-// Layout (in the frame's body well):
-//   • Status strip — clan tag + name (or "no clan"); Create/Leave action button.
-//   • Create form — name + tag input fields + "Found Clan" (only when not in a clan).
-//   • Scrollable message list — oldest at top, newest at bottom.
-//   • Phrase-chip rail — one-tap Obsidian buttons that post a templated phrase.
-//   • Composer — "Custom..." reveals an input + Send for <=140 char free text.
+// ⛔ AND WHAT IT DELIBERATELY DOES NOT DO: there is NO native fallback. If the embed
+// fails to load the panel shows a non-blocking error and stops. Falling back to the old
+// UI is the ticket's explicit non-scope, and it would be worse than the error: a player
+// typing into a local-only chat nobody receives is a silent failure, which is the exact
+// shape §12 exists to forbid.
 //
-// Single-player only. The network bridge will swap ClanService for a thin remote
-// wrapper later (§7.1 of the React design doc).
+// ⚠ NO WEBVIEW PLUGIN IS PRESENT IN THIS PROJECT YET (verified at source 2026-09-17 —
+// see IClanChatWebHost.cs for the evidence and the two candidate plugins). So the default
+// host is ClanChatWebHostUnavailable and this panel ships permanently in that error state
+// until a plugin is adopted and handed to Bind(). Every other part of the flow — the room
+// scoping, the bridge parsing, the unread badge, the report path — is complete and is
+// exercised by Assets/Tests/EditMode/ClanChatVMTests.cs and test/clan-chat-embed.test.js.
+//
+// The room is the clan's SERVER-SIDE UUID (clans.id) and nothing else; see
+// ClanRoomBinding in ClanChatSource.cs for why that is the one open wiring point.
 // =============================================================================
 
+using System;
 using DeNelle.Core.UI;
 using DeNelle.Core.Diagnostics;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace DeNelle.HUD
 {
@@ -34,37 +38,46 @@ namespace DeNelle.HUD
     public sealed class ClanChatPanel : MonoBehaviour
     {
         private ElarionUiKit.ObsidianModal _modal;
-        private Transform _statusHost;
-        private Transform _actionHost;
-        private Transform _createForm;
-        private Transform _messageScrollHost;
-        private Transform _listContent;    // message ScrollRect content (VerticalLayoutGroup)
-        private Transform _chipContent;     // phrase-chip ScrollRect content
-        private Transform _composerHost;
-        private Transform _customRow;
-        private TMP_InputField _createNameField;
-        private TMP_InputField _createTagField;
-        private TMP_InputField _customField;
+        private Transform _bodyHost;
+        private TextMeshProUGUI _statusText;
 
         private bool _visible;
-        private bool _customOpen;
 
-        // Strict MVVM (Silo E): ALL clan/chat state + projection live in the VM; this
-        // View reads vm.* only and never touches ClanService / ChatPhraseCatalog.
         private ClanChatVM _vm;
+        private IClanChatWebHost _host;
+        private bool _hostOwned;          // true when this panel created the host and must dispose it
+        private string _loadedUrl;
 
-        // Modal arbiter membership (eyes-on pass 2026-07-03: the open chat squatted OVER
-        // the Talents/Upgrade modals in every bot capture — it never told PanelManager it
-        // was open, so nothing ever closed it; and it exposed NO close affordance at all).
         private PanelHandle _panelHandle;
+
+        /// <summary>
+        /// Unread messages in the clan room, straight from Cherry's own unreadState event.
+        /// Zero when there is no VM, no room, or no embed — never a stale count.
+        /// </summary>
+        public int UnreadCount => _vm != null ? _vm.UnreadCount : 0;
 
         private void Awake()
         {
             _panelHandle = PanelManager.Register("Clan Chat", () => SetVisible(false), () => _visible);
         }
 
+        /// <summary>
+        /// Hand this panel a real WebView host. Call BEFORE the first open; the panel takes
+        /// ownership only of a host it created itself, so a caller-supplied host outlives it.
+        /// </summary>
+        public void Bind(IClanChatWebHost host)
+        {
+            DetachHost();
+            _host = host;
+            _hostOwned = false;
+            AttachHost();
+        }
+
         private void OnDestroy()
         {
+            DetachHost();
+            if (_hostOwned) _host?.Dispose();
+            _host = null;
             if (_vm != null) _vm.Changed -= Repaint;
             _vm?.Dispose();
             _vm = null;
@@ -72,14 +85,14 @@ namespace DeNelle.HUD
         }
 
         // Mobile-first: the panel opens via Toggle() (public), called by the kit HUD chat
-        // dock (HudKitController.OpenClanChat). No key poll, no 'Y' hotkey.
+        // dock (HudKitController.OpenClanChat). No key poll, no hotkey.
         public void Toggle() => SetVisible(!_visible);
 
         private void SetVisible(bool on)
         {
             if (on)
             {
-                FlowTrace.Step("ClanChat", "SetVisible(true) — opening clan chat panel.");
+                FlowTrace.Step("ClanChat", "SetVisible(true) — opening the Cherry chat host.");
                 EnsureBuilt();
             }
             if (_modal == null || _modal.canvas == null) { _visible = false; return; }
@@ -91,12 +104,18 @@ namespace DeNelle.HUD
                 {
                     _visible = false;
                     _modal.canvas.SetActive(false);   // battle-lock reject — never force-show
+                    _host?.SetVisible(false);
                     return;
                 }
                 Repaint();
+                EnsureLoaded();
             }
             else
             {
+                // The surface is HIDDEN, not destroyed: tearing the embed down on every close
+                // would re-run Cherry's wallet connect and re-fetch the SDK each time the
+                // player glanced at chat.
+                _host?.SetVisible(false);
                 PanelManager.NotifyClosed(_panelHandle);
             }
         }
@@ -107,8 +126,6 @@ namespace DeNelle.HUD
             if (_modal != null && _modal.canvas != null) return;
             using var _ = FlowTrace.Enter("ClanChat", "EnsureBuilt");
 
-            // VM FIRST — it resolves ClanService + ChatPhraseCatalog itself, so this
-            // View never touches a service; the input cap composes from vm data.
             _vm = ClanChatVM.CreateDefault(() => SetVisible(false));
             _vm.Changed += Repaint;
 
@@ -119,209 +136,214 @@ namespace DeNelle.HUD
             var body = _modal.chrome.layout != null && _modal.chrome.layout.body != null
                 ? (Transform)_modal.chrome.layout.body
                 : _modal.chrome.content.transform;
+            _bodyHost = body;
 
-            // Status strip + Create/Leave action button (top of the well).
-            _statusHost = ZoneRect(body, "StatusStrip", new Vector2(0.03f, 0.90f), new Vector2(0.72f, 1.00f));
-            _actionHost = ZoneRect(body, "ActionHost",  new Vector2(0.73f, 0.90f), new Vector2(0.99f, 1.00f));
+            // The ONE native widget left: a status line that carries the error state. Cherry
+            // draws everything else, inside the web surface placed over this rect.
+            _statusText = MakeText(body, "", 15, ElarionUi.ParchmentDim, FontStyles.Italic,
+                TextAlignmentOptions.Center, new Vector2(0.04f, 0.35f), new Vector2(0.96f, 0.65f));
 
-            // Create form (shown only when not in a clan) — occupies the message region.
-            _createForm = ZoneRect(body, "CreateForm", new Vector2(0.03f, 0.30f), new Vector2(0.97f, 0.88f));
-            _createNameField = MakeInputField(_createForm, "Clan name", "Ember Wardens", 24,
-                new Vector2(0f, 0.78f), new Vector2(1f, 0.94f));
-            _createTagField = MakeInputField(_createForm, "Tag (2-4)", "EMBR", 4,
-                new Vector2(0f, 0.58f), new Vector2(1f, 0.74f));
-            ElarionUiKit.BuildObsidianButton(_createForm, "Found Clan",
-                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
-                new Vector2(0.30f, 0.40f), new Vector2(0.70f, 0.54f), OnConfirmCreate);
-
-            // Message scroll list (shown only when in a clan).
-            _messageScrollHost = ZoneRect(body, "MessageScroll", new Vector2(0.03f, 0.30f), new Vector2(0.97f, 0.88f));
-            _listContent = BuildScrollColumn(_messageScrollHost);
-
-            // Phrase-chip rail (Obsidian buttons, scrollable, category-grouped).
-            var chipHost = ZoneRect(body, "ChipRail", new Vector2(0.03f, 0.11f), new Vector2(0.97f, 0.29f));
-            _chipContent = BuildScrollColumn(chipHost);
-
-            // Composer (Custom... toggle + input + Send).
-            _composerHost = ZoneRect(body, "Composer", new Vector2(0.03f, 0.00f), new Vector2(0.97f, 0.10f));
-            ElarionUiKit.BuildObsidianButton(_composerHost, "Custom...",
-                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
-                new Vector2(0f, 0.05f), new Vector2(0.20f, 0.95f), ToggleCustomRow);
-            _customRow = ZoneRect(_composerHost, "CustomRow", new Vector2(0.21f, 0.05f), new Vector2(1f, 0.95f));
-            _customField = MakeInputField(_customRow, "Say something...", "", _vm.CustomTextMaxChars,
-                new Vector2(0f, 0f), new Vector2(0.80f, 1f));
-            ElarionUiKit.BuildObsidianButton(_customRow, "Send",
-                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Green,
-                new Vector2(0.82f, 0f), new Vector2(1f, 1f), OnSendCustom);
-            _customRow.gameObject.SetActive(false);
+            if (_host == null)
+            {
+                // No plugin present — the honest default. See this file's header.
+                _host = new ClanChatWebHostUnavailable();
+                _hostOwned = true;
+                FlowTrace.Warn("ClanChat", "no WebView host bound — using ClanChatWebHostUnavailable; " +
+                                           "the panel will show its error state (see IClanChatWebHost.cs).");
+                AttachHost();
+            }
 
             _modal.canvas.SetActive(false);   // built hidden; SetVisible shows it
         }
 
+        private void AttachHost()
+        {
+            if (_host == null) return;
+            _host.MessageReceived += OnBridgeMessage;
+            _host.LoadFailed += OnHostLoadFailed;
+        }
+
+        private void DetachHost()
+        {
+            if (_host == null) return;
+            _host.MessageReceived -= OnBridgeMessage;
+            _host.LoadFailed -= OnHostLoadFailed;
+        }
+
+        // ── Load ─────────────────────────────────────────────────────────────
+        private void EnsureLoaded()
+        {
+            if (_vm == null || _host == null) return;
+
+            if (!_vm.CanEmbed)
+            {
+                // No wallet or no room: the VM already holds the reason, and Repaint showed it.
+                FlowTrace.Warn("ClanChat", "not embedding — reason=" + (_vm.ErrorReason ?? "unknown"));
+                _host.SetVisible(false);
+                return;
+            }
+
+            _host.SetViewport(BodyViewport());
+
+            var url = _vm.EmbedUrl;
+            if (!string.Equals(_loadedUrl, url, StringComparison.Ordinal))
+            {
+                _loadedUrl = url;
+                FlowTrace.Step("ClanChat", "loading the Cherry host page for the bound clan room.");
+                // Load() on the unavailable host raises LoadFailed immediately, which is how the
+                // missing plugin becomes a named error instead of a blank panel.
+                Guard.Try("ClanChat", "host.Load", () => _host.Load(url));
+            }
+            _host.SetVisible(true);
+        }
+
+        /// <summary>
+        /// The modal body as a normalised screen rect, so the web surface lands inside the
+        /// Obsidian frame rather than over the whole screen.
+        /// </summary>
+        private Rect BodyViewport()
+        {
+            // The modal is built with these normalised anchors (see EnsureBuilt); reading them
+            // back off the RectTransform keeps the two from drifting if the frame is retuned.
+            var rt = _bodyHost as RectTransform;
+            if (rt == null) return new Rect(0.24f, 0.10f, 0.52f, 0.82f);
+            return Guard.Try("ClanChat", "BodyViewport", () =>
+            {
+                var corners = new Vector3[4];
+                rt.GetWorldCorners(corners);
+                float w = Mathf.Max(1f, Screen.width);
+                float h = Mathf.Max(1f, Screen.height);
+                float x0 = Mathf.Clamp01(corners[0].x / w);
+                float y0 = Mathf.Clamp01(corners[0].y / h);
+                float x1 = Mathf.Clamp01(corners[2].x / w);
+                float y1 = Mathf.Clamp01(corners[2].y / h);
+                return new Rect(x0, y0, Mathf.Max(0f, x1 - x0), Mathf.Max(0f, y1 - y0));
+            }, new Rect(0.24f, 0.10f, 0.52f, 0.82f));
+        }
+
+        // ── Bridge (payloads from site/clan-chat.html's sendToUnity) ──────────
+
+        [Serializable]
+        private sealed class BridgePayload
+        {
+            public string type;
+            public int count;
+            public string reason;
+            public string detail;
+            public string messageId;
+            public string clanId;
+            public bool signedIn;
+        }
+
+        private void OnBridgeMessage(string json)
+        {
+            // ⛔ NEVER TRUST THE PAYLOAD. It arrives from a page that loads a third-party SDK,
+            // so every field is parsed under Guard and a malformed payload is logged and
+            // skipped, never allowed to throw into the Unity loop.
+            Guard.Try("ClanChat", "OnBridgeMessage", () =>
+            {
+                if (string.IsNullOrWhiteSpace(json)) return;
+                var p = JsonUtility.FromJson<BridgePayload>(json);
+                if (p == null || string.IsNullOrEmpty(p.type))
+                {
+                    FlowTrace.Warn("ClanChat", "bridge payload had no type — ignored.");
+                    return;
+                }
+
+                switch (p.type)
+                {
+                    case "mounted":
+                        FlowTrace.Step("ClanChat", "Cherry embed mounted.");
+                        _vm?.OnMounted();
+                        break;
+
+                    case "unread":
+                        _vm?.OnUnread(p.count);
+                        break;
+
+                    case "report":
+                        OnReportRequested(p.messageId);
+                        break;
+
+                    case "auth":
+                        FlowTrace.Step("ClanChat", "embed auth state changed: signedIn=" + p.signedIn);
+                        break;
+
+                    case "warn":
+                        FlowTrace.Warn("ClanChat", "embed warning: " + p.reason + " " + p.detail);
+                        break;
+
+                    case "error":
+                        FlowTrace.Fail("ClanChat", "embed error: " + p.reason + " " + p.detail);
+                        _vm?.OnError(p.reason);
+                        break;
+
+                    default:
+                        FlowTrace.Warn("ClanChat", "unknown bridge type: " + p.type);
+                        break;
+                }
+            });
+        }
+
+        private void OnHostLoadFailed(string reason)
+        {
+            FlowTrace.Fail("ClanChat", "web host failed to load: " + reason);
+            _vm?.OnError(reason);
+        }
+
+        /// <summary>
+        /// The player reported a message in the embed. The SIGNED POST happens on this side —
+        /// the page is never handed a key or a session.
+        /// </summary>
+        private void OnReportRequested(string messageId)
+        {
+            if (_vm == null) return;
+            FlowTrace.Step("ClanChat", "report requested from the embed — sending signed POST.");
+            _vm.ReportMessage(messageId, ok =>
+            {
+                if (ok) FlowTrace.Step("ClanChat", "report recorded by the server.");
+                else FlowTrace.Warn("ClanChat", "report was NOT recorded — see the preceding line.");
+            });
+        }
+
         // ── Repaint ──────────────────────────────────────────────────────────
 
-        // Repaints purely from vm.* — no ClanService reads (strict MVVM, Silo E).
         private void Repaint()
         {
-            if (_modal == null || !_visible || _vm == null) return;
+            if (_modal == null || !_visible || _vm == null || _statusText == null) return;
 
-            bool inClan = _vm.InClan;
-
-            // Action button (Create / Leave) — rebuilt so its label + color reflect state.
-            for (int i = _actionHost.childCount - 1; i >= 0; i--)
-                Destroy(_actionHost.GetChild(i).gameObject);
-            ElarionUiKit.BuildObsidianButton(_actionHost, _vm.ActionLabel,
-                ElarionUiKit.ObsidianButtonStyle.Style1,
-                inClan ? ElarionUiKit.ObsidianButtonColor.Red : ElarionUiKit.ObsidianButtonColor.Green,
-                new Vector2(0f, 0.05f), new Vector2(1f, 0.95f), OnHeaderButton);
-
-            for (int i = _statusHost.childCount - 1; i >= 0; i--)
-                Destroy(_statusHost.GetChild(i).gameObject);
-
-            if (inClan)
+            if (_vm.HasError)
             {
-                MakeText(_statusHost, _vm.StatusLine, 18, ElarionUi.Gilt, FontStyles.Bold,
-                    TextAlignmentOptions.Left, Vector2.zero, Vector2.one);
-
-                _createForm.gameObject.SetActive(false);
-                _messageScrollHost.gameObject.SetActive(true);
-                _chipContent.parent.parent.gameObject.SetActive(true);
-                _composerHost.gameObject.SetActive(true);
-                RebuildMessages();
-                RebuildChips();
+                _statusText.gameObject.SetActive(true);
+                _statusText.text = PlayerFacingError(_vm.ErrorReason);
+                _host?.SetVisible(false);
+                return;
             }
-            else
-            {
-                MakeText(_statusHost, _vm.StatusLine, 18, ElarionUi.ParchmentDim, FontStyles.Italic,
-                    TextAlignmentOptions.Left, Vector2.zero, Vector2.one);
 
-                _createForm.gameObject.SetActive(true);
-                _messageScrollHost.gameObject.SetActive(false);
-                _chipContent.parent.parent.gameObject.SetActive(false);
-                _composerHost.gameObject.SetActive(false);
+            // No error: Cherry's own UI is the content, so the native status line gets out of
+            // the way entirely rather than sitting behind the web surface.
+            _statusText.gameObject.SetActive(!_vm.IsMounted);
+            if (!_vm.IsMounted) _statusText.text = "Opening clan chat...";
+        }
+
+        /// <summary>
+        /// Machine reason -> plain player copy. ⛔ No investment language and no blame: the
+        /// panel is a communication surface, not a financial one, and an error here is never
+        /// something the player did wrong.
+        /// </summary>
+        private static string PlayerFacingError(string reason)
+        {
+            switch (reason)
+            {
+                case ClanChatVM.NoWallet: return "Connect your wallet to use clan chat.";
+                case ClanChatVM.NoRoom: return "Join a clan to use clan chat.";
+                case ClanChatWebHostUnavailable.Reason: return "Clan chat is not available in this build.";
+                case "missing_app_id": return "Clan chat is not available in this build.";
+                default: return "Clan chat could not load. Try again in a moment.";
             }
         }
 
-        private void RebuildMessages()
-        {
-            for (int i = _listContent.childCount - 1; i >= 0; i--)
-                Destroy(_listContent.GetChild(i).gameObject);
-
-            foreach (var row in _vm.Messages)
-                AddMessageRow(row.Meta, row.Body, row.IsHint);
-        }
-
-        private void AddMessageRow(string meta, string body, bool hint)
-        {
-            var rowGo = new GameObject("Msg", typeof(RectTransform), typeof(LayoutElement));
-            rowGo.transform.SetParent(_listContent, false);
-            var le = rowGo.GetComponent<LayoutElement>();
-            le.preferredHeight = string.IsNullOrEmpty(meta) ? 40f : 48f;
-            var rrt = rowGo.GetComponent<RectTransform>();
-            rrt.sizeDelta = new Vector2(rrt.sizeDelta.x, le.preferredHeight);
-
-            if (!string.IsNullOrEmpty(meta))
-                MakeText(rowGo.transform, meta, 11, ElarionUi.ParchmentDim, FontStyles.Normal,
-                    TextAlignmentOptions.TopLeft, new Vector2(0f, 0.66f), new Vector2(1f, 1f));
-
-            var bodyColor = hint ? ElarionUi.ParchmentDim : ElarionUi.Parchment;
-            var bodyStyle = hint ? FontStyles.Italic : FontStyles.Normal;
-            MakeText(rowGo.transform, body, 13, bodyColor, bodyStyle,
-                TextAlignmentOptions.TopLeft, new Vector2(0f, 0f),
-                new Vector2(1f, string.IsNullOrEmpty(meta) ? 1f : 0.66f));
-        }
-
-        // The VM owns the never-blank contract: an empty phrase catalogue yields a single
-        // fallback ChipRow, so the rail is never blank. This View just lays the rows out.
-        private void RebuildChips()
-        {
-            for (int i = _chipContent.childCount - 1; i >= 0; i--)
-                Destroy(_chipContent.GetChild(i).gameObject);
-
-            foreach (var chip in _vm.Chips)
-            {
-                if (chip.IsDivider)       AddChipDivider(chip.Label);
-                else if (chip.IsFallback) AddChipFallback(chip.Label);
-                else                      AddChip(chip.Label, chip.PhraseId);
-            }
-        }
-
-        private void AddChipDivider(string label)
-        {
-            var go = new GameObject("Divider", typeof(RectTransform), typeof(LayoutElement));
-            go.transform.SetParent(_chipContent, false);
-            go.GetComponent<LayoutElement>().preferredHeight = 16f;
-            var drt = go.GetComponent<RectTransform>();
-            drt.sizeDelta = new Vector2(drt.sizeDelta.x, 16f);
-            MakeText(go.transform, label, 11,
-                new Color(ElarionUi.Gold.r, ElarionUi.Gold.g, ElarionUi.Gold.b, 0.85f),
-                FontStyles.Bold, TextAlignmentOptions.Left, Vector2.zero, Vector2.one);
-        }
-
-        private void AddChip(string label, string phraseId)
-        {
-            var host = new GameObject("Chip", typeof(RectTransform), typeof(LayoutElement));
-            host.transform.SetParent(_chipContent, false);
-            host.GetComponent<LayoutElement>().preferredHeight = 32f;
-            var hrt = host.GetComponent<RectTransform>();
-            hrt.sizeDelta = new Vector2(hrt.sizeDelta.x, 32f);
-            ElarionUiKit.BuildObsidianButton(host.transform, label,
-                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
-                Vector2.zero, Vector2.one, () => OnSendPhrase(phraseId));
-        }
-
-        private void AddChipFallback(string text)
-        {
-            var go = new GameObject("ChipFallback", typeof(RectTransform), typeof(LayoutElement));
-            go.transform.SetParent(_chipContent, false);
-            go.GetComponent<LayoutElement>().preferredHeight = 28f;
-            var frt = go.GetComponent<RectTransform>();
-            frt.sizeDelta = new Vector2(frt.sizeDelta.x, 28f);
-            MakeText(go.transform, text, 12,
-                ElarionUi.ParchmentDim, FontStyles.Italic,
-                TextAlignmentOptions.Left, Vector2.zero, Vector2.one);
-        }
-
-        // ── Event handlers (route taps to VM commands; the View reads no game state) ──
-
-        private void OnHeaderButton() => _vm?.OnHeaderButton();
-
-        private void OnConfirmCreate()
-        {
-            var name = _createNameField != null ? _createNameField.text : "Ember Wardens";
-            var tag  = _createTagField  != null ? _createTagField.text  : "EMBR";
-            _vm?.CreateClan(name, tag);
-        }
-
-        private void OnSendPhrase(string phraseId) => _vm?.SendPhrase(phraseId);
-
-        private void ToggleCustomRow()
-        {
-            _customOpen = !_customOpen;
-            if (_customRow != null)
-                _customRow.gameObject.SetActive(_customOpen);
-            if (_customOpen && _customField != null)
-                _customField.ActivateInputField();
-        }
-
-        private void OnSendCustom()
-        {
-            var text = _customField != null ? _customField.text : null;
-            _vm?.SendCustom(text);
-            if (_customField != null) _customField.text = string.Empty;
-        }
-
-        // ── uGUI helpers (mirrors LeaderboardPanel) ──────────────────────────
-
-        private static Transform ZoneRect(Transform parent, string name, Vector2 min, Vector2 max)
-        {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var rt = go.GetComponent<RectTransform>();
-            rt.anchorMin = min; rt.anchorMax = max;
-            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-            return go.transform;
-        }
+        // ── uGUI helper ──────────────────────────────────────────────────────
 
         private static TextMeshProUGUI MakeText(Transform parent, string text, float size,
             Color color, FontStyles style, TextAlignmentOptions align, Vector2 min, Vector2 max)
@@ -341,77 +363,6 @@ namespace DeNelle.HUD
             t.textWrappingMode = TextWrappingModes.Normal;
             ElarionUiKit.EnsureFont(t);
             return t;
-        }
-
-        // Inline ScrollRect + VerticalLayoutGroup content column (canonical helper copied from
-        // CosmeticShopPanel/LeaderboardPanel — the SME referenced it but omitted the definition,
-        // gate CS0103). Returns the content transform rows/chips are added to.
-        private static Transform BuildScrollColumn(Transform host)
-        {
-            var scrollGo = new GameObject("Scroll", typeof(RectTransform), typeof(ScrollRect), typeof(RectMask2D), typeof(Image));
-            scrollGo.transform.SetParent(host, false);
-            var srt = scrollGo.GetComponent<RectTransform>();
-            srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one;
-            srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
-            scrollGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.25f);
-
-            var contentGo = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-            contentGo.transform.SetParent(scrollGo.transform, false);
-            var crt = contentGo.GetComponent<RectTransform>();
-            crt.anchorMin = new Vector2(0f, 1f); crt.anchorMax = Vector2.one;
-            crt.pivot = new Vector2(0.5f, 1f);
-            crt.offsetMin = Vector2.zero; crt.offsetMax = Vector2.zero;
-            var layout = contentGo.GetComponent<VerticalLayoutGroup>();
-            layout.spacing = 6f;
-            layout.padding = new RectOffset(8, 8, 8, 8);
-            layout.childControlHeight = false;
-            layout.childControlWidth = true;
-            layout.childForceExpandHeight = false;
-            contentGo.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            var scroll = scrollGo.GetComponent<ScrollRect>();
-            scroll.content = crt;
-            scroll.horizontal = false;
-            scroll.vertical = true;
-            scroll.movementType = ScrollRect.MovementType.Clamped;
-            scroll.scrollSensitivity = 24f;
-            return contentGo.transform;
-        }
-
-        // Inline TMP_InputField over a translucent rounded well (mirrors BugReportView).
-        private static TMP_InputField MakeInputField(Transform parent, string placeholder,
-            string initialValue, int maxLength, Vector2 min, Vector2 max)
-        {
-            var host = new GameObject("Input", typeof(Image), typeof(TMP_InputField));
-            host.transform.SetParent(parent, false);
-            var rt = (RectTransform)host.transform;
-            rt.anchorMin = min; rt.anchorMax = max;
-            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-            var bg = host.GetComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.45f);
-            ElarionUiKit.ApplyRounded(bg);
-
-            var areaGo = new GameObject("TextArea", typeof(RectTransform), typeof(RectMask2D));
-            areaGo.transform.SetParent(host.transform, false);
-            var art = (RectTransform)areaGo.transform;
-            art.anchorMin = Vector2.zero; art.anchorMax = Vector2.one;
-            art.offsetMin = new Vector2(10f, 4f); art.offsetMax = new Vector2(-10f, -4f);
-
-            var text = ElarionUiKit.Label(areaGo.transform, "", 0f, 1f,
-                ElarionUi.Parchment, ElarionUi.FontBody, TextAlignmentOptions.Left, 0f, 1f);
-            var ph = ElarionUiKit.Label(areaGo.transform, placeholder, 0f, 1f,
-                ElarionUi.ParchmentDim, ElarionUi.FontBody, TextAlignmentOptions.Left, 0f, 1f);
-            ph.fontStyle = FontStyles.Italic;
-
-            var field = host.GetComponent<TMP_InputField>();
-            field.targetGraphic = bg;
-            field.textViewport  = art;
-            field.textComponent = text;
-            field.placeholder   = ph;
-            field.lineType      = TMP_InputField.LineType.SingleLine;
-            field.characterLimit = maxLength;
-            field.text = initialValue ?? "";
-            return field;
         }
     }
 }

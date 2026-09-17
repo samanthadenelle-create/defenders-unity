@@ -3,17 +3,24 @@
 // -----------------------------------------------------------------------------
 //   POST  { playerId }                Headers: X-Wallet / X-Nonce / X-Signature
 //                                      (or X-Session — the WO-1157 session rail)
-//   200   { ok:true }
+//   200   { ok:true }                                   ← a Member or Officer left
+//   200   { ok:true, newLeader:<wallet> }               ← a Leader left, succession ran
+//   200   { ok:true, clanDeleted:true }                 ← the Leader was the sole member
 //   401   any auth refusal (same shape as every other route)
 //   404   CLAN_NOT_IN_CLAN
-//   409   { ok:false, error:'leader_must_transfer', code:'leader_must_transfer', ref }
+//   409   { ok:false, error:'leader_must_transfer', ... } ← now the RACE label only
+//   429   CLAN_RATE_LIMITED  (+ Retry-After and a retry_after field)
 //   500   SERVER_ERROR
 //
-// ⛔ A LEADER CANNOT LEAVE, AND THAT IS THE TICKET'S EXPLICIT NON-SCOPE. WO-1846
-// defines succession; until it has, a Leader walking out would leave a clan with
-// members and no leader — a state no later ticket in this chain has a rule for. The
-// refusal carries the work order's literal `leader_must_transfer` so the client can
-// branch on the exact string it was specified with.
+// ⚠ WO-1846 CHANGED THIS ROUTE'S RULE, AND THE OLD ONE IS RETIRED. WO-1845 shipped a
+// flat 409 `leader_must_transfer` for a Leader, because succession had no rule yet. It
+// has one now (api/_lib/clan.leaveAsLeader: oldest Officer, else oldest Member, else
+// the clan is deleted), so a Leader leaving SUCCEEDS. The literal string survives as
+// the RACE label — the read said leader and the write moved nothing — because the
+// client already branches on it and it still means "your leave did not happen".
+//
+// `{ ok: true }` stays byte-identical for the ordinary member case: the succession
+// fields are added only when they are true, so nothing the client already reads moves.
 // =============================================================================
 
 'use strict';
@@ -25,7 +32,8 @@ const { beginClanRequest, clanFail } = require('../_lib/clan-http');
 const { leaveClan } = require('../_lib/clan');
 
 async function handler(req, res) {
-    const pre = await beginClanRequest(req, res, 'POST');
+    // WO-1846: 5 leaves per wallet per hour (clan_rate_limit action 'leave').
+    const pre = await beginClanRequest(req, res, 'POST', 'leave');
     if (pre.done) return;
     const { sql, wallet, ref } = pre;
 
@@ -42,10 +50,22 @@ async function handler(req, res) {
     }
 
     try {
-        await logApiEvent(sql, wallet, 'clan_left', { clanId: result.clanId, clanRemoved: result.clanRemoved });
+        await logApiEvent(sql, wallet, 'clan_left', {
+            clanId: result.clanId,
+            clanRemoved: result.clanRemoved,
+            newLeader: result.newLeader || null,
+            successionFrom: result.successionFrom || null,
+        });
     } catch (_) { /* telemetry never fails a completed write */ }
 
-    return res.status(200).json({ ok: true });
+    // ADDITIVE ONLY. The member case answers exactly { ok: true }, as WO-1845 specified
+    // and as its test asserts with deepEqual; the succession fields appear only on the
+    // paths that actually have one, which is what makes this change invisible to a
+    // client that has not been taught about them yet.
+    const payload = { ok: true };
+    if (result.clanDeleted) payload.clanDeleted = true;
+    if (result.newLeader) payload.newLeader = result.newLeader;
+    return res.status(200).json(payload);
 }
 
 module.exports = handler;

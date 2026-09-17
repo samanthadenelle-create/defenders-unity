@@ -2290,3 +2290,62 @@ CREATE TABLE IF NOT EXISTS clan_messages (
 
 CREATE INDEX IF NOT EXISTS clan_messages_clan_sent_idx
     ON clan_messages (clan_id, sent_at DESC);
+
+-- clan_reports - WO-1847 (clan step 4).
+--
+-- ⛔ THE APPLYABLE COPY IS api/migrations/20260917_0031_clan_reports.sql.
+--
+-- The moderation landing site for Cherry-embedded clan chat. WO-1265 required that
+-- reporting EXIST before free text shipped; WO-1847 ships free text under an explicit
+-- owner ruling, and this table is what keeps that condition structurally true.
+--
+-- ⚠ message_id IS TEXT AND NOT A FOREIGN KEY. Cherry owns message persistence, so no
+-- clan_messages row exists for an embedded message and a key here would point at a table
+-- that cannot hold the id. Shape validation is the endpoint reportMessage in
+-- api/_lib/clan.js, never the schema.
+--
+-- Written by POST /api/clan/report-message and read by NOTHING in this ticket: the admin
+-- review surface is deferred with the admin clan-health ticket.
+CREATE TABLE IF NOT EXISTS clan_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reporter_wallet TEXT NOT NULL REFERENCES wallet_identity(wallet),
+    message_id TEXT NOT NULL,
+    clan_id UUID NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+    reported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS clan_reports_clan_idx
+    ON clan_reports (clan_id, reported_at DESC);
+
+-- =============================================================================
+-- clan_rate_limit - WO-1846 (clan step 3).
+--
+-- ⛔ THE APPLYABLE COPY IS api/migrations/20260917_0032_clan_rate_limit.sql.
+--    This block is the DESCRIPTION; only api/migrations/ is ever applied.
+--
+-- Endpoint : POST /api/clan/{create,join,leave,promote,demote,kick} - all six via the
+--            one shared preamble (api/_lib/clan-http.js beginClanRequest) calling
+--            api/_lib/wallet-auth.js touchClanRate(). GET /api/clan/me spends nothing.
+-- Budgets  : per wallet PER ACTION per hour - create 3, join 10, leave 5,
+--            promote/demote/kick 20. The authority is CLAN_RATE_LIMITS in
+--            wallet-auth.js; this comment is a description and may not be trusted
+--            over the constant.
+--
+-- The shape is guest_rate_limit's (see that block above), with a COMPOSITE key because
+-- six actions with six budgets cannot share one counter. NO foreign key onto
+-- wallet_identity, exactly as guest_rate_limit has none: touchWalletIdentity is
+-- fail-open, so an FK would let a missing identity row refuse a clan request through
+-- the rate limiter. The writer is fail-open too - a missing table logs and ALLOWS.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS clan_rate_limit (
+    wallet            TEXT        NOT NULL,
+    action            TEXT        NOT NULL,
+    window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    hits              INTEGER     NOT NULL DEFAULT 0,
+    total_hits        BIGINT      NOT NULL DEFAULT 0,
+    last_seen         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (wallet, action)
+);
+
+CREATE INDEX IF NOT EXISTS clan_rate_limit_last_seen_idx
+    ON clan_rate_limit (last_seen);

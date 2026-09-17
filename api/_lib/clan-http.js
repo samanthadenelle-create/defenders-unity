@@ -31,7 +31,7 @@
 'use strict';
 
 const { neon } = require('@neondatabase/serverless');
-const { AuthCode, authenticate } = require('./wallet-auth');
+const { AuthCode, authenticate, touchClanRate } = require('./wallet-auth');
 const { applyCors, newRef, quietFail, readBodyExact, bodyBytesDetail } = require('./http');
 const { logAuthReject } = require('./audit');
 
@@ -49,9 +49,14 @@ const MAX_BODY_BYTES = 8 * 1024;
  * @param {object} req
  * @param {object} res
  * @param {'GET'|'POST'} method  the ONE method this route accepts
+ * @param {string} [action]     WO-1846: the clan_rate_limit action this route spends
+ *                              budget on ('create' | 'join' | 'leave' | 'promote' |
+ *                              'demote' | 'kick'). OMITTED = no budget, which is what
+ *                              keeps the 3-argument callers (and /me, a pure read)
+ *                              byte-identical in behaviour.
  * @returns {Promise<{done:true} | {done:false, sql:Function, wallet:string, body:object, ref:string}>}
  */
-async function beginClanRequest(req, res, method) {
+async function beginClanRequest(req, res, method, action) {
     if (applyCors(req, res, method + ', OPTIONS')) return { done: true };
     const ref = newRef();
 
@@ -162,6 +167,36 @@ async function beginClanRequest(req, res, method) {
         return { done: true };
     }
 
+    // ── WO-1846: the clan action budget ──────────────────────────────────────
+    // ⛔ AFTER AUTH AND BEFORE THE ACTION. After auth because the budget is keyed to a
+    // PROVEN wallet — keyed to a claimed one it would be a way to burn someone else's
+    // budget by naming them. Before the action because a refused attempt must still
+    // spend (see touchClanRate's note): otherwise the cheapest request in the system is
+    // the one an attacker repeats.
+    if (action) {
+        const rate = await touchClanRate(sql, auth.identity, action);
+        if (!rate.ok) {
+            const retryAfter = rate.detail && rate.detail.retryAfterSeconds
+                ? Number(rate.detail.retryAfterSeconds) : 60;
+            await logAuthReject(sql, req, {
+                code: rate.code,
+                ref: ref,
+                identity: auth.identity,
+                mode: auth.mode,
+                detail: Object.assign({ clanRoute: true }, rate.detail),
+            });
+            // The HTTP header AND the body field. The header is what a well-behaved
+            // client/proxy already honours; the body field is what the Unity client can
+            // read without touching response headers, and the work order asks for a
+            // `retry_after` hint by name.
+            res.setHeader('Retry-After', String(retryAfter));
+            res.status(429).json({
+                ok: false, error: rate.code, code: rate.code, ref: ref, retry_after: retryAfter,
+            });
+            return { done: true };
+        }
+    }
+
     return { done: false, sql: sql, wallet: auth.identity, body: body, ref: ref };
 }
 
@@ -183,9 +218,31 @@ function clanFail(res, status, code, ref) {
     return res.status(status).json({ ok: false, error: code, code: code, ref: ref });
 }
 
+/**
+ * WO-1846. The TARGET of a role operation, read from the body.
+ *
+ * ⛔ READ THIS BEFORE CHANGING THE FIELD NAME — `wallet` IS ALREADY OVERLOADED. The
+ * work order specifies the kick body as `{ wallet }`, but `body.wallet` is the THIRD
+ * candidate in this file's claimed-identity chain (see firstNonEmpty above), where it
+ * means "who is calling". So a body carrying ONLY `{ wallet: B }` makes B the claimed
+ * caller, and the request fails auth closed (the session/signature belongs to A) — a
+ * confusing 401 rather than a kick, but never a hole: nobody can act as someone else by
+ * naming them, because `playerId` is resolved first and the proof still has to match.
+ *
+ * The supported bodies are therefore `{ playerId: <caller>, wallet: <target> }` (the
+ * work order's shape, which works because playerId wins the identity chain) and the two
+ * unambiguous aliases `target` / `targetWallet`, which is what a client should prefer.
+ * This is recorded in the hand-back for the client lane.
+ */
+function clanTargetWallet(body) {
+    const b = body || {};
+    return firstNonEmpty([b.target, b.targetWallet, b.wallet]);
+}
+
 module.exports = {
     MAX_BODY_BYTES,
     beginClanRequest,
     clanFail,
+    clanTargetWallet,
     firstNonEmpty,
 };

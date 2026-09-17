@@ -26,7 +26,8 @@ const { beginClanRequest, clanFail } = require('../_lib/clan-http');
 const { joinClan } = require('../_lib/clan');
 
 async function handler(req, res) {
-    const pre = await beginClanRequest(req, res, 'POST');
+    // WO-1846: 10 joins per wallet per hour (clan_rate_limit action 'join').
+    const pre = await beginClanRequest(req, res, 'POST', 'join');
     if (pre.done) return;
     const { sql, wallet, body, ref } = pre;
 

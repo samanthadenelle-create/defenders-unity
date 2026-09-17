@@ -342,7 +342,7 @@ namespace DeNelle.Wallet
         }
 
         // =====================================================================
-        //  Input field (mirrors ClanChatPanel.MakeInputField — the kit has none)
+        //  Input field (hand-built — the kit has none)
         // =====================================================================
 
         private static TMP_InputField MakeInputField(Transform parent, string placeholder, Vector2 min, Vector2 max)

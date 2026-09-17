@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clan Chat</title>
+<!--
+================================================================================
+site/clan-chat.html - WO-1847 (clan step 4). The Cherry Chat embed HOST PAGE.
+--------------------------------------------------------------------------------
+WHY THIS FILE EXISTS AT ALL, because it looks like an avoidable indirection and is
+not: Cherry's chat embed SDK is BROWSER-ONLY and cannot be loaded directly inside a
+bare native WebView with no intermediate document. It needs a real page, on a real
+http(s) origin, that pulls the SDK and constructs it. Cherry's own documentation
+ships React Native and Flutter examples of exactly this shape; this is the same
+pattern with Unity on the other side of the bridge.
+
+⛔ AND IT IS SERVED FROM site/, NOT FROM file:///android_asset/. The SDK is fetched
+from a CDN and renders Cherry in an iframe, both of which are origin-sensitive: a
+`file://` document is an opaque origin, and the fetch and the frame are refused with
+no visible error. site/ is already this repo's static-page home (site/delete-account.html,
+site/privacy.html, site/terms.html are served the same way), so the page ships on the
+same deploy as the API it reports to.
+
+────────────────────────────────────────────────────────────────────────────────
+⛔ BEFORE THIS SHIPS: CHERRY_APP_ID BELOW IS A PLACEHOLDER.
+   A real appId is minted once, by hand, in Cherry's own portal (portal.cherry.fun) —
+   an external account signup, not something an automated lane can self-serve. The
+   embed will not mount with the placeholder in place. Replacing that ONE constant is
+   the only remaining step to a working embed; nothing else in this file or in the
+   Unity client is waiting on it.
+────────────────────────────────────────────────────────────────────────────────
+
+WALLET-ONLY AUTH MODE, AND WHAT THAT MEANS HERE (WO-1847 scope decision):
+Cherry offers two auth modes. In APP-TRUSTED mode the game's backend mints a
+short-lived signed embed credential and the host page relays signature requests back
+to the game's own wallet adapter. In WALLET-ONLY mode the embedded iframe handles
+wallet connection and signing entirely by itself. This page uses WALLET-ONLY: it
+passes only the three options constructed below, and none of the app-trusted auth
+options at all, so the game's wallet adapter is never asked to sign anything on the
+embed's behalf and the whole signature-relay risk is eliminated by construction
+rather than guarded against.
+
+⛔ DO NOT ADD THE APP-TRUSTED OPTIONS HERE without a ticket that explicitly asks for
+that mode. test/clan-chat-embed.test.js greps this file for each of their names and
+FAILS if any appears — which is also why this comment describes them instead of
+spelling them: the absence is the acceptance criterion, and prose naming them would
+break the very check that keeps them out.
+
+PER-CLAN ROOM ISOLATION is native to the SDK, not a workaround: one `appId` for the
+game, one `roomId` per clan. The roomId is the clan's UUID (clans.id), passed in the
+query string by the Unity host, and validated below — an unvalidated roomId would
+silently put two clans in one room, which is the one failure this page must never
+have.
+
+SDK SURFACE, read from the package's own README on 2026-09-17 (not from a doc summary):
+  global   window.CherryEmbedSDK        (CDN build; the npm module exports CherryEmbed)
+  ctor     new CherryEmbed(options)
+  options  appId, roomId, container, position, theme, collapsed, chatBubble,
+           chatBubbleBadge, backgroundBlur
+           ...plus the three APP-TRUSTED auth options (a backend-minted credential, a
+           caller-supplied wallet address, and a signing callback) which this page
+           deliberately does not pass and does not name — see the wallet-only note above.
+  events   chat.on('unreadState', cb) | chat.on('authStateChange', cb)
+  methods  await chat.mount() | setTheme | getUnreadState | getUnreadCount(roomId?)
+           | hide | show | toggle | destroy
+================================================================================
+-->
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: #0b0a10; color: #e8e0cf;
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+  }
+  #chat-root { position: absolute; inset: 0; }
+  /* The report affordance. Deliberately plain and non-alarming: no review tooling
+     exists yet, so the copy must not imply a consequence to the reported player. */
+  #report-bar {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 8px calc(8px + env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) 8px;
+    display: flex; gap: 8px; align-items: center; justify-content: flex-end;
+    background: linear-gradient(to top, rgba(11,10,16,0.92), rgba(11,10,16,0));
+    pointer-events: none;
+  }
+  #report-bar button {
+    pointer-events: auto;
+    font: inherit; color: #e8e0cf;
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(232,224,207,0.28);
+    border-radius: 8px; padding: 10px 14px; min-height: 44px; cursor: pointer;
+  }
+  #report-bar button:disabled { opacity: 0.5; cursor: default; }
+  #report-note { pointer-events: none; font-size: 12px; opacity: 0.85; }
+  #fatal {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 24px; background: #0b0a10;
+  }
+  #fatal.on { display: flex; }
+  #fatal p { max-width: 30em; margin: 0; opacity: 0.9; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="chat-root"></div>
+<div id="report-bar">
+  <span id="report-note" hidden></span>
+  <button id="report-btn" type="button">Report this message</button>
+</div>
+<div id="fatal"><p id="fatal-text">Chat is unavailable right now.</p></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@cherrydotfun/chat-embed-sdk@0.1.7/dist/index.global.js"
+        crossorigin="anonymous"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ⛔ PLACEHOLDER — see this file's header. One constant, replaced once, by hand, from
+  // Cherry's portal. The embed does not mount until it is real.
+  var CHERRY_APP_ID = 'PLACEHOLDER_APP_ID_REPLACE_BEFORE_SHIP';
+
+  // No API base URL here ON PURPOSE: this page never calls the game's backend. The
+  // report is bridged to C#, which owns the wallet signature and the session — neither
+  // of which may ever be handed to a page.
+  var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  var chat = null;
+  var roomId = null;
+  // The last message id Cherry has handed us, if it ever does. See resolveReportableMessageId.
+  var lastMessageId = null;
+
+  // ── The Unity bridge ───────────────────────────────────────────────────────
+  // ⚠ NO WEBVIEW PLUGIN IS PRESENT IN THE UNITY PROJECT YET (verified 2026-09-17:
+  // Packages/manifest.json lists none, and there is no Vuplex/unity-webview/UniWebView
+  // under Assets/). So the page speaks BOTH of the two conventions a plugin can use,
+  // and whichever one the chosen plugin implements will be the one that lands:
+  //   1. an injected function the native side defines on the page, and
+  //   2. a `unity:` scheme navigation the native side intercepts (gree/unity-webview's
+  //      convention).
+  // Neither throws when unheard, so the page stays functional as a plain web page.
+  function sendToUnity(payload) {
+    var json;
+    try { json = JSON.stringify(payload); } catch (_) { return; }
+    try {
+      if (typeof window.__unityBridgeSend === 'function') { window.__unityBridgeSend(json); return; }
+      if (window.Unity && typeof window.Unity.call === 'function') { window.Unity.call(json); return; }
+      window.location.href = 'unity:' + encodeURIComponent(json);
+    } catch (_) { /* a deaf bridge must never break the chat itself */ }
+  }
+
+  function fatal(reason, detail) {
+    // The panel shows a non-blocking error and does NOT fall back to the old native UI —
+    // that fallback is the ticket's explicit non-scope.
+    document.getElementById('fatal').classList.add('on');
+    document.getElementById('report-bar').hidden = true;
+    sendToUnity({ type: 'error', reason: reason, detail: detail == null ? '' : String(detail) });
+  }
+
+  // ── Room id ────────────────────────────────────────────────────────────────
+  function readRoomId() {
+    var raw = '';
+    try { raw = new URLSearchParams(window.location.search).get('roomId') || ''; } catch (_) { raw = ''; }
+    raw = String(raw).trim();
+    // ⛔ VALIDATED, NOT TRUSTED. An empty or malformed roomId passed through would put
+    // every clan in whatever room the SDK defaults to — the one failure this page must
+    // never have, and one that looks like working chat until two clans see each other.
+    if (!UUID_RE.test(raw)) return null;
+    return raw;
+  }
+
+  // ── Report ─────────────────────────────────────────────────────────────────
+  // ⚠ UNVERIFIED / KNOWN GAP: Cherry's DOCUMENTED event surface is 'unreadState' and
+  // 'authStateChange' only — neither carries a per-message id, and in wallet-only mode
+  // the host page never sees Cherry's message stream. So there is no documented way to
+  // obtain the id of a SPECIFIC message to report. This function is the ONE place that
+  // decides what gets reported, so when a per-message event is confirmed (or Cherry adds
+  // one), this is the only edit:
+  //   * if some event has handed us a message id, report THAT;
+  //   * otherwise report the room and the moment, which is still an actionable pointer
+  //     for a human reviewer ("this clan, around this time") and is honest about being
+  //     one. It is never a fabricated message id.
+  function resolveReportableMessageId() {
+    if (lastMessageId) return String(lastMessageId).slice(0, 200);
+    return ('room:' + roomId + '@' + new Date().toISOString()).slice(0, 200);
+  }
+
+  function note(text) {
+    var el = document.getElementById('report-note');
+    el.textContent = text;
+    el.hidden = !text;
+  }
+
+  function onReport() {
+    var btn = document.getElementById('report-btn');
+    btn.disabled = true;
+    var messageId = resolveReportableMessageId();
+
+    // Tell Unity, and STOP. The C# side owns the signed report call — the wallet
+    // signature and the session live there and must never be handed to a page. This page
+    // never sees a signing key, never learns the endpoint's address, and never calls it.
+    // (The endpoint path is deliberately not written here either: this document loads a
+    // third-party SDK from a CDN, and test/clan-chat-embed.test.js greps the file to keep
+    // it that way. The C# owner is ClanChatSource.ReportMessage.)
+    sendToUnity({ type: 'report', messageId: messageId, clanId: roomId });
+
+    // Plain, non-alarming, and it does not imply a consequence — no review tooling
+    // exists yet to act on a report.
+    note('Reported — thank you');
+    window.setTimeout(function () { note(''); btn.disabled = false; }, 4000);
+  }
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  function boot() {
+    document.getElementById('report-btn').addEventListener('click', onReport);
+
+    roomId = readRoomId();
+    if (!roomId) { fatal('bad_room_id', 'roomId must be the clan UUID'); return; }
+
+    if (CHERRY_APP_ID.indexOf('PLACEHOLDER') === 0) {
+      fatal('missing_app_id', 'CHERRY_APP_ID in site/clan-chat.html is still the placeholder');
+      return;
+    }
+
+    var Ctor = window.CherryEmbedSDK;
+    if (Ctor && Ctor.CherryEmbed) Ctor = Ctor.CherryEmbed;   // UMD builds nest the named export
+    if (typeof Ctor !== 'function') { fatal('sdk_unavailable', 'CherryEmbedSDK did not load'); return; }
+
+    try {
+      // WALLET-ONLY MODE: appId + roomId + container + theme, and deliberately nothing
+      // else. No token, no walletAddress, no signing callback — see this file's header.
+      chat = new Ctor({
+        appId: CHERRY_APP_ID,
+        roomId: roomId,
+        container: '#chat-root',
+        collapsed: false,
+        chatBubble: false,          // the game's own HUD owns the launcher affordance
+        theme: {
+          mode: 'dark',
+          primaryColor: '#c8a24a',  // Elarion gilt
+          backgroundColor: 'rgba(11,10,16,0.96)',
+          headerColor: 'rgba(18,16,26,0.96)',
+          inputColor: 'rgba(0,0,0,0.45)'
+        }
+      });
+    } catch (err) {
+      fatal('construct_failed', err && err.message); return;
+    }
+
+    // Unread count for the game's HUD. This is the ONE thing the game listens for —
+    // Cherry's own UI renders the messages, and the game never re-renders them.
+    try {
+      chat.on('unreadState', function (state) {
+        var count = 0;
+        try {
+          if (state && typeof state.unreadCount === 'number') count = state.unreadCount;
+          else if (state && typeof state.unread === 'number') count = state.unread;
+          else if (typeof chat.getUnreadCount === 'function') count = chat.getUnreadCount(roomId) || 0;
+        } catch (_) { count = 0; }
+        sendToUnity({ type: 'unread', count: count });
+      });
+      chat.on('authStateChange', function (state) {
+        var signedIn = !!(state && (state.signedIn || state.isSignedIn || state.authenticated));
+        sendToUnity({ type: 'auth', signedIn: signedIn });
+      });
+    } catch (err) {
+      // A listener that cannot be registered is a warning, not a dead panel: the chat
+      // itself still works, the HUD badge just never updates.
+      sendToUnity({ type: 'warn', reason: 'listener_failed', detail: String(err && err.message) });
+    }
+
+    Promise.resolve()
+      .then(function () { return chat.mount(); })
+      .then(function () { sendToUnity({ type: 'mounted', roomId: roomId }); })
+      .catch(function (err) { fatal('mount_failed', err && err.message); });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

@@ -46,6 +46,13 @@ const ROUTES = {
     join: path.join(REPO, 'api', 'clan', 'join.js'),
     leave: path.join(REPO, 'api', 'clan', 'leave.js'),
     me: path.join(REPO, 'api', 'clan', 'me.js'),
+    // WO-1846. Added to THIS map, not to a second one, so the shared-preamble oracles
+    // below (identical 401 shape, the guest rail cannot reach a clan table, OPTIONS is
+    // answered, bodyParser:false survives the exports assignment) cover the three new
+    // routes for free. That is the whole point of acceptance criterion 8 of WO-1845.
+    promote: path.join(REPO, 'api', 'clan', 'promote.js'),
+    demote: path.join(REPO, 'api', 'clan', 'demote.js'),
+    kick: path.join(REPO, 'api', 'clan', 'kick.js'),
 };
 const MIGRATIONS_DIR = path.join(REPO, 'api', 'migrations');
 const MIGRATION = '20260917_0030_clan_tables.sql';
@@ -483,15 +490,23 @@ test('a Member leaves a clan that still has others, and the clan survives', asyn
     assert.equal(r.clanRemoved, false, 'test plan item 2: Wallet A is still Leader and the clan remains');
 });
 
-test('⛔ a Leader cannot leave, and nothing is written', async () => {
-    const sql = recordingSql([{ match: MEMBERSHIP_READ, rows: [membershipRow('leader')] }]);
+// ⚠ SUPERSEDED BY WO-1846 — the ORIGINAL of this case asserted that a Leader CANNOT
+// leave (a flat 409 `leader_must_transfer`, nothing written). That was WO-1845's
+// deliberate hole, pending succession, and succession now exists: leaveClan hands a
+// Leader to leaveAsLeader. The rewritten case below pins what is left of the old rule —
+// the member-removal statement is NOT the path a leader takes — and the succession
+// behaviour itself is asserted in test/clan-roles.test.js.
+test('a Leader no longer takes the member-removal path (succession is WO-1846)', async () => {
+    const sql = recordingSql([
+        { match: MEMBERSHIP_READ, rows: [membershipRow('leader')] },
+        { match: /WITH\s+mine\s+AS/i, rows: [{ departed_rows: 1, disbanded_rows: 0, new_leader: WALLET_B }] },
+    ]);
     const r = await clan.leaveClan(sql, WALLET);
-    assert.equal(r.status, 409);
-    assert.equal(r.code, 'leader_must_transfer',
-        'the work order specifies this literal string as the body\'s error — the client branches on it');
+    assert.equal(r.ok, true, 'WO-1846 gave the Leader an exit; the 409 that used to be here is retired');
+    assert.equal(r.newLeader, WALLET_B);
     assert.equal(sql.matching(MEMBER_REMOVE).length, 0,
-        'succession is WO-1846. Until it exists, a leader walking out would leave members with no ' +
-        'leader, a state no later ticket in this chain has a rule for.');
+        'the non-leader statement must not be reused for a leader — its predicate is `role <> leader`, ' +
+        'so it would remove nothing and report a race');
 });
 
 test('leaving when in no clan is a 404', async () => {
@@ -535,7 +550,7 @@ test('readMembership returns the clan, the role and the member count', async () 
 // 7. THE ROUTES — one auth shape across four files (acceptance criterion 8)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const ROUTE_NAMES = ['create', 'join', 'leave', 'me'];
+const ROUTE_NAMES = ['create', 'join', 'leave', 'me', 'promote', 'demote', 'kick'];
 
 test('⛔ all four routes refuse an unauthenticated request with the IDENTICAL shape', async () => {
     const shapes = [];
@@ -673,11 +688,19 @@ test('POST /api/clan/leave: a Member succeeds, a Leader gets the specified 409 b
     assert.equal(okOut.out.statusCode, 200);
     assert.deepEqual(okOut.out.body, { ok: true }, 'the work order specifies exactly { ok: true }');
 
-    const asLeader = authedSql([{ match: MEMBERSHIP_READ, rows: [membershipRow('leader')] }]);
-    const refused = await callRoute('leave', { sql: asLeader, body: { playerId: WALLET } });
-    assert.equal(refused.out.statusCode, 409, 'test plan item 3');
-    assert.equal(refused.out.body.error, 'leader_must_transfer',
-        'the work order specifies this literal error code on this literal status');
+    // ⚠ SUPERSEDED BY WO-1846: this branch used to assert the Leader's 409. A Leader
+    // leaving now succeeds through succession, and `leader_must_transfer` survives only
+    // as the race label. The 200 body stays ADDITIVE — a member still gets exactly
+    // { ok: true }, asserted with deepEqual above.
+    const asLeader = authedSql([
+        { match: MEMBERSHIP_READ, rows: [membershipRow('leader')] },
+        { match: /WITH\s+mine\s+AS/i, rows: [{ departed_rows: 1, disbanded_rows: 0, new_leader: WALLET_B }] },
+    ]);
+    const succeeded = await callRoute('leave', { sql: asLeader, body: { playerId: WALLET } });
+    assert.equal(succeeded.out.statusCode, 200);
+    assert.equal(succeeded.out.body.newLeader, WALLET_B, 'the successor is named in the response');
+    assert.equal(succeeded.out.body.clanDeleted, undefined,
+        'a field that is not true is ABSENT, not false — the member case must stay byte-identical');
     assert.equal(asLeader.matching(MEMBER_REMOVE).length, 0);
 });
 
@@ -798,12 +821,29 @@ test('⛔ nothing in this lane writes clan_messages, and no chat endpoint exists
     assert.ok(!fs.existsSync(path.join(REPO, 'api', 'clan', 'messages.js')), 'no chat endpoint in this ticket');
 });
 
-test('⛔ no role is assigned beyond Leader and Member — officer promotion is WO-1846', () => {
+// ⚠ RETIRED BY WO-1846, AND THE RETIREMENT IS THE POINT. The original asserted that
+// NOTHING in api/_lib/clan.js assigns 'officer' and that there is no `UPDATE
+// clan_members` anywhere — a correct pin on WO-1845's non-scope, and now false by
+// design: WO-1846 is precisely the ticket that assigns the role. Rather than delete the
+// case (and lose the fact that the role vocabulary is FIXED), it is inverted: the three
+// roles the migration's CHECK permits are the three the code may write, and a FOURTH
+// would be a 23514 on every write that used it.
+test('⛔ the role vocabulary is exactly the three the CHECK permits', () => {
     const src = fs.readFileSync(CLAN_LIB, 'utf8');
     const code = src.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
-    assert.ok(!/['"]officer['"]/.test(code),
-        'the CHECK constraint permits officer so WO-1846 needs no migration, but NOTHING in this ' +
-        'ticket may assign it — role assignment and succession are that ticket, whole');
-    assert.ok(!/UPDATE\s+clan_members/i.test(code),
-        'a role change is an UPDATE. There is no role change in this ticket.');
+    assert.equal(clan.LEADER, 'leader');
+    assert.equal(clan.MEMBER, 'member');
+    assert.equal(clan.OFFICER, 'officer', 'WO-1846 assigns the third role the CHECK always permitted');
+
+    const migration = fs.readFileSync(MIGRATION_PATH, 'utf8');
+    assert.match(migration, /role\s+IN\s*\(\s*'leader'\s*,\s*'officer'\s*,\s*'member'\s*\)/i,
+        'clan_members_role_valid is the authority on what may be written');
+
+    // Any OTHER quoted role-looking literal in the code is the bug this now guards: a
+    // 'coleader' or 'recruit' would pass every JS test and fail the CHECK at runtime.
+    const literals = new Set((code.match(/role\s*[:=]\s*'([a-z]+)'/gi) || []).map(s => /'([a-z]+)'/i.exec(s)[1]));
+    for (const role of literals) {
+        assert.ok(['leader', 'officer', 'member'].includes(role),
+            'undeclared role literal "' + role + '" — the CHECK would refuse it with a 23514');
+    }
 });

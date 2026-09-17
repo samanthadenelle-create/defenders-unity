@@ -25,7 +25,9 @@ const { beginClanRequest, clanFail } = require('../_lib/clan-http');
 const { createClan } = require('../_lib/clan');
 
 async function handler(req, res) {
-    const pre = await beginClanRequest(req, res, 'POST');
+    // The 4th argument is the WO-1846 clan_rate_limit action: 3 clan creations per
+    // wallet per hour, spent BEFORE the work so a refused attempt still costs budget.
+    const pre = await beginClanRequest(req, res, 'POST', 'create');
     if (pre.done) return;
     const { sql, wallet, body, ref } = pre;
 

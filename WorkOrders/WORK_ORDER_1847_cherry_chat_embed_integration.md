@@ -1,6 +1,9 @@
 # WO-1847 — Clan system, step 4: Cherry Chat embed integration
 
-**Status: BLOCKED — do not dispatch until WO-1845 lands**
+**Status:** READY FOR LEAD REVIEW
+
+*(PRIOR STATUS: BLOCKED pending WO-1845, which has since landed — `clans`/`clan_members`
+committed, so the `clan_id` this ticket scopes a room to exists.)*
 
 ## Context — clan WO-4 in the chain, depends on WO-1845
 
@@ -155,3 +158,88 @@ financial surface. If Cherry's own UI shows any token-gated room language, flag 
 before shipping. The "report message" action's copy should be plain and non-alarming (e.g. "Report
 this message" / "Reported — thank you"), not implying an immediate consequence to the reported
 player, since no review tooling exists yet to act on a report.
+
+---
+
+## Implementation hand-back (lane, 2026-09-17)
+
+Code-complete and self-verified. **Two external prerequisites remain** — both named in the
+ticket's own VERIFY BEFORE BUILD, neither self-servable by a lane:
+
+### 1. No WebView plugin exists in this project (verified at source, not assumed)
+`Packages/manifest.json` lists no WebView package, and there is no Vuplex /
+`unity-webview` / UniWebView anywhere under `Assets/` or `Packages/`. Unity ships none
+built in. So the embed cannot render until a plugin is adopted — an owner/lead decision
+with a real cost:
+- **gree/unity-webview** — free, MIT, `.unitypackage` import. Its bridge convention is a
+  `unity:` scheme navigation, which `site/clan-chat.html` already speaks.
+- **Vuplex 3D WebView** — paid, per-platform; a spend decision under the standing stop-loss.
+
+The lane did **not** hand-roll an Android `AndroidJavaObject` WebView: that is a new
+native-infrastructure subsystem (UI-thread marshalling, view insertion under
+UnityPlayerActivity, lifecycle, input-focus conflict with Unity), unverifiable without
+Unity and a device, and smuggling it into a player-facing ticket is exactly what the
+architecture rule forbids. Instead `IClanChatWebHost` is the drop-in seam: implement it,
+pass it to `ClanChatPanel.Bind`, done. Until then the panel binds
+`ClanChatWebHostUnavailable`, which fails loudly with reason `no_webview_plugin` and shows
+the panel's error state — **which is the behaviour this ticket already specifies for a
+failed embed load**, so the panel is correct today, just permanently in that state.
+
+### 2. `CHERRY_APP_ID` is a placeholder
+`site/clan-chat.html` carries `PLACEHOLDER_APP_ID_REPLACE_BEFORE_SHIP` — exactly one
+occurrence, and the page refuses to mount while it is in place (error `missing_app_id`)
+rather than half-loading. A real appId is minted by hand in Cherry's portal
+(`portal.cherry.fun`): an external account signup. **Replacing that one constant is the
+only code change left for a working embed.**
+
+### Known gap: Cherry exposes no per-message id
+Read from the SDK's own README this session: the documented event surface is
+`unreadState` and `authStateChange` only. Neither carries a message id, and in
+wallet-only mode the host page never sees the message stream — so there is no documented
+way to obtain the id of a *specific* message. `resolveReportableMessageId()` is the single
+place that decides what gets reported: it uses a real id if some event ever supplies one,
+and otherwise reports `room:<clanId>@<ISO timestamp>` — an honest, actionable pointer for a
+human reviewer, never a fabricated message id. Acceptance criterion 6 ("writes a row for a
+real message") is therefore met as a working end-to-end report path, but the id is
+room+time granularity until a per-message event is confirmed with Cherry.
+
+### Deviations from the acceptance criteria, stated rather than quietly skipped
+- **"`ChatPhraseCatalog` / ring buffer unreferenced in the build"** — achieved for the HUD
+  clan files (pinned by `test/clan-chat-embed.test.js`). `ChatPhraseCatalog` and
+  `ClanService` still exist in `DeNelle.Core` and still reference each other; retiring the
+  Core-side local prototype is not this ticket's scope, so the criterion cannot be fully
+  true here. Needs its own ticket.
+- **Two-device / room-isolation / 5-second-delivery criteria** are device tests and are
+  blocked on both prerequisites above. Nothing here claims them.
+- **`ClanFeatureGate.PlayerFacingEnabled` stays `false`.** This ticket does not open the
+  gate, and the bootstrap's gate check is untouched as the literal first line of
+  `SpawnInScene` (pinned twice: `clan-chat-release-gate.test.js` and the new embed test).
+- **One open wiring point:** `ClanRoomBinding.ClanId` (in `ClanChatSource.cs`) is the
+  server-side `clans.id` the room is scoped by. Nothing sets it yet — the client has no
+  remote clan client (Core's `ClanService` is still the local prototype and mints local ids
+  that do not exist on the server; passing one would open a room no other member is in, so
+  the binding refuses a non-UUID). Wiring `/api/clan/me` into a real remote clan client is a
+  later ticket; it feeds this one property and nothing else changes.
+
+### Files
+Server: `api/migrations/20260917_0031_clan_reports.sql`, `api/clan/report-message.js`,
+`api/_lib/clan.js` (appended `reportMessage` + 3 codes + exports), `api/schema.sql`
+(appended the `clan_reports` block, CRLF preserved).
+Client: `Assets/_Modules/HUD/ClanChatPanel.cs` (rewritten as a thin host),
+`ClanChatVM.cs` (rewritten as a thin state holder), `ClanChatSource.cs` (new),
+`IClanChatWebHost.cs` (new), `site/clan-chat.html` (new host page),
+`Assets/Tests/EditMode/ClanChatVMTests.cs` (rewritten to the new shape).
+Tests: `test/clan-report-message.test.js` (new, 20), `test/clan-chat-embed.test.js` (new, 13).
+
+### Verification
+`node --test` on the lane's own files: **56/56 pass**. Brace gate
+`python tools/gate_brace.py` on all 5 touched `.cs`: **bad=0 of 5**; raw brace counts
+balanced; **0 NUL bytes**. No Unity process was run (batchmode/CompileGate/DataRegression
+held for the lead, per the concurrent-lane instruction). No DDL was fired against Neon.
+
+⚠ **Finding for the lead before gating:** the full `node --test test/*.test.js` run shows
+**12 failures that are not this lane's** — `tunables-manifest` (6), `admin.skus.view` (3),
+`admin.sku.dropdown` (2), `command-center` (1). All trace to one line new in the working
+tree and absent from HEAD: `api/admin/console.js:1228` (`...times are read in this
+browser\'s local zone...`), whose apostrophe breaks the inline script those tests `eval`.
+That file belongs to a concurrent lane and was deliberately not touched here.
