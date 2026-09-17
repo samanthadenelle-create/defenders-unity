@@ -1,6 +1,6 @@
 # WORK ORDER 1773 — A high-level hero takes NO damage in town waves (wave 176 ≡ wave 60), plus the wave-AI strategy spec
 
-**Status:** READY TO IMPLEMENT
+**Status:** IMPLEMENTED, NOT YET GATED
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** Town wave balance — `DeNelle.Village/Waves` + `DeNelle.Village/World` (SafeZoneRecovery) + `DeNelle.Core.Ops` (remote tunables). Lane B (§8) is a SPEC only.
 **Lane disjointness:** touches NO `.unity`, NO scene builder, NO art. File-disjoint from WO-1774 (art lane).
@@ -56,14 +56,25 @@ Frames are 1 fps, so `s_NNN.jpg` ≈ t = NNN−1 seconds.
 
 `crops/hpbar_tile.jpg` tiles the hero plate from all 146 one-second frames. A per-frame pixel scan of
 the red bar's right edge (row y=58 in the 1335 px frames, scan window x∈[30,320]) returns **x = 263 in
-133 of 146 frames**. The 13 deviants are VFX bloom and floating text washing the bar's right end — the
-worst of them, `s_113.jpg`, was opened directly and shows the bar **filled, with a Cave Troll in melee
-contact**. Four frames return no red at all: `s_001` (fade-in) and `s_132`–`s_134` (the wave-cleared
-modal covers the plate).
+133 of 146 frames**. Four frames return no red at all: `s_001` (fade-in) and `s_132`–`s_134` (the
+wave-cleared modal covers the plate).
 
-**Honest statement of the finding:** the bar's right edge is *constant* for the whole run, and every
-frame read directly shows the track filled. The bar's empty-track extent was never established, so this
-is "never changed and reads full", **not** a measured "100.0%".
+**The nine short readings were checked, not assumed.** They cluster at t ≈ 67, 110–114 and 125–129 s,
+which is exactly what a real 24-HP hit followed by regen would look like at 1 fps — so
+`crops/dips_108.jpg` re-samples **t = 108–116 s at 10 fps (80 consecutive frames)**. **The red bar is
+filled in every one of the 80.** The short readings are a **full-screen red flash** washing the panel,
+not bar movement. Independently, `frames_1s/s_113.jpg` (the shortest reading, 212 px) was opened
+directly and shows the bar **filled, with a Cave Troll in melee contact**.
+
+**Honest statement of the finding:** the bar's right edge is constant across 146 one-second frames and
+across 80 consecutive tenth-second frames through the heaviest contact in the run, and every frame read
+directly shows the track filled. The bar's *empty*-track extent was never established, so this is
+"never moved and reads full", **not** a measured "100.0%".
+
+⚠ **The red full-screen flash itself is UNEXPLAINED and is NOT evidence of damage.** The hero's
+low-HP screen-edge vignette (`HeroInjuredVignette`, `HeroHealth.cs:201,:219,:260`) triggers below the
+0.30 HP threshold and therefore **cannot** be what is flashing at full HP. It is most likely a Void
+Rift / Wither ability VFX. **Not investigated; do not cite it either way.**
 
 ### 1b. Three things the frames deliberately do NOT prove
 
@@ -158,11 +169,12 @@ floors HP not damage. (A `Math.Max(1, …)` floor exists only in the unrelated A
 
 `Assets/_Modules/Village/Waves/WaveScalingCurve.cs`:
 ```
-DefaultHp()     : Keyframe(0, 1.0), Keyframe(20, 2.5)   // :68-71
-DefaultSpeed()  : Keyframe(0, 1.0), Keyframe(20, 1.4)   // :89-92  (speed block)
-DefaultDamage() : Keyframe(0, 1.0), Keyframe(20, 2.0)
+DefaultHp()     : Keyframe(0, 1.0), Keyframe(20, 2.5)   // keyframes :70-71
+DefaultSpeed()  : Keyframe(0, 1.0), Keyframe(20, 1.4)   // keyframes :81-82
+DefaultDamage() : Keyframe(0, 1.0), Keyframe(20, 2.0)   // keyframes :91-92
 c.preWrapMode = WrapMode.Clamp; c.postWrapMode = WrapMode.Clamp;   // on all three
 ```
+(Evaluate helpers with their floors: `HpMultiplier` `:58`, `SpeedMultiplier` `:61`, `DamageMultiplier` `:64`.)
 **`postWrapMode = WrapMode.Clamp` is the ceiling.** Wave 176 evaluates exactly as wave 20:
 **HP ×2.5, damage ×2.0, speed ×1.4.**
 
@@ -198,10 +210,19 @@ this file without evaluating the curve.
 | Cave Troll | `:321` = 14 | **28** |
 | Necromancer (the cycled boss) | `:221` = 17 | **34** |
 
-How it lands — `HeroHealth.cs:588-602`, constants `:45-49`:
-`EngageRadius = 1.5f`, `DamageInterval = 1.0f`, `MaxEnemiesPerTick = 4`, `DamagePerEnemy = 6f` (fallback only).
-Up to **four** attackers inside 1.5 m have their `ContactDamage` **summed** into one `TakeDamage` call per
-second. (`attackInterval` in enemies.json does **not** pace hero damage; HeroHealth's own 1.0 s tick does.)
+How it lands — `HeroHealth.cs:588-602`, constants read at source `:45-49`:
+`EngageRadius = 1.5f`, `DamageInterval = 1.0f`, `DamagePerEnemy = 6f` (*"FALLBACK only — used if an
+attacker's real ContactDamage is non-positive"*), `MaxEnemiesPerTick = 4` (*"cap so a swarm can't
+one-shot"*). Up to **four** attackers inside 1.5 m have their `ContactDamage` **summed** into one
+`TakeDamage` call per second. (`attackInterval` in enemies.json does **not** pace hero damage;
+HeroHealth's own 1.0 s tick does.)
+
+⚠ **THE 4-ATTACKER CAP IS MELEE-ONLY.** `HeroHealth.cs:2212` —
+`void IDamageableStructure.ApplyContactDamage(float amount) => TakeDamage(amount);` — is a **second
+entry path** that calls `TakeDamage` directly and is **not** bounded by `MaxEnemiesPerTick` or the 1.0 s
+tick. Ranged attackers and any structure-damage source reach the hero through it. **So the "engine
+maximum" row in §5a is the melee ceiling, not an absolute one** — the true worst case is higher by
+however much ranged fire lands, which this lane did not quantify.
 
 ### 3b. Count: capped twice, binding by wave 60
 
@@ -299,10 +320,17 @@ structurally true; what is missing is *volume* (§3b caps) and *simultaneity wit
 - `:127` — `float amount = health.MaxHp * TownRegenFractionPerSecond * Time.deltaTime;` → `:130 health.RegenTick(amount);`
 - Talent multiplier at `HeroHealth.cs:2049-2056` — mage-reachable `shared.n7` Swift Recovery `healthRegen 0.5` → **×1.5**.
 
-**The whole walled town is inside the ring.** `Assets/_Modules/Village/Walls/WallLayout.cs:126,129` —
-`WallHalfX = 28f`, `WallHalfZ = 21f`. The furthest corner of the wall ring is
-`sqrt(28² + 21²) = 35 m` from the Heart at origin — **comfortably inside the 60 m radius, wall line
-included.** A hero standing at the gate fighting the wave is regenerating the entire time.
+**For scale:** the authored perimeter is `Assets/_Modules/Village/Walls/WallLayout.cs:126,129` —
+`WallHalfX = 28f`, `WallHalfZ = 21f`, i.e. a furthest corner `sqrt(28² + 21²) = 35 m` from the Heart at
+origin — **comfortably inside the 60 m radius, wall line included.**
+⚠ **But `WallLayout` is the AUTHORED reference, not what builds the tester's town.** Its only
+instantiating consumer is `VillageController` (`:91`, `:135`), and that component's guid
+(`dec308f9c8fa10943a15fdd995af76fb`) appears in **zero scenes and zero prefabs** — verified by grep
+2026-09-16. The tester's walls are player-built through `StructureFactory` (see WO-1774 §1c), placed on
+the build grid, **whose extent this lane did not establish.** So "he was inside the 60 m ring" is
+**strongly indicated by the authored scale and by the town HUD context persisting all run, but it is
+NOT measured.** The `[Flow:SafeZone] town regen` line (§7) settles it in one read — and if that line is
+absent, Dead Step A does not apply and §6 Option 0 is not the fix.
 
 **Regen per second, by MaxHp assumption:**
 
@@ -381,10 +409,13 @@ Wave 176 is not (`156 % 5 = 1`), which is why the video shows none
 (`WaveManager.cs:2159` strips the cycled wave-20 apex on non-cadence waves).
 
 ⛔ **Note the asymmetry and put it in front of the owner:** the dragon's growth is **linear and
-uncapped**, while the entire regular roster is **clamped at wave 20/60**. The tester has been fighting a
-36,750-HP dragon every fifth wave and a frozen wave-20 roster in between. **The pattern the owner wants
-already exists — it was only ever applied to the dragon.** Fix option (a) below is, in substance,
-"apply the dragon's own growth shape to the rest of the wave."
+uncapped**, while the entire regular roster is **clamped at wave 20/60**. On the code as read, the
+cadence **would have fielded** a ~36,750-HP dragon every fifth wave with a frozen wave-20 roster in
+between. ⚠ **Whether it actually appeared on the tester's build is UNPROVEN** — the dragon art is the
+Addressable `Enemies/Boss_Dragon` with a **dead** `Resources` fallback (`WaveManager.cs:2729-2730`), so
+CLAUDE.md §16 applies and an unpushed bundle would suppress it silently.
+**The pattern the owner is asking for already exists — it was only ever applied to the dragon.** Fix
+option (a) below is, in substance, "apply the dragon's own growth shape to the rest of the wave."
 
 ---
 
@@ -392,6 +423,20 @@ already exists — it was only ever applied to the dragon.** Fix option (a) belo
 
 > **Every option is scoped to the TOWN wave loop.** None touches `ZoneManager` (§3e), the raid path, or
 > `.unity` scenes.
+
+> ### ⛔ RULINGS REQUIRED BEFORE §6 IS IMPLEMENTED — these gate the READY half, not the §8 spec
+> 1. **Option 0 shape:** suppress regen during a wave / suppress N seconds after damage / reduce the fraction.
+>    **This lane's recommendation, stated so the owner can simply say yes: shape (ii), N seconds after the
+>    last `TakeDamage`** — it is the only shape that preserves both the between-waves top-up and the FTUE
+>    1-HP recovery with no carve-out. **Owner overrides freely.**
+> 2. **Does town difficulty follow the WAVE (option a) or the HERO (option c)?** These are different games
+>    — see the caveat under (c).
+> 3. **Post-20 growth rate for HP and for damage — one curve or two?** The table under (a) shows the range.
+> 4. **"Massive swarms": bigger roster (cheap) or more bodies on screen (frame-budget risk)?** Or both, with
+>    a measured ceiling.
+> 5. **Does the dragon's uncapped growth come under the same tunables, or stay as it is?**
+>
+> Questions about §8 (directives, dragon marquee, data shape, non-traditional paths, VFX keys) are in §8c.
 
 ### Option 0 (PREREQUISITE, not optional) — gate the town regen on combat
 
@@ -484,7 +529,8 @@ The instrumentation already exists — none of this needs new code.
 
 | Question | Log line to grep | Source |
 |---|---|---|
-| Is the hero being hit **at all**? | `[Flow:HeroHealth] TakeDamage id=… amount=… hpBefore=…/…` | `HeroHealth.cs:741-743` |
+| Is the hero being hit **at all**? | `[Flow:HeroHealth] TakeDamage id=… amount=… hpBefore=…/… invuln=…` | `HeroHealth.cs:741-743` |
+| **How many enemies are actually in melee contact?** (throttled ~1/s — the cheapest single line) | `[Flow:EnemyAggro] hero struck by {N} adjacent enemy(s) within 1.50m (scene='…')` | `HeroHealth.cs:586-591` |
 | Is the town regen the reason he never drops? | `[Flow:SafeZone] town regen +X -> Y/Z (inside town/castle footprint…)` | `SafeZoneRecovery.cs:131-133` |
 | What wave, and what roster? | `[Flow:Waves]` / `[Flow:Wave]` around `StartWave` | `WaveManager.cs` |
 | Are all four gates used? | `[Flow:*]` from `SmartEnemySpawner.ResolveSides` | `SmartEnemySpawner.cs:563-606` |
@@ -590,16 +636,14 @@ FlowTrace.Step("WaveDirective", $"wave {waveId}: breach at '{seg.name}' is now p
 that lands in `Update` uses the 4-arg `FlowTrace.Measure(system, what, warnAboveMs, intervalSeconds)`
 (`Assets/_Modules/Core/Diagnostics/FlowTrace.cs:308`) — the reasoning is at `FlowTrace.cs:293-300`.
 
-### 8c. OWNER QUESTIONS — §8 cannot be implemented until these are ruled
+### 8c. OWNER QUESTIONS — §8 (the SPEC half) cannot be implemented until these are ruled
 
-1. **Option 0 (regen gate): which shape?** Suppress during a wave / suppress N seconds after damage / reduce the fraction. **Note the FTUE carve-out constraint (§6 Option 0).**
-2. **Option (a) vs (c): does town difficulty follow the WAVE or the HERO?** These are different games (§6 Option (c) caveat).
-3. **Post-20 growth rate for HP and for damage — same curve or separate?** The §6(a) table shows the range.
-4. **"Massive swarms": bigger roster (cheap) or more bodies on screen (frame-budget risk, §6(b))?** Or both, with a measured ceiling?
-5. **Should the dragon's uncapped growth be brought under the same tunables, or stay as it is?** It is currently the only thing still scaling.
-6. **Which directives, at which wave bands?** And should the dragon cadence (every 5th from 20) move onto the tunable table or stay a `const`?
-7. **Siege targeting: should a damaged wall be preferred over a fresh one** (i.e. do enemies finish what they started), matching the player's own troops?
-8. **VFX keys for the dragon marquee sequence** — owner tags them; this lane will not pick (memory rule).
+*(Questions 1–5, which gate the READY §6 half, are in the box at the top of §6 — not here.)*
+
+6. **Which directives, at which wave bands?** And should the dragon cadence (every 5th from 20) move onto the tunable table or stay a `const` (`WaveManager.cs:489`)?
+7. **Siege targeting: should a damaged wall be preferred over a fresh one** — i.e. do enemies finish what they started, matching the player's own troops (`RaidAssaultAi.SelectFocusBreach:637`)? **This is the one-constant change at `EnemyBrain.cs:1703`.**
+8. **Non-traditional paths: which of §8b(d) is in scope?** Weakest-wall preference (cheap) / breach-seeking (needs the obstacle-count capture) / wall-scaling (expensive) / perimeter spawns (new markers).
+9. **VFX keys for the dragon marquee sequence** — owner tags them; this lane will not pick (memory rule `vfx-map-owner-tags-no-creative-pick`).
 
 ---
 
@@ -659,3 +703,97 @@ that lands in `Update` uses the 4-arg `FlowTrace.Measure(system, what, warnAbove
 - Companion art ticket: `WorkOrders/WORK_ORDER_1774_untextured_slab_in_town_courtyard_tester_video.md`
 - WO number **pre-assigned by the lead**; `CLI_LANES_WO_NUMBERS.md` was **not** touched by this lane.
 - Board: regenerate with `python tools/board_build.py`.
+
+---
+
+## 14. IMPLEMENTED 2026-09-16 — §6 Option 0 + (a) + (b) on the WO-1763 remote rail
+
+> **Status of this section:** the §6 half is built, **NOT GATED** (the lead holds the single Unity
+> seat). §8 remains SPEC and was not touched. Full record:
+> `WorkOrders/WORK_ORDER_1773_high_level_hero_takes_no_damage_in_town_waves.RESULT.md`.
+
+**Owner direction this implements, verbatim 2026-09-16:** *"enemies need to really start scaling with
+wave i thought, or massive swarms at all sides"*. A town-wave shot stays in the hackathon video and the
+video hero is the **Mage**, so §2b's "Thrain has no active mitigation at all" is the build to judge
+against.
+
+**Seven remote-tunable knobs, every default EXACT IDENTITY**, so nothing changes until the owner writes
+a database row — no rebuild:
+
+| Key | Default (= today) | What it does |
+|---|---|---|
+| `town.regenSuppressSecondsAfterHit` | `0` | Option 0 shape (ii): regen off for N s after the hero **loses HP** |
+| `town.regenPctDuringWave` | `100` | Option 0 shape (iii): share of the rate that runs while a wave is Active |
+| `wave.hpGrowthPctPerWave` | `0` | Option (a): hundredths of HP multiplier **added** per wave past the clamp band |
+| `wave.dmgGrowthPctPerWave` | `0` | Option (a): the same for contact damage |
+| `wave.maxCountPct` | `100` | Option (b): percent on `WaveCompositionBuilder.MaxCount` |
+| `wave.countCapPct` | `100` | Option (b): percent on `waves.json` `countCap` |
+| `wave.maxSimultaneousPct` | `100` | Option (b): percent on `_maxSimultaneousEnemies` — **frame budget, not difficulty** |
+
+⚠ **The §6 ruling box's Q1 was answered in the direction this document recommended** (shape (ii), the
+post-damage timer) — and shape (iii) shipped **beside** it rather than instead of it, because which one
+feels right is not knowable from source. Q3 is answered as **two separate curves**. Q2 is answered
+**(a), the WAVE** — Option (c) was not built, and §3d is why. Q5: the dragon's growth is **untouched**.
+
+### 14a. THE GROWTH SHAPE IS ADDITIVE, AND THAT IS A RULING — read it before seeding
+
+```
+effective(w) = clampedMultiplier + (pct / 100) * (w - bandStart)      for w > bandStart
+```
+
+**NOT** `clamped * (1 + k*(w - bandStart))`. At a clamped damage multiplier of 2.0 and `pct = 5`, the
+additive shape gives **9.8** at wave 176 and the multiplicative shape gives **17.6**. The table below —
+the one a seed gets picked off — is the **additive** column, and WO-1763's REPLACE-vs-ADD paragraph
+records why a ruling that can be read two ways is itself the failure.
+
+`bandStart` is **read off the curve's last keyframe** (`WaveScalingCurve.GrowthBandStart`), never
+written into a consumer, and returns "never grow" for an empty or non-`Clamp`-wrapped curve.
+
+### 14b. ONE CAVE TROLL vs THE TOWN REGEN AT WAVE 176 — the arithmetic, both gates
+
+Stated assumptions, all from §2/§3 of this document and **none of them captured on the tester's device**:
+Cave Troll `contactDamage` **14** (`enemies.json:321`), clamped damage multiplier **2.0**, MaxHp **290**
+(§2a "plausible" row), mitigation **×0.2421** (§2b "plausible" row), no Swift Recovery, so today's regen
+is **34.8 HP/s**. One melee tick per second (`HeroHealth.DamageInterval`).
+
+| `wave.dmgGrowthPctPerWave` | dmg mult at w176 | troll hit | after ×0.2421 | **Gate OFF (today)** net HP/s | **Gate ON (seeded)** time to drop 290 HP |
+|---|---|---|---|---|---|
+| `0` (today) | 2.00 | 28 | 6.8 | **−28.0 → net HEAL** | 42.8 s |
+| `1` | 3.56 | 49.8 | 12.1 | −22.7 → net heal | 24.0 s |
+| `5` | 9.80 | 137.2 | 33.2 | −1.6 → **parity, still heals** | **8.7 s** |
+| `10` | 17.60 | 246.4 | 59.7 | +24.9 → hero must move | 4.9 s |
+| `25` (the dragon's own rate) | 41.00 | 574.0 | 139.0 | +104.2 | 2.1 s |
+
+Conservative bracket (§2b row 1, mitigation ×0.72, same 290 MaxHp / 34.8 regen), for contrast:
+
+| `wave.dmgGrowthPctPerWave` | after ×0.72 | Gate OFF net HP/s | Gate ON time to drop 290 HP |
+|---|---|---|---|
+| `0` (today) | 20.2 | −14.6 → net heal | 14.4 s |
+| `5` | 98.8 | +64.0 | 2.9 s |
+
+Four Cave Trolls, the engine's hard **melee** ceiling (`MaxEnemiesPerTick = 4`), plausible bracket, gate
+ON: `pct 0` → 27.1 HP/s → **10.7 s**; `pct 5` → 132.9 HP/s → **2.2 s**.
+
+**What the table says, in one sentence:** ⛔ **Option 0 is doing the heavy lifting and Option (a) is
+doing the pacing.** With the gate off, growth up to `pct 5` STILL reads as a net heal — which is §6's
+"every other option is neutralised by §5a arithmetic", now quantified. With the gate on, `pct 0` already
+kills a standing hero in ~43 s of continuous contact; growth is what turns that from a grind into a
+fight. **Seed the gate first, then tune the growth.**
+
+⚠ **Every row above is arithmetic on stated assumptions, not a measurement.** The tester's gear,
+talents, `CathedralMageHpBonus` and `Application.version` are all still uncaptured (§12 items 1–4), and
+**no capture has ever proven `[Flow:HeroHealth] TakeDamage` fires on his device at all** (§12 item 11).
+The new instrumentation in §14c is what settles that on the next device log.
+
+### 14c. §12 instrumentation added — three lines, none per-frame-logging
+
+| Line | Where | Shape |
+|---|---|---|
+| `[Flow:HeroHealth] TakeDamage attacker=… raw=… mitigated=… (blocked …%) hp=…/… sessionTotalTaken=…` | `HeroHealth.TakeDamage`, **after** the whole mitigation chain, only when HP actually dropped | `Throttle` 1 s |
+| `[Flow:SafeZone] town regen GATED (<reason>) … waveActive=… secondsSinceHit=… window=…s inWavePct=…` and the ungated twin | `SafeZoneRecovery.Update` | `Throttle` 1 s |
+| `[Flow:Waves] WAVE SUMMARY wave=… enemyHpMult=… enemyDmgMult=… roster=… concurrencyCap=… heroDamageTaken=…` | `WaveManager.CompleteWave` | `Step`, **once per cleared wave** |
+
+⛔ **The existing unthrottled `TakeDamage` Step at entry is UNTOUCHED** — §7 tells the owner to grep for
+it, and §12 forbids removing instrumentation. The new line is an **addition**: it reports **raw vs
+mitigated**, which the entry line structurally cannot, because it logs `amount` before any mitigation.
+That pair is what distinguishes *"he is not being hit"* from *"he is being hit and not being hurt"*.

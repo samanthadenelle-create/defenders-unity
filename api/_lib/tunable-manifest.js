@@ -565,6 +565,99 @@ const PRESENTATION = {
         risk: 'This is the harsher of the two Bastion dials - levels raise health and damage ' +
               'on top of the toughness dial, so moving both at once compounds.',
     },
+    'town.regenSuppressSecondsAfterHit': {
+        area: 'misc',
+        label: 'Town healing: seconds out of combat before it starts',
+        what: 'How many seconds must pass after something actually hurts your hero before the ' +
+              'town starts healing him again. The game ships at 0, which means the town heals ' +
+              'him CONSTANTLY - even mid-wave with a troll hitting him. Because that healing is ' +
+              'a share of his maximum health, it gets stronger every time he gears up while the ' +
+              'enemies stop getting stronger after wave 20, which is why a high-level hero can ' +
+              'stand still in a siege and never lose health. Try 6. Between waves he still tops ' +
+              'up, and the tutorial is never affected. Held between 0 and 120.',
+        min: 0,
+        max: 120,
+        risk: 'This is the single biggest change to how dangerous the town feels, and it is the ' +
+              'one that has to land before any enemy dial matters. Set it too high and a hero ' +
+              'who takes one hit in a long wave never recovers until the wave ends.',
+    },
+    'town.regenPctDuringWave': {
+        area: 'misc',
+        label: 'Town healing: share that still runs during a wave',
+        what: 'What percentage of the normal town healing keeps running while a wave is actually ' +
+              'live. The game ships at 100 - the full rate, all through the siege. 0 stops town ' +
+              'healing for the whole wave. This works together with the seconds dial above, and ' +
+              'the seconds dial wins: a hero being hit right now counts as in combat whatever ' +
+              'the wave is doing. Held between 0 and 100 - above 100 is refused, because healing ' +
+              'faster inside a wave than outside one is the opposite of the point.',
+        min: 0,
+        max: 100,
+    },
+    'wave.hpGrowthPctPerWave': {
+        area: 'misc',
+        label: 'Town waves: extra enemy health per wave after 20',
+        what: 'How much tougher each wave past the twentieth makes its enemies. The game ships ' +
+              'at 0 - enemy health stops growing at wave 20, so wave 176 has exactly the same ' +
+              'enemies as wave 20. Each point here adds one hundredth to the health multiplier ' +
+              'per wave, so 5 at wave 120 means a hundred waves x 0.05 added on top. It is ' +
+              'ADDED to the wave-20 value, not multiplied by it. Held between 0 and 100, with a ' +
+              'ceiling on the result so a typo cannot make a wave unclearable.',
+        min: 0,
+        max: 100,
+        risk: 'Health alone makes fights LONGER without making them more dangerous. If waves ' +
+              'start feeling like a chore rather than a threat, this dial is too high relative ' +
+              'to the damage one.',
+    },
+    'wave.dmgGrowthPctPerWave': {
+        area: 'misc',
+        label: 'Town waves: extra enemy damage per wave after 20',
+        what: 'The same idea for how hard each enemy HITS. The game ships at 0, so enemy damage ' +
+              'also stops growing at wave 20. This is the dial that decides whether a strong ' +
+              'hero can stand still and ignore a siege. Around 5 puts a single heavy enemy ' +
+              'roughly level with the town healing at very high waves, and 10 puts it clearly ' +
+              'ahead - but only once the town-healing dials above are set, because until then ' +
+              'the healing still wins. Held between 0 and 100.',
+        min: 0,
+        max: 100,
+        risk: 'Damage without health makes enemies into glass cannons that hit hard and die ' +
+              'instantly. Move this with the health dial, not instead of it.',
+    },
+    'wave.maxCountPct': {
+        area: 'misc',
+        label: 'Town waves: how many enemies a wave may field',
+        what: 'A percentage on the largest number of enemies one wave is allowed to contain in ' +
+              'total. The game ships at 100, and at 100 that ceiling is reached by wave 21 - so ' +
+              'a wave-176 attack is the same SIZE as a wave-21 one. This is the cheap half of ' +
+              '"massive swarms": the extra enemies arrive as reinforcements as others die, so a ' +
+              'bigger wave costs TIME, not smoothness. Held between 25 and 1000.',
+        min: 25,
+        max: 1000,
+    },
+    'wave.countCapPct': {
+        area: 'misc',
+        label: 'Town waves: the endless size cap',
+        what: 'A percentage on the endless-mode size multiplier - the one that keeps growing ' +
+              'waves after the hand-written schedule runs out. The game ships at 100, and this ' +
+              'is the cap that runs out FIRST: it stops growing at wave 60, which is most of the ' +
+              'reason wave 176 and wave 60 are the same fight. Raising this is the biggest ' +
+              'available change to how many enemies show up. Held between 25 and 1000.',
+        min: 25,
+        max: 1000,
+    },
+    'wave.maxSimultaneousPct': {
+        area: 'misc',
+        label: 'Town waves: how many enemies on screen at once',
+        what: 'A percentage on how many wave enemies may be alive at the same time, shared ' +
+              'across all four gates. The game ships at 100. Note this does NOT change how many ' +
+              'enemies a wave has - only how many arrive at once; the rest queue up and come in ' +
+              'as reinforcements. Held between 25 and 400, which is tighter than the other size ' +
+              'dials on purpose.',
+        min: 25,
+        max: 400,
+        risk: 'This is a PHONE PERFORMANCE dial, not a difficulty one - it is the only dial here ' +
+              'that can make the game stutter on the Seeker. Raise it a little, play it on the ' +
+              'device, and check the frame rate before raising it again.',
+    },
     'raid.lootRepeatClearPct': {
         area: 'misc',
         label: 'Raid reward: share paid for a REPEAT clear',
@@ -600,16 +693,22 @@ const PRESENTATION = {
     'raid.starterArmySize': {
         area: 'misc',
         label: 'Free starter squad size',
-        what: 'How many Footmen a new player is given FREE the first time they have a ' +
-              'Barracks. The game ships at 3 - exactly what 1650 gold used to buy, which ' +
-              'was the wall standing between a new player and their first raid. It is ' +
-              'granted once per save and never again, so knocking a Barracks down and ' +
-              'rebuilding it does not hand out more troops. Set it to 0 to turn the free ' +
-              'squad off entirely.',
+        what: 'How many troops a new player is given FREE the first time they have a ' +
+              'Barracks. The game ships at 10, handed over as FIVE FOOTMEN AND FIVE ' +
+              'ARCHERS - the game splits whatever number you put here evenly between the ' +
+              'two, with the odd one going to Footmen, so you can never accidentally hand ' +
+              'out a squad that is all one kind. It used to be 3, which was exactly what ' +
+              '1650 gold used to buy and was the wall standing between a new player and ' +
+              'their first raid. It is granted once per save and never again, so knocking ' +
+              'a Barracks down and rebuilding it does not hand out more troops, and a ' +
+              'player who already received the old squad of 3 does not get a second one. ' +
+              'Set it to 0 to turn the free squad off entirely.',
         min: 0,
         max: 10,
         risk: 'This is the first ten minutes of the game. Raising it makes the first raid ' +
-              'easier to win; lowering it puts the wall back.',
+              'easier to win; lowering it puts the wall back. Ten is the ceiling because ' +
+              'ten is exactly how many troops a brand-new town can house - above that the ' +
+              'free squad would arrive over capacity and the player could not train at all.',
     },
 
     'raid.heartfireMaxCharges': {
@@ -856,6 +955,64 @@ const PRESENTATION = {
         risk: 'Dungeons were the only source of rough stone before raids could drop it. ' +
               'Set this too low and a delve stops paying for the lantern oil; too high ' +
               'and the Jeweler stops being a climb. Takes effect on the next run you finish.',
+    },
+
+    // ---- WO-1805. THE DUNGEON LANTERN. Your report, 2026-09-16: "nobody understands
+    // why the torch runs out and why just become suddenly dark". The teach is a code
+    // change; these four are the FEEL of it, in plain numbers.
+    'dungeon.lanternDrainPerSecX100': {
+        area: 'misc',
+        label: 'Dungeon lantern: how fast the oil burns',
+        what: 'How quickly the dungeon lantern uses up its oil, written as hundredths so ' +
+              'it fits a whole number. The game ships at 50, which is half a unit of oil ' +
+              'a second and gives 200 seconds - about three and a half minutes - from a ' +
+              'full flask. Set it to 33 for about 300 seconds, or 25 for 400 seconds. ' +
+              'Lower is a longer-lasting lantern.',
+        min: 1,
+        max: 1000,
+        risk: 'This is the whole pace of a delve. The starter dungeon has eleven rooms and ' +
+              'only one refill stone, so a fast burn means the player spends most of it in ' +
+              'the dark with more ambushes. Takes effect on the next dungeon you enter.',
+    },
+    'dungeon.lanternOilStoneRefillPct': {
+        area: 'misc',
+        label: 'Dungeon lantern: how much a refill stone gives back',
+        what: 'How much of the flask one glowing oil stone fills, as a percentage. The ' +
+              'game ships at 100, which fills it right up. Each stone can still only be ' +
+              'used once per visit however this is set - lowering it makes finding a ' +
+              'stone feel like a reprieve rather than a full reset.',
+        min: 1,
+        max: 100,
+        risk: 'Refill stones are the only free way out of the dark. Lower this and a ' +
+              'dungeon gets much harsher without the burn rate changing at all. Takes ' +
+              'effect on the next dungeon you enter.',
+    },
+    'dungeon.lanternStillRefillPct': {
+        area: 'misc',
+        label: 'Dungeon lantern: how much the field still gives back',
+        what: 'How much of the flask one emergency field distillation fills, as a ' +
+              'percentage. It costs one Oil Flask plus one Tattered Cloth and can be used ' +
+              'once. The game ships at 40, which is about 80 seconds of light. Set it to ' +
+              '100 to make a flask and a cloth a complete refill.',
+        min: 1,
+        max: 100,
+        risk: 'This is the only thing a player can spend materials on to get light back ' +
+              'mid-run, and today a still only exists beside a refill stone - so raising ' +
+              'this pays more where one exists, it does not add more of them. Takes ' +
+              'effect on the next dungeon you enter.',
+    },
+    'dungeon.lanternFinalWarningSec': {
+        area: 'misc',
+        label: 'Dungeon lantern: how long the warning before the dark',
+        what: 'How many seconds before the flask runs dry the light starts collapsing - ' +
+              'the glow shrinks to a small halo and a fog wall closes in. The game ships ' +
+              'at 30. Raise it to spread the same collapse over a longer, easier to read ' +
+              'warning; set it to 0 and the dark arrives with no warning at all.',
+        min: 0,
+        max: 600,
+        risk: 'This is the "why did it suddenly go dark" number. It decides how much ' +
+              'notice a player gets before the extra ambushes start. Takes effect on the ' +
+              'next dungeon you enter.',
     },
 
     // ---- the PROD-022 loading knobs. Not balance. They live under Misc because
@@ -1147,6 +1304,16 @@ function mismatches(presentation = PRESENTATION) {
     for (const spec of TUNABLE_KEYS) {
         // A serverOnly key is written from the console and read by a BACKEND module.
         // No build registers it, and that is the whole point of the marker.
+        //
+        // ⭐ THE MARKER MAY ALSO LIVE ON THE ALLOWLIST SPEC ITSELF (WO-1799). A
+        // backend-only knob that must NOT appear on the owner-facing page at all -
+        // a PRICE, which this page's own OUT_OF_SCOPE_NOTICE forbids forever - has
+        // no PRESENTATION row to carry the marker. Without this second reading it
+        // would be reported as "no build reads it, so writing it would do nothing",
+        // which is precisely wrong: the SERVER reads it, on the money path.
+        // `store.saleBps` is the first such key. A row-carried marker still means
+        // exactly what it meant before: exempt from the registry join, nothing more.
+        if (spec.serverOnly === true) continue;
         if (isServerOnly(presentation[spec.key])) continue;
         if (!seen.has(spec.key)) {
             out.push('SERVER ALLOWLIST vs BUILD REGISTRY: TUNABLE_KEYS in api/_lib/tunables.js ' +

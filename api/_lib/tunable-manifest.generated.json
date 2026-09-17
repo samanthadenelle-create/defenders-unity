@@ -208,9 +208,44 @@
             "default": -999
         },
         {
+            "key": "town.regenSuppressSecondsAfterHit",
+            "kind": "int",
+            "default": 0
+        },
+        {
+            "key": "town.regenPctDuringWave",
+            "kind": "int",
+            "default": 100
+        },
+        {
+            "key": "wave.hpGrowthPctPerWave",
+            "kind": "int",
+            "default": 0
+        },
+        {
+            "key": "wave.dmgGrowthPctPerWave",
+            "kind": "int",
+            "default": 0
+        },
+        {
+            "key": "wave.maxCountPct",
+            "kind": "int",
+            "default": 100
+        },
+        {
+            "key": "wave.countCapPct",
+            "kind": "int",
+            "default": 100
+        },
+        {
+            "key": "wave.maxSimultaneousPct",
+            "kind": "int",
+            "default": 100
+        },
+        {
             "key": "raid.starterArmySize",
             "kind": "int",
-            "default": 3
+            "default": 10
         },
         {
             "key": "raid.heartfireMaxCharges",
@@ -301,6 +336,26 @@
             "key": "dungeon.roughStoneDropPct",
             "kind": "int",
             "default": 5
+        },
+        {
+            "key": "dungeon.lanternDrainPerSecX100",
+            "kind": "int",
+            "default": 50
+        },
+        {
+            "key": "dungeon.lanternOilStoneRefillPct",
+            "kind": "int",
+            "default": 100
+        },
+        {
+            "key": "dungeon.lanternStillRefillPct",
+            "kind": "int",
+            "default": 40
+        },
+        {
+            "key": "dungeon.lanternFinalWarningSec",
+            "kind": "int",
+            "default": 30
         },
         {
             "key": "realm.vfx.atfootprintoftree_Aura",

@@ -178,9 +178,16 @@ namespace DeNelle.Village
             UnityEngine.Random.State prev = UnityEngine.Random.state;
             UnityEngine.Random.InitState(waveId * 7919 + seedSalt * 104729 + (waveId & 1) * 31);
 
+            // WO-1773: the roster CEILING is remote-tunable as a PERCENT on MaxCount, because that
+            // ceiling binds from wave 21 onward and is half of why a wave-176 roster is the same
+            // size as a wave-21 one. FoldMaxCount returns MaxCount itself at the shipping default
+            // (100), so with no database row this line is byte-for-byte what it was. The percent
+            // lives on the rail rather than as a new authored field because waves.json is not a
+            // safe home for a new spawn knob (the _RETIRED_batchFields scar).
+            int effectiveMaxCount = WaveDifficultyTunables.FoldMaxCount(MaxCount);
             int total = Mathf.Clamp(
                 Mathf.RoundToInt(BaseCount + CountPerWave * (waveId - 1)),
-                BaseCount, MaxCount);
+                BaseCount, Mathf.Max(BaseCount, effectiveMaxCount));
 
             // ── Tier ratios by wave band ─────────────────────────────────────
             float weakFrac, mediumFrac, strongFrac;

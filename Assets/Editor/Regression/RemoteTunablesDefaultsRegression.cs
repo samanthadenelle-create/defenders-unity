@@ -144,7 +144,7 @@ namespace DeNelle.Editor.Regression
         // RemoteTunables.Registry and prints the count inside its own marker
         // ("TUNABLE_MANIFEST_GEN_OK knobs=<n>"); that marker on a fresh run is the evidence, and
         // a value typed from memory is a guess (CLAUDE.md section 11B). Measured 2026-09-16 for
-        // WO-1763: knobs=64.
+        // WO-1773: knobs=71.
         //
         // The history this comment used to narrate - which ticket took the count to what, and the
         // time a lane added two knobs and left the pin behind so the suite went red for an
@@ -153,7 +153,7 @@ namespace DeNelle.Editor.Regression
         // that adds a knob edits the Registry, ExpectedDefaults, this pin, the allowlist and the
         // doc table IN THE SAME COMMIT, or the suite is red and the owner-facing list stops
         // describing the build.
-        private const int ExpectedKnobCount = 64;
+        private const int ExpectedKnobCount = 75;   // 2026-09-16: +4 dungeon.lantern* rows (WO-1805) on top of WO-1763/1773/1803's 71 - measured knobs=75 by the manifest generator
 
         /// <summary>
         /// ⭐ THE CONTRACT, STATED INDEPENDENTLY OF THE CODE.
@@ -288,9 +288,28 @@ namespace DeNelle.Editor.Regression
             new KeyValuePair<string, int>("raid.levelOffsetCamp2", -999),
             new KeyValuePair<string, int>("raid.levelOffsetCamp3", -999),
             new KeyValuePair<string, int>("raid.levelOffsetBastion", -999),
-            // The free starter squad (map section 2). 3 is her number and is exactly what
-            // 1,650 gold used to buy - the wall this removes. Granted once per save.
-            new KeyValuePair<string, int>("raid.starterArmySize", 3),
+            // WO-1773 - TOWN WAVE DIFFICULTY + THE TOWN-REGEN COMBAT GATE. The whole family is
+            // IDENTITY by default, so an empty table is today's town bit for bit; these eight
+            // literals are what "inert until the owner sets a row" MEANS, and a drift in any one
+            // of them would change the game silently for every offline player.
+            // ⛔ NO BASELINE FROM SafeZoneRecovery, WaveScalingCurve, WaveCompositionBuilder,
+            // waves.json OR THE SCENE IS RESTATED HERE. The regen fraction, the curve keyframes,
+            // MaxCount, countCap and the serialized concurrency cap are all content; a copy here
+            // would go red the first time any of them was tuned. WaveDifficultyTunablesRegression
+            // asserts the RELATIONSHIP between the supplied baseline and the folded value.
+            new KeyValuePair<string, int>("town.regenSuppressSecondsAfterHit", 0),
+            new KeyValuePair<string, int>("town.regenPctDuringWave", 100),
+            new KeyValuePair<string, int>("wave.hpGrowthPctPerWave", 0),
+            new KeyValuePair<string, int>("wave.dmgGrowthPctPerWave", 0),
+            new KeyValuePair<string, int>("wave.maxCountPct", 100),
+            new KeyValuePair<string, int>("wave.countCapPct", 100),
+            new KeyValuePair<string, int>("wave.maxSimultaneousPct", 100),
+            // The free starter squad (map section 2). WO-1803, 2026-09-16: 10 is her number -
+            // "let's give them ten troops, five footmen and five archers" - and it is exactly
+            // ArmyStorage.DefaultMaxArmySize, the fresh-save housing cap the squad fills. The
+            // knob is the TOTAL; StarterArmyGrant.SplitComposition derives the 5/5. Granted
+            // once per save. (Was 3 from WO-1374 until this ruling.)
+            new KeyValuePair<string, int>("raid.starterArmySize", 10),
             // WO-1379 - HEARTFIRE, the one gate on when you may raid (canon section 4). Three
             // charges, one rekindles every 4 h; HeartfireCharges aliases the same consts, so the
             // literal lives in exactly one place. Pinned 2026-09-04 - the knobs shipped in
@@ -354,6 +373,21 @@ namespace DeNelle.Editor.Regression
             // const DungeonController.PostFirstRoughStoneDropRate = 0.15f. The owner ruled 5.
             // A row of 15 restores the previous rate exactly.
             new KeyValuePair<string, int>("dungeon.roughStoneDropPct", 5),
+            // WO-1805 Lane C - THE DUNGEON DARKNESS. Every one of these four IS today's behaviour,
+            // which is why they are pinned as literals here and cross-checked against their real
+            // consumers in DungeonLanternTeachRegression [tunable-identity]:
+            //   50  = the 0.50 oil/s dungeon-balance.json authors (200 s a flask). x100 because the
+            //         rail carries no floats.
+            //   100 = an oil stone TOPS the flask, exactly as Lantern.CheckOilStones always has.
+            //   40  = ComposedOilStill.RefillFraction 0.40f.
+            //   30  = Lantern.DefaultFinalWarningSeconds.
+            // The drain and the warning window are ALSO authored in dungeon-balance.json, so their
+            // consumers treat a row AT the default as "not set" and leave the json as the single
+            // authority - a rail that always won would make that file dead data.
+            new KeyValuePair<string, int>("dungeon.lanternDrainPerSecX100", 50),
+            new KeyValuePair<string, int>("dungeon.lanternOilStoneRefillPct", 100),
+            new KeyValuePair<string, int>("dungeon.lanternStillRefillPct", 40),
+            new KeyValuePair<string, int>("dungeon.lanternFinalWarningSec", 30),
             // WO-1348 - THE FOUR VFX PICKS. Every one of them MUST ship at 0, and 0 is not an
             // arbitrary zero: it is the sentinel meaning "use the pick this build baked from
             // Assets/Editor/VfxManualPicks.json". Any other default here would make an EMPTY

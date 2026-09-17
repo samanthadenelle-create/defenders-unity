@@ -569,14 +569,108 @@ namespace DeNelle.Core.Ops
         /// <summary>Int REPLACEMENT for the Iron Bastion's authored levelOffset. -999 keeps the authored value.</summary>
         public const string KeyRaidLevelOffsetBastion = "raid.levelOffsetBastion";
 
-        /// <summary>
-        /// Int COUNT of free Footmen granted the first time a save has a Barracks
-        /// (map section 2, "the first army is free"). 3 = her number, and exactly what
-        /// 1,650 gold used to buy. 0 disables the grant.
-        /// </summary>
-        public const int RaidStarterArmySizeDefault = 3;
+        // ---------------------------------------------------------------------
+        //  WO-1773 - TOWN WAVE DIFFICULTY + THE TOWN-REGEN COMBAT GATE.
+        //
+        //  The felt report, relayed by the owner from an external tester on
+        //  2026-09-16: "at the level he is nothing can damage him he can just
+        //  stand there", and her direction: "enemies need to really start
+        //  scaling with wave i thought, or massive swarms at all sides".
+        //
+        //  WO-1773 measured TWO independent dead steps off that tester's
+        //  wave-176 recording, and fixing either one alone closes nothing:
+        //    A. The town safe-zone regen restores a FRACTION OF MaxHp PER
+        //       SECOND with NO combat check of any kind. Because it scales with
+        //       MaxHp while incoming damage is capped by the wave curve's clamp,
+        //       the gap WIDENS with every piece of gear - it can never be
+        //       outgrown. Even four Cave Trolls at the engine's hard melee
+        //       ceiling lose to it on the ticket's plausible build.
+        //    B. Nothing gets harder after wave 60. Strength clamps at the
+        //       curve's wave-20 keyframe, the roster at its MaxCount, the
+        //       endless multiplier at its countCap, and concurrency never varied
+        //       with the wave at all. Wave 176 IS wave 60.
+        //
+        //  EVERY DEFAULT BELOW IS EXACT IDENTITY, so this whole family ships
+        //  INERT and an empty client_tunables table is today's town bit for bit.
+        //  The two consumers short-circuit at identity rather than round-tripping
+        //  a float. Same bare-int-literal caveat as the raid block above: a
+        //  default written as another const's NAME silently fails
+        //  tools/gen-tunable-manifest.mjs's regex and the knob vanishes from the
+        //  Command Center with no error.
+        // ---------------------------------------------------------------------
 
-        /// <summary>Int count. Free Footmen granted on the first Barracks.</summary>
+        /// <summary>
+        /// IDENTITY on the in-wave regen share: 100 percent of whatever SafeZoneRecovery's own
+        /// per-second fraction is. For the CONSUMER, which needs one name for the short-circuit.
+        /// </summary>
+        public const int TownRegenDuringWavePctIdentity = 100;
+
+        /// <summary>
+        /// IDENTITY on every town-wave COUNT / CONCURRENCY percent. For the CONSUMER, which needs
+        /// one name across four knobs.
+        /// </summary>
+        public const int WaveCountPctIdentity = 100;
+
+        /// <summary>SECONDS after the hero last LOST HP during which town regen stays off. 0 = today (no gate).</summary>
+        public const int TownRegenSuppressSecondsAfterHitDefault = 0;
+
+        /// <summary>PERCENT of the normal town regen rate while a wave is ACTIVE. 100 = today.</summary>
+        public const int TownRegenPctDuringWaveDefault = 100;
+
+        /// <summary>Enemy HP multiplier growth per wave PAST the curve's clamp band, in hundredths. 0 = today.</summary>
+        public const int WaveHpGrowthPctPerWaveDefault = 0;
+
+        /// <summary>Enemy contact-damage multiplier growth per wave PAST the clamp band, in hundredths. 0 = today.</summary>
+        public const int WaveDmgGrowthPctPerWaveDefault = 0;
+
+        /// <summary>PERCENT on WaveCompositionBuilder's authored roster ceiling. 100 = today.</summary>
+        public const int WaveMaxCountPctDefault = 100;
+
+        /// <summary>PERCENT on waves.json's authored endless countCap. 100 = today.</summary>
+        public const int WaveCountCapPctDefault = 100;
+
+        /// <summary>PERCENT on the scene's serialized on-screen concurrency cap. 100 = today.</summary>
+        public const int WaveMaxSimultaneousPctDefault = 100;
+
+        /// <summary>Int SECONDS of town-regen suppression after the hero loses HP. Consumer:
+        /// <c>TownRegenTunables</c>, clamped 0..120 there.</summary>
+        public const string KeyTownRegenSuppressSecondsAfterHit = "town.regenSuppressSecondsAfterHit";
+
+        /// <summary>Int PERCENT of the town regen rate that runs while a wave is ACTIVE. Clamped 0..100 at the consumer.</summary>
+        public const string KeyTownRegenPctDuringWave = "town.regenPctDuringWave";
+
+        /// <summary>Int HUNDREDTHS of enemy HP multiplier added per wave past the curve's clamp band.
+        /// Consumer: <c>WaveDifficultyTunables</c>, clamped 0..100 there.</summary>
+        public const string KeyWaveHpGrowthPctPerWave = "wave.hpGrowthPctPerWave";
+
+        /// <summary>Int HUNDREDTHS of enemy contact-damage multiplier added per wave past the clamp band. Clamped 0..100.</summary>
+        public const string KeyWaveDmgGrowthPctPerWave = "wave.dmgGrowthPctPerWave";
+
+        /// <summary>Int PERCENT on the authored roster ceiling. Clamped 25..1000 at the consumer.</summary>
+        public const string KeyWaveMaxCountPct = "wave.maxCountPct";
+
+        /// <summary>Int PERCENT on the authored endless count cap. Clamped 25..1000 at the consumer.</summary>
+        public const string KeyWaveCountCapPct = "wave.countCapPct";
+
+        /// <summary>Int PERCENT on the on-screen concurrency cap. Clamped 25..400 at the consumer -
+        /// tighter than the roster knobs because this one is a PHONE FRAME BUDGET, not a difficulty dial.</summary>
+        public const string KeyWaveMaxSimultaneousPct = "wave.maxSimultaneousPct";
+
+        /// <summary>
+        /// Int COUNT of free troops granted the first time a save has a Barracks
+        /// (map section 2, "the first army is free"). WO-1803, owner verbatim 2026-09-16:
+        /// <i>"Instead of giving them three troops, because that's shit, let's give them ten
+        /// troops. Let's give them five footmen and five archers."</i>
+        /// <para>This knob is the TOTAL. StarterArmyGrant.SplitComposition derives the halves -
+        /// even, remainder to Footmen - so 10 is 5 Footmen + 5 Archers and no value of this knob
+        /// can produce a one-unit-type squad. 0 disables the grant. Clamped at the consumer to
+        /// 0..ArmyStorage.DefaultMaxArmySize (10, the fresh-save army housing cap), so the free
+        /// squad can never be seated above the housing it arrives into.</para>
+        /// </summary>
+        public const int RaidStarterArmySizeDefault = 10;
+
+        /// <summary>Int count. TOTAL free troops granted on the first Barracks (split 50/50
+        /// Footmen/Archers by the consumer, remainder to Footmen).</summary>
         public const string KeyRaidStarterArmySize = "raid.starterArmySize";
 
         // ---------------------------------------------------------------------
@@ -838,6 +932,62 @@ namespace DeNelle.Core.Ops
 
         /// <summary>Int PERCENT, 0..100. Post-introduction rough-stone drop chance in a non-starter dungeon.</summary>
         public const string KeyDungeonRoughStoneDropPct = "dungeon.roughStoneDropPct";
+
+        // ---------------------------------------------------------------------
+        //  WO-1805 LANE C - THE DUNGEON DARKNESS, on the rail.
+        //
+        //  The owner's report (2026-09-16): a dungeon goes "suddenly dark" with no
+        //  teach and effectively no recourse. Lane A teaches it. This lane makes the
+        //  PACE of it answerable without a ~10 minute APK rebuild, which is the only
+        //  way a felt call like "is 200 seconds of light fair for eleven rooms" ever
+        //  gets settled.
+        //
+        //  ⚠ THE RAIL CARRIES NO FLOATS. TunableKind is Bool|Int only (see the enum
+        //  at the top of this file), so the drain rides as an INTEGER x100 and the
+        //  two refills ride as INTEGER PERCENTS. The x100 is in the key NAME so a
+        //  reader at the database cannot mistake 50 for 50/s.
+        //
+        //  ⚠ EVERY DEFAULT BELOW IS AN IDENTITY. 50 = the authored 0.50/s in
+        //  dungeon-balance.json; 100 = an oil stone topping the flask, which is what
+        //  Lantern.CheckOilStones has always done; 40 = ComposedOilStill.RefillFraction
+        //  0.40f; 30 = Lantern.DefaultFinalWarningSeconds. An empty client_tunables
+        //  table therefore behaves bit-identically to the pre-ticket build.
+        //
+        //  ⚠ AND THE CONSUMERS TREAT A ROW AT ITS DEFAULT AS "NOT SET". The drain and
+        //  the warning window are ALSO authored in dungeon-balance.json; a rail row
+        //  that always won would make that json dead data the first time anyone
+        //  re-authored it (the json would say 0.40 and the build would keep burning
+        //  0.50 from a default nobody chose). So Lantern.ApplyBalanceData applies the
+        //  row only when it DEVIATES from the default below - the json stays the
+        //  single authority until the owner actually moves a knob.
+        //
+        //  Bare int consts, because tools/gen-tunable-manifest.mjs resolves ONLY
+        //  that shape.
+        // ---------------------------------------------------------------------
+
+        /// <summary>IDENTITY: 50 = 0.50 oil/s, the value dungeon-balance.json authors today (200 s a flask).</summary>
+        public const int DungeonLanternDrainPerSecX100Default = 50;
+
+        /// <summary>IDENTITY: 100 = an oil stone tops the flask, exactly as Lantern.CheckOilStones always has.</summary>
+        public const int DungeonLanternOilStoneRefillPctDefault = 100;
+
+        /// <summary>IDENTITY: 40 = ComposedOilStill.RefillFraction 0.40f (one field distillation = 40 % of a flask).</summary>
+        public const int DungeonLanternStillRefillPctDefault = 40;
+
+        /// <summary>IDENTITY: 30 = Lantern.DefaultFinalWarningSeconds, the final visible collapse window.</summary>
+        public const int DungeonLanternFinalWarningSecDefault = 30;
+
+        /// <summary>Int, oil-per-second x100 (50 = 0.50/s). THE duration knob: secondsToEmpty = 100 / (this/100).</summary>
+        public const string KeyDungeonLanternDrainPerSecX100 = "dungeon.lanternDrainPerSecX100";
+
+        /// <summary>Int PERCENT, 1..100. How much of the flask one oil stone returns.</summary>
+        public const string KeyDungeonLanternOilStoneRefillPct = "dungeon.lanternOilStoneRefillPct";
+
+        /// <summary>Int PERCENT, 1..100. How much of the flask one field-still distillation returns.</summary>
+        public const string KeyDungeonLanternStillRefillPct = "dungeon.lanternStillRefillPct";
+
+        /// <summary>Int SECONDS. The final-warning window: range collapse + the 0.45..3.2 m fog wall.</summary>
+        public const string KeyDungeonLanternFinalWarningSec = "dungeon.lanternFinalWarningSec";
 
         // ---------------------------------------------------------------------
         //  WO-1343 - THE NIGHT STORE'S AURA. Four knobs, and they exist because
@@ -1443,16 +1593,124 @@ namespace DeNelle.Core.Ops
                 "is how a high-level hero keeps meeting a fight rather than a formality, and it is " +
                 "the knob most likely to be re-tuned several evenings in a row."),
 
+            // -- WO-1773. TOWN WAVE DIFFICULTY + THE TOWN-REGEN COMBAT GATE. See the block
+            //    above the key consts for the two dead steps these answer, and note that the
+            //    regen gate is the PREREQUISITE: a roster ten times heavier still cannot move a
+            //    bar that refills faster than it drains.
+            new TunableSpec(KeyTownRegenSuppressSecondsAfterHit, TunableKind.Int, TownRegenSuppressSecondsAfterHitDefault,
+                "SECONDS after the hero last actually LOST HP during which the town safe-zone regen " +
+                "stays OFF - the out-of-combat rule. 0 = today: the regen has no combat check at all " +
+                "and runs mid-wave with an enemy in melee contact. This is the knob WO-1773 names as " +
+                "the PREREQUISITE for every other difficulty change, because the regen is a fraction " +
+                "of MaxHp per second and therefore scales with gear while incoming damage is capped " +
+                "by the wave curve - the gap widens with every upgrade and can never be outgrown. " +
+                "The between-waves top-up and the FTUE 1-HP recovery both survive this shape with no " +
+                "carve-out: stop being hit, the timer runs out, HP comes back. Clamped 0..120 at the " +
+                "consumer, and the first-time tutorial is never gated at all.",
+                "NOT a PROD-022 hypothesis - the direct answer to a felt report from the external " +
+                "tester: 'at the level he is nothing can damage him he can just stand there'. How " +
+                "many seconds out of combat should buy a top-up is a feel question that will be " +
+                "re-tuned several evenings in a row, and every answer would otherwise cost a build."),
+
+            new TunableSpec(KeyTownRegenPctDuringWave, TunableKind.Int, TownRegenPctDuringWaveDefault,
+                "PERCENT of the normal town regen rate that runs while a town wave is ACTIVE. 100 = " +
+                "today, bit for bit - the consumer short-circuits at 100 and never round-trips the " +
+                "fraction. 0 stops town regen for the whole wave. It COMPOSES with the suppression " +
+                "window above, and the window WINS: a hero being hit right now is in combat whatever " +
+                "the wave phase says. Clamped 0..100 - above 100 is refused on purpose, because a " +
+                "rate that is HIGHER in a wave than between waves is the opposite of the defect. " +
+                "The first-time tutorial is never gated.",
+                "NOT a PROD-022 hypothesis - the second shape WO-1773 offered the owner for the same " +
+                "dead step. Kept alongside the timer rather than instead of it because 'no healing " +
+                "during a siege' and 'no healing for six seconds after a hit' feel completely " +
+                "different to play, and which one is right is not knowable from source."),
+
+            new TunableSpec(KeyWaveHpGrowthPctPerWave, TunableKind.Int, WaveHpGrowthPctPerWaveDefault,
+                "HUNDREDTHS of enemy HP multiplier ADDED per wave beyond the point where " +
+                "WaveScalingCurve stops growing on its own. 5 means +0.05 on the multiplier every " +
+                "wave past the band. 0 = today: the curve's post-wrap mode is Clamp, so every wave " +
+                "past its last keyframe evaluates identically and wave 176 is numerically wave 60. " +
+                "ADDITIVE on the clamped multiplier, NOT multiplicative - the two diverge hard at " +
+                "high waves and the ticket's arithmetic table, which is what a seed gets picked off, " +
+                "is the additive column. The band start is read off the curve's last keyframe, never " +
+                "written down. Clamped 0..100 per wave, with an absolute ceiling on the effective " +
+                "multiplier because the wave number itself has no clamp.",
+                "NOT a PROD-022 hypothesis - the owner's own direction: 'enemies need to really " +
+                "start scaling with wave i thought'. The shape is deliberately the DRAGON's: its HP " +
+                "and damage already grow linearly and uncapped per return while the entire regular " +
+                "roster is clamped, so this applies a pattern the codebase already has to the rest " +
+                "of the wave. Separate from the damage knob because more HP and more hurt are " +
+                "different feels."),
+
+            new TunableSpec(KeyWaveDmgGrowthPctPerWave, TunableKind.Int, WaveDmgGrowthPctPerWaveDefault,
+                "HUNDREDTHS of enemy CONTACT-DAMAGE multiplier ADDED per wave beyond the curve's " +
+                "clamp band, on the same additive terms as the HP knob above. 0 = today. This is " +
+                "the axis that decides whether a high-level hero can stand still: the ticket's " +
+                "arithmetic puts a single heavy melee enemy at parity with the town regen somewhere " +
+                "around 5 and clearly ahead of it by 10 - but ONLY once the regen gate above is " +
+                "seeded, because until then every row up to 5 still reads as a net heal. Clamped " +
+                "0..100 per wave.",
+                "NOT a PROD-022 hypothesis - the half of the owner's scaling direction that is " +
+                "actually about threat. Scaling HP alone lengthens fights without adding danger, " +
+                "which is the least interesting way to make a game harder, so the two knobs are " +
+                "deliberately independent and will not be tuned to the same number."),
+
+            new TunableSpec(KeyWaveMaxCountPct, TunableKind.Int, WaveMaxCountPctDefault,
+                "PERCENT on the authored ROSTER CEILING - how many bodies a single wave may field in " +
+                "total. 100 = today, and today that ceiling binds from wave 21 onward, so a wave-176 " +
+                "roster is the same size as a wave-21 one. This is the CHEAP half of the owner's " +
+                "'massive swarms at all sides': the roster is drained through the concurrency budget " +
+                "as reinforcements, so a bigger roster costs arrival TIME, not frame time. Clamped " +
+                "25..1000 at the consumer, and floored at one body so a low percent can never " +
+                "produce an empty wave, which the clear logic would read as already cleared.",
+                "NOT a PROD-022 hypothesis - the owner asked for swarms and the spawn side already " +
+                "uses all four gates from wave 10, so the missing ingredient is volume rather than " +
+                "coverage. Whether a longer, denser siege reads as epic or as tedious is a felt " +
+                "question and the answer will move."),
+
+            new TunableSpec(KeyWaveCountCapPct, TunableKind.Int, WaveCountCapPctDefault,
+                "PERCENT on the authored ENDLESS COUNT CAP - the multiplier the endless mode applies " +
+                "to a wave's generated roster once the authored schedule runs out. 100 = today, and " +
+                "this is the cap that binds FIRST in practice: WO-1773 measured it binding from wave " +
+                "60, a hundred and sixteen waves before the tester's run, which is most of why wave " +
+                "176 and wave 60 are the same fight. Raising it is the single largest change in " +
+                "roster size available. Clamped 25..1000 at the consumer; an authored cap of 0 means " +
+                "uncapped and is handed back untouched.",
+                "NOT a PROD-022 hypothesis - the numerically dominant half of dead step B. It is a " +
+                "percent rather than a replacement so no number from waves.json is restated on the " +
+                "rail, which is the stale-copy failure CLAUDE.md keeps recording."),
+
+            new TunableSpec(KeyWaveMaxSimultaneousPct, TunableKind.Int, WaveMaxSimultaneousPctDefault,
+                "PERCENT on the ON-SCREEN CONCURRENCY CAP - how many wave enemies may be alive at " +
+                "once, split across the four gates. 100 = today. (!) THIS IS A PHONE FRAME BUDGET, " +
+                "NOT A DIFFICULTY DIAL, and it is the one knob in this family that can regress the " +
+                "Seeker build's frame rate: the spawner partitions a single budget across sides " +
+                "precisely so N gates can never exceed the one-gate cap, after the WO-1113 phone " +
+                "frame-rate cliff. Raising it requires measured Perf scope evidence naming the " +
+                "dominant cost in milliseconds, before and after, on the device. Clamped 25..400 - " +
+                "tighter than the roster knobs for that reason. An authored 0 means UNCAPPED and is " +
+                "handed back as 0; a real cap never rounds down to 0, which would read as uncapped.",
+                "NOT a PROD-022 hypothesis - the EXPENSIVE half of 'massive swarms at all sides'. It " +
+                "is on the rail so the owner can find the real device ceiling by playing rather than " +
+                "by a rebuild per guess, and so a bad value is one row-edit away from being undone " +
+                "on a build that is already in a tester's hands."),
+
             new TunableSpec(KeyRaidStarterArmySize, TunableKind.Int, RaidStarterArmySizeDefault,
-                "How many FREE Footmen a save receives the first time it has a Barracks. 3 = the " +
-                "owner's number, and exactly what 1,650 gold used to buy. Granted once per save " +
-                "and never again, so a demolished-and-rebuilt Barracks is not a troop faucet. " +
-                "0 disables the grant. Clamped to 0..10 at the consumer.",
+                "TOTAL free troops a save receives the first time it has a Barracks. 10 = the " +
+                "owner's number (WO-1803, 2026-09-16), and the consumer splits it EVEN between " +
+                "Footmen and Archers with the remainder to Footmen - so the shipping squad is 5 " +
+                "Footmen + 5 Archers and no value here can produce a squad of one unit type. " +
+                "Granted once per save and never again, so a demolished-and-rebuilt Barracks is " +
+                "not a troop faucet. 0 disables the grant. Clamped at the consumer to " +
+                "0..ArmyStorage.DefaultMaxArmySize (10) - the fresh-save army housing cap, read " +
+                "off that const rather than a literal so the two cannot drift.",
                 "NOT a PROD-022 hypothesis - the FTUE lever the map opens with (section 2): 'A " +
                 "player starts with 200 gold but needs 1,650 to participate in the thing you're " +
                 "trying to teach them. That's basically putting a nightclub behind a velvet rope " +
-                "and handing the player twelve cents.' Whether three troops is enough to make the " +
-                "first raid feel winnable, or whether it needs four, is a felt question about the " +
+                "and handing the player twelve cents.' Three was that lever's first setting and " +
+                "the owner's verdict on it was 'that's shit': ten is a squad that can actually " +
+                "take the 9-defender first camp, and the 5/5 split is the first thing in the game " +
+                "that teaches composition. Whether ten is right is a felt question about the " +
                 "first ten minutes of the game - the single most expensive ten minutes to get " +
                 "wrong and the most expensive to iterate on with a rebuild."),
 
@@ -1625,6 +1883,64 @@ namespace DeNelle.Core.Ops
                 "that decides whether a delve reads as worth the lantern oil. Kept on its own row " +
                 "from the raid cap so 'should dungeons still be the better source' stays a " +
                 "question she can answer by moving one value."),
+
+            // -- WO-1805 LANE C. THE DUNGEON DARKNESS. See the block above the key consts for
+            //    why the drain is an integer x100 and why a row at its default means "not set".
+            new TunableSpec(KeyDungeonLanternDrainPerSecX100, TunableKind.Int,
+                DungeonLanternDrainPerSecX100Default,
+                "Oil burned per second by the dungeon lantern, TIMES 100 (the rail carries no " +
+                "floats). Ships at 50 = 0.50/s = 200 s per flask, which is exactly what " +
+                "dungeon-balance.json authors today, so an empty table burns identically. 33 gives " +
+                "~300 s, 25 gives 400 s. THE duration knob: maxOil is deliberately NOT on the rail " +
+                "because it is the meter's 100 % and the denominator of the low-oil 0.25, " +
+                "darkness-latch 0.12 and min-light 0.35 fractions - moving it silently moves three " +
+                "systems. A row at 50 leaves dungeon-balance.json as the single authority; only a " +
+                "DEVIATION overrides it (Lantern.ApplyBalanceData). Floored at 0.01/s.",
+                "NOT a PROD-022 hypothesis - the owner's report 2026-09-16, verbatim: 'nobody " +
+                "understands why the torch runs out and why just become suddenly dark'. Lane A " +
+                "teaches the mechanic; this row is how she answers whether 200 s of light for an " +
+                "eleven-room dungeon is fair, on device, without a ten-minute rebuild per opinion."),
+
+            new TunableSpec(KeyDungeonLanternOilStoneRefillPct, TunableKind.Int,
+                DungeonLanternOilStoneRefillPctDefault,
+                "PERCENT of a full flask one authored oil stone returns. Ships at 100 - a cache " +
+                "TOPS the flask, arithmetically identical to what Lantern.CheckOilStones has always " +
+                "done from any starting level. Each stone is still ONE USE per visit, which this row " +
+                "cannot change. Lowering it is the sharpest way to make caches feel scarce without " +
+                "touching the burn; dg_starter_loop authors ONE stone for ELEVEN rooms, so this row " +
+                "and the drain together set that dungeon's whole light budget. Clamped 1..100.",
+                "NOT a PROD-022 hypothesis - the second half of the recourse question in WO-1805. " +
+                "Whether finding a cache should feel like a full reprieve or a partial one is a felt " +
+                "call, and it used to be a compiled assignment."),
+
+            new TunableSpec(KeyDungeonLanternStillRefillPct, TunableKind.Int,
+                DungeonLanternStillRefillPctDefault,
+                "PERCENT of a full flask one EMERGENCY FIELD DISTILLATION returns - the one-use " +
+                "still that spends 1 Oil Flask + 1 Tattered Cloth. Ships at 40, exactly " +
+                "ComposedOilStill.RefillFraction 0.40f, i.e. 80 s at today's drain. 100 makes a " +
+                "flask-plus-cloth a full refill, which is the cheapest single lever on 'they can " +
+                "actually get more materials and use it' short of new content. ⚠ The still is still " +
+                "attached 1:1 to each oil stone (WO-1805 Lane B, SPEC), so raising this does not " +
+                "give the player MORE places to distil - only a bigger payoff where one exists. " +
+                "Clamped 1..100.",
+                "NOT a PROD-022 hypothesis - the owner's 'we need a mechanic, they can actually get " +
+                "more materials and use it' (2026-09-16), as far as a knob can carry it. The rest of " +
+                "that sentence needs new seams and stays a spec."),
+
+            new TunableSpec(KeyDungeonLanternFinalWarningSec, TunableKind.Int,
+                DungeonLanternFinalWarningSecDefault,
+                "SECONDS before empty at which the flame begins its final visible collapse: the " +
+                "light range falls to the 1.35 u safety halo, the wick flutters, and a LINEAR FOG " +
+                "WALL closes from the scene's own distances to 0.45..3.2 m. Ships at 30 - " +
+                "Lantern.DefaultFinalWarningSeconds - so an empty table collapses exactly as this " +
+                "build does. ⚠ THIS IS THE 'SUDDENLY DARK' KNOB: raise it and the same collapse is " +
+                "spread over a longer, readable ramp; 0 removes the ramp and the dark arrives at " +
+                "empty with no warning at all. A row at 30 leaves dungeon-balance.json and the " +
+                "serialized field alone; only a deviation overrides them. Floored at 0.",
+                "NOT a PROD-022 hypothesis - it is the owner's word 'suddenly' as a number. The 0.35 " +
+                "min-light floor does NOT protect her (the collapse writes 1.35 u behind a 3.2 m fog " +
+                "wall on top of it), and this row is the one that decides how much warning the " +
+                "player gets before the ambush multiplier arms."),
 
             // -- WO-1348. THE VFX PICKS. See the block above the key consts for why the
             //    value is a STABLE OPTION ID and why 0 must stay "the build-time pick".

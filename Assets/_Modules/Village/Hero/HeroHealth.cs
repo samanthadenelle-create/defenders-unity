@@ -52,6 +52,42 @@ namespace DeNelle.Village
 
         // Last world position that dealt damage — drives directional death clips (owner 2026-07-03).
         private Vector3? _lastDamageSourceWorld;
+
+        // ── WO-1773: the two numbers nobody could answer ──────────────────────────────────
+        // An external tester's report — "at the level he is nothing can damage him he can just
+        // stand there" — cost a pixel scan of 146 one-second video frames to investigate, because
+        // NOTHING in the game recorded whether the hero had ever actually lost HP. These three
+        // members are that record, and they exist for two consumers:
+        //   1. TownRegenTunables' out-of-combat rule needs "how long since HP actually dropped".
+        //      Note ACTUALLY DROPPED, after mitigation — a hit that armour, a shield, a parry, a
+        //      dodge or a full block erased is not damage taken, and gating regen on it would make
+        //      a fully-mitigating build regen LESS than one that takes hits.
+        //   2. WaveManager's per-wave summary reports the running total, so a wave that cost the
+        //      hero nothing says so in one log line instead of needing a video.
+        // Session-scoped and deliberately NOT reset by RestoreToFull / respawn: the question these
+        // answer is "has anything in this session ever hurt him", which a heal does not change.
+        private float _totalDamageTaken;
+        private float _lastDamageTakenTime = float.NegativeInfinity;
+        private string _lastAttackerName;
+
+        /// <summary>
+        /// WO-1773: total HP the hero has LOST to damage this session, post-mitigation. Never reset
+        /// by a heal or a respawn — see the field comment for why.
+        /// </summary>
+        public float TotalDamageTaken => _totalDamageTaken;
+
+        /// <summary>
+        /// WO-1773: seconds since the hero last actually LOST HP, or
+        /// <see cref="float.PositiveInfinity"/> if that has never happened this session.
+        /// <para>Infinity rather than 0 on the never-hit case is load-bearing: TownRegenTunables
+        /// compares this against a suppression window, and 0 would read as "hit this very frame" and
+        /// suppress town regen forever for a hero who has never been touched — turning a combat gate
+        /// into a permanent no-heal bug on a fresh save.</para>
+        /// </summary>
+        public float SecondsSinceDamageTaken
+            => float.IsNegativeInfinity(_lastDamageTakenTime)
+                ? float.PositiveInfinity
+                : Time.time - _lastDamageTakenTime;
         private float _cooldown;
         private int   _enemyMask;
         private float _nearMissProbeTimer;   // WO-792: throttles the adjacent-but-out-of-sphere probe
@@ -601,7 +637,19 @@ namespace DeNelle.Village
                 }
                 // Primary attacker sets the death-direction bucket if this tick is lethal.
                 if (_attackerBuf[0] != null)
+                {
                     _lastDamageSourceWorld = _attackerBuf[0].transform.position;
+                    // WO-1773: name the attacker for the damage-taken trace. Best-effort and for
+                    // READING ONLY — the melee tick SUMS up to MaxEnemiesPerTick attackers into one
+                    // TakeDamage call, so this is the primary of a group, which is why the line
+                    // reports it alongside the count-bearing [Flow:EnemyAggro] line above rather
+                    // than instead of it. TakeDamage's signature is deliberately not widened: it is
+                    // also reached through IDamageableStructure.ApplyContactDamage, and changing
+                    // either signature would touch every ranged and structure damage source.
+                    _lastAttackerName = counted > 1
+                        ? _attackerBuf[0].name + " +" + (counted - 1) + " more"
+                        : _attackerBuf[0].name;
+                }
                 TakeDamage(tickDamage);
                 // WO-566: v2 talent reflect (Retaliation Surge) + the Last Stand reflect portion
                 // bounce a fraction of the damage ACTUALLY taken (post block/DR) back onto the
@@ -742,6 +790,21 @@ namespace DeNelle.Village
                 $"TakeDamage id={GetInstanceID()} scene='{UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}' " +
                 $"amount={amount:F1} hpBefore={_hp:F1}/{MaxHp:F1} (base={_maxHp:F0}) invuln={(Time.time < _invulnUntil)}");
             if (_hp <= 0f || amount <= 0f) return;
+            // WO-1773: remember the RAW incoming amount and the pre-hit HP before the mitigation
+            // chain below rewrites `amount` in place. The throttled trace at the bottom reports raw
+            // vs mitigated, which is the pair that tells a reader whether a hero is not being HIT or
+            // is being hit and not being HURT — two completely different defects that the existing
+            // entry-time line cannot distinguish, because it logs `amount` before any mitigation.
+            float rawIncoming = amount;
+            float hpBeforeHit = _hp;
+            // WO-1773: CONSUME-AND-CLEAR the attacker label. TakeDamage is public and has callers
+            // beyond the two paths that set a label (dragon fire, burn, anything calling it
+            // directly), and a field left standing would hand those callers the PREVIOUS labelled
+            // attacker - a troll from three seconds ago, named confidently in a log. Reading it once
+            // and nulling it means an unlabelled caller reports "(direct/unknown)", which is true.
+            string attackerLabel = string.IsNullOrEmpty(_lastAttackerName)
+                ? "(direct/unknown)" : _lastAttackerName;
+            _lastAttackerName = null;
             // DEF-102: post-respawn grace — ignore damage during the invuln window
             // so a hero respawning into a lingering melee isn't instantly re-killed.
             if (Time.time < _invulnUntil) return;
@@ -851,6 +914,38 @@ namespace DeNelle.Village
 
             _hp = newHp;
             OnHealthChanged?.Invoke(_hp, MaxHp);
+
+            // ── WO-1773: THE DECISIVE LINE, and the damage-taken record it is built on ────────
+            // Recorded HERE — after the whole mitigation chain, at the point HP actually moved —
+            // and not at entry. "Took damage" means lost HP: a dodge, a parry, a full talent block
+            // or a shield that erased the hit all return above this point, so none of them arms the
+            // out-of-combat timer. That ordering is what stops a fully-mitigating build from
+            // regenerating LESS than a build that actually gets hurt.
+            float hpLost = hpBeforeHit - _hp;
+            if (hpLost > 0f)
+            {
+                _totalDamageTaken += hpLost;
+                _lastDamageTakenTime = Time.time;
+
+                // Throttled ~1/sec, NOT per hit. The contact tick fires once a second per attacker
+                // group and ranged fire is unbounded, so an unthrottled line here would flood the
+                // device logcat ring and evict the boot window — the exact evidence-destroying
+                // failure CLAUDE.md section 12 records (memory logcat-ring-buffer-destroys-evidence).
+                // The unthrottled entry-time Step above is UNTOUCHED: WO-1773 section 7 tells the
+                // owner to grep for it, and section 12 forbids removing instrumentation.
+                // The attacker label (consumed-and-cleared at entry) and the blocked share are
+                // LOCALS, never inline. A nested quote inside an interpolation hole is precisely the
+                // shape CLAUDE.md section 1 records the compile gate's brace scanner cannot model —
+                // it has no interpolated-string state, so the inner quote ends the string and the
+                // rest of the file scans as code, withholding COMPILE_GATE_OK on a clean file.
+                float blockedShare = rawIncoming > 0f ? (1f - hpLost / rawIncoming) : 0f;
+                DeNelle.Core.Diagnostics.FlowTrace.Throttle("HeroHealth", "damage-taken", 1f,
+                    $"TakeDamage attacker='{attackerLabel}' " +
+                    $"raw={rawIncoming:F1} mitigated={hpLost:F1} (blocked {blockedShare:P0}) " +
+                    $"hp={_hp:F0}/{MaxHp:F0} sessionTotalTaken={_totalDamageTaken:F0}. " +
+                    "Pair this with the [Flow:SafeZone] town regen line: a hit followed immediately " +
+                    "by a regen tick of comparable size IS WO-1773's dead step A on one screen.");
+            }
 
             // WO-566: Legendary Resolve (shared) — cheat death ONCE per run. When a hit would drop
             // the hero to 0 and the revive is still available, restore to a fraction of max HP with
@@ -2209,7 +2304,17 @@ namespace DeNelle.Village
 
         // ── IDamageableStructure ─────────────────────────────────────────────
         bool IDamageableStructure.IsAlive => IsAlive;
-        void IDamageableStructure.ApplyContactDamage(float amount) => TakeDamage(amount);
+        // WO-1773: the SECOND entry path into TakeDamage, and the one the ticket flagged as
+        // unbounded — it is NOT paced by the 1 s contact tick and NOT capped by MaxEnemiesPerTick,
+        // so every ranged attacker and every structure-damage source reaches the hero through here.
+        // It carries no attacker reference (the interface passes an amount and nothing else), so the
+        // damage-taken trace is told so explicitly rather than reporting a stale melee attacker from
+        // some earlier tick, which would be a plausible-looking lie in a log.
+        void IDamageableStructure.ApplyContactDamage(float amount)
+        {
+            _lastAttackerName = "(ranged/structure source, no attacker reference)";
+            TakeDamage(amount);
+        }
 
         /// <summary>
         /// WO-1439 — the hero is the player. Constant Friendly, so a Hostile enemy's contact

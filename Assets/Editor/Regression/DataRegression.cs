@@ -391,6 +391,16 @@ namespace DeNelle.Editor
             catch (System.Exception ex) { failures.Add("owned-base-construction: " + ex); }
             try { OwnedTownConstructionRulesProof.RunBatch(); log.AppendLine("[owned-town-construction-rules] shipped snapshot compatibility, fixed identities and repair selection"); }
             catch (System.Exception ex) { failures.Add("owned-town-construction-rules: " + ex); }
+            // --- WO-1801: the FIRST-SALE PATH. The $1.99 first buy completes the Barracks it is
+            //     shaped like (it used to miss by 20 iron), every granted lane still fits the bare
+            //     base bank cap of a brand-new save (a paid grant BYPASSES the cap, so an oversized
+            //     first basket kills the buyer's own faucet), it makes no impulse rung pointless at
+            //     its own price, and the build-mode door that offers it cannot nag or invent a
+            //     discount the server has not issued. ---
+            //     Namespace FULLY QUALIFIED: this file is `namespace DeNelle.Editor` and carries no
+            //     `using DeNelle.Editor.Regression;`, so a bare call is CS0103 (the same trap the
+            //     note at the pi-ad-reward line below records from the other direction).
+            if (!DeNelle.Editor.Regression.FirstSalePathRegression.Run(out var firstSaleReason)) failures.Add(firstSaleReason); else log.AppendLine("[first-sale-path] " + firstSaleReason);
             // --- WO-912 sec.10.5: the ad provider stays BEHIND IAdService (registered BEFORE any SDK) ---
             if (!AdServiceSeamRegression.Run(out var adSeamReason)) failures.Add(adSeamReason); else log.AppendLine("[ad-seam] " + adSeamReason);
             // --- WO-1320: a Pi rewarded ad pays out ONLY after /api/pi/ads-verify answers
@@ -2095,6 +2105,16 @@ namespace DeNelle.Editor
             // WO-1767: raid scene, owned-town scene and manifest carry the same stamped template-id
             // set (the lint that would have gone red on the WO-1732 regeneration). Registered by the committer.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "owned-town-template-identity suite", () => { if (!DeNelle.Editor.Regression.OwnedTownTemplateIdentityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[owned-town-template-identity] " + r); });
+            // WO-1773: town-wave difficulty on the tunables rail (identity defaults, regen gate, post-band
+            // growth and count folds). Registered by the committer.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "town-wave-difficulty suite", () => { if (!DeNelle.Editor.Regression.TownWaveDifficultyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[town-wave-difficulty] " + r); });
+            // WO-1804: the two plans kinds on the castle-plans seam (Enemy Battle Plans after wave 2,
+            // Bastion Plans from the Ember Deep boss). Registered by the committer.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "battle-plans suite", () => { if (!DeNelle.Editor.BattlePlansRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[battle-plans] " + r); });
+            // WO-1802: the raid door after founding - helper chain, badge, Raids-first Heartfire copy. Registered by the committer.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-door-prompt suite", () => { if (!DeNelle.Editor.Regression.RaidDoorPromptRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-door-prompt] " + r); });
+            // WO-1805 lanes A+C: the composed dungeon teaches its oil mechanic; lantern balance on the rail. Registered by the committer.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "dungeon-lantern-teach suite", () => { if (!DeNelle.Editor.Regression.DungeonLanternTeachRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[dungeon-lantern-teach] " + r); });
 
             // =====================================================================
             //  >>> REGISTERED ORACLE SUITES — END FENCE <<<  (new lines go ABOVE)
@@ -2302,6 +2322,14 @@ namespace DeNelle.Editor
                     // NOW coach-mark completes on the OPEN QUEUE drawer opening (ManageScreenPanel).
                     s == DeNelle.Core.Tutorial.TutorialSignals.TroopJobQueued ||
                     s == DeNelle.Core.Tutorial.TutorialSignals.ManageQueueOpened ||
+                    // WO-1802: the raid-door rung completes on a raid actually LAUNCHED - raised by
+                    // SceneRouter.GoRaid beside RaidFunnel.RaidAttempted, i.e. the same call site
+                    // that emits raid_funnel_first_raid_attempted, so the beat cannot be marked
+                    // taught by anything that would not also move the metric the ticket is judged
+                    // on. The chain's other two rungs need no entry here: they complete on
+                    // build.structure_placed:barracks (the StructurePlacedPrefix arm below) and on
+                    // TroopJobQueued (the line above).
+                    s == DeNelle.Core.Tutorial.TutorialSignals.RaidAttempted ||
                     s == DeNelle.Core.Tutorial.TutorialSignals.OwnedTownRevealed ||
                     s == DeNelle.Core.Tutorial.TutorialSignals.OwnedTownRepaired ||
                     s == DeNelle.Core.Tutorial.TutorialSignals.OwnedTownDesigned ||
