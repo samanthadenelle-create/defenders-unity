@@ -744,6 +744,13 @@ namespace DeNelle.Editor.RoomForge
             w.transform.localPosition = localPos;
             w.transform.localScale = scale;
             GameObjectUtility.SetStaticEditorFlags(w, StaticEditorFlags.NavigationStatic);
+            // WO-1837: same sight-blocker rule as DefaultDungeonRoomsBuilder.BuildSolidWall —
+            // a stair-connector wall on Default is invisible to HeroTargetIndicator.HasLoS's
+            // Structure-masked linecast. Note the RampCollider and Step_* pieces below are
+            // DELIBERATELY left off Structure: they are horizontal/walkable, and the camera
+            // occluder mask reads Structure too (SmartMobileCamera.cs:1323).
+            DeNelle.Dungeons.RoomForge.DungeonStructureLayer.Apply(
+                w, "stair-connector wall must block hero line-of-sight");
         }
 
         private static void BuildWallWithGap(Transform parent, string name, Vector3 center, Vector3 fullScale,

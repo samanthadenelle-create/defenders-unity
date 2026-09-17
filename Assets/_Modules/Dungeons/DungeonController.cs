@@ -222,6 +222,18 @@ namespace DeNelle.Dungeons
 
         private void Start()
         {
+            // WO-1837: the LEGACY hand-built pipeline has the same wall line-of-sight hole as the
+            // composed one. Audited from disk 2026-09-17: Assets/Scenes/Dungeon_Demo.unity holds
+            // 6 Wall_* GameObjects and ALL 6 read m_Layer: 0 (Default), so HeroTargetIndicator
+            // .HasLoS's Structure-masked linecast passes straight through them and the hero can
+            // lock/attack through solid wall — the WO-1829/WO-1837 defect class, second pipeline.
+            // Scene-scoped because this controller owns a whole scene, not a compose root.
+            // Name-discriminated and idempotent, so floors/ramps/props are untouched and a
+            // re-baked scene reports moved=0.
+            Guard.Try("Dungeon", "assign legacy dungeon walls to the Structure layer",
+                () => RoomForge.DungeonStructureLayer.ApplyToScene(
+                    gameObject.scene, $"legacy dungeon load '{gameObject.scene.name}'"));
+
             EnterDungeon().Forget();
         }
 

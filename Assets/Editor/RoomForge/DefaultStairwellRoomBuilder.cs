@@ -441,6 +441,18 @@ namespace DeNelle.Editor.RoomForge
                 var col = go.GetComponent<Collider>();
                 if (col != null) Object.DestroyImmediate(col);
             }
+            else
+            {
+                // WO-1837: every solid box this builder keeps a collider on is a candidate sight
+                // blocker, but only the WALLS may go on "Structure" — the discriminator rejects
+                // Floor_*, Ceiling, Step_* and RampCollider by name, because the camera occluder
+                // mask reads Structure too (SmartMobileCamera.cs:1323) and a horizontal occluder
+                // would make the camera fade the ground the hero stands on. Matches Wall_N /
+                // Wall_S and BuildEndWall's Wall*_L/_R/_Mid/_Head.
+                if (DeNelle.Dungeons.RoomForge.DungeonStructureLayer.IsWallName(name))
+                    DeNelle.Dungeons.RoomForge.DungeonStructureLayer.Apply(
+                        go, "stairwell wall must block hero line-of-sight");
+            }
             return go;
         }
     }

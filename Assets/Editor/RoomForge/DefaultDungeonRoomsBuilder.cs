@@ -459,6 +459,12 @@ namespace DeNelle.Editor.RoomForge
             w.transform.localScale = scale;
             // Material applied in bulk via RoomForgeMaterials.ApplyToRoomRoot.
             GameObjectUtility.SetStaticEditorFlags(w, StaticEditorFlags.NavigationStatic);
+            // WO-1837: a room wall is a sight blocker. HeroTargetIndicator.HasLoS masks its
+            // linecast to "Structure", so a wall left on Default lets the hero lock and attack
+            // through it. Every baked Wall_* in Assets/Dungeon/Rooms/*.prefab read m_Layer: 0
+            // before this line. ONE owner for the rule — never re-copy WallSegment.cs:646-647.
+            DeNelle.Dungeons.RoomForge.DungeonStructureLayer.Apply(
+                w, "room wall must block hero line-of-sight");
         }
 
         private static void BuildWallWithGap(Transform parent, string name, Vector3 center, Vector3 fullScale,

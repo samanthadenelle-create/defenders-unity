@@ -70,6 +70,22 @@ namespace DeNelle.Dungeons
             _composeRoot = composeRoot;
             _state = state;
             Current = this;
+
+            // ⛔ WO-1837 — THE BAKE-INDEPENDENT HALF OF THE WALL LoS FIX, AND THE ONLY HALF THAT
+            // REACHES A BUILD THE OWNER ALREADY HAS. The generators (DungeonBakerChecks.SealSocket,
+            // DefaultDungeonRoomsBuilder/DefaultStairConnectorRoomsBuilder.BuildSolidWall) now
+            // assign "Structure", but they run at BAKE time and write prefabs/scenes to DISK:
+            // every dungeon already baked still carries its walls on layer 0, so a generator-only
+            // fix would be completely INERT until all of Assets/Scenes/DungeonCompose/dg_*.unity
+            // and Assets/Dungeon/Rooms/*.prefab are re-baked. Sweeping at load corrects the stale
+            // bake in memory on the frame it loads. Idempotent and a no-op once the bake catches
+            // up (it reports moved=0), so this is a net, not a second owner of the rule.
+            // Runs BEFORE the deferred hero half: the sweep needs no hero, and LoS must be correct
+            // on the first frame the hero can aim.
+            Guard.Try(Sys, "assign composed dungeon walls to the Structure layer",
+                () => DungeonStructureLayer.ApplyToWalls(
+                    composeRoot, $"composed dungeon load '{gameObject.scene.name}'"));
+
             StartCoroutine(ArmHeroPillarsNextFrame());
         }
 

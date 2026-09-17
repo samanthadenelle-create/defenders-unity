@@ -230,6 +230,15 @@ namespace DeNelle.Editor.RoomForge
                 if (filter.sharedMesh == null || filter.GetComponent<Collider>() != null) continue;
                 filter.gameObject.AddComponent<MeshCollider>().sharedMesh = filter.sharedMesh;
             }
+
+            // WO-1837: the loop above gives EVERY kit mesh a collider — walls, floors and props
+            // alike — so the layer pass is a separate, name-discriminated sweep rather than a
+            // blanket assignment inside it. Only vertical wall chunks belong on "Structure";
+            // putting a kit floor there would hand SmartMobileCamera a horizontal occluder.
+            // Without this the whole kit pipeline reproduces the WO-1829/WO-1837 defect: solid
+            // wall meshes invisible to HeroTargetIndicator.HasLoS's Structure-masked linecast.
+            DeNelle.Dungeons.RoomForge.DungeonStructureLayer.ApplyToWalls(
+                root.transform, "dungeon-kit chunk walls must block hero line-of-sight");
         }
 
         private static Material ResolveTheme(Catalog catalog)

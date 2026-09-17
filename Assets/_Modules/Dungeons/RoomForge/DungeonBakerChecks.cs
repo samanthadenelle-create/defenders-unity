@@ -270,6 +270,19 @@ namespace DeNelle.Dungeons.RoomForge
                 Vector3.forward * 0.15f + Vector3.up * (RoomForgeCanon.WallHeight * 0.5f);
             wall.transform.localRotation = Quaternion.identity;
             wall.transform.localScale = new Vector3(s.halfWidth * 2f, RoomForgeCanon.WallHeight, 0.35f);
+
+            // ⛔ WO-1837 — THE OWNER'S SCREENSHOT. This seal is a SOLID 4 m slab plugging a
+            // dead-end doorway, and until this line it sat on layer 0 (Default) carrying a
+            // CreatePrimitive BoxCollider. HeroTargetIndicator.HasLoS masks its blocker
+            // linecast to "Structure" ONLY, so the cast passed straight through every seal in
+            // the dungeon and the hero locked + attacked enemies in the next room through what
+            // reads as plain wall. Same defect class WO-1829 fixed on the door leaf — a second
+            // occurrence on different geometry, which is why the rule now has ONE owner
+            // (DungeonStructureLayer) instead of a third copy of WallSegment.cs:646-647.
+            // PROOF: dg_ember_deep.unity carries 11 SEALED_WALL seals (Seal_s_lower_w,
+            // Seal_s_upper_e, Seal_s_door_01, ...); TagManager.asset layers[8] == "Structure".
+            DungeonStructureLayer.Apply(wall, $"socket seal '{wall.name}' must block hero line-of-sight");
+
             s.matedTo = "SEALED_WALL";
             return true;
         }
