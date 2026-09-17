@@ -1,6 +1,10 @@
 # WORK ORDER 1783 — The capture beat has **no moment**: "it is yours now" is every raid's subtitle, and the inherited town opens on a modal
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
+
+Section 4's three "clear from source" items are implemented; the HELD items are still HELD (no capture
+screen, no reveal cinematic, no receipt surface invented). NOT gated — one seat fires Unity while lanes
+are open, so the lead gates the combined tree. See section 5b.
 
 Scope note: the seams are named; the copy and the shape of the reveal are an owner call — §4 holds them.
 
@@ -58,6 +62,38 @@ The game's biggest promotion — the player inherits a town — is delivered by 
 - A device **screenshot sequence** of a 3-star Bastion capture: the capture surface, then the first frame of the owned town with no modal over it.
 - The owner judges the moment by eye on the filming build; copy and reveal shape are hers to accept.
 - `python tools/gate_brace.py` exit 0, then `COMPILE_GATE_OK` + `REGRESSION_OK <n>/<n>` on fresh logs. ⚠ `en.json` is a **canonical JSON** file — patch from HEAD bytes, prove the LF count, update the StreamingAssets twin in the same change.
+
+## 5b. IMPLEMENTATION (2026-09-17, lane hand-back — not yet gated, not yet owner-judged)
+
+⚠ The line numbers in section 2 have MOVED since the ticket was minted (WO-1810 landed in the same
+factory): the claim line cited as `:425` was `:438-440` when this lane opened the file. Everything
+section 2 asserts was re-verified at source before any edit.
+
+1. **The claim is conditional.** `EndStateVM.cs` — `FromRaidVictory` takes two trailing optional
+   arguments, `baseClaimed` (default **false**) and `captureStarsRequired` (default 0), so every
+   existing positional caller keeps its exact behaviour. The lead is now one of two consts on the VM:
+   `CaptureClaimSentence` (verbatim the old sentence — no new capture copy was invented) and
+   `OrdinaryClearSentence` = *"The base is broken - its stores are yours."*
+2. **The gate is stated.** When the win was on the capture raid, the town is not hers, and the clear
+   fell short, the subtitle carries `ownedTown.captureRequirement` — *"A {0}-star clear takes this
+   base for your own."* The count comes from `OwnedBaseProgression.CaptureStarsRequired`; there is no
+   literal `3` in the code or the JSON. **The star row was NOT touched** (WO-1789's lane). The
+   sentence sits on the VICTORY screen; the *deploy* screen ("before she settles") is outside this
+   ticket's silo and is left for the owner/lead to route.
+3. **The panel is held.** `OwnedTownController.Start` no longer calls `panel.Show()` inline: it adds
+   the component immediately (so any finder still finds it) and defers the Show by a realtime beat —
+   `FirstRevealHoldSeconds = 2f` on the first reveal, `ReturnHoldSeconds = 0.35f` on a return visit.
+   **The durations are placeholders for the owner's ruling**, which section 4 HOLDS.
+4. **The pin that asserted the old behaviour moved with it.** `SingleHeroVictoryJoinRegression`
+   RULE 2 asserted the claim was present on the DEFAULT body — i.e. it pinned the defect. It now
+   asserts the claim is present on `baseClaimed: true` and **absent** on an ordinary clear. The
+   owner's SingleHero ruling (drop the join, keep the claim) is untouched.
+
+**Signal wiring** (`RaidVictoryController.cs`, messaging only — the capture gate and route are
+WO-1778's and were not touched): a new `_captureRaidShortOfStars` latch set in the same block that
+sets `_captureRequired`, reading the SAME three facts (final raid + `OwnedBase == null` + stars), so a
+player who already owns the town is never told to take it again; and two NAMED arguments on the
+existing `FromRaidVictory` call.
 
 ## 6. DO NOT TOUCH
 

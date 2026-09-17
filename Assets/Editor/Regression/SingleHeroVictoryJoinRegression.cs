@@ -38,6 +38,15 @@
 //           RULE 2 could pass on a factory that never emits the line at all.
 //           The "The base is CLAIMED" half is asserted PRESENT -- the owner's
 //           ruling drops the join, not the claim.
+//           WO-1783 MOVED WHICH SCREEN OWNS THAT CLAIM, AND THIS RULE MOVED WITH
+//           IT. The claim used to be UNCONDITIONAL, so this file asserted it on
+//           the DEFAULT (ordinary-clear) body -- which is exactly the defect
+//           WO-1783 closed: a 1-star camp clear told the player she owned the
+//           base. The assertion is not dropped, it is re-pointed: the claim must
+//           be PRESENT on a capture (baseClaimed: true) and ABSENT on every
+//           ordinary clear. The owner's ruling still stands untouched -- the JOIN
+//           is what was dropped, and the claim still has to reach the player, on
+//           the one screen that earned it.
 //   RULE 3  RaidDeployVM.BuildPartyClasses answers the HERO ALONE under
 //           SingleHero, and the full roster with the flag off. That screen was
 //           the last surface still painting the dead companion portraits
@@ -212,7 +221,8 @@ namespace DeNelle.Editor.Regression
                                     " partials=" + partials.Count);
             reason = Tag + " OK - " + assertions + " assertion(s): SingleHero defaults ON, the raid and " +
                      "outpost end-state text carries no '" + JoinPhrase + "' line for a null name (and " +
-                     "still says " + ClaimPhrase + "), the deploy party resolves to the hero alone, and " +
+                     "says " + ClaimPhrase + " on a CAPTURE only, never on an ordinary clear - WO-1783), " +
+                     "the deploy party resolves to the hero alone, and " +
                      readable + " victory controller(s) gate the recruit on " + FlagToken + "." + extra;
             Debug.Log(MarkerOk + " - " + reason);
             return true;
@@ -231,10 +241,13 @@ namespace DeNelle.Editor.Regression
             const string ProbeName = "Sylas";
             int assertions = 0;
 
-            string raidNull, raidNamed, outpostNull, outpostNamed;
+            string raidNull, raidNamed, outpostNull, outpostNamed, raidCaptured;
             try
             {
                 raidNull    = DeNelle.Village.UI.EndStateVM.FromRaidVictory(null, null).Subtitle ?? string.Empty;
+                // WO-1783 - the CAPTURE body, which is now the ONLY one allowed to claim the base.
+                raidCaptured = DeNelle.Village.UI.EndStateVM.FromRaidVictory(null, null, 20f,
+                                   baseClaimed: true).Subtitle ?? string.Empty;
                 raidNamed   = DeNelle.Village.UI.EndStateVM.FromRaidVictory(ProbeName, null).Subtitle ?? string.Empty;
                 outpostNull = DeNelle.Village.UI.EndStateVM.FromOutpostVictory(null, true).Subtitle ?? string.Empty;
                 outpostNamed= DeNelle.Village.UI.EndStateVM.FromOutpostVictory(ProbeName, true).Subtitle ?? string.Empty;
@@ -253,11 +266,24 @@ namespace DeNelle.Editor.Regression
                              "'. The gated controllers pass null precisely so this line disappears " +
                              "(owner ruling 2026-09-15). Body was: " + Quote(raidNull));
 
+            // WO-1783 - THE CLAIM IS CONDITIONAL NOW, SO IT IS PINNED FROM BOTH SIDES.
+            // A capture MUST say it (the player must still be told the base is hers - the owner's
+            // ruling drops the JOIN, not the claim), and an ordinary clear must NOT: the sentence
+            // was the subtitle of every raid win, camp clears included, which made the game's
+            // biggest promotion read exactly like its smallest beat.
             assertions++;
-            if (!Contains(raidNull, ClaimPhrase))
-                failures.Add("RULE 2 EndStateVM.FromRaidVictory(null) no longer says '" + ClaimPhrase +
-                             "'. The ruling drops the JOIN, not the claim -- the player must still be " +
-                             "told the base is theirs. Body was: " + Quote(raidNull));
+            if (!Contains(raidCaptured, ClaimPhrase))
+                failures.Add("RULE 2 EndStateVM.FromRaidVictory(baseClaimed: true) no longer says '" +
+                             ClaimPhrase + "'. A capture is the ONE win that owns this line and it " +
+                             "has gone missing, so the marquee beat now says nothing about ownership " +
+                             "at all. Body was: " + Quote(raidCaptured));
+
+            assertions++;
+            if (Contains(raidNull, ClaimPhrase))
+                failures.Add("RULE 2 EndStateVM.FromRaidVictory(null) still says '" + ClaimPhrase +
+                             "' on an ORDINARY clear. WO-1783: an un-captured base is not hers, and " +
+                             "claiming it on every camp clear is what left the real capture with no " +
+                             "moment of its own. Body was: " + Quote(raidNull));
 
             assertions++;
             if (Contains(outpostNull, JoinPhrase))

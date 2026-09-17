@@ -86,6 +86,27 @@ namespace DeNelle.Village.UI
         /// <summary>Flawless win (perfect-tier); no signal is threaded yet — defaults false.</summary>
         public bool Perfect;
 
+        /// <summary>
+        /// WO-1789 - ONE SHORT LINE RENDERED DIRECTLY UNDER THE STAR ROW, or null for the
+        /// screens that have nothing to say there (every screen but a short-of-three raid win).
+        ///
+        /// <para><b>WHY IT IS NOT A SUBTITLE LINE.</b> The raid-victory subtitle already carries
+        /// up to six facts (the lead, WO-1783's capture-gate sentence, the razed %, the troops
+        /// lost, the unlock line and the bank-short caveat) and <c>EndStateView.BuildBody</c>
+        /// uniform-compresses EVERY band once the stack outruns the well - logging a Fail when it
+        /// does. A seventh line would crush the whole stack to pay for a caption about the star
+        /// row it is not attached to. The star band grows by its own caption allowance instead
+        /// (<c>EndStateView.StarsBandPx</c>), which is budgeted by the same solve that lays it
+        /// out, so the caption's pixels can never be discovered after layout.</para>
+        ///
+        /// <para>⚠ <b>ONE FIELD, ONE OWNER OF THE ROW.</b> WO-1789 §3.1 and WO-1783 §4.2 both
+        /// wanted to write on the star row, and two lanes writing there is two captions
+        /// disagreeing. This lane took the row; WO-1783 states the capture gate in the SUBTITLE
+        /// (read at source in the working tree 2026-09-17 - <c>CaptureRequirementSentence</c> is
+        /// appended to <c>body</c>, not here). Anything else that wants the row sets THIS field.</para>
+        /// </summary>
+        public string StarCaption;
+
         /// <summary>Outcome emblem for the medallion socket (bronze icon pack, never the crown).</summary>
         public Sprite Emblem;
 
@@ -416,6 +437,148 @@ namespace DeNelle.Village.UI
             };
         }
 
+        // ── WO-1783: THE TWO RAID-WIN LEADS, AND WHY THEY ARE CONSTS HERE ─────────
+        // One owner for the words a raid win says about OWNERSHIP. They are consts on the VM for
+        // the same reason RetreatTitle / RewardShortSentence are: presentation copy has exactly one
+        // home, so the sentence a player reads and the sentence an oracle asserts cannot drift
+        // (SingleHeroVictoryJoinRegression reads BOTH of these, and pins that the claim appears on
+        // a capture and NOWHERE else).
+
+        /// <summary>The lead a win that actually TOOK the base as the player's property carries.
+        /// Verbatim the sentence every raid win used to show; WO-1783 only made it conditional, and
+        /// deliberately invented no new capture copy (the capture screen's own title and body are
+        /// HELD for the owner - WO-1783 section 4).</summary>
+        public const string CaptureClaimSentence = "The base is CLAIMED - it is yours now.";
+
+        /// <summary>The lead an ORDINARY raid clear carries: the base is broken and looted, and it
+        /// is NOT hers. Honest about what a camp clear is, so the claim line above can mean
+        /// something when it finally appears.</summary>
+        public const string OrdinaryClearSentence = "The base is broken - its stores are yours.";
+
+        /// <summary>Table key for the capture star requirement, stated in words on the screen where
+        /// the gate just bit. Formatted with the star COUNT so the number is never authored twice.</summary>
+        public const string CaptureRequirementKey = "ownedTown.captureRequirement";
+
+        /// <summary>The English behind <see cref="CaptureRequirementKey"/>, authored ONCE here and
+        /// used by both the table miss and the thrown-formatter path below — three copies of one
+        /// sentence is the duplicated state this file's own comments keep warning about.</summary>
+        private const string CaptureRequirementFallback = "A {0}-star clear takes this base for your own.";
+
+        /// <summary>
+        /// The one sentence that tells the player what a capture costs, with the count supplied by
+        /// the caller (which reads <c>OwnedBaseProgression.CaptureStarsRequired</c>) and never by a
+        /// literal here or in the table.
+        ///
+        /// <para>Goes through <see cref="LocalText.FormatWithFallback"/>, not
+        /// <c>LocalText.Format</c>, on purpose: this factory is constructed directly by EditMode
+        /// oracles (RaidCasualtyRegression, RaidPayoutVisibilityRegression,
+        /// SingleHeroVictoryJoinRegression) with no string table installed, and a
+        /// <c>[[missing:...]]</c> placeholder in a headless assertion would read as this line
+        /// having been lost. Never silent (section 12): a missing key still reports through
+        /// LocalText's own miss path in a real run.</para>
+        /// </summary>
+        private static string CaptureRequirementSentence(int starsRequired)
+        {
+            string line = null;
+            Guard.Try("EndState", "capture star requirement sentence", () =>
+            {
+                line = LocalText.FormatWithFallback(CaptureRequirementKey,
+                    CaptureRequirementFallback, starsRequired);
+            });
+            // A THROWN formatter must not cost the player the one sentence this branch exists to
+            // say - so the plain English is composed here rather than the line being dropped.
+            if (string.IsNullOrEmpty(line))
+                line = CaptureRequirementFallback.Replace("{0}", starsRequired.ToString());
+            return line;
+        }
+
+        // ── WO-1789: THE TWO OUTCOMES THAT ONLY EVER EXISTED IN THE LOG ───────────
+        // Both of these were DECIDED, WRITTEN TO break-log.jsonl, and never shown. The owner's own
+        // 2026-09-16 run produced BOTH lines and neither reached the screen:
+        //   [Flow:Raid] veterancy: 2 star(s) - no ranks granted (3 stars required).
+        //   [Flow:Bank] BANK FULL [Grant] Wood/Stone/Iron: requested N, banked N, LOST N
+        // ⛔ THE WORDING IS **PROPOSED**, NOT RULED. WO-1789 section 3 holds the exact copy for the
+        // owner ("HELD for the owner: the exact wording of both captions"), so these three keys are
+        // written to be replaced by eye with no code change - the table row is the edit.
+
+        /// <summary>Table key for the caption under a short-of-three star row. Formatted with the
+        /// REQUIRED star count, which the caller reads off the veterancy gate's own const - never a
+        /// literal here, and never a second 3 (WO-1789 section 3.3).</summary>
+        public const string VeterancyDeniedKey = "raid.veterancyDenied";
+
+        /// <summary>Table key for "the bank refused it and the Raid Cache is HOLDING it".</summary>
+        public const string RaidCacheHeldKey = "raid.cacheHeld";
+
+        /// <summary>Table key for "both ceilings were hit, so part of the haul is genuinely gone".
+        /// A separate sentence from <see cref="RaidCacheHeldKey"/> on purpose: telling a player her
+        /// loot is recoverable when it is not is the §11B failure, not a kindness.</summary>
+        public const string RaidCacheFullKey = "raid.cacheFull";
+
+        /// <summary>
+        /// WO-1789 section 3.1 - THE CAPTION A RAID WIN THAT MISSED VETERANCY OWES THE PLAYER.
+        ///
+        /// <para>Says what the missing star would have granted. Composed here, on the VM, for the
+        /// same reason <see cref="RewardShortSentence"/> is (presentation copy has exactly one
+        /// home), and rendered by <c>EndStateView.BuildStarRow</c> into the star band's own caption
+        /// allowance - see <see cref="StarCaption"/> for why it is not a subtitle line.</para>
+        ///
+        /// <para><paramref name="starsRequired"/> comes from <c>RaidDeployController
+        /// .VeterancyStarsRequired</c>, the const that now gates the grant itself, so the screen
+        /// and the gate can never disagree about the number.</para>
+        /// </summary>
+        public static string VeterancyDeniedCaption(int starsRequired)
+        {
+            if (starsRequired <= 0) return null;
+            string line = null;
+            Guard.Try("EndState", "veterancy denied caption", () =>
+            {
+                line = LocalText.FormatWithFallback(VeterancyDeniedKey,
+                    "A {0}-star clear promotes every surviving troop.", starsRequired);
+            });
+            // A thrown formatter must never cost the player the one line this branch exists for -
+            // the same no-silent-failure contract CaptureRequirementSentence above keeps.
+            if (string.IsNullOrEmpty(line))
+                line = "A " + starsRequired + "-star clear promotes every surviving troop.";
+            return line;
+        }
+
+        /// <summary>
+        /// WO-1789 section 3.2 - WHERE THE OVERFLOW WENT, INSTEAD OF "it could not be paid out".
+        ///
+        /// <para>THREE outcomes, not two, and the caller must not collapse them:</para>
+        /// <list type="bullet">
+        /// <item><paramref name="cachedUnits"/> &gt; 0 and <paramref name="lostUnits"/> == 0 - the
+        /// Raid Cache took ALL of it and the player can claim it back: say so, by name.</item>
+        /// <item><paramref name="lostUnits"/> &gt; 0 - part of it was above BOTH the bank's headroom
+        /// and the cache's stated ceiling (<c>RaidClaimService.RetainAxis</c>'s <c>stillRefused</c>),
+        /// which is the ONE path on which a raid unit leaves the world. "Recoverable" would be a
+        /// lie, so a different sentence says what actually happened.</item>
+        /// <item>neither - the shortfall was on an UNCAPPED axis (crystals / gold are never clamped
+        /// and therefore never cached - TownBankCapacity Law 1), so the cache has nothing to do with
+        /// it and the generic <see cref="RewardShortSentence"/> stands unchanged.</item>
+        /// </list>
+        /// </summary>
+        public static string RaidOverflowSentence(int cachedUnits, int lostUnits)
+        {
+            if (lostUnits > 0)  return TableLine(RaidCacheFullKey,
+                "The bank was full and the Raid Cache is at its limit - part of the haul could not be kept.");
+            if (cachedUnits > 0) return TableLine(RaidCacheHeldKey,
+                "The bank was full - the overflow is held in your Raid Cache until you make room.");
+            return RewardShortSentence;
+        }
+
+        /// <summary>One table lookup with a guaranteed plain-English floor - never a
+        /// <c>[[missing:key]]</c> placeholder on a player's screen, and never a swallowed throw.</summary>
+        private static string TableLine(string key, string fallback)
+        {
+            string line = null;
+            Guard.Try("EndState", "table line " + key, () =>
+            {
+                line = LocalText.Get(key, fallback);
+            });
+            return string.IsNullOrEmpty(line) ? fallback : line;
+        }
+
         /// <summary>
         /// RAID victory (baked RaidBase_* teleport scenes — replaces
         /// RaidVictoryController's bespoke "VICTORY" banner). The base is claimed and,
@@ -429,15 +592,42 @@ namespace DeNelle.Village.UI
             ResourceCost credited = default(ResourceCost), string unlockLine = null,
             // WO-1810 - troops lost for good on a WON raid. Trailing + optional, so every existing
             // positional caller keeps its exact behaviour; < 0 = unknown and the line is omitted.
-            int troopsLost = -1)
+            int troopsLost = -1,
+            // WO-1783 - TRUE only when THIS win actually took the base as the player's own property.
+            // Trailing + optional and defaulting FALSE, so every existing positional caller keeps its
+            // exact behaviour and an ordinary camp clear can never claim ownership it did not earn.
+            bool baseClaimed = false,
+            // WO-1783 - the star count a capture needs, passed in ONLY when this win was on the
+            // capture raid and fell short of it (0 = say nothing). The number is never a literal
+            // here: the caller reads OwnedBaseProgression.CaptureStarsRequired, the one authority.
+            int captureStarsRequired = 0)
         {
             // WO-771.6: the LOCKED-V1 scoring/loot now rides the raid victory screen —
             // stars (0-3), the %-destruction of the base, the clear time, and the loot
             // breakdown. All fields are opt-in (a caller with no scorer passes the old
             // three args and the screen renders exactly as before).
+            // WO-1783 - THE CLAIM LINE IS NOW CONDITIONAL, AND THAT IS THE WHOLE TICKET.
+            //
+            // It used to be unconditional, so "The base is CLAIMED - it is yours now." was the
+            // subtitle of EVERY raid win - a 1-star camp clear included. The game's biggest
+            // promotion (she inherits a town) therefore read exactly like its smallest beat, and
+            // the sentence was a lie on every screen but one. A capture is the ONLY win that owns
+            // the claim; an ordinary clear gets its own honest lead.
+            string claimLead = baseClaimed ? CaptureClaimSentence : OrdinaryClearSentence;
             string body = !string.IsNullOrEmpty(joinedCompanionName)
-                ? "The base is CLAIMED - it is yours now.\n" + joinedCompanionName + " joins your party."
-                : "The base is CLAIMED - it is yours now.";
+                ? claimLead + "\n" + joinedCompanionName + " joins your party."
+                : claimLead;
+
+            // WO-1783 - STATE THE GATE, ON THE SCREEN WHERE IT JUST BIT HER.
+            //
+            // OwnedBaseProgression.CaptureStarsRequired gates the capture and the player was never
+            // told it existed: she could 2-star the final raid, watch "Victory!" congratulate her,
+            // and never learn why the town did not become hers. Only the caller knows this was the
+            // capture raid, so only the caller can ask for this line (0 = not the capture raid, or
+            // already hers - say nothing). It sits directly under the lead because on the one
+            // screen it appears, it is the most important sentence on it.
+            if (!baseClaimed && captureStarsRequired > 0)
+                body += "\n" + CaptureRequirementSentence(captureStarsRequired);
             if (destructionPercent >= 0)
                 body += "\n" + destructionPercent + "% razed.";
 
@@ -509,6 +699,16 @@ namespace DeNelle.Village.UI
                 vm.UnlockLine = unlockLine;
                 vm.Subtitle = string.IsNullOrEmpty(vm.Subtitle) ? unlockLine : vm.Subtitle + "\n" + unlockLine;
             }
+
+            // WO-1783 - the CLAIM decision is traced on BOTH branches, so a capture and an ordinary
+            // clear stay distinguishable in a capture log. Before this ticket every win logged the
+            // same screen because every win SAID the same thing.
+            FlowTrace.Step("EndState",
+                "RAID VICTORY composed: baseClaimed=" + baseClaimed +
+                " captureStarsRequired=" + captureStarsRequired + " stars=" + stars +
+                " lead=" + (baseClaimed ? "CAPTURE-CLAIM" : "ordinary-clear") +
+                ". Before WO-1783 the CLAIMED line was unconditional, so a 1-star camp clear told " +
+                "the player she owned the base.");
             return vm;
         }
 
@@ -694,7 +894,13 @@ namespace DeNelle.Village.UI
         /// <summary>
         /// The player-facing word for the FOOD balance on a spoils row.
         ///
-        /// <para>WO-1374 sets this to "Food": PROGRAM_RAID_ECONOMY_2026-09-04 section 3 enumerates
+        /// <para>⚠ SUPERSEDED — <b>THIS CONSTANT IS "Stone" TODAY.</b> The WO-1374 reasoning below is
+        /// kept verbatim because it records an OWNER-level conflict a future reader will otherwise
+        /// re-derive from scratch, but it no longer describes the value: the owner ruled 2026-09-16
+        /// ("we completely removed food") and the declaration at the bottom of this block is the
+        /// authority. Read the const, never this paragraph (WO-1789 section 3.4).</para>
+        ///
+        /// <para>WO-1374 set this to "Food": PROGRAM_RAID_ECONOMY_2026-09-04 section 3 enumerates
         /// the five currencies as Wood / Iron / Food / Gold / Crystals, and that document is
         /// declared NORTH STAR and takes precedence over earlier rulings.</para>
         ///
@@ -1054,7 +1260,10 @@ namespace DeNelle.Village.UI
                 foreach (var l in lines) vm.Spoils.Add(ResourceRow(l.Key, l.Value));
                 FlowTrace.Step("EndState",
                     $"wave {waveNumber} clear banner: {lines.Count} reward row(s) from the BANKED payout " +
-                    $"(wood={pay.Wood} iron={pay.Iron} food={pay.Stone} crystals={pay.Crystals}), " +
+                    // WO-1789 section 3.4 - the trace said "food=" while the field, the balance and the
+                    // player-facing label are all STONE. A trace that names a retired currency sends
+                    // the next reader hunting a wallet axis that does not exist.
+                    $"(wood={pay.Wood} iron={pay.Iron} stone={pay.Stone} crystals={pay.Crystals}), " +
                     $"budget={budget} of {CompactMaxSpoilRows}.");
                 return lines.Count;
             }
