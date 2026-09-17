@@ -1272,6 +1272,40 @@ namespace DeNelle.Editor
             return catalogId;
         }
 
+        /// <summary>
+        /// Re-clad <paramref name="host"/>: drop its children, hang ONE "/Visual" child built from
+        /// <paramref name="model"/>, and reseat.
+        ///
+        /// ⛔ THE NAME LIED AND IT COST THE OWNER A RAID (WO-1807, 2026-09-16). It destroyed
+        /// CHILDREN only — and the three things it clads are prefab instances whose mesh sits on
+        /// the ROOT, not on a child:
+        ///   * Assets/StructureContent/Tower_Medieval_Wood.prefab is ONE GameObject carrying
+        ///     MeshFilter + MeshRenderer + MeshCollider and `m_Children: []` — that is the corner
+        ///     posts (RaidBaseGenerator.PlaceCornerTower, via FallbackTowerPath).
+        ///   * RaidBaseGenerator.PlaceTowerProp instantiates the turret art the same way and then
+        ///     ScaleToHeight's the ROOT — that is Watchtower_*.
+        ///   * PlaceSpire does likewise for RaidSpire.
+        /// So "replace the children" replaced NOTHING and the clad was STACKED on top of the
+        /// original: two whole towers in one spot. Proven on the owner's 19:55 Forsaken Camp run
+        /// (build 2026.09.17.372984): `[Flow:Raid] [wo1639-marker] OVERSIZED world renderer:
+        /// path=RaidBase_fortified_garrison/CornerPost_Outer_E kind=MeshRenderer screenH=1608px
+        /// (1.34 of screen) camDist=9.1m mat=M_10_Brown_Dark_LPUP (URP/Lit)` — the polyperfect
+        /// HOST mesh — beside `[Flow:RaidArt] path='.../CornerPost_Outer_E/Visual'
+        /// mesh='SM_Bld_Castle_Wall_Tower_M_01' bounds=4.3x7.5x4.3m` — the Synty clad. The baked
+        /// YAML confirms `m_RemovedComponents: []` on every one of those prefab instances.
+        ///
+        /// ⚠ WHY THE OBVIOUS THEORY IS WRONG, so nobody re-opens it: the clad is NOT pitched. In
+        /// the baked scene CornerPost_Outer_E's host rotation is pure-Y (w=-0.38268, y=0.92388 =
+        /// 225°) and its /Visual child is IDENTITY (w=1) — the -90 X wall-panel correction reaches
+        /// wall panels, never these hosts. Both halves stand up straight; the defect is that there
+        /// are TWO of them, mismatched in size and material, which reads as an upside-down or
+        /// inverted tower from the ground.
+        ///
+        /// Corollary the bake log shows: with the host renderer alive, <see cref="SeatOnGround"/>
+        /// seated the UNION, so the host was lifted to y=2.5 to get the polyperfect mesh's belly
+        /// off the floor. Removing the root renderer lets the clad seat itself, and that lift
+        /// correctly disappears.
+        /// </summary>
         private static void ReplaceChildrenWith(GameObject host, GameObject model, bool keepComponents)
         {
             if (host == null || model == null) return;
@@ -1285,10 +1319,145 @@ namespace DeNelle.Editor
 
             var vis = InstantiateVisual(model, host.transform, "Visual", host.transform.position,
                                         host.transform.rotation, stripColliders: !keepComponents);
-            if (vis == null) return;
+            if (vis == null) return;                 // clad failed: leave the host's own art alone
             vis.transform.localPosition = Vector3.zero;
             vis.transform.localRotation = Quaternion.identity;
+
+            // ORDER IS LOAD-BEARING: the root art comes off only AFTER the clad exists, so a
+            // missing/unloadable model can never leave a post with no renderer at all.
+            StripRootArt(host, vis);
+
             SeatOnGround(host);
+            ReportCladPose(host, vis);
+        }
+
+        /// <summary>
+        /// Remove the HOST ROOT's own mesh art (WO-1807) now that <paramref name="clad"/> renders
+        /// the post. A root MeshCollider that referenced the very mesh being removed would become
+        /// an invisible polyperfect-shaped blocker around a Synty tower, so it is replaced by a
+        /// BoxCollider fitted to the clad — the blocker then matches what the player can see, and
+        /// the corner stays solid (it is the ONLY collider on a CornerPost_, whose clad is
+        /// instantiated with stripColliders: true).
+        /// </summary>
+        private static void StripRootArt(GameObject host, GameObject clad)
+        {
+            var rootRend = host.GetComponent<Renderer>();
+            if (rootRend == null) return;            // nothing stacked; already clean
+
+            var mf = host.GetComponent<MeshFilter>();
+            var doomedMesh = mf != null ? mf.sharedMesh : null;
+            string meshName = doomedMesh != null ? doomedMesh.name : "?";
+            string matName = rootRend.sharedMaterial != null ? rootRend.sharedMaterial.name : "?";
+
+            // Swap a mesh-collider-of-the-doomed-mesh for a box around the clad BEFORE destroying
+            // the renderer, so the clad bounds are measured while nothing has moved.
+            var rootMeshCol = host.GetComponent<MeshCollider>();
+            string colNote = "root collider untouched";
+            if (rootMeshCol != null && (doomedMesh == null || rootMeshCol.sharedMesh == doomedMesh))
+            {
+                if (CladLocalBox(host, clad, out Vector3 localCentre, out Vector3 localSize))
+                {
+                    // Guarded for the same reason the renderer strip below is: a refusal here must
+                    // never propagate out and abort the whole bake over one post's collider.
+                    try
+                    {
+                        Object.DestroyImmediate(rootMeshCol);
+                        var box = host.GetComponent<BoxCollider>();
+                        if (box == null) box = host.AddComponent<BoxCollider>();
+                        box.center = localCentre;
+                        box.size = localSize;
+                        colNote = $"root MeshCollider -> BoxCollider fitted to the clad " +
+                                  $"(size {localSize.x:0.##}x{localSize.y:0.##}x{localSize.z:0.##} local)";
+                    }
+                    catch (System.Exception ex)
+                    {
+                        colNote = $"root MeshCollider KEPT - the swap threw {ex.GetType().Name}: {ex.Message}";
+                        FlowTrace.Warn(Sys, $"[wo1807] '{host.name}': {colNote}");
+                    }
+                }
+                else
+                {
+                    colNote = "root MeshCollider KEPT - the clad had no measurable bounds to fit a box to";
+                }
+            }
+
+            // DestroyImmediate on a prefab-instance component is recorded as an m_RemovedComponents
+            // override, which is what we want in the baked scene. But if this editor ever refuses
+            // it, DISABLING the renderer must still happen - a silent throw here would leave the
+            // stacked tower in place and the bake would report success. So: try to remove, and on
+            // any refusal fall back to `enabled = false`, which is the property
+            // RaidPostOrientationRegression's pin 1 actually tests.
+            bool removed = true;
+            try
+            {
+                Object.DestroyImmediate(rootRend);
+                if (mf != null) Object.DestroyImmediate(mf);
+            }
+            catch (System.Exception ex)
+            {
+                removed = false;
+                if (rootRend != null) rootRend.enabled = false;
+                FlowTrace.Warn(Sys, $"[wo1807] '{host.name}': could not DESTROY the root mesh " +
+                                    $"({ex.GetType().Name}: {ex.Message}) - it is DISABLED instead, so it " +
+                                    "no longer renders, but the components remain in the baked scene.");
+            }
+
+            FlowTrace.Step(Sys, $"[wo1807] '{host.name}': {(removed ? "stripped" : "disabled")} the STACKED root mesh " +
+                                $"'{meshName}' (mat '{matName}') - the clad '{clad.name}' is now the " +
+                                $"only art on this post; {colNote}.");
+        }
+
+        /// <summary>
+        /// The clad's renderer bounds expressed in <paramref name="host"/>'s local space, for a
+        /// BoxCollider. Host rotation on these posts is yaw-only (LookRotation with Vector3.up),
+        /// so an axis-aligned box in local space is a faithful blocker.
+        /// </summary>
+        private static bool CladLocalBox(GameObject host, GameObject clad, out Vector3 centre, out Vector3 size)
+        {
+            centre = Vector3.zero;
+            size = Vector3.zero;
+            var rends = clad.GetComponentsInChildren<Renderer>(true);
+            if (rends == null || rends.Length == 0) return false;
+
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++)
+                if (rends[i] != null) b.Encapsulate(rends[i].bounds);
+            if (b.size.x <= 0.0001f || b.size.y <= 0.0001f || b.size.z <= 0.0001f) return false;
+
+            centre = host.transform.InverseTransformPoint(b.center);
+            var s = host.transform.lossyScale;
+            size = new Vector3(b.size.x / Mathf.Max(0.0001f, Mathf.Abs(s.x)),
+                               b.size.y / Mathf.Max(0.0001f, Mathf.Abs(s.y)),
+                               b.size.z / Mathf.Max(0.0001f, Mathf.Abs(s.z)));
+            return true;
+        }
+
+        /// <summary>
+        /// WO-1807 acceptance instrument: print the post's FINAL world euler and the clad's
+        /// bounds in Y. One read of a bake log now answers "is any corner post inverted or
+        /// floating" without a device build, a screenshot or an owner playtest.
+        /// </summary>
+        private static void ReportCladPose(GameObject host, GameObject clad)
+        {
+            var rends = clad.GetComponentsInChildren<Renderer>(true);
+            if (rends == null || rends.Length == 0)
+            {
+                FlowTrace.Warn(Sys, $"[wo1807] '{host.name}': clad has NO renderer - nothing to measure.");
+                return;
+            }
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++)
+                if (rends[i] != null) b.Encapsulate(rends[i].bounds);
+
+            var e = host.transform.rotation.eulerAngles;
+            float upDot = Vector3.Dot(clad.transform.up, Vector3.up);
+            float widest = Mathf.Max(b.size.x, b.size.z);
+            float ratio = widest <= 0.0001f ? 0f : b.size.y / widest;
+
+            FlowTrace.Step(Sys, $"[wo1807] pose '{host.name}': hostEuler=({e.x:0.#},{e.y:0.#},{e.z:0.#}) " +
+                                $"cladUpDot={upDot:0.###} boundsY=[{b.min.y:0.##}..{b.max.y:0.##}] " +
+                                $"size={b.size.x:0.##}x{b.size.y:0.##}x{b.size.z:0.##} ratio={ratio:0.##} " +
+                                $"rootRenderer={(host.GetComponent<Renderer>() != null ? "STILL PRESENT" : "none")}");
         }
 
         // -- props ------------------------------------------------------------
