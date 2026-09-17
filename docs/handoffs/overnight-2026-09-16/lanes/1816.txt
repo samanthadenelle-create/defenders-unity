@@ -1,0 +1,6 @@
+Assets/Editor/SyntyCastleUrpMaterials.cs
+Assets/Editor/SyntyCastleUrpMaterials.cs.meta
+Assets/Editor/Regression/SyntyCastleUrpRegression.cs
+Assets/Editor/Regression/SyntyCastleUrpRegression.cs.meta
+WorkOrders/WORK_ORDER_1816_synty_castle_raid_clad_non_urp_shader.md
+WorkOrders/WORK_ORDER_1816_synty_castle_raid_clad_non_urp_shader.RESULT.md

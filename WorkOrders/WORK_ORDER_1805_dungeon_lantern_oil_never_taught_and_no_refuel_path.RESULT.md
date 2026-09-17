@@ -1,6 +1,6 @@
 # WORK ORDER 1805 — RESULT (Lanes A + C implemented; Lane B remains SPEC)
 
-**Status:** IMPLEMENTED, NOT YET GATED
+**Status:** IMPLEMENTED
 **Implemented:** 2026-09-16, branch `dev`, by the WO-1805 implementation lane
 **Gate:** ⛔ **NO UNITY GATE WAS RUN AND NO COMMIT WAS MADE** — per the brief. `COMPILE_GATE_OK`,
 `REGRESSION_OK` and the new suite's own marker are all **unproven**. Every claim below that could be

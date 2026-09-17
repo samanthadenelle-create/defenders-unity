@@ -1,0 +1,7 @@
+Assets/Editor/Regression/HubHuskFreeSceneRegression.cs
+Assets/Editor/Regression/HubHuskFreeSceneRegression.cs.meta
+Assets/Editor/Regression/StructureRemovalHuskRegression.cs
+Assets/Scenes/Main_Castle_Overworld.unity
+Assets/Scenes/NavMesh/NavMesh_OuterWorld_NavMeshSurface.asset
+WorkOrders/WORK_ORDER_1809_castle_hub_ghost_barracks_collider_survives_bake.md
+WorkOrders/WORK_ORDER_1809_castle_hub_ghost_barracks_collider_survives_bake.RESULT.md

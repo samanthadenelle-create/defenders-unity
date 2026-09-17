@@ -1,6 +1,6 @@
 # WORK ORDER 1800 — Big sale signs on the pack cards: a "30% OFF" ribbon, a struck anchor, and the open-wave "flash"
 
-**Status:** IMPLEMENTED, NOT YET GATED
+**Status:** IMPLEMENTED
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** Night Market shelf presentation — `DeNelle.Wallet` (`PackStore.cs`, `StorePackCard.cs`, `PurchaseQuoteService.cs` DTO only) + `DeNelle.Editor` (one regression, one capture entry point). Touches NO `.unity`, NO scene builder, NO art, NO `api/`.
 **Lane disjointness:** file-disjoint from the gate round in flight. Does NOT touch `SafeZoneRecovery.cs`, `WaveManager.cs`, `SmartEnemySpawner.cs`, `RemoteTunables.cs`, `HeroAbilities.cs`, anything under `Troops/`, `Hero/SmartMobileCamera.cs`, or `RaidGarrisonSpawner.cs`.

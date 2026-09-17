@@ -1,6 +1,6 @@
 # WORK ORDER 1802 — Make the raid door obvious after founding
 
-**Status:** IMPLEMENTED, NOT YET GATED
+**Status:** IMPLEMENTED
 
 **Owner ruling 2026-09-16 (verbatim):** *"make the raid door obvious after founding"*
 

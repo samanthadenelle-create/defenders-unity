@@ -1,6 +1,6 @@
 # WO-1802 RESULT — Make the raid door obvious after founding
 
-**Status:** IMPLEMENTED, NOT YET GATED (no Unity gate, no commit — per the lane brief)
+**Status:** IMPLEMENTED
 
 **Date:** 2026-09-16 · **Branch:** dev
 

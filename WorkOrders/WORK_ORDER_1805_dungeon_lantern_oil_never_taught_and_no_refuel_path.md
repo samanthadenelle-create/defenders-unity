@@ -1,6 +1,6 @@
 # WORK ORDER 1805 — The dungeon lantern is never taught, and there is no recourse once it burns out
 
-**Status:** IMPLEMENTED, NOT YET GATED
+**Status:** IMPLEMENTED
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead; this WO does NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** Dungeons — `DeNelle.Dungeons` (lantern / composed host) + `DeNelle.Core.Ops` (tunable rail) + `Assets/Resources|StreamingAssets/Data/Canonical/dialogue/dialogues.json`
 **Lane disjointness:** Lane A + Lane C touch NO `.unity` scene, NO scene builder, NO art. Lane B (SPEC) would touch `Assets/Editor/RoomForge/DungeonBaker.cs` and therefore must NOT run concurrently with any other RoomForge/bake lane.

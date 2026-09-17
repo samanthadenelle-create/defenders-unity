@@ -1,6 +1,6 @@
 # WORK ORDER 1801 — The FIRST-SALE PATH
 
-**Status:** IMPLEMENTED, NOT YET GATED
+**Status:** IMPLEMENTED
 
 **Owner, 2026-09-16, verbatim:** *"yeah cause i just want a first sale you know"*
 

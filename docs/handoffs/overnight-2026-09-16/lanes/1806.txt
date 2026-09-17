@@ -1,0 +1,8 @@
+Assets/_Modules/Village/Hero/AbilityVfxKit.cs
+Assets/_Modules/Village/Vfx/VFXManager.cs
+Assets/_Modules/Village/Buildings/ProjectileVFXCatalog.cs
+Assets/Editor/VfxProofCapture.cs
+Assets/Editor/MagentaMaterialFixer.cs
+Assets/Editor/Regression/VfxParticleNullSlotRegression.cs
+WorkOrders/WORK_ORDER_1806_archer_projectile_vfx_renders_as_flat_untextured_quad.md
+WorkOrders/WORK_ORDER_1806_archer_projectile_vfx_renders_as_flat_untextured_quad.RESULT.md

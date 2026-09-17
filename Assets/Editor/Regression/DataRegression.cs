@@ -347,6 +347,8 @@ namespace DeNelle.Editor
             if (!TowerRespawnRegression.Run(out var towerRespawnReason)) failures.Add(towerRespawnReason); else log.AppendLine("[tower-respawn] " + towerRespawnReason);
             if (!DeNelle.Editor.Regression.HubSceneLiteralRegression.Run(out var hubLiteralReason)) failures.Add(hubLiteralReason); else log.AppendLine("[hub-scene-literal] " + hubLiteralReason);
             if (!DefenseTargetableRegression.Run(out var defTargetReason)) failures.Add(defTargetReason); else log.AppendLine("[def-target] " + defTargetReason);
+            // WO-1808 — an EnemyOwned garrison turret must not shoot through a Structure-layer wall.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "enemy-tower-wall-los suite", () => { if (!DeNelle.Editor.Regression.EnemyTowerWallLosRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[enemy-tower-wall-los] " + r); });
             if (!ArenaPrefabAuditRegression.Run(out var arenaReason)) failures.Add(arenaReason); else log.AppendLine("[arena-prefab] " + arenaReason);
             // --- Wave-1 full-coverage oracles (docs/FULL_COVERAGE_PLAN_2026-07-08.md) ---
             if (!CoreDataHubRegression.Run(out var coreDataHubReason)) failures.Add(coreDataHubReason); else log.AppendLine("[core-datahub] " + coreDataHubReason);
@@ -401,6 +403,11 @@ namespace DeNelle.Editor
             //     `using DeNelle.Editor.Regression;`, so a bare call is CS0103 (the same trap the
             //     note at the pi-ad-reward line below records from the other direction).
             if (!DeNelle.Editor.Regression.FirstSalePathRegression.Run(out var firstSaleReason)) failures.Add(firstSaleReason); else log.AppendLine("[first-sale-path] " + firstSaleReason);
+            // --- WO-1815: the store is SKR-ONLY at FLAT amounts (owner: "change the store to SKR only
+            //     and set to flat amounts"). Pins the ladder, the shared-USD-anchor cohorts, both
+            //     packs.json copies, the GENERATED SERVER MIRROR (the only reason an authored figure may
+            //     be printed at all), the SKR-only shelf copy, and the 30% sale's sign + both figures. ---
+            if (!DeNelle.Editor.Regression.StoreSkrFlatLadderRegression.Run(out var skrFlatReason)) failures.Add(skrFlatReason); else log.AppendLine("[skr-flat-ladder] " + skrFlatReason);
             // --- WO-912 sec.10.5: the ad provider stays BEHIND IAdService (registered BEFORE any SDK) ---
             if (!AdServiceSeamRegression.Run(out var adSeamReason)) failures.Add(adSeamReason); else log.AppendLine("[ad-seam] " + adSeamReason);
             // --- WO-1320: a Pi rewarded ad pays out ONLY after /api/pi/ads-verify answers
@@ -418,9 +425,11 @@ namespace DeNelle.Editor
             if (!BattleQuiescenceRegression.Run(out var quiescenceReason)) failures.Add(quiescenceReason); else log.AppendLine("[battle-quiescence] " + quiescenceReason);
             if (!KnightDirectionalDeathRegression.Run(out var knightDeathReason)) failures.Add(knightDeathReason); else log.AppendLine("[knight-directional-death] " + knightDeathReason);
             if (!DeNelle.Editor.Regression.ArmyMusterLayoutRegression.Run(out var armyMusterLayoutReason)) failures.Add(armyMusterLayoutReason); else log.AppendLine("[army-muster-layout] " + armyMusterLayoutReason);
+            if (!DeNelle.Editor.Regression.ArmyScreenCopyRegression.Run(out var armyScreenCopyReason)) failures.Add(armyScreenCopyReason); else log.AppendLine("[army-screen-copy] " + armyScreenCopyReason);
             if (!StructureSeatRegression.Run(out var seatReason)) failures.Add(seatReason); else log.AppendLine("[structure-seat] " + seatReason);
             if (!StructureRemovalHuskRegression.Run(out var removalHuskReason)) failures.Add(removalHuskReason); else log.AppendLine("[removal-husk] " + removalHuskReason);
             if (!StructureFeedbackRegression.Run(out var structFeedbackReason)) failures.Add(structFeedbackReason); else log.AppendLine("[structure-feedback] " + structFeedbackReason);
+            if (!FeedbackLabelSizeRegression.Run(out var feedbackLabelSizeReason)) failures.Add(feedbackLabelSizeReason); else log.AppendLine("[feedback-label-size] " + feedbackLabelSizeReason);
             if (!WallDurabilityRegression.Run(out var wallDurabilityReason)) failures.Add(wallDurabilityReason); else log.AppendLine("[wall-durability] " + wallDurabilityReason);
             if (!StructureCadenceRegression.Run(out var cadenceReason)) failures.Add(cadenceReason); else log.AppendLine("[structure-cadence] " + cadenceReason);
             if (!StructureLoadBoundedRegression.Run(out var loadBoundedReason)) failures.Add(loadBoundedReason); else log.AppendLine("[structure-load-bounded] " + loadBoundedReason);
@@ -772,6 +781,24 @@ namespace DeNelle.Editor
             // inside solid geometry: the device read routeObj=PathPartial 1650 times and PathComplete ZERO.
             // Opens each raid scene Single and restores the prior active scene.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-keep-reach suite", () => { if (!DeNelle.Editor.Regression.RaidKeepReachRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-keep-reach] " + r); });
+            // WO-1807 - the owner played a raid whose corner posts read as "upside down" and whose
+            // towers read as "inverted". Cause: RaidBaseDresser.ReplaceChildrenWith destroyed only
+            // CHILDREN, and the clad prefabs carry their mesh on the ROOT, so the Synty clad was
+            // STACKED on the polyperfect original. The natural pins (up-vector, seat height) were
+            // GREEN on that bake - the load-bearing pin is "no renderer on the host root". Opens
+            // each baked raid scene Single and restores the prior active scene, same as above.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-post-orientation suite", () => { if (!DeNelle.Editor.Regression.RaidPostOrientationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-post-orientation] " + r); });
+            // WO-1816 (2026-09-16): every Synty material outside FX/Flags must be on a URP shader - the synty-castle raid clad rendered as the pink fallback on device.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "synty-castle-urp suite", () => { if (!DeNelle.Editor.SyntyCastleUrpRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[synty-castle-urp] " + r); });
+            // WO-1812 - a raid WallSegment NEVER runs Configure()/RebuildCollider (WallSegment.cs:511-512),
+            // and Awake (:626-629) sets no layer, so the BAKE is the only author of each raid wall's collider
+            // height and physics layer. DefenseTower.BlockedByWallAt linecasts on the "Structure" mask from
+            // position + up*2, so a wall shorter than its art or off that layer is invisible to the turret
+            // while the player sees stone - the WO-1808 "shooting through the wall" symptom. This measures the
+            // BAKED scenes and prints one [raid-wall-audit] line per scene with the muzzle margin. Opens each
+            // raid scene Single and restores the prior active scene (an EMPTY one when none was open, so the
+            // raid colliders cannot leak into the next suite's physics queries).
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-wall-audit suite", () => { if (!DeNelle.Editor.Regression.RaidWallColliderAuditRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-wall-audit] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "reset-full-clear suite", () => { if (!DeNelle.Editor.Regression.ResetToNewGameFullClearRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[reset-full-clear] " + r); });
             // WO-1371 — the OTHER axis. reset-full-clear sweeps GameState FIELDS and says in its own
             // comments that a PlayerPrefs store "is not one"; this sweeps those stores, which is where
@@ -1564,6 +1591,8 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "heartfire suite", () => { if (!DeNelle.Editor.Regression.HeartfireRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[heartfire] " + r); });
             // --- WO-1419 the Heart plate paints flame ICONS (ember medallion), not [*] [ ] ASCII pips ---
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "heartfire-pips suite", () => { if (!DeNelle.Editor.Regression.HeartfirePipsRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[heartfire-pips] " + r); });
+            // --- WO-1810 losing a raid COSTS troops: killed stay dead, a fail loses the warband, a retreat 60% of the survivors ---
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-casualty suite", () => { if (!DeNelle.Editor.Regression.RaidCasualtyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-casualty] " + r); });
 
             // 2026-09-04 (coverage audit before the production regression): commit 1ef5f6ad4 added
             // fourteen suites and registered FOUR. The ten below existed on disk, compiled (or did
@@ -1974,6 +2003,13 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "glyph-coverage suite", () => { if (!DeNelle.Editor.Regression.GlyphCoverageRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[glyph-coverage] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "combat-flee-localization suite", () => { if (!DeNelle.Editor.Regression.CombatHudFleeLocalizationRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[combat-flee-localization] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "play-localization-variant-policy suite", () => { if (!DeNelle.Editor.Regression.GooglePlayLocalizationVariantPolicyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[play-localization-variant-policy] " + r); });
+
+            // WO-1809 — the hub scene may not carry an invisible-but-solid barracks, nor an unseen
+            // large navmesh carve. Registered HERE, immediately above blank-start-census, because
+            // it too opens the hub in Single mode: the two scene-openers sit together at the end of
+            // the run, each re-opening the hub for itself, so neither can disturb a suite that
+            // censuses a different world. Nothing may be registered BELOW the next line.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "hub-husk-free suite", () => { if (!DeNelle.Editor.Regression.HubHuskFreeSceneRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[hub-husk-free] " + r); });
 
             // LAST LINE ABOVE THE END FENCE, DELIBERATELY: this suite opens
             // Main_Castle_Overworld in Single mode, so any suite registered after it would

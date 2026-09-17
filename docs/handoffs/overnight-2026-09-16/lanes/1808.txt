@@ -1,0 +1,5 @@
+Assets/_Modules/Village/Buildings/DefenseTower.cs
+Assets/Editor/Regression/EnemyTowerWallLosRegression.cs
+Assets/Editor/Regression/EnemyTowerWallLosRegression.cs.meta
+WorkOrders/WORK_ORDER_1808_enemy_tower_fires_through_standing_wall.md
+WorkOrders/WORK_ORDER_1808_enemy_tower_fires_through_standing_wall.RESULT.md

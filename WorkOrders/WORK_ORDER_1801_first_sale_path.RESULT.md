@@ -1,6 +1,6 @@
 # WORK ORDER 1801 — RESULT
 
-**Status:** IMPLEMENTED, NOT YET GATED (no Unity gate, no commit — this lane holds neither)
+**Status:** IMPLEMENTED
 **Date:** 2026-09-16
 **Branch:** dev (working tree; nothing committed by this lane)
 

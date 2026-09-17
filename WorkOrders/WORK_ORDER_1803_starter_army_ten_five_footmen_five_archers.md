@@ -1,6 +1,6 @@
 # WORK ORDER 1803 — The starter army becomes TEN: five Footmen and five Archers
 
-**Status:** IMPLEMENTED, NOT YET GATED
+**Status:** IMPLEMENTED
 
 **Owner ruling 2026-09-16 (verbatim):** *"Instead of giving them three troops, because that's shit,
 let's give them ten troops. Let's give them five footmen and five archers."*

@@ -1,0 +1,2 @@
+Assets/Editor/CollectorStackPropCatalogBuilder.cs
+Assets/Resources/Collectors/CollectorStackPropCatalog.asset

@@ -189,7 +189,69 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-ninth pass): main line next free = **1806**.
+> ## RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-eighth pass): main line next free = **1820**.
+> *(Lead PRE-ASSIGNED **1818** api/ quotes flat SKR (`skrFlat` from the generated sku catalog; ceil(flat*(10000-bps)/10000);
+> rate null / rateSource 'flat-skr'; no coingecko dependency for flat SKUs; tests) - WO-1815 follow-up, the shelf shows
+> flat SKR while the served quote is still rate-derived; and **1819** store shelf polish after the flat-SKR captures:
+> walletless banner still says "prices shown in USD" (10 locales), "Raise the Barracks" truncates 14/16 glyphs, the
+> 30% OFF tag fill is 1.20:1 against the card so it reads as text not a sign (owner: "big sales signs ... some flash").
+> Bumped 1818 -> 1820 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-seventh pass): main line next free = **1818**.
+> *(Lead PRE-ASSIGNED **1816** synty-castle raid clad renders on the non-URP shader 'Synty/Generic_Basic' (material
+> Castle_Wall_01; device RaidArt census #3-#11 on every CornerPost_* in RaidBase_fortified_garrison, build 372984 19:55;
+> WO-1807 saw it solid yellow in editor frames) and **1817** watchtower height fit: PlaceTowerProp scales the host to
+> 4.80 m while the clad renders 7.52 m (WO-1807 NOT PROVEN #4). Bumped 1816 -> 1818 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-sixth pass): main line next free = **1816**.
+> *(Lead PRE-ASSIGNED **1815** store goes SKR-ONLY at FLAT amounts and the sale promo is proven by screenshots - owner
+> 2026-09-16 ~21:25 before bed: "change the store to SKR only and set to flat amounts" / "and test with sales promos" /
+> "so you can see screenshots of discounts"; earlier ladder ruling "100 200 300 500 9999". Bumped 1815 -> 1816 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-fifth pass): main line next free = **1815**.
+> *(Lead PRE-ASSIGNED **1813** white untextured quad on the hero during a fireball cast + level-up (owner screenshot
+> logs/device/owner-fireball-20260916/Screenshot_20260916-205131.png at 20:51:31; plays at that instant: Juice_LevelUp at the
+> hero, Death_Brute 2.2 m away, Impact_Physical, Cast_FireCharge one second earlier) and **1814** the 'LEVEL UP!  Lv.8'
+> feedback text label renders as screen-spanning green letters (same screenshot; [Flow:Feedback] text label spawned).
+> Bumped 1813 -> 1815 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-fourth pass): main line next free = **1813**.
+> *(Lead PRE-ASSIGNED **1812** raid wall collider-vs-art audit oracle - WO-1808 follow-up: raid WallSegments never run
+> Configure()/RebuildCollider (WallSegment.cs:511-512) and Awake (:626-629) sets no layer, so height + layer are whatever
+> the generator baked; six enemy watchtowers have a 0.50 m muzzle margin under a 5.00 m wall top, so a collider shorter
+> than the art makes "over the wall" real. Bumped 1812 -> 1813 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-third pass): main line next free = **1812**.
+> *(Lead PRE-ASSIGNED **1811** the Armies - Loadouts screen is not understandable - owner 2026-09-16 20:15 on the device:
+> "the armies training screen is where im confused, i have no way to understand it" / "catch this screen and make it
+> simpler, if i cant understand it noone else will". Capture logs/device/seeker-army-2010.png. ArmyMusterPanel.cs +
+> ArmyMusterVM.cs. Bumped 1811 -> 1812 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-second pass): main line next free = **1811**.
+> *(Lead PRE-ASSIGNED **1810** raid loss has no cost - owner ruling 2026-09-16 20:05: any troop killed in a raid is DEAD
+> (no wounded/recovery return); a FAILED raid (timeout or wipe) loses 100% of the deployed warband; a RETREAT loses 60% of
+> the survivors; the player rebuilds at the barracks. Device evidence: `raid-end reconcile - deployed 10, survivors 7,
+> wounded 3 (stars 0, recovery 1200s)` then `army status -> NOT READY (deployable 7 + queued 0 / cap 10)` and the army
+> screen reading 10/10 slots one minute later. Bumped 1810 -> 1811 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-first pass): main line next free = **1810**.
+> *(Lead PRE-ASSIGNED three numbers off the owner's 19:55 Forsaken Camp raid on build 372984 and her castle-hub report:
+> **1807** raid corner posts / watchtowers read INVERTED (owner: "corners seem upside down... towers are inverted";
+> scene RaidBase_fortified_garrison, CornerPost_* = Structures/Tower_Medieval_Wood via RaidBaseGenerator.PlaceCornerTower,
+> device log logs/device/raid-window-1955.txt); **1808** enemy-owned DefenseTower fires THROUGH a standing wall
+> (107 FireAtParty (EnemyOwned) calls and ZERO [Flow:TowerLoS] lines in the same window - BlockedByWall is only
+> called from the player-owned pick at DefenseTower.cs:894); **1809** Main_Castle_Overworld still carries the
+> WO-1716 CastleBarracks husk (PrefabInstance 1439394418: MeshRenderer+MeshFilter stripped, polyperfect MeshCollider
+> &... !u!64 NOT stripped, scale 0.6/0.9/0.6 at (16,0,-4)). Bumped 1807 -> 1810 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirtieth pass): main line next free = **1807**.
+> *(Lead PRE-ASSIGNED **1806** (owner F8 flag on build 372984 in the Forsaken Camp raid: archer/projectile
+> VFX renders as large flat untextured grey quads with yellow streaks - screenshot
+> logs/f8-inbox/device/SM02G4061955851/flags-20260917/flag_20260917-003653_00.png; the raid window's plays
+> were FireArrow x36 via RangedAttackVFX pooled-vfx, Explosion_Storm x69, Projectile_Storm x8, Spear_Impact x25).
+> Bumped 1806 -> 1807 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-ninth pass): main line next free = **1806**.
 > *(Lead PRE-ASSIGNED **1805** (owner: the dungeon lantern/torch is never taught - "nobody understands why
 > the torch runs out and why it suddenly becomes dark" - and players need a way to get more oil/torch
 > materials and use them; "a bug that I didn't want to report"). Bumped 1805 -> 1806 in this SAME edit.)*

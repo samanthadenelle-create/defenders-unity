@@ -1,6 +1,6 @@
 # WORK ORDER 1804 - Enemy Battle Plans (wave 2) + Bastion Plans (dungeon boss): two plans drops that introduce raiding
 
-**Status:** IMPLEMENTED, NOT YET GATED
+**Status:** IMPLEMENTED
 **Silo:** Progression / Raids (Village) - file-disjoint from WO-1802 (TutorialFlow / PlayerDeckWorkspace) and WO-1803 (StarterArmy grant)
 **Opened:** 2026-09-16
 **Number:** PRE-ASSIGNED by the lead. `CLI_LANES_WO_NUMBERS.md` was NOT touched by this lane.
