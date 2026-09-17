@@ -413,7 +413,30 @@ namespace DeNelle.Wallet
             // rots. Re-worded with packs.json's own `currencyDisclaimer` on 2026-09-16 (WO-1815): the old
             // "Token price moves with the market." reads as a disclaimer about the PRICE, which under a
             // flat SKR ladder no longer moves - what moves is the token's value behind it.
+            //
+            // ⛔ WO-1832 (2026-09-17) — THE SPELLING IS PER-ARTIFACT AND THAT IS NOT COSMETIC.
+            // IL2CPP writes EVERY string literal into global-metadata.dat whether its branch can run
+            // or not, so this one sentence was the SOLE live `skr` hit in the 2026-09-17 rejected Play
+            // AAB — MEASURED at offset 1,114,669 of
+            // base/assets/bin/Data/Managed/Metadata/global-metadata.dat, reading
+            // "...Priced in Pi when you tap Buy.Priced in SKR - token value moves.Primary Touch...".
+            // The gate's binary matcher fires on it (trailing boundary is the space, printable run 34)
+            // and rejects the artifact with PLAY_ARTIFACT_DIRTY token:skr. WO-1815's reword was
+            // correct for the shelf and simply did not know the sentence ships as metadata.
+            //
+            // SAFE IN BOTH DIRECTIONS, proven rather than assumed: every consumer of this property is
+            // in DeNelle.Wallet — PackStore.cs:1559, StoreLegalFooter.cs:104 and :126 — and
+            // Assets/_Modules/Wallet/DeNelle.Wallet.asmdef carries "!GOOGLE_PLAY", so NOTHING in a
+            // Play player reads this string. The Play arm is therefore unobservable in the shipped
+            // game; it is kept NON-EMPTY because PackCatalogTest.cs:193 asserts non-empty and an
+            // editor compile can carry -ExtraScriptingDefines GOOGLE_PLAY (FeatureFlags.cs:1651).
+            // The dApp Store / Seeker build is UNCHANGED — it takes the #else arm verbatim.
+            // Pinned two-sided by PlayMetadataIdentifierRegression's LiteralFreeUnderPlay.
+#if GOOGLE_PLAY
+            get { EnsureLoaded(); return _data.CurrencyDisclaimer ?? "Priced by the store at checkout."; }
+#else
             get { EnsureLoaded(); return _data.CurrencyDisclaimer ?? "Priced in SKR - token value moves."; }
+#endif
         }
 
         /// <summary>

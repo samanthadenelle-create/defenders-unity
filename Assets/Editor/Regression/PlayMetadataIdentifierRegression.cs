@@ -91,6 +91,8 @@ namespace DeNelle.Editor.Regression
         private const string StakeResolverRel = "Assets/_Modules/Core/Platform/StakeRewardsResolver.cs";
         private const string StakeSnapshotRel = "Assets/_Modules/Core/Platform/VerifiedStakeSnapshot.cs";
         private const string ArenaWalletRel   = "Assets/_Modules/Village/Arena/ArenaWalletService.cs";
+        // WO-1832. The one live `skr` literal in the 2026-09-17 rejected Play AAB.
+        private const string PackCatalogRel   = "Assets/_Modules/Commerce/PackCatalog.cs";
 
         /// <summary>
         /// WO-1759. One entry of case 4: a file whose GOOGLE_PLAY arm must carry NO string
@@ -192,6 +194,31 @@ namespace DeNelle.Editor.Regression
             // so the Play arm spells it differently and the dApp arm keeps the ruled key.
             new Pin(ArenaWalletRel,   @"""dotr-arena-skr-balance""",
                     "ArenaWalletService.PrefBalanceKey = \"dotr-arena-skr-balance\" (the WO-1366 s4 ruled key)"),
+
+            // ── WO-1832 ────────────────────────────────────────────────────────────────
+            // MEASURED, not assumed, and it is the WHOLE `skr` line of the 2026-09-17
+            // rejection. The gate's matcher was ported and run over the rejected artifact's
+            // global-metadata.dat (19,991,740 bytes): EXACTLY ONE live `skr` hit, at offset
+            // 1,114,669, reading "...Priced in Pi when you tap Buy.Priced in SKR - token value
+            // moves.Primary Touch...". Its source is PackCatalog.CurrencyDisclaimer's fallback
+            // sentence, re-worded into this spelling by WO-1815 on 2026-09-16; before that it
+            // read "Token price moves with the market." and carried no token at all.
+            //
+            // ⚠ THIS FILE IS DELIBERATELY *NOT* IN LiteralFreeUnderPlay, and the reason is a
+            // real difference between two matchers. Case 4c flags ANY `skr` inside a shipped
+            // literal body, while the GATE additionally requires a trailing word boundary and a
+            // printable run >= 12 in a binary entry. PackCatalog.cs keeps two JSON-key literals
+            // that must survive on BOTH variants - [JsonProperty("skr")] at :78 and
+            // [JsonProperty("skrFlat")] at :98, the deserialization keys packs.json is authored
+            // against - and neither can fire the gate ("skr" is a 3-character run; "skrFlat"
+            // fails the trailing boundary on its F). Pinning this file into case 4 would have
+            // gone red on working code that no artifact scan objects to. The two-sided Pin below
+            // is the precise instrument: the sentence must be GONE under GOOGLE_PLAY (case 1)
+            // and must still be there for the Seeker build (case 2). The Play-side neutral
+            // carrier is asserted separately, by GooglePlayPackagingRegression.
+            new Pin(PackCatalogRel,   @"""Priced in SKR - token value moves\.""",
+                    "PackCatalog.CurrencyDisclaimer's SKR fallback sentence (WO-1832: the sole " +
+                    "live `skr` literal in the 2026-09-17 Play AAB, at metadata offset 1,114,669)"),
         };
 
         /// <summary>Standalone batch entry - prints the marker.</summary>

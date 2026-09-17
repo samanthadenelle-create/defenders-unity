@@ -189,7 +189,27 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-seventh pass): main line next free = **1832**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-ninth pass): main line next free = **1834**.
+> *(Lead PRE-ASSIGNED **1833** a promo code (e.g. SPOTLIGHT30) can grant a personal, time-limited storefront
+> discount, not just a one-time currency/pack reward - owner ruling 2026-09-17: 48 hours from redemption; discount
+> vs. the concurrent global sale (store.saleBps) is "best discount wins", not additive, as the lead's stated default.
+> Confirmed at source: promo_codes (api/schema.sql:431-449) and api/promo/redeem.js only ever grant a fixed one-time
+> reward (crystals/coins/a pack's contents) - there is no discount-percent code type anywhere in the schema or the
+> quote path (api/purchases/quote.js, same file WO-1818 touched last night for flat SKR). Bumped 1833 -> 1834 in this
+> SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-eighth pass): main line next free = **1833**.
+> *(Lead PRE-ASSIGNED **1832** the Google Play AAB is rejected again - PLAY_ARTIFACT_DIRTY names
+> base/assets/Data/Canonical/packs.json token:skr (the existing GooglePlayContentExclusion transform strips the old
+> `pricing.skr` field but WO-1815's new `pricing.skrFlat` field, added the same night, contains "skr" as a substring
+> and re-trips the scan) and base/assets/bin/Data/Managed/Metadata/global-metadata.dat token:skr (a compiled C# symbol
+> from the WO-1815/1818 client pricing work, in an assembly that ships identically to both Play and the dApp Store, so
+> the old WO-1740 assembly-exclusion pattern does not apply). Quarantined artifact:
+> Builds/Android/rejected/EchoesOfElarion-GooglePlay-20260917-115237.REJECTED.aab. Per WO-1740's binding ruling the
+> gate is not the defect and must not be weakened; only Play strips SKR, the dApp Store keeps it. Bumped 1832 -> 1833
+> in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-seventh pass): main line next free = **1832**.
 > *(Lead PRE-ASSIGNED **1830** raid defenders never react to the spire being attacked, only to the hero personally
 > entering their own individual leash radius - owner: "when the player starts attacking the spire in a raid an alarm
 > goes off and all the defenders start walking to the base to protect it" / "right now they just sit inside there

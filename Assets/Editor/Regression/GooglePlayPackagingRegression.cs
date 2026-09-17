@@ -290,12 +290,20 @@ namespace DeNelle.Editor
                     "Play localization policy lost its visible hero-title replacement", failures);
             Require(content, "GooglePlayLocalizationVariant.AssertPrepared()",
                     "BuildPlayer content hook no longer requires the pre-Addressables localization variant", failures);
-            Require(content, "pricing?.Property(\"usdc\")?.Remove()",
-                    "Play-neutral pack rewrite no longer removes only wallet price rails", failures);
-            Require(content, "pricing?.Property(\"sol\")?.Remove()",
-                    "Play-neutral pack rewrite no longer removes SOL pricing", failures);
-            Require(content, "pricing?.Property(\"skr\")?.Remove()",
-                    "Play-neutral pack rewrite no longer removes SKR pricing", failures);
+            // WO-1832 (2026-09-17) re-point: the old pin checked for three hardcoded
+            // Property("usdc"/"sol"/"skr").Remove() calls, which the lane deliberately
+            // replaced with a general name-token rule (any pricing rail whose KEY NAME
+            // carries a forbidden token is removed) so a rail added after this file was
+            // written is covered the day it lands, not just the three named at write time.
+            // Re-pointed to the new shape rather than restating the retired one - see
+            // GooglePlayContentExclusion.cs's own WO-1832 comment for the full reasoning
+            // and the measured proof (27 live "skr" hits in packs.json, all "skrFlat").
+            Require(content, "pricing.Property(\"sol\")?.Remove()",
+                    "Play-neutral pack rewrite no longer removes SOL pricing (the one rail whose name " +
+                    "carries no forbidden token, so the general name-token rule cannot reach it)", failures);
+            Require(content, "ContainsForbiddenAuthoringToken(rail.Name)",
+                    "Play-neutral pack rewrite no longer removes every pricing rail whose name carries " +
+                    "a forbidden token - the general rule that replaced the three hardcoded key checks", failures);
             Require(content, "RewriteLedgerPath", "Play-neutral rewrite has no crash-safe ledger", failures);
             Require(content, "File.WriteAllBytes(backup, File.ReadAllBytes(path))",
                     "Play-neutral rewrite no longer backs up original bytes", failures);
@@ -329,6 +337,39 @@ namespace DeNelle.Editor
                     "interrupted-build repair no longer announces itself", failures);
             Require(build, "GooglePlayContentExclusion.EnsureTreeIsWhole()",
                     "AndroidBuild no longer sweeps a leftover quarantine before the content build", failures);
+
+            // ── WO-1832 (2026-09-17) ────────────────────────────────────────────────────
+            // The 2026-09-17 Play AAB was rejected on two `skr` offenders, and both were the
+            // SAME failure wearing two hats: a hand-maintained list of names tracking live
+            // authoring. Fix 1 replaced three hardcoded pricing keys with a rule that reads the
+            // gate's own vocabulary; fix 2 split one C# literal per artifact. These pins keep
+            // both, and the post-condition that makes the key class unshippable.
+            Require(content, "ContainsForbiddenAuthoringToken(rail.Name)",
+                    "the packs.json pricing transform no longer removes rails BY NAME. It is back to a " +
+                    "hardcoded key list, which is exactly how WO-1815's `pricing.skrFlat` shipped 27 " +
+                    "times into base/assets/Data/Canonical/packs.json and failed the artifact gate",
+                    failures);
+            Require(content, "PLAY_NEUTRAL_RESIDUAL_KEY",
+                    "GooglePlayContentExclusion no longer asserts that NO object key carries a forbidden " +
+                    "token after the neutral transform. That post-condition is the only thing standing " +
+                    "between a newly authored SKR schema key and a silently dirty Play AAB", failures);
+            Require(content, "AssertNoResidualForbiddenKey(root, file, string.Empty)",
+                    "the residual-key post-condition is declared but never CALLED on the rewritten catalog",
+                    failures);
+
+            string packCatalog = Read("Assets/_Modules/Commerce/PackCatalog.cs", failures);
+            Require(packCatalog, "\"Priced by the store at checkout.\"",
+                    "PackCatalog.CurrencyDisclaimer has no Play-neutral fallback sentence. PlayMetadataIdentifier" +
+                    "Regression asserts the SKR spelling is ABSENT under GOOGLE_PLAY, and an absence means " +
+                    "nothing if the carrier vanished - this is the positive half of that pair, and it must " +
+                    "stay NON-EMPTY because PackCatalogTest asserts the property is non-empty", failures);
+            Require(packCatalog, "#if GOOGLE_PLAY",
+                    "PackCatalog.cs no longer splits its disclaimer fallback per artifact. IL2CPP writes " +
+                    "every literal into global-metadata.dat whether its branch can run or not, so a single " +
+                    "unsplit \"Priced in SKR\" sentence is enough to fail PLAY_ARTIFACT_DIRTY token:skr - " +
+                    "measured at offset 1,114,669 of the 2026-09-17 rejected AAB", failures);
+
+            CheckSweptCatalogKeys(failures);
 
             int sweepAt = build.IndexOf("GooglePlayContentExclusion.EnsureTreeIsWhole()", StringComparison.Ordinal);
             int contentAt = build.IndexOf("AddressablesContentBuild.EnsureBuilt", StringComparison.Ordinal);
@@ -365,6 +406,132 @@ namespace DeNelle.Editor
             if (failures.Count == 0) return true;
             reason = "PLAY_PACKAGING_GATE_FAIL: " + string.Join(" | ", failures);
             return false;
+        }
+
+        // =====================================================================
+        //  WO-1832 - THE DATA HALF: a forbidden-token KEY in a swept catalog
+        // =====================================================================
+
+        /// <summary>
+        /// Every canonical catalog the Play-neutral sweep rewrites, both mirrors. Kept in the
+        /// SAME ORDER as <c>GooglePlayContentExclusion.PlayNeutralMirrorPairs</c>, which is
+        /// <c>internal</c> to <c>DeNelle.Editor</c> and therefore unreachable from this assembly
+        /// (<c>DeNelle.EditorRegression</c> does not reference it - the reference runs the other
+        /// way). That is a real duplication and it is bounded on purpose: the list below is
+        /// asserted to be COMPLETE against the exclusion's own source text, so it cannot drift
+        /// silently the way the key names it polices did.
+        /// </summary>
+        private static readonly string[] SweptCatalogs =
+        {
+            "canon-strings.json", "packs.json", "siege-stakes.json",
+            "ad-placements.json", "structures-catalog.json",
+        };
+
+        /// <summary>
+        /// WO-1832. A forbidden-token OBJECT KEY in a swept catalog is only safe when the Play
+        /// transform actually removes it, and there are exactly two ways it does:
+        /// <list type="number">
+        /// <item>the key is a pricing RAIL - a direct child of a <c>pricing</c> object - which the
+        /// packs block removes by NAME; or</item>
+        /// <item>the key sits in an <c>_</c>-prefixed authoring container AND its own value also
+        /// carries a token, so the value sweep removes the whole property.</item>
+        /// </list>
+        /// Anything else ships the key as text and fails the artifact gate.
+        /// <para>
+        /// ⛔ WHY THIS IS HEADLESS AND NOT LEFT TO THE BUILD. The build-time post-condition
+        /// (<c>PLAY_NEUTRAL_RESIDUAL_KEY</c>) is the enforcement, and it is stronger than this
+        /// check - but it only runs inside a Play AAB build, which costs minutes and a
+        /// bundletool pass. WO-1815 authored <c>pricing.skrFlat</c> on 2026-09-16 and the defect
+        /// surfaced the NEXT DAY at 11:52 from an artifact scan. This case is the same finding
+        /// available in the seconds that <c>DataRegression</c> takes.
+        /// </para>
+        /// <para>
+        /// MEASURED 2026-09-17 by porting the gate's readable-mode matcher and walking all five
+        /// catalogs in both mirrors: 84 token-bearing keys per mirror, and every one of them is
+        /// covered - 81 pricing rails (<c>skr</c>, <c>skrFlat</c>, <c>usdc</c> x 27 packs) and 3
+        /// <c>_schemaNotes</c> entries whose values also carry tokens. So this case is neither
+        /// vacuous nor red on today's tree.
+        /// </para>
+        /// </summary>
+        private static void CheckSweptCatalogKeys(List<string> failures)
+        {
+            string exclusion = Read("Assets/Editor/GooglePlayContentExclusion.cs", failures);
+            foreach (string file in SweptCatalogs)
+            {
+                if (!exclusion.Contains("Data/Canonical/" + file))
+                    failures.Add("WO-1832 catalog list drift: this oracle polices '" + file +
+                                 "' but GooglePlayContentExclusion.cs no longer names it. Either the " +
+                                 "catalog left the sweep (then drop it here in the same change) or the " +
+                                 "path moved (then move it here) - a list that polices a file nobody " +
+                                 "sweeps proves nothing.");
+            }
+
+            foreach (string root in new[] { "Assets/Resources/Data/Canonical/",
+                                            "Assets/StreamingAssets/Data/Canonical/" })
+            {
+                foreach (string file in SweptCatalogs)
+                {
+                    string path = root + file;
+                    if (!File.Exists(path))
+                    {
+                        failures.Add("WO-1832: swept catalog missing: " + path);
+                        continue;
+                    }
+
+                    Newtonsoft.Json.Linq.JObject parsed;
+                    try { parsed = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(path)); }
+                    catch (Exception ex)
+                    {
+                        failures.Add("WO-1832: " + path + " did not parse: " + ex.Message);
+                        continue;
+                    }
+
+                    WalkKeys(parsed, path, string.Empty, string.Empty, failures);
+                }
+            }
+        }
+
+        private static void WalkKeys(Newtonsoft.Json.Linq.JToken node, string path,
+                                     string keyPath, string parentKey, List<string> failures)
+        {
+            if (node is Newtonsoft.Json.Linq.JObject obj)
+            {
+                foreach (Newtonsoft.Json.Linq.JProperty property in obj.Properties())
+                {
+                    string here = string.IsNullOrEmpty(keyPath)
+                        ? property.Name : keyPath + "." + property.Name;
+
+                    if (GooglePlayPackagingGate.ContainsForbiddenAuthoringToken(property.Name))
+                    {
+                        bool isPricingRail = string.Equals(parentKey, "pricing", StringComparison.Ordinal);
+                        bool isRemovedNote =
+                            parentKey.StartsWith("_", StringComparison.Ordinal) &&
+                            GooglePlayPackagingGate.ContainsForbiddenAuthoringToken(
+                                property.Value == null ? string.Empty : property.Value.ToString());
+
+                        if (!isPricingRail && !isRemovedNote)
+                            failures.Add("WO-1832 FORBIDDEN CATALOG KEY: " + path + " -> '" + here +
+                                         "'. The Play-neutral sweep rewrites string VALUES and never " +
+                                         "renames a key, and this key is in neither place that removes " +
+                                         "one: it is not a `pricing` rail (removed by name) and not an " +
+                                         "'_'-container entry whose value also carries a token (removed " +
+                                         "whole). As authored it ships as text into " +
+                                         "base/assets/Data/Canonical/" + Path.GetFileName(path) +
+                                         " and GooglePlayPackagingGate rejects the AAB. Fix it at the " +
+                                         "source - rename the key for ALL builds so both mirrors and " +
+                                         "api/_lib/sku-catalog.generated.json stay in step - or move it " +
+                                         "under `pricing`. Do NOT add a Play-only key rename: the " +
+                                         "mirrors must stay byte-identical.");
+                    }
+
+                    WalkKeys(property.Value, path, here, property.Name, failures);
+                }
+                return;
+            }
+
+            if (node is Newtonsoft.Json.Linq.JArray array)
+                for (int i = 0; i < array.Count; i++)
+                    WalkKeys(array[i], path, keyPath + "[" + i + "]", parentKey, failures);
         }
 
         private static void RequireSha256(string path, string expected, string message, List<string> failures)

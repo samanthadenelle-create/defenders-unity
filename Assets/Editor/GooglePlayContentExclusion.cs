@@ -386,9 +386,33 @@ namespace DeNelle.Editor
                             foreach (JObject pack in (root["packs"] as JArray ?? new JArray()).OfType<JObject>())
                             {
                                 JObject pricing = pack["pricing"] as JObject;
-                                pricing?.Property("usdc")?.Remove();
-                                pricing?.Property("sol")?.Remove();
-                                pricing?.Property("skr")?.Remove();
+                                if (pricing == null) continue;
+
+                                // ⛔ WO-1832 (2026-09-17). THIS USED TO BE THREE HARDCODED KEY NAMES -
+                                // "usdc", "sol", "skr" - AND THAT IS THE BUG, NOT THE KEYS IT LISTED.
+                                // WO-1815 added `pricing.skrFlat` to all 27 priced packs on 2026-09-16.
+                                // The gate matches a SUBSTRING under a leading-boundary rule, and a
+                                // readable entry (Data/Canonical/*.json) carries NO trailing-boundary
+                                // rule, so `"skrFlat"` fires on the bare `skr` token exactly as `"skr"`
+                                // did - while `Property("skr")?.Remove()` removed only the exact name.
+                                // MEASURED from the rejected artifact: 27 LIVE `skr` hits in
+                                // base/assets/Data/Canonical/packs.json, every one of them a `skrFlat`
+                                // key (offsets 4206 ... 40094). A hardcoded key list is DUPLICATED
+                                // STATE - the identical failure CLAUDE.md s2/s5/s16 each describe - so
+                                // the rule now READS the gate's own vocabulary instead of restating it:
+                                // any pricing RAIL whose KEY NAME carries a forbidden token is removed,
+                                // and a rail added tomorrow is covered the day it lands.
+                                //
+                                // `sol` stays EXPLICIT because its name carries no forbidden token
+                                // ("solana" does; "sol" does not), so the name rule cannot reach it -
+                                // verified by running the gate's readable matcher over the name.
+                                // `usd` deliberately SURVIVES: it is the Play/Pi reference price
+                                // (PurchaseGate.RequiresWallet derives the wallet rule from it), its
+                                // name carries no token, and it is the only figure a Play pack row has.
+                                pricing.Property("sol")?.Remove();
+                                foreach (JProperty rail in pricing.Properties().ToArray())
+                                    if (ContainsForbiddenAuthoringToken(rail.Name))
+                                        rail.Remove();
                             }
                         }
 
@@ -400,6 +424,9 @@ namespace DeNelle.Editor
                         int swept = NeutralizeForbiddenStrings(root, file, string.Empty);
                         if (swept > 0)
                             Debug.Log($"{LogTag} PLAY_NEUTRAL_TOKEN_SWEEP - {file}: neutralised {swept} token-bearing string(s).");
+
+                        // WO-1832: and the POST-CONDITION the sweep above cannot express.
+                        AssertNoResidualForbiddenKey(root, file, string.Empty);
 
                         File.WriteAllText(path, root.ToString(Formatting.Indented) + Environment.NewLine);
                         JObject.Parse(File.ReadAllText(path));
@@ -432,12 +459,72 @@ namespace DeNelle.Editor
         }
 
         /// <summary>
+        /// WO-1832. The POST-CONDITION on a rewritten catalog: after the named transform and the
+        /// value sweep have run, NO OBJECT KEY may still carry a forbidden token. Throws
+        /// <see cref="BuildFailedException"/> naming the file and the full key path.
+        /// <para>
+        /// ⛔ WHY THIS EXISTS AND WHY IT IS NOT "ANOTHER LIST". <see cref="NeutralizeForbiddenStrings"/>
+        /// walks every string VALUE and is therefore drift-proof on values: a note authored tomorrow
+        /// is covered the day it lands (WO-1363's whole design). KEYS had no such rule - they were
+        /// removed by three hardcoded names in the packs block - so when WO-1815 added
+        /// <c>pricing.skrFlat</c> on 2026-09-16 the key shipped, 27 times, and the defect was found
+        /// by an AAB build that costs minutes. This assertion closes the KEY axis the same way
+        /// WO-1363 closed the VALUE axis: by asserting the OUTCOME instead of maintaining a list.
+        /// </para>
+        /// <para>
+        /// MEASURED 2026-09-17 before it was added, by porting the gate's readable-mode matcher and
+        /// walking all five swept catalogs in both mirrors with the new pricing rule in place:
+        /// <b>ZERO residual token-bearing keys</b> (the same walk WITHOUT the new rule returns 27,
+        /// all <c>pricing.skrFlat</c> - so this is not a vacuous check). It therefore cannot fail
+        /// the next Play build on something nobody foresaw; it can only fail on something NEW.
+        /// </para>
+        /// <para>
+        /// ⚠ The vocabulary here is <see cref="ContainsForbiddenAuthoringToken"/>, which is the
+        /// gate's array PLUS the authoring-only bare <c>wallet</c>. That is deliberately STRICTER
+        /// than what the artifact scan rejects, and fail-closed is the right direction for a key
+        /// name that ships as text. If a future key trips it for the <c>wallet</c> reason alone,
+        /// the fix is to rename the key - not to widen this.
+        /// </para>
+        /// </summary>
+        private static void AssertNoResidualForbiddenKey(JToken node, string file, string keyPath)
+        {
+            if (node is JObject obj)
+            {
+                foreach (JProperty property in obj.Properties().ToArray())
+                {
+                    string path = string.IsNullOrEmpty(keyPath) ? property.Name : keyPath + "." + property.Name;
+                    if (ContainsForbiddenAuthoringToken(property.Name))
+                        throw new BuildFailedException(
+                            $"{LogTag} PLAY_NEUTRAL_RESIDUAL_KEY - {file}: the OBJECT KEY '{path}' still " +
+                            "carries a forbidden token after the Play-neutral transform. The value sweep " +
+                            "rewrites string VALUES; it deliberately never renames a key, because a save " +
+                            "or a deserializer may be bound to the spelling. Decide which this is: a " +
+                            "pricing RAIL (remove it in the packs block, which now removes any rail whose " +
+                            "NAME carries a token), an authoring note (give the key an '_' prefix AND put " +
+                            "a token in its value so the note branch removes the property), or a live " +
+                            "schema key the Play build genuinely needs (then it must be RENAMED at the " +
+                            "source for all builds - a Play-only key rename would desynchronise the two " +
+                            "mirrors and the server's sku-catalog copy). This assertion exists because " +
+                            "WO-1815's 'pricing.skrFlat' shipped 27 times past three hardcoded key names.");
+                    AssertNoResidualForbiddenKey(property.Value, file, path);
+                }
+                return;
+            }
+            if (node is JArray array)
+                for (int i = 0; i < array.Count; i++)
+                    AssertNoResidualForbiddenKey(array[i], file, keyPath + "[" + i + "]");
+        }
+
+        /// <summary>
         /// WO-1363. Recursively neutralises every STRING VALUE that carries a forbidden token.
         /// Returns how many values were rewritten. Throws <see cref="BuildFailedException"/> -
         /// deliberately failing the Play build - on a player-facing key with no mapped neutral
         /// copy, because that is a NEW crypto string that no human has ruled on yet. Object keys
-        /// are not rewritten (pricing rails such as "usdc"/"sol"/"skr" are REMOVED by the packs
-        /// block above, which is the correct treatment for a schema key).
+        /// are not rewritten: a pricing RAIL whose key name carries a token is REMOVED by the packs
+        /// block above (WO-1832 made that rule NAME-DRIVEN off the gate's vocabulary rather than a
+        /// hardcoded trio, after `skrFlat` slipped past it), and any OTHER residual token-bearing
+        /// key fails the build at <see cref="AssertNoResidualForbiddenKey"/>. Removing a key is the
+        /// correct treatment for a schema key; renaming one silently is not.
         /// </summary>
         private static int NeutralizeForbiddenStrings(JToken node, string file, string keyPath)
         {
