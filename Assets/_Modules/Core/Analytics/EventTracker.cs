@@ -13,6 +13,14 @@
 //      closes on the next successful flush. No infinite loops; no excessive
 //      network during outages.
 //
+// WO-1842: SESSION DURATION — session_heartbeat (every 60s of foreground time) and
+//      session_end (OnApplicationPause(true) / OnApplicationQuit). Both carry the
+//      same cumulative elapsedSeconds for a sessionId, so the backend takes MAX.
+//      This is what makes a MEASURED playtime bucket possible; before it the game
+//      emitted session_start and nothing marked when a session stopped. Full
+//      reasoning in the SESSION DURATION block below. Consumer: api/admin/stats.js
+//      ?view=playtime.
+//
 // USAGE:
 //   EventTracker.Track("session_start");
 //   EventTracker.Track("wave_completed", new { waveId = 3, duration = 47.2f });
@@ -61,6 +69,23 @@ namespace DeNelle.Core.Analytics
 
         [Tooltip("Max events held in the local queue. Oldest are dropped when exceeded.")]
         [SerializeField] private int MaxQueueSize = 200;
+
+        // ── WO-1842: session duration ─────────────────────────────────────────
+        // See the SESSION DURATION block further down for the full reasoning.
+        [Tooltip("WO-1842. Foreground seconds between session_heartbeat events. This is the " +
+                 "RESOLUTION FLOOR of a measured session when the process dies without ever " +
+                 "reaching OnApplicationPause/OnApplicationQuit (a crash, or an OS kill with no " +
+                 "callback). The owner's smallest bucket edge is 1 minute, so 60s is the coarsest " +
+                 "cadence at which that bucket still means something.")]
+        [SerializeField] private float HeartbeatIntervalSeconds = 60f;
+
+        // Must match SESSION_GAP_MINUTES in api/admin/stats.js (30). Named here as a
+        // number and NOT read from the server on purpose - the client has to decide
+        // this offline - but the two are deliberately the same rule: a background
+        // stretch longer than this is a NEW session, not a continuation. Without it a
+        // phone left in recents for three days with a two-minute tap each day reports
+        // one six-minute session.
+        private const float SessionGapMinutes = 30f;
 
         // ── Circuit breaker ───────────────────────────────────────────────────
 
@@ -148,17 +173,311 @@ namespace DeNelle.Core.Analytics
                 unityVersion = Application.unityVersion,
             });
 
+            // WO-1842. The session clock starts with the boot event, not with the
+            // first heartbeat, so a session that dies before 60s still has an origin.
+            BeginSessionWindow("boot");
+
             StartCoroutine(FlushLoop());
+            StartCoroutine(HeartbeatLoop());
         }
 
         private void OnApplicationPause(bool paused)
         {
-            if (paused) SaveQueueToPrefs();
+            if (paused)
+            {
+                // ⛔ ORDER IS LOAD-BEARING. The session_end MUST be enqueued BEFORE the
+                // prefs save, or it exists only in memory and dies with the process -
+                // which is precisely the OS-kill case it was written for.
+                _sawPause = true;   // unlocks ResumeSessionWindow — see the boot-resume guard there
+                EndSessionWindow("pause");
+                SaveQueueToPrefs();
+            }
+            else
+            {
+                ResumeSessionWindow();
+            }
         }
 
         private void OnApplicationQuit()
         {
+            EndSessionWindow("quit");
             SaveQueueToPrefs();
+        }
+
+        // =====================================================================
+        // ── WO-1842: SESSION DURATION (session_heartbeat + session_end) ──────
+        // =====================================================================
+        // THE PROBLEM, quoted from the backend's own words at
+        // api/admin/stats.js:1887-1888: "THEY DO NOT. The game emits session_start
+        // on boot (EventTracker.cs) and there is NO session_end anywhere in the
+        // client." Until this block, nothing marked when a session STOPPED, so no
+        // query over any number of rows could compute a duration. The dashboard's
+        // session_length card was therefore an ESTIMATE of the span between a
+        // player's telemetry events, and it said so.
+        //
+        // ── WHY BOTH A HEARTBEAT AND AN END SIGNAL, and not one of them ───────
+        // They cover DIFFERENT death modes and neither covers both:
+        //
+        //   session_end   fires on OnApplicationPause(true) and OnApplicationQuit.
+        //                 It is the EXACT figure when it fires. It survives an OS
+        //                 kill because it is enqueued BEFORE SaveQueueToPrefs, and
+        //                 the WO3 queue is replayed from PlayerPrefs on the next
+        //                 boot (LoadQueueFromPrefs -> FlushLoop). So delivery is
+        //                 often DEFERRED TO THE NEXT LAUNCH, and that is fine: the
+        //                 event carries its own clientTs.
+        //                 ⚠ No network flush is attempted here. Android stops the
+        //                 player loop at pause, so a coroutine/UniTask started in
+        //                 that callback is not guaranteed to run at all. Persisting
+        //                 is the only thing that reliably completes.
+        //
+        //   session_heartbeat fires every HeartbeatIntervalSeconds of FOREGROUND
+        //                 time. It is the FLOOR for the case session_end cannot
+        //                 cover: a hard crash, or an OS kill that delivers no
+        //                 callback. Without it such a session reports nothing at
+        //                 all; with it, it reports "at least N minutes".
+        //
+        // Both carry the SAME cumulative elapsedSeconds for the same sessionId, so
+        // the backend needs no ordering rule and no join: duration = MAX over the
+        // session's rows. A duplicate or an out-of-order arrival cannot corrupt it.
+        //
+        // ── FOREGROUND TIME, measured on the WALL CLOCK ──────────────────────
+        // Time.realtimeSinceStartup keeps advancing while an Android app is
+        // backgrounded, so "realtime minus boot time" would bill a phone in a
+        // pocket as play. We accumulate only the stretches between a resume and the
+        // next pause, and we measure them with DateTimeOffset.UtcNow because it is
+        // the clock that keeps meaning across a backgrounded process.
+        // ⚠ What this figure IS: the app was in front of the player. It therefore
+        // INCLUDES idling with the game open (a pause menu left up). That is stated
+        // on the admin card rather than silently corrected, and the pre-existing
+        // gap-based estimate is kept alongside it as the complementary "active"
+        // reading. Two honest numbers beat one clever one.
+        //
+        // ── WHY NO SECOND session_start ON A POST-GAP RESUME ─────────────────
+        // A background stretch longer than SessionGapMinutes mints a NEW sessionId,
+        // but deliberately does NOT emit another session_start: that row count is
+        // the "app opens" figure on ?view=overview (EventTracker.Start, once per
+        // boot) and re-emitting it would silently redefine an existing metric. The
+        // playtime view groups by sessionId and never joins session_start, so it
+        // does not need one.
+        // =====================================================================
+
+        private string  _sessionId;
+        private double  _foregroundSeconds;              // accumulated, excludes background
+        private DateTimeOffset _foregroundSince;         // start of the current foreground stretch
+        private DateTimeOffset _backgroundedAt;
+        private bool    _backgrounded;                   // true between Pause(true) and Pause(false)
+        private bool    _sawPause;                       // see ResumeSessionWindow
+        private int     _heartbeatSeq;
+
+        /// <summary>
+        /// Opens a measured session window: new id, zeroed foreground clock.
+        /// </summary>
+        private void BeginSessionWindow(string reason)
+        {
+            _sessionId         = Guid.NewGuid().ToString("N");
+            _foregroundSeconds = 0d;
+            _foregroundSince   = DateTimeOffset.UtcNow;
+            _backgrounded      = false;
+            _heartbeatSeq      = 0;
+
+            DeNelle.Core.Diagnostics.FlowTrace.Step(
+                "Analytics",
+                "WO-1842 session window OPEN (" + reason + ") sessionId=" + _sessionId +
+                ". Foreground seconds now accumulate; session_heartbeat every " +
+                HeartbeatIntervalSeconds + "s and a session_end on pause/quit both report " +
+                "the SAME cumulative elapsedSeconds, so the backend takes MAX and needs no " +
+                "ordering rule.");
+        }
+
+        /// <summary>
+        /// Folds the open foreground stretch into the accumulator. Idempotent — calling
+        /// it twice without an intervening resume adds nothing, which is what makes
+        /// OnApplicationQuit-after-OnApplicationPause safe (Android delivers both).
+        /// </summary>
+        private double AccrueForegroundSeconds()
+        {
+            if (!_backgrounded)
+            {
+                var now = DateTimeOffset.UtcNow;
+                double delta = (now - _foregroundSince).TotalSeconds;
+                // A backwards wall clock (user changed the device time, NTP correction)
+                // must never subtract play time or produce a negative duration.
+                if (delta > 0d) _foregroundSeconds += delta;
+                _foregroundSince = now;
+            }
+            return _foregroundSeconds;
+        }
+
+        /// <summary>
+        /// Closes the measured window and enqueues session_end. Safe to call twice.
+        /// </summary>
+        private void EndSessionWindow(string reason)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_sessionId)) return;
+
+                double elapsed = AccrueForegroundSeconds();
+                _backgroundedAt = DateTimeOffset.UtcNow;
+                _backgrounded   = true;
+
+                Enqueue("session_end", new
+                {
+                    sessionId      = _sessionId,
+                    elapsedSeconds = Math.Round(elapsed, 1),
+                    reason         = reason,
+                    heartbeats     = _heartbeatSeq,
+                });
+
+                // Step, not Once: the lead's acceptance capture is this line, and a
+                // session that pauses, resumes and pauses again must show BOTH ends.
+                // It fires at most a handful of times per session, so it is not the
+                // per-frame firehose CLAUDE.md §12 warns about.
+                DeNelle.Core.Diagnostics.FlowTrace.Step(
+                    "Analytics",
+                    "WO-1842 session_end QUEUED reason=" + reason + " sessionId=" + _sessionId +
+                    " elapsedSeconds=" + elapsed.ToString("F1") + " heartbeats=" + _heartbeatSeq +
+                    ". Delivery may be DEFERRED to the next launch: the queue is persisted to " +
+                    "PlayerPrefs on this same callback and replayed on boot, because Android " +
+                    "stops the player loop at pause and no flush can be awaited here.");
+            }
+            catch (Exception ex)
+            {
+                // Telemetry must never be the thing that breaks a pause/quit path.
+                Debug.LogWarning("[EventTracker] session_end failed: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Reopens the foreground clock, or starts a whole new session when the player
+        /// was away longer than SessionGapMinutes.
+        /// </summary>
+        private void ResumeSessionWindow()
+        {
+            try
+            {
+                // ⛔ ANDROID DELIVERS OnApplicationPause(false) DURING BOOT, with no
+                // pause before it — documented in this repo at
+                // Assets/_Modules/Village/Harvest/OfflineHarvestService.cs:199. Without
+                // this guard that boot resume would immediately close and re-open the
+                // window Start() had just opened, and every session would begin with a
+                // zero-second orphan.
+                if (!_sawPause)
+                {
+                    DeNelle.Core.Diagnostics.FlowTrace.Once(
+                        "Analytics", "wo1842-boot-resume",
+                        "WO-1842 ignored an OnApplicationPause(false) that arrived with no " +
+                        "preceding pause — the documented Android boot resume " +
+                        "(OfflineHarvestService.cs:199). The session window opened by Start() " +
+                        "stands; nothing was closed or re-minted.");
+                    return;
+                }
+
+                double awaySeconds = (DateTimeOffset.UtcNow - _backgroundedAt).TotalSeconds;
+                _backgrounded    = false;
+                _foregroundSince = DateTimeOffset.UtcNow;
+
+                if (awaySeconds > SessionGapMinutes * 60d)
+                {
+                    BeginSessionWindow("resume-after-gap");
+                    return;
+                }
+
+                DeNelle.Core.Diagnostics.FlowTrace.Step(
+                    "Analytics",
+                    "WO-1842 session window RESUMED sessionId=" + _sessionId + " after " +
+                    awaySeconds.ToString("F0") + "s backgrounded (under the " + SessionGapMinutes +
+                    "-minute gap, so the SAME session continues). Background time is NOT " +
+                    "accrued; elapsedSeconds stands at " + _foregroundSeconds.ToString("F1") + ".");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[EventTracker] session resume failed: " + ex.Message);
+            }
+        }
+
+        private IEnumerator HeartbeatLoop()
+        {
+            while (true)
+            {
+                yield return new WaitForSecondsRealtime(HeartbeatIntervalSeconds);
+
+                // ⚠ WaitForSecondsRealtime elapses in WALL time, so the first tick after
+                // a long background stretch fires immediately. Harmless precisely because
+                // the heartbeat reports the ACCUMULATED foreground figure rather than a
+                // per-tick increment — an early tick reports a true, merely-repeated value.
+                if (_backgrounded || string.IsNullOrEmpty(_sessionId)) continue;
+
+                try
+                {
+                    double elapsed = AccrueForegroundSeconds();
+                    _heartbeatSeq++;
+                    EnqueueCoalescedHeartbeat(elapsed);
+
+                    if (_heartbeatSeq == 1)
+                    {
+                        DeNelle.Core.Diagnostics.FlowTrace.Once(
+                            "Analytics", "wo1842-heartbeat",
+                            "WO-1842 session_heartbeat is LIVE: every " + HeartbeatIntervalSeconds +
+                            "s of foreground time, sessionId=" + _sessionId + ", carrying the " +
+                            "cumulative elapsedSeconds. It is the FLOOR for a session that dies " +
+                            "without a pause/quit callback (crash, OS kill). Once per session on " +
+                            "purpose — logging every beat would flood the device logcat ring and " +
+                            "evict the boot window (CLAUDE.md §12).");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning("[EventTracker] heartbeat failed: " + ex.Message);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Enqueues the heartbeat, REPLACING this session's previous undelivered one
+        /// instead of appending.
+        /// </summary>
+        /// <remarks>
+        /// ⛔ THIS IS NOT AN OPTIMISATION, IT IS A DATA-LOSS FIX. The queue is capped at
+        /// MaxQueueSize (200) and drops the OLDEST row when full. A player offline — or
+        /// behind an open circuit breaker — for three and a half hours would append 200
+        /// heartbeats and silently evict every real event (purchases, wave clears) ahead
+        /// of them. Because each heartbeat carries the CUMULATIVE figure, only the newest
+        /// is ever informative, so replacing in place makes heartbeat pressure on the
+        /// queue O(1) and it also keeps server row volume near one per flush interval.
+        ///
+        /// ⚠ Skipped while a flush is in flight: FlushWithRetry captured a snapshot of
+        /// the head of the queue and removes BY COUNT afterwards, so mutating a row it
+        /// already holds would send the older value and drop the newer. Appending in that
+        /// window is harmless — the backend takes MAX, so a stale extra row cannot lower
+        /// a duration.
+        /// </remarks>
+        private void EnqueueCoalescedHeartbeat(double elapsedSeconds)
+        {
+            if (!_flushing)
+            {
+                lock (_queue)
+                {
+                    for (int i = _queue.Count - 1; i >= 0; i--)
+                    {
+                        var candidate = _queue[i];
+                        if (candidate == null) continue;
+                        if (candidate.EventName != "session_heartbeat") continue;
+                        if (candidate.Properties == null ||
+                            candidate.Properties.IndexOf(_sessionId, StringComparison.Ordinal) < 0) continue;
+
+                        _queue.RemoveAt(i);
+                        break;
+                    }
+                }
+            }
+
+            Enqueue("session_heartbeat", new
+            {
+                sessionId      = _sessionId,
+                elapsedSeconds = Math.Round(elapsedSeconds, 1),
+                seq            = _heartbeatSeq,
+            });
         }
 
         // ── Enqueue ───────────────────────────────────────────────────────────
