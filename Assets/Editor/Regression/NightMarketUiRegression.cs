@@ -99,6 +99,7 @@ namespace DeNelle.Editor.Regression
             CheckWalletChip(store, failures);
             CheckHudStoreCard(hud, areas, minTouch, failures);
             CheckGapPacksAlwaysBuyable(store, failures);
+            CheckStorewideSale(store, card, failures);
 
             if (failures.Count > 0)
             {
@@ -110,6 +111,268 @@ namespace DeNelle.Editor.Regression
                        "one legal owner, persistent single-authority HUD door");
             reason = log.ToString();
             return true;
+        }
+
+        // =====================================================================
+        //  ⭐ WO-1800 — THE STOREWIDE SALE SIGNS, AND THE "FLASH".
+        // ---------------------------------------------------------------------
+        //  Owner, 2026-09-16: "put big sales signs with x% off!!!! you know some
+        //  flash" + "also make the packs pulse when the store opens".
+        //
+        //  ⛔ THIS BLOCK IS DELIBERATELY NOT A SOURCE-TEXT SCAN. The rest of this
+        //  file reads .cs bytes because layout budgets are constants; a sale badge
+        //  is BEHAVIOUR over a server field, and a grep for `SaleBps` would pass
+        //  on a file that read the field and drew nothing. So these cases call the
+        //  LIVE types: the DTO is deserialized from real wire JSON, and the pulse
+        //  curve and the contrast ratio are evaluated, not matched.
+        //
+        //  ⛔ THE FAIL-CLOSED CASES ARE THE POINT. "No sale ⇒ no badge" and
+        //  "0 bps ⇒ no badge" are the two the owner would never see go wrong from
+        //  the outside — a shelf reading "0% OFF" is a sale sign advertising
+        //  nothing, on the one screen in the game that takes money.
+        // =====================================================================
+
+        /// <summary>The standard's text-contrast bar: WCAG AA, 4.5:1 (memory: mobile-ui-touch-contrast-standard).</summary>
+        private const double MinBadgeContrastRatio = 4.5d;
+
+        private static void CheckStorewideSale(string store, string card, List<string> failures)
+        {
+            // ── 1. NO SALE ⇒ NO BADGE. The server's ordinary row, unchanged. ──
+            var plain = Deserialize("{\"sku\":\"basket-small\",\"usdAnchor\":4.99,\"usdEffective\":4.99}", failures);
+            if (plain != null)
+            {
+                if (plain.IsOnSale)
+                    failures.Add("a quote with no saleBps reads as ON SALE.");
+                if (!string.IsNullOrEmpty(plain.SaleBadgeText))
+                    failures.Add($"a quote with no saleBps produced badge copy \"{plain.SaleBadgeText}\".");
+                if (plain.HasStruckAnchor)
+                    failures.Add("a quote with no saleBps wants its anchor struck through.");
+            }
+
+            // ── 2. A REAL SALE ⇒ "<pct>% OFF" + a struck anchor. ──────────────
+            var sale = Deserialize("{\"sku\":\"basket-small\",\"usdAnchor\":4.99,\"usdEffective\":3.49," +
+                                   "\"saleBps\":3000}", failures);
+            if (sale != null)
+            {
+                if (!sale.IsOnSale) failures.Add("saleBps 3000 does not read as a sale.");
+                if (sale.SaleBadgeText != "30% OFF")
+                    failures.Add($"saleBps 3000 worded itself as \"{sale.SaleBadgeText}\", not \"30% OFF\".");
+                if (!sale.HasStruckAnchor)
+                    failures.Add("a sale with both an anchor and a lower effective price draws no strike.");
+                if (sale.SaleAnchorLabel != "$4.99")
+                    failures.Add($"struck anchor reads \"{sale.SaleAnchorLabel}\", not \"$4.99\".");
+                if (sale.SaleEffectiveLabel != "$3.49")
+                    failures.Add($"effective price reads \"{sale.SaleEffectiveLabel}\", not \"$3.49\".");
+                string struck = DeNelle.Wallet.StorePackCard.Strike(sale.SaleAnchorLabel);
+                if (struck != "<s>$4.99</s>")
+                    failures.Add($"the strike markup is \"{struck}\" - TMP renders <s>...</s>.");
+            }
+
+            // ── 3. THE SERVER'S OWN COPY OUTRANKS THE bps CONVERSION. ─────────
+            var authored = Deserialize("{\"sku\":\"x\",\"saleBps\":2500,\"saleLabel\":\"QUARTER OFF\"}", failures);
+            if (authored != null && authored.SaleBadgeText != "QUARTER OFF")
+                failures.Add($"an authored saleLabel was overridden by the bps conversion " +
+                             $"(\"{authored.SaleBadgeText}\").");
+
+            // ── 4. FAIL-CLOSED: 0 bps, and >= 10000 bps, draw NOTHING. ────────
+            foreach (int bps in new[] { 0, -1, 10000, 12000 })
+            {
+                var bad = Deserialize("{\"sku\":\"x\",\"usdAnchor\":4.99,\"usdEffective\":1.00,\"saleBps\":" +
+                                      bps.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}", failures);
+                if (bad == null) continue;
+                if (bad.IsOnSale)
+                    failures.Add($"saleBps {bps} reads as a usable sale - it must fail closed.");
+                if (!string.IsNullOrEmpty(bad.SaleBadgeText))
+                    failures.Add($"saleBps {bps} produced badge copy \"{bad.SaleBadgeText}\" " +
+                                 "- there is no \"0% OFF\".");
+            }
+
+            // ── 5. A STRIKE NEEDS BOTH NUMBERS, never one. ─────────────────────
+            var anchorOnly = Deserialize("{\"sku\":\"x\",\"usdAnchor\":4.99,\"saleBps\":3000}", failures);
+            if (anchorOnly != null && anchorOnly.HasStruckAnchor)
+                failures.Add("a sale with an anchor but NO effective price struck the only figure on the card.");
+
+            // ── 6. THE COUNTDOWN — present, absent, and already expired. ───────
+            var now = new DateTime(2026, 9, 16, 12, 0, 0, DateTimeKind.Utc);
+            var ends = Deserialize("{\"sku\":\"x\",\"saleBps\":3000,\"saleEndsAt\":\"2026-09-18T16:00:00Z\"}", failures);
+            if (ends != null && ends.SaleCountdownLabel(now) != "ends in 2d 4h")
+                failures.Add($"countdown reads \"{ends.SaleCountdownLabel(now)}\", not \"ends in 2d 4h\".");
+            var noEnd = Deserialize("{\"sku\":\"x\",\"saleBps\":3000}", failures);
+            if (noEnd != null && !string.IsNullOrEmpty(noEnd.SaleCountdownLabel(now)))
+                failures.Add("a sale with no saleEndsAt invented a countdown.");
+            var over = Deserialize("{\"sku\":\"x\",\"saleBps\":3000,\"saleEndsAt\":\"2026-09-15T00:00:00Z\"}", failures);
+            if (over != null && !string.IsNullOrEmpty(over.SaleCountdownLabel(now)))
+                failures.Add("an ENDED sale still prints a countdown.");
+
+            // ── 7. GREYSCALE: the ribbon must read with every hue removed. ─────
+            //  ⛔ WCAG RELATIVE LUMINANCE, NOT A RAW CHANNEL DELTA. The owner is
+            //  red/green colourblind and reviews captures desaturated, so the
+            //  ribbon's legibility is a LUMINANCE fact about two colours - and the
+            //  values are READ OFF the live type, never re-typed here, so this
+            //  case fails the day someone lightens the fill.
+            double ratio = ContrastRatio(DeNelle.Wallet.StorePackCard.SaleRibbonFill,
+                                         DeNelle.Wallet.StorePackCard.SaleRibbonInk);
+            if (ratio < MinBadgeContrastRatio)
+                failures.Add($"sale ribbon fill vs ink is {ratio:0.0}:1 - the standard's bar is " +
+                             $"{MinBadgeContrastRatio:0.0}:1 (it must read in greyscale).");
+
+            // The ribbon must also be DISTINGUISHABLE from the state pill by POLARITY, not only by
+            // position: the pill is a light plate with dark ink, so this one must be the inverse.
+            if (Luminance(DeNelle.Wallet.StorePackCard.SaleRibbonFill) >=
+                Luminance(DeNelle.Wallet.StorePackCard.SaleRibbonInk))
+                failures.Add("the sale ribbon is a LIGHT plate with DARK ink, the same polarity as " +
+                             "the state pill - desaturated, the two badges become one shape.");
+
+            // ── 8. THE PULSE CURVE — seats at 1, peaks at the midpoint, and an
+            //      undiscounted card's single beat NEVER repeats. ──────────────
+            const float dur = 0.6f, peak = 1.05f;
+            if (Mathf.Abs(DeNelle.Wallet.StorePackCard.EvaluatePulse(0f, dur, false, peak) - 1f) > 0.0001f)
+                failures.Add("the open pulse does not start at the card's authored scale.");
+            if (Mathf.Abs(DeNelle.Wallet.StorePackCard.EvaluatePulse(dur, dur, false, peak) - 1f) > 0.0001f)
+                failures.Add("the open pulse does not END at the card's authored scale - a card can " +
+                             "be left permanently enlarged.");
+            if (Mathf.Abs(DeNelle.Wallet.StorePackCard.EvaluatePulse(dur * 0.5f, dur, false, peak) - peak) > 0.001f)
+                failures.Add("the open pulse does not reach its peak at the midpoint.");
+            // ⛔ THE "no loop on undiscounted cards" PIN. Well past the window, a non-looping pulse
+            // is FLAT at 1 forever - not back at the peak on the next period.
+            for (int k = 1; k <= 4; k++)
+                if (Mathf.Abs(DeNelle.Wallet.StorePackCard.EvaluatePulse(dur * (k + 0.5f), dur, false, peak) - 1f) > 0.0001f)
+                    failures.Add($"a NON-looping pulse moved again at t={dur * (k + 0.5f):0.00}s - an " +
+                                 "undiscounted card must pulse once per open and then stop.");
+            // And the sale beat DOES repeat: same phase, one period later, same scale.
+            float a = DeNelle.Wallet.StorePackCard.EvaluatePulse(0.3f, 1.2f, true, 1.06f);
+            float b = DeNelle.Wallet.StorePackCard.EvaluatePulse(1.5f, 1.2f, true, 1.06f);
+            if (Mathf.Abs(a - b) > 0.0001f || Mathf.Abs(a - 1f) < 0.0001f)
+                failures.Add("the sale badge's beat does not LOOP - a discounted card stops flashing.");
+            if (Mathf.Abs(DeNelle.Wallet.StorePackCard.EvaluatePulse(0.5f, 0f, true, 1.06f) - 1f) > 0.0001f)
+                failures.Add("a zero-duration pulse does not fail closed to the authored scale.");
+
+            // ── 9. THE CARD MUST GROW FOR THE SALE LINE, not absorb it. ───────
+            foreach (DeNelle.Wallet.StorePackCardVariant v in
+                     Enum.GetValues(typeof(DeNelle.Wallet.StorePackCardVariant)))
+            {
+                float plainH = DeNelle.Wallet.StorePackCard.CardHeight(v, false, false);
+                float saleH  = DeNelle.Wallet.StorePackCard.CardHeight(v, false, true);
+                if (Mathf.Abs((saleH - plainH) - DeNelle.Wallet.StorePackCard.SaleExtraPx) > 0.01f)
+                    failures.Add($"a {v} sale card grows by {saleH - plainH:0.#}px, not the " +
+                                 $"{DeNelle.Wallet.StorePackCard.SaleExtraPx:0.#}px its own block costs - " +
+                                 "the sale line is being squeezed into a lane that is already spent.");
+                // The 2-arg overload must be byte-identical to "no sale", or every existing caller
+                // silently changed answer.
+                if (Mathf.Abs(DeNelle.Wallet.StorePackCard.CardHeight(v, false) - plainH) > 0.01f)
+                    failures.Add($"CardHeight({v}, false) changed meaning - existing callers moved.");
+            }
+
+            // ── 10. The ribbon must NOT be gated on the VARIANT, because the pill
+            //       is: BuildPill is skipped on LandscapeStandard, which is the
+            //       variant PackStore.VariantFor(Basket) returns for the shipped
+            //       landscape shelf. A ribbon gated the same way renders NOWHERE
+            //       on the cards the owner actually looks at, with every gate green.
+            //
+            // ⛔ ASSERTED ON THE GUARD EXPRESSION, NEVER BY PROXIMITY, AND THE FIRST VERSION OF THIS
+            // CASE GOT THAT WRONG AND FAILED THE WHOLE SUITE (2026-09-16, run 19:08). It matched
+            // `variant != StorePackCardVariant.LandscapeStandard` within 200 characters of
+            // `BuildSaleRibbon` over Code() - and Code() STRIPS COMMENTS, so the ~60 lines of block
+            // comment that legitimately sit between the pill's guard and the ribbon's call collapsed
+            // to nothing and the two landed ~80 characters apart. The ribbon was never gated; the
+            // ORACLE was measuring text adjacency in a file whose comments had been deleted, which is
+            // not a property of the code at all. Distance between two tokens is not a control-flow
+            // fact. Read the guard instead - that IS the fact.
+            string cardCode = Code(card);
+            if (!card.Contains("BuildSaleRibbon"))
+                failures.Add("no BuildSaleRibbon in StorePackCard - the sale sign has no builder.");
+            var ribbonGuard = Regex.Match(cardCode, @"bool\s+drawRibbon\s*=\s*([^;]*);");
+            if (!ribbonGuard.Success)
+                failures.Add("StorePackCard has no `bool drawRibbon = ...` guard - the one expression " +
+                             "that decides whether the sale sign draws cannot be read, so nothing can " +
+                             "assert it is not variant-gated.");
+            else if (ribbonGuard.Groups[1].Value.Contains("variant"))
+                failures.Add("the sale ribbon's guard consults the card VARIANT (`" +
+                             ribbonGuard.Groups[1].Value.Trim() + "`) - gated like the state pill, it " +
+                             "would render NOWHERE on the landscape Basket cards the owner sees.");
+
+            // ── 10b. ONE TOP BADGE. The ribbon's band (0.02..0.62) OVERLAPS the
+            //         pill's (0.26..0.96), so if both could draw they would collide
+            //         on the same rect - and desaturated, two loud plates in one
+            //         place is worse than either alone.
+            if (!cardCode.Contains("drawRibbon"))
+                failures.Add("StorePackCard no longer ranks the sale ribbon against the state pill - " +
+                             "their x bands overlap, so both drawing means both colliding.");
+            if (!Regex.IsMatch(cardCode, @"drawRibbon\s*\?\s*string\.Empty\s*:\s*model\.Badge"))
+                failures.Add("the merchandising badge is no longer suppressed while a sale ribbon " +
+                             "draws - the two plates would overlap in the card's top band.");
+            if (!cardCode.Contains("if (drawRibbon) BuildSaleRibbon"))
+                failures.Add("the sale ribbon draws without consulting the badge ranking.");
+            // ⛔ AND NOTHING ON THIS CARD IS ROTATED. A rotation about a top pivot lifts the plate's
+            // outer corner clear of the card root (~23px on a 500px card against a 16px top offset),
+            // and the capture harness's containment audit is right to report that.
+            //
+            // ⚠ ASSERTED OVER THE WHOLE TEMPLATE, NOT "near the ribbon". The same comment-stripping
+            // trap as case 10: a proximity window is not a control-flow or ownership fact. The honest
+            // invariant is simpler AND stronger anyway - this template authors every element in
+            // axis-aligned reference px, so ANY rotation here is the defect, whoever added it.
+            if (cardCode.Contains("localRotation") || cardCode.Contains("localEulerAngles"))
+                failures.Add("StorePackCard rotates an element - a rotated child's corner leaves the " +
+                             "card rect at the measured card widths, which the capture's containment " +
+                             "audit reports. The brief allows a bold rounded TAG instead of a slant.");
+
+            // ── 11. The pulse must tick ABOVE PackStore.Update's early return. ─
+            //  `Update` returns immediately unless a purchase is in flight, which is FALSE for the
+            //  whole time the shelf is being browsed. A tick below that return compiles, gates green
+            //  and never moves a card.
+            string code = Code(store);
+            int tick = code.IndexOf("TickCardPulses()", StringComparison.Ordinal);
+            int guard = code.IndexOf("if (!_purchaseInFlight) return;", StringComparison.Ordinal);
+            if (tick < 0)
+                failures.Add("PackStore never calls TickCardPulses - nothing drives the pulse.");
+            else if (guard >= 0 && tick > guard)
+                failures.Add("TickCardPulses is called BELOW Update's !_purchaseInFlight early " +
+                             "return, so it can never run while the player is browsing.");
+            // The frame-path instrument must be the 4-arg accumulating overload (CLAUDE.md 12).
+            // ⛔ THIS ONE ASSERTION RUNS ON THE RAW SOURCE, NOT ON Code(), AND IT HAS TO. Code()
+            // DELETES string literals (see its body) - which is correct for counting call-site
+            // authority, and fatal here, because the two literals "Perf" and "PackStore.SaleBadge"
+            // ARE the thing being asserted. Against stripped source this pattern can never match, so
+            // it would have failed on its very first run against working code - the "oracle reports
+            // its own staleness in the defect's voice" failure this file's own header records.
+            if (!Regex.IsMatch(store, @"FlowTrace\.Measure\(\s*""Perf""\s*,\s*""PackStore\.SaleBadge""\s*,\s*[\d.]+f\s*,\s*[\d.]+f\s*\)"))
+                failures.Add("the pulse tick is not wrapped in the 4-arg FlowTrace.Measure(\"Perf\", " +
+                             "\"PackStore.SaleBadge\", ...) frame-path scope.");
+            // Unscaled time, or a world hold freezes a card mid-beat at the wrong size.
+            if (code.Contains("TickCardPulses") && !code.Contains("Time.unscaledTime"))
+                failures.Add("the pulse reads scaled time - a timeScale 0 hold would freeze a card " +
+                             "enlarged with no way back.");
+        }
+
+        /// <summary>Deserializes one wire row, recording a failure rather than throwing.</summary>
+        private static DeNelle.Wallet.PurchaseQuote Deserialize(string json, List<string> failures)
+        {
+            try
+            {
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<DeNelle.Wallet.PurchaseQuote>(json);
+            }
+            catch (Exception e)
+            {
+                failures.Add($"a sale wire row failed to deserialize ({e.GetType().Name}): {json}");
+                return null;
+            }
+        }
+
+        /// <summary>WCAG 2.1 relative luminance of an sRGB colour.</summary>
+        private static double Luminance(Color c)
+        {
+            return 0.2126d * Linearize(c.r) + 0.7152d * Linearize(c.g) + 0.0722d * Linearize(c.b);
+        }
+
+        private static double Linearize(double channel) =>
+            channel <= 0.03928d ? channel / 12.92d : Math.Pow((channel + 0.055d) / 1.055d, 2.4d);
+
+        /// <summary>WCAG contrast ratio between two colours, always >= 1.</summary>
+        private static double ContrastRatio(Color a, Color b)
+        {
+            double la = Luminance(a), lb = Luminance(b);
+            double hi = Math.Max(la, lb), lo = Math.Min(la, lb);
+            return (hi + 0.05d) / (lo + 0.05d);
         }
 
         // =====================================================================

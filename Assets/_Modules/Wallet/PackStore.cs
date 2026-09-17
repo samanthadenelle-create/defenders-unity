@@ -378,6 +378,68 @@ namespace DeNelle.Wallet
         private readonly Dictionary<string, StorePackCardHandle> _cardHandles =
             new Dictionary<string, StorePackCardHandle>(StringComparer.Ordinal);
 
+        // =====================================================================
+        //  ⭐ THE SALE SIGNS AND THE "FLASH" (WO-1800).
+        // ---------------------------------------------------------------------
+        //  Owner, 2026-09-16: "put big sales signs with x% off!!!! you know some
+        //  flash" and "also make the packs pulse when the store opens".
+        //
+        //  TWO BEATS, ONE DRIVER, ONE Measure SCOPE:
+        //
+        //    OPEN WAVE   every card, ONCE per open, staggered left-to-right so it
+        //                reads as a wave across the shelf rather than a twitch.
+        //    SALE LOOP   the DISCOUNTED cards only, and only after their own open
+        //                pulse has finished, so the two never fight for a scale.
+        //
+        //  ⛔ ONE DRIVER, NOT ONE COMPONENT PER CARD. N MonoBehaviours with N
+        //  Updates is N frame-path sites to instrument and N sets of per-frame
+        //  logs; this is one loop under ONE 4-arg FlowTrace.Measure scope, which
+        //  is the shape §12 mandates for a frame path (the 3-arg form logs on
+        //  every dispose and would evict the boot window out of the device's
+        //  logcat ring — memory: logcat-ring-buffer-destroys-evidence).
+        //
+        //  ⛔ UNSCALED TIME. The store opens over a town that may be held at
+        //  timeScale 0 (a modal pause, a cutscene hold). Time.deltaTime there is
+        //  ZERO, so a scaled-time pulse would freeze mid-beat and leave cards
+        //  visibly enlarged with no way back.
+        //
+        //  ⛔ AND AN UNDISCOUNTED CARD LEAVES THE LIST when its one pulse ends —
+        //  that is what "once per open, not looping" MEANS in code, rather than a
+        //  comment promising it. The list shrinks to the sale cards, so a shelf
+        //  with no sale costs nothing after 0.6 s + the stagger.
+        // =====================================================================
+
+        /// <summary>The open wave's duration, seconds. Owner brief: ~0.6 s.</summary>
+        private const float OpenPulseSeconds = 0.6f;
+        /// <summary>The open wave's peak scale. Owner brief: 1.05.</summary>
+        private const float OpenPulsePeak = 1.05f;
+        /// <summary>Stagger between neighbouring cards, seconds. Owner brief: ~80 ms.</summary>
+        private const float OpenPulseStaggerSeconds = 0.08f;
+        /// <summary>The sale badge's loop period, seconds. Owner brief: ~1.2 s.</summary>
+        private const float SalePulseSeconds = 1.2f;
+        /// <summary>The sale badge's peak scale. Owner brief: 1.06.</summary>
+        private const float SalePulsePeak = 1.06f;
+        /// <summary>How often the countdown text is re-stamped, seconds. See <see cref="TickSalePulse"/>.</summary>
+        private const float SaleCountdownRefreshSeconds = 30f;
+
+        /// <summary>One card the driver is animating. Plain struct: the list is rebuilt per render.</summary>
+        private struct CardPulse
+        {
+            public Transform Root;
+            /// <summary>Unscaled time this card's OPEN pulse begins (build order x the stagger).</summary>
+            public float StartUnscaled;
+            /// <summary>True ⇒ keeps looping the sale beat after the open pulse. False ⇒ dropped.</summary>
+            public bool Sale;
+            /// <summary>The sale line to re-stamp as the countdown ticks, or null.</summary>
+            public TMP_Text SaleLine;
+            public string Sku;
+        }
+
+        private readonly List<CardPulse> _cardPulses = new List<CardPulse>();
+        /// <summary>Armed in OnEnable, consumed by the first Render that builds cards.</summary>
+        private bool _openPulseArmed;
+        private float _lastCountdownStampUnscaled;
+
         // ── The wallet mirror ────────────────────────────────────────────────
         private enum BalanceState { NoWallet, Checking, Unavailable, Known }
         private BalanceState _balanceState = BalanceState.NoWallet;
@@ -431,6 +493,13 @@ namespace DeNelle.Wallet
             // per-frame surface) and it is the only way the plan can never disagree with the screen.
             DiscardBuildIfSurfaceChanged();
 
+            // ⛔ WO-1800 — ARMED ON OPEN, CONSUMED BY THE RENDER THAT BUILDS THE CARDS. Render() is
+            // NOT "the store opened": it re-runs on every returning price quote, every focus change
+            // and every walletless-banner repaint. Arming the wave inside Render would therefore
+            // re-pulse the whole shelf several seconds after opening, again when the SKR quote lands,
+            // and again on each subsequent refresh — which is the opposite of "once per open".
+            _openPulseArmed = true;
+
             EnsureBuilt();
             if (_modal != null && _modal.canvas != null)
                 _modal.canvas.SetActive(true);
@@ -466,6 +535,20 @@ namespace DeNelle.Wallet
             CurrencySkinResolver.WalletConnectionChanged += OnWalletConnectionChanged;
 
             AdoptLiveWalletIfBetter("open");
+
+            // WO-1801 - ADOPT A SHORTFALL HANDED OVER FROM ANOTHER ASSEMBLY, BEFORE ANYTHING
+            // READS IT. FocusShortfall below is the seam that already existed for exactly this, but
+            // it is an instance method on this DeNelle.Wallet type and therefore unreachable from
+            // DeNelle.Village, where the blocked build/upgrade surface (and the gap) actually lives;
+            // on 2026-09-16 it had ZERO callers in the whole tree. The Village door latches the gap
+            // on DeNelle.Commerce.StoreFocusRequest and this consumes it into the ONE pre-existing
+            // field pair, so nothing downstream gains a second shortfall source.
+            //
+            // ⚠ ORDER IS LOAD-BEARING, and it is the same order the two lines below already rely on:
+            // LatchPiSpotlightOnOpen stands the Pi default down when a shortfall owns the open, and
+            // TrackStoreOpened INFERS the funnel door from this latch - both must see it.
+            if (StoreFocusRequest.ConsumeShortfall(out var handedLabel, out var handedMissing))
+                FocusShortfall(handedLabel, handedMissing);
 
             // WO-1323 OWNER RULING (2026-09-02) - point the EXISTING focus latch at the one
             // Pi-priced pack BEFORE the first Render, because Render is where the latch is consumed
@@ -734,6 +817,13 @@ namespace DeNelle.Wallet
 
         private void Update()
         {
+            // ⛔ ABOVE THE EARLY RETURN, AND THAT PLACEMENT IS THE BUG THAT WOULD HAVE SHIPPED.
+            // Everything below this line is gated on `_purchaseInFlight`, which is FALSE for the
+            // entire time the player is browsing — i.e. for the whole life of the shelf the pulse
+            // animates. A tick added after the return would have compiled, gated green, and never
+            // moved a single card.
+            TickCardPulses();
+
             if (!_purchaseInFlight) return;
             float elapsed = Time.realtimeSinceStartup - _commerceStateSince;
             if (_commerceState == CommerceState.OpeningWallet && elapsed >= 5f)
@@ -1592,6 +1682,16 @@ namespace DeNelle.Wallet
                 Destroy(_shelfContent.GetChild(i).gameObject);
             _cardHandles.Clear();
             _sharedOfferCards.Clear();
+            // WO-1800: the cards these entries pointed at were just destroyed, so the pulse list is
+            // rebuilt from scratch with them. Tallies are per-render and never accumulate.
+            _cardPulses.Clear();
+            _saleBadgeCount = 0;
+            _saleHiddenCount = 0;
+            _saleBadgeBps = 0;
+            _saleBadgeLabel = string.Empty;
+            _saleHiddenWhy = string.Empty;
+            _saleCopyIsServerAuthored = false;
+            _saleEndsAtRaw = "none";
 
             // ⛔ AND REBUILD THE CATCH-UP RAIL, BECAUSE IN LANDSCAPE IT IS THE GAP BAND (WO-1339).
             //
@@ -1658,10 +1758,23 @@ namespace DeNelle.Wallet
                     // before the cards are resolved would squeeze that block back out again, which
                     // is the two-places-hold-one-measurement defect BuildCardRow's header records.
                     bool rowHasReason = false;
+                    // ⛔ THE SALE LINE IS THE SAME MEASUREMENT PROBLEM AS THE REASON LINE, so it is
+                    // measured the same way: a sale card is SaleExtraPx taller, the strip authors ONE
+                    // height for the row and force-expands its children to it, and a row measured
+                    // without asking would squeeze the sale line straight back out of the card.
+                    bool rowHasSale = false;
                     for (int c = 0; c < cardsPerRow && i + c < rows.Count; c++)
+                    {
                         if (!string.IsNullOrEmpty(CardNotSellableReason(rows[i + c]))) rowHasReason = true;
+                        // ⛔ ASK THE SAME QUESTION THE CARD ASKS. StorePackCard grows for the sale
+                        // LINE, not for the ribbon (the ribbon is a no-cost overlay) - so a row that
+                        // measured the BADGE would reserve SaleExtraPx for a card that never spends
+                        // it, and worse, would MISS the case the other way round. SaleLineFor already
+                        // returns empty for every non-sale pack, so it is the one predicate.
+                        if (!string.IsNullOrEmpty(SaleLineFor(rows[i + c]))) rowHasSale = true;
+                    }
 
-                    float rowHeight = StorePackCard.CardHeight(variant, rowHasReason);
+                    float rowHeight = StorePackCard.CardHeight(variant, rowHasReason, rowHasSale);
                     var strip = BuildCardRow(rowHeight);
                     for (int c = 0; c < cardsPerRow; c++)
                     {
@@ -1683,6 +1796,30 @@ namespace DeNelle.Wallet
                 FlowTrace.Fail("Store", "Render: built 0 pack cards — shelf is EMPTY (no packs in catalogue or all cards failed).");
             else
                 FlowTrace.Step("Store", $"Render: built {built} pack card(s) across the four bands.");
+
+            // ── WO-1800: the sale's two traces, ONE line each, not one per card ─
+            if (_saleBadgeCount > 0)
+                FlowTrace.Step("Store", $"shelf sale badges: count={_saleBadgeCount} bps={_saleBadgeBps} " +
+                                        $"label=\"{_saleBadgeLabel}\" " +
+                                        $"serverCopy={(_saleCopyIsServerAuthored ? "yes" : "no (bps converted)")} " +
+                                        $"endsAt={_saleEndsAtRaw}");
+            if (_saleHiddenCount > 0)
+                FlowTrace.Step("Store", $"shelf sale badge hidden FAIL-CLOSED on {_saleHiddenCount} card(s); " +
+                                        $"last reason: {_saleHiddenWhy}");
+
+            // ⛔ CONSUMED HERE, NOT ARMED HERE (see OnEnable). When the flag is down the cards were
+            // rebuilt by a price repaint rather than an open, so they are seated at their authored
+            // size immediately and no wave runs — otherwise every returning quote would re-pulse the
+            // whole shelf, which is what "once per open" exists to prevent.
+            if (built > 0 && _openPulseArmed)
+            {
+                _openPulseArmed = false;
+                FlowTrace.Step("Store", $"shelf open pulse: cards={_cardPulses.Count}");
+            }
+            else
+            {
+                SeatCardPulsesAtRest();
+            }
 
             BuildPiShelfNoticeIfNothingIsBuyable();
 
@@ -2310,6 +2447,11 @@ namespace DeNelle.Wallet
             });
 
             string sku = pack.Sku;
+            // WO-1800: resolved BEFORE the initializer, not inside it. An `out` declaration in an
+            // object-initializer expression compiles, but its scope is exactly the kind of thing a
+            // seat should not have to be sure of in a file that takes money — and `saleWhy` is read
+            // again below, after the initializer has closed.
+            string saleBadge = SaleBadgeFor(pack, out string saleWhy);
             var model = new StorePackCardModel
             {
                 Sku          = sku,
@@ -2331,6 +2473,12 @@ namespace DeNelle.Wallet
                 // asks a commerce question of its own (UI-002). Empty on every buyable pack, so a
                 // healthy shelf is byte-for-byte the card it was before this line existed.
                 NotSellableReason = CardNotSellableReason(pack),
+                // ⛔ WO-1800 — RESOLVED HERE FROM THE SERVER'S LIST ROW, RENDERED THERE. The card
+                // cannot ask whether a pack is on sale; an invented sale sign is a lie about money.
+                // The out-reason is collected by Render into ONE trace line rather than logged per
+                // card, so a 9-pack shelf with no sale does not print nine lines saying so.
+                SaleBadge    = saleBadge,
+                SaleLine     = SaleLineFor(pack),
                 Band         = band,
                 OrbTint      = pack.OrbTint,
                 GlyphConcepts = GlyphConceptsFor(pack),
@@ -2365,6 +2513,14 @@ namespace DeNelle.Wallet
             }
 
             _cardHandles[sku] = handle;
+
+            // WO-1800: enrol this card in the open wave (and, if it is on sale, the loop that
+            // follows it). The stagger is the card's BUILD INDEX, which is the shelf's left-to-right
+            // reading order, so the wave sweeps the way the eye does. Registration is unconditional
+            // on the wave being armed: a card built by a mid-session price repaint must still sit in
+            // the list at scale 1, or the next open would animate only the cards it did not rebuild.
+            RegisterCardPulse(handle, sku, saleWhy);
+
             return handle.Root;
         }
 
@@ -2416,6 +2572,259 @@ namespace DeNelle.Wallet
         //  player hit: no "cannot", no "failed", no "unavailable" (that word is
         //  spoken for — it means we have NO price, and this card has one).
         // =====================================================================
+
+        // =====================================================================
+        //  ⭐ THE STOREWIDE SALE RESOLVER — ONE PLACE, FAIL-CLOSED (WO-1800).
+        // ---------------------------------------------------------------------
+        //  ⛔ IT ASKS THE SERVER AND NOTHING ELSE. The sale lives on the public
+        //  LIST row (PurchaseQuoteService.DisplayPrice), so a WALLETLESS shelf is
+        //  on sale too — the list is unauthenticated by design (WO-1190) and a
+        //  browsing player must see the same sign a connected one does, or the
+        //  sign is a bait.
+        //
+        //  ⛔ SUPPRESSED ON THE OTHER RAILS, AND THAT IS NOT CAUTION, IT IS
+        //  CORRECTNESS. On Google Play the price the card prints comes from the
+        //  Play billing provider's own localized string, and on Pi from the Pi
+        //  quote; badging either of those with a percentage taken off a SOLANA
+        //  LIST row would advertise a discount that rail never applies. Same
+        //  reasoning as StorePriceMajor's channel branch, one field on.
+        //
+        //  ⛔ AND SUPPRESSED ON A PACK THE PLAYER ALREADY OWNS, an anchor-only
+        //  row (which draws no buy control at all) and a PINNED canary (a
+        //  protocol constant, not a sale — it has no USD anchor to take a
+        //  percentage of). Every one of those would be a sale sign over
+        //  something that cannot be bought on sale.
+        //
+        //  EVERY refusal returns a REASON, because §12's rule is that a thing
+        //  which did not draw must say why in the trace, not vanish silently.
+        // =====================================================================
+
+        /// <summary>
+        /// The server's sale quote for this pack, or null with a worded <paramref name="why"/>.
+        /// </summary>
+        private PurchaseQuote SaleQuoteFor(PackDef pack, out string why)
+        {
+            why = string.Empty;
+            if (pack == null || string.IsNullOrEmpty(pack.Sku)) { why = "no pack"; return null; }
+
+            var provider = PaymentProviders.Current;
+            if (provider != null && provider.Channel == PaymentChannel.GooglePlay)
+            { why = "Google Play rail prices itself"; return null; }
+            if (PiDisplay) { why = "Pi rail prices itself"; return null; }
+
+            if (_vm != null && _vm.IsOwned(pack.Sku)) { why = "already owned"; return null; }
+            if (pack.AnchorOnly) { why = "anchor-only row"; return null; }
+
+            var quote = PurchaseQuoteService.DisplayPrice(pack.Sku);
+            if (quote == null) { why = "no server display price"; return null; }
+            if (quote.Pinned) { why = "pinned canary"; return null; }
+            // ⛔ THE FAIL-CLOSED BRANCH THE BRIEF NAMES. Absent, zero or unusable bps ⇒ NO badge.
+            // Never a "0% OFF": a sale sign that advertises nothing is worse than no sign, on the
+            // one screen that takes money.
+            if (!quote.IsOnSale)
+            {
+                why = quote.SaleBps.HasValue
+                    ? "saleBps " + quote.SaleBps.Value + " is not a usable sale"
+                    : "server sent no saleBps";
+                return null;
+            }
+            return quote;
+        }
+
+        /// <summary>The ribbon's copy for this pack, or EMPTY. <paramref name="why"/> carries the
+        /// fail-closed reason so the render trace can name it.</summary>
+        private string SaleBadgeFor(PackDef pack, out string why)
+        {
+            var quote = SaleQuoteFor(pack, out why);
+            return quote != null ? quote.SaleBadgeText : string.Empty;
+        }
+
+        /// <summary>
+        /// The sale's proof line: "was &lt;s&gt;$4.99&lt;/s&gt; - ends in 2d 4h".
+        ///
+        /// <para>⛔ THE EFFECTIVE PRICE IS DELIBERATELY NOT REPEATED HERE. It is already the card's
+        /// LARGEST figure — <see cref="StorePriceMajor"/> returns it walletless and the server's
+        /// discounted SKR with a wallet, and <see cref="StorePriceMinor"/> carries "~ $3.49" beside
+        /// it. Printing it a third time in this line would put the same number on the card twice in
+        /// two type sizes, which reads as two prices rather than one.</para>
+        ///
+        /// <para>⛔ EVERY FIGURE IS TRANSPORTED, NONE IS COMPUTED. The anchor is a server field; this
+        /// method concatenates and strikes, and omits any clause whose number is missing rather than
+        /// deriving it from another.</para>
+        /// </summary>
+        private string SaleLineFor(PackDef pack)
+        {
+            var quote = SaleQuoteFor(pack, out _);
+            if (quote == null) return string.Empty;
+            // ⛔ THE LINE AND THE RIBBON MUST AGREE, AND ONE NARROW CASE MADE THEM DISAGREE. A
+            // saleBps of 1..49 IS a usable sale by IsOnSale, but SaleBadgeText rounds it to 0% and
+            // fails closed to EMPTY - so the card drew no ribbon while this method still returned
+            // "was $4.99", and the row reserved SaleExtraPx for a block the card never grew. The
+            // badge is the single gate for both, which is what makes `rowHasSale` one predicate.
+            if (string.IsNullOrEmpty(quote.SaleBadgeText)) return string.Empty;
+            var sb = new StringBuilder();
+            if (quote.HasStruckAnchor)
+                sb.Append("was ").Append(StorePackCard.Strike(quote.SaleAnchorLabel));
+            string ends = quote.SaleCountdownLabel(DateTime.UtcNow);
+            if (ends.Length > 0)
+            {
+                if (sb.Length > 0) sb.Append(" - ");
+                sb.Append(ends);
+            }
+            return sb.ToString();
+        }
+
+        // ── The pulse driver's three entry points: enrol, arm, tick ───────────
+
+        /// <summary>
+        /// Enrols one just-built card in the pulse list. Called once per card, from BuildPackCard.
+        /// <para>Also accumulates this render's sale tallies for the ONE trace line Render prints —
+        /// the fail-closed reason is collected here rather than logged per card, because a nine-pack
+        /// shelf with no sale on it would otherwise print nine lines saying exactly that.</para>
+        /// </summary>
+        private void RegisterCardPulse(StorePackCardHandle handle, string sku, string saleWhy)
+        {
+            if (handle == null || handle.Root == null) return;
+            if (handle.OnSale)
+            {
+                _saleBadgeCount++;
+                var quote = PurchaseQuoteService.DisplayPrice(sku);
+                if (quote != null && quote.SaleBps.HasValue) _saleBadgeBps = quote.SaleBps.Value;
+                if (quote != null && !string.IsNullOrEmpty(quote.SaleBadgeText))
+                    _saleBadgeLabel = quote.SaleBadgeText;
+                // ⛔ THE RAW SERVER FIELDS ARE READ HERE, NOT ONLY THE RESOLVED BADGE TEXT, and that
+                // is a DIAGNOSIS requirement rather than a formality. When a sale sign reads wrong the
+                // first question is always "did the server author that copy, or did the client convert
+                // the bps?" — and SaleBadgeText cannot answer it, because it returns the same SHAPE
+                // either way. Same for the end instant: the countdown is a derived, relative string, so
+                // the only way to tell a stale sale from a mis-parsed timestamp is to see the raw value
+                // the server actually sent.
+                if (quote != null)
+                {
+                    _saleCopyIsServerAuthored = !string.IsNullOrEmpty(quote.SaleLabel);
+                    _saleEndsAtRaw = string.IsNullOrEmpty(quote.SaleEndsAt) ? "none" : quote.SaleEndsAt;
+                }
+            }
+            else
+            {
+                _saleHiddenCount++;
+                if (!string.IsNullOrEmpty(saleWhy)) _saleHiddenWhy = saleWhy;
+            }
+
+            _cardPulses.Add(new CardPulse
+            {
+                Root = handle.Root.transform,
+                // ⛔ INDEXED OFF THE LIST'S OWN COUNT, which is the build order. A stagger keyed on
+                // anything else (a sku hash, a dictionary order) would scatter the wave into noise;
+                // FindObjectsByType-style unordered enumeration is the same trap CLAUDE.md §7 records
+                // for spawn points, one system over.
+                StartUnscaled = Time.unscaledTime + (_cardPulses.Count * OpenPulseStaggerSeconds),
+                Sale = handle.OnSale,
+                SaleLine = handle.SaleLineLabel,
+                Sku = sku,
+            });
+        }
+
+        // Per-render tallies for the two FlowTrace.Step lines the brief asks for. Reset by Render
+        // before the band walk, read by it after — never accumulated across renders.
+        private int _saleBadgeCount;
+        private int _saleHiddenCount;
+        private int _saleBadgeBps;
+        private string _saleBadgeLabel = string.Empty;
+        private string _saleHiddenWhy = string.Empty;
+        /// <summary>Did the SERVER author the sale copy, or did the client convert the bps?</summary>
+        private bool _saleCopyIsServerAuthored;
+        /// <summary>The server's raw <c>saleEndsAt</c>, verbatim, or "none". Never the derived countdown.</summary>
+        private string _saleEndsAtRaw = "none";
+
+        /// <summary>
+        /// Drives BOTH beats, once per frame, under ONE frame-path Measure scope.
+        ///
+        /// <para>⛔ THE 4-ARG <c>Measure</c> OVERLOAD, NOT THE 3-ARG ONE (CLAUDE.md §12). The 3-arg
+        /// form logs a line on every dispose; at 60 fps that is the spam, and on a device it evicts
+        /// the boot window out of the logcat ring — destroying the evidence the instrument exists to
+        /// capture. This form accumulates into PerfReporter's table and warns at most once a second.
+        /// There is NO per-frame log in this method for the same reason.</para>
+        ///
+        /// <para>⛔ <c>Time.unscaledTime</c>, NEVER <c>Time.time</c>. A world hold (timeScale 0)
+        /// would freeze a scaled pulse mid-beat and leave the card visibly enlarged with no path
+        /// back to its authored size.</para>
+        /// </summary>
+        private void TickCardPulses()
+        {
+            if (_cardPulses.Count == 0) return;
+            using var _ = FlowTrace.Measure("Perf", "PackStore.SaleBadge", 4f, 1f);
+
+            float now = Time.unscaledTime;
+            bool restamp = now - _lastCountdownStampUnscaled >= SaleCountdownRefreshSeconds;
+            if (restamp) _lastCountdownStampUnscaled = now;
+
+            for (int i = _cardPulses.Count - 1; i >= 0; i--)
+            {
+                var p = _cardPulses[i];
+                // Render destroys and rebuilds the priced bands, so a stale entry is NORMAL, not an
+                // error: drop it silently rather than logging on a frame path.
+                if (p.Root == null) { _cardPulses.RemoveAt(i); continue; }
+
+                float t = now - p.StartUnscaled;
+                float scale;
+                if (t < OpenPulseSeconds)
+                {
+                    // Negative t (this card's stagger has not arrived yet) returns exactly 1 from
+                    // EvaluatePulse's non-loop guard, so the card simply waits at its own size.
+                    scale = StorePackCard.EvaluatePulse(t, OpenPulseSeconds, false, OpenPulsePeak);
+                }
+                else if (p.Sale)
+                {
+                    scale = StorePackCard.EvaluatePulse(t - OpenPulseSeconds, SalePulseSeconds,
+                                                        true, SalePulsePeak);
+                }
+                else
+                {
+                    // ⛔ THIS IS "ONCE PER OPEN, NOT LOOPING", IN CODE RATHER THAN IN A COMMENT. An
+                    // undiscounted card is restored to its authored size and LEAVES the list, so a
+                    // shelf with no sale on it costs nothing at all after the wave has passed.
+                    p.Root.localScale = Vector3.one;
+                    _cardPulses.RemoveAt(i);
+                    continue;
+                }
+
+                p.Root.localScale = new Vector3(scale, scale, 1f);
+
+                // The countdown is the one string here that goes stale on a store left open, so it
+                // is re-stamped on a coarse cadence instead of being rebuilt per frame. Sale cards
+                // only — an undiscounted card has already been dropped above.
+                if (restamp && p.SaleLine != null)
+                {
+                    string line = SaleLineFor(PackCatalog.Find(p.Sku));
+                    if (!string.IsNullOrEmpty(line)) p.SaleLine.text = line;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Drops the OPEN pulse for every enrolled card, leaving only the sale loop.
+        /// <para>⛔ CALLED WHEN THE SHELF WAS REBUILT BY A PRICE REPAINT RATHER THAN AN OPEN. The
+        /// wave is an OPENING beat; replaying it every time a server quote returns would pulse the
+        /// shelf two or three times per session at moments the player did not act, which reads as a
+        /// glitch rather than as attention. Sale cards keep their loop — that beat is continuous by
+        /// design and is not tied to the open.</para>
+        /// </summary>
+        private void SeatCardPulsesAtRest()
+        {
+            for (int i = _cardPulses.Count - 1; i >= 0; i--)
+            {
+                var p = _cardPulses[i];
+                if (p.Root != null) p.Root.localScale = Vector3.one;
+                if (p.Sale)
+                {
+                    // Rewind past the open window so the very next tick lands in the loop.
+                    p.StartUnscaled = Time.unscaledTime - OpenPulseSeconds;
+                    _cardPulses[i] = p;
+                }
+                else _cardPulses.RemoveAt(i);
+            }
+        }
 
         /// <summary>The state pill's WORD for a priced-but-not-purchasable pack. PROPOSAL.</summary>
         private const string CardNotSellableStateWord = "Not yet";
@@ -3337,7 +3746,18 @@ namespace DeNelle.Wallet
             // WO-1409: without a signing wallet the authored USD anchor is still known. It is the
             // honest browse price; the unavailable SKR quote is not repeated on every card.
             if (WalletlessBrowsing)
+            {
+                // ⛔ WO-1800 — ON SALE, THE HEADLINE NUMBER IS THE EFFECTIVE PRICE, NOT THE ANCHOR.
+                // Without this branch a walletless sale card printed "$4.99" as its one large figure
+                // while the line beneath it read "was $4.99" - the pre-sale price shown AS the price,
+                // with a sale sign over it. That is not a layout defect, it is a wrong price on a
+                // shelf, and it is the exact reason the anchor gets STRUCK rather than reused.
+                // Still the SERVER's number: usdEffective, transported, never derived from saleBps.
+                var saleQuote = SaleQuoteFor(pack, out _);
+                if (saleQuote != null && !string.IsNullOrEmpty(saleQuote.SaleEffectiveLabel))
+                    return saleQuote.SaleEffectiveLabel;
                 return pack != null ? pack.UsdReference : string.Empty;
+            }
 
             return pack != null ? pack.AmountLabel(_defaultCurrency) : string.Empty;
         }
@@ -3363,6 +3783,15 @@ namespace DeNelle.Wallet
 
 
             if (WalletlessBrowsing) return string.Empty;
+
+            // ⛔ WO-1800 — SAME DEFECT, THE OTHER LANE. UsdApprox() resolves the ANCHOR
+            // (PurchaseQuoteService.UsdAnchorFor), so on a sale card the fiat reference beside the
+            // discounted SKR would have read "~ $4.99" while the line above it struck that very
+            // figure out. The tilde stays: the dollars still float because the rate does, and it is
+            // the SKR that is exact (see SolanaPackPricing.UsdApprox's own header).
+            var saleMinor = SaleQuoteFor(pack, out _);
+            if (saleMinor != null && saleMinor.UsdEffective.HasValue && saleMinor.UsdEffective.Value > 0d)
+                return "~ " + saleMinor.SaleEffectiveLabel;
 
             return pack != null ? pack.UsdApprox() : string.Empty;
         }
@@ -4003,9 +4432,20 @@ namespace DeNelle.Wallet
                     $"Asking for today's price for {pack.Name}. Nothing has been charged yet.");
                 // Context only: the server treats this as a logged hint and owns both eligibility
                 // and amount. No percentage or price arithmetic exists in the client.
-                string quoteReason = _pendingShortfallMissing > 0 && pack.Impulse &&
+                // WO-1801 - the FIRST-BUY pack earns the same hint when a real shortfall opened this
+                // store. The condition used to require pack.Impulse, and the first-buy micro is
+                // deliberately NOT impulse (it is a multi-lane basket plus a crew charge), so the
+                // shortfall door could hand the till a genuine gap and the till would quote full
+                // price. The hint is CONTEXT ONLY - the server owns eligibility, the amount and the
+                // once-per-7-days window - so widening it cannot invent a discount, only report the
+                // moment honestly. `_pendingShortfallMissing > 0` still gates both arms: no gap, no hint.
+                bool shortfallOwnsThisOpen = _pendingShortfallMissing > 0;
+                bool impulseMatchesShortfall = pack.Impulse &&
                     string.Equals(pack.ImpulseResource, _pendingShortfallLabel,
-                        StringComparison.OrdinalIgnoreCase)
+                        StringComparison.OrdinalIgnoreCase);
+                bool isFirstBuyRemedy = string.Equals(pack.Sku,
+                    DeNelle.Commerce.FirstBuyOffer.Resolve()?.Sku, StringComparison.Ordinal);
+                string quoteReason = shortfallOwnsThisOpen && (impulseMatchesShortfall || isFirstBuyRemedy)
                     ? "repair_shortfall" : null;
                 var quoted = await PurchaseQuoteService.RequestQuoteAsync(pack, _wallet, quoteReason);
                 if (!quoted.Ok)

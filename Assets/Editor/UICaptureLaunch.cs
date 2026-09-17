@@ -3060,6 +3060,75 @@ namespace DeNelle.Editor
             }
         }
 
+        /// <summary>
+        /// WO-1800: the SAME shelf with the storewide sale on, as its own entry point and its own
+        /// marker (<c>NIGHT_MARKET_SALE_CAPTURE_OK</c>).
+        ///
+        /// <para>⛔ IT IS A SEPARATE ENTRY POINT AND NOT A SECOND SHOT INSIDE THE EXISTING ONE, for
+        /// an arithmetic reason worth stating: <c>RunNightMarketCaptureHeadless</c> judges itself on
+        /// <c>count == NightMarketTargets.Length</c> AND on <c>_geoCanvasesChecked</c> /
+        /// <c>_touchPanelsChecked</c> equalling the same number — and every one of those counters is
+        /// incremented per <c>RenderCanvasToPng</c> call. A second frame per target would have
+        /// doubled all three and turned that gate RED while nothing was wrong with the screen. Same
+        /// shape as the marker-collision CLAUDE.md §8 records: a count that means one thing being
+        /// read as though it meant another.</para>
+        ///
+        /// <para>⚠ AND WHAT THIS FRAME CANNOT PROVE, STATED: the capture path composes the panel by
+        /// Awake -> EnsureBuilt -> Render and never ticks <c>Update</c>, so every card sits at its
+        /// AUTHORED scale. The PULSE is therefore NOT proven here — only the ribbon, the struck
+        /// anchor, the countdown and the taller card are. The motion needs play mode or a device.</para>
+        /// </summary>
+        public static void RunNightMarketSaleCaptureHeadless()
+        {
+            Directory.CreateDirectory(OutDir);
+            _fidelityOk = 0;
+            _fidelityDegraded = 0;
+            _fidelityReasons.Clear();
+            _screenStuckBuilds = 0;
+            _screenStuckAt = null;
+            _geoMoveProof = null;
+            _geoMoveFailure = null;
+            _geoFailures.Clear();
+            _geoCanvasesChecked = 0;
+            _touchFailures.Clear();
+            ResetGlyphOracle();
+            _touchPanelsChecked = 0;
+            _touchPanelsClean = 0;
+            ProveGeometryMoves();
+
+            int count;
+            _injectNightMarketSale = true;
+            try { count = CaptureNightMarketStore(); }
+            finally
+            {
+                // Unconditional: the flag is static and a leaked TRUE would silently put a
+                // fabricated sale on every later Night Market frame in the same batchmode run.
+                _injectNightMarketSale = false;
+                ClearInjectedSaleDisplayPrices();
+            }
+
+            ReportFidelity();
+            ReportGeometry();
+            ReportTouchOracle();
+            ReportGlyphOracle();
+
+            bool clean = count == NightMarketTargets.Length
+                         && _fidelityDegraded == 0
+                         && _geoFailures.Count == 0
+                         && _geoCanvasesChecked == NightMarketTargets.Length
+                         && _touchPanelsChecked == NightMarketTargets.Length
+                         && _touchPanelsClean == _touchPanelsChecked
+                         && _touchFailures.Count == 0;
+            if (clean)
+                Debug.Log("NIGHT_MARKET_SALE_CAPTURE_OK " + count + "/" + NightMarketTargets.Length +
+                          "; geometry=clean; touch=clean");
+            else
+                Debug.LogError("NIGHT_MARKET_SALE_CAPTURE_FAIL " + count + "/" + NightMarketTargets.Length +
+                               "; fidelityDegraded=" + _fidelityDegraded +
+                               "; geometryFailures=" + _geoFailures.Count +
+                               "; touchFailures=" + _touchFailures.Count);
+        }
+
         /// <summary>Focused current-state proof for the approved Night Market handoff.</summary>
         public static void RunNightMarketCaptureHeadless()
         {
@@ -4310,6 +4379,16 @@ namespace DeNelle.Editor
                 }
                 Debug.Log("[UICap-HL] NightMarket composed art count=" + artCount);
 
+                // ⛔ WO-1800 — THE SALE GOES IN BEFORE Render(), NOT AFTER. Render() RESOLVES each
+                // card's sale badge from the server's display row and bakes the result into the
+                // card's own HEIGHT (a sale card is SaleExtraPx taller). Injecting after it would
+                // therefore change nothing at all on screen, and the frame would quietly prove the
+                // opposite of what it was shot for.
+                _saleRowsInjected = 0;
+                if (_injectNightMarketSale && !InjectSaleDisplayPrices(3000, "30% OFF", out _saleRowsInjected))
+                    Debug.LogWarning("[UICap-HL] the sale state could NOT be injected - this frame " +
+                                     "proves nothing about the sale signs.");
+
                 // Render() fills the priced bands from PackCatalog. Guarded separately: a catalogue
                 // failure must still leave the CHROME shot, because "the store opened empty" and
                 // "the store did not open" are different defects and the png must tell them apart.
@@ -4319,7 +4398,14 @@ namespace DeNelle.Editor
                     Debug.LogWarning("[UICap-HL] Night Market Render threw (shooting the chrome anyway): " + re.Message);
                 }
 
-                if (RenderCanvasToPng(canvasGo, OutDir + "NightMarket_" + target.Tag + ".png",
+                // WO-1800: on the SALE pass only, name the frame apart and report what the built
+                // tree actually carries. Measured off the tree, never assumed from the injection.
+                if (_injectNightMarketSale)
+                    Debug.Log("[UICap-HL] NightMarket SALE pass: ribbons measured in the built tree = " +
+                              CountSaleRibbons(canvasGo) + " (injected on " + _saleRowsInjected + " sku(s))");
+
+                string shotName = _injectNightMarketSale ? "NightMarket_Sale_" : "NightMarket_";
+                if (RenderCanvasToPng(canvasGo, OutDir + shotName + target.Tag + ".png",
                     target.W, target.H)) saved++;
 
                 // The runtime half of Assert A. In edit mode ClampMinTouch's guard MonoBehaviour
@@ -4336,6 +4422,17 @@ namespace DeNelle.Editor
             }
             finally
             {
+                // ⛔ THE INJECTED SALE IS TORN DOWN ON EVERY SALE TARGET. PurchaseQuoteService's
+                // display cache is STATIC, so a row left behind would still be there for the next
+                // capture target, the next suite in the same batchmode run, and any editor play
+                // session afterwards - a fabricated price surviving into a path that takes money.
+                //
+                // ⚠ GATED ON THE FLAG so the ORDINARY capture path gains no side effect at all. An
+                // unconditional Clear() here would wipe a real LIST response that a future capture
+                // (or a play session that had already fetched prices) was relying on - this harness
+                // must not be able to change what it is photographing when it was not asked to.
+                if (_injectNightMarketSale) ClearInjectedSaleDisplayPrices();
+
                 // Awake() registered the panel with the arbiter; release it by hand -- the store's
                 // own CloseStore path uses runtime Destroy, which is edit-illegal.
                 try
@@ -4354,6 +4451,99 @@ namespace DeNelle.Editor
             }
 
             return saved;
+        }
+
+        // =====================================================================
+        //  ⭐ WO-1800 — THE SALE STATE, INJECTED BY REFLECTION ON PURPOSE.
+        // ---------------------------------------------------------------------
+        //  ⛔ NO WRITE SEAM WAS ADDED TO PurchaseQuoteService. That file's whole
+        //  doctrine is that the client never authors a price; a public "set a
+        //  display price" method would exist in the SHIPPED build forever so an
+        //  editor screenshot could be taken, and the next seat would find a legal
+        //  way to fabricate a price on the one screen that takes money.
+        //  Reflection keeps the fabrication where it belongs: in the editor-only
+        //  capture harness, visible as the hack it is, with a teardown beside it.
+        //
+        //  ⚠ THE ROWS ARE BUILT BY DESERIALIZING REAL WIRE JSON, not by setting
+        //  fields one at a time. If WO-1799's server contract and this JSON ever
+        //  disagree, the rows come back with null sale fields and the capture
+        //  shows NO badge - which is the honest signal, not a green frame.
+        // =====================================================================
+
+        /// <summary>Set ONLY by <see cref="RunNightMarketSaleCaptureHeadless"/>; always cleared in its finally.</summary>
+        private static bool _injectNightMarketSale;
+        private static int _saleRowsInjected;
+
+        private static System.Collections.IDictionary DisplayPriceCache()
+        {
+            var field = typeof(DeNelle.Wallet.PurchaseQuoteService).GetField("_displayPrices",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            return field != null ? field.GetValue(null) as System.Collections.IDictionary : null;
+        }
+
+        /// <summary>Puts a fabricated on-sale display row on every shelf pack. Editor-only.</summary>
+        private static bool InjectSaleDisplayPrices(int saleBps, string saleLabel, out int injected)
+        {
+            injected = 0;
+            var cache = DisplayPriceCache();
+            if (cache == null)
+            {
+                Debug.LogWarning("[UICap-HL] PurchaseQuoteService._displayPrices not found by " +
+                                 "reflection - the field was renamed; sale capture skipped.");
+                return false;
+            }
+            cache.Clear();
+            var packs = DeNelle.Wallet.PackCatalog.Packs;
+            if (packs == null) return false;
+            for (int i = 0; i < packs.Count; i++)
+            {
+                var pack = packs[i];
+                if (pack == null || string.IsNullOrEmpty(pack.Sku)) continue;
+                // An anchor the ladder actually uses, and an effective price the SERVER would have
+                // computed from it. The client never derives one -- this is the harness standing in
+                // for the server, which is exactly why it lives here and not in PackStore.
+                double anchor = pack.Pricing != null && pack.Pricing.Usd > 0d ? pack.Pricing.Usd : 4.99d;
+                double effective = Math.Round(anchor * (1d - saleBps / 10000d), 2);
+                string json = "{\"sku\":\"" + pack.Sku + "\",\"network\":\"devnet\"," +
+                              "\"amountBaseUnits\":\"1000000\",\"decimals\":6," +
+                              "\"usdAnchor\":" + anchor.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "," +
+                              "\"usdEffective\":" + effective.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "," +
+                              "\"saleBps\":" + saleBps.ToString(System.Globalization.CultureInfo.InvariantCulture) + "," +
+                              "\"saleLabel\":\"" + saleLabel + "\"," +
+                              "\"saleEndsAt\":\"" + DateTime.UtcNow.AddDays(2).AddHours(4)
+                                  .ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture) + "\"}";
+                DeNelle.Wallet.PurchaseQuote row;
+                try { row = Newtonsoft.Json.JsonConvert.DeserializeObject<DeNelle.Wallet.PurchaseQuote>(json); }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("[UICap-HL] sale row for '" + pack.Sku + "' would not parse: " + e.Message);
+                    continue;
+                }
+                if (row == null) continue;
+                cache[pack.Sku] = row;
+                injected++;
+            }
+            return injected > 0;
+        }
+
+        /// <summary>Removes every fabricated row. Called from the capture's finally, always.</summary>
+        private static void ClearInjectedSaleDisplayPrices()
+        {
+            try { DisplayPriceCache()?.Clear(); }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[UICap-HL] could not clear the injected sale rows: " + e.Message);
+            }
+        }
+
+        /// <summary>How many sale ribbons the BUILT tree actually carries — measured, not assumed.</summary>
+        private static int CountSaleRibbons(GameObject canvasGo)
+        {
+            if (canvasGo == null) return 0;
+            int n = 0;
+            foreach (var tr in canvasGo.GetComponentsInChildren<Transform>(true))
+                if (string.Equals(tr.name, "SaleRibbon", StringComparison.Ordinal)) n++;
+            return n;
         }
 
         // ---------------------------------------------------------------------

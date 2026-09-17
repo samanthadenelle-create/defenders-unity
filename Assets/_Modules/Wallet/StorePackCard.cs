@@ -110,6 +110,26 @@ namespace DeNelle.Wallet
         /// plate, which has a whole host to spend; the card carries the state, not the essay.</para>
         /// </summary>
         public string NotSellableReason;
+        /// <summary>
+        /// The storewide sale ribbon's copy ("30% OFF"), or EMPTY for no ribbon (WO-1800).
+        /// <para>⛔ RESOLVED BY THE CALLER FROM THE SERVER'S <c>saleBps</c>/<c>saleLabel</c>, exactly
+        /// like every other string here. The card cannot ask whether something is on sale, because a
+        /// card that could would be a second commerce authority (UI-002) — and an invented sale sign
+        /// is a lie about money, not a layout bug.</para>
+        /// <para>⛔ EMPTY IS THE FAIL-CLOSED STATE AND IT IS THE DEFAULT. Absent, zero or unusable
+        /// sale bps ⇒ empty ⇒ no ribbon drawn at all. There is no "0% OFF".</para>
+        /// </summary>
+        public string SaleBadge;
+        /// <summary>
+        /// The sale's one proof line — "was &lt;s&gt;$4.99&lt;/s&gt; now $2.99 - ends in 2d 4h", or EMPTY.
+        /// <para>⛔ IT GETS A BLOCK OF ITS OWN and the card's height grows by it (see
+        /// <see cref="SaleExtraPx"/>). The vertical budget above is spent to the pixel, so squeezing
+        /// a new line into the price lane or the contents block is the very defect FIX 2 settled:
+        /// author the number, let the column scroll, never clip the string.</para>
+        /// <para>Carries TMP rich-text <c>&lt;s&gt;</c> markup on the anchor only. The STRIKE is the
+        /// greyscale carrier — a crossed-out number reads with every hue removed.</para>
+        /// </summary>
+        public string SaleLine;
         /// <summary>The band this card lives in — supplies the accent light.</summary>
         public StoreBand Band;
         /// <summary>Authored per-pack tint (packs.json <c>orbTint</c>). Empty falls back to the band light.</summary>
@@ -133,6 +153,14 @@ namespace DeNelle.Wallet
         public TextMeshProUGUI PriceLabel;
         /// <summary>The not-sellable state line, or null when the pack is buyable.</summary>
         public TextMeshProUGUI ReasonLabel;
+        /// <summary>The storewide sale ribbon's plate, or null when this card is not on sale.</summary>
+        public Image SaleRibbon;
+        /// <summary>The ribbon's "30% OFF" face, or null.</summary>
+        public TextMeshProUGUI SaleRibbonLabel;
+        /// <summary>The struck-anchor / effective / countdown proof line, or null.</summary>
+        public TextMeshProUGUI SaleLineLabel;
+        /// <summary>True when this card carries a sale ribbon — the pulse driver's one question.</summary>
+        public bool OnSale;
     }
 
     /// <summary>The single Night Market card template. Static builders; holds no state.</summary>
@@ -248,6 +276,133 @@ namespace DeNelle.Wallet
 
         /// <summary>What a reason costs a card in total: its block plus the gap above it.</summary>
         public static float ReasonExtraPx => ReasonBlockPx + BlockGapPx;
+
+        // =====================================================================
+        //  ⭐ THE SALE LINE GETS ITS OWN BLOCK TOO (WO-1800).
+        // ---------------------------------------------------------------------
+        //  Owner, 2026-09-16: "put big sales signs with x% off!!!! you know some
+        //  flash". That is TWO elements with two different budgets, and keeping
+        //  them apart is the whole of why this is safe:
+        //
+        //    1. THE RIBBON is a pure OVERLAY on the art well, top-left, like the
+        //       state pill is at top-right. It costs the vertical budget NOTHING,
+        //       so no card grows for it and no existing measurement moves.
+        //
+        //    2. THE SALE LINE ("was $4.99  now $2.99 - ends in 2d 4h") is TEXT,
+        //       so it gets a BLOCK, and the card's derived height grows by exactly
+        //       that block plus its gap. The budget above is spent to the pixel —
+        //       the arithmetic in FIX 2's header is what happens when a new line
+        //       is pushed into a lane that was already full, and the price row is
+        //       the lane it would have landed in.
+        //
+        //  ⛔ AND IT IS RESERVED LIKE THE REASON LINE, NOT LIKE THE CAPTION. A
+        //  sale card may drop its goods-per-dollar caption; it may never drop the
+        //  line that states what the player is actually being charged. A big "30%
+        //  OFF" sign with no second number beside it is a claim, not a price.
+        // =====================================================================
+
+        /// <summary>The sale proof line's block. One line at <see cref="FontCaption"/>.</summary>
+        public static float SaleBlockPx => BlockPx(FontCaption, 1);
+
+        /// <summary>What a sale costs a card in total: its block plus the gap above it.</summary>
+        public static float SaleExtraPx => SaleBlockPx + BlockGapPx;
+
+        // ── THE RIBBON, derived from its font exactly like the pill (FIX 4) ───
+        //  ⛔ NEVER A LITERAL HEIGHT HERE. A 44 px plate around a 30 px font gave
+        //  the pill a 28 px line box and TMP culled the label WHOLE — the badge
+        //  drew zero glyphs on every surface. The ribbon carries the LOUDEST copy
+        //  on the screen, so it is the last label that may vanish silently.
+
+        /// <summary>The ribbon's font. Deliberately larger than the pill's: it is the "big sign".</summary>
+        private const int FontSaleRibbon = 38;
+        /// <summary>Breathing room inside the ribbon, per side.</summary>
+        private const float RibbonPadXPx = 18f;
+        private const float RibbonPadYPx = 6f;
+        /// <summary>The ribbon's label box — one line at <see cref="FontSaleRibbon"/>.</summary>
+        public static float RibbonTextBoxPx => BlockPx(FontSaleRibbon, 1);
+        /// <summary>The ribbon plate: its label's own line box plus its padding.</summary>
+        public static float RibbonHeightPx => RibbonTextBoxPx + 2f * RibbonPadYPx;
+        /// <summary>The ribbon's x band as fractions of the CARD width.</summary>
+        /// <remarks>
+        /// ⛔ THIS BAND OVERLAPS THE PILL'S (0.26..0.96) AND THAT IS WHY THE TWO ARE MUTUALLY
+        /// EXCLUSIVE, not why the band is narrow. Making them disjoint was tried on paper first and
+        /// does not survive arithmetic: the pill's band starts at 0.26 because "BEST VALUE" measures
+        /// 219 px bold at font 30 and needs 0.70 of the card (FIX 4's width budget), which leaves the
+        /// ribbon 0.02..0.24 — 82 px on the narrowest shipped card (375 px), 46 px after padding, for
+        /// copy that must read as the LOUDEST thing on the screen. Stacking them vertically fails the
+        /// same way: the pill ends 60 px down and the COMPACT art well is only 101 px tall, so a
+        /// 54 px ribbon beneath it overhangs the well by 13 px. So the card draws ONE top badge, by
+        /// the ranking at the pill site.
+        /// </remarks>
+        private const float RibbonX0 = 0.02f;
+        private const float RibbonX1 = 0.62f;
+        /// <summary>Letter-spacing on the ribbon face, TMP 1/100 em.</summary>
+        private const float RibbonLetterSpacing = 4f;
+
+        // =====================================================================
+        //  ⭐ THE RIBBON'S TWO COLOURS, AND WHY THEY ARE PUBLIC.
+        // ---------------------------------------------------------------------
+        //  The owner is red/green colourblind, so the ribbon may not rely on hue
+        //  for a single thing it says. It carries FOUR non-colour carriers — the
+        //  words ("30% OFF"), the tilt, the position (top-LEFT, where nothing else
+        //  on this card sits) and the POLARITY: the state pill is a LIGHT plate
+        //  with DARK ink, and this is its exact inverse. Desaturate the capture
+        //  and the two badges remain unmistakable.
+        //
+        //  ⛔ PUBLIC BECAUSE THE CONTRAST IS AN ASSERTION, NOT AN OPINION. The
+        //  regression computes the WCAG relative-luminance ratio of these two
+        //  values and fails under 4.5:1. An oracle that re-typed the hex could
+        //  not fail when this changed; one that reads the fields can.
+        // =====================================================================
+
+        /// <summary>The ribbon's fill — near-black, the card's own substrate pushed darker.</summary>
+        public static readonly Color SaleRibbonFill = Hex(0x0A, 0x09, 0x0C);
+        /// <summary>The ribbon's ink — parchment. Paired with the fill above at ~18:1.</summary>
+        public static readonly Color SaleRibbonInk  = Hex(0xF7, 0xF1, 0xE1);
+
+        // =====================================================================
+        //  ⭐ THE "FLASH" — ONE PURE FUNCTION, SO IT IS PINNABLE WITHOUT PLAY MODE.
+        // ---------------------------------------------------------------------
+        //  Owner, 2026-09-16: "you know some flash" + "also make the packs pulse
+        //  when the store opens".
+        //
+        //  ⛔ IT IS SCALE, NOT COLOUR, AND THAT IS THE RULING NOT A PREFERENCE. A
+        //  hue-cycling or brightening badge conveys nothing to a red/green
+        //  colourblind player and nothing at all in a greyscale capture. MOTION
+        //  survives both, so the attention carrier is motion.
+        //
+        //  ⛔ AND THE CURVE LIVES HERE, NOT IN AN Update BODY. A tick that
+        //  computes its own easing inline cannot be tested without a running
+        //  player; this signature can be asserted at gate time (1 at t=0, the peak
+        //  at the midpoint, 1 at the end, and FLAT at 1 forever after when it does
+        //  not loop — which is what "undiscounted cards pulse once" MEANS).
+        // =====================================================================
+
+        /// <summary>
+        /// The pulse's scale multiplier at <paramref name="t"/> seconds into a pulse of
+        /// <paramref name="duration"/> seconds, peaking at <paramref name="peak"/>.
+        /// <para>Half a sine: 1 at both ends, <paramref name="peak"/> at the midpoint — so a card
+        /// always starts and finishes at its authored size and a pulse can never leave one
+        /// permanently enlarged. Returns exactly 1 outside the window when <paramref name="loop"/>
+        /// is false, and 1 for any non-positive duration.</para>
+        /// </summary>
+        public static float EvaluatePulse(float t, float duration, bool loop, float peak)
+        {
+            if (duration <= 0f) return 1f;
+            if (loop) t = Mathf.Repeat(t, duration);
+            else if (t <= 0f || t >= duration) return 1f;
+            return 1f + (peak - 1f) * Mathf.Sin((t / duration) * Mathf.PI);
+        }
+
+        /// <summary>
+        /// Wraps <paramref name="s"/> in TMP's strike-through markup, or returns empty for empty.
+        /// <para>⛔ THE STRIKE IS THE GREYSCALE CARRIER FOR "this is the OLD price". A dimmer or
+        /// differently-tinted anchor says nothing with the hue removed; a line drawn through digits
+        /// says it in shape. Kept as one function so the oracle can assert the exact markup instead
+        /// of matching a string built at four call sites.</para>
+        /// </summary>
+        public static string Strike(string s) =>
+            string.IsNullOrEmpty(s) ? string.Empty : "<s>" + s + "</s>";
 
         /// <summary>Card heights per variant, reference px — DERIVED from the blocks above.</summary>
         public static float FeaturedHeightPx =>
@@ -414,7 +569,18 @@ namespace DeNelle.Wallet
         /// card in a 100-unit row (see PackStore.BuildCardRow).</para>
         /// </summary>
         public static float CardHeight(StorePackCardVariant v, bool hasNotSellableReason) =>
-            CardHeight(v) + (hasNotSellableReason ? ReasonExtraPx : 0f);
+            CardHeight(v, hasNotSellableReason, false);
+
+        /// <summary>
+        /// Card height for a variant that may carry the not-sellable state line AND/OR the sale
+        /// proof line. The two blocks are INDEPENDENT and a card can legitimately carry both.
+        /// <para>⛔ THE SHELF STRIP MUST ASK THIS ONE. Same mechanism as the reason block: the row
+        /// authors ONE height and force-expands its children to it, so a row measured before the
+        /// sale is resolved would squeeze the sale line back out of the taller card. The 2-arg
+        /// overload above is kept so every existing caller keeps its exact previous answer.</para>
+        /// </summary>
+        public static float CardHeight(StorePackCardVariant v, bool hasNotSellableReason, bool hasSale) =>
+            CardHeight(v) + (hasNotSellableReason ? ReasonExtraPx : 0f) + (hasSale ? SaleExtraPx : 0f);
 
         /// <summary>
         /// Build one card under <paramref name="parent"/>.
@@ -435,7 +601,19 @@ namespace DeNelle.Wallet
             Color accent = NightMarketPalette.ParseTint(model.OrbTint, light);
             string reason = Ascii(model.NotSellableReason);
             bool hasReason = !string.IsNullOrEmpty(reason);
-            float cardH  = CardHeight(variant, hasReason);
+            // ⛔ THE RIBBON IS THE GATE FOR BOTH SALE ELEMENTS. A sale LINE with no ribbon would be
+            // a struck price with nothing explaining it, and the caller's fail-closed resolver
+            // returns both or neither — so the card reads the badge and never second-guesses it.
+            string saleBadge = Ascii(model.SaleBadge);
+            bool hasRibbon = !string.IsNullOrEmpty(saleBadge);
+            // ⛔ THE BLOCK IS BOUGHT BY THE LINE, NOT BY THE RIBBON, AND THEY ARE NOT THE SAME
+            // QUESTION. The ribbon is an overlay and costs no height; the LINE is the thing the card
+            // grows for. The server can legitimately send a sale bps with no anchor and no end
+            // instant — a badge with nothing left to state — and a card that grew SaleExtraPx for an
+            // empty string would carry a band of dead space under its price for no reason.
+            bool hasSaleLine = hasRibbon && !string.IsNullOrEmpty(model.SaleLine);
+            handle.OnSale = hasRibbon;
+            float cardH  = CardHeight(variant, hasReason, hasSaleLine);
             float artH   = ArtWellHeight(variant);
 
             // ── ROOT ─────────────────────────────────────────────────────────
@@ -500,11 +678,22 @@ namespace DeNelle.Wallet
             float priceBlock = PriceBlockPx(variant);
             float y = artH + TextGapPx;
             float priceLaneTop = cardH - (BottomPadPx + priceBlock);
+            // ⛔ THE SALE LINE IS RESERVED WITH THE PRICE LANE TOO, AND FORGETTING THIS IS THE WHOLE
+            // BUG FIX 2 DOCUMENTS. The card's derived height grew by SaleExtraPx, but the TEXT STACK
+            // measures its budget DOWN FROM the price lane — so a stack that still measured to
+            // `priceLaneTop` would spend the very pixels the sale line was authored into and draw
+            // the contents block straight through "was $4.99  now $2.99". The stack's floor is
+            // therefore the SALE line's top whenever there is one, not the price lane's.
+            //
+            //   sale line occupies:  BottomPadPx + priceBlock + BlockGapPx .. + SaleBlockPx
+            //   so it costs exactly: BlockGapPx + SaleBlockPx == SaleExtraPx   (the height added)
+            float saleTop = priceLaneTop - BlockGapPx - SaleBlockPx;
+            float stackFloor = hasSaleLine ? saleTop : priceLaneTop;
             // ⛔ THE REASON LINE IS RESERVED WITH THE PRICE LANE, NOT SPENT WITH THE OPTIONALS. It
             // is REQUIRED whenever it exists: the caller only sets it on a card whose buy control is
             // dead, and a dead control with no words is exactly the state the owner cannot read.
-            float reasonTop = priceLaneTop - PriceGapPx - ReasonBlockPx;
-            float budget = (hasReason ? reasonTop - BlockGapPx : priceLaneTop - PriceGapPx) - y;
+            float reasonTop = stackFloor - PriceGapPx - ReasonBlockPx;
+            float budget = (hasReason ? reasonTop - BlockGapPx : stackFloor - PriceGapPx) - y;
 
             // ── NAME — REQUIRED ──────────────────────────────────────────────
             // It takes its full block, or every remaining pixel if the budget is somehow tighter
@@ -630,16 +819,65 @@ namespace DeNelle.Wallet
                     ElarionUiKit.FitSingleLine(minor, ElarionUi.FontFloorMobile, minorFont);
             }
 
-            // ── THE STATE / BADGE PILL — top-right of the art well ───────────
+            // ── THE SALE PROOF LINE — its own lane, one block above the price ─
+            // ⛔ FULL WIDTH (the price row's own 0.06..0.94 band) AND ONE BLOCK ABOVE THE PRICE ROW,
+            // which is exactly the height this card grew by. It cannot collide with the price
+            // beneath it (disjoint lanes, both bottom-pinned) and it cannot collide with the text
+            // stack above it (that stack is top-anchored off the art well, and the card got TALLER,
+            // so the slack between them grew rather than shrank).
+            if (hasSaleLine)
+            {
+                handle.SaleLineLabel = BottomAnchoredText(card, model.SaleLine, FontCaption,
+                    ElarionUi.Parchment, FontStyles.Bold, TextAlignmentOptions.BottomLeft,
+                    BottomPadPx + priceBlock + BlockGapPx, SaleBlockPx, PriceRowX0, PriceRowX1);
+                if (handle.SaleLineLabel != null)
+                {
+                    // ⛔ RICH TEXT ON, EXPLICITLY. The struck anchor IS the "<s>" markup, and this
+                    // is the only label on the card that carries any. Relying on TMP's default
+                    // would ship the tags as literal glyphs the day that default changes, which on
+                    // this screen reads as "was <s>$4.99</s>" printed at the player.
+                    handle.SaleLineLabel.richText = true;
+                    handle.SaleLineLabel.textWrappingMode = TextWrappingModes.NoWrap;
+                    // Shrinks toward the floor before it would truncate, same rule as the price:
+                    // the old price and the new one are both money and neither may be cut.
+                    ElarionUiKit.FitSingleLine(handle.SaleLineLabel, ElarionUi.FontFloorMobile, FontCaption);
+                }
+            }
+
+            // ── THE ONE TOP BADGE — pill (top-right) OR sale ribbon (top-left) ─
             // The state WORD outranks the merchandising badge: "Owned" must never be hidden behind
             // "BEST VALUE", or the player is invited to buy what they already have.
-            string pill = !string.IsNullOrEmpty(model.StateWord) ? model.StateWord : model.Badge;
+            // ⛔ ONE TOP BADGE PER CARD, RANKED: STATE WORD > SALE RIBBON > MERCHANDISING BADGE.
+            //
+            // The state WORD still outranks everything, for the reason it always did: "Owned" must
+            // never be hidden, and a player denied a purchase must be told in a word. What is NEW is
+            // that a sale ribbon outranks the merchandising badge — a live discount is a stronger
+            // reason to look than "BEST START", and two loud plates fighting over one rect is worse
+            // than either alone, especially desaturated.
+            //
+            // ⚠ AND ALMOST NOTHING IS ACTUALLY LOST TO THIS. SaleQuoteFor already suppresses the sale
+            // for OWNED and ANCHOR-ONLY packs, so the state words that can even reach this branch
+            // beside a ribbon are "Not yet" — which the card ALSO prints in full as its reason line,
+            // so no information goes missing — and "Your gap". For those two the state wins and the
+            // ribbon stands down; the card still carries the struck anchor on its sale line, so the
+            // discount is stated in digits either way. Only the big sign yields.
+            bool stateOutranksRibbon = !string.IsNullOrEmpty(Ascii(model.StateWord));
+            bool drawRibbon = hasRibbon && !stateOutranksRibbon;
+            string pill = !string.IsNullOrEmpty(model.StateWord) ? model.StateWord
+                        : (drawRibbon ? string.Empty : model.Badge);
             // ⚠ NOT uppercased here. The authored badges ARE already uppercase where the merchandiser
             // meant them to be ("BEST START"), and founders-vow's ruled replacement for its retired
             // FOMO copy is a SENTENCE -- "Founders are named on the Heart." -- which a forced
             // ToUpperInvariant would shout. Presentation must not overrule authored copy.
             if (!string.IsNullOrEmpty(pill) && variant != StorePackCardVariant.LandscapeStandard)
                 handle.StateLabel = BuildPill(card, Ascii(pill), cardH, artH);
+
+            // ── THE SALE RIBBON — the "big sign", top-LEFT over the art well ──
+            // ⛔ UNCONDITIONAL ACROSS VARIANTS, unlike the pill above. BuildPill is SKIPPED on
+            // LandscapeStandard, which is the variant PackStore.VariantFor(Basket) returns for the
+            // shipped landscape shelf — a ribbon gated the same way would render NOWHERE on the very
+            // cards the owner is looking at, with every gate green.
+            if (drawRibbon) BuildSaleRibbon(card, saleBadge, handle);
 
             // ── THE WHOLE CARD IS THE TAP TARGET ─────────────────────────────
             var btn = rootGo.GetComponent<Button>();
@@ -787,6 +1025,65 @@ namespace DeNelle.Wallet
             // not the well, so a variant change to the art height cannot move the badge off it.
             _ = wellTop;
             return t;
+        }
+
+        /// <summary>
+        /// The storewide sale ribbon: a tilted, near-black rounded plate at the card's top-LEFT
+        /// carrying the loudest copy on the screen (WO-1800).
+        ///
+        /// <para>⛔ IT IS NOT THE PILL AND IT MUST NOT REUSE IT. <see cref="BuildPill"/> is SKIPPED
+        /// on <see cref="StorePackCardVariant.LandscapeStandard"/> — which is the variant the shipped
+        /// landscape shelf draws its Basket band at (PackStore.VariantFor). A ribbon routed through
+        /// the pill path would therefore render NOWHERE on the very cards the owner is looking at,
+        /// while every gate stayed green. So this builder is unconditional across variants, and the
+        /// two badges are separated on four axes: position (left vs right), tilt (diagonal vs level),
+        /// polarity (dark plate / light ink vs light plate / dark ink) and their words.</para>
+        ///
+        /// <para>⛔ raycastTarget OFF on both plate and label, like the pill. A sale sign is
+        /// INFORMATION; leaving it tappable would put a second interactive rect over the card's own
+        /// (WO-1060 Assert B) and swallow the tap that moves the spotlight.</para>
+        /// </summary>
+        private static void BuildSaleRibbon(Transform card, string text, StorePackCardHandle handle)
+        {
+            if (card == null || string.IsNullOrEmpty(text) || handle == null) return;
+
+            var go = new GameObject("SaleRibbon", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(card, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = new Vector2(RibbonX0, 1f);
+            rt.anchorMax = new Vector2(RibbonX1, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            // Sits a little lower than the pill's -12 so the tilt's rising corner clears the card's
+            // own rounded top edge instead of poking through it.
+            rt.anchoredPosition = new Vector2(0f, -16f);
+            rt.sizeDelta = new Vector2(0f, RibbonHeightPx);
+            // ⛔ NOT ROTATED, AND THE TILT WAS REMOVED ON ARITHMETIC RATHER THAN ON TASTE. A -9 deg
+            // rotation about a (0.5, 1) pivot LIFTS the plate's left end by halfWidth * sin(9 deg) —
+            // ~23 px on a 500 px card — against a top offset of only 16, so the corner leaves the
+            // card root and the capture harness's containment audit is right to report it. The brief
+            // allows either carrier ("a diagonal ribbon OR a bold rounded tag"); the tag is the one
+            // that is containable at every measured card width by construction, which matters more
+            // than the slant. The shape carriers that remain are the tag's WEIGHT, its corner radius,
+            // its font (38 vs the pill's 30) and its polarity — see the colour block above.
+
+            var img = go.GetComponent<Image>();
+            img.color = SaleRibbonFill;
+            ElarionUiKit.ApplyRounded(img, RibbonHeightPx * 0.28f);   // bold rounded tag, not a capsule
+            img.raycastTarget = false;
+            handle.SaleRibbon = img;
+
+            // The label's box is RibbonTextBoxPx by construction — the plate is RibbonHeightPx and
+            // the inset is RibbonPadYPx per side. Never a literal here: see FIX 4's arithmetic, in
+            // which a hardcoded inset gave a 30px font a 28px box and TMP culled the line whole.
+            var t = CentredText(go.transform, text, FontSaleRibbon, SaleRibbonInk,
+                                RibbonPadXPx, RibbonPadYPx);
+            if (t != null)
+            {
+                t.fontStyle = FontStyles.Bold;
+                t.characterSpacing = RibbonLetterSpacing;
+                ElarionUiKit.FitSingleLine(t, ElarionUi.FontFloorMobile, FontSaleRibbon);
+            }
+            handle.SaleRibbonLabel = t;
         }
 
         private static Image AddGlow(Transform card, Color accent, float alpha)
