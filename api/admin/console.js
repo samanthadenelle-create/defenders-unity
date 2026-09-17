@@ -1223,10 +1223,22 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
       '<div class="grow"><label for="pper">Per player limit (blank = none)</label>' +
       '<input id="pper" type="number" inputmode="numeric" min="0"></div></div>' +
       '<label for="pexp">Expires (blank = never)</label><input id="pexp" type="datetime-local">' +
+      '<p class="note">A code may also carry a discount window (WO-1833) - percent off, shared by ' +
+      'every redeemer of the code, separate from the site-wide sale knob. Leave blank for a plain ' +
+      'grant code. A discount needs an end time; times are read in the local zone of this browser ' +
+      'and converted to UTC on save, same as Expires above.</p>' +
+      '<div class="row"><div class="grow"><label for="pdpct">Discount % off (blank = none)</label>' +
+      '<input id="pdpct" type="number" inputmode="decimal" min="0" max="70" step="0.01"></div></div>' +
+      '<div class="row"><div class="grow"><label for="pdstart">Discount starts (blank = immediately)</label>' +
+      '<input id="pdstart" type="datetime-local"></div>' +
+      '<div class="grow"><label for="pdend">Discount ends (required if % set)</label>' +
+      '<input id="pdend" type="datetime-local"></div></div>' +
       '<div class="row" style="margin-top:12px"><button class="primary grow" id="pcreate">Create code</button></div>' +
       '<p class="note">For a Google player, create the code here, then bind it using the card below. ' +
-      'Wallet-address binding still requires the operator SQL workflow. ' +
-      'This console reports whether a code is bound, never the player it is bound to.</p></div>';
+      '<strong>Wallet-address binding is deliberately not exposed here (WO-1244)</strong> - authoring one ' +
+      'means typing and later reading back a wallet address, and this console never renders one. ' +
+      'Bound codes stay a SQL / operator-CLI job. This console reports whether a code is bound, never ' +
+      'the wallet it is bound to.</p></div>';
 
     h += '<div class="card"><h2>Bind code to Google player</h2>' +
       '<p class="note">The player must sign in with Google after email lookup is enabled. ' +
@@ -1634,6 +1646,7 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
   function opsResult(r, okText){
     if (r.body && r.body.ok){
       flash(okText + ' ' + (r.body.state ? ('State is now ' + r.body.state + '.') : '') +
+            (r.body.discount ? ' Discount: ' + r.body.discount + '.' : '') +
             (r.body.note ? ' ' + r.body.note : '') +
             (r.body.warning ? ' WARNING: ' + r.body.warning : ''), false);
       load();
@@ -1920,7 +1933,10 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
         message: $('pmsg').value,
         maxRedemptions: $('pmax').value,
         perPlayerLimit: $('pper').value,
-        expiresAt: $('pexp').value ? new Date($('pexp').value).toISOString() : ''
+        expiresAt: $('pexp').value ? new Date($('pexp').value).toISOString() : '',
+        discountBps: $('pdpct').value ? Math.round(parseFloat($('pdpct').value) * 100) : '',
+        discountStartsAt: $('pdstart').value ? new Date($('pdstart').value).toISOString() : '',
+        discountEndsAt: $('pdend').value ? new Date($('pdend').value).toISOString() : ''
       };
       if (!window.confirm('Create code ' + String(draft.code).toUpperCase() + '? It grants value to every player who redeems it.')) return;
       e.target.disabled = true;
