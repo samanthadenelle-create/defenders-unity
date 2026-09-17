@@ -189,6 +189,13 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-first pass): main line next free = **1858**.
+> *(Lead minted **WO-1857** — owner standing law, stated live 2026-09-17: "Anything that has text
+> needs to go through local so we can be put in all the languages that's a law that we have."
+> Codebase-wide sweep for hardcoded, non-localized player-facing strings (found live: the entire
+> gear-dock tab set in HudKitController.cs). Owner directive: assign to LOW-tier/Haiku agents
+> tonight's overnight cycle — monotonous find-and-wire work, not judgment work.)*
+>
 > ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixtieth pass): main line next free = **1857**.
 > *(Lead minted **WO-1856** — owner directive, live during the WO-1855 investigation: "we need a
 > disection tool, if a player is stuck. They will not want to wait for a build to be fixed." An
