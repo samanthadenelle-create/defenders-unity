@@ -16,41 +16,62 @@ were explicit WO-1265 requirements.
 
 Three things need resolution before this is buildable as written. None are fatal; all are fixable.
 
-## 1. WO-4 (Cherry Chat embed) — verified real, needs three additions before build
+## 1. WO-4 (Cherry Chat embed) — verified real, room isolation confirmed, but the integration
+## design needs rework, and one real gap remains open
 
-**Cherry is a real product**, not a fabricated one — confirmed via direct research: Cherry Chat
-Embed SDK (`@cherrydotfun/chat-embed-sdk`, `cherrydotfun/chat-embed-sdk` on GitHub), a real
-Solana wallet-to-wallet messenger with live iOS/Android apps, an embeddable widget, and
-SIWS-based wallet sign-in. This is a legitimate integration candidate, not a hallucination — credit
-to DeepSeek for finding a real fit here.
+**Cherry is a real product**, not a fabricated one — confirmed via direct research, including
+reading the actual GitHub repo and docs, not just search snippets: Cherry Chat Embed SDK
+(`@cherrydotfun/chat-embed-sdk`, `cherrydotfun/chat-embed-sdk` on GitHub), a real Solana
+wallet-to-wallet messenger with live iOS/Android apps, an embeddable widget, and SIWS-based wallet
+sign-in. Credit to DeepSeek for finding a real, well-fitted product here.
 
-Three things must be resolved before WO-4 is buildable, not just noted as "VERIFY BEFORE BUILD":
+**Good news — the room-isolation blocker is resolved.** Cherry natively supports isolated,
+per-room chat via a `roomId` parameter, separate from the `appId` (project/embed identifier). One
+Cherry `appId` for the game, one distinct `roomId` per clan, is exactly how the SDK is designed to
+be used. This fully answers the open question from the first review pass.
 
-- **Clan-room isolation is a confirmed gap, not just a caution.** Research could confirm Cherry
-  supports embeddable, wallet-authenticated real-time chat, but could **not** confirm it supports
-  per-clan room isolation (one room per clan, not one shared global room). If Cherry cannot isolate
-  rooms per clan, the entire premise of "clan chat" collapses into "one chat room for the whole
-  game," which is a materially different feature and likely not what's wanted. **This must be
-  confirmed against Cherry's actual documentation/support before any implementation work starts,
-  not discovered mid-build.**
-- **The wallet-signature bridge needs explicit safety guardrails added to the acceptance
-  criteria, not left implicit.** Having the game's wallet adapter sign a challenge on behalf of an
-  embedded third-party page is a real, standard, low-risk pattern — but only when done correctly.
-  Add to WO-4's acceptance criteria explicitly: (a) the signed message must be scoped to
-  authentication/identity only, never a fund-moving transaction, (b) the player must see a
-  human-readable prompt of what's being signed before it's signed — no silent auto-approval, and
-  (c) the bridge must be pinned to Cherry's exact origin, never a wildcard. WO-4's current
-  `onSignChallenge` description is vague on all three; this is the fix, not a reason to reject the
-  integration.
-- **This needs the owner's explicit sign-off, not a default yes.** WO-1265, the project's own
-  binding prior ruling on this exact feature, specified "preset phrases only until moderation
-  exists — free text stays closed" as a deliberate anti-moderation-risk safeguard. Replacing native
-  chat with an external, third-party-moderated product is a different content-safety model
-  entirely, one resting on a company that hasn't been vetted for moderation practices, data
-  handling, or reliability. This may well be the right call, Cherry solves a real problem this
-  project would otherwise have to build from scratch, but it's a scope decision that changes a
-  standing ruling and should be made explicitly by the owner, not defaulted into by a work-order
-  draft.
+**The embed integration and wallet-auth design in WO-4 need a rewrite, not just guardrails —
+and the real design is better than what was assumed:**
+- **Embed shape is wrong as drafted.** It is not a bare iframe URL with query parameters
+  (`https://chat.cherry.fun/embed?wallet=...&theme=...`, as WO-4 assumed). Real integration is an
+  SDK call (`npm install @cherrydotfun/chat-embed-sdk`, or a CDN script exposing
+  `window.CherryEmbedSDK`), initialized with `appId`, `roomId`, and optionally a `container`
+  selector. WO-4's client-integration section needs rewriting around the real SDK call shape.
+- **The wallet-signature bridge risk is smaller than first flagged, once the right mode is
+  chosen.** Cherry offers two modes: a **wallet-only mode**, where the embedded iframe handles
+  wallet connection and signing entirely itself — the game's own wallet adapter is never asked to
+  sign anything at all, eliminating the signature-bridging concern outright — and an **app-trusted
+  mode**, where the game's backend mints a short-lived signed embed token and the host page bridges
+  signature requests scoped to Cherry's own challenge (not arbitrary content). **Recommend
+  wallet-only mode** unless there's a specific reason to unify identity with the game's existing
+  wallet session; it sidesteps the entire signing-bridge risk rather than needing to guard it.
+- **Mobile WebView hosting needs its own real scope, not an assumed direct load.** The SDK is
+  browser-only and explicitly cannot run directly inside a bare native WebView with no
+  intermediate page — it requires a small host HTML page loaded inside the WebView, with wallet
+  signing (if using app-trusted mode) bridged to native layers. Cherry's own docs provide React
+  Native and Flutter integration examples for exactly this pattern, so it's a documented, solved
+  problem — but it is real, additional engineering scope that WO-4 does not currently account for
+  (a host page plus a native bridge, not a direct URL load into a WebView).
+
+**One real gap remains open and unresolved: Cherry does not appear to publish any message rate
+limits for embedded room chat.** A direct read of the GitHub repo's README and docs found zero
+mentions of per-user cooldowns, messages-per-minute caps, or spam throttling for `roomId`-scoped
+chat. One adjacent, real mechanism did surface: Cherry's native consumer app advertises "Paid DMs"
+— a pay-to-message gate — as its anti-spam approach for wallet-to-wallet direct messages. **This is
+not confirmed to apply to the embedded SDK's room chat at all** — it's described only in the
+context of Cherry's native DM feature, with nothing tying it to embedded rooms. So the honest
+state is: either Cherry handles room-chat abuse prevention somewhere undocumented, or a member
+flooding a clan room has no platform-level protection today. This matters directly: WO-1265, this
+project's own binding prior ruling on clan chat, specifically wanted rate limits in place before
+allowing free-text messaging. If Cherry becomes the entire chat surface, that protection has to
+come from somewhere. **This must be asked directly to Cherry's own team before WO-4 is finalized,
+not assumed either way.**
+
+**This still needs the owner's explicit sign-off, not a default yes.** Replacing native chat with
+an external product is a different content-safety model than the one WO-1265 specified, and it now
+also depends on an unresolved rate-limiting question. Cherry looks like a strong, real fit — this
+is not a recommendation against it — but adopting it is a scope decision that changes a standing
+ruling and should be made explicitly, not defaulted into.
 
 ## 2. Items labeled "(owner-ruled)" that were not actually owner rulings
 
