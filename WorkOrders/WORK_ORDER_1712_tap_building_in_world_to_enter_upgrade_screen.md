@@ -1,6 +1,44 @@
 # WORK ORDER 1712 - Tap a building in the world to jump directly into its upgrade screen
 
-**Status:** READY TO IMPLEMENT - owner nice-to-have, NOT blocking, low priority
+**Status:** READY FOR LEAD REVIEW - implemented 2026-09-17; brace + NUL checks clean; NO Unity run by
+this lane (gate held for the lead's combined-tree run, per the concurrent-lanes rule)
+
+## IMPLEMENTATION NOTE (2026-09-17, implementation lane)
+
+New files:
+- `Assets/_Modules/Village/Buildings/Progression/StructureTapUpgradeController.cs` - the world-tap
+  door + its `[RuntimeInitializeOnLoadMethod]` bootstrap (no scene re-bake needed).
+- `Assets/Editor/Regression/StructureTapUpgradeRegression.cs` - marker `STRUCTURE_TAP_UPGRADE_OK`,
+  registered in `DataRegression.RunAll` as `[structure-tap-upgrade]`.
+
+A tap resolves the structure under the finger and calls the EXISTING
+`PanelRouter.Open(PanelId.BuildingUpgrade, <panel id>)` - the same call
+`BuildModeController.UpgradeSelected` (`:2822`) and `ManageScreenVM` (`:3067`) already make. Nothing
+is charged or queued on this path; the page's own CTA still owns every spend.
+
+Acceptance criteria status:
+1. DONE - placed structures open under their `PlacedUpgradeKey` job key, city/resource buildings
+   under their ladder id; no Build menu involved.
+2. DONE - five guards: suppression window, `PanelManager.AnyOpen`/`InCloseGrace`, build-mode
+   stand-down, uGUI (`BuildModeController.IsPointOverUi`), and **UI Toolkit** (`panel.Pick` per
+   `UIDocument`). The UITK clause is NOT optional: the shipped town bottom bar is the UITK adaptive
+   peaceful dock, which appears in no graphic raycast, so the WO-1708 uGUI pattern alone would have
+   let every dock press open a page behind it.
+3. DONE - no edit to `BuildModeController` or `ManageScreenVM`; the regression's `[existing-doors]`
+   case fails if either stops reaching `PanelId.BuildingUpgrade`.
+4. PARTIAL, and stated as partial. The regression's `[compose]`/`[slop]` cases EXECUTE the real
+   routing and tap-threshold rules, so the routing decision is proved headlessly. A device/capture
+   proof that a finger on a tower opens the page is NOT done by this lane - it needs a Unity run,
+   which this lane deliberately did not perform.
+
+Two things surfaced that are deliberately NOT done here, so they are not lost:
+- **Owned town stands down.** `OwnedTownPanel` owns selection in the captured town via
+  `OwnedTownJobKey`, which is different key grammar. Guessing it was refused; extending the door
+  there is its own ticket.
+- **Duplicated precedence.** `BuildModeController.UpgradeSelected:2776-2822` composes the panel id
+  from the same four authorities as the new `TryResolvePanelIdFor`. Collapsing it into a one-line
+  delegation is the right follow-up, but BuildModeController is being edited by concurrent lanes and
+  criterion 3 says leave it unchanged - so it is named, not smuggled in.
 **Minted:** 2026-09-14 by the CLI lead (Fable seat), from the owner's felt-test of the 2026-09-14
 tester build (release 2026.09.14.369302)
 
