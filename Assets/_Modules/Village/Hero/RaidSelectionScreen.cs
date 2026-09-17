@@ -473,6 +473,37 @@ namespace DeNelle.Village.Hero
             //     (WO-1521: "ONE rule, TWO surfaces... the drift is the actual defect").
             RaidSelectionVM.ClaimedProvider =
                 DeNelle.Village.World.Camps.RaidClaimService.IsClaimed;
+            // =============================================================
+            //  (e2) WO-1804 - THE ONLY HUNK THIS TICKET ADDS TO THIS FILE.
+            // =============================================================
+            //  OWNER RULING 2026-09-16: the Iron Bastion is opened by BASTION PLANS dropped by
+            //  a dungeon boss, not by a win count. The whole rule lives in ONE pure function
+            //  (BattlePlans.ShouldGateBastion) so the never-re-lock guarantee has one home;
+            //  this is the wiring, and it is the only wiring site.
+            //
+            //  ⛔ NEVER RE-LOCK A BASTION THE PLAYER HAS ALREADY BEEN TO. This gate ships into
+            //  live saves: a player who cleared or CAPTURED the Bastion before the plans
+            //  existed must not find their own conquest locked behind a dungeon. So the gate is
+            //  refused on prior contact, witnessed by the ONE claim authority (IsClaimed is
+            //  PERMANENT and set at every clear/capture) plus the routed cooldown-cycle read.
+            //
+            //  ⚠ THE COOLDOWN WITNESS IS ROUTED THROUGH RaidClaimService ON PURPOSE.
+            //  HeartfireRegression PIN F reds this file for a direct RaidCooldownService
+            //  reference (see (f) below, which says so in its own words), so the second witness
+            //  uses IsRepeatClearInCycle - the sanctioned route. It is a SUBSET of IsClaimed and
+            //  is kept only because a witness that costs nothing should not be dropped.
+            //  ⚠ THE FLAG NAME COMES FROM THE DATA, NOT FROM HERE. plansId is the row's authored
+            //  `unlockedByPlans` value, handed over by ResolveLock. Hardcoding
+            //  BattlePlans.BastionPlansId on this side would make the authored string decorative -
+            //  read by nothing but a test asserting it matched the constant, which is the dead-copy
+            //  shape CLAUDE.md sections 2/5/16 each describe.
+            RaidSelectionVM.PlansGateProvider = (id, plansId) =>
+                DeNelle.Village.BattlePlans.ShouldGateBastion(
+                    plansHeld:   DeNelle.Village.ProgressionUnlocks.IsUnlocked(plansId),
+                    everClaimed: DeNelle.Village.World.Camps.RaidClaimService.IsClaimed(id),
+                    onCooldown:  DeNelle.Village.World.Camps.RaidClaimService.IsRepeatClearInCycle(id));
+            RaidSelectionVM.PlansDungeonNameProvider =
+                _ => DeNelle.Village.BattlePlansService.BastionPlansDungeonName();
             // (f) WO-1461 - IS A RE-CLEAR OF THIS CAMP INSIDE ITS COOLDOWN CYCLE? Deliberately
             //     NOT ClaimedProvider above, and the difference is the owner's ruling of
             //     2026-09-06 20:33: a claim is PERMANENT, a cooldown cycle is not, and the

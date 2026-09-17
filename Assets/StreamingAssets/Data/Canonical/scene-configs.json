@@ -303,6 +303,9 @@
     {
       "id": "iron_bastion",
       "displayName": "The Iron Bastion",
+      "unlockedByPlans": "bastion_plans",
+      "plansDungeonId": "dg_ember_deep",
+      "plansDungeonName": "The Ember Deep",
       "description": "The Heart remembers no fortress here.",
       "sceneName": "RaidBase_IronBastion",
       "ownership": "Enemy",

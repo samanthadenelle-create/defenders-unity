@@ -807,6 +807,51 @@ namespace DeNelle.Dungeons
         {
             if (_leaving) return;
 
+            // =================================================================
+            //  WO-1804 -- THE ONE HUNK THIS TICKET ADDS TO THIS FILE.
+            // =================================================================
+            //  OWNER RULING 2026-09-16, verbatim: "keep the reveal in the boss room". The Bastion
+            //  Plans reveal therefore plays AT the boss, and its "Raid the Iron Bastion" CTA has to
+            //  get the player home. It must NOT load a raid scene from here: ExecuteLeave routes a
+            //  rich dungeon through DungeonController.ExitToVillage, which BANKS the run's crafting
+            //  scatter, and a direct SceneRouter.GoRaid would silently bin everything the player
+            //  carried down.
+            //
+            //  ⛔ SO THE CTA DOES NOT CALL ANYTHING HERE. It sets a latch and this, the scene's own
+            //  sanctioned exit, claims it and raises its OWN Continue/Cancel confirm - so the exit
+            //  still runs CanLeave, the player still taps "Continue to exit", and the banking path
+            //  below is untouched. A request cannot skip the confirm and cannot skip the bank.
+            //
+            //  ⚠ AND IT IS WHY NO METHOD IN THIS FILE WAS MADE PUBLIC. The work order named
+            //  "make RequestExitConfirm public and point the CTA at it" as the cheap fix. That fix
+            //  CANNOT COMPILE: DeNelle.Dungeons references DeNelle.Village and not the reverse
+            //  (both asmdefs read 2026-09-16), so the reveal - a Village type - can never call a
+            //  Dungeons method however visible it is, and widening one would have added public
+            //  surface that nothing in the tree could reach. The latch respects the existing
+            //  dependency direction instead, and every member of this class stays private.
+            //
+            //  Placed BEFORE the hero resolution below on purpose: the claim must not be gated on
+            //  the rig having been cached this frame. Consume() clears atomically, so the FIRST
+            //  exit that can actually leave claims it - a boss-gated exit whose CanLeave still
+            //  refuses cannot swallow the request and strand it.
+            if (DeNelle.Village.BattlePlans.HasPendingDungeonExit && !_confirmOpen)
+            {
+                if (CanLeave(out string exitRefuse))
+                {
+                    string why = DeNelle.Village.BattlePlans.ConsumeDungeonExitRequest();
+                    FlowTrace.Step(Sys, "exit request CLAIMED (" + why + ") by '" + gameObject.name +
+                        "' - raising the ordinary Continue/Cancel confirm, so the run still banks " +
+                        "through ExecuteLeave (WO-1804)");
+                    RequestExitConfirm();
+                }
+                else
+                {
+                    FlowTrace.Throttle(Sys, "wo1804-exit-request-refused", 5f,
+                        "exit request PENDING but '" + gameObject.name + "' cannot leave (" +
+                        exitRefuse + ") - left latched for an exit that can, never consumed here");
+                }
+            }
+
             if (!_heroFound) { ResolveHero(); if (!_heroFound) return; }
             // The hero rig can be replaced (body-swap) after we first cached it - re-resolve
             // rather than dereferencing a destroyed Transform (DungeonPortal DEF-40 lesson).

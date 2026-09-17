@@ -152,6 +152,46 @@ namespace DeNelle.Village
         /// </summary>
         public int unlockVictories;
 
+        // =====================================================================
+        //  WO-1804 -- THE PLANS GATE. A camp may be unlocked by a FOUND OBJECT
+        //  instead of (or as well as) a win count.
+        // =====================================================================
+        //  OWNER RULING 2026-09-16: the hackathon video's act 2 starts at the end of a
+        //  dungeon -- the boss drops BASTION PLANS, the plans open the Iron Bastion, and
+        //  the player goes to raid it. So the Bastion's key is an item the player finds,
+        //  not a tally.
+        //
+        //  Authored HERE, on the camp's own row, for the same reason unlockVictories is
+        //  (the pacing knobs for a camp live on the camp's row) -- and so the owner can
+        //  move the drop to another dungeon by editing one string, with no recompile of
+        //  the rule. RaidSelectionVM is the only reader of the LOCK; BattlePlansService is
+        //  the only reader of the dungeon fields.
+        //
+        //  ⛔ THESE ARE ADDITIVE AND ABSENT-MEANS-OFF. Every existing row leaves all three
+        //  empty and is COMPLETELY unaffected: no plans id -> no plans gate -> the row
+        //  behaves exactly as it did before this field existed. The other three flagship
+        //  camps stay at unlockVictories 0 and are NOT gated by plans.
+        // =====================================================================
+
+        /// <summary>WO-1804 - the <c>ProgressionUnlocks</c> id whose persisted HELD flag
+        /// unlocks this camp (e.g. <c>bastion_plans</c>). EMPTY / absent = no plans gate,
+        /// which is every other row.</summary>
+        public string unlockedByPlans;
+
+        /// <summary>WO-1804 - the dungeon whose BOSS drops those plans. A composed dungeon's
+        /// id IS its scene name (DungeonWorldPortalSpawner.cs:1580 builds its def with id and
+        /// sceneName as the same string), so this doubles as the scene-identity check.
+        /// OWNER RULING 2026-09-16, verbatim: "Make it the one that's the ember deep".</summary>
+        public string plansDungeonId;
+
+        /// <summary>WO-1804 - that dungeon's PLAYER-FACING name, for the locked card's
+        /// sentence ("Find the Bastion Plans in The Ember Deep."). Authored rather than
+        /// derived because the only other copy of this string in the tree is a code literal
+        /// inside a private builder (DungeonWorldPortalSpawner.cs:1580) that nothing can
+        /// read; that pre-existing duplication is named in the WO-1804 RESULT rather than
+        /// silently re-created. Absent = the lock sentence names the id.</summary>
+        public string plansDungeonName;
+
         public string sceneName;
         public string ownership;          // "Player" | "Enemy"
         public string faction;            // orc | hollow | troll | mixed | none
