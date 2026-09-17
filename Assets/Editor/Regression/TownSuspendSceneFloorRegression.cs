@@ -1,7 +1,8 @@
 // =============================================================================
 // TownSuspendSceneFloorRegression [town-suspend-floor]
 // -----------------------------------------------------------------------------
-// Assembly: DeNelle.EditorRegression (references DeNelle.Core).
+// Assembly: DeNelle.EditorRegression (references DeNelle.Core, and DeNelle.Village
+// for case (h) below, which calls TownActivityProbe's scene gate directly).
 //
 // WO-1017 (F8 seq 2314, 2026-08-10, scene Dungeon_HealersCottage). The harness
 // raised this one: TownActivityProbe failed its own invariant with
@@ -50,6 +51,16 @@
 //   (g) THE DETECTOR IS STILL LOUD - TownActivityProbe's FlowTrace.Fail is pinned at
 //       source. It is the only reason this was ever visible (S12); silencing it to
 //       make a capture clean would be the real regression.
+//   (h) THE PROBE IS GATED OUT OF RAID SCENES, AND ONLY RAID SCENES (WO-1779). The
+//       probe's OnSceneLoaded discarded its Scene argument, so the DontDestroyOnLoad
+//       town probe re-spawned into every scene - including RaidBase_*, where the
+//       owner's 2026-09-16 Seeker capture measured its per-frame scope over budget
+//       19 times (logcat_full.txt lines 3038288-3059147, max 10.5ms of a 16ms frame)
+//       in a window that also recorded LOW fps=18 ms=56.5. This case asserts the
+//       gate BOTH ways on a real component instance: a raid scene name disables it,
+//       the hub re-enables it, and - the half a careless fix would break - every
+//       DUNGEON family still ticks, because observing a dungeon is the entire reason
+//       this probe (and this suite) exists.
 //
 // Markers: TOWN_SUSPEND_FLOOR_OK / TOWN_SUSPEND_FLOOR_FAIL.
 // Standalone: run-unity-method DeNelle.Editor.Regression.TownSuspendSceneFloorRegression.RunAll
@@ -97,6 +108,7 @@ namespace DeNelle.Editor.Regression
                 Case(failures, "arena-in-town",       () => Case5_FloorlessHoldStillResumes(failures));
                 Case(failures, "active-scene-carve",  () => Case6_ActiveSceneCarveOut(failures));
                 Case(failures, "detector-loud",       () => Case7_DetectorStillFails(failures));
+                Case(failures, "raid-scene-gate",     () => Case8_ProbeGatedOutOfRaids(failures));
             }
             catch (Exception ex)
             {
@@ -114,8 +126,10 @@ namespace DeNelle.Editor.Regression
                          "naming the scene; a nested arena hold resolving INSIDE a dungeon can no " +
                          "longer lift that floor (F8 seq 2314 replayed); returning to the hub still " +
                          "resumes with the return grace; a floorless in-town arena hold still resumes; " +
-                         "the active-scene carve-out holds at the height of a suspension; and " +
-                         "TownActivityProbe's FlowTrace.Fail is still present at source.";
+                         "the active-scene carve-out holds at the height of a suspension; " +
+                         "TownActivityProbe's FlowTrace.Fail is still present at source; and the probe's " +
+                         "WO-1779 scene gate disables its tick in every RaidBase_* scene while every " +
+                         "dungeon family, the outpost and the hub still tick.";
                 return true;
             }
             reason = "town-suspend-floor FAIL x" + failures.Count + ": " + string.Join(" | ", failures);
@@ -383,6 +397,108 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[detector-loud] " + ProbeSrc + " no longer reports active-scene objects separately " +
                              "from town-side ones. That split is how a suspension that starts eating the " +
                              "dungeon's own enemies gets caught.");
+        }
+
+        // =====================================================================
+        //  Case 8 - the probe does not tick in a RAID, and still ticks everywhere
+        //           else it was built for (WO-1779)
+        // =====================================================================
+        //
+        // WHY THIS IS A BEHAVIOURAL CASE AND NOT A SOURCE LINT. Case 7 above is a
+        // source lint because what it pins is the PRESENCE of a log call. What this
+        // case pins is a DECISION - which scenes the probe runs in - and a lint that
+        // greps for the string "IsRaid" would pass a gate wired backwards. So it calls
+        // the real predicate and the real component gate.
+        //
+        // NO PLAYMODE, and the probe is never TrySpawn()ed: that path calls
+        // DontDestroyOnLoad, which is not valid on an edit-mode object. The gate is
+        // shaped to take its instance explicitly for exactly this reason, so an
+        // AddComponent'ed probe (whose Awake the editor never runs) is enough.
+        private static void Case8_ProbeGatedOutOfRaids(List<string> failures)
+        {
+            // --- the predicate, on the captured scene and its family ------------------
+            // RaidBase_IronBastion is the scene the owner's 2026-09-16 capture measured;
+            // RaidBase_Ashfell is the same family (and is already a Case-1 input); the
+            // lowercase spelling is here because HubScenes.IsRaid matches
+            // OrdinalIgnoreCase, so a gate that accidentally became case-sensitive would
+            // let a renamed scene back through.
+            string[] mustNotTick = { "RaidBase_IronBastion", "RaidBase_Ashfell", "raidbase_lowercase_spelling" };
+            foreach (var s in mustNotTick)
+            {
+                if (DeNelle.Village.TownActivityProbe.ShouldTickIn(s))
+                    failures.Add("[raid-scene-gate] the probe still ticks in '" + s + "'. WO-1779: inside " +
+                                 "RaidBase_IronBastion its poll went over the 4ms frame budget 19 times, " +
+                                 "peaking at 10.5ms, in a window that recorded LOW fps=18 ms=56.5 - and it " +
+                                 "had nothing to report there, because every enemy in a raid is in the " +
+                                 "ACTIVE scene.");
+            }
+
+            // --- and the half a careless fix breaks ----------------------------------
+            // The probe exists to watch the town from OFF-hub (this suite's own WO-1017
+            // capture came from Dungeon_HealersCottage). Gating it to "hub only" would
+            // delete the observer, so every non-raid family must still tick. The hub is
+            // included because Poll no-ops there by its own design, not by this gate -
+            // switching the component off in the hub would break the return path.
+            string[] mustTick =
+            {
+                Hub,                        // home hub - Poll self-no-ops, the component must stay live
+                "Dungeon_HealersCottage",   // hand-built - the scene WO-1017 was captured in
+                "dg_starter_loop",          // composed
+                "KayKitChallengeOutpost",   // hand-coded outpost
+                "Garrison_Northwatch",      // open-air enemy outpost - deliberately NOT a raid
+                "ATBBattle",                // staged battle
+            };
+            foreach (var s in mustTick)
+            {
+                if (!DeNelle.Village.TownActivityProbe.ShouldTickIn(s))
+                    failures.Add("[raid-scene-gate] the probe no longer ticks in '" + s + "'. The WO-1779 " +
+                                 "gate is for RAID scenes ONLY; widening it to 'hub only' deletes the very " +
+                                 "observer that made WO-1017 visible, and this suite would then be pinning " +
+                                 "a detector that can never fire.");
+            }
+
+            if (DeNelle.Village.TownActivityProbe.ShouldTickIn(null) == false ||
+                DeNelle.Village.TownActivityProbe.ShouldTickIn(string.Empty) == false)
+                failures.Add("[raid-scene-gate] a null/empty scene name gates the probe OFF. An unnamed " +
+                             "scene is a load in flight, not a raid; treating it as one would switch the " +
+                             "probe off on a transient and never switch it back on.");
+
+            // --- the COMPONENT gate, both directions, on a real instance --------------
+            GameObject go = null;
+            try
+            {
+                go = new GameObject("TownActivityProbeGateCase");
+                var probe = go.AddComponent<DeNelle.Village.TownActivityProbe>();
+                if (probe == null)
+                {
+                    failures.Add("[raid-scene-gate] could not stage a TownActivityProbe instance to gate.");
+                    return;
+                }
+
+                if (DeNelle.Village.TownActivityProbe.ApplyGate(probe, "RaidBase_IronBastion") || probe.enabled)
+                    failures.Add("[raid-scene-gate] ApplyGate left the probe ENABLED for " +
+                                 "'RaidBase_IronBastion'. Disabling the Behaviour is what stops Unity " +
+                                 "calling Update at all; merely early-returning inside Update would keep " +
+                                 "the per-frame call and the scope alive for no reason.");
+
+                if (!DeNelle.Village.TownActivityProbe.ApplyGate(probe, Hub) || !probe.enabled)
+                    failures.Add("[raid-scene-gate] ApplyGate did NOT re-enable the probe on returning to '" +
+                                 Hub + "'. A gate that only ever switches off is a permanent silence: the " +
+                                 "probe would stop observing the town for the rest of the session after one " +
+                                 "raid.");
+
+                // Idempotent: re-applying the same verdict must not flip anything.
+                DeNelle.Village.TownActivityProbe.ApplyGate(probe, Hub);
+                if (!probe.enabled)
+                    failures.Add("[raid-scene-gate] re-applying the SAME non-raid verdict disabled the " +
+                                 "probe. The gate rides sceneLoaded AND activeSceneChanged, which both fire " +
+                                 "for one transition, so it has to be idempotent or the two callbacks " +
+                                 "fight each other.");
+            }
+            finally
+            {
+                if (go != null) UnityEngine.Object.DestroyImmediate(go);
+            }
         }
     }
 }
