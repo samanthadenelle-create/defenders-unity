@@ -276,6 +276,32 @@ namespace DeNelle.Core.Tutorial
         public const string OwnedTownReentered = "ownedTown.reentered";
         public const string OwnedTownPracticed = "ownedTown.practiced";
 
+        /// <summary>
+        /// WO-1788 — THE INVITATION TO PRACTICE. Measured 2026-09-17: nothing in
+        /// tutorial-steps.json mentioned practice (<c>grep -ci practice</c> returned 0) while
+        /// <see cref="State.OwnedBaseProgression"/>'s <c>AllMilestones</c> REQUIRES
+        /// <c>PracticeCompleted</c> for <c>IsAiArenaReady</c> — the game could refuse practice
+        /// (<see cref="State.OwnedTownPracticeSession"/>: "Repair, design, save and reenter the
+        /// town before practice.") but never once invited it.
+        ///
+        /// ⛔ WHY A SEPARATE READY SIGNAL AND NOT <see cref="OwnedTownReentered"/>. Two hard
+        /// reasons, both in the engine, not the copy:
+        ///  (1) CONTEXTUAL BEATS CANNOT CHAIN. TutorialFlow.OnSignal completes the live hint on
+        ///      its awaited signal and RETURNS, so the raise that finishes <c>owned_town_reentry</c>
+        ///      never reaches TryTriggerContextual — the same reason WO-1378 could not chain its
+        ///      three canon moments into three beats (tutorial-steps.json v6 note).
+        ///  (2) THE REENTRY RAISE LANDS ON NOBODY. OwnedTownController carries
+        ///      <c>[DefaultExecutionOrder(-500)]</c> and raises <see cref="OwnedTownReentered"/>
+        ///      from its own Start, BEFORE TutorialFlow.Start subscribes <c>Raised</c>; this bus
+        ///      latches but TutorialFlow never replays a latch on arm. So a trigger authored on
+        ///      the reentry id would be missed on the very entry that satisfies it.
+        /// Raised instead by a 1 Hz poll over the SAVE FLAGS (TutorialSignalAdapters
+        /// .TickOwnedTownPracticeReady) — the same poll-not-hook argument WO-1802's
+        /// <c>raid.door_ready</c> and WO-1389's <c>raid.first_completed</c> each make for
+        /// themselves: readiness arrives by more roads than any one call site owns.
+        /// </summary>
+        public const string OwnedTownPracticeReady = "ownedTown.practiceReady";
+
         private static readonly HashSet<string> _fired =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 

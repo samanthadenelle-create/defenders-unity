@@ -703,9 +703,16 @@ namespace DeNelle.Village
             // player taps the spotlit BUILD button and nothing happens, forever. The owner sat 300s on
             // founding_hollow and was auto-advanced by the watchdog.
             //
-            // WHY THIS GATE AND NOT step.Scene: TutorialStepDef.Scene is DEAD DATA (Phase.WaitTrigger is
-            // declared and never assigned; the only .Trigger reads are the contextual path), and the
-            // authored value is "MainCastle_Hall" - a LEGACY scene, NOT the live hub
+            // WHY THIS GATE AND NOT step.Scene: TutorialStepDef.Scene is not read on the MANDATORY
+            // path at all (Phase.WaitTrigger is declared and never assigned; the only .Trigger reads
+            // are the contextual path), and the mandatory rows' authored value is
+            // "MainCastle_Hall" - a LEGACY scene, NOT the live hub
+            //
+            // ⚠ WO-1788 AMENDED THIS COMMENT, which used to call Scene "DEAD DATA" outright. It is no
+            // longer dead: SkipAll reads it to refuse silencing a contextual beat scoped to a scene the
+            // player has never entered. The argument BELOW still stands unchanged for this arm gate -
+            // the mandatory rows' value is the legacy hub name and honouring it here would stop the
+            // FTUE from ever running. Only the word "dead" was wrong.
             // (Main_Castle_Overworld, CLAUDE.md sec.7). Honouring it would stop the FTUE from EVER
             // running. The correct, smaller fix is the semantic one: the FTUE is a TOWN flow, so refuse
             // to arm anywhere its steps cannot complete. sceneLoaded re-evaluates, so walking back into
@@ -840,7 +847,7 @@ namespace DeNelle.Village
             while (true)
             {
                 _index++;
-                if (_index >= _steps.Count) { FinishFlow(); return; }
+                if (_index >= _steps.Count) { FinishFlow(OutcomeCompleted); return; }
                 _step = _steps[_index];
                 if (_step == null || string.IsNullOrEmpty(_step.Id)) continue;
 
@@ -1752,10 +1759,44 @@ namespace DeNelle.Village
             // spotlights hud.build_button, so opening Build after a cancel resurfaced a guide hint that
             // reads as "the tutorial restarted". Mark every one-shot ctx seen (same persistence CtxSeen
             // checks) so a skipper gets NO further tutorial content; completers still receive the hints.
+            //
+            // ⛔ WO-1788 — BUT ONLY THE ONES THIS SCENE CAN ACTUALLY HAVE TAUGHT HER. The sweep
+            // above used to mark EVERY oneShot ctx seen, unconditionally, and that silently
+            // DELETED the three owned-town beats (owned_town_repair / _design / _reentry, orders
+            // 810-830, scene OwnedTown_IronBastion) — a tap in the opening FTUE, in a different
+            // scene, HOURS before a captured town exists to inherit, permanently erased the only
+            // teaching for repair, defense layout and the save/reentry confirmation. Authoring
+            // "skippable": false on those three rows does NOT protect them: that flag governs
+            // whether the STEP offers a skip, never whether the GLOBAL skip consumes it.
+            //
+            // THE RULE: a global skip may only silence content whose scene the player is standing
+            // in. A ctx row with NO authored scene is unscoped and keeps the old behaviour exactly
+            // (that is every other contextual beat in the registry — measured 2026-09-17, the three
+            // owned-town rows are the ONLY ones carrying a "scene", so the blast radius of this
+            // change is exactly the three beats the defect ate and nothing else).
+            //
+            // ⚠ THIS IS THE FIRST LIVE READ OF TutorialStepDef.Scene. TryArm's comment above
+            // (search "WHY THIS GATE AND NOT step.Scene") explains why the MANDATORY rows' scene
+            // value is unusable — it is the legacy "MainCastle_Hall". That argument does not carry
+            // here: the contextual owned-town rows author SceneRouter.OwnedTownIronBastion, a LIVE
+            // scene name, and this read only ever withholds a seen-mark, so a wrong value can at
+            // worst leave a hint armed — never strand the FTUE.
+            string activeScene = SceneManager.GetActiveScene().name;
             if (_contextual != null)
                 foreach (var ctx in _contextual)
-                    if (ctx != null && !string.IsNullOrEmpty(ctx.Id) && ctx.OneShot)
-                        svc?.MarkTutorialSeen(CtxSeenPrefix + ctx.Id);
+                {
+                    if (ctx == null || string.IsNullOrEmpty(ctx.Id) || !ctx.OneShot) continue;
+                    bool scoped = !string.IsNullOrEmpty(ctx.Scene) &&
+                                  !string.Equals(ctx.Scene, activeScene, StringComparison.OrdinalIgnoreCase);
+                    if (scoped)
+                    {
+                        FlowTrace.Step("Tutorial", $"SKIP-ALL :: ctx '{ctx.Id}' LEFT UNSEEN - it is scoped to " +
+                            $"scene '{ctx.Scene}' and the skip was pressed in '{activeScene}'. WO-1788: a skip " +
+                            "cannot consume teaching for a place the player has never been.");
+                        continue;
+                    }
+                    svc?.MarkTutorialSeen(CtxSeenPrefix + ctx.Id);
+                }
 
             DeNelle.Core.Analytics.EventTracker.Track("tutorial_skipped_all", new
             {
@@ -1767,9 +1808,11 @@ namespace DeNelle.Village
                 "(Onboarded set, spotlight/banner/pressure-hold torn down, town loop kicked).");
 
             // Reuse the SINGLE completion path — do NOT invent a divergent finisher.
+            // WO-1794: it is the same finisher, but it is now TOLD how it was reached, so the
+            // tutorial_completed row it emits cannot read as a played-through FTUE.
             _index = _steps != null ? _steps.Count : 0;
             _step = null;
-            FinishFlow();
+            FinishFlow(OutcomeSkippedAll);
         }
 
         private void CompleteCurrentStep(bool skipped)
@@ -1862,7 +1905,35 @@ namespace DeNelle.Village
             AdvanceToNextStep();
         }
 
-        private void FinishFlow()
+        /// <summary>
+        /// WO-1794 — <c>outcome</c> value for an FTUE that ran out of mandatory steps, i.e. the
+        /// player actually played it to the end.
+        /// </summary>
+        public const string OutcomeCompleted = "completed";
+
+        /// <summary>
+        /// WO-1794 — <c>outcome</c> value for an FTUE that ended because the player pressed the
+        /// one SKIP control. <see cref="SkipAll"/> routes through the same
+        /// <see cref="FinishFlow"/>, so this is the only thing that tells the two apart on the
+        /// wire.
+        /// </summary>
+        public const string OutcomeSkippedAll = "skipped_all";
+
+        /// <summary>
+        /// The SINGLE finisher for the V2 flow. Both exits reach it: the mandatory chain running
+        /// out of steps, and <see cref="SkipAll"/>.
+        ///
+        /// <para>⚠ WO-1794 — <paramref name="outcome"/> IS THE FIX, and it is a parameter rather
+        /// than a field read because the bug was that this method had NO WAY TO KNOW. Production
+        /// rows for 2026-09-16 show <c>tutorial_completed</c> landing in the SAME SECOND as
+        /// <c>tutorial_skipped_all</c> with <c>skips: 0</c> and <c>totalSeconds</c> of 10-33s — a
+        /// tutorial nobody could have played — because this emitter fired unconditionally on a
+        /// skip fall-through, and <c>_skips</c> is 0 since skipping ALL never increments the
+        /// per-step counter. Six of that day's eight "completions" were skip-outs. The event keeps
+        /// its name (a dashboard sums it) and carries the truth in one field.</para>
+        /// </summary>
+        /// <param name="outcome"><see cref="OutcomeCompleted"/> or <see cref="OutcomeSkippedAll"/>.</param>
+        private void FinishFlow(string outcome)
         {
             _phase = Phase.Finished;
             _step = null;
@@ -1882,12 +1953,29 @@ namespace DeNelle.Village
             TutorialWorldAnchors.ClearLatch("flow finished");   // WO-962: no latch outlives the flow
             PressureHeld = false;
 
+            string finishOutcome = string.IsNullOrEmpty(outcome) ? OutcomeCompleted : outcome;
+            bool playedThrough = finishOutcome == OutcomeCompleted;
             DeNelle.Core.Analytics.EventTracker.Track("tutorial_completed", new
             {
                 totalSeconds = Time.unscaledTime - _flowStartedAt,
                 skips = _skips,
+                // WO-1794: the field that stops a skip-out counting as a completion. Read this
+                // before reading the count of this event.
+                outcome = finishOutcome,
+                // The same fact as a boolean, because the dashboards that already sum
+                // tutorial_completed filter more cheaply on a bool than on a string compare.
+                completed = playedThrough,
+                // ⚠ DELIBERATELY NOT a stepsSeen field: SkipAll sets _index to the step COUNT
+                // before it calls the finisher, so a "steps seen" read here would say the
+                // skipper saw every beat — a second invented number on the very event this
+                // work order exists to stop inventing one. tutorial_skipped_all already carries
+                // the real index it was pressed at.
             });
-            FlowTrace.Step("Tutorial", $"flow COMPLETE ({Time.unscaledTime - _flowStartedAt:0.0}s, {_skips} skips).");
+            FlowTrace.Step("Tutorial", $"flow FINISHED outcome='{finishOutcome}' " +
+                $"({Time.unscaledTime - _flowStartedAt:0.0}s, {_skips} step-skips). " +
+                (playedThrough
+                    ? "Played to the end."
+                    : "ENDED BY SKIP — this is NOT a completion and the row says so."));
 
             // The SINGLE V2-path finisher (spec §2.1c): mark onboarded + kick the loop —
             // the same handoff the legacy director performs (TutorialDirector.SkipToGameplay).

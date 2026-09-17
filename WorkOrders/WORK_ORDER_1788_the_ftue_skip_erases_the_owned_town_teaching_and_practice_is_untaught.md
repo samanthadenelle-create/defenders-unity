@@ -1,6 +1,28 @@
 # WORK ORDER 1788 — The FTUE "skip all" **silently deletes the owned-town repair/design/reentry teaching** before the player has a town — and practice is taught by nothing at all
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
+
+**Implemented 2026-09-17** by the tutorial lane. Files: `Assets/_Modules/Village/Tutorial/V2/TutorialFlow.cs`
+(SkipAll scoped by `ctx.Scene`; the `:706` "Scene is DEAD DATA" comment amended, since this is its first
+live read), `Assets/_Modules/Core/Tutorial/TutorialSignals.cs` (new `OwnedTownPracticeReady`),
+`Assets/_Modules/Village/Tutorial/V2/TutorialSignalAdapters.cs` (`TickOwnedTownPracticeReady`, the 1 Hz
+save-flag poll), and both `tutorial-steps.json` copies (v10 -> v11, row `owned_town_practice` order 840).
+`python tools/gate_brace.py` exit 0 / `bad=0 of 3`; no NUL bytes; both JSON copies parse, are md5-identical
+and uniformly CRLF. **No Unity process was run** — the lead gates the combined tree.
+
+**Blast radius, measured 2026-09-17:** the three owned-town rows are the ONLY contextual rows in
+`tutorial-steps.json` carrying a `scene`, so the skip-scoping change is a no-op for every other beat.
+
+**Pre-existing finding, NOT fixed here (out of silo):** `ownedTown.reentered` is raised from
+`OwnedTownController.Start` under `[DefaultExecutionOrder(-500)]`, i.e. BEFORE `TutorialFlow.Start`
+subscribes `TutorialSignals.Raised`, and the flow never replays a latch on arm — so that raise can be
+missed on the very scene entry that satisfies it. This is exactly why the new practice beat is triggered
+by a poll rather than by `ownedTown.reentered`.
+
+**⚠ Acceptance 2 (Run B "screenshot it") cannot show anything yet:** per §3.2 the hint/objective copy is
+the owner's and is authored BLANK. `TutorialFlow` skips an empty hint rather than painting an empty toast,
+so the beat is silent by construction until her words land — the `CTX-ENTER :: owned_town_practice`
+FlowTrace line is the only proof it fired.
 
 **Minted:** 2026-09-16 by the raid-polish audit lane (number PRE-ASSIGNED from the block 1777-1790; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 

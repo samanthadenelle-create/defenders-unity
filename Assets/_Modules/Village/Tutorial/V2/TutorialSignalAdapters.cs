@@ -108,6 +108,20 @@ namespace DeNelle.Village
         /// and re-read the save for nothing.</summary>
         private bool _raidDoorRearmConsidered;
 
+        // -- WO-1788: ownedTown.practiceReady - the invitation to practice ------------
+        /// <summary>The contextual step this raise exists for; its tutorial_ctx latch is the stop
+        /// condition (read through TutorialFlow.IsContextualSeen - ONE owner of the key).</summary>
+        private const string OwnedTownPracticeBeatId = "owned_town_practice";
+        /// <summary>Re-raise cadence while the beat is unseen. Same 30 s as the two raid polls
+        /// above and for the identical captured reason: TryTriggerContextual REFUSES while another
+        /// hint is live, and owned_town_reentry may be exactly that hint at this moment.</summary>
+        private const float OwnedTownPracticeReraiseSeconds = 30f;
+        /// <summary>Let the owned town settle after the scene loads - the player is reading her own
+        /// rebuilt town, not a coach mark. The FirstRaidHubSettleSeconds rule, reused.</summary>
+        private const float OwnedTownPracticeSettleSeconds = 4f;
+        private float _nextOwnedTownPracticeRaiseAt;
+        private bool _ownedTownPracticeSeenTraced;
+
         /// <summary>
         /// Stands the adapter host up once per process, on any scene, with no feature
         /// flag and no hub check - the signal bus is game-wide, not tutorial-wide.
@@ -260,6 +274,7 @@ namespace DeNelle.Village
 
             TickFirstRaidCompleted();
             TickRaidDoorReady();
+            TickOwnedTownPracticeReady();
         }
 
         // -- WO-1802: raid.door_ready - THE RAID DOOR, MADE OBVIOUS AFTER FOUNDING ----
@@ -487,6 +502,85 @@ namespace DeNelle.Village
                 "' with everCompletedRaid=true and '" + PostRaidBeatId + "' unseen - raising " +
                 "(re-raises every " + FirstRaidReraiseSeconds.ToString("0") + "s until the beat latches).");
             TutorialSignals.Raise(TutorialSignals.FirstRaidCompleted);
+        }
+
+        // -- WO-1788: ownedTown.practiceReady - THE INVITATION TO PRACTICE ------------
+        //
+        // Measured 2026-09-17: `grep -ci practice tutorial-steps.json` returned ZERO, while
+        // OwnedBaseProgression.AllMilestones REQUIRES PracticeCompleted for IsAiArenaReady. The
+        // game could REFUSE practice (OwnedTownPracticeSession.TryCreate: "Repair, design, save
+        // and reenter the town before practice.") but nothing anywhere invited it.
+        //
+        // ⛔ WHY A POLL AND NOT A TRIGGER ON ownedTown.reentered - two engine facts, not a taste:
+        //  (1) CONTEXTUAL BEATS CANNOT CHAIN. TutorialFlow.OnSignal completes the live hint on its
+        //      awaited signal and RETURNS before TryTriggerContextual is reached, so the raise that
+        //      finishes owned_town_reentry can never start a fourth beat (the same reason recorded
+        //      in tutorial-steps.json's v6 note).
+        //  (2) THE REENTRY RAISE LANDS ON NOBODY. OwnedTownController carries
+        //      [DefaultExecutionOrder(-500)] and raises ownedTown.reentered from its own Start -
+        //      BEFORE TutorialFlow.Start subscribes TutorialSignals.Raised. The bus latches but
+        //      TutorialFlow never replays a latch on arm, so a trigger authored on that id would be
+        //      missed on the very scene entry that satisfies it. (Recorded as a pre-existing
+        //      finding: it means owned_town_reentry itself completes only if the flow was already
+        //      armed and live when the raise happened. NOT fixed here - out of this ticket's silo.)
+        //
+        // THE PREDICATE IS NOT RE-DERIVED. It mirrors OwnedTownPracticeSession.TryCreate's own
+        // refusal test (Core/State/OwnedTownPracticeSession.cs) flag for flag - the three
+        // milestones plus reenteredLayoutRevision >= 1 - so the beat can never invite a player
+        // into a door the session object will refuse. The extra term here is PracticeCompleted
+        // being CLEAR: a finished lesson is not an invitation.
+        //
+        // Runs on the existing 1 Hz Discover tick; no per-frame work.
+        private void TickOwnedTownPracticeReady()
+        {
+            if (Time.unscaledTime < _nextOwnedTownPracticeRaiseAt) return;
+
+            var svc = GameStateService.Instance;
+            var property = svc != null && svc.State != null ? svc.State.OwnedBase : null;
+            if (property == null) return;
+
+            const OwnedBaseMilestones required = OwnedBaseMilestones.OwnershipRevealed |
+                OwnedBaseMilestones.EssentialRepairCompleted | OwnedBaseMilestones.LayoutChoiceCompleted;
+            if ((property.milestoneFlags & required) != required || property.reenteredLayoutRevision < 1) return;
+            if ((property.milestoneFlags & OwnedBaseMilestones.PracticeCompleted) != 0) return;
+
+            if (TutorialFlow.IsContextualSeen(OwnedTownPracticeBeatId))
+            {
+                if (!_ownedTownPracticeSeenTraced)
+                {
+                    _ownedTownPracticeSeenTraced = true;
+                    FlowTrace.Step("Tutorial", "ownedTown.practiceReady: '" + OwnedTownPracticeBeatId +
+                        "' is already latched on this save - the trigger will not be raised again.");
+                }
+                return;
+            }
+
+            // Fully qualified: this file has no `using DeNelle.Core;` (the TickFirstRaidCompleted
+            // note above records why DeNelle.Village cannot see the sibling namespace unqualified).
+            string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (scene != DeNelle.Core.SceneRouter.OwnedTownIronBastion)
+            {
+                FlowTrace.Once("Tutorial", "practice-not-owned-town",
+                    "ownedTown.practiceReady: the town is repaired, designed and reentered but scene '" +
+                    scene + "' is not '" + DeNelle.Core.SceneRouter.OwnedTownIronBastion +
+                    "' - the practice door lives in the town panel, so waiting for the player to be there.");
+                return;
+            }
+            if (Time.timeSinceLevelLoad < OwnedTownPracticeSettleSeconds) return;
+            if (DeNelle.Core.Dialogue.DialogueService.IsRunning)
+            {
+                FlowTrace.Once("Tutorial", "practice-dialogue-busy",
+                    "ownedTown.practiceReady: a dialogue is on screen - deferring the raise.");
+                return;
+            }
+
+            _nextOwnedTownPracticeRaiseAt = Time.unscaledTime + OwnedTownPracticeReraiseSeconds;
+            FlowTrace.Step("Tutorial", "ownedTown.practiceReady: in '" + scene + "' with repair+design+reentry " +
+                "saved (revision=" + property.revision + ", reenteredLayoutRevision=" +
+                property.reenteredLayoutRevision + "), PracticeCompleted CLEAR and '" +
+                OwnedTownPracticeBeatId + "' unseen - raising (re-raises every " +
+                OwnedTownPracticeReraiseSeconds.ToString("0") + "s until the beat latches).");
+            TutorialSignals.Raise(TutorialSignals.OwnedTownPracticeReady);
         }
 
         // ── Event → bus ───────────────────────────────────────────────────────
