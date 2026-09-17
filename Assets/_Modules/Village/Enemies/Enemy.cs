@@ -657,6 +657,42 @@ namespace DeNelle.Village
             _hp = Mathf.Min(_maxHp, _hp + amount);
         }
 
+        // WO-1835 (endless escalation, owner ruling 2026-09-17 "rage spells"): a TRANSIENT
+        // outgoing-damage multiplier granted by EnemySupportMage. Deliberately timestamp-based
+        // rather than a ticking timer, so it needs no Update hook of its own and cannot leak a
+        // coroutine on a pooled body; it simply expires when the clock passes _rageUntil.
+        private float _rageUntil;
+        private float _rageDamageMult = 1f;
+
+        /// <summary>
+        /// Outgoing damage multiplier from an active rage buff; 1 when not raging. Read at the
+        /// damage sink (<c>DealStructureDamage</c>), which every strike path funnels through.
+        /// </summary>
+        public float RageDamageMultiplier => Time.time < _rageUntil ? _rageDamageMult : 1f;
+
+        /// <summary>True while a rage buff is in effect (drives the aura tell + the oracle).</summary>
+        public bool IsRaging => Time.time < _rageUntil;
+
+        /// <summary>
+        /// Grants a rage buff of <paramref name="damageMult"/> for <paramref name="seconds"/>.
+        /// Re-casting REFRESHES rather than stacking: the strongest multiplier wins and the
+        /// window extends, so two mages covering one pack cannot multiply into a one-shot.
+        /// No-op on a dead body or a non-buff (mult &lt;= 1).
+        /// </summary>
+        public void ApplyRage(float damageMult, float seconds)
+        {
+            if (_dead || damageMult <= 1f || seconds <= 0f) return;
+            _rageDamageMult = Mathf.Max(RageDamageMultiplier, damageMult);
+            _rageUntil = Mathf.Max(_rageUntil, Time.time + seconds);
+        }
+
+        /// <summary>Drops any active rage buff immediately (pool release).</summary>
+        public void ClearRage()
+        {
+            _rageUntil = 0f;
+            _rageDamageMult = 1f;
+        }
+
         /// <summary>
         /// The engine def id the breach trigger maps this enemy to when handing
         /// the ATB scene a battle. Maps village enemies.json ids to the ATB engine's
@@ -2227,6 +2263,22 @@ namespace DeNelle.Village
         {
             if (target == null || damage <= 0f) return;
 
+            // WO-1835 — RAGE. Applied HERE, at the damage SINK, for the same reason the
+            // friendly-fire oracle below lives here: all three enemy strike paths (melee,
+            // ranged and caster) funnel through this method, so one multiplication covers
+            // every one of them and cannot be forgotten by a future strike path.
+            //
+            // ⛔ WHY RAGE IS NOT ROUTED THROUGH ApplyDifficulty. That method recomputes
+            // _contactDamage from _baseContactDamage, and ApplyWaveScaling multiplies the
+            // CURRENT value — so buffing through ApplyDifficulty and then "reverting" through
+            // it would silently WIPE the wave scaling this body already received, making late
+            // endless enemies weaker after a friendly buff expired than before it landed. It
+            // also full-heals (it sets _hp = _maxHp), which would make a rage cast an accidental
+            // heal. This multiplier is transient, read-only at the sink, and touches neither
+            // base nor current stats, so it composes with wave scaling and dynamic difficulty
+            // instead of fighting them.
+            damage *= RageDamageMultiplier;
+
             // ═══ WO-1439 §6 — THE SEAM ORACLE: no actor may damage an asset of its own faction.
             // Every part of this system worked in the owner's raid — probing probed, scoring
             // scored, damage applied — and NOTHING asserted that a combatant only attacks things
@@ -3150,6 +3202,14 @@ namespace DeNelle.Village
             // ResetForPool (release) and PrepareForReuse (acquire) call this method.
             _baseMaxHp             = -1f;
             _baseContactDamage     = -1f;
+
+            // WO-1835 rage window. This list is the one place a per-life latch is allowed to
+            // live, and the file's own history (P0-1 _casting, RosterId) is that a latch added
+            // to the class and to neither reset side ships as a bug. A rage window left set
+            // would hand a freshly-leased body a damage multiplier it was never granted —
+            // intermittently, only on reused bodies, which is the worst shape to debug.
+            _rageUntil             = 0f;
+            _rageDamageMult        = 1f;
         }
 
         /// <summary>

@@ -17,7 +17,13 @@
   "endless": {
     "_comment": "ENDLESS MODE (owner ruling 2026-07-11: 'after 20 rounds continue to allow the user to start waves manually and increase difficulty and mobs every level up'). Past the last authored wave (20) the WaveManager never goes Complete: it cycles authored waves 4..20 IN ORDER (true wave 21 replays def 4, ... 37 replays def 20  -  the apex dragon Syndrath returns as every cycle's capstone) and each wave WAITS for the player's DEFEND button instead of auto-counting down. Mob counts multiply by 1 + countGrowthPerWave * (trueWave - 20), capped at countCap (rounded up, never below the authored count). Enemy HP/speed/damage growth stays WaveScalingCurve's job  -  it scales by the TRUE wave number, which keeps counting past 20.",
     "countGrowthPerWave": 0.05,
-    "countCap": 3.0
+    "countCap": 3.0,
+    "_comment_wo1835": "POST-WAVE-20 ESCALATION (owner ruling 2026-09-17: \"after level 20, i want it to get difficult. THey need a real challenge so maybe 2 dragons spawn and troops breaking through walls, or healing caravans or mages using AoE large heal spells, rage spells\" + \"catapults blasting the walls from the sides at the same time\"). EVERY VALUE BELOW IS A FIRST-PASS ESTIMATE FOR THE OWNER TO FELT-CORRECT, not a final balance number. They are here rather than in code so the endless difficulty curve can be re-tuned without a rebuild. HOW MANY of each unit a wave fields is NOT authored here - it is derived from the true wave number by the pure predicates in EndlessPressure.cs, so the escalation curve has ONE owner and cannot drift between this file and the code reading it. Applies ONLY past wave 20; the authored 1-20 schedule releases none of these units.",
+    "breacherFraction": 0.35,
+    "twinDragonHpShare": 0.7,
+    "catapultVolleySeconds": 6.0,
+    "catapultDamagePerHit": 9.0,
+    "mageCastSeconds": 9.0
   },
   "waves": [
     {

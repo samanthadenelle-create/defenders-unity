@@ -445,6 +445,18 @@ namespace DeNelle.Village
 
         /// <summary>The apex flying boss for the current wave (null when not an apex wave / dead).</summary>
         private DragonBoss _liveApexBoss;
+
+        // WO-1835 — TWIN DRAGONS. `_liveApexBoss` stays the PRIMARY, HUD-and-targeting-facing
+        // reference because six other systems read it through the public LiveApexBoss property
+        // (BattleMusicManager, TowerCombat, HeroAbilities, AmbientNPC and the pet/HUD bridges);
+        // re-pointing it at a list would have been a breaking change across five files for no
+        // gain. This list is the CLEAR GATE's view, and it exists because that gate was
+        // single-boss by construction: `_liveApexBoss != null && !IsDead` plus a
+        // HandleApexBossDied that NULLS the field means the wave would clear the moment the
+        // FIRST of two dragons died, leaving the second one orbiting a village that had already
+        // moved on to the next countdown. Contains the primary as well, so it is the whole truth
+        // and not a supplement that can disagree with the field.
+        private readonly List<DragonBoss> _liveApexBosses = new List<DragonBoss>(2);
         // Holds an apex wave open while the correctly-typed GameObject address arrives.
         private bool _apexSpawnPending;
         private const float ApexLoadTimeoutSeconds = 30f;
@@ -664,6 +676,27 @@ namespace DeNelle.Village
 
         /// <summary>The apex flying boss on the field, or null when no apex wave is live.</summary>
         public DragonBoss LiveApexBoss => _liveApexBoss;
+
+        /// <summary>
+        /// Every apex dragon still aloft (WO-1835 twins). <see cref="LiveApexBoss"/> is the
+        /// primary of these and is what the HUD / boss music / tower focus-fire read; this is what
+        /// the CLEAR GATE reads, because a wave must hold open until the LAST dragon is down.
+        /// </summary>
+        public IReadOnlyList<DragonBoss> LiveApexBosses => _liveApexBosses;
+
+        /// <summary>
+        /// True while ANY apex dragon is alive. Checks the list rather than the primary so one
+        /// twin's death cannot release the clear gate on the other (see the field remarks).
+        /// </summary>
+        public bool AnyApexBossAlive()
+        {
+            for (int i = 0; i < _liveApexBosses.Count; i++)
+            {
+                if (_liveApexBosses[i] != null && !_liveApexBosses[i].IsDead) return true;
+            }
+            // Fall back to the primary for a legacy/partial path that set it without listing it.
+            return _liveApexBoss != null && !_liveApexBoss.IsDead;
+        }
 
         /// <summary>The Heart the wave loop marches enemies at (resolved at BeginLoop).</summary>
         public HeartController Heart => _heart;
@@ -1204,11 +1237,9 @@ namespace DeNelle.Village
                 _countdownRemaining = 0f;
             }
 
-            if (_liveApexBoss != null)
-            {
-                _liveApexBoss.Died -= HandleApexBossDied;
-                _liveApexBoss = null;
-            }
+            // WO-1835: releases EVERY live dragon, not just the primary — a twin left subscribed
+            // here is a delegate firing into a torn-down manager across the breach/reload loop.
+            ReleaseApexBosses(kill: false, destroy: false);
 
             // WO-125 Bug 3: drop the Heart lose-condition subscription so a stale
             // delegate can't fire into a torn-down manager across the breach/reload loop.
@@ -2064,7 +2095,15 @@ namespace DeNelle.Village
             _breachArmTimer = 0f;
             _breachRoster.Clear();
             _liveApexBoss = null;
+            // WO-1835: the twin list is reset alongside the primary. Left un-cleared it would
+            // carry the PREVIOUS wave's (destroyed, fake-null) dragons into this wave's clear
+            // gate, which would hold the wave open forever on bodies that no longer exist.
+            _liveApexBosses.Clear();
             _apexSpawnPending = false;
+            // WO-1835: re-arm this wave's endless pressure budget (breacher share). Done at wave
+            // START so a re-armed or force-started wave gets a fresh allocation rather than
+            // inheriting whatever was left of the last one.
+            ResetEndlessPressureBudget(waveId);
             OnWaveStarted.Invoke(waveId);
 
             // An apex (flying-boss) wave drives the Heart's Boss threat state;
@@ -2132,6 +2171,10 @@ namespace DeNelle.Village
                 foreach (Enemy e in groupEnemies)
                 {
                     if (e == null) continue;
+                    // WO-1835: family-group path — see ApplyEndlessPressure's remarks. Called on
+                    // EVERY release path, not just SpawnOne, or the stamp misses the composed
+                    // waves entirely and a pooled body keeps a previous life's pressure component.
+                    ApplyEndlessPressure(e, EndlessPressureRole.None);
                     e.Died          += HandleEnemyDied;
                     e.ReachedHeart  += HandleEnemyReachedHeart;
                     _liveEnemies.Add(e);
@@ -2209,6 +2252,11 @@ namespace DeNelle.Village
             // the dragon is aloft the moment the apex wave begins.
             if (wave.IsApexBossWave)
                 SpawnApexBoss(wave.ApexBoss);
+
+            // WO-1835: the endless-only support units (healing caravans, AoE-heal/rage mages and
+            // the flanking catapults) ride on top of whatever composition this wave produced.
+            // No-op at or below wave 20 — see the region's own header.
+            ReleaseEndlessSupportUnits(_currentWaveId);
         }
 
         private ApexBossDef ResolveRecurringDragon(int waveId, ApexBossDef current)
@@ -2373,6 +2421,11 @@ namespace DeNelle.Village
                     e.SetBaseStats(e.MaxHp, e.ContactDamage);
                     e.ApplyDifficulty(DynamicDifficulty.EnemyHpMultiplier,
                                       DynamicDifficulty.EnemyDamageMultiplier);
+
+                    // WO-1835: composed-wave path. Stamped AFTER scaling + dynamic difficulty so a
+                    // rage-capable body already carries its final damage, and BEFORE the Died
+                    // subscription so the body is fully dressed the first frame it ticks.
+                    ApplyEndlessPressure(e, EndlessPressureRole.None);
 
                     e.Died         += HandleEnemyDied;
                     e.ReachedHeart += HandleEnemyReachedHeart;
@@ -2608,6 +2661,14 @@ namespace DeNelle.Village
                 e.ApplyDifficulty(DynamicDifficulty.EnemyHpMultiplier,
                                   DynamicDifficulty.EnemyDamageMultiplier);
 
+                // ⭐ WO-1835 — THE SMART-COMPOSITION PATH, AND THE ONE THAT ACTUALLY MATTERS.
+                // Endless waves are smart-composed (see the countScale block in this class), so
+                // THIS is the release path a post-wave-20 body comes down. Stamping only in
+                // SpawnOne would have left the wall-breacher share permanently at zero on the live
+                // endless path while every unit test still passed, and would have skipped the
+                // pool-clear that stops a recycled body carrying a stale pressure component.
+                ApplyEndlessPressure(e, EndlessPressureRole.None);
+
                 e.Died         += HandleEnemyDied;
                 e.ReachedHeart += HandleEnemyReachedHeart;
                 _liveEnemies.Add(e);
@@ -2794,45 +2855,90 @@ namespace DeNelle.Village
                     "Resources/Enemies/Boss_Dragon fallback so the apex dragon flies.");
             }
 
-            // Spawn the dragon at cruise height above the Heart so it begins its
-            // orbit immediately; DragonBoss.Configure re-seeds its anchor + HP.
+            // ── WO-1835 — TWIN DRAGONS PAST WAVE 20 ──────────────────────────────────────────
+            // Owner ruling 2026-09-17: "after level 20, i want it to get difficult ... so maybe 2
+            // dragons spawn". The count comes from EndlessPressure.ApexDragonCount, which is
+            // handed IsRecurringDragonWave so the 5-wave cadence constants stay owned by THIS
+            // class and are not copied into a second file. Authored wave 20 returns 1, so the
+            // shipped apex fight is untouched; 25, 30, 35 ... return 2.
             Transform heartT = _heart != null ? _heart.transform : null;
-            // #66: lower the entry drop from +22 to +10 to match the lowered _orbitHeight (was 22 -> 10)
-            // so the smaller (scale 0.3) dragon reads in-frame instead of starting far overhead.
-            Vector3 spawnPos = (heartT != null ? heartT.position : transform.position)
-                               + new Vector3(0f, 10f, 0f);
+            int dragonCount = Mathf.Max(1, EndlessPressure.ApexDragonCount(
+                _currentWaveId, IsRecurringDragonWave(_currentWaveId)));
+            float perDragonHp = EndlessPressure.PerDragonHp(boss.Hp, dragonCount, EndlessTuning);
 
-            // G(uard the Instantiate): the prefab instantiation can throw on a corrupt/missing
-            // asset; an unguarded throw here aborts the whole wave-start coroutine (every later
-            // batch is lost). Build under Guard.Try, then NULL-CHECK the result before any deref.
-            DragonBoss dragon = null;
-            Guard.Try("Waves", "instantiate apex dragon",
-                () => dragon = Instantiate(_apexBossPrefab, spawnPos, Quaternion.identity, _enemyRoot));
-            if (dragon == null)
+            if (dragonCount > 1)
             {
-                // R(eturn-fallback never silent): no boss body — the wave continues (its batches
-                // still clear) but the apex threat is missing. Fail-loud so it self-reports.
-                FlowTrace.Fail("Waves",
-                    $"SpawnApexBoss: Instantiate returned null for the apex dragon (wave {_currentWaveId}) — " +
-                    "no boss this wave (batches still run so the loop never stalls).");
-                return;
+                FlowTrace.Step("Waves",
+                    $"SpawnApexBoss: ENDLESS wave {_currentWaveId} fields {dragonCount} apex dragons " +
+                    $"(authored solo HP {boss.Hp:0} -> {perDragonHp:0} each; first-pass split, owner felt-tunes) " +
+                    "entering from opposing sides.");
             }
 
-            string bossId = !string.IsNullOrEmpty(boss.Id)
-                ? boss.Id
-                : $"wave{_currentWaveId}-apex-boss";
-            dragon.Configure(bossId, heartT, boss.Hp);
-            dragon.ApplyEncounterDifficulty(
-                DragonDamageMultiplierForWave(_currentWaveId),
-                DragonAttackIntervalMultiplierForWave(_currentWaveId));
+            int released = 0;
+            for (int i = 0; i < dragonCount; i++)
+            {
+                // Spawn each dragon at cruise height above the Heart so it begins its orbit
+                // immediately; DragonBoss.Configure re-seeds its anchor + HP. Twins are pushed
+                // onto opposite sides of the Heart by ApexSpawnOffset — two dragons released at
+                // the SAME point above the tree own their own kinematic flight and would overlap
+                // into one visual body, which reads as a bug rather than as twice the threat.
+                // #66: the entry drop is +10 (was +22) to match the lowered _orbitHeight so the
+                // smaller (scale 0.3) dragon reads in-frame instead of starting far overhead.
+                Vector3 spawnPos = (heartT != null ? heartT.position : transform.position)
+                                   + new Vector3(0f, 10f, 0f)
+                                   + EndlessPressure.ApexSpawnOffset(i, dragonCount);
 
-            dragon.Died += HandleApexBossDied;
-            _liveApexBoss = dragon;
-            OnApexBossSpawned.Invoke(dragon);
+                // G(uard the Instantiate): the prefab instantiation can throw on a corrupt/missing
+                // asset; an unguarded throw here aborts the whole wave-start coroutine (every later
+                // batch is lost). Build under Guard.Try, then NULL-CHECK the result before any deref.
+                DragonBoss dragon = null;
+                int index = i;
+                Guard.Try("Waves", "instantiate apex dragon",
+                    () => dragon = Instantiate(_apexBossPrefab, spawnPos, Quaternion.identity, _enemyRoot));
+                if (dragon == null)
+                {
+                    // R(eturn-fallback never silent): no boss body — the wave continues (its batches
+                    // still clear) but this apex threat is missing. Fail-loud so it self-reports.
+                    // CONTINUE, not return: with twins, one failed Instantiate must not cost the
+                    // other dragon as well.
+                    FlowTrace.Fail("Waves",
+                        $"SpawnApexBoss: Instantiate returned null for apex dragon {index + 1}/{dragonCount} " +
+                        $"(wave {_currentWaveId}) — that dragon is missing this wave (batches still run so " +
+                        "the loop never stalls).");
+                    continue;
+                }
 
-            FlowTrace.Step("Waves",
-                $"SpawnApexBoss: Apex wave {_currentWaveId} — released flying boss '{bossId}' " +
-                $"(maxHp {(boss.Hp > 0f ? boss.Hp.ToString() : "prefab default")}).");
+                string baseId = !string.IsNullOrEmpty(boss.Id)
+                    ? boss.Id
+                    : $"wave{_currentWaveId}-apex-boss";
+                // A DISTINCT id per twin. Two bodies sharing one id makes every downstream trace,
+                // damage-attribution bucket and boss-health-bar binding ambiguous between them.
+                string bossId = dragonCount > 1 ? $"{baseId}-twin{index + 1}" : baseId;
+
+                dragon.Configure(bossId, heartT, perDragonHp);
+                dragon.ApplyEncounterDifficulty(
+                    DragonDamageMultiplierForWave(_currentWaveId),
+                    DragonAttackIntervalMultiplierForWave(_currentWaveId));
+
+                dragon.Died += HandleApexBossDied;
+                _liveApexBosses.Add(dragon);
+                // The FIRST released dragon is the primary the HUD / boss music / tower focus-fire
+                // read through LiveApexBoss; the clear gate reads the whole list instead.
+                if (_liveApexBoss == null) _liveApexBoss = dragon;
+                OnApexBossSpawned.Invoke(dragon);
+                released++;
+
+                FlowTrace.Step("Waves",
+                    $"SpawnApexBoss: Apex wave {_currentWaveId} — released flying boss '{bossId}' " +
+                    $"({index + 1}/{dragonCount}, maxHp {(perDragonHp > 0f ? perDragonHp.ToString("0") : "prefab default")}).");
+            }
+
+            if (released == 0)
+            {
+                FlowTrace.Fail("Waves",
+                    $"SpawnApexBoss: wave {_currentWaveId} asked for {dragonCount} apex dragon(s) and " +
+                    "released NONE — the apex threat is entirely absent this wave.");
+            }
         }
 
         private async UniTaskVoid AwaitApexBossPrefab(ApexBossDef boss, int waveId)
@@ -2870,7 +2976,8 @@ namespace DeNelle.Village
         /// <see cref="WaveBatch.Count"/> enemies at the named spawn point,
         /// <see cref="WaveBatch.Interval"/> seconds apart.
         /// </summary>
-        private async UniTask SpawnBatch(WaveBatch batch, float pinnedBossHp = 0f)
+        private async UniTask SpawnBatch(WaveBatch batch, float pinnedBossHp = 0f,
+                                         EndlessPressureRole pressureRole = EndlessPressureRole.None)
         {
             EnemyDef def = _enemyCatalog.Find(batch.Type);
             if (def == null)
@@ -2938,7 +3045,7 @@ namespace DeNelle.Village
                     if (TownSuspension.SuspendedFor(this)) return;
                 }
 
-                SpawnOne(def, point, pinnedBossHp);
+                SpawnOne(def, point, pinnedBossHp, pressureRole);
 
                 if (batch.Interval > 0f && i < batch.Count - 1)
                     await UniTask.Delay(System.TimeSpan.FromSeconds(batch.Interval));
@@ -2946,7 +3053,8 @@ namespace DeNelle.Village
         }
 
         /// <summary>Instantiates + configures one enemy at <paramref name="point"/>.</summary>
-        private void SpawnOne(EnemyDef def, WaveSpawnPoint point, float pinnedBossHp = 0f)
+        private void SpawnOne(EnemyDef def, WaveSpawnPoint point, float pinnedBossHp = 0f,
+                              EndlessPressureRole pressureRole = EndlessPressureRole.None)
         {
             // F8 2026-07-30 (captured NRE): SpawnBatch is a fire-and-forget UniTask, so a
             // queued batch can outlive a scene change — its WaveSpawnPoint is then DESTROYED
@@ -3088,9 +3196,177 @@ namespace DeNelle.Village
                     $"{pinnedBossHp:0} (post-scaling override; WaveScalingCurve bypassed for this boss).");
             }
 
+            // WO-1835 — ENDLESS PRESSURE STAMP. Applied here, at the END of the one release path,
+            // so it lands AFTER Configure + wave scaling + any boss HP pin (a role that re-pointed
+            // targeting before Configure would be overwritten by it, and a rage-capable body must
+            // already carry its scaled damage). EndlessPressure.Attach is pool-safe by
+            // construction — it disables all four pressure behaviours before enabling the one
+            // asked for — which is what makes stamping a RECYCLED body correct.
+            ApplyEndlessPressure(enemy, pressureRole);
+
             enemy.Died += HandleEnemyDied;
             enemy.ReachedHeart += HandleEnemyReachedHeart;
             _liveEnemies.Add(enemy);
+        }
+
+        // =====================================================================
+        //  WO-1835 — ENDLESS PRESSURE RELEASE (owner ruling 2026-09-17)
+        // ---------------------------------------------------------------------
+        //  "after level 20, i want it to get difficult. THey need a real challenge so maybe 2
+        //   dragons spawn and troops breaking through walls, or healing caravans or mages using
+        //   AoE large heal spells, rage spells" / "catapults blasting the walls from the sides
+        //   at the same time"
+        //
+        //  ⛔ ENDLESS ONLY. Every method below is gated on EndlessPressure.IsEndlessWave, and the
+        //  per-wave counts come from that class's pure predicates so the escalation curve is
+        //  assertable without a scene (EndlessEscalationRegression). The authored 1-20 schedule
+        //  releases ZERO extra units and stamps ZERO roles, which is what keeps this ticket from
+        //  touching the tutorial arc's pacing.
+        // =====================================================================
+
+        /// <summary>
+        /// How many of this wave's bodies are still owed a wall-breacher stamp. Counted DOWN as
+        /// bodies are released rather than picked at random per body: a fraction rolled per spawn
+        /// would give a wave with no breachers at all often enough that the owner would felt-test
+        /// a feature that did not fire.
+        /// </summary>
+        private int _endlessBreachersOwed;
+
+        /// <summary>The endless tunables from waves.json, or the compiled-in first-pass defaults.</summary>
+        private EndlessPressureTuning EndlessTuning =>
+            _schedule != null && _schedule.Endless != null
+                ? _schedule.Endless.ToPressureTuning()
+                : EndlessPressureTuning.Default;
+
+        /// <summary>
+        /// Re-arms the per-wave breacher allocation. Called from StartWave so a force-started or
+        /// re-armed wave gets a fresh budget instead of inheriting the previous wave's remainder.
+        /// </summary>
+        private void ResetEndlessPressureBudget(int waveId)
+        {
+            if (!EndlessPressure.IsEndlessWave(waveId))
+            {
+                _endlessBreachersOwed = 0;
+                return;
+            }
+
+            // The squad size is not known up front on the smart-composition path (the roster is
+            // generated, and the concurrency cap meters it), so the budget is sized off the
+            // concurrency cap — the largest number of bodies that can be on the field at once.
+            int squadEstimate = Mathf.Max(3, MaxSimultaneous);
+            _endlessBreachersOwed = EndlessPressure.BreacherCount(waveId, squadEstimate, EndlessTuning);
+
+            FlowTrace.Step(EndlessPressure.Sys,
+                $"wave {waveId}: endless budget armed — {_endlessBreachersOwed} wall-breacher(s) owed " +
+                $"(of ~{squadEstimate} bodies), {EndlessPressure.SupportCaravanCount(waveId)} caravan(s), " +
+                $"{EndlessPressure.SupportMageCount(waveId)} support mage(s), " +
+                $"{EndlessPressure.CatapultCount(waveId)} catapult(s).");
+        }
+
+        /// <summary>
+        /// Stamps a released body with its endless role. An explicit
+        /// <paramref name="requested"/> role (the support units, spawned deliberately) always
+        /// wins; otherwise the body draws from this wave's breacher budget. A flying body is
+        /// never made a breacher — it has no reason to stop at a wall it can cross.
+        /// </summary>
+        private void ApplyEndlessPressure(Enemy enemy, EndlessPressureRole requested)
+        {
+            if (enemy == null) return;
+
+            EndlessPressureRole role = requested;
+
+            // An explicit role (the support units, spawned deliberately) always wins. Otherwise the
+            // body draws from this wave's breacher budget. A FLYING body is never made a breacher —
+            // it has no reason to stop at a wall it can simply cross, and a flier pinned to a panel
+            // would hover at it looking broken.
+            if (role == EndlessPressureRole.None
+                && _endlessBreachersOwed > 0
+                && EndlessPressure.IsEndlessWave(_currentWaveId)
+                && !enemy.IsFlying)
+            {
+                _endlessBreachersOwed--;
+                role = EndlessPressureRole.WallBreacher;
+            }
+
+            // ⛔ ATTACH IS CALLED UNCONDITIONALLY, INCLUDING FOR None — DO NOT ADD AN EARLY RETURN.
+            // Wave bodies come from EnemyPool, which reuses the GameObject. A body that served as a
+            // breacher (or a catapult, or a caravan) in a previous life still has that component
+            // bolted on and ENABLED when it is leased again as an ordinary marcher; Enemy.ResetForPool
+            // clears its own latches and the brain's, but it cannot know about components a spawner
+            // added. Attach's first act is to disable all four pressure behaviours, so calling it
+            // every time is what guarantees a recycled body starts clean. Returning early on None —
+            // the obvious "optimisation" — is exactly the leak: an endless wave's breachers would
+            // bleed into the next wave, and into waves 1-20 after a village reload, still refusing
+            // the Heart because their wall pin was never released.
+            EndlessPressure.Attach(enemy, role, _currentWaveId, EndlessTuning);
+        }
+
+        /// <summary>
+        /// Releases this endless wave's support units — healing caravans, support mages and the
+        /// flanking catapults — on top of whatever the normal composition produced.
+        /// <para>
+        /// Each rides an EXISTING enemy def (see <c>EndlessPressure.DefIdForRole</c> and the §16
+        /// note in EndlessPressure.cs) so no new R2 bundle is required and no build can ship these
+        /// units as untextured capsules. They spawn through the SAME SpawnBatch path as every other
+        /// wave body, so they are metered by the DEF-48 concurrency cap, counted in
+        /// <c>_liveEnemies</c>, and therefore hold the wave's clear gate open exactly like any
+        /// other enemy — nothing bespoke in the clear logic.
+        /// </para>
+        /// </summary>
+        private void ReleaseEndlessSupportUnits(int waveId)
+        {
+            if (!EndlessPressure.IsEndlessWave(waveId)) return;
+
+            ReleasePressureBatch(waveId, EndlessPressureRole.SupportCaravan,
+                EndlessPressure.SupportCaravanCount(waveId), delay: 2f);
+            ReleasePressureBatch(waveId, EndlessPressureRole.SupportMage,
+                EndlessPressure.SupportMageCount(waveId), delay: 3f);
+            // The catapults are released TOGETHER with no stagger (interval 0) because the ruling
+            // is explicitly "at the same time"; their volleys then stay in lockstep via the shared
+            // EndlessPressure.VolleyIndex regardless of when each body finishes walking to standoff.
+            ReleasePressureBatch(waveId, EndlessPressureRole.SiegeCatapult,
+                EndlessPressure.CatapultCount(waveId), delay: 4f);
+        }
+
+        /// <summary>
+        /// Spawns <paramref name="count"/> bodies of one pressure role. Fail-loud on an unknown
+        /// def id: a typo here would silently drop a whole unit type from every endless wave, and
+        /// "the owner never saw any catapults" with nothing in the log is the failure mode §12
+        /// exists to prevent.
+        /// </summary>
+        private void ReleasePressureBatch(int waveId, EndlessPressureRole role, int count, float delay)
+        {
+            if (count <= 0) return;
+
+            string defId = EndlessPressure.DefIdForRole(role);
+            if (string.IsNullOrEmpty(defId))
+            {
+                FlowTrace.Fail(EndlessPressure.Sys,
+                    $"wave {waveId}: role {role} has no enemy def mapped — {count} unit(s) NOT released.");
+                return;
+            }
+
+            if (_enemyCatalog == null || _enemyCatalog.Find(defId) == null)
+            {
+                FlowTrace.Fail(EndlessPressure.Sys,
+                    $"wave {waveId}: role {role} maps to enemy def '{defId}' which is NOT in the catalog — " +
+                    $"{count} unit(s) NOT released. Fix the mapping in EndlessPressure.DefIdForRole.");
+                return;
+            }
+
+            SpawnBatch(new WaveBatch
+            {
+                Type = defId,
+                Count = count,
+                // Empty spawn point: FindSpawnPoint takes its deterministic fallback, which puts
+                // these units in with the wave's own approach rather than at a bespoke marker.
+                SpawnPoint = string.Empty,
+                Delay = delay,
+                Interval = role == EndlessPressureRole.SiegeCatapult ? 0f : 0.6f,
+            }, 0f, role).Forget();
+
+            FlowTrace.Step(EndlessPressure.Sys,
+                $"wave {waveId}: releasing {count}x {role} on def '{defId}' after {delay:0.#}s.");
         }
 
         /// <summary>
@@ -3244,7 +3520,11 @@ namespace DeNelle.Village
             // additionally holds open until the flying boss is down — the dragon
             // is not in _liveEnemies (it owns kinematic flight, not a NavMesh
             // agent), so its life is tracked separately via _liveApexBoss.
-            bool apexBossStillUp = _apexSpawnPending || (_liveApexBoss != null && !_liveApexBoss.IsDead);
+            // WO-1835 — the gate must survive TWINS. This used to read the single _liveApexBoss
+            // only, and HandleApexBossDied nulls that field: with two dragons aloft the wave would
+            // have cleared on the FIRST death and the survivor would have kept breathing on a town
+            // that had already advanced. AnyApexBossAlive is the whole-list answer.
+            bool apexBossStillUp = _apexSpawnPending || AnyApexBossAlive();
 
             // WO-1113: a wave whose bodies are being METERED by the concurrency cap can hit
             // zero-on-field while reinforcements are still queued (kill the last 8 with one AoE
@@ -3894,12 +4174,7 @@ namespace DeNelle.Village
 
             // Stop the apex boss mid-encounter — a dead Heart should not keep taking
             // swoop/breath hits, and the boss's death-fall would otherwise read oddly.
-            if (_liveApexBoss != null)
-            {
-                _liveApexBoss.Died -= HandleApexBossDied;
-                _liveApexBoss.Kill();
-                _liveApexBoss = null;
-            }
+            ReleaseApexBosses(kill: true, destroy: false);
 
             // Show the Heart at its terminal critical state for the defeat beat.
             _heart?.SetState(HeartState.Critical);
@@ -3981,12 +4256,7 @@ namespace DeNelle.Village
             // layer with the rest of the wave — destroy it so it does not orbit
             // an empty village while the ATB scene is up. The dragon is its own
             // encounter; ground enemies breaching abandons the apex wave too.
-            if (_liveApexBoss != null)
-            {
-                _liveApexBoss.Died -= HandleApexBossDied;
-                Destroy(_liveApexBoss.gameObject);
-                _liveApexBoss = null;
-            }
+            ReleaseApexBosses(kill: false, destroy: true);
 
             Debug.Log(
                 $"[WaveManager] Wave {_currentWaveId} breached with " +
@@ -4036,7 +4306,65 @@ namespace DeNelle.Village
         private void HandleApexBossDied(DragonBoss boss)
         {
             if (boss != null) boss.Died -= HandleApexBossDied;
-            if (_liveApexBoss == boss) _liveApexBoss = null;
+            _liveApexBosses.Remove(boss);
+
+            // WO-1835: with twins, the PRIMARY reference must hand off to the survivor rather
+            // than go null — every consumer of LiveApexBoss (boss music, tower focus-fire, the
+            // hero's boss-aware abilities, the ambient-NPC panic state) would otherwise decide
+            // the boss fight was over while a second dragon was still breathing on the town.
+            if (_liveApexBoss == boss)
+            {
+                _liveApexBoss = null;
+                for (int i = 0; i < _liveApexBosses.Count; i++)
+                {
+                    if (_liveApexBosses[i] != null && !_liveApexBosses[i].IsDead)
+                    {
+                        _liveApexBoss = _liveApexBosses[i];
+                        FlowTrace.Step("Waves",
+                            $"apex dragon down, but {_liveApexBosses.Count} twin(s) remain — primary " +
+                            $"handed off to '{_liveApexBoss.name}' so the clear gate and the boss-aware " +
+                            "systems keep seeing a live apex.");
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// The single teardown path for every live apex dragon (WO-1835). Unsubscribes, then
+        /// optionally kills or destroys, then clears BOTH the list and the primary reference.
+        /// <para>
+        /// ⛔ ONE METHOD, THREE CALLERS, ON PURPOSE. The unsubscribe-and-null triple used to be
+        /// copy-pasted at OnDisable, HandleHeartDestroyed and the breach handoff — three lists of
+        /// the same thing, which is the duplicated-state shape CLAUDE.md §2/§5/§16 each describe.
+        /// With twins there would have been three places to remember to loop, and the one that was
+        /// missed would leak a dragon into the next wave. Do not re-inline this.
+        /// </para>
+        /// </summary>
+        private void ReleaseApexBosses(bool kill, bool destroy)
+        {
+            for (int i = _liveApexBosses.Count - 1; i >= 0; i--)
+            {
+                DragonBoss boss = _liveApexBosses[i];
+                if (boss == null) continue;
+                boss.Died -= HandleApexBossDied;
+                if (kill && !boss.IsDead) boss.Kill();
+                if (destroy) Destroy(boss.gameObject);
+                // The primary is normally ALSO a list member. Drop the reference here so the
+                // independent release below cannot Kill/Destroy the same body a second time.
+                if (_liveApexBoss == boss) _liveApexBoss = null;
+            }
+            _liveApexBosses.Clear();
+
+            // The primary can be a body that never made it into the list (a legacy/partial spawn
+            // path), so it is released independently rather than assumed to be list member zero.
+            if (_liveApexBoss != null)
+            {
+                _liveApexBoss.Died -= HandleApexBossDied;
+                if (kill && !_liveApexBoss.IsDead) _liveApexBoss.Kill();
+                if (destroy) Destroy(_liveApexBoss.gameObject);
+                _liveApexBoss = null;
+            }
         }
 
         /// <summary>

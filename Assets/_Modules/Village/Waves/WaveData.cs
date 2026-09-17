@@ -438,6 +438,56 @@ namespace DeNelle.Village
         [JsonProperty("countGrowthPerWave")] public float CountGrowthPerWave = 0.05f;
         /// <summary>Cap on the count multiplier (3 = never more than 3× the authored counts). ≤0 = uncapped.</summary>
         [JsonProperty("countCap")] public float CountCap = 3f;
+
+        // ── WO-1835 — POST-WAVE-20 ESCALATION TUNABLES (owner ruling 2026-09-17) ───────────
+        // "after level 20, i want it to get difficult. THey need a real challenge so maybe 2
+        //  dragons spawn and troops breaking through walls, or healing caravans or mages using
+        //  AoE large heal spells, rage spells" / "catapults blasting the walls from the sides at
+        //  the same time".
+        //
+        // EVERY VALUE HERE IS A FIRST-PASS ESTIMATE FOR THE OWNER TO FELT-CORRECT, not a final
+        // balance figure — WO-1835 says so explicitly. They live in waves.json rather than in
+        // code so she can re-tune the endless difficulty curve without a rebuild, which is the
+        // whole point of the canonical-data layer. A field absent from the JSON keeps the default
+        // below (Newtonsoft leaves unmapped members at their initialiser), so an older waves.json
+        // stays valid and no schema bump is needed.
+        // ⛔ COUNTS ARE NOT AUTHORED HERE. How MANY dragons / breachers / caravans / mages /
+        // catapults a given wave fields is derived from the true wave number by the pure
+        // predicates in EndlessPressure, so the escalation curve has ONE owner and cannot drift
+        // between a JSON file and the code that reads it.
+
+        /// <summary>Share of an endless wave's melee bodies re-tasked to break walls (0.35 = 35%).</summary>
+        [JsonProperty("breacherFraction")] public float BreacherFraction = 0.35f;
+
+        /// <summary>Max HP each twin dragon keeps, as a share of the solo dragon's (0.7 = 70% each).</summary>
+        [JsonProperty("twinDragonHpShare")] public float TwinDragonHpShare = 0.7f;
+
+        /// <summary>Seconds between the synchronized flanking-catapult volleys.</summary>
+        [JsonProperty("catapultVolleySeconds")] public float CatapultVolleySeconds = 6f;
+
+        /// <summary>Structure damage one catapult stone deals to one wall panel.</summary>
+        [JsonProperty("catapultDamagePerHit")] public float CatapultDamagePerHit = 9f;
+
+        /// <summary>Seconds between support-mage casts (the telegraph wind-up runs inside this).</summary>
+        [JsonProperty("mageCastSeconds")] public float MageCastSeconds = 9f;
+
+        /// <summary>
+        /// Projects the authored block onto the runtime tuning object the endless pressure units
+        /// read. Kept as a mapping method rather than having the components read EndlessDef
+        /// directly, so the Village runtime never takes a dependency on the deserialiser shape and
+        /// the oracle can build a tuning without touching JSON.
+        /// </summary>
+        public EndlessPressureTuning ToPressureTuning()
+        {
+            return new EndlessPressureTuning
+            {
+                BreacherFraction      = BreacherFraction,
+                TwinDragonHpShare     = TwinDragonHpShare,
+                CatapultVolleySeconds = CatapultVolleySeconds,
+                CatapultDamagePerHit  = CatapultDamagePerHit,
+                MageCastSeconds       = MageCastSeconds,
+            };
+        }
     }
 
     /// <summary>The deserialised root of <c>waves.json</c>.</summary>

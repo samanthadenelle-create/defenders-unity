@@ -973,6 +973,46 @@ namespace DeNelle.Village
         /// the hero / wounded allies. Reuses the retaliation-override seam so EnemyBrain
         /// stays the SINGLE owner of enemy targeting (no second authority). Null-safe.
         /// </summary>
+        // WO-1835 (endless escalation): an opt-in PINNED structure target, set by
+        // EnemyWallBreacher so a post-wave-20 body sieges a wall panel instead of the Heart.
+        // Null for every other enemy in the game, which is why this costs one null test on the
+        // target path and changes nothing about waves 1-20. EnemyBrain stays the ONE MOVER:
+        // the breacher component only nominates the transform, it never writes
+        // Enemy.SetBrainTargetPosition itself.
+        private Transform _structureFocus;
+
+        /// <summary>
+        /// Pins this brain's offensive target to <paramref name="structure"/> (a wall panel)
+        /// until it dies or <see cref="ClearStructureFocus"/> is called. The pin is honoured in
+        /// <c>ChooseTarget</c> AFTER the arena hero-only return and BEFORE the role switch, so a
+        /// pinned body still fights back when struck (retaliation/taunt sit higher in Update)
+        /// but will not wander onto the Heart while its panel stands.
+        /// </summary>
+        public void SetStructureFocus(Transform structure)
+        {
+            _structureFocus = structure;
+            // Drop the cached pick so the new focus takes effect on the NEXT frame rather than
+            // up to TargetEvalInterval (2 s) later — a breacher that keeps marching at the
+            // Heart for two seconds after being stamped reads as the feature not working.
+            _currentTarget = null;
+            _targetEvalTimer = 0f;
+        }
+
+        /// <summary>
+        /// Releases the <see cref="SetStructureFocus"/> pin and lets normal role scoring resume.
+        /// Called when the panel collapses, when no wall is attackable, and on pool release.
+        /// </summary>
+        public void ClearStructureFocus()
+        {
+            if (_structureFocus == null) return;
+            _structureFocus = null;
+            _currentTarget = null;
+            _targetEvalTimer = 0f;
+        }
+
+        /// <summary>The pinned wall panel, or null when this brain is not a breacher.</summary>
+        public Transform StructureFocus => _structureFocus;
+
         public void TauntTo(Transform taunter, float seconds)
         {
             if (taunter == null || seconds <= 0f) return;
@@ -1280,6 +1320,12 @@ namespace DeNelle.Village
             _alarmed = false;
 
             // Targeting / override state.
+            // WO-1835: _structureFocus is the newest member of this set and the [brain-latch-coverage]
+            // guard exists because latches get added to the class and to neither reset list (that is
+            // how RosterId and _casting shipped as bugs). A pinned wall left set would make a pooled
+            // body reused as an ordinary marcher refuse the Heart FOREVER — it would score a panel
+            // from a previous life, or a fake-null destroyed one, and never siege. Cleared here.
+            _structureFocus          = null;
             _currentTarget           = null;
             _provokedUntil           = 0f;
             _tauntUntil              = 0f;
@@ -1641,6 +1687,17 @@ namespace DeNelle.Village
                 }
                 return _heroTransform;
             }
+
+            // WO-1835 — ENDLESS WALL-BREACHER OVERRIDE. Placed HERE, between the arena
+            // hero-only return and the role switch, on purpose: it must not override an
+            // isolated duel (there are no walls in the arena), and it must beat every role's
+            // scoring, because the whole point is a body that refuses the Heart while a panel
+            // still stands. Mirrors the TauntTo/provoke override shape already in Update() —
+            // one extra pinned-target arm, not a second targeting authority. Off by default
+            // (_structureFocus is null for every enemy that was never stamped a breacher), so
+            // the authored waves 1-20 are bit-identical.
+            if (_structureFocus != null && _structureFocus.gameObject.activeInHierarchy)
+                return _structureFocus;
 
             switch (Role)
             {
