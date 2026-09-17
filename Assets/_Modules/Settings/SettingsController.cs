@@ -59,6 +59,13 @@ namespace DeNelle.Settings
         private Transform _qualityRow, _difficultyRow;
         private TextMeshProUGUI _difficultyBlurb, _audioSeam;
         private Button _deviceLanguageButton, _chooseLanguageButton;
+        // WO-1840: the explicit-language control opens its OWN Obsidian popup (built on demand,
+        // destroyed on pick/close) instead of cycling the locale list one tap at a time. It is a
+        // separate root canvas above Settings' 32000, so Close()/OnDestroy() must tear it down or
+        // an Android back / arbiter swap would orphan it on screen.
+        private GameObject _languagePickerCanvas;
+        private Transform _languagePickerRows;
+        private float _languagePickerLadderPx = 1f;
         private readonly List<Action> _localizedLabelRefreshers = new List<Action>();
 #if !GOOGLE_PLAY
         private Button _walletConnectButton, _walletDisconnectButton;
@@ -160,6 +167,9 @@ namespace DeNelle.Settings
             RefreshLabels();
             BuildSelectorButtons();
             RefreshLanguageControls();
+            // WO-1840: an open picker retexts in place (same rule as the screen itself) - its rows
+            // are keyed copy, so a locale change must move the "[*]" marker with it.
+            if (_languagePickerCanvas != null) BuildLanguageRows();
 #if !GOOGLE_PLAY
             RefreshWalletControls();
 #endif
@@ -187,6 +197,7 @@ namespace DeNelle.Settings
 #endif
             // Don't leak the arbiter slot if destroyed while open (scene unload).
             if (_panelHandle != null) PanelManager.NotifyClosed(_panelHandle);
+            CloseLanguagePicker();
             if (_modal != null && _modal.canvas != null) Destroy(_modal.canvas);
         }
 
@@ -209,6 +220,9 @@ namespace DeNelle.Settings
         /// <summary>Closes the settings screen and raises <see cref="SettingsClosed"/>.</summary>
         public void Close()
         {
+            // WO-1840: the picker is its OWN root canvas above this one - closing Settings (Back,
+            // the arbiter swapping panels, the pause overlay) must never leave it floating.
+            CloseLanguagePicker();
             if (_modal != null && _modal.canvas != null) _modal.canvas.SetActive(false);
             _open = false;
             // Release the arbiter slot as settings closes (no-op if already swapped out).
@@ -317,8 +331,10 @@ namespace DeNelle.Settings
             _shakeToggle = ToggleRow(body, SettingsText.ScreenShake, ref y, OnShakeChanged);
 
             // One global language authority serves every feature catalog. "Device Language"
-            // removes the explicit preference; the adjacent button cycles the locales actually
-            // shipped in this build, so adding a table automatically makes it selectable here.
+            // removes the explicit preference; the adjacent button OPENS THE LANGUAGE PICKER
+            // (WO-1840 - it used to cycle to the next locale on every tap, so overshooting your
+            // language meant tapping through every other one), which lists every locale actually
+            // shipped in this build. Adding a table automatically makes it selectable there.
             y = Caption(body, SettingsText.LanguageSection, y);
             _deviceLanguageButton = LocalizedButton(body, () => SettingsText.DeviceLanguage.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
@@ -748,22 +764,156 @@ namespace DeNelle.Settings
             RefreshLanguageControls();
         }
 
+        // =====================================================================
+        //  Language picker (WO-1840)
+        // ---------------------------------------------------------------------
+        //  WHAT CHANGED: this control used to advance to the NEXT locale on every tap
+        //  (LocalText.TrySelectLocale(locales[(selected + 1) % locales.Count].Code)), so a
+        //  player who overshot their language had to tap through every other one - and with
+        //  ten shipped tables, in a language they cannot read.
+        //
+        //  WHY ITS OWN POPUP AND NOT AN IN-SCREEN RADIO ROW: the settings body is banded
+        //  against the HAND-SUMMED RequiredLadderPx ladder above; a ten-row list inside it
+        //  would have to re-sum that constant (and re-sum it again with every locale table
+        //  that ships). A popup leaves the ladder untouched, and the owner's own report
+        //  allowed "even if it's its own pop-up".
+        //
+        //  WHY IT DOES NOT REGISTER A PanelHandle: Settings already holds the single-modal
+        //  arbiter slot (RegisterBattleAllowed, battle-allowed) and this is a CHILD surface of
+        //  that same screen, not a peer panel - registering a second handle would ask the
+        //  arbiter to hold two panels open, which is what every other route here avoids by
+        //  closing Settings first. Instead the picker is a plain kit modal above Settings'
+        //  sortingOrder, and Close()/OnDestroy() tear it down with the screen.
+        // =====================================================================
+
+        /// <summary>Full row rung (px) per locale inside the picker ladder: a 120 px button
+        /// (>= the 112 px kit touch floor, so ClampMinTouch never inflates it) + 12 px gap.</summary>
+        private const float LanguageRowPx = 132f;
+        private const float LanguageButtonPx = 120f;
+        private const float LanguagePickerPadPx = 16f;
+
+        /// <summary>Picker sits above the settings canvas (32000) - a child surface of it.</summary>
+        private const int LanguagePickerSortingOrder = 32500;
+
         private void OnChooseLanguageClicked()
         {
             var locales = LocalText.AvailableLocales;
             if (locales == null || locales.Count == 0)
+            {
+                FlowTrace.Warn("Settings",
+                    "Choose Language tapped but LocalText reports ZERO available locales - " +
+                    "the localization provider has not registered its tables yet.");
                 return;
+            }
 
-            int selected = -1;
+            CloseLanguagePicker();   // never two pickers; also re-reads the current locale
+            Guard.Try("Settings", "build language picker", () => BuildLanguagePicker(locales.Count));
+            FlowTrace.Step("Settings", "language picker opened: locales=" + locales.Count +
+                ", current=" + LocalText.LanguageCode +
+                ", usesDevice=" + LocalText.UsesSystemLocale);
+        }
+
+        /// <summary>Builds the picker canvas + scroller. Rows come from
+        /// <see cref="BuildLanguageRows"/> so a locale change can retext them in place.</summary>
+        private void BuildLanguagePicker(int localeCount)
+        {
+            var picker = ElarionUiKit.BuildObsidianModal("SettingsLanguagePicker",
+                SettingsText.LanguageSection.Resolve(),
+                ElarionUiKit.ModalArchetype.Standard, CloseLanguagePicker,
+                sortingOrder: LanguagePickerSortingOrder,
+                frameName: RpgUiCatalog.FrameSettings, medallionIcon: "settings");
+            if (picker == null || picker.canvas == null || picker.chrome == null) return;
+
+            _languagePickerCanvas = picker.canvas;
+            // ApplyMedievalPresentation only sweeps _modal.canvas, so this canvas skins itself.
+            MedievalUiSkin.ApplyShell(picker.chrome);
+            MedievalUiSkin.ApplyClose(picker.chrome.close);
+
+            var layout = picker.chrome.layout;
+            var zone = layout != null && layout.body != null
+                ? (Transform)layout.body
+                : picker.chrome.content.transform;
+
+            // Same px-ladder rule as the settings body: content = max(body height, rows needed),
+            // so a short landscape body SCROLLS instead of squeezing rows under the touch floor.
+            float bodyPx = BodyLocalHeight(picker.canvas, zone);
+            float neededPx = LanguageRowPx * Mathf.Max(1, localeCount) + LanguagePickerPadPx * 2f;
+            _languagePickerLadderPx = Mathf.Max(bodyPx, neededPx);
+            _languagePickerRows = BuildScrollHost(zone, _languagePickerLadderPx);
+            BuildLanguageRows();
+        }
+
+        /// <summary>
+        /// One full-width row per shipped locale, newest state re-read from LocalText.
+        ///
+        /// COLOURBLIND LAW (the owner is red/green colourblind): the current locale is carried by
+        /// an ASCII "[*]" vs "[ ]" marker in the LABEL (the same grammar as HeartfireCharges) AND
+        /// the shared gold selection underline from <see cref="InkButtonLabel"/>. The Yellow face
+        /// is a third, redundant cue - never the only one.
+        /// </summary>
+        private void BuildLanguageRows()
+        {
+            if (_languagePickerRows == null) return;
+            for (int i = _languagePickerRows.childCount - 1; i >= 0; i--)
+                Destroy(_languagePickerRows.GetChild(i).gameObject);
+
+            var locales = LocalText.AvailableLocales;
+            float ladder = Mathf.Max(1f, _languagePickerLadderPx);
+            float rowFrac = LanguageRowPx / ladder;
+            float buttonFrac = LanguageButtonPx / ladder;
+            float y = 1f - LanguagePickerPadPx / ladder;
+
             for (int i = 0; i < locales.Count; i++)
-                if (string.Equals(locales[i].Code, LocalText.LanguageCode, StringComparison.OrdinalIgnoreCase))
-                {
-                    selected = i;
-                    break;
-                }
+            {
+                string code = locales[i].Code;   // captured per row - never the loop variable
+                bool selected = string.Equals(code, LocalText.LanguageCode,
+                    StringComparison.OrdinalIgnoreCase);
+                var arguments = new LanguageArguments(locales[i].DisplayName);
+                // Keyed copy only - no new table entries, so the row reads in the player's own
+                // language on day one. The beta variant carries its own suffix.
+                string body = locales[i].IsBeta
+                    ? SettingsText.ChooseBetaLanguage.Resolve(arguments)
+                    : SettingsText.ChooseLanguage.Resolve(arguments);
+                string text = (selected ? "[*] " : "[ ] ") + body;
 
-            LocalText.TrySelectLocale(locales[(selected + 1) % locales.Count].Code);
+                var b = ElarionUiKit.BuildObsidianButton(_languagePickerRows, text,
+                    ElarionUiKit.ObsidianButtonStyle.Style1,
+                    selected ? ElarionUiKit.ObsidianButtonColor.Yellow
+                             : ElarionUiKit.ObsidianButtonColor.Gray,
+                    new Vector2(0.06f, y - buttonFrac), new Vector2(0.94f, y),
+                    () => OnLanguagePicked(code));
+                if (b != null)
+                {
+                    b.gameObject.name = selected
+                        ? "SelectedSettingOption_Language" : "SettingOption_Language";
+                    MedievalUiSkin.ApplyButton(b, primary: selected);
+                    FitChipLabel(b, text);
+                    if (selected) InkButtonLabel(b);
+                }
+                y -= rowFrac;
+            }
+        }
+
+        /// <summary>One locale chosen explicitly. Closes the picker FIRST so the LocalText.Changed
+        /// retext never lands on a surface that is about to be destroyed.</summary>
+        private void OnLanguagePicked(string code)
+        {
+            FlowTrace.Step("Settings", "language picked from picker: code=" + code);
+            CloseLanguagePicker();
+            if (!LocalText.TrySelectLocale(code))
+                FlowTrace.Warn("Settings", "LocalText.TrySelectLocale REFUSED code=" + code +
+                    " - the locale is listed as available but its table did not resolve.");
             RefreshLanguageControls();
+        }
+
+        private void CloseLanguagePicker()
+        {
+            _languagePickerRows = null;
+            if (_languagePickerCanvas != null)
+            {
+                Destroy(_languagePickerCanvas);
+                _languagePickerCanvas = null;
+            }
         }
 
         private void RefreshLanguageControls()
@@ -772,8 +922,8 @@ namespace DeNelle.Settings
                 _deviceLanguageButton.interactable = !LocalText.UsesSystemLocale;
             if (_chooseLanguageButton != null)
             {
-                // With English alone, cycling would be a button-shaped no-op. It becomes
-                // available automatically when a second locale table ships.
+                // With English alone the picker would offer a single row - a button-shaped no-op.
+                // It becomes available automatically when a second locale table ships.
                 _chooseLanguageButton.interactable = LocalText.AvailableLocales.Count > 1;
                 var label = _chooseLanguageButton.GetComponentInChildren<TextMeshProUGUI>(true);
                 if (label != null) label.text = ExplicitLanguageLabel();
