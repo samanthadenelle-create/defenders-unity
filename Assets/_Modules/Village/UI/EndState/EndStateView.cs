@@ -1112,6 +1112,23 @@ namespace DeNelle.Village.UI
         // bbox never grows during the spin) — the band instead has to seat the 56px hero star PLUS
         // the §4.2 overshoot: 56 x 1.15 = 64.4px at the pop's peak, which 72 clears with 7.6px spare.
         private const float StarsPx   = 72f;   // 48 -> 72: 56px hero star + the 1.15x spin overshoot
+        // WO-1789 — THE STAR BAND'S CAPTION ALLOWANCE. Paid ONLY when EndStateVM.StarCaption is set
+        // (a raid win short of the veterancy star count), so every screen that ships today budgets
+        // and lays out at exactly StarsPx and its pixels do not move.
+        //
+        // WHY 40 AND NOT LESS, read at source rather than picked: FitSingleLine's default floor is
+        // ElarionUiKit.FontFloor = 30 (ElarionUiKitObsidian.cs:3033), and this file's own TimePx note
+        // measures FontLabel 40pt at a ~46px line box - a 1.15 ratio, so 30pt needs ~34.5px. A 34px
+        // allowance would therefore clip the caption at its OWN autosize floor on every screen, not
+        // just in a narrow strip cell. 40 clears 34.5 with ~5px spare and still costs less than TimePx.
+        //
+        // ⛔ IT IS ADDED TO THE BAND, NEVER TAKEN OUT OF THE STARS. Subdividing the existing 72px
+        // would shrink the hero star to ~34px — BuildStarRow clamps to host.rect.height * 0.78 —
+        // and the rating is read by the SIZE and COUNT of the shapes (the colourblind law at
+        // BuildStarRow). Growing the band is budgeted by the same solve that lays it out
+        // (StarsBandPx is used at EVERY site StarsPx used to be), so the caption's pixels can never
+        // be discovered after layout: that desync is the class this file is a monument to.
+        private const float StarCaptionPx = 40f;
         private const float TimePx    = 48f;   // 44 -> 48: FontLabel 40 bold line box is ~46px
         private const float RowPx     = 64f;   // 56 -> 64: seats the fixed 40px icon + plate inset
         // OWNER F8 2026-09-02 ("spacing tight"): 8 -> 18. 8 ref px is ~3.5 screen px on the
@@ -1179,7 +1196,7 @@ namespace DeNelle.Village.UI
             {
                 if (vm.Emblem != null) { px += EmblemPx; n++; }
                 if (!string.IsNullOrEmpty(vm.Subtitle)) { px += SubLinePx * SubtitleLines(vm.Subtitle, canvasH, PanelWidthFracFor(vm)); n++; }
-                if (vm.Stars >= 0) { px += StarsPx; n++; }
+                if (vm.Stars >= 0) { px += StarsBandPx(vm); n++; }
                 if (vm.TimeSeconds >= 0f) { px += TimePx; n++; }
             }
             int spoilBands = SpoilBandCountAt(vm, cols, shown);
@@ -1216,15 +1233,33 @@ namespace DeNelle.Village.UI
         // gear drop (3 columns, 496 = 496) are bit-for-bit unchanged, and the compact wave-clear
         // banner never enters here at all.
 
+        /// <summary>
+        /// WO-1789 — the STAR BAND's height: the authored <see cref="StarsPx"/>, plus a
+        /// <see cref="StarCaptionPx"/> allowance ONLY when the VM carries a
+        /// <see cref="EndStateVM.StarCaption"/>.
+        ///
+        /// <para>⛔ EVERY site that used to read <see cref="StarsPx"/> for the band reads THIS, so
+        /// the panel solve (<see cref="RequiredBodyPxAtRows"/>), the strip height
+        /// (<see cref="NarrativeStripPx"/>) and BuildBody's <c>bands.Add</c> can never disagree
+        /// about how tall the star band is. <see cref="StarsPx"/> itself is now only the STARS'
+        /// own share of it, which is what <see cref="BuildStarRow"/> divides by.</para>
+        ///
+        /// <para>A VM with no caption returns exactly <see cref="StarsPx"/>, so every screen that
+        /// ships today solves and lays out to the pixel it does now.</para>
+        /// </summary>
+        private static float StarsBandPx(EndStateVM vm)
+            => StarsPx + (vm != null && !string.IsNullOrEmpty(vm.StarCaption) ? StarCaptionPx : 0f);
+
         /// <summary>The strip band's height: the TALLEST of the elements it seats, so every one of
-        /// them keeps its own authored fixed size (<see cref="EmblemPx"/> / <see cref="StarsPx"/> /
-        /// <see cref="TimePx"/>). 0 when the VM carries none of them.</summary>
+        /// them keeps its own authored fixed size (<see cref="EmblemPx"/> /
+        /// <see cref="StarsBandPx"/> / <see cref="TimePx"/>). 0 when the VM carries none of
+        /// them.</summary>
         private static float NarrativeStripPx(EndStateVM vm)
         {
             float px = 0f;
             if (vm == null) return px;
             if (vm.Emblem != null) px = Mathf.Max(px, EmblemPx);
-            if (vm.Stars >= 0) px = Mathf.Max(px, StarsPx);
+            if (vm.Stars >= 0) px = Mathf.Max(px, StarsBandPx(vm));
             if (vm.TimeSeconds >= 0f) px = Mathf.Max(px, TimePx);
             return px;
         }
@@ -1812,8 +1847,10 @@ namespace DeNelle.Village.UI
                     Track(l.gameObject, 0.14f, 1f);
                 });
 
+            // WO-1789 - the caption rides INSIDE the star band, so the row and the sentence about the
+            // row can never be separated by a reflow, and the strip escalation carries both together.
             Action<RectTransform> buildStars = vm.Stars < 0 ? null : (Action<RectTransform>)(host =>
-                BuildStarRow(host, vm.Stars));
+                BuildStarRow(host, vm.Stars, vm.StarCaption));
 
             Action<RectTransform> buildTime = vm.TimeSeconds < 0f ? null : (Action<RectTransform>)(host =>
                 {
@@ -1840,7 +1877,7 @@ namespace DeNelle.Village.UI
                 // What the same elements cost STACKED, so the trace states the saving as a
                 // measured number rather than a claim.
                 float stackedPx = (vm.Emblem != null ? EmblemPx : 0f)
-                                + (vm.Stars >= 0 ? StarsPx : 0f)
+                                + (vm.Stars >= 0 ? StarsBandPx(vm) : 0f)
                                 + (vm.TimeSeconds >= 0f ? TimePx : 0f)
                                 + BandGapPx * Mathf.Max(0, parts.Count - 1);
                 float cellPx = parts.Count > 0
@@ -1879,7 +1916,7 @@ namespace DeNelle.Village.UI
 
             if (!strip)
             {
-                if (buildStars != null) bands.Add((StarsPx, buildStars));
+                if (buildStars != null) bands.Add((StarsBandPx(vm), buildStars));
                 if (buildTime != null) bands.Add((TimePx, buildTime));
             }
 
@@ -2365,13 +2402,30 @@ namespace DeNelle.Village.UI
         /// COLOURBLIND LAW (owner is red/green colourblind): the rating reads by the NUMBER OF
         /// FILLED SHAPES and by SHAPE (solid star vs hollow outline) — never by hue. There is
         /// deliberately no "n/3" numeral on this row either: the HUD font renders the numeral 1
-        /// as a bare vertical stroke, which would be unreadable beside a slash or a star point.</summary>
-        private void BuildStarRow(RectTransform host, int stars)
+        /// as a bare vertical stroke, which would be unreadable beside a slash or a star point.
+        ///
+        /// <para>WO-1789 — <paramref name="caption"/> is ONE short line seated directly under the
+        /// stars, in the band's own <see cref="StarCaptionPx"/> allowance. It exists because two
+        /// outcomes this screen decides were previously written only to the log: a raid win short of
+        /// <c>RaidDeployController.VeterancyStarsRequired</c> granted no ranks and said nothing at
+        /// all. Null/empty on every other screen, and then this method behaves exactly as it did —
+        /// the stars occupy the whole band and the star size is unchanged to the pixel.</para></summary>
+        /// <param name="host">The star BAND (already <see cref="StarsBandPx"/> tall).</param>
+        /// <param name="stars">Earned stars, clamped 0..3.</param>
+        /// <param name="caption">Optional single line under the row; null/empty renders nothing.</param>
+        private void BuildStarRow(RectTransform host, int stars, string caption = null)
         {
+            // THE BAND'S SPLIT. With no caption the stars own all of it (frac 1) and every shipped
+            // screen is bit-for-bit unchanged; with one, the stars keep their AUTHORED StarsPx share
+            // and the caption is seated in the surplus StarsBandPx already budgeted for it. The stars
+            // are NEVER shrunk to make room — the rating is read by shape and size (see above).
+            bool hasCaption = !string.IsNullOrEmpty(caption);
+            float starsFrac = hasCaption ? StarsPx / (StarsPx + StarCaptionPx) : 1f;
+
             var rowGo = new GameObject("Stars", typeof(RectTransform));
             rowGo.transform.SetParent(host, false);
             var rowRt = (RectTransform)rowGo.transform;
-            rowRt.anchorMin = Vector2.zero; rowRt.anchorMax = Vector2.one;
+            rowRt.anchorMin = new Vector2(0f, 1f - starsFrac); rowRt.anchorMax = Vector2.one;
             rowRt.offsetMin = Vector2.zero; rowRt.offsetMax = Vector2.zero;
 
             // DEGRADE LADDER (orchestrator ruling: the row must never VANISH — a rating that
@@ -2399,7 +2453,11 @@ namespace DeNelle.Village.UI
             // 72px, and a hard 56 would then overhang its own band and print through the Time
             // line above/below — the very defect the 2026-08-05 pass fixed for the diamonds.
             // 72 * 0.78 = 56.16, so at the authored band size this yields exactly the §3 56px.
-            float size = Mathf.Max(8f, Mathf.Min(StarSizePx, host.rect.height * 0.78f));
+            // WO-1789: the clamp measures the STARS' OWN SHARE of the band (host.rect.height x
+            // starsFrac), never the whole band, or a captioned band would clamp against pixels the
+            // caption owns and the stars would overhang it — the same overprint the 2026-08-05 pass
+            // fixed. With no caption starsFrac is 1 and this is the identical expression it was.
+            float size = Mathf.Max(8f, Mathf.Min(StarSizePx, host.rect.height * starsFrac * 0.78f));
             // A star (and a circle) is RADIALLY bounded, so its bbox is its size. A rotated
             // SQUARE is not: its axis-aligned box is side * sqrt(2), so the legacy rung has to
             // shrink or it overprints its neighbours (the original 2026-08-05 defect).
@@ -2444,9 +2502,40 @@ namespace DeNelle.Village.UI
                 else                          StartCoroutine(FadeStarIn(img, delay, tint.a));
             }
 
+            // ── THE CAPTION (WO-1789) ────────────────────────────────────────────────────
+            // The outcome the star count DECIDED, said on the row that decided it. Seated in the
+            // band's own StarCaptionPx surplus (see StarsBandPx), so it is budgeted by the panel
+            // solve and cannot be discovered after layout.
+            //
+            // COLOURBLIND LAW: the caption carries its meaning in WORDS, in the same Parchment the
+            // subtitle uses. It is deliberately NOT tinted "denied" red — the owner is red/green
+            // colourblind, so a hue would carry nothing and Parchment carries everything.
+            if (hasCaption)
+            {
+                Guard.Try("EndState", "star row caption", () =>
+                {
+                    var zone = MakeZone(host, "StarCaption", 0f, 0f, 1f, 1f - starsFrac);
+                    var l = ElarionUiKit.Label(zone, caption, 0f, 1f, ElarionUi.Parchment,
+                        ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Center, 0.04f, 0.96f);
+                    // §1.14, and the same fitter the Time line uses: ONE line that can never spill
+                    // onto the stars above it or the band below, including inside a 1/3-width strip
+                    // cell where this is the narrowest host on the screen.
+                    ElarionUiKit.FitSingleLine(l);
+                    l.raycastTarget = false;
+                    // AFTER THE LAST STAR HAS LANDED, so the row reads before the sentence about the
+                    // row does. The arithmetic, from this file's own constants rather than a guess:
+                    // star 2 starts at StarsBaseDelay + 2 x StarStaggerSec = 0.48 and its spin runs
+                    // StarSpinSec = 0.40, so the row settles at 0.88.
+                    Track(l.gameObject, 0.90f, 1f);
+                });
+            }
+
             FlowTrace.Step("EndState",
-                $"star row: {Mathf.Clamp(stars, 0, 3)}/3 earned, star={size:0.#}px (band {host.rect.height:0.#}px) " +
-                $"centres -{StarSpacingPx:0}/0/+{StarSpacingPx:0}px, spin {StarSpinDegrees:0}deg over {StarSpinSec:0.00}s");
+                $"star row: {Mathf.Clamp(stars, 0, 3)}/3 earned, star={size:0.#}px (band {host.rect.height:0.#}px, " +
+                $"stars share {starsFrac:0.00}) centres -{StarSpacingPx:0}/0/+{StarSpacingPx:0}px, " +
+                $"spin {StarSpinDegrees:0}deg over {StarSpinSec:0.00}s" +
+                (hasCaption ? $"; CAPTION '{caption}' in a {StarCaptionPx:0}px allowance (WO-1789)"
+                            : "; no caption"));
         }
 
         // ── the SPIN (WO-894 §4.2) ────────────────────────────────────────────────
@@ -2691,11 +2780,44 @@ namespace DeNelle.Village.UI
 
         // ── actions / lifecycle ───────────────────────────────────────────────
 
+        /// <summary>How many times the primary gate has refused this screen's route (WO-1778).</summary>
+        private int _gateRefusals;
+
         /// <summary>Fire the VM's primary action exactly once, then tear down.</summary>
-        private void FirePrimary()
+        private void FirePrimary() => FirePrimary(false);
+
+        /// <summary>
+        /// Fire the VM's primary action exactly once, then tear down.
+        ///
+        /// <para>⛔ WO-1778 — A REFUSED GATE USED TO BE A DEAD END, INCLUDING FOR THE GUARD. This
+        /// returned before <c>Destroy(gameObject)</c> on a refusal, so the anti-softlock guard
+        /// below fired ONCE into the same refusal and could not clear the screen: the player was
+        /// left on a victory screen whose only CTA was a no-op (a 3-star capture with a missing
+        /// precombat census). Every refusal is now TRACED, and the guard's LAST attempt passes
+        /// <paramref name="forceDismissIfGateRefuses"/> so the screen always comes down.</para>
+        ///
+        /// <para>A player TAP never forces: a tap is a request for the route, and silently
+        /// destroying the screen under the finger would throw away the action instead of running
+        /// it. Only the guard — the surface whose whole job is to break a softlock — may dismiss a
+        /// screen whose route refuses, and it says so loudly through
+        /// <see cref="AbandonedPrimaryWarn"/>.</para>
+        /// </summary>
+        private void FirePrimary(bool forceDismissIfGateRefuses)
         {
             if (_fired) return;
-            if (_vm.PrimaryGate != null && !_vm.PrimaryGate()) return;
+            if (_vm.PrimaryGate != null && !_vm.PrimaryGate())
+            {
+                _gateRefusals++;
+                FlowTrace.Warn("EndState", $"'{(_vm.Title ?? "?")}' primary GATE REFUSED " +
+                    $"(refusal #{_gateRefusals}) — action={_vm.PrimaryRoute} was NOT run and the screen stays up.");
+                if (!forceDismissIfGateRefuses) return;
+
+                AbandonedPrimaryWarn($"the anti-softlock guard dismissing a screen whose primary gate " +
+                                     $"refused {_gateRefusals} time(s) — WO-1778: never leave a screen whose only CTA is a no-op");
+                _fired = true;
+                Destroy(gameObject);
+                return;
+            }
             _fired = true;
             FlowTrace.Step("EndState", $"{_vm.Kind} primary fired: action={_vm.PrimaryRoute}");
             // F8-15: the continue/respawn path OUT of the death screen — name the route the
@@ -2766,14 +2888,53 @@ namespace DeNelle.Village.UI
         /// interaction, and every re-arm is traced (throttled) so a capture can show whether the
         /// player was holding the screen or the guard simply fired.
         /// </summary>
+        /// <summary>
+        /// WO-1778 — how many guard windows a REFUSING primary gate gets before the guard stops
+        /// asking and dismisses the screen anyway. Deliberately more than one: the raid capture
+        /// gate's own bound (<c>RaidVictoryController.CaptureRefusalsBeforeForcedExit</c>) turns
+        /// into a real route home on its second call, so on that path this last resort is never
+        /// reached. It exists for every OTHER gated VM, present and future — a gate nobody bounded.
+        /// </summary>
+        private const int GateRefusalWindowsBeforeForcedDismiss = 3;
+
+        /// <summary>
+        /// The guard's outer loop (WO-1778). Each pass waits one full window and then asks
+        /// <see cref="FirePrimary(bool)"/>; a refused gate re-arms the window instead of leaving the
+        /// screen up forever, and the LAST pass forces the dismissal. A screen whose gate never
+        /// refuses behaves exactly as before: one window, one fire, one teardown.
+        /// </summary>
         private IEnumerator AutoDismissAfter(float seconds)
         {
             float window = Mathf.Max(0.5f, seconds);
 
+            for (int attempt = 1; attempt <= GateRefusalWindowsBeforeForcedDismiss; attempt++)
+            {
+                yield return AwaitDismissWindow(window);
+                if (_fired) yield break;
+
+                bool last = attempt == GateRefusalWindowsBeforeForcedDismiss;
+                FirePrimary(forceDismissIfGateRefuses: last);
+                if (_fired) yield break;
+
+                FlowTrace.Warn("EndState",
+                    $"'{(_vm != null ? _vm.Title : "?")}' guard window {attempt}/" +
+                    $"{GateRefusalWindowsBeforeForcedDismiss} expired but the primary GATE REFUSED — " +
+                    "re-arming the window rather than leaving the screen with a no-op CTA (WO-1778). " +
+                    "The last window dismisses the screen whatever the gate says.");
+            }
+        }
+
+        /// <summary>
+        /// One dismissal window. Extracted from <see cref="AutoDismissAfter"/> unchanged so the
+        /// outer retry loop can re-arm it: a VM without <see cref="EndStateVM.HoldOnInteraction"/>
+        /// still waits exactly one <c>WaitForSecondsRealtime(window)</c>, and a holding VM still
+        /// re-arms on every interaction.
+        /// </summary>
+        private IEnumerator AwaitDismissWindow(float window)
+        {
             if (_vm == null || !_vm.HoldOnInteraction)
             {
                 yield return new WaitForSecondsRealtime(window);
-                FirePrimary();
                 yield break;
             }
 
@@ -2804,7 +2965,6 @@ namespace DeNelle.Village.UI
             FlowTrace.Step("EndState",
                 $"'{(_vm.Title ?? "?")}' auto-dismiss FIRING after {window:0}s with no interaction " +
                 $"(re-arms this session: {rearms}) - the anti-softlock guard doing its job.");
-            FirePrimary();
         }
 
         /// <summary>
@@ -2879,7 +3039,7 @@ namespace DeNelle.Village.UI
         /// The screen keeps its correct behaviour (a displaced end-state NEVER silently fires the
         /// player's CHOICE), and gains the missing half: it TELLS the owner of the transition that
         /// the screen is gone. Fired at most once, and only while Primary never ran - so a normal
-        /// Continue (which nulls Primary in <see cref="FirePrimary"/>) can never double-fire it.
+        /// Continue (which nulls Primary in <see cref="FirePrimary(bool)"/>) can never double-fire it.
         /// Called from every abandon path (<see cref="AbandonedPrimaryWarn"/>) AND from
         /// <see cref="OnDestroy"/>, which is the catch-all for any destroy path not yet written.
         /// </summary>

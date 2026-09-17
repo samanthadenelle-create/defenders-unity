@@ -284,6 +284,22 @@ namespace DeNelle.Core.State
             foreach (char c in value) if (!(char.IsLetterOrDigit(c) || c == '_' || c == '-' || c == '.' || c == ':' || c == '/')) return false;
             return true;
         }
-        internal static bool Fail(string message, out string reason) { reason = message; return false; }
+        /// <summary>
+        /// The ONE refusal funnel of this contract — and, since WO-1778, the one place it speaks.
+        ///
+        /// <para>⛔ This file carried ZERO FlowTrace calls, so every reason it produced was invisible
+        /// except where a caller happened to echo it — and the caller that mattered most,
+        /// <c>SceneRouter.GoOwnedTown</c>, echoed it to the LOG ONLY while refusing the player's
+        /// button silently. Tracing here (rather than at 30-odd call sites) means a refusal cannot be
+        /// added without being visible. It is a <c>Warn</c>, not a <c>Fail</c>: most of these are the
+        /// contract correctly rejecting an invalid input, including in the regression suites that
+        /// deliberately feed it one.</para>
+        /// </summary>
+        internal static bool Fail(string message, out string reason)
+        {
+            reason = message;
+            DeNelle.Core.Diagnostics.FlowTrace.Warn("OwnedBase", "REFUSED: " + message);
+            return false;
+        }
     }
 }

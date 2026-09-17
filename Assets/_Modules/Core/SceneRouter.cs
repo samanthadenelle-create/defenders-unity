@@ -605,7 +605,18 @@ namespace DeNelle.Core
         {
             var property = DeNelle.Core.State.GameStateService.Instance?.State?.OwnedBase;
             if (!DeNelle.Core.State.OwnedBaseProgression.Validate(property, out var reason))
-            { FlowTrace.Warn("SceneRouter", "Personal town entry refused: " + reason); return; }
+            {
+                // ⛔ WO-1778 — THIS REFUSED SILENTLY. The player pressed a button (the practice
+                // panel's ONE button, OwnedTownPracticeController.ReturnToTown, is the worst case),
+                // the Warn went to the log, and the screen did nothing at all. A refusal the PLAYER
+                // triggered must reach the player: the trace is for us, the toast is for her.
+                FlowTrace.Warn("SceneRouter", "Personal town entry refused: " + reason +
+                                              " — surfacing ownedTown.captureRetry to the player.");
+                DeNelle.Core.UI.ElarionUiKit.ShowToast(
+                    DeNelle.Core.UI.LocalText.Get("ownedTown.captureRetry"),
+                    DeNelle.Core.UI.ElarionUiKit.ToastTone.Danger);
+                return;
+            }
             LoadSceneWithFade(OwnedTownIronBastion,
                 beforeLoad: () => CarryHeroAcrossSingleLoad("GoOwnedTown", OwnedTownIronBastion)).Forget();
         }

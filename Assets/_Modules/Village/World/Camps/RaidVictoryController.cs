@@ -105,15 +105,45 @@ namespace DeNelle.Village.World.Camps
         /// the screen's one primary action (Return to Castle -> <see cref="ReturnHome"/>),
         /// its <c>AutoDismissSeconds</c> anti-soft-lock guard, and
         /// <see cref="ShowVictoryScreen"/>'s own catch, which calls ReturnHome directly if
-        /// the build threw. The caller still arms a watchdog on top of that, because
-        /// ReturnHome can legitimately refuse (CanEnterCapturedTown's census retry).</para>
+        /// the build threw. The caller still arms a watchdog on top of that.</para>
+        ///
+        /// <para>⛔ WO-1778 — THAT GUARANTEE WAS FALSE ON THE CAPTURE BRANCH, AND THE PARAGRAPH
+        /// SAID SO WHILE IT WAS FALSE. All three routes funnel through <see cref="ReturnHome"/>,
+        /// which returned early on <see cref="CanEnterCapturedTown"/>; that gate refused FOREVER
+        /// when the precombat census was missing (it fired in the owner's own 2026-09-16 run:
+        /// <c>[Flow:Raid] Precombat capture census failed: Captured structure lacks a baked
+        /// stable identity: Wall_Outer_SS_3</c>). Its promised escape hatch,
+        /// <c>RetryCaptureAfterDismissal</c>, had ZERO callers and <c>_waitingForCapture</c> was
+        /// never set true — so three routes home were three copies of one refusal. Both are
+        /// DELETED and the gate is now BOUNDED: see <see cref="CaptureRefusalsBeforeForcedExit"/>.
+        /// A refusal that can only be retried through a button that refuses is not a route.</para>
         /// </summary>
         public bool VictoryOwnsTheReturn => _victoryScreenUp || _returning;
         private RaidCaptureCensus _captureCensus;
         private bool _captureRequired;
         private bool _captureCommitted;
-        private bool _waitingForCapture;
         private int _victoryStars;
+
+        /// <summary>WO-1783 — this win was on the CAPTURE raid, the town is not hers yet, and the
+        /// clear fell short of <c>OwnedBaseProgression.CaptureStarsRequired</c>. Drives ONE sentence
+        /// on the victory screen and nothing else; it never gates or routes anything.</summary>
+        private bool _captureRaidShortOfStars;
+
+        /// <summary>
+        /// WO-1778 — how many times <see cref="CanEnterCapturedTown"/> may refuse before the
+        /// victory screen STOPS asking and forces the castle route instead.
+        ///
+        /// <para>The first refusal is a real retry: the player gets the
+        /// <c>ownedTown.captureRetry</c> toast and the screen stays up, because a transient
+        /// save-service outage genuinely does clear on a second tap. The bounded one after it is
+        /// the law this ticket exists for — the player always leaves the raid, and the capture is
+        /// parked as a pending receipt (<see cref="RaidCaptureCensus.TryParkForLaterClaim"/>) so a
+        /// later load can still claim the town (<c>GameStateService</c> recovers a pending capture
+        /// on load).</para>
+        /// </summary>
+        internal const int CaptureRefusalsBeforeForcedExit = 2;
+        private int _captureRefusals;
+        private bool _captureForfeitedToCastle;
 
         // =====================================================================
         //  Self-install — one controller per RaidBase_* scene
@@ -258,7 +288,6 @@ namespace DeNelle.Village.World.Camps
         private void HandleVictory(string reason)
         {
             if (_handled) { FlowTrace.Step("Raid", "victory already handled — ignoring duplicate signal."); return; }
-            if (_waitingForCapture) return;
             _handled = true;
 
             // WO-1810 - DECLARE THE WIN NOW, NOT AT ReconcileArmy. The army settlement is priced on
@@ -366,6 +395,19 @@ namespace DeNelle.Village.World.Camps
             else if (captureRaidId == OwnedBaseProgression.FinalRaidId)
                 FlowTrace.Step("Raid", "highest raid settled at " + _victoryStars + " star(s) — capture requires " +
                                OwnedBaseProgression.CaptureStarsRequired + ".");
+
+            // WO-1783 — SHE MISSED THE CAPTURE AND WAS NEVER TOLD IT EXISTED.
+            //
+            // The branch above already KNEW this (it has traced the shortfall for a developer all
+            // along) while the screen said nothing, so a player could 2-star the final raid, read
+            // "Victory!", and never learn why the town did not become hers. This latch is the same
+            // three facts the capture gate reads, and NOT just "the final raid": a player who
+            // already OWNS the town is re-raiding it and must not be told to take it again.
+            //
+            // MESSAGING ONLY — the capture gate and the route out are WO-1778's, untouched here.
+            _captureRaidShortOfStars = captureRaidId == OwnedBaseProgression.FinalRaidId &&
+                GameStateService.Instance?.State?.OwnedBase == null &&
+                _victoryStars < OwnedBaseProgression.CaptureStarsRequired;
             ResourceCost loot = scoring != null ? scoring.LootFor(result) : default(ResourceCost);
             loot = ApplyFirstClearGate(loot, repeatClear, crystalsPaidToday, configId);
             GrantLoot(loot);
@@ -386,6 +428,35 @@ namespace DeNelle.Village.World.Camps
                 "f, RETAINED " + retained.Wood + "w " + retained.Iron + "i " + retained.Stone +
                 "f for camp '" + (configId ?? "(none)") + "'. Anything the bank refused and the " +
                 "cache could not hold is named by RaidClaimService's own line above this one.");
+
+            // WO-1789 — AND NOW IT REACHES THE SCREEN. The two numbers the victory caption needs,
+            // measured HERE because this is the only scope that holds all three baskets at once
+            // (loot / _credited / retained). CAPPED AXES ONLY, matching RaidClaimService.RetainAxis
+            // exactly: an uncapped axis is never cached, so counting it would invent a cache
+            // shortfall that never existed.
+            //
+            // _overflowLost is RetainAxis's own `stillRefused`, recomputed rather than plumbed back
+            // through RetainOverflow's signature: refused-by-bank minus retained-by-cache, summed.
+            // It is the ONE quantity that makes "held in your Raid Cache, claim it later" a lie, so
+            // the screen must have it before it picks a sentence.
+            // ⛔ THE IsCapped GUARD IS RetainAxis's FIRST LINE, AND IT IS MIRRORED HERE ON PURPOSE.
+            // All three of these are capped today (the owner's own log: "BANK FULL [Grant]
+            // Wood/Stone/Iron"), so this changes nothing now - it PINS that the screen's arithmetic
+            // cannot drift from the settle's. If an axis is ever uncapped, RetainAxis returns 0 for
+            // it while an unguarded subtraction here would still count its shortfall, inflating
+            // _overflowLost and firing "part of the haul could not be kept" over a haul that was
+            // never at risk. That is the §11B lie the three-outcome split exists to prevent.
+            int refusedByBank = RefusedOnCappedAxis(DeNelle.Core.Economy.BankResource.Wood,  loot.Wood,  _credited.Wood)
+                              + RefusedOnCappedAxis(DeNelle.Core.Economy.BankResource.Iron,  loot.Iron,  _credited.Iron)
+                              + RefusedOnCappedAxis(DeNelle.Core.Economy.BankResource.Stone, loot.Stone, _credited.Stone);
+            _overflowCached = Mathf.Max(0, retained.Wood + retained.Iron + retained.Stone);
+            _overflowLost   = Mathf.Max(0, refusedByBank - _overflowCached);
+            FlowTrace.Step("Raid",
+                "RAID CACHE -> SCREEN (WO-1789): the bank refused " + refusedByBank + " unit(s) across the " +
+                "capped axes, the Raid Cache is HOLDING " + _overflowCached + " and " + _overflowLost +
+                " was above both ceilings. Until this ticket the victory screen said only '" +
+                EndStateVM.RewardShortSentence + "' and named neither the cache " +
+                "nor whether any of it was recoverable.");
 
             // WO-1134 — stamp the crystal day AFTER the grant, and only when this payout
             // actually carried crystals. Stamping before the grant (or unconditionally) would
@@ -611,6 +682,43 @@ namespace DeNelle.Village.World.Camps
         // the requested amount - that is the WO-978 contract, unchanged and now widened.
         private ResourceCost _credited;
         private bool _rewardShort;
+
+        /// <summary>
+        /// WO-1789 — WHERE THE OVERFLOW ACTUALLY WENT, carried from the settle to the screen.
+        ///
+        /// <para>Until this ticket the Raid Cache existed ONLY in the log. The settle retained the
+        /// bank's refusals (STEP 3.5b), traced them in full, and the screen then said the generic
+        /// <c>"Some of the reward could not be paid out."</c> — which does not say where it went,
+        /// nor that it is recoverable. A player who reads that has been told her haul was lost.</para>
+        ///
+        /// <para>⚠ TWO NUMBERS, NOT ONE, BECAUSE THERE ARE THREE OUTCOMES. <c>_overflowCached</c> is
+        /// what the Raid Cache is HOLDING for her (claimable). <c>_overflowLost</c> is what was above
+        /// BOTH the bank's headroom and the cache's stated ceiling — <c>RaidClaimService.RetainAxis</c>'s
+        /// <c>stillRefused</c>, the ONE path on which a raid unit leaves the world. Collapsing them
+        /// would put "you can claim it back" on a screen where part of it is genuinely gone, which is
+        /// the §11B failure with a friendly face. <c>EndStateVM.RaidOverflowSentence</c> owns which
+        /// sentence each case gets; this field only carries the measurement.</para>
+        ///
+        /// <para>CAPPED AXES ONLY (wood / iron / stone). Crystals and gold are never clamped
+        /// (TownBankCapacity Law 1) so they are never cached, and a shortfall on one of them keeps
+        /// the generic sentence — the cache had nothing to do with it.</para>
+        /// </summary>
+        private int _overflowCached;
+        private int _overflowLost;
+
+        /// <summary>
+        /// WO-1789 — what the bank refused on ONE axis, or 0 when that axis has no ceiling.
+        /// The <c>IsCapped</c> test is <c>RaidClaimService.RetainAxis</c>'s own first line, repeated
+        /// here so the sentence the screen picks and the units the settle actually retained are
+        /// derived from the SAME rule. A shortfall on an uncapped axis is not an overflow.
+        /// </summary>
+        private static int RefusedOnCappedAxis(DeNelle.Core.Economy.BankResource r, int requested, int credited)
+        {
+            if (!DeNelle.Core.Economy.TownBankCapacity.IsCapped(r)) return 0;
+            if (requested <= 0) return 0;
+            if (credited < 0) credited = 0;
+            return Mathf.Max(0, requested - credited);
+        }
 
         /// <summary>
         /// THE FIRST-CLEAR GATE (defect sweep 2026-08-15). A base pays its settled loot on
@@ -978,7 +1086,16 @@ namespace DeNelle.Village.World.Camps
                     ResolveUnlockLine(victories),
                     // WO-1810 - the troops this win cost for good, read off the reconcile that
                     // already ran (ReconcileArmy). The VM states it only when it is above zero.
-                    _troopsLostThisRaid);
+                    _troopsLostThisRaid,
+                    // WO-1783 - WHICH WIN THIS IS. The CLAIMED line used to be the subtitle of every
+                    // raid win, camp clears included; it now belongs to a capture alone, and the
+                    // star requirement is stated in words on the one screen where missing it just
+                    // cost her the town. Named arguments: both are messaging, and neither may ever
+                    // be mistaken for the gate above them.
+                    baseClaimed: _captureRequired,
+                    captureStarsRequired: _captureRaidShortOfStars
+                        ? OwnedBaseProgression.CaptureStarsRequired
+                        : 0);
 
                 if (_captureRequired && vm != null)
                 {
@@ -986,13 +1103,47 @@ namespace DeNelle.Village.World.Camps
                     vm.PrimaryGate = CanEnterCapturedTown;
                 }
 
+                // ── WO-1789 §3.1 — THE VETERANCY CAPTION, ON THE STAR ROW THAT DECIDED IT ──────
+                // A win below RaidDeployController.VeterancyStarsRequired grants NO ranks and, until
+                // this ticket, said so only in the log: the owner's own 2026-09-16 run produced
+                // "veterancy: 2 star(s) - no ranks granted (3 stars required)." and the screen was
+                // silent. The caption states what the missing star would have granted.
+                //
+                // ⛔ THE COUNT IS READ OFF THE GATE'S OWN CONST, NEVER TYPED. Retuning the gate
+                // retunes the caption in the same edit - the duplicated-state failure §3.3 of the WO
+                // exists to close. The copy itself lives on the VM (one home for the words).
+                //
+                // Gated on a REAL star result (>= 0): a raid that never scored has nothing to say
+                // about a star it cannot prove, exactly like the -1 sentinels elsewhere on this screen.
+                if (vm != null && vm.Stars >= 0 && vm.Stars < RaidDeployController.VeterancyStarsRequired)
+                {
+                    vm.StarCaption = EndStateVM.VeterancyDeniedCaption(
+                        RaidDeployController.VeterancyStarsRequired);
+                    FlowTrace.Step("Raid",
+                        "VICTORY SCREEN: " + vm.Stars + " star(s) is short of " +
+                        RaidDeployController.VeterancyStarsRequired + " - the star row now CARRIES the " +
+                        "veterancy caption (WO-1789 §3.1), which before this ticket existed only in " +
+                        "the [Flow:Raid] log.");
+                }
+
                 if (_rewardShort && vm != null)
                 {
                     // WORDS, never colour alone — the owner is red/green colourblind, so a dimmed
-                    // number would carry no information at all. Same sentence the outpost uses.
-                    vm.Subtitle = string.IsNullOrEmpty(vm.Subtitle)
-                        ? "Some of the reward could not be paid out."
-                        : vm.Subtitle + " Some of the reward could not be paid out.";
+                    // number would carry no information at all.
+                    //
+                    // ── WO-1789 §3.2 — NAME THE RAID CACHE ────────────────────────────────────
+                    // The retired line was the literal "Some of the reward could not be paid out."
+                    // twice over. It is TRUE and it is USELESS: it does not say where the overflow
+                    // went, and it reads as "lost" on a screen where the settle has just RETAINED it
+                    // for her (RaidClaimService's own log: "RETAINED, not burned ... Upgrade or
+                    // spend, then claim it."). The VM picks between three sentences off the two
+                    // numbers STEP 3.5b measured - held / partly gone / nothing to do with the cache
+                    // - so "recoverable" is only ever said when it is true (§11B).
+                    string line = EndStateVM.RaidOverflowSentence(_overflowCached, _overflowLost);
+                    vm.Subtitle = string.IsNullOrEmpty(vm.Subtitle) ? line : vm.Subtitle + " " + line;
+                    FlowTrace.Step("Raid",
+                        "VICTORY SCREEN: reward was short, cached=" + _overflowCached + " lost=" +
+                        _overflowLost + " -> the screen now says: " + line);
                 }
 
                 EndStateView.Show(vm);
@@ -1067,7 +1218,10 @@ namespace DeNelle.Village.World.Camps
             if (_returning) return;
             if (!CanEnterCapturedTown()) return;
             _returning = true;
-            FlowTrace.Step("Raid", _captureRequired ? "RETURN -> captured personal town." : "RETURN -> castle.");
+            FlowTrace.Step("Raid", _captureRequired ? "RETURN -> captured personal town."
+                : _captureForfeitedToCastle ? "RETURN -> castle (FORCED: the captured-town gate refused past its bound; "
+                                              + "WO-1778's guaranteed exit, not the normal capture route)."
+                : "RETURN -> castle.");
             GameStateService.Instance?.Save();
             // Clear the runtime enemy-owned flag before we leave so the home hub never
             // inherits a stale enemy-owned read from this raid.
@@ -1076,19 +1230,65 @@ namespace DeNelle.Village.World.Camps
             else SceneRouter.GoCastle();
         }
 
+        /// <summary>
+        /// WO-1778 — THE GATE IS BOUNDED, SO THE PLAYER ALWAYS LEAVES THE RAID.
+        ///
+        /// <para>Return true = <see cref="ReturnHome"/> proceeds. The old body returned false on
+        /// every refusal with no bound and no other exit, which is the strand: the victory screen's
+        /// ONLY CTA toasted "try entering again" at a button that would refuse again, forever, and
+        /// <c>EndStateView</c>'s anti-softlock guard could not clear the screen either because
+        /// <c>FirePrimary</c> returned before its own <c>Destroy</c>.</para>
+        ///
+        /// <para>ONE refusal is still a real retry (a save-service outage does clear on a second
+        /// tap). The refusal AFTER the bound FORFEITS the captured town to a castle route rather
+        /// than the player's evening: <c>_captureRequired</c> is cleared so <see cref="ReturnHome"/>
+        /// routes to <c>GoCastle</c>, and the receipt is parked first so the town is DEFERRED, not
+        /// destroyed — <c>GameStateService</c> recovers a pending capture on its next load.</para>
+        /// </summary>
         private bool CanEnterCapturedTown()
         {
             if (!_captureRequired || _captureCommitted || TryCommitCapturedTown()) return true;
-            ElarionUiKit.ShowToast(LocalText.Get("ownedTown.captureRetry"));
-            return false;
+
+            _captureRefusals++;
+            if (_captureRefusals < CaptureRefusalsBeforeForcedExit)
+            {
+                FlowTrace.Warn("Raid", $"CAPTURE ENTRY REFUSED ({_captureRefusals}/{CaptureRefusalsBeforeForcedExit}) — " +
+                                       "offering the retry toast and holding the victory screen up. The NEXT refusal " +
+                                       "forces the castle route instead of asking again.");
+                ElarionUiKit.ShowToast(LocalText.Get("ownedTown.captureRetry"));
+                return false;
+            }
+
+            // ---- FORCED ROUTE HOME (the whole point of WO-1778) -------------------
+            string parked = ParkCaptureForLaterClaim();
+            _captureRequired = false;
+            _captureForfeitedToCastle = true;
+            FlowTrace.Fail("Raid", $"FORCED ROUTE HOME: captured-town entry refused {_captureRefusals}x " +
+                                   $"(bound={CaptureRefusalsBeforeForcedExit}) — routing to the CASTLE " +
+                                   "(SceneRouter.GoCastle) instead of stranding the player on the victory " +
+                                   $"screen. Capture receipt: {parked}");
+            return true;
         }
 
-        private IEnumerator RetryCaptureAfterDismissal(string reason)
+        /// <summary>
+        /// WO-1778 — park the capture receipt before the forced exit, so a refused capture is
+        /// DEFERRED rather than lost. Returns a one-line status for the forced-exit trace; never
+        /// throws, and never blocks the route home.
+        /// </summary>
+        private string ParkCaptureForLaterClaim()
         {
-            yield return new WaitForSecondsRealtime(_autoReturnSeconds);
-            if (_handled || _returning) yield break;
-            _waitingForCapture = false;
-            HandleVictory(reason);
+            if (_captureCensus == null)
+                return "NOT PARKED (no precombat census — this run's capture is forfeit; the census " +
+                       "identity fix is WO-1767's lane, not this one).";
+
+            string status = "NOT PARKED (the park attempt itself did not run).";
+            Guard.Try("Raid", "park the captured-town receipt for a later claim", () =>
+            {
+                status = _captureCensus.TryParkForLaterClaim(GameStateService.Instance, _victoryStars, out var reason)
+                    ? "PARKED as a pending capture — the next load claims the town (" + reason + ")."
+                    : "NOT PARKED: " + reason;
+            });
+            return status;
         }
 
         private bool TryCommitCapturedTown() => TryCommitCapturedTown(_victoryStars);

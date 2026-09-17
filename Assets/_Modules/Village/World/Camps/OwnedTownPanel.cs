@@ -56,7 +56,21 @@ namespace DeNelle.Village.World.Camps
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             if (repairScreen) { rect.anchorMin = new Vector2(.04f, .08f); rect.anchorMax = new Vector2(.96f, .56f); }
             var column = ElarionUiKit.BuildButtonColumn(rect, gapPx: 12f);
-            if (OwnedTownDesignService.IsBusy || OwnedTownConstructionService.IsBusy) return;
+            // ⛔ WO-1778 — THE BUSY EARLY-OUT USED TO BAIL BEFORE ANY BUTTON WAS BUILT, and this
+            // panel is built withClose:false, so while a move/build save was in flight the player
+            // saw ownedTown.checkingMove with NO route anywhere: no "Return to castle", no X. The
+            // route home is now built BEFORE the early-out, so the busy screen is a wait, not a
+            // strand — the same law WO-1778 writes on the victory screen's capture gate.
+            if (OwnedTownDesignService.IsBusy || OwnedTownConstructionService.IsBusy)
+            {
+                Add(column, "castle", SceneRouter.GoCastle);
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("OwnedTown",
+                    "Town panel is BUSY (design=" + OwnedTownDesignService.IsBusy +
+                    ", construction=" + OwnedTownConstructionService.IsBusy + ") — no town commands are " +
+                    "built this pass, so the castle route is built first: the player is never held on a " +
+                    "panel with no exit (WO-1778).");
+                return;
+            }
             if (!revealed) Add(column, "begin", Reveal);
             else if (!repaired && pristine) Add(column, "inspect", Inspect);
             else if (!repaired || (_repairMode && !pristine)) ShowRepairControls(body, column, property, repaired);
