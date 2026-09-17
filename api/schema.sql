@@ -2234,3 +2234,59 @@ CREATE TABLE IF NOT EXISTS wallet_identity (
 CREATE INDEX IF NOT EXISTS wallet_identity_first_seen_staked_idx
     ON wallet_identity (first_seen_staked_at)
     WHERE first_seen_staked_at IS NOT NULL;
+
+-- =============================================================================
+-- clans / clan_members / clan_messages - WO-1845 (clan step 2).
+--
+-- ⛔ THE APPLYABLE COPY IS api/migrations/20260917_0030_clan_tables.sql.
+--    This block is the DESCRIPTION; only api/migrations/ is ever applied.
+--
+-- Every wallet column here is a foreign key onto wallet_identity(wallet), created
+-- by 20260917_0029_wallet_identity.sql - so 0029 must be applied BEFORE 0030 or
+-- these keys fail at migration time. The one runner applies files in filename
+-- order, which gives that sequence for free.
+--
+-- ONE CLAN PER WALLET is enforced by clan_members_one_clan_per_wallet, a UNIQUE
+-- index on wallet ALONE. It is a first-pass engineering default, not an owner
+-- ruling (recorded as such in WO-1845).
+--
+-- clan_messages is declared and written by NOTHING: chat endpoints are a later
+-- ticket, and the table exists now so its shape needs no second migration.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS clans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    join_policy TEXT NOT NULL DEFAULT 'invite',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by_wallet TEXT NOT NULL REFERENCES wallet_identity(wallet),
+    CONSTRAINT clans_code_format CHECK (code ~ '^[A-HJ-NP-Z2-9]{6}$'),
+    CONSTRAINT clans_name_len CHECK (char_length(name) BETWEEN 1 AND 32),
+    CONSTRAINT clans_tag_len CHECK (char_length(tag) BETWEEN 1 AND 5)
+);
+
+CREATE TABLE IF NOT EXISTS clan_members (
+    clan_id UUID NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+    wallet TEXT NOT NULL REFERENCES wallet_identity(wallet),
+    role TEXT NOT NULL DEFAULT 'member',
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (clan_id, wallet),
+    CONSTRAINT clan_members_role_valid CHECK (role IN ('leader','officer','member'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS clan_members_one_clan_per_wallet
+    ON clan_members (wallet);
+
+CREATE TABLE IF NOT EXISTS clan_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clan_id UUID NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+    sender_wallet TEXT NOT NULL REFERENCES wallet_identity(wallet),
+    phrase_id TEXT NULL,
+    text TEXT NULL,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT clan_messages_has_body CHECK (phrase_id IS NOT NULL OR text IS NOT NULL)
+);
+
+CREATE INDEX IF NOT EXISTS clan_messages_clan_sent_idx
+    ON clan_messages (clan_id, sent_at DESC);
