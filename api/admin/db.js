@@ -20,6 +20,11 @@
 //   GET /api/admin/db?view=metrics
 //       last-7-day aggregates from analytics_events (per-event-per-day counts,
 //       distinct players/sessions per day, web_trace error-line count per day)
+//   GET /api/admin/db?view=ads[&days=N]
+//       WO-1796: the ad money. Aggregates of the LevelPlay ILRD rows already in
+//       analytics_events (rewarded_ad_impression) — revenue per day / network /
+//       placement, eCPM only above an impression floor, and the count of
+//       impressions whose network reported NO revenue (never summed as zero)
 //   GET /api/admin/db?view=traces[&session=<id>][&limit=N]
 //       with session: latest N web_trace rows for that session, with lines;
 //       without: latest web_trace sessions (summary) so the owner can pick one
@@ -32,6 +37,20 @@
 //       the structured save/load auth failures (2026-08-02): a summary by
 //       code+path, or the rows for one code, or the single row behind one
 //       player-reported ref
+//   GET /api/admin/db?view=events&name=<event_name>[&since_hours=N][&limit=N]
+//                                 [&player=<id>][&group=rows|message|kind|player]
+//       WO-1793: ANY event name's PAYLOAD, not just its count. The gap this
+//       closes: on 2026-09-16, 424 `playtest_break` rows and 7
+//       `save_reset_accepted` rows landed and NO view in the product could name
+//       one of them — `metrics` returns counts only, `traces` is hardcoded to
+//       'web_trace' (which only POSTs under UNITY_WEBGL, so it is empty for the
+//       Android platform the game ships on), and `authrejects` reads exactly
+//       three event names. The triage had to connect to Neon with DATABASE_URL
+//       by hand, which the owner cannot do from a phone at all.
+//   GET /api/admin/db?view=funnel[&since_hours=N]
+//       WO-1793: per distinct player id in the window — first_seen, event count
+//       and the SET of event names it emitted. One query for the per-player
+//       funnel that same triage assembled by hand.
 // =============================================================================
 
 const { neon } = require('@neondatabase/serverless');
@@ -118,6 +137,10 @@ module.exports = async (req, res) => {
                 // trust, and it is the same direction WO-1158 already corrected inside the rail.
                 ['purchase_quotes',       'issued_at',   () => sql`SELECT COUNT(*)::bigint AS rows, MAX(issued_at)   AS latest FROM purchase_quotes`],
                 ['purchase_entitlements', 'created_at',  () => sql`SELECT COUNT(*)::bigint AS rows, MAX(created_at)  AS latest FROM purchase_entitlements`],
+                // WO-1797: the Pi rail's OWN ledger. It was absent, so a Pi payment sitting at
+                // state='granted' was invisible to every console — which is exactly how a purchase
+                // the server had fully processed read as "the player may be owed goods" for six days.
+                ['pi_payments',           'created_at',  () => sql`SELECT COUNT(*)::bigint AS rows, MAX(created_at)  AS latest FROM pi_payments`],
                 ['auth_sessions',         'created_at',  () => sql`SELECT COUNT(*)::bigint AS rows, MAX(created_at)  AS latest FROM auth_sessions`],
             ];
             const rows = [];
@@ -201,6 +224,155 @@ module.exports = async (req, res) => {
                 per_day: perDay,
                 per_event_per_day: perEventPerDay,
                 trace_error_lines_per_day: traceErrorsPerDay,
+            });
+        }
+
+        // ------------------------------------------------------------------- ads
+        // WO-1796. The ILRD money has been landing in analytics_events since the
+        // LevelPlay provider shipped — one row per impression, with the network's own
+        // revenue figure in properties->>'revenueUsd' — and NOTHING on the server has
+        // ever read it. This view is that read. The owner's question was literally
+        // "I cant figure out how to see if ads are making anything".
+        //
+        // !! ONE GUARD, ONE PLACE. properties->>'revenueUsd' is TEXT out of JSONB and a
+        // bare ::numeric cast THROWS 22P02 on anything non-numeric (an _raw-wrapped
+        // property from api/events/track.js is exactly that shape), which would take the
+        // whole view down. The regex-guarded CASE below is written ONCE, inside the `imp`
+        // CTE, and every aggregate reads the already-normalised column. A second copy of
+        // that cast anywhere in this file is a bug, not a convenience.
+        //
+        // !! A NULL REVENUE IS NOT A ZERO. "the network reported nothing" and "the network
+        // reported $0.00" are different facts and the surface must be able to tell them
+        // apart, so impressions_without_revenue is counted and returned alongside the sum.
+        // Summing a missing value as zero is the same class of lie as rendering a failed
+        // query as 0 (see api/admin/console.js).
+        if (view === 'ads') {
+            const days = clampLimit(q.days, 7, 90);
+
+            // One query, one guard. Four aggregates come back as four JSON arrays plus a
+            // totals row; they cannot disagree with each other because they all read the
+            // same CTE. The CTE carries its own hard LIMIT so this can never become an
+            // unbounded scan however long the window.
+            const agg = await sql`
+                WITH imp AS (
+                    SELECT received_at,
+                           -- NULLIF before COALESCE, not COALESCE alone: LevelPlay's ILRD
+                           -- payload returns Placement as an EMPTY STRING, not null, on
+                           -- every real row measured 2026-09-17 (65 of 65). COALESCE alone
+                           -- passed that through and the table rendered a blank cell, which
+                           -- reads as a rendering bug rather than as "the network did not
+                           -- say". Both absences now name themselves.
+                           COALESCE(NULLIF(properties->>'network',   ''), '(not reported)') AS network,
+                           COALESCE(NULLIF(properties->>'format',    ''), '(not reported)') AS format,
+                           COALESCE(NULLIF(properties->>'placement', ''), '(not reported)') AS placement,
+                           CASE WHEN properties->>'revenueUsd' ~ '^-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$'
+                                THEN (properties->>'revenueUsd')::numeric
+                           END AS revenue
+                    FROM analytics_events
+                    WHERE event_name = 'rewarded_ad_impression'
+                      AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                    LIMIT 200000
+                ),
+                per_day AS (
+                    SELECT date_trunc('day', received_at)::date::text AS day,
+                           COUNT(*)::bigint AS impressions,
+                           COUNT(*) FILTER (WHERE revenue IS NULL)::bigint AS impressions_without_revenue,
+                           COALESCE(SUM(revenue), 0)::float8 AS revenue_usd
+                    FROM imp GROUP BY 1 ORDER BY 1 DESC LIMIT 90
+                ),
+                per_network AS (
+                    SELECT network,
+                           COUNT(*)::bigint AS impressions,
+                           COUNT(*) FILTER (WHERE revenue IS NULL)::bigint AS impressions_without_revenue,
+                           COALESCE(SUM(revenue), 0)::float8 AS revenue_usd
+                    FROM imp GROUP BY 1 ORDER BY 4 DESC, 2 DESC LIMIT 50
+                ),
+                per_placement AS (
+                    SELECT format, placement,
+                           COUNT(*)::bigint AS impressions,
+                           COUNT(*) FILTER (WHERE revenue IS NULL)::bigint AS impressions_without_revenue,
+                           COALESCE(SUM(revenue), 0)::float8 AS revenue_usd
+                    FROM imp GROUP BY 1, 2 ORDER BY 5 DESC, 3 DESC LIMIT 50
+                ),
+                totals AS (
+                    SELECT COUNT(*)::bigint AS impressions,
+                           COUNT(*) FILTER (WHERE revenue IS NULL)::bigint AS impressions_without_revenue,
+                           COALESCE(SUM(revenue), 0)::float8 AS revenue_usd,
+                           MAX(received_at) AS newest_impression_at
+                    FROM imp
+                )
+                SELECT (SELECT COALESCE(json_agg(d), '[]'::json) FROM per_day d)         AS per_day,
+                       (SELECT COALESCE(json_agg(nw), '[]'::json) FROM per_network nw)   AS per_network,
+                       (SELECT COALESCE(json_agg(p), '[]'::json) FROM per_placement p)   AS per_placement,
+                       (SELECT impressions FROM totals)                 AS impressions,
+                       (SELECT impressions_without_revenue FROM totals) AS impressions_without_revenue,
+                       (SELECT revenue_usd FROM totals)                 AS revenue_usd,
+                       (SELECT newest_impression_at FROM totals)        AS newest_impression_at`;
+
+            // The reward rail is a DIFFERENT emitter (AdGateService, provider-agnostic —
+            // it fires for the Pi Developer Ad Network too), so it is counted separately
+            // and split by the provider property WO-1796 added to it. Older rows predate
+            // that property and report '(not reported)' rather than being attributed to a
+            // rail they were never tagged with.
+            const completions = await sql`
+                SELECT COALESCE(NULLIF(properties->>'provider', ''), '(not reported)') AS provider,
+                       COALESCE(NULLIF(properties->>'outcome',  ''), '(not reported)') AS outcome,
+                       -- ::int, not ::bigint: the driver hands a bigint back as a STRING,
+                       -- and a count that arrives as "18" instead of 18 is a trap for any
+                       -- later caller that adds it up without a Number() first.
+                       COUNT(*)::int AS completions
+                FROM analytics_events
+                WHERE event_name = 'rewarded_ad_completed'
+                  AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                GROUP BY 1, 2
+                ORDER BY 3 DESC
+                LIMIT 50`;
+
+            const row = (agg && agg[0]) || {};
+            const impressions = Number(row.impressions || 0);
+            const revenueUsd = Number(row.revenue_usd || 0);
+
+            // !! eCPM ON A HANDFUL OF IMPRESSIONS IS NOISE, NOT A METRIC. Below the floor
+            // we return null and say low_n, and the surface prints "too few to trust" in
+            // words. A confident eCPM off 17 impressions is a number the owner would make
+            // a decision on, and it would mean nothing.
+            const ECPM_MIN_IMPRESSIONS = 20;
+            const ecpm = (n, usd) => (Number(n) >= ECPM_MIN_IMPRESSIONS
+                ? Math.round((Number(usd) / Number(n)) * 1000 * 100) / 100
+                : null);
+
+            const perNetwork = (row.per_network || []).map(nw => Object.assign({}, nw, {
+                ecpm_usd: ecpm(nw.impressions, nw.revenue_usd),
+                low_n: Number(nw.impressions) < ECPM_MIN_IMPRESSIONS,
+            }));
+
+            return res.status(200).json({
+                view: 'ads', window_days: days,
+                read_ok: true,
+                impressions: impressions,
+                impressions_without_revenue: Number(row.impressions_without_revenue || 0),
+                revenue_usd: revenueUsd,
+                newest_impression_at: row.newest_impression_at || null,
+                ecpm_usd: ecpm(impressions, revenueUsd),
+                low_n: impressions < ECPM_MIN_IMPRESSIONS,
+                ecpm_min_impressions: ECPM_MIN_IMPRESSIONS,
+                per_day: row.per_day || [],
+                per_network: perNetwork,
+                per_placement: row.per_placement || [],
+                completions: completions,
+                completions_total: (completions || []).reduce((a, c) => a + Number(c.completions || 0), 0),
+                notes: {
+                    revenue_source: "analytics_events.properties->>'revenueUsd' on rewarded_ad_impression, " +
+                        'written by LevelPlayInitializer straight from the LevelPlay ILRD callback. It is ' +
+                        "the network's own figure, not an estimate of ours.",
+                    null_revenue: 'impressions_without_revenue counts impressions carrying NO USABLE NUMERIC ' +
+                        'revenue figure — the property absent, null, or present but not a number (a ' +
+                        'malformed value is counted here rather than cast, which would throw). Those are ' +
+                        'NOT summed as zero; revenue_usd is the sum over the impressions that did report one.',
+                    cross_rail: 'impressions come only from LevelPlay (Android). completions come from ' +
+                        'AdGateService, which is provider-agnostic, so impressions / completions is NOT a ' +
+                        'completion rate — read the provider split before comparing them.',
+                },
             });
         }
 
@@ -548,8 +720,208 @@ module.exports = async (req, res) => {
             });
         }
 
+        // ----------------------------------------------------------------- events
+        // ⭐ THE GENERIC PAYLOAD READ (WO-1793, 2026-09-16). Every view above this one
+        // answers a question somebody already knew to ask: `metrics` counts events,
+        // `traces` reads 'web_trace', `authrejects` reads three named refusals. The
+        // question nobody could answer was the plainest one — "what ARE those 424 rows?"
+        // 424 `playtest_break` rows landed on 2026-09-16 and not one of them was
+        // readable without DATABASE_URL. This is the same class of hole WO-1745 already
+        // closed one table over: a view that does not contain the event name reports
+        // ZERO and reads as a measurement.
+        //
+        // `name` and `group` NEVER reach SQL as text. `name` is a bound parameter;
+        // `group` selects between literal queries written out in full, exactly the way
+        // the traces view handles ORDER BY direction (a tagged template cannot
+        // parameterize an expression, so the alternatives are spelled out, not built).
+        if (view === 'events') {
+            const name = q.name ? String(q.name) : '';
+            if (!name) {
+                return res.status(400).json({
+                    error: 'events view requires ?name=<event_name> (e.g. playtest_break). '
+                         + 'Use view=metrics to see which names exist.',
+                });
+            }
+            const limit = clampLimit(q.limit, 50, 200);
+            const hours = clampLimit(q.since_hours, 24, 168);
+            // NULL means "no filter". The cast is required so Postgres can type the
+            // parameter when it IS null; the same bound value is reused for the compare,
+            // so a player id is never interpolated.
+            const player = q.player ? String(q.player) : null;
+            const GROUPS = ['rows', 'message', 'kind', 'player'];
+            const rawGroup = String(q.group || 'rows').toLowerCase();
+            const group = GROUPS.indexOf(rawGroup) >= 0 ? rawGroup : 'rows';
+
+            // The window total, always — so a group view's rows are read against the
+            // size of the thing they partition rather than against a guess.
+            const totalRow = await sql`
+                SELECT COUNT(*)::bigint AS hits,
+                       COUNT(DISTINCT player_id)::bigint AS distinct_ids,
+                       MIN(received_at) AS oldest, MAX(received_at) AS newest
+                FROM analytics_events
+                WHERE event_name = ${name}
+                  AND received_at > NOW() - (${hours} * INTERVAL '1 hour')
+                  AND (${player}::text IS NULL OR player_id = ${player})`;
+
+            let rows;
+            if (group === 'kind') {
+                // The split that matters for playtest_break: on 2026-09-16, of 424 rows
+                // 330 were kind='error', 74 'scene_loaded', 11 'note', 8
+                // 'possible_softlock', 1 'idle' — i.e. a fifth of the "424 breaks" are
+                // scene-load bookkeeping and not breaks at all. A raw count hides that.
+                rows = await sql`
+                    SELECT COALESCE(properties->>'kind', '(none)') AS kind,
+                           COUNT(*)::bigint AS hits,
+                           COUNT(DISTINCT player_id)::bigint AS distinct_ids,
+                           MAX(received_at) AS latest
+                    FROM analytics_events
+                    WHERE event_name = ${name}
+                      AND received_at > NOW() - (${hours} * INTERVAL '1 hour')
+                      AND (${player}::text IS NULL OR player_id = ${player})
+                    GROUP BY 1
+                    ORDER BY 2 DESC
+                    LIMIT ${limit}`;
+            } else if (group === 'message') {
+                // COARSE PREFIX, NOT THE RAW MESSAGE. Grouping on the full message
+                // fragments uselessly: on 2026-09-16 '[Flow:RaidArt]' alone split into
+                // eleven 6-hit rows, while the prefix collapsed them to ONE row of 156.
+                // A grouping that does not collapse is a list with extra steps.
+                rows = await sql`
+                    SELECT CASE
+                               WHEN properties->>'message' LIKE '[Flow:%'
+                                   THEN split_part(properties->>'message', ']', 1) || ']'
+                               ELSE split_part(COALESCE(properties->>'message', '(none)'), ' ', 1)
+                           END AS message_prefix,
+                           COUNT(*)::bigint AS hits,
+                           COUNT(DISTINCT player_id)::bigint AS distinct_ids,
+                           MAX(received_at) AS latest
+                    FROM analytics_events
+                    WHERE event_name = ${name}
+                      AND received_at > NOW() - (${hours} * INTERVAL '1 hour')
+                      AND (${player}::text IS NULL OR player_id = ${player})
+                    GROUP BY 1
+                    ORDER BY 2 DESC
+                    LIMIT ${limit}`;
+            } else if (group === 'player') {
+                // ⚠ app_versions IS A JOIN, NOT A COLUMN ON THE ROW. BreakRecord carries
+                // no build (see the legend below), so the only build attribution available
+                // is that player's session_start events inside the SAME window — and it is
+                // a SET, because a player who booted two builds has two.
+                rows = await sql`
+                    SELECT e.player_id,
+                           COUNT(*)::bigint AS hits,
+                           MIN(e.received_at) AS first_seen,
+                           MAX(e.received_at) AS last_seen,
+                           (SELECT array_agg(DISTINCT s.properties->>'appVersion')
+                              FROM analytics_events s
+                             WHERE s.event_name = 'session_start'
+                               AND s.player_id = e.player_id
+                               AND s.received_at > NOW() - (${hours} * INTERVAL '1 hour')
+                               AND s.properties->>'appVersion' IS NOT NULL) AS app_versions
+                    FROM analytics_events e
+                    WHERE e.event_name = ${name}
+                      AND e.received_at > NOW() - (${hours} * INTERVAL '1 hour')
+                      AND (${player}::text IS NULL OR e.player_id = ${player})
+                    GROUP BY 1
+                    ORDER BY 2 DESC
+                    LIMIT ${limit}`;
+            } else {
+                // TRUNCATED, DELIBERATELY. A stack is unbounded and a poll must never
+                // return one in full. `props` is the rest of the payload with the two
+                // unbounded fields removed — that is what makes this view generic: a
+                // save_reset_accepted row answers from/to/ref/mode through the same query
+                // that answers kind/scene/message for a playtest_break.
+                rows = await sql`
+                    SELECT event_id, received_at, player_id,
+                           properties->>'kind'  AS kind,
+                           properties->>'scene' AS scene,
+                           left(properties->>'message', 400) AS message,
+                           left(properties->>'stack', 400)   AS stack,
+                           length(properties->>'stack')      AS stack_len,
+                           (properties - 'message' - 'stack') AS props
+                    FROM analytics_events
+                    WHERE event_name = ${name}
+                      AND received_at > NOW() - (${hours} * INTERVAL '1 hour')
+                      AND (${player}::text IS NULL OR player_id = ${player})
+                    ORDER BY received_at DESC
+                    LIMIT ${limit}`;
+            }
+
+            const t = (totalRow && totalRow[0]) || {};
+            return res.status(200).json({
+                view: 'events',
+                name: name,
+                group: group,
+                requested_group: rawGroup === group ? null : rawGroup,
+                window_hours: hours,
+                limit: limit,
+                player: player,
+                window_total: {
+                    hits: Number(t.hits) || 0,
+                    distinct_ids: Number(t.distinct_ids) || 0,
+                    oldest: t.oldest || null,
+                    newest: t.newest || null,
+                },
+                returned: rows.length,
+                rows: rows,
+                legend: {
+                    // §3 of the ticket: STATE the ambiguity, do not imply it. A number
+                    // whose ambiguity is not printed will be read as certain — the same
+                    // reason the purchases view spells out verified vs fulfilled.
+                    app_version: 'NOT IN THE PAYLOAD. BreakCaptureHarness.Record builds '
+                        + '{kind,message,stack,scene,t,utc} with no build string; only '
+                        + 'session_start carries appVersion. Any build attribution here is a '
+                        + 'per-player JOIN over this window and is AMBIGUOUS for a player who '
+                        + 'booted two builds in it (group=player returns the SET, not one value).',
+                    message: 'truncated to 400 chars; stack_len is the untruncated stack length',
+                    props: 'the event payload MINUS message and stack (both unbounded)',
+                    group: 'rows | message (coarse prefix) | kind | player; anything else falls back to rows',
+                },
+            });
+        }
+
+        // ----------------------------------------------------------------- funnel
+        // The per-player funnel, in one query. Not a per-event view: the question it
+        // answers is "who played, when did they arrive, and how far did they get",
+        // which is the SET of event names an id emitted. Capped at 200 ids and
+        // aggregate-only — no payloads leave the DB here.
+        if (view === 'funnel') {
+            const hours = clampLimit(q.since_hours, 24, 168);
+            const limit = clampLimit(q.limit, 200, 200);
+            const rows = await sql`
+                SELECT player_id,
+                       MIN(received_at) AS first_seen,
+                       MAX(received_at) AS last_seen,
+                       COUNT(*)::bigint AS events,
+                       COUNT(DISTINCT event_name)::bigint AS distinct_event_names,
+                       array_agg(DISTINCT event_name) AS event_names
+                FROM analytics_events
+                WHERE received_at > NOW() - (${hours} * INTERVAL '1 hour')
+                GROUP BY 1
+                ORDER BY 2 DESC
+                LIMIT ${limit}`;
+            return res.status(200).json({
+                view: 'funnel',
+                window_hours: hours,
+                limit: limit,
+                returned: rows.length,
+                rows: rows,
+                legend: {
+                    event_names: 'the DISTINCT set this id emitted in the window, not an ordered path',
+                    truncation: 'ordered by first_seen DESC and capped — a window with more ids than '
+                        + 'the cap returns the most recent arrivals only; narrow since_hours to see the rest',
+                    app_version: 'use view=events&name=session_start to read appVersion; no other '
+                        + 'event payload carries a build',
+                },
+            });
+        }
+
         return res.status(400).json({
-            error: 'Unknown view. Use: overview | players | metrics | traces | bugreports | bugreport | authrejects',
+            // WO-1796: `ads` is named here in the SAME edit that added the view, so this
+            // message can never lie about what the endpoint serves. Add a view, add its
+            // name here — an omitted name reads to the caller as "not supported".
+            error: 'Unknown view. Use: overview | players | metrics | ads | traces | bugreports | bugreport '
+                 + '| authrejects | purchases | events | funnel',
         });
     } catch (err) {
         console.error('[admin/db] error:', err);

@@ -1,6 +1,6 @@
 # WORK ORDER 1793 — No admin view can read an event's PAYLOAD, so today's 424 `playtest_break` rows were unreadable without direct DB credentials
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead from the 1791-1795 block; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** `api/admin/db.js` ONLY (one new read-only view). No client code, no schema change, no writes.
 **Priority:** P1 for operations — it is the tooling gap that made this triage need `DATABASE_URL`.
@@ -89,6 +89,38 @@ vs `fulfilled` — a number whose ambiguity is not printed will be read as certa
       `sql` tagged template, `name` and `group` never interpolated as SQL.
 - [ ] The unknown-view error string at the bottom of the file lists the new views.
 - [ ] No schema change, no write path, no new env var.
+
+## 4B. IMPLEMENTED 2026-09-17 — evidence, measured not asserted
+
+Files: `api/admin/db.js` (two new views + the header doc block + the unknown-view hint),
+`test/admin.events.view.test.js` (new oracle, 13 cases). No schema change, no migration, no new
+env var, no client code, no write path — the existing SELECT-only lints in
+`test/command-center.test.js` and `test/tunables-manifest.test.js` still pass.
+
+**AC verified by invoking the real handler against PRODUCTION read-only** (`.env.local`
+`DATABASE_URL`, `since_hours=48`, so the window spans 09-15 → 09-17 and the counts are LARGER than
+the ticket's 09-16 day figures — the SHAPE is what reproduces, and the ticket's day numbers cannot
+be isolated by an hours-window alone):
+
+- AC1 `view=events&name=playtest_break&group=kind` → 200, `window_total.hits=5316` / 97 ids, and the
+  split reproduces: `error 4680`, `scene_loaded 357`, `note 235`, `possible_softlock 20`, `idle 15`
+  — **plus a sixth kind the ticket did not list, `flagged 6`**, which exists in the wider window.
+- AC2 `view=events&name=save_reset_accepted` → 200, 30 rows in 48 h, each carrying
+  `props {to, ref, from, mode}` (e.g. `{"to":1789668298,"ref":"692cd6c0","from":null,"mode":"guest"}`).
+- AC3 `view=funnel&since_hours=48` → 200, 118 rows, one per id, e.g. 24 events / 12 distinct names
+  including `founding_path_selected`, `raid_funnel_*`, `tutorial_step_drop`.
+- `group=message` collapses as designed: `[Flow:RaidArt] 3116`, `[Flow:TripoMatFix] 532`,
+  `RemoteProviderException 228` (R2 `ConnectionError` — a separate finding, not this ticket).
+- `group=player` returns the appVersion SET, and the top row proves §3's ambiguity is real:
+  `player_id='unverified'` carries **eight** app versions in one window.
+- `group=DROP TABLE` → 200 as `rows`, with `requested_group:"drop table"` echoed. Missing `name` →
+  400 and **zero queries issued**. Unknown view → the hint now lists all ten views.
+
+**Test run:** controlled comparison on the same tree, `node --test --test-reporter=tap test/*.test.js`
+— before `793 tests / 788 pass / 4 fail`, after `806 tests / 801 pass / 4 fail`. The 4 failures are
+identical in both runs and pre-existing (served-page 7-bit-ASCII lints in the command-center console,
+a Heartbound tier-name lint, one TODO) — none touch `api/admin`. The new file goes RED 11/13 with
+`api/admin/db.js` reverted.
 
 ## 5. WHAT NOT TO TOUCH
 
