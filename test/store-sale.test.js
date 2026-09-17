@@ -37,6 +37,23 @@ const devnetMint = '3BwWSAUZmyngXDSZiCawEnP7iLgY5ANNopBDz94AB77N';
 const signature = 'S'.repeat(85);
 const RATE = { usdPerSkr: 0.01, source: 'test' };
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  WO-1818 — A SALE NOW HAS TWO PRICE BASES, SO A CASE MUST SAY WHICH IT MEANS.
+// ─────────────────────────────────────────────────────────────────────────────
+// ⛔ THESE CASES WERE WRITTEN AGAINST `impulse-wood-medium` AND HAD TO MOVE, NOT
+// RELAX. That SKU now carries `pricing.skrFlat`, so its sale is applied to a flat
+// SKR CONSTANT and the USD-anchor arithmetic asserted below stopped describing it.
+// The sale law itself did not change — max-not-additive, ceil, 'sale' wording,
+// verifier-reads-the-row — so the rate-path cases are repointed at a SKU that is
+// still rate-derived, and the flat path gets its own case beside them.
+//
+// ⚠ 27 of the 29 packs[] rows are FLAT today, so the flat case is the one most
+// buyers will actually meet. `monthly-wayfarer` (battle_monthly.json, not copied
+// by tools/gen-sku-catalog.mjs) is the remaining rate-derived witness.
+const RATE_SKU = 'monthly-wayfarer';    // usd 4.99, NO skrFlat
+const RATE_SKU_USD = 4.99;
+const FLAT_SKU = 'impulse-wood-large';  // usd 4.99 -> skrFlat 300
+
 const DEVNET_ENV = {
     SOLANA_DEVNET_PURCHASE_RECIPIENT: recipient,
     SOLANA_DEVNET_PURCHASE_RECIPIENT_ATA: recipientAta,
@@ -208,24 +225,56 @@ test('a storewide sale is NOT rate-limited — the second buyer pays the sale pr
 //  3. THE PRICED QUOTE, AND WHAT THE VERIFIER ACCEPTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-test('a 30% sale prices the quote off the USD anchor and labels it "30% off"', () => {
+test('a 30% sale prices a RATE-DERIVED quote off the USD anchor and labels it "30% off"', () => {
     withEnv(DEVNET_ENV, () => {
-        const full = catalog.buildQuoteBody('devnet', 'impulse-wood-medium', RATE);
-        const sold = catalog.buildQuoteBody('devnet', 'impulse-wood-medium', RATE,
+        const full = catalog.buildQuoteBody('devnet', RATE_SKU, RATE);
+        const sold = catalog.buildQuoteBody('devnet', RATE_SKU, RATE,
             3000, sale.SALE_REASON);
-        assert.equal(full.amountBaseUnits, '299000000000', '$2.99 at $0.01/SKR = 299 SKR');
-        assert.equal(sold.amountBaseUnits, '210000000000', '$2.093 ceil()s to 210 SKR');
-        assert.equal(sold.usdAnchor, 2.99, 'the authored anchor stays auditable');
-        assert.ok(Math.abs(sold.usdEffective - 2.093) < 1e-9);
-        assert.ok(Math.abs(sold.usdSaving - 0.897) < 1e-9);
+        assert.equal(full.amountBaseUnits, '499000000000', '$4.99 at $0.01/SKR = 499 SKR');
+        assert.equal(sold.amountBaseUnits, '350000000000', '$3.493 ceil()s to 350 SKR');
+        assert.equal(sold.usdAnchor, RATE_SKU_USD, 'the authored anchor stays auditable');
+        assert.ok(Math.abs(sold.usdEffective - 3.493) < 1e-9);
+        assert.ok(Math.abs(sold.usdSaving - 1.497) < 1e-9);
         assert.equal(sold.discountBps, 3000);
         assert.equal(sold.discountReason, sale.SALE_REASON);
         assert.equal(sold.discountLabel, '30% off',
             'a sale buyer must never be told they received a "shortfall discount"');
         // The shortfall keeps its own wording on the SAME code path.
-        const shortfall = catalog.buildQuoteBody('devnet', 'impulse-wood-medium', RATE,
+        const shortfall = catalog.buildQuoteBody('devnet', RATE_SKU, RATE,
             2000, quoteTest.SHORTFALL_REASON_SERVER);
         assert.equal(shortfall.discountLabel, '20% shortfall discount');
+    });
+});
+
+test('a 30% sale on a FLAT SKU discounts the SKR constant, with no USD in the answer', () => {
+    // ⛔ WO-1818, AND THIS IS THE PATH 27 OF 29 PACKS TAKE. The discount is applied
+    // to the authored SKR amount and ceil()ed to a whole SKR — the same rounding
+    // direction as the rate path, so the shelf figure and the confirm figure cannot
+    // land a token apart. No USD appears in the answer at all.
+    withEnv(DEVNET_ENV, () => {
+        const flat = catalog.skrFlatFor(FLAT_SKU);
+        assert.ok(flat > 0, `${FLAT_SKU} lost its skrFlat: this case is testing the rate path`);
+        const full = catalog.buildQuoteBody('devnet', FLAT_SKU, RATE);
+        const sold = catalog.buildQuoteBody('devnet', FLAT_SKU, RATE, 3000, sale.SALE_REASON);
+        assert.equal(full.skrAmount, flat, 'the undiscounted flat price is the authored constant');
+        assert.equal(sold.skrAmount, Math.ceil(flat * 0.7));
+        assert.equal(sold.discountBps, 3000);
+        assert.equal(sold.discountReason, sale.SALE_REASON);
+        assert.equal(sold.discountLabel, '30% off');
+        assert.equal(sold.usdEffective, null, 'a flat sale must not publish a second, USD price');
+        assert.equal(sold.usdSaving, null);
+        assert.equal(sold.usdAnchor, catalog.usdAnchor(FLAT_SKU), 'the band stays auditable');
+        // ⚠ A LIVE RATE WAS PASSED IN AND MUST HAVE BEEN IGNORED. This is the
+        // assertion that fails if the flat branch ever falls back to the oracle.
+        assert.equal(sold.rate, null);
+        assert.equal(sold.rateSource, catalog.FLAT_RATE_SOURCE);
+        // And the sale must survive the oracle being gone entirely.
+        const offline = catalog.buildQuoteBody('devnet', FLAT_SKU, null, 3000, sale.SALE_REASON);
+        assert.equal(offline.skrAmount, sold.skrAmount);
+        assert.equal(offline.amountBaseUnits, sold.amountBaseUnits);
+        const wired = quoteTest.wireQuote(offline, { quoteId: 'q-flat' });
+        assert.equal(wired.saleBps, 3000, 'a flat pack must still advertise the sale');
+        assert.equal(wired.saleLabel, '30% off');
     });
 });
 
@@ -235,28 +284,50 @@ test('the VERIFIER accepts the DISCOUNTED amount and REFUSES the full-price anch
     // anchor — so a sale needs no change there at all. This proves it rather than
     // assuming it, because being wrong here means a paid player with no entitlement.
     const sold = withEnv(DEVNET_ENV, () =>
-        catalog.buildQuoteBody('devnet', 'impulse-wood-medium', RATE, 3000, sale.SALE_REASON));
+        catalog.buildQuoteBody('devnet', RATE_SKU, RATE, 3000, sale.SALE_REASON));
     const row = {
-        quote_ref: 'a'.repeat(32), wallet, sku: 'impulse-wood-medium', network: 'devnet',
+        quote_ref: 'a'.repeat(32), wallet, sku: RATE_SKU, network: 'devnet',
         currency: 'SKR', amount_base_units: sold.amountBaseUnits, decimals: 9,
         mint: devnetMint, recipient, recipient_ata: recipientAta,
-        usd_anchor: '2.9900', usd_rate: '0.010000000000', rate_source: 'test',
+        usd_anchor: '4.9900', usd_rate: '0.010000000000', rate_source: 'test',
         discount_bps: 3000, discount_reason: sale.SALE_REASON,
         expires_at: new Date(Date.now() + 300_000).toISOString(),
         consumed_at: null, consumed_tx: null,
     };
     const contract = catalog.contractFromQuoteRow(row);
-    assert.equal(contract.amountBaseUnits, '210000000000');
-    assert.equal((await readChain(transaction('210000000000'), contract)).state, 'verified',
+    assert.equal(contract.amountBaseUnits, '350000000000');
+    assert.equal((await readChain(transaction('350000000000'), contract)).state, 'verified',
         'the sale price the server quoted must be the sale price the server accepts');
     // Paying the FULL price against a sale quote is still a mismatch: it is not the
     // contract we issued, and overpaying is not a lesser evil than underpaying.
-    assert.equal((await readChain(transaction('299000000000'), contract)).reason,
+    assert.equal((await readChain(transaction('499000000000'), contract)).reason,
         'transfer_contract_mismatch');
 
     // And the pure row-usability checks are indifferent to the discount columns.
-    assert.deepEqual(verifyTest.evaluateQuoteRow(row, wallet, 'impulse-wood-medium',
+    assert.deepEqual(verifyTest.evaluateQuoteRow(row, wallet, RATE_SKU,
         'devnet', signature), { ok: true });
+
+    // ── THE SAME PROOF ON THE FLAT PATH (WO-1818) ────────────────────────────
+    // ⭐ The point being proven is that /verify needed NO change for flat pricing:
+    // it accepts whatever amount the quote ROW carries. A flat sale row is just a
+    // different number in the same column, and its usd_rate is 0 with
+    // rate_source='flat-skr' because the column is NOT NULL and no rate exists.
+    const flatSold = withEnv(DEVNET_ENV, () =>
+        catalog.buildQuoteBody('devnet', FLAT_SKU, null, 3000, sale.SALE_REASON));
+    const flatRow = Object.assign({}, row, { sku: FLAT_SKU,
+        amount_base_units: flatSold.amountBaseUnits, usd_anchor: '4.9900',
+        usd_rate: '0.000000000000', rate_source: catalog.FLAT_RATE_SOURCE });
+    const flatContract = catalog.contractFromQuoteRow(flatRow);
+    assert.equal(flatContract.amountBaseUnits, flatSold.amountBaseUnits);
+    assert.equal((await readChain(transaction(flatSold.amountBaseUnits), flatContract)).state,
+        'verified', 'the flat sale price the server quoted must be the one it accepts');
+    // The UNDISCOUNTED flat amount is now the wrong amount, and must be refused.
+    const flatFull = withEnv(DEVNET_ENV, () => catalog.buildQuoteBody('devnet', FLAT_SKU, null));
+    assert.equal((await readChain(transaction(flatFull.amountBaseUnits), flatContract)).reason,
+        'transfer_contract_mismatch');
+    // ⚠ And the stored 0 is never echoed outward as a real rate.
+    assert.equal(verifyTest.ledgerRate(flatRow), null);
+    assert.equal(verifyTest.ledgerRate(row), '0.010000000000');
 });
 
 test('a sale never produces a free, negative or nonsense quote', () => {
@@ -264,11 +335,17 @@ test('a sale never produces a free, negative or nonsense quote', () => {
         // 10000 bps would be a free pack; the clamp stops it long before here, and
         // buildQuoteBody refuses it a second time. Defence in depth on the money path.
         for (const bad of [10_000, 20_000, -1, 0, NaN, '3000']) {
-            const built = catalog.buildQuoteBody('devnet', 'impulse-wood-medium', RATE,
+            const built = catalog.buildQuoteBody('devnet', RATE_SKU, RATE,
                 bad, sale.SALE_REASON);
-            assert.equal(built.amountBaseUnits, '299000000000', 'bad bps ' + bad);
+            assert.equal(built.amountBaseUnits, '499000000000', 'bad bps ' + bad);
             assert.equal(built.discountBps, null, 'bad bps ' + bad);
             assert.equal(built.discountReason, null, 'bad bps ' + bad);
+            // WO-1818: and the flat path refuses it too — a junk bps must never give
+            // away a pack whose price is a constant either.
+            const flat = catalog.buildQuoteBody('devnet', FLAT_SKU, null, bad, sale.SALE_REASON);
+            assert.equal(flat.skrAmount, catalog.skrFlatFor(FLAT_SKU), 'bad bps ' + bad + ' (flat)');
+            assert.equal(flat.discountBps, null, 'bad bps ' + bad + ' (flat)');
+            assert.equal(flat.discountReason, null, 'bad bps ' + bad + ' (flat)');
         }
         assert.equal(sale.clampSaleBps(10_000), sale.SALE_MAX_BPS,
             'the clamp lands below the free-pack boundary, not on it');
@@ -294,18 +371,18 @@ test('the canaries are never on sale — their amount is a protocol constant', (
 
 test('the wire carries saleBps/saleLabel only when the discount IS a sale', () => {
     withEnv(DEVNET_ENV, () => {
-        const sold = catalog.buildQuoteBody('devnet', 'impulse-wood-medium', RATE,
+        const sold = catalog.buildQuoteBody('devnet', RATE_SKU, RATE,
             3000, sale.SALE_REASON);
         const wired = quoteTest.wireQuote(sold, { quoteId: 'q1' });
         assert.equal(wired.saleBps, 3000);
         assert.equal(wired.saleLabel, '30% off');
         assert.equal(wired.usdEffective, sold.usdEffective);
         assert.equal(wired.usdSaving, sold.usdSaving);
-        assert.equal(wired.amountBaseUnits, '210000000000');
+        assert.equal(wired.amountBaseUnits, '350000000000');
 
         // A SHORTFALL is a discount and NOT a sale: a shelf banner must not announce
         // one player's private apology as a storewide promotion.
-        const shortfall = catalog.buildQuoteBody('devnet', 'impulse-wood-medium', RATE,
+        const shortfall = catalog.buildQuoteBody('devnet', RATE_SKU, RATE,
             2000, quoteTest.SHORTFALL_REASON_SERVER);
         const wiredShortfall = quoteTest.wireQuote(shortfall, { quoteId: 'q2' });
         assert.equal(wiredShortfall.saleBps, null);
@@ -314,7 +391,7 @@ test('the wire carries saleBps/saleLabel only when the discount IS a sale', () =
 
         // An undiscounted row says null, never 0.
         const plain = quoteTest.wireQuote(
-            catalog.buildQuoteBody('devnet', 'impulse-wood-medium', RATE), { quoteId: 'q3' });
+            catalog.buildQuoteBody('devnet', RATE_SKU, RATE), { quoteId: 'q3' });
         assert.equal(plain.saleBps, null);
     });
 });

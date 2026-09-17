@@ -25,6 +25,35 @@ const recipientAta = 'TreasuryAta111111111111111111111111111111';
 const devnetMint = '3BwWSAUZmyngXDSZiCawEnP7iLgY5ANNopBDz94AB77N';
 const signature = 'S'.repeat(85);
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  WO-1818 — TWO PRICING PATHS NOW EXIST, AND A CASE MUST NAME WHICH IT TESTS.
+// ─────────────────────────────────────────────────────────────────────────────
+// ⛔ THE RATE-DERIVED CASES BELOW WERE WRITTEN AGAINST `impulse-wood-medium` AND
+// HAD TO MOVE, NOT RELAX. That SKU now carries `pricing.skrFlat` (packs.json), so
+// it is priced by a CONSTANT and its rate assertions had become assertions about
+// the wrong path — including "no rate means NO quote", which a flat SKU must now
+// deliberately violate. Repointing them at a SKU that is genuinely still
+// rate-derived keeps the fail-closed law proven rather than deleting it: the rule
+// did not change, the SKU did.
+//
+// `monthly-wayfarer` is authored in battle_monthly.json, which
+// tools/gen-sku-catalog.mjs does not copy, so it has no skrFlat and cannot
+// silently become flat without that generator changing. The two named cases
+// directly below assert BOTH halves of that premise, so if either SKU ever
+// changes sides the suite says which one and why instead of drifting.
+const FLAT_SKU = 'impulse-wood-large';       // packs.json: usd 4.99 -> skrFlat 300
+const RATE_SKU = 'monthly-wayfarer';         // battle_monthly.json: NO skrFlat, still rate-derived
+const RATE_SKU_USD = 4.99;                   // its authored anchor, asserted against USD_ANCHORS below
+const DEVNET_DECIMALS = catalog.SKR_DECIMALS_BY_NETWORK.devnet;
+
+test('the two pricing paths each still have a witness SKU — the premise of every case below', () => {
+    assert.equal(catalog.usdAnchor(RATE_SKU), RATE_SKU_USD, 'the rate-path witness lost its anchor');
+    assert.equal(catalog.isFlatSku(RATE_SKU), false,
+        `${RATE_SKU} became flat: every rate-derived case below is now testing the wrong path`);
+    assert.equal(catalog.isFlatSku(FLAT_SKU), true,
+        `${FLAT_SKU} lost its skrFlat: the flat cases below are silently testing the rate path`);
+});
+
 function withEnv(vars, fn) {
     const old = { ...process.env };
     Object.assign(process.env, vars);
@@ -277,36 +306,41 @@ test('the two canary SKUs keep their fixed amounts and are never quoted', () => 
 // ─────────────────────────────────────────────────────────────────────────────
 test('a quote is issued with the exact amount, the rate and the rate source', () => {
     withEnv(DEVNET_ENV, () => {
-        const built = catalog.buildQuoteBody('devnet', 'impulse-wood-medium',
+        const built = catalog.buildQuoteBody('devnet', RATE_SKU,
             { usdPerSkr: 0.00755954, source: catalog.RATE_SOURCE });
         assert.deepEqual(built, {
-            sku: 'impulse-wood-medium', network: 'devnet', currency: 'SKR',
-            amountBaseUnits: '396000000000', skrAmount: 396, decimals: 9,
+            sku: RATE_SKU, network: 'devnet', currency: 'SKR',
+            amountBaseUnits: '661000000000', skrAmount: 661, decimals: 9,
             mint: devnetMint, recipient, recipientAta,
-            usdAnchor: 2.99, usdEffective: 2.99, usdSaving: null,
+            usdAnchor: RATE_SKU_USD, usdEffective: RATE_SKU_USD, usdSaving: null,
             // WO-1799: the reason that priced the body travels with it, so the caller
             // persists the same string it labelled with. Null on an undiscounted quote.
             discountBps: null, discountLabel: null, discountReason: null,
             rate: 0.00755954, rateSource: catalog.RATE_SOURCE,
+            // WO-1818: the value the quote ROW takes. Identical to `rate` on this path —
+            // it diverges only for a flat SKU, where the NOT NULL column takes 0.
+            usdRateForRow: 0.00755954,
         });
+        // ceil-to-a-whole-SKR, restated independently of the literal above.
+        assert.equal(built.skrAmount, Math.ceil(RATE_SKU_USD / 0.00755954));
     });
 });
 
 test('the server applies a 20% discount and ships the same effective USD that priced SKR', () => {
     withEnv(DEVNET_ENV, () => {
-        const regular = catalog.buildQuoteBody('devnet', 'impulse-wood-medium',
+        const regular = catalog.buildQuoteBody('devnet', RATE_SKU,
             { usdPerSkr: 0.01, source: 'test' });
-        const discounted = catalog.buildQuoteBody('devnet', 'impulse-wood-medium',
+        const discounted = catalog.buildQuoteBody('devnet', RATE_SKU,
             { usdPerSkr: 0.01, source: 'test' }, 2000);
-        assert.equal(regular.amountBaseUnits, '299000000000');
-        assert.equal(discounted.amountBaseUnits, '240000000000');
-        assert.equal(discounted.usdAnchor, 2.99, 'the authored anchor remains auditable');
+        assert.equal(regular.amountBaseUnits, '499000000000');
+        assert.equal(discounted.amountBaseUnits, '400000000000');
+        assert.equal(discounted.usdAnchor, RATE_SKU_USD, 'the authored anchor remains auditable');
         assert.equal(regular.usdEffective, regular.usdAnchor,
             'an undiscounted quote keeps the plain server price');
         assert.equal(regular.usdSaving, null, 'an undiscounted quote announces no sale');
-        assert.equal(discounted.usdEffective, 2.392,
+        assert.ok(Math.abs(discounted.usdEffective - 3.992) < 1e-12,
             'the effective display price is the exact server input to quoteAmount');
-        assert.ok(Math.abs(discounted.usdSaving - 0.598) < 1e-12,
+        assert.ok(Math.abs(discounted.usdSaving - 0.998) < 1e-12,
             'the server, not the client, computes the dollar saving');
         assert.equal(discounted.discountBps, 2000);
         assert.equal(discounted.discountLabel, '20% shortfall discount');
@@ -337,10 +371,15 @@ test('the server applies a 20% discount and ships the same effective USD that pr
 test('invalid discount basis points never create a free or negative quote', () => {
     withEnv(DEVNET_ENV, () => {
         for (const bad of [0, -1, 10_000, 20_000, NaN, null, '2000']) {
-            const built = catalog.buildQuoteBody('devnet', 'impulse-wood-medium',
+            const built = catalog.buildQuoteBody('devnet', RATE_SKU,
                 { usdPerSkr: 0.01, source: 'test' }, bad);
-            assert.equal(built.amountBaseUnits, '299000000000', `bad bps ${bad}`);
+            assert.equal(built.amountBaseUnits, '499000000000', `bad bps ${bad}`);
             assert.equal(built.discountBps, null, `bad bps ${bad}`);
+            // WO-1818: the same refusal on the FLAT path, so junk bps cannot hand a
+            // flat pack away either. The amount must be the authored constant.
+            const flat = catalog.buildQuoteBody('devnet', FLAT_SKU, null, bad);
+            assert.equal(flat.skrAmount, catalog.skrFlatFor(FLAT_SKU), `bad bps ${bad} (flat)`);
+            assert.equal(flat.discountBps, null, `bad bps ${bad} (flat)`);
         }
     });
 });
@@ -400,11 +439,20 @@ test('the oracle fails CLOSED: unreachable, non-200, empty and junk all yield no
     assert.equal(await rateWith(async () => ({ ok: true, json: async () => ({ nope: true }) })), null);
 });
 
-test('no rate means NO quote — never a stale or catalog price', () => {
+test('no rate means NO quote for a RATE-DERIVED SKU — never a stale or catalog price', () => {
+    // ⛔ THE LAW IS UNCHANGED AND STILL ABSOLUTE FOR ANYTHING PRICED OFF THE
+    // ORACLE. WO-1818 did not soften it: it made the guard CONDITIONAL, and only
+    // for a SKU whose amount is an authored constant (see the flat cases below).
+    // A SKU whose price depends on a rate we could not read must still refuse to
+    // sell, because /verify runs after settlement and an invented price is a
+    // paid-but-not-granted purchase.
     withEnv(DEVNET_ENV, () => {
-        assert.equal(catalog.buildQuoteBody('devnet', 'impulse-wood-medium', null), null);
-        assert.equal(catalog.buildQuoteBody('devnet', 'impulse-wood-medium',
+        assert.equal(catalog.buildQuoteBody('devnet', RATE_SKU, null), null);
+        assert.equal(catalog.buildQuoteBody('devnet', RATE_SKU,
             { usdPerSkr: 0, source: 'x' }), null);
+        assert.equal(catalog.buildQuoteBody('devnet', RATE_SKU,
+            { usdPerSkr: -1, source: 'x' }), null);
+        assert.equal(catalog.buildQuoteBody('devnet', RATE_SKU, {}), null);
     });
 });
 
@@ -543,4 +591,203 @@ test('every quote refusal carries a player-readable reason', () => {
     }
     assert.match(verifyTest.QUOTE_MESSAGES.quote_expired, /do not pay again/i,
         'a refusal after the money moved must say so');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  WO-1818 — THE FLAT SKR LADDER. The shelf and the till quote ONE number.
+// ─────────────────────────────────────────────────────────────────────────────
+// ⛔ THE DEFECT THESE CASES PIN: WO-1815 authored `pricing.skrFlat` so a pack's
+// SKR amount is a CONSTANT, and the shelf drew 300 SKR from it — while the server
+// still quoted `ceil(usd / coingecko_low_24h)` and the confirm screen said 431.
+// One purchase, two prices, and the second one is the one that gets charged.
+//
+// ⚠ EVERY ASSERTION BELOW READS ITS EXPECTATION OUT OF THE AUTHORED CATALOG, not
+// out of a number typed here. A test that hardcoded 300 would go green against a
+// server that had silently stopped reading the authoring file at all.
+test('the flat SKR ladder is DERIVED from the generated catalog, never retyped', () => {
+    const generated = require('../api/_lib/sku-catalog.generated.json');
+    const authored = {};
+    for (const pack of generated.packs) {
+        const flat = pack.pricing && pack.pricing.skrFlat;
+        if (Number.isSafeInteger(flat) && flat > 0) authored[pack.sku] = flat;
+    }
+    // ⛔ A SECOND HAND-TYPED TABLE IN purchase-catalog.js IS THE FAILURE THIS
+    // CATCHES (CLAUDE.md §2/§5): it would pass on the day it was written and drift
+    // the first time packs.json was re-authored without it.
+    assert.deepEqual(catalog.SKR_FLAT, authored,
+        'SKR_FLAT must equal the generated catalog exactly — it is a derivation, not a copy');
+    assert.ok(Object.keys(authored).length >= 20,
+        'the flat ladder is empty or nearly so: the generator copy is stale');
+    assert.equal(catalog.skrFlatFor(FLAT_SKU), authored[FLAT_SKU]);
+    assert.equal(catalog.isFlatSku(FLAT_SKU), true);
+});
+
+test('a NON-flat SKU keeps the rate-derived path, unchanged', () => {
+    // ⚠ Not hypothetical: the Monthly Ledger cards live in battle_monthly.json,
+    // which the SKU generator does not copy, so they carry no skrFlat and must
+    // still be priced off the oracle. They are the live regression witness for
+    // "SKUs without skrFlat keep today's path".
+    assert.equal(catalog.skrFlatFor(RATE_SKU), null);
+    assert.equal(catalog.isFlatSku(RATE_SKU), false);
+    withEnv(DEVNET_ENV, () => {
+        const rate = { usdPerSkr: 0.007559540000, source: catalog.RATE_SOURCE };
+        const built = catalog.buildQuoteBody('devnet', RATE_SKU, rate);
+        assert.ok(built, 'a rate-derived SKU must still quote');
+        // The pre-WO-1818 arithmetic, asserted independently of the code under test.
+        const expected = Math.ceil(catalog.usdAnchor(RATE_SKU) / rate.usdPerSkr);
+        assert.equal(built.skrAmount, expected);
+        assert.equal(built.rate, rate.usdPerSkr, 'the rate that priced it must still be reported');
+        assert.equal(built.rateSource, catalog.RATE_SOURCE);
+        assert.equal(built.usdEffective, catalog.usdAnchor(RATE_SKU));
+        assert.equal(built.usdRateForRow, rate.usdPerSkr, 'the row still records the real rate');
+        // And it still FAILS CLOSED with no rate — this is the half that must not move.
+        assert.equal(catalog.buildQuoteBody('devnet', RATE_SKU, null), null);
+    });
+});
+
+test('a FLAT SKU quotes the authored amount exactly, with no sale', () => {
+    withEnv(DEVNET_ENV, () => {
+        const flat = catalog.skrFlatFor(FLAT_SKU);
+        const built = catalog.buildQuoteBody('devnet', FLAT_SKU,
+            { usdPerSkr: 0.007559540000, source: catalog.RATE_SOURCE });
+        assert.ok(built);
+        assert.equal(built.skrAmount, flat, 'the shelf figure IS the charged figure');
+        assert.equal(built.amountBaseUnits,
+            (BigInt(flat) * (10n ** BigInt(DEVNET_DECIMALS))).toString(),
+            'base units must be the flat amount scaled by THIS network decimals, nothing else');
+        assert.equal(built.decimals, DEVNET_DECIMALS);
+        // ⛔ A LIVE RATE WAS AVAILABLE AND WAS NOT USED. If the flat branch ever
+        // falls through to the oracle this goes red instead of quietly charging
+        // 431 SKR for a 300-SKR pack again.
+        assert.equal(built.rate, null, 'a flat quote reports NO rate');
+        assert.equal(built.rateSource, catalog.FLAT_RATE_SOURCE);
+        assert.equal(built.usdEffective, null, 'a second USD figure beside a flat price is two prices');
+        assert.equal(built.usdSaving, null);
+        // usdAnchor SURVIVES: PurchaseGate.RequiresWallet and the Play/Pi rails read it.
+        assert.equal(built.usdAnchor, catalog.usdAnchor(FLAT_SKU));
+        // The row must satisfy purchase_quotes.usd_rate NOT NULL (api/schema.sql:1366).
+        assert.equal(built.usdRateForRow, catalog.FLAT_ROW_RATE);
+        assert.equal(built.usdRateForRow == null, false,
+            'a null here would make every flat INSERT throw and 500 the whole till');
+    });
+});
+
+test('a FLAT SKU quotes with the rate oracle DOWN — that is the point of flat', async () => {
+    // Prove the oracle really is dead first, the same way the fail-closed case does.
+    assert.equal(await rateWith(async () => { throw new Error('ENOTFOUND'); }), null);
+    withEnv(DEVNET_ENV, () => {
+        const flat = catalog.skrFlatFor(FLAT_SKU);
+        for (const deadRate of [null, undefined, { usdPerSkr: 0, source: 'x' }]) {
+            const built = catalog.buildQuoteBody('devnet', FLAT_SKU, deadRate);
+            assert.ok(built, 'a constant price must not become unbuyable because a third party is down');
+            assert.equal(built.skrAmount, flat);
+            assert.equal(built.rate, null);
+            assert.equal(built.rateSource, catalog.FLAT_RATE_SOURCE);
+        }
+    });
+});
+
+test('a sale on a FLAT SKU CEILs to a whole SKR and keeps its badge fields', () => {
+    withEnv(DEVNET_ENV, () => {
+        const flat = catalog.skrFlatFor(FLAT_SKU);        // 300 as authored today
+        const built = catalog.buildQuoteBody('devnet', FLAT_SKU, null, 3000, 'sale');
+        assert.ok(built, 'a sale must not need the oracle either');
+        assert.equal(built.skrAmount, Math.ceil(flat * 7000 / 10_000));
+        assert.equal(built.amountBaseUnits,
+            (BigInt(built.skrAmount) * (10n ** BigInt(DEVNET_DECIMALS))).toString());
+        // ⛔ THE BADGE FIELDS MUST SURVIVE FLATNESS. wireQuote() derives
+        // saleBps/saleLabel/saleEndsAt from these three, so dropping them would
+        // silently un-advertise a running sale on 27 of 29 packs.
+        assert.equal(built.discountBps, 3000);
+        assert.equal(built.discountReason, 'sale');
+        assert.equal(built.discountLabel, catalog.discountLabelFor(3000, 'sale'));
+        const wired = quoteTest.wireQuote(built, { quoteId: null, expiresAt: null },
+            '2026-09-30T00:00:00.000Z');
+        assert.equal(wired.saleBps, 3000);
+        assert.equal(wired.saleLabel, '30% off');
+        assert.equal(wired.saleEndsAt, '2026-09-30T00:00:00.000Z');
+        assert.equal(wired.rate, null);
+        assert.equal(wired.rateSource, catalog.FLAT_RATE_SOURCE);
+        assert.equal(wired.skrAmount, built.skrAmount);
+    });
+});
+
+test('the flat sale rounding is CEIL at every rung, so shelf and till never differ by a SKR', () => {
+    // Integer arithmetic, checked against the independent float formula. 9999 at
+    // 3000 bps is the case that actually has a fraction (6999.3 -> 7000).
+    for (const flat of [100, 200, 300, 500, 1000, 9999]) {
+        for (const bps of [0, 1000, 2000, 3000, 7000]) {
+            const got = catalog.quoteFlatAmount(flat, bps, 6);
+            const expected = bps > 0 ? Math.ceil(flat * (10_000 - bps) / 10_000) : flat;
+            assert.equal(got.skr, expected, `flat ${flat} at ${bps}bps`);
+            assert.equal(got.amountBaseUnits, (BigInt(expected) * 1_000_000n).toString());
+        }
+    }
+    // A shortfall discount is just another bps on the same path — no second rule.
+    assert.equal(catalog.quoteFlatAmount(9999, quoteTest.SHORTFALL_DISCOUNT_BPS, 6).skr,
+        Math.ceil(9999 * 0.8));
+    // Junk in, nothing out. Never a rounded guess at a money amount.
+    for (const bad of [0, -1, 1.5, null, undefined, NaN])
+        assert.equal(catalog.quoteFlatAmount(bad, 0, 6), null, `${bad} must not price a pack`);
+    assert.equal(catalog.quoteFlatAmount(300, 10_000, 6).skr, 300,
+        'an out-of-range bps is ignored, never applied as a 100% discount');
+});
+
+test('an all-flat shelf would send a NULL envelope rate the shipped client cannot parse', () => {
+    // ⛔ THIS CASE IS A TRIPWIRE, NOT A BEHAVIOUR TEST, AND IT GUARDS A DEVICE-WIDE
+    // CRASH. The LIST envelope now reports `rate: null` when NO oracle was consulted
+    // (api/purchases/quote.js, the `mode: 'list'` response). The shipped client
+    // declares that envelope field as a NON-NULLABLE double —
+    // Assets/_Modules/Wallet/PurchaseQuoteService.cs `ListEnvelope.Rate` /
+    // `ListResponse.Rate` — and Newtonsoft throws converting null to System.Double,
+    // which fails the WHOLE envelope. Not one row: the entire shelf, on every device.
+    //
+    // ⚠ IT CANNOT FIRE TODAY, and that is exactly why it is written down. The shelf
+    // is not all-flat (monthly-wayfarer / monthly-keeper carry no skrFlat), so a real
+    // rate is still fetched and the envelope still carries a number. The day someone
+    // authors skrFlat for those two cards — a change made entirely in Assets/, by a
+    // seat with no reason to open api/ — the envelope goes null and the store dies
+    // silently. So: the moment the shelf becomes all-flat, this test goes RED and
+    // names the client field that must become `double?` first.
+    const client = fs.readFileSync(path.join(__dirname, '..', 'Assets', '_Modules',
+        'Wallet', 'PurchaseQuoteService.cs'), 'utf8');
+    const envelopeAcceptsNull = /\[JsonProperty\("rate"\)\]\s*public\s+double\?\s+Rate;[\s\S]{0,400}?List<Newtonsoft\.Json\.Linq\.JObject>\s+Prices;/
+        .test(client);
+    const shelfIsAllFlat = ['devnet', 'mainnet-beta'].every(
+        net => catalog.quotableSkus(net).every(catalog.isFlatSku));
+    assert.ok(envelopeAcceptsNull || !shelfIsAllFlat,
+        'the shelf is now ALL FLAT, so the LIST envelope sends rate: null — change ' +
+        'ListEnvelope.Rate and ListResponse.Rate in PurchaseQuoteService.cs to double? ' +
+        'and ship a client BEFORE deploying this, or every device gets an empty store');
+    // The per-row fields were already nullable before this ticket and must stay so:
+    // 27 of 29 rows now carry rate/usdEffective/usdSaving as null for every player,
+    // where previously only the owner-only canary rows did.
+    for (const field of ['rate', 'usdEffective', 'usdSaving']) {
+        const re = new RegExp('\\[JsonProperty\\("' + field + '"\\)\\]\\s*public\\s+(\\w+\\??)\\s');
+        const match = client.match(re);
+        assert.ok(match, `PurchaseQuoteService.cs no longer parses ${field} at all`);
+        assert.match(match[1], /\?$/,
+            `PurchaseQuote.${field} must stay nullable: a flat quote sends null for every buyer`);
+    }
+});
+
+test('the verifier reads the PERSISTED amount, so flat needs no arithmetic there', () => {
+    // ⛔ The proof for WO-1818 item 3: nothing in verify.js recomputes an expected
+    // amount from a rate. contractFromQuoteRow() takes ONE argument — the row.
+    const flat = catalog.skrFlatFor(FLAT_SKU);
+    const amount = (BigInt(flat) * (10n ** BigInt(DEVNET_DECIMALS))).toString();
+    const row = quoteRow({ sku: FLAT_SKU, amount_base_units: amount,
+        usd_rate: '0.000000000000', rate_source: catalog.FLAT_RATE_SOURCE });
+    const contract = catalog.contractFromQuoteRow(row);
+    assert.equal(contract.amountBaseUnits, amount,
+        'the accepted amount is the one the server persisted, flat or derived');
+    assert.deepEqual(verifyTest.evaluateQuoteRow(row, wallet, FLAT_SKU, 'devnet', signature),
+        { ok: true });
+    // ⚠ AND THE STORED 0 IS NEVER REPORTED AS A RATE. purchase_quotes.usd_rate is
+    // NOT NULL so a flat row stores 0; echoing that outward would tell the ledger
+    // SKR traded at $0. One helper normalises it, in one place.
+    assert.equal(verifyTest.ledgerRate(row), null);
+    assert.equal(verifyTest.ledgerRate(quoteRow()), '0.007559540000',
+        'a real rate must still be reported verbatim');
+    assert.equal(verifyTest.ledgerRate(null), null);
 });

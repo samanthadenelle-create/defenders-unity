@@ -1365,6 +1365,20 @@ CREATE TABLE IF NOT EXISTS purchase_quotes (
     usd_anchor          NUMERIC(12,4) NOT NULL,     -- the authored ladder price (2.99, 4.99, ...)
     usd_rate            NUMERIC(24,12) NOT NULL,    -- USD per SKR at issue time
     rate_source         TEXT NOT NULL,              -- WHICH oracle produced usd_rate
+    -- ⚠ WO-1818: `rate_source = 'flat-skr'` MEANS usd_rate IS NOT A RATE. A flat
+    -- SKR pack (packs.json `pricing.skrFlat`) has no oracle behind it, so no rate
+    -- exists to record — but this column is NOT NULL and relaxing it is a
+    -- migration, so such a row stores 0 and says so in rate_source. Read the two
+    -- columns TOGETHER: a 0 here without that source string would be a real rate
+    -- of zero, which is nonsense. Nothing in the codebase reads usd_rate to derive
+    -- an amount (api/purchases/verify.js checks the persisted amount_base_units by
+    -- exact equality). The MONEY-PATH readers normalise the flat case to NULL
+    -- through one helper, verify.js `ledgerRate` — the response echo and both
+    -- purchase_entitlements copies. ⚠ THE ADMIN VIEWS DELIBERATELY DO NOT:
+    -- api/admin/db.js:312 and :324 and api/admin/stats.js:1061 SELECT this column
+    -- raw, so an operator reading those pages sees 0.000000000000 and must read
+    -- rate_source beside it. Relaxing this column to NULL later is safe, removes
+    -- that wart, and is the owner's call; the code does not require it.
     issued_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at          TIMESTAMPTZ NOT NULL,
     consumed_at         TIMESTAMPTZ,
