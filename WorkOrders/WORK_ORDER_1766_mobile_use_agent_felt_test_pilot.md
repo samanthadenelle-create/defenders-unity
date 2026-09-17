@@ -1,6 +1,18 @@
 # WO-1766: pilot minitap-ai/mobile-use as a natural-language felt-test driver (isolated, emulator-only)
 
-**Status:** READY TO IMPLEMENT
+**Status:** PARKED
+
+Lead review 2026-09-17: confirmed parked by name in owner memory `two-week-hackathon-video-focus-2026-09-16`
+("New-feature specs ... WO-1766 ... are PARKED") and infeasible as scoped today (no vision-capable
+local model in `ollama list`; upstream mobile-use README states vision-tree limitation against a
+game with no accessibility tree). No code to gate. See `WORK_ORDER_1766_mobile_use_agent_felt_test_pilot.RESULT.md`
+for the full park record. Re-decide after 2026-09-30.
+**⚠ LANE VERDICT 2026-09-17: PARK — do not implement as written.** The owner parked this ticket BY
+NUMBER on 2026-09-16 (memory `two-week-hackathon-video-focus-2026-09-16`: *"New-feature specs (WO-1773
+wave-AI branch, **WO-1766**, WO-1775 ...) are PARKED"*), and upstream's own README — fetched at source
+2026-09-17 — confirms *"limited effectiveness with games as they don't provide accessibility tree
+data."* Nothing was cloned, installed or run; the Seeker was untouched. Full evidence, and the two
+read-only device queries, in `WORK_ORDER_1766_mobile_use_agent_felt_test_pilot.RESULT.md`.
 **Silo:** tooling only — a clone under `tools/third_party/mobile-use/` (gitignored) plus this WO and
 one SKILL.md section. **Touches NO `Assets/`, NO `.cs`, NO scene, NO catalog.** No Unity gate needed.
 **Number:** PRE-ASSIGNED by the lead. `CLI_LANES_WO_NUMBERS.md` was NOT touched by this lane; the
