@@ -172,6 +172,71 @@ namespace DeNelle.Village
         private const string CtxSeenPrefix = "tutorial_ctx:";
         private const string GrantSeenPrefix = "tutorial_v2_grant:";
 
+        // =====================================================================
+        //  WO-1802 - THE RAID HELPER CHAIN'S THREE RUNGS, NAMED ONCE
+        // =====================================================================
+        // Owner direction 2026-09-16: "We should have some kind of helper that says try building a
+        // barracks or click here to put your barracks - something that we should assist them."
+        //
+        // The chain is build a Barracks -> train troops -> raid, ONE rung at a time, chosen by
+        // DeNelle.Core.HudModel.RaidDoorReadiness.Diagnose. These constants live HERE, with the
+        // interpreter that consumes them, because FOUR sites need the same literals - the
+        // interpreter's own instrumentation, the emitter, the dialogue sink's CTA marker and the
+        // regression - and a fifth copy is how the WO-number block and the dependency table in
+        // CLAUDE.md sections 2/5 each went stale.
+
+        /// <summary>Rung 1: no Barracks at all - a raid is impossible, not merely unfound.</summary>
+        public const string RaidHelperBarracksBeatId = "ctx_raid_helper_barracks";
+
+        /// <summary>Rung 2: a Barracks stands but the army is under the raid door's own bar.</summary>
+        public const string RaidHelperArmyBeatId = "ctx_raid_helper_army";
+
+        /// <summary>Rung 3: nothing is missing - the raid door itself.</summary>
+        public const string RaidDoorBeatId = "ctx_raid_door";
+
+        /// <summary>
+        /// One rung of the chain: its authored step id and the acquired-ledger key recording that
+        /// its ONE re-arm has been spent.
+        /// </summary>
+        public readonly struct RaidChainRung
+        {
+            public readonly string BeatId;
+            /// <summary>
+            /// ⚠ "tutorial." NAMESPACED, AND THAT IS NOT COSMETIC. GameState's acquired ledger is
+            /// the SAME list VillageInventory.HasEverAcquired reads for item discovery, so a bare
+            /// id here would make a phantom item look discovered. The StarterArmyGrant "grant."
+            /// reasoning (Village/Troops/StarterArmyGrant.cs:50-52), verbatim.
+            /// </summary>
+            public readonly string RearmLedgerKey;
+            public RaidChainRung(string beatId, string rearmLedgerKey)
+            { BeatId = beatId; RearmLedgerKey = rearmLedgerKey; }
+        }
+
+        /// <summary>
+        /// The three rungs, IN CHAIN ORDER. Ordered so a reader (and the regression) can see that
+        /// the chain runs build -> train -> raid; the runtime rung is still picked by the live
+        /// diagnosis, never by this index.
+        /// </summary>
+        public static readonly RaidChainRung[] RaidChainRungs =
+        {
+            new RaidChainRung(RaidHelperBarracksBeatId, "tutorial.raid-helper-barracks-rearm"),
+            new RaidChainRung(RaidHelperArmyBeatId,     "tutorial.raid-helper-army-rearm"),
+            new RaidChainRung(RaidDoorBeatId,           "tutorial.raid-door-rearm"),
+        };
+
+        /// <summary>
+        /// The chain's beat ids, for the instrumentation that must fire on ANY rung. Derived from
+        /// <see cref="RaidChainRungs"/> so a rung can never be added to one and missed by the
+        /// other - the duplicated-state failure this whole ticket keeps citing.
+        /// </summary>
+        public static bool IsRaidChainBeat(string stepId)
+        {
+            if (string.IsNullOrEmpty(stepId)) return false;
+            foreach (var rung in RaidChainRungs)
+                if (string.Equals(rung.BeatId, stepId, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
         // ── WO-T3: prepaid-tower grant ("this first one is on me") ─────────────
         // One watchtower's crystal cost, credited through the SAME store BuildMenu
         // charges (GameStateService.AddCrystals -> GameState.Resources.Crystals,
@@ -934,7 +999,7 @@ namespace DeNelle.Village
             // WO-1012 P2: objective texts may name the guide via the "{guide}" data
             // token — resolved through the identity seam at render time, never stored.
             if (step.Objective != null && !string.IsNullOrEmpty(step.Objective.Text))
-                ObjectiveStripUi.Show(TutorialGuide.ResolveToken(step.Objective.Text), done: _index, total: _steps.Count);
+                ObjectiveStripUi.Show(ResolveStepText(step.Objective.Text), done: _index, total: _steps.Count);
             else
                 ObjectiveStripUi.Hide();
             ArmHighlights(step);
@@ -1369,7 +1434,7 @@ namespace DeNelle.Village
             if (_step == null) return;
 
             string objective = _step.Objective != null && !string.IsNullOrEmpty(_step.Objective.Text)
-                ? TutorialGuide.ResolveToken(_step.Objective.Text) : null;
+                ? ResolveStepText(_step.Objective.Text) : null;
             if (string.IsNullOrEmpty(objective))
             {
                 // §12: no silent failure. An unauthored objective is the one case where there is
@@ -1488,7 +1553,7 @@ namespace DeNelle.Village
             _nextCoachAt = CoachBeatDueAt(_coachBeats);
 
             string objective = _step.Objective != null && !string.IsNullOrEmpty(_step.Objective.Text)
-                ? TutorialGuide.ResolveToken(_step.Objective.Text) : null;   // WO-1012 P2 guide token
+                ? ResolveStepText(_step.Objective.Text) : null;   // WO-1012 P2 guide token
             string msg = CoachMessageForBeat(_coachBeats, objective);
 
             if (string.IsNullOrEmpty(msg))
@@ -2640,6 +2705,37 @@ namespace DeNelle.Village
                     triggerSignal = signalId,
                 });
 
+                // WO-1802 - THE RAID DOOR PROMPT'S OWN FUNNEL LEG. The generic
+                // contextual_step_enter above already carries the step id, so this is not a
+                // second record of the same thing: the raid programme is measured by the six
+                // raid_funnel_* names (RaidFunnel.cs) and the question the owner's evidence
+                // leaves open is whether the PROMPT was ever seen by the players who never
+                // raided. A named event answers that with one query instead of a join against
+                // a generic table, which is the same argument RaidFunnel's header makes for
+                // emitting step 6 rather than leaving it to a SQL window.
+                //
+                // ⚠ AN HONEST HARDCODE. The step id is compared literally because ONE beat gets
+                // this leg; a data field for it would be a schema change authored for a single
+                // row, and a future second prompt should get its own named event rather than
+                // silently inherit this one's numbers.
+                // ⚠ ANY RUNG OF THE CHAIN, not just the door - IsRaidChainBeat is derived from
+                // RaidChainRungs, so a rung added there can never be missed here. The stepId rides
+                // along, so one query separates "never saw the build helper" from "saw it and did
+                // not build", which is the distinction the live triage could not make.
+                if (IsRaidChainBeat(ctx.Id))
+                {
+                    DeNelle.Core.Analytics.EventTracker.Track("raid_door_prompt_shown", new
+                    {
+                        stepId = ctx.Id,
+                        triggerSignal = signalId,
+                        awaiting = _ctxAwaitSignal ?? "(own dialogue)",
+                    });
+                    FlowTrace.Step("RaidDoor", $"PROMPT SHOWN :: {ctx.Id} is on screen " +
+                        $"(trigger '{signalId}', completing on '{_ctxAwaitSignal ?? "(own dialogue)"}'). " +
+                        "It gates nothing: pausePressure false, and TickContextual releases it after " +
+                        $"{ContextualAwaitSeconds:0}s whatever the player does.");
+                }
+
                 // Never pausePressure, never gate — a short line + a spotlight only.
                 // WO-1012: contextual hints keep the GLOW language (no dim, never blocks)
                 // and ride the same chevron cue as the mandatory chain.
@@ -2661,11 +2757,47 @@ namespace DeNelle.Village
             }
         }
 
+        /// <summary>
+        /// WO-1802 — resolve EVERY token family a step's player-visible text can carry, in one
+        /// place: <c>{guide}</c> (TutorialGuide) AND the live-number tokens
+        /// (DeNelle.Core.Dialogue.DialogueTextTokens — army fill, spoils, camp names).
+        ///
+        /// ⛔ WHY THIS EXISTS, AND IT IS A BUG THIS TICKET NEARLY SHIPPED. Objective text went
+        /// through <c>TutorialGuide.ResolveToken</c> ONLY, and a coach-mark hint went through
+        /// NOTHING — it was handed straight to ShowToast. That was harmless for every earlier step,
+        /// because the only token any of them carried was <c>{guide}</c>. WO-1802's rungs author
+        /// <c>{raid.first.camp}</c> and <c>{raid.army.deployable}</c> into <c>objective.text</c>,
+        /// <c>hint</c> and their route hints (they MUST — the starter army moved 3 -> 10 on the day
+        /// they were written and WO-1803 owns the knob), so on those two surfaces the player would
+        /// have read LITERAL BRACES on the objective banner and the coach toast of the very beat
+        /// whose whole job is to be obvious.
+        ///
+        /// ⚠ "REGISTERED" IS NOT "RESOLVED ON THIS SURFACE". RaidDoorBeatTokens registers the
+        /// resolvers correctly and DialogueViewModel.OnLine resolves them — for DIALOGUE LINES. The
+        /// objective strip and the coach toast are different surfaces with their own render paths,
+        /// and a token registry cannot reach a surface that never calls it.
+        ///
+        /// Order is deliberate: the guide token first (it is a plain substring swap), then the
+        /// number tokens, whose resolvers may themselves return text. Null/empty passes through, and
+        /// DialogueTextTokens leaves an UNKNOWN token untouched rather than blanking the line — a
+        /// visible "{foo}" is a greppable defect, an empty sentence is not.
+        /// </summary>
+        private static string ResolveStepText(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            string guided = TutorialGuide.ResolveToken(text);
+            return Guard.Try("Tutorial", "resolve step text tokens",
+                () => CoreDialogue.DialogueTextTokens.Resolve(guided), guided);
+        }
+
         /// <summary>WO-1389 - the coach-mark SENTENCE for a route hop / hintful beat: the SAME
         /// gold toast surface the stuck-step coach (TickCoach) uses, so guided taps and rescue
-        /// nudges look like one voice. Guarded: a toast that throws must never break the beat.</summary>
+        /// nudges look like one voice. Guarded: a toast that throws must never break the beat.
+        /// WO-1802: the text is token-resolved first (see ResolveStepText) - a hint is the one
+        /// surface that had NO resolver at all.</summary>
         private static void ShowCoachHint(string ctxId, string hint)
         {
+            hint = ResolveStepText(hint);
             bool ok = Guard.Try("Tutorial", "coach hint toast " + ctxId, () =>
                 ElarionUiKit.ShowToast(hint, ElarionUiKit.ToastTone.Gold, 4.5f));
             FlowTrace.Step("Tutorial", $"CTX-HINT :: {ctxId} - \"{hint}\"" + (ok ? "" : " (toast FAILED)"));
@@ -2684,6 +2816,63 @@ namespace DeNelle.Village
             var state = GameStateService.Instance != null ? GameStateService.Instance.State : null;
             return state != null && state.SeenTutorials != null &&
                    state.SeenTutorials.TryGetValue(CtxSeenPrefix + ctxId, out bool seen) && seen;
+        }
+
+        /// <summary>
+        /// WO-1802 — UN-LATCH a contextual one-shot ONCE PER SAVE, EVER, so a beat the player
+        /// dismissed without acting on gets exactly one second chance on a later session.
+        ///
+        /// ⛔ IT LIVES HERE AND NOT IN THE EMITTER, and that is the whole reason the method
+        /// exists rather than three lines at the call site: <see cref="CtxSeenPrefix"/> is
+        /// private to this file and <see cref="CtxSeen"/> is what actually gates the beat. A
+        /// caller that wrote "tutorial_ctx:" itself would be a second copy of the key grammar,
+        /// which is the duplicated-state class CLAUDE.md sections 2/5/16 each describe - and it
+        /// would go stale silently, because a mis-prefixed write un-latches nothing and looks
+        /// exactly like a beat the player genuinely re-dismissed.
+        ///
+        /// <para>ONE-SHOT-NESS OF THE RE-ARM IS A SEPARATE LEDGER, deliberately. It is recorded
+        /// on GameState's monotonic acquired-ledger via MarkEverAcquired, which returns TRUE only
+        /// on the first add - so it is BOTH the check and the latch in one call, needs no new
+        /// save field, no version bump and no migrator. Exactly the StarterArmyGrant reasoning
+        /// (Village/Troops/StarterArmyGrant.cs:40-52). Using the seen-map for this instead would
+        /// be circular: the thing being cleared cannot also remember that it was cleared.</para>
+        ///
+        /// <para>NEVER a repeating re-arm. A prompt that comes back every session is nagware and
+        /// would teach the player to dismiss reflexively; the cap is one.</para>
+        /// </summary>
+        /// <param name="ctxId">The contextual step id (no prefix).</param>
+        /// <param name="ledgerKey">Acquired-ledger key recording that the re-arm has been
+        /// spent. Namespace it (e.g. "tutorial.") so it can never collide with a real item id -
+        /// VillageInventory.HasEverAcquired reads the same list for item discovery.</param>
+        /// <returns>TRUE only when this call actually un-latched the beat.</returns>
+        public static bool TryRearmContextualOnce(string ctxId, string ledgerKey)
+        {
+            if (string.IsNullOrEmpty(ctxId) || string.IsNullOrEmpty(ledgerKey)) return false;
+            var svc = GameStateService.Instance;
+            var state = svc != null ? svc.State : null;
+            if (state == null || state.SeenTutorials == null) return false;
+
+            string key = CtxSeenPrefix + ctxId;
+            if (!state.SeenTutorials.TryGetValue(key, out bool seen) || !seen)
+                return false;   // not latched - nothing to re-arm, and the ledger stays unspent
+
+            if (!state.MarkEverAcquired(ledgerKey))
+            {
+                FlowTrace.Once("Tutorial", "ctx-rearm-spent:" + ctxId,
+                    $"contextual '{ctxId}' is latched and its ONE re-arm ('{ledgerKey}') has already " +
+                    "been spent on this save - it will not be offered again. This is the cap working, " +
+                    "not a failure.");
+                return false;
+            }
+
+            // CtxSeen reads `seen && seen`, so FALSE is a genuine un-latch; the row is kept
+            // rather than removed so the history of the beat stays legible in a save dump.
+            state.SeenTutorials[key] = false;
+            Guard.Try("Tutorial", "persist ctx re-arm " + ctxId, () => svc.Save());
+            FlowTrace.Step("Tutorial", $"CTX-REARM :: {ctxId} - the one-shot latch was cleared for ONE " +
+                $"more offer (ledger '{ledgerKey}' is now spent, so this can never happen twice on " +
+                "this save).");
+            return true;
         }
 
         /// <summary>
@@ -2770,6 +2959,35 @@ namespace DeNelle.Village
             if (ctx == null) return;
 
             FlowTrace.Step("Tutorial", $"CTX-{outcome.ToUpperInvariant()} :: {ctx.Id}.");
+
+            // WO-1802 - the raid-door beat SAYS WHY IT ENDED, in the vocabulary the ticket is
+            // judged in. "complete" here means raid.attempted actually fired (the same call site
+            // as raid_funnel_first_raid_attempted), so these three lines are the difference
+            // between "the prompt taught the door" and "the prompt was dismissed" - which is the
+            // one thing the live data could not tell us (CLAUDE.md section 12: instrument first,
+            // and never strip it afterwards).
+            if (IsRaidChainBeat(ctx.Id))
+            {
+                string meaning = outcome switch
+                {
+                    "complete" => "the player DID THE THING - this rung's own service signal fired " +
+                                  "(a Barracks placed / a troop job queued / a raid launched from " +
+                                  "SceneRouter.GoRaid, the same seam as funnel step 3). Taught.",
+                    "timeout"  => "the rung's service signal never fired within the " +
+                                  ContextualAwaitSeconds.ToString("0") + "s escape bound - the " +
+                                  "helper was seen and not acted on. One re-arm remains (or has " +
+                                  "already been spent); check this rung's route hops next.",
+                    "dismiss"  => "closed without acting - shown, not acted on.",
+                    _          => "ended via '" + outcome + "' without the rung being satisfied.",
+                };
+                DeNelle.Core.Analytics.EventTracker.Track("raid_door_prompt_" + outcome, new
+                {
+                    stepId = ctx.Id,
+                    seconds = Time.unscaledTime - _ctxEnteredAt,
+                });
+                FlowTrace.Step("RaidDoor", "PROMPT " + outcome.ToUpperInvariant() + " :: " + ctx.Id +
+                    " after " + (Time.unscaledTime - _ctxEnteredAt).ToString("0.0") + "s - " + meaning);
+            }
             DeNelle.Core.Analytics.EventTracker.Track("contextual_step_" + outcome, new
             {
                 stepId = ctx.Id,

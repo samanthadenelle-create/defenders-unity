@@ -624,6 +624,16 @@ namespace DeNelle.Core
             // Guarded: instrumentation must never be able to stop a scene load.
             DeNelle.Core.Diagnostics.Guard.Try("Funnel", "raid attempted",
                 () => DeNelle.Core.Analytics.RaidFunnel.RaidAttempted(sceneName));
+
+            // WO-1802 - the raid-door teach beat completes HERE, beside the funnel step it is
+            // measured by, and not on the camp grid opening or the prompt's own text box
+            // closing. Deliberately the SAME call site as the line above: the beat is then
+            // taught exactly when raid_funnel_first_raid_attempted fires, so "the player learned
+            // the door" and "the metric moved" are one event rather than two that can drift.
+            // Guarded for the same reason: instrumentation must never stop a scene load.
+            DeNelle.Core.Diagnostics.Guard.Try("Tutorial", "raid attempted signal",
+                () => DeNelle.Core.Tutorial.TutorialSignals.Raise(
+                          DeNelle.Core.Tutorial.TutorialSignals.RaidAttempted));
             // TIMING IS THE CONTRACT, not a detail. The carry is handed to LoadSceneWithFade as
             // its beforeLoad hook rather than run inline here, so it fires on the last line
             // before SceneManager.LoadSceneAsync — AFTER the IsSceneRegistered gate, the save

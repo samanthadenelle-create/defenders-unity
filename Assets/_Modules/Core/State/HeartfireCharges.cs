@@ -457,9 +457,56 @@ namespace DeNelle.Core.State
         /// </summary>
         public const string SpendSentence = "each one sends you on a raid";
 
-        /// <summary>The plate's consequence tag - the short form of
-        /// <see cref="SpendSentence"/>, ruled by the owner for the fitted row.</summary>
-        public const string SpendTag = "(raids)";
+        // =====================================================================
+        //  WO-1802 (owner 2026-09-16) - THE PLATE NOW LEADS WITH THE VERB.
+        // =====================================================================
+        // Owner, verbatim: "part of it is the heart fire people don't understand that heart fire
+        // is raids. I think maybe we need to keep that simple or somehow tie them together."
+        //
+        // WO-1415 already attached a consequence to the row - "Heartfire 3/3 (raids)" - and that
+        // was a real improvement over the bare state word. It was still not enough, and the
+        // reason is word ORDER, not word choice: the row led with a proper noun the player had
+        // never met and parenthesised the only word they already understood. The 09-16 ruling
+        // inverts it, so the row now reads "Raids 3/3 (Heartfire)" - the VERB the player came for
+        // first, and the name of the mechanic second, where it teaches instead of gatekeeping.
+        //
+        // (!) THIS SUPERSEDES THE WORDING OF THE 2026-09-05 RULING, NOT ITS INTENT. The row must
+        // still say what a charge BUYS rather than only that it is full; it now says it in the
+        // FIRST word. HeartfireRegression PIN G is re-pointed to assert exactly that, in the same
+        // change as the ruling (CLAUDE.md section 15) - it is an oracle moving WITH a ruling, not
+        // a pin being relaxed.
+        //
+        // (!) SpendSentence IS DELIBERATELY UNTOUCHED. PIN H asserts it verbatim in
+        // guide-content.json AND in tut_ctx_heartfire, and the sentence ("each one sends you on a
+        // raid") already puts the raid first - it was never the problem. Only the FITTED ROW was.
+        //
+        // (!) THE STRING ITSELF IS NOT HERE. It is the localization key
+        // "hud.heart.heartfire.plate" (Assets/Resources/Data/Canonical/en.json + the
+        // StreamingAssets twin), resolved by PlateLabel through HeartHudText. The two consts below
+        // are what a REGRESSION reads to check the shape of whatever that key resolves to - they
+        // are not a second authoring of the copy. Non-English values are NOT translated by
+        // WO-1802 and are listed as untranslated in its RESULT: inventing a German raid word would
+        // be worse than leaving the old order standing.
+        //
+        // (!) RETIRED: `SpendTag = "(raids)"`. Two comments still claimed the plate was built as
+        // `... + SpendTag`, which had ALREADY stopped being true when the row moved to a localized
+        // template - the concatenation does not exist in this file. So the const was pure
+        // duplicated state describing an implementation that was gone, which is the §2/§5 failure
+        // in miniature. Replaced by the two shape consts below, which describe the CURRENT row.
+
+        /// <summary>
+        /// The word the plate row LEADS with (owner ruling 2026-09-16). Read by
+        /// HeartfireRegression PIN G to assert the verb comes first; never concatenated here.
+        /// </summary>
+        public const string PlateLeadWord = "Raids";
+
+        /// <summary>
+        /// The plate row's trailing parenthetical - the mechanic's NAME, now the secondary word.
+        /// This is how the player meets the word "Heartfire" at all, so the row must keep it:
+        /// dropping it would leave nothing anywhere on the HUD to connect the flames to the name
+        /// the guide, the guide entry and the introduction beat all use.
+        /// </summary>
+        public const string PlateNameTag = "(" + Name + ")";
 
         /// <summary>
         /// THE PLATE'S FIRST ROW, minus the marks: "Heartfire 3/3 (raids)" (owner ruling

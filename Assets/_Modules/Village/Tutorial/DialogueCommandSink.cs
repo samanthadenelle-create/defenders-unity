@@ -195,9 +195,16 @@ namespace DeNelle.Village
                 // <<OpenManageTroops [troopId]>> lands on Manage > Troops (optionally preselecting a
                 // troop card); <<OpenJourney>> opens the Journey deck where the Raids card lives.
                 // Both route through PanelRouter like every other panel verb here - no new opener.
+                // WO-1802 added the OPTIONAL a1 marker (the raid-chain step id) so the army rung's
+                // tap is counted separately from tut_ctx_post_raid's use of the same door. a1 is
+                // absent on every pre-existing call, so TrackRaidChainTap is a no-op for them and
+                // the WO-1389 behaviour is byte-for-byte unchanged.
                 case "OpenManageTroops":
                     if (!PanelBlockedByBattle("OpenManageTroops"))
+                    {
+                        TrackRaidChainTap(a1, "OpenManageTroops:" + (a0 ?? "<none>"));
                         PanelRouter.Open(PanelId.Manage, string.IsNullOrEmpty(a0) ? "Troops" : "Troops:" + a0);
+                    }
                     break;
                 case "OpenJourney":
                     if (!PanelBlockedByBattle("OpenJourney")) PanelRouter.Open(PanelId.JourneyDeck);
@@ -211,8 +218,61 @@ namespace DeNelle.Village
                 // door every raid entry passes through and it asks PostureSignals.RaidCapable
                 // FIRST (WO-1374); a hand-rolled check beside it is the second predicate that
                 // header forbids by name, and the drift between two checks IS the defect.
+                // WO-1802 - the SAME door, now able to say WHO opened it. <<OpenRaids raid_door>>
+                // is the raid-door prompt's one CTA; a bare <<OpenRaids>> stays byte-for-byte the
+                // ctx_heartfire behaviour it already had.
+                //
+                // ⛔ WHY AN ARG AND NOT A SECOND VERB. Two verbs calling one opener is the
+                // duplicated-state class this file's neighbours keep getting burned by, and the
+                // second one would inevitably miss a guard the first gained. The arg changes only
+                // the MEASUREMENT: raid_door_prompt_tapped must count taps on the new prompt's
+                // CTA and NOT taps on the Heartfire introduction's identical "Open Raids" option,
+                // or the conversion rate for this ticket silently includes another beat's traffic.
+                //
+                // ⚠ AND IT IS STILL NOT AN ATTEMPT. "Tapped" means the camp grid was asked for;
+                // the funnel's step 3 and this beat's COMPLETION both live at SceneRouter.GoRaid,
+                // because opening a camp list and backing out is not a raid.
                 case "OpenRaids":
-                    if (!PanelBlockedByBattle("OpenRaids")) DeNelle.Village.Hero.RaidSelectionScreen.Open();
+                    if (!PanelBlockedByBattle("OpenRaids"))
+                    {
+                        TrackRaidChainTap(a0, "OpenRaids");
+                        DeNelle.Village.Hero.RaidSelectionScreen.Open();
+                    }
+                    break;
+
+                // -- WO-1802: THE HELPER CHAIN'S "PUT YOUR BARRACKS DOWN" DOOR -----
+                // Owner direction 2026-09-16, verbatim: "a helper that says try building a barracks
+                // or CLICK HERE TO PUT YOUR BARRACKS - something that we should assist them." So the
+                // CTA does not merely open the builder: it hands the player the ghost.
+                //
+                // <<BuildStructure barracks ctx_raid_helper_barracks>>
+                //   a0 = catalog id to place, a1 = the raid-chain step id (the tap marker).
+                //
+                // ⛔ NO NEW OPENER AND NO BuildModeController EDIT.
+                // BuildModeController.EnterBuildModeForStructure ALREADY EXISTS (WO-1571, :500) and
+                // is exactly this seam: it resolves the catalog entry, derives the BuildType rather
+                // than hardcoding Town, enters build mode, and routes through BuildPaletteUI
+                // .PlaceById -> the browser's own Place/Done -> Arm. Every gate is therefore the
+                // gate that already guards placement - the browser's IsCollectionItemVisible (which
+                // carries the WO-1379 soft gates), the singleton check inside Arm, and affordability
+                // at the commit. A hand-rolled opener here would be the "side door" WO-1374 closed,
+                // and WO-1801's lane owns that file anyway.
+                case "BuildStructure":
+                    if (!PanelBlockedByBattle("BuildStructure"))
+                    {
+                        TrackRaidChainTap(a1, "BuildStructure:" + (a0 ?? "<null>"));
+                        var bmc = BuildModeController.Instance;
+                        if (bmc == null)
+                            FlowTrace.Warn("RaidDoor", "BuildStructure '" + (a0 ?? "<null>") +
+                                "': no BuildModeController.Instance in this scene - the helper's door " +
+                                "cannot open. The beat still releases on its own bound and the player " +
+                                "is not stranded, but the CTA did nothing and that is the defect.");
+                        else if (!bmc.EnterBuildModeForStructure(a0))
+                            FlowTrace.Warn("RaidDoor", "BuildStructure '" + (a0 ?? "<null>") +
+                                "': EnterBuildModeForStructure refused (see the [Flow:Build] line " +
+                                "above for which gate). The helper's words still name the building, " +
+                                "so the player has the instruction even without the shortcut.");
+                    }
                     break;
 
                 // ── HUD objective / hint / highlight → TutorialHudOverlay ─────────
@@ -259,6 +319,49 @@ namespace DeNelle.Village
         }
 
         // A dialogue verb must NOT pop a gameplay panel mid-battle (WO-437).
+        /// <summary>
+        /// WO-1802 — the prefix every raid-chain CTA marker arg carries. The marker IS THE STEP ID
+        /// (e.g. "ctx_raid_helper_barracks"), so <c>raid_door_prompt_tapped</c> says WHICH rung was
+        /// tapped instead of only that something was.
+        ///
+        /// <para>⛔ WHY A MARKER ARG AT ALL, rather than a second verb per rung. The chain's three
+        /// CTAs reuse three doors that already exist and are already used by OTHER beats -
+        /// <c>OpenRaids</c> is <c>tut_ctx_heartfire</c>'s door and <c>OpenManageTroops</c> is
+        /// <c>tut_ctx_post_raid</c>'s. Without the marker, this ticket's conversion rate would
+        /// silently include those beats' traffic, and the number would be wrong in the flattering
+        /// direction. A duplicate verb per rung was the alternative and is worse: each copy would
+        /// drift from the guard the original gained.</para>
+        /// </summary>
+        public const string RaidChainCtaArgPrefix = "ctx_raid";
+
+        /// <summary>
+        /// The raid-door prompt's own marker — <c>&lt;&lt;OpenRaids ctx_raid_door&gt;&gt;</c>. Kept
+        /// as a named constant (rather than the literal) so the JSON, the sink and the regression
+        /// share one spelling.
+        /// </summary>
+        public const string RaidDoorCtaArg = "ctx_raid_door";
+
+        /// <summary>
+        /// WO-1802 — record a tap on one raid-chain CTA. A no-op for any other caller of the same
+        /// verb, which is the whole point: <paramref name="marker"/> is absent on
+        /// <c>tut_ctx_heartfire</c>'s and <c>tut_ctx_post_raid</c>'s doors, so their taps are not
+        /// counted as this ticket's.
+        /// </summary>
+        private static void TrackRaidChainTap(string marker, string via)
+        {
+            if (string.IsNullOrEmpty(marker) ||
+                !marker.StartsWith(RaidChainCtaArgPrefix, System.StringComparison.OrdinalIgnoreCase))
+                return;
+
+            Guard.Try("RaidDoor", "raid chain prompt tapped",
+                () => DeNelle.Core.Analytics.EventTracker.Track("raid_door_prompt_tapped",
+                          new { stepId = marker, via }));
+            FlowTrace.Step("RaidDoor", "PROMPT TAPPED :: " + marker + " via " + via +
+                ". NOT a completion: each rung completes on its own SERVICE signal (a Barracks " +
+                "placed / a troop job queued / raid.attempted at SceneRouter.GoRaid), so a player " +
+                "who taps and then backs out is correctly counted as having only looked.");
+        }
+
         private static bool PanelBlockedByBattle(string verb)
         {
             if (!DeNelle.Core.Combat.BattleLock.IsInBattle()) return false;

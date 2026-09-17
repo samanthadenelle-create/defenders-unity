@@ -159,6 +159,14 @@ explained, and `Heartfire is full` reported a STATE with no consequence attached
 - **THE PLATE USES PARENTHESES, NOT THE SENTENCE** (owner ruling, and the reason is measured): the
   Heartfire row is ONE fitted line inside the WO-1384 Heart plate, and a sentence ellipsises there.
   Charged: **`Heartfire 3/3 (raids)`**. Spent: **`Heartfire 0/3 (raids) - next in 3h 12m`**. The three
+  > **STALE 2026-09-16 (WO-1802):** the two strings on the line above are **superseded**. The owner
+  > ruled the row must **lead with the verb** — *"people don't understand that heart fire is raids...
+  > keep that simple or somehow tie them together"* — so it now reads **`Raids 3/3 (Heartfire)`** /
+  > **`Raids 0/3 (Heartfire) - next in 3h 12m`**. The *intent* below (parenthetical, not a sentence,
+  > because the row is one fitted line) is unchanged, and PIN G still pins it byte-exact. The live
+  > authority is the localization key `hud.heart.heartfire.plate` in
+  > `Assets/Resources/Data/Canonical/en.json` (+ the StreamingAssets twin), whose shape
+  > `HeartfireCharges.PlateLeadWord` / `PlateNameTag` name. `SpendSentence` is untouched (PIN H).
   greyscale-safe marks stay; a full pool no longer paints a second row at all. Both strings are
   composed by `HeartfireCharges.PlateLabel` / `PlateRekindle` and pinned byte-exact (PIN G).
 - Those English phrases remain the semantic source of truth, while the player-facing Heart plate resolves

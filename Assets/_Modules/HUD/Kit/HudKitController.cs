@@ -2680,7 +2680,14 @@ namespace DeNelle.HUD.Kit
                 if (!PanelRouter.Open(PanelId.HeroDeck))
                     FlowTrace.Warn("HudKit", "Hero workspace opener not registered");
             });
-            BuildPeacefulDockSlot(3, "journey", HudStrings.KeyNavJourney, new[] { "compass", "quest" }, OnQuestsAction);
+            // WO-1802 — the JOURNEY face is CAPTURED, not just built. Two things hang off the
+            // handle the other four discard: the "!" raid-door badge (TickRaidDoorBadge) and the
+            // "hud.journey_button" spotlight anchor the raid-door beat's first route hop points
+            // at. Nothing about the face itself changes - same index, same icon, same caption,
+            // same command (CLAUDE.md §7: no face is added, moved or renumbered).
+            _peacefulJourneySlot = BuildPeacefulDockSlot(3, "journey", HudStrings.KeyNavJourney,
+                new[] { "compass", "quest" }, OnQuestsAction);
+            RegisterJourneyHighlight(_peacefulJourneySlot);
             BuildPeacefulDockSlot(4, "manage", HudStrings.KeyNavManage, new[] { "banner", "shield" }, OnManageAction);
 
             Register("peacefulDock", WrapAsWidget("peacefulDock", _peacefulDockRoot));
@@ -2753,10 +2760,22 @@ namespace DeNelle.HUD.Kit
         /// today until authored art is dropped in. A null icon is NOT an error and never blanks the
         /// face: the kit's medallion keeps its own look and the live caption still names it.
         /// </summary>
-        private void BuildPeacefulDockSlot(int index, string iconKey, string labelKey,
+        /// <summary>WO-1802: now RETURNS the handle it always built (BuildDockSlot already did),
+        /// so the JOURNEY face can be badged and registered as a spotlight anchor. Every other
+        /// caller ignores the value, so the four unbadged faces build byte-for-byte as before.
+        ///
+        /// ⛔ THE PARAMETER LIST STAYS ON ONE LINE WITH THE METHOD NAME. HudLabelFitRegression
+        /// Case 8a [bar-face-icons] is a SOURCE-TEXT lint - it greps for the literal
+        /// "BuildPeacefulDockSlot(int index, string iconKey, string labelKey," because
+        /// DeNelle.EditorRegression cannot reference DeNelle.HUD to inspect the real signature
+        /// (that case's own header says so). WO-1802 first wrapped this declaration across two
+        /// lines to fit the added return type, which reds that case on a FORMATTING change while
+        /// the icon/label separation it protects was never touched - so the failure named a
+        /// defect that did not exist. Keep the name and the first three parameters together.</summary>
+        private ElarionUiKit.ActionSlotHandle BuildPeacefulDockSlot(int index, string iconKey, string labelKey,
                                            string[] iconFallbacks, Action command)
         {
-            BuildDockSlot(_peacefulDockRoot, _peacefulDockLayout, _peacefulDockLabels,
+            return BuildDockSlot(_peacefulDockRoot, _peacefulDockLayout, _peacefulDockLabels,
                           index, PeacefulDockFaceCount, iconKey, labelKey, null,
                           iconFallbacks, command);
         }
@@ -2904,9 +2923,17 @@ namespace DeNelle.HUD.Kit
                     if (!PanelRouter.Open(PanelId.HeroDeck))
                         FlowTrace.Warn("HudKit", "Hero workspace opener not registered");
                 });
-            BuildDockSlot(_outsideDockRoot, _outsideDockLayout, _outsideDockLabels, 1,
+            // WO-1802 - the OUTSIDE dock's JOURNEY face gets the same badge and the same
+            // spotlight anchor as the calm dock's. It is covered ON PURPOSE rather than left as a
+            // "known gap": a player who wandered out of the castle is exactly the player who has
+            // not found the raid door, and a badge that vanishes when you leave town would teach
+            // that it was never real. The two docks are never up at once, so one field holds
+            // whichever face is live (see _peacefulJourneySlot's note).
+            _outsideJourneySlot = BuildDockSlot(_outsideDockRoot, _outsideDockLayout,
+                _outsideDockLabels, 1,
                 OutsideDockFaceCount, "journey", HudStrings.KeyNavJourney, null,
                 new[] { "compass", "quest" }, OnQuestsAction);
+            RegisterJourneyHighlight(_outsideJourneySlot);
             BuildDockSlot(_outsideDockRoot, _outsideDockLayout, _outsideDockLabels, 2,
                 OutsideDockFaceCount, "manage", HudStrings.KeyNavManage, null,
                 new[] { "banner", "shield" }, OnManageAction);
@@ -3095,6 +3122,111 @@ namespace DeNelle.HUD.Kit
             FlowTrace.Step("HudKit", "WO-1468: charge badge re-seated inside the medallion of '" +
                                      slot.root.name + "' at anchor " + StackBadgeMedallionAnchor);
         }
+
+        // =====================================================================
+        //  WO-1802 - THE ALWAYS-ON RAID-DOOR BADGE ON THE JOURNEY FACE
+        // =====================================================================
+        //
+        // Owner ruling 2026-09-16, verbatim: "make the raid door obvious after founding".
+        //
+        // WHY A BADGE ON *THIS* FACE AND NOT ON THE DECK CARD ALONE. The deck card badge (see
+        // PlayerDeckWorkspace) is downstream of the actual problem: it can only be read by a
+        // player who has ALREADY opened Journey, and the live evidence is that they do not. The
+        // dock face is the discovery surface, so the always-on affordance has to live here. Both
+        // surfaces read the ONE predicate (DeNelle.Core.HudModel.RaidDoorReadiness), so they
+        // cannot say different things about the same door.
+        //
+        // ⛔ NO FACE IS ADDED, REMOVED, MOVED OR RENUMBERED (CLAUDE.md §7). This decorates the
+        // face that has been at calm slot 3 / outside slot 1 all along.
+        //
+        // WHY IT IS SAFE FOR THE MEASURED-DOCK ORACLE, and this was checked rather than assumed.
+        // HudActionBarRegression.CheckMeasuredPeacefulDock resolves each face's caption by
+        // walking the slot root's DIRECT children for non-empty TMP_Texts and taking the lowest
+        // band. ElarionUiKit.StyleAsStackBadge REPARENTS the existing count label onto its
+        // "StackBadge" plate, so the badge glyph becomes a GRANDchild and the oracle's loop never
+        // sees it; the plate itself carries an Image and no text. The caption stays the one
+        // direct-child TMP_Text it has always been.
+        //
+        // SHAPE, NOT HUE, and one character. The owner is red/green colourblind (memory
+        // owner-colorblind-delegate-visual-creative), so an attention marker may never be carried
+        // by colour - it is the ASCII "!" of RaidDoorReadiness.DockBadgeGlyph. It is one character
+        // because StyleAsStackBadge's plate is 52x40 reference px, authored for up to three
+        // DIGITS: "RAID" would ellipsise to nothing there. The WORDS are on the deck card, which
+        // has a text band for them - the two together are the glance and the sentence.
+        //
+        // ⚠ showZero STAYS FALSE AND SetCount IS NEVER CALLED ON THIS FACE. The count label is
+        // being borrowed as a badge slot, not used as a count; SetCount would render digits and
+        // blank at 0/1, which is the wrong grammar entirely for a marker.
+        private void TickRaidDoorBadge()
+        {
+            var slot = _peacefulJourneySlot ?? _outsideJourneySlot;
+            if (slot == null || slot.root == null || slot.count == null) return;
+
+            _raidDoorBadgeTimer += Time.unscaledDeltaTime;
+            if (_raidDoorBadgeTimer < RaidDoorBadgePollSeconds) return;
+            _raidDoorBadgeTimer = 0f;
+
+            // Change-detected on the whole INPUT state, not just the answer, so "still no, for a
+            // new reason" repaints too and the trace can never claim a stale cause.
+            int key = DeNelle.Core.HudModel.RaidDoorReadiness.StateKey();
+            if (key == _raidDoorBadgeKey) return;
+            _raidDoorBadgeKey = key;
+
+            bool ready = DeNelle.Core.HudModel.RaidDoorReadiness.Current(out string why);
+            string want = ready ? DeNelle.Core.HudModel.RaidDoorReadiness.DockBadgeGlyph : "";
+
+            if (ready && slot.root.transform.Find(StackBadgeObjectName) == null)
+            {
+                // Built LAZILY, on the first frame the badge is actually wanted: a plate mounted
+                // eagerly on every boot would be an empty obsidian square on the JOURNEY face for
+                // every player past their first raid, forever.
+                ElarionUiKit.StyleAsStackBadge(slot);
+                SeatStackBadgeInMedallion(slot);
+                // StyleAsStackBadge sets showZero TRUE (its potion-belt contract). Undo it: this
+                // face's count label is a BADGE SLOT, and a literal "0" on the JOURNEY medallion
+                // would be a number that means nothing.
+                slot.showZero = false;
+            }
+
+            var plate = slot.root.transform.Find(StackBadgeObjectName);
+            if (plate != null && plate.gameObject.activeSelf != ready)
+                plate.gameObject.SetActive(ready);
+            slot.count.text = want;
+
+            FlowTrace.Step(DeNelle.Core.HudModel.RaidDoorReadiness.Sys,
+                "JOURNEY face badge -> " + (ready ? "SHOWN '" + want + "'" : "HIDDEN") + " - " + why);
+        }
+
+        /// <summary>
+        /// WO-1802 — anchor "hud.journey_button" to whichever JOURNEY face was just built, so the
+        /// raid-door beat's first route hop has something to point at. Register is idempotent and
+        /// the two docks are never up together, so the live face always wins.
+        ///
+        /// ⚠ THIS IS THE FIRST JOURNEY SPOTLIGHT ANCHOR TO EXIST. ctx_raid_first and ctx_heartfire
+        /// each recorded in their own notes that they had to carry the route in WORDS because no
+        /// Journey/Raids id was registered and DataRegression reds an invented one. That gap is
+        /// now closed; the words stay in the copy regardless (the owner is red/green colourblind,
+        /// and a spotlight resolver degrades gracefully to nothing).
+        /// </summary>
+        private static void RegisterJourneyHighlight(ElarionUiKit.ActionSlotHandle slot)
+        {
+            if (slot == null || slot.root == null) return;
+            TutorialHighlightRegistry.Register("hud.journey_button", (RectTransform)slot.root.transform);
+        }
+
+        /// <summary>Cheap poll for the raid-door badge. Its inputs move at most about once a
+        /// second (the Village army/Heartfire publishers), so anything faster is pure garbage —
+        /// the DefenseChipPollSeconds precedent.</summary>
+        private const float RaidDoorBadgePollSeconds = 1f;
+        private float _raidDoorBadgeTimer;
+        /// <summary>Last painted RaidDoorReadiness.StateKey. int.MinValue is that method's own
+        /// "a rail read threw" value, so seeding with 0 cannot collide with a real state.</summary>
+        private int _raidDoorBadgeKey;
+        /// <summary>The calm dock's JOURNEY face (slot 3), captured for the badge + spotlight.</summary>
+        private ElarionUiKit.ActionSlotHandle _peacefulJourneySlot;
+        /// <summary>The outside dock's JOURNEY face (slot 1). Only ONE of the two docks is ever
+        /// built in a given HUD, so TickRaidDoorBadge takes whichever is non-null.</summary>
+        private ElarionUiKit.ActionSlotHandle _outsideJourneySlot;
 
         /// <summary>ElarionUiKit.StyleAsStackBadge's plate object name - matched here, never
         /// re-typed as a literal at a call site.</summary>
@@ -5716,6 +5848,11 @@ namespace DeNelle.HUD.Kit
             // WO-1515 sec.2B: the ATTACK REPORT chip appears the moment a report lands unread and
             // is gone the moment it is read. Throttled + change-detected inside.
             TickDefenseReportChip();
+
+            // WO-1802: the always-on raid-door badge on the JOURNEY face. Same cheap poll, same
+            // terms - throttled + change-detected inside, and it derives nothing (the whole rule
+            // is DeNelle.Core.HudModel.RaidDoorReadiness).
+            TickRaidDoorBadge();
 
             // One post-expand re-sync, once the newly-shown fixed-px band has been laid out.
             if (_queueRailSyncFrames > 0 && --_queueRailSyncFrames == 0 && _queueRail != null)

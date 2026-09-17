@@ -335,8 +335,28 @@ namespace DeNelle.Core.HudModel
         /// frozen timer on screen, which is the same defect SetRaidCapable's reason-only
         /// change was written to avoid.
         /// </summary>
+        /// <summary>
+        /// WO-1802 - HAS the Village producer published Heartfire at all, ever this process.
+        /// FALSE until the first <see cref="SetHeartfire"/> call, whatever that call decides.
+        ///
+        /// ⛔ IT IS SET BEFORE THE CHANGE CHECK BELOW, DELIBERATELY, AND THAT IS THE WHOLE
+        /// POINT. <see cref="HeartfireLit"/> defaults to the ceiling so no pre-publish frame
+        /// implies a gate nobody evaluated - correct for a DISPLAY, and exactly backwards for
+        /// an always-on affordance, which would then light up on the title screen and in every
+        /// headless frame. A witness placed after the early-return would be worse than none: a
+        /// producer publishing 3/3 with 0s to next matches the default, returns early, and the
+        /// witness would stay FALSE forever on precisely the full-Heart save the badge is for.
+        ///
+        /// Read by <see cref="RaidDoorReadiness"/>. A consumer that wants the ordinary display
+        /// polarity must keep reading the values directly and must NOT gate on this.
+        /// </summary>
+        public static bool HeartfirePublished { get; private set; }
+
         public static void SetHeartfire(int charges, int max, double secondsToNext)
         {
+            // The producer has spoken. Recorded first - see HeartfirePublished's own note for
+            // why an early-return below must never be able to swallow this.
+            HeartfirePublished = true;
             if (max < 1) max = 1;
             if (charges < 0) charges = 0;
             if (charges > max) charges = max;
@@ -452,6 +472,47 @@ namespace DeNelle.Core.HudModel
         public static int RaidNextCampGarrison { get; private set; }
         /// <summary>Raised when either next-camp field changes.</summary>
         public static event Action RaidNextCampChanged;
+
+        // -- WO-1802: THE FIRST RAID'S REWARD, PROJECTED ONCE ------------------
+        // Owner direction 2026-09-16, verbatim: "we need to create a desire to raid so we need to
+        // announce early what the rewards are."
+        //
+        // The Journey deck's Raids card must be able to say what the first raid PAYS. It cannot
+        // work the figure out for itself: DeNelle.HUD may reference DeNelle.Core ONLY (CLAUDE.md
+        // section 5), and the projection is RaidScoring.EstimateSpoils - Village. So the Village
+        // relay that already publishes the next camp publishes this too, on the same cadence, and
+        // the card just READS it. Exactly the SetRaidNextCamp reasoning, whose own note explains
+        // why the alternative (a consumer deriving the fact a second time) is the defect.
+        //
+        // (!) IT IS THE FORMATTED CLAUSE, NOT A NUMBER, AND THAT IS DELIBERATE. The "~" range-feel
+        // grammar and the rounding are owned by RaidSelectionVM.FormatSpoils (owner ruling WO-1402:
+        // "a range or estimate, never exact"). Publishing an int would force the card to re-format
+        // it and the two surfaces would eventually print different-looking golds for one figure.
+        //
+        // (!) NULL IS THE "NOT PUBLISHED" SENTINEL, exactly as ArmyFillCap == 0 and
+        // RaidNextCampName == null already are - so a headless frame, a capture and any
+        // pre-publish frame show the plain badge with no reward clause rather than a fabricated
+        // one. Fail-closed, the same polarity RaidDoorReadiness uses.
+
+        /// <summary>
+        /// The first raid's reward clause as the raid card would phrase it (e.g. "~2200 gold"),
+        /// Village-published. NULL until published, and null means "say nothing".
+        /// </summary>
+        public static string RaidFirstSpoilsGold { get; private set; }
+
+        /// <summary>Raised when <see cref="RaidFirstSpoilsGold"/> changes.</summary>
+        public static event Action RaidFirstSpoilsChanged;
+
+        /// <summary>Producer-only (Village BuildTimerService.PublishArmyStatus). Change-only.</summary>
+        public static void SetRaidFirstSpoilsGold(string goldClause)
+        {
+            if (string.IsNullOrWhiteSpace(goldClause)) goldClause = null;
+            if (string.Equals(RaidFirstSpoilsGold, goldClause, StringComparison.Ordinal)) return;
+            RaidFirstSpoilsGold = goldClause;
+            FlowTrace.Step("HudKit", "raid first-spoils clause -> " +
+                (goldClause == null ? "(none published)" : "\"" + goldClause + "\""));
+            RaidFirstSpoilsChanged?.Invoke();
+        }
 
         /// <summary>Producer-only (Village BuildTimerService.PublishArmyStatus). Change-only.</summary>
         public static void SetRaidNextCamp(string campName, int garrison)

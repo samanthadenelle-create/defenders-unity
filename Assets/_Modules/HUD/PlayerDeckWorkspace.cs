@@ -357,6 +357,99 @@ namespace DeNelle.HUD
                 ElarionUiKit.FitSingleLine(badge, 14f, 24f);
             }
 
+            // =================================================================
+            //  WO-1802 - "[ RAID READY ]", the words half of the raid-door badge.
+            // =================================================================
+            // Owner ruling 2026-09-16, verbatim: "make the raid door obvious after founding".
+            //
+            // THE EXACT MIRROR OF THE "[ LOCKED ]" BADGE ABOVE - same band, same plate, same
+            // bracketed literal grammar - because it is the same job in the opposite polarity and
+            // the pair must read as one system. A word, never a hue: the owner is red/green
+            // colourblind (memory owner-colorblind-delegate-visual-creative), so the affordance
+            // has to survive total hue loss, and this one does because it is text.
+            //
+            // MUTUALLY EXCLUSIVE WITH THE LOCK BADGE BY CONSTRUCTION, not by care: this branch is
+            // `available`, that one is `!available`, and RaidDoorReadiness itself refuses when
+            // PostureSignals.RaidCapable is false. Two badges could never share the band.
+            //
+            // ⛔ IT DECIDES NOTHING. The predicate is DeNelle.Core.HudModel.RaidDoorReadiness,
+            // which the dock JOURNEY face badge reads too. A second rule here is precisely the
+            // defect this card's own Available comment (above) records: the Raids card kept its
+            // own answer while the action bar honoured PostureSignals, "and the drift is the
+            // actual defect". The glance lives on the dock; this is the sentence beside it.
+            //
+            // FAIL-CLOSED: RaidDoorReadiness answers NO on every unpublished rail, so a headless
+            // frame, a capture and the title screen all render this card exactly as before.
+            if (available && spec.Concept == "raid")
+            {
+                bool raidReady = DeNelle.Core.HudModel.RaidDoorReadiness.Current(out string raidWhy);
+                FlowTrace.Step(DeNelle.Core.HudModel.RaidDoorReadiness.Sys,
+                    "deck card 'Raids' badge -> " + (raidReady ? "SHOWN" : "hidden") + " - " + raidWhy);
+                if (raidReady)
+                {
+                    float readyX0 = TextPlateX0(illustratedCard != null);
+                    var readyPlate = ElarionUiKit.AddImage(button.transform, "RaidReadyBadgePlate",
+                        new Vector2(readyX0, 0.87f), new Vector2(0.93f, 0.99f),
+                        new Color(0f, 0f, 0f, .62f), false);
+                    var readyPlateImage = readyPlate.GetComponent<Image>();
+                    if (readyPlateImage != null) readyPlateImage.raycastTarget = false;
+                    var readyBadge = ElarionUiKit.Label(readyPlate.transform,
+                        DeNelle.Core.HudModel.RaidDoorReadiness.CardBadgeWord, 0.02f, 0.98f,
+                        ElarionUi.Gold, 24, TextAlignmentOptions.Center, 0.02f, 0.98f, 4f, true);
+                    readyBadge.gameObject.name = "RaidReadyBadge";
+                    readyBadge.enableWordWrapping = false;
+                    readyBadge.overflowMode = TextOverflowModes.Ellipsis;
+                    ElarionUiKit.FitSingleLine(readyBadge, 14f, 24f);
+
+                    // ── THE REWARD, ON ITS OWN LINE (owner 2026-09-16: "announce early what
+                    //    the rewards are"). A SECOND LINE and not a longer badge, deliberately:
+                    //    the badge plate is fitted at a 14pt floor - an exception the sibling
+                    //    "[ LOCKED ]" token already lives with because it is ten characters -
+                    //    and "[ RAID READY - ~2200 gold ]" is 27, so it would ellipsise to
+                    //    nothing. The affordance would silently disappear while the code still
+                    //    looked right. So the badge stays the glance and this is the figure.
+                    //
+                    //    FAIL-CLOSED: PostureSignals.RaidFirstSpoilsGold is NULL until the
+                    //    Village relay publishes it, and null means say nothing - the card then
+                    //    renders exactly the plain badge. No headless frame, capture or
+                    //    pre-publish frame can invent a payout.
+                    //
+                    //    IT DECIDES NOTHING AND FORMATS NOTHING. The clause arrives already
+                    //    phrased by RaidSelectionVM.FormatSpoils (the settle payout's own
+                    //    formula, owner ruling WO-1402 "a range or estimate, never exact"), so
+                    //    this card, the raid grid and the settle cannot print three different
+                    //    numbers for one raid.
+                    string goldClause = PostureSignals.RaidFirstSpoilsGold;
+                    if (!string.IsNullOrEmpty(goldClause))
+                    {
+                        var rewardLine = ElarionUiKit.Label(button.transform,
+                            "First raid free - " + goldClause, 0.0f, 0.0f,
+                            ElarionUi.Parchment, (int)ElarionUi.FontMicro, TextAlignmentOptions.Center,
+                            readyX0, 0.93f);
+                        rewardLine.gameObject.name = "RaidRewardLine";
+                        rewardLine.enableWordWrapping = false;
+                        rewardLine.overflowMode = TextOverflowModes.Ellipsis;
+                        // Sits directly UNDER the badge plate: same x band, one badge-height down,
+                        // in fractions of the card so it tracks the plate above it at every aspect.
+                        var rr = rewardLine.rectTransform;
+                        rr.anchorMin = new Vector2(readyX0, 0.75f);
+                        rr.anchorMax = new Vector2(0.93f, 0.87f);
+                        rr.offsetMin = Vector2.zero;
+                        rr.offsetMax = Vector2.zero;
+                        ElarionUiKit.FitSingleLine(rewardLine, 14f, 24f);
+                        FlowTrace.Step(DeNelle.Core.HudModel.RaidDoorReadiness.Sys,
+                            "deck card 'Raids' reward line -> \"First raid free - " + goldClause + "\"");
+                    }
+                    else
+                    {
+                        FlowTrace.Step(DeNelle.Core.HudModel.RaidDoorReadiness.Sys,
+                            "deck card 'Raids' reward line SUPPRESSED - PostureSignals" +
+                            ".RaidFirstSpoilsGold is not published, so the card shows the plain badge " +
+                            "rather than a payout figure nothing stands behind.");
+                    }
+                }
+            }
+
             // WO-1357: when the card is locked, the purpose line becomes the REMEDY. The
             // "[ LOCKED ]" badge above says THAT it is shut; this line says WHY and what to do,
             // in words - the owner is red/green colourblind, so neither the gray face nor the

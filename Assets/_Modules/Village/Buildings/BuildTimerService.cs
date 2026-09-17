@@ -2571,6 +2571,48 @@ namespace DeNelle.Village
                 DeNelle.Core.HudModel.PostureSignals.SetRaidNextCamp(
                     campName, DeNelle.Village.Hero.RaidSelectionVM.GarrisonCount(nextCamp));
             });
+
+            // WO-1802 (owner 2026-09-16: "we need to create a desire to raid so we need to announce
+            // early what the rewards are") - THE FIRST RAID'S REWARD CLAUSE, on the SAME relay.
+            //
+            // The Journey Raids card must be able to say what the first raid pays, and DeNelle.HUD
+            // may reference DeNelle.Core ONLY - the projection is Village. So this publishes the
+            // already-formatted clause beside the next-camp fact above, and the card reads it. It is
+            // the SetRaidNextCamp pattern verbatim, including the reason: a consumer deriving the
+            // figure itself is the drift this relay was created to end.
+            //
+            // (!) THE CAMP HERE IS THE FIRST *OPEN* ONE, NOT `nextCamp`. `nextCamp` above is the
+            // next LOCKED camp (the "opens at N wins" teaser); the reward being advertised is for
+            // the raid the player can start RIGHT NOW. Two different camps, and quoting the locked
+            // one's spoils would promise a payout the player cannot collect yet.
+            //
+            // (!) THE FIGURE IS NOT COMPUTED HERE. RaidSelectionVM.EstimateSpoils -> FormatSpoils is
+            // the settle payout's own formula and owns the "~" range grammar (WO-1402), so the card,
+            // the raid grid and the settle cannot print three different numbers for one raid.
+            DeNelle.Core.Diagnostics.Guard.Try("HudKit", "publish first-raid spoils clause", () =>
+            {
+                var st = DeNelle.Core.State.GameStateService.Instance != null
+                    ? DeNelle.Core.State.GameStateService.Instance.State : null;
+                var firstOpen = DeNelle.Village.Hero.RaidSelectionVM.FirstOpenCamp(
+                    st != null ? st.RaidVictories : 0);
+                if (firstOpen == null)
+                {
+                    DeNelle.Core.HudModel.PostureSignals.SetRaidFirstSpoilsGold(null);
+                    return;
+                }
+                string full = DeNelle.Village.Hero.RaidSelectionVM.FormatSpoils(
+                    DeNelle.Village.Hero.RaidSelectionVM.EstimateSpoils(firstOpen));
+                string gold = null;
+                if (!string.IsNullOrEmpty(full))
+                    foreach (string part in full.Split(','))
+                    {
+                        string trimmed = part.Trim();
+                        if (trimmed.EndsWith(" gold", StringComparison.Ordinal)) { gold = trimmed; break; }
+                    }
+                // Null when the projection carries no gold clause - the card then shows the plain
+                // badge. A promise nothing stands behind is worse than no promise.
+                DeNelle.Core.HudModel.PostureSignals.SetRaidFirstSpoilsGold(gold);
+            });
         }
 
         /// <summary>Stable fingerprint of every catalog field that can change the resolved raid

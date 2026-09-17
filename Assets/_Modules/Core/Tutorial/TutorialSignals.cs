@@ -149,6 +149,127 @@ namespace DeNelle.Core.Tutorial
         /// single raise could be swallowed by a hint that happened to be up. Re-raising per open
         /// makes the next visit the retry - no timer, no second mechanism.</para></summary>
         public const string RaidsGridOpened = "raids.grid_opened";
+
+        // -- WO-1802: THE RAID DOOR, MADE OBVIOUS AFTER FOUNDING --------------------
+        /// <summary>
+        /// WO-1802 - the raid door is OPEN to a player who has never walked through it: a
+        /// Barracks stands, the starter squad is in the roster, a Heartfire charge is lit, and
+        /// RaidFunnel step 3 has never fired. Raised by
+        /// DeNelle.Village.TutorialSignalAdapters.TickRaidDoorReady from its existing 1 Hz
+        /// discovery tick, re-raised every 30 s while the beat is unseen.
+        ///
+        /// <para>⛔ IT IS A POLL AND NOT A HOOK ON THE GRANT, for two reasons. The state it
+        /// watches is reachable by every road StarterArmyGrant's own header enumerates (a timed
+        /// Builder job, the offline-fair sweep, the placement migration, a baked twin
+        /// resurfacing), so a hook on one of them hands the other players nothing - the exact
+        /// argument that made the grant itself a poll. And the whole predicate lives in ONE
+        /// place, DeNelle.Core.HudModel.RaidDoorReadiness, which the two badge surfaces read
+        /// too, so the beat and the badges cannot disagree about whether the door is open.</para>
+        ///
+        /// <para>NOT a raise at the grant's own edge for a third, smaller reason: the grant
+        /// fires funnel steps 1 and 2 in the same second (observed in the live data), and at
+        /// that instant the Heartfire and army rails have not necessarily published, so a beat
+        /// armed there would be armed on defaults. See RaidDoorReadiness' fail-closed note.</para></summary>
+        public const string RaidDoorReady = "raid.door_ready";
+
+        /// <summary>
+        /// WO-1802 - a raid was LAUNCHED. Raised by <c>DeNelle.Core.SceneRouter.GoRaid</c>
+        /// immediately beside <c>RaidFunnel.RaidAttempted</c> - the SAME call site, on purpose:
+        /// the raid-door beat's completion is then the literal event the owner's evidence
+        /// counts (<c>raid_funnel_first_raid_attempted</c>), so the beat cannot be marked taught
+        /// by anything that would not also move the metric.
+        ///
+        /// <para>⚠ THIS IS A COMPLETION, NOT A TAP. The WO-1340 rule: a beat that completes on
+        /// its own dialogue closing proves only that the player closed a box. Opening the camp
+        /// grid is not an attempt either - GoRaid is where the player has committed to the raid
+        /// scene, which is why the funnel already measures there.</para>
+        ///
+        /// <para>Raised on EVERY raid launch; the beat's tutorial_ctx one-shot latch dedupes.</para></summary>
+        public const string RaidAttempted = "raid.attempted";
+
+        // -- WO-1804: THE PLANS DROPS THAT INTRODUCE RAIDING -------------------------
+        /// <summary>
+        /// WO-1804 - a plans drop was PICKED UP and its persisted HELD flag committed. Raised
+        /// by <c>DeNelle.Village.BattlePlansPickup.TryCollect</c>, immediately after
+        /// <c>ProgressionUnlocks.Unlock</c> succeeds and BEFORE any presentation runs - so the
+        /// signal can never fire for a pickup whose flag did not persist, and can never be
+        /// missed because the reveal screen failed to build.
+        ///
+        /// <para>⚠ THIS IS THE NAMED MEET POINT BETWEEN TWO LANES. WO-1804 owns the drop, the
+        /// pickup and the reveal; WO-1802 owns the raid-door HELPER CHAIN (TutorialFlow /
+        /// PlayerDeckWorkspace). Neither lane edits the other's files - they meet on this id.
+        /// A step authored against <c>plans.revealed:battle</c> is the chain's cue that the
+        /// player has just been TOLD about raiding, so the chain can stand down or advance
+        /// instead of talking over the moment.</para>
+        ///
+        /// <para>One PREFIX, two ids, following this bus' own grammar
+        /// (<see cref="StructurePlacedPrefix"/>, <see cref="PetBondedPrefix"/>,
+        /// <see cref="ManageTroopSelectedPrefix"/>) rather than a flat one-off id, so a step can
+        /// await one kind or match the family.</para>
+        /// </summary>
+        public const string PlansRevealedPrefix = "plans.revealed:";
+        /// <summary>WO-1804 - the wave-2 "Enemy Battle Plans" were picked up (the raid
+        /// introduction). Kind <c>BattlePlansKind.EnemyCamp</c>.</summary>
+        public const string BattlePlansRevealed = PlansRevealedPrefix + "battle";
+        /// <summary>WO-1804 - the "Bastion Plans" were picked up off the dungeon boss. Kind
+        /// <c>BattlePlansKind.Bastion</c>; this is also the moment the Iron Bastion's lock
+        /// lifts, because that same persisted flag IS the gate.</summary>
+        public const string BastionPlansRevealed = PlansRevealedPrefix + "bastion";
+
+        /// <summary>
+        /// WO-1802 - HELPER 1 of the chain: this player has no Barracks, so a raid is not merely
+        /// unfound, it is impossible. Owner direction 2026-09-16, verbatim: <i>"We should have
+        /// some kind of helper that says try building a barracks or click here to put your
+        /// barracks - something that we should assist them."</i>
+        ///
+        /// <para>Raised by the SAME tick as <see cref="RaidDoorReady"/>, from the SAME diagnosis
+        /// (DeNelle.Core.HudModel.RaidDoorReadiness.Diagnose). ONE poll picks exactly one of
+        /// these three ids, so the chain can never show two helpers at once or disagree with the
+        /// badge about which blocker is current.</para></summary>
+        public const string RaidHelperBarracks = "raid.helper:barracks";
+
+        /// <summary>
+        /// WO-1802 - HELPER 2: a Barracks stands but the army is under THE DOOR'S OWN BAR
+        /// (RaidEntryGate.ArmyStatus.Ready, i.e. ArmyReadiness.RequiredSlots - 3 under the WO-823
+        /// first-raid soft gate, the cap afterwards). Raised instead of
+        /// <see cref="RaidDoorReady"/> so the player is sent to train rather than to a door that
+        /// would toast and redirect them (RaidSelectionScreen.Open:342-402).
+        ///
+        /// <para>⚠ NOT a "first troops" state in the ordinary case: the starter-army grant fires
+        /// on the Barracks edge, so a normal save passes this rung invisibly. It is reached by a
+        /// small starterArmySize knob, a wounded roster, or losses - which is why the copy must
+        /// never say "first".</para></summary>
+        public const string RaidHelperArmy = "raid.helper:army";
+
+        /// <summary>
+        /// WO-1802 / WO-1804 - THE CROSS-LANE ENTRY POINT. The "Enemy Battle Plans" drop
+        /// (WO-1804, Castle Defense Plans seam, after wave 2) raises this when its reveal CTA
+        /// hands the player into the raid helper chain.
+        ///
+        /// <para>⛔ IT DOES NOT TRIGGER A BEAT, AND THAT IS DELIBERATE. No authored step is keyed
+        /// on this id. TutorialSignalAdapters subscribes it and RE-ARMS its own re-raise timer, so
+        /// the chain's CURRENT step - whichever of the three the live diagnosis names - raises on
+        /// the very next 1 Hz tick. A beat keyed straight off this signal would have to re-derive
+        /// which blocker is current, and that second derivation is exactly the drift CLAUDE.md
+        /// sections 2/5/16 keep paying for.</para>
+        ///
+        /// <para>"Whichever comes first, once" therefore falls out for free: this entry point and
+        /// founding completion converge on the same poll, and the per-save tutorial_ctx latch
+        /// dedupes. WO-1804 needs only to Raise() one of these - it edits none of this lane's
+        /// files.</para>
+        ///
+        /// <para>(!) THE IDS ARE DECLARED ABOVE, BY THE PRODUCING LANE, AND NOT AGAIN HERE.
+        /// <see cref="PlansRevealedPrefix"/> / <see cref="BattlePlansRevealed"/> /
+        /// <see cref="BastionPlansRevealed"/> are WO-1804's own block. This lane briefly declared a
+        /// FLAT "battle_plans_revealed" - the name the coordinator relayed as PLANNED - and that was
+        /// wrong twice over: the producer had settled on a PREFIX FAMILY that follows this bus'
+        /// convention (<see cref="StructurePlacedPrefix"/>, <see cref="PetBondedPrefix"/>,
+        /// <see cref="ManageTroopSelectedPrefix"/>), and it also references
+        /// <see cref="BastionPlansRevealed"/>, which the flat version did not provide - so
+        /// BattlePlansPickup could not have compiled. Two lanes both declaring the meet-point is
+        /// itself the duplicated-state failure this file keeps warning about, so the consumer
+        /// DEFERS to the producer's declaration and matches the PREFIX, which also means a third
+        /// plans kind needs no edit on this side.</para></summary>
         public const string OwnedTownRevealed = "ownedTown.revealed";
         public const string OwnedTownRepaired = "ownedTown.repaired";
         public const string OwnedTownDesigned = "ownedTown.designed";

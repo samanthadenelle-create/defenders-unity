@@ -623,24 +623,55 @@ namespace DeNelle.Editor.Regression
             string spentLabel = HeartfireCharges.PlateLabel(0, 3);
             string spentTail = HeartfireCharges.PlateRekindle(0, 3, 3d * 3600d + 12d * 60d);
 
+            // =============================================================
+            // WO-1802 (owner 2026-09-16) RE-POINTED G1/G2/G3. The pin MOVES WITH THE RULING.
+            // =============================================================
+            // Owner, verbatim: "part of it is the heart fire people don't understand that heart
+            // fire is raids. I think maybe we need to keep that simple or somehow tie them
+            // together." So the row now LEADS WITH THE VERB: "Raids 3/3 (Heartfire)".
+            //
+            // WHAT CHANGED AND WHAT DID NOT. The 2026-09-05 ruling's INTENT - the row must say
+            // what a charge BUYS, never just that it is full - is unchanged and is still what
+            // G3 asserts. Only the WORD ORDER moved, because the old row led with a proper noun
+            // the player had never met and parenthesised the one word they already understood.
+            // This is not a relaxed pin: G3 is now STRICTER than before, because it demands the
+            // buy-word be FIRST rather than merely present somewhere.
+            //
+            // MUTATION THAT REDS IT (one line): revert
+            // "hud.heart.heartfire.plate" in Assets/Resources/Data/Canonical/en.json to
+            // "Heartfire {Charges}/{MaxCharges} (raids)" - G1, G2 and G3 all fail by name.
+
             // G1 - the ruled charged string, exactly.
-            if (!string.Equals(charged, "Heartfire 3/3 (raids)", StringComparison.Ordinal))
+            if (!string.Equals(charged, "Raids 3/3 (Heartfire)", StringComparison.Ordinal))
                 f.Add("G1 the charged plate row reads '" + charged + "' -- the owner ruled " +
-                      "'Heartfire 3/3 (raids)' (WO-1415). The parenthetical is what makes the row say " +
-                      "what a charge BUYS in a width that seats on one fitted line");
+                      "'Raids 3/3 (Heartfire)' (WO-1802, 2026-09-16, superseding WO-1415's " +
+                      "'Heartfire 3/3 (raids)'). The VERB leads so a new player reads what the " +
+                      "charges are for before they read the name of the thing holding them");
 
             // G2 - the ruled spent string, composed exactly as the View composes it.
             string spent = HeartfireCharges.PlateCombined(spentLabel, spentTail);
-            if (!string.Equals(spent, "Heartfire 0/3 (raids) - next in 3h 12m", StringComparison.Ordinal))
+            if (!string.Equals(spent, "Raids 0/3 (Heartfire) - next in 3h 12m", StringComparison.Ordinal))
                 f.Add("G2 the spent plate reads '" + spent + "' -- the owner ruled " +
-                      "'Heartfire 0/3 (raids) - next in 3h 12m'");
+                      "'Raids 0/3 (Heartfire) - next in 3h 12m'");
 
-            // G3 - it is not a bare state word. This is the ticket in one assertion: a row that
-            // says only "Heartfire" or only "Heartfire is full" is the defect being fixed.
-            if (charged.IndexOf(HeartfireCharges.SpendTag, StringComparison.Ordinal) < 0 ||
+            // G3 - THE TICKET IN ONE ASSERTION, in both directions. A row that says only
+            // "Heartfire", or that buries the consequence, is the defect WO-1415 fixed; a row
+            // that leads with the name rather than the verb is the defect WO-1802 fixed. So:
+            // the buy-word must be FIRST, and the mechanic's name must still appear (it is the
+            // only place on the HUD the player ever meets the word at all, which is what makes
+            // the guide entry and the introduction beat legible).
+            if (!charged.StartsWith(HeartfireCharges.PlateLeadWord, StringComparison.Ordinal))
+                f.Add("G3 the plate row '" + charged + "' does not LEAD with '" +
+                      HeartfireCharges.PlateLeadWord + "' -- the owner's 2026-09-16 ruling is that " +
+                      "the player meets the verb first ('people don't understand that heart fire is " +
+                      "raids'), so a consequence buried later in the row is the defect, not the fix");
+            if (charged.IndexOf(HeartfireCharges.PlateNameTag, StringComparison.Ordinal) < 0 ||
                 string.Equals(charged, HeartfireCharges.Name, StringComparison.Ordinal))
-                f.Add("G3 the plate row '" + charged + "' carries no consequence clause -- a state word " +
-                      "with nothing attached is exactly what the owner could not act on");
+                f.Add("G3 the plate row '" + charged + "' no longer carries '" +
+                      HeartfireCharges.PlateNameTag + "' -- this row is the ONLY place the HUD ever " +
+                      "names Heartfire, so dropping it leaves the guide entry, the introduction beat " +
+                      "and HeartfireCharges.SpendSentence all talking about a word the player has " +
+                      "never seen");
 
             // G4 - a full pool shows NO countdown row (there is nothing to count down to), and a
             // live wait is never rendered as zero (the Clock(0.4s) rule, one row down).

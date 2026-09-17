@@ -143,6 +143,48 @@ namespace DeNelle.Village.Hero
         /// </summary>
         public static Func<string, bool> ClaimedProvider;
 
+        // =====================================================================
+        //  WO-1804 HUNK 1 of 2 IN THIS FILE -- THE PLANS GATE INPUT
+        // =====================================================================
+        /// <summary>
+        /// WO-1804 - IS THIS CAMP GATED SHUT FOR WANT OF THE PLANS THAT OPEN IT? Wired in
+        /// <c>RaidSelectionScreen.OpenInternal</c> and to NOTHING ELSE.
+        ///
+        /// <para>OWNER RULING 2026-09-16 (the hackathon video's act 2): the Iron Bastion is
+        /// opened by BASTION PLANS dropped by a dungeon boss, not by a win count. The camp
+        /// authors <c>unlockedByPlans</c> on its scene-configs.json row; this predicate answers
+        /// whether that gate is currently CLOSED for this save.</para>
+        ///
+        /// <para>⛔ THE WHOLE RULE LIVES BEHIND THIS ONE SEAM, NOT IN THIS FILE. The host
+        /// composes it from <c>BattlePlans.ShouldGateBastion</c> (plans held? ever claimed?
+        /// on cooldown?) so the never-re-lock guarantee has exactly one home and this VM stays
+        /// pure C#. A second "is it gated" check written here would drift from that one - the
+        /// WO-1521 lesson recorded at <c>PlayerDeckWorkspace.cs:719-723</c>: "ONE rule, TWO
+        /// surfaces... and the drift is the actual defect."</para>
+        ///
+        /// <para>Unwired / null / throwing = GATED, for any row that authors a plans id. That
+        /// polarity is deliberate and is the <see cref="VictoryCountProvider"/> polarity: a
+        /// frame that cannot PROVE the player holds the plans must not hand them the target.
+        /// It costs nothing elsewhere, because a row that authors no <c>unlockedByPlans</c> is
+        /// never asked - which is every row but the Bastion.</para>
+        ///
+        /// <para>⚠ IT TAKES <b>TWO</b> ARGUMENTS, AND THE SECOND ONE IS THE WHOLE POINT:
+        /// <c>(campId, plansId)</c>, where <c>plansId</c> is the row's AUTHORED
+        /// <c>unlockedByPlans</c> value. An earlier draft passed only the camp id and let the
+        /// host hardcode the flag name - which made the authored string decorative, read by
+        /// nothing but a regression asserting it equalled the code constant. That is exactly the
+        /// "one fact written twice, one copy dead" shape sections 2/5/16 of CLAUDE.md each
+        /// describe. Now the DATA names the flag and the host reads it, so moving the gate to a
+        /// different plans item is an edit to one JSON string.</para>
+        /// </summary>
+        public static Func<string, string, bool> PlansGateProvider;
+
+        /// <summary>WO-1804 - the player-facing dungeon name for the plans lock sentence, so the
+        /// VM neither reads a catalog nor carries a literal. Wired in
+        /// <c>RaidSelectionScreen.OpenInternal</c>; null falls back to the def's own
+        /// <c>plansDungeonName</c>, then to a neutral phrase.</summary>
+        public static Func<string, string> PlansDungeonNameProvider;
+
         /// <summary>Sentinel for "not known" on the army and star inputs.</summary>
         public const int Unknown = -1;
 
@@ -670,6 +712,37 @@ namespace DeNelle.Village.Hero
             return best;
         }
 
+        /// <summary>
+        /// WO-1802 - THE CAMP A PLAYER CAN RAID FIRST: the lowest-threshold flagship camp already
+        /// OPEN at <paramref name="victories"/>. The mirror of <see cref="NextLockedCamp"/>, and it
+        /// lives here for the reason that method's neighbours give - <c>FlagshipRaidIds</c> is
+        /// private and there must stay exactly ONE ladder. The raid-door prompt quotes this camp's
+        /// name and its spoils estimate, so a re-ordered or re-priced ladder moves the copy with it.
+        ///
+        /// <para>⛔ THE CALLER MUST NOT HARDCODE "raider_camp_small". It is what this returns on a
+        /// fresh save today (unlockVictories 0), but naming it in copy or in a token resolver would
+        /// be the copied-state drift <c>tut_ctx_post_raid</c>'s own note records paying for when a
+        /// draft said "stone walls, 12 defenders" about a camp whose data read Iron / 15.</para>
+        ///
+        /// <para>Null only if no flagship id resolves at all, which <see cref="NextLockedCamp"/>
+        /// already warns about by name.</para>
+        /// </summary>
+        public static SceneConfigDef FirstOpenCamp(int victories)
+        {
+            if (victories < 0) victories = 0;
+            SceneConfigDef best = null;
+            foreach (var id in FlagshipRaidIds)
+            {
+                var def = SceneConfigCatalog.Find(id);
+                if (def == null) continue;      // NextLockedCamp already warns by name for a missing id
+                if (def.unlockVictories > victories) continue;
+                if (best == null || def.unlockVictories < best.unlockVictories) best = def;
+            }
+            DeNelle.Core.Diagnostics.FlowTrace.Step("Raid", "FirstOpenCamp(victories=" + victories + ") -> " +
+                (best != null ? "'" + best.id + "' at " + best.unlockVictories + " wins" : "<none open>"));
+            return best;
+        }
+
         // =====================================================================
         //  WO-1562 PART 1 - THE LADDER ANNOUNCEMENT, FROM THE ONE LADDER AUTHORITY
         // =====================================================================
@@ -895,6 +968,60 @@ namespace DeNelle.Village.Hero
         /// </summary>
         private string ResolveLock(SceneConfigDef d)
         {
+            // =================================================================
+            //  WO-1804 HUNK 2 of 2 IN THIS FILE -- THE PLANS GATE, CHECKED FIRST
+            // =================================================================
+            //  FIRST on purpose, by the order rule this method's own docstring states: the
+            //  most ACTIONABLE sentence wins. "Find the Bastion Plans in The Ember Deep"
+            //  names a specific place the player can go tonight; every other sentence here is
+            //  either a tally or an apology.
+            //
+            //  ⛔ AND IT FLOWS THROUGH THE REAL LOCK, NOT A DISPLAY WORD. WO-1542's scar is
+            //  recorded at the top of this file: an "Outmatched" word appeared on the card
+            //  while OnCardTapped refused on only two conditions, so a card reading LOCKED
+            //  opened anyway under a lit BEGIN ASSAULT. ResolveLock IS what the tap reads
+            //  (RaidSelectionScreen.OnCardTapped -> LockReasonFor -> toast + return), so a
+            //  gate authored here is a real door and the word on the card is true.
+            //
+            //  Absent unlockedByPlans -> not asked -> every other row behaves exactly as it
+            //  did before this hunk existed. Only the Bastion authors it.
+            if (!string.IsNullOrEmpty(d.unlockedByPlans))
+            {
+                bool gated = true;                      // fail CLOSED: see PlansGateProvider
+                var gate = PlansGateProvider;
+                if (gate != null)
+                {
+                    // The AUTHORED plans id goes with the camp id: the data names the flag, the
+                    // host reads it. Never a flag name hardcoded on the far side of this seam.
+                    try { gated = gate(d.id, d.unlockedByPlans); }
+                    catch (Exception ex)
+                    {
+                        DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                            "RaidSelectionVM: the plans gate probe threw for '" + d.id + "' (" +
+                            ex.GetType().Name + ": " + ex.Message + ") - treating the camp as GATED. " +
+                            "A frame that cannot prove the plans are held must not hand over the target.");
+                        gated = true;
+                    }
+                }
+                if (gated)
+                {
+                    string where = null;
+                    var namer = PlansDungeonNameProvider;
+                    if (namer != null)
+                    {
+                        try { where = namer(d.id); }
+                        catch (Exception ex)
+                        {
+                            DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
+                                "RaidSelectionVM: the plans-dungeon namer threw for '" + d.id + "' (" +
+                                ex.GetType().Name + ") - the sentence falls back to the authored row.");
+                        }
+                    }
+                    if (string.IsNullOrEmpty(where)) where = d.plansDungeonName;
+                    return DeNelle.Village.BattlePlans.BastionLockSentence(where);
+                }
+            }
+
             int need = d.unlockVictories;
             if (need > 0 && _victories < need)
             {

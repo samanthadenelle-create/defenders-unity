@@ -323,6 +323,22 @@ namespace DeNelle.Core.Analytics
         //  Plumbing. Never throws; every failure is LOUD (CLAUDE.md section 12).
         // =====================================================================
 
+        /// <summary>
+        /// WO-1802 - TRUE once this install has LAUNCHED a raid (step 3's latch). Exposed so a
+        /// surface that wants to point a new player at the raid door can stop the moment they
+        /// have used it, reading THE SAME latch that decides whether
+        /// <see cref="EventFirstRaidAttempted"/> is emitted.
+        ///
+        /// ⚠ NOT GameState.EverCompletedRaid, and the difference is the measurement. That flag
+        /// means FINISHED; this means ATTEMPTED, which is the step the live funnel is missing
+        /// (zero emissions on 2026-09-16 against four players who reached the starter army).
+        /// A player who launched a raid and died has found the door and must not be nagged.
+        ///
+        /// Per-INSTALL, like every other step here, for the reason this file's header gives: a
+        /// player who wipes their save has still factually learned the loop once.
+        /// </summary>
+        public static bool FirstRaidAttempted => Latched(KeyAttempt);
+
         /// <summary>True when <paramref name="key"/>'s step has already been emitted.</summary>
         public static bool Latched(string key)
         {

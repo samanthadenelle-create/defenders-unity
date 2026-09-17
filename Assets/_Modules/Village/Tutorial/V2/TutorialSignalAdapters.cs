@@ -91,6 +91,23 @@ namespace DeNelle.Village
         private float _nextFirstRaidRaiseAt;
         private bool _firstRaidSeenTraced;
 
+        // -- WO-1802: raid.door_ready - the raid-door prompt's trigger ---------------
+        /// <summary>Re-raise cadence while the beat is unseen. Same 30 s as the post-raid beat
+        /// above and for the same captured reason: TryTriggerContextual REFUSES while another
+        /// hint is live (TutorialFlow.cs, TryTriggerContextual's first line), and at this exact
+        /// moment ctx_raid_barracks may well be on screen - it triggers on the barracks
+        /// PLACEMENT, which precedes the grant. A single raise would lose the beat for the
+        /// session; the re-raise is the retry, with no second mechanism and no timer of its own.</summary>
+        private const float RaidDoorReraiseSeconds = 30f;
+        /// <summary>Let the hub settle before prompting. A player who has just loaded in is
+        /// reading the screen, not a coach mark - the FirstRaidHubSettleSeconds rule, reused.</summary>
+        private const float RaidDoorHubSettleSeconds = 4f;
+        private float _nextRaidDoorRaiseAt;
+        /// <summary>The ONE re-arm attempt is evaluated once per process, not once per tick: the
+        /// ledger call is the latch, but asking it every second would write a FlowTrace.Once key
+        /// and re-read the save for nothing.</summary>
+        private bool _raidDoorRearmConsidered;
+
         /// <summary>
         /// Stands the adapter host up once per process, on any scene, with no feature
         /// flag and no hub check - the signal bus is game-wide, not tutorial-wide.
@@ -143,6 +160,10 @@ namespace DeNelle.Village
             // skillpoint.earned:first — the static level-up relay survives HeroProgression
             // instance swaps (DEF-261); every level banks a point, so level 1 = first point.
             HeroProgression.OnAnyLevelUp += OnAnyLevelUp;
+            // WO-1802 / WO-1804 - the cross-lane entry point into the raid helper chain. Subscribing
+            // the bus rather than a WO-1804 type keeps the two lanes decoupled: that lane only has
+            // to Raise(TutorialSignals.BattlePlansRevealed) and never references anything here.
+            TutorialSignals.Raised += OnBusSignal;
 
             // Self-report the contextual trigger that still has no source (spec note).
             FlowTrace.Once("Tutorial", "unwired-ctx-signals",
@@ -156,6 +177,7 @@ namespace DeNelle.Village
             BuildModeController.BuildModeChanged -= OnBuildModeChanged;
             BuildModeController.StructurePlaced -= OnStructurePlaced;
             HeroProgression.OnAnyLevelUp -= OnAnyLevelUp;
+            TutorialSignals.Raised -= OnBusSignal;   // WO-1802: never leak a handler onto a static bus
             if (_tps != null) _tps.OnTowerPlaced -= OnTowerPlaced;
             if (_buildMenu != null) _buildMenu.BuildingPlaced -= OnBuildingPlaced;
             if (_wave != null) _wave.OnWaveCleared.RemoveListener(OnWaveCleared);
@@ -237,6 +259,182 @@ namespace DeNelle.Village
             }
 
             TickFirstRaidCompleted();
+            TickRaidDoorReady();
+        }
+
+        // -- WO-1802: raid.door_ready - THE RAID DOOR, MADE OBVIOUS AFTER FOUNDING ----
+        //
+        // Owner ruling 2026-09-16, verbatim: "make the raid door obvious after founding".
+        //
+        // THE EVIDENCE, not a theory (docs/LIVE_PLAYERS_TRIAGE_2026-09-16.md): ZERO players
+        // launched a raid that day and three in seven days; FOUR ids reached
+        // founding_path_selected and for each of them the starter-army grant fired
+        // raid_funnel_barracks_unlocked AND raid_funnel_army_trained in the SAME SECOND. Not one
+        // emitted raid_funnel_first_raid_attempted. So the door was open, the free squad was in
+        // the barracks, and the funnel died at the step where the player has to FIND the door.
+        //
+        // WHY A POLL AND NOT A HOOK ON THE GRANT. Two reasons, in order of weight:
+        //  (1) StarterArmyGrant is the wrong place even if it were editable. Its own header
+        //      (Village/Troops/StarterArmyGrant.cs:25-37) argues the identical case for itself:
+        //      "the player has a Barracks" arrives by at least four roads - the timed Builder
+        //      job, the offline-fair sweep on launch, the strategic-placement migration, and a
+        //      WO-753 destroyed twin resurfacing - so anything hooked to one road hands every
+        //      other player nothing. It became a poll for this reason; so does this.
+        //  (2) THE RAILS HAVE NOT PUBLISHED YET AT THE GRANT'S EDGE. The grant flips the roster;
+        //      the Heartfire count and the deployable-slot count reach Core through their own
+        //      Village publishers afterwards. A beat armed on the grant frame would be armed on
+        //      RaidDoorReadiness' fail-OPEN defaults, which is precisely what that file refuses
+        //      to do. The poll asks the published rails and therefore cannot promise a raid that
+        //      cannot start.
+        //
+        // THE PREDICATE IS NOT WRITTEN HERE. DeNelle.Core.HudModel.RaidDoorReadiness owns it and
+        // the two badge surfaces read the same static, so the prompt and the badges can never
+        // disagree about whether the door is open - the drift PlayerDeckWorkspace.cs:838-848
+        // already records as "the actual defect" when the Raids card and the action bar each kept
+        // their own answer.
+        //
+        // Runs on the EXISTING 1 Hz Discover tick. No per-frame work, no new component.
+        private void TickRaidDoorReady()
+        {
+            if (Time.unscaledTime < _nextRaidDoorRaiseAt) return;
+
+            var svc = GameStateService.Instance;
+            var state = svc != null ? svc.State : null;
+            if (state == null || !state.Onboarded) return;   // pre-boot / mid-FTUE: the arc owns the screen
+
+            // THE ONE RE-ARM, considered once per process and BEFORE the seen check below (it is
+            // what makes that check pass a second time). TutorialFlow owns the key grammar and
+            // the ledger latch; this only decides WHEN to ask - on a session where the save has
+            // still never attempted a raid. A player who found the door keeps their quiet.
+            if (!_raidDoorRearmConsidered)
+            {
+                _raidDoorRearmConsidered = true;
+                // EVERY RUNG gets the same one re-arm, not just the last one. A player who
+                // dismissed "build a Barracks" and never built one is the same lost player as one
+                // who dismissed the raid prompt, and the chain would otherwise be permanently
+                // broken at its FIRST step - the worst rung to lose, because nothing downstream
+                // can ever become reachable.
+                if (!DeNelle.Core.Analytics.RaidFunnel.FirstRaidAttempted)
+                {
+                    foreach (var rung in TutorialFlow.RaidChainRungs)
+                    {
+                        if (TutorialFlow.TryRearmContextualOnce(rung.BeatId, rung.RearmLedgerKey))
+                            FlowTrace.Step("RaidDoor", "re-armed raid-chain rung '" + rung.BeatId +
+                                "' for this session: it was latched but this install has still never " +
+                                "attempted a raid. ONE re-arm per rung, ever (owner 2026-09-16) - a " +
+                                "helper that returned every session would teach reflex dismissal, " +
+                                "which is worse than silence.");
+                    }
+                }
+            }
+
+            // NEVER DURING A WAVE. BattleLock.IsInBattle is the ONE battle predicate the dialogue
+            // sink already refuses panel verbs on (DialogueCommandSink.PanelBlockedByBattle) - a
+            // second wave check here would be the duplicated state this whole ticket is written
+            // around, and it would drift. A prompt over a live wave is also simply wrong: the
+            // player is fighting, and its own door would open a panel mid-fight.
+            if (DeNelle.Core.Combat.BattleLock.IsInBattle())
+            {
+                FlowTrace.Once("RaidDoor", "door-ready-in-battle",
+                    "raid.door_ready: a battle is live (BattleLock.IsInBattle) - deferring. The " +
+                    "raid door is not something to read about while the gate is under attack.");
+                return;
+            }
+
+            string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (!DeNelle.Core.HubScenes.IsHub(scene) || DeNelle.Core.HubScenes.IsEnemyOwnedScene(scene))
+            {
+                FlowTrace.Once("RaidDoor", "door-ready-not-hub",
+                    "raid.door_ready: scene '" + scene + "' is not a home hub - the prompt belongs " +
+                    "in the town whose dock carries the JOURNEY face it points at.");
+                return;
+            }
+            if (Time.timeSinceLevelLoad < RaidDoorHubSettleSeconds) return;
+            if (DeNelle.Core.Dialogue.DialogueService.IsRunning)
+            {
+                FlowTrace.Once("RaidDoor", "door-ready-dialogue-busy",
+                    "raid.door_ready: a dialogue is on screen - deferring the raise (this is the " +
+                    "ctx_raid_barracks overlap the 30 s re-raise exists for).");
+                return;
+            }
+
+            // ── ONE DIAGNOSIS PICKS THE RUNG. The chain shows exactly one helper at a time,
+            //    ordered by what is missing, because the diagnosis IS the order (owner direction
+            //    2026-09-16: "some kind of helper that says try building a barracks ... something
+            //    that we should assist them"). Three ids, one call: the helpers and the two badge
+            //    surfaces therefore cannot disagree about which blocker is current.
+            var blocker = DeNelle.Core.HudModel.RaidDoorReadiness.CurrentBlocker(out string why);
+
+            string signal;
+            string beatId;
+            switch (blocker)
+            {
+                case DeNelle.Core.HudModel.RaidDoorReadiness.RaidBlocker.NoBarracks:
+                    signal = TutorialSignals.RaidHelperBarracks;
+                    beatId = TutorialFlow.RaidHelperBarracksBeatId;
+                    break;
+                case DeNelle.Core.HudModel.RaidDoorReadiness.RaidBlocker.ArmyShort:
+                    signal = TutorialSignals.RaidHelperArmy;
+                    beatId = TutorialFlow.RaidHelperArmyBeatId;
+                    break;
+                case DeNelle.Core.HudModel.RaidDoorReadiness.RaidBlocker.Ready:
+                    signal = TutorialSignals.RaidDoorReady;
+                    beatId = TutorialFlow.RaidDoorBeatId;
+                    break;
+                default:
+                    // Unpublished (say NOTHING - a rail we cannot read cannot be diagnosed),
+                    // Attempted (the chain is finished forever) and NoHeartfire (a clock, not an
+                    // action - a coach mark asking the player to wait is noise) all raise nothing.
+                    FlowTrace.Throttle("RaidDoor", "chain-idle-" + blocker, 30f,
+                        "raid helper chain IDLE (" + blocker + ") - " + why);
+                    return;
+            }
+
+            if (TutorialFlow.IsContextualSeen(beatId))
+            {
+                FlowTrace.Throttle("RaidDoor", "chain-rung-seen-" + beatId, 60f,
+                    "raid helper chain: the current rung is '" + beatId + "' (" + blocker +
+                    ") and it is already latched on this save - not raising '" + signal +
+                    "'. The always-on Journey badge is the remaining affordance. " + why);
+                return;
+            }
+
+            _nextRaidDoorRaiseAt = Time.unscaledTime + RaidDoorReraiseSeconds;
+            FlowTrace.Step("RaidDoor", "raid helper chain: raising '" + signal + "' for beat '" +
+                beatId + "' in hub '" + scene + "' (" + blocker + ") - " + why +
+                " (re-raises every " + RaidDoorReraiseSeconds.ToString("0") +
+                "s until the beat latches).");
+            TutorialSignals.Raise(signal);
+        }
+
+        /// <summary>
+        /// WO-1802 / WO-1804 - THE CROSS-LANE ENTRY POINT. The "Enemy Battle Plans" drop raises
+        /// <see cref="TutorialSignals.BattlePlansRevealed"/> when its reveal CTA hands the player
+        /// into this chain; all that does is bring the next raise forward to the very next tick.
+        ///
+        /// <para>⛔ IT MUST NOT SHORT-CIRCUIT TO A PARTICULAR BEAT. Which rung is correct depends
+        /// on the live diagnosis, and WO-1804 fires after wave 2 - a point at which the player may
+        /// have no Barracks, a short army, or a fully open door. A handoff that named a beat would
+        /// be a SECOND opinion about the blocker and would eventually contradict the badge sitting
+        /// next to it. So this only clears the 30 s cooldown and lets TickRaidDoorReady decide, as
+        /// it does for every other entry.</para>
+        ///
+        /// <para>"Whichever comes first, once" needs no code: both entry points converge on the
+        /// one poll and the per-save tutorial_ctx latch dedupes.</para></summary>
+        private void OnBusSignal(string signalId)
+        {
+            // THE WHOLE FAMILY, not just the battle kind. WO-1804 raises
+            // "plans.revealed:battle" or "plans.revealed:bastion" (BattlePlansPickup.SignalFor);
+            // both are the same hand-off as far as this chain is concerned, and matching the PREFIX
+            // means a third plans kind needs no edit here. That is also why the prefix is a named
+            // const rather than a literal - the producer and this consumer share one spelling.
+            if (string.IsNullOrEmpty(signalId) ||
+                !signalId.StartsWith(TutorialSignals.PlansRevealedPrefix,
+                                     System.StringComparison.OrdinalIgnoreCase)) return;
+            _nextRaidDoorRaiseAt = 0f;
+            FlowTrace.Step("RaidDoor", "'" + signalId + "' received (WO-1804 hand-off) - the raid " +
+                "helper chain's re-raise cooldown is cleared, so its CURRENT rung raises on the next " +
+                "1 Hz tick. The rung is still chosen by the live diagnosis, never by the hand-off.");
         }
 
         // -- WO-1389: raid.first_completed - the post-first-raid beat's trigger -------

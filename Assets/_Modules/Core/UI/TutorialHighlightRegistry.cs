@@ -148,6 +148,20 @@ namespace DeNelle.Core.UI
             "manage.troop_cta_train",           // ManageScreenPanel.BuildTroopCard TRAIN 1 <NAME> face
             "manage.troop_cta_upgrade",         // ManageScreenPanel.BuildTroopCard UPGRADE TO L<n> face
             "manage.open_queue",                // ManageScreenPanel.AddTroopTrainingNowBand OPEN QUEUE face
+            // WO-1802 - the two hops of the RAID DOOR route (owner 2026-09-16: "make the raid
+            // door obvious after founding"). The dock JOURNEY face -> the Raids card on the
+            // Journey deck. Exactly the WO-1340 hud.hero_button -> deck.card.skills shape, and
+            // for the same reason: the route is FIXED (the deck is the only public door to the
+            // raid grid since WO-1421 took the bar's Map face away), so a spotlight can walk it.
+            //
+            // ⚠ WHY THESE ARE THE FIRST JOURNEY/RAIDS IDS TO EXIST. ctx_raid_first and
+            // ctx_heartfire both had to carry their route IN WORDS ONLY and said so in their
+            // notes ("there is no Journey/Raids id in TutorialHighlightRegistry.KnownIds and
+            // DataRegression reds an invented one"). That was true and is now fixed rather than
+            // worked around - the words STAY in the copy as well, because the owner is red/green
+            // colourblind and a spotlight is a visual-only affordance.
+            "hud.journey_button",   // HudKitController dock JOURNEY face (calm slot 3 / outside slot 1) -> PanelId.JourneyDeck
+            "deck.card.raids",      // PlayerDeckWorkspace "DeckCard_Raids" -> RaidEntryGate.RequestOpen; resolved lazily below
         };
 
         // FTUE-04: the founding_echo tutorial step spotlights the Pets button, but that
@@ -181,6 +195,27 @@ namespace DeNelle.Core.UI
             RegisterResolver("deck.card.skills", () =>
             {
                 var go = GameObject.Find("DeckCard_Skills");
+                if (go == null) return default;
+                return go.transform is RectTransform rt ? new HighlightTarget(rt) : default;
+            });
+
+            // WO-1802 — the RAIDS card on the Journey deck. A LAZY resolver for the identical
+            // reason deck.card.skills is one: PlayerDeckWorkspace builds its cards per
+            // RenderPage, only once the player opens the deck, so there is no build-time rect to
+            // Register and an eager hook would be dead for most of a session.
+            //
+            // ⚠ RESOLVES THE CARD'S OWN RECT, NOT A LABEL INSIDE IT — the WO-1341 rule the
+            // skills resolver above records, and here it matters twice over: the Raids card
+            // draws TWO different captions depending on lock state (the live purpose line, or
+            // the remedy line under a "[ LOCKED ]" badge) plus, from this ticket, a
+            // "[ RAID READY ]" badge. The card rect is the one unambiguous geometry and is also
+            // the real touch target.
+            //
+            // Degrades to nothing if the deck is closed, which is correct: the spotlight's first
+            // hop is the dock face, and this hop only fires on panel.opened:JourneyDeck.
+            RegisterResolver("deck.card.raids", () =>
+            {
+                var go = GameObject.Find("DeckCard_Raids");
                 if (go == null) return default;
                 return go.transform is RectTransform rt ? new HighlightTarget(rt) : default;
             });

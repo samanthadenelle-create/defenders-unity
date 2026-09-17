@@ -71,14 +71,37 @@ namespace DeNelle.Editor.Regression
                 !slotPainter.Contains("HeartfireFlameSpentGray"))
                 failures.Add("[states-differ-in-greyscale] slot Images do not consume the pinned treatment constants");
 
-            // RED: delete ` + SpendTag` from HeartfireCharges.PlateLabel.
+            // =============================================================
+            // WO-1802 (2026-09-16) - RE-POINTED, AND THE DUPLICATION IS THE REAL FINDING.
+            // =============================================================
+            // The owner's 09-16 ruling moved the plate row to lead with the verb
+            // ("Raids 3/3 (Heartfire)"). Re-pointing it turned up something worth writing down:
+            // THESE THREE LINES WERE A SECOND, INDEPENDENT BYTE-EXACT COPY of the assertion
+            // HeartfireRegression PIN G already owns (PlateCopyCases, G1/G2). Two oracles pinning
+            // the same copy means every future wording ruling reds a suite whose name gives no
+            // hint it is about copy - which is the CLAUDE.md sec.2/5/16 duplicated-state failure
+            // wearing a regression's clothes. It is left in place rather than deleted (a
+            // second opinion on shipped copy is cheap and this suite runs on a different entry
+            // point), but it now asserts the SHAPE via the named consts instead of re-typing the
+            // sentence, so the next wording ruling only has to move ONE byte-exact pin: PIN G.
+            //
+            // Also corrected: the old comment claimed the mutation was to "delete ` + SpendTag`
+            // from HeartfireCharges.PlateLabel". That concatenation had ALREADY ceased to exist
+            // when the row moved to the localized HeartHudText template - the comment described an
+            // implementation that was gone, and SpendTag itself is now retired.
+            // RED: change "hud.heart.heartfire.plate" in Assets/Resources/Data/Canonical/en.json.
             string charged = HeartfireCharges.PlateLabel(3, 3);
             string spent = HeartfireCharges.PlateCombined(
                 HeartfireCharges.PlateLabel(0, 3),
                 HeartfireCharges.PlateRekindle(0, 3, 3d * 3600d + 12d * 60d));
-            if (!string.Equals(charged, "Heartfire 3/3 (raids)", StringComparison.Ordinal) ||
-                !string.Equals(spent, "Heartfire 0/3 (raids) - next in 3h 12m", StringComparison.Ordinal))
-                failures.Add("[plate-copy-unchanged] WO-1415's byte-exact Heartfire plate words drifted");
+            if (!charged.StartsWith(HeartfireCharges.PlateLeadWord, StringComparison.Ordinal) ||
+                charged.IndexOf(HeartfireCharges.PlateNameTag, StringComparison.Ordinal) < 0 ||
+                !spent.StartsWith(HeartfireCharges.PlateLeadWord, StringComparison.Ordinal) ||
+                spent.IndexOf("next in", StringComparison.Ordinal) < 0)
+                failures.Add("[plate-copy-unchanged] the Heartfire plate rows drifted off the " +
+                    "2026-09-16 shape (lead with '" + HeartfireCharges.PlateLeadWord + "', keep '" +
+                    HeartfireCharges.PlateNameTag + "', and name the wait when one is pending). Read: " +
+                    "charged='" + charged + "' spent='" + spent + "'");
 
             if (failures.Count == 0)
             {

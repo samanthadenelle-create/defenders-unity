@@ -392,7 +392,7 @@
   "hud.heart.objective.trainOther": "Train {Troops} troops to unlock Raids",
   "hud.heart.objective.trainNextRaidOne": "Train {Troops} troop for the next raid",
   "hud.heart.objective.trainNextRaidOther": "Train {Troops} troops for the next raid",
-  "hud.heart.heartfire.plate": "Heartfire {Charges}/{MaxCharges} (raids)",
+  "hud.heart.heartfire.plate": "Raids {Charges}/{MaxCharges} (Heartfire)",
   "hud.heart.heartfire.nextMinutes": "next in {Minutes}m",
   "hud.heart.heartfire.nextHoursMinutes": "next in {Hours}h {Minutes}m",
   "hud.heart.heartfire.combined": "{Plate} - {Rekindle}",

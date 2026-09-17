@@ -1626,7 +1626,7 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888474672496640
   - m_Id: 40992049398853637
-    m_Localized: Heartfire {Charges}/{MaxCharges} (raids)
+    m_Localized: Raids {Charges}/{MaxCharges} (Heartfire)
     m_Metadata:
       m_Items:
       - rid: 7338888474672496640
