@@ -1,6 +1,6 @@
 # WO-1704 - continuous raid walls and connected inner gate assemblies
 
-**Status:** FIXED PENDING OWNER TEST BUILD - implemented + measured RED->GREEN (Codex 2026-09-13); lead re-ran RAID_WALL_CONTINUITY_OK on the current tree 2026-09-14 04:08 via the new tracked runner tools/regression/raid_suites_gate.ps1 + REGRESSION_OK 04:17; PO felt-verifies and closes
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:18:58, build 2026.09.17.373943). PRIOR STATUS: FIXED PENDING OWNER TEST BUILD - implemented + measured RED->GREEN (Codex 2026-09-13); lead re-ran RAID_WALL_CONTINUITY_OK on the current tree 2026-09-14 04:08 via the new tracked runner tools/regression/raid_suites_gate.ps1 + REGRESSION_OK 04:17; PO felt-verifies and closes
 **Minted:** 2026-09-10, direct owner phone playtest; main-line banner 1704 -> 1705.
 **Silo:** Raid geometry; separate from WO-1703 floor/material work.
 

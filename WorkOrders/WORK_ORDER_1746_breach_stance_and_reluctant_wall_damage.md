@@ -1,6 +1,6 @@
 # WORK ORDER 1746 — Breach is a persistent STANCE; ordinary troops hit walls at 10%
 
-**Status:** FIXED — gated by the lead 2026-09-15 (`COMPILE_GATE_OK` on fresh `Builds/cg1746b`, `REGRESSION_OK 534/534 suites` on fresh `Builds/reg1746`, brace bad=0 of 5, NUL 0); awaiting the owner's felt test. *(Lane's own line, kept for the record: IMPLEMENTED, NOT YET GATED — edit-only lane; no Unity, no gate, no bake, no git run here.)*
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:01, build 2026.09.17.373943). PRIOR STATUS: FIXED — gated by the lead 2026-09-15 (`COMPILE_GATE_OK` on fresh `Builds/cg1746b`, `REGRESSION_OK 534/534 suites` on fresh `Builds/reg1746`, brace bad=0 of 5, NUL 0); awaiting the owner's felt test. *(Lane's own line, kept for the record: IMPLEMENTED, NOT YET GATED — edit-only lane; no Unity, no gate, no bake, no git run here.)*
 
 > ⚠ **SUPERSEDED IN PART 2026-09-15 (owner ruling, later the same day): the 10% reluctant wall-damage fallback is RETIRED** — *"the troops 100% ignore walls, unless explicitly told breach"*; siege (catapult) still auto-attacks walls. Implemented by `WorkOrders/WORK_ORDER_1752_troops_never_attack_walls_without_breach_and_defend_the_hero.md`. The Breach stance itself (persistent, auto-chaining, only AGGRO breaks it) is unchanged.
 *(Board form: the exact `**Status:** <label>` shape with the colon OUTSIDE the bold. WO-1738 was

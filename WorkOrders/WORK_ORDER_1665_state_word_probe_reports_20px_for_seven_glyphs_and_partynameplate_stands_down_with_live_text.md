@@ -1,6 +1,6 @@
 # WORK ORDER 1665 — The state-word probe reports 20px for seven glyphs, and PartyNameplate stands down carrying live text
 
-**Status:** FIXED - diagnostic instrumentation delivered; awaiting test-build probeRB/guardRB readback (owner 2026-09-10 status ruling). Part A cause is not yet proven or claimed corrected. See docs/READY_CLEARANCE_2026-09-10.md. PRIOR STATUS: READY TO IMPLEMENT — INSTRUMENTED 2026-09-10 (PROBE-READBACK lane), awaiting a device log
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:06, build 2026.09.17.373943). PRIOR STATUS: FIXED - diagnostic instrumentation delivered; awaiting test-build probeRB/guardRB readback (owner 2026-09-10 status ruling). Part A cause is not yet proven or claimed corrected. See docs/READY_CLEARANCE_2026-09-10.md. PRIOR STATUS: READY TO IMPLEMENT — INSTRUMENTED 2026-09-10 (PROBE-READBACK lane), awaiting a device log
 **Silo:** UI instrumentation truthfulness (`ManageWorkspacePanel` probe + `ElarionUiKitObsidian` fit guard). **No layout change is being asked for — both surfaces render CORRECTLY today.**
 **Raised by:** DEVICE-FRAMES-4 lane, 2026-09-10, from a live Seeker capture.
 **Number:** pre-assigned by the coordinator. `CLI_LANES_WO_NUMBERS.md` deliberately NOT edited by this lane.

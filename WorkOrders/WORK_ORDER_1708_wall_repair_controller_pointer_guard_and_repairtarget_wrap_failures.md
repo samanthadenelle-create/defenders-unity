@@ -1,6 +1,6 @@
 # WORK ORDER 1708 - WallRepairController: no pointer guard, walls never wrap, Repair-All overprints PAUSE
 
-**Status:** FIXED - implemented + gated 2026-09-14 (COMPILE_GATE_OK 04:40, REGRESSION_OK 523/523 04:45 with [repair-tap-guard]); criteria 1-2 instrumented (grep a fresh device log for tap-over-ui / tap-not-repairable); wrap failures are decor without WallSegment on an all-layer mask - owner ruling needed on whether battlements/jambs should be repairable; PO felt-verifies and closes
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:00, build 2026.09.17.373943). PRIOR STATUS: FIXED - implemented + gated 2026-09-14 (COMPILE_GATE_OK 04:40, REGRESSION_OK 523/523 04:45 with [repair-tap-guard]); criteria 1-2 instrumented (grep a fresh device log for tap-over-ui / tap-not-repairable); wrap failures are decor without WallSegment on an all-layer mask - owner ruling needed on whether battlements/jambs should be repairable; PO felt-verifies and closes
 **Minted:** 2026-09-14 by the CLI lead from F8 triage
 **Source of truth:** `docs/F8_TRIAGE_2026-09-14.md` section 2, findings 1 (`:55-61`), 2-3 (`:62-72`) and
 4 (`:73-74`). Every code line below was re-opened at source by this lane.

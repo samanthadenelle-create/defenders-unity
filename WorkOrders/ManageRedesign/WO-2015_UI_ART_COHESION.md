@@ -1,6 +1,6 @@
 # WO-2015 — Standardize Manage Art and Icon Contracts
 
-**Status:** FIXED - awaiting owner test-build art/cohesion proof (2026-09-10 status ruling). Existing portraits and current Manage frames are built; this status does not grant visual approval. See docs/READY_CLEARANCE_2026-09-10.md. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:08, build 2026.09.17.373943). PRIOR STATUS: FIXED - awaiting owner test-build art/cohesion proof (2026-09-10 status ruling). Existing portraits and current Manage frames are built; this status does not grant visual approval. See docs/READY_CLEARANCE_2026-09-10.md. PRIOR STATUS: READY TO IMPLEMENT
 
 **Priority:** P1  
 **Depends on:** new layout geometry stable

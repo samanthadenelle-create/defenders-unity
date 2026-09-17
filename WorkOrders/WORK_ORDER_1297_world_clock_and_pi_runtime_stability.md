@@ -1,6 +1,6 @@
 # WORK ORDER 1297 — World Clock and Pi Runtime Stability
 
-**Status:** FIXED — implemented by d2e0eb330 `fix(clock): find and instrument the 0.04 hit-stop leak` + 0a83928a1 `fix(pi): guard every localStorage call and add an escape from the landscape gate` (the Pi-orientation half landed with WO-1312, e6acd2935). Awaiting the owner's felt-verification (PO closes, CLAUDE.md §13). *(Board status audit 2026-09-02; body unchanged.)* *(Prior line:)* **Status:** IN PROGRESS — 2026-09-01
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:16, build 2026.09.17.373943). PRIOR STATUS: FIXED — implemented by d2e0eb330 `fix(clock): find and instrument the 0.04 hit-stop leak` + 0a83928a1 `fix(pi): guard every localStorage call and add an escape from the landscape gate` (the Pi-orientation half landed with WO-1312, e6acd2935). Awaiting the owner's felt-verification (PO closes, CLAUDE.md §13). *(Board status audit 2026-09-02; body unchanged.)* *(Prior line:)* **Status:** IN PROGRESS — 2026-09-01
 
 ## Player reports
 

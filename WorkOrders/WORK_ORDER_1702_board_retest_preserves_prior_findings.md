@@ -1,6 +1,6 @@
 # WO-1702 - a redelivered fix must await a new test without erasing the old finding
 
-**Status:** FIXED - root roundtrip tests passed 2026-09-10; awaiting owner board retest. Prior findings remain intact and actionable when renewed. See RESULT. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:17, build 2026.09.17.373943). PRIOR STATUS: FIXED - root roundtrip tests passed 2026-09-10; awaiting owner board retest. Prior findings remain intact and actionable when renewed. See RESULT. PRIOR STATUS: READY TO IMPLEMENT
 **Minted:** 2026-09-10, root CLI during owner-authorized READY clearance; banner 1702 -> 1704 includes WO-1703.
 
 ## Captured problem

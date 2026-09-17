@@ -1,6 +1,6 @@
 # WO-1612 - Live tester defect closure wave
 
-**Status:** FIXED — implemented and regression-gated for owner verification in the next Windows/APK build
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:13, build 2026.09.17.373943). PRIOR STATUS: FIXED — implemented and regression-gated for owner verification in the next Windows/APK build
 
 ## Owner captures (2026-09-09)
 

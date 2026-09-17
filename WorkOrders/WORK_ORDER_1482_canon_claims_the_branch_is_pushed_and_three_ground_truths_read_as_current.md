@@ -1,6 +1,6 @@
 # WO-1482: canon says the branch is pushed - 103 commits are not - and three CANON_GROUND_TRUTH files read as current
 
-**Status:** FIXED 2026-09-07 - every 'pushed' claim in the load-bearing docs replaced by the rev-list pointer; the live anchor is defined by its BANNER (exactly one unbannered root CANON_GROUND_TRUTH), 19 superseded anchors moved to docs/_archive/root/; board_build.py now prints ANCHOR_OK/ANCHOR_FAIL and fails the check on != 1 live anchor (the s5 guard); HOME.html regenerated. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:05, build 2026.09.17.373943). PRIOR STATUS: FIXED 2026-09-07 - every 'pushed' claim in the load-bearing docs replaced by the rev-list pointer; the live anchor is defined by its BANNER (exactly one unbannered root CANON_GROUND_TRUTH), 19 superseded anchors moved to docs/_archive/root/; board_build.py now prints ANCHOR_OK/ANCHOR_FAIL and fails the check on != 1 live anchor (the s5 guard); HOME.html regenerated. PRIOR STATUS: READY TO IMPLEMENT
 **Silo:** docs/canon. Pairs with WO-1481 (same class, different section).
 **Source:** read-only audit fleet 2026-09-06 (CLI seat), minted from the banner
 (`CLI_LANES_WO_NUMBERS.md`, main line 1482 -> 1483 in the same edit).

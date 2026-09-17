@@ -1,6 +1,6 @@
 # WORK ORDER 1734 — Restore the camera occluder FADE, and give the hero the troops' unit-over-wall rule
 
-**Status:** FIXED - both fixes on disk; awaiting the lead's gate and the owner's felt-test
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:21, build 2026.09.17.373943). PRIOR STATUS: FIXED - both fixes on disk; awaiting the lead's gate and the owner's felt-test
 **Date:** 2026-09-15
 **Lane:** Hero feel (camera + targeting) — file-disjoint from the raid-geometry lanes
 **Silo:** `Assets/_Modules/Village/Hero/` + one regression file

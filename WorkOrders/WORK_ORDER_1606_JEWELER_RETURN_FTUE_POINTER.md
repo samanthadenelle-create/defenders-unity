@@ -1,6 +1,6 @@
 # WO-1606 - Jeweler return FTUE pointer and reachable polish action
 
-**Status:** FIXED - checked in for owner verification on the next build: Jeweler return/polish, serialized enemy cache loads, text-only enemy cues, Android large-screen/16KB packaging, and the release-player build switch
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:13, build 2026.09.17.373943). PRIOR STATUS: FIXED - checked in for owner verification on the next build: Jeweler return/polish, serialized enemy cache loads, text-only enemy cues, Android large-screen/16KB packaging, and the release-player build switch
 
 ## Owner ruling (2026-09-08)
 

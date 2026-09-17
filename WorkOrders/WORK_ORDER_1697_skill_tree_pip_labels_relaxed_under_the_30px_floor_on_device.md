@@ -1,6 +1,6 @@
 # WORK ORDER 1697 - Skill-tree pip labels relax 30 -> 26 on the Seeker (render at 28 px, under the owner's floor)
 
-**Status:** FIXED - root compile/regression and 12-frame capture passed; awaiting owner test-build pip/log proof. See RESULT.
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:16, build 2026.09.17.373943). PRIOR STATUS: FIXED - root compile/regression and 12-frame capture passed; awaiting owner test-build pip/log proof. See RESULT.
 **Minted:** 2026-09-10 15:35 by the CLI lead from the fit-guard allowlist oracle (main-line banner bumped 1697 -> 1698 in the same edit). NOT dispatched: the owner called a wrap-down at 15:30.
 **Silo:** UI fit guard (FIT-GUARD family: WO-1495 allowlist shape, WO-1652 instrument, WO-1690 bands in px).
 **Evidence (captured, not inferred):** `FitGuardRelaxAllowlistRegression` CASE D on `the session scratchpad (2026-09-10_1520_logcat.txt; moved out of Builds/device-frames so the allowlist oracle scans only leashed logs)` (device 2026-09-10 19:39:21Z, build 363866, owner session): eight NEW relaxations not on the allowlist, all of the shape

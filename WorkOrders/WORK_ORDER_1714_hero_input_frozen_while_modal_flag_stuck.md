@@ -1,6 +1,6 @@
 # WORK ORDER 1714 - HeroLocomotion input frozen for 18+ seconds while the HUD context reads modal=True
 
-**Status:** FIXED - DialogueGateState seam (WO-795/combat/builder truces release immediately) + a 5s invisible-hold watchdog backstop + BreakCaptureHarness suppression whitelist bounded at 30s; COMPILE_GATE_OK 09:56, REGRESSION_OK 525/525 10:01 including new [dialogue-input-gate] 6/6; PO felt-verifies and closes
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:01, build 2026.09.17.373943). PRIOR STATUS: FIXED - DialogueGateState seam (WO-795/combat/builder truces release immediately) + a 5s invisible-hold watchdog backstop + BreakCaptureHarness suppression whitelist bounded at 30s; COMPILE_GATE_OK 09:56, REGRESSION_OK 525/525 10:01 including new [dialogue-input-gate] 6/6; PO felt-verifies and closes
 (PROVEN combat softlock: 35.5s frozen mid-wave, no timeout, F8 harness structurally blind to it.
 Implementation lane 2026-09-14 shipped BOTH fix shapes — a Core truce seam
 `DeNelle.Core.Dialogue.DialogueGateState` that releases the input gate the moment the HUD reports a

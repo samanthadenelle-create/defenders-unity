@@ -1,6 +1,6 @@
 # WO-1817 — watchtower height fit: the HOST is fitted, the CLAD is what renders
 
-**Status:** IMPLEMENTED
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T13:50:54) - "owner: "close, as tested" (2026-09-17 raid-art lane: watchtower fit, spire, siege clad, corner posts)". PRIOR STATUS: FIXED - reached the owner and was felt-tested 2026-09-17; PRIOR STATUS: IMPLEMENTED (headless gates green, awaiting PO close)
 **Date opened:** 2026-09-16
 **Lane:** raid art / world dressing — `Assets/Editor/WallTools/*` + `Assets/Editor/Regression/RaidPostOrientationRegression.cs`
 **Parent:** WO-1807 "NOT PROVEN" #4 (and #3, the `GroundShot` framing limitation)

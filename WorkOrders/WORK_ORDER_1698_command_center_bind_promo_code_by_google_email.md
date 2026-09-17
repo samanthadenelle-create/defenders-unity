@@ -1,6 +1,6 @@
 # WORK ORDER 1698 - Command Center: look a Google-account player up by email and bind a promo code to them
 
-**Status:** FIXED - implementation and root Node tests passed 2026-09-10; awaiting migration 0027, deployment and live Google sign-in -> bind -> redeem proof under the owner's test-build status rule. See RESULT. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:07, build 2026.09.17.373943). PRIOR STATUS: FIXED - implementation and root Node tests passed 2026-09-10; awaiting migration 0027, deployment and live Google sign-in -> bind -> redeem proof under the owner's test-build status rule. See RESULT. PRIOR STATUS: READY TO IMPLEMENT
 **Minted:** 2026-09-10 16:30 by the CLI lead from the owner's request ("add a spot in the command center to use a google email address to look up automatically and add to code"); main-line banner bumped 1698 -> 1699 in the same edit. NOT dispatched (owner wrap-down 15:30).
 **Silo:** Backend (api/auth + api/admin + one additive migration) + Command Center page. No gameplay, no .cs, no scene.
 **Owner intent:** a Play (Google-signed-in, no wallet) tester should be able to receive a bound promo code without the owner hunting for their `play-...` id.

@@ -1,6 +1,6 @@
 # WO-1761 — the raid victory screen still recruits a companion who does nothing
 
-**Status:** FIXED - gated 2026-09-15 22:00 (COMPILE_GATE_OK, REGRESSION_OK 547/547, SINGLEHERO_VICTORY_JOIN_OK); awaiting the owner felt test on the next APK
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:18:59, build 2026.09.17.373943). PRIOR STATUS: FIXED - gated 2026-09-15 22:00 (COMPILE_GATE_OK, REGRESSION_OK 547/547, SINGLEHERO_VICTORY_JOIN_OK); awaiting the owner felt test on the next APK
 **Silo:** Raid / end-state presentation
 
 ---

@@ -1,6 +1,6 @@
 # WO-1621 - Title screen: the PLAY INTRO caption ellipsises to "PLAY INT..." on the Seeker
 
-**Status:** FIXED 2026-09-10 by evidence, ZERO code changed - the caption FITS in landscape on the
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:17, build 2026.09.17.373943). PRIOR STATUS: FIXED 2026-09-10 by evidence, ZERO code changed - the caption FITS in landscape on the
 Seeker. `Builds/device-frames/2026-09-10_0558_raid_title_363529.png` decodes **2670x1200 LANDSCAPE**
 (build `2026.09.10.363529`, `deviceModel=Seeker` in `2026-09-10_raid_logcat_preraid.txt` 05:57:03)
 and its three-face action row draws `CONTINUE | START NEW | PLAY INTRO` **in full, no ellipsis**.

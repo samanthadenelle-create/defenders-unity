@@ -1,6 +1,6 @@
 # WORK ORDER 1700 - Nothing is buyable on the Pi rail since WO-1386: a server-verified Pi sign-in must count as the durable identity
 
-**Status:** FIXED - owner felt-test PASS 2026-09-10 23:42Z (testnet purchase completed on the Seeker in Pi Browser)
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:20, build 2026.09.17.373943). PRIOR STATUS: FIXED - owner felt-test PASS 2026-09-10 23:42Z (testnet purchase completed on the Seeker in Pi Browser)
 **Minted:** 2026-09-10 16:55 by the CLI lead from the owner's live Seeker session in Pi Browser ("all say not on sale", "says connect a wallet", "but other screen showed i am connected", "last step to get to mainnet is successful testnet purchase"). Main-line banner bumped 1700 -> 1701 in the same edit.
 **Silo:** Wallet / Pi. One predicate in `Assets/_Modules/Wallet/PurchaseGate.cs`. No scene, no JSON, no backend.
 **Exception named (orchestration cadence):** lead-implemented. The owner is live, near her weekly token limit, and the Pi portal is waiting on one purchase; the change is one channel-gated predicate with the captured data in hand.

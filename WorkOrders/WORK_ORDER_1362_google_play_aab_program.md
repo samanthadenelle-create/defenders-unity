@@ -1,6 +1,6 @@
 # WORK ORDER 1362 - Google Play AAB, owned as a programme
 
-**Status:** FIXED - checked-in Android large-screen and 16KB packaging corrections await owner verification on the next build; physical AAB scanning and programme go/no-go remain owner decisions
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:12, build 2026.09.17.373943). PRIOR STATUS: FIXED - checked-in Android large-screen and 16KB packaging corrections await owner verification on the next build; physical AAB scanning and programme go/no-go remain owner decisions
 **Silo:** Release engineering / publishing
 **Raised by:** owner - *"can you manage the aab?"*
 **Date:** 2026-09-03

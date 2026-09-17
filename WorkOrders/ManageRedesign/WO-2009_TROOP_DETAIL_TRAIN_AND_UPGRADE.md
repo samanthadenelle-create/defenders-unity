@@ -1,6 +1,6 @@
 # WO-2009 — Simplify Troop Detail, Training, and Upgrade Actions
 
-**Status:** FIXED - awaiting owner test-build proof (2026-09-10 status ruling). Current troop detail supports training at max tier and one action command; see docs/READY_CLEARANCE_2026-09-10.md for source/capture evidence. PRIOR STATUS: IN PROGRESS - PARTIAL: the troop progression seam landed with the barracks merge in a6bbc523d (BarracksProgression.cs); the troop-detail train and upgrade acceptance is not verified at HEAD 2026-09-06.
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:01, build 2026.09.17.373943). PRIOR STATUS: FIXED - awaiting owner test-build proof (2026-09-10 status ruling). Current troop detail supports training at max tier and one action command; see docs/READY_CLEARANCE_2026-09-10.md for source/capture evidence. PRIOR STATUS: IN PROGRESS - PARTIAL: the troop progression seam landed with the barracks merge in a6bbc523d (BarracksProgression.cs); the troop-detail train and upgrade acceptance is not verified at HEAD 2026-09-06.
 
 **Priority:** P0  
 **Depends on:** WO-2008, WO-2011

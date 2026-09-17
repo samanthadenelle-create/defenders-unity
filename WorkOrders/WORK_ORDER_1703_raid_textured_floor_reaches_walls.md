@@ -1,6 +1,6 @@
 # WO-1703 - raid ground reaches the walls and carries texture
 
-**Status:** FIXED - implemented 2026-09-13 (Codex); lead re-ran on the current tree 2026-09-14 04:08-04:09 via tools/regression/raid_suites_gate.ps1: RAID_GROUND_COVERAGE_OK, RAID_GROUND_SAVED_OK, RAID_POLISH_SAVED_PROOF_OK on fresh Builds/ logs + REGRESSION_OK 04:17; Assets/Generated/RaidGround now tracked (.gitignore exception); PO felt-verifies and closes
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:18:57, build 2026.09.17.373943). PRIOR STATUS: FIXED - implemented 2026-09-13 (Codex); lead re-ran on the current tree 2026-09-14 04:08-04:09 via tools/regression/raid_suites_gate.ps1: RAID_GROUND_COVERAGE_OK, RAID_GROUND_SAVED_OK, RAID_POLISH_SAVED_PROOF_OK on fresh Builds/ logs + REGRESSION_OK 04:17; Assets/Generated/RaidGround now tracked (.gitignore exception); PO felt-verifies and closes
 **Minted:** 2026-09-10, direct owner request during READY clearance; banner 1702 -> 1704 includes WO-1702.
 
 ## Owner direction

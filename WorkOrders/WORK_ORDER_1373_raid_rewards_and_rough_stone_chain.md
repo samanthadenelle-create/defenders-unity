@@ -1,6 +1,6 @@
 # WORK ORDER 1373 - Raids pay big, and drop rough stone: the Jeweler chain closes the loop
 
-**Status:** FIXED 2026-09-10 - ruled as shipped (code ladder top two, global day cap); landed bbd83b0d6, gated wave1-reg3; owner felt-test closes (was: IMPLEMENTED - awaiting gate, lane RAID-3) PRIOR STATUS: READY TO IMPLEMENT - RULED 2026-09-09 (section 4); every number a tunable. PRIOR: ⛔ **BLOCKED ON ONE OWNER RULING** (§4, the exclusivity reversal)
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:18:56, build 2026.09.17.373943). PRIOR STATUS: FIXED 2026-09-10 - ruled as shipped (code ladder top two, global day cap); landed bbd83b0d6, gated wave1-reg3; owner felt-test closes (was: IMPLEMENTED - awaiting gate, lane RAID-3) PRIOR STATUS: READY TO IMPLEMENT - RULED 2026-09-09 (section 4); every number a tunable. PRIOR: ⛔ **BLOCKED ON ONE OWNER RULING** (§4, the exclusivity reversal)
 
 > ⚠ **SCOPE OF THE 2026-09-09 IMPLEMENTATION, stated so nobody reads this ticket as closed.**
 > Lane RAID-3 landed the §4 ruling only: the raid drop (top two tiers, one per UTC day), the

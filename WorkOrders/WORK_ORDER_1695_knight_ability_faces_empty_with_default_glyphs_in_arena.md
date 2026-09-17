@@ -1,6 +1,6 @@
 # WORK ORDER 1695 — Knight ability faces read EMPTY and wear the default glyph in the arena
 
-**Status:** FIXED — awaiting lead gate (`COMPILE_GATE_OK` + `REGRESSION_OK`) + owner felt-verify
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:20:15, build 2026.09.17.373943). PRIOR STATUS: FIXED — awaiting lead gate (`COMPILE_GATE_OK` + `REGRESSION_OK`) + owner felt-verify
 **Silo:** HUD / combat dock (`Assets/_Modules/HUD/Kit/HudKitController.cs`)
 **Opened:** 2026-09-10 · **Lane:** ARENA-FACES SME
 **Source:** owner Seeker felt-test, build 363866 — verbatim: *"knight icons in bottom are default not

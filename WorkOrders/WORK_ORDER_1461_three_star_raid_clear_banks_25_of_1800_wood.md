@@ -1,6 +1,6 @@
 # WO-1461: raid loot settles to a Raid Cache, never LOST; repeat clears pay 60%
 
-**Status:** FIXED 2026-09-10 - cap 1800 ruled kept; landed 63aaa8a6c, gated wave1-reg3; owner felt-test closes (was: "IMPLEMENTED - awaiting gate (2026-09-09 lane SPOILS)")
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:18:56, build 2026.09.17.373943). PRIOR STATUS: FIXED 2026-09-10 - cap 1800 ruled kept; landed 63aaa8a6c, gated wave1-reg3; owner felt-test closes (was: "IMPLEMENTED - awaiting gate (2026-09-09 lane SPOILS)")
 **Prior status:** READY TO IMPLEMENT - carries owner rulings 2026-09-06 20:33
 **RESULT:** `WorkOrders/WORK_ORDER_1461_three_star_raid_clear_banks_25_of_1800_wood.RESULT.md`
 ⚠ **Two acceptance items are NOT delivered and are named in the RESULT:** the cache CLAIM door

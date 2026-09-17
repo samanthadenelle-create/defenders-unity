@@ -1,6 +1,6 @@
 # WO-2012 — Replace Per-Destination Queue UI With One Global Queue
 
-**Status:** FIXED - awaiting owner test-build proof (2026-09-10 status ruling). Shared three-channel queue is built/captured; the older activity-strip requirement is superseded by the newer no-activity-strip mockup ruling. See docs/READY_CLEARANCE_2026-09-10.md. PRIOR STATUS: IN PROGRESS - PARTIAL: a Manage queue drawer exists (ManageScreenPanel.cs, ManageQueueDrawerRegression.cs); one global queue used from all three tabs with no per-destination drawer left is not verified at HEAD 2026-09-06.
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:19, build 2026.09.17.373943). PRIOR STATUS: FIXED - awaiting owner test-build proof (2026-09-10 status ruling). Shared three-channel queue is built/captured; the older activity-strip requirement is superseded by the newer no-activity-strip mockup ruling. See docs/READY_CLEARANCE_2026-09-10.md. PRIOR STATUS: IN PROGRESS - PARTIAL: a Manage queue drawer exists (ManageScreenPanel.cs, ManageQueueDrawerRegression.cs); one global queue used from all three tabs with no per-destination drawer left is not verified at HEAD 2026-09-06.
 
 **Priority:** P0  
 **Depends on:** WO-2002  

@@ -1,6 +1,6 @@
 # WORK ORDER 1713 - Crystal Mine build-mode ghost preview renders on its side
 
-**Status:** FIXED - owner ruling 2026-09-14 ("zero the two eulers, ship the fix"); mine_crystal and healing_caravan euler zeroed to [0,0,0] in both catalog copies, manual stays true, fallback regenerated; COMPILE_GATE_OK 09:56, REGRESSION_OK 525/525 10:01; PO felt-verifies and closes
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:18, build 2026.09.17.373943). PRIOR STATUS: FIXED - owner ruling 2026-09-14 ("zero the two eulers, ship the fix"); mine_crystal and healing_caravan euler zeroed to [0,0,0] in both catalog copies, manual stays true, fallback regenerated; COMPILE_GATE_OK 09:56, REGRESSION_OK 525/525 10:01; PO felt-verifies and closes
 **Minted:** 2026-09-14 by the CLI lead (Fable seat), from a live device pull while the owner was
 felt-testing the 2026-09-14 tester build with a Seeker attached
 

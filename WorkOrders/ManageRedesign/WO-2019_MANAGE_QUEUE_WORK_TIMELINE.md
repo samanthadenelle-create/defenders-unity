@@ -1,6 +1,6 @@
 # WO-2019 - Manage Queue work timeline
 
-**Status:** FIXED - checked in; awaiting owner device match on the next build
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:19:17, build 2026.09.17.373943). PRIOR STATUS: FIXED - checked in; awaiting owner device match on the next build
 
 **Date:** 2026-09-08
 

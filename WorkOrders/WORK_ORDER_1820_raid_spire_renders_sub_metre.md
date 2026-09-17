@@ -1,6 +1,6 @@
 # WO-1820 — the RaidSpire renders at 0.14 m: the raid's win target is 1/100 scale
 
-**Status:** IMPLEMENTED
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T13:50:54) - "owner: "close, as tested" (2026-09-17 raid-art lane: watchtower fit, spire, siege clad, corner posts)". PRIOR STATUS: FIXED - reached the owner and was felt-tested 2026-09-17; PRIOR STATUS: IMPLEMENTED (headless gates green, awaiting PO close)
 **Date opened:** 2026-09-17
 **Lane:** raid art / world dressing — `Assets/Editor/WallTools/*` + `Assets/Editor/Regression/RaidPostOrientationRegression.cs`
 **Found by:** WO-1817 (open item #1). **PRE-EXISTING** — not caused by that lane.

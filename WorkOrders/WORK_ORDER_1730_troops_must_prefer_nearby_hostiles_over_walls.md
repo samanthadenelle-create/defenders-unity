@@ -1,6 +1,6 @@
 # WORK ORDER 1730 — Raid troops must prefer NEARBY HOSTILES over walls, always; the wall is the last resort
 
-**Status:** FIXED - gated 2026-09-15 22:00 (COMPILE_GATE_OK, REGRESSION_OK 547/547, OBJECTIVE_ROUTE_ARRIVAL_OK); commit ba13b93ef; awaiting a device capture (routeOpen=True) and the owner felt test
+**Status:** CLOSED 2026-09-17 - owner felt-test PASS (validated 2026-09-17T18:18:58, build 2026.09.17.373943). PRIOR STATUS: FIXED - gated 2026-09-15 22:00 (COMPILE_GATE_OK, REGRESSION_OK 547/547, OBJECTIVE_ROUTE_ARRIVAL_OK); commit ba13b93ef; awaiting a device capture (routeOpen=True) and the owner felt test
 **Minted:** 2026-09-14, from a live owner ruling during on-device testing of build `2026.09.15.370139`
 (the WO-1723 Lane A build, in which she confirmed *"i can now walk through destroyed walls"*).
 **Silo:** raid troop AI targeting (`Assets/_Modules/Village/Troops/RaidAssaultAi.cs`,
