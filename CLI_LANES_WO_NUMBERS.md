@@ -189,7 +189,25 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fifty-fifth pass): main line next free = **1841**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fifty-seventh pass): main line next free = **1844**.
+> *(Lead PRE-ASSIGNED **1843** command-center analytics robustness pass, per an audit fork comparing
+> current coverage against professional F2P mobile standards: adds DAU/WAU/MAU + stickiness, payer
+> rate/ARPU/ARPDAU/ARPPU, a computed crash-free/error rate, and app_version/platform/locale slicing
+> on retention/funnel/revenue views. All four are query-only against data already collected - no new
+> client instrumentation needed (confirmed by the audit). LTV/churn deliberately excluded per the
+> audit's own recommendation - not worth building on a pre-revenue cohort yet. Bumped 1843 -> 1844
+> in this SAME edit.)*
+>
+> *(Lead PRE-ASSIGNED **1841** store-opened funnel event - owner wants to know whether a player ever
+> opened the store at all, confirmed missing (grepped, zero hits anywhere in Assets/ or api/). Also
+> **1842** session-duration playtime buckets (1-5m, 5-30m, 30-60m, 60m+) - confirmed at source that
+> EventTracker.cs emits session_start on boot and NO session_end anywhere in the client
+> (api/admin/stats.js:1887-1888 says so explicitly in its own code comment), so duration cannot be
+> computed from existing rows; needs a new client-side session-end/heartbeat signal before any
+> bucketing query can exist. Hero level is NOT a new ticket - already fully built
+> (api/admin/stats.js:1718-1978, median/max/distribution off the save's heroLevel field). Bumped
+> 1841 -> 1843 in this SAME edit.)*
+>
 > *(Lead PRE-ASSIGNED **1840** settings language button just CYCLES instead of letting the player
 > pick - owner: "it only allows you to click the button and it just changes to another language...
 > should probably be either a drop-down or a radio button set... even if it's [its] own pop-up."
