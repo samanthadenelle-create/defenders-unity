@@ -1038,6 +1038,14 @@ namespace DeNelle.Village
             // untextured quad. Nothing in the game had ever reported a broken PARTICLE
             // material — the existing [Flow:RaidArt] UNTEXTURED CENSUS is MESH-renderer only,
             // which is exactly why this class reached the owner's eyes instead of a log line.
+            // WO-1813: the OPAQUE DRAWING BILLBOARD class. A camera-facing particle quad
+            // authored _Surface=0 with no alpha cutout draws its whole square footprint and
+            // throws away the sprite's alpha shape. The audit below cannot see it (it excuses
+            // any slot that HAS an albedo, and this class's albedo is exactly what makes it a
+            // white rectangle), so the repair runs FIRST and the audit then reads back the
+            // repaired state. Full derivation at AbilityVfxKit.RepairOpaqueDrawingParticleSlots.
+            AbilityVfxKit.RepairOpaqueDrawingParticleSlots(go, type.ToString());
+
             AbilityVfxKit.AuditParticleSlotsAfterRepair(go, type.ToString());
 
             // WO-1813: the audit above is gated on `opaque AND albedo-less`, so it is

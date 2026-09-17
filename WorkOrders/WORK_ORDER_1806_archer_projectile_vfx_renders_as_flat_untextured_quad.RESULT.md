@@ -1,7 +1,9 @@
 # WORK ORDER 1806 — RESULT
 
-**Status of the work:** IMPLEMENTED, NOT YET GATED (no Unity gate, no commit — per the lane brief).
-**Date:** 2026-09-16
+**Status of the work:** IMPLEMENTED — **now GATED** (2026-09-17): `COMPILE_GATE_OK` +
+`REGRESSION_OK 564/564 suites` on fresh logs, and the §7 positive control has been RUN and goes RED
+(see the section at the end). Not committed — this lane does not commit.
+**Date:** 2026-09-16, positive control + gate 2026-09-17
 **Lane:** VFX / materials
 
 ---
@@ -101,6 +103,63 @@ is already registered in `DataRegression.RunAll`.
   `Damage_CriticalBeacon`, `Aura_slowdown`, `Aura_acceleration` — today all on inert renderers, so no
   change is expected in town. If the owner sees any harvest/status effect look different after this
   ships, that is the place to look.
+
+---
+
+## ✅ POSITIVE CONTROL — RUN 2026-09-17, and it goes RED
+
+The §7 control had never been executed; a suite that has only ever been seen passing has not been
+shown to be capable of failing. It has now been run exactly as written.
+
+**Setup** (one byte-level edit, reverted afterwards): in
+`Assets/Resources/VFX/Death/Death_Brute.prefab`, the material guid in slot 0 of the `Death_Brute`
+child's `ParticleSystemRenderer` (`!u!199 &199791721206961466`, `m_Enabled: 1`,
+`m_RenderMode: 0` Billboard) was swapped from `Dust` (`60d7a07c8cfa1b04b967eccca19d5139`) to
+`751cde1de5b29b247bba48305ded45f5` — read out of `Assets/Materials/MagentaFix_DefaultLit.mat.meta`
+at source, not copied from this file's own comment. Same byte length, nothing else touched.
+That target was chosen because it is a **live, drawable, slot-0** renderer: the census in this
+RESULT records that all 27 existing slot-0 occurrences under `Resources/VFX` are inert, so hijacking
+a working one is the only way to exercise the rule.
+
+**Run:** `run-unity-method.ps1 -Method DeNelle.Editor.Regression.VfxParticleNullSlotRegression.RunStandalone
+-LogName wo1806-poscontrol.log`. **The red line, verbatim from the fresh log:**
+
+```
+VFX_NULL_SLOT_FAIL - vfx-null-slot FAIL (1 finding(s); 184 prefab(s) checked, 0 skipped-unresolved):
+'Assets/Resources/VFX/Death/Death_Brute.prefab' child 'Death_Brute' draws with the editor fixer's
+OPAQUE Lit placeholder in particle SLOT 0 ('MagentaFix_DefaultLit', shader 'Universal Render
+Pipeline/Lit', renderMode=Billboard). That renders as a flat untextured quad in front of the player
+(WO-1806). Slot 0 has no sibling to borrow from, so the runtime trail re-point cannot cover it. Fix
+the prefab: assign the pack's particle material, or MagentaFix_DefaultParticle_URP, never
+MagentaFix_DefaultLit on a particle renderer.
+```
+
+It names the **prefab**, the **child** and the **slot**, which is what the control was asked to
+demonstrate. `[vfx-null-slot] standalone result: FAIL - …` printed the same, so the standalone
+entry point and the `DataRegression` contract agree.
+
+**Revert:** `git checkout -- Assets/Resources/VFX/Death/Death_Brute.prefab` (the one git command this
+lane was permitted). Verified after: the `MagentaFix` guid occurs **0** times and the `Dust` guid
+**1** time, and `git status --short` on that path is empty — byte-for-byte clean.
+
+**Then re-run green on the reverted tree:** `REGRESSION_OK 564/564 suites -- 564 green, 0 red,
+0 skipped` (`Builds/wo1813-regression.log`), with
+`VFX_NULL_SLOT_OK - … 21 authored opaque drawing particle slot(s) proved REPAIRED by
+AbilityVfxKit.RepairOpaqueDrawingParticleSlots (WO-1813); 184 prefab(s) checked …`.
+So the oracle is proven to go **red on the defect and green without it** — the pass in this RESULT
+is now worth something it was not worth before.
+
+### One thing this control exposed, and it is not cosmetic
+
+The five `PARTICLE SLAB after repair … slot=1 material='MagentaFix_DefaultLit'` lines emitted during
+the WO-1813 capture (**SimpleCast_Cast, Spear_Impact, Lightningspellmaybe_Cast,
+lighteningOnSpellLand_Impact, ArcherTower_Projectile** — all combat) show that WO-1806's remedy was
+never reaching the **PlayKey** path at all: `VFXManager.Hovl.CreateHovlInstance` ran no repair pass
+of any kind. `TryRepairOpaqueLitParticleSlot` is now reached there too, via the new
+`AbilityVfxKit.RepairMagentaFixParticleSlots` sweep (one owner, no fourth copy). Detail in the
+WO-1813 RESULT §3.
+
+---
 
 ## Next step for the lead
 

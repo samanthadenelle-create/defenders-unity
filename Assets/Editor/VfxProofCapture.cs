@@ -94,7 +94,13 @@ namespace DeNelle.Editor
         //  Constants
         // ---------------------------------------------------------------------
 
-        private const string OutDir = "Builds/vfx-proof";
+        private const string DefaultOutDir = "Builds/vfx-proof";
+
+        /// <summary>Where this run writes. A field, not a const, so the WO-1813 white-quad
+        /// hunt (<see cref="RunWhiteQuadHunt"/>) can put its own evidence in its own folder
+        /// without a second copy of the staging/render/verify machinery existing anywhere
+        /// (CLAUDE.md §5/§16: the copy is the bug). Reset by every entry point.</summary>
+        private static string OutDir = DefaultOutDir;
 
         // The Seeker's real surface. Every shot is taken at this size unless a row
         // says otherwise in the index (none do today -- every subject reads at full
@@ -181,6 +187,22 @@ namespace DeNelle.Editor
             public string  SimWhy = "";
             public List<Layer> Layers = new List<Layer>();
             public string  Notes = "";
+
+            /// <summary>WO-1813: pin the camera instead of auto-framing. The owner's evidence
+            /// frame is a fixed third-person seat (~3.5 m back, 60° vfov, 2670x1200), and
+            /// FrameCamera's auto-fit changes distance per subject — which makes a measured
+            /// "the quad is ~455 px / ~1.5 m" comparison impossible across shots. With this
+            /// set, every shot is taken from the SAME seat, so pixel sizes are comparable to
+            /// the owner's Screenshot_20260916-205131.png directly.</summary>
+            /// <summary>WO-1813: stage the prefab exactly as authored, with NO runtime repair
+            /// pass. That is the BEFORE frame — without it there is no way to show that the
+            /// repair changed anything, and "it looks fine now" is not evidence.</summary>
+            public bool    SkipRepair;
+
+            public bool    FixedCamera;
+            public Vector3 CamPos    = new Vector3(0f, 1.40f, -3.50f);
+            public Vector3 CamLookAt = new Vector3(0f, 1.00f, 0f);
+            public float   CamFov    = 60f;
         }
 
         /// <summary>Per-shot verdict rows for INDEX.md.</summary>
@@ -224,6 +246,40 @@ namespace DeNelle.Editor
         [MenuItem("Defenders/VFX/Capture VFX Proof")]
         public static void Run()
         {
+            OutDir = DefaultOutDir;
+            Execute(null, "VFX_PROOF_OK", "VFX_PROOF_FAIL");
+        }
+
+        // =====================================================================
+        //  WO-1813 -- THE WHITE-QUAD HUNT
+        // ---------------------------------------------------------------------
+        // The owner's frame (logs/device/owner-fireball-20260916/
+        // Screenshot_20260916-205131.png) shows three overlapping, razor-sharp,
+        // screen-axis-aligned, fully occluding warm-white rectangles ~1.5 m across on
+        // the hero. A screenshot cannot say WHICH renderer drew them, and the previous
+        // lane closed with three unfalsifiable candidates for exactly that reason.
+        //
+        // This entry point stages each effect that was ALIVE in that window, one per
+        // frame, ALONE, from the SAME catalog the game resolves, from a FIXED camera at
+        // the owner's own seat (3.5 m back, 1.4 m up, 60 deg vfov, 2670x1200) so a quad
+        // measured here is directly comparable in pixels to the quad she photographed.
+        // Every effect is shot TWICE -- once exactly as authored (SkipRepair), once
+        // through the runtime repair -- so the pair is the evidence, not an assertion.
+        //
+        // Judge by the PNGs, then by the markers:
+        //   VFX_WHITEQUAD_OK / VFX_WHITEQUAD_FAIL   (distinct tokens, CLAUDE.md section 8)
+        // Output: Builds/vfx-whitequad/*.png + INDEX.md
+        // =====================================================================
+        [MenuItem("Defenders/VFX/Capture White-Quad Hunt (WO-1813)")]
+        public static void RunWhiteQuadHunt()
+        {
+            OutDir = "Builds/vfx-whitequad";
+            Execute(BuildWhiteQuadShotList(), "VFX_WHITEQUAD_OK", "VFX_WHITEQUAD_FAIL");
+        }
+
+        /// <summary>Shared run body. <paramref name="preplanned"/> null = the standard shot list.</summary>
+        private static void Execute(List<Shot> preplanned, string okMarker, string failMarker)
+        {
             var results = new List<Result>();
             _heldNotes.Clear();
 
@@ -246,7 +302,7 @@ namespace DeNelle.Editor
                 LoadCatalogs();
                 LoadStructureEntries();
 
-                var shots = BuildShotList();
+                var shots = preplanned ?? BuildShotList();
                 Debug.Log("[VfxProof] " + shots.Count + " shot(s) planned.");
 
                 foreach (var shot in shots)
@@ -282,11 +338,90 @@ namespace DeNelle.Editor
             // token between entry points -- that is how a partial pass once read as a
             // full pass). On ANY failure the success marker is withheld entirely.
             if (fail > 0)
-                Debug.LogError("VFX_PROOF_FAIL " + fail + "/" + total + " shots -- see " +
+                Debug.LogError(failMarker + " " + fail + "/" + total + " shots -- see " +
                                Path.GetFullPath(Path.Combine(OutDir, "INDEX.md")));
             else
-                Debug.Log("VFX_PROOF_OK " + pass + "/" + total + " shots -- see " +
+                Debug.Log(okMarker + " " + pass + "/" + total + " shots -- see " +
                           Path.GetFullPath(Path.Combine(OutDir, "INDEX.md")));
+        }
+
+        /// <summary>
+        /// WO-1813: one BEFORE (as authored) and one AFTER (runtime repair) shot for every
+        /// effect that was alive in the owner's 2026-09-16 20:49-20:52 window, plus the
+        /// top-of-inventory keys by play count. All from the same fixed seat.
+        /// Names are the catalog's own: a VFXType where the catalog holds one, a Hovl key
+        /// otherwise -- checked against both catalogs before this list was written, so a
+        /// typo shows up as "no row for", never as a silently missing shot.
+        /// </summary>
+        private static List<Shot> BuildWhiteQuadShotList()
+        {
+            // (label, VFXType name or null, Hovl key or null, why it is in the hunt)
+            var subjects = new (string Name, VFXType Type, string Key, string Why)[]
+            {
+                // ---- At the hero in the capture window (ranked by proximity) ----
+                ("PP_FleshImpacts",       VFXType.None,                   "PP_FleshImpacts",
+                 "20:51:29.429 at the hero's EXACT position (0.20,1.08,-4.15), lifetime 8.30 s -- still alive at 20:51:31"),
+                ("Juice_LevelUp",         VFXType.Juice_LevelUp,          null,
+                 "20:51:30.481 at the hero, lifetime 5.00 s"),
+                ("Death_Brute",           VFXType.Death_Brute,            null,
+                 "20:51:30.478 at the troll's death spot (2.20,0.84,-2.80)"),
+                ("Impact_Physical",       VFXType.Impact_Physical,        null,
+                 "20:51:31.116 at the same death spot"),
+                ("Cast_FireCharge",       VFXType.Cast_FireCharge,        null,
+                 "the fireball wind-up, 11 plays across both windows"),
+                ("Impact_Flame",          VFXType.Impact_Flame,           null,
+                 "the fireball detonation, 16 plays"),
+                // ---- Named in the WO-1813 sweep ----
+                ("SimpleCast_Cast",       VFXType.None,                   "SimpleCast_Cast",       "arcane tower muzzle"),
+                ("Spear_Impact",          VFXType.None,                   "Spear_Impact",          "4 plays (raid)"),
+                ("PP_MuzzleFlash",        VFXType.None,                   "PP_MuzzleFlash",        "4 plays (raid)"),
+                ("ArcherTowerLevel2_Projectile", VFXType.None,            "ArcherTowerLevel2_Projectile", "1 play"),
+                ("PP_PlasmaExplosionEffect", VFXType.None,                "PP_PlasmaExplosionEffect", "aether tower impact"),
+                ("Explosion_Arcane",      VFXType.Impact_ExplosionAether, null,
+                 "22 plays -- the single most-played key in the inventory"),
+                ("Projectile_Arcane",     VFXType.Projectile_ArcaneBolt,  null, "enemy caster orb"),
+                // ---- Remainder of the top-10 by play count ----
+                ("Cast_MuzzleFlash",      VFXType.Cast_MuzzleFlash,       null, "13 plays"),
+                ("Death_Skeleton",        VFXType.Death_Skeleton,         null, "6 plays"),
+                ("Env_DestructionDust",   VFXType.Env_DestructionDust,    null, "5 plays"),
+                ("Impact_Aether",         VFXType.Impact_Aether,          null, "5 plays"),
+                ("Lightningspellmaybe_Cast", VFXType.None,                "Lightningspellmaybe_Cast", "4 plays"),
+                ("lighteningOnSpellLand_Impact", VFXType.None,            "lighteningOnSpellLand_Impact", "4 plays"),
+                ("ArcherTower_Projectile", VFXType.None,                  "ArcherTower_Projectile", "4 plays"),
+                ("Poi_NodeAura",          VFXType.None,                   "Poi_NodeAura",          "4 plays"),
+            };
+
+            var shots = new List<Shot>(subjects.Length * 2);
+            foreach (var s in subjects)
+            {
+                for (int pass = 0; pass < 2; pass++)
+                {
+                    bool before = pass == 0;
+                    var shot = new Shot
+                    {
+                        FileName    = s.Name + (before ? "__BEFORE" : "__AFTER"),
+                        Subject     = s.Name + (before ? " (as authored)" : " (runtime repair applied)"),
+                        Level       = before ? "before" : "after",
+                        SkipRepair  = before,
+                        FixedCamera = true,
+                        // ~1 s after spawn: the owner's frame is 1.6 s into PP_FleshImpacts and
+                        // ~1 s into Juice_LevelUp, so this is the moment she actually saw.
+                        SimTime     = 1.0f,
+                        SimWhy      = "1.0 s -- the offset of the owner's 20:51:31 frame from the spawns at 20:51:29-30",
+                        Notes       = s.Why,
+                    };
+                    shot.Layers.Add(new Layer
+                    {
+                        Type   = s.Type,
+                        Key    = s.Key,
+                        Offset = new Vector3(0f, 1.0f, 0f),   // chest height, where the hero effects sit
+                        Scale  = 1f,
+                        Why    = s.Why,
+                    });
+                    shots.Add(shot);
+                }
+            }
+            return shots;
         }
 
         // ---------------------------------------------------------------------
@@ -778,8 +913,23 @@ namespace DeNelle.Editor
                     // the other direction. The Hovl path is deliberately NOT re-shaded:
                     // VFXManager.Hovl.cs:360 says the Hovl packs ship URP-clean, so touching
                     // them here would diverge from what ships.
-                    if (layer.Type != VFXType.None)
-                        ProofUrpParticleShaders(inst);
+                    if (!shot.SkipRepair)
+                    {
+                        if (layer.Type != VFXType.None)
+                            ProofUrpParticleShaders(inst);
+
+                        // WO-1813: MIRROR THE RUNTIME PER PATH, or a green capture proves
+                        // nothing. VFXManager.Hovl.CreateHovlInstance now runs exactly this
+                        // narrow pair on every PlayKey instance (it runs no legacy remap, and
+                        // that is deliberate — the HS_* graphs ship URP-clean). The VFXType
+                        // path reaches the same helper from inside ProofUrpParticleShaders, so
+                        // calling it again here is idempotent: the repaired clone is already
+                        // transparent and no longer matches the predicate.
+                        AbilityVfxKit.RepairOpaqueDrawingParticleSlots(inst, layer.Label);
+                        AbilityVfxKit.RepairMagentaFixParticleSlots(inst, layer.Label);
+                        AbilityVfxKit.AuditParticleSlotsAfterRepair(inst, layer.Label);
+                        AbilityVfxKit.AuditDrawingBillboardCensus(inst, layer.Label);
+                    }
 
                     result.TrailSlotsSkipped += CollectShaderProblems(inst, layer.Label, shaderProblems);
                     fxRoots.Add(inst);
@@ -825,7 +975,7 @@ namespace DeNelle.Editor
                 cam.backgroundColor = new Color(0.06f, 0.065f, 0.08f, 1f);
                 cam.nearClipPlane = 0.05f;
                 cam.farClipPlane = 500f;
-                cam.fieldOfView = 40f;
+                cam.fieldOfView = shot.FixedCamera ? shot.CamFov : 40f;
                 cam.cullingMask = ~0;
                 // FRAME ON THE SUBJECT + THE EFFECT ONLY. The ground plane is a 12 m
                 // backdrop; letting it into the framing bounds would push the camera far
@@ -833,7 +983,13 @@ namespace DeNelle.Editor
                 // nothing, which is the one outcome worse than no shot.
                 var framingRoots = new List<GameObject>(fxRoots);
                 if (subject != null) framingRoots.Add(subject);
-                FrameCamera(cam, framingRoots, stage.transform.position);
+                if (shot.FixedCamera)
+                {
+                    // WO-1813: the owner's seat, not a fit. See Shot.FixedCamera.
+                    cam.transform.localPosition = shot.CamPos;
+                    cam.transform.LookAt(stage.transform.position + shot.CamLookAt);
+                }
+                else FrameCamera(cam, framingRoots, stage.transform.position);
 
                 rt = new RenderTexture(ShotW, ShotH, 24, RenderTextureFormat.ARGB32) { antiAliasing = 1 };
                 rt.Create();
@@ -881,7 +1037,17 @@ namespace DeNelle.Editor
                     }
 
                     long c = CountChangedPixels(frame, without, roi);
-                    ladderLog.Add(t.ToString("0.###", CultureInfo.InvariantCulture) + "s=" + c + "px");
+                    int aliveNow = 0;
+                    foreach (var go in fxRoots)
+                    {
+                        if (go == null) continue;
+                        foreach (var p in go.GetComponentsInChildren<ParticleSystem>(true))
+                            if (p != null) aliveNow += p.particleCount;
+                    }
+                    // WO-1813: the live particle count separates "emitted but invisible" from
+                    // "never emitted". Without it a NOT DRAWN row is unactionable.
+                    ladderLog.Add(t.ToString("0.###", CultureInfo.InvariantCulture) + "s=" + c +
+                                  "px/" + aliveNow + "particles");
 
                     if (c > bestChanged)
                     {
@@ -1094,6 +1260,31 @@ namespace DeNelle.Editor
         /// </summary>
         private static void SimulateAll(List<GameObject> roots, float t)
         {
+            SimulateAllCounted(roots, t);
+        }
+
+        /// <summary>
+        /// WO-1813: same simulate, but it REPORTS how many particles are actually alive
+        /// afterwards. "NOT DRAWN" has two very different causes — the system emitted and the
+        /// pixels are invisible, or the system never emitted at all — and a verdict that cannot
+        /// tell them apart sends the next reader hunting a rendering bug that is not there
+        /// (CLAUDE.md §12: split data-empty from built-but-invisible BEFORE touching code).
+        /// </summary>
+        private static int SimulateAllCounted(List<GameObject> roots, float t)
+        {
+            int alive = 0;
+            SimulateAllCore(roots, t);
+            foreach (var root in roots)
+            {
+                if (root == null) continue;
+                foreach (var ps in root.GetComponentsInChildren<ParticleSystem>(true))
+                    if (ps != null) alive += ps.particleCount;
+            }
+            return alive;
+        }
+
+        private static void SimulateAllCore(List<GameObject> roots, float t)
+        {
             foreach (var root in roots)
             {
                 if (root == null) continue;
@@ -1110,7 +1301,54 @@ namespace DeNelle.Editor
                     ps.useAutoRandomSeed = false;
                     ps.randomSeed = 20260806;
                     ps.Simulate(t, true, true, true);
+
+                    // WO-1813: a BURST-only system authored playOnAwake:0 can come back from
+                    // Simulate with zero live particles in edit mode, and the harness then
+                    // reports NOT DRAWN for an effect that is perfectly fine in game --
+                    // measured 2026-09-17: PP_FleshImpacts, PP_MuzzleFlash, Cast_MuzzleFlash
+                    // and ArcherTower_Projectile all rendered the bare stage (identical
+                    // fingerprint 7fd9aace) at every rung of the ladder. A harness that cannot
+                    // make the subject appear proves nothing about it -- which is worse than a
+                    // failing shot, because it reads like one.
+                    //
+                    // So: only when the system is still EMPTY, emit its authored burst count
+                    // by hand and re-settle. Nothing is invented -- the count comes from the
+                    // prefab's own emission bursts, and a system that DID simulate is never
+                    // touched, so no existing shot changes.
+                    if (ps.particleCount == 0)
+                        ForceAuthoredBurst(ps, t);
                 }
+            }
+        }
+
+        /// <summary>
+        /// WO-1813: emit each child system's own authored burst count and re-settle to
+        /// <paramref name="t"/>. Only called when Simulate left the system empty.
+        /// </summary>
+        private static void ForceAuthoredBurst(ParticleSystem root, float t)
+        {
+            foreach (var ps in root.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                if (ps == null || ps.particleCount > 0) continue;
+
+                int count = 0;
+                var em = ps.emission;
+                if (em.enabled)
+                {
+                    int n = em.burstCount;
+                    for (int i = 0; i < n; i++)
+                        count += Mathf.Max(0, (int)em.GetBurst(i).count.constantMax);
+                    // A rate-only system with no bursts: one second's worth is a fair sample.
+                    if (count == 0)
+                        count = Mathf.Max(0, (int)em.rateOverTime.constantMax);
+                }
+                if (count <= 0) continue;
+
+                ps.Emit(Mathf.Min(count, 200));   // bounded: a proof frame, not a stress test
+                // Re-settle so size/colour-over-lifetime have advanced to the same instant
+                // the rest of the stage is showing. Fixed step, no restart -- restarting here
+                // would throw the particles we just emitted away.
+                ps.Simulate(Mathf.Min(t, ps.main.startLifetime.constantMax * 0.5f), false, false, true);
             }
         }
 

@@ -575,9 +575,38 @@ namespace DeNelle.Village
             var go = Instantiate(prefab, _poolRoot);
             go.name = $"[Hovl_{key}]";
             NormalizeVendorContainerRenderers(go, key);
-            // NOTE: no URP-proof pass here — Hovl packs ship URP-clean HS_* shader graphs
-            // (Docs/VFX/HovlStudio_Inventory.md §2.2 GREEN, no magenta). The VFXType path's
-            // ProofUrpParticleShaders is only for the legacy-built Lana/Spells prefabs.
+            // NOTE: no LEGACY-SHADER remap pass here — Hovl packs ship URP-clean HS_* shader
+            // graphs (Docs/VFX/HovlStudio_Inventory.md §2.2 GREEN, no magenta). The VFXType
+            // path's ProofUrpParticleShaders is only for the legacy-built Lana/Spells prefabs.
+            //
+            // ⚠ WO-1813 — BUT "no pass at all" was the hole the owner fell through. This
+            // catalog is NOT only Hovl: it also carries committed mirrors of the
+            // UnityTechnologies ParticlePack (PP_FleshImpacts -> Assets/Resources/VFX/Impact/
+            // FleshImpacts.prefab, PP_MuzzleFlash, PP_PlasmaExplosionEffect, PP_Goop*). Those
+            // are NOT URP-clean, and because this path ran no pass, NEITHER the repair NOR the
+            // two audits ever touched them — so the defect could not even be LOGGED, let alone
+            // fixed. That is why 'PP_FleshImpacts' drew a solid white rectangle on the hero at
+            // 20:51:31 on 2026-09-16 while every instrument stayed silent.
+            //
+            // What runs here is deliberately the NARROW pair, not ProofUrpParticleShaders: the
+            // opaque-billboard repair (which no-ops on every HS_* material — they are all
+            // authored _Surface 1) plus the two read-only audits. The Hovl shader graphs are
+            // still never re-shaded.
+            Guard.Try("VFXManager", $"RepairOpaqueDrawingParticleSlots('{key}')",
+                () => AbilityVfxKit.RepairOpaqueDrawingParticleSlots(go, key));
+            // And the WO-1806 MagentaFix slab, which this path also never repaired. The
+            // 2026-09-17 capture printed "PARTICLE SLAB after repair ... slot=1
+            // material='MagentaFix_DefaultLit'" for SimpleCast_Cast, Spear_Impact,
+            // Lightningspellmaybe_Cast, lighteningOnSpellLand_Impact and
+            // ArcherTower_Projectile — five COMBAT effects. Same helper the VFXType path
+            // uses; nothing new is invented here.
+            Guard.Try("VFXManager", $"RepairMagentaFixParticleSlots('{key}')",
+                () => AbilityVfxKit.RepairMagentaFixParticleSlots(go, key));
+            Guard.Try("VFXManager", $"AuditParticleSlots('{key}')", () =>
+            {
+                AbilityVfxKit.AuditParticleSlotsAfterRepair(go, key);
+                AbilityVfxKit.AuditDrawingBillboardCensus(go, key);
+            });
             _hovlKeyOf[go] = key;
             go.SetActive(false);
             return go;

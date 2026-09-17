@@ -353,6 +353,195 @@ namespace DeNelle.Village
             return true;
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // ── WO-1813: the OPAQUE DRAWING BILLBOARD (the white-rectangle class) ─
+        // ─────────────────────────────────────────────────────────────────────
+        // PROVEN AT SOURCE, from the owner's own frame
+        // (logs/device/owner-fireball-20260916/Screenshot_20260916-205131.png: three
+        // overlapping, razor-sharp, screen-axis-aligned, fully occluding warm-white
+        // rectangles ~1.5 m across, centred on the hero).
+        //
+        // THE RENDERER, NAMED:
+        //   Assets/Resources/VFX/Impact/FleshImpacts.prefab  (catalog key PP_FleshImpacts,
+        //   logged at 20:51:29.429 at the hero's exact position (0.20, 1.08, -4.15),
+        //   lifetime 8.30 s — still alive when the screenshot was taken at 20:51:31)
+        //   child 'Mist', ParticleSystemRenderer fileID 199462925942737768, SLOT 0,
+        //   renderMode Billboard, ENABLED, material 'GoopMist'
+        //   (Assets/Resources/VFX/_Shared/Materials/GoopMist.mat,
+        //    guid 8197b9eb112c6a1428518197b3ad2dbb):
+        //       shader   Universal Render Pipeline/Lit      (NOT a particle shader)
+        //       _Surface 0, _SrcBlend 1 (One), _DstBlend 0 (Zero), _ZWrite 1,
+        //       RenderType Opaque, _AlphaClip 0
+        //       _BaseMap DustPuffSmallParticleSheet.png — whose RGB is (255,255,255)
+        //       at EVERY sampled texel; the whole sprite lives in the ALPHA channel
+        //       (measured: alpha min 0, max 227, mean 12).
+        //   An OPAQUE material discards that alpha. So the quad draws its full square
+        //   footprint in solid white, lit by the warm key light — exactly the
+        //   (254,230,208) fill measured in the owner's frame.
+        //
+        // WHY NOTHING CAUGHT IT — all four nets miss, structurally:
+        //   * IsLegacyParticleShader: false (the name contains "Universal Render Pipeline").
+        //   * HealHalfUpgradedParticleMaterial: bails at its `particleLike` gate —
+        //     "Universal Render Pipeline/Lit" has neither "Particles" nor "Unlit".
+        //   * TryRepairOpaqueLitParticleSlot: NAME-gated on MagentaFix*; this is 'GoopMist'.
+        //   * AuditParticleSlotsAfterRepair: requires opaque AND albedo-LESS. This material
+        //     HAS an albedo — a white one — so the audit passed it in silence. The one
+        //     property that makes it draw a slab is the property the audit used to excuse it.
+        //   * And the whole PlayKey/Hovl instantiation path ran NO proof pass at all
+        //     (VFXManager.Hovl.CreateHovlInstance), so none of the above was even reached.
+        //
+        // THE RULE, and why it is this narrow: a camera-facing particle quad exists to
+        // show a sprite whose SHAPE is in its alpha. Drawing it opaque cannot express that
+        // shape at any texture, colour or size — it is wrong unconditionally. So:
+        // enabled + renderMode is neither None nor Mesh + _Surface == 0 (opaque).
+        //   * MESH mode is excluded: debris and shards are legitimately opaque, carried by
+        //     vertex colour or a real texture on real geometry (the WO-1806 carve-out).
+        //   * ALPHA-CLIP (_AlphaClip == 1) is excluded, and that carve-out is MEASURED, not
+        //     assumed: the two sibling prefabs in the same family — StoneImpacts/'ImpactDebris'
+        //     (TinyStonesParticle) and WoodImpacts/'WoodSplinters' (WoodSplintersParticle) —
+        //     are ALSO opaque billboards, but both are _AlphaClip 1, so the cutout already
+        //     carves the sprite's shape out of the quad and they render correctly today.
+        //     Without this carve-out the rule would have "repaired" two effects that are fine.
+        // Scan of every prefab reachable from VFXCatalog + HovlVfxCatalog + Assets/Resources/VFX
+        // (264 prefabs, 2026-09-17): 19 slots match — this one, plus the Mirza Beig Ultimate VFX
+        // Fireworks / loop_fire / loop_portalBlue systems, whose own material names say
+        // "-add-" and "-alpha-" while carrying _Surface 0. loop_portalBlue is the catalogued
+        // Portal_Threshold_Aura, so that is a second shipped effect this repairs.
+        //
+        // THE REPAIR IS A REPAIR, NOT A SUBSTITUTION (owner ruling, 2026-09-16: "repair broken
+        // renderers, never substitute a prettier prefab"). It CLONES the authored material —
+        // same shader, same textures, same colours, same keywords — and changes only the blend
+        // state. Nothing is re-tinted and no effect is swapped. It clones rather than mutating
+        // in place because a URP/Lit material may legitimately also sit on a MeshRenderer, where
+        // opaque is correct; the clone is cached per source material so a hot pool cannot leak
+        // one Material per spawn (the ProjectileVFXCatalog._fixedMaterials pattern).
+
+        private static readonly System.Collections.Generic.Dictionary<Material, Material> s_transparentRebuilds
+            = new System.Collections.Generic.Dictionary<Material, Material>();
+
+        /// <summary>
+        /// True when <paramref name="m"/> is authored OPAQUE with no alpha cutout — the state
+        /// that makes a camera-facing particle quad draw its whole square footprint.
+        /// </summary>
+        private static bool IsOpaqueNonCutout(Material m)
+        {
+            if (m == null || m.shader == null) return false;
+            if (!m.HasProperty("_Surface")) return false;
+            if (m.GetFloat("_Surface") >= 0.5f) return false;                       // already transparent
+            if (m.HasProperty("_AlphaClip") && m.GetFloat("_AlphaClip") >= 0.5f)
+                return false;                                                        // cutout carves the shape
+            return true;
+        }
+
+        /// <summary>
+        /// WO-1813: repair every DRAWING particle slot in <paramref name="go"/> whose material is
+        /// authored opaque-without-cutout. Returns the number of slots changed. Safe, idempotent
+        /// and allocation-bounded (one cached clone per source material). Call it on a freshly
+        /// instantiated pooled VFX instance, from BOTH spawn paths.
+        /// </summary>
+        public static int RepairOpaqueDrawingParticleSlots(GameObject go, string label)
+        {
+            if (go == null) return 0;
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            if (renderers == null || renderers.Length == 0) return 0;
+
+            int repaired = 0;
+            for (int ri = 0; ri < renderers.Length; ri++)
+            {
+                var r = renderers[ri];
+                if (r == null || !r.enabled) continue;
+                if (r.renderMode == ParticleSystemRenderMode.None) continue;   // draws nothing
+                if (r.renderMode == ParticleSystemRenderMode.Mesh) continue;   // opaque IS correct there
+
+                var mats = r.sharedMaterials;
+                if (mats == null || mats.Length == 0) continue;
+
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var src = mats[i];
+                    if (src == null) continue;
+                    // The MagentaFix placeholder is a DIFFERENT defect with a different remedy
+                    // (it has no albedo at all, so it must be rebuilt, not merely un-opaqued).
+                    // TryRepairOpaqueLitParticleSlot owns that one; leave it alone here.
+                    if (IsMagentaFixParticlePlaceholder(src)) continue;
+                    if (!IsOpaqueNonCutout(src)) continue;
+
+                    if (s_transparentRebuilds.TryGetValue(src, out var cached) && cached != null)
+                    {
+                        mats[i] = cached;
+                        changed = true;
+                        repaired++;
+                        continue;
+                    }
+
+                    // Clone: shader, every texture, every colour and every keyword preserved.
+                    // Only the blend state moves. Additive when the source's own _DstBlend
+                    // already says One — the same read HealHalfUpgradedParticleMaterial uses,
+                    // so no new judgement about how an effect should look is introduced here.
+                    bool additive = src.HasProperty("_DstBlend") &&
+                                    Mathf.Approximately(src.GetFloat("_DstBlend"), 1f);
+                    var nm = new Material(src) { name = (src.name ?? "Particle") + "_Transparent" };
+                    ConfigureUrpParticleTransparency(nm, additive);
+                    mats[i] = nm;
+                    s_transparentRebuilds[src] = nm;
+                    changed = true;
+                    repaired++;
+
+                    string albedo = nm.HasProperty("_BaseMap") && nm.GetTexture("_BaseMap") != null
+                        ? nm.GetTexture("_BaseMap").name : "NONE";
+                    FlowTrace.Once("VFX", "opaque-billboard:" + (src.name ?? "?"),
+                        "OPAQUE BILLBOARD REPAIRED: prefab='" + (label ?? go.name) + "' child='" +
+                        r.gameObject.name + "' slot=" + i + " material='" + src.name + "' shader='" +
+                        src.shader.name + "' renderMode=" + r.renderMode + " albedo='" + albedo +
+                        "'. It was authored _Surface=0 (opaque, no alpha cutout), so the quad drew its " +
+                        "FULL square footprint and discarded the sprite's alpha shape — the white " +
+                        "rectangle in the owner's 2026-09-16 20:51:31 frame (WO-1813). Re-blended as " +
+                        (additive ? "ADDITIVE" : "ALPHA") + " on a cached clone; shader, textures and " +
+                        "colours are unchanged.");
+                }
+
+                if (changed) r.sharedMaterials = mats;
+            }
+
+            return repaired;
+        }
+
+        /// <summary>
+        /// WO-1813: sweep <paramref name="go"/> and apply <see cref="TryRepairOpaqueLitParticleSlot"/>
+        /// to every slot. The VFXType path reaches that helper from inside
+        /// <c>VFXManager.ProofUrpParticleShaders</c>'s own material loop; the PlayKey/Hovl path has
+        /// no such loop, so this is how it reaches the same one owner instead of growing a copy.
+        ///
+        /// It is NOT theoretical: the 2026-09-17 white-quad capture printed
+        /// <c>PARTICLE SLAB after repair ... slot=1 material='MagentaFix_DefaultLit'</c> for
+        /// SimpleCast_Cast, Spear_Impact, Lightningspellmaybe_Cast, lighteningOnSpellLand_Impact
+        /// and ArcherTower_Projectile — five COMBAT effects, on the path that ran no repair at all.
+        /// </summary>
+        public static int RepairMagentaFixParticleSlots(GameObject go, string label)
+        {
+            if (go == null) return 0;
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            if (renderers == null || renderers.Length == 0) return 0;
+
+            int repaired = 0;
+            for (int ri = 0; ri < renderers.Length; ri++)
+            {
+                var r = renderers[ri];
+                if (r == null) continue;
+                var mats = r.sharedMaterials;
+                if (mats == null) continue;
+
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (TryRepairOpaqueLitParticleSlot(r, mats, i)) { changed = true; repaired++; }
+                }
+                if (changed) r.sharedMaterials = mats;
+            }
+            return repaired;
+        }
+
         /// <summary>
         /// WO-1806 instrumentation: the line that would have named this at boot on device.
         /// After a prefab's repair pass, report the FIRST particle slot still left

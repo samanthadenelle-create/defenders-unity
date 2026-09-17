@@ -10,6 +10,22 @@ During level-up after the mage fires a Fireball at a Troll (wave 13, owned scree
 - It persists throughout the Juice_LevelUp effect (5s lifetime)
 - Device log timestamps: 20:51:30.479 text spawned, 20:51:30.481 VFX plays
 
+## ⚠ Root Cause FOUND (third pass, 2026-09-17) — read the RESULT, then §6 of it
+
+`VFXType.Juice_LevelUp` -> `Level_up.prefab`. All ELEVEN of its slots carry `1AB_mat`/`1Add_mat`
+with **`_BaseMap: {fileID: 0}` — no albedo at all**, so every quad is an untextured tinted
+rectangle. The 2026-09-16 exclusion below ("a soft dot cannot draw a hard edge", "additive cannot
+occlude") is **REFUTED by a rendered frame**: `Builds/vfx-whitequad/Juice_LevelUp__AFTER.png`,
+taken AFTER the heal ran in the same batch, steps `(15,17,20)`->`(140,96,34)` inside one 10 px
+step and holds a uniform fill for 680 px (2.29 m) — a razor-sharp axis-aligned slab. Composited
+additively over a sunlit town that fill saturates to `(255,255,147)`..`(255,255,255)`, which is the
+owner's measured `(254,254,246)` / `(254,230,208)`.
+Two OTHER defects of the same class were found and FIXED on the way (`PP_FleshImpacts/Mist` opaque
+billboard; five combat effects' MagentaFix trail slabs on the un-swept PlayKey path).
+**Still READY because the remedy for the level-up look is an owner ruling — RESULT §6.**
+
+<details><summary>Superseded 2026-09-16 second-pass reasoning (kept, not rewritten)</summary>
+
 ## Root Cause — NOT YET PROVEN (second pass, 2026-09-16). Three candidates, no discriminator.
 
 ~~"The prefab is instantiated fresh from the catalog entry, NOT from the healed pool instance...
@@ -29,6 +45,8 @@ Candidates, all `Level_up.prefab`: `circle` `!u!199 &4557073698308409209` (1AB_m
 `circle_wave` `&2637087935947684266` (1Add_mat, additive, 3.18), `flash` `&2637087934517059139`
 (1Add_mat, additive, 6.36) — plus `PP_FleshImpacts`, which is at the hero's exact position with an
 8.30 s lifetime and has not been examined. Full record in the RESULT.
+
+</details>
 
 ## Files to examine
 

@@ -268,6 +268,9 @@ namespace DeNelle.Editor.Regression
                              "disable it, or author renderMode=None when it intentionally has no visual output).");
             }
 
+            // ── WO-1813: the OPAQUE DRAWING BILLBOARD class ──────────────────
+            int opaqueBillboards = CheckOpaqueDrawingBillboards(work, failures);
+
             if (failures.Count > 0)
             {
                 FlowTrace.Fail(FlowSys, "offenders=" + failures.Count + " across " + checkedAssets + " prefab(s)");
@@ -280,8 +283,11 @@ namespace DeNelle.Editor.Regression
 
             FlowTrace.Step(FlowSys, "clean: " + checkedAssets + " prefab(s), containers=" + containers +
                                     ", intentionalNonRenderers=" + intentionalNonRenderers +
+                                    ", opaqueBillboardsRepaired=" + opaqueBillboards +
                                     ", skipped=" + skipped);
-            reason = "vfx-null-slot OK - " + checkedAssets + " prefab(s) checked: no NEW enabled all-null " +
+            reason = "vfx-null-slot OK - " + opaqueBillboards + " authored opaque drawing particle slot(s) " +
+                     "proved REPAIRED by AbilityVfxKit.RepairOpaqueDrawingParticleSlots (WO-1813); " +
+                     checkedAssets + " prefab(s) checked: no NEW enabled all-null " +
                      "particle renderer capable of drawing; " + intentionalNonRenderers +
                      " enabled renderMode=None system(s) counted as intentional non-renderers; " +
                      containers + " DISABLED all-null vendor container renderer(s) noted " +
@@ -289,6 +295,120 @@ namespace DeNelle.Editor.Regression
                      " prefab(s) skipped as unresolved (gitignored packs are not a failure).";
             Debug.Log(MarkerOk + " - " + reason);
             return true;
+        }
+
+        // =====================================================================
+        //  WO-1813 -- the OPAQUE DRAWING BILLBOARD class
+        // ---------------------------------------------------------------------
+        // THE DEFECT, named: Assets/Resources/VFX/Impact/FleshImpacts.prefab (catalog
+        // key PP_FleshImpacts) child 'Mist', ParticleSystemRenderer fileID
+        // 199462925942737768, SLOT 0, Billboard, ENABLED, material 'GoopMist'
+        // (URP/Lit, _Surface 0, _AlphaClip 0, _BaseMap DustPuffSmallParticleSheet.png
+        // whose RGB is 255/255/255 at every texel -- the whole sprite is in its ALPHA).
+        // Drawn opaque, that quad discards the alpha and paints a solid white rectangle.
+        // It played at the hero's exact position with 8.30 s of life, 1.6 s before the
+        // owner's 2026-09-16 20:51:31 capture, and no instrument mentioned it once.
+        //
+        // WHY THIS IS NOT A BASELINE LIST. A ratcheted allow-list would pin the defect,
+        // not the fix. What must hold is that the RUNTIME REPAIR COVERS the class, so this
+        // check does the end-to-end thing: read-only scan finds every authored offender,
+        // then for each offending prefab it INSTANTIATES a throwaway copy, runs the very
+        // helper the two spawn paths run, and re-scans. A remaining offender is the
+        // failure. A prefab that is authored broken but proven repaired is reported as a
+        // COUNT, not a finding -- because after the repair the player never sees it.
+        //
+        // The scan is deliberately the same shape as the runtime rule, so the two cannot
+        // drift: enabled, renderMode neither None nor Mesh, _Surface < 0.5, _AlphaClip < 0.5.
+        // MESH mode is excluded (debris/shards are legitimately opaque) and ALPHA CUTOUT is
+        // excluded because the cutout already carves the sprite's shape -- measured, not
+        // assumed: StoneImpacts/'ImpactDebris' and WoodImpacts/'WoodSplinters' are opaque
+        // billboards too, both _AlphaClip 1, and both render correctly today.
+        // =====================================================================
+        private static int CheckOpaqueDrawingBillboards(
+            List<KeyValuePair<string, GameObject>> work, List<string> failures)
+        {
+            int authoredOffenders = 0;
+
+            foreach (var item in work)
+            {
+                var prefab = item.Value;
+                if (prefab == null) continue;
+                if (CountOpaqueDrawingSlots(prefab, out _, out _) == 0) continue;
+
+                // Authored broken. Now prove the runtime repair clears it, on a copy --
+                // the repair clones materials, so no asset on disk is touched.
+                GameObject copy = null;
+                try
+                {
+                    copy = UnityEngine.Object.Instantiate(prefab);
+                    copy.hideFlags = HideFlags.HideAndDontSave;
+                    int before = CountOpaqueDrawingSlots(copy, out string firstChild, out int firstSlot);
+                    authoredOffenders += before;
+
+                    AbilityVfxKit.RepairOpaqueDrawingParticleSlots(copy, item.Key);
+
+                    int after = CountOpaqueDrawingSlots(copy, out string stillChild, out int stillSlot);
+                    if (after > 0)
+                    {
+                        failures.Add("'" + item.Key + "' still carries " + after + " DRAWING particle slot(s) " +
+                                     "whose material is authored OPAQUE with no alpha cutout AFTER " +
+                                     "AbilityVfxKit.RepairOpaqueDrawingParticleSlots ran (first: child '" +
+                                     stillChild + "' slot " + stillSlot + "; " + before + " before the repair). " +
+                                     "A camera-facing particle quad drawn opaque discards its sprite's alpha and " +
+                                     "paints a solid rectangle in front of the player -- the white quad on the " +
+                                     "hero in the owner's 2026-09-16 20:51:31 frame (WO-1813). Either the repair " +
+                                     "predicate no longer matches this shape, or a new carve-out excluded it.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures.Add("'" + item.Key + "' threw while proving the WO-1813 opaque-billboard repair: " +
+                                 ex.GetType().Name + ": " + ex.Message);
+                }
+                finally
+                {
+                    if (copy != null) UnityEngine.Object.DestroyImmediate(copy);
+                }
+            }
+
+            return authoredOffenders;
+        }
+
+        /// <summary>
+        /// Count the DRAWING particle slots whose material is authored opaque with no alpha
+        /// cutout. Mirrors AbilityVfxKit's runtime predicate exactly so the oracle and the
+        /// repair cannot drift apart.
+        /// </summary>
+        private static int CountOpaqueDrawingSlots(GameObject go, out string firstChild, out int firstSlot)
+        {
+            firstChild = null;
+            firstSlot  = -1;
+            if (go == null) return 0;
+
+            int count = 0;
+            foreach (var r in go.GetComponentsInChildren<ParticleSystemRenderer>(true))
+            {
+                if (r == null || !r.enabled) continue;
+                if (r.renderMode == ParticleSystemRenderMode.None) continue;
+                if (r.renderMode == ParticleSystemRenderMode.Mesh) continue;
+
+                var mats = r.sharedMaterials;
+                if (mats == null) continue;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (m == null || m.shader == null) continue;
+                    // The MagentaFix placeholder is the OTHER defect, with its own assertion
+                    // above and its own runtime remedy. Not double-counted here.
+                    if (AbilityVfxKit.IsMagentaFixParticlePlaceholder(m)) continue;
+                    if (!m.HasProperty("_Surface") || m.GetFloat("_Surface") >= 0.5f) continue;
+                    if (m.HasProperty("_AlphaClip") && m.GetFloat("_AlphaClip") >= 0.5f) continue;
+
+                    count++;
+                    if (firstChild == null) { firstChild = r.gameObject.name; firstSlot = i; }
+                }
+            }
+            return count;
         }
     }
 }
