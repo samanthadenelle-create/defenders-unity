@@ -189,7 +189,69 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-16 (CLI, two-hundred-and-eighteenth pass): main line next free = **1777**.
+> ## RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-ninth pass): main line next free = **1806**.
+> *(Lead PRE-ASSIGNED **1805** (owner: the dungeon lantern/torch is never taught - "nobody understands why
+> the torch runs out and why it suddenly becomes dark" - and players need a way to get more oil/torch
+> materials and use them; "a bug that I didn't want to report"). Bumped 1805 -> 1806 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-eighth pass): main line next free = **1805**.
+> *(Lead PRE-ASSIGNED **1804** (owner: after wave 2 introduce raids the way the Castle Defense Plans drop
+> introduces plans after wave 3 - "you dropped detailed battle plans... click here to build your barracks";
+> the marquee raid introduction on the existing plans-drop seam). Bumped 1804 -> 1805 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-seventh pass): main line next free = **1804**.
+> *(Lead PRE-ASSIGNED **1803** (owner ruling: the starter army is TEN troops - five footmen and five
+> archers - "instead of giving them three troops, because that's shit"). Bumped 1803 -> 1804 in this
+> SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-sixth pass): main line next free = **1803**.
+> *(Lead PRE-ASSIGNED **1802** (owner: "make the raid door obvious after founding" - live triage: zero
+> raids launched today, 3 in 7 days; 4 ids reached founding and none raided). Bumped 1802 -> 1803 in
+> this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-fifth pass): main line next free = **1802**.
+> *(Lead PRE-ASSIGNED **1801** (owner: "i just want a first sale" - production events_by_name over 30 days:
+> store_opened 59 by 3 ids, pack_tapped 54 by 2 ids (none since 09-10), checkout_started 9 by 2,
+> purchase_completed 3 by 1 (Aug 25). The first-sale path: the $1.99 first buy must complete the
+> Barracks (misses by 20 iron, WO-1798 finding 4) and the shortfall door must actually surface it).
+> Bumped 1801 -> 1802 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-fourth pass): main line next free = **1801**.
+> *(Lead PRE-ASSIGNED **1800** (owner: "put big sales signs with x% off!!!! you know some flash" - the
+> client half of the storewide sale: shelf-card sale badge + struck-through anchor, driven by the
+> WO-1799 server rows; greyscale-safe because the owner is colourblind). Bumped 1800 -> 1801 in this
+> SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-third pass): main line next free = **1800**.
+> *(Lead PRE-ASSIGNED **1799** (owner: "can we run a 30% deal?" - the only discount today is the
+> once-per-7-days 20% shortfall discount in api/purchases/quote.js:82-108; a storewide sale needs a
+> server-side knob; the client already renders quote.DiscountBps/DiscountLabel). Bumped 1799 -> 1800 in
+> this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-second pass): main line next free = **1799**.
+> *(Lead PRE-ASSIGNED **1798** (owner: "how do we make the packs better. we need to make them more
+> substantial to get purchases" - a pack-value redesign proposal for her ruling, measured against the live
+> store funnel and the $1.99-$49.99 ladder ruling). Bumped 1798 -> 1799 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twenty-first pass): main line next free = **1798**.
+> *(Lead PRE-ASSIGNED **1796** (owner: "I cant figure out how to see if ads are making anything" -
+> LevelPlay ILRD is logged on device but never reaches analytics/the admin dashboard) and **1797** (the
+> purchases view shows a Pi `hearth-spark` entitlement VERIFIED 2026-09-10 and never FULFILLED,
+> unfulfilled_minutes 8519). Bumped 1796 -> 1798 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-twentieth pass): main line next free = **1796**.
+> *(Lead PRE-ASSIGNED the block **1791-1795** to a live-players triage lane: 22 new players today per the
+> owner's dashboard, and the metrics view shows 424 playtest_break errors, 7 save_reset_accepted and
+> 7 api_auth_reject in the wild on 2026-09-16 - triage from the production admin views into tickets.
+> Bumped 1791 -> 1796 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-nineteenth pass): main line next free = **1791**.
+> *(Lead PRE-ASSIGNED the block **1777-1790** to the raid-polish audit lane - owner 2026-09-16: "I want
+> the entire raid polished from start to engage enemy to everything" for the Clock In video; one
+> ticket per polish item, minted from the block in order, unused numbers returned by the lane's
+> report. Bumped 1777 -> 1791 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-eighteenth pass): main line next free = **1777**.
 > *(Lead PRE-ASSIGNED **1776** (Mage kit VFX for the hackathon video: owner 2026-09-16 "right now the
 > fireball is the only thing decent"; ruled Arcane Bolt <- her existing tag Lightningspellmaybe_Cast ->
 > Hovl "Lightning strike"; Void Rift + Wither get candidate lists for her to tag). Bumped 1776 -> 1777

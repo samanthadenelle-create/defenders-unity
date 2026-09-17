@@ -29,7 +29,21 @@ wall, rendering with no texture.**
 4. **Damage numbers land on it** (`frames/f_002.jpg`, a "40" over the surface) — so it has a **live collider** and is an `IDamageableStructure`. `WallSegment.cs:58` implements it.
 5. **The repair/rebuild prices reconcile to the digit** — see §1b.
 
-### 1b. It is specifically `Wall_Medieval_Wood`, and the arithmetic proves it
+### 1b. The walls the wave destroyed are the WOOD tier — the arithmetic proves that much
+
+⚠ **Scope this claim carefully.** The cost arithmetic below identifies the **damaged and destroyed**
+walls in the wave report. It does **NOT** pin which catalog row the *visible beige crenellated surface*
+belongs to — the report lists "4 of 8 results", so at least three distinct wall objects are in play, and
+`Structure_Art.asset` carries **six** wall addressables (`Structures/Wall_Medieval_Wood` `:136`,
+`Wall_Medieval_Stone` `:161`, `Torche_Wall` `:75`, and `Synty_Tower_Castle_Wall_S/M/L` `:141`/`:85`/`:171`).
+
+✅ **The "wooden palisade vs crenellated masonry" worry is RESOLVED — the wood-tier wall IS a castle
+wall.** `Structures/Wall_Medieval_Wood` (guid `8e38bac6a566a9c4ab37974ab7713c38`) is a 92-line **prefab
+VARIANT** carrying only transform modifications, whose base is
+**`Assets/Synty/PolygonFantasyKingdom/Prefabs/Castle/SM_Bld_Castle_Hoarding_Wood_Wall_01.prefab`**
+(guid `fab6d140a2b06bc499ea3277ae476342`) — a Synty *Castle Hoarding Wood Wall*. That silhouette is
+consistent with the battlements in `crops/slab_22.jpg`. **It remains unproven that the visible surface
+is this row rather than one of the other five**, but the tier no longer argues against it.
 
 `Assets/Resources/Data/Canonical/structures-catalog.json:311-322`:
 ```
@@ -42,10 +56,11 @@ wall, rendering with no texture.**
 | Observed on the tester's screen | Catalog value | Match |
 |---|---|---|
 | "Rebuild **Wood 80**" (`s_134.jpg`) | `cost.wood = 80` — and `WaveDamageReport`'s rule is *"destroyed = full build cost = the REBUILD price"* (`WaveDamageReport.cs:17-24`) | **exact** |
-| "Damage: **24%** … Repair cost: **wood 20**" (`wallinspect.jpg`) | damage fraction × build cost = 0.24 × 80 = **19.2 → 20** (`WaveDamageReport.cs:110,:176` → `repair.CostForStructure(structure, frac)`) | **exact** |
+| "Damage: **24%** … Repair cost: **wood 20**" (`wallinspect.jpg`) | damage fraction × build cost = 0.24 × 80 = **19.2** (`WaveDamageReport.cs:110,:176` → `repair.CostForStructure(structure, frac)`) | **consistent** — ⚠ `round(19.2) = 19`, so the display implies a `ceil` or a slightly different fraction; the displayed "24%" is itself rounded and **`CostForStructure`'s rounding rule was not read.** Do not call this exact |
 
-The stone tier (`:368-382`, `Structures/Wall_Medieval_Stone`) costs wood 120 + iron 240 and would not
-produce either number. **The object is the wood-tier wall.**
+The stone tier (`:368-382`, `Structures/Wall_Medieval_Stone`) costs wood 120 + iron 240 and would
+produce neither number. **The Wood 80 rebuild figure is an exact match and carries the identification on
+its own; the repair figure corroborates it.**
 
 ### 1c. Why it is not in the scene, and why that matters
 
@@ -54,7 +69,14 @@ produce either number. **The object is the wood-tier wall.**
 defect — `Assets/Editor/CastleHubBuilder.cs:200-208` records the owner ruling (WO-1711 B) that **the
 home castle has no builder-placed perimeter walls**, and `BuildInnerWallRing` is destroy-only (`:750`).
 
-**The tester's walls are therefore PLAYER-BUILT, restored from his save and spawned at runtime:**
+**And the authored perimeter builder is DEAD in the hub.** `WallLayout`'s only instantiating consumer is
+`VillageController` (`:91 segment.Configure(data, WallHeight)`, `:135`), and that component's guid
+`dec308f9c8fa10943a15fdd995af76fb` appears in **zero scenes and zero prefabs** — grepped 2026-09-16
+across `Assets/Scenes/` and every `*.prefab`. (`StructureFactory.cs:1220-1224` says the same thing in
+passing: *"The opener was attached only by VillageController, whose guid is in no scene or prefab"*.)
+
+**The tester's walls are therefore PLAYER-BUILT, restored from his save and spawned at runtime** — the
+only remaining producer of a `WallSegment`:
 `Assets/_Modules/Village/BuildMode/BaseLayoutLoader.cs:571` → `Assets/_Modules/Village/Catalog/StructureFactory.cs:1211`
 ```
 // WallSegment is authored with id/index/length by the builder, not
@@ -109,16 +131,59 @@ is what should be fixed first.
 
 **Verified at source on 2026-09-16, so the raid-side fix is NOT the gap:** all three `Assets/Resources/Walls/Materials/{wood,iron,steel}_wall.mat` exist and carry a bound `_BaseMap`; all three `.fbx.meta` carry a correct `externalObjects` Material remap onto the matching `.mat` guid (`wood → 73141e58…`, `iron → 79158448…`, `steel → 89ec89c8…`). **WO-838's four pins are green. This is a different, uncovered path.**
 
+### 1f. The wall's art chain, followed to the texture — and one theory REFUTED on the way
+
+Traced from disk 2026-09-16, guid by guid:
+
+```
+structures-catalog.json:313   visualPrefabPath "Structures/Wall_Medieval_Wood"
+  -> Structure_Art.asset:136  guid 8e38bac6a566a9c4ab37974ab7713c38
+  -> Assets/StructureContent/Synty/Wall_Medieval_Wood.prefab        (VARIANT, 92 lines, transform mods only)
+  -> Assets/Synty/PolygonFantasyKingdom/Prefabs/Castle/SM_Bld_Castle_Hoarding_Wood_Wall_01.prefab
+  -> Assets/Synty/PolygonFantasyKingdom/Materials/Alts/PolygonFantasyKingdom_Mat_01_A.mat
+       shader  = Assets/Synty/PolygonGeneric/Shaders/Generic_Basic.shadergraph
+       albedo  = _Albedo_Map  -> guid c83598997a5b4f1797e66e82b1a8fb7a   (BOUND on disk)
+       also    = _Emission_Map, _Normal_Map bound;  NO _BaseMap, NO _MainTex
+```
+
+**Two things follow, and they point in opposite directions — both are recorded honestly.**
+
+⛔ **REFUTED: "the fixer looks for `_BaseMap` and this material only declares `_Albedo_Map`, so it
+repaints a good wall beige."** That is a tempting theory and it is **wrong**. `TripoMaterialFixer.cs:345`
+reads `tex = DependencyClosureTrace.GetAlbedo(src)`, and `DependencyClosureTrace.cs:204-208` lists
+`AlbedoTokens` beginning with **`"albedo"`**, so `_Albedo_Map` is recognised. The fixer's own comment at
+`:342-345` says this handling exists *precisely* because asking only `_MainTex`/`_BaseMap` produced the
+flat-white Default Town LightSkin (Seeker 365875, 2026-09-11). **Do not file this as the cause.**
+
+⚠ **STRENGTHENED: the FORCED-albedo path is a different code path and it does only know the two
+names.** `HubStructureVisualInjector.cs:743-751` fails with *"bound onto ZERO of N material slot(s) — no
+material declares `_BaseMap` or `_MainTex` (first shader '<x>') … The structure will render colorless.
+This is a SHADER PROPERTY mismatch OR the baked-twin placeholder was still standing in"* — and that
+sentence is **literally true of this material**, whose shader is the very `Synty/Generic_Basic` the
+injector names. **This promotes §3 row 2 above row 1.**
+
+⚠ **AND THE WHOLE CHAIN BELOW THE VARIANT IS UNTRACKED.** `.gitignore:732` ignores `/Assets/Synty/`, and
+`git ls-files --error-unmatch` reports the base prefab **NOT TRACKED**. So the base prefab, the material,
+the shader graph and the albedo texture **all live outside version control**, exactly like the
+polyperfect pack (CLAUDE.md §4). That is the project's normal arrangement and is **not by itself a
+defect** — but it means this wall's art is **build-machine-dependent**, and a content build made where
+the Synty pack was absent or stale would produce a bundle whose albedo resolves to null at runtime,
+which lands straight on the beige `_missTint`. **This gives §3 row 3 a concrete mechanism it did not
+have before.**
+
 ---
 
 ## 3. Ranked causes — the object is named, the CAUSE is what is unproven
+
+> **⚠ RE-RANKED after §1f.** Row 2 now outranks row 1, and row 3 has a real mechanism.
 
 | # | Cause | Strength | Evidence |
 |---|---|---|---|
 | **1** | The wall's remote material **resolved but bound no albedo**, degrading to `_missTint` (0.60, 0.58, 0.54) | **STRONG** — colour is an exact source match, and it is the only mechanism that yields *the real mesh, correctly shaped, with a live collider, untextured* | `TripoMaterialFixer.cs:131,:385`; `StructureFactory.cs:209,:331,:614` |
 | **2** | The **baked-twin placeholder** was still standing in for the real model when the albedo was forced | MODERATE — device-proven for the "white-town" boots seq 5018/5022 on 2026-09-12 | `Assets/_Modules/Village/HubStructureVisualInjector.cs:726-751` — *"bound onto ZERO of N material slot(s) … The structure will render colorless."* Emits `[Flow:Hub]`. ⚠ Would read **white**, not beige, unless lighting warms it — **unproven** |
 | **3** | The wall's **texture dependency never reached R2** (CLAUDE.md §16: bundle names are content-hashed, every content build needs its own push) | MODERATE | §16. ⚠ **A wholesale bundle miss is REFUTED by §1d** — the mesh rendered. This would have to be a *texture-only* dependency miss inside a resident bundle |
-| **4** | An FBX-embedded material with `externalObjects: {}` and no `.mat` to edit, i.e. the WO-1747 pattern | WEAK for this object | `WorkOrders/WORK_ORDER_1747_raid_watchtower_and_cleric_glass_material_has_no_albedo.md`. The **wall** FBX remaps are verified correct (§2), so this pattern does not apply to `Resources/Walls`; it could still apply to whatever mesh backs the *Addressable* `Structures/Wall_Medieval_Wood` — **not inspected by this lane** |
+| **4** | An FBX-embedded material with `externalObjects: {}` and no `.mat` to edit, i.e. the WO-1747 pattern | **REFUTED for this object** | §1f followed the chain to a **tracked, standalone `.mat`** (`PolygonFantasyKingdom_Mat_01_A.mat`) with its albedo bound on `_Albedo_Map`. There is no embedded-material problem here. The `Resources/Walls` FBX remaps are separately verified correct (§2) |
+| — | "The fixer only knows `_BaseMap`/`_MainTex`, so it repaints this Synty material beige" | **REFUTED — do not file it** | §1f. `TripoMaterialFixer.cs:345` delegates to `DependencyClosureTrace.GetAlbedo`, whose `AlbedoTokens` (`DependencyClosureTrace.cs:204-208`) lead with `"albedo"` and therefore match `_Albedo_Map` |
 | — | Missing-bundle placeholder cube | **REFUTED** | §1d — orange-brown, collider destroyed, wrong shape |
 | — | A courtyard primitive from `CastleHubBuilder` | **REFUTED** | The only visible primitives are `CastleBasePlinth` (`:102-125`, horizontal, grey 0.55/0.55/0.57, under the castle) and `Bridge_Deck_Visual` (`:2161`, horizontal, outside the south gate). `GateExit_*_Nav` (`:1081`) and `CourtyardFloor_Nav` (`:1195`) have `r.enabled = false`. The owner's stray `"Plane".."Plane (3)"` are destroyed every build (`:1598-1620`) |
 | — | A billboard / signboard / banner / plaque / quest-board | **REFUTED — none exists** | Grepped `CastleHubBuilder.cs`, `ExteriorTerrainBuilder.cs`, `OwnerCastleLayoutRepair.cs`, `HubStructureVisualInjector.cs`; the only hits are Unity **terrain tree** billboarding (`ExteriorTerrainBuilder.cs:243,:349`) |
@@ -246,10 +311,12 @@ instance of the same class, not this ticket's wall.** It needs an owner ruling a
 2. **The tester is presumed to be "Sminer"** on circumstantial grounds only (see WO-1773 §1c). His save is not in Neon.
 3. **The CAUSE is unproven.** §3 row 1 is strong (exact colour match + the mesh demonstrably loaded) but no log line from his device has been read. **That is precisely why this is NEEDS DATA.**
 4. **The `playtest_break` payload schema was not inspected** (§4c) — whether those 396 events *could* carry this is unproven in both directions.
-5. **Whether the Addressable `Structures/Wall_Medieval_Wood` prefab's materials are FBX-embedded or tracked `.mat` files was not inspected.** Only the unrelated `Resources/Walls` FBX remaps were verified. §3 row 4 turns on this, and it is one file read away.
-6. **The "2"/"3" world-space chip is unidentified.**
-7. **"An Ogre flying over it" is refuted as a reading** (§1e), but what the winged shape at t ≈ 60 s actually is has not been established.
-8. ⚠ **The census may be armed and still silent** — the beige tint sits at the `FlowTintLuminanceFloor = 0.6f` boundary (§5A). Verify the floor in the same change or (A) will produce a false clean.
+5. ~~The Addressable wall prefab's material state~~ — **RESOLVED, see §1f.** The chain is followed to the texture; the material's `_Albedo_Map` is **bound on disk**. What is still unproven is whether that texture **resolves at runtime on the tester's device** — which is the whole remaining question and is exactly what §4b's capture answers.
+6. **Which of the six wall addressables the visible beige surface is** was not pinned (§1b) — though the wood tier is now known to be a *castle* wall, so it no longer argues against itself.
+7. **Whether the Synty pack was present and current on the machine that produced the tester's content build** is unproven, and unprovable from here (§1f). It is the concrete mechanism behind §3 row 3.
+8. **The "2"/"3" world-space chip is unidentified.**
+9. **"An Ogre flying over it" is refuted as a reading** (§1e), but what the winged shape at t ≈ 60 s actually is has not been established.
+10. ⚠ **The census may be armed and still silent** — the beige tint sits at the `FlowTintLuminanceFloor = 0.6f` boundary (§5A). Verify the floor in the same change or (A) will produce a false clean.
 
 ---
 
