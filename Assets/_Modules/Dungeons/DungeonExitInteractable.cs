@@ -957,7 +957,7 @@ namespace DeNelle.Dungeons
                     name: "DungeonExitConfirm",
                     title: "Leave dungeon?",
                     message: "Continue to exit returns you to town. Cancel keeps you in the dungeon.",
-                    confirmLabel: "Continue to exit",
+                    confirmLabel: "Exit",
                     cancelLabel: "Cancel",
                     onConfirm: OnConfirmContinueToExit,
                     onCancel: OnConfirmCancel,
@@ -979,7 +979,7 @@ namespace DeNelle.Dungeons
                 }
 
                 FlowTrace.Step(Sys,
-                    "exit CONFIRM SHOWN faces=[Continue to exit | Cancel] default=Cancel " +
+                    "exit CONFIRM SHOWN faces=[Exit | Cancel] default=Cancel " +
                     $"(portal='{name}' trueExit={_isTrueExit})");
             }
             catch (Exception ex)
