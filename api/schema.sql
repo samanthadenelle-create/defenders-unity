@@ -523,6 +523,59 @@ CREATE TABLE IF NOT EXISTS promo_codes (
 -- MIGRATION (idempotent, nullable, safe on the live table):
 --     ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS created_by TEXT;
 
+-- discount_bps / discount_starts_at / discount_ends_at ------------------------
+-- (added 2026-09-17, WO-1833 — owner: "if i set up promocode spotlight30 as a
+--  promo code can you make it make everything 30% off?")
+--
+-- Until these columns, a promo code could ONLY be a one-time GRANT: the table
+-- above pays crystals, coins or a pack sku and has no discount-percent concept at
+-- all. These three make a code able to carry a STOREFRONT DISCOUNT instead of (or
+-- as well as) a grant. All three are NULLABLE and independent of the reward
+-- columns, so a code may be a grant, a discount, or both.
+--
+-- ⛔ THE WINDOW IS A FIXED CALENDAR EVENT SHARED BY EVERY REDEEMER, NOT A
+--    PER-PLAYER TIMER. Owner correction, 2026-09-17: "flat 12:00 - 11:59 CST".
+--    Both timestamps are ABSOLUTE and authored ONCE on this row, so a player who
+--    redeems late gets WHAT IS LEFT of the window — never a fresh 48 hours. No
+--    code anywhere adds hours to a redemption time; "12:00 - 11:59" is 36h read
+--    one way and 48h read another, so the duration is the OPERATOR'S authored
+--    fact, not an arithmetic constant. Author them WITH AN EXPLICIT UTC OFFSET
+--    (2026-09-18T12:00:00-05:00): a CST wall-clock typed without one is parsed as
+--    UTC and lands the window 5-6 hours out.
+--
+-- ⛔ AND THERE IS DELIBERATELY NO `player_discounts` TABLE. Because the window is
+--    fixed, "which discount does this player hold now" is a pure JOIN of
+--    promo_redemptions to this table (api/_lib/promo-discount.js), served by
+--    idx_promo_redemptions_player below. A second table would be duplicated state
+--    on the money path AND a second write — and api/promo/redeem.js:470-479
+--    records, from a measured probe, that two statements on the Neon HTTP driver
+--    are two transactions, so an upsert after the atomic claim could grant the
+--    code and lose the discount, with no un-burn. The derived read also needs no
+--    cleanup job: `discount_ends_at > NOW()` is judged at read time.
+--
+-- NO CHECK CONSTRAINT ON discount_bps, ON PURPOSE. The ceiling (7000 bps = 70%
+-- off) is clamped ONCE on the read, in _lib/store-sale.clampSaleBps, which
+-- _lib/promo-discount.js calls through the `clampDiscountBps` alias. A CHECK here
+-- would be a second, drift-prone opinion about the same ceiling.
+--
+-- ⚠ ADDED BY ALTER, NOT IN THE CREATE TABLE BODY ABOVE — the same reason spelled
+-- out for created_by: tools/schema-parity.mjs parses only the CREATE TABLE bodies
+-- in this file, so a column declared there but not yet applied reads as DRIFT and
+-- BLOCKS EVERY DEPLOY. api/_lib/ops.js names these columns inside its existing
+-- 42703 (undefined column) fallback cascade, and api/_lib/promo-discount.js fails
+-- to NO DISCOUNT on the same error, so an unmigrated database keeps working — it
+-- simply cannot author or honour a discount code.
+--
+-- ⛔ THE APPLYABLE COPY IS api/migrations/20260917_0028_promo_discount_codes.sql,
+--    run with `node tools/run-migrations.mjs`. THESE LINES ARE A DESCRIPTION.
+-- ⚠ THE THREE LINES BELOW ARE BYTE-FOR-BYTE THE MIGRATION'S OWN STATEMENTS, and a
+-- regression pins that they stay that way (test/store-sale.test.js, "the active
+-- discount is DERIVED from the ledger"). Do not re-align the whitespace: a
+-- description that differs from the thing it describes is how this schema drifted.
+--     ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS discount_bps INTEGER;
+--     ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS discount_starts_at TIMESTAMPTZ;
+--     ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS discount_ends_at TIMESTAMPTZ;
+
 
 -- =============================================================================
 -- 4. promo_redemptions  — one row each time a player redeems a code.

@@ -68,6 +68,11 @@ const crypto = require('crypto');
 const { AREAS, isKnownArea } = require('./maintenance');
 const { TUNABLE_KEYS, isKnownKey, normalizeValue, setTunable, clearTunable } = require('./tunables');
 const { logApiEvent } = require('./audit');
+// WO-1833: the discount ceiling is read from the ONE place that owns it
+// (_lib/store-sale.js, 7000 bps = 70% off, clamped again on every read) rather than
+// re-typed here as an authoring limit. Two ceilings would drift, and the authoring
+// one would be the silent half.
+const { SALE_MAX_BPS } = require('./store-sale');
 
 /** The allowlisted things this file may do. */
 const OPS_ACTIONS = [
@@ -291,6 +296,42 @@ function optionalExpiry(raw, nowMs) {
 }
 
 /**
+ * A WINDOW BOUNDARY for a discount code (WO-1833). ISO in, ISO out, or null.
+ *
+ * ⛔ AN EXPLICIT UTC OFFSET IS REQUIRED, AND THIS IS THE ONE VALIDATION IN THIS FILE
+ * THAT EXISTS BECAUSE OF A TIME ZONE. The owner authors this window in CST
+ * ("flat 12:00 - 11:59 CST"). `Date.parse('2026-09-18 12:00')` has NO offset, so V8
+ * reads it in the RUNTIME's zone — which on Vercel is UTC — and the window lands
+ * FIVE TO SIX HOURS out from what the operator typed. A promotional event that
+ * starts at 6am and ends at 6pm instead of noon to midnight is not a small error:
+ * it is a public campaign in the wrong half of a day, and nothing downstream could
+ * detect it because the stored timestamp is perfectly valid.
+ *
+ * `optionalExpiry` above accepts a bare wall clock, and that is NOT changed here —
+ * it is a pre-existing behaviour on a different field, and tightening it silently
+ * would be its own bug. This is a new field, so the stricter rule starts strict.
+ * (CDT is -05:00, CST is -06:00; September is CDT.)
+ *
+ * ⚠ IT DOES NOT REFUSE A PAST TIME, unlike optionalExpiry. Re-authoring a window
+ * whose start has already passed is legitimate ("the sale started at noon, I am
+ * adding the code at 12:30"); only the END is checked for being in the future, and
+ * that check lives in validatePromoDraft where both bounds are visible.
+ */
+function windowBoundary(raw, field) {
+    if (raw == null) return null;
+    const s = String(raw).trim();
+    if (s === '') return null;
+    if (!/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+        throw new OpsError('WINDOW_NEEDS_OFFSET',
+            field + ' must carry an explicit UTC offset (e.g. 2026-09-18T12:00:00-05:00) - ' +
+            'a bare wall clock is read as UTC and lands the window hours out');
+    }
+    const t = Date.parse(s);
+    if (!Number.isFinite(t)) throw new OpsError('BAD_WINDOW', field + ' must be an ISO date/time');
+    return new Date(t).toISOString();
+}
+
+/**
  * Validate a promo draft into exactly the columns promo_codes holds.
  *
  * PRECEDENCE, copied from api/schema.sql section 3 rather than re-invented: when
@@ -316,7 +357,46 @@ function validatePromoDraft(payload, nowMs) {
         throw new OpsError('REWARD_AMBIGUOUS',
             'set a pack sku OR crystals/coins, never both - the sku would silently win');
     }
-    if (!packSku && crystals === 0 && coins === 0) {
+
+    // ── THE DISCOUNT WINDOW (WO-1833) ────────────────────────────────────────
+    // A code may carry a GRANT, a DISCOUNT, or both; the three columns are
+    // independent of the reward columns. SPOTLIGHT30 is expected to be
+    // discount-only (0 crystals, 0 coins, 3000 bps).
+    const discountBps = optionalCount(p.discountBps, 'discount bps', SALE_MAX_BPS);
+    const discountStartsAt = windowBoundary(p.discountStartsAt, 'discount start');
+    const discountEndsAt = windowBoundary(p.discountEndsAt, 'discount end');
+
+    // ⛔ A HALF-AUTHORED WINDOW IS REFUSED AT AUTHORING TIME, not discovered by a
+    // player. api/promo/redeem.js refuses a discount code with no end (unconsumed,
+    // so it is recoverable) — but a code the operator believes is live and which
+    // refuses everyone who tries it is a silent campaign failure, and the console is
+    // where it is cheap to catch.
+    if (discountBps != null && discountBps > 0 && discountEndsAt == null) {
+        throw new OpsError('DISCOUNT_WINDOW_INCOMPLETE',
+            'a discount needs an end time - a personal discount no operator can stop is ' +
+            'worse than one that never started');
+    }
+    if (discountEndsAt != null && (discountBps == null || discountBps <= 0)) {
+        throw new OpsError('DISCOUNT_WINDOW_WITHOUT_DISCOUNT',
+            'a discount window with no discount bps would do nothing');
+    }
+    if (discountStartsAt != null && discountEndsAt != null &&
+        Date.parse(discountEndsAt) <= Date.parse(discountStartsAt)) {
+        throw new OpsError('DISCOUNT_WINDOW_BACKWARDS', 'the discount ends before it starts');
+    }
+    if (discountEndsAt != null) {
+        const now = Number.isFinite(nowMs) ? nowMs : Date.now();
+        if (Date.parse(discountEndsAt) <= now) {
+            throw new OpsError('DISCOUNT_WINDOW_IN_THE_PAST',
+                'that discount window has already closed');
+        }
+    }
+
+    // ⛔ `discountBps` JOINS THE REWARD_EMPTY PREDICATE. Without this, a
+    // discount-only code — the exact shape the owner asked for — is refused here as
+    // granting nothing, and the feature cannot be authored at all. The invariant is
+    // unchanged (a code must do SOMETHING); a live discount window is something.
+    if (!packSku && crystals === 0 && coins === 0 && (discountBps == null || discountBps <= 0)) {
         throw new OpsError('REWARD_EMPTY', 'this code would grant nothing');
     }
 
@@ -338,6 +418,11 @@ function validatePromoDraft(payload, nowMs) {
         perPlayerLimit: optionalCount(p.perPlayerLimit, 'per player limit', 10000),
         expiresAt: optionalExpiry(p.expiresAt, nowMs),
         active: p.active === false ? false : true,
+        // WO-1833. Null on every ordinary grant code, which is what createPromo's
+        // pre-discount fallback shape also produces.
+        discountBps: discountBps != null && discountBps > 0 ? discountBps : null,
+        discountStartsAt: discountStartsAt,
+        discountEndsAt: discountEndsAt,
     };
 }
 
@@ -430,11 +515,13 @@ async function createPromo(sql, draft, operator) {
         rows = await sql`
             INSERT INTO promo_codes (code, reward_crystals, reward_coins, reward_pack_sku,
                                      message, active, max_redemptions, per_player_limit,
-                                     expires_at, created_by)
+                                     expires_at, created_by,
+                                     discount_bps, discount_starts_at, discount_ends_at)
             VALUES (${draft.code}, ${draft.rewardCrystals}, ${draft.rewardCoins},
                     ${draft.rewardPackSku}, ${draft.message}, ${draft.active},
                     ${draft.maxRedemptions}, ${draft.perPlayerLimit},
-                    ${draft.expiresAt}, ${operator})
+                    ${draft.expiresAt}, ${operator},
+                    ${draft.discountBps}, ${draft.discountStartsAt}, ${draft.discountEndsAt})
             ON CONFLICT (code) DO NOTHING
             RETURNING code, active, created_at`;
     } catch (err) {
@@ -442,6 +529,54 @@ async function createPromo(sql, draft, operator) {
         // runner in this repo: created_by is an additive ALTER a human has to run,
         // and a deploy can beat them to it. Any OTHER error rethrows untouched.
         if (!err || err.code !== PG_UNDEFINED_COLUMN) throw err;
+        // ⛔ WO-1833: 42703 NOW HAS TWO POSSIBLE CAUSES, AND ONLY ONE OF THEM MAY BE
+        // DEGRADED THROUGH. Falling back drops created_by (attribution only — never a
+        // reason a promo cannot be authored during an incident) AND the three discount
+        // columns. Silently authoring a DISCOUNT code as an ordinary grant code would
+        // hand the operator a code she believes discounts everything and which
+        // discounts nothing — a public campaign that fails quietly, which is strictly
+        // worse than a refusal she can act on. So a draft that WANTS a discount fails
+        // LOUD and names the one command that fixes it.
+        if (draft.discountBps != null) {
+            throw new OpsError('DISCOUNT_COLUMNS_MISSING',
+                'promo_codes has no discount columns on this database, so a discount code cannot ' +
+                'be authored. Nothing was written. Run: node tools/run-migrations.mjs ' +
+                '(api/migrations/20260917_0028_promo_discount_codes.sql), then retry.');
+        }
+
+        // ⛔ AND THE CASCADE IS THREE SHAPES NOW, NOT TWO. On a database that HAS
+        // created_by (migration 0021) but NOT the discount columns (0028) - the exact
+        // state of production between the two runs - a straight fall to the oldest shape
+        // would silently strip created_by from EVERY ORDINARY GRANT CODE authored in
+        // between. That is a path that worked yesterday degrading today because of a
+        // feature it has nothing to do with, which is never an acceptable trade here.
+        // So try created_by WITHOUT the discount columns first, and only then the
+        // oldest shape. Same style, same rule: any error that is not 42703 rethrows.
+        shape = 'without_discount_columns';
+        try {
+            console.warn('[ops] promo_codes discount columns are missing on the deployed ' +
+                         'database - authored as an ordinary grant code, attribution intact. ' +
+                         'Run: node tools/run-migrations.mjs');
+        } catch (_) { /* logging must never break a write */ }
+        try {
+            rows = await sql`
+                INSERT INTO promo_codes (code, reward_crystals, reward_coins, reward_pack_sku,
+                                         message, active, max_redemptions, per_player_limit,
+                                         expires_at, created_by)
+                VALUES (${draft.code}, ${draft.rewardCrystals}, ${draft.rewardCoins},
+                        ${draft.rewardPackSku}, ${draft.message}, ${draft.active},
+                        ${draft.maxRedemptions}, ${draft.perPlayerLimit},
+                        ${draft.expiresAt}, ${operator})
+                ON CONFLICT (code) DO NOTHING
+                RETURNING code, active, created_at`;
+            if (!rows || !rows.length) {
+                throw new OpsError('PROMO_CODE_EXISTS', 'that code already exists - pick another name');
+            }
+            return { row: rows[0], shape: shape };
+        } catch (secondErr) {
+            if (!secondErr || secondErr.code !== PG_UNDEFINED_COLUMN) throw secondErr;
+        }
+
         shape = 'without_created_by';
         try {
             console.warn('[ops] promo_codes.created_by is missing on the deployed database - ' +

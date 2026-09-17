@@ -791,3 +791,89 @@ test('the verifier reads the PERSISTED amount, so flat needs no arithmetic there
         'a real rate must still be reported verbatim');
     assert.equal(verifyTest.ledgerRate(null), null);
 });
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  WO-1833 — THE PERSONAL PROMO DISCOUNT ON THE QUOTE PATH
+// -----------------------------------------------------------------------------
+// Owner ruling 2026-09-17: "personal promo should override global i would think not
+// stack". The precedence itself is proven in test/store-sale.test.js, next to the
+// sale law it composes with. What is proven HERE is what this file exists to
+// protect: that the promo is ADDITIVE to the quote — it prices through the SAME
+// buildQuoteBody, it does not disturb WO-1818's flat-SKR fields, and it cannot make
+// a quote that /verify would refuse with the money already gone.
+// ═════════════════════════════════════════════════════════════════════════════
+
+test('a PROMO prices a flat SKU through the same buildQuoteBody, flat fields intact', () => {
+    withEnv(DEVNET_ENV, () => {
+        const flat = catalog.skrFlatFor(FLAT_SKU);
+        const promo = catalog.buildQuoteBody('devnet', FLAT_SKU, null, 3000, 'promo');
+        const sale = catalog.buildQuoteBody('devnet', FLAT_SKU, null, 3000, 'sale');
+
+        // ⭐ SAME ARITHMETIC, SAME CEIL, SAME AMOUNT. A promo is a different REASON for
+        // a discount, never a second way of computing a price — that is the whole
+        // reason it reuses this function instead of adjusting a number afterwards.
+        assert.equal(promo.skrAmount, Math.ceil(flat * 7000 / 10_000));
+        assert.equal(promo.amountBaseUnits, sale.amountBaseUnits);
+        assert.equal(promo.discountBps, 3000);
+        assert.equal(promo.discountReason, 'promo');
+        assert.equal(promo.discountLabel, '30% off');
+
+        // WO-1818's fields are untouched: no oracle was consulted and it still says so.
+        assert.equal(promo.rate, null);
+        assert.equal(promo.rateSource, catalog.FLAT_RATE_SOURCE);
+        assert.equal(promo.usdRateForRow, catalog.FLAT_ROW_RATE);
+        assert.equal(promo.usdEffective, null, 'a flat row never carries a second USD price');
+        assert.equal(promo.usdSaving, null);
+
+        // The rate-derived path discounts off the USD anchor, exactly as a sale does.
+        const rated = catalog.buildQuoteBody('devnet', RATE_SKU, { usdPerSkr: 0.01, source: 'test' },
+            3000, 'promo');
+        assert.equal(rated.usdEffective, RATE_SKU_USD * 0.7);
+        assert.equal(rated.usdSaving, RATE_SKU_USD - RATE_SKU_USD * 0.7);
+    });
+});
+
+test('the wire distinguishes a PROMO from a SALE, additively — nothing existing moved', () => {
+    withEnv(DEVNET_ENV, () => {
+        const built = catalog.buildQuoteBody('devnet', FLAT_SKU, null, 3000, 'promo');
+        const wired = quoteTest.wireQuote(built, { quoteId: 'q1', expiresAt: null },
+            '2026-10-01T00:00:00.000Z', '2026-09-20T04:59:00.000Z');
+
+        // The NEW fields.
+        assert.equal(wired.discountSource, 'promo');
+        assert.equal(wired.promoEndsAt, '2026-09-20T04:59:00.000Z');
+        // ⛔ AND THE STOREFRONT BADGE STAYS DARK. A personal discount that lit up
+        // "storewide sale" would be a lie to every other player reading a screenshot,
+        // and the sale's countdown is the WRONG clock for a personal window.
+        assert.equal(wired.saleBps, null);
+        assert.equal(wired.saleEndsAt, null);
+
+        // ⭐ EVERY PRE-WO-1833 FIELD IS STILL PRESENT AND STILL CORRECT. This is the
+        // additive claim, asserted rather than asserted-in-prose.
+        for (const field of ['sku', 'network', 'currency', 'amountBaseUnits', 'skrAmount',
+            'decimals', 'mint', 'recipient', 'recipientAta', 'usdAnchor', 'usdEffective',
+            'usdSaving', 'discountBps', 'discountLabel', 'saleBps', 'saleLabel', 'saleEndsAt',
+            'rate', 'rateSource', 'pinned']) {
+            assert.ok(field in wired, 'the wire lost ' + field);
+        }
+        assert.equal(wired.amountBaseUnits, built.amountBaseUnits);
+        assert.equal(wired.discountBps, 3000);
+    });
+});
+
+test('a promo-priced ROW is exactly what /verify accepts — the discount reason is not a gate', () => {
+    withEnv(DEVNET_ENV, () => {
+        const built = catalog.buildQuoteBody('devnet', FLAT_SKU, null, 3000, 'promo');
+        const row = quoteRow({ sku: FLAT_SKU, amount_base_units: built.amountBaseUnits,
+            usd_rate: '0.000000000000', rate_source: catalog.FLAT_RATE_SOURCE,
+            discount_bps: 3000, discount_reason: 'promo' });
+        // /verify prices from the ROW, so a new reason string needs no change there —
+        // and purchase_quotes.discount_reason is bare TEXT with no CHECK, so it needs
+        // no migration either. Proven, because being wrong here means a player who has
+        // paid and cannot be granted.
+        assert.equal(catalog.contractFromQuoteRow(row).amountBaseUnits, built.amountBaseUnits);
+        assert.deepEqual(verifyTest.evaluateQuoteRow(row, wallet, FLAT_SKU, 'devnet', signature),
+            { ok: true });
+        assert.equal(verifyTest.ledgerRate(row), null);
+    });
+});

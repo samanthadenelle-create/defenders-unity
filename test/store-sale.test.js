@@ -214,8 +214,15 @@ test('a storewide sale is NOT rate-limited — the second buyer pays the sale pr
     assert.match(source, /const gateOnWindow = discountReason === SHORTFALL_REASON_SERVER;/);
     assert.match(source, /if \(discountBps != null && gateOnWindow\) \{/,
         'the window gate must apply to a shortfall only');
-    // And a shortfall that loses the race falls back to the SALE, not to full price.
-    assert.match(source, /resolved = resolveDiscount\(sale\.bps, null, SHORTFALL_REASON_SERVER\);/);
+    // And a shortfall that loses the race falls back to the STOREFRONT, not to full
+    // price. ⚠ WO-1833 renamed the function this line pins: the fallback now routes
+    // through resolveEffectiveDiscount, which composes the promo-overrides-sale
+    // precedence with this file's max-vs-shortfall law. The LAW being pinned is
+    // unchanged — a lost race must never land the player at full price — and the promo
+    // argument is load-bearing in it: a player holding a 30% promo who also asked for
+    // a shortfall discount must not pay full freight because they lost a race.
+    assert.match(source,
+        /resolved = resolveEffectiveDiscount\(promoBps, sale\.bps, null, SHORTFALL_REASON_SERVER\);/);
     // The ungated INSERT must persist whatever the body carries, not a hardcoded NULL.
     assert.match(source, /\$\{built\.discountBps\}, \$\{built\.discountReason\}/,
         'the ordinary insert must carry a sale, or a sale quote persists at full price');
@@ -582,4 +589,307 @@ test('the operator CLI can set and clear the sale, and refuses a typo', () => {
     assert.equal(tunables.isKnownKey('store.saleLabel'), false,
         'there is deliberately NO label row: the rail stores no strings');
     assert.equal(tunables.specFor('store.saleBps').kind, 'int');
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  WO-1833 — A PROMO CODE THAT CARRIES A DISCOUNT (SPOTLIGHT30)
+// -----------------------------------------------------------------------------
+// Owner: "if i set up promocode spotlight30 as a promo code can you make it make
+// everything 30% off?", duration "flat 12:00 - 11:59 CST", stacking "personal
+// promo should override global i would think not stack".
+//
+// THREE rulings are pinned below, and each one has already been got wrong once in
+// the life of this ticket:
+//   1. the window is a FIXED CALENDAR EVENT, never redemption + 48h;
+//   2. a promo OVERRIDES the sale — it is NOT max(), so a 3000 promo beats a 5000
+//      sale, deliberately;
+//   3. the quote must say WHICH source discounted it, and must NOT light up the
+//      storefront sale badge for a personal discount.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const promoDiscount = require('../api/_lib/promo-discount');
+
+const HOUR = 3_600_000;
+
+/** A promo_codes row as the redeem/quote paths read it. */
+function discountRow(over) {
+    return Object.assign({
+        code: 'SPOTLIGHT30',
+        discount_bps: 3000,
+        discount_starts_at: new Date(Date.parse('2026-09-18T17:00:00.000Z')).toISOString(),
+        discount_ends_at: new Date(Date.parse('2026-09-20T04:59:00.000Z')).toISOString(),
+    }, over || {});
+}
+
+const INSIDE = Date.parse('2026-09-19T12:00:00.000Z');
+const BEFORE = Date.parse('2026-09-18T10:00:00.000Z');
+const AFTER = Date.parse('2026-09-21T00:00:00.000Z');
+
+test('⛔ the discount window is a FIXED calendar event, NOT redemption + 48 hours', () => {
+    // THE CORRECTION THAT COST A REDESIGN. The first reading was a rolling per-player
+    // window (expires_at = redeemed_at + 48h). The owner means one promotional event
+    // with one shared end time, so a LATE redeemer gets WHAT IS LEFT.
+    const row = discountRow();
+    const early = promoDiscount.pickActiveDiscount([row], INSIDE);
+    const late = promoDiscount.pickActiveDiscount([row], Date.parse('2026-09-20T04:00:00.000Z'));
+    assert.equal(early.endsAtMs, late.endsAtMs,
+        'two players redeeming 16 hours apart must share ONE end time - a per-player ' +
+        'window is the thing this ruling forbids');
+    assert.equal(late.endsAtMs, Date.parse('2026-09-20T04:59:00.000Z'));
+    // The late redeemer has UNDER AN HOUR left, not a fresh 48.
+    assert.ok(late.endsAtMs - Date.parse('2026-09-20T04:00:00.000Z') < HOUR);
+
+    // ⛔ And no source file may compute an expiry from a redemption time. A grep,
+    // deliberately, because the defect is a SHAPE (`+ 48h`) rather than a value.
+    for (const rel of ['api/_lib/promo-discount.js', 'api/promo/redeem.js', 'api/purchases/quote.js']) {
+        const src = fs.readFileSync(path.join(REPO, rel), 'utf8')
+            .split('\n').filter(l => !/^\s*(\/\/|\*|--)/.test(l)).join('\n');
+        assert.doesNotMatch(src, /INTERVAL '.*hour/i,
+            rel + ' adds an interval to a redemption time - the window is authored, not computed');
+        assert.doesNotMatch(src, /discount_duration_hours/,
+            rel + ' still carries the rolling-window column the ruling replaced');
+    }
+});
+
+test('the window gate refuses BEFORE it opens and AFTER it closes, with EXPIRED, unconsumed', () => {
+    const row = discountRow();
+    assert.deepEqual(promoDiscount.resolveRedeemWindow(row, INSIDE),
+        { ok: true, error: null, spec: promoDiscount.readDiscountSpec(row) });
+    assert.equal(promoDiscount.resolveRedeemWindow(row, BEFORE).error, 'EXPIRED',
+        'not-yet-open must reuse the EXISTING error key - a new one cannot reach a published APK');
+    assert.equal(promoDiscount.resolveRedeemWindow(row, AFTER).error, 'EXPIRED');
+
+    // A discount with NO end is refused rather than treated as forever: a personal
+    // discount no operator can stop is worse than one that never started.
+    assert.equal(promoDiscount.resolveRedeemWindow(
+        discountRow({ discount_ends_at: null }), INSIDE).error, 'EXPIRED');
+
+    // ⚠ AN ORDINARY GRANT CODE IS UNTOUCHED, and so is a row from a database that has
+    // not run migration 0028 (the KEYS ARE ABSENT, not zero). Both must read as "no
+    // discount", never as a 0% discount some formatter prints as "0% off".
+    for (const plain of [{ code: 'LINK01', discount_bps: null }, { code: 'LINK01' }]) {
+        const gate = promoDiscount.resolveRedeemWindow(plain, INSIDE);
+        assert.equal(gate.ok, true);
+        assert.equal(gate.spec, null);
+    }
+});
+
+test('a SECOND discount code while one is active: both stand, the LARGER bps is used', () => {
+    // The stated default (WO-1833 D2). Nothing is replaced, extended or refused -
+    // each redemption is its own ledger row and each code owns its own fixed window.
+    const small = discountRow({ code: 'SPOTLIGHT30', discount_bps: 3000 });
+    const big = discountRow({ code: 'BIGGER50', discount_bps: 5000 });
+    assert.equal(promoDiscount.pickActiveDiscount([small, big], INSIDE).code, 'BIGGER50');
+    assert.equal(promoDiscount.pickActiveDiscount([big, small], INSIDE).code, 'BIGGER50');
+
+    // When the better one's window closes the other takes over BY ITSELF - no write,
+    // no sweep, no cleanup job. That is the whole case for deriving this from the
+    // ledger instead of storing it.
+    const bigEndsEarly = discountRow({ code: 'BIGGER50', discount_bps: 5000,
+        discount_ends_at: new Date(INSIDE - HOUR).toISOString() });
+    assert.equal(promoDiscount.pickActiveDiscount([small, bigEndsEarly], INSIDE).code, 'SPOTLIGHT30');
+    assert.equal(promoDiscount.pickActiveDiscount([bigEndsEarly], INSIDE), null,
+        'an expired promo simply stops matching - it is never deleted');
+
+    // The ceiling is the SALE's ceiling, clamped on the read. One ceiling, two names.
+    assert.equal(promoDiscount.pickActiveDiscount(
+        [discountRow({ discount_bps: 30_000 })], INSIDE).bps, sale.SALE_MAX_BPS,
+        'a fat-thumbed 30000 must not hand the store away');
+});
+
+test('⛔ a personal promo OVERRIDES the storewide sale — it is NOT max()', () => {
+    // Owner ruling 2026-09-17: "personal promo should override global i would think
+    // not stack". ⚠ THIS SUPERSEDED an earlier best-of/max() default, so the case
+    // that matters most is the one where the SALE IS LARGER and still loses.
+    assert.equal(sale.DISCOUNT_PRECEDENCE, 'promo-overrides-sale',
+        'the precedence constant is the one place this is decided');
+
+    const biggerSale = sale.resolveStorefrontDiscount(3000, 5000);
+    assert.equal(biggerSale.bps, 3000,
+        'a 5000 bps sale must LOSE to a 3000 bps promo - max() would return 5000 and ' +
+        'that is the ruling this case exists to pin');
+    assert.equal(biggerSale.reason, sale.PROMO_REASON);
+
+    // No promo -> the sale applies exactly as it did before WO-1833.
+    assert.deepEqual(sale.resolveStorefrontDiscount(null, 3000),
+        { bps: 3000, reason: sale.SALE_REASON });
+    assert.deepEqual(sale.resolveStorefrontDiscount(0, 0),
+        { bps: 0, reason: sale.SALE_REASON });
+
+    // ⛔ NOT ADDITIVE EITHER, in case a future edit reaches for the other wrong answer.
+    assert.notEqual(sale.resolveStorefrontDiscount(3000, 5000).bps, 8000);
+});
+
+test('the full three-way resolution: promo beats the sale, the shortfall is still MAX', () => {
+    const server = quoteTest.SHORTFALL_REASON_SERVER;
+    const shortfall = quoteTest.SHORTFALL_DISCOUNT_BPS;      // read, never retyped
+
+    // 1. Promo present: it wins over a LARGER sale, and the reason follows the number
+    //    so the persisted audit row does not call a personal discount a storewide sale.
+    const promoWins = sale.resolveEffectiveDiscount(3000, 5000, null, server);
+    assert.deepEqual(promoWins, { bps: 3000, reason: sale.PROMO_REASON });
+
+    // 2. No promo: WO-1799's behaviour, byte for byte.
+    assert.deepEqual(sale.resolveEffectiveDiscount(null, 3000, shortfall, server),
+        sale.resolveDiscount(3000, shortfall, server));
+    assert.deepEqual(sale.resolveEffectiveDiscount(null, null, null, server),
+        { bps: null, reason: null });
+
+    // 3. ⚠ A LARGER SHORTFALL STILL WINS OVER THE PROMO, and that is DELIBERATE, not
+    //    an oversight: the owner ruled on promo versus the GLOBAL SALE. The
+    //    max-not-additive shortfall law predates this ticket and exists so a player is
+    //    never charged MORE for holding an entitlement. One line to change if ruled.
+    const fatShortfall = sale.resolveEffectiveDiscount(1000, 0, shortfall, server);
+    assert.equal(fatShortfall.bps, shortfall);
+    assert.equal(fatShortfall.reason, server);
+
+    // 4. A promo AT OR ABOVE the shortfall keeps the player's 7-day window unspent,
+    //    the same way a sale does.
+    assert.equal(sale.resolveEffectiveDiscount(shortfall, 0, shortfall, server).reason,
+        sale.PROMO_REASON);
+});
+
+test('the WIRE names the discount SOURCE and does not fake a storefront sale', () => {
+    withEnv(DEVNET_ENV, () => {
+        const promoPriced = catalog.buildQuoteBody('devnet', FLAT_SKU, null, 3000, sale.PROMO_REASON);
+        const promoEnds = '2026-09-20T04:59:00.000Z';
+        const wired = quoteTest.wireQuote(promoPriced, { quoteId: 'q-promo' },
+            '2026-10-01T00:00:00.000Z', promoEnds);
+
+        assert.equal(wired.discountBps, 3000, 'the price is discounted');
+        assert.equal(wired.discountSource, sale.PROMO_REASON, 'the client must be able to say "promo active"');
+        assert.equal(wired.promoEndsAt, promoEnds);
+        // ⛔ THE HALF THAT WOULD MISLEAD A PLAYER: a personal discount must NOT light up
+        // the storewide sale badge, and a storewide countdown is the WRONG end time for
+        // a personal window.
+        assert.equal(wired.saleBps, null);
+        assert.equal(wired.saleLabel, null);
+        assert.equal(wired.saleEndsAt, null);
+
+        // A genuine SALE still reports itself as one, and carries no promoEndsAt.
+        const salePriced = catalog.buildQuoteBody('devnet', FLAT_SKU, null, 3000, sale.SALE_REASON);
+        const wiredSale = quoteTest.wireQuote(salePriced, { quoteId: 'q-sale' },
+            '2026-10-01T00:00:00.000Z', promoEnds);
+        assert.equal(wiredSale.discountSource, sale.SALE_REASON);
+        assert.equal(wiredSale.saleBps, 3000);
+        assert.equal(wiredSale.promoEndsAt, null);
+
+        // No discount at all: source null, never the string 'null' and never a 0.
+        const plain = catalog.buildQuoteBody('devnet', FLAT_SKU, null, null, null);
+        assert.equal(quoteTest.wireQuote(plain, {}).discountSource, null);
+        assert.equal(quoteTest.wireQuote(plain, {}).promoEndsAt, null);
+
+        // A canary is never promo-discounted either.
+        const pinned = quoteTest.wirePinned(catalog.purchaseContract('devnet',
+            catalog.pinnedSkus('devnet')[0]));
+        assert.equal(pinned.discountSource, null);
+        assert.equal(pinned.promoEndsAt, null);
+    });
+});
+
+test('the VERIFIER accepts a PROMO-priced quote with no change of its own', async () => {
+    // ⭐ The acceptance criterion that costs real money if it is wrong. /verify prices
+    // from the quote ROW (contractFromQuoteRow), so a promo row is just a different
+    // number in the same column - and `discount_reason = 'promo'` needs no migration
+    // because the column is bare TEXT with no CHECK (api/schema.sql, read at source).
+    const priced = withEnv(DEVNET_ENV, () =>
+        catalog.buildQuoteBody('devnet', RATE_SKU, RATE, 3000, sale.PROMO_REASON));
+    const row = {
+        quote_ref: 'b'.repeat(32), wallet, sku: RATE_SKU, network: 'devnet',
+        currency: 'SKR', amount_base_units: priced.amountBaseUnits, decimals: 9,
+        mint: devnetMint, recipient, recipient_ata: recipientAta,
+        usd_anchor: '4.9900', usd_rate: '0.010000000000', rate_source: 'test',
+        discount_bps: 3000, discount_reason: sale.PROMO_REASON,
+        expires_at: new Date(Date.now() + 300_000).toISOString(),
+        consumed_at: null, consumed_tx: null,
+    };
+    const contract = catalog.contractFromQuoteRow(row);
+    assert.equal(contract.amountBaseUnits, '350000000000',
+        'a 30% promo on a 4.99 anchor at 0.01 usd/SKR is the same arithmetic as a 30% sale');
+    assert.equal((await readChain(transaction('350000000000'), contract)).state, 'verified');
+    assert.equal((await readChain(transaction('499000000000'), contract)).reason,
+        'transfer_contract_mismatch', 'overpaying a promo quote is still not the contract issued');
+    assert.deepEqual(verifyTest.evaluateQuoteRow(row, wallet, RATE_SKU, 'devnet', signature),
+        { ok: true }, 'the row-usability checks are indifferent to WHICH discount priced it');
+});
+
+test('the active discount is DERIVED from the ledger — there is no player_discounts table', () => {
+    // WO-1833 D1. A second table would be duplicated state on the money path AND a
+    // second write, which on the Neon HTTP driver is a second TRANSACTION - so a crash
+    // between claim and upsert would grant the code and lose the discount, with no
+    // un-burn. This pins the decision, because "add a table" is the obvious wrong turn.
+    const schema = fs.readFileSync(path.join(REPO, 'api/schema.sql'), 'utf8');
+    assert.doesNotMatch(schema, /CREATE TABLE IF NOT EXISTS player_discounts/,
+        'the ledger JOIN already holds this fact');
+
+    const lib = fs.readFileSync(path.join(REPO, 'api/_lib/promo-discount.js'), 'utf8');
+    assert.match(lib, /FROM promo_redemptions AS pr/, 'the read is the ledger JOIN');
+    assert.match(lib, /pc\.discount_ends_at > NOW\(\)/,
+        'expiry is judged AT READ TIME, which is why no cleanup job exists');
+
+    // ⛔ AND THE REDEEM PATH WRITES NOTHING EXTRA. One atomic claim, still.
+    const redeem = fs.readFileSync(path.join(REPO, 'api/promo/redeem.js'), 'utf8');
+    assert.doesNotMatch(redeem, /INSERT INTO player_discounts|UPDATE player_discounts/,
+        'a second write after the atomic claim is the failure D1 exists to avoid');
+
+    // The applyable migration exists and matches what schema.sql describes.
+    const mig = path.join(REPO, 'api/migrations/20260917_0028_promo_discount_codes.sql');
+    assert.ok(fs.existsSync(mig), 'api/schema.sql is a DESCRIPTION; this is the copy that runs');
+    const body = fs.readFileSync(mig, 'utf8');
+    for (const col of ['discount_bps INTEGER', 'discount_starts_at TIMESTAMPTZ', 'discount_ends_at TIMESTAMPTZ']) {
+        const alter = 'ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS ' + col + ';';
+        assert.ok(body.includes(alter), 'the migration must carry: ' + alter);
+        assert.ok(schema.includes(alter),
+            'api/schema.sql must describe the same column - the two may never disagree');
+    }
+    // ⚠ NOT in the CREATE TABLE body: tools/schema-parity.mjs parses only those, so a
+    // column declared there but unapplied reads as DRIFT and BLOCKS EVERY DEPLOY.
+    const createBody = schema.slice(schema.indexOf('CREATE TABLE IF NOT EXISTS promo_codes'));
+    assert.doesNotMatch(createBody.slice(0, createBody.indexOf('\n);')), /discount_bps/,
+        'declaring it inside CREATE TABLE before it is applied blocks every deploy');
+});
+
+test('the authoring path can create a DISCOUNT-ONLY code, and refuses a half-authored window', () => {
+    const ops = require('../api/_lib/ops');
+    const now = Date.parse('2026-09-17T12:00:00.000Z');
+    const START = '2026-09-18T12:00:00-05:00';
+    const END = '2026-09-19T23:59:00-05:00';
+
+    // ⛔ THE SHAPE THE OWNER ASKED FOR: no crystals, no coins, 30% off. Before WO-1833
+    // this threw REWARD_EMPTY, so the feature could not be authored at all.
+    const draft = ops.validatePromoDraft({ code: 'spotlight30', discountBps: '3000',
+        discountStartsAt: START, discountEndsAt: END, message: '30% off everything' }, now);
+    assert.equal(draft.code, 'SPOTLIGHT30');
+    assert.equal(draft.rewardCrystals, 0);
+    assert.equal(draft.rewardCoins, 0);
+    assert.equal(draft.discountBps, 3000);
+    assert.equal(draft.discountEndsAt, new Date(Date.parse(END)).toISOString());
+
+    // A grant AND a discount on one code is legal - the columns are independent.
+    assert.equal(ops.validatePromoDraft({ code: 'BOTH1', rewardCrystals: '100',
+        discountBps: '1000', discountEndsAt: END }, now).discountBps, 1000);
+
+    // ⛔ THE TIME-ZONE TRAP, AND IT IS THE ONE THAT WOULD HAVE SHIPPED SILENTLY. The
+    // owner authors this window in CST. A bare wall clock is parsed as UTC on Vercel,
+    // landing a public campaign 5-6 hours out, with a perfectly valid timestamp stored.
+    assert.throws(() => ops.validatePromoDraft({ code: 'NOOFF1', discountBps: '3000',
+        discountEndsAt: '2026-09-19 23:59' }, now), (e) => e.code === 'WINDOW_NEEDS_OFFSET');
+
+    // Half-authored windows are refused at AUTHORING time, not discovered by a player.
+    assert.throws(() => ops.validatePromoDraft({ code: 'NOEND1', discountBps: '3000' }, now),
+        (e) => e.code === 'DISCOUNT_WINDOW_INCOMPLETE');
+    assert.throws(() => ops.validatePromoDraft({ code: 'NOBPS1', discountEndsAt: END }, now),
+        (e) => e.code === 'DISCOUNT_WINDOW_WITHOUT_DISCOUNT');
+    assert.throws(() => ops.validatePromoDraft({ code: 'BACK1', discountBps: '3000',
+        discountStartsAt: END, discountEndsAt: START }, now),
+        (e) => e.code === 'DISCOUNT_WINDOW_BACKWARDS');
+    assert.throws(() => ops.validatePromoDraft({ code: 'PAST1', discountBps: '3000',
+        discountEndsAt: '2026-09-01T00:00:00-05:00' }, now),
+        (e) => e.code === 'DISCOUNT_WINDOW_IN_THE_PAST');
+    // A code that still grants nothing is still refused.
+    assert.throws(() => ops.validatePromoDraft({ code: 'EMPTY1' }, now),
+        (e) => e.code === 'REWARD_EMPTY');
+    // The authoring ceiling is the SALE's ceiling, not a second number.
+    assert.throws(() => ops.validatePromoDraft({ code: 'HUGE1', discountBps: '9000',
+        discountEndsAt: END }, now), (e) => e.code === 'VALUE_TOO_LARGE');
 });

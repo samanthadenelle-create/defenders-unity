@@ -142,6 +142,12 @@ const { reserveIpBudget } = require('../_lib/ip-budget');
 // existing owner-wallet authority (purchase-catalog.MAINNET_CANARY_OWNER) - see
 // _lib/owner-identity.js. It ANSWERS an identity question; it never authenticates.
 const { isOwnerIdentity } = require('../_lib/owner-identity');
+// WO-1833: a code may now carry a STOREFRONT DISCOUNT as well as (or instead of) a
+// grant. The window gate and the label live in ONE library shared with the quote
+// path, so "when is this discount live" is answered in a single place - never once
+// here and once at the till, which is how two opinions about money drift apart.
+const { promoDiscountLabel, resolveRedeemWindow,
+    PG_UNDEFINED_COLUMN } = require('../_lib/promo-discount');
 
 // ── THE IP BUDGET (WO-1440) ──────────────────────────────────────────────────
 // The one signal a client cannot choose. GUEST RAIL ONLY.
@@ -349,16 +355,54 @@ async function handler(req, res) {
 
     try {
         // ── 1. Look the code up in the catalog ────────────────────────────────
-        const codeRows = await sql`
-            SELECT code, reward_crystals, reward_coins, message,
-                   active, max_redemptions, per_player_limit, expires_at,
-                   bound_wallet, reward_pack_sku,
-                   tier1_pack_sku, tier1_limit, tier2_pack_sku,
-                   tier2_reward_crystals, tier2_reward_coins, redemption_count
-            FROM promo_codes
-            WHERE code = ${code}
-            LIMIT 1
-        `;
+        //
+        // WO-1833: the discount columns are named here — ⛔ SELECTED HERE OR THE WHOLE
+        // FEATURE IS INERT. 1c below is the recorded scar of a column that EXISTED in
+        // the schema and was simply not named in this SELECT, which is how a code
+        // burned for zero reward. A discount left unselected would instead read as "no
+        // discount": the code would grant nothing AND discount nothing.
+        //
+        // ⚠ AND IT IS A TWO-SHAPE CASCADE, for the same reason api/_lib/ops.js:435-460
+        // has one. Migration 0028 is applied by a human running
+        // `node tools/run-migrations.mjs`, and a DEPLOY CAN BEAT THEM TO IT. Naming a
+        // column that does not exist yet raises 42703, and 42703 on THIS statement
+        // would 500 EVERY redemption of EVERY code — turning an optional new feature
+        // into a total outage of the promo rail. So: try the new shape, and on
+        // undefined-column fall back to the pre-WO-1833 shape, where every discount
+        // read resolves to "this code carries no discount". ANY other error rethrows
+        // untouched.
+        let codeRows;
+        try {
+            codeRows = await sql`
+                SELECT code, reward_crystals, reward_coins, message,
+                       active, max_redemptions, per_player_limit, expires_at,
+                       bound_wallet, reward_pack_sku,
+                       tier1_pack_sku, tier1_limit, tier2_pack_sku,
+                       tier2_reward_crystals, tier2_reward_coins, redemption_count,
+                       discount_bps, discount_starts_at, discount_ends_at
+                FROM promo_codes
+                WHERE code = ${code}
+                LIMIT 1
+            `;
+        } catch (lookupErr) {
+            if (!lookupErr || lookupErr.code !== PG_UNDEFINED_COLUMN) throw lookupErr;
+            try {
+                console.warn('[promo/redeem] promo_codes discount columns are missing on the ' +
+                    'deployed database - every code is read as a plain GRANT code and no discount ' +
+                    'can be honoured. Run: node tools/run-migrations.mjs ' +
+                    '(api/migrations/20260917_0028_promo_discount_codes.sql).');
+            } catch (_) { /* logging must never break a read */ }
+            codeRows = await sql`
+                SELECT code, reward_crystals, reward_coins, message,
+                       active, max_redemptions, per_player_limit, expires_at,
+                       bound_wallet, reward_pack_sku,
+                       tier1_pack_sku, tier1_limit, tier2_pack_sku,
+                       tier2_reward_crystals, tier2_reward_coins, redemption_count
+                FROM promo_codes
+                WHERE code = ${code}
+                LIMIT 1
+            `;
+        }
 
         if (codeRows.length === 0 || codeRows[0].active === false) {
             return res.status(200).json({ success: false, error: 'INVALID_CODE' });
@@ -449,6 +493,33 @@ async function handler(req, res) {
             return res.status(200).json({ success: false, error: 'EXPIRED' });
         }
 
+        // ── 2b. THE DISCOUNT WINDOW (WO-1833) ────────────────────────────────
+        // A discount code names a FIXED CALENDAR WINDOW shared by every redeemer
+        // (owner: "flat 12:00 - 11:59 CST"), so redeeming outside it is refused —
+        // including BEFORE it opens.
+        //
+        // ⛔ IT ANSWERS THE EXISTING `EXPIRED`, AND THAT IS DIRECTED REUSE, NOT MY
+        // SEMANTIC CHOICE. "Not yet started -> EXPIRED" reads slightly oddly to a
+        // player, but PromoCodeService.MapErrorKey maps a FIXED set of keys and an
+        // unknown one lands on the calm unknown-error line — a new code cannot reach
+        // a published build. Recorded so the next seat knows it was deliberate.
+        //
+        // The refusal does NOT consume the code (nothing is written before step 6),
+        // so a player who tries early can still redeem once the window opens — the
+        // same refusal-is-retryable asymmetry every other backstop in this file is
+        // built on.
+        //
+        // A code with NO discount at all is untouched by this gate: resolveRedeemWindow
+        // answers ok with spec null, which is also what it answers on a database that
+        // has not run migration 0028.
+        const discountWindow = resolveRedeemWindow(promo, Date.now());
+        if (!discountWindow.ok) {
+            console.warn('[promo/redeem] discount window closed or not yet open for ' + code +
+                ' - refused UNBURNED, the player may retry inside the window.');
+            return res.status(200).json({ success: false, error: discountWindow.error });
+        }
+        const discountSpec = discountWindow.spec;
+
         // ── 3. This player already redeemed this code? ───────────────────────
         const already = await sql`
             SELECT 1 FROM promo_redemptions
@@ -517,7 +588,16 @@ async function handler(req, res) {
         // A message-only "thanks for playing" code is also refused, deliberately:
         // spending a player's one-shot code on a sentence is still spending it, and
         // a refusal can be undone by authoring a reward while a burn cannot.
-        if (crystals <= 0 && coins <= 0 && packSku === '' && !hasTieredPack && !hasTieredCurrency) {
+        //
+        // ⛔ WO-1833 ADDS `discountSpec == null` TO THE PREDICATE, AND WITHOUT IT THE
+        // FEATURE CANNOT SHIP. SPOTLIGHT30 is expected to be a DISCOUNT-ONLY code —
+        // 0 crystals, 0 coins, 3000 bps — which this backstop would have refused
+        // REWARD_UNAVAILABLE forever while logging that the row was mis-authored. A
+        // live discount window IS a reward: it is the thing the player redeemed for.
+        // The invariant the backstop protects is unchanged — a code must never burn
+        // for NOTHING — the set of things that count as "something" grew by one.
+        if (crystals <= 0 && coins <= 0 && packSku === '' && !hasTieredPack && !hasTieredCurrency &&
+            discountSpec == null) {
             console.error(
                 '[promo/redeem] REFUSED-UNBURNED reward resolves to zero crystals AND zero coins ' +
                 `(reward_crystals=${JSON.stringify(promo.reward_crystals)}, reward_coins=${JSON.stringify(promo.reward_coins)}). ` +
@@ -791,9 +871,36 @@ async function handler(req, res) {
             });
         }
 
+        // WO-1833: a discount grant is audited like any other, because "who holds a
+        // discount right now" is answered by JOINing this ledger row to the code — the
+        // redemption row IS the record, and there is no second table to cross-check it
+        // against. Never throws, for the same reason as the two lines above.
+        if (discountSpec != null) {
+            await logApiEvent(sql, playerId, 'promo_discount_redeem', {
+                ref: ref, code: code, discountBps: discountSpec.bps,
+                endsAt: new Date(discountSpec.endsAtMs).toISOString(),
+                // The window is SHARED, so this is the one fact worth recording per
+                // player: how much of it they actually got.
+                hoursRemaining: Math.round((discountSpec.endsAtMs - Date.now()) / 36e5),
+            });
+        }
+
         return res.status(200).json({
             success: true,
             reward: { crystals, coins, packSku: grantedPackSku || null, contents: grantedContents },
+            // ⛔ ADDITIVE, AND THE SHIPPED APK CANNOT DRAW IT. PromoCodeService renders
+            // the `message` string below and nothing else, so the sentence the OPERATOR
+            // authors on the row is what the player actually reads ("30% off everything
+            // until 11:59pm CST Thu"). This object is sent anyway so a future client
+            // needs no server change — the same reasoning purchases/quote.js:135-150
+            // records for the sale's own wire fields.
+            //
+            // `endsAt` is the SHARED window's close time, never redemption + a duration.
+            discount: discountSpec == null ? null : {
+                bps: discountSpec.bps,
+                label: promoDiscountLabel(discountSpec.bps),
+                endsAt: new Date(discountSpec.endsAtMs).toISOString(),
+            },
             message: promo.message ?? null,
         });
     } catch (err) {

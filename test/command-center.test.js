@@ -489,6 +489,13 @@ test('a promo draft lands on exactly the columns promo_codes holds', () => {
         perPlayerLimit: 1,
         expiresAt: null,
         active: true,
+        // WO-1833: a code may carry a DISCOUNT as well as (or instead of) a grant.
+        // Null on an ordinary grant code, and asserted here rather than relaxed to a
+        // partial match: the whole point of this case is that the draft lands on
+        // EXACTLY the columns promo_codes holds, so a new column must be named.
+        discountBps: null,
+        discountStartsAt: null,
+        discountEndsAt: null,
     });
 });
 
@@ -508,22 +515,62 @@ test('authoring never OVERWRITES an existing code -- that would be an edit', asy
         (e) => e instanceof OpsError && e.code === 'PROMO_CODE_EXISTS');
 });
 
-test('a missing created_by column degrades ONE step and still authors the code', async () => {
+test('a missing created_by column degrades to the OLDEST shape and still authors the code', async () => {
     // There is no migration runner in this repo: a migration is a human running a
     // file, and a deploy can beat them to it. The cascade exists for exactly that
     // window -- and it retries ONLY 42703.
+    //
+    // ⚠ WO-1833 made the cascade THREE shapes, so a database missing created_by now
+    // raises 42703 TWICE: once for the discount columns + created_by shape, once for
+    // the created_by-only shape. It lands on the oldest shape, as it always did.
     const undefinedColumn = Object.assign(new Error('column "created_by" does not exist'),
         { code: '42703' });
     const sql = mockSql([
+        { throws: undefinedColumn },
         { throws: undefinedColumn },
         { rows: [{ code: 'FALLBK', active: true, created_at: 'now' }] },
     ]);
     const draft = validatePromoDraft({ code: 'FALLBK', rewardCoins: '10' });
     const made = await createPromo(sql, draft, 'console');
     assert.equal(made.shape, 'without_created_by');
+    assert.equal(sql.calls.length, 3);
+    assert.match(sql.calls[0].text, /discount_bps/);
+    assert.match(sql.calls[1].text, /created_by/);
+    assert.doesNotMatch(sql.calls[2].text, /created_by/);
+});
+
+test('⛔ WO-1833: missing DISCOUNT columns must not cost an ordinary code its attribution', async () => {
+    // THE HALF-MIGRATED STATE, which is the real state of production between running
+    // migration 0021 and running 0028. A two-shape cascade would fall straight to the
+    // oldest shape here and silently strip created_by from EVERY grant code authored in
+    // that window -- a path that worked yesterday degrading today because of a feature
+    // it has nothing to do with. The middle shape exists for exactly this.
+    const undefinedColumn = Object.assign(new Error('column "discount_bps" does not exist'),
+        { code: '42703' });
+    const sql = mockSql([
+        { throws: undefinedColumn },
+        { rows: [{ code: 'MIDDLE', active: true, created_at: 'now' }] },
+    ]);
+    const draft = validatePromoDraft({ code: 'MIDDLE', rewardCoins: '10' });
+    const made = await createPromo(sql, draft, 'console');
+    assert.equal(made.shape, 'without_discount_columns');
     assert.equal(sql.calls.length, 2);
-    assert.match(sql.calls[0].text, /created_by/);
-    assert.doesNotMatch(sql.calls[1].text, /created_by/);
+    assert.match(sql.calls[1].text, /created_by/, 'attribution must SURVIVE the discount fallback');
+    assert.doesNotMatch(sql.calls[1].text, /discount_bps/);
+});
+
+test('⛔ WO-1833: a DISCOUNT code is REFUSED, not silently authored as a plain grant code', async () => {
+    // A code the operator believes discounts everything and which discounts nothing is
+    // a public campaign that fails quietly -- strictly worse than a refusal she can act
+    // on. Nothing is written, and the refusal names the one command that fixes it.
+    const undefinedColumn = Object.assign(new Error('column "discount_bps" does not exist'),
+        { code: '42703' });
+    const sql = mockSql([{ throws: undefinedColumn }]);
+    const draft = validatePromoDraft({ code: 'SPOT30', discountBps: '3000',
+        discountEndsAt: '2099-01-01T23:59:00-05:00' });
+    await assert.rejects(() => createPromo(sql, draft, 'console'),
+        (e) => e instanceof OpsError && e.code === 'DISCOUNT_COLUMNS_MISSING');
+    assert.equal(sql.calls.length, 1, 'no second INSERT may author it as an ordinary code');
 });
 
 test('ANY OTHER database error rethrows untouched -- the cascade is not a swallow', async () => {

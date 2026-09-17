@@ -1,0 +1,74 @@
+-- =============================================================================
+-- 20260917_0028_promo_discount_codes.sql   (WO-1833 — a promo code that DISCOUNTS)
+-- -----------------------------------------------------------------------------
+-- Owner, 2026-09-17: "if i set up promocode spotlight30 as a promo code can you
+-- make it make everything 30% off?"  Duration, corrected: "flat 12:00 - 11:59 CST".
+--
+-- THREE additive NULLABLE columns on promo_codes. Until now a promo code could only
+-- be a one-time GRANT (reward_crystals / reward_coins / reward_pack_sku); there was
+-- no discount-percent concept in the promo rail at all. These columns let ONE code
+-- carry a storefront discount, a grant, or both.
+--
+-- WHY A NUMBERED FILE. api/schema.sql is a DESCRIPTION of the schema, not a thing
+-- that runs (see its own note at the top of the player_data section). CREATE TABLE
+-- IF NOT EXISTS against an existing promo_codes reports success and changes
+-- NOTHING (memory: idempotent-ddl-hides-a-stale-table). ADD COLUMN IF NOT EXISTS is
+-- the only statement that can add a column to a table that already exists, and this
+-- runner is the only path that applies one to production.
+--
+-- ⛔ WITHOUT THIS FILE APPLIED, SPOTLIGHT30 CANNOT EXIST. api/_lib/ops.js names
+--    these columns inside its existing 42703 (undefined column) fallback cascade and
+--    api/_lib/promo-discount.js fails to NO DISCOUNT on the same error, so the
+--    endpoints keep working on an unmigrated database — they simply cannot author or
+--    honour a discount code, quietly and by design. Nothing 500s; nothing discounts.
+--
+-- ADDITIVE AND IDEMPOTENT. Three nullable columns on an existing table. Zero DROP /
+-- DELETE / TRUNCATE, no rename, no back-fill, no row touched. Every existing code
+-- keeps discount_bps NULL, which reads correctly as "this code predates discounts".
+--
+-- ⛔ NULLABLE, NOT `NOT NULL DEFAULT 0`. A default would stamp every historical code
+--    with a discount field it was never authored with, and 0 is a value a formatter
+--    will happily print as "0% off". NULL is the honest answer.
+--
+-- NO CHECK CONSTRAINT ON discount_bps, DELIBERATELY. The ceiling (7000 bps = 70%
+-- off) is clamped ONCE on the READ, in api/_lib/store-sale.clampSaleBps, reached
+-- from the promo path through the `clampDiscountBps` alias. A CHECK here would be a
+-- second opinion about the same ceiling and the two would drift.
+--
+-- NO INDEX IS ADDED, DELIBERATELY, AND THIS IS THE ONE WORTH SAYING OUT LOUD. The
+-- hot read is "which discount does this player hold now", which is a JOIN from
+-- promo_redemptions (filtered by player_id, already covered by
+-- idx_promo_redemptions_player) to promo_codes BY ITS PRIMARY KEY. So the join side
+-- is a PK lookup of at most a handful of rows per player; an index on discount_bps
+-- would be dead weight on every promo INSERT and would not be chosen anyway.
+--
+-- ⛔ THE WINDOW IS A FIXED CALENDAR EVENT, NOT A PER-PLAYER 48-HOUR TIMER. Both
+--    timestamps are ABSOLUTE and shared by every redeemer, so a player who redeems
+--    late gets what is LEFT of the window. Nothing in api/ ever adds hours to a
+--    redemption time. Author the values WITH AN EXPLICIT UTC OFFSET — a CST wall
+--    clock typed without one parses as UTC and lands the window 5-6 hours out.
+--
+-- Apply (owner, DATABASE_URL in env):
+--     node tools/run-migrations.mjs
+-- =============================================================================
+
+-- The discount this code confers, in basis points. NULL = this code carries no
+-- discount (a plain grant code, which is every code authored before WO-1833).
+ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS discount_bps INTEGER;
+
+-- The shared window's OPEN time. NULL = open from the moment the code is active.
+-- Redeeming before it is refused EXPIRED and does NOT consume the code.
+ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS discount_starts_at TIMESTAMPTZ;
+
+-- The shared window's CLOSE time, and the per-player expiry for EVERYONE who
+-- redeems. A discount-carrying code with no end time is refused at redeem
+-- (unconsumed): a personal discount no operator can stop is worse than one that
+-- never started.
+ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS discount_ends_at TIMESTAMPTZ;
+
+-- Verify (expect three rows; integer/timestamp with time zone, is_nullable 'YES',
+-- column_default NULL — judge by SHAPE, never by exit code):
+--   SELECT column_name, data_type, is_nullable, column_default
+--     FROM information_schema.columns
+--    WHERE table_name = 'promo_codes'
+--      AND column_name IN ('discount_bps', 'discount_starts_at', 'discount_ends_at');

@@ -10,7 +10,14 @@
 //
 //     action = "maintenance.seal"   { area, message }
 //            | "maintenance.open"   { area }
-//            | "promo.create"       { code, rewardCrystals|rewardPackSku, ... }
+//            | "promo.create"       { code, rewardCrystals|rewardPackSku, ... ,
+//                                     discountBps, discountStartsAt, discountEndsAt }
+//                                    WO-1833: a code may carry a GRANT, a DISCOUNT, or
+//                                    both. The discount window is FIXED and shared by
+//                                    every redeemer (owner: "flat 12:00 - 11:59 CST"),
+//                                    so both bounds are absolute timestamps and BOTH
+//                                    MUST CARRY AN EXPLICIT UTC OFFSET - a bare wall
+//                                    clock is parsed as UTC and lands hours out.
 //            | "promo.set_active"   { code, active }
 //            | "purchase.alert_acknowledge" { txSignature, reason }
 //
@@ -318,6 +325,12 @@ module.exports = async (req, res) => {
                     maxRedemptions: draft.maxRedemptions,
                     perPlayerLimit: draft.perPlayerLimit,
                     expiresAt: draft.expiresAt,
+                    // WO-1833: the discount window is part of what was authored, so it
+                    // belongs in the durable history row - "who set the 30% window and
+                    // when does it end" must be answerable without reading the table.
+                    discountBps: draft.discountBps,
+                    discountStartsAt: draft.discountStartsAt,
+                    discountEndsAt: draft.discountEndsAt,
                 },
             });
             return res.status(200).json({
@@ -325,8 +338,22 @@ module.exports = async (req, res) => {
                 code: made.row.code,
                 state: made.row.active ? 'ACTIVE' : 'DISABLED',
                 created_at: made.row.created_at,
-                attribution_on_row: made.shape === 'with_created_by',
-                warning: made.shape === 'with_created_by' ? null
+                // WO-1833. IN WORDS, not a colour and not a bare number: the owner is
+                // red/green colourblind (no state in this system lives in a colour) and
+                // the one thing she needs to confirm about a discount code is that the
+                // WINDOW is the one she meant. Both bounds are echoed as UTC ISO, which
+                // is what was stored - so a CST typo is visible here rather than at noon
+                // on the day of the campaign.
+                discount: draft.discountBps == null ? 'NONE (a plain grant code)'
+                    : (draft.discountBps / 100) + '% off, from ' +
+                      (draft.discountStartsAt || 'immediately') + ' until ' + draft.discountEndsAt +
+                      ' (UTC; shared by every redeemer, not 48h per player)',
+                // WO-1833: 'without_discount_columns' is the middle shape of the
+                // three-way cascade - it STILL carries created_by, so reporting
+                // attribution_on_row:false there would be a false alarm about the one
+                // thing this flag exists to report truthfully.
+                attribution_on_row: made.shape !== 'without_created_by',
+                warning: made.shape !== 'without_created_by' ? null
                     : 'promo_codes.created_by does not exist on the deployed database, so this ' +
                       'code carries no operator attribution on its row. The history row in ' +
                       'analytics_events does. Run: ALTER TABLE promo_codes ADD COLUMN IF NOT ' +
