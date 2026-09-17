@@ -110,6 +110,13 @@ namespace DeNelle.Editor
                 APlayerOwnedHoldOutlivesEveryCeiling(failures, log);
                 TodaysCapturedDriftIsCorrected(failures, log);
                 TheGateObservesAndDoesNotWriteTheClock(failures, log);
+
+                // WO-1736 — the TOWN WAVE END must arm the gate too. Wiring only: the
+                // holder is still UNNAMED, so there is nothing behavioural to assert
+                // beyond what HolderIsNamedInTheFinding already proves.
+                TownWaveEndArmsTheGate(failures, log);
+                WavePhaseProbeIsRegistered(failures, log);
+                ParkedCountdownIsNotImminent(failures, log);
             }
             finally
             {
@@ -2119,6 +2126,247 @@ namespace DeNelle.Editor
                              "the release cannot be shown to be a re-stamp rather than a missed clear.");
             else
                 log.AppendLine("  [wo1603-wiring] the battle-session release logs its pursuit ring before and after");
+        }
+
+        // =====================================================================
+        //  WO-1736 — A TOWN WAVE ENDING MUST ARM THE QUIESCENCE GATE.
+        // ---------------------------------------------------------------------
+        //  THE DEFECT THESE PIN IS THE COVERAGE GAP, NOT A HOLDER.
+        //
+        //  External player "Sminer" (the project's FIRST outside bug report,
+        //  Discord 2026-09-15, Wave 146) reported that every wave end leaves the
+        //  combat dock up instead of returning the peaceful dock, recoverable only
+        //  by logging out - and sometimes not even then. WO-1736 sec.2.6 found why it
+        //  reached us through Discord instead of through F8: BattleQuiescenceGate.Arm
+        //  had exactly ONE caller in the whole _Modules tree (BattleArena.cs, an
+        //  ARENA battle end), so A TOWN WAVE ENDING ARMED NOTHING. WO-1308's
+        //  purpose-built latched-phase dump and BattleLock.DescribeHolders() - the
+        //  one line that NAMES a stuck lock holder - were both registered and
+        //  neither ever fired on the boundary they were written for.
+        //
+        //  ⛔ NO FIX IS PINNED HERE BECAUSE NO FIX EXISTS YET. WO-1736 sec.3 excluded
+        //  every combat input with a documented self-clearing mechanism and the
+        //  surviving candidate is a latched BattleLock probe whose HOLDER IS UNNAMED;
+        //  CLAUDE.md sec.12 forbids an edit until captured data names it. So both
+        //  cases below are source-lints on the WIRING - the same discipline as
+        //  WiringIsPresent and SessionEndWiringIsPresent, and for the same reason: a
+        //  live wave loop cannot be driven inside a synchronous editor batch, and
+        //  DeNelle.Village is not referenced from this assembly.
+        //
+        //  The behavioural half of WO-1736's acceptance criterion 5 (a never-releasing
+        //  probe must make the gate NAME its holder) is already proven, both
+        //  directions, by HolderIsNamedInTheFinding above. It is cited rather than
+        //  duplicated: a second copy of that assertion is a second answer waiting to
+        //  disagree with the first.
+        // =====================================================================
+
+        /// <summary>
+        /// The arm site itself, and its POSITION, which WO-1736 sec.12.2 records as load-bearing.
+        /// </summary>
+        private static void TownWaveEndArmsTheGate(List<string> failures, StringBuilder log)
+        {
+            const string rel = "Assets/_Modules/Village/Waves/WaveCelebrationManager.cs";
+            string src = ReadCode(rel);
+            if (src == null)
+            {
+                failures.Add("[wo1736-wiring] WaveCelebrationManager.cs is MISSING - the town wave-end " +
+                             "quiescence arm cannot be verified at all.");
+                return;
+            }
+
+            int arm = src.IndexOf("BattleQuiescenceGate.Arm", StringComparison.Ordinal);
+            if (arm < 0)
+            {
+                failures.Add("[wo1736-wiring] the town wave clear no longer arms BattleQuiescenceGate. " +
+                             "That restores WO-1736 sec.2.6 exactly: the gate armed on an ARENA end and " +
+                             "NOWHERE ELSE, so the one boundary an external player actually reported was " +
+                             "the one boundary nothing observed. WO-1308's latched-phase dump and " +
+                             "BattleLock.DescribeHolders() both go silent with it, and the next occurrence " +
+                             "arrives as a Discord message instead of a named holder.");
+                return;
+            }
+            log.AppendLine("  [wo1736-wiring] the town wave clear arms the quiescence gate");
+
+            // The probe must be the END-STATE's own showing flag. Arm judges with
+            // Evaluate(rewardScreenOpen: false), so a probe that cannot see the banner lets the
+            // gate settle while the results screen is legitimately up.
+            if (src.IndexOf("EndStateView.IsShowing", StringComparison.Ordinal) < 0)
+                failures.Add("[wo1736-wiring] the town wave-end arm no longer passes EndStateView.IsShowing " +
+                             "as its reward-screen probe. Without it the gate judges the world while the " +
+                             "wave-results banner is legitimately up and reports a modal finding on every " +
+                             "clean wave - a permanent red everyone learns to skip, which is the failure " +
+                             "mode CleanStatePasses exists to forbid.");
+            else
+                log.AppendLine("  [wo1736-wiring] the arm's reward-screen probe is the end-state's own showing flag");
+
+            // ⛔ POSITION IS THE CONTRACT. Armed at CompleteWave()+0 the banner has NOT shown yet
+            //    (the routine yields through its VFX bursts first), so IsShowing reads FALSE, the
+            //    0.75s settle runs straight through the wave-clear slow-mo dip, and the gate emits a
+            //    FALSE timeScale FAIL on EVERY CLEAN WAVE. EndStateView.Show sets its static
+            //    synchronously, so armed AFTER it the probe is exact with no pending gap.
+            int show = src.IndexOf("EndStateVM.FromWaveClear", StringComparison.Ordinal);
+            if (show < 0)
+                failures.Add("[wo1736-wiring] WaveCelebrationManager no longer shows the wave-clear end state " +
+                             "(EndStateVM.FromWaveClear is gone), so the arm below it has nothing to " +
+                             "synchronise with and its ordering cannot be verified.");
+            else if (show > arm)
+                failures.Add("[wo1736-wiring] the quiescence gate is armed BEFORE the wave-clear end state is " +
+                             "shown. EndStateView.Show sets its static synchronously and the arm's probe reads " +
+                             "it, so arming first makes the probe read FALSE, the settle window run through " +
+                             "the slow-mo dip, and a clean wave report a timeScale FAIL. WO-1736 sec.12.2: " +
+                             "this ordering is load-bearing, not incidental.");
+            else
+                log.AppendLine("  [wo1736-wiring] the arm sits AFTER the end state is shown (no false clean-wave FAIL)");
+
+            // A diagnostic must never take down a wave resolve - the same reason BattleArena wraps
+            // its own arm. No silent failures: Guard.Try logs through FlowTrace.Fail (CLAUDE.md sec.12).
+            // ⚠ Bounded window, NOT a bare file-wide contains: WaveCelebrationManager already uses
+            //   Guard.Try for its deadline sweep, so a rule on the token alone would stay GREEN
+            //   against an unguarded arm. Same trap WO-1603's producer lint records.
+            int guardFrom = Math.Max(0, arm - 300);
+            if (src.IndexOf("Guard.Try", guardFrom, arm - guardFrom, StringComparison.Ordinal) < 0)
+                failures.Add("[wo1736-wiring] the town wave-end arm is no longer wrapped in Guard.Try. An " +
+                             "instrument that can throw inside WaveClearRoutine would abort the rest of the " +
+                             "celebration - a diagnostic must never cost the player the wave it observes.");
+            else
+                log.AppendLine("  [wo1736-wiring] the arm is guarded, so a diagnostic cannot abort the wave resolve");
+        }
+
+        /// <summary>
+        /// WO-1736 acceptance criterion 2 asks for "wave-phase among the checks that ran". That name
+        /// only reaches a report if WaveManager still REGISTERS the probe WO-1308 built, so pin the
+        /// registration and the dump it routes to.
+        /// </summary>
+        private static void WavePhaseProbeIsRegistered(List<string> failures, StringBuilder log)
+        {
+            string wave = ReadCode("Assets/_Modules/Village/Waves/WaveManager.cs");
+            if (wave == null)
+            {
+                failures.Add("[wo1736-probe] WaveManager.cs is MISSING - the wave-phase quiescence probe " +
+                             "cannot be verified.");
+                return;
+            }
+
+            if (wave.IndexOf("BattleQuiescenceGate.Register", StringComparison.Ordinal) < 0)
+                failures.Add("[wo1736-probe] WaveManager no longer registers its quiescence probe, so a gate " +
+                             "armed on the town wave end reports the Core invariants and NOTHING about the " +
+                             "wave loop - the one module whose phase raises the battle-lock on that very " +
+                             "boundary.");
+            else
+                log.AppendLine("  [wo1736-probe] WaveManager registers its own quiescence probe");
+
+            if (wave.IndexOf("CheckWavePhaseQuiescence", StringComparison.Ordinal) < 0 ||
+                wave.IndexOf("DescribeLatchedWavePhase", StringComparison.Ordinal) < 0)
+                failures.Add("[wo1736-probe] the wave-phase probe no longer routes to " +
+                             "DescribeLatchedWavePhase. That dump is the whole deliverable: it names the " +
+                             "phase, the wave, awaitingPlayerStart, the countdown, the live/null enemy " +
+                             "counts, both scenes and the last SetPhase transition with its site, frame and " +
+                             "AGE. Without it a FAIL says 'the wave loop is stuck' and the next reader pays " +
+                             "for the measurement all over again (WO-1308).");
+            else
+                log.AppendLine("  [wo1736-probe] the probe routes to the WO-1308 latched-phase dump");
+        }
+
+        // =====================================================================
+        //  WO-1736 — A PARKED COUNTDOWN IS NOT AN IMMINENT ONE. FIVE COPIES.
+        // ---------------------------------------------------------------------
+        //  THE PROVEN DEFECT (owner's Seeker SM02G4061955851, 2026-09-17, endless
+        //  wave 21, Main_Castle_Overworld). Wave 20 cleared at 13:05:21 and the loop
+        //  parked awaiting the player's DEFEND press. For the next 34m30s, across
+        //  186 consecutive throttled samples, the device logged:
+        //
+        //    [Flow:HUD] countdown IMMINENT (0.0s <= 5s) -> counts as Battle
+        //    [Flow:HUD] context inputs: sceneCombat=False wave=True battleLock=False
+        //               pursuit=False ... -> Battle
+        //
+        //  Endless mode parks in phase Countdown with the countdown HELD AT 0
+        //  (WaveManager.TryArmEndlessWave), so `remaining <= 5f` is `0 <= 5` = TRUE and
+        //  a wave that is not counting down at all reads as permanently imminent.
+        //  battleLock, pursuit and sceneCombat were ALL FALSE for the whole window:
+        //  this input was the SOLE holder of HudContext.Battle.
+        //
+        //  ⚠ THE PREDICATE IS COPIED INTO FIVE FILES, which is why this is pinned as an
+        //  invariant rather than as one fix. WaveManager.cs:518-525 documents the
+        //  parking design and names the HUD consumers it believed were safe - it lists
+        //  the DEFEND button and the wave-timer label, and MISSES all five of these.
+        //  A guard restored in one file and lost in another is the duplicated-state
+        //  failure CLAUDE.md sec.2/sec.5/sec.16 each describe in their own words.
+        //
+        //  ⛔ AND THE CURE MUST NOT BE THE THRESHOLD. The imminent window is an owner
+        //  ruling (2026-07-08) and a real 4.9s countdown must STILL read as combat, so
+        //  every row below also requires the threshold comparison to survive. Raising
+        //  or deleting it would trade this latch for a wave that arrives with no
+        //  warning - strictly worse, and invisible.
+        // =====================================================================
+        private static void ParkedCountdownIsNotImminent(List<string> failures, StringBuilder log)
+        {
+            // Every consumer that turns "a countdown is nearly over" into a combat signal.
+            // path, what it drives, and the threshold token that must ALSO still be there.
+            var consumers = new (string path, string drives, string threshold)[]
+            {
+                ("Assets/_Modules/Village/HUD/HudContextEvaluator.cs", "the HUD posture (the PROVEN holder - combatDock instead of peacefulDock)", "ImminentThreshold"),
+                ("Assets/_Modules/Village/HUD/HudModelProducers.cs",   "the wave model's published imminent flag",                                  "ImminentThreshold"),
+                ("Assets/_Modules/Village/Hero/HeroLocomotion.cs",     "the hero's braced combat idle",                                             "CombatImminentThreshold"),
+                ("Assets/_Modules/Village/NPCs/AmbientNPC.cs",         "every townsfolk NPC's combat behaviour",                                    "CombatImminentThreshold"),
+                ("Assets/_Modules/Village/Audio/BattleMusicManager.cs","battle music over a peaceful town",                                         "ImminentThreshold"),
+            };
+
+            foreach (var (path, drives, threshold) in consumers)
+            {
+                string src = ReadCode(path);
+                if (src == null)
+                {
+                    failures.Add("[wo1736-parked] " + path + " is MISSING - a consumer of the imminent-" +
+                                 "countdown rule cannot be verified.");
+                    continue;
+                }
+
+                string file = Path.GetFileName(path);
+
+                // It must still read the threshold at all: a consumer that stopped consulting it
+                // has silently opted out of the owner's imminent-window ruling.
+                if (src.IndexOf(threshold, StringComparison.Ordinal) < 0)
+                {
+                    failures.Add("[wo1736-parked] " + file + " no longer reads " + threshold + ", so " +
+                                 drives + " has silently left the owner's 2026-07-08 imminent-window " +
+                                 "ruling. If that consumer was deliberately retired, retire its row in " +
+                                 "this case in the same change - a silent one leaves the next reader " +
+                                 "hunting a fifth copy that no longer exists.");
+                    continue;
+                }
+
+                // ⛔ THE FIX. The parked-countdown guard. WaveManager.IsAwaitingPlayerStart is the
+                //    only thing that can tell "5 seconds left" from "no countdown is running".
+                if (src.IndexOf("IsAwaitingPlayerStart", StringComparison.Ordinal) < 0)
+                    failures.Add("[wo1736-parked] " + file + " tests the imminent countdown WITHOUT " +
+                                 "IsAwaitingPlayerStart, so " + drives + " latches on for the whole " +
+                                 "open-ended endless build phase. Endless mode parks in phase Countdown " +
+                                 "with the countdown held at 0 and `0 <= " + threshold + "` is TRUE. " +
+                                 "This is the 2026-09-17 capture verbatim: 34m30s and 186 samples of " +
+                                 "\"countdown IMMINENT (0.0s <= 5s) -> counts as Battle\" with " +
+                                 "battleLock, pursuit and sceneCombat all False - and it is the same " +
+                                 "state external player Sminer reported from the Play tester track, " +
+                                 "which is why his START WAVE button and his combat dock were on screen " +
+                                 "together (WO-1736 sec.2.4 ranked that combination out as impossible).");
+                else
+                    log.AppendLine("  [wo1736-parked] " + file + " gates the imminent test on a countdown " +
+                                   "that is actually running");
+            }
+
+            // The seam itself must stay public and read-only on the authority. Every row above
+            // depends on it, and it is the one member WaveManager exposes for this purpose.
+            string wave = ReadCode("Assets/_Modules/Village/Waves/WaveManager.cs");
+            if (wave == null)
+                failures.Add("[wo1736-parked] WaveManager.cs is MISSING - the parked-countdown authority " +
+                             "cannot be verified.");
+            else if (wave.IndexOf("public bool IsAwaitingPlayerStart", StringComparison.Ordinal) < 0)
+                failures.Add("[wo1736-parked] WaveManager no longer exposes `public bool " +
+                             "IsAwaitingPlayerStart`. All five consumers above read it to tell a parked " +
+                             "endless countdown from a genuinely imminent one; without it they either " +
+                             "stop compiling or get 'fixed' back to the bare threshold test that " +
+                             "produced the 34-minute latch.");
+            else
+                log.AppendLine("  [wo1736-parked] WaveManager still exposes the parked-countdown authority");
         }
 
         /// <summary>Standalone entry point (run-unity-method).</summary>

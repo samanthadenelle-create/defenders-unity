@@ -319,9 +319,14 @@ namespace DeNelle.Village
                 s_combatActive = Guard.Try("Townsfolk", "combat-poll", () =>
                 {
                     var wm = WaveManager.Instance;
+                    // WO-1736: !IsAwaitingPlayerStart — an endless wave parked on the player's
+                    // DEFEND press holds its countdown at 0, so a bare `<= 5f` kept the whole
+                    // town's NPCs in combat behaviour through an open-ended peaceful build
+                    // phase. Captured window and reasoning: HudContextEvaluator.IsWaveActive.
                     bool wave = wm != null &&
                                 (wm.Phase == WavePhase.Active ||
                                  (wm.Phase == WavePhase.Countdown &&
+                                  !wm.IsAwaitingPlayerStart &&
                                   wm.CountdownRemaining <= CombatImminentThreshold));
                     return wave || DeNelle.Core.Combat.BattleLock.IsInBattle();
                 }, false);

@@ -377,7 +377,15 @@ namespace DeNelle.Village
             // Victory wound down to None mid-countdown (live 0/0, cd~287s) and this net
             // re-pushed Battle:Combat for the whole ~290s gap while the HUD, on the same
             // second, logged "countdown long-gap -> gated OUT of Battle".
+            // WO-1736: ...and an ENDLESS wave PARKED on the player's DEFEND press is not
+            // imminent either, however small its held countdown reads. It parks at
+            // _countdownRemaining == 0, so the bare `<= 5f` test below is `0 <= 5` = TRUE and
+            // held battle music over a peaceful town for the whole wait - the same shape as the
+            // seq 2251 defect this net already guards, arriving through the other door. The full
+            // reasoning and the captured device window live at HudContextEvaluator.IsWaveActive;
+            // IsAwaitingPlayerStart is the authority (WaveManager.cs:570-575).
             bool imminent = _wave.Phase == WavePhase.Countdown
+                && !_wave.IsAwaitingPlayerStart
                 && _wave.CountdownRemaining <= HudContextEvaluator.ImminentThreshold;
             bool waveLive = _wave.Phase == WavePhase.Active || imminent;
             if (_wave.Phase == WavePhase.Countdown && !imminent && _state == BattleMusicState.None)

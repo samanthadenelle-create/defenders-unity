@@ -183,11 +183,54 @@ namespace DeNelle.Village.Hud
 
             if (wm.Phase == DeNelle.Village.WavePhase.Countdown)
             {
-                bool imminent = wm.CountdownRemaining <= ImminentThreshold;
+                // ⛔ WO-1736 — A PARKED COUNTDOWN IS NOT AN IMMINENT ONE. THIS IS THE
+                //    PROVEN HOLDER, named from a captured device log (see below).
+                //
+                //    ENDLESS MODE parks the loop in phase Countdown with _countdownRemaining
+                //    HELD AT 0 and _awaitingPlayerStart set, waiting for the player's DEFEND
+                //    press (WaveManager.TryArmEndlessWave, and the comment at WaveManager.cs:518-525
+                //    that states the design). The bare test below is `0.0f <= 5f` => TRUE, so a
+                //    wave that is not counting down at all read as PERMANENTLY IMMINENT, pinned
+                //    `combat` true, and left HudContext at Battle - the combatDock instead of the
+                //    peacefulDock - until the player started the next wave.
+                //
+                //    ⭐ CAPTURED, NOT INFERRED (owner's Seeker SM02G4061955851, 2026-09-17,
+                //    endless wave 21, Main_Castle_Overworld). Wave 20 cleared at 13:05:21
+                //    ("EnterCountdown(waveId=21) phaseBefore=Active" + "awaiting player start").
+                //    From 13:05:21 to 13:39:51 - 34m30s, 186 consecutive throttled samples -
+                //    the trace below read, every single time:
+                //        [Flow:HUD] countdown IMMINENT (0.0s <= 5s) -> counts as Battle
+                //    alongside
+                //        [Flow:HUD] context inputs: sceneCombat=False wave=True
+                //        battleLock=False pursuit=False ... -> Battle
+                //    battleLock AND pursuit AND sceneCombat were ALL FALSE for the whole window,
+                //    so this input was the SOLE holder. The field was empty and the drain had
+                //    reported "COMPLETE - all 13 held enemy(s) released" 20s before the clear.
+                //
+                //    ⚠ THIS CORRECTS WO-1736 sec.2.3 AND sec.2.4, WHICH RANKED THIS OUT. That RCA
+                //    read "IsWaveActive() returns true when wm.Phase == WavePhase.Active" and
+                //    concluded that external player Sminer's visible START WAVE button (pushed
+                //    only for Countdown / Idle / Complete) excluded both wave-sourced inputs. The
+                //    first branch is only HALF this method: the Countdown branch below returns
+                //    true as well, so phase==Countdown produces the START WAVE BUTTON *and* the
+                //    combat dock AT THE SAME TIME. That is Sminer's screenshot exactly, and the
+                //    "sometimes a re-login fixes it" asymmetry too - a fresh manager in Idle
+                //    reads false, one restored into an awaiting-start Countdown re-latches.
+                //
+                //    ⛔ DO NOT "FIX" THIS BY RAISING OR REMOVING THE THRESHOLD. The imminent
+                //    window is an owner ruling (2026-07-08) and a real 4.9s countdown must still
+                //    read as Battle. The defect is that the test cannot tell "5 seconds left"
+                //    from "no countdown is running", and IsAwaitingPlayerStart is the authority
+                //    that can - it exists already as a public read-only seam for exactly this
+                //    kind of consumer (WaveManager.cs:570-575).
+                bool parked = wm.IsAwaitingPlayerStart;
+                bool imminent = !parked && wm.CountdownRemaining <= ImminentThreshold;
                 FlowTrace.Throttle("HUD", "countdown-posture", 1f,
-                    imminent
-                        ? $"countdown IMMINENT ({wm.CountdownRemaining:0.0}s <= {ImminentThreshold}s) -> counts as Battle"
-                        : $"countdown long-gap ({wm.CountdownRemaining:0.0}s > {ImminentThreshold}s) -> gated OUT of Battle (HUD releases)");
+                    parked
+                        ? $"countdown PARKED awaiting the player's DEFEND press ({wm.CountdownRemaining:0.0}s, endless mode) -> gated OUT of Battle (HUD releases; WO-1736)"
+                        : imminent
+                            ? $"countdown IMMINENT ({wm.CountdownRemaining:0.0}s <= {ImminentThreshold}s) -> counts as Battle"
+                            : $"countdown long-gap ({wm.CountdownRemaining:0.0}s > {ImminentThreshold}s) -> gated OUT of Battle (HUD releases)");
                 return imminent;
             }
 

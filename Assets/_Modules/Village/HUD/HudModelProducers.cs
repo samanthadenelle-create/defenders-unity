@@ -417,7 +417,14 @@ namespace DeNelle.Village.Hud
                     if (enemies[i] != null && enemies[i].IsAlive) live++;
             }
 
-            bool imminent = phase == CoreWavePhase.Countdown && countdown <= ImminentThreshold;
+            // WO-1736: !IsAwaitingPlayerStart — an endless wave parked on the player's DEFEND
+            // press sits in Countdown with `countdown` held at 0, so the bare `<= 5f` published
+            // imminent=true for the whole open-ended wait. Captured window and full reasoning:
+            // HudContextEvaluator.IsWaveActive. The threshold itself is unchanged (owner ruling
+            // 2026-07-08) — only the "is a countdown actually running" precondition is added.
+            bool imminent = phase == CoreWavePhase.Countdown
+                            && !wm.IsAwaitingPlayerStart
+                            && countdown <= ImminentThreshold;
 
             // Change-gate (countdown bucketed to whole seconds so the timer doesn't churn every poll).
             int cdBucket = Mathf.CeilToInt(countdown);

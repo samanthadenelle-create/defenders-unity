@@ -84,6 +84,7 @@ namespace DeNelle.Editor
                 CheckViewPurity(failures, log);
                 CheckWiring(failures, log);
                 CheckDungeonFlagAcknowledgement(failures, log);
+                CheckPostureOccupancyDiscriminator(failures, log);
             }
             catch (System.Exception ex)
             {
@@ -835,6 +836,164 @@ namespace DeNelle.Editor
                 failures.Add("hud-areas.json dual copies diverged (Resources vs StreamingAssets — CanonicalJson law)");
 
             log.AppendLine("  wiring (RaidCapable seam + Village bridge + ArmyReadiness single-source + occupancy rows) OK");
+        }
+
+        // =====================================================================
+        //  WO-1736 acceptance criterion 6 — THE OCCUPANCY DISCRIMINATOR.
+        // ---------------------------------------------------------------------
+        //  WHY THIS IS A REGRESSION AND NOT A NOTE. External player "Sminer" (the
+        //  project's first outside bug report, Wave 146) described a wave end that
+        //  leaves the combat dock up. Two facts in hud-areas.json are the ONLY
+        //  reason that report could be triaged to a posture at all:
+        //
+        //    - hostile(postbattle) and modal OCCUPY NOTHING. A player in either sees
+        //      no dock, no wave block, no heart status - a bare screen. He sees a
+        //      Start Wave button and his chips, so he is in NEITHER.
+        //    - hostile(prebattle)/hostile(activebattle) keep waveBlock (his Start
+        //      Wave button) and mount combatDock where calm(town) mounts
+        //      peacefulDock (the "Skill Screen" he is describing, in place of
+        //      build/hero/harvest).
+        //
+        //  That discriminator excluded half the candidate postures from a report we
+        //  cannot reproduce - and it lived in a JSON file NOTHING pinned. If someone
+        //  gives postbattle or modal a widget row, the next such report becomes
+        //  untriageable and no test anywhere says so. Read at source 2026-09-17:
+        //  both empty-rows and both combatDock rows hold today.
+        //
+        //  ⛔ NO FACE COUNT, FACE LIST OR ORDER IS ASSERTED HERE - CLAUDE.md sec.7
+        //  gives that to CheckMeasuredPeacefulDock, measured out of the built tree.
+        //  This case asserts only WHICH DOCK each posture row mounts.
+        // =====================================================================
+        private static void CheckPostureOccupancyDiscriminator(List<string> failures, StringBuilder log)
+        {
+            const string Tag = "OCCUPANCY-DISCRIMINATOR (WO-1736)";
+
+            string resJson = Path.Combine(Application.dataPath, "Resources/Data/Canonical/hud-areas.json");
+            string samJson = Path.Combine(Application.dataPath, "StreamingAssets/Data/Canonical/hud-areas.json");
+
+            bool sawAny = false;
+            foreach (var p in new[] { resJson, samJson })
+            {
+                if (!File.Exists(p)) continue;   // CheckWiring already fails a missing copy
+                sawAny = true;
+                string json = File.ReadAllText(p);
+                string which = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(p))));
+
+                // ── the two postures that must occupy NOTHING ──────────────────
+                foreach (string posture in new[] { "hostile(postbattle)", "modal" })
+                {
+                    string row = PostureRow(json, posture);
+                    if (row == null)
+                    {
+                        failures.Add(Tag + " hud-areas.json has no \"" + posture + "\" posture row (" + which +
+                                     "). The empty-occupancy pair is what excludes these two postures from a " +
+                                     "report of a HUD that still shows widgets; a missing row cannot exclude " +
+                                     "anything.");
+                        continue;
+                    }
+                    string occupant = FirstOccupiedWidget(row);
+                    if (occupant != null)
+                        failures.Add(Tag + " \"" + posture + "\" now occupies \"" + occupant + "\" (" + which +
+                                     "). That row MUST stay empty: it is half of the only discriminator that " +
+                                     "could triage external player Sminer's report (WO-1736 sec.2.2). Give " +
+                                     posture + " a widget and the next such report cannot be narrowed to a " +
+                                     "posture at all - and if this is a deliberate design change, re-derive " +
+                                     "that RCA in the same commit rather than leaving a stale exclusion in " +
+                                     "the ticket.");
+                    else
+                        log.AppendLine("  [wo1736] " + posture + " occupies nothing (" + which + ")");
+                }
+
+                // ── the hostile pair: combatDock where calm(town) mounts peacefulDock ──
+                foreach (string posture in new[] { "hostile(prebattle)", "hostile(activebattle)" })
+                {
+                    string row = PostureRow(json, posture);
+                    if (row == null)
+                    {
+                        failures.Add(Tag + " hud-areas.json has no \"" + posture + "\" posture row (" + which + ").");
+                        continue;
+                    }
+                    if (row.IndexOf("\"combatDock\"", System.StringComparison.Ordinal) < 0)
+                        failures.Add(Tag + " \"" + posture + "\" no longer mounts \"combatDock\" (" + which +
+                                     "). The combat dock IS the \"Skill Screen\" the external report names; a " +
+                                     "hostile posture that does not mount it makes that symptom unattributable.");
+                    if (row.IndexOf("\"peacefulDock\"", System.StringComparison.Ordinal) >= 0)
+                        failures.Add(Tag + " \"" + posture + "\" now ALSO mounts \"peacefulDock\" (" + which +
+                                     "). The two docks in one posture destroys the discriminator outright: " +
+                                     "combat and town would look the same and \"the HUD never came back\" " +
+                                     "would no longer distinguish a latched posture from a working one.");
+                    if (row.IndexOf("\"waveBlock\"", System.StringComparison.Ordinal) < 0)
+                        failures.Add(Tag + " \"" + posture + "\" no longer keeps \"waveBlock\" (" + which +
+                                     "). Sminer's visible Start Wave button rides this row, and it is what " +
+                                     "placed him in a hostile posture rather than the empty postbattle/modal " +
+                                     "rows (WO-1736 sec.2.2).");
+                }
+
+                // ── and the peaceful side of the same axis ─────────────────────
+                string calm = PostureRow(json, "calm(town)");
+                if (calm == null)
+                    failures.Add(Tag + " hud-areas.json has no \"calm(town)\" posture row (" + which +
+                                 ") - the posture a wave end is supposed to return to.");
+                else
+                {
+                    if (calm.IndexOf("\"peacefulDock\"", System.StringComparison.Ordinal) < 0)
+                        failures.Add(Tag + " \"calm(town)\" no longer mounts \"peacefulDock\" (" + which +
+                                     ") - the dock that carries build/hero/harvest, i.e. the thing the " +
+                                     "external report says never comes back.");
+                    if (calm.IndexOf("\"combatDock\"", System.StringComparison.Ordinal) >= 0)
+                        failures.Add(Tag + " \"calm(town)\" now mounts \"combatDock\" (" + which +
+                                     ") - the reported symptom would then be the AUTHORED state, and a " +
+                                     "posture fix could never resolve it.");
+                }
+            }
+
+            if (!sawAny)
+                failures.Add(Tag + " neither hud-areas.json copy was readable, so the occupancy " +
+                             "discriminator is unverified. An unread file is a FAILURE, not an unknown " +
+                             "(CLAUDE.md sec.11B).");
+            else
+                log.AppendLine("  [wo1736] occupancy discriminator pinned: postbattle/modal empty, " +
+                               "hostile(*battle) = combatDock + waveBlock, calm(town) = peacefulDock");
+        }
+
+        /// <summary>
+        /// The JSON slice for one posture: from its name to wherever the NEXT "posture" key begins
+        /// (or end of file for the last row). Deliberately the same textual approach
+        /// CheckMeasuredOutsideDock already uses on this file, rather than a second JSON model.
+        /// </summary>
+        private static string PostureRow(string json, string posture)
+        {
+            int at = json.IndexOf("\"" + posture + "\"", System.StringComparison.Ordinal);
+            if (at < 0) return null;
+            int next = json.IndexOf("\"posture\"", at, System.StringComparison.Ordinal);
+            return next > at ? json.Substring(at, next - at) : json.Substring(at);
+        }
+
+        /// <summary>
+        /// The first widget name found inside any "widgets" array of this row, or null when every
+        /// array is empty (and when the row declares no areas at all). ⚠ Asserting "the row does not
+        /// contain the string actionBar" would NOT do: an area added with an empty widget list is
+        /// still an empty occupancy, and a row whose widget list is non-empty under some future area
+        /// name would slip past a fixed token list. This reads what is actually occupied.
+        /// </summary>
+        private static string FirstOccupiedWidget(string row)
+        {
+            int i = 0;
+            while ((i = row.IndexOf("\"widgets\"", i, System.StringComparison.Ordinal)) >= 0)
+            {
+                int open = row.IndexOf('[', i);
+                int close = open >= 0 ? row.IndexOf(']', open) : -1;
+                if (open < 0 || close < 0) return "<malformed widgets array>";
+                string inner = row.Substring(open + 1, close - open - 1);
+                int q = inner.IndexOf('"');
+                if (q >= 0)
+                {
+                    int q2 = inner.IndexOf('"', q + 1);
+                    return q2 > q ? inner.Substring(q + 1, q2 - q - 1) : "<unnamed widget>";
+                }
+                i = close;
+            }
+            return null;
         }
 
         private static bool Verdict(List<string> failures, StringBuilder log, out string reason)

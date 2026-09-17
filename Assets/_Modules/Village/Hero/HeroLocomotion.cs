@@ -1223,8 +1223,14 @@ namespace DeNelle.Village
             if (phase == WavePhase.Active) return true;
             // A Countdown only counts as combat in its final imminent window — EXACTLY the HUD rule —
             // so a long between-wave gap in the hub leaves the hero in the calm idle (matches Town).
+            // WO-1736: a countdown PARKED awaiting the player's DEFEND press (endless mode) holds
+            // at 0 remaining, so a bare `<= 5f` read as imminent forever and left the hero in the
+            // braced combat idle across the whole open-ended build phase - the owner's "can't get
+            // back to peaceful mode", in the hero's stance rather than the HUD's. Captured window
+            // and full reasoning: HudContextEvaluator.IsWaveActive.
             if (phase == WavePhase.Countdown)
-                return _waveManager.CountdownRemaining <= CombatImminentThreshold;
+                return !_waveManager.IsAwaitingPlayerStart
+                       && _waveManager.CountdownRemaining <= CombatImminentThreshold;
             return false;
         }
 

@@ -1,8 +1,24 @@
 # WORK ORDER 1736 — a wave ends and the HUD never returns to the peaceful dock (external player "Sminer", Wave 146)
 
-**Status:** READY TO IMPLEMENT — ⛔ **BLOCKED ON ONE ANSWER FIRST: WHICH BUILD IS HE ON? (see §9.0)**
-If his Play tester build predates `09-09` this may already be fixed at HEAD and the whole ticket
-becomes a SHIP task. Do not write code before that question is answered.
+**Status:** READY FOR LEAD REVIEW
+
+⭐ **THE HOLDER IS NAMED, FROM A CAPTURED DEVICE WINDOW, AND FIXED. See §14 (2026-09-17).**
+It is **not** a `BattleLock` probe. It is **`HudContextEvaluator.IsWaveActive()`'s Countdown branch**:
+an **endless wave parked awaiting the player's DEFEND press** holds `CountdownRemaining` at **0.0**, and
+the imminent test `0.0 <= 5f` is **TRUE**, so a wave that is not counting down at all read as
+*permanently imminent* and pinned `HudContext.Battle`. Captured on the owner's Seeker for **34m30s /
+186 consecutive samples** with `battleLock=False pursuit=False sceneCombat=False` — **the sole holder.**
+⚠ **This CORRECTS §2.3 and §2.4, which ranked both wave-sourced inputs OUT.** §9.0's build question is
+now **moot for the RCA** (it stands only for the ship decision): the defect is live at HEAD.
+
+⚠ **THE BOARD'S DRIFT FLAG ON THIS TICKET IS A FALSE POSITIVE — checked at source 2026-09-17.** The
+named files were all touched after the mint date, but by **other tickets**: `hud-areas.json` by
+`29e0cc7fd` (WO-1824/1825), `PostureSignals.cs` by `732b4584a` (WO-1802), `HudContextEvaluator.cs` and
+`EndStateView.cs` by `1fac4dde3` (WO-1705), `WaveManager.cs` by `bd9ddfb45` (WO-1773) and `72c573ed3`
+(WO-1163), `EndStateVM.cs` by `74d5f1e64` (WO-1810), `HudModelProducers.cs` by `72c573ed3`. The **only**
+WO-1736 commit on any of them is `dbe6b9544` (§12's arm). **This ticket is NOT stale and NOT already
+resolved.**
+
 **Minted:** 2026-09-15 — banner bumped 1736 → 1737 in the SAME edit (`CLI_LANES_WO_NUMBERS.md`)
 **Silo:** HUD posture / wave loop quiescence
 **Severity:** P0-felt — the game is unplayable between waves; the only recovery the player found is quitting the app
@@ -122,6 +138,13 @@ Taking them one at a time:
 
 ### 2.4 ⛔ THE "START WAVE" BUTTON EXCLUDES THE WAVE-PHASE LATCH — READ THIS BEFORE RANKING
 
+> ## ⛔ SUPERSEDED 2026-09-17 — THIS SECTION'S CONCLUSION IS WRONG. READ §14 FIRST.
+> The reasoning below excludes **both** wave-sourced inputs from a visible Start Wave button. A captured
+> device window (§14.2) shows the button's phase — `Countdown` — reporting **Battle** anyway, because
+> `IsWaveActive()` has a **second branch** this section never reads. The button and the combat dock
+> appear **together**; §2.4 calls that impossible and it is in fact the signature. Kept unrewritten
+> because the mis-step is instructive: the citation in §2.3 described one branch of a two-branch method.
+
 An earlier draft of this RCA ranked `_phase` latched at `Active` as the top candidate, reasoning that
 `waveBlock` is occupied in the hostile postures so his Start Wave button was consistent with it.
 **That was wrong, and his screenshot is what disproves it.**
@@ -195,6 +218,13 @@ loud reached us through Discord instead of through F8. **PROVEN.**
 ---
 
 ## 3. RANKED CANDIDATES
+
+> ## ⛔ SUPERSEDED 2026-09-17 — THE HOLDER WAS NONE OF THESE. READ §14.
+> Every candidate below is a `BattleLock` probe. The captured window (§14.2) reads
+> `battleLock=False pursuit=False sceneCombat=False` for the whole 34-minute latch, so **the entire
+> ranking is excluded by measurement** and #1 ("holder UNNAMED") is closed. The real holder is the
+> `wave` input. Kept unrewritten per CLAUDE.md §15 — and because §3's own warning that *"the holder
+> cannot be named from here"* was correct about the evidence gap while being wrong about where to look.
 
 > ⚠ **THE HOLDER CANNOT BE NAMED FROM HERE, AND THAT IS THE FINDING.** Every combat input with a
 > documented self-clearing mechanism is excluded below **by source**. What remains is a `BattleLock`
@@ -704,3 +734,186 @@ No fix, no new gate, no second dump mechanism, no condition edited, no wave-loop
 instrumentation stripped. No Unity, no gate run, no bake, no git. Brace-verified only:
 `python tools/gate_brace.py` → `GATE_BRACE_SUMMARY bad=0 of 1` (exit 0); raw count 49/49; 0 NUL bytes;
 the added block is ASCII-only.
+
+---
+
+## 13. REGRESSION COVERAGE LANDED 2026-09-17 — §12'S ARM AND §2.2'S DISCRIMINATOR ARE NOW PINNED
+
+⛔ **STILL NOT A FIX.** This lane wrote **no gameplay code, edited no condition, touched no wave
+logic and stripped no instrumentation.** It added regression cases only, to the two suites that
+already own these subjects. No new suite, no new marker, no `DataRegression.cs` edit — **the suite
+count is unchanged.**
+
+### 13.1 Why regressions and not a fix
+
+§12 armed the gate but nothing pinned that it stays armed: `WiringIsPresent`
+(`Assets/Editor/Regression/BattleQuiescenceRegression.cs`) linted **only** `BattleArena`, so the
+town wave-end arm — the entire deliverable of `dbe6b9544` — could have been deleted or moved with
+every gate green. That is the same everything-green-world-broken shape §2.6 describes, one layer up.
+
+### 13.2 `Assets/Editor/Regression/BattleQuiescenceRegression.cs` — two new source-lints
+
+Registered in `Run()` after `TheGateObservesAndDoesNotWriteTheClock`:
+
+- **`TownWaveEndArmsTheGate`** — on `WaveCelebrationManager.cs`: `BattleQuiescenceGate.Arm` is
+  present; its reward-screen probe is `EndStateView.IsShowing`; it sits **AFTER**
+  `EndStateVM.FromWaveClear` (§12.2 records that ordering as load-bearing — armed before the banner
+  shows, the probe reads FALSE, the settle runs through the slow-mo dip, and **every clean wave**
+  emits a false `timeScale` FAIL); and it is wrapped in `Guard.Try`.
+  ⚠ The `Guard.Try` rule uses a **bounded 300-char window before the arm**, not a file-wide
+  `Contains`: the file already guards its deadline sweep at `:344`, so a bare token rule would stay
+  GREEN against an unguarded arm — the exact trap WO-1603's producer lint records.
+- **`WavePhaseProbeIsRegistered`** — on `WaveManager.cs` (**read-only**, no edit): the module probe is
+  still registered and still routes to `DescribeLatchedWavePhase`. This is what makes acceptance
+  criterion 2's *"`wave-phase` among the checks that ran"* provable rather than hoped for.
+
+Both are source-lints for the stated reason the sibling cases are: a live wave loop cannot be driven
+inside a synchronous editor batch, and `DeNelle.Village` is not referenced from `DeNelle.Editor`'s
+runtime side here.
+
+### 13.3 `Assets/Editor/Regression/HudActionBarRegression.cs` — acceptance criterion 6
+
+New case **`CheckPostureOccupancyDiscriminator`** (plus two private helpers, `PostureRow` and
+`FirstOccupiedWidget`), run over **both** `hud-areas.json` dual copies:
+
+- `hostile(postbattle)` and `modal` **occupy NOTHING**;
+- `hostile(prebattle)` and `hostile(activebattle)` mount **`combatDock`**, never `peacefulDock`, and
+  keep **`waveBlock`**;
+- `calm(town)` mounts **`peacefulDock`** and never `combatDock`.
+
+⚠ `FirstOccupiedWidget` reads **what is actually occupied** rather than matching a token list: an
+area added with an **empty** widget list is still an empty occupancy, and a fixed token list would
+miss a future area name. **Proven red, not assumed:** two mutations were run against the live JSON —
+giving `modal` an `actionBar`/`combatDock` row reports `combatDock`, and giving `hostile(postbattle)`
+an **empty area followed by** an occupied one reports `peacefulDock` (the case a naive
+`Contains("actionBar")` rule would pass).
+
+⛔ **No face count, face list or order is asserted** — CLAUDE.md §7 gives that to
+`CheckMeasuredPeacefulDock`, measured out of the built tree. This case asserts only **which dock**
+each posture row mounts.
+
+### 13.4 Acceptance criteria — honest state
+
+| AC | State |
+|---|---|
+| 1 — wave end arms the gate | **MET** (§12, `dbe6b9544`) and now **pinned** by `TownWaveEndArmsTheGate` |
+| 2 — gate PASSES on a town wave end, `wave-phase` among the checks | **NOT MET** — needs a fresh headless/device log. The probe's presence is now pinned; the passing marker is the lead's run. |
+| 3 — `combat` FALLS after a clear | **NOT MET** — fresh log required |
+| 4 — posture returns to `calm(town)` | **NOT MET** — fresh log required |
+| 5 — negative test that FAILS before the fix | **ALREADY SATISFIED, CITED NOT DUPLICATED.** Its second form — a never-releasing `BattleLock` probe must make the gate NAME its holder via `DescribeHolders()` — is `HolderIsNamedInTheFinding` in `BattleQuiescenceRegression.cs`, which asserts both directions. Its first form (*"fails before the fix"*) is **unsatisfiable while there is no fix**; a second copy of that assertion is a second answer waiting to disagree with the first. |
+| 6 — regression pinning the occupancy discriminator | **MET** (§13.3) |
+| 7 — `R2_PARITY_OK` + Play version code | **NOT MET** — ship task, lead's, and still gated on §9.0 |
+
+### 13.5 What this lane did NOT do
+
+No Unity process of any kind — **no batchmode, no `CompileGate`, no `DataRegression`, no bake, no
+AutoPilot, no git**. Multiple lanes are open and one seat fires Unity. Verified locally only:
+`python tools/gate_brace.py` on both touched files → `GATE_BRACE_SUMMARY bad=0 of 2` (exit 0); raw
+brace counts 183/183 and 83/83; **0 NUL bytes** in either file.
+
+---
+
+## 14. ⭐ THE HOLDER, NAMED FROM A CAPTURED DEVICE WINDOW — AND FIXED (2026-09-17)
+
+**This section supersedes the ranking in §3 and corrects §2.3 and §2.4.** Nothing here is inferred;
+every line below was read out of a device logcat pulled while the owner was playing.
+
+### 14.1 How it was captured
+
+The owner reported live, first-hand: *"after some levels I can't get back to peaceful mode"* — the same
+symptom Sminer reported from the Play tester track. Read-only `adb logcat -d` against her Seeker
+(**SM02G4061955851**) while she played, no device interaction. Raw pull: 911,386 lines; the
+`[Flow:*]` slice is 8,069 lines spanning `09-17 10:19:22` → `13:41:02`.
+
+### 14.2 THE PROVING LINES
+
+Endless **wave 20** cleared and the loop parked:
+
+```
+13:05:01 [Flow:Wave] reinforcement drain wave 20: COMPLETE - all 13 held enemy(s) released (source roster 21).
+13:05:21 [Flow:Wave] wave 20 payout RECORDED for the clear banner: wood=0 iron=40 food=88 (x1.8 scale)
+13:05:21 [Flow:Wave] EnterCountdown(waveId=21) phaseBefore=Active forceSpawn=False
+13:05:21 [Flow:Wave] endless wave 21: def=4 countScale=x1.05 awaiting player start
+```
+
+The field was **empty**, the drain **COMPLETE**, the phase **Countdown**. Then, from `13:05:21` to
+`13:39:51` — **34 minutes 30 seconds, 186 consecutive throttled samples, zero exceptions** — the device
+logged, every single second:
+
+```
+[Flow:HUD] countdown IMMINENT (0.0s <= 5s) -> counts as Battle
+[Flow:HUD] context inputs: sceneCombat=False wave=True battleLock=False pursuit=False
+           inVillage=True modal=False buildMode=False scene='Main_Castle_Overworld' -> Battle
+```
+
+**`IMMINENT` count in the window: 186. `long-gap` count: 0.** The latch broke only when she pressed
+DEFEND herself at `13:39:52` (`ForceBeginNextWave (PLAYER 'Defend!' path) phase=Countdown`).
+
+### 14.3 ⛔ THE HOLDER — AND WHY §3 COULD NOT SEE IT
+
+`battleLock=False`, `pursuit=False`, `sceneCombat=False` for the **entire** window. **`wave` was the
+sole holder**, so every candidate in §3 — all of which are `BattleLock` probes — is excluded by this
+capture. §3 #1 (*"a latched `BattleLock` probe, holder UNNAMED"*) is **WRONG, and is now closed.**
+
+The mechanism, read at source:
+
+- `HudContextEvaluator.IsWaveActive()` has **TWO** branches. The first is `Phase == Active`. The second
+  (`HudContextEvaluator.cs`, the `Countdown` branch) returns `CountdownRemaining <= ImminentThreshold`
+  (`5f`) — the owner's 2026-07-08 *"an imminent countdown counts as Battle"* ruling.
+- **Endless mode parks in phase `Countdown` with `_countdownRemaining` held at `0f`** and
+  `_awaitingPlayerStart` set, waiting for DEFEND (`WaveManager.TryArmEndlessWave`; the design is stated
+  in `WaveManager.cs:518-525`).
+- So the imminent test evaluates **`0.0f <= 5f` = TRUE, forever.** The test cannot tell *"5 seconds
+  until the wave starts"* from *"no countdown is running at all."*
+
+⚠ **§2.3's citation was the hearsay that mis-ranked this ticket.** It recorded *"`IsWaveActive()`
+returns true when `wm.Phase == WavePhase.Active`"* — true of the **first branch only**. §2.4 then built
+on it: Sminer's visible START WAVE button proves the phase is `Countdown`, therefore `IsWaveActive()` is
+false, therefore **both** wave-sourced inputs are excluded. **The second step does not follow.**
+`StartWaveHudBridge` offers the button *in* `Countdown`, and the Countdown branch reports Battle *in*
+`Countdown` — so the button and the combat dock appear **together**, which is Sminer's screenshot
+exactly. §2.4 called that combination impossible; it is the signature.
+
+It also explains §5's *"sometimes a re-login fixes it"* without needing a static: a fresh manager in
+`Idle` reads false, one restored into an awaiting-start `Countdown` **re-latches**.
+
+### 14.4 THE FIX — one precondition, five copies of it
+
+`WaveManager.IsAwaitingPlayerStart` already exists as a `public` read-only seam documented *"Read-only
+seam for HUD/bot producers"* (`WaveManager.cs:570-575`), and it is the only thing that can distinguish
+the two cases. Each consumer now requires a countdown that is **actually running**:
+
+| file | what it drives | proven? |
+|---|---|---|
+| `Assets/_Modules/Village/HUD/HudContextEvaluator.cs` | the HUD posture — `combatDock` vs `peacefulDock` | **PROVEN by §14.2** |
+| `Assets/_Modules/Village/HUD/HudModelProducers.cs` | the wave model's published `imminent` flag | same predicate, fixed by inspection |
+| `Assets/_Modules/Village/Hero/HeroLocomotion.cs` | the hero's braced combat idle | same predicate — this is the *stance* half of "can't get back to peaceful mode" |
+| `Assets/_Modules/Village/NPCs/AmbientNPC.cs` | every townsfolk NPC's combat behaviour | same predicate, fixed by inspection |
+| `Assets/_Modules/Village/Audio/BattleMusicManager.cs` | battle music over a peaceful town | same predicate; its own header already records the seq-2251 defect of this shape |
+
+⛔ **`WaveManager.cs` WAS NOT EDITED** (WO-1835 holds that file). The seam it already exposes was read,
+nothing more. ⛔ **The threshold was NOT touched** — a real 4.9 s countdown must still read as Battle;
+raising or deleting it would trade this latch for a wave that arrives with no warning.
+
+`HudContextEvaluator` also now traces the parked case distinctly, so the next reader sees it named:
+`countdown PARKED awaiting the player's DEFEND press (0.0s, endless mode) -> gated OUT of Battle`.
+
+### 14.5 Regression
+
+`ParkedCountdownIsNotImminent` in `Assets/Editor/Regression/BattleQuiescenceRegression.cs` pins **all
+five** consumers plus the seam: each must read its threshold **and** `IsAwaitingPlayerStart`. Pinned as
+an invariant rather than as one fix because the predicate is copied five times — a guard restored in one
+file and lost in another is the duplicated-state failure CLAUDE.md §2/§5/§16 each describe.
+`WaveManager.cs:518-525` documents the parking design and names the HUD consumers it believed were safe:
+it lists the DEFEND button and the wave-timer label, and **misses all five of these.**
+
+### 14.6 Acceptance criteria — revised
+
+AC-2/3/4 are now **testable and expected to pass**, and AC-3 is the direct oracle: after a clear the
+context line must read `wave=False`. **The lead's headless/device run is still required** — no Unity
+process was run by this lane. AC-5's *"fails before the fix"* is now satisfiable for real: revert any one
+row in §14.4 and `ParkedCountdownIsNotImminent` names that file.
+
+⚠ **AC-7 unchanged and still open**: Sminer needs this on the **Play closed-tester track**, and §9.0's
+build-vintage question survives **for the ship decision only** — the RCA no longer depends on it, since
+the defect is live at HEAD and was captured on the owner's own current build.
