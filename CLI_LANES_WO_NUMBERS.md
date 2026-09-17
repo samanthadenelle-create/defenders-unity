@@ -189,7 +189,30 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fifty-eighth pass): main line next free = **1855**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixtieth pass): main line next free = **1857**.
+> *(Lead minted **WO-1856** — owner directive, live during the WO-1855 investigation: "we need a
+> disection tool, if a player is stuck. They will not want to wait for a build to be fixed." An
+> always-reachable Settings door that bypasses HudContextEvaluator's battle-gating entirely, plus a
+> client-side "repair my session" action (clears local HUD-context/battle-lock/modal-handle state,
+> never touches the save) so a player-visible bug like WO-1855/WO-1736's class never locks someone
+> out of their only way to recover again.)*
+>
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fifty-ninth pass): main line next free = **1856**.
+> *(Agent minted **WO-1855** — LIVE owner playtest defect, "my character is stuck in battle model
+> still": BATTLE_QUIESCENCE_FAIL (arena win) recurring across seq5344/5490/5519 (device
+> SM02G4061955851, 2026-09-15 through -17), battle-lock held by PursuitBattleProbe.Probe reading a
+> genuinely re-stamped `OverworldEncounterSpawner/rep-chase` pulse (age=0.00s) that survives the
+> gate's own self-heal. RCA: NOT a release bug in BattleLock/PursuitBattleProbe/BattleSessionEnd (all
+> three already verified correct-by-design against the F8 seq4768/WO-1337/WO-1603 fixes already in
+> tree) — the holder is a second, independently-roaming rep pack's leader that is still genuinely
+> within DeaggroRange(26m) of the hero's arena-win return position and has not yet closed to touch or
+> lost the leash, which the existing diagnostics (BattleLock.DescribeHolders / PostureSignals.
+> DescribePursuits) cannot distinguish from a truly stalled/blocked chase. Fix registers a Core
+> QuiescenceProbe ("rep-chase") from OverworldEncounterSpawner naming the exact offending watcher,
+> its live distance, sting/stall duration, and touch distance directly in the FAIL line, per the
+> WO-1233/1603 "append the holder, never force it" pattern — no change to BattleLock, PursuitBattleProbe,
+> or the self-heal contract (all three are load-bearing regression pins). Bumped 1855 -> 1856 in this
+> SAME edit.)*
 > *(Lead PRE-ASSIGNED a full block for the clan system, per DeepSeek's proofed WO-1 through WO-11
 > spec (docs/SKR Integtration.md + docs/CLAN_WORK_ORDERS_PROOFING_2026-09-17.md), translated into
 > this project's own numbering and WO-file convention. Sequential dependency chain, NOT independent
