@@ -249,6 +249,11 @@ namespace DeNelle.Editor
             "Branch|branch|Village/Talents/HeroTalentCatalog.cs",
             "CdnUrl|cdnUrl|Core/Data/CardCollectionCatalog.cs",
             "ClaimModel|claimModel|Wallet/BattleMonthlyCatalog.cs",
+            // Emoji: read by ClanChatVM's chip-label builder until WO-1847 (2026-09-17) replaced
+            // the custom phrase-chip clan chat UI with the Cherry Chat embed. The catalog field and
+            // its authored per-phrase data stay (a future non-embed surface could still read it),
+            // but nothing in the shipped clan chat path builds a chip label from it anymore.
+            "Emoji|emoji|Core/Services/ChatPhraseCatalog.cs",
             "EndUtc|endUtc|Wallet/BattleMonthlyCatalog.cs",
             "EventDisplayText|eventDisplayText|Core/State/ServerConfig.cs",
             "EventName|eventName|Core/Analytics/EventTracker.cs",

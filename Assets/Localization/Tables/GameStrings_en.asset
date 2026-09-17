@@ -1308,11 +1308,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 40931158179491873
-    m_Localized: Defence Reports
+    m_Localized: Defense Reports
     m_Metadata:
       m_Items: []
   - m_Id: 40931158179491874
-    m_Localized: Defence Reports ({UnreadCount} new)
+    m_Localized: Defense Reports ({UnreadCount} new)
     m_Metadata:
       m_Items:
       - rid: 7338888474672496640
