@@ -27,6 +27,10 @@
 //   4. Pi.createPayment(amount, memo, metadata) with all four callbacks wired.
 //   5. onReadyForServerApproval -> POST /api/pi/approve
 //   6. onReadyForServerCompletion -> POST /api/pi/complete -> ONLY THEN grant.
+//   7. after the local grant lands -> POST /api/pi/fulfill (WO-1797), fire-and-forget.
+//      The LEDGER's delivery flag, not a step of the purchase: it runs AFTER the player has
+//      been told they succeeded, and a failure is a Warn. Before it existed every Pi purchase
+//      sat 'verified' forever, so the column that answers "was the player served" was dead.
 //
 // ── HOW THIS IS VERIFIED ─────────────────────────────────────────────────────
 // On a phone, inside Pi Browser, with no debugger. The FlowTrace lines below ARE the
@@ -422,6 +426,18 @@ namespace DeNelle.Core.Payments.Providers
                 FlowTrace.Step(TraceSystem,
                     $"purchase COMPLETE sku={sku} paymentId={payment.PiPaymentId} txid={payment.Txid}");
                 answer(ProviderPurchaseResult.Success(sku, payment.PiPaymentId));
+
+                // 7 -- WO-1797. The grant is IN THE SAVE and the player has ALREADY been told so.
+                // Now tell the ledger, so the purchase row moves 'verified' -> 'fulfilled' and the
+                // console can tell a served purchase from a broken one.
+                //
+                // ⛔ AFTER answer(), AND FIRE-AND-FORGET, BOTH DELIBERATELY. Awaiting it here would put
+                //    a 20s HTTP timeout between the player's payment and their pack appearing - a
+                //    LEDGER COURTESY must never sit in front of the purchase UI (WO-1797 sec.3.3), and
+                //    a failed ack must never cost the player anything. Same fire-and-forget shape as
+                //    ApproveAsync above; PiPaymentEndpoints traces every outcome as a Warn, and
+                //    onIncompletePaymentFound re-acks on a later launch, so a stalled row self-heals.
+                AckFulfilmentAsync(payment.PiPaymentId, payment.Txid, sku).Forget();
             }
             catch (Exception e)
             {
@@ -480,6 +496,23 @@ namespace DeNelle.Core.Payments.Providers
         {
             var result = await PiPaymentEndpoints.CompleteAsync(piPaymentId, txid, quoteId);
             tcs?.TrySetResult(result);
+        }
+
+        /// <summary>
+        /// WO-1797. The fulfilment acknowledgement, detached from the purchase. Guard.Try takes an
+        /// Action and cannot wrap an await, so this try/catch is the async equivalent (CLAUDE.md
+        /// sec.12: no silent failures) - and it swallows on purpose, because the pack is already
+        /// granted and the player has already been told the purchase succeeded.
+        /// </summary>
+        private static async UniTaskVoid AckFulfilmentAsync(string piPaymentId, string txid, string sku)
+        {
+            try { await PiPaymentEndpoints.AcknowledgeFulfilmentAsync(piPaymentId, txid); }
+            catch (Exception e)
+            {
+                FlowTrace.Warn(TraceSystem,
+                    $"fulfil ack threw ({e.GetType().Name}: {e.Message}) - IGNORED ON PURPOSE. " +
+                    $"'{sku}' is granted locally; only the ledger's delivery flag is behind.");
+            }
         }
 
         // -----------------------------------------------------------------

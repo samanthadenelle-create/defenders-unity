@@ -3,13 +3,18 @@
 // -----------------------------------------------------------------------------
 // Assembly: DeNelle.PaymentProviders.Pi   Namespace: DeNelle.Core.Payments.Providers
 //
-// WO-1318. Three calls, and only three:
+// WO-1318. THREE calls take the money; WO-1797 added a FOURTH that takes nothing and
+// only tells the ledger the goods landed:
 //
 //   POST /api/pi/quote     { sku, uid }                  -> { ok, quoteId, amount, memo, sku, rate,
 //                                                            rateSource }
 //                                                        | 503 { ok:false, code:'PURCHASE_RATE_UNAVAILABLE' }
 //   POST /api/pi/approve   { paymentId, quoteId }
 //   POST /api/pi/complete  { paymentId, txid, quoteId }
+//   POST /api/pi/fulfill   { paymentId, txid }            -> { ok, state:'fulfilled', replay }
+//                          ⛔ WO-1797. NOT part of taking money: it flips the purchase row
+//                          'verified' -> 'fulfilled' AFTER the local grant landed. A failure
+//                          here costs the player NOTHING and must never fail a purchase.
 //
 // ⛔ THE CLIENT NEVER DECIDES THE AMOUNT. It asks /quote and uses what comes back
 //    VERBATIM. There is deliberately NO local fallback price: the SKR rail's
@@ -104,6 +109,9 @@ namespace DeNelle.Core.Payments.Providers
         private const string QuoteUrl    = BackendBase + "/api/pi/quote";
         private const string ApproveUrl  = BackendBase + "/api/pi/approve";
         private const string CompleteUrl = BackendBase + "/api/pi/complete";
+        // WO-1797. The FOURTH call, and the only one that is not part of taking money:
+        // it tells the ledger the local grant landed. See AcknowledgeFulfilmentAsync.
+        private const string FulfillUrl  = BackendBase + "/api/pi/fulfill";
 
         private const int TimeoutSeconds = 20;
 
@@ -228,6 +236,49 @@ namespace DeNelle.Core.Payments.Providers
             else FlowTrace.Fail(TraceSystem,
                 $"complete FAILED paymentId={piPaymentId} HTTP {res.HttpStatus} code={res.Code} msg={res.Message} " +
                 "-- the player MAY have paid. onIncompletePaymentFound retries this on next launch.");
+            return res;
+        }
+
+        // -----------------------------------------------------------------
+        //  /api/pi/fulfill
+        // -----------------------------------------------------------------
+
+        /// <summary>
+        /// WO-1797. Tells the purchase ledger that THIS DEVICE persisted the grant, flipping the
+        /// entitlement from `verified` to `fulfilled`. Before this existed, every Pi purchase sat
+        /// `verified` forever and the one column that answers "was the player actually served" could
+        /// not tell a working Pi purchase from a broken one.
+        ///
+        /// ⛔ THIS IS A LEDGER COURTESY, NOT A STEP OF THE PURCHASE. The pack is already in the save
+        ///    by the time this is called, and PiGrantApplier's journal is idempotent. A failure here
+        ///    must NEVER fail the purchase, never re-grant, never throw, never retry-loop and never
+        ///    block the store closing - it is a Warn and nothing more. Pi re-presents unsettled
+        ///    payments through onIncompletePaymentFound, and that path acks again, so a missed ack
+        ///    heals itself on a later launch with no timer.
+        /// </summary>
+        internal static async UniTask<PiBackendResult> AcknowledgeFulfilmentAsync(string piPaymentId, string txid)
+        {
+            if (string.IsNullOrEmpty(piPaymentId) || string.IsNullOrEmpty(txid))
+            {
+                // Not a throw: an ack we cannot address is a traced no-op, because the player
+                // already holds the goods and nothing about their purchase depends on this call.
+                FlowTrace.Warn(TraceSystem,
+                    $"fulfil ack SKIPPED - missing {(string.IsNullOrEmpty(piPaymentId) ? "paymentId" : "txid")}. " +
+                    "The pack is granted locally; the ledger row stays 'verified' until a later launch re-acks.");
+                return PiBackendResult.Refused("ACK_NOT_ADDRESSABLE", string.Empty, 0);
+            }
+
+            FlowTrace.Step(TraceSystem, $"POST /api/pi/fulfill paymentId={piPaymentId} txid={txid}");
+            string body = "{\"paymentId\":" + Json(piPaymentId) + ",\"txid\":" + Json(txid) + "}";
+            var http = await PostAsync(FulfillUrl, body, "fulfill");
+            var res = Interpret(http, "fulfill");
+            if (res.Ok)
+                FlowTrace.Step(TraceSystem, $"fulfil ack OK paymentId={piPaymentId} - ledger now 'fulfilled'.");
+            else
+                FlowTrace.Warn(TraceSystem,
+                    $"fulfil ack FAILED paymentId={piPaymentId} HTTP {res.HttpStatus} code={res.Code} - " +
+                    "THE PLAYER STILL HAS THE PACK. Only the ledger's delivery flag is behind; " +
+                    "onIncompletePaymentFound re-acks on a later launch.");
             return res;
         }
 

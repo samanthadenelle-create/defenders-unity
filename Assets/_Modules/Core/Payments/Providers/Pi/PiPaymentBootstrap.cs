@@ -119,8 +119,23 @@ namespace DeNelle.Core.Payments.Providers
             }
 
             if (PiGrantApplier.ApplyExactlyOnce(payment.Sku, payment.PiPaymentId))
+            {
                 FlowTrace.Step(TraceSystem,
                     $"incomplete payment {payment.PiPaymentId} RECOVERED: '{payment.Sku}' completed and granted.");
+
+                // WO-1797. THIS IS THE SELF-HEALING HALF. Pi re-presents an unsettled payment on every
+                // authenticate, and /api/pi/complete short-circuits a replay to state:'granted' - so
+                // acking HERE means a purchase whose ack was lost (offline, crash, closed tab) flips to
+                // 'fulfilled' on a later launch with no timer and no bespoke poll. A failure is a Warn:
+                // the player already holds the pack.
+                try { await PiPaymentEndpoints.AcknowledgeFulfilmentAsync(payment.PiPaymentId, payment.Txid); }
+                catch (Exception ackEx)
+                {
+                    FlowTrace.Warn(TraceSystem,
+                        $"fulfil ack threw for recovered payment {payment.PiPaymentId} " +
+                        $"({ackEx.GetType().Name}: {ackEx.Message}) - IGNORED ON PURPOSE; the pack is granted.");
+                }
+            }
             else
                 FlowTrace.Fail(TraceSystem,
                     $"incomplete payment {payment.PiPaymentId} completed on the server but the LOCAL grant of " +

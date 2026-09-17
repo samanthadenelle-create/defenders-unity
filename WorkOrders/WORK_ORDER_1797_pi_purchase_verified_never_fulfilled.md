@@ -1,6 +1,9 @@
 # WORK ORDER 1797 — The Pi purchase that will sit `verified` forever: the Pi rail has NO fulfilment acknowledgement
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
+**Implemented:** 2026-09-17, Lanes A + B, option **(b)** — see the IMPLEMENTATION RECORD below.
+⛔ **Lane C (§3.4) is deliberately NOT done: it needs the owner's revenue ruling, and
+`api/admin/stats.js` is byte-unchanged.** No `.RESULT.md` yet — that is the lead's after gating.
 **Number:** PRE-ASSIGNED by the lead (this WO does **NOT** touch `CLI_LANES_WO_NUMBERS.md`)
 **Date:** 2026-09-16
 **Silo:** purchase ledger — `api/purchases/fulfill.js`, `Assets/_Modules/Core/Payments/Providers/Pi/PiBrowserPaymentProvider.cs`, plus ONE reporting correction in `api/admin/stats.js`. No pack contents, no pricing, no grant logic.
@@ -338,6 +341,64 @@ contents / `packs.json` / pricing · the `usd_anchor` sum until the owner rules 
 
 **Prepared by:** read-only spec/RCA lane, 2026-09-16. The dead step in §1 is proven from code read at
 source plus the live row; §2 and §4.1 mark what is *not* proven.
+
+## IMPLEMENTATION RECORD — backend lane, 2026-09-17 (awaiting lead gate + owner ruling on §3.4)
+
+**§3.2.4 AUTH: option (b) chosen — `POST /api/pi/fulfill`.** Option (a) was checked first, as the WO
+demands, and it is NOT viable as a small change: `authenticate()`
+(`api/_lib/wallet-auth.js:749`) resolves **no Pi session at all** — grepped for `pi`/`isPiId` across
+that file, the only `pi`-adjacent hits are comments, and `auth_sessions` is minted solely by
+`api/auth/session.js` and `api/auth/google-session.js`. So adding a `pi` key to `GRANTING_MODES`
+would have gated on a mode `authenticate()` can never return, i.e. a dead entry plus a widened
+allowlist — the worst of both. (b) also bounds the worst case correctly: a forged ack can only mark a
+row **the player already paid for** as delivered. It cannot grant, create, refund or move money.
+The bearer is stated in full in the new route's header: the `(paymentId, txid)` **pair** must already
+exist in our own `pi_payments` with `state='granted'`, and that row's `player_id` must match the
+entitlement's `wallet`.
+
+**§3.2.3 `walletAllowed` CONFIRMED, NOT CHANGED — do not re-audit it.** Read at source:
+`walletAllowed` opens with `if (network !== 'mainnet-beta') return true;`, so `network='pi'` returns
+true on the first line. Untouched.
+⚠ **The WO's own cite `purchase-catalog.js:185-196` is STALE — the function is at `:261-272`**
+(`:262` is that first line; `:185-196` is the `FLAT_RATE_SOURCE` / `FLAT_ROW_RATE` block). Behaviour as
+described, address wrong: re-read it, do not trust the number.
+
+**One writer, as required:** the `UPDATE … SET status='fulfilled'` now lives **only** in the new
+`api/_lib/purchase-fulfilment.js` and is called by both rails. A regression case in
+`test/pi-fulfill.test.js` walks every `.js` under `api/` and FAILS if a second one appears.
+
+**`TX_SIG_RE` is byte-identical**; the Pi txid is validated by `pi.TXID_RE` through an explicit
+`signatureOk(network, signature)` switch. `network='pi'` is accepted at `api/purchases/fulfill.js`'s
+payload layer so a stray Pi ack there is refused by the AUTH gate with a truthful `WALLET_REQUIRED`
+rather than by a shape check that hides the reason — the allowlist itself gained **zero** entries.
+
+**NO MIGRATION IS NEEDED.** `api/schema.sql:1205` already permits `network='pi'`, `:1215` already
+permits `status='fulfilled'`, `fulfilled_at` already exists, and `pi_payments` already carries
+`state`/`txid`/`player_id`/`created_at`. Nothing was added to any migration file.
+
+**§3.4 IS NOT IMPLEMENTED, ON PURPOSE.** `api/admin/stats.js` is byte-unchanged: the WO says the
+implementing seat must ASK, and the owner has already seen the $10.97 figure. The recommendation
+stands as written — (a), split the tile into settled / of which awaiting fulfilment. The
+non-decisional half IS done: `pi_payments` now has an `?view=overview` probe in `api/admin/db.js`.
+⚠ Per §6 that file is also wanted by WO-1796 / WO-1793 — this is a **one-line addition inside the
+existing probe array**, so the lead should stage it by explicit path.
+
+**⛔ §3.3's SELF-HEALING CLAIM IS OVERSTATED — corrected here, and it changes AC 4.2.1.** §3.3 says a
+stalled row heals itself because `onIncompletePaymentFound` re-presents the payment and `complete.js`
+short-circuits a replay. Read at source: `complete.js:149-164` calls Pi's own
+`/payments/<id>/complete` **BEFORE** the entitlement insert, so a payment that reached `/complete`
+successfully is `developer_completed` **at Pi** and Pi will **not** re-present it. Entitlement 8's
+`pi_payments.state='granted'` proves `/complete` finished, so **that row will NOT flip by itself**, no
+matter how many times the Pioneer signs in. The ack in `PiPaymentBootstrap` is kept — it is correct and
+free for payments Pi genuinely still lists as incomplete — but it is **not** general self-healing, and a
+fresh purchase whose fire-and-forget ack is lost (tab closed / offline / crash) likewise stays
+`verified`. **Residual gap, named not hidden:** closing it wants a reconcile sweep over
+`pi_payments.state='granted'` rows whose entitlement is still `verified`. That is a WRITE, so it is the
+owner's call and a separate ticket, not this lane's.
+**Therefore AC 4.2.1 can only be proven by a FRESH Pi purchase after deploy.** Entitlement 8 needs
+§4.1's verdict plus a one-time admin decision. Neither is claimed here. The Unity halves are **not** compile-gated by this
+lane either — brace + NUL clean on all three `.cs` files (`tools/gate_brace.py`: `bad=0 of 3`), but
+`COMPILE_GATE_OK` / `REGRESSION_OK` belong to the lead's single gate.
 
 ## Evidence preserved 2026-09-16 (lead)
 
