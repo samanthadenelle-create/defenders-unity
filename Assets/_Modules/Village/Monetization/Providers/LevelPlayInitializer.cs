@@ -49,6 +49,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;   // WO-1796: invariant formatting of the ILRD revenue figure
 using UnityEngine;
 using Unity.Services.LevelPlay;
 using DeNelle.Core;
@@ -90,17 +91,43 @@ namespace DeNelle.Village.Monetization
         private float _retrySeconds = RetryFloorSeconds;
         private AdUnavailableReason _unavailableReason = AdUnavailableReason.NotInitialised;
 
+        // WO-1796. Cached on the main thread at bring-up so the ILRD callback — which the
+        // SDK may raise off the main thread — can stamp the build onto an impression row
+        // without touching a Unity API from that thread. A revenue figure with no build
+        // attached cannot be told apart from a dev sideload's, and the store build's
+        // waterfall is a different one.
+        private string _buildVersion = "<unset>";
+
         private readonly struct ImpressionEvent
         {
             public readonly string Network;
             public readonly string Format;
             public readonly string Unit;
             public readonly string Placement;
-            public readonly double RevenueUsd;
+
+            // ⛔ WO-1796 — NULLABLE ON PURPOSE. This was `double` fed by `data.Revenue ?? 0d`,
+            // which collapsed "the network reported NO revenue figure" into "the network
+            // reported $0.00". Some networks genuinely do not report revenue on an
+            // impression, so that default was inventing a measurement: the admin tile could
+            // not tell a zero-revenue impression from an unreported one, and a sum over
+            // those rows understates silently. Kept null end-to-end so the read surface
+            // counts them separately (api/admin/db.js ?view=ads returns
+            // impressions_without_revenue) and prints NOT REPORTED rather than $0.00.
+            public readonly double? RevenueUsd;
             public readonly string Precision;
 
+            /// <summary>Build that produced the impression — a store build and a dev sideload
+            /// are different waterfalls, so a revenue row is useless unattributed.</summary>
+            public readonly string Build;
+            public readonly string Country;
+
+            /// <summary>LevelPlay's instance name (the waterfall entry that won). This is the
+            /// field LevelPlay's own Firebase sample maps to ad_unit_name.</summary>
+            public readonly string Instance;
+
             public ImpressionEvent(string network, string format, string unit, string placement,
-                                   double revenueUsd, string precision)
+                                   double? revenueUsd, string precision,
+                                   string build, string country, string instance)
             {
                 Network = network;
                 Format = format;
@@ -108,6 +135,9 @@ namespace DeNelle.Village.Monetization
                 Placement = placement;
                 RevenueUsd = revenueUsd;
                 Precision = precision;
+                Build = build;
+                Country = country;
+                Instance = instance;
             }
         }
 
@@ -167,6 +197,9 @@ namespace DeNelle.Village.Monetization
 
         private void Start()
         {
+            // WO-1796. Main thread, once, before any ad can load — so the off-thread ILRD
+            // callback never reads a Unity API.
+            _buildVersion = Application.version;
             Guard.Try(Sys, "begin LevelPlay bring-up", BeginBringUp);
         }
 
@@ -239,39 +272,70 @@ namespace DeNelle.Village.Monetization
             // touching FlowTrace/EventTracker, both of which are Unity-facing infrastructure.
             while (_impressionRevenue.TryDequeue(out ImpressionEvent row))
             {
+                // Computed into a local first: a nested quote inside an interpolation hole
+                // is what CompileGate's brace scanner mis-reads (CLAUDE.md §1).
+                string revenueText = row.RevenueUsd.HasValue
+                    ? row.RevenueUsd.Value.ToString("0.########", CultureInfo.InvariantCulture)
+                    : "NOT_REPORTED";
                 FlowTrace.Step(Sys,
                     $"ILRD network={row.Network} format={row.Format} unit={row.Unit} " +
-                    $"placement={row.Placement} revenueUsd={row.RevenueUsd:0.########} " +
-                    $"precision={row.Precision}");
+                    $"placement={row.Placement} revenueUsd={revenueText} " +
+                    $"precision={row.Precision} instance={row.Instance} " +
+                    $"country={row.Country} build={row.Build}");
+
+                // ⛔ ONE EVENT, ONE NAME. The name `rewarded_ad_impression` is PINNED by
+                // Assets/Editor/Regression/MonetizationActivationRegression.cs:50, and the
+                // server read surface (api/admin/db.js ?view=ads) matches on it. New facts go
+                // in as PROPERTIES on this one Track call — never a second event, and never a
+                // rename: a rename reaches nobody until players update an APK, while the
+                // server view reaches every build already installed on its next deploy.
                 EventTracker.Track("rewarded_ad_impression", new
                 {
                     network = row.Network,
                     format = row.Format,
                     adUnit = row.Unit,
                     placement = row.Placement,
+                    // Null when the network reported nothing. JSON null, not 0 — see
+                    // ImpressionEvent.RevenueUsd for why that distinction is load-bearing.
                     revenueUsd = row.RevenueUsd,
-                    precision = row.Precision
+                    precision = row.Precision,
+                    instance = row.Instance,
+                    country = row.Country,
+                    build = row.Build
                 });
             }
         }
 
         private void OnImpressionDataReady(LevelPlayImpressionData data)
         {
+            // Application.version is read HERE, on the callback, rather than inside Update:
+            // it is a Unity API and this callback can arrive off the main thread. Reading a
+            // static string property is the cheapest safe option, but to stay strictly
+            // within the "primitives only off-thread" rule the value is cached at bring-up
+            // (see _buildVersion) and only the cached string is touched here.
+            string build = _buildVersion;
+
             if (data == null)
             {
+                // Revenue is NULL, not 0: we did not receive a payload at all, so we know
+                // nothing about what this impression earned and must not claim zero.
                 _impressionRevenue.Enqueue(new ImpressionEvent(
-                    "<unknown>", "<unknown>", "<unknown>", "<none>", 0d, "<unknown>"));
+                    "<unknown>", "<unknown>", "<unknown>", "<none>", null, "<unknown>",
+                    build, "<unknown>", "<unknown>"));
                 return;
             }
 
-            double revenue = data.Revenue ?? 0d;
             _impressionRevenue.Enqueue(new ImpressionEvent(
                 data.AdNetwork ?? "<unknown>",
                 data.AdFormat ?? "<unknown>",
                 data.MediationAdUnitId ?? "<unknown>",
                 data.Placement ?? "<none>",
-                revenue,
-                data.Precision ?? "<unknown>"));
+                // NOT `?? 0d`. See ImpressionEvent.RevenueUsd.
+                data.Revenue,
+                data.Precision ?? "<unknown>",
+                build,
+                data.Country ?? "<unknown>",
+                data.InstanceName ?? "<unknown>"));
         }
 
         private void OnInitSuccess(LevelPlayConfiguration config)

@@ -1,6 +1,6 @@
 # WORK ORDER 1796 — Ad revenue visibility: the ILRD money already in Neon reaches the dashboard
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
 **Number:** PRE-ASSIGNED by the lead (this WO does **NOT** touch `CLI_LANES_WO_NUMBERS.md`)
 **Date:** 2026-09-16
 **Silo:** analytics read surface (`api/admin/db.js`, `api/admin/stats.js`, `api/admin/console.js`) + ONE client property change in `LevelPlayInitializer.cs`. No gameplay, no scene, no economy, no ad SDK wiring.
@@ -397,3 +397,130 @@ store funnel (WO-1798) · the LevelPlay dashboard (owner-only, §3.3).
 **Prepared by:** read-only spec/RCA lane, 2026-09-16. Every path, line number and figure above was
 opened or measured in this session; the two things I could not prove are labelled as such in §1.3 and
 §3.3.
+
+---
+
+## 8. IMPLEMENTATION LANE — 2026-09-17. Built, self-checked, HELD for the lead's gate.
+
+**Stale check first (the board's drift check flagged this WO).** NOT stale, proven at source:
+`grep -rn "revenueUsd" api/ tools/` still returned **zero matches**, and `grep -n "view === " api/admin/db.js`
+listed nine views with **no `ads`** among them. The ticket was fully open.
+
+### 8.1 ⭐ ACCEPTANCE STEP 1 IS ANSWERED, AND THE ANSWER IS THE FIRST BRANCH
+
+Run this session via the §6-sanctioned SELECT-only Neon read (`DATABASE_URL` from `.env.local`;
+throwaway script deleted, `git status` clean of it). **30-day window, verbatim:**
+
+```
+TOTALS_30D    {"impressions":65,"impressions_without_revenue":0,
+               "revenue_usd":0.1795606797,"newest":"2026-09-17T15:44:52.117Z"}
+BY_NETWORK    [{"network":"ironsourceads","impressions":65,"no_revenue":0,
+               "revenue_usd":0.1795606797}]
+```
+
+- **`revenue_usd` > 0. The whole gap was the read surface** — exactly §5.1's first branch. The money
+  was in Neon the entire time and nothing summed it.
+- **`impressions_without_revenue` = 0**, so §2.1's nullable change surfaces nothing *today*. It is still
+  right (a network that reports no revenue must not read as $0.00) but it is defensive, not the fix.
+- **$0.1796 over 65 impressions independently corroborates the owner's own dashboard figure of $0.19**
+  (§3.1) from a completely separate rail. Two unrelated measurements agreeing is the strongest evidence
+  in this ticket, and it confirms the emitter, the transport and the table are all sound.
+- **65 impressions clears the 20-impression eCPM floor**, so a 30-day window WILL print an eCPM
+  (~$2.76 / 1000) while a 7-day window may not. That is the floor working, not a bug.
+
+**AND THE SHIPPED VIEW ITSELF WAS RUN AGAINST POSTGRES, not just beside it.** The first read above used
+hand-written queries; that proves the *data*, not the *handler*. So `api/admin/db.js` was loaded with the
+REAL neon driver and invoked as `{view:'ads', days:'30'}`. Verbatim:
+
+```
+STATUS 200
+typeof per_network = object (array)      typeof per_day = object (array)
+impressions = 65   without_revenue = 0   revenue_usd = 0.1795606797
+ecpm_usd = 2.76    low_n = false         completions_total = 18
+per_network   = [{"network":"ironsourceads","impressions":65,"impressions_without_revenue":0,
+                  "revenue_usd":0.1795606797,"ecpm_usd":2.76,"low_n":false}]
+per_day[0]    = {"day":"2026-09-17","impressions":6,"impressions_without_revenue":0,
+                  "revenue_usd":0.0088710086}
+per_placement = [{"format":"rewarded_video","placement":"(not reported)","impressions":65,...}]
+completions   = [{"provider":"(not reported)","outcome":"Rewarded","completions":18}]
+```
+
+This closes acceptance step 1 **as written** (through the view) and retires the one production-500 risk
+the oracle could not see: the stub hands back pre-parsed arrays, so only a live call proves the driver
+returns `json_agg` already parsed rather than as a string that `.map()` would throw on.
+
+⛔ **THAT RUN CAUGHT THREE REAL DEFECTS THE ORACLE COULD NOT, and they are fixed:**
+1. **`placement` came back as `""`, not null.** LevelPlay's ILRD reports Placement as an EMPTY STRING on
+   all 65 real rows, so `COALESCE` alone passed it through and the table rendered a **blank cell** — which
+   reads as a broken renderer, not as "the network did not say". Now `COALESCE(NULLIF(x,''), '(not
+   reported)')` on network, format, placement, provider and outcome.
+2. **`COUNT(*)::bigint` arrived as the STRING `"18"`.** `completions_total` was right only because it
+   `Number()`s first; the next caller would not. Cast to `::int` so it is a JSON number.
+3. **`impressions_without_revenue` was MISLABELLED.** It counts `revenue IS NULL` on the *CASE result*, so
+   a present-but-malformed value lands there too — but the note and the tile said "reported NO revenue
+   figure at all". Reworded to "no usable numeric revenue figure" in the API note, the tile subtitle and
+   both table headers. The behaviour was right; the words were not.
+
+⚠ **THE RAW VALUES CHANGED A DESIGN DECISION, so it is recorded rather than done quietly.** Sampled
+`properties->>'revenueUsd'` values are `0.0008116349`, `0.0007875`, `0.002462475`, `0.004515` — **every
+impression is a fraction of a cent.** The console's existing `usd()` rounds to 2 dp, which would render
+**every single day as "$0.00"** — indistinguishable from "earned nothing", the exact confident lie
+`console.js` warns about in its own header. So ad figures render through a new **`usd4()`** (4 dp).
+Nothing else on the page changes formatter.
+
+### 8.2 WHAT WAS WRITTEN
+
+| File | Change |
+|---|---|
+| `api/admin/db.js` | **NEW `?view=ads[&days=N]`.** One query, four aggregates (per day / network / placement + totals) off a single `imp` CTE, so they cannot disagree. Regex-guarded `::numeric` written **once**. eCPM withheld below 20 impressions (`low_n`). Separate read of `rewarded_ad_completed` split by provider. `ads` added to the unknown-view hint **and `purchases` too** (it had been missing since WO-1169, as §2.3 flagged). Header doc block updated. |
+| `api/admin/console.js` | Ad tiles in the **Sales** area, unexpanded, directly under the pack tiles — packs sold 0 / ad income $x in one glance. `usd4()`. Detail tables by network, day, placement, and rewards-by-provider. `state.ads` + `state.adsErr` with the same COULD-NOT-READ discipline as `skus`. Every verdict a word; no colour carries meaning. |
+| `...Providers/LevelPlayInitializer.cs` | `ImpressionEvent.RevenueUsd` is now `double?` — the `?? 0d` that collapsed "unreported" into "$0.00" is gone. Added `build` (cached on the main thread at `Start`, so the off-thread ILRD callback touches no Unity API), `country`, `instance`. Event NAME unchanged. `FlowTrace` line extended, never stripped. |
+| `Assets/_Modules/Village/Monetization/AdGateService.cs` | `provider = AdServices.Current?.ProviderName` on `rewarded_ad_completed`, so a completion is attributable and the impressions-vs-completions ratio stops being cross-rail. |
+| `test/admin.ads.view.test.js` | **NEW oracle, 10 cases.** |
+
+**Nothing to do on ingest (§2.2), confirmed not skipped:** `api/events/track.js` has no allowlist and
+`api/schema.sql` stores `properties` as JSONB, so no route change and **no migration** was added.
+
+### 8.3 SELF-CHECKS RUN BY THIS LANE
+
+- `python tools/gate_brace.py` on both `.cs`: `GATE_BRACE_SUMMARY bad=0 of 2`, exit 0. Raw braces
+  86/86 and 72/72. **No NUL bytes** in either.
+- `node --check` on both API files; and the **rendered** console page's embedded `<script>` extracted
+  from `module.exports.PAGE` and syntax-checked (`node --check` on the outer file alone would only
+  prove the template literal parses, not the client code inside it).
+- `node --test test/*.test.js` — **before: 828 tests, 826 pass, 2 fail. After: 838 tests, 836 pass,
+  2 fail.** +10 new passing, zero new failures. The two remaining failures are pre-existing and in
+  `test/heartbound-suite.test.js` (the WO-1693 streak column, and a Heartbound tier name in
+  `Assets/Editor/WallTools/RaidPostAudit.cs` — another lane's file, untouched here).
+- ⚠ **One real self-inflicted break, caught and fixed:** three em-dashes landed inside `PAGE_TEMPLATE`
+  and broke the **three "the served page is 7-bit ASCII from end to end"** cases. Now 0 non-ASCII bytes
+  inside the template; those three suites are green (127/127).
+- **RED PROVEN:** the new oracle run against `git show HEAD:api/admin/db.js` answers
+  `400 {"error":"Unknown view. Use: overview | ..."}` with **0 queries issued**. The test measures the
+  change, not itself.
+
+### 8.4 ⛔ WHAT THIS LANE DID **NOT** DO — outstanding for the lead / PO
+
+1. **NO Unity process was run.** No `CompileGate`, no `DataRegression`, no batchmode of any kind —
+   multiple lanes were open, so the lead batch-gates the combined tree once. **`COMPILE_GATE_OK` and
+   `REGRESSION_OK <n>/<n>` (acceptance 3 + 4, incl. `MonetizationActivationRegression` green) are
+   UNVERIFIED by me.** The event name is unchanged and the pinned literals are untouched, which is a
+   reason to expect it to pass — **not** evidence that it does.
+2. **Acceptance step 2 (device chain) is NOT done** and cannot be from here: it needs the API deployed
+   plus a rewarded ad watched on the Seeker, then the `adb logcat` ILRD line, the incremented
+   `?view=ads&days=1`, and the console screenshot. The §8.1 read proves the *data* half of that chain;
+   the *tile* half is unproven until someone opens the page.
+3. **Acceptance step 5 is proven in the oracle and the view answers 200 live, but the 22P02 path has not
+   been exercised against a real malformed row** — none exists in the table today
+   (`impressions_without_revenue` = 0 of 65). The oracle asserts the guarded CASE is the ONLY route to the
+   cast, and the live call proves the query itself is valid SQL; what is unproven is the behaviour on a
+   row that does not yet exist.
+4. **§3's owner-facing answer needs no code and is unchanged** — including the two things the spec lane
+   marked UNPROVEN (the dashboard menu path, and whether a 404 store URL suppresses bidding). This lane
+   did not open the LevelPlay dashboard either, and does not claim otherwise.
+
+**Coordination (§6):** WO-1793's `events` + `funnel` views **landed in `api/admin/db.js` while this lane
+was writing** (they are at `:718` / `:869`; the `ads` block is at `:240`). Disjoint, and §6's one-guard
+rule holds: WO-1793 added **no** numeric cast, so the regex-guarded `revenueUsd` cast exists exactly
+once in the file — the oracle asserts that count, so a second copy fails the suite. WO-1797 has not
+landed; the `purchases` block was not touched.

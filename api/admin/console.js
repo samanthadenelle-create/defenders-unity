@@ -281,6 +281,9 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
   var state = { tab:'command', days:30, open:'sales', tools:false,
                 overview:null, ops:null, money:null, command:null, err:null,
                 skus:null, skusErr:null,
+                // WO-1796. The ad-revenue read, tracked with its own error slot for
+                // the same reason skus is: "could not read" must never render as $0.
+                ads:null, adsErr:null,
                 // WO-1328. tun holds the LIVE override table exactly as the game
                 // reads it. tunReadOk is tracked separately and on purpose: an
                 // unreadable table also answers with no values, and rendering that
@@ -372,7 +375,13 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
       getJson('/api/admin/stats?view=command&days=' + d),
       loadTunables(),
       // WO-1532. No &days: a catalog has no time window, and the server says so.
-      getJson('/api/admin/stats?view=skus')
+      getJson('/api/admin/stats?view=skus'),
+      // WO-1796. AD INCOME. This is the only call on this page that targets
+      // /api/admin/db rather than /api/admin/stats, and that is deliberate: the
+      // SQL for it lives in exactly ONE file (api/admin/db.js) and is not copied
+      // into stats.js to keep the URLs uniform. getJson already sends X-Admin-Key,
+      // which /api/admin/db requires, so no second key and no second fetch helper.
+      getJson('/api/admin/db?view=ads&days=' + d)
     ]).then(function(res){
       state.err = null;
       state.overview = res[0].status === 200 ? res[0].body : null;
@@ -388,6 +397,13 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
       if (res[5] && res[5].status === 200){ state.skus = res[5].body; state.skusErr = null; }
       else { state.skus = null;
              state.skusErr = (res[5] && res[5].body && res[5].body.error) || ('HTTP ' + (res[5] ? res[5].status : '?')); }
+      // WO-1796. Same discipline again: the ad read either answered or it did not.
+      // A dead ad read must print COULD NOT READ, never "$0.00": "no revenue" and
+      // "we could not ask" are different facts and the owner is making a money
+      // decision off this tile.
+      if (res[6] && res[6].status === 200){ state.ads = res[6].body; state.adsErr = null; }
+      else { state.ads = null;
+             state.adsErr = (res[6] && res[6].body && res[6].body.error) || ('HTTP ' + (res[6] ? res[6].status : '?')); }
       if (!state.overview) state.err = 'player metrics failed: ' + esc((res[0].body && res[0].body.error) || res[0].status);
       else if (!state.ops) state.err = 'ops read failed: ' + esc((res[1].body && res[1].body.error) || res[1].status);
       $('stamp').textContent = 'read ' + new Date().toISOString().replace('T',' ').slice(0,16);
@@ -450,6 +466,100 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
       (open ? '<div class="area-detail">' + detail + '</div>' : '') + '</div>';
   }
 
+  // WO-1796 - AD MONEY, PRINTED IN FULL CENTS AND THEN SOME.
+  // Ad revenue arrives in fractions of a cent per impression: the whole measured
+  // month was $0.19, with good days near $0.02. usd() rounds to 2 dp, which turns
+  // a real $0.004 day into "$0.00", indistinguishable from "earned nothing", and
+  // that is the same confident lie as rendering a failed query as a zero. So ad
+  // figures get four decimal places and small non-zero sums stay visible.
+  function usd4(v){
+    if (v === null || v === undefined) return '-';
+    var x = Number(v);
+    if (!isFinite(x)) return '-';
+    if (x === 0) return '$0.0000';
+    return '$' + x.toFixed(4);
+  }
+
+  // The headline ad tiles, shown UNEXPANDED beside the pack tiles, because the
+  // owner's literal ask was to see pack income and ad income on one screen:
+  // "noone is ever buying a pack and I cant figure out how to see if ads are
+  // making anything". Both answers now sit in the same glance.
+  function adIncomeTiles(){
+    if (!state.ads){
+      return '<h3>Ad income</h3>' + unreadable('the ad impression revenue (' +
+             (state.adsErr || 'unknown') + ')');
+    }
+    var a = state.ads;
+    var imp = Number(a.impressions || 0);
+    // eCPM below the server's impression floor is noise, and the server says so
+    // rather than making this page decide. The verdict is a WORD, never a colour.
+    var ecpmTxt = (a.ecpm_usd === null || a.ecpm_usd === undefined)
+      ? 'too few impressions to trust'
+      : usd(a.ecpm_usd) + ' per 1000' + (a.low_n ? ' - too few to trust' : '');
+    var revSub = imp === 0
+      ? 'NO AD IMPRESSION IN THIS WINDOW'
+      : (Number(a.impressions_without_revenue || 0) > 0
+          ? (n(a.impressions_without_revenue) + ' impression(s) carry no usable revenue figure and are NOT counted as zero')
+          : 'every impression reported a usable revenue figure');
+    return '<h3>Ad income</h3><div class="tiles">' +
+      tile('Ad revenue, ' + n(a.window_days) + ' days', usd4(a.revenue_usd), revSub) +
+      tile('Impressions', n(imp), a.newest_impression_at ? ('newest ' + when(a.newest_impression_at)) : 'none recorded') +
+      tile('eCPM', ecpmTxt, 'needs ' + n(a.ecpm_min_impressions) + '+ impressions to report') +
+      tile('Rewards delivered', n(a.completions_total), 'across every ad provider') +
+      '</div>';
+  }
+
+  function adIncomeDetail(){
+    if (!state.ads) return '';
+    var a = state.ads, out = '';
+    out += '<h3>Ad revenue by network</h3><div class="scroll"><table>' +
+      '<tr><th>Network</th><th>Impressions</th><th>No usable revenue</th><th>Revenue</th><th>eCPM</th></tr>';
+    var nets = a.per_network || [];
+    if (!nets.length) out += '<tr><td colspan="5" class="none">No ad impression in this window.</td></tr>';
+    nets.forEach(function(r){
+      out += '<tr><td class="wrapcell">' + esc(r.network) + '</td><td>' + n(r.impressions) + '</td><td>' +
+        n(r.impressions_without_revenue) + '</td><td>' + usd4(r.revenue_usd) + '</td><td>' +
+        ((r.ecpm_usd === null || r.ecpm_usd === undefined) ? chip('TOO FEW TO TRUST') : usd(r.ecpm_usd)) +
+        '</td></tr>';
+    });
+    out += '</table></div>';
+
+    out += '<h3>Ad revenue by day</h3><div class="scroll"><table>' +
+      '<tr><th>Day</th><th>Impressions</th><th>No usable revenue</th><th>Revenue</th></tr>';
+    var days = a.per_day || [];
+    if (!days.length) out += '<tr><td colspan="4" class="none">No ad impression in this window.</td></tr>';
+    days.forEach(function(r){
+      out += '<tr><td>' + esc(r.day) + '</td><td>' + n(r.impressions) + '</td><td>' +
+        n(r.impressions_without_revenue) + '</td><td>' + usd4(r.revenue_usd) + '</td></tr>';
+    });
+    out += '</table></div>';
+
+    out += '<h3>Ad revenue by placement</h3><div class="scroll"><table>' +
+      '<tr><th>Format</th><th>Placement</th><th>Impressions</th><th>Revenue</th></tr>';
+    var pl = a.per_placement || [];
+    if (!pl.length) out += '<tr><td colspan="4" class="none">No ad impression in this window.</td></tr>';
+    pl.forEach(function(r){
+      out += '<tr><td>' + esc(r.format) + '</td><td class="wrapcell">' + esc(r.placement) + '</td><td>' +
+        n(r.impressions) + '</td><td>' + usd4(r.revenue_usd) + '</td></tr>';
+    });
+    out += '</table></div>';
+
+    out += '<h3>Rewards delivered, by provider</h3><div class="scroll"><table>' +
+      '<tr><th>Provider</th><th>Outcome</th><th>Count</th></tr>';
+    var comp = a.completions || [];
+    if (!comp.length) out += '<tr><td colspan="3" class="none">No rewarded ad completed in this window.</td></tr>';
+    comp.forEach(function(r){
+      out += '<tr><td>' + esc(r.provider) + '</td><td>' + chip(r.outcome) + '</td><td>' + n(r.completions) + '</td></tr>';
+    });
+    out += '</table></div>';
+
+    var nt = a.notes || {};
+    out += '<p class="note">' + esc(nt.revenue_source || '') + '</p>' +
+           '<p class="note">' + esc(nt.null_revenue || '') + '</p>' +
+           '<p class="note">' + esc(nt.cross_rail || '') + '</p>';
+    return out;
+  }
+
   // -- 1. SALES -------------------------------------------------------------
   function salesArea(c){
     var s = c.sales || {};
@@ -476,6 +586,10 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
         '</div>';
     }
 
+    // WO-1796. Ad income sits directly under the pack tiles, unexpanded, so the
+    // screen reads in one glance: packs sold 0, ad income $x.
+    head += adIncomeTiles();
+
     detail = '<p class="note">' + esc(s.backing || '') + '</p>';
 
     if (s.read_ok){
@@ -501,6 +615,8 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
           'does not mean those sales were free.</p>';
       }
     }
+
+    detail += adIncomeDetail();
 
     var fr = s.first_vs_repeat || {};
     detail += '<h3>First-time and repeat buyers</h3>';

@@ -246,12 +246,22 @@ namespace DeNelle.Village.Monetization
                 },
                 result =>
                 {
+                    // ⛔ WO-1796 — WHICH RAIL DELIVERED THIS REWARD.
+                    // This gate is provider-AGNOSTIC: it fires for LevelPlay on Android and
+                    // for the Pi Developer Ad Network inside Pi Browser. Until this property
+                    // existed the payload carried no network and no provider, so a completion
+                    // could not be attributed to a rail at all — and comparing it against
+                    // rewarded_ad_impression (emitted ONLY by LevelPlayInitializer) produced a
+                    // cross-rail ratio that looked like a completion rate and was not one.
+                    // AdServices.Current never returns null (IAdService.cs: `?? NullAdService
+                    // .Instance`); the `?.` stays anyway per CLAUDE.md §10.
                     EventTracker.Track("rewarded_ad_completed", new
                     {
                         placement = placementId,
                         outcome = result.Outcome.ToString(),
                         reason = result.Reason.ToString(),
-                        rewardApplied
+                        rewardApplied,
+                        provider = AdServices.Current?.ProviderName ?? "<unknown>"
                     });
                     onComplete?.Invoke(result);
                 });
