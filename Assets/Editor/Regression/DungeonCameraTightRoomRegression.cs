@@ -93,12 +93,48 @@ namespace DeNelle.Editor
             string sense = ReadOrFail("_Modules/Core/World/DungeonRoomSense.cs", fails);
             if (fails.Count > 0) return Verdict(fails, out reason);
 
-            if (!Regex.IsMatch(smc, @"if\s*\(_dungeonProfileActive\)\s*\n\s*zoomOffset\s*=\s*DungeonRoomSeat\(dt\)"))
-                fails.Add("SmartMobileCamera: room-aware seat (DungeonRoomSeat) is not dungeon-gated into LateUpdate");
+            // ⛔ WO-1772: THE TWO GATES BELOW TEST DUNGEON-GATING, NOT THE FLAG'S SPELLING. They used to
+            // require the literal `_dungeonProfileActive`, which is why WO-1765 could not perform its R1
+            // rename and had to write the heartbeat call site as two identical branches rather than one
+            // `||` — the lint pinned the exact dungeon-only gate that ruling widened to raids. The flag
+            // is now resolved from `CameraSceneProfile.Dungeon` (DungeonFpvRegression.DungeonActiveFlagName,
+            // one copy, called not re-typed), so a rename is free and a behaviour change is still red.
+            string dgFlag = DungeonFpvRegression.DungeonActiveFlagName(smc);
+            if (dgFlag == null)
+            {
+                fails.Add("SmartMobileCamera has no dungeon-active flag derived from CameraSceneProfile.Dungeon " +
+                          "(expected `<flag> = <want> == CameraSceneProfile.Dungeon;`) — the room-seat and " +
+                          "heartbeat gates below cannot be judged, so this suite fails rather than pass vacuously");
+                return Verdict(fails, out reason);
+            }
+            string F = Regex.Escape(dgFlag);
+
+            // The room-aware seat stays a SINGLE-flag dungeon gate: an open raid arena publishes no rooms,
+            // so widening this to `||` is the leak CameraRaidFramingRegression.cs:381-393 forbids.
+            if (!Regex.IsMatch(smc, @"if\s*\(\s*" + F + @"\s*\)\s*\n\s*zoomOffset\s*=\s*DungeonRoomSeat\(dt\)"))
+                fails.Add($"SmartMobileCamera: room-aware seat (DungeonRoomSeat) is not gated into LateUpdate " +
+                          $"behind the single dungeon flag ({dgFlag})");
             if (!smc.Contains("DungeonCam.CeilingHeightRef - DungeonCam.CeilingClearance"))
                 fails.Add("SmartMobileCamera: the ceiling backstop clamp is gone");
-            if (!Regex.IsMatch(smc, @"if\s*\(_dungeonProfileActive\)\s*\n\s*EmitDungeonHeartbeat\(dt\)"))
-                fails.Add("SmartMobileCamera: the [Flow:Camera] WO-958 heartbeat is not wired into LateUpdate");
+
+            // The heartbeat must be GATED (never unconditional — it would flood the town log and evict the
+            // boot window from the logcat ring), and the dungeon must be one of the gates. Every call site
+            // is collected, so the two-branch shape, a single `||`, and either operand order all pass;
+            // deleting the guard, or dropping the dungeon from it, does not.
+            var beats = Regex.Matches(smc, @"(?:else\s+)?if\s*\(([^)]*)\)\s*\n\s*Emit\w*Heartbeat\(dt\)");
+            if (beats.Count == 0)
+                fails.Add("SmartMobileCamera: the [Flow:Camera] WO-958 heartbeat is not wired into LateUpdate " +
+                          "behind an `if (<profile flag>)` guard — an ungated heartbeat floods the town log");
+            else
+            {
+                bool dungeonGated = false;
+                foreach (Match b in beats)
+                    if (Regex.IsMatch(b.Groups[1].Value, @"\b" + F + @"\b")) dungeonGated = true;
+                if (!dungeonGated)
+                    fails.Add($"SmartMobileCamera: the [Flow:Camera] WO-958 heartbeat is wired, but no call " +
+                              $"site is gated on the dungeon flag ({dgFlag}) — dungeons would go silent, " +
+                              "which is the WO-958 evidence gap this suite exists to prevent");
+            }
             if (!Regex.IsMatch(smc, @"_facingRecenterDelay\s*=\s*DungeonCam\.FacingRecenterDelay"))
                 fails.Add("SmartMobileCamera: the dungeon profile no longer re-tunes the facing-recenter (auto-rotate fight returns)");
             if (!Regex.IsMatch(smc, @"_facingRecenterDelay\s*=\s*_villageFacingRecenterDelay"))

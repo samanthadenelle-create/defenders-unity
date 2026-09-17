@@ -165,13 +165,25 @@ namespace DeNelle.Editor
 
             // ── (7) PIPELINE B — SmartMobileCamera's locked dungeon profile ──
             // This is the camera in every composed dg_* dungeon and in KayKitChallengeOutpost.
-            if (!smc.Contains("ApplyDungeonProfileIfNeeded"))
-                fails.Add("SmartMobileCamera has no ApplyDungeonProfileIfNeeded — the composed dungeons " +
-                          "and KayKitChallengeOutpost bake NO camera and NO DungeonCameraRig, so this " +
-                          "component IS their dungeon camera (HeroControlEnsurer L283-295)");
-            if (!Regex.IsMatch(smc, @"ApplyDungeonProfileIfNeeded[\s\S]{0,4000}HubScenes\.IsDungeon"))
-                fails.Add("SmartMobileCamera's dungeon profile is not keyed off HubScenes.IsDungeon — " +
-                          "it must never alter the overworld/hub/raid camera");
+            // ⛔ WO-1772: THIS PIN TESTS THE SEAM, NOT THE SPELLING. It used to require the literal
+            // `ApplyDungeonProfileIfNeeded`, which made the lint block its own subject's rename —
+            // WO-1765 R1 (`ApplyDungeonProfileIfNeeded` → `ApplySceneCameraProfileIfNeeded`) was
+            // abandoned for exactly that reason. A lint that pins an identifier's characters is
+            // duplicated state (CLAUDE.md §5); what this suite actually cares about is that a
+            // per-scene camera-profile applier EXISTS and is keyed off HubScenes.IsDungeon. So the
+            // applier is resolved from its DECLARATION and the IsDungeon check is anchored to that
+            // declaration's body — any name may be chosen, no behaviour may be dropped.
+            var applier = Regex.Match(smc, @"private\s+void\s+(Apply\w*ProfileIfNeeded)\s*\(");
+            if (!applier.Success)
+                fails.Add("SmartMobileCamera has no `private void Apply*ProfileIfNeeded(` applier — the " +
+                          "composed dungeons and KayKitChallengeOutpost bake NO camera and NO " +
+                          "DungeonCameraRig, so this component IS their dungeon camera " +
+                          "(HeroControlEnsurer L283-295)");
+            else if (!Regex.IsMatch(smc.Substring(applier.Index),
+                                    @"^[\s\S]{0,4000}HubScenes\.IsDungeon"))
+                fails.Add($"SmartMobileCamera's {applier.Groups[1].Value} body is not keyed off " +
+                          "HubScenes.IsDungeon — the dungeon profile must never alter the " +
+                          "overworld/hub/raid camera");
             if (!Regex.IsMatch(smc, @"_followOffset\s*=\s*new\s+Vector3\([\s\S]{0,200}DungeonCameraProfile\.CameraHeight"))
                 fails.Add("SmartMobileCamera's dungeon seat is not sourced from DungeonCameraProfile.CameraHeight");
             if (!smc.Contains("DungeonCameraProfile.CameraDistance") || !smc.Contains("DungeonCameraProfile.LookAtHeight"))
@@ -186,9 +198,19 @@ namespace DeNelle.Editor
                               "requires the wall-collision thrash, framing yank, combat pump and " +
                               "movement-lead sway all OFF underground");
             // Leaving the dungeon must restore the village camera, or the town goes dark and tight.
-            if (!smc.Contains("_villageFollowOffset") || !smc.Contains("_dungeonProfileActive"))
-                fails.Add("SmartMobileCamera's dungeon profile is not reversible (_villageFollowOffset / " +
-                          "_dungeonProfileActive) — a camera surviving back into town would keep the dungeon seat");
+            // ⛔ WO-1772: reversibility is a BEHAVIOUR, so pin the behaviour. This used to require the
+            // literal `_dungeonProfileActive`, one of the two identifiers WO-1765 R1 could not rename.
+            // The rename-proof anchor is the ENUM: whatever the flag is called, it must be derived from
+            // CameraSceneProfile.Dungeon, and the town seat must be assigned back from its snapshot.
+            string dgFlag = DungeonActiveFlagName(smc);
+            if (dgFlag == null)
+                fails.Add("SmartMobileCamera has no dungeon-active flag derived from " +
+                          "CameraSceneProfile.Dungeon (expected `<flag> = <want> == CameraSceneProfile.Dungeon;`) — " +
+                          "without it nothing tells the room-topology and heartbeat gates they are underground");
+            if (!Regex.IsMatch(smc, @"_followOffset\s*=\s*_villageFollowOffset\s*;"))
+                fails.Add("SmartMobileCamera's dungeon profile is not reversible (the town seat is never " +
+                          "assigned back from _villageFollowOffset) — a camera surviving back into town " +
+                          "would keep the dungeon seat");
 
             // ── (8) The runtime camera must CLEAR to the dungeon colour ──
             // WO-919 nulled RenderSettings.skybox; with a null skybox CameraClearFlags.Skybox falls
@@ -231,6 +253,28 @@ namespace DeNelle.Editor
                 return float.NaN;
             }
             return float.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// WO-1772 — resolves the name of SmartMobileCamera's dungeon-active flag from the ONE thing a
+        /// rename cannot move: the <c>CameraSceneProfile.Dungeon</c> enum member it is derived from.
+        /// <para>
+        /// ⛔ THIS EXISTS SO NO LINT EVER AGAIN PINS AN IDENTIFIER'S CHARACTERS. Two suites required the
+        /// literal <c>_dungeonProfileActive</c> / <c>ApplyDungeonProfileIfNeeded</c>, which is why
+        /// WO-1765 R1 shipped without its rename and why the heartbeat call site was written as two
+        /// identical branches instead of one <c>||</c> — the lint pinned the very dungeon-only gate the
+        /// ruling widened. A pinned spelling is duplicated state (CLAUDE.md §5): it tracks live code by
+        /// hand and fails the same way the stale WO-number block did.
+        /// </para>
+        /// Returns <c>null</c> when the derivation is gone, so the caller fails LOUDLY — a resolver that
+        /// silently returned a default would make every gate below it vacuous (CLAUDE.md §12: no silent
+        /// failures). ONE copy, deliberately: DungeonCameraTightRoomRegression lints the same source file
+        /// and CALLS this — a second private regex in that suite would be the duplicate §5 forbids.
+        /// </summary>
+        internal static string DungeonActiveFlagName(string smcSource)
+        {
+            var m = Regex.Match(smcSource, @"(\w+)\s*=\s*\w+\s*==\s*CameraSceneProfile\.Dungeon\s*;");
+            return m.Success ? m.Groups[1].Value : null;
         }
 
         private static string ReadOrFail(string rel, List<string> fails)
