@@ -16,7 +16,7 @@
 // THE PICKS ARE THE OWNER'S, NOT THIS SCRIPT'S. Stated verbatim 2026-08-16:
 // "log sack of flour and iron bar". Resolved to the KayKit Resource Bits pack:
 //   Wood  -> Wood_Log_A.fbx
-//   Food  -> Food_Flour.fbx
+//   Stone -> Stone_Chunks_Small.fbx (was Food -> Food_Flour.fbx until 2026-09-16)
 //   Iron  -> Iron_Bar.fbx
 // Crystals is DELIBERATELY LEFT UNWIRED - the owner named three props, not four,
 // and the standing rule is that the owner tags art and the CLI maps it verbatim,
@@ -99,7 +99,7 @@ namespace DeNelle.Editor
         private static readonly Pick[] OwnerPicks =
         {
             new Pick(HarvestResource.Wood, "Wood_Log_A.fbx"),
-            new Pick(HarvestResource.Stone, "Food_Flour.fbx"),
+            new Pick(HarvestResource.Stone, "Stone_Chunks_Small.fbx"),   // 2026-09-16 owner: "do we stack rocks? OR stack bags of flour still?" - Food became Stone on 09-11 but the prop stayed a flour sack; rough-stone canon (09-09) picks the chunk, not the brick
             new Pick(HarvestResource.Iron, "Iron_Bar.fbx"),
             // HarvestResource.Crystals: deliberately absent - see the header. Falls back to the bar.
         };

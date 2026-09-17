@@ -15,13 +15,13 @@ MonoBehaviour:
   Entries:
   - Resource: 2
     Prop: {fileID: 919132149155446097, guid: d3cab6361f0e48e4b98ce12b3b2a5869, type: 3}
-    PropScale: 0.11589902
-    SlotSize: {x: 1.2, y: 1, z: 0.6}
-  - Resource: 1
-    Prop: {fileID: 919132149155446097, guid: ffbda3a66c9bebd4ab17c138a81655f9, type: 3}
-    PropScale: 0.14035809
+    PropScale: 0.23179804
     SlotSize: {x: 1.2, y: 1, z: 0.6}
   - Resource: 3
     Prop: {fileID: 919132149155446097, guid: ed102bf7ffe9bf849a0edca1115abf33, type: 3}
-    PropScale: 0.3187306
+    PropScale: 0.6374612
+    SlotSize: {x: 1.2, y: 1, z: 0.6}
+  - Resource: 1
+    Prop: {fileID: 919132149155446097, guid: b12d6c1054aa1954c99d68b46c69e19f, type: 3}
+    PropScale: 0.227306
     SlotSize: {x: 1.2, y: 1, z: 0.6}
