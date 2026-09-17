@@ -313,3 +313,82 @@ as secondary features layered onto either of those two. **Tokenized Reputation**
 narrative core and lose every part that touches real tokens. **Hardware-Bound Rent** needs one
 direct technical question answered — does Solana Mobile expose anything resembling device-leasing
 at all — before it's worth designing further.
+
+## THE LEAD PITCH — "The Vigil": SKR epoch tenure as clan collective weight
+
+Owner-authored, third creative pass, and the strongest concept produced this session. Recorded
+here in full, verified against real code and real external sources rather than taken on the
+pitch's own claims, and resolved to a buildable form.
+
+### The pitch, as submitted
+
+The ancestors don't count gold. They count vigil. Clan members stake SKR; the game reads each
+member's stake tenure and what fraction of their holdings stay staked; the clan's collective
+"vigil weight" (percentage staked × tenure, summed across members) gates a weekly ballot that
+unlocks perk tiers — build speed, harvest yield, special troop types. SKR is never spent, traded,
+or cashed out; it is only held and observed. Fairness comes from two design choices: duration
+beats amount (a whale staking huge amounts briefly contributes less than a small holder staking
+a smaller amount for a long time), and percentage beats absolute (a small holder with half their
+holdings staked outranks a whale with a sliver staked). The clan's own membership/invite structure
+does anti-sybil work a global leaderboard couldn't. Copy rules: state duration in the mechanic's
+own terms, never "earn/yield/return/APY," SKR is held and read, never spent.
+
+### What got verified, and what changed
+
+**Confirmed real and buildable today:**
+- **Percentage of holdings staked.** Clean — the existing SKR staking verifier
+  (`api/_lib/skr-staking.js`) already computes a wallet's active staked amount; dividing by total
+  SKR balance needs one added standard token-balance read, no new mechanism.
+- **The 48-hour figure.** Confirmed live on-chain: the staking program's `cooldown_seconds` reads
+  exactly `172800` (48 hours). The pitch's number is right.
+- **"Epoch" as SKR's own term.** Solana Mobile's own public materials describe SKR's staking
+  cycle as a 2-day "staking epoch," matching that same 48-hour cooldown. So the WORD "epoch" is a
+  real, citable SKR-specific term — worth keeping in the fiction and the copy.
+- **Wallet verification.** Already exists and is load-bearing elsewhere in this backend
+  (`api/_lib/wallet-auth.js` — purchases, promos, referrals). Not a gap.
+
+**Corrected — the pitch's technical premise on tenure was wrong, and the fix is simpler than
+first feared:**
+- There is **no on-chain "staked since" field.** The staking program's account data
+  (`UserStake`, verified byte-for-byte against its on-chain program) stores shares, cost basis,
+  and unstake state — never a start timestamp. "The chain defines the epoch, the game reads it"
+  is not true for continuous tenure specifically; it would have to be computed and tracked by the
+  game itself.
+- **No external site fills the gap either.** Solana Mobile's own staking site
+  (`stake.solanamobile.com`) shows only network-wide aggregates — no per-wallet tenure, no public
+  API for it. Standard block explorers show raw transaction history a human could read, but
+  nothing computes a structured tenure field for this program. No evidence of a governing
+  multisig that would change this either.
+- **A real indexer COULD reconstruct true pre-game staking history** (walk a wallet's full
+  transaction history against this program, find every stake/unstake event, compute continuous
+  tenure including time before the wallet ever touched this game) — genuinely possible with a
+  production-grade indexed RPC provider, bounded one-time cost per wallet, but real complexity in
+  correctly parsing stake/unstake sequences for gaps. This is new backend infrastructure, not a
+  simple query.
+- **The owner's ruling closes this cleanly: pre-game staking history doesn't matter.** Tenure
+  only needs to count from the moment the game first observes a wallet's stake — "the tree only
+  starts remembering once you show up," not before. This is not a compromise forced by a technical
+  limitation; it's a genuinely better fit for the fiction, and it means the whole indexer question
+  above is optional future polish, never a blocker. A simple game-side snapshot (record each
+  verified wallet's staked-fraction and first-seen-staked timestamp, recompute tenure as elapsed
+  time since) is sufficient, buildable on infrastructure the clan system needs anyway, and requires
+  no new on-chain reads beyond what's already verified above.
+
+### Resolved design, ready to scope
+
+- **Tenure unit:** game-tracked elapsed time since the game first observed a wallet staked, framed
+  in the game's own "vigil" language (not a raw chain epoch, since no such field exists) — but the
+  word "epoch" itself stays in the fiction/copy since it's SKR's own real term for its 2-day cycle.
+- **Vigil weight:** `sum(member percentage-staked × member tenure)` across a clan, exactly as
+  pitched — nothing here needed correction.
+- **Perk tiers:** owner ruling — start with a simple five-tier ladder (levels 1-5) rather than a
+  complex threshold curve, as a first pass to retune once real clan-weight numbers exist.
+- **Prerequisite:** rides on the real clan/wallet-identity backend (see the clan-system audit
+  earlier in this session's record) — the SKR read is one addition on top of infrastructure the
+  clan system needs regardless of this feature.
+- **Copy rules stand as written in the original pitch:** no investment language, SKR is held and
+  read, never spent; state the 48-hour/epoch figures honestly as the game's own tracked duration.
+
+This is the strongest SKR concept produced this session specifically because every piece of it
+survived verification against real code and real external sources, with only one premise needing
+correction, and that correction turned out to make the mechanic better, not weaker.
