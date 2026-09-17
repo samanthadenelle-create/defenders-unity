@@ -39,6 +39,28 @@
 //     reported, never failed. The runtime normalizer
 //     (VFXManager.NormalizeVendorContainerRenderers, WO-1100) fills its slot 0
 //     with a same-instance donor at spawn so MagentaProbe stays quiet.
+//   * (WO-1806) An ENABLED, BILLBOARD-drawing ParticleSystemRenderer whose SLOT 0 holds
+//     the editor fixer's opaque Lit placeholder (MagentaFix*, guid 751cde1de5b29b247-
+//     bba48305ded45f5 = Assets/Materials/MagentaFix_DefaultLit.mat: URP/Lit, RenderType
+//     Opaque, _BaseColor 0.70 grey, _BaseMap NULL) is an offender -- it draws a flat
+//     untextured grey quad in front of the player. Three deliberate narrowings, each
+//     measured, not assumed:
+//       - SLOT 0 ONLY. A trail slot (i>0) is repaired at runtime by re-pointing it at
+//         slot 0 (AbilityVfxKit.TryRepairOpaqueLitParticleSlot); slot 0 has no sibling
+//         to borrow from, so nothing repaired it until this WO.
+//       - renderMode None and DISABLED renderers draw nothing.
+//       - renderMode MESH is skipped: a mesh particle (debris, shards) is legitimately
+//         opaque and often untextured, carried by vertex colour.
+//     NAME-GATED, not heuristic: "any opaque URP material with no _BaseMap" would also
+//     match those mesh particles. MagentaFix* is the producer this WO proved
+//     (MagentaMaterialFixer.AssignDefaultToNullSlots), so MagentaFix* is what fails.
+//     Census by that exact guid, 2026-09-16: project-wide 4,197 such slots on
+//     ParticleSystemRenderers across 969 prefabs (990 inert, 3,186 trail slots, 21 slot-0
+//     on a live renderer -- all Mirza Beig demo prefabs, none in a shipped catalog).
+//     Inside this suite's own scope, Assets/Resources/VFX carries 38 slots across 22
+//     prefabs: 27 slot-0, EVERY ONE of them renderMode None or renderer disabled, and 11
+//     trail slots. So this assertion passes today by measurement, and pins the tree
+//     before the next one lands.
 //   * Rows whose prefab does not resolve (gitignored packs on a fresh clone) are
 //     SKIPPED AND COUNTED, never failed -- and the pass line says how many were
 //     not proven (a clean clone must not go red; a hollow pass must not lie).
@@ -67,6 +89,19 @@ namespace DeNelle.Editor.Regression
         private const string MarkerFail = "VFX_NULL_SLOT_FAIL";
 
         private const string HovlCatalogPath = VfxLoopFlagRegression.HovlCatalogPath;
+
+        /// <summary>WO-1813: the four prefabs playing at the hero in the owner's 2026-09-16
+        /// 20:51:30 capture (Juice_LevelUp, Death_Brute, Cast_FireCharge, Impact_Flame), pinned
+        /// by path. Paths read off <c>VFXCatalogGenerator.Map</c> and verified on disk.
+        /// Level_up.prefab is the one that matters: it is the ONLY one of the four that neither
+        /// existing source reaches.</summary>
+        private static readonly string[] Wo1813CoveragePrefabs =
+        {
+            "Assets/Lana Studio/Casual RPG VFX/Prefabs/States/Level_up.prefab", // VFXType.Juice_LevelUp
+            "Assets/Resources/VFX/Death/Death_Brute.prefab",                    // VFXType.Death_Brute
+            "Assets/Resources/VFX/Projectiles/Casting_Fire.prefab",             // VFXType.Cast_FireCharge
+            "Assets/Resources/VFX/Status/BigExplosion.prefab",                  // VFXType.Impact_Flame
+        };
 
         /// <summary>Standalone batch entry point (prints the distinct marker).</summary>
         public static void RunStandalone()
@@ -133,6 +168,32 @@ namespace DeNelle.Editor.Regression
                 work.Add(new KeyValuePair<string, GameObject>(p, prefab));
             }
 
+            // ── WO-1813 named coverage ───────────────────────────────────────
+            // The two sources above are (a) HovlVfxCatalog rows and (b) everything under
+            // Assets/Resources/VFX/. NEITHER reaches the prefab that VFXType.Juice_LevelUp
+            // resolves to: `VFXCatalogGenerator.Map` points it at
+            // Assets/Lana Studio/Casual RPG VFX/Prefabs/States/Level_up.prefab, which is
+            // outside the Resources tree and is a VFXCatalog row, not a Hovl one. So the
+            // effect the owner photographed on 2026-09-16 (white quads on the hero during a
+            // level-up, WO-1813) was never in this oracle's scan set at all — a coverage
+            // HOLE, not a passing case. These four are pinned BY PATH, and a missing file is
+            // a named failure rather than a silent skip, because the whole point is that
+            // their absence from the scan is what let the defect through.
+            foreach (var p in Wo1813CoveragePrefabs)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(p);
+                if (prefab == null)
+                {
+                    failures.Add("WO-1813 coverage prefab '" + p + "' did not load. It is named here " +
+                                 "precisely because neither the Hovl catalog nor the Assets/Resources/VFX/ " +
+                                 "sweep reaches it; if it moved, re-point this list or the level-up / " +
+                                 "fireball effects fall out of the oracle unnoticed.");
+                    continue;
+                }
+                if (!seen.Add(prefab)) continue;                        // already in via a source above
+                work.Add(new KeyValuePair<string, GameObject>(p, prefab));
+            }
+
             FlowTrace.Step(FlowSys, "scan set=" + work.Count + " prefab(s), skipped(unresolved)=" + skipped);
 
             foreach (var item in work)
@@ -148,6 +209,30 @@ namespace DeNelle.Editor.Regression
                     if (r == null) continue;
                     var mats = r.sharedMaterials;
                     if (mats == null || mats.Length == 0) continue;
+
+                    // WO-1806 — the SECOND way a particle renderer draws a defect: not a NULL
+                    // slot, but a slot holding the editor fixer's OPAQUE Lit placeholder
+                    // (MagentaFix_DefaultLit: URP/Lit, Opaque, _BaseColor 0.70 grey, _BaseMap
+                    // NULL). On a drawing particle renderer that is a flat untextured grey
+                    // quad in front of the player (owner F8, RaidBase_raider_camp_small,
+                    // 2026-09-16). Only SLOT 0 fails here: a trail slot (i>0) is repaired at
+                    // runtime by re-pointing it at slot 0, and that path is covered; slot 0
+                    // has no donor, so nothing repaired it until this WO. renderMode None and
+                    // disabled renderers draw nothing and are not offenders.
+                    if (r.enabled && r.renderMode != ParticleSystemRenderMode.None &&
+                        r.renderMode != ParticleSystemRenderMode.Mesh &&
+                        mats[0] != null && AbilityVfxKit.IsMagentaFixParticlePlaceholder(mats[0]))
+                    {
+                        failures.Add("'" + label + "' child '" + r.gameObject.name + "' draws with the " +
+                                     "editor fixer's OPAQUE Lit placeholder in particle SLOT 0 ('" + mats[0].name +
+                                     "', shader '" + (mats[0].shader != null ? mats[0].shader.name : "NULL") +
+                                     "', renderMode=" + r.renderMode + "). That renders as a flat untextured " +
+                                     "quad in front of the player (WO-1806). Slot 0 has no sibling to borrow " +
+                                     "from, so the runtime trail re-point cannot cover it. Fix the prefab: " +
+                                     "assign the pack's particle material, or MagentaFix_DefaultParticle_URP, " +
+                                     "never MagentaFix_DefaultLit on a particle renderer.");
+                    }
+
                     bool allNull = true;
                     for (int m = 0; m < mats.Length; m++)
                     {

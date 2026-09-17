@@ -1448,12 +1448,13 @@ namespace DeNelle.Editor
                     if (!IsLegacyParticleShader(src.shader))
                     {
                         AbilityVfxKit.HealHalfUpgradedParticleMaterial(src);
-                        if (i > 0 && r is ParticleSystemRenderer && mats[0] != null &&
-                            src.name.StartsWith("MagentaFix", StringComparison.Ordinal))
-                        {
-                            mats[i] = mats[0];
+                        // WO-1806: the capture must repair EXACTLY what the runtime repairs,
+                        // or a green capture proves nothing about the shipped frame. This was
+                        // the THIRD copy of the `i > 0` MagentaFix branch (VFXManager and
+                        // ProjectileVFXCatalog held the other two) and therefore the third
+                        // place that could not see a SLOT-0 occurrence. One owner now.
+                        if (AbilityVfxKit.TryRepairOpaqueLitParticleSlot(r, mats, i))
                             changed = true;
-                        }
                         continue;
                     }
 
@@ -1486,6 +1487,10 @@ namespace DeNelle.Editor
 
                 if (changed) r.sharedMaterials = mats;
             }
+
+            // WO-1806: same read-back census the runtime now runs, so a capture that LOOKS
+            // clean also SAYS so in the log — and a capture that hides a slab names it.
+            AbilityVfxKit.AuditParticleSlotsAfterRepair(go, go.name);
         }
 
         /// <summary>VFXManager.IsLegacyParticleShader (:752-761), verbatim.</summary>

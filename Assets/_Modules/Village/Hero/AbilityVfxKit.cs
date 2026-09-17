@@ -220,6 +220,268 @@ namespace DeNelle.Village
             return changed;
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // ── WO-1806: the OPAQUE-LIT particle slot (the "flat plane" class) ────
+        // ─────────────────────────────────────────────────────────────────────
+        // PROVEN AT SOURCE, not inferred. Assets/Editor/MagentaMaterialFixer.cs
+        // (FixNullSlotsInPrefabs :284 -> AssignDefaultToNullSlots :300/:356) fills EVERY
+        // null material slot on EVERY Renderer with ONE default — MagentaFix_DefaultLit
+        // (URP/Lit, RenderType Opaque, _BaseColor 0.70 grey, _BaseMap NULL) — with no
+        // ParticleSystemRenderer branch, even though the same file already builds a
+        // correct particle default (GetOrCreateUrpDefaultParticleMaterial :244, used only
+        // by the sibling built-in-particle pass :170). On a particle renderer that
+        // material draws exactly what the owner reported: a flat, untextured, OPAQUE grey
+        // billboard. The device log states its shape in its own words —
+        //   [Flow:ArcaneDiag] ... mat='MagentaFix_DefaultLit'
+        //   shader='Universal Render Pipeline/Lit' baseColor=(0.70,0.70,0.70,1.00)
+        //   baseMap=False mainTex=False   (logcat-after-372984.txt:2518323)
+        //
+        // WHY EVERY EXISTING NET MISSES IT — all three skips are structural:
+        //   * VFXManager.IsLegacyParticleShader returns FALSE for any name containing
+        //     "Universal Render Pipeline", so the legacy remap never sees it.
+        //   * HealHalfUpgradedParticleMaterial (above) requires "Particles" or "Unlit" in
+        //     the shader name; "Universal Render Pipeline/Lit" has NEITHER, so it bails
+        //     at its particleLike gate.
+        //   * The only guard that knows the string "MagentaFix" was gated `i > 0` — it
+        //     repairs the TRAIL slot and nothing else, so a slot-0 occurrence is repaired
+        //     by NOTHING.
+        // This helper is the ONE owner of the rule, called from both re-shaders, so the
+        // two copies that had already drifted (CLAUDE.md §5/§16: the copy is the bug)
+        // become one.
+
+        /// <summary>
+        /// True when <paramref name="m"/> is the editor fixer's OPAQUE Lit placeholder sitting
+        /// on a particle slot: a URP material that is NOT a particle shader and whose name is
+        /// MagentaFix*. Never true for a URP Particles/* material — that is
+        /// <see cref="HealHalfUpgradedParticleMaterial"/>'s business, not this one.
+        /// </summary>
+        /// <remarks>
+        /// DELIBERATELY NAME-GATED, and that narrowness is the point. The tempting wider rule —
+        /// "any opaque URP material with no _BaseMap" — also matches a legitimate
+        /// ParticleSystemRenderMode.Mesh particle (debris, shards: vertex-coloured URP/Lit, no
+        /// texture, opaque BY DESIGN). Rewriting one of those into a transparent soft-dot
+        /// billboard material would be an owner-visible regression invented by a heuristic that
+        /// no evidence asked for. MagentaFix* is the producer this WO actually proved
+        /// (MagentaMaterialFixer.AssignDefaultToNullSlots), so MagentaFix* is what we repair.
+        /// The wider opaque+albedo-less shape is still WATCHED — read-only, by
+        /// <see cref="AuditParticleSlotsAfterRepair"/>, which reports and changes nothing.
+        /// </remarks>
+        public static bool IsMagentaFixParticlePlaceholder(Material m)
+        {
+            if (m == null || m.shader == null) return false;
+            string sn = m.shader.name ?? string.Empty;
+            if (sn.IndexOf("Universal Render Pipeline", System.StringComparison.Ordinal) < 0) return false;
+            if (sn.IndexOf("Particles", System.StringComparison.Ordinal) >= 0) return false;
+            string mn = m.name ?? string.Empty;
+            return mn.StartsWith("MagentaFix", System.StringComparison.Ordinal);
+        }
+
+        // One rebuilt material per SOURCE material, not per instance. SpawnFlying/ReskinFlying
+        // run per shot and hand us the same shared asset every time, so an uncached
+        // `new Material(...)` would leak one Material per projectile until
+        // Resources.UnloadUnusedAssets runs. Mirrors ProjectileVFXCatalog._fixedMaterials.
+        private static readonly System.Collections.Generic.Dictionary<Material, Material> s_particleRebuilds
+            = new System.Collections.Generic.Dictionary<Material, Material>();
+
+        /// <summary>
+        /// Repair slot <paramref name="slot"/> of <paramref name="mats"/> when it holds the
+        /// opaque-lit particle defect. ONLY acts on a <see cref="ParticleSystemRenderer"/> —
+        /// a URP/Lit material on a MeshRenderer is legitimate and is left alone. Mutates the
+        /// array in place; the caller assigns it back to the renderer. Returns true on change.
+        /// </summary>
+        public static bool TryRepairOpaqueLitParticleSlot(Renderer r, Material[] mats, int slot)
+        {
+            if (!(r is ParticleSystemRenderer)) return false;
+            if (mats == null || slot < 0 || slot >= mats.Length) return false;
+
+            var src = mats[slot];
+            if (!IsMagentaFixParticlePlaceholder(src)) return false;
+
+            // TRAIL slot: the head material IS the authored look — point the ribbon at it.
+            // (This is the behaviour the old `i > 0` branch had, preserved verbatim.)
+            if (slot > 0 && mats[0] != null && !ReferenceEquals(mats[0], src))
+            {
+                mats[slot] = mats[0];
+                FlowTrace.Once("VFX", "opaquelit-trail:" + (src.name ?? "?"),
+                    "TryRepairOpaqueLitParticleSlot: trail slot " + slot + " of '" + r.gameObject.name +
+                    "' held '" + src.name + "' (" + src.shader.name + ") — an OPAQUE untextured slab on a " +
+                    "particle renderer. Re-pointed at the slot-0 particle material.");
+                return true;
+            }
+
+            // A MESH-mode particle draws the placeholder wrapped on real geometry, not as a
+            // billboard. A soft dot UV-mapped onto a mesh looks worse than the grey lit
+            // placeholder does, so leave it and let the audit line below report it instead.
+            if (((ParticleSystemRenderer)r).renderMode == ParticleSystemRenderMode.Mesh) return false;
+
+            // Reuse the rebuild for this source material if we have already made one.
+            if (s_particleRebuilds.TryGetValue(src, out var cached) && cached != null)
+            {
+                mats[slot] = cached;
+                return true;
+            }
+
+            // SLOT 0 (or no donor): nothing to borrow. Rebuild as a real particle material —
+            // transparent + the shared soft dot. Same recipe as the null-_BaseMap branch of
+            // HealHalfUpgradedParticleMaterial above, so a missing texture never renders as
+            // a hard square. No colour is invented: white tint, the dot carries the shape.
+            Shader urp = ResolveParticleShader();
+            if (urp == null ||
+                urp.name.IndexOf("Universal Render Pipeline", System.StringComparison.Ordinal) < 0)
+            {
+                FlowTrace.Once("VFX", "opaquelit-noshader:" + (src.name ?? "?"),
+                    "TryRepairOpaqueLitParticleSlot: '" + src.name + "' on '" + r.gameObject.name +
+                    "' is an opaque untextured particle slab, but URP Particles/Unlit is unavailable " +
+                    "(got '" + (urp != null ? urp.name : "null") + "') — LEFT BROKEN rather than made worse. " +
+                    "Add it to GraphicsSettings AlwaysIncludedShaders.");
+                return false;
+            }
+
+            var nm = new Material(urp) { name = (src.name ?? "Particle") + "_ParticleRepaired" };
+            ConfigureUrpParticleTransparency(nm, additive: false);
+            var soft = SoftDotTexture;
+            if (soft != null && nm.HasProperty("_BaseMap")) nm.SetTexture("_BaseMap", soft);
+            if (nm.HasProperty("_BaseColor")) nm.SetColor("_BaseColor", Color.white);
+            if (nm.HasProperty("_Color"))     nm.SetColor("_Color", Color.white);
+            mats[slot] = nm;
+            s_particleRebuilds[src] = nm;
+
+            FlowTrace.Once("VFX", "opaquelit-slot0:" + (src.name ?? "?"),
+                "TryRepairOpaqueLitParticleSlot: slot 0 of '" + r.gameObject.name + "' held '" + src.name +
+                "' (" + src.shader.name + ", opaque, no _BaseMap) — the flat untextured plane class. " +
+                "Rebuilt as URP Particles/Unlit, transparent, soft-dot base map.");
+            return true;
+        }
+
+        /// <summary>
+        /// WO-1806 instrumentation: the line that would have named this at boot on device.
+        /// After a prefab's repair pass, report the FIRST particle slot still left
+        /// opaque-untextured, with prefab + material + shader. Throttled once per prefab
+        /// label (FlowTrace.Once), so a hot pool cannot flood the logcat ring and evict the
+        /// boot window (memory: logcat-ring-buffer-destroys-evidence). Read-only.
+        /// </summary>
+        public static void AuditParticleSlotsAfterRepair(GameObject go, string label)
+        {
+            if (go == null) return;
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            if (renderers == null) return;
+
+            for (int ri = 0; ri < renderers.Length; ri++)
+            {
+                var r = renderers[ri];
+                if (r == null) continue;
+                if (!r.enabled) continue;                                  // vendor container (WO-1100)
+                if (r.renderMode == ParticleSystemRenderMode.None) continue; // draws nothing by design
+                // A MESH particle (debris, shards) is legitimately opaque and often untextured —
+                // vertex colour carries it. Reporting those would bury the real slabs in noise.
+                if (r.renderMode == ParticleSystemRenderMode.Mesh) continue;
+
+                var mats = r.sharedMaterials;
+                if (mats == null) continue;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (m == null || m.shader == null) continue;
+
+                    // The slab signature, measured off the live material: draws opaque AND
+                    // has no albedo bound. Either alone is legitimate (a textured opaque
+                    // mesh particle; a transparent tint-only glow), so BOTH are required.
+                    bool opaque   = m.HasProperty("_Surface") && m.GetFloat("_Surface") < 0.5f;
+                    bool noAlbedo = !m.HasProperty("_BaseMap") || m.GetTexture("_BaseMap") == null;
+                    if (!(opaque && noAlbedo)) continue;
+
+                    FlowTrace.Once("VFX", "particle-slab:" + (label ?? go.name),
+                        "PARTICLE SLAB after repair: prefab='" + (label ?? go.name) + "' child='" +
+                        r.gameObject.name + "' slot=" + i + " material='" + m.name + "' shader='" +
+                        m.shader.name + "' opaque=" + opaque + " baseMapBound=" + (!noAlbedo) +
+                        " renderMode=" + r.renderMode + ". A material that is BOTH opaque AND albedo-less on a " +
+                        "DRAWING particle renderer renders as a flat untextured quad in front of the " +
+                        "player (WO-1806). Reported once per prefab; nothing was modified by this audit.");
+                    return;   // FIRST offender per prefab only — the ring buffer is the evidence.
+                }
+            }
+        }
+
+        /// <summary>
+        /// WO-1813 — the census that names a WHITE BILLBOARD, which the slab audit above
+        /// structurally CANNOT.
+        ///
+        /// WHY A SECOND PASS EXISTS. <see cref="AuditParticleSlotsAfterRepair"/> requires
+        /// <c>opaque AND noAlbedo</c> (`_Surface &lt; 0.5` and `_BaseMap` null). Every material on
+        /// `Level_up.prefab` — the prefab `VFXType.Juice_LevelUp` resolves to — is
+        /// `_Surface: 1` (Transparent) and, after <see cref="HealHalfUpgradedParticleMaterial"/>
+        /// binds the soft dot, has a `_BaseMap`. So the audit passes in silence on the exact
+        /// effect the owner photographed (Seeker, 2026-09-16 20:51:31,
+        /// logs/device/owner-fireball-20260916/Screenshot_20260916-205131.png: razor-sharp,
+        /// axis-aligned, near-opaque white quads ~1.5 m across, centred on the hero).
+        ///
+        /// WHAT IT ADDS, AND WHY EACH FIELD. The screenshot narrows the culprit to a drawing
+        /// billboard but CANNOT say which renderer: `Level_up.prefab` alone has three billboard
+        /// candidates (`circle` on `1AB_mat`, alpha-blend two-sided, startSize 2.25;
+        /// `circle_wave` and `flash` on `1Add_mat`, additive, 3.18 / 6.36). The discriminators
+        /// are exactly the fields printed here — blend mode, whether the bound albedo is the
+        /// generated SOFT DOT (a radial fade, which cannot draw a hard edge) or a real pack
+        /// texture or nothing at all, and the tint. One line per prefab, `Once`-keyed, so the
+        /// next capture answers in a read instead of a screenshot and a protractor (§12).
+        ///
+        /// It MEASURES and REPORTS. It repairs nothing — naming the renderer is the
+        /// prerequisite the fix is still waiting on.
+        /// </summary>
+        public static void AuditDrawingBillboardCensus(GameObject go, string label)
+        {
+            if (go == null) return;
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            if (renderers == null || renderers.Length == 0) return;
+
+            var soft = s_softDot;   // do NOT call SoftDotTexture — generating one here would
+                                    // make a read-only audit allocate a texture.
+            var sb = new System.Text.StringBuilder(256);
+            int drawing = 0;
+
+            for (int ri = 0; ri < renderers.Length; ri++)
+            {
+                var r = renderers[ri];
+                if (r == null || !r.enabled) continue;
+                if (r.renderMode == ParticleSystemRenderMode.None) continue;
+
+                var mats = r.sharedMaterials;
+                if (mats == null || mats.Length == 0 || mats[0] == null) continue;
+                var m = mats[0];
+
+                Texture albedo = m.HasProperty("_BaseMap") ? m.GetTexture("_BaseMap") : null;
+                string albedoKind =
+                    albedo == null ? "NONE(samples-white)"
+                    : (soft != null && albedo == soft) ? "SOFTDOT(radial-fade)"
+                    : ("'" + albedo.name + "'");
+
+                float surface = m.HasProperty("_Surface") ? m.GetFloat("_Surface") : -1f;
+                float blend   = m.HasProperty("_Blend")   ? m.GetFloat("_Blend")   : -1f;
+                Color baseCol = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : Color.clear;
+
+                var ps = r.GetComponent<ParticleSystem>();
+                float startSize = ps != null ? ps.main.startSize.constantMax : -1f;
+                float worldSize = startSize * r.transform.lossyScale.x;
+
+                drawing++;
+                sb.Append(" | '").Append(r.gameObject.name).Append("' mode=").Append(r.renderMode)
+                  .Append(" mat='").Append(m.name).Append("' albedo=").Append(albedoKind)
+                  .Append(" surface=").Append(surface.ToString("0.#"))
+                  .Append(" blend=").Append(blend.ToString("0.#"))
+                  .Append(" baseColor=").Append(baseCol.ToString("F2"))
+                  .Append(" startSize=").Append(startSize.ToString("0.00"))
+                  .Append(" worldSize=").Append(worldSize.ToString("0.00")).Append('m');
+            }
+
+            if (drawing == 0) return;
+
+            FlowTrace.Once("VFX", "billboard-census:" + (label ?? go.name),
+                "DRAWING BILLBOARD CENSUS prefab='" + (label ?? go.name) + "' drawing=" + drawing +
+                sb.ToString() +
+                " || WO-1813 read-me: albedo=NONE means the slot samples pure white and draws a HARD-EDGED " +
+                "opaque-looking square; albedo=SOFTDOT means the heal ran and the quad must be a soft round " +
+                "blob, so a hard square rules that slot OUT. blend: 0=alpha 2=additive. Nothing was modified.");
+        }
+
         // ── VFXManager bridge ─────────────────────────────────────────────────
         // When VFXManager is live and has a prefab wired for the requested type,
         // it handles pooling + art assets. The procedural builders below are the

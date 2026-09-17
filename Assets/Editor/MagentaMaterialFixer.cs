@@ -353,9 +353,41 @@ namespace DeNelle.Editor
         }
 
         /// <summary>Fill any null entry in the renderer's shared-material array with the default. Returns true if changed.</summary>
+        /// <remarks>
+        /// WO-1806 — THE PRODUCER OF THE "FLAT UNTEXTURED PLANE" CLASS.
+        /// This method used to stamp ONE default into every null slot of every renderer:
+        /// <c>MagentaFix_DefaultLit</c> (URP/Lit, RenderType Opaque, _BaseColor 0.70 grey,
+        /// _BaseMap NULL). On a MeshRenderer that is a fine placeholder. On a
+        /// ParticleSystemRenderer it is a flat, untextured, OPAQUE grey billboard standing
+        /// in the middle of the player's screen — which is exactly what the owner F8'd from
+        /// RaidBase_raider_camp_small on 2026-09-16. The device log states the material's
+        /// shape in its own words: <c>[Flow:ArcaneDiag] ... mat='MagentaFix_DefaultLit'
+        /// shader='Universal Render Pipeline/Lit' baseColor=(0.70,0.70,0.70,1.00)
+        /// baseMap=False mainTex=False</c>.
+        /// A census of the tree on 2026-09-16 found 4,197 such slots on ParticleSystemRenderers
+        /// across 969 prefabs — this pass is where they came from.
+        /// The correct particle default ALREADY EXISTED in this same file
+        /// (<see cref="GetOrCreateUrpDefaultParticleMaterial"/>, used only by the sibling
+        /// built-in-particle pass). It is simply never consulted here. It is now.
+        /// </remarks>
         private static bool AssignDefaultToNullSlots(Renderer r, Material def)
         {
             if (r == null) return false;
+
+            // A particle renderer gets the TRANSPARENT particle default, never the opaque
+            // Lit one. Resolved lazily and only when a particle renderer is actually seen,
+            // so the mesh path costs nothing. If the particle default cannot be built we
+            // fall back to the old behaviour rather than leaving a null slot (a null slot
+            // renders engine-default MAGENTA, which is strictly worse than a grey slab).
+            if (r is ParticleSystemRenderer)
+            {
+                var particleDef = GetOrCreateUrpDefaultParticleMaterial();
+                if (particleDef != null) def = particleDef;
+                else Debug.LogWarning("[MagentaMaterialFixer] particle default unavailable — " +
+                                      "falling back to the opaque Lit default on '" + r.gameObject.name +
+                                      "'. That slot will render as a flat untextured quad (WO-1806).");
+            }
+
             var mats = r.sharedMaterials;
             if (mats == null || mats.Length == 0)
             {

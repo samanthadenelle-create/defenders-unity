@@ -984,13 +984,14 @@ namespace DeNelle.Village
                         // finish the migration in place (shared heal, idempotent).
                         if (AbilityVfxKit.HealHalfUpgradedParticleMaterial(src)) reshaded++;
 
-                        // A ParticleSystemRenderer trail slot bulk-stomped with the opaque
-                        // MagentaFix_DefaultLit URP/Lit material renders solid grey ribbons —
-                        // point the trail at the (healed) slot-0 particle material instead.
-                        if (i > 0 && r is ParticleSystemRenderer && mats[0] != null &&
-                            src.name.StartsWith("MagentaFix", System.StringComparison.Ordinal))
+                        // WO-1806: a ParticleSystemRenderer slot bulk-stomped with the opaque
+                        // MagentaFix_DefaultLit URP/Lit material renders a flat untextured slab.
+                        // The rule used to live here AND in ProjectileVFXCatalog, both gated
+                        // `i > 0`, so a SLOT-0 occurrence was repaired by nothing. One owner now:
+                        // AbilityVfxKit.TryRepairOpaqueLitParticleSlot handles both slots and is
+                        // the only place the rule is written (CLAUDE.md §5/§16: the copy is the bug).
+                        if (AbilityVfxKit.TryRepairOpaqueLitParticleSlot(r, mats, i))
                         {
-                            mats[i] = mats[0];
                             changed = true;
                             reshaded++;
                         }
@@ -1030,6 +1031,24 @@ namespace DeNelle.Village
                 FlowTrace.Step("VFXManager",
                     $"ProofUrpParticleShaders('{type}'): re-shaded {reshaded} legacy particle " +
                     $"material(s) to URP/Particles/Unlit across {renderers.Length} renderer(s).");
+
+            // WO-1806: the census that would have NAMED the owner's flat plane at boot.
+            // Every repair above is "what we believe we fixed"; this reads back what the
+            // renderer actually holds and reports the first slot still drawing as an opaque
+            // untextured quad. Nothing in the game had ever reported a broken PARTICLE
+            // material — the existing [Flow:RaidArt] UNTEXTURED CENSUS is MESH-renderer only,
+            // which is exactly why this class reached the owner's eyes instead of a log line.
+            AbilityVfxKit.AuditParticleSlotsAfterRepair(go, type.ToString());
+
+            // WO-1813: the audit above is gated on `opaque AND albedo-less`, so it is
+            // STRUCTURALLY BLIND to a TRANSPARENT prefab whose slots were just healed —
+            // which is every material on Juice_LevelUp's Level_up.prefab. The owner's
+            // 2026-09-16 capture shows razor-sharp white quads on the hero that the log
+            // did not mention once. This census prints what each DRAWING billboard
+            // actually holds (blend, albedo identity, tint, world size) so the next
+            // capture names the renderer instead of leaving it to a screenshot.
+            // Once-keyed per prefab; measures only, repairs nothing.
+            AbilityVfxKit.AuditDrawingBillboardCensus(go, type.ToString());
         }
 
         /// <summary>

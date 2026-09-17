@@ -318,14 +318,14 @@ namespace DeNelle.Village
                     var m = mats[i];
                     if (m == null || m.shader == null) continue;
 
-                    // Owner F8 "spells so pixelated" — the trail slot of the mirrored
-                    // Projectile_* prefabs was bulk-stomped with the OPAQUE untextured
-                    // MagentaFix_DefaultLit URP/Lit material → solid ribbons. Re-point the
-                    // trail at the slot-0 particle material (checked every pass; cheap).
-                    if (i > 0 && r is ParticleSystemRenderer && mats[0] != null &&
-                        m.name.StartsWith("MagentaFix", System.StringComparison.Ordinal))
+                    // Owner F8 "spells so pixelated" — a particle slot bulk-stomped with the
+                    // OPAQUE untextured MagentaFix_DefaultLit URP/Lit material draws a flat
+                    // grey slab (trail ribbon at i>0; a full billboard at i==0).
+                    // WO-1806: this rule used to be copy-pasted here AND in VFXManager, both
+                    // gated `i > 0`, so slot 0 was repaired by NOTHING. One owner now —
+                    // AbilityVfxKit.TryRepairOpaqueLitParticleSlot (checked every pass; cheap).
+                    if (AbilityVfxKit.TryRepairOpaqueLitParticleSlot(r, mats, i))
                     {
-                        mats[i] = mats[0];
                         changed = true;
                         continue;
                     }
@@ -378,6 +378,11 @@ namespace DeNelle.Village
                 }
                 if (changed) r.sharedMaterials = mats;
             }
+
+            // WO-1806: read back what the renderers actually hold and report the first
+            // particle slot still drawing as an opaque untextured quad (throttled once per
+            // prefab). The repair above is belief; this line is measurement.
+            AbilityVfxKit.AuditParticleSlotsAfterRepair(go, go != null ? go.name : "<null>");
         }
 
         // ---------------------------------------------------------------------
