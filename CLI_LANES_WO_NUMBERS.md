@@ -189,7 +189,13 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-second pass): main line next free = **1825**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-third pass): main line next free = **1826**.
+> *(Lead PRE-ASSIGNED **1825** remove the corner minimap from the overworld HUD - owner ruling 2026-09-17: "Let's
+> remove it, landscape is too small" / "And only help could be in dungeons maybe" (retire FeatureFlags.Minimap,
+> HudMinimapWidget's build site, and reclaim HudLayoutBands.MinimapMount; a dungeon map is an unscoped future maybe,
+> not built now). Bumped 1825 -> 1826 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-second pass): main line next free = **1825**.
 > *(Lead PRE-ASSIGNED **1824** Heart name/Heartfire labels stay below the mobile font floor - WO-1823 raised every other
 > sub-floor HUD label to `ElarionUi.FontFloorMobile` (30) but the Heart plate is 125 ref px and its four rows already
 > use 113.75 of it at today's 20/26 sizes; `HudLabelFitRegression` Case 10c pins the remedy as growing

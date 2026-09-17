@@ -1643,6 +1643,21 @@ namespace DeNelle.Editor.Regression
         //        floor >= the objective line's ceiling - it cannot be the plate's smallest text;
         //   10c  at both aspects every row's band seats its floor line (floor x 1.2), so the
         //        post-layout guard has no reason to relax a font below its floor;
+        //        (!) WO-1824 SPLIT THIS INTO TWO STATES, AND BOTH ARE ASSERTED. Owner ruling
+        //        2026-09-17, verbatim: "we could do a on tap make larger and on tap again reduce
+        //        size?". The DOCKED plate is the GLANCE and its 20..26 px rows are INTENTIONAL -
+        //        so 10c now PINS them unchanged (a silent "improvement" to 22 or 26 is a red
+        //        gate, because the pin is what records that they are a decision). The tapped
+        //        EXPANDED overlay is the READING state and every one of its four rows must sit
+        //        at or above ElarionUi.FontFloorMobile and seat that line, inside a panel that
+        //        is inside the screen at both aspects. ⛔ The mount-growth remedy this case used
+        //        to prescribe is arithmetically unavailable and must stop being prescribed: the
+        //        tightest current row fraction is 0.19, so 36 px needs a 189.5 px plate =
+        //        HeartMount 0.2045 at 2670x1200, against ~0.0184 of screen the whole left column
+        //        can free even with the minimap retired - the Night Market card, not the minimap
+        //        plate, holds the seat under this plate (HudLayoutBands.cs:178-186 hangs it from
+        //        MinimapMount.yMax) and it can only slide 0.0104 before it covers the gear row
+        //        (HudLayoutBands.cs:153-157). WO-1824 §2 carries the full table.
         //   10d  three fixed-size flame Images fit left of the unchanged PlateLabel, and the
         //        PlateLabel measures inside its own right-hand band at the floor.
         //        (!) WO-1415 WIDENED THAT ROW. The owner ruled the plate must name what a
@@ -1758,6 +1773,8 @@ namespace DeNelle.Editor.Regression
                 notes.Add("Heart plate " + plateH.ToString("0") + " ref px at " + a.Name);
             }
 
+            Case10c_GlanceAndReadingStates(failures, notes, src, nameMin, fireMin, objMin, objMax);
+
             // 10d - WO-1419 splits the row into three flame Images plus unchanged PlateLabel.
             string marks = DeNelle.Core.State.HeartfireCharges.PlateLabel(0, 3);
             float rowX0, rowX1;
@@ -1789,6 +1806,219 @@ namespace DeNelle.Editor.Regression
                 notes.Add("Heartfire PlateLabel '" + marks + "' " + w.ToString("0.0") +
                           " px beside " + DeNelle.Core.State.HeartfireCharges.FlameStates(0, 3).Length + " icons");
             }
+        }
+
+        // ---------------------------------------------------------------------
+        // 10c (WO-1824) — TWO STATES, ONE PLATE.
+        //
+        // The docked plate cannot carry the 30 px floor and that is now a RECORDED DECISION
+        // rather than an open defect, so this half of 10c pins BOTH halves of the decision:
+        //   * the GLANCE stays at the authored 20/16 numbers — pinned, because an unpinned
+        //     "intentional" number is indistinguishable from an oversight to the next seat, and
+        //     WO-1823 already proves a seat will come along and raise it into a red gate;
+        //   * the READING state's four rows sit at or above ElarionUi.FontFloorMobile, seat that
+        //     line in their own bands at both aspects, and live inside a panel that is inside
+        //     the screen — measured off the same literals HudKitController lays out with.
+        //
+        // The expanded panel is a plain ElarionUiKit.Panel at literal screen anchors precisely so
+        // this arithmetic is possible: BuildObsidianModal's chrome measures layout.body from
+        // frame art at runtime, which an Editor case cannot instantiate and therefore could not
+        // model. If a future seat re-homes the overlay into chrome zones, this case must be
+        // rewritten to a headless build, not weakened.
+        //
+        // RED, one line each: set HeartNameFontMin = 26f (the glance pin); set
+        // HeartExpandedFontMin = 24f (the reading floor); set HeartExpandedY1 = 1.20f (the
+        // on-screen check); set HeartExpandedNameBandY1 = 0.81f (the seats-a-line check).
+        // ---------------------------------------------------------------------
+        /// <summary>The docked plate's authored sizes. These are the WO-1823 EXCEPTION numbers and
+        /// WO-1824 ruled them INTENTIONAL (glance-only), so they are pinned, not tolerated.</summary>
+        private const float HeartGlanceNameFontMin      = 20f;
+        private const float HeartGlanceFireFontMin      = 20f;
+        private const float HeartGlanceObjectiveFontMin = 16f;
+        private const float HeartGlanceObjectiveFontMax = 18f;
+
+        private static void Case10c_GlanceAndReadingStates(List<string> failures, List<string> notes,
+            string src, float nameMin, float fireMin, float objMin, float objMax)
+        {
+            const string tag = "[heartfire-inside-plate]";
+            float floor = ElarionUi.FontFloorMobile;
+
+            // ── the GLANCE half: today's sub-floor sizes are the decision, unchanged ──
+            PinGlance(failures, tag, "HeartNameFontMin", nameMin, HeartGlanceNameFontMin);
+            PinGlance(failures, tag, "HeartfireFontMin", fireMin, HeartGlanceFireFontMin);
+            PinGlance(failures, tag, "HeartObjectiveFontMin", objMin, HeartGlanceObjectiveFontMin);
+            PinGlance(failures, tag, "HeartObjectiveFontMax", objMax, HeartGlanceObjectiveFontMax);
+            notes.Add("Heart GLANCE state pinned sub-floor on purpose (name/Heartfire " + nameMin +
+                      ", objective/rekindle " + objMin + ".." + objMax + " vs the " + floor +
+                      "px floor) - WO-1824 owner ruling: the docked plate is a glance, the TAP opens " +
+                      "the reading state");
+
+            // ── the gesture itself must exist, or the reading state is unreachable ──
+            RequirePin(failures, tag, src, "heartTapBtn.onClick.AddListener(ToggleHeartExpanded);",
+                "WO-1824's owner ruling is a TAP on the Heart plate (\"on tap make larger and on tap " +
+                "again reduce size\"). Without this listener the glance is the ONLY state and the " +
+                "sub-floor rows above become the captured 'too small to read' again");
+            RequirePin(failures, tag, src, "ElarionUiKit.Scrim(_heartExpandedCanvas.transform, CloseHeartExpanded);",
+                "the reading state must close by tapping outside it - a full-screen overlay with no " +
+                "scrim dismissal is a HUD the player cannot get out of");
+            RequirePin(failures, tag, src, "ElarionUiKit.ObsidianCloseButton(panel.transform, CloseHeartExpanded);",
+                "and by the kit's ONE standard Close (owner canon: never an X)");
+            // ⛔ SLICED, NOT SEARCHED WHOLE-FILE. A bare RequirePin for "CloseHeartExpanded();" is
+            // satisfied by ToggleHeartExpanded's own close branch, so deleting every teardown call
+            // would stay GREEN - the pin would assert nothing it was written to assert. Same idiom
+            // as Case 16b's Between() slices, and the anchors are unique in HudSrc.
+            string disableBody = Between(src, "private void OnDisable()", "private void OnDestroy()");
+            if (string.IsNullOrEmpty(disableBody))
+                failures.Add(tag + " cannot slice OnDisable out of " + HudSrc + " - the WO-1824 overlay " +
+                             "teardown asserted NOTHING this run (a renamed method is not a pass)");
+            else if (disableBody.IndexOf("CloseHeartExpanded();", StringComparison.Ordinal) < 0)
+                failures.Add(tag + " OnDisable does not call CloseHeartExpanded(). The reading state is its " +
+                             "OWN ScreenSpaceOverlay canvas, so it does NOT go away with the HUD root: a " +
+                             "disabled HUD cannot drive its Close or its scrim, and it draws over whatever " +
+                             "comes next (the raid HUD). This is the same rule the CloseItemPicker() line " +
+                             "beside it exists for");
+            // The overlay has FOUR legitimate close callers: the toggle's own branch, OnDisable,
+            // OnDestroy and ApplyPosture (a town glance must not survive into build / modal /
+            // battle). Counting them is deliberately crude and deliberately robust - a whitespace
+            // or line-ending-sensitive multi-line pin is one reformat from asserting nothing.
+            int closeCalls = 0;
+            for (int at = src.IndexOf("CloseHeartExpanded();", StringComparison.Ordinal); at >= 0;
+                 at = src.IndexOf("CloseHeartExpanded();", at + 1, StringComparison.Ordinal))
+                closeCalls++;
+            if (closeCalls < 4)
+                failures.Add(tag + " only " + closeCalls + " call(s) to CloseHeartExpanded() in " + HudSrc +
+                             " - expected at least 4 (the toggle's close branch, OnDisable, OnDestroy and " +
+                             "the ApplyPosture flip). Each dropped one is a reading overlay left drawn over " +
+                             "a screen that cannot dismiss it");
+
+            // ── the READING half: parse the expanded literals and do the arithmetic ──
+            float ex0, ex1, ey0, ey1, rowX0, rowX1, expMin, expMax;
+            bool ok = TryFloatConst(src, "HeartExpandedX0", out ex0)
+                    & TryFloatConst(src, "HeartExpandedX1", out ex1)
+                    & TryFloatConst(src, "HeartExpandedY0", out ey0)
+                    & TryFloatConst(src, "HeartExpandedY1", out ey1)
+                    & TryFloatConst(src, "HeartExpandedRowX0", out rowX0)
+                    & TryFloatConst(src, "HeartExpandedRowX1", out rowX1)
+                    & TryFloatConst(src, "HeartExpandedFontMin", out expMin)
+                    & TryFloatConst(src, "HeartExpandedFontMax", out expMax);
+            string[] expRows = { "HeartExpandedName", "HeartExpandedObjective",
+                                 "HeartExpandedFire", "HeartExpandedRekindle" };
+            var ey0s = new float[expRows.Length];
+            var ey1s = new float[expRows.Length];
+            for (int i = 0; i < expRows.Length; i++)
+            {
+                ok &= TryFloatConst(src, expRows[i] + "BandY0", out ey0s[i]);
+                ok &= TryFloatConst(src, expRows[i] + "BandY1", out ey1s[i]);
+            }
+            if (!ok)
+            {
+                failures.Add(tag + " " + HudSrc + " no longer declares the WO-1824 expanded (reading) " +
+                             "state as float literals (HeartExpanded{X0,X1,Y0,Y1,RowX0,RowX1,FontMin," +
+                             "FontMax} and HeartExpanded{Name,Objective,Fire,Rekindle}BandY0/Y1). The " +
+                             "reading state is the ONLY floor-compliant view of this plate, so an " +
+                             "unreadable expanded state is the original player report, unfixed");
+                return;
+            }
+
+            if (expMin < floor)
+                failures.Add(tag + " HeartExpandedFontMin is " + expMin + ", under ElarionUi.FontFloorMobile " +
+                             floor + " - the tapped state exists precisely to clear that floor. Raise the " +
+                             "literal (it is a literal so this case can parse it, see the note in " + HudSrc + ")");
+            if (expMax < expMin)
+                failures.Add(tag + " HeartExpandedFontMax " + expMax + " < HeartExpandedFontMin " + expMin);
+            if (expMin <= nameMin)
+                failures.Add(tag + " the reading state's floor " + expMin + " is not larger than the glance's " +
+                             nameMin + " - a tap that does not make the text bigger is not the owner's ruling");
+
+            // the panel must be ON SCREEN (fractions of screen, so this is exact at every aspect)
+            if (ex0 < 0f || ey0 < 0f || ex1 > 1f || ey1 > 1f || ex0 >= ex1 || ey0 >= ey1)
+                failures.Add(tag + " the expanded panel's screen band x " + ex0 + ".." + ex1 + " / y " +
+                             ey0 + ".." + ey1 + " leaves the screen (or is inverted) - a clipped reading " +
+                             "state is worse than the glance it replaced");
+            if (rowX0 < 0f || rowX1 > 1f || rowX0 >= rowX1)
+                failures.Add(tag + " the expanded rows' x band " + rowX0 + ".." + rowX1 +
+                             " leaves the expanded panel");
+            // ElarionUiKit.DefaultCloseZone is the BOTTOM-CENTRE thumb band; the standard Close
+            // lands there, so no row may be drawn across it.
+            const float CloseZoneY1 = 0.125f;
+            for (int i = 0; i < expRows.Length; i++)
+            {
+                if (ey0s[i] < 0f || ey1s[i] > 1f || ey0s[i] >= ey1s[i])
+                    failures.Add(tag + " the expanded " + expRows[i] + " row band " + ey0s[i] + ".." +
+                                 ey1s[i] + " leaves the expanded panel");
+                if (ey0s[i] < CloseZoneY1)
+                    failures.Add(tag + " the expanded " + expRows[i] + " row starts at " + ey0s[i] +
+                                 ", inside ElarionUiKit.DefaultCloseZone's band (y .. " + CloseZoneY1 +
+                                 ") - the one standard Close is drawn there and the row would sit under it");
+                for (int j = i + 1; j < expRows.Length; j++)
+                    if (ey0s[i] < ey1s[j] && ey0s[j] < ey1s[i])
+                        failures.Add(tag + " the expanded " + expRows[i] + " and " + expRows[j] +
+                                     " rows overlap (" + ey0s[i] + ".." + ey1s[i] + " vs " +
+                                     ey0s[j] + ".." + ey1s[j] + ")");
+            }
+
+            float needExp = expMin * LineHeightFactor;
+            foreach (var a in Aspects)
+            {
+                var refSize = HudLayoutBands.CanvasReferenceSize(a.W, a.H);
+                float panelH = (ey1 - ey0) * refSize.y;
+                float panelW = (ex1 - ex0) * refSize.x;
+                for (int i = 0; i < expRows.Length; i++)
+                {
+                    float bandH = (ey1s[i] - ey0s[i]) * panelH;
+                    if (bandH < needExp)
+                        failures.Add(tag + " at " + a.Name + " the expanded " + expRows[i] + " row is " +
+                                     bandH.ToString("0.0") + " ref px tall but the " + expMin +
+                                     "px reading floor needs " + needExp.ToString("0.0") +
+                                     " - the FitGuard would relax it back under the floor, which is the " +
+                                     "reported defect on the surface built to cure it. Grow the expanded " +
+                                     "PANEL (HeartExpandedY0/Y1 - it is an overlay, it owes the left " +
+                                     "column nothing), never the floor down");
+                }
+                notes.Add("Heart READING panel " + panelW.ToString("0") + " x " + panelH.ToString("0") +
+                          " ref px at " + a.Name + ", rows seat the " + expMin + "px floor (needs " +
+                          needExp.ToString("0.0") + ")");
+            }
+
+            // and the WORDS must fit the wider rows at the bigger floor, or the reading state
+            // ellipsises and the player is back where she started (Case 10d / 13c, restated at 30).
+            var strings = new List<string>
+            {
+                DeNelle.Core.State.HeartfireCharges.PlateLabel(0, 3),
+                HeartObjectiveCopy.Title,
+                HeartObjectiveCopy.BuildBarracks,
+                HeartObjectiveCopy.TrainTroops(10),
+                HeartObjectiveCopy.TrainNextRaid(10),
+                HeartObjectiveCopy.PrepareWave,
+                HeartObjectiveCopy.Defend,
+            };
+            foreach (string s in strings)
+            {
+                string detail;
+                float w = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, s, expMin, out detail);
+                if (w < 0f) { notes.Add("expanded '" + s + "' not measurable headlessly: " + detail); continue; }
+                foreach (var a in Aspects)
+                {
+                    var refSize = HudLayoutBands.CanvasReferenceSize(a.W, a.H);
+                    float rowW = (rowX1 - rowX0) * (ex1 - ex0) * refSize.x;
+                    if (w > rowW)
+                        failures.Add(tag + " at " + a.Name + " the expanded row would ellipsise '" + s +
+                                     "': it MEASURES " + w.ToString("0.0") + " ref px at the " + expMin +
+                                     "px reading floor but the row is " + rowW.ToString("0.0") + " px wide (" +
+                                     detail + "). Widen HeartExpandedX0/X1 - the overlay is not in the column");
+                }
+            }
+        }
+
+        private static void PinGlance(List<string> failures, string tag, string name, float read, float pinned)
+        {
+            if (Math.Abs(read - pinned) < 0.001f) return;
+            failures.Add(tag + " " + name + " is " + read + ", pinned at " + pinned + ". WO-1824's owner " +
+                         "ruling made the DOCKED plate a deliberate glance - raising it does not fit " +
+                         "(the plate is " + HudLayoutBands.HeartMount.height + " of screen and cannot grow: " +
+                         "the Night Market card holds the seat beneath it), and LOWERING it re-opens the " +
+                         "WO-1823 report. The floor-compliant view is the TAP (HeartExpanded*). If this " +
+                         "number genuinely must move, move this pin WITH a ruling, in the same change");
         }
 
         // =====================================================================
@@ -2775,9 +3005,17 @@ namespace DeNelle.Editor.Regression
                        "source, or the next audit reads them as an oversight and raises them into a red gate");
             float heartNameMin;
             if (TryFloatConst(src, "HeartNameFontMin", out heartNameMin) && heartNameMin < floor)
-                notes.Add("OPEN (WO-1823, owner/lead ruling): HeartNameFontMin is " + heartNameMin +
-                          ", under the " + floor + "px floor. Raising it needs HudLayoutBands.HeartMount " +
-                          "(DeNelle.Core) grown first - see the WO-1823 EXCEPTION block in " + HudSrc);
+                // ⛔ WO-1824 CLOSED THE RULING AND THIS NOTE NO LONGER PRESCRIBES GROWING THE MOUNT.
+                // It used to read "Raising it needs HudLayoutBands.HeartMount grown first", which is
+                // arithmetically impossible (Case 10c's WO-1824 paragraph shows the deficit is
+                // 0.0695 of screen against ~0.0184 available) and would send the next seat at the
+                // one remedy that cannot land. The owner ruled a TAP instead: the docked plate is a
+                // deliberate glance, the expanded overlay is the floor-compliant reading state.
+                notes.Add("BY DESIGN (WO-1824 owner ruling, 2026-09-17): HeartNameFontMin is " + heartNameMin +
+                          ", under the " + floor + "px floor, because the DOCKED Heart plate is a GLANCE. " +
+                          "The floor-compliant view is the tap-to-expand reading overlay (HeartExpanded*), " +
+                          "pinned by Case 10c. Do NOT raise this const - see the WO-1824 paragraph in the " +
+                          "WO-1823 EXCEPTION block in " + HudSrc);
         }
 
         /// <summary>Every `fontSizeMin = &lt;n&gt;f` / `fontSizeMax = &lt;n&gt;f` NUMERIC literal in one

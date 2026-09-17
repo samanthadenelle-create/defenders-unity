@@ -914,23 +914,16 @@ namespace DeNelle.Core
         /// </summary>
         public static bool Siege => Get("siege", defaultOn: true);
 
-        /// <summary>
-        /// WO-828 — the corner minimap plate (<c>HudMinimapWidget</c>) in the calm postures.
-        ///
-        /// <para>Default ON. Unlike the retired Bag MapTab flag (deleted 2026-09-05, WO-1396; the
-        /// Realm Map is now reached from the Journey deck) - which shipped OFF because realm travel
-        /// is a WO-827 stub and a visible tab would promise a journey the game cannot take - the minimap
-        /// promises nothing it cannot deliver: it reads the hero, the seam objective and the live
-        /// threats that ALREADY drive <c>HudCompassWidget</c>, so it is correct the moment it is
-        /// drawn. It adds no camera and no RenderTexture (WO-828's cost rule), so there is no
-        /// performance reason to ship it dark either.</para>
-        ///
-        /// <para>OFF hides the plate entirely (the widget is never built, so it costs nothing at
-        /// all rather than being an invisible ticking widget). Flip without a rebuild via
-        /// PlayerPrefs "ff.minimap" = 0. Visibility per posture stays owned by hud-areas.json —
-        /// this flag is the master switch, NOT a posture rule.</para>
-        /// </summary>
-        public static bool Minimap => Get("minimap", defaultOn: false);
+        // RETIRED 2026-09-17 (WO-1825): the Minimap flag (PlayerPrefs "ff.minimap") is DELETED,
+        // together with HudMinimapWidget itself. Owner ruling, verbatim: "Let's remove it,
+        // landscape is too small". The corner minimap is gone from the overworld/town HUD — not
+        // flagged off, GONE — so there is nothing left for a master switch to switch.
+        // ⛔ Do not re-add it here. Any map-style help inside a DUNGEON is an explicit owner
+        // "maybe" ("only help could be in dungeons maybe") and needs its own spec and ruling; it
+        // would not be this flag.
+        // ⚠ Footnote for the next reader, because it is exactly the drift CLAUDE.md §15 warns of:
+        // this flag's doc comment said "Default ON" while the code read `defaultOn: false`, and
+        // it had ZERO call sites — it had been inert well before it was removed.
 
         /// <summary>
         /// Owner ruling 2026-08-20 — gates the founding "Default Town" (prebuilt ring) option.

@@ -49,8 +49,12 @@ namespace DeNelle.HUD.Kit
         HeartStatus,
         /// <summary>FRIENDLY — persistent Builders/Training status chip (right, under System; WO-778).</summary>
         QueueStatus,
-        /// <summary>FRIENDLY — the corner minimap "you are here" plate (left column, between
-        /// the Dock and HeartStatus; WO-828). Calm postures only — see hud-areas.json.</summary>
+        /// <summary>FRIENDLY — the left-column band between the Dock and HeartStatus.
+        /// ⚠ WO-1825: the corner minimap this was named for is DELETED (owner ruling 2026-09-17).
+        /// The band's one occupant is now the NIGHT MARKET CARD; its geometry is
+        /// <c>HudLayoutBands.NightMarketMount</c>. The name survives only because it is the
+        /// <c>"area": "minimap"</c> key in both shipped copies of hud-areas.json — a follow-up
+        /// ticket renames the key. Calm postures only — see hud-areas.json.</summary>
         Minimap,
     }
 
@@ -186,10 +190,18 @@ namespace DeNelle.HUD.Kit
             // Third time in this file (ThumbActionRowMinY WO-1436, MoveClusterMount WO-1464), one
             // pattern: two literals in two assemblies is duplicated state; the band is shared DATA.
             Add(HudArea.QueueStatus, HudLayoutBands.QueueStatusMount);
-            // The Minimap mount now carries TWO exclusive bands: the square plate hanging from its
-            // top-left, and the region STATUS LINE in its own band immediately below the plate -
-            // never across it, never beside it competing with the Dock row.
-            Add(HudArea.Minimap,     HudLayoutBands.MinimapMount);
+            // ⭐ WO-1825 (owner 2026-09-17, "Let's remove it, landscape is too small"): this mount
+            // no longer carries a minimap. HudMinimapWidget, ff.minimap and the plate/status-line
+            // pixel reservation are DELETED, and the band it reads is renamed for its one real
+            // occupant - HudLayoutBands.NightMarketMount, which hud-areas.json fills with
+            // "nightMarketCard". The rect values are unchanged, so nothing moves on screen.
+            // ⚠ THE ENUM KEY IS STILL SPELLED `Minimap`, DELIBERATELY AND TEMPORARILY. It is the
+            // schema key in BOTH shipped copies of hud-areas.json ("area": "minimap") and in
+            // HudAreasConfig's parser, and HudUiRegression check 9 resolves this exact mount to
+            // prove the Night Market card's paint order against the Dock. Renaming the key is a
+            // separate, single-purpose change - not something to smuggle into a removal. Read the
+            // mount as "the Night Market band" until that lands.
+            Add(HudArea.Minimap,     HudLayoutBands.NightMarketMount);
             Add(HudArea.Feedback,    Vector2.zero,                Vector2.one);
 
             // Feedback overlay never eats taps (stamps/toasts are decorative).

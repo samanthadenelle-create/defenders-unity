@@ -159,6 +159,21 @@ namespace DeNelle.HUD.Kit
         /// m:ss") on its OWN row under the marks row. It used to be the second line of
         /// _heartfireLabel, which forced two lines into a one-line band and shrank both.</summary>
         private TMP_Text _heartfireRekindleLabel;
+        // ── WO-1824: THE HEART PLATE'S TAP-TO-EXPAND READING STATE ──────────────
+        // Owner ruling 2026-09-17, verbatim: "we could do a on tap make larger and on tap
+        // again reduce size?". The docked plate stays exactly as authored (a GLANCE state at
+        // 20..26 px, which is why the WO-1823 EXCEPTION block below is still true of it); the
+        // READING state is a separate ScreenSpaceOverlay canvas drawn OVER the HUD, so it
+        // takes no height from the left column - and the column has none to give (WO-1824 §2:
+        // MinimapMount's seat is already occupied by the Night Market card, which can only
+        // slide 0.0104 of screen before it covers the gear row, against a 0.0695 deficit).
+        // Session-local by design: a reading overlay the player left open is never what she
+        // wants to find on her next boot, and nothing here is worth a save-schema bump.
+        private GameObject _heartExpandedCanvas;
+        private TMP_Text _heartExpandedName;
+        private TMP_Text _heartExpandedObjective;
+        private TMP_Text _heartExpandedFire;
+        private TMP_Text _heartExpandedRekindle;
         private int _heartfireLitPainted = -1;
         private int _heartfireMaxPainted = -1;
         private long _heartfireSecondsPainted = -1L;
@@ -257,7 +272,6 @@ namespace DeNelle.HUD.Kit
         private string[] _cycleIds;
         private ElarionUiKit.SlideDockHandle _slideDock;   // WO-439: left slide-out (Chat/Ranks/Music/Settings)
         private HudCompassWidget _compass;
-        private HudMinimapWidget _minimap;   // WO-828 — null when ff.minimap is OFF
         // WO-778: persistent Builders/Training status chip (CoC-feel; polls ObsidianQueueGate.Status).
         private TMP_Text _queueChipLabel;
         private QueueRailView _queueRail;     // WO-864: the CoC card rail replaces the WC3 text rows
@@ -1019,15 +1033,13 @@ namespace DeNelle.HUD.Kit
             WireCompassProviders(_compass);
             Register("compass", WrapAsWidget("compass", _compass.gameObject));
 
-            // ── minimap: the "you are here" plate (WO-828) ──
-            // The compass answers WHICH WAY; this answers WHERE. Same three providers,
-            // re-wired rather than shared, so neither widget can break the other by
-            // caching a stale hero. Placed by the hud-areas.json "minimap" rows into the
-            // left-column Minimap band in calm(town) + calm(explore) only.
-            //
-            // Flag-OFF builds NOTHING (not a hidden widget): a minimap that is off should
-            // cost zero, and an unregistered id is simply absent from every occupancy row.
-            // Locked adaptive-HUD ruling: no minimap is constructed on the player HUD.
+            // ⛔ NO MINIMAP IS BUILT HERE, AND NONE MAY BE ADDED (WO-1825, owner 2026-09-17).
+            // Owner, verbatim: "Let's remove it, landscape is too small". HudMinimapWidget, the
+            // ff.minimap flag and the plate/status-line reservation in HudLayoutBands are all
+            // DELETED — the compass (above) is the whole navigation cue on the town HUD. The left
+            // column's former Minimap band now belongs to the Night Market card alone
+            // (HudLayoutBands.NightMarketMount). A dungeon map is an explicit owner "maybe" and
+            // needs its own spec; it does not come back through this build site.
 
             // ── the Night Market card: the store's PERMANENT face (WO-1335) ──
             BuildNightMarketCard(pool);
@@ -1624,20 +1636,9 @@ namespace DeNelle.HUD.Kit
             compass.EnemyProvider = MakeEnemyProvider();
         }
 
-        // WO-828: the minimap reads the SAME three world facts as the compass — where the
-        // hero is, where the objective is, where the threats are — so it is wired from the
-        // same three factories rather than from a second, drifting copy of the reflection.
-        // Each widget gets its OWN closures (its own hero cache and its own enemy buffer):
-        // sharing one buffer between two widgets polling on different timers is exactly how
-        // one widget ends up reading a list the other is mid-rebuild.
-        private static void WireMinimapProviders(HudMinimapWidget minimap)
-        {
-            if (minimap == null) return;
-            var hero = MakeHeroProvider();
-            minimap.HeroProvider = hero;
-            minimap.ObjectiveProvider = MakeSeamObjectiveProvider(hero);
-            minimap.EnemyProvider = MakeEnemyProvider();
-        }
+        // WO-1825: WireMinimapProviders is DELETED with HudMinimapWidget. The three factories
+        // below are NOT dead with it — WireCompassProviders (above) is their live caller, and the
+        // compass is the town HUD's whole navigation cue now.
 
         // ── the three shared provider factories (loose reflection, HUD -> Core edge kept) ──
         // DeNelle.HUD may not reference DeNelle.Village (§5), so the Village types are
@@ -2538,6 +2539,17 @@ namespace DeNelle.HUD.Kit
         // Owner/lead ruling needed on growing the mount; tracked in WORK_ORDER_1823's RESULT.
         // (Do NOT alias these to ElarionUi.FontFloorMobile either: Case 10 parses them as float
         // LITERALS out of this source, see the note under HeartNameFontMax.)
+        //
+        // ⭐ WO-1824 RULED IT, 2026-09-17, AND THE RULING IS *NOT* "GROW THE MOUNT". Owner,
+        // verbatim: "we could do a on tap make larger and on tap again reduce size?". So these
+        // four consts STAY sub-floor on purpose and are now correctly described as the GLANCE
+        // state; the READING state is the tap-to-expand overlay below (HeartExpanded*), which
+        // is a separate canvas over the HUD and therefore needs no column height at all. The
+        // mount-growth remedy was investigated and is arithmetically unavailable: at the binding
+        // aspect the tightest current row fraction is 0.19, so a 36 px line needs a 189.5 px
+        // plate = HeartMount 0.2045, while the whole left column can free ~0.0184 even with the
+        // minimap retired (WO-1824 §2 - the Night Market card, not the minimap plate, holds the
+        // seat under this plate). Do NOT "finish WO-1823" by raising these numbers.
         private const float HeartNameFontMin = 20f;
         private const float HeartNameFontMax = 26f;
         // (Literals, not aliases of the name constants: the regression pin parses these as
@@ -2559,6 +2571,46 @@ namespace DeNelle.HUD.Kit
         private const float HeartfireFlameGapPx = 4f;
         private const float HeartfireFlameX1 = 0.32f;
         private const float HeartfireLabelX0 = 0.34f;
+
+        // ── WO-1824: THE EXPANDED (READING) PLATE, AS FRACTIONS OF SCREEN ────────────
+        // Every number here is a float LITERAL for the same reason the compact ones are:
+        // HudLabelFitRegression Case 10c parses them out of this source (DeNelle.EditorRegression
+        // cannot reference DeNelle.HUD) and does the seats-a-floor-line arithmetic against them.
+        // ⛔ Do NOT alias HeartExpandedFontMin to ElarionUi.FontFloorMobile - the parse takes a
+        // number, and a symbol makes the check assert nothing. Case 10c compares this literal
+        // AGAINST ElarionUi.FontFloorMobile instead, so dropping it under the floor is a red gate.
+        //
+        // The overlay is built from the kit's PARTS (BuildModalCanvas + Scrim + Panel +
+        // ObsidianCloseButton) rather than BuildObsidianModal, deliberately: the chrome's
+        // layout.body zone is MEASURED from frame art at runtime, so a regression that cannot
+        // instantiate it could not model the row heights. A plain Panel at literal anchors is
+        // exactly modelable, which is the whole point of Case 10c.
+        //
+        // Sorting order: 30500 sits ABOVE the town HUD canvas and BELOW the kit's two modal
+        // tiers (BuildObsidianModal defaults to 31000, BuildConfirmModal to 32000), so a real
+        // modal opened while this glance is up still draws over it.
+        private const float HeartExpandedX0 = 0.24f;
+        private const float HeartExpandedX1 = 0.76f;
+        private const float HeartExpandedY0 = 0.20f;
+        private const float HeartExpandedY1 = 0.84f;
+        /// <summary>Rows inside the expanded panel, top to bottom. They stop at y 0.26 because
+        /// ElarionUiKit.DefaultCloseZone is the BOTTOM-CENTRE thumb band (0.050..0.125) - the
+        /// standard Close lands there and may not be drawn over.</summary>
+        private const float HeartExpandedNameBandY0 = 0.80f;
+        private const float HeartExpandedNameBandY1 = 0.96f;
+        private const float HeartExpandedObjectiveBandY0 = 0.62f;
+        private const float HeartExpandedObjectiveBandY1 = 0.78f;
+        private const float HeartExpandedFireBandY0 = 0.44f;
+        private const float HeartExpandedFireBandY1 = 0.60f;
+        private const float HeartExpandedRekindleBandY0 = 0.26f;
+        private const float HeartExpandedRekindleBandY1 = 0.42f;
+        private const float HeartExpandedRowX0 = 0.06f;
+        private const float HeartExpandedRowX1 = 0.94f;
+        /// <summary>The reading state's floor. 30 IS ElarionUi.FontFloorMobile's value, typed as a
+        /// literal so Case 10c can read it; the case asserts literal >= the named floor.</summary>
+        private const float HeartExpandedFontMin = 30f;
+        private const float HeartExpandedFontMax = 44f;
+        private const int HeartExpandedSortingOrder = 30500;
 
         // WO-432: Heart of Elarion status cluster — a tree-of-life glyph + "Elarion" caption
         // sitting ABOVE its own gold Heart bar, so the whole widget reads as the world-tree /
@@ -2681,7 +2733,140 @@ namespace DeNelle.HUD.Kit
                 if (manaBg != null) manaBg.gameObject.SetActive(false);
             }
 
+            // ── WO-1824: THE WHOLE PLATE IS THE TAP TARGET ───────────────────────────
+            // Owner ruling 2026-09-17: "we could do a on tap make larger and on tap again
+            // reduce size?". The target is the plate itself rather than a small added
+            // affordance, because the plate ALREADY clears the touch floor on both axes at
+            // both landscape aspects and a 112 px chip glued onto a 125 px plate would eat a
+            // fifth of the surface it is meant to open:
+            //   height = HudLayoutBands.HeartMount.height(0.135) x refH x 0.96
+            //          = 125.1 ref px at 2670x1200, 140.0 at 1920x1080  (>= MinTouchPx 112)
+            //   width  = HeartMount.width(0.229) x refW x 0.97
+            //          = 477.1 ref px at 2670x1200, 426.6 at 1920x1080  (>= MinTouchPx 112)
+            // So ElarionUiKit.ClampMinTouch would be a no-op here (the HudLayoutBands.cs:114-118
+            // reasoning verbatim) and is deliberately NOT called: it resizes by sizeDelta, and
+            // this rect is anchor-stretched to the plate.
+            var tapGo = new GameObject("HeartPlateTap", typeof(RectTransform), typeof(Image));
+            tapGo.transform.SetParent(_heartPlate.Root.transform, false);
+            var tapRt = (RectTransform)tapGo.transform;
+            tapRt.anchorMin = Vector2.zero; tapRt.anchorMax = Vector2.one;
+            tapRt.offsetMin = Vector2.zero; tapRt.offsetMax = Vector2.zero;
+            var tapImg = tapGo.GetComponent<Image>();
+            // Invisible, but a raycast target: an alpha-0 Image is still hit by the
+            // GraphicRaycaster, so this adds a gesture without adding a pixel.
+            tapImg.color = new Color(0f, 0f, 0f, 0f);
+            tapImg.raycastTarget = true;
+            tapGo.transform.SetAsLastSibling();
+            var heartTapBtn = tapGo.AddComponent<Button>();
+            heartTapBtn.transition = Selectable.Transition.None;
+            heartTapBtn.onClick.AddListener(ToggleHeartExpanded);
+
             Register("heartStatus", WrapAsWidget("heartStatus", root));
+        }
+
+        // ── WO-1824: THE HEART PLATE'S READING STATE ─────────────────────────────────
+        // Player report (WO-1823, build 2026.09.16.371701): "Text is too small to read." Every
+        // other HUD site in that ticket was raised to ElarionUi.FontFloorMobile; this plate is
+        // the one that could not be, because the left column has no height to give it (the
+        // arithmetic is in the WO-1824 block above HeartNameFontMin). The owner's ruling turns
+        // that constraint into a gesture: the docked plate remains the GLANCE (unchanged, still
+        // 20..26 px, still every band it has always had) and a tap opens the same four rows at
+        // the 30 px floor on an overlay canvas that owes the column nothing.
+        //
+        // Closes THREE ways, all of them the ones a player already knows: tap the plate again
+        // (the owner's own wording), tap the scrim outside it, or press the kit's one standard
+        // Close. Session-local and deliberately not persisted.
+        private void ToggleHeartExpanded()
+        {
+            if (_heartExpandedCanvas != null) { CloseHeartExpanded(); return; }
+            OpenHeartExpanded();
+        }
+
+        private void OpenHeartExpanded()
+        {
+            if (_heartExpandedCanvas != null) return;
+            // ⛔ NEVER `_heartPlate == null` - PartyNameplateHandle is a STRUCT
+            // (ElarionUiKitNameplate.cs:51), so that comparison is CS0019, not a safety net. A
+            // default (never-built) handle has a null Root, which IS the emptiness check, and it
+            // is the pattern this file already uses (see `_heartPlate.NameLabel != null` above).
+            if (_heartPlate.Root == null)
+            {
+                FlowTrace.Warn("HudKit", "WO-1824 Heart expand requested with no compact plate built - " +
+                               "nothing to enlarge, so the gesture is dropped rather than opening an empty plate");
+                return;
+            }
+
+            FlowTrace.Step("HudKit", "WO-1824 Heart plate EXPAND (glance -> reading state, floor " +
+                           HeartExpandedFontMin + "px, sorting " + HeartExpandedSortingOrder + ")");
+
+            _heartExpandedCanvas = ElarionUiKit.BuildModalCanvas("HeartPlateExpanded", HeartExpandedSortingOrder);
+            var c = _heartExpandedCanvas.GetComponent<Canvas>();
+            if (c != null) c.overrideSorting = true;
+            // Tap-outside closes, and the scrim is what makes this read as "opened" rather than
+            // as a second Heart plate floating over the town.
+            ElarionUiKit.Scrim(_heartExpandedCanvas.transform, CloseHeartExpanded);
+            var panel = ElarionUiKit.Panel(_heartExpandedCanvas.transform,
+                new Vector2(HeartExpandedX0, HeartExpandedY0),
+                new Vector2(HeartExpandedX1, HeartExpandedY1), deep: true);
+
+            _heartExpandedName = ElarionUiKit.Label(panel.transform, string.Empty,
+                HeartExpandedNameBandY0, HeartExpandedNameBandY1,
+                ElarionUi.Gold, ElarionUi.FontLabel, TextAlignmentOptions.Midline,
+                HeartExpandedRowX0, HeartExpandedRowX1, bold: true);
+            _heartExpandedObjective = ElarionUiKit.Label(panel.transform, string.Empty,
+                HeartExpandedObjectiveBandY0, HeartExpandedObjectiveBandY1,
+                ElarionUi.Parchment, ElarionUi.FontLabel, TextAlignmentOptions.Midline,
+                HeartExpandedRowX0, HeartExpandedRowX1);
+            _heartExpandedFire = ElarionUiKit.Label(panel.transform, string.Empty,
+                HeartExpandedFireBandY0, HeartExpandedFireBandY1,
+                ElarionUi.Parchment, ElarionUi.FontLabel, TextAlignmentOptions.Midline,
+                HeartExpandedRowX0, HeartExpandedRowX1, bold: true);
+            _heartExpandedRekindle = ElarionUiKit.Label(panel.transform, string.Empty,
+                HeartExpandedRekindleBandY0, HeartExpandedRekindleBandY1,
+                ElarionUi.ParchmentDim, ElarionUi.FontLabel, TextAlignmentOptions.Midline,
+                HeartExpandedRowX0, HeartExpandedRowX1);
+            foreach (var t in new[] { _heartExpandedName, _heartExpandedObjective,
+                                      _heartExpandedFire, _heartExpandedRekindle })
+            {
+                if (t == null) continue;
+                t.enableAutoSizing = true;
+                ElarionUiKit.FitSingleLine(t, HeartExpandedFontMin, HeartExpandedFontMax);
+            }
+
+            ElarionUiKit.ObsidianCloseButton(panel.transform, CloseHeartExpanded);
+            RepaintHeartExpanded();
+        }
+
+        /// <summary>The reading state carries the SAME words the glance carries, copied off the
+        /// compact labels rather than re-resolved from Core. That is deliberate: a second
+        /// resolution path is a second thing that can disagree with what the player just tapped,
+        /// and the compact rows are already repainted by RepaintHeartObjective / RepaintHeartfire.</summary>
+        private void RepaintHeartExpanded()
+        {
+            if (_heartExpandedCanvas == null) return;
+            // (No `_heartPlate != null` - it is a struct; NameLabel is the real guard. See
+            // OpenHeartExpanded's note.)
+            if (_heartExpandedName != null && _heartPlate.NameLabel != null)
+                _heartExpandedName.text = _heartPlate.NameLabel.text;
+            if (_heartExpandedObjective != null && _heartObjectiveLabel != null)
+                _heartExpandedObjective.text = _heartObjectiveLabel.text;
+            if (_heartExpandedFire != null && _heartfireLabel != null)
+                _heartExpandedFire.text = _heartfireLabel.text;
+            if (_heartExpandedRekindle != null && _heartfireRekindleLabel != null)
+                _heartExpandedRekindle.text = _heartfireRekindleLabel.text;
+        }
+
+        /// <summary>Idempotent, so every close path and every teardown can call it blind.</summary>
+        private void CloseHeartExpanded()
+        {
+            if (_heartExpandedCanvas == null) return;
+            FlowTrace.Step("HudKit", "WO-1824 Heart plate COLLAPSE (reading state -> glance)");
+            Destroy(_heartExpandedCanvas);
+            _heartExpandedCanvas = null;
+            _heartExpandedName = null;
+            _heartExpandedObjective = null;
+            _heartExpandedFire = null;
+            _heartExpandedRekindle = null;
         }
 
         /// <summary>
@@ -5515,6 +5700,10 @@ namespace DeNelle.HUD.Kit
             // finds a panel she left open in another posture already occupying the column.
             SetRailSection(RailSection.None);
             if (_resChipsExpanded) SetResourcePanelOpen(false);
+            // WO-1824: same rule for the Heart reading state. It is a town GLANCE opened wider;
+            // a posture flip (build / modal / battle) must not leave it drawn over a raid HUD,
+            // and its canvas is outside the HUD root so occupancy cannot reach it.
+            CloseHeartExpanded();
 
             var occupancy = _config.Occupancy(posture);
             int shown = 0;
@@ -5910,6 +6099,11 @@ namespace DeNelle.HUD.Kit
 
             // (WO-835: the Raids army-dim poll and the Map Onboarded poll that lived here
             // moved into HudActionBarModel — the View consumes its events above.)
+
+            // WO-1824: keep the reading state's words identical to the glance's. It mirrors the
+            // compact labels rather than re-resolving Core, and returns immediately when nothing
+            // is expanded, so the cost while closed is one null check per frame.
+            RepaintHeartExpanded();
         }
 
         /// <summary>
@@ -6130,11 +6324,16 @@ namespace DeNelle.HUD.Kit
         private void OnDisable()
         {
             CloseItemPicker();
+            // WO-1824: the reading state is its own ScreenSpaceOverlay canvas, so it does NOT
+            // go away with the HUD root. A disabled HUD cannot drive its Close or its scrim,
+            // which is the same "modal nothing owns" the picker line above exists to prevent.
+            CloseHeartExpanded();
         }
 
         private void OnDestroy()
         {
             CloseItemPicker();
+            CloseHeartExpanded();
             foreach (var u in _unsubscribe) { try { u(); } catch { /* teardown */ } }
             _unsubscribe.Clear();
             if (_targetFrame != null) _targetFrame.Unbind();

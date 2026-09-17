@@ -1,6 +1,6 @@
 # WO-1824: The Heart plate is too small to seat the 30 px font floor
 
-**Status:** READY
+**Status:** IMPLEMENTED
 
 **Ticket:** WO-1824
 **Route:** `Main_Castle_Overworld` (town HUD, left column)
@@ -130,4 +130,40 @@ the one that needs her eyes.
 
 ---
 
-**Assigned to:** HUD/Core layout lane. **Blocked on:** owner ruling, §4.
+**Assigned to:** HUD/Core layout lane. **Blocked on:** ~~owner ruling, §4~~ — **RULED, 2026-09-17.**
+
+---
+
+## 8. RULED AND IMPLEMENTED — 2026-09-17 (see the `.RESULT.md` beside this file)
+
+**Owner ruling, verbatim:** *"we could do a on tap make larger and on tap again reduce size?"*
+
+So **none of §4's five candidate remedies was taken.** The docked plate stays exactly as authored — it is
+now recorded as a deliberate **GLANCE**, sub-floor on purpose — and a **tap opens a floor-compliant
+READING state on an overlay canvas over the HUD**, which needs no column height at all. §1's growth
+requirement therefore becomes moot rather than satisfied.
+
+**§1 and §4 are superseded in one specific way, and the correction matters:**
+
+- §4 option 1 ("restack the left column") was re-derived on 2026-09-17 against the premise that WO-1825
+  frees `MinimapMount` entirely. **It does not help.** `NightMarketCardBand` (`HudLayoutBands.cs:178-186`)
+  hangs the 320x156 card from `MinimapMount.yMax`, so the **card, not the minimap plate, holds the seat
+  directly under this plate** (`:140-145` says so outright). Retiring the minimap frees y 0.420..0.483,
+  which is not adjacent to `HeartMount`; height only moves up if the card slides down, and the card is
+  floored by the gear row's top at 0.473 (`:153-157`). Transferable: **0.0104** of screen at 2670x1200,
+  0.0276 at 1920x1080 (+~0.008 from the top gap).
+- ⛔ **§1's deficit was UNDERSTATED. The binding row fraction is 0.19, not 0.22** (objective and rekindle,
+  `HudKitController.cs:2513-2518`). 36 / 0.19 = 189.5 px plate ⇒ `HeartMount.height` **0.2045** at
+  2670x1200 and **0.1827** at 1920x1080 — deficits of **0.0695** and **0.0477** against 0.0184 / 0.0356
+  available. NO at both aspects, by a factor of ~3.8 at the binding one.
+- ⛔ **§4 option 3's re-cut arithmetic is FALSE at the binding aspect.** "36 / 0.26 = 138.5 px, satisfied
+  by today's plate" — today's plate is **125.1** px at 2670x1200 (0.26 x 125.1 = 32.5 < 36). It holds only
+  at 1920x1080 (140 px). Do not implement that line.
+
+**§5's checklist, re-resolved under the ruling:** the Heart font consts were **deliberately NOT raised**
+(the WO-1823 EXCEPTION block stays and is now *extended* with why the mount-growth remedy cannot land, so
+Case 16d stays green and stops prescribing an impossible fix); Case 10c was re-pointed to assert **both**
+states — the glance's sub-floor numbers PINNED as intentional, and the expanded state at/above
+`ElarionUi.FontFloorMobile`, on screen, seating its line at both aspects, with its words MEASURED at 30 px.
+Screenshot verification is still outstanding: **no Unity run happened** (no GO), so compilation and the
+suite are unproven. `HudLayoutBands.cs` is **untouched** — WO-1825's silo is unaffected.

@@ -1073,12 +1073,13 @@ namespace DeNelle.Editor.Regression
                 for (int i = 0; i < bands.Length && i < names.Length; i++)
                 {
                     if (string.Equals(names[i], "Night Market card", StringComparison.Ordinal)) continue;
-                    // The minimap plate and its status line are NOT constructed today (the locked
-                    // adaptive-HUD ruling), and the card deliberately takes the plate's seat - that
-                    // conflict is recorded in HudLayoutBands rather than asserted here, because
-                    // asserting it would fail on a band nothing draws.
-                    if (string.Equals(names[i], "minimap plate", StringComparison.Ordinal)) continue;
-                    if (string.Equals(names[i], "status line", StringComparison.Ordinal)) continue;
+                    // WO-1825: the two name-skips that used to sit here ("minimap plate" and
+                    // "status line") are GONE, and so is the reason for them. They existed because
+                    // the card took the minimap plate's seat while nothing constructed the plate,
+                    // so asserting the overlap would have failed on a band nothing drew. The owner
+                    // has now removed the minimap outright, ResolveLeftColumn no longer returns
+                    // those bands, and every band this loop sees is one that really draws - which
+                    // is what makes the assertion below meaningful rather than skipped.
                     if (HudLayoutBands.Intersects(card, bands[i]))
                         failures.Add($"[seat] at {size.x:0}x{size.y:0} the Night Market card overlaps the " +
                                      $"'{names[i]}' band. Each element in the left column gets its OWN band; " +

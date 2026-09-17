@@ -1,5 +1,10 @@
 # MASTER CATALOG — Core (`Assets/_Modules/Core`)
 
+> **STALE 2026-09-17 (WO-1825):** this doc calls `HudMinimapWidget` a LIVE corner minimap (§ around
+> `DefenseMapPlate`, line ~176). It is **DELETED** — owner ruling *"Let's remove it, landscape is too
+> small"*. `FeatureFlags.Minimap`, `HudLayoutBands.MinimapMount` (renamed `NightMarketMount`) and the
+> `MinimapPlatePx` / `StatusLinePx` / `StatusLineGapPx` consts are gone too. Body not rewritten.
+
 > **Verified from code 2026-08-02** (HEAD ~b77a178e, branch `wip/village2-and-f8-tickets`). Every claim
 > below was read from the actual `.cs` files, NOT from their comments — file banners lie (the worst
 > offenders are ledgered in RISK at the end). Supersedes the 2026-06-12 body + the 07-22/07-26 addenda.

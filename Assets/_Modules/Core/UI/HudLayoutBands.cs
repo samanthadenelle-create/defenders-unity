@@ -16,6 +16,11 @@
 //                              fixed-pixel gear/Store row inside the Dock band
 //   * HudMinimapWidget       - the plate and the region chip inside the Minimap band
 //   * HubRepairAffordance    - a Village card that lands ON TOP of all of it
+// (⚠ WO-1825, 2026-09-17: the minimap and its region status line are GONE from that
+// list - owner ruling "Let's remove it, landscape is too small". HudMinimapWidget is
+// deleted, so the only two of those seven still authored outside this file are the
+// Village card and the Dock row. The history stays because it is the reason the table
+// exists at all, not a claim about what draws today.)
 // Nobody owned the WHOLE column, so nobody could see that the sum of the parts
 // no longer fit. That is exactly how WO-1219 shipped: the gear/Store row sat on
 // the minimap's lower edge and the region status line read out from UNDER the
@@ -30,9 +35,10 @@
 // a seat in the left column, it gets its OWN band here and the neighbours move -
 // it does NOT get drawn across one that is already spoken for.
 //
-// ⚠ FRACTIONS CANNOT PROMISE PIXELS. Three of the seven elements are authored in
-// FIXED reference units (the 200-unit minimap plate, the 30-unit region chip, the
-// two 112-unit MinTouchPx controls) precisely because a fraction of a band changes
+// ⚠ FRACTIONS CANNOT PROMISE PIXELS. Several occupants are authored in FIXED
+// reference units (the 320x156 Night Market card, the 112-unit MinTouchPx gear;
+// the 200-unit minimap plate and 30-unit region chip were two more until WO-1825
+// deleted them) precisely because a fraction of a band changes
 // its aspect with the device. So this file stores the MOUNTS as fractions and the
 // occupants as PIXELS, and RESOLVES the two together for a given screen size
 // (ResolveLeftColumn). The band arithmetic that WO-1219 had to be re-derived by
@@ -83,13 +89,30 @@ namespace DeNelle.Core.UI
         /// the flat gold frame NightMarketCardFramePx before the 2026-09-04 23:59 refinement).</summary>
         public static readonly Rect HeartMount = Rect.MinMaxRect(0.011f, 0.655f, 0.240f, 0.790f);
 
-        /// <summary>Minimap mount - holds TWO exclusive bands: the square plate hanging from
-        /// the mount's top-left, and the region STATUS LINE in its own band BELOW the plate.
-        /// ⛔ The status line is never drawn ACROSS the plate and never beside it: the owner
-        /// captured "Elarion - Safe - N threats" competing with both the map and the gear.
-        /// WO-1384: yMax 0.685 -> 0.645 to hand the Heart plate above the room it needed; the
-        /// Night Market card hangs from this edge, so its band moved down with it.</summary>
-        public static readonly Rect MinimapMount = Rect.MinMaxRect(0.011f, 0.420f, 0.240f, 0.645f);
+        /// <summary>The Night Market card's mount - the band that used to be the Minimap mount.
+        ///
+        /// <para>⭐ RENAMED, NOT MOVED (WO-1825, owner ruling 2026-09-17: <i>"Let's remove it,
+        /// landscape is too small"</i>). The corner minimap, its feature flag and its plate /
+        /// status-line pixel reservation are DELETED, so this band has exactly ONE occupant left -
+        /// the store card - and it is now named for the thing that actually draws in it. All four
+        /// values are the WO-1384 values VERBATIM: the card hangs off this rect's
+        /// <c>xMin</c>/<c>yMax</c> at a fixed pixel size (HudKitController's BuildNightMarketCard
+        /// anchors top-left, never a fraction of the mount), so changing a digit here MOVES the
+        /// card and nothing else about this rename does.</para>
+        ///
+        /// <para>WHAT IS FREE INSIDE IT, measured at the owner's device (2670x1200 -> 2147.7 x
+        /// 965.3 reference units via <see cref="CanvasReferenceSize"/>): the card takes
+        /// x 0.011..0.160, y 0.4834..0.645 (320 x 156). The pocket to its RIGHT is 171.8 x 156
+        /// units. The strip BELOW it (y 0.420..0.4834) is NOT all free - <see cref="DockMount"/>
+        /// reaches up to y 0.470 across x 0.000..0.230 - so the genuinely unclaimed vertical is
+        /// y 0.470..0.4834 = 0.0134 of screen = 12.9 reference units. ⛔ Anyone told "the minimap
+        /// freed the column" should read that number first: what WO-1825 freed was the phantom
+        /// OCCUPANCY the oracle budgeted around, not a screenful of pixels.</para>
+        ///
+        /// <para>History kept because it explains the y edge: WO-1384 moved yMax 0.685 -> 0.645 to
+        /// hand the Heart plate the room it needed, and the card hangs off this edge so its band
+        /// moved down with it.</para></summary>
+        public static readonly Rect NightMarketMount = Rect.MinMaxRect(0.011f, 0.420f, 0.240f, 0.645f);
 
         /// <summary>Dock mount - the gear + Store row (side by side, never stacked) and the
         /// slide-out drawer that opens to the right of both.</summary>
@@ -104,12 +127,11 @@ namespace DeNelle.Core.UI
 
         // ── FIXED-PIXEL occupants (reference units, never fractions) ────────────
 
-        /// <summary>Minimap plate edge in reference units (HudMinimapWidget.PlateSize).</summary>
-        public const float MinimapPlatePx = 200f;
-        /// <summary>Region status-line height in reference units (HudMinimapWidget.ChipHeight).</summary>
-        public const float StatusLinePx = 30f;
-        /// <summary>Gap between the minimap plate and the status line band below it.</summary>
-        public const float StatusLineGapPx = 4f;
+        // WO-1825: MinimapPlatePx (200), StatusLinePx (30) and StatusLineGapPx (4) are DELETED
+        // with HudMinimapWidget. They described a plate and a region status line that nothing
+        // constructed, and ResolveLeftColumn below was still returning bands for them - a PHANTOM
+        // occupant, which this file's own header calls worse than a missing one because the next
+        // reader budgets around it. Do not re-add a pixel size for a widget that does not exist.
 
         /// <summary>Gear / Store control edge. This is <c>ElarionUiKit.MinTouchPx</c> VERBATIM -
         /// the kit touch floor. ⛔ Nothing here may shrink it, and satisfying it may not create a
@@ -130,25 +152,22 @@ namespace DeNelle.Core.UI
         // seat in this column, and it gets it HERE rather than by being drawn across somebody
         // else's band - the mistake this whole file exists to stop.
         //
-        // ⭐ WHY IT SITS IN THE MINIMAP MOUNT, MEASURED RATHER THAN GUESSED. The column has room
-        // for exactly one more control and only in one place. At the owner's device (2670x1200,
-        // canvas 2147.9 x 965.4 reference units) the clear vertical between the region status
-        // line's bottom edge and the MoveCluster mount's top edge is
-        //     0.4426 - 0.330 = 0.1126 of screen height = 108.7 reference units,
-        // which is 3.3 units UNDER the 112-unit touch floor. So a second control CANNOT be added
-        // beside or below the gear without moving a neighbour. The Minimap mount, by contrast, is
-        // 491.9 x 255.8 units and is EMPTY at runtime: HudKitController constructs no
-        // HudMinimapWidget ("Locked adaptive-HUD ruling: no minimap is constructed on the player
-        // HUD"), so MinimapPlatePx / StatusLinePx above currently describe a plate and a status
-        // line that nothing draws.
+        // ⭐ WHY IT SITS WHERE IT DOES, MEASURED RATHER THAN GUESSED. The column has room for
+        // exactly one more control and only in one place. At the owner's device (2670x1200,
+        // canvas 2147.7 x 965.3 reference units) the clear vertical beside/below the gear is
+        // 0.1126 of screen height = 108.7 reference units, which is 3.3 units UNDER the 112-unit
+        // touch floor - so a second control CANNOT be added there without moving a neighbour. The
+        // band above the gear row, by contrast, is 491.8 x 217.2 units and the card is its SOLE
+        // occupant.
         //
-        // ⚠ THEREFORE THIS BAND TAKES THE PLATE'S SEAT, AND THAT CONFLICT IS STATED, NOT HIDDEN.
-        // If the minimap plate is ever constructed again, these two collide and MUST be re-split
-        // in this file. The pocket to the RIGHT of the plate inside the same mount is
-        // 291.7 x 200 units (x from MinimapMount.xMin + MinimapPlatePx, y the plate's own band);
-        // it held the original 272 x 132 card but does NOT hold the WO-1384 320 x 156 one, so
-        // that day the card and the plate must be re-split vertically or the plate must go
-        // elsewhere. Do not resolve it by drawing the card across the plate.
+        // ⭐ WO-1825 CLOSED THE CONFLICT THIS BLOCK USED TO DECLARE. It read "THIS BAND TAKES THE
+        // PLATE'S SEAT ... if the minimap plate is ever constructed again, these two collide" -
+        // an honest warning about a widget that had already stopped drawing. The owner has now
+        // removed the minimap outright ("Let's remove it, landscape is too small"), so
+        // HudMinimapWidget, ff.minimap and the plate/status-line pixel consts are gone and
+        // MinimapMount is renamed NightMarketMount. There is no seat being shared and no
+        // re-split owed: the band belongs to the card. A DUNGEON map is an explicit owner "maybe"
+        // and would need its own band authored here, never this one back.
         //
         // ⛔ CLEAR OF THE MOVEMENT STICK BY CONSTRUCTION, WHICH IS THE ONE NON-NEGOTIABLE. The
         // card's band bottoms out at y 0.483 of screen (WO-1384: 0.645 - 156 / 965.4); the gear
@@ -160,7 +179,7 @@ namespace DeNelle.Core.UI
         /// "it needs to be the shining gem ... above all stands out"): 272 -> 320, so the card is
         /// the LARGEST control in the column by construction - 320 x 156 = 49920 units^2 against
         /// the gear's 112 x 112 = 12544. 320 x 156 keeps the 1798x875 `realm-store` card art at
-        /// its authored 2.055:1 aspect, fits the Minimap mount's 491.9-unit width, and clears
+        /// its authored 2.055:1 aspect, fits the mount's 491.8-unit width, and clears
         /// the touch floor on BOTH axes. Pinned by HudLabelFitRegression [night-market-standout].</summary>
         public const float NightMarketCardWidthPx = 320f;
         /// <summary>See <see cref="NightMarketCardWidthPx"/>. 156 = 320 / 2.055 (155.7), the
@@ -169,8 +188,8 @@ namespace DeNelle.Core.UI
 
         /// <summary>
         /// The Night Market card's screen band, hung from the TOP-LEFT of
-        /// <see cref="MinimapMount"/> at a fixed reference size (pixels, never a fraction of the
-        /// mount - see this file's header: a fraction changes its aspect with the device and a
+        /// <see cref="NightMarketMount"/> at a fixed reference size (pixels, never a fraction of
+        /// the mount - see this file's header: a fraction changes its aspect with the device and a
         /// touch floor is stated in pixels).
         /// </summary>
         public static Rect ResolveNightMarketCard(float screenW, float screenH)
@@ -179,10 +198,10 @@ namespace DeNelle.Core.UI
             float ux = refSize.x > 0f ? 1f / refSize.x : 0f;
             float uy = refSize.y > 0f ? 1f / refSize.y : 0f;
             return Rect.MinMaxRect(
-                MinimapMount.xMin,
-                MinimapMount.yMax - NightMarketCardHeightPx * uy,
-                MinimapMount.xMin + NightMarketCardWidthPx * ux,
-                MinimapMount.yMax);
+                NightMarketMount.xMin,
+                NightMarketMount.yMax - NightMarketCardHeightPx * uy,
+                NightMarketMount.xMin + NightMarketCardWidthPx * ux,
+                NightMarketMount.yMax);
         }
 
         // ── THE RESERVED THUMB BAND (WO-1436, owner ruling 2026-09-06) ──────────
@@ -526,8 +545,15 @@ namespace DeNelle.Core.UI
             return new Vector2(screenW / scale, screenH / scale);
         }
 
-        /// <summary>The seven left-column bands, in the order they stack top-to-bottom.
-        /// Index order matches <see cref="LeftColumnNames"/>.</summary>
+        /// <summary>The left column's DRAWN bands, in the order they stack top-to-bottom.
+        /// Index order matches <see cref="LeftColumnNames"/>.
+        ///
+        /// <para>⚠ WO-1825: this returns FOUR bands, not the six it used to. The
+        /// <c>minimap plate</c> and <c>status line</c> entries are DELETED with
+        /// <c>HudMinimapWidget</c> - they were bands for a widget nothing constructed, and both
+        /// callers were already skipping them BY NAME to stop failing on geometry nothing drew
+        /// (NightMarketUiRegression, HudLabelFitRegression). Every caller finds its band by name
+        /// rather than by index, so the shorter array is safe; keep it that way.</para></summary>
         public static Rect[] ResolveLeftColumn(float screenW, float screenH)
         {
             var refSize = CanvasReferenceSize(screenW, screenH);
@@ -535,17 +561,6 @@ namespace DeNelle.Core.UI
             float uy = refSize.y > 0f ? 1f / refSize.y : 0f;   // one reference unit, as a y-fraction
 
             var heroPlate = SubRect(VitalsMount, HeroPlateInVitals);
-
-            // The minimap plate hangs from the mount's TOP-LEFT at a fixed square size, and the
-            // status line takes its own band immediately BELOW it. Both are pixels, so both are
-            // resolved against the canvas rather than the band's aspect.
-            float plateW = MinimapPlatePx * ux, plateH = MinimapPlatePx * uy;
-            var minimapPlate = Rect.MinMaxRect(MinimapMount.xMin, MinimapMount.yMax - plateH,
-                                               MinimapMount.xMin + plateW, MinimapMount.yMax);
-            float lineTop    = MinimapMount.yMax - (MinimapPlatePx + StatusLineGapPx) * uy;
-            float lineBottom = lineTop - StatusLinePx * uy;
-            var statusLine = Rect.MinMaxRect(MinimapMount.xMin + StatusLineGapPx * ux, lineBottom,
-                                             MinimapMount.xMax - StatusLineGapPx * ux, lineTop);
 
             // The gear is a fixed-pixel control centred on the Dock band.
             //
@@ -566,14 +581,13 @@ namespace DeNelle.Core.UI
 
             var nightMarketCard = ResolveNightMarketCard(screenW, screenH);
 
-            return new[] { heroPlate, HeartMount, minimapPlate, statusLine, gear, nightMarketCard };
+            return new[] { heroPlate, HeartMount, gear, nightMarketCard };
         }
 
         /// <summary>Human names for <see cref="ResolveLeftColumn"/>, same order.</summary>
         public static readonly string[] LeftColumnNames =
         {
-            "hero plate", "Heart objective", "minimap plate", "status line", "gear",
-            "Night Market card",
+            "hero plate", "Heart objective", "gear", "Night Market card",
         };
 
         /// <summary>Project a sub-rect expressed as a fraction of a parent band into screen

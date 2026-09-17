@@ -123,8 +123,10 @@ namespace DeNelle.Editor.Regression
              "private void Update()", "the 0.5s collector publish tick"),
             ("Assets/_Modules/Village/HUD/TownHudBridge.cs", "private void Update()",
              "the town HUD feed tick"),
-            ("Assets/_Modules/HUD/Kit/HudMinimapWidget.cs", "private void LateUpdate()",
-             "the minimap redraw - polls the scene, runs in an empty town"),
+            // WO-1825: the HudMinimapWidget.LateUpdate row is REMOVED - the file is deleted (owner
+            // ruling 2026-09-17, "Let's remove it, landscape is too small"), so this tuple was
+            // pinning a path that no longer exists and would have failed the suite on a file
+            // nothing can measure. The frame cost it guarded went to zero by deletion.
             ("Assets/_Modules/HUD/Kit/PostureEvaluator.cs", "private void Update()",
              "the HUD posture poll"),
             ("Assets/_Modules/Village/Enemies/PlayerAttackController.cs", "private void Update()",
