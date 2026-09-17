@@ -749,6 +749,15 @@ namespace DeNelle.Village
                 float sqr = (p - transform.position).sqrMagnitude;
                 if (sqr > Range * Range) continue;
                 if (p.y > AirThreshold && !CanHitAir) continue;
+                // WO-1808 — LoS gate on the ENEMY-OWNED pick. The 2026-07 "towers shoot through
+                // walls" fix landed on Acquire() (the PLAYER pick, :903) only; this path was added
+                // afterwards and never got it, so a garrison turret shot straight through every
+                // standing WallSegment. PROOF: the owner's raid window
+                // (logs/device/raid-window-1955.txt) carries 107 `-> FireAtParty (EnemyOwned)`
+                // entries and ZERO [Flow:TowerLoS] lines — BlockedByWall emits one per call, so it
+                // never ran here. Placed AFTER the range + air gates on purpose: the linecast is the
+                // expensive test and only candidates that already passed the cheap filters pay it.
+                if (BlockedByWallToParty(d, p)) continue;
                 var troop = mb as TroopController;
                 bool isTank = troop != null && troop.Def != null &&
                     string.Equals(troop.Def.Role, "tank", System.StringComparison.OrdinalIgnoreCase);
@@ -910,28 +919,98 @@ namespace DeNelle.Village
         // wrongly rejected by a muzzle→sky line clipping the castle roof). Muzzle matches Fire()'s
         // `transform.position + up*2`.
         private int _structureMask = -1;
+
+        /// <summary>
+        /// The PLAYER-owned pick's LoS gate (unchanged behaviour). Reads the flyer flag off the
+        /// <see cref="IDamageable"/> contract and hands the decision to <see cref="BlockedByWallAt"/>.
+        /// </summary>
         private bool BlockedByWall(IDamageable target)
         {
             if (target == null) return true;
+            // FLYER EXEMPTION — kept INLINE, in this exact literal shape, at BOTH entry points on
+            // purpose: TowerWallLosRegression.RequireLosGate (:84) pins the regex
+            // `CombatLayer\.Flying\)\s*return\s+false` against this file. Hoisting it into the shared
+            // core as a bool parameter compiled fine and silently broke that oracle (WO-1808 bounce,
+            // Builds/regression.log 21:40). The duplicated line is two words; the lost guarantee was
+            // "a ground wall must not silence the tower against the apex dragon".
             if (target is ICombatLayered layered && layered.Layer == CombatLayer.Flying) return false;
+            return BlockedByWallAt(target.WorldPosition, "PlayerOwned");
+        }
+
+        /// <summary>
+        /// WO-1808 — the ENEMY-OWNED (garrison turret) pick's LoS gate, for a party member reached
+        /// through <see cref="IDamageableStructure"/>.
+        ///
+        /// ⚠ THIS IS THE <c>IDamageable</c> ↔ <c>IDamageableStructure</c> BRIDGE, AND IT IS A
+        /// POSITION, NOT A CAST. The two seams are deliberately separate contracts (see this file's
+        /// header) and only ONE of them carries <c>WorldPosition</c>, so the shared core takes a
+        /// <see cref="Vector3"/> plus a bool instead of either interface. No reflection, no cast
+        /// between the seams, and the caller already computed the position for its range test.
+        ///
+        /// FLYER EXEMPTION KEPT: probed off <see cref="ICombatLayered"/> exactly as the player path
+        /// does. As of 2026-09-16 no party type implements it (HeroHealth:35, TroopController:45,
+        /// StoryCompanion:51 each declare <c>IDamageableStructure</c> only), so the exemption is
+        /// structurally present and inert — a future flying companion gets the dragon's arc for free.
+        /// </summary>
+        private bool BlockedByWallToParty(IDamageableStructure target, Vector3 targetPos)
+        {
+            if (target == null) return true;
+            if (target is ICombatLayered layered && layered.Layer == CombatLayer.Flying) return false;
+            return BlockedByWallAt(targetPos, "EnemyOwned");
+        }
+
+        /// <summary>
+        /// The ONE line-of-sight decision for both ownership modes. DEGRADE OPEN — if the Structure
+        /// layer is absent (mask 0), never block (a misconfigured scene must not make towers inert).
+        /// Muzzle matches <see cref="Fire"/>'s and <see cref="FireAtParty"/>'s
+        /// <c>transform.position + up*2</c>.
+        /// </summary>
+        /// <param name="ownerMode">Which pick asked — written into the trace and into the throttle
+        /// key, so a tower that runs both modes cannot have one mode's line swallow the other's
+        /// inside the same second.</param>
+        private bool BlockedByWallAt(Vector3 tPos, string ownerMode)
+        {
+            // NOTE: the flyer exemption is NOT here — both callers apply it inline before calling in
+            // (see BlockedByWall). Read that comment before "tidying" it into this method.
             if (_structureMask < 0) _structureMask = LayerMask.GetMask("Structure");
             if (_structureMask == 0) return false;
             Vector3 fPos = transform.position + Vector3.up * 2f;
-            Vector3 tPos = target.WorldPosition;
             // WO-1720 — LoS DECISION POINT. Capture the hit collider so a future "Ballista fires
             // through a standing wall" capture is provable from ONE log read (pair blocked=false
             // with fPos/tPos Y against the known WallSegment collider-vs-renderer height gap;
-            // WO-1719 measured colliderBounds 3m vs rendererBounds 15m on an intact wall).
+            // WO-1719 measured colliderBounds 3m vs rendererBounds 15m on an intact TOWN wall —
+            // WO-1808 measured the RAID scene's own walls at 5.00m collider, base y=0, layer
+            // Structure, so this linecast does hit there).
             bool blocked = Physics.Linecast(fPos, tPos, out RaycastHit losHit, _structureMask, QueryTriggerInteraction.Ignore);
             if (FlowTrace.Enabled)
             {
-                FlowTrace.Throttle("TowerLoS", $"DefenseTower:{GetInstanceID()}", 1f,
-                    $"'{name}' BlockedByWall fPos={fPos} tPos={tPos} blocked={blocked}" +
-                    (blocked && losHit.collider != null
-                        ? $" hit='{losHit.collider.name}' hitColliderBoundsY=[{losHit.collider.bounds.min.y:F2}..{losHit.collider.bounds.max.y:F2}] hitPoint={losHit.point}"
-                        : " (no Structure collider on the line — if a wall is visually there, its collider is undersized/absent)"));
+                // Build the detail half into a LOCAL first: a nested quote inside an interpolation
+                // hole reads as a string terminator to CompileGate.BraceBalanced (CLAUDE.md §1).
+                string detail = " (no Structure collider on the line - if a wall is visually there, its collider is undersized/absent)";
+                if (blocked && losHit.collider != null)
+                {
+                    string hitName = losHit.collider.name;
+                    Bounds hb = losHit.collider.bounds;
+                    detail = $" hit='{hitName}' hitColliderBoundsY=[{hb.min.y:F2}..{hb.max.y:F2}] hitPoint={losHit.point}";
+                }
+                FlowTrace.Throttle("TowerLoS", $"DefenseTower:{GetInstanceID()}:{ownerMode}", 1f,
+                    $"'{name}' BlockedByWall owner={ownerMode} fPos={fPos} tPos={tPos} blocked={blocked}" + detail);
             }
             return blocked;
+        }
+
+        /// <summary>
+        /// WO-1808 headless oracle seam (same convention as <c>StructureBurn.TickForTest</c> /
+        /// <c>PlayerAttackController.ApplyWeaponTrailVfxForTest</c>): drive the REAL
+        /// <see cref="AcquireParty"/> against ONE injected candidate, so
+        /// <c>EnemyTowerWallLosRegression</c> proves the LoS gate without play mode and without
+        /// reflection. Replaces the party roster for the call — editor/regression use only.
+        /// </summary>
+        public IDamageableStructure AcquirePartyForTest(IDamageableStructure candidate, out Vector3 pos)
+        {
+            _partyTargets.Clear();
+            if (candidate != null) _partyTargets.Add(candidate);
+            return AcquireParty(out pos);
         }
 
         // "Scamper to the DPS and healers" — squishy backline first, tanks last.
