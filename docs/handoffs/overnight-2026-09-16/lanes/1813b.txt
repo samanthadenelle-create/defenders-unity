@@ -1,0 +1,11 @@
+Assets/_Modules/Village/Hero/AbilityVfxKit.cs
+Assets/_Modules/Village/Vfx/VFXManager.cs
+Assets/_Modules/Village/Vfx/VFXManager.Hovl.cs
+Assets/Editor/Regression/VfxParticleNullSlotRegression.cs
+Assets/Editor/VfxProofCapture.cs
+docs/handoffs/overnight-2026-09-16/VFX_PLAYED_INVENTORY.md
+docs/handoffs/overnight-2026-09-16/VFX_SLOT_CLASSIFICATION.md
+WorkOrders/WORK_ORDER_1806_archer_projectile_vfx_renders_as_flat_untextured_quad.RESULT.md
+WorkOrders/WORK_ORDER_1813_white_untextured_quad_on_hero_during_fireball_levelup.md
+WorkOrders/WORK_ORDER_1813_white_untextured_quad_on_hero_during_fireball_levelup.RESULT.md
+BOARD.html

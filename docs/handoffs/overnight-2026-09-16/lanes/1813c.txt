@@ -1,0 +1,8 @@
+Assets/_Modules/Village/Hero/AbilityVfxKit.cs
+Assets/_Modules/Village/Vfx/VFXManager.cs
+Assets/_Modules/Village/Vfx/VFXManager.Hovl.cs
+Assets/Editor/Regression/VfxParticleNullSlotRegression.cs
+Assets/Editor/VfxProofCapture.cs
+WorkOrders/WORK_ORDER_1813_white_untextured_quad_on_hero_during_fireball_levelup.md
+WorkOrders/WORK_ORDER_1813_white_untextured_quad_on_hero_during_fireball_levelup.RESULT.md
+BOARD.html
