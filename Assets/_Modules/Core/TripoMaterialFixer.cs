@@ -310,13 +310,40 @@ namespace DeNelle.Core
             FlowTrace.Step("TripoMatFix",
                 $"{gameObject.name}: fallbackPath='{_fallbackTextureName}', loaded={fallbackTex != null}, forced={forcedTex != null}, tintActive={_hasFallbackTint}, flatCoat={_suppressBaseMap}");
 
-            int renderers = 0, slotsRebuilt = 0;
+            int renderers = 0, slotsRebuilt = 0, spriteOverlaysSkipped = 0;
             foreach (var r in GetComponentsInChildren<Renderer>(true))
             {
                 if (r == null) continue;
+                // WO-1792: a SpriteRenderer is NOT an FBX mesh slot — skip it BEFORE renderers++
+                // and before Guard.TryEach, so its sharedMaterials are never reassigned. Reason +
+                // proving lines at IsSpriteOverlay. Classified BY NAME so a capture says which
+                // renderer was skipped and why, rather than going quiet on it.
+                if (IsSpriteOverlay(r))
+                {
+                    spriteOverlaysSkipped++;
+                    FlowTrace.Step("TripoMatFix",
+                        $"SKIPPED sprite overlay on '{gameObject.name}' renderer '{r.name}' " +
+                        $"(type={r.GetType().Name}) — a SpriteRenderer supplies its texture at draw time from its " +
+                        "sprite, not from a _BaseMap on its shared material, so it is not an FBX mesh slot. " +
+                        "Rebuilding it to URP/Lit strips the sprite's alpha and paints a white quad (this is the " +
+                        "InteractableSign Rim/Glass/Icon plate, WO-1792). Not a defect, not rebuilt, not verified.");
+                    continue;
+                }
                 var mats = r.sharedMaterials;
                 if (mats == null) continue;
                 renderers++;
+                // WO-1792 (instrument, do NOT act): everything that is neither a mesh renderer nor a
+                // sprite overlay is still rebuilt exactly as before. Name it once per type so the next
+                // capture PROVES which non-mesh renderer types actually live under a fixer host — a
+                // ParticleSystemRenderer named here would be a candidate lead for the combat-VFX
+                // flat-colour-squares subject, which is UNPROVEN from here and belongs to that lane.
+                if (!(r is MeshRenderer || r is SkinnedMeshRenderer))
+                    FlowTrace.Once("TripoMatFix", "nonmesh-rebuilt-" + r.GetType().Name,
+                        $"rebuilding a NON-MESH renderer's material to URP/Lit: host='{gameObject.name}' " +
+                        $"renderer='{r.name}' type={r.GetType().Name}. Behaviour unchanged (WO-1792 scoped the skip " +
+                        "to SpriteRenderer only, the one type a capture proved). If this names a " +
+                        "ParticleSystemRenderer/LineRenderer/TrailRenderer, URP/Lit is very likely wrong for it — " +
+                        "route it, do not assume it.");
                 // G: guard the per-material loop so ONE bad source material logs + is skipped,
                 // never aborting the rebuild of the rest of this renderer's slots (Guard.TryEach
                 // LogErrors the bad index via [Flow:TripoMatFix] -> break-log, then carries on).
@@ -421,7 +448,8 @@ namespace DeNelle.Core
             }
 
             FlowTrace.Step("TripoMatFix",
-                $"{gameObject.name}: rebuilt {slotsRebuilt} slot(s) across {renderers} renderer(s). " +
+                $"{gameObject.name}: rebuilt {slotsRebuilt} slot(s) across {renderers} renderer(s), " +
+                $"skipped {spriteOverlaysSkipped} sprite overlay renderer(s) (WO-1792). " +
                 $"matCache: {s_cacheHits} hit / {s_cacheNew} new, size={s_matCache.Count} (P0-2 shared-material win).");
 
             // V: post-rebuild VERIFY — every renderer this fixer covers must now be on a URP/Lit
@@ -431,6 +459,50 @@ namespace DeNelle.Core
             // instead of leaving the owner to spot magenta on a model.
             VerifyAllRenderersUrp();
         }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // WO-1792 — THE ONE PREDICATE FOR "THIS RENDERER IS NOT AN FBX MESH SLOT".
+        // Called from BOTH Run() (which mutates) and VerifyAllRenderersUrp() (which reports),
+        // deliberately as a SINGLE method so the two can never drift. If only Run() skipped,
+        // Verify would then see the sprite still on 'Sprites/Default' -> isUrp==false -> it would
+        // fall through to broken++ and turn today's Warn into a hard VERIFY FAILED. If only
+        // Verify skipped, the slot would still be mutated with no line naming it — the §12
+        // stripped-instrumentation failure in a new coat.
+        //
+        // THE PROVING LINES (production Neon, 2026-09-16 UTC, build 2026.09.16.371701 —
+        // 68 hits across 9 distinct live player ids, every one in Main_Castle_Overworld):
+        //   [Flow:TripoMatFix] NO ALBEDO on 'Jeweler' renderer 'Glass' slot 0:
+        //       material='Sprites-Default (URP)' shader='Universal Render Pipeline/Lit' tint=(1.00...
+        //   ...the same for renderer 'Icon' and renderer 'Rim', 14 hits each
+        //   [Flow:TripoMatFix] Jeweler: VERIFY UNTEXTURED - all 4 slot(s) on a URP shader,
+        //       but 3 slot(s) have NO albedo bound and no miss/fallback tint.
+        //
+        // WHAT THOSE THREE NAMES ARE. `material='Sprites-Default (URP)'` is this file's own
+        // srcName (`src.name + " (URP)"`, see GetOrCreateSharedMaterial's caller), so the SOURCE
+        // material was Unity's builtin SpriteRenderer default, `Sprites-Default`. And the three
+        // renderer names are exactly, and only, the three children
+        // DeNelle.Village.InteractableSign.BuildQuad creates — "Rim", "Glass", "Icon"
+        // (InteractableSign.cs:199/201/206) — each a SpriteRenderer, in that count, under the
+        // interactable it floats above. That is the T-034 identity sign, not building art.
+        //
+        // WHY SKIPPING IS THE FIX AND NOT A SUPPRESSION. A SpriteRenderer supplies its texture
+        // at DRAW time from its `sprite`, not from a `_BaseMap` on its shared material — so
+        // `GetAlbedo` on a sprite material correctly finds nothing, and the NO ALBEDO line was a
+        // FALSE error 68 times a day on a healthy object. Worse, the rebuild was DESTRUCTIVE:
+        // replacing `Sprites-Default` with an opaque URP/Lit strips the sprite's alpha and shape,
+        // so the sign's gold bezel, dark-glass backdrop and type icon all rendered as three plain
+        // white lit quads floating above the Jeweler. Skipping them both silences the false error
+        // and restores the sign.
+        //
+        // ⚠ SCOPE IS SPRITERENDERER ONLY, ON PURPOSE. ParticleSystem / Line / Trail renderers are
+        // the same CLASS of concern — URP/Lit is never right for them either — but NO capture
+        // shows one under a fixer host, so skipping them here would be a guess (§11B). They keep
+        // today's behaviour byte-for-byte; Run() instead emits a FlowTrace.Once naming any
+        // non-mesh renderer it DID rebuild, so the next capture turns that open question into
+        // data instead of an argument. (Sibling filter, different instrument, different job:
+        // RaidUntexturedCensus.cs:209 scans `r is MeshRenderer || r is SkinnedMeshRenderer` — that
+        // is a census choosing its scan scope, and is NOT authority for this rebuild's scope.)
+        private static bool IsSpriteOverlay(Renderer r) => r is SpriteRenderer;
 
         // P0-2: get the ONE shared URP/Lit material for this exact look, building + caching
         // it on first sight. Identical-look slots (same maps/tint/emission/finish) all get the
@@ -496,10 +568,16 @@ namespace DeNelle.Core
         // Pure read-only inspection; always runs (control-flow safety, not behind a render check).
         private void VerifyAllRenderersUrp()
         {
-            int checkedSlots = 0, broken = 0, untextured = 0;
+            int checkedSlots = 0, broken = 0, untextured = 0, spriteOverlaysSkipped = 0;
             foreach (var r in GetComponentsInChildren<Renderer>(true))
             {
                 if (r == null) continue;
+                // WO-1792: verify exactly what Run() mutated — the SAME predicate, so the skip sets
+                // cannot drift. Skipped BEFORE checkedSlots++, so the summary below counts only real
+                // mesh slots (the Jeweler reads 1 slot, not 4) and the three sign quads stop
+                // reporting NO ALBEDO. A sprite left on 'Sprites/Default' would otherwise score
+                // isUrp==false here and be promoted to a hard VERIFY FAILED.
+                if (IsSpriteOverlay(r)) { spriteOverlaysSkipped++; continue; }
                 var mats = r.sharedMaterials;
                 if (mats == null) continue;
                 for (int i = 0; i < mats.Length; i++)
@@ -574,12 +652,14 @@ namespace DeNelle.Core
                 FlowTrace.Fail("TripoMatFix",
                     $"{gameObject.name}: VERIFY UNTEXTURED — all {checkedSlots} slot(s) on a URP shader, " +
                     $"but {untextured} slot(s) have NO albedo bound and no miss/fallback tint. " +
-                    "That is the Default Town white LightSkin (shader-only VERIFY used to call this OK).");
+                    "That is the Default Town white LightSkin (shader-only VERIFY used to call this OK). " +
+                    $"({spriteOverlaysSkipped} sprite overlay renderer(s) excluded — WO-1792.)");
             }
             else if (broken == 0)
                 FlowTrace.Step("TripoMatFix",
                     $"{gameObject.name}: VERIFY OK — all {checkedSlots} slot(s) on a URP shader " +
-                    $"(no magenta/error); {untextured} slot(s) with NO albedo bound.");
+                    $"(no magenta/error); {untextured} slot(s) with NO albedo bound; " +
+                    $"{spriteOverlaysSkipped} sprite overlay renderer(s) excluded (WO-1792).");
         }
     }
 }
