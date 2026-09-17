@@ -8,7 +8,7 @@ fable advisor" / "change the store to SKR only and set to flat amounts" / "and t
 screenshots of discounts". Rulings before bed: no loot on a failed raid; overnight APK installs to the Seeker allowed
 when the game is not in the foreground.
 
-## 1. What landed (16 local commits on `dev`, ff9537970 .. 5a600f5bc, NOT pushed)
+## 1. What landed (18 local commits on `dev`, ff9537970 .. 203d9c7a0 plus this report, NOT pushed)
 
 Gate on the combined tree: `COMPILE_GATE_OK` 22:21, `REGRESSION_OK 564/564` 22:27 (fresh logs `Builds/compile-gate.log`,
 `Builds/regression.log`). One lane per commit, explicit paths (`docs/handoffs/overnight-2026-09-16/lanes/*.txt|.msg`).
@@ -31,6 +31,7 @@ Gate on the combined tree: `COMPILE_GATE_OK` 22:21, `REGRESSION_OK 564/564` 22:2
 | 1813 sweep | 937f934e5 | **The white square is the level-up column.** All eleven renderer slots of the Lana Studio Level_up prefab have no texture, so the column is a hard-edged additive rectangle 2.29 m wide that composes to white over a sunlit town (frames in `Builds/vfx-whitequad/`). Also fixed: the flesh-hit mist drew a solid white square on every hit (opaque URP/Lit with an all-white base map), and five Hovl combat effects still carried placeholder slabs in their trail slot because the Hovl path ran no proof pass. 32 played prefabs / 198 slots classified. WO-1806 positive control run, red, reverted |
 | 1813 remedy | 4fe270ed3 | The level-up column's drawer named by isolation (child `area`, a Mesh-mode slot on an additive material with no texture; no pack texture exists to rebind, and a soft-edge texture was tried and refuted by measurement). Remedy = the tree's own 09-09 ruling for the same pack applied by condition: a Mesh slot whose every material has no albedo is disabled on both spawn paths. After frame: arrows, rings and floor glow still read, no hard edges. WO-1813 IMPLEMENTED |
 | 1817 + 1820 | 5a600f5bc | **Watchtowers were sub-metre in three bases** (0.05 m in the Iron Bastion) because the clad was never fitted; now they render at the authored turret cadence and the garrison muzzle margin is 2.99 m. **The raid spire, the win target, rendered 14 cm tall in three of four bases** (clad prefab scale applied twice; the small camp was right by coincidence) with a 14.4 m hit box around it. Now 14.40 m in all four, seated on the keep platform. All four bases rebaked through the sanctioned chain (OWNED_TOWN_CHAIN_OK, RAID_POST_AUDIT_OK 63). Frames `Builds/raid-post-audit/RaidBase_*_RaidSpire.png` |
+| 1821 + 1822 | 203d9c7a0 | **Catapults are catapults again**: the dresser had clad ten authored siege machines (6 garrison, 4 camp) with the kit's stone tower; siege hosts now keep their art (frame `Builds/raid-post-audit/RaidBase_fortified_garrison_Watchtower_Archer_0.png`). **Corner posts had no authored height** (1.1 m in two bases, 18 m in the Mage Enclave); now wall top + 2.5 m (6.5 / 7.5 / 6.5), the gate pins "1-4 m above the tallest wall" rather than the constant. The "green pill" I flagged was the hexagon-green kit's own sub-mesh, not a primitive |
 
 ## 2. Build and install
 
@@ -44,7 +45,10 @@ Gate on the combined tree: `COMPILE_GATE_OK` 22:21, `REGRESSION_OK 564/564` 22:2
   game not launched): `dumpsys package` reads versionCode=373245.
 - **Third tester APK 2026.09.17.373306** (with the watchtower + spire commit 5a600f5bc): APK_OK 00:51, R2_PUSH_OK 2
   uploaded, R2_PARITY_OK objects=204, APK_DONE 00:51; installed on the Seeker 00:52 (launcher in front, game not
-  launched): `dumpsys package` reads versionCode=373306. **This is the build on your Seeker in the morning.**
+  launched): `dumpsys package` reads versionCode=373306.
+- **Fourth tester APK 2026.09.17.373339** (with the catapult + corner-post commit 203d9c7a0): APK_OK 01:23, R2_PUSH_OK
+  2 uploaded, R2_PARITY_OK objects=204, APK_DONE 01:23; installed on the Seeker 01:24 (launcher in front, game not
+  launched): `dumpsys package` reads versionCode=373339. **This is the build on your Seeker in the morning.**
 - `ProjectSettings/ProjectSettings.asset` diff after the builds is only the bundleVersion / versionCode stamp
   (371701 -> 373245); left uncommitted as before.
 - History note: the WO-1815 store capture entry in `Assets/Editor/UICaptureLaunch.cs` travelled in the WO-1811 commit
@@ -67,15 +71,17 @@ Gate on the combined tree: `COMPILE_GATE_OK` 22:21, `REGRESSION_OK 564/564` 22:2
   garrison's spire should read taller than its 5 m wall by more.
 - Garrison watchtowers now sit at their 3.00 m catapult cadence, BELOW the 5 m parapet (one coherent tower, but short);
   the one-line alternative is cadence = wall top + margin. Not implemented, your call.
-- Named, not fixed (next polish round): the dresser clads catapult hosts with the kit's tower and leaves green
-  fallback pills under the siege art (visible in `Builds/raid-post-audit/RaidBase_IronBastion_RaidSpire.png`, WO-1617
-  class); CornerPost_* still render clad-native (1.11 / 7.52 / 17.96 m); the Synty backdrop/decal/FX shader families
-  are out of the URP conversion scope; CompileGate's Packages/ classifier can be defeated by an interleaved log line.
+- Corner-post rise of 2.5 m above the wall (WO-1822) is UNRULED - one labelled constant, `CornerCadenceHeight`; say
+  the number you want and only that line moves.
+- Catapults now show at 10 of 31 turret positions in the garrison and the camp instead of stone towers (WO-1821) - a
+  visible change worth one look.
+- Named, not fixed: the Synty backdrop/decal/FX shader families are out of the URP conversion scope; CompileGate's
+  Packages/ classifier can be defeated by an interleaved log line (a robustness ticket for a quiet day).
 
 ## 5. Still local
 
 - `git push origin dev` is the owner's (harness refuses it here). 29 commits from earlier tonight + 16 overnight
-  (ff9537970 .. 5a600f5bc, plus the docs commit that carries this report).
+  (ff9537970 .. 203d9c7a0, plus the docs commits that carry this report).
 - Production deploy of tonight's api (flat SKR quotes) is the owner's:
   `! npx vercel deploy --target production --skip-domain --yes`, then I verify the candidate and promote.
 - `.claude/settings.json` and `ProjectSettings/ProjectSettings.asset` left uncommitted on purpose.
