@@ -1,6 +1,6 @@
 {
-  "version": 11,
-  "_note": "v11 (WO-1415, 2026-09-05): ONE Heartfire INTRODUCTION record added - tut_ctx_heartfire - one panel, one sentence, one door (OpenRaids), fired by tutorial-steps.json ctx_heartfire the first time the player opens the raid grid. The sentence 'each one sends you on a raid' is the OWNER'S RULING, verbatim, and is shared with the guide entry and DeNelle.Core.State.HeartfireCharges.SpendSentence so the three surfaces cannot drift (HeartfireRegression PIN G). Speaks as {guide} and nothing else, per the invariant below. PRIOR: v10 (WO-1389, 2026-09-05): ONE post-first-raid teaching record added - tut_ctx_post_raid - the WHY half of the reason-to-train-and-upgrade beat (tutorial-steps.json ctx_post_raid). Three panels, each ONE image (a portrait command in a lines-less setup node, because DialogueRunner fires a node's commands AFTER its lines) + ONE sentence + ONE door (an option whose goto lands on a commands-only node: OpenManageTroops / OpenManageTroops troop-footman / OpenJourney - the brom_intro open_board pattern). THE NUMBERS ARE LIVE TEXT TOKENS - {army.used}, {army.cap}, {army.missing}, {footman.next}, {camp.next.line} - resolved at surface time by DialogueTextTokens (Core) with resolvers registered by PostRaidBeatTokens (Village) from the raid gate, troop-upgrades.json and scene-configs.json; unknown tokens pass through untouched so every earlier line is byte-identical. Speaks as {guide} and nothing else, per the invariant below. Voice is the plain HUD voice pending owner Q1. PRIOR: v9 (WO-1378, 2026-09-04): two RAID-LOOP teaching records added - tut_ctx_raid_barracks (three lines) and tut_ctx_raid_first - carrying the exact strings from docs/CREATIVE_CANON_ELARION_2026-09-04.md section 8.1. They exist because the FTUE never mentioned the loop at all: barracks/raid/army/troop each returned ZERO occurrences in tutorial-steps.json before this edit. All three speak as the {guide} token and nothing else, per the invariant below. PRIOR: v8 (WO-1014, 2026-08-10): the LEGACY 'Sylas' TUTORIAL ARC IS RETIRED - tut_move_to_sylas, tut_meet_sylas, tut_first_tower, tut_first_tower_done, tut_world_encounter, tut_world_encounter_win, tut_world_encounter_retry, tut_return_home and tut_freedom are DELETED. Two complete, contradictory tutorial scripts were live at once (a human 'Sylas, Scout of the Reach' vs the founding arc's {guide} pet-Echo), which is the root of the owner's 2026-08-10 report ('a NPC and wolf both spawn together... no knowledge of who this wolf is... the intro is badly composed'). INVARIANT, regression-pinned by TutorialGuideIdentityRegression [tutorial-guide-identity]: EVERY dialogue whose id starts with 'tut_' speaks as the '{guide}' token and NOTHING else, and none of the retired ids may return. Sylas remains a real HERO name (HeroCanonNames) and keeps his non-tutorial 'SylasFirstMeeting' companion dialogue, which is a separate beat already stood down under ff.singlehero - only the tutorial ARC retires.",
+  "version": 13,
+  "_note": "v13 (WO-1802 follow-up, 2026-09-16): TWO HELPER records added - tut_ctx_raid_helper_barracks and tut_ctx_raid_helper_army - the two rungs in front of the raid door (tutorial-steps.json ctx_raid_helper_barracks / ctx_raid_helper_army). Owner direction, verbatim: 'We should have some kind of helper that says try building a barracks or click here to put your barracks - something that we should assist them,' and 'we need to create a desire to raid so we need to announce early what the rewards are.' So BOTH records LEAD WITH THE REWARD and only then name the chore. EVERY NUMBER IS A {token} resolved at surface time by RaidDoorBeatTokens (Village) through DialogueTextTokens: {raid.first.camp} from RaidSelectionVM.FirstOpenCamp (the ONE ladder authority - never the literal 'raider_camp_small'), {raid.first.spoils} / {raid.first.gold} from RaidScoring.EstimateSpoils via RaidSelectionVM.FormatSpoils (the SETTLE PAYOUT'S OWN formula, the same figure the raid card prints), {raid.army.deployable} from the published RaidEntryGate.ArmyStatus projection. The tut_ctx_raid_door record gained the same treatment: its reward clause and its troop count are tokens, so the owner's same-day ruling that the starter army becomes TEN (sibling lane WO-1803 owns the knob) needs no edit here, and RaidDoorPromptRegression's no-hardcoded-numbers case reds the build if a digit ever returns. THE BARRACKS RECORD'S DOOR is the new BuildStructure verb - it calls the EXISTING BuildModeController.EnterBuildModeForStructure, so the CTA hands the player the ghost rather than dropping them at a category root, and no new opener and no BuildModeController edit were needed. The ARMY record's door is the existing OpenManageTroops with a second arg carrying the step id, so its tap is counted separately from tut_ctx_post_raid's use of the same door. All three speak as {guide} and nothing else (TutorialGuideIdentityRegression Case 2). PRIOR: v12 (WO-1802, 2026-09-16): ONE RAID-DOOR record added - tut_ctx_raid_door - fired by tutorial-steps.json ctx_raid_door the moment the raid door becomes usable after founding (owner ruling, verbatim: 'make the raid door obvious after founding'; docs/LIVE_PLAYERS_TRIAGE_2026-09-16.md - zero raids launched that day, three in seven days, four players reached the starter army and none of them ever attempted one). ONE panel, ONE sentence pair, ONE door - the tut_ctx_heartfire shape. THE DOOR IS <<OpenRaids raid_door>>, the same single opener tut_ctx_heartfire uses (RaidSelectionScreen.Open, which asks the WO-1374 capability gate FIRST, so this beat can never hand a player a camp list they may not use); the raid_door ARG is new and exists ONLY so raid_door_prompt_tapped counts THIS beat's CTA and not the Heartfire beat's identical Open Raids option - the sink compares it against DialogueCommandSink.RaidDoorCtaArg. THE CAMP IS NAMED because the name is the invitation: 'The Forsaken Camp' is raider_camp_small's displayName and its unlockVictories is 0 (both read out of scene-configs.json this run), so it is the one camp a founding-fresh save can actually enter - authoring any other name, or a garrison number, would be the copied-state drift tut_ctx_post_raid's own note records paying for. NO OTHER LIVE TOKENS: the route is named in words on purpose (the owner is red/green colourblind) and the beat also carries a real spotlight, which is new - hud.journey_button and deck.card.raids are the first Journey/Raids highlight ids to exist. IMAGE: the portrait command rides a lines-less setup node because DialogueRunner fires a node's commands AFTER its lines (the tut_ctx_post_raid / tut_ctx_heartfire reason), and the sprite is Portraits/barracks - already proven to load (tut_ctx_post_raid img1 uses it; DataRegression.CheckDialogueSpeakers loads every portrait path). 'Later' goes to 'end', which is deliberately not a node: an unresolved goto ends the dialogue, the convention both beats above use. Speaks as {guide} and nothing else (TutorialGuideIdentityRegression Case 2). Voice is the plain HUD voice. PRIOR: v11 (WO-1415, 2026-09-05): ONE Heartfire INTRODUCTION record added - tut_ctx_heartfire - one panel, one sentence, one door (OpenRaids), fired by tutorial-steps.json ctx_heartfire the first time the player opens the raid grid. The sentence 'each one sends you on a raid' is the OWNER'S RULING, verbatim, and is shared with the guide entry and DeNelle.Core.State.HeartfireCharges.SpendSentence so the three surfaces cannot drift (HeartfireRegression PIN G). Speaks as {guide} and nothing else, per the invariant below. PRIOR: v10 (WO-1389, 2026-09-05): ONE post-first-raid teaching record added - tut_ctx_post_raid - the WHY half of the reason-to-train-and-upgrade beat (tutorial-steps.json ctx_post_raid). Three panels, each ONE image (a portrait command in a lines-less setup node, because DialogueRunner fires a node's commands AFTER its lines) + ONE sentence + ONE door (an option whose goto lands on a commands-only node: OpenManageTroops / OpenManageTroops troop-footman / OpenJourney - the brom_intro open_board pattern). THE NUMBERS ARE LIVE TEXT TOKENS - {army.used}, {army.cap}, {army.missing}, {footman.next}, {camp.next.line} - resolved at surface time by DialogueTextTokens (Core) with resolvers registered by PostRaidBeatTokens (Village) from the raid gate, troop-upgrades.json and scene-configs.json; unknown tokens pass through untouched so every earlier line is byte-identical. Speaks as {guide} and nothing else, per the invariant below. Voice is the plain HUD voice pending owner Q1. PRIOR: v9 (WO-1378, 2026-09-04): two RAID-LOOP teaching records added - tut_ctx_raid_barracks (three lines) and tut_ctx_raid_first - carrying the exact strings from docs/CREATIVE_CANON_ELARION_2026-09-04.md section 8.1. They exist because the FTUE never mentioned the loop at all: barracks/raid/army/troop each returned ZERO occurrences in tutorial-steps.json before this edit. All three speak as the {guide} token and nothing else, per the invariant below. PRIOR: v8 (WO-1014, 2026-08-10): the LEGACY 'Sylas' TUTORIAL ARC IS RETIRED - tut_move_to_sylas, tut_meet_sylas, tut_first_tower, tut_first_tower_done, tut_world_encounter, tut_world_encounter_win, tut_world_encounter_retry, tut_return_home and tut_freedom are DELETED. Two complete, contradictory tutorial scripts were live at once (a human 'Sylas, Scout of the Reach' vs the founding arc's {guide} pet-Echo), which is the root of the owner's 2026-08-10 report ('a NPC and wolf both spawn together... no knowledge of who this wolf is... the intro is badly composed'). INVARIANT, regression-pinned by TutorialGuideIdentityRegression [tutorial-guide-identity]: EVERY dialogue whose id starts with 'tut_' speaks as the '{guide}' token and NOTHING else, and none of the retired ids may return. Sylas remains a real HERO name (HeroCanonNames) and keeps his non-tutorial 'SylasFirstMeeting' companion dialogue, which is a separate beat already stood down under ff.singlehero - only the tutorial ARC retires.",
   "speakers": [
     {
       "name": "Mother Wren",
@@ -1523,6 +1523,93 @@
       ]
     },
     {
+      "id": "tut_ctx_raid_helper_barracks",
+      "_note": "WO-1802 rung 1 record. LEADS WITH THE REWARD AND NOT THE CHORE, because the owner's direction was about DESIRE ('we need to create a desire to raid so we need to announce early what the rewards are') - a helper that opens with 'build a Barracks' is a task; one that opens with what the camp holds is a reason. Line 2 then names the building and offers to place it. The spoils figure is a {token} off the settle payout's own formula, so the promise here equals the quote on the raid card and the payout at the settle; a literal would be the drift tut_ctx_post_raid's note records paying for. DOOR: an option whose goto lands on a commands-only node (the brom_intro pattern) firing <<BuildStructure barracks ctx_raid_helper_barracks>> - the first arg is the catalog id, the second is the step id that makes raid_door_prompt_tapped name THIS rung rather than counting every use of a shared door as this ticket's. 'Later' goes to 'end', deliberately not a node: an unresolved goto ends the dialogue, the convention every other ctx_ record here uses. Speaks as {guide} only.",
+      "startNode": "img1",
+      "nodes": [
+        {
+          "id": "img1",
+          "commands": [ { "verb": "portrait", "args": [ "Portraits/barracks" ] } ],
+          "next": "p1"
+        },
+        {
+          "id": "p1",
+          "lines": [
+            { "speaker": "{guide}", "text": "{raid.first.camp} holds {raid.first.spoils} - all of it within your reach, and none of it yours until you take it." },
+            { "speaker": "{guide}", "text": "You need a Barracks first; it is where your army comes from. I can put one in your hands right now." }
+          ],
+          "options": [
+            { "text": "Place a Barracks", "goto": "door_build_barracks" },
+            { "text": "Later", "goto": "end" }
+          ]
+        },
+        {
+          "id": "door_build_barracks",
+          "commands": [ { "verb": "BuildStructure", "args": [ "barracks", "ctx_raid_helper_barracks" ] } ]
+        }
+      ]
+    },
+    {
+      "id": "tut_ctx_raid_helper_army",
+      "_note": "WO-1802 rung 2 record. (!) IT NEVER SAYS 'FIRST' AND NEVER STATES A COUNT, and both omissions are deliberate. The starter-army grant fires on the Barracks edge, so a normal save skips this rung invisibly - it is reached by a small starterArmySize knob, a wounded roster or losses, and 'your first troops' would be a lie to the player who just lost some. And the owner ruled the same day that the starter army becomes TEN (sibling lane WO-1803 owns the knob), so any number authored here would have been wrong within the day. Leads with the reward for the same reason rung 1 does. 'It costs only time' is the WO-1372 ruling and is the whole reason this rung is cheap to satisfy. DOOR: the existing OpenManageTroops with the Footman preselected and the step id as the second arg. Speaks as {guide} only.",
+      "startNode": "img1",
+      "nodes": [
+        {
+          "id": "img1",
+          "commands": [ { "verb": "portrait", "args": [ "Portraits/barracks" ] } ],
+          "next": "p1"
+        },
+        {
+          "id": "p1",
+          "lines": [
+            { "speaker": "{guide}", "text": "{raid.first.camp} is waiting, and it pays {raid.first.gold}. Your ranks are too thin to march on it yet." },
+            { "speaker": "{guide}", "text": "Train at the Barracks - it costs only time. Then the road out is yours." }
+          ],
+          "options": [
+            { "text": "Train troops", "goto": "door_train" },
+            { "text": "Later", "goto": "end" }
+          ]
+        },
+        {
+          "id": "door_train",
+          "commands": [ { "verb": "OpenManageTroops", "args": [ "troop-footman", "ctx_raid_helper_army" ] } ]
+        }
+      ]
+    },
+    {
+      "id": "tut_ctx_raid_door",
+      "_note": "WO-1802 - THE RAID DOOR, NAMED AND OPENED. The shipping game told the player where the door was exactly once, in a toast that StarterArmyGrant.GrantToastFor fires and the next tap dismisses ('Open Journey, then Raids.'), and the live funnel says nobody acted on it. This beat says the same route in the Guide's voice, WITH a spotlight that walks it and a door that skips the walk entirely. TWO LINES, NOT THREE: line 1 is the MOTIVE and names the camp ('The Forsaken Camp' = raider_camp_small displayName, unlockVictories 0 - the only camp a founding-fresh save can enter, read from scene-configs.json this run); line 2 is the ROUTE in WORDS, because the owner is red/green colourblind and because a spotlight resolver degrades to nothing if a rect is absent - the words are the floor, the spotlight is the lift. The second line also answers the thing that actually stops a new player leaving: they have just been taught to defend a gate, so 'the Heart will hold without you' is load-bearing, not flavour. ONE DOOR (OpenRaids raid_door) and 'Later'; the beat gates nothing either way and completes only on a real raid launch (raid.attempted from SceneRouter.GoRaid), never on this text box closing. Speaks as {guide} and nothing else."
+      ,"startNode": "img1",
+      "nodes": [
+        {
+          "id": "img1",
+          "commands": [ { "verb": "portrait", "args": [ "Portraits/barracks" ] } ],
+          "next": "p1"
+        },
+        {
+          "id": "p1",
+          "lines": [
+            {
+              "speaker": "{guide}",
+              "text": "Your first raid is free: {raid.army.deployable} troops are ready, and {raid.first.camp} pays {raid.first.spoils}."
+            },
+            {
+              "speaker": "{guide}",
+              "text": "The road out is the JOURNEY face on your bar, then the RAIDS card. Go now - the Heart will hold without you."
+            }
+          ],
+          "options": [
+            { "text": "Raid the camp", "goto": "door_raid_now" },
+            { "text": "Later", "goto": "end" }
+          ]
+        },
+        {
+          "id": "door_raid_now",
+          "commands": [ { "verb": "OpenRaids", "args": [ "ctx_raid_door" ] } ]
+        }
+      ]
+    },
+    {
       "id": "dun_torch_warden",
       "startNode": "warn",
       "nodes": [
@@ -1540,6 +1627,30 @@
             {
               "speaker": "Bryn",
               "text": "The deep rooms eat the unlit. Come back to me if your light dies."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dun_lantern_intro",
+      "_note": "WO-1805 Lane A (owner report 2026-09-16: 'we never really ever go over the mechanics of the torch in so nobody understands why the torch runs out and why just become suddenly dark'). The COMPOSED dungeon teach. dun_torch_warden above carries the same lesson but is delivered by TorchWardenDresser, whose only production caller is DungeonController - a class that exists in exactly one scene on disk (Dungeon_HealersCottage) while every player-facing portal routes to a composed dg_* scene, so that row is unreachable in play. This row is played by ComposedDungeonHost.InstallLanternTeach, once per save, on the first lantern-lit dungeon entry, with the oil meter already on screen. Speaker is Bryn on the lead's ruling 2026-09-16: the copy is the owner's and Bryn's portrait resolves; NO Bryn body is spawned in a dungeon (memory tutorial-guide-body-one-time-then-images). Kept as a NEW row rather than an edit to dun_torch_warden, whose lines assume Bryn is standing there. ASCII hyphens only - CopyHygieneRegression retires em/en dashes from player copy.",
+      "startNode": "teach",
+      "nodes": [
+        {
+          "id": "teach",
+          "lines": [
+            {
+              "speaker": "Bryn",
+              "text": "Your light feeds on oil and burns down as you walk."
+            },
+            {
+              "speaker": "Bryn",
+              "text": "When the flame gutters, stand in a glowing oil stone - it fills the flask back up."
+            },
+            {
+              "speaker": "Bryn",
+              "text": "The deep rooms eat the unlit. Mind the meter, Keeper."
             }
           ]
         }

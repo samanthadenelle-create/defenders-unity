@@ -478,6 +478,19 @@ is **not** in any JSON.
 | `Dungeons/ComposedAmbushDirector.cs:22, 23, 45` | `6f`, `28f`, `8f` | ambush tick, minimum gap between ambushes, post-entry grace | `dungeon.ambushMinGapPct` | int pct |
 | `Dungeons/DungeonController.cs:601` | `0.15f` | rough-stone drop rate after the first guaranteed one | `dungeon.roughStoneDropPct` | int pct |
 
+> ⭐ **LANDED 2026-09-16 (WO-1805 Lane C) — four of this section's proposals are now live rows,** so do
+> not re-propose them: `dungeon.lanternDrainPerSecX100` (int, oil/s ×100, ships **50** = the authored
+> `0.50`/s = 200 s a flask), `dungeon.lanternOilStoneRefillPct` (ships **100** — a stone tops the flask),
+> `dungeon.lanternStillRefillPct` (ships **40** = `ComposedOilStill.RefillFraction`) and
+> `dungeon.lanternFinalWarningSec` (ships **30** = `Lantern.DefaultFinalWarningSeconds` — the "suddenly
+> dark" collapse window). Every default is an identity, and the two that are ALSO authored in
+> `dungeon-balance.json` (the drain, the warning window) are applied **only when the row deviates from
+> its shipping default**, so that json stays the single authority until the owner actually moves a knob.
+> The full owner-facing rows are #72–#75 in `docs/PROD022_TUNABLE_FLAGS.md`; read defaults off
+> `RemoteTunables.Registry`, never off this line. `maxOil`, `_minOilLightFraction`, `_lowOilFraction` and
+> the `0.12` darkness latch stay OFF the rail deliberately — they are the meter's denominator and are
+> consumed by three systems at once (WO-1805 §9).
+
 > ⚠ **`Lantern.cs:68, 71` fallbacks are `_maxOil = 100f` / `_oilDrainPerSec = 1.6f`, and the `1.6` is a
 > stale pre-fix value** — `dungeon-balance.json` authors `0.5`. If that JSON ever fails to load, the old
 > 62.5-second burn returns silently. Not a lever; a latent defect. §9.

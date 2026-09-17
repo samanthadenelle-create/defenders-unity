@@ -28,9 +28,9 @@
 
 using System.Collections.Generic;
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.Ops;
 using DeNelle.Core.State;
 using UnityEngine;
-using System.Collections.Generic;
 
 namespace DeNelle.Dungeons
 {
@@ -78,8 +78,17 @@ namespace DeNelle.Dungeons
                  "so an out-of-oil Keeper can still find an oil stone.")]
         [SerializeField, Range(0f, 1f)] private float _minOilLightFraction = 0.35f;
 
+        /// <summary>
+        /// WO-1805 Lane C: the SHIPPING final-warning window, as a named const rather than an
+        /// inline literal on the field below. The rail row dungeon.lanternFinalWarningSec ships at
+        /// exactly this number, and DungeonLanternTeachRegression pins the two against each other
+        /// instead of against a copied 30 - a default written twice is a default that rots
+        /// (CLAUDE.md sections 2 / 5 / 8).
+        /// </summary>
+        public const float DefaultFinalWarningSeconds = 30f;
+
         [Tooltip("Seconds before empty when the flame begins its final visible collapse.")]
-        [SerializeField] private float _finalWarningSeconds = 30f;
+        [SerializeField] private float _finalWarningSeconds = DefaultFinalWarningSeconds;
 
         [Tooltip("Tight safety halo left at zero oil. It reveals the Keeper's immediate footing, " +
                  "not the route ahead.")]
@@ -150,6 +159,36 @@ namespace DeNelle.Dungeons
         private bool _darknessGradeApplied;
         private bool _expeditionBlessingApplied;
         private float _expeditionOilMultiplier = 1f;
+
+        // ── WO-1805 section 7: the drain path's instrumentation state ────────
+        // ⛔ Before this ticket NOTHING on the drain path logged. No capture on disk showed a run
+        // reaching empty, and the WO could not prove one ever had - not because it never happened
+        // but because a run that went dark left no trace to find. These four edges are now
+        // permanent (CLAUDE.md section 12: instrumentation is never stripped, only flagged off).
+        private bool _finalWarningReported;
+        private bool _flaskEmptyReported;
+        private bool _darknessReported;
+        private float _darknessEnteredAtRealtime;
+        private float _darkSecondsAccrued;
+
+        /// <summary>
+        /// WO-1805 Lane A: raised the moment an oil stone is SPENT (the first one of these is the
+        /// teach's completion beat - the player has performed the thing the intro described).
+        /// <para>
+        /// Before this event <see cref="CheckOilStones"/> mutated the flask and returned with no
+        /// event and no trace, so nothing outside this class could observe a refill at all -
+        /// which is why the lantern teach had no way to latch closed on the player's own action.
+        /// </para>
+        /// </summary>
+        public event System.Action OilStoneUsed;
+
+        /// <summary>
+        /// WO-1805 Lane A: raised ONCE per armed lantern, on the edge where
+        /// <see cref="IsFinalWarning"/> first becomes true - i.e. the instant the fog wall and the
+        /// range collapse begin. The host listens rather than polling <c>IsFinalWarning</c> from an
+        /// Update, so the "your flame gutters" beat cannot fire twice or drift a frame.
+        /// </summary>
+        public event System.Action FinalWarningEntered;
 
         // ── Read-only state ──────────────────────────────────────────────────
 
@@ -246,11 +285,45 @@ namespace DeNelle.Dungeons
                 _maxOil = DungeonLanternBalance.MaxOil;
                 _oilDrainPerSec = DungeonLanternBalance.OilDrainPerSec;
             });
+
+            // WO-1805 Lane C: the REMOTE RAIL sits OVER the authored json, and only when the owner
+            // has actually moved a row.
+            //
+            // ⚠ WHY THE ROW IS COMPARED TO ITS OWN SHIPPING DEFAULT INSTEAD OF SIMPLY WINNING. The
+            // rail carries no floats (TunableKind is Bool|Int only), so the drain rides as an
+            // integer x100 whose default IS today's authored 0.50/s. A row that always won would
+            // make dungeon-balance.json DEAD DATA the first time anyone re-authored it: the json
+            // would say 0.40 and the build would keep burning 0.50 from a default nobody set. So
+            // the rail is a DEVIATION detector - at the shipping default the json stays the single
+            // authority and the behaviour is bit-identical to the pre-ticket build, which is the
+            // whole promise of an identity default (RemoteTunables.cs says so in capitals).
+            string drainProvenance = "json";
+            string warnProvenance = "code-default";
+            Guard.Try("Dungeon", "apply lantern remote tunables", () =>
+            {
+                int drainX100 = RemoteTunables.Int(RemoteTunables.KeyDungeonLanternDrainPerSecX100);
+                if (drainX100 != RemoteTunables.DungeonLanternDrainPerSecX100Default && drainX100 > 0)
+                {
+                    _oilDrainPerSec = Mathf.Max(0.01f, drainX100 / 100f);
+                    drainProvenance = "rail(" + RemoteTunables.KeyDungeonLanternDrainPerSecX100 + "=" + drainX100 + ")";
+                }
+
+                int warnSec = RemoteTunables.Int(RemoteTunables.KeyDungeonLanternFinalWarningSec);
+                if (warnSec != RemoteTunables.DungeonLanternFinalWarningSecDefault && warnSec >= 0)
+                {
+                    _finalWarningSeconds = Mathf.Max(0f, warnSec);
+                    warnProvenance = "rail(" + RemoteTunables.KeyDungeonLanternFinalWarningSec + "=" + warnSec + ")";
+                }
+            });
+
+            float secondsToEmpty = _oilDrainPerSec > 0f ? _maxOil / _oilDrainPerSec : 0f;
+            float secondsToLatch = (1f - Mathf.Min(_lowOilFraction, 0.12f)) * secondsToEmpty;
             FlowTrace.Step("Dungeon",
                 $"Lantern balance applied on '{name}': maxOil {priorMax:F0}->{_maxOil:F0} " +
-                $"drain {priorDrain:F2}->{_oilDrainPerSec:F2}/s = " +
-                $"{(_oilDrainPerSec > 0f ? _maxOil / _oilDrainPerSec : 0f):F0}s to empty, " +
-                $"~{(_oilDrainPerSec > 0f ? (1f - Mathf.Min(_lowOilFraction, 0.12f)) * (_maxOil / _oilDrainPerSec) : 0f):F0}s to the darkness latch.");
+                $"drain {priorDrain:F2}->{_oilDrainPerSec:F2}/s [{drainProvenance}] = " +
+                $"{secondsToEmpty:F0}s to empty, " +
+                $"~{secondsToLatch:F0}s to the darkness latch, " +
+                $"final-warning window {_finalWarningSeconds:F0}s [{warnProvenance}].");
         }
 
         /// <summary>
@@ -263,6 +336,22 @@ namespace DeNelle.Dungeons
             if (_flickerAudio != null && _flickerAudio.isPlaying)
                 _flickerAudio.Stop();
             RestoreDungeonFog();
+
+            // WO-1805 section 7: the DURATION half of the darkness question. The edge above says it
+            // happened; only teardown can say for how long, and "the player spent 4 of a 6 minute
+            // run in a 1.35u halo" is the sentence the owner's report was describing.
+            //
+            // ⚠ THIS LANTERN IS ADDED TO THE CARRIED HERO (ComposedDungeonHost creates it under the
+            // Player when the bake placed none), and the carried hero root is DontDestroyOnLoad - so
+            // OnDisable here is NOT reliably the dungeon's exit. The line is still worth having and
+            // is honest about what it is: it reports the accrual since this component was last
+            // armed. Recorded as an open question in the WO-1805 RESULT rather than silently
+            // assumed to be scene-scoped.
+            if (_darkSecondsAccrued <= 0f) return;
+            string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            FlowTrace.Step("DungeonOil",
+                $"darkness TOTAL on lantern teardown in scene='{scene}': {_darkSecondsAccrued:F0}s spent below the " +
+                $"0.12 latch (first armed at t={_darknessEnteredAtRealtime:F0}s), oil={_oil:F0}/{_maxOil:F0} at teardown.");
         }
 
         /// <summary>
@@ -279,6 +368,7 @@ namespace DeNelle.Dungeons
             _standaloneRun = false;
             _oilStones = oilStones;
             _spentOilStones.Clear();
+            ResetOilEdgeReports();
             _hero = hero;
             _oil = _maxOil;
             _liveRange = FullRange;
@@ -295,6 +385,7 @@ namespace DeNelle.Dungeons
             _standaloneRun = true;
             _oilStones = oilStones;
             _spentOilStones.Clear();
+            ResetOilEdgeReports();
             _hero = hero;
             _oil = _maxOil;
             _liveRange = FullRange;
@@ -337,11 +428,74 @@ namespace DeNelle.Dungeons
                 CheckOilStones();
             }
 
+            TrackOilEdges();
             TickTincture(Time.deltaTime);
             ApplyRange(Time.deltaTime);
             ApplyIntensity();
             ApplyDarknessVisibility();
             DriveFlickerAudio();
+        }
+
+        /// <summary>
+        /// Re-arms the WO-1805 one-shot edge reports for a fresh visit. A lantern is re-Configured
+        /// per dungeon entry (and the composed one may be re-used on the carried hero), so the
+        /// edges must be per-VISIT or the second dungeon of a session would report nothing.
+        /// </summary>
+        private void ResetOilEdgeReports()
+        {
+            _finalWarningReported = false;
+            _flaskEmptyReported = false;
+            _darknessReported = false;
+            _darknessEnteredAtRealtime = 0f;
+            _darkSecondsAccrued = 0f;
+        }
+
+        /// <summary>
+        /// WO-1805 section 7 - THE TWO STATE EDGES THE DRAIN PATH NEVER ANNOUNCED, plus the event
+        /// the lantern teach's darkness beat rides on.
+        /// <para>
+        /// Both are edge-triggered and reported exactly ONCE per armed lantern, never per frame: a
+        /// per-frame line on this path would evict the boot window out of the Android logcat ring
+        /// and destroy the evidence it was added to collect (memory
+        /// <c>logcat-ring-buffer-destroys-evidence</c>; the same reasoning the fog writer above
+        /// carries). The elapsed-dark TOTAL is accrued here and printed on teardown, because "how
+        /// long was the player actually in the dark" is the number the owner's report was about and
+        /// it cannot be known at the edge.
+        /// </para>
+        /// </summary>
+        private void TrackOilEdges()
+        {
+            if (IsFinalWarning && !_finalWarningReported)
+            {
+                _finalWarningReported = true;
+                int total = _oilStones != null ? _oilStones.Count : 0;
+                // ⚠ Step, NOT Once. FlowTrace.Once is SESSION-scoped (FlowTrace.cs:228-237 - a
+                // key is added to s_seen and only ResetSession clears it), so a fixed key here
+                // would print for the FIRST dungeon of a session and stay silent for every one
+                // after it - the exact evidence gap this line was added to close. The per-visit
+                // bool above already makes it edge-triggered, which is what the WO asked for.
+                FlowTrace.Step("DungeonOil",
+                    $"final-warning ENTERED: t={Time.timeSinceLevelLoad:F0}s, oil={_oil:F0}/{_maxOil:F0}, " +
+                    $"~{EstimatedSecondsRemaining:F0}s left, caches spent={_spentOilStones.Count}/{total}, " +
+                    $"window={_finalWarningSeconds:F0}s. Range collapses to {_emptySafetyRange:0.00}u and a linear " +
+                    "fog wall closes to 0.45..3.2m over this window - this is the 'suddenly dark' beat.");
+                FinalWarningEntered?.Invoke();
+            }
+
+            if (IsInDarkness)
+            {
+                if (!_darknessReported)
+                {
+                    _darknessReported = true;
+                    _darknessEnteredAtRealtime = Time.timeSinceLevelLoad;
+                    // Step + the per-visit bool, for the same reason as the edge above.
+                    FlowTrace.Step("DungeonOil",
+                        $"darkness latch ARMED: t={Time.timeSinceLevelLoad:F0}s, oil fraction={OilFraction:0.00} " +
+                        "(<= 0.12). ComposedAmbushDirector's darkness rate multiplier is live from here; " +
+                        "the elapsed-dark total is printed when this lantern is torn down.");
+                }
+                _darkSecondsAccrued += Time.deltaTime;
+            }
         }
 
         /// <summary>
@@ -416,6 +570,24 @@ namespace DeNelle.Dungeons
         private void DrainOil(float dt)
         {
             _oil = Mathf.Max(0f, _oil - (_oilDrainPerSec / Mathf.Max(1f, _expeditionOilMultiplier)) * dt);
+
+            // WO-1805 section 7: the flask hitting zero used to clamp silently. A run that went
+            // fully dark left NO line anywhere, which is why the ticket could not prove one had
+            // ever happened. Once, on the edge, naming what recourse is left - because "empty with
+            // two unspent caches still in the level" and "empty with nothing left" are different
+            // bugs and the difference is invisible without this.
+            if (_oil > 0f || _flaskEmptyReported) return;
+            _flaskEmptyReported = true;
+            int total = _oilStones != null ? _oilStones.Count : 0;
+            int unspent = Mathf.Max(0, total - _spentOilStones.Count);
+            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            // Step + the per-visit _flaskEmptyReported bool: Once's key is session-scoped, so the
+            // SECOND dungeon of a session would reach empty in silence (FlowTrace.cs:228-237).
+            FlowTrace.Step("DungeonOil",
+                $"flask EMPTY at t={Time.timeSinceLevelLoad:F0}s in scene='{sceneName}' - " +
+                $"remaining recourse: unspent oil stones={unspent}/{total}, expedition blessing x{_expeditionOilMultiplier:0}. " +
+                "From here the light is the 1.35u safety halo behind a 3.2m fog wall and the ambush " +
+                "multiplier is armed.");
         }
 
         /// <summary>Consumes one bounded Lantern Blessing for this dungeon visit.
@@ -478,8 +650,34 @@ namespace DeNelle.Dungeons
                     // only when it can actually add oil so arriving full never wastes the cache.
                     if (_oil < _maxOil - 0.01f)
                     {
-                        _oil = _maxOil;
+                        float before = _oil;
+
+                        // WO-1805 Lane C: how much of the flask a cache returns is a rail row that
+                        // ships at 100 - a top-up, exactly as this line has always behaved. The Min
+                        // makes 100 arithmetically identical to the old `_oil = _maxOil` from ANY
+                        // starting level, so an empty client_tunables table changes nothing.
+                        int refillPct = 100;
+                        Guard.Try("DungeonOil", "resolve oil-stone refill pct", () =>
+                        {
+                            refillPct = Mathf.Clamp(
+                                RemoteTunables.Int(RemoteTunables.KeyDungeonLanternOilStoneRefillPct), 1, 100);
+                        });
+                        _oil = Mathf.Min(_maxOil, _oil + _maxOil * (refillPct / 100f));
                         _spentOilStones.Add(stoneId);
+
+                        // ⛔ THE LINE THIS PATH NEVER HAD (WO-1805 section 7). It mutated the flask
+                        // and returned silently, so no capture could say whether the player had
+                        // ever found a cache - the single biggest evidence gap in the ticket.
+                        float addedSeconds = _oilDrainPerSec > 0f ? (_oil - before) / _oilDrainPerSec : 0f;
+                        int stoneTotal = _oilStones != null ? _oilStones.Count : 0;
+                        FlowTrace.Step("DungeonOil",
+                            $"oil stone '{stoneId}' SPENT: oil {before:F0}->{_oil:F0} of {_maxOil:F0} " +
+                            $"(+{addedSeconds:F0}s at {_oilDrainPerSec:F2}/s, refill={refillPct}%), " +
+                            $"{_spentOilStones.Count}/{stoneTotal} caches used in this visit.");
+
+                        // The teach's completion beat. Raised AFTER the mutation and the trace so a
+                        // listener that reads the flask sees the refilled value.
+                        OilStoneUsed?.Invoke();
                     }
                     return;
                 }

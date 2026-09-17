@@ -29,10 +29,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.State;
 using DeNelle.Dungeons.RoomForge;
 using DeNelle.Village;
 using Newtonsoft.Json;
 using UnityEngine;
+using CoreDialogue = DeNelle.Core.Dialogue;
 
 namespace DeNelle.Dungeons
 {
@@ -74,6 +76,22 @@ namespace DeNelle.Dungeons
         private void OnDestroy()
         {
             if (_bossSpawner != null) _bossSpawner.BossCleared -= HandleBossCleared;
+
+            // WO-1805 Lane A: the teach's subscriptions are released with the host. DialogueService
+            // is STATIC, so a live EndedWithId handler on a destroyed host would fire into a dead
+            // object on every later conversation in the session.
+            if (_teachHooked && _lantern != null)
+            {
+                _lantern.OilStoneUsed -= HandleFirstOilStoneRefill;
+                _lantern.FinalWarningEntered -= HandleLanternFinalWarning;
+            }
+            _teachHooked = false;
+            if (_introEndedHooked)
+            {
+                CoreDialogue.DialogueService.EndedWithId -= HandleIntroDialogueEnded;
+                _introEndedHooked = false;
+            }
+
             if (Current == this) Current = null;
         }
 
@@ -113,6 +131,12 @@ namespace DeNelle.Dungeons
 
             DungeonCandleVfxInstaller.Rebind(gameObject.scene, heroGo.transform);
 
+            // WO-1805 section 7: the layout is loaded BEFORE the lantern is armed, purely so the
+            // entry net below can state the dungeon's ROOM COUNT next to its light budget. LoadLayout
+            // is a pure read of _composeRoot + Resources and has no ordering dependency on the hero
+            // half; the ambush director still reads the same _layout further down.
+            _layout = LoadLayout();
+
             // Collect baked oil stones (planar refill, same contract as cottage).
             var stones = CollectOilStones();
 
@@ -129,9 +153,27 @@ namespace DeNelle.Dungeons
             }
 
             _lantern.ConfigureStandalone(stones, heroGo.transform);
+
+            // ⛔ WO-1805 section 7 - THE STANDING NET, and the cheapest half of the whole ticket.
+            // A dungeon's FREE LIGHT CEILING is burn x (1 + caches): dg_starter_loop authors ONE
+            // cache for ELEVEN rooms, so the first dungeon in the game hands the player ~400s of
+            // light for an 11-room level and then leaves them in a 1.35u halo for the remainder,
+            // with the ambush multiplier on. Nothing announced that. Now every entry self-reports
+            // its own budget, so an under-provisioned dungeon names itself on the way in instead of
+            // waiting for the owner's eyes (CLAUDE.md section 14).
+            //
+            // ⛔ THE BURN IS READ, NEVER WRITTEN. DungeonLanternBalance.SecondsToEmpty exists for
+            // exactly this; a literal 200 here would go stale the first time the drain moves (the
+            // Lane C rail can move it at runtime), which is the duplicated-state failure CLAUDE.md
+            // sections 2 / 5 / 8 each record a scar from.
+            float burnSeconds = DungeonLanternBalance.SecondsToEmpty;
+            int roomCount = _layout != null && _layout.rooms != null ? _layout.rooms.Count : 0;
+            float ceilingSeconds = burnSeconds * (1 + stones.Count);
             FlowTrace.Step(Sys,
-                $"lantern armed standalone: stones={stones.Count} hero='{heroGo.name}' " +
-                $"burn={_lantern.EstimatedSecondsRemaining:F0}s at full oil (WO-1112 tripled via dungeon-balance.json)");
+                $"lantern armed standalone: stones={stones.Count} rooms={roomCount} hero='{heroGo.name}' " +
+                $"burn={_lantern.EstimatedSecondsRemaining:F0}s at full oil (WO-1112 tripled via dungeon-balance.json), " +
+                $"authored burn={burnSeconds:F0}s -> free light ceiling={ceilingSeconds:F0}s for {roomCount} room(s) " +
+                $"= {(roomCount > 0 ? ceilingSeconds / roomCount : 0f):F0}s per room before the dark.");
 
             // Every authored cache is also a one-use emergency still. It spends real persisted
             // crafting materials for a partial refill; the free cache itself is independently
@@ -149,7 +191,9 @@ namespace DeNelle.Dungeons
 
             InstallOilHud();
 
-            _layout = LoadLayout();
+            // WO-1805 Lane A: the teach, AFTER the meter is bound - so the first thing the player
+            // reads and the first thing they can look at agree.
+            Guard.Try(Sys, "install lantern teach", InstallLanternTeach);
 
             // WO-1001 slice 6: darkness ambush director (higher odds when oil critical).
             ComposedKeyBag.Clear();
@@ -383,6 +427,211 @@ namespace DeNelle.Dungeons
             FlowTrace.Step(Sys,
                 $"oil meter bound to lantern '{(_lantern != null ? _lantern.name : "<null>")}' - " +
                 "the composed run finally has a readable flask (WO-1112 A7).");
+        }
+
+        // =====================================================================
+        //  WO-1805 LANE A - THE LANTERN TEACH
+        // ---------------------------------------------------------------------
+        //  Owner's report, verbatim (2026-09-16): "we never really ever go over the mechanics of
+        //  the torch... nobody understands why the torch runs out and why just become suddenly
+        //  dark. We need some kind of a first time in there to understand the torch and the light".
+        //
+        //  ⛔ THE DEFECT WAS NOT MISSING COPY. The teach was fully built, in her words, and
+        //  UNREACHABLE: dun_torch_warden is delivered by TorchWardenDresser, whose only production
+        //  caller is DungeonController, which exists in exactly ONE scene on disk
+        //  (Dungeon_HealersCottage) - and every player-facing portal routes to a composed dg_*
+        //  scene instead. So the player met the oil mechanic for the first time as an unexplained
+        //  blackout. This is the composed path's own teach, on the composed path's own host.
+        //
+        //  ⚠ A DIALOGUE SCREEN, NEVER A WORLD ACTOR (memory tutorial-guide-body-one-time-then-images,
+        //  owner ruling 2026-08-16: "i dont need to see it, can be a dialogue screen"). No Bryn body
+        //  is spawned in a dungeon: no seating, no facing, no navmesh, no despawn lifecycle, no
+        //  stall risk. Bryn SPEAKS (the lead's ruling; the copy is hers and her portrait resolves).
+        //
+        //  ⚠ TWO KEYS, AND THE DIFFERENCE IS LOAD-BEARING.
+        //    IntroShownKey     - latched when the dialogue ACTUALLY ENDED. This is the "one-shot
+        //                        means one-shot" gate: a save that has read it never reads it again,
+        //                        which is what keeps the teach ABSENT when a session opens straight
+        //                        into dg_ember_deep at the boss.
+        //    IntroCompletedKey - latched when the player first REFILLS at an oil stone, i.e. does
+        //                        the thing the teach described. That is the teach's completion, and
+        //                        it also satisfies the gate, so a player who learned the mechanic by
+        //                        doing it is never lectured about it afterwards.
+        //  NEITHER is latched on the ATTEMPT. A Play() that renders nothing must leave the save
+        //  untouched (the WO-844 potion-lesson class of bug: never mark taught on the attempt).
+        // =====================================================================
+
+        /// <summary>The composed-dungeon lantern teach. A row in dialogues.json, both twins.</summary>
+        public const string LanternIntroDialogueId = "dun_lantern_intro";
+
+        /// <summary>One-shot key: the intro dialogue rendered AND closed. Persisted in SeenTutorials.</summary>
+        public const string LanternIntroShownKey = "dun_lantern_intro_shown";
+
+        /// <summary>One-shot key: the player has refilled at an oil stone - the teach is complete.</summary>
+        public const string LanternIntroCompletedKey = "dun_lantern_intro_done";
+
+        /// <summary>One-shot key: the guttering warning line has been shown once on this save.</summary>
+        public const string LanternGutteringShownKey = "dun_lantern_guttering_shown";
+
+        /// <summary>
+        /// The darkness beat's one line. ⚠ A TOAST, NOT A MODAL, on purpose: this fires while the
+        /// fog wall is closing and ComposedAmbushDirector's darkness multiplier is arming, and a
+        /// modal dialogue suppresses hero input for as long as it is open. ASCII hyphen only -
+        /// CopyHygieneRegression retires em/en dashes from player copy (WO-1333 / WO-1588).
+        /// </summary>
+        public const string LanternGutteringLine = "Your flame gutters - find an oil stone.";
+
+        private bool _teachHooked;
+        private bool _introEndedHooked;
+
+        private void InstallLanternTeach()
+        {
+            if (_lantern == null)
+            {
+                FlowTrace.Warn(Sys, "lantern teach NOT installed - no lantern was armed for this run, so there is " +
+                                    "nothing to teach about and no refill to complete on.");
+                return;
+            }
+
+            if (!_teachHooked)
+            {
+                _lantern.OilStoneUsed += HandleFirstOilStoneRefill;
+                _lantern.FinalWarningEntered += HandleLanternFinalWarning;
+                _teachHooked = true;
+            }
+
+            var svc = GameStateService.Instance;
+            bool shown = HasSeen(svc, LanternIntroShownKey);
+            bool completed = HasSeen(svc, LanternIntroCompletedKey);
+            bool flagOn = DeNelle.Core.FeatureFlags.CustomDialogue;
+            bool alreadyRunning = CoreDialogue.DialogueService.IsRunning;
+
+            if (shown || completed)
+            {
+                FlowTrace.Step("DungeonTeach",
+                    $"lantern intro: seen=true played=false key='{LanternIntroShownKey}' " +
+                    $"(shown={shown} completed={completed}) - one-shot per save, nothing shown in " +
+                    $"'{gameObject.scene.name}'.");
+                return;
+            }
+
+            // ⛔ THE FLAG IS CHECKED BEFORE Play, NOT AFTER. With ff.customdialogue OFF,
+            // DialogueView.Bootstrap never subscribed DialogueService.Opened - so Play() still
+            // returns TRUE, sets ActiveVm, makes IsRunning true and suppresses hero input, with no
+            // panel on screen and no way to close it. Play's return value CANNOT detect that. This
+            // guard is the difference between "no teach" and "a soft-locked dungeon".
+            if (!flagOn)
+            {
+                FlowTrace.Warn("DungeonTeach",
+                    $"lantern intro: seen=false played=false key='{LanternIntroShownKey}' - ff.customdialogue is " +
+                    "OFF, so no View is subscribed and a Play() would open a VM nothing can render or close. " +
+                    "DECLINED, save untouched; the teach is still owed and will play the next entry with the flag on.");
+                return;
+            }
+
+            if (alreadyRunning)
+            {
+                FlowTrace.Warn("DungeonTeach",
+                    $"lantern intro: seen=false played=false key='{LanternIntroShownKey}' - another dialogue is " +
+                    "already open on entry, so the teach stands down rather than stomping it. Save untouched; it " +
+                    "is retried on the next dungeon entry.");
+                return;
+            }
+
+            if (!_introEndedHooked)
+            {
+                CoreDialogue.DialogueService.EndedWithId += HandleIntroDialogueEnded;
+                _introEndedHooked = true;
+            }
+
+            bool played = CoreDialogue.DialogueService.Play(LanternIntroDialogueId);
+            if (!played)
+            {
+                CoreDialogue.DialogueService.EndedWithId -= HandleIntroDialogueEnded;
+                _introEndedHooked = false;
+                FlowTrace.Warn("DungeonTeach",
+                    $"lantern intro: seen=false played=false key='{LanternIntroShownKey}' - " +
+                    $"Play('{LanternIntroDialogueId}') returned false, i.e. the row is MISSING from " +
+                    "dialogues.json (DialogueCatalog.Find). Save untouched.");
+                return;
+            }
+
+            FlowTrace.Step("DungeonTeach",
+                $"lantern intro: seen=false played=true key='{LanternIntroShownKey}' - playing " +
+                $"'{LanternIntroDialogueId}' in '{gameObject.scene.name}' with the oil meter already on screen. " +
+                "The one-shot latches on the dialogue's END, never on this call.");
+        }
+
+        /// <summary>Latches the one-shot ONLY when the intro actually finished rendering.</summary>
+        private void HandleIntroDialogueEnded(string dialogueId)
+        {
+            if (dialogueId != LanternIntroDialogueId) return;
+            CoreDialogue.DialogueService.EndedWithId -= HandleIntroDialogueEnded;
+            _introEndedHooked = false;
+            MarkSeen(LanternIntroShownKey,
+                "the lantern intro rendered and closed - it never plays again on this save");
+        }
+
+        /// <summary>
+        /// The teach's COMPLETION beat: the player has stood in an oil stone and watched the flask
+        /// fill. Nothing in the game could observe this before WO-1805 added Lantern.OilStoneUsed.
+        /// </summary>
+        private void HandleFirstOilStoneRefill()
+        {
+            var svc = GameStateService.Instance;
+            if (HasSeen(svc, LanternIntroCompletedKey)) return;
+            MarkSeen(LanternIntroCompletedKey,
+                "first oil-stone refill - the lantern teach is COMPLETE (the player did the thing, " +
+                "so the intro is owed to nobody)");
+        }
+
+        /// <summary>The darkness beat: one line, once per save, on the final-warning edge.</summary>
+        private void HandleLanternFinalWarning()
+        {
+            var svc = GameStateService.Instance;
+            if (HasSeen(svc, LanternGutteringShownKey))
+            {
+                FlowTrace.Step("DungeonTeach",
+                    $"lantern guttering: seen=true played=false key='{LanternGutteringShownKey}' - " +
+                    "the warning line is one-shot per save and has already been shown.");
+                return;
+            }
+
+            DeNelle.Core.UI.ElarionUiKit.ShowToast(
+                LanternGutteringLine,
+                DeNelle.Core.UI.ElarionUiKit.ToastTone.Danger,
+                lifeSeconds: 4.5f);
+            MarkSeen(LanternGutteringShownKey,
+                "the guttering warning has been shown once - the meter carries it from here");
+            FlowTrace.Step("DungeonTeach",
+                $"lantern guttering: seen=false played=true key='{LanternGutteringShownKey}' - showed " +
+                $"'{LanternGutteringLine}' as a non-blocking toast (a modal here would suppress hero input " +
+                "while the ambush multiplier arms).");
+        }
+
+        private static bool HasSeen(GameStateService svc, string key)
+        {
+            var state = svc != null ? svc.State : null;
+            if (state == null || state.SeenTutorials == null) return false;
+            return state.SeenTutorials.TryGetValue(key, out bool seen) && seen;
+        }
+
+        /// <summary>
+        /// Persists one one-shot key. MarkTutorialSeen writes the key AND Saves in one call (the
+        /// TorchWardenInteractable.GrantTorchOnce idiom), and is itself a no-op when already set.
+        /// </summary>
+        private static void MarkSeen(string key, string why)
+        {
+            var svc = GameStateService.Instance;
+            if (svc == null || svc.State == null)
+            {
+                FlowTrace.Warn("DungeonTeach",
+                    $"cannot latch one-shot key '{key}' - no GameStateService/state is live. The beat was " +
+                    "delivered but nothing was persisted, so it may repeat on the next entry.");
+                return;
+            }
+            svc.MarkTutorialSeen(key);
+            FlowTrace.Step("DungeonTeach", $"one-shot key '{key}' SET and saved: {why}.");
         }
 
         /// <summary>Ends the run record, if one is still active. Idempotent.</summary>
