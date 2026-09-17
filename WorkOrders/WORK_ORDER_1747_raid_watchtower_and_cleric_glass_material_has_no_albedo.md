@@ -1,6 +1,6 @@
 # WORK ORDER 1747 — Raid watchtower / KayKit Cleric: `glass` material ships with NO albedo and NO tint (pink/grey patch on device)
 
-**Status:** READY - Cleric half landed in commit 7bb0c4291 (re-verified at source 2026-09-15); tower half's "no albedo" title REFUTED by RAIDBASE_MATDIAG_OK 4/4 (21:39), now waiting on the per-renderer probe specced in §H
+**Status:** READY FOR LEAD REVIEW - Cleric half landed in commit 7bb0c4291 (re-verified at source 2026-09-15); tower half's "no albedo" title REFUTED by RAIDBASE_MATDIAG_OK 4/4 (21:39); the §H per-renderer probe (`RunPerRenderer`) is now IMPLEMENTED per spec and awaits a headless run by the lead (this lane does not fire Unity/gate/commit)
 **Minted:** 2026-09-15 by the lead, from the owner's felt-test on the Seeker (tester build `2026.09.15.371127`, scene `RaidBase_IronBastion`).
 **Silo:** content / Addressables dependency closure. Files: whichever KayKit material named `glass` is referenced by the `NPCs/KayKit/Cleric` address (and, to be PROVEN not assumed, by the `Watchtower_Archer_*` prefab). Do NOT touch `RaidAssaultAi.cs` / `TroopController.cs` (WO-1746 silo) or any `.unity`.
 
@@ -508,4 +508,83 @@ rollup at `:93-130`, which is correct for its own job (1237 renderers unaggregat
 **Status label left as READY on purpose** (memory `status-label-is-a-fixed-word-rulings-go-in-prose`):
 this lane produced no fix, and `CLOSED` would be false — the tower symptom was captured on the owner's
 device and has never been shown gone. No `.RESULT.md` written, since the ticket is not finished.
+
+---
+
+## IMPLEMENTATION RECORD 2026-09-17 (§H per-renderer probe — code only, no Unity/gate/commit)
+
+Silo confirmed before touching anything: this ticket's silo is content / Addressables dependency
+closure for the KayKit `glass` material and the (now-disk-proven, §B) watchtower double-mesh
+geometry. `RaidAssaultAi.cs`, `TroopController.cs` and every `.unity` file were **not opened and not
+touched** (WO-1746's silo, per this ticket's own header). `Assets/Editor/RaidBaseMatDiag.cs` is in
+scope: it is the exact instrument §E/§G/§H name as "the next Unity lane" and "the ONLY thing standing
+between this ticket and its tower half."
+
+**What was done:** implemented `DeNelle.Editor.RaidBaseMatDiag.RunPerRenderer` exactly to the §H spec,
+as a second, separate entry point — the existing `Run()` rollup (lines ~60-143) was **not modified**,
+per §H's explicit instruction ("do **not** change the rollup … which is correct for its own job").
+
+- Menu: `Defenders/Art/Diag Raid Tower Renderers` (matches §H).
+- Reuses the existing `RaidScenes` array unchanged (no new scene list).
+- Object filter: walks every root's `GetComponentsInChildren<Transform>(true)` and selects any
+  transform named `Watchtower_*`, `CornerPost_*`, or exactly `RaidSpire` — the three
+  `ReplaceChildrenWith` targets named in §H (`RaidBaseDresser.cs:1205`, `:1208-1210`).
+- Per host: one HEADER line (`host name`, `childCount`, `rendererCount` via
+  `GetComponentsInChildren<Renderer>(true)`), then one line **per renderer** (inactive included),
+  fields in the §H-specified order: `path` (relative to the host — `<host>` vs `<host>/Visual`, via
+  new helper `RelativeToHost`), `rendererType` (`r.GetType().Name`), `enabled`,
+  `activeInHierarchy`, `shader`, `albedoProp`+`albedoTex` (reusing the existing `AlbedoProps` array
+  and `Describe()` helper — no duplicate albedo-scan logic), `_BaseColor`, `bounds.size`,
+  `sharedMaterial` asset path.
+- Verdict line per host, exact format from §H: `TWO_LIVE_RENDERERS host='<name>' hostRenderer=<bool>
+  childRenderer=<bool>` — `hostRenderer` is true only for a renderer **on the host transform itself**
+  that is both `enabled` and `activeInHierarchy`; `childRenderer` is the same test for any renderer
+  NOT on the host transform.
+- Marker, emitted once at the end, never judged by exit code (§8):
+  `RAIDBASE_RENDERERDIAG_OK <scenesRead>/<RaidScenes.Length> scenes`.
+- Read-only: opens scenes with `OpenSceneMode.Single`, never saves, never marks dirty — identical
+  contract to `Run()`. No `DataRegression` registration (diagnostic, not an oracle, per §H).
+
+**Run line (unchanged from §H's spec, not yet executed by this lane):**
+```
+powershell tools\run-unity-method.ps1 -Method DeNelle.Editor.RaidBaseMatDiag.RunPerRenderer -LogName raidbase-rendererdiag.log
+```
+
+**Gate proof for this lane's own file changes** (CLAUDE.md §1, the two required checks):
+- `python tools/gate_brace.py Assets/Editor/RaidBaseMatDiag.cs` → `GATE_BRACE_SUMMARY bad=0 of 1`.
+- NUL-byte scan on the same file → `0` bytes; raw brace count `{`=80, `}`=80 (balanced).
+
+**What this lane did NOT do, and why:**
+- Did **not** run Unity, the compile gate, `DataRegression`, or any bake/build — reserved for the
+  lead per this lane's own instructions.
+- Did **not** commit — sole committer is the lead (CLAUDE.md §11).
+- Did **not** touch the Cleric-side fix (already committed in `7bb0c4291`, re-verified present and
+  clean by the prior edit-only lane, §A) — nothing there needed rework.
+- Did **not** touch `RaidBaseDresser.cs` to disable a host renderer. That remains the banned
+  inference-fix per §F: the owning renderer of the device's white patch is still unnamed until the
+  probe above actually runs and its `TWO_LIVE_RENDERERS` / per-renderer lines are read.
+
+**Addressables / R2 flag for the lead (CLAUDE.md §16):** this lane's only change is an Editor-only
+diagnostic script (`Assets/Editor/RaidBaseMatDiag.cs`) — it ships in no build and is not Addressables
+content. **No content rebuild and no `tools/r2-ship.ps1` push are owed for this change.** Per §4/§G/§H,
+whether the eventual TOWER fix needs an R2 push is still undecided and forks on what `RunPerRenderer`
+reports: if it confirms the co-located `ArcaneSpire_1` host renderer as the white surface, the fix
+likely touches `RaidBaseDresser.cs` (code, in this silo) plus a scene re-bake — not a `Structure_Art`
+Addressables asset — so R2 applicability still depends on which asset a subsequent fix actually edits,
+per the fork already recorded in §4. The Cleric-side fix (already committed) is confirmed `Resources/`
+(APK-only, no R2), unchanged from §0(a)/§A.
+
+**Open questions / next action for the lead:**
+1. Run `RunPerRenderer` headless (command above) and confirm `RAIDBASE_RENDERERDIAG_OK 4/4 scenes` on
+   a fresh log, then read the `TWO_LIVE_RENDERERS` lines for every `Watchtower_Archer_*` /
+   `Watchtower_Mage_*` host.
+2. If a host reports `hostRenderer=true childRenderer=true`, that confirms §B/§3a's co-located
+   ArcaneSpire mesh as the geometry class of the defect — but the probe runs in-EDITOR, where §G
+   already found the spire material fully textured. So a live double-renderer would still not by
+   itself explain a WHITE patch on device; the remaining open branch is the §16 remote-bundle question
+   (§C: the captured device log's harvest window did not cover it) — a device `logcat` grep for
+   `ArcaneSpire` / `RemoteProviderException` is the one measurement nothing in this repo can substitute
+   for.
+3. This lane leaves Status as **READY FOR LEAD REVIEW**, not CLOSED — no `.RESULT.md` written, ticket
+   not finished (memory `status-label-is-a-fixed-word-rulings-go-in-prose`).
 

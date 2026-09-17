@@ -142,6 +142,136 @@ namespace DeNelle.Editor
             Debug.Log(sb.ToString());
         }
 
+        // =====================================================================
+        // WO-1747 §H — PER-RENDERER probe. `Run()`'s rollup (above) aggregates by
+        // material identity and keeps only a COUNT + the FIRST example path — it
+        // cannot say whether a given host (e.g. Watchtower_Archer_3) carries a
+        // live renderer on the host transform itself CO-LOCATED with a live
+        // renderer on a dressed child (RaidBaseDresser.ReplaceChildrenWith only
+        // destroys children, never a renderer on the host — RaidBaseDresser.cs:
+        // 1275-1291). This is a SEPARATE, unaggregated entry point so `Run()`'s
+        // job (1237 renderers rolled into ~12 readable lines) stays intact.
+        //
+        // Read-only: opens scenes, dumps, never saves/marks dirty. Same contract
+        // as Run().
+        //
+        // Headless:
+        //   powershell tools\run-unity-method.ps1 -Method DeNelle.Editor.RaidBaseMatDiag.RunPerRenderer `
+        //             -LogName raidbase-rendererdiag.log
+        // Menu: Defenders/Art/Diag Raid Tower Renderers
+        //
+        // JUDGE BY THE MARKER ON A FRESH LOG, NEVER THE EXIT CODE:
+        //   RAIDBASE_RENDERERDIAG_OK <scenes>
+        // =====================================================================
+        [MenuItem("Defenders/Art/Diag Raid Tower Renderers")]
+        public static void RunPerRenderer()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("[Flow:RaidBaseMatDiag] ===== PER-RENDERER TOWER/CORNERPOST/SPIRE PROBE — MEASURED =====");
+
+            int scenesRead = 0;
+
+            foreach (var scenePath in RaidScenes)
+            {
+                if (!System.IO.File.Exists(scenePath))
+                {
+                    sb.AppendLine($"[Flow:RaidBaseMatDiag] WARN scene ABSENT on disk: {scenePath} — skipped.");
+                    continue;
+                }
+
+                Scene scene;
+                try
+                {
+                    scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+                }
+                catch (System.Exception e)
+                {
+                    sb.AppendLine($"[Flow:RaidBaseMatDiag] FAIL could not open {scenePath}: {e.Message}");
+                    continue;
+                }
+
+                scenesRead++;
+                sb.AppendLine($"[Flow:RaidBaseMatDiag] --- scene '{scene.name}' ---");
+
+                // The dresser's three ReplaceChildrenWith targets (RaidBaseDresser.cs:1205,
+                // :1208-1210) — the only hosts that can carry a stale co-located inner mesh.
+                var hosts = new List<Transform>();
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    if (root == null) continue;
+                    foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (t == null) continue;
+                        if (t.name.StartsWith("Watchtower_", System.StringComparison.Ordinal)
+                            || t.name.StartsWith("CornerPost_", System.StringComparison.Ordinal)
+                            || t.name == "RaidSpire")
+                        {
+                            hosts.Add(t);
+                        }
+                    }
+                }
+
+                foreach (var host in hosts)
+                {
+                    var hostRenderers = host.GetComponentsInChildren<Renderer>(true);
+                    sb.AppendLine($"[Flow:RaidBaseMatDiag] HOST '{host.name}' childCount={host.childCount} " +
+                                  $"rendererCount={hostRenderers.Length}");
+
+                    bool hostHasLiveRenderer = false, childHasLiveRenderer = false;
+
+                    foreach (var r in hostRenderers)
+                    {
+                        if (r == null) continue;
+
+                        bool isOnHostItself = r.transform == host;
+                        string relPath = RelativeToHost(host, r.transform);
+                        bool live = r.enabled && r.gameObject.activeInHierarchy;
+                        if (isOnHostItself && live) hostHasLiveRenderer = true;
+                        if (!isOnHostItself && live) childHasLiveRenderer = true;
+
+                        var mats = r.sharedMaterials;
+                        bool haveFacts = mats != null && mats.Length > 0 && mats[0] != null;
+                        var f = haveFacts ? Describe(mats[0]) : default;
+
+                        sb.AppendLine(
+                            $"[Flow:RaidBaseMatDiag]   RENDERER path='{relPath}' type={r.GetType().Name} " +
+                            $"enabled={r.enabled} activeInHierarchy={r.gameObject.activeInHierarchy} " +
+                            $"shader='{(haveFacts ? f.Shader : "<no material>")}' " +
+                            $"albedoProp={(haveFacts ? f.AlbedoProp : "<none>")} " +
+                            $"albedoTex={(haveFacts ? f.AlbedoTex : "<null>")} " +
+                            $"baseColor={(haveFacts ? f.BaseColor : "<no _BaseColor/_Color>")} " +
+                            $"boundsSize={r.bounds.size} " +
+                            $"sharedMaterial='{(haveFacts ? f.SourceAsset : "<no material>")}'");
+                    }
+
+                    sb.AppendLine(
+                        $"[Flow:RaidBaseMatDiag]   TWO_LIVE_RENDERERS host='{host.name}' " +
+                        $"hostRenderer={hostHasLiveRenderer} childRenderer={childHasLiveRenderer}");
+                }
+            }
+
+            sb.AppendLine($"[Flow:RaidBaseMatDiag] RAIDBASE_RENDERERDIAG_OK {scenesRead}/{RaidScenes.Length} scenes");
+            Debug.Log(sb.ToString());
+        }
+
+        // Path of `t` relative to `host` — "<host>" for the host transform itself,
+        // "<host>/Visual" for a direct child, etc. Distinguishes a renderer sitting
+        // ON the host from one on a dressed child, which the aggregate rollup key
+        // (source|name|shader|albedoTex) cannot do.
+        private static string RelativeToHost(Transform host, Transform t)
+        {
+            if (t == host) return "<host>";
+            var sb = new StringBuilder(t.name);
+            var p = t.parent;
+            while (p != null && p != host)
+            {
+                sb.Insert(0, p.name + "/");
+                p = p.parent;
+            }
+            sb.Insert(0, "<host>/");
+            return sb.ToString();
+        }
+
         private struct MatFacts
         {
             public string Key, MatName, Shader, AlbedoProp, AlbedoTex, BaseColor, SourceAsset, Example;
