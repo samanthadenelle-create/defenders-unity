@@ -2210,3 +2210,27 @@ CREATE TABLE IF NOT EXISTS play_identities (
 ALTER TABLE play_identities ADD COLUMN IF NOT EXISTS email_hmac TEXT;
 CREATE INDEX IF NOT EXISTS play_identities_email_hmac_idx
     ON play_identities (email_hmac) WHERE email_hmac IS NOT NULL;
+
+-- =============================================================================
+-- wallet_identity - WO-1844 (clan step 1). ONE WALLET = ONE ROW: first_seen /
+-- last_seen only, no profile fields, no multi-wallet linking.
+--
+-- ⛔ THE APPLYABLE COPY IS api/migrations/20260917_0029_wallet_identity.sql.
+--    This block is the DESCRIPTION; only api/migrations/ is ever applied.
+--
+-- Written fail-open by api/_lib/wallet-auth.js touchWalletIdentity() on a proven
+-- WALLET-rail authentication. first_seen_staked_at / sgt_mint / sgt_verified_at
+-- are declared for later steps in that chain and are written by nothing today.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS wallet_identity (
+    wallet TEXT PRIMARY KEY,
+    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    first_seen_staked_at TIMESTAMPTZ NULL,
+    sgt_mint TEXT NULL,
+    sgt_verified_at TIMESTAMPTZ NULL
+);
+
+CREATE INDEX IF NOT EXISTS wallet_identity_first_seen_staked_idx
+    ON wallet_identity (first_seen_staked_at)
+    WHERE first_seen_staked_at IS NOT NULL;
