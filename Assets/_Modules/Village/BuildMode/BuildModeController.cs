@@ -1095,11 +1095,22 @@ namespace DeNelle.Village
         // the cursor? panel.Pick across every live UIDocument returns the topmost picking element
         // (click-through roots are PickingMode.Ignore and are skipped). The dev console legitimately
         // sits on top, so it never counts as a gameplay blocker. Returns the highest-sort culprit.
+        // WO-1831: cached to avoid per-frame FindObjectsByType (34ms spikes).
         private static readonly HashSet<string> _blockLogged = new HashSet<string>();
+        private static UIDocument[] s_cachedUIDocuments;
+        private static int s_cachedUIDocsFrame = -1;
+
         private bool PointerOverPickableUI(Vector2 screenPos, out string blocker)
         {
             blocker = null;
-            var docs = Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Exclude);
+            // WO-1831: cache UIDocuments per-frame; re-fetch only on frame boundary or fallback.
+            int currentFrame = Time.frameCount;
+            if (s_cachedUIDocuments == null || s_cachedUIDocsFrame != currentFrame)
+            {
+                s_cachedUIDocsFrame = currentFrame;
+                s_cachedUIDocuments = Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Exclude);
+            }
+            var docs = s_cachedUIDocuments;
             if (docs == null) return false;
             float bestSort = float.MinValue;
             foreach (var doc in docs)
