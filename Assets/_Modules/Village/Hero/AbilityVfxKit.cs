@@ -1410,6 +1410,166 @@ namespace DeNelle.Village
             s_softDot = tex;
             return tex;
         }
+
+        /// <summary>
+        /// ⛔ WO-1813 — THE REFUTED REMEDY, kept as arithmetic because the next reader will try it.
+        ///
+        /// The obvious fix for "a MESH particle with no albedo draws a hard-edged slab" is a fade
+        /// texture that reaches zero on BOTH UV axes, so it lands on the silhouette whichever way
+        /// the mesh is unwrapped. It was built, shipped into the capture, and MEASURED — and it does
+        /// not work, for a reason that is geometric and cannot be engineered around with a texture:
+        ///
+        ///   A cylinder's side unwraps with u running AROUND the barrel. The screen-left and
+        ///   screen-right silhouette edges therefore sit at u = 0.25 and u = 0.75 — the MIDDLE of
+        ///   the texture, where any edge-fade is at full brightness. A two-axis fade leaves
+        ///   alpha ≈ 0.51 exactly on the silhouette: dimmer, still perfectly hard.
+        ///
+        /// Measured, not argued. `Builds/vfx-whitequad/Juice_LevelUp__AFTER.png` with the fade
+        /// bound (the `MESH PARTICLE FADE` line fired on child `area`) still steps
+        /// (29,72,25) -> (143,122,38) inside one 5 px step at x=995 and back at x=1675 — the same
+        /// 680 px column as before. **A texture cannot soften a silhouette; the silhouette is
+        /// geometry.** Do not re-add a fade texture here.
+        /// </summary>
+        private static Texture2D s_softEdge;
+
+        /// <summary>
+        /// WO-1813 — the SOFT EDGE: the same generated remedy as <see cref="SoftDotTexture"/>, but
+        /// shaped for a MESH particle instead of a billboard.
+        ///
+        /// WHY A SECOND TEXTURE EXISTS, measured not assumed. The soft dot is a RADIAL fade, and on
+        /// a quad that is exactly right: the quad's silhouette IS the texture's outer edge, so the
+        /// fade lands on the silhouette and nothing hard can be drawn. On a MESH it is not: a
+        /// cylinder's side unwraps so that u runs AROUND the barrel, which puts u=0/1 (where a
+        /// radial dot fades) at the BACK and u=0.25/0.75 (the dot's bright core) exactly on the
+        /// left and right SCREEN edges. The fade misses the silhouette completely and the column
+        /// terminates in a straight, full-brightness line.
+        ///
+        /// That is not a theory. `Level_up.prefab`'s ten drawing slots ALL read
+        /// `albedo=SOFTDOT(radial-fade)` in the 2026-09-17 census — the heal had run on both shared
+        /// materials — and the frame rendered from the owner's seat still steps (15,17,20) ->
+        /// (140,96,34) inside a single 10 px step and holds a uniform fill for 680 px
+        /// (Builds/vfx-whitequad/Juice_LevelUp__AFTER.png). Additively composited over a sunlit
+        /// town that fill saturates to (255,255,147)..(255,255,255): the owner's white slab.
+        /// The only Mesh-mode slot on that prefab is `area` (!u!199 &amp;4557073697047843055,
+        /// 1Add_mat, additive, startSize 3.46) — a cylinder, whose silhouette is a rectangle with
+        /// an elliptical base, which is exactly what the picture shows.
+        ///
+        /// So this fade runs to zero on BOTH UV axes, which means it reaches the silhouette
+        /// whichever way the mesh is unwrapped. Still generated, still white, still no colour
+        /// chosen and no art asset introduced — the same remedy, corrected for the geometry.
+        /// </summary>
+        public static Texture2D SoftEdgeTexture => SoftEdge();
+
+        private static Texture2D SoftEdge()
+        {
+            if (s_softEdge != null) return s_softEdge;
+            const int N = 32;
+            var tex = new Texture2D(N, N, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            var px = new Color32[N * N];
+            for (int y = 0; y < N; y++)
+                for (int x = 0; x < N; x++)
+                {
+                    // Distance to the nearest border on each axis, 0 at the border, 1 at the middle.
+                    float u = Mathf.Min(x, N - 1 - x) / ((N - 1) * 0.5f);
+                    float v = Mathf.Min(y, N - 1 - y) / ((N - 1) * 0.5f);
+                    // Smoothstep each axis so the falloff is gentle, then multiply: alpha is 0 along
+                    // EVERY border and ~1 only in the middle.
+                    float a = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(u)) *
+                              Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(v));
+                    px[y * N + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
+                }
+            tex.SetPixels32(px); tex.Apply();
+            s_softEdge = tex;
+            return tex;
+        }
+
+        /// <summary>
+        /// WO-1813 — DISABLE every ENABLED, MESH-mode particle renderer whose material carries no
+        /// authored albedo. Returns the number of renderers disabled.
+        ///
+        /// ⛔ THE FADE-TEXTURE REMEDY WAS TRIED FIRST AND IS REFUTED — kept here as arithmetic
+        /// because it is the obvious idea and the next reader will reach for it. A fade that runs
+        /// to zero on BOTH UV axes was built and shipped into the capture; the `MESH PARTICLE FADE`
+        /// line fired on `Level_up.prefab` child `area`; and the frame still stepped
+        /// (29,72,25) -> (143,122,38) inside one 5 px step at x=995 and back at x=1675 — the same
+        /// 680 px column. The reason is geometric and no texture can reach it: a cylinder's side
+        /// unwraps with u running AROUND the barrel, so the screen-left and screen-right silhouette
+        /// edges sit at u = 0.25 / 0.75 — the MIDDLE of the texture, where an edge-fade is still at
+        /// full brightness (alpha ≈ 0.51 measured). **A texture cannot soften a silhouette.**
+        ///
+        /// THE REMEDY IS THE TREE'S OWN, ALREADY RULED. `VFXManager.SuppressUntexturedImpactMesh`
+        /// (VFXManager.cs:869) says it in its own words: *"Lana Slash_stone_once draws a MESH quad.
+        /// With 1AB_mat's empty _BaseMap it is a white rectangle; after SoftDot heal it is a giant
+        /// grey card (owner Seeker 2026-09-09 09:46:58). Disable those mesh slots."* Same pack, the
+        /// same two materials, the same owner, the same artefact, nine days earlier — the only
+        /// difference is that the 09-09 fix was hard-gated to `Impact_Physical`, so `Juice_LevelUp`
+        /// kept drawing it. This is that ruling, applied by the CONDITION instead of by the type
+        /// name, on both spawn paths. Nothing new was decided about how anything should look.
+        ///
+        /// WHY NOT THE PACK'S OWN TEXTURE, checked first: `1AB_mat` and `1Add_mat`
+        /// (Assets/Lana Studio/Casual RPG VFX/Materials/, both URP Particles/Unlit) carry
+        /// `_BaseMap: {fileID: 0}` AND `_MainTex: {fileID: 0}` — NO guid survives anywhere in either
+        /// YAML, so there is nothing to recover. Their siblings DID survive the upgrade
+        /// (AB_01 -> t_trail01.png, Add_01 -> t_trail02.png), which is how we know the loss is real
+        /// and specific to these two; the pack's "Upgrade for URP" folder holds only a
+        /// .unitypackage, no loose materials.
+        ///
+        /// NARROW ON PURPOSE: only `renderMode == Mesh`, only when the albedo is absent (null, or
+        /// the generated soft dot the billboard heal left there). A mesh particle carrying real
+        /// pack art — debris, shards, a textured beam — is never touched, and no billboard is.
+        /// </summary>
+        public static int RepairUntexturedMeshParticleSlots(GameObject go, string label)
+        {
+            if (go == null) return 0;
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            if (renderers == null || renderers.Length == 0) return 0;
+
+            var dot  = s_softDot;    // may be null if the billboard heal has not run yet
+            var edge = s_softEdge;   // ditto
+
+            int disabled = 0;
+            for (int ri = 0; ri < renderers.Length; ri++)
+            {
+                var r = renderers[ri];
+                if (r == null || !r.enabled) continue;
+                if (r.renderMode != ParticleSystemRenderMode.Mesh) continue;
+
+                var mats = r.sharedMaterials;
+                if (mats == null || mats.Length == 0) continue;
+
+                // Untextured only: EVERY slot must be missing real art. One real texture and the
+                // mesh is doing its job — leave it alone.
+                bool anyRealArt = false;
+                string firstMat = null;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (m == null || m.shader == null) continue;
+                    if (firstMat == null) firstMat = m.name;
+                    if (!m.HasProperty("_BaseMap")) { anyRealArt = true; break; }  // unknown shader: do not judge
+                    var bound = m.GetTexture("_BaseMap");
+                    bool generated = bound == null
+                                  || (dot  != null && ReferenceEquals(bound, dot))
+                                  || (edge != null && ReferenceEquals(bound, edge));
+                    if (!generated) { anyRealArt = true; break; }
+                }
+                if (anyRealArt || firstMat == null) continue;
+
+                r.enabled = false;
+                disabled++;
+
+                FlowTrace.Once("VFX", "meshslab:" + (label ?? go.name) + ":" + r.gameObject.name,
+                    "UNTEXTURED MESH SLAB DISABLED: prefab='" + (label ?? go.name) + "' child='" +
+                    r.gameObject.name + "' material='" + firstMat + "' renderMode=Mesh. Its material " +
+                    "has no authored albedo, so the mesh drew its bare silhouette — a straight-edged " +
+                    "column that saturates to flat white on a bright scene (WO-1813, owner capture " +
+                    "2026-09-16 20:51:31). A fade texture cannot fix this: the edge is geometry, not " +
+                    "texture. Same ruling as VFXManager.SuppressUntexturedImpactMesh took for " +
+                    "Slash_stone_once on 2026-09-09, applied by condition instead of by type name.");
+            }
+
+            return disabled;
+        }
     }
 
     /// <summary>Fades a point-light's intensity to zero. Pooled mode (AbilityVfxPool

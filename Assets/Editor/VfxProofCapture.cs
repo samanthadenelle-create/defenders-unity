@@ -199,6 +199,12 @@ namespace DeNelle.Editor
             /// repair changed anything, and "it looks fine now" is not evidence.</summary>
             public bool    SkipRepair;
 
+            /// <summary>WO-1813: keep ONLY the child with this name active on the effect instance.
+            /// A census tells you what each renderer HOLDS; it cannot tell you which one drew a
+            /// given pixel. Ten one-child frames can, and that is the difference between naming a
+            /// renderer and nominating one.</summary>
+            public string  OnlyChild;
+
             public bool    FixedCamera;
             public Vector3 CamPos    = new Vector3(0f, 1.40f, -3.50f);
             public Vector3 CamLookAt = new Vector3(0f, 1.00f, 0f);
@@ -421,6 +427,35 @@ namespace DeNelle.Editor
                     shots.Add(shot);
                 }
             }
+
+            // WO-1813: ten ONE-CHILD frames of Level_up.prefab, all repairs applied, same seat.
+            // The census printed all ten slots as albedo=SOFTDOT while the frame still carried a
+            // 680 px razor-sharp edge — so what a renderer HOLDS does not settle what it DREW.
+            // These do. The child whose solo frame carries the hard vertical edge is the answer.
+            foreach (var child in new[] { "glow_start", "lines_start", "boke_start", "area",
+                                          "flash", "circle", "circle_wave", "arrows", "lines", "boke" })
+            {
+                var solo = new Shot
+                {
+                    FileName    = "solo_Juice_LevelUp__" + child,
+                    Subject     = "Juice_LevelUp / only '" + child + "'",
+                    Level       = "solo",
+                    FixedCamera = true,
+                    OnlyChild   = child,
+                    SimTime     = 1.0f,
+                    SimWhy      = "1.0 s, the offset of the owner's 20:51:31 frame",
+                    Notes       = "WO-1813 isolation: every other child deactivated.",
+                };
+                solo.Layers.Add(new Layer
+                {
+                    Type   = VFXType.Juice_LevelUp,
+                    Offset = new Vector3(0f, 1.0f, 0f),
+                    Scale  = 1f,
+                    Why    = "isolation frame",
+                });
+                shots.Add(solo);
+            }
+
             return shots;
         }
 
@@ -913,6 +948,16 @@ namespace DeNelle.Editor
                     // the other direction. The Hovl path is deliberately NOT re-shaded:
                     // VFXManager.Hovl.cs:360 says the Hovl packs ship URP-clean, so touching
                     // them here would diverge from what ships.
+                    if (!string.IsNullOrEmpty(shot.OnlyChild))
+                    {
+                        foreach (var t in inst.GetComponentsInChildren<Transform>(true))
+                        {
+                            if (t == null || t == inst.transform) continue;
+                            t.gameObject.SetActive(string.Equals(t.gameObject.name, shot.OnlyChild,
+                                                                 StringComparison.Ordinal));
+                        }
+                    }
+
                     if (!shot.SkipRepair)
                     {
                         if (layer.Type != VFXType.None)
@@ -927,6 +972,7 @@ namespace DeNelle.Editor
                         // transparent and no longer matches the predicate.
                         AbilityVfxKit.RepairOpaqueDrawingParticleSlots(inst, layer.Label);
                         AbilityVfxKit.RepairMagentaFixParticleSlots(inst, layer.Label);
+                        AbilityVfxKit.RepairUntexturedMeshParticleSlots(inst, layer.Label);
                         AbilityVfxKit.AuditParticleSlotsAfterRepair(inst, layer.Label);
                         AbilityVfxKit.AuditDrawingBillboardCensus(inst, layer.Label);
                     }

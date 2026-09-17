@@ -1,6 +1,6 @@
 # WO-1813: white untextured quad on hero during fireball / level-up
 
-**Status:** READY
+**Status:** IMPLEMENTED
 
 ## Issue
 
@@ -22,7 +22,13 @@ additively over a sunlit town that fill saturates to `(255,255,147)`..`(255,255,
 owner's measured `(254,254,246)` / `(254,230,208)`.
 Two OTHER defects of the same class were found and FIXED on the way (`PP_FleshImpacts/Mist` opaque
 billboard; five combat effects' MagentaFix trail slabs on the un-swept PlayKey path).
-**Still READY because the remedy for the level-up look is an owner ruling — RESULT §6.**
+**RESOLVED under the lead's 2026-09-17 repair ruling.** The drawer is `Level_up.prefab` child
+**`area`** — proven by ten one-child isolation frames, not by elimination: `area` is the ONLY child
+whose solo frame carries the hard edge (jumps at x=995 / x=1675 on y=400; the other nine have none).
+It is a MESH-mode particle on `1Add_mat`, whose `_BaseMap` and `_MainTex` are both `{fileID: 0}` —
+the pack's texture is gone and no guid survives to recover. Fixed by the tree's own 2026-09-09
+ruling for this exact class, applied by condition instead of by type name. After: zero hard jumps on
+y=400 and y=550; the arrows and ground rings still read.
 
 <details><summary>Superseded 2026-09-16 second-pass reasoning (kept, not rewritten)</summary>
 

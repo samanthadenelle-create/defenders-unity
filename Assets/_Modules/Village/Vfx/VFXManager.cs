@@ -1046,6 +1046,14 @@ namespace DeNelle.Village
             // repaired state. Full derivation at AbilityVfxKit.RepairOpaqueDrawingParticleSlots.
             AbilityVfxKit.RepairOpaqueDrawingParticleSlots(go, type.ToString());
 
+            // WO-1813, and this is the one that fixes the level-up slab. It runs AFTER the heal
+            // above, deliberately: the heal binds the radial soft dot to an albedo-less particle
+            // material, which is right for a billboard and WRONG for a mesh (the fade lands on the
+            // UV border, not on the cylinder's silhouette). The 2026-09-17 census proved that —
+            // all ten Level_up slots read albedo=SOFTDOT and the frame still had a 680 px
+            // razor-sharp edge. This re-binds the MESH slots only, to the two-axis soft edge.
+            AbilityVfxKit.RepairUntexturedMeshParticleSlots(go, type.ToString());
+
             AbilityVfxKit.AuditParticleSlotsAfterRepair(go, type.ToString());
 
             // WO-1813: the audit above is gated on `opaque AND albedo-less`, so it is

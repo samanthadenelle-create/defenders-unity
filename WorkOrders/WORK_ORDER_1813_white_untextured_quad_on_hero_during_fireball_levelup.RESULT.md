@@ -1,11 +1,10 @@
 # WO-1813 RESULT: white untextured quad on hero during fireball / level-up
 
-**Status:** READY
+**Status:** IMPLEMENTED
 
-⚠ **Deliberately NOT flipped to IMPLEMENTED.** The root cause is now **reproduced and measured**,
-and two other real defects of the same class were found and fixed — but the remedy for the
-level-up effect itself is an owner call (it changes how a tagged VFX key looks), and this lane does
-not pick VFX looks (`vfx-map-owner-tags-no-creative-pick`). What is READY is one question, below.
+Closed 2026-09-17 under the lead's repair ruling. The drawer is **named by isolation frames, not by
+elimination**, the remedy is **the tree's own prior ruling for this exact class**, and the fix is
+confirmed in a rendered frame from the owner's camera seat. Gates green.
 
 ---
 
@@ -214,3 +213,106 @@ decision, not an engineering one:
 
 Say which, and it is a short change. **Do not let a lane pick one** — that is exactly the
 "never substitute a prettier prefab" line.
+
+---
+
+## 7. THE DRAWER, NAMED — and the remedy, 2026-09-17
+
+### It is `Level_up.prefab` child `area`, proven by isolation and nothing else
+
+The census (§1) printed all ten drawing slots as `albedo=SOFTDOT(radial-fade)` while the frame still
+carried a 680 px razor-sharp edge — so **what a renderer HOLDS does not settle what it DREW**, and
+no amount of further material reading could close it. `VfxProofCapture` gained
+`Shot.OnlyChild`: ten frames of `Level_up.prefab`, same seat, all repairs applied, every child but
+one deactivated. Hard-jump scan on row y=400 of each solo PNG:
+
+| solo frame | hard jumps on y=400 |
+|---|---|
+| **`solo_Juice_LevelUp__area.png`** | **x=995, x=1675** |
+| `glow_start`, `lines_start`, `boke_start`, `flash`, `circle`, `circle_wave`, `arrows`, `lines`, `boke` | *none, all nine* |
+
+`area` = `!u!199 &4557073697047843055`, `m_Enabled: 1`, renderMode **Mesh**, slot 0 `1Add_mat`,
+additive, startSize 3.46. One candidate, positively identified.
+
+### The pack's texture is GONE, and that was checked before anything else was done
+
+`Assets/Lana Studio/**` IS tracked (`git ls-files` → 595 files), so editing the `.mat` was on the
+table. It has nothing to edit *in*: `1AB_mat.mat` and `1Add_mat.mat` (both URP Particles/Unlit)
+carry `_BaseMap: {fileID: 0}` **and** `_MainTex: {fileID: 0}` — no guid survives in either YAML.
+Their siblings DID survive the upgrade (`AB_01` → `t_trail01.png`, `Add_01` → `t_trail02.png`),
+which is how we know the loss is real and specific to these two. The pack's `Upgrade for URP/`
+folder holds only a `.unitypackage`, no loose materials. Choosing one of the pack's ~30 loose
+sprites for a material shared by ten differently-shaped children would be picking a look.
+
+### ⛔ The fade-texture remedy was built, shipped, MEASURED and REFUTED
+
+Step (3) of the ruling asked for the tree's soft fade on the mesh slot. It was implemented as a
+two-axis `SoftEdgeTexture` (alpha → 0 on every UV border), the `MESH PARTICLE FADE` line fired on
+`area`, and **the edge did not move**: the re-shot frame still stepped (29,72,25) → (143,122,38)
+inside one 5 px step at x=995 and back at x=1675. The reason is geometric and no texture can reach
+it — a cylinder's side unwraps with u running AROUND the barrel, so the screen-left and -right
+silhouette edges sit at u = 0.25 / 0.75, the MIDDLE of the texture, where an edge fade is still at
+alpha ≈ 0.51. **A texture cannot soften a silhouette.** The refutation is kept in the code comment
+at `AbilityVfxKit.RepairUntexturedMeshParticleSlots` so it is not re-attempted.
+
+### The remedy is the tree's OWN ruling, nine days old
+
+`VFXManager.SuppressUntexturedImpactMesh` (`VFXManager.cs:869`) says it in its own words:
+*"Lana Slash_stone_once draws a MESH quad. With 1AB_mat's empty _BaseMap it is a white rectangle;
+after SoftDot heal it is a giant grey card (owner Seeker 2026-09-09 09:46:58). Disable those mesh
+slots."* **Same pack, same two materials, same owner, same artefact, nine days earlier.** The only
+reason `Juice_LevelUp` kept drawing it is that the 09-09 fix was hard-gated to
+`VFXType.Impact_Physical`. `AbilityVfxKit.RepairUntexturedMeshParticleSlots` is that ruling applied
+**by the condition instead of by the type name**, on both spawn paths. Nothing new was decided about
+how anything should look — and this is why the flip to IMPLEMENTED is a repair, not a creative pick.
+
+Narrow on purpose: `renderMode == Mesh` only, and only when **every** slot's albedo is absent (null,
+or one of the generated soft textures). A mesh particle carrying real pack art — debris, shards, a
+textured beam — is never touched, and no billboard is.
+
+### Acceptance (ruling step 4), measured
+
+`Builds/vfx-whitequad/Juice_LevelUp__AFTER.png`, re-shot after the change, owner's seat:
+
+* `[Flow:VFX] UNTEXTURED MESH SLAB DISABLED: prefab='VFXType.Juice_LevelUp' child='area'
+  material='1Add_mat' renderMode=Mesh …`
+* hard-jump scan: **y=400 → none. y=550 → none.** (Before: x=995 and x=1675 on y=400.)
+  y=250 still has jumps at 1060-1355 — those are the `arrows` sprite's own outlines, a real textured
+  asset drawing its authored shape.
+* Opened at 1:1: the column is gone; the rising gold arrows, the double ground ring and the warm
+  floor glow all still read. Nothing was re-tinted and no effect was swapped.
+
+### Gates (ruling step 5), fresh logs, marker-judged
+
+| gate | marker |
+|---|---|
+| `Builds/wo1813-compile2.log` | `COMPILE_GATE_OK :: scripts compiled clean` (0 `error CS` under `Assets/`) |
+| `Builds/wo1813-regression2.log` | `REGRESSION_OK 564/564 suites -- 564 green, 0 red, 0 skipped` |
+| same log | `VFX_NULL_SLOT_OK … 23 drawing slot(s) on the WO-1813 capture prefabs proved TEXTURED after the runtime repair chain; 21 authored opaque drawing particle slot(s) proved REPAIRED …` |
+| `python tools/gate_brace.py` (5 files) | `GATE_BRACE_SUMMARY bad=0 of 5`, exit 0; NUL 0 each |
+
+`VfxParticleNullSlotRegression.CheckEveryDrawingSlotEndsUpTextured` is the new oracle for ruling
+step (5): it runs the REAL chain (heal → opaque repair → MagentaFix repair → mesh suppress) on a
+throwaway instance of each of the four capture prefabs and fails any **enabled, drawing** slot left
+without a `_BaseMap`. It clones every material first, so — unlike the batch runs that dirtied
+`GoopMist.mat` — the oracle can never write to the tree it is checking.
+
+### Files changed by this pass (on top of §3)
+
+| file | lines |
+|---|---|
+| `Assets/_Modules/Village/Hero/AbilityVfxKit.cs` | `:1433-1487` `SoftEdgeTexture` + generator, `:1489-1573` `RepairUntexturedMeshParticleSlots` (carries the refutation) |
+| `Assets/_Modules/Village/Vfx/VFXManager.cs` | `:1049-1056` |
+| `Assets/_Modules/Village/Vfx/VFXManager.Hovl.cs` | `:603-607` |
+| `Assets/Editor/Regression/VfxParticleNullSlotRegression.cs` | `:274-275`, `:308-317`, `:385-490` |
+| `Assets/Editor/VfxProofCapture.cs` | `:193-198` `Shot.OnlyChild`, `:788-797` isolation gate, `:335-361` the ten solo shots |
+
+### Still not proven, and left that way
+
+* **`SoftEdgeTexture` is now UNUSED by any repair** — kept because
+  `RepairUntexturedMeshParticleSlots` reads it when deciding whether an albedo is "generated", and
+  because deleting it would delete the evidence for the refutation above.
+* **The owner has not felt-verified this.** The picture is from the harness's dark stage; her town
+  is bright. The *mechanism* is closed (the slab no longer draws at all, so there is nothing left to
+  saturate), but PO closure is still hers (§13).
+* The `GoopMist.mat` dirty-tree note in §5 still stands and still needs the lead's one-line revert.

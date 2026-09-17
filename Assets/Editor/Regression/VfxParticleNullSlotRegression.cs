@@ -271,6 +271,9 @@ namespace DeNelle.Editor.Regression
             // ── WO-1813: the OPAQUE DRAWING BILLBOARD class ──────────────────
             int opaqueBillboards = CheckOpaqueDrawingBillboards(work, failures);
 
+            // ── WO-1813: every drawing slot ends up with an albedo ───────────
+            int albedoRepairs = CheckEveryDrawingSlotEndsUpTextured(failures);
+
             if (failures.Count > 0)
             {
                 FlowTrace.Fail(FlowSys, "offenders=" + failures.Count + " across " + checkedAssets + " prefab(s)");
@@ -284,8 +287,11 @@ namespace DeNelle.Editor.Regression
             FlowTrace.Step(FlowSys, "clean: " + checkedAssets + " prefab(s), containers=" + containers +
                                     ", intentionalNonRenderers=" + intentionalNonRenderers +
                                     ", opaqueBillboardsRepaired=" + opaqueBillboards +
+                                    ", albedoRepairs=" + albedoRepairs +
                                     ", skipped=" + skipped);
-            reason = "vfx-null-slot OK - " + opaqueBillboards + " authored opaque drawing particle slot(s) " +
+            reason = "vfx-null-slot OK - " + albedoRepairs + " drawing slot(s) on the WO-1813 capture " +
+                     "prefabs proved TEXTURED after the runtime repair chain; " +
+                     opaqueBillboards + " authored opaque drawing particle slot(s) " +
                      "proved REPAIRED by AbilityVfxKit.RepairOpaqueDrawingParticleSlots (WO-1813); " +
                      checkedAssets + " prefab(s) checked: no NEW enabled all-null " +
                      "particle renderer capable of drawing; " + intentionalNonRenderers +
@@ -372,6 +378,125 @@ namespace DeNelle.Editor.Regression
             }
 
             return authoredOffenders;
+        }
+
+        // =====================================================================
+        //  WO-1813 -- NO DRAWING SLOT MAY END UP WITHOUT AN ALBEDO
+        // ---------------------------------------------------------------------
+        // THE DEFECT THIS PINS: Assets/Lana Studio/Casual RPG VFX/Prefabs/States/
+        // Level_up.prefab (VFXType.Juice_LevelUp) has TEN drawing renderer slots and
+        // every one of them points at 1AB_mat or 1Add_mat, both of which carry
+        // _BaseMap: {fileID: 0} AND _MainTex: {fileID: 0} -- no albedo at all. An
+        // untextured quad samples pure white over its whole footprint, and on the
+        // owner's sunlit town the additive ones saturate to the white slab she
+        // photographed on 2026-09-16 at 20:51:31.
+        //
+        // WHY THE ASSERTION IS "ENDS UP TEXTURED", NOT "IS TEXTURED ON DISK: the
+        // remedy is a RUNTIME one (the pack's texture guids are gone -- see
+        // AbilityVfxKit.RepairUntexturedMeshParticleSlots for the source read), so the
+        // only meaningful question is whether the chain the two spawn paths run leaves
+        // every drawing slot with something to sample. That is what this runs and
+        // measures, in the same order the game runs it:
+        //     HealHalfUpgradedParticleMaterial  (billboards -> radial soft dot)
+        //     RepairOpaqueDrawingParticleSlots  (opaque billboards -> transparent)
+        //     RepairMagentaFixParticleSlots     (the WO-1806 placeholder)
+        //     RepairUntexturedMeshParticleSlots (mesh slots -> two-axis soft edge)
+        //
+        // ⚠ IT RUNS ON PRIVATE CLONES, AND THAT IS LOAD-BEARING. HealHalfUpgraded-
+        // ParticleMaterial mutates the SHARED material, which in the editor means the
+        // .mat asset on disk -- exactly how a batch run left a tracked
+        // GoopMist.mat modified on 2026-09-17. Every slot is replaced with
+        // `new Material(src)` BEFORE the chain touches anything, so this oracle can
+        // never dirty the tree it is checking.
+        // =====================================================================
+        private static readonly string[] Wo1813AlbedoPrefabs = Wo1813CoveragePrefabs;
+
+        private static int CheckEveryDrawingSlotEndsUpTextured(List<string> failures)
+        {
+            int slotsProved = 0;
+
+            foreach (var path in Wo1813AlbedoPrefabs)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null) continue;   // already reported as a coverage failure above
+
+                GameObject copy = null;
+                var scratch = new List<Material>();
+                try
+                {
+                    copy = UnityEngine.Object.Instantiate(prefab);
+                    copy.hideFlags = HideFlags.HideAndDontSave;
+
+                    // Private clones FIRST -- nothing below may reach a shared asset.
+                    foreach (var r in copy.GetComponentsInChildren<ParticleSystemRenderer>(true))
+                    {
+                        if (r == null) continue;
+                        var mats = r.sharedMaterials;
+                        if (mats == null) continue;
+                        for (int i = 0; i < mats.Length; i++)
+                        {
+                            if (mats[i] == null) continue;
+                            var clone = new UnityEngine.Material(mats[i])
+                            {
+                                name = mats[i].name, hideFlags = HideFlags.HideAndDontSave
+                            };
+                            scratch.Add(clone);
+                            mats[i] = clone;
+                        }
+                        r.sharedMaterials = mats;
+                    }
+
+                    foreach (var r in copy.GetComponentsInChildren<ParticleSystemRenderer>(true))
+                    {
+                        if (r == null) continue;
+                        foreach (var m in r.sharedMaterials)
+                            if (m != null) AbilityVfxKit.HealHalfUpgradedParticleMaterial(m);
+                    }
+                    AbilityVfxKit.RepairOpaqueDrawingParticleSlots(copy, path);
+                    AbilityVfxKit.RepairMagentaFixParticleSlots(copy, path);
+                    AbilityVfxKit.RepairUntexturedMeshParticleSlots(copy, path);
+
+                    foreach (var r in copy.GetComponentsInChildren<ParticleSystemRenderer>(true))
+                    {
+                        if (r == null || !r.enabled) continue;
+                        if (r.renderMode == ParticleSystemRenderMode.None) continue;
+
+                        var mats = r.sharedMaterials;
+                        if (mats == null) continue;
+                        for (int i = 0; i < mats.Length; i++)
+                        {
+                            var m = mats[i];
+                            if (m == null || m.shader == null) continue;
+                            if (!m.HasProperty("_BaseMap")) continue;   // not an albedo shader
+
+                            if (m.GetTexture("_BaseMap") != null) { slotsProved++; continue; }
+
+                            failures.Add("'" + path + "' child '" + r.gameObject.name + "' slot " + i +
+                                         " (" + r.renderMode + ", material '" + m.name + "', shader '" +
+                                         m.shader.name + "') still has NO _BaseMap after the full runtime " +
+                                         "repair chain. An untextured drawing particle samples pure white " +
+                                         "across its whole footprint; on a bright scene the additive ones " +
+                                         "saturate into the flat white slab the owner captured on " +
+                                         "2026-09-16 (WO-1813). Every drawing slot must end up with the " +
+                                         "pack's texture, the radial soft dot (billboard) or the two-axis " +
+                                         "soft edge (mesh).");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures.Add("'" + path + "' threw while proving the WO-1813 albedo chain: " +
+                                 ex.GetType().Name + ": " + ex.Message);
+                }
+                finally
+                {
+                    if (copy != null) UnityEngine.Object.DestroyImmediate(copy);
+                    foreach (var m in scratch)
+                        if (m != null) UnityEngine.Object.DestroyImmediate(m);
+                }
+            }
+
+            return slotsProved;
         }
 
         /// <summary>

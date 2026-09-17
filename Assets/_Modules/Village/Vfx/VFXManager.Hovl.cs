@@ -602,6 +602,10 @@ namespace DeNelle.Village
             // uses; nothing new is invented here.
             Guard.Try("VFXManager", $"RepairMagentaFixParticleSlots('{key}')",
                 () => AbilityVfxKit.RepairMagentaFixParticleSlots(go, key));
+            // WO-1813: a MESH particle with no authored albedo keeps a straight full-brightness
+            // silhouette that saturates to white on a bright scene. Same helper as the VFXType path.
+            Guard.Try("VFXManager", $"RepairUntexturedMeshParticleSlots('{key}')",
+                () => AbilityVfxKit.RepairUntexturedMeshParticleSlots(go, key));
             Guard.Try("VFXManager", $"AuditParticleSlots('{key}')", () =>
             {
                 AbilityVfxKit.AuditParticleSlotsAfterRepair(go, key);
