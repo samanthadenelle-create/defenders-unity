@@ -189,14 +189,30 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-ninth pass): main line next free = **1834**.
-> *(Lead PRE-ASSIGNED **1833** a promo code (e.g. SPOTLIGHT30) can grant a personal, time-limited storefront
-> discount, not just a one-time currency/pack reward - owner ruling 2026-09-17: 48 hours from redemption; discount
-> vs. the concurrent global sale (store.saleBps) is "best discount wins", not additive, as the lead's stated default.
-> Confirmed at source: promo_codes (api/schema.sql:431-449) and api/promo/redeem.js only ever grant a fixed one-time
-> reward (crystals/coins/a pack's contents) - there is no discount-percent code type anywhere in the schema or the
-> quote path (api/purchases/quote.js, same file WO-1818 touched last night for flat SKR). Bumped 1833 -> 1834 in this
-> SAME edit.)*
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fifty-first pass): main line next free = **1836**.
+> *(Lead PRE-ASSIGNED **1835** post-wave-20 endless escalation content - owner ruling 2026-09-17: "after level 20...
+> a real challenge so maybe 2 dragons spawn and troops breaking through walls, or healing caravans or mages using
+> AoE large heal spells, rage spells" + "catapults blasting the walls from the sides at the same time." New endless-
+> mode enemy pressure types (twin-apex-dragon trigger, wall-breacher melee, enemy healing-caravan support unit,
+> support-mage AoE heal/rage caster, side-flanking catapult siege units) layered on top of the existing, already-
+> correct 1->2->4 side escalation (SmartEnemySpawner) and countGrowthPerWave endless scaling (waves.json). Bumped
+> 1835 -> 1836 in this SAME edit.)*
+>
+> *(Lead PRE-ASSIGNED **1834** the castle hub scene (Main_Castle_Overworld.unity) carries 4 BAKED-IN legacy
+> WaveSpawnPoint GameObjects (SpawnId "spawn-0".."spawn-3", one per gate, dead-centre on each wall - NOT the
+> injector's "spawn-castle-<dir>-<i>" naming), confirmed by reading the scene's serialized MonoBehaviour blocks
+> at source 2026-09-17. Because these exist at scene-Awake, CastleSpawnPointInjector.Inject()
+> (Assets/_Modules/Village/Waves/CastleSpawnPointInjector.cs:126-131) finds existing.Length>0 and SKIPS its full
+> 20-point (5-per-side) injection entirely - confirmed live via device logcat 2026-09-17 12:59:06: "[CastleSpawnPointInjector]
+> 4 WaveSpawnPoint(s) already present - skipping injection." SmartEnemySpawner's 1->2->4 side escalation
+> (SideCountForWave) and its N->E->S->W rotation (ResolveSides) are BOTH confirmed working as designed at source -
+> the defect is that each side is stuck with exactly ONE fixed spawn point instead of the intended 5-point fan, so
+> every wave that attacks from a side erupts from the identical single spot on that wall every time, which is what
+> the owner felt as "just straight approach" rather than "entering from the walls." Fix: an editor batchmode method
+> that opens Main_Castle_Overworld.unity, deletes ONLY the 4 legacy "spawn-0".."spawn-3" GameObjects (matched by
+> their SpawnId, never by blanket-deleting all WaveSpawnPoints), marks the scene dirty and saves - never a hand-edit
+> of the .unity file (CLAUDE.md SS3), and never touches the injector or the escalation/rotation logic, both proven
+> correct. Bumped 1834 -> 1835 in this SAME edit.)*
 >
 > ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-eighth pass): main line next free = **1833**.
 > *(Lead PRE-ASSIGNED **1832** the Google Play AAB is rejected again - PLAY_ARTIFACT_DIRTY names
