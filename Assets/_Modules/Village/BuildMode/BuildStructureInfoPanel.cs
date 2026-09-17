@@ -63,6 +63,8 @@ namespace DeNelle.Village
         private Label _targetingLabel;   // "Land only" / "Land + Air" / "Air only" (towers)
         private VisualElement _costLabel;
         private Label _footprintLabel;
+        private Button _firstBuyButton;   // WO-1801 — the first-buy door row (hidden unless offered)
+        private FirstBuyDoor _firstBuyDoor;
         private VisualElement _statsBox;
         private VisualElement _nextTierBox;
         private Label _nextTierTitle;
@@ -197,6 +199,19 @@ namespace DeNelle.Village
             _costLabel = new VisualElement();
             _panel.Add(_costLabel);
 
+            // WO-1801 — THE FIRST-BUY DOOR, directly under the price it is a remedy for.
+            // ONE row, built hidden, shown only when FirstBuyDoorModel says so. It sits here
+            // because this is the panel the player is looking at when they decide they want a
+            // structure and find they cannot pay for it — the highest-intent moment the economy
+            // produces, and until this ticket a dead end (the store had no door here at all).
+            // The View decides NOTHING: every rule, and the sentence itself, is the model's.
+            _firstBuyButton = new Button(OnFirstBuyTapped) { text = string.Empty };
+            ElarionUi.StyleButton(_firstBuyButton, ElarionUi.ButtonKind.Gold);
+            _firstBuyButton.style.marginTop = 4;
+            _firstBuyButton.style.whiteSpace = WhiteSpace.Normal;
+            _firstBuyButton.style.display = DisplayStyle.None;
+            _panel.Add(_firstBuyButton);
+
             // Footprint.
             _footprintLabel = MakeKeyValue("Footprint", "1x1");
             _panel.Add(_footprintLabel);
@@ -308,9 +323,48 @@ namespace DeNelle.Village
                 : currentCostParts.Count == 0 ? new Label("Cost: Free")
                 : CostRowElement.Build(currentCostParts, "Cost:"));
             SetKeyValue(_footprintLabel, "Footprint", card.FootprintLabel);
+            RenderFirstBuyDoor(e, card);
 
             RenderCurrentStats(card);
             RenderNextTierPreview(card);
+        }
+
+        /// <summary>
+        /// WO-1801 — paints (or hides) the ONE first-buy line. Every decision, gate and word comes
+        /// from <see cref="FirstBuyDoorModel"/>; this method sets .text and a display flag, and tells
+        /// the model it was actually painted so the impression is counted once and the no-nag latch
+        /// closes. It reads no game state of its own — the same rule that failed BuildPreviewModal
+        /// at the UI-MVVM oracle.
+        /// </summary>
+        private void RenderFirstBuyDoor(CatalogEntry e, StructureCardVM card)
+        {
+            if (_firstBuyButton == null) return;
+
+            // An affordable build never sees an offer — that is the line between a remedy and a
+            // storefront (the WO-1037 guardrail, honoured here too). The model re-checks it.
+            _firstBuyDoor = card.Affordable
+                ? FirstBuyDoor.None("affordable", e != null ? e.id : null)
+                : FirstBuyDoorModel.Resolve(e, card.EffectiveCost);
+
+            if (!_firstBuyDoor.Show)
+            {
+                _firstBuyButton.style.display = DisplayStyle.None;
+                _firstBuyButton.text = string.Empty;
+                return;
+            }
+
+            _firstBuyButton.text = _firstBuyDoor.Caption;
+            _firstBuyButton.style.display = DisplayStyle.Flex;
+            FirstBuyDoorModel.NotifyShown(_firstBuyDoor);
+        }
+
+        /// <summary>The tap: hand it straight back to the model, which routes to the store.</summary>
+        private void OnFirstBuyTapped()
+        {
+            var door = _firstBuyDoor;
+            if (!door.Show) return;
+            Hide();
+            FirstBuyDoorModel.Tap(door);
         }
 
         /// <summary>Current-tier key stats — DPS, Range, Fire Rate (or a "Type" row), from the VM.</summary>

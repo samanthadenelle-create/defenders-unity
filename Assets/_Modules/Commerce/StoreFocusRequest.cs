@@ -87,5 +87,66 @@ namespace DeNelle.Commerce
             _pendingDoor = null;
             return door;
         }
+
+        // ---------------------------------------------------------------------
+        //  WO-1801 - THE SHORTFALL, handed over by whoever HAS the gap.
+        // ---------------------------------------------------------------------
+        //  PackStore.FocusShortfall(label, missing) already existed and is the right
+        //  seam - but it is an INSTANCE method on a DeNelle.Wallet type, so no caller
+        //  outside that assembly could ever reach it, and on 2026-09-16 it had ZERO
+        //  callers anywhere in the tree. The shortfall context lives with the build /
+        //  upgrade surface that is blocked, which is DeNelle.Village.
+        //
+        //  So the shortfall takes the same LATCH shape as the SKU and the door above,
+        //  for the same stated reason: the storefront host may not exist when the door
+        //  is walked through, and the read happens on its next render. In an artifact
+        //  with no Solana storefront nothing reads it and that is correct.
+        //
+        //  ⛔ THE STORE STILL CANNOT COMPUTE A SHORTFALL BY ITSELF and this does not
+        //     let it: a gap only exists relative to a thing the player is blocked ON.
+        //     This carries the caller's OWN numbers across the assembly line; it
+        //     derives nothing.
+        // ---------------------------------------------------------------------
+        private static string _pendingShortfallLabel;
+        private static int _pendingShortfallMissing;
+
+        /// <summary>
+        /// Latch the gap the next store open is a remedy for: the caller's own resource word
+        /// ("Wood"/"Iron"/"Stone"/"Crystals") and how many units short they are. A non-positive
+        /// <paramref name="missing"/> or a blank label CLEARS the latch - there is no such thing as
+        /// a zero shortfall, and half a latch would make the store claim a context it does not have.
+        /// </summary>
+        public static void RequestShortfall(string resourceLabel, int missing)
+        {
+            if (string.IsNullOrWhiteSpace(resourceLabel) || missing <= 0)
+            {
+                _pendingShortfallLabel = null;
+                _pendingShortfallMissing = 0;
+                FlowTrace.Step(TraceSystem, "RequestShortfall CLEARED (label='" +
+                    (resourceLabel ?? "<null>") + "' missing=" + missing + ").");
+                return;
+            }
+            _pendingShortfallLabel = resourceLabel.Trim();
+            _pendingShortfallMissing = missing;
+            FlowTrace.Step(TraceSystem, "RequestShortfall '" + _pendingShortfallLabel + "' x" +
+                missing + " latched.");
+        }
+
+        /// <summary>
+        /// Takes the pending shortfall and CLEARS it, so it is honoured exactly once. Returns false
+        /// when nothing is pending - the normal case on almost every open.
+        /// </summary>
+        public static bool ConsumeShortfall(out string resourceLabel, out int missing)
+        {
+            resourceLabel = _pendingShortfallLabel;
+            missing = _pendingShortfallMissing;
+            _pendingShortfallLabel = null;
+            _pendingShortfallMissing = 0;
+            return !string.IsNullOrEmpty(resourceLabel) && missing > 0;
+        }
+
+        /// <summary>True when a shortfall is waiting. Does NOT consume it.</summary>
+        public static bool HasPendingShortfall =>
+            !string.IsNullOrEmpty(_pendingShortfallLabel) && _pendingShortfallMissing > 0;
     }
 }
