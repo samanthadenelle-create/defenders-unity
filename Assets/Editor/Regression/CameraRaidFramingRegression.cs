@@ -48,6 +48,7 @@ namespace DeNelle.Editor.Regression
             CheckEnemyScanMask(failures);
             CheckRaidProfile(failures);
             CheckYawEvidenceGate(failures);
+            CheckOpenAirRaidTargetsGetTheRaidSeat(failures);
             CheckYawInstrumentPermanence(failures);
 
             reason = failures.Count == 0
@@ -460,6 +461,68 @@ namespace DeNelle.Editor.Regression
             if (SmartMobileCamera.ResolvesToRaidCameraProfile("Dungeon_HealersCottage"))
                 failures.Add("a dungeon resolves to the RAID profile, so the WO-920 locked dungeon "
                     + "seat is dead");
+        }
+
+        // ── (d2) WO-1770 — THE OPEN-AIR RAID TARGETS GET THE SAME SEAT ───────────────────────
+        //
+        // THE DEFECT WO-1770 OPENED WITH: WO-1765's three predicates all read HubScenes.IsRaid, which
+        // matches `RaidBase*` ONLY. `Garrison_*` and `Outpost1-2` are open-air assault targets baked
+        // outside the raid pipeline (HubScenes.cs:141-152), so every one of them kept the TOWN seat and
+        // the 220 deg/s recenter whip - the exact felt defect 1765 fixed, surviving in a scene family
+        // its gate never reached. Five Garrison_* scenes plus Outpost1/Outpost2 are in the build list.
+        //
+        // These are POSITIVE pins only. The ticket's "what NOT to touch" forbids widening the negative
+        // scope pins in CheckTownIsUntouched / CheckYawEvidenceGate, and nothing here does: no hub, no
+        // Village2 and no Dungeon_* name is added to any set. The one negative below is the opposite of
+        // a widening - it holds the dungeon that merely ENDS in "Outpost" out of the new term.
+        private static void CheckOpenAirRaidTargetsGetTheRaidSeat(List<string> failures)
+        {
+            // One representative per family. Named literally because these are not hub scenes (the
+            // hub-scene-literal lint's subject) and no const owns them: GarrisonRecipe derives the
+            // name from authored data at build time (GarrisonRecipe.cs:116), so there is nothing to
+            // resolve from - but each name below is in ProjectSettings/EditorBuildSettings.asset.
+            string[] openAir = { "Garrison_troll_outpost", "Garrison_frost_keep", "Garrison_hill_fort",
+                                 "Garrison_ruined_keep", "Garrison_village2_stronghold",
+                                 "Outpost1", "Outpost2" };
+
+            foreach (string scene in openAir)
+            {
+                if (!SmartMobileCamera.ResolvesToOpenAirRaidTarget(scene))
+                    failures.Add("'" + scene + "' is not recognised as an open-air raid target, so the "
+                        + "WO-1770 term does not reach it and it keeps the town seat");
+                if (!SmartMobileCamera.ResolvesToRaidCameraProfile(scene))
+                    failures.Add("'" + scene + "' does not resolve to the raid camera profile - an "
+                        + "open-air assault would ship the ~4.5 m town seat and the 220 deg/s recenter "
+                        + "whip, which is the WO-1770 defect verbatim");
+                if (!SmartMobileCamera.AppliesRaidScanNarrowing(scene))
+                    failures.Add("'" + scene + "' takes the raid seat but not the narrowed scan mask / "
+                        + "structure filter, so its walls would still be framing subjects");
+                if (!SmartMobileCamera.ShouldEmitYawEvidence(scene))
+                    failures.Add("'" + scene + "' takes the raid seat with NO [Flow:Camera] yaw "
+                        + "heartbeat - CLAUDE.md §12: the next yaw ticket in this scene family would "
+                        + "start from zero data, which is the silence WO-1765 was opened on");
+
+                // Same agreement invariant CheckTownIsUntouched asserts for the raid/town/dungeon set:
+                // the seat and the narrowing must be the SAME set of scenes or the mask moves in a
+                // scene that never took the seat.
+                if (SmartMobileCamera.AppliesRaidScanNarrowing(scene)
+                    != SmartMobileCamera.ResolvesToRaidCameraProfile(scene))
+                    failures.Add("for scene '" + scene + "' the scan-narrowing scope and the raid "
+                        + "camera profile disagree - the two must be the same set");
+            }
+
+            // KayKitChallengeOutpost is a DUNGEON that happens to end in "Outpost" (HubScenes.cs:174-177
+            // orders Classify for exactly this reason). It must keep the WO-920 locked dungeon seat.
+            // Resolved from the const, never typed.
+            if (SmartMobileCamera.ResolvesToOpenAirRaidTarget(DeNelle.Core.HubScenes.OutpostSceneName)
+                || SmartMobileCamera.ResolvesToRaidCameraProfile(DeNelle.Core.HubScenes.OutpostSceneName))
+                failures.Add("'" + DeNelle.Core.HubScenes.OutpostSceneName + "' is a DUNGEON but now "
+                    + "resolves to the open-air raid seat - the WO-920 locked dungeon camera is dead in "
+                    + "the starter outpost");
+
+            if (SmartMobileCamera.ResolvesToOpenAirRaidTarget(null)
+                || SmartMobileCamera.ResolvesToOpenAirRaidTarget(string.Empty))
+                failures.Add("an empty scene name resolved to 'open-air raid target'");
         }
 
         // ── (e) §12: THE YAW INSTRUMENT IS PERMANENT ─────────────────────────────────────────

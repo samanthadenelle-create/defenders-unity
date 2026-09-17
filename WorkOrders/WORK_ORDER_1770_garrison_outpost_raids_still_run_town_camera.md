@@ -1,6 +1,13 @@
 # WORK ORDER 1770 — `Garrison_*` / `Outpost1-2` raids still run the TOWN camera and the 220 deg/s whip
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
+
+**Implemented:** 2026-09-17 — one shared term, `SmartMobileCamera.ResolvesToOpenAirRaidTarget`
+(`HubScenes.IsEnemyOutpost && !HubScenes.IsDungeon`), OR'd into `ResolvesToRaidCameraProfile`,
+`AppliesRaidScanNarrowing` and `ShouldEmitYawEvidence`. `HubScenes.IsRaid` is UNTOUCHED, so the HUD
+combat-cluster gate and `RaidDeployController` are unchanged. New positive pins in
+`CameraRaidFramingRegression.CheckOpenAirRaidTargetsGetTheRaidSeat`; no negative scope pin widened.
+Awaiting the lead's combined-tree gate, then the owner felt-test (AC3).
 
 **Minted:** 2026-09-16 by the lead from WO-1765 §17.2
 

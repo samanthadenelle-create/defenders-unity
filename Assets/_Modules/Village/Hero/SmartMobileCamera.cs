@@ -738,13 +738,46 @@ namespace DeNelle.Village
         private CameraSceneProfile _activeProfile = CameraSceneProfile.Town;
 
         /// <summary>
+        /// WO-1770 — the OPEN-AIR enemy raid targets: <c>Garrison_*</c> (five baked scenes) plus the
+        /// two hand-named <c>Outpost1</c>/<c>Outpost2</c>, resolved through the canonical
+        /// <see cref="DeNelle.Core.HubScenes.IsEnemyOutpost"/> and NEVER a fresh
+        /// <c>StartsWith("Garrison")</c>.
+        /// <para>
+        /// ⛔ THEY ARE NOT <c>HubScenes.IsRaid</c> — THAT PREDICATE IS SHARED WITH THE HUD COMBAT-CLUSTER
+        /// GATE AND <c>RaidDeployController</c>'s SELF-INSTALL, so widening it to reach the camera would
+        /// change two systems this ticket never tested (WO-1770 §"What NOT to touch"). The camera asks a
+        /// narrower question — "does the player feel this as an assault seat?" — and answers it here,
+        /// locally, without touching the shared classifier.
+        /// </para>
+        /// <para>
+        /// The <c>!IsDungeon</c> term mirrors <c>HubScenes.Classify</c>'s deliberate ordering
+        /// (<c>HubScenes.cs:174-177</c>): <c>KayKitChallengeOutpost</c> is a DUNGEON that merely ends in
+        /// "Outpost" and must keep the dungeon seat. It does not currently match
+        /// <c>StartsWith("Outpost")</c>, so the term is a guard against a FUTURE cave-outpost name,
+        /// not a live correction.
+        /// </para>
+        /// </summary>
+        public static bool ResolvesToOpenAirRaidTarget(string sceneName)
+            => DeNelle.Core.HubScenes.IsEnemyOutpost(sceneName)
+               && !DeNelle.Core.HubScenes.IsDungeon(sceneName);
+
+        /// <summary>
         /// WO-1765 — the profile a scene name resolves to. Pure and public so the regression drives
         /// the routing instead of grepping for a gate: <c>IsRaid</c> is tested FIRST, mirroring
         /// <c>HubScenes.Classify</c> (<c>HubScenes.cs:169-176</c>), so a name that somehow matched
         /// both can never land on the dungeon seat in a raid.
+        /// <para>
+        /// ⚠ WO-1770 ADDED THE SECOND TERM. Shipped 1765 matched <c>RaidBase*</c> ONLY, so a
+        /// <c>Garrison_*</c> / <c>Outpost1-2</c> assault ran the TOWN seat and the 220 deg/s recenter
+        /// whip — the same felt defect 1765 was raised on, in a scene family its gate never reached.
+        /// Both open-air raid targets and <c>RaidBase*</c> now resolve to
+        /// <see cref="CameraSceneProfile.Raid"/>; see <see cref="ResolvesToOpenAirRaidTarget"/> for why
+        /// this is a local term rather than a widened <c>HubScenes.IsRaid</c>.
+        /// </para>
         /// </summary>
         public static bool ResolvesToRaidCameraProfile(string sceneName)
-            => DeNelle.Core.HubScenes.IsRaid(sceneName);
+            => DeNelle.Core.HubScenes.IsRaid(sceneName)
+               || ResolvesToOpenAirRaidTarget(sceneName);
 
         /// <summary>
         /// WO-1765 — does this scene emit the <c>[Flow:Camera]</c> yaw heartbeat + spike edge?
@@ -755,9 +788,18 @@ namespace DeNelle.Village
         /// yaw evidence while the owner was reporting that the camera rotates. Pinned by the
         /// regression so it can never go silent in a raid again.
         /// </para>
+        /// <para>
+        /// ⚠ WO-1770 ADDED THE OPEN-AIR RAID TARGETS FOR EXACTLY THE SAME REASON (§12 — no silent
+        /// failures). A <c>Garrison_*</c> now takes the raid seat; leaving the yaw heartbeat gated on
+        /// <c>IsRaid</c> would put that seat on screen with ZERO camera evidence in the capture, which
+        /// is the precise silence that cost WO-1765 a 32.8 MB logcat with nothing in it. Instrumentation
+        /// follows the profile, always.
+        /// </para>
         /// </summary>
         public static bool ShouldEmitYawEvidence(string sceneName)
-            => DeNelle.Core.HubScenes.IsRaid(sceneName) || DeNelle.Core.HubScenes.IsDungeon(sceneName);
+            => DeNelle.Core.HubScenes.IsRaid(sceneName)
+               || DeNelle.Core.HubScenes.IsDungeon(sceneName)
+               || ResolvesToOpenAirRaidTarget(sceneName);
 
         /// <summary>
         /// WO-1765 — does this scene get the NARROWED enemy-scan mask and the structure filter?
@@ -776,9 +818,24 @@ namespace DeNelle.Village
         /// pinned <see cref="IsFramingSubject"/> would stay green if someone applied it globally and
         /// moved the town.
         /// </para>
+        /// <para>
+        /// ⚠ WO-1770 ADDED THE OPEN-AIR RAID TARGETS, AND THE RULING ABOVE IS UNCHANGED BY IT. The
+        /// scope grows to the scenes that now take the raid SEAT and no further, and the ruling's own
+        /// test — "is this mask ours, or the owner's baked one?" — answers YES here: all seven open-air
+        /// scenes bake NO camera at all (grepped 2026-09-17: <c>^Camera:</c>, <c>SmartMobileCamera</c>
+        /// and <c>_enemyMask</c> each return ZERO hits in every <c>Garrison_*.unity</c> and in
+        /// <c>Outpost1/2.unity</c>, and <c>GarrisonSceneBuilder</c> never mentions a camera), so the
+        /// camera there is runtime-attached and took <c>~0</c> exactly like a <c>RaidBase*</c> one.
+        /// There is no baked <c>m_Bits: 256</c> to preserve. No hub, no <c>Village2</c>, no dungeon is
+        /// added. The set must stay identical to
+        /// <see cref="ResolvesToRaidCameraProfile"/>'s — <c>CameraRaidFramingRegression</c> asserts that
+        /// agreement scene by scene, which is why both read the same
+        /// <see cref="ResolvesToOpenAirRaidTarget"/> term instead of each carrying its own copy.
+        /// </para>
         /// </summary>
         public static bool AppliesRaidScanNarrowing(string sceneName)
-            => DeNelle.Core.HubScenes.IsRaid(sceneName);
+            => DeNelle.Core.HubScenes.IsRaid(sceneName)
+               || ResolvesToOpenAirRaidTarget(sceneName);
 
         private void ApplyDungeonProfileIfNeeded(string why)
         {
