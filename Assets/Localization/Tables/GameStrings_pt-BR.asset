@@ -2209,6 +2209,34 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143553
+  - m_Id: 44124330326011904
+    m_Localized: "Uma vit\xF3ria de {0} estrelas promove cada soldado sobrevivente."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
+  - m_Id: 44124330363760640
+    m_Localized: "O dep\xF3sito estava cheio: o excedente fica na sua Reserva de
+      Raide at\xE9 voc\xEA abrir espa\xE7o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760641
+    m_Localized: "O dep\xF3sito estava cheio e sua Reserva de Raide chegou ao limite:
+      parte do esp\xF3lio n\xE3o p\xF4de ser guardada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760642
+    m_Localized: "\xD3LEO DA LANTERNA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760643
+    m_Localized: "POUCO \xD3LEO - ENCONTRE UMA PEDRA DE \xD3LEO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760644
+    m_Localized: "Uma vit\xF3ria de {0} estrelas torna esta base sua."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143553
   references:
     version: 2
     RefIds:
@@ -2275,3 +2303,5 @@ MonoBehaviour:
         - id: 43874653886263326
         - id: 43874653886263327
         - id: 43874653886263328
+        - id: 44124330326011904
+        - id: 44124330363760644

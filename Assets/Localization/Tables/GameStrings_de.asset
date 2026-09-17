@@ -2220,6 +2220,34 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143554
+  - m_Id: 44124330326011904
+    m_Localized: "Ein Sieg mit {0} Sternen bef\xF6rdert jeden \xFCberlebenden K\xE4mpfer."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
+  - m_Id: 44124330363760640
+    m_Localized: "Das Lager war voll \u2014 der \xDCberschuss bleibt in deinem Raubzug-Depot,
+      bis du Platz schaffst."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760641
+    m_Localized: "Das Lager war voll und dein Raubzug-Depot ist am Limit \u2014 ein
+      Teil der Beute lie\xDF sich nicht bewahren."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760642
+    m_Localized: "LATERNEN\xD6L"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760643
+    m_Localized: "WENIG \xD6L - FINDE EINEN \xD6LSTEIN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760644
+    m_Localized: Ein Sieg mit {0} Sternen macht diese Basis zu deiner.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143554
   references:
     version: 2
     RefIds:
@@ -2286,3 +2314,5 @@ MonoBehaviour:
         - id: 43874653886263326
         - id: 43874653886263327
         - id: 43874653886263328
+        - id: 44124330326011904
+        - id: 44124330363760644

@@ -2205,6 +2205,34 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143552
+  - m_Id: 44124330326011904
+    m_Localized: Una victoria de {0} estrellas asciende a cada tropa superviviente.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 44124330363760640
+    m_Localized: "El almac\xE9n estaba lleno: el excedente queda en tu Reserva de
+      Incursi\xF3n hasta que hagas espacio."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760641
+    m_Localized: "El almac\xE9n estaba lleno y tu Reserva de Incursi\xF3n lleg\xF3
+      a su l\xEDmite: parte del bot\xEDn no se pudo conservar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760642
+    m_Localized: ACEITE DE LINTERNA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760643
+    m_Localized: POCO ACEITE - BUSCA UNA PIEDRA DE ACEITE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760644
+    m_Localized: Una victoria de {0} estrellas te entrega esta base.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
   references:
     version: 2
     RefIds:
@@ -2271,3 +2299,5 @@ MonoBehaviour:
         - id: 43874653886263326
         - id: 43874653886263327
         - id: 43874653886263328
+        - id: 44124330326011904
+        - id: 44124330363760644

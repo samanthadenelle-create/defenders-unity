@@ -1991,6 +1991,30 @@ MonoBehaviour:
     m_Key: armyScreen.dismissedFree
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330326011904
+    m_Key: raid.veterancyDenied
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760640
+    m_Key: raid.cacheHeld
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760641
+    m_Key: raid.cacheFull
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760642
+    m_Key: dungeon.oilCaption
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760643
+    m_Key: dungeon.oilLowWarning
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760644
+    m_Key: ownedTown.captureRequirement
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

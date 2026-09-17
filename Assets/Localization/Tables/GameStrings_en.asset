@@ -2173,6 +2173,34 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888474672496640
+  - m_Id: 44124330326011904
+    m_Localized: A {0}-star clear promotes every surviving troop.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 44124330363760640
+    m_Localized: The bank was full - the overflow is held in your Raid Cache until
+      you make room.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760641
+    m_Localized: The bank was full and the Raid Cache is at its limit - part of the
+      haul could not be kept.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760642
+    m_Localized: LANTERN OIL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760643
+    m_Localized: LOW OIL - FIND AN OIL STONE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760644
+    m_Localized: A {0}-star clear takes this base for your own.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
   references:
     version: 2
     RefIds:
@@ -2239,3 +2267,5 @@ MonoBehaviour:
         - id: 43874653886263326
         - id: 43874653886263327
         - id: 43874653886263328
+        - id: 44124330326011904
+        - id: 44124330363760644

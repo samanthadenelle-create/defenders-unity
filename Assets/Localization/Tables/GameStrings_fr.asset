@@ -2230,6 +2230,34 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143555
+  - m_Id: 44124330326011904
+    m_Localized: "Une victoire \xE0 {0} \xE9toiles promeut chaque soldat survivant."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
+  - m_Id: 44124330363760640
+    m_Localized: "Les r\xE9serves \xE9taient pleines : le surplus attend dans votre
+      Cache de raid jusqu'\xE0 ce que vous fassiez de la place."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760641
+    m_Localized: "Les r\xE9serves \xE9taient pleines et votre Cache de raid a atteint
+      sa limite : une partie du butin n'a pu \xEAtre conserv\xE9e."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760642
+    m_Localized: HUILE DE LANTERNE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760643
+    m_Localized: "HUILE FAIBLE - TROUVEZ UNE PIERRE \xC0 HUILE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760644
+    m_Localized: "Une victoire \xE0 {0} \xE9toiles vous donne cette base."
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143555
   references:
     version: 2
     RefIds:
@@ -2296,3 +2324,5 @@ MonoBehaviour:
         - id: 43874653886263326
         - id: 43874653886263327
         - id: 43874653886263328
+        - id: 44124330326011904
+        - id: 44124330363760644
