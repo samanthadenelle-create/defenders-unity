@@ -41,8 +41,19 @@
 // 'Enemies/OrcTex/Orc_Warrior_basecolor' one second after the hero prefab throw, both
 // tagged "HeroAssets" — one symptom, two files. The owner's 2026-09-14 bounce landed after
 // HeroAssetLoader.cs/HeroContentPrewarmer.cs were already fixed and committed
-// (a4c0e7cd1, e54ebe540); HeroTextureLoader.cs:79 was the one remaining unguarded
-// WaitForCompletion call in this seam, confirmed at source, and is closed by this WO.
+// (a4c0e7cd1, e54ebe540); HeroTextureLoader.cs's unguarded WaitForCompletion (then at :79,
+// now at :98 — do not re-cite a line number, they move) was the one remaining unguarded call
+// in this seam, confirmed at source, and is closed by this WO.
+//
+// SCOPE, WIDENED AGAIN 2026-09-17 (cases 5 + 6): guarding that call stopped the THROW and
+// left the DEFECT. On WebGL the guarded branch is compiled out and
+// `Assets/Resources/Heroes/Textures` no longer exists, so a registered atlas resolved to
+// null and HeroBodySwapper fell back to a flat class TINT — the right body wearing no skin,
+// which is the same player-visible "the hero art is the fallback" this ticket is named for.
+// The atlas addresses also lived as literals inside HeroBodySwapper (Village), where
+// HeroContentPrewarmer in Core cannot see them, so the prewarm could not have held them even
+// if it had tried. Case 5 proves the atlas is served from the warm dictionary; case 6 proves
+// the addresses have exactly one owner and that both the prewarm and the renderer use it.
 // =============================================================================
 
 using System;
@@ -84,6 +95,13 @@ namespace DeNelle.Editor.Regression
         /// separate WO existed for it, so it is closed here.</summary>
         private const string TextureLoaderSrc = "Assets/_Modules/Core/Addressables/HeroTextureLoader.cs";
 
+        /// <summary>The renderer that BINDS the atlases (Village). It must hold no atlas address of
+        /// its own: an address written there is invisible to HeroContentPrewarmer in Core, so the
+        /// prewarm cannot hold it and the WebGL hero renders in a flat class tint (WO-1701, the
+        /// half that survived the first pass). Read as text only - this suite does not, and must
+        /// not, take an assembly dependency on Village.</summary>
+        private const string SwapperSrc = "Assets/_Modules/Village/Hero/HeroBodySwapper.cs";
+
         /// <summary>The warm-cache probe that must appear BEFORE any Addressables load.</summary>
         private const string WarmProbe = "HeroContentPrewarmer.TryGetWarm";
 
@@ -112,6 +130,8 @@ namespace DeNelle.Editor.Regression
                 Case2_WarmCacheServesTheLoader(failures, log);
                 Case3_DetectorDiscriminates(failures, log);
                 Case4_FailedBodyCannotPassReady(failures, log);
+                Case5_WarmCacheServesTheTextureLoader(failures, log);
+                Case6_AtlasAddressesHaveOneOwner(failures, log);
             }
             catch (Exception ex)
             {
@@ -130,7 +150,11 @@ namespace DeNelle.Editor.Regression
                      "before it touches Addressables at all, and a warm-cached address is served " +
                      "straight out of that dictionary - so the WebGL player, which throws on any " +
                      "synchronous Addressable load, has a path to the real hero body instead of the " +
-                     "Blink base placeholder, and the hero/enemy textures no longer throw either.";
+                     "Blink base placeholder. The ATLAS half holds too: the class -> atlas addresses " +
+                     "have one owner (HeroTextureLoader's map), the prewarm warms that map as " +
+                     "Texture2D, HeroTextureLoader serves a warm-cached atlas out of the dictionary, " +
+                     "and HeroBodySwapper carries no atlas literal of its own - so the hero arrives " +
+                     "in its own skin rather than a flat class tint.";
             Debug.Log(log.ToString());
             return true;
         }
@@ -410,6 +434,176 @@ namespace DeNelle.Editor.Regression
             if (HeroContentPrewarmer.TryGetWarm<GameObject>(address, out _))
                 failures.Add("[warm] ClearWarmForTests left '" + address + "' in the warm cache. A test " +
                              "seed that outlives its case turns every later hero resolve into a lie.");
+        }
+
+        // =====================================================================
+        //  Case 5 - a warm-cached ATLAS is served from the dictionary
+        // -----------------------------------------------------------------------------
+        //  WO-1701 second pass (2026-09-17). Case 2 proves the BODY reaches the player on
+        //  WebGL; this proves the SKIN does. Without it the first pass's outcome was a
+        //  correct body wearing a flat class tint, because Heroes/Textures/* is remote with
+        //  no Resources copy and HeroTextureLoader's sync branch is compiled out on WebGL —
+        //  which is the same player-visible complaint ("the hero art is the fallback") that
+        //  opened this ticket, one layer out.
+        // =====================================================================
+        private static void Case5_WarmCacheServesTheTextureLoader(List<string> failures, StringBuilder log)
+        {
+            // Deliberately NOT a real atlas address: nothing in the catalog and nothing in
+            // Resources may be able to answer it, or the assertion below proves nothing.
+            string address = HeroContentPrewarmer.TexAddrPrefix + ProbeSlug;
+            Texture2D probe = null;
+            try
+            {
+                bool inCatalog = HeroAssetLoader.AddressableRegistered<Texture2D>(address);
+                Texture2D inResources = Resources.Load<Texture2D>(address);
+                if (inCatalog || inResources != null)
+                {
+                    failures.Add("[warm-tex] the throwaway probe address '" + address + "' is answerable " +
+                                 "without the warm cache (Addressables registered=" + inCatalog +
+                                 ", Resources=" + (inResources == null ? "null" : "present") + "), so this " +
+                                 "case can no longer prove the dictionary was the source. Change ProbeSlug.");
+                    return;
+                }
+
+                probe = new Texture2D(2, 2) { name = "wo1701_warm_tex_probe" };
+                probe.hideFlags = HideFlags.HideAndDontSave;
+                HeroContentPrewarmer.SeedWarmForTests(typeof(Texture2D), address, probe);
+
+                Texture2D hot = HeroTextureLoader.Load(address, optional: true);
+                if (!ReferenceEquals(hot, probe))
+                {
+                    failures.Add("[warm-tex] HeroTextureLoader.Load did NOT return the warm-cached texture " +
+                                 "for '" + address + "' (got " + (hot == null ? "null" : "'" + hot.name + "'") +
+                                 "). That address resolves nowhere else in this project - checked one moment " +
+                                 "earlier - so the texture loader is not reading the warm dictionary first, and " +
+                                 "a WebGL player has no way to reach its hero's atlas: the body renders in a " +
+                                 "flat class tint instead of its own skin.");
+                    return;
+                }
+
+                log.AppendLine("OK: '" + address + "' is unanswerable without the cache, and HeroTextureLoader.Load " +
+                               "returned the warm-cached texture with no Addressables call");
+            }
+            catch (Exception ex)
+            {
+                failures.Add("[warm-tex] threw: " + ex.GetType().Name + ": " + ex.Message);
+            }
+            finally
+            {
+                try { HeroContentPrewarmer.ClearWarmForTests(); } catch { }
+                if (probe != null)
+                {
+                    try { UnityEngine.Object.DestroyImmediate(probe); } catch { }
+                }
+            }
+        }
+
+        // =====================================================================
+        //  Case 6 - the class -> atlas addresses have exactly ONE owner
+        // -----------------------------------------------------------------------------
+        //  The prewarm can only hold what it can NAME. While the addresses lived as literals
+        //  inside HeroBodySwapper (Village, invisible to Core) the warm pass could not hold
+        //  them, which is precisely how the atlas half of this defect survived the first pass.
+        //  So: the map answers for every class, the prewarm consumes THAT map, and the
+        //  renderer no longer carries its own copy of any atlas string.
+        // =====================================================================
+        private static void Case6_AtlasAddressesHaveOneOwner(List<string> failures, StringBuilder log)
+        {
+            // 1. The map answers, and the address it yields is the one it warms.
+            foreach (DeNelle.Core.State.HeroClass cls in
+                     Enum.GetValues(typeof(DeNelle.Core.State.HeroClass)))
+            {
+                string basecolor = HeroTextureLoader.BasecolorAddressFor(cls);
+                if (string.IsNullOrEmpty(basecolor))
+                {
+                    failures.Add("[atlas] HeroTextureLoader.BasecolorAddressFor(" + cls + ") returned nothing. " +
+                                 "Every playable class had a basecolor atlas when this map was extracted from " +
+                                 "HeroBodySwapper; a class with none renders as a flat tint on every platform.");
+                    continue;
+                }
+
+                var warmable = new List<string>(HeroTextureLoader.WarmableAddresses(cls.ToString()));
+                if (!warmable.Contains(basecolor))
+                    failures.Add("[atlas] WarmableAddresses(\"" + cls + "\") does not include that class's own " +
+                                 "basecolor '" + basecolor + "'. The prewarm warms WarmableAddresses and the " +
+                                 "renderer binds BasecolorAddressFor - when they disagree, WebGL gets the tint.");
+
+                string normal = HeroTextureLoader.NormalAddressFor(cls);
+                if (!string.IsNullOrEmpty(normal) && !warmable.Contains(normal))
+                    failures.Add("[atlas] WarmableAddresses(\"" + cls + "\") omits the normal map '" + normal + "'.");
+            }
+
+            // The save stores the class name, so an unknown/empty name must yield nothing, never throw.
+            foreach (string junk in new[] { null, "", "NotAClass" })
+            {
+                var none = new List<string>(HeroTextureLoader.WarmableAddresses(junk));
+                if (none.Count != 0)
+                    failures.Add("[atlas] WarmableAddresses('" + (junk ?? "null") + "') yielded " + none.Count +
+                                 " address(es); an unrecognised class name must yield nothing.");
+            }
+
+            // 2. The prewarm actually warms textures through that map.
+            string prewarmer = Code(ReadOrNull(PrewarmerSrc) ?? string.Empty);
+            if (prewarmer.IndexOf("HeroTextureLoader.WarmableAddresses", StringComparison.Ordinal) < 0)
+                failures.Add("[atlas] " + PrewarmerSrc + " no longer warms HeroTextureLoader.WarmableAddresses. " +
+                             "The body would still load on WebGL and the hero would still render in a flat " +
+                             "class tint - the exact outcome of WO-1701's first pass.");
+            else if (prewarmer.IndexOf("WarmOne<Texture2D>", StringComparison.Ordinal) < 0)
+                failures.Add("[atlas] " + PrewarmerSrc + " names the atlas map but never loads a Texture2D " +
+                             "(no WarmOne<Texture2D>), so the warm cache holds no atlas.");
+
+            // 3. The texture loader probes the cache before Addressables, same rule as case 1.
+            string texLoader = Code(ReadOrNull(TextureLoaderSrc) ?? string.Empty);
+            int texWarmAt = texLoader.IndexOf(WarmProbe, StringComparison.Ordinal);
+            int texLoadAt = texLoader.IndexOf(AddrLoad, StringComparison.Ordinal);
+            if (texWarmAt < 0)
+                failures.Add("[atlas] " + TextureLoaderSrc + " never calls " + WarmProbe + ". Guarding the " +
+                             "synchronous call without a warm branch only converts a logged throw into a " +
+                             "silent null - the hero loses its skin either way.");
+            else if (texLoadAt >= 0 && texWarmAt > texLoadAt)
+                failures.Add("[atlas] " + TextureLoaderSrc + " calls " + AddrLoad + " before " + WarmProbe + ".");
+
+            // 4. The renderer carries no second copy of any atlas address. Comment LINES are
+            //    dropped first and string literals kept - the inverse of Code() - because the
+            //    whole point is to find a live literal, while the file's art ledger deliberately
+            //    NAMES the old addresses in prose and must not trip this.
+            const string AtlasLiteral = "\"" + "Heroes/Textures/";
+            string swapperRaw = ReadOrNull(SwapperSrc);
+            if (swapperRaw == null)
+            {
+                failures.Add("[atlas] " + SwapperSrc + " is missing - the renderer this map serves has moved.");
+            }
+            else if (StripCommentLines(swapperRaw).IndexOf(AtlasLiteral, StringComparison.Ordinal) >= 0)
+            {
+                failures.Add("[atlas] " + SwapperSrc + " still contains a live " + AtlasLiteral +
+                             "...\" literal. An atlas address written here cannot be seen by " +
+                             "HeroContentPrewarmer (Core cannot reference Village), so the prewarm cannot hold " +
+                             "it and a WebGL player renders that class as a flat tint. Add the address to " +
+                             "HeroTextureLoader's map and bind it from there.");
+            }
+            else
+            {
+                log.AppendLine("OK: every class's atlas is owned by HeroTextureLoader's map, the prewarm warms " +
+                               "that map as Texture2D, the texture loader probes the cache first, and " +
+                               SwapperSrc + " holds no live atlas literal");
+            }
+        }
+
+        /// <summary>
+        /// Source with whole-line <c>//</c> comments removed and everything else - string literals
+        /// included - left intact. The opposite of <see cref="Code"/>: case 6 hunts a live string
+        /// literal, so blanking literals would make it unfalsifiable.
+        /// </summary>
+        private static string StripCommentLines(string source)
+        {
+            if (string.IsNullOrEmpty(source)) return string.Empty;
+            var sb = new StringBuilder(source.Length);
+            foreach (string row in source.Replace("\r\n", "\n").Split('\n'))
+            {
+                if (row.TrimStart().StartsWith("//", StringComparison.Ordinal)) continue;
+                sb.Append(row).Append('\n');
+            }
+            return sb.ToString();
         }
 
         // =====================================================================

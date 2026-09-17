@@ -37,6 +37,14 @@
 // ResourceManager can be pumped), and PARKS the loaded objects in a warm dictionary the
 // loader reads first. Same shape as StructureContentWarmer.TryGet, for the same reason.
 //
+// !! AND THE ATLASES, NOT ONLY THE BODY (WO-1701 second pass, 2026-09-17). The first pass
+// warmed the prefab + controller and deliberately warmed NO texture, which left the same
+// defect standing one layer out: the right body loaded and then rendered in a flat class
+// TINT, because Heroes/Textures/* is remote with no Resources copy and HeroTextureLoader's
+// sync branch is compiled out on WebGL too. The warm pass now also holds THE CHOSEN CLASS'S
+// atlases - see the comment in WarmAssets for why only that class's, and not the whole
+// 44 MB shared bundle.
+//
 // THE WARM ENTRIES ARE NEVER RELEASED. That is deliberate and matches the loader's own
 // documented handle policy: parity with Resources.Load, which never unloads. A released
 // handle lets the bundle unload and the next resolve is back on the cold path that
@@ -435,6 +443,18 @@ namespace DeNelle.Core
         /// <summary>
         /// Reject Ready when a registered hero body was not retained by the async warm pass.
         /// Optional controller misses retain the existing local controller fallback.
+        /// <para>⚠ A MISSING ATLAS DELIBERATELY DOES *NOT* BLOCK (decided 2026-09-17, WO-1701
+        /// second pass). The two failures are not the same severity: no BODY means the player is
+        /// dropped in as a placeholder/naked base and the game is not playable as designed, which
+        /// is what CLAUDE.md section 16's "never rely on the owner's eyes" gate exists to stop; no
+        /// ATLAS means the correct body renders in a flat class tint - degraded, ugly, reported,
+        /// but playable, and the tint fallback is long-standing authored design
+        /// (HeroBodySwapper.ApplyClassTint). Blocking world entry on a texture would invent a NEW
+        /// way to make the game unreachable - one un-pushed atlas would hold every player on the
+        /// load screen - which this ticket never asked for. So a texture miss is LOUD instead:
+        /// WarmOne logs FlowTrace.Fail and HeroTextureLoader logs FlowTrace.Fail naming the tint
+        /// fallback, both of which land in break-log.jsonl and reach a seat via the section 14
+        /// F8 harness without the owner having to notice a grey hero.</para>
         /// </summary>
         // Download success is not asset-load success. A registered body with no retained
         // object cannot be resolved by the WebGL loader; keep the existing Retry screen.
@@ -456,6 +476,19 @@ namespace DeNelle.Core
             return true;
         }
 
+        /// <summary>
+        /// Turn this hero's already-downloaded bytes into RESIDENT objects, parked in the warm
+        /// dictionary the loaders read first. Two halves, both keyed off a single authority so the
+        /// warm pass can never hold a different string from the one a loader later asks for:
+        /// the BODY addresses from <see cref="HeroAssetLoader.WarmableAddresses"/> (prefab +
+        /// animator controller, for every body-variant slug of the class), and the ATLAS addresses
+        /// from <see cref="HeroTextureLoader.WarmableAddresses"/> (this class's basecolor + normal).
+        /// <para>Never throws and never blocks: every step is Guard.Try-wrapped and every load is
+        /// awaited by yielding, which is the whole reason this work happens in a coroutine here
+        /// instead of synchronously at the call site (see the file header's captured WebGL throw).
+        /// A step that cannot be completed is logged, skipped, and left for
+        /// <see cref="ValidateWarmBodies"/> to judge.</para>
+        /// </summary>
         private static IEnumerator WarmAssets(string slug)
         {
             int before = s_warm.Count;
@@ -481,16 +514,28 @@ namespace DeNelle.Core
                 }
             }
 
-            // THE ATLASES UNDER "Heroes/Textures/" ARE DELIBERATELY *NOT* WARMED HERE, and that
-            // is a decision, not an omission. They are one shared bundle covering EVERY class
-            // (the file header measures the folder in tens of MB); loading all of them would put
-            // every class's atlas in the heap of the one platform least able to afford it - a
-            // phone browser - while nothing reads them: HeroTextureLoader still resolves for
-            // itself and does not consult this cache. That is cost with no benefit. Resources.Load
-            // parity means on-demand, and the chosen class's atlas is what on-demand means.
-            // The follow-up that routes HeroTextureLoader through TryGetWarm must warm ONLY the
-            // chosen hero's atlases; the cache is already generic and keys Texture2D entries, so
-            // that change is a probe plus a guard. Recorded in the WO-1701 RESULT.
+            // THE CHOSEN CLASS'S ATLASES, AND ONLY THOSE (WO-1701 second pass, 2026-09-17).
+            // Until today this block explained why NO texture was warmed, and that decision left
+            // the ticket's own headline defect standing one layer out: the body loaded from the
+            // warm cache, then HeroBodySwapper asked HeroTextureLoader for the class's basecolor,
+            // the sync branch is compiled out on WebGL, `Assets/Resources/Heroes/Textures` does
+            // not exist any more (checked at source), so the atlas came back NULL and the hero
+            // rendered as a flat class TINT. Right body, no skin. A guarded throw is not a fix.
+            //
+            // The old block's actual argument - do not resident-load all 44 MB / 23 files of the
+            // shared Heroes/Textures bundle on a phone browser - IS STILL HONOURED, and is why
+            // this warms HeroTextureLoader.WarmableAddresses(slug) (this class's basecolor, plus
+            // its normal map where one exists) rather than every "Heroes/Textures/" key that
+            // CollectKeys downloads. Downloading the bundle and residently loading 23 textures
+            // out of it are different costs; we pay the first (unavoidable - it is one bundle)
+            // and not the second.
+            //
+            // `slug` is the CLASS NAME here (PrewarmChosenHero passes HeroClass.ToString()), which
+            // is exactly what WarmableAddresses parses. A body-variant slug like "KnightV3" yields
+            // nothing from it - correct, because the variants share the class's atlas, which the
+            // class name already warmed.
+            foreach (string texAddress in HeroTextureLoader.WarmableAddresses(slug))
+                yield return WarmOne<Texture2D>(texAddress);
 
             FlowTrace.Step("HeroPrewarm",
                 "warm pass for '" + slug + "' loaded " + (s_warm.Count - before) + " new asset(s) (" +

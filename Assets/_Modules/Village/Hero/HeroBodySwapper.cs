@@ -1753,8 +1753,18 @@ namespace DeNelle.Village
             // Each slot's own UVs still sample the single atlas correctly. So: combined
             // path for ALL classes now, not only the old CC5 Ranger/Cleric.
             bool isCc5Combined = true;
-            string texPath = cls switch
-            {
+            // WO-1701 (2026-09-17): the per-class atlas ADDRESSES moved to
+            // DeNelle.Core.HeroTextureLoader.BasecolorAddressFor / NormalAddressFor. They had to:
+            // HeroContentPrewarmer (Core) must warm exactly the atlas this method later binds, and
+            // Core cannot see this Village file, so the addresses living only here meant the
+            // prewarm could not hold them and the WebGL hero rendered as a flat class tint. The
+            // VALUES are unchanged - only their home moved - and the provenance comments below stay
+            // here with the mesh they explain. Never re-type an atlas name at a call site again;
+            // change it in the Core map, which the prewarm and this binding both read.
+            string texPath = DeNelle.Core.HeroTextureLoader.BasecolorAddressFor(cls);
+            // ── THE ART LEDGER for the addresses that map now holds. Read it for WHY each class
+            //    binds what it binds; the live VALUES are in HeroTextureLoader, not below. ──
+            //
                 // DEF-267: the Mage is a LEGACY Tripo body. The build log showed Mage rendering
                 // GREY because (a) its FBX material remap points at an EXTERNAL material that
                 // doesn't resolve in the build → no _BaseMap, and (b) NO texPath existed here so
@@ -1782,7 +1792,7 @@ namespace DeNelle.Village
                 // The name now describes the CLASS, not whichever model happened to be
                 // current, so the next body swap does not need a code change - matching
                 // the Ranger's "ranger_basecolor" convention.
-                HeroClass.Mage => "Heroes/Textures/mage_basecolor",
+                //   -> HeroTextureLoader.BasecolorAddressFor(HeroClass.Mage)
                 // DEF-267: the Knight is also a LEGACY Tripo body whose FBX material remap doesn't
                 // resolve → grey. WO-35 had returned null (to dodge a blood-splatter look the owner
                 // disliked), but that left the Knight GREY in the build, which is worse. Bind the
@@ -1825,14 +1835,14 @@ namespace DeNelle.Village
                 //   the mesh's OWN basecolor means every UV island samples its matching region — a real
                 //   textured armored Knight, not the flat-steel stopgap. If this load fails,
                 //   ApplyExtractedTexture returns false and Start() falls back to flat steel.
-                HeroClass.Knight => "Heroes/Textures/KnightArmored_basecolor",
+                //   -> HeroTextureLoader.BasecolorAddressFor(HeroClass.Knight)
                 // STALE-COMMENT CORRECTION 2026-08-05: the DEF-229 note here described a CC5/CC_Base
                 // archer "imported into Resources/Heroes/Ranger.fbx". That FBX is NOT in the tree
                 // (`git ls-files Assets/Resources/Heroes/Ranger.fbx` returns EMPTY) — the mesh half of
                 // DEF-229 never landed. This atlas path is kept because it still applies to whatever
                 // body DOES get built for the Ranger (Blink base, or the tracked KayKit fallback), and
                 // it is load-guarded below: a miss returns false and the class tint takes over.
-                HeroClass.Ranger => "Heroes/Textures/ranger_basecolor",
+                //   -> HeroTextureLoader.BasecolorAddressFor(HeroClass.Ranger)
                 // DEF-232/229 (2026-06-03): the Cleric (Healer/Elara body) is now the
                 // owner's fresh CC5/CC_Base adult cleric, imported Humanoid by
                 // PeopleCharacterImporter.ImportClericCC5 with its baked basecolor copied
@@ -1840,9 +1850,8 @@ namespace DeNelle.Village
                 // textured (was falling through to a flat class tint before).
                 // WO-286: the re-rigged Cleric is the only clean set — its own basecolor
                 // is Cleric_basecolor (the old HumanCleric_tex path was the prior CC5 body).
-                HeroClass.Cleric => "Heroes/Textures/Cleric_basecolor",
-                _ => null,
-            };
+                //   -> HeroTextureLoader.BasecolorAddressFor(HeroClass.Cleric)
+                // (an unmapped class returns null, same as the old `_ => null` arm)
             if (string.IsNullOrEmpty(texPath)) return false;
             // WO-545: route through the Addressables-first/Resources-fallback seam so this
             // atlas still loads once Heroes/Textures leaves Resources (was Resources.Load).
@@ -1918,7 +1927,10 @@ namespace DeNelle.Village
                     // its basecolor (medieval_knight_3d_model_normal, copied to Heroes/Textures/
                     // KnightArmored_normal, imported textureType=NormalMap). Bind it so the armour
                     // plates/cloth catch surface detail. Null-guarded — a missing normal is a clean no-op.
-                    var knightArmoredNormal = DeNelle.Core.HeroTextureLoader.Load("Heroes/Textures/KnightArmored_normal"); // WO-545 Addressables seam
+                    // WO-1701 (2026-09-17): the address comes from the Core map so the prewarm warms
+                    // the same string this binds (it was the literal "Heroes/Textures/KnightArmored_normal").
+                    var knightArmoredNormal = DeNelle.Core.HeroTextureLoader.Load(
+                        DeNelle.Core.HeroTextureLoader.NormalAddressFor(cls)); // WO-545 Addressables seam
                     if (knightArmoredNormal != null && baked.HasProperty("_BumpMap"))
                     {
                         baked.SetTexture("_BumpMap", knightArmoredNormal);
