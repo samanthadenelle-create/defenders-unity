@@ -189,7 +189,13 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-thirty-ninth pass): main line next free = **1821**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fortieth pass): main line next free = **1823**.
+> *(Lead PRE-ASSIGNED **1821** the raid dresser clads catapult hosts with the kit tower and leaves green fallback
+> pills under the siege art (Builds/raid-post-audit/RaidBase_IronBastion_RaidSpire.png, WO-1617 class; WO-1817 §4) and
+> **1822** CornerPost_* render clad-native (1.11 / 7.52 / 17.96 m) with no authored height (WO-1817 §4). Bumped
+> 1821 -> 1823 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-thirty-ninth pass): main line next free = **1821**.
 > *(Lead PRE-ASSIGNED **1820** the RaidSpire renders 0.14 m tall in three of four baked raid bases (IronBastion,
 > fortified_garrison, mage_enclave; only raider_camp_small is 14.4 m) - the raid's WIN target, found by the WO-1817
 > audit and identical in Builds/raid-rebake-1807.log, so pre-existing. Bumped 1820 -> 1821 in this SAME edit.)*

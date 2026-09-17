@@ -1215,7 +1215,31 @@ namespace DeNelle.Editor
                 var t = all[i];
                 if (t == null || t.name == null) continue;
                 if (t.name.StartsWith("Watchtower_") || t.name.StartsWith("CornerPost_"))
+                {
+                    // ⛔ WO-1821 - A CATAPULT KEEPS ITS AUTHORED SIEGE ART AND GETS NO TOWER CLAD.
+                    // The config author chose `tower_catapult` for these slots and the generator
+                    // honoured it: RaidBaseGenerator.IsAuthoredSiegeMachine exempts them from BOTH
+                    // EnsureUpright and the height fit, precisely so a low wide machine is not treated
+                    // as architecture. This method then clad them with the kit's TOWER anyway -
+                    // ReplaceChildrenWith destroys the children the siege art lives on - so ten of the
+                    // thirty-one turrets across two scenes rendered as watchtowers. Measured
+                    // 2026-09-17 (Builds/wo1821-diag.log): fortified_garrison/Watchtower_Archer_0 is
+                    // 'tower_catapult' yet renders size=(1.38,3,1.39) ratio=2.16, a slender tower;
+                    // raider_camp_small/Watchtower_Archer_0 likewise at (3.1,3,3.1). Same class as
+                    // WO-1617, and the same shape as WO-1619's "the dresser undoing the model the
+                    // generator had just fitted".
+                    // ONE DECIDER, NOT A SECOND ID LIST: IsAuthoredSiegeMachine already owns
+                    // "is this a siege machine?" - do not inline the ids here.
+                    if (IsSiegeHost(t.gameObject))
+                    {
+                        FlowTrace.Step(Sys, $"[wo1821] '{t.name}': authored SIEGE art kept - no tower clad " +
+                                            "(RaidBaseGenerator.IsAuthoredSiegeMachine). The generator " +
+                                            "exempted it from the upright and height corrections; cladding " +
+                                            "it would destroy the very art that exemption protects.");
+                        continue;
+                    }
                     ReplaceChildrenWith(t.gameObject, towerModel, t.name.StartsWith("Watchtower_"), wallH);
+                }
                 if (t.name == RaidSpireName())
                 {
                     string spireTok = def != null ? def.centralBuilding : null;
@@ -1224,6 +1248,19 @@ namespace DeNelle.Editor
                     ReplaceChildrenWith(t.gameObject, spireModel, keepComponents: true, wallH: wallH);
                 }
             }
+        }
+
+        /// <summary>
+        /// WO-1821 - is this post's turret an AUTHORED SIEGE MACHINE? Routes to
+        /// <see cref="RaidBaseGenerator.IsAuthoredSiegeMachine"/>, the ONE decider, keyed by the
+        /// catalog id <c>ArmTower</c> stamped on the host. A post with no DefenseTower (a corner post)
+        /// is never siege.
+        /// </summary>
+        internal static bool IsSiegeHost(GameObject host)
+        {
+            if (host == null) return false;
+            var tower = host.GetComponent<DefenseTower>();
+            return tower != null && RaidBaseGenerator.IsAuthoredSiegeMachine(tower.CatalogId);
         }
 
         private static string RaidSpireName()
@@ -1350,7 +1387,7 @@ namespace DeNelle.Editor
             //     BoxCollider that replaces the host's MeshCollider matches what the player sees;
             //   * the root art comes off only AFTER the clad exists, so a missing/unloadable model
             //     can never leave a post with no renderer at all (the WO-1807 rule, unchanged).
-            float fitH = FitCladToCadence(host, vis);
+            float fitH = FitCladToCadence(host, vis, wallH);
             SeatCladLocally(vis);
 
             StripRootArt(host, vis);
@@ -1401,9 +1438,9 @@ namespace DeNelle.Editor
         /// dresser overrides authored siege art on ten posts at all is its own defect - named, not
         /// fixed, WO-1817 s.4 item 1.)
         /// </summary>
-        private static float FitCladToCadence(GameObject host, GameObject clad)
+        private static float FitCladToCadence(GameObject host, GameObject clad, float wallH)
         {
-            float target = AuthoredHeightFor(host);
+            float target = AuthoredHeightFor(host, wallH);
             if (!(target > 0.01f) || float.IsNaN(target) || float.IsInfinity(target)) return 0f;
 
             float current = CladHeight(clad);
@@ -1444,7 +1481,7 @@ namespace DeNelle.Editor
         /// CornerPost_* answers 0: it carries neither component and has no authored target at all
         /// (WO-1817 s.4 item 2). It keeps rendering at clad-native size until that is ruled.
         /// </summary>
-        private static float AuthoredHeightFor(GameObject host)
+        private static float AuthoredHeightFor(GameObject host, float wallH)
         {
             var tower = host.GetComponent<DefenseTower>();
             if (tower != null && !string.IsNullOrEmpty(tower.CatalogId))
@@ -1452,6 +1489,12 @@ namespace DeNelle.Editor
 
             var spire = host.GetComponent<RaidSpire>();
             if (spire != null) return spire.VisualHeight;
+
+            // WO-1822 - a CornerPost_* carries neither component, so it had no target at all and
+            // rendered clad-native: 1.11 m in the camp and Iron Bastion, 7.52 m in the garrison,
+            // 17.96 m in the mage enclave. It now stands at the kit's own wall height + CornerRise.
+            if (host.name != null && host.name.StartsWith("CornerPost_", System.StringComparison.Ordinal))
+                return RaidBaseGenerator.CornerCadenceHeight(wallH);
 
             return 0f;
         }

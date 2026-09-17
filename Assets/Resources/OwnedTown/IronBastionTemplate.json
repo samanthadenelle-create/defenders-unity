@@ -3,7 +3,7 @@
     "entries": [
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.0",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.0",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -79,7 +79,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.1",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.1",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -155,7 +155,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.2",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.2",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -231,7 +231,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.3",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.3",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -307,7 +307,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.4",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.4",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -383,7 +383,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.5",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.5",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -459,7 +459,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.6",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.6",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -535,7 +535,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.7",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.7",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -611,7 +611,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.8",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.8",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -687,7 +687,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.9",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.9",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -763,7 +763,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.10",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.10",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -839,7 +839,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.11",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.11",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -915,7 +915,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.12",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.12",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -991,7 +991,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.13",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.13",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1067,7 +1067,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.14",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.14",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1143,7 +1143,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.15",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.15",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1219,7 +1219,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.16",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.16",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1295,7 +1295,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.17",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.17",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1371,7 +1371,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.18",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.18",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1447,7 +1447,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.19",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.19",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1523,7 +1523,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.20",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.20",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1599,7 +1599,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.21",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.21",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1675,7 +1675,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.22",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.22",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1751,7 +1751,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.23",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.23",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1827,7 +1827,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.24",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.24",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1903,7 +1903,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.25",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.25",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -1979,7 +1979,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.26",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.26",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2055,7 +2055,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.27",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.27",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2131,7 +2131,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.28",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.28",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2207,7 +2207,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.29",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.29",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2283,7 +2283,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.30",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.30",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2359,7 +2359,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.31",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.31",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2435,7 +2435,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.32",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.32",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2511,7 +2511,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.33",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.33",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2587,7 +2587,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.34",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.34",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2663,7 +2663,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.35",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.35",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2739,7 +2739,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.36",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.36",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2815,7 +2815,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.37",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.37",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2891,7 +2891,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.38",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.38",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -2967,7 +2967,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.39",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.39",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3043,7 +3043,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.40",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.40",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3119,7 +3119,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.41",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.41",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3195,7 +3195,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.42",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.42",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3271,7 +3271,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.43",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.43",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3347,7 +3347,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.44",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.44",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3423,7 +3423,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.45",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.45",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3499,7 +3499,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.46",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.46",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3575,7 +3575,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.47",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.47",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3651,7 +3651,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.48",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.48",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3727,7 +3727,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.49",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.49",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3803,7 +3803,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.50",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.50",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3879,7 +3879,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.51",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.51",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -3955,7 +3955,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.52",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.52",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4031,7 +4031,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.53",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.53",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4107,7 +4107,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.54",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.54",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4183,7 +4183,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.55",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.55",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4259,7 +4259,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.56",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.56",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4335,7 +4335,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.57",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.57",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4411,7 +4411,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.58",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.58",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4487,7 +4487,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.59",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.59",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4563,7 +4563,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.60",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.60",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4639,7 +4639,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.61",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.61",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4715,7 +4715,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.62",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.62",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4791,7 +4791,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.63",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.63",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4867,7 +4867,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.64",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.64",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -4943,7 +4943,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.65",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.65",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5019,7 +5019,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.66",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.66",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5095,7 +5095,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.67",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.67",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5171,7 +5171,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.68",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.68",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5247,7 +5247,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.69",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.69",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5323,7 +5323,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.70",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.70",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5399,7 +5399,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.71",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.71",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5475,7 +5475,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.72",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.72",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5551,7 +5551,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.73",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.73",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5627,7 +5627,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.74",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.74",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5703,7 +5703,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.75",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.75",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5779,7 +5779,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.76",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.76",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5855,7 +5855,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.77",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.77",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -5931,7 +5931,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.78",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.78",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6007,7 +6007,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.79",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.79",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6083,7 +6083,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.80",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.80",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6159,7 +6159,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.81",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.81",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6235,7 +6235,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.82",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.82",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6311,7 +6311,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.83",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.83",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6387,7 +6387,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.84",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.84",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6463,7 +6463,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.85",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.85",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6539,7 +6539,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.86",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.86",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6615,7 +6615,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.87",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.87",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6691,7 +6691,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.88",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.88",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6767,7 +6767,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.89",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.89",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6843,7 +6843,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.90",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.90",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6919,7 +6919,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.91",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.91",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -6995,7 +6995,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.92",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.92",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7071,7 +7071,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.93",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.93",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7147,7 +7147,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.94",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.94",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7223,7 +7223,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.95",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.95",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7299,7 +7299,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.96",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.96",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7375,7 +7375,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.97",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.97",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7451,7 +7451,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.98",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.98",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7527,7 +7527,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.99",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.99",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7603,7 +7603,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.100",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.100",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7679,7 +7679,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.101",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.101",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7755,7 +7755,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.102",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.102",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7831,7 +7831,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.103",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.103",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7907,7 +7907,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.104",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.104",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -7983,7 +7983,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.105",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.105",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8059,7 +8059,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.106",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.106",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8135,7 +8135,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.107",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.107",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8211,7 +8211,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.108",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.108",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8287,7 +8287,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.109",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.109",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8363,7 +8363,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.110",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.110",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8439,7 +8439,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.111",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.111",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8515,7 +8515,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.112",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.112",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8591,7 +8591,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.113",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.113",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8667,7 +8667,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.114",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.114",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8743,7 +8743,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.115",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.115",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8819,7 +8819,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.116",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.116",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8895,7 +8895,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.117",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.117",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -8971,7 +8971,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.118",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.118",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9047,7 +9047,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.119",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.119",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9123,7 +9123,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.120",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.120",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9199,7 +9199,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.121",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.121",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9275,7 +9275,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.122",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.122",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9351,7 +9351,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.123",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.123",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9427,7 +9427,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.124",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.124",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9503,7 +9503,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.125",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.125",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9579,7 +9579,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.126",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.126",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9655,7 +9655,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.127",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.127",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9731,7 +9731,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.128",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.128",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9807,7 +9807,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.129",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.129",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9883,7 +9883,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.130",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.130",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -9959,7 +9959,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.131",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.131",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10035,7 +10035,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.132",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.132",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10111,7 +10111,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.133",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.133",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10187,7 +10187,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.134",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.134",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10263,7 +10263,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.135",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.135",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10339,7 +10339,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.136",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.136",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10415,7 +10415,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.137",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.137",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10491,7 +10491,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.138",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.138",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10567,7 +10567,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.139",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.139",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10643,7 +10643,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.140",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.140",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10719,7 +10719,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.141",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.141",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10795,7 +10795,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.142",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.142",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10871,7 +10871,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.143",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.143",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -10947,7 +10947,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.144",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.144",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11023,7 +11023,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.145",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.145",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11099,7 +11099,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.146",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.146",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11175,7 +11175,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.147",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.147",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11251,7 +11251,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.148",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.148",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11327,7 +11327,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.149",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.149",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11403,7 +11403,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.150",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.150",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11479,7 +11479,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.151",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.151",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11555,7 +11555,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.152",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.152",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11631,7 +11631,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.153",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.153",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11707,7 +11707,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.154",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.154",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11783,7 +11783,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.155",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.155",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11859,7 +11859,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.156",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.156",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -11935,7 +11935,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.wall.157",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.wall.157",
                 "placement": {
                     "itemId": "wall_stone",
                     "cellX": 0,
@@ -12011,7 +12011,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.spire.0",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.spire.0",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12087,7 +12087,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.0",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.0",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12163,7 +12163,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.1",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.1",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12239,7 +12239,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.2",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.2",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12315,7 +12315,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.3",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.3",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12391,7 +12391,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.4",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.4",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12467,7 +12467,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.5",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.5",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12543,7 +12543,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.6",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.6",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12619,7 +12619,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.7",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.7",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12695,7 +12695,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.8",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.8",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,
@@ -12771,7 +12771,7 @@
         },
         {
             "structure": {
-                "instanceId": "owned:capture:eb99ccb3e678423f9443746dd0f20ec5:iron_bastion.tower.9",
+                "instanceId": "owned:capture:b9809da0dda449ffbdde2472925dadb2:iron_bastion.tower.9",
                 "placement": {
                     "itemId": "tower_arcane_spire",
                     "cellX": 0,

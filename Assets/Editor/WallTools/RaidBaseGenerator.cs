@@ -1607,6 +1607,54 @@ namespace DeNelle.Editor
         /// not a side effect of one: raising or lowering it here silently resizes every fitted turret
         /// in every baked raid scene.
         /// </summary>
+        /// <summary>
+        /// How far a CORNER POST's top stands above the wall it terminates, in metres (WO-1822).
+        ///
+        /// ⛔ THIS IS THE ONE INVENTED NUMBER IN THE RAID FIT PATH, AND IT IS LABELLED AS SUCH.
+        /// <see cref="TurretCadenceHeight"/> and <c>RaidSpire.VisualHeight</c> both RECOVER a value the
+        /// code already computed. A corner post has no such value: <see cref="BuildRing"/> creates the
+        /// four posts as deliberately VISUAL-ONLY ("they deliberately do NOT carry the 'Watchtower'
+        /// token", :1823) and <see cref="PlaceCornerTower"/> seats and faces them but NEVER scales
+        /// them. The only measurement the ring takes from the tower prefab is its XZ half-footprint.
+        /// So there is no authored corner height anywhere to read, and claiming otherwise would be a
+        /// fake authority - the copied-state failure CLAUDE.md §2/§5/§8 describe, wearing a disguise.
+        ///
+        /// 2.5 m is the LEAST-invented value available, not a preference: `fortified_garrison` ships
+        /// corner posts at 7.52 m over a 5.00 m wall = +2.52 m, and that is the ONE kit whose corners
+        /// were opened as a frame and read correctly
+        /// (Builds/raid-post-audit/RaidBase_fortified_garrison_CornerPost_Keep1_E.png). Every other kit
+        /// was visibly wrong - 1.11 m knee-high in the camp and Iron Bastion, 17.96 m in the mage
+        /// enclave, over four times its own wall.
+        ///
+        /// ⚠ OWNER-CHANGEABLE AND NOT YET RULED (WO-1822 §3). It is a single constant in a single place
+        /// precisely so the ruling is a one-line edit. Changing it resizes visible architecture in three
+        /// of four raid scenes; the default exists so those scenes stop shipping knee-high and 18 m
+        /// corners while the ruling is pending, NOT because the question is settled.
+        /// </summary>
+        internal const float CornerRise = 2.5f;
+
+        /// <summary>
+        /// The rendered height a corner post should stand at: the kit's own measured WALL height plus
+        /// <see cref="CornerRise"/> (WO-1822).
+        ///
+        /// ⛔ THE WALL HEIGHT IS THE ONE THE DRESSER MEASURED OFF THE KIT'S ART, NOT
+        /// <c>WallTierData.TargetHeight</c>. That was the first candidate and it is WRONG here: its
+        /// authored ladder is 3.0 / 3.8 / 4.5 / 5.2 (the TOWN wall levels), while the raid kits' wall
+        /// art measures 4.00 m (hexagon-green, dungeon-stone) and 5.00 m (synty-castle) - read off this
+        /// build's own `[wo1817] … wallH=` trace. Keying the corner to the town ladder would stand it
+        /// against a wall of a different height than the one actually beside it. RaidBaseDresser
+        /// already measures the kit's wall prefab once per scene (MeasureTallest) and passes it in, so
+        /// the number here is the same number the player sees.
+        ///
+        /// Returns 0 when the wall height is unknown, and the caller then leaves the clad alone rather
+        /// than fitting it to a guessed wall.
+        /// </summary>
+        internal static float CornerCadenceHeight(float wallH)
+        {
+            if (!(wallH > 0.01f) || float.IsNaN(wallH) || float.IsInfinity(wallH)) return 0f;
+            return wallH + CornerRise;
+        }
+
         internal static float TurretCadenceHeight(string catalogId)
         {
             var entry = FindStructure(catalogId);

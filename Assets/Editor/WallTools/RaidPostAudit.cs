@@ -123,6 +123,11 @@ namespace DeNelle.Editor
 
             Directory.CreateDirectory(OutFolder);
 
+            // A per-scene cache that outlives the run would measure one scene's walls against the
+            // next scene's corner posts (WO-1822).
+            _wallHeightScene = null;
+            _wallHeightCache = 0f;
+
             int shots = 0;
             int posts = 0;
             var defects = new List<string>();
@@ -177,6 +182,8 @@ namespace DeNelle.Editor
                         else
                             shots++;
                         log.AppendLine($"    PNG {subject.name,-22} -> {Path.GetFileName(outPath)}  {frame}");
+                        ReportNeighbours(scene, subject, log);
+                        ReportOwnMeshes(subject, log);
                     }
                 }
                 catch (Exception ex)
@@ -295,6 +302,9 @@ namespace DeNelle.Editor
             /// <summary>WO-1820: non-null when this host IS the raid objective (it stands on the
             /// KeepPlatform, not on the ground - see the seat pin).</summary>
             public RaidSpire Spire;
+            /// <summary>WO-1821: true when this turret is an authored siege machine, which by ruling
+            /// keeps its own art and receives NO tower clad.</summary>
+            public bool SiegeHost;
             /// <summary>WO-1817: the catalog id read off the host's DefenseTower, or "-".</summary>
             public string CatalogId;
 
@@ -324,6 +334,7 @@ namespace DeNelle.Editor
             if (tower != null && !string.IsNullOrEmpty(tower.CatalogId))
             {
                 r.CatalogId = tower.CatalogId;
+                r.SiegeHost = RaidBaseDresser.IsSiegeHost(host);
                 r.CadenceH = RaidBaseGenerator.TurretCadenceHeight(tower.CatalogId);
             }
             else
@@ -339,6 +350,15 @@ namespace DeNelle.Editor
                     r.Spire = spire;
                     r.CatalogId = string.IsNullOrEmpty(spire.CatalogId) ? "-" : spire.CatalogId;
                     r.CadenceH = spire.VisualHeight;
+                }
+                else if (host.name != null &&
+                         host.name.StartsWith("CornerPost_", StringComparison.Ordinal))
+                {
+                    // WO-1822 - the corner cadence is wall-relative, so the audit measures the SCENE's
+                    // own tallest wall rather than re-deriving a kit table. Same number the dresser
+                    // fitted against (its `wallH`), taken from the built result instead of the recipe.
+                    r.CatalogId = "corner";
+                    r.CadenceH = RaidBaseGenerator.CornerCadenceHeight(SceneWallHeight(host));
                 }
             }
 
@@ -370,6 +390,20 @@ namespace DeNelle.Editor
             }
 
             var faults = new List<string>();
+
+            // ⛔ WO-1821 - A SIEGE HOST HAS NO CLAD BY DESIGN, so the clad pins below cannot apply to
+            // it. It is NOT simply skipped: a catapult with neither clad nor authored art would be an
+            // INVISIBLE turret that still shoots, and a silent skip would pass it green. The pin that
+            // replaces them is "it renders SOMETHING".
+            if (r.SiegeHost)
+            {
+                if (!Encapsulate(host, out Bounds sb) || sb.size.y <= 0.01f)
+                    r.Defect = "it is an authored SIEGE turret (no tower clad, WO-1821) but carries NO " +
+                               "renderer at all - an invisible turret that still fires. Its catalog art " +
+                               "failed to load and nothing replaced it";
+                return r;
+            }
+
             if (r.RootRenderer)
                 faults.Add($"host ROOT still renders '{r.RootMesh}' (mat '{r.RootMaterial}', " +
                            $"{r.RootBounds.size.x:0.#}x{r.RootBounds.size.y:0.#}x{r.RootBounds.size.z:0.#}m) " +
@@ -421,6 +455,122 @@ namespace DeNelle.Editor
             if (faults.Count > 0) r.Defect = string.Join("; ", faults);
             return r;
         }
+
+        /// <summary>
+        /// WO-1821 — name every OTHER renderer standing inside the photographed post's own footprint.
+        ///
+        /// ⛔ WHY THIS EXISTS: a frame shows a coloured shape; it cannot say what that shape IS. The
+        /// 2026-09-17 Iron Bastion frames show bright GREEN bars standing inside the watchtower's
+        /// legs, and three plausible culprits were proposed from reading code alone
+        /// (`BuildFallbackTurret`'s primitive, a MagentaGuard placeholder, an unstripped host root).
+        /// Static reading LOCATES candidates and never CONCLUDES (CLAUDE.md §12) — so this prints the
+        /// GameObject name, mesh, material and bounds of whatever is actually standing there, and the
+        /// log settles it in one read instead of a cycle of guesses.
+        ///
+        /// Radius is the subject's own XZ half-extent plus a metre, so it reports things INSIDE or
+        /// touching the post, not the whole courtyard.
+        /// </summary>
+        private static void ReportNeighbours(UnityEngine.SceneManagement.Scene scene, GameObject subject,
+                                             StringBuilder log)
+        {
+            if (!Encapsulate(subject, out Bounds sb)) return;
+            float radius = Mathf.Max(sb.size.x, sb.size.z) * 0.5f + 1f;
+            var centre = new Vector2(sb.center.x, sb.center.z);
+
+            var hits = new List<string>();
+            var roots = scene.GetRootGameObjects();
+            for (int r = 0; r < roots.Length; r++)
+            {
+                var rends = roots[r].GetComponentsInChildren<Renderer>(true);
+                for (int i = 0; i < rends.Length; i++)
+                {
+                    var rend = rends[i];
+                    if (rend == null) continue;
+                    if (rend.transform.IsChildOf(subject.transform)) continue;   // the post itself
+                    var b = rend.bounds;
+                    if (Vector2.Distance(new Vector2(b.center.x, b.center.z), centre) > radius) continue;
+                    if (b.size.y > 12f) continue;        // walls/ground planes are context, not culprits
+
+                    var mf = rend.GetComponent<MeshFilter>();
+                    string mesh = mf != null && mf.sharedMesh != null ? mf.sharedMesh.name : "?";
+                    string mat = rend.sharedMaterial != null ? rend.sharedMaterial.name : "?";
+                    hits.Add($"'{rend.gameObject.name}' mesh='{mesh}' mat='{mat}' " +
+                             $"size={Fmt(b.size)} minY={b.min.y:0.##}");
+                    if (hits.Count >= 8) break;
+                }
+                if (hits.Count >= 8) break;
+            }
+
+            if (hits.Count == 0) log.AppendLine("      NEAR   (nothing else stands inside this post)");
+            else foreach (string h in hits) log.AppendLine("      NEAR   " + h);
+        }
+
+        /// <summary>
+        /// WO-1821 — every mesh and material the photographed post renders THROUGH ITSELF.
+        ///
+        /// <see cref="ReportNeighbours"/> deliberately excludes the post's own hierarchy, so it can
+        /// prove nothing foreign is standing inside a post but CANNOT say what the post itself is made
+        /// of. That left the "green pill" question at "almost certainly the kit art", which is an
+        /// admission of a guess (CLAUDE.md §11B). This closes it: a green MATERIAL listed here, on a
+        /// sub-mesh of the clad, settles the colour as authored art in one read.
+        /// </summary>
+        private static void ReportOwnMeshes(GameObject subject, StringBuilder log)
+        {
+            var rends = subject.GetComponentsInChildren<Renderer>(true);
+            if (rends == null || rends.Length == 0) { log.AppendLine("      OWN    (no renderer)"); return; }
+
+            var seen = new HashSet<string>();
+            for (int i = 0; i < rends.Length && seen.Count < 10; i++)
+            {
+                var rend = rends[i];
+                if (rend == null) continue;
+                var mf = rend.GetComponent<MeshFilter>();
+                string mesh = mf != null && mf.sharedMesh != null ? mf.sharedMesh.name : "?";
+                var mats = rend.sharedMaterials;
+                string mat = mats != null && mats.Length > 0 && mats[0] != null ? mats[0].name : "?";
+                if (mats != null && mats.Length > 1) mat += $" (+{mats.Length - 1} more)";
+                string line = $"'{rend.gameObject.name}' mesh='{mesh}' mat='{mat}'";
+                if (seen.Add(line)) log.AppendLine("      OWN    " + line);
+            }
+        }
+
+        /// <summary>
+        /// WO-1822 - the scene's own wall ART height, measured off the tallest <c>Clad_Wall_*</c>
+        /// renderer. Cached per scene: 60-plus panels x 28 corner posts would otherwise be re-walked
+        /// for every post.
+        ///
+        /// Measured off the BUILT RESULT, not off a kit table, for the same reason the regression
+        /// derives its own expectation: a table here would be a second copy of the dresser's
+        /// `MeasureTallest(wallModel)` and would drift from it. Reads 4.00 m on hexagon-green and
+        /// dungeon-stone, 5.00 m on synty-castle - matching this build's `[wo1817] … wallH=` trace.
+        /// </summary>
+        private static float SceneWallHeight(GameObject anyPost)
+        {
+            var scene = anyPost.scene;
+            if (_wallHeightScene == scene.path && _wallHeightScene != null) return _wallHeightCache;
+
+            float tallest = 0f;
+            var roots = scene.GetRootGameObjects();
+            for (int r = 0; r < roots.Length; r++)
+            {
+                var rends = roots[r].GetComponentsInChildren<Renderer>(true);
+                for (int i = 0; i < rends.Length; i++)
+                {
+                    var rend = rends[i];
+                    if (rend == null || rend.gameObject.name == null) continue;
+                    if (!rend.gameObject.name.StartsWith("Clad_Wall_", StringComparison.Ordinal)) continue;
+                    float h = rend.bounds.size.y;
+                    if (h > tallest && h < 12f) tallest = h;   // 12 m guard: a mis-scaled panel is not the wall
+                }
+            }
+
+            _wallHeightScene = scene.path;
+            _wallHeightCache = tallest;
+            return tallest;
+        }
+
+        private static string _wallHeightScene;
+        private static float _wallHeightCache;
 
         private static float Ratio(Bounds b)
         {

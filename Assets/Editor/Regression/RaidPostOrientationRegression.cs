@@ -122,6 +122,18 @@ namespace DeNelle.Editor.Regression
         /// </summary>
         private const float CladHeightTolerance = 0.10f;
 
+        /// <summary>
+        /// WO-1822 — the band a CORNER POST's top may stand above its scene's tallest wall.
+        ///
+        /// A BAND, not the generator's exact rise, and deliberately so: `RaidBaseGenerator.CornerRise`
+        /// is `internal` to an assembly this one cannot reference, and the value is explicitly NOT yet
+        /// ruled by the owner (WO-1822 §3). Pinning the number would copy state that is expected to
+        /// change; pinning the band survives the ruling and still catches both measured failures —
+        /// 1.11 m clad under a 4.00 m wall (rise -2.89 m) and 17.96 m over the same wall (+13.96 m).
+        /// </summary>
+        private const float MinCornerRiseM = 1.0f;
+        private const float MaxCornerRiseM = 4.0f;
+
         private const string Remedy =
             "REMEDY: the clad seam is RaidBaseDresser.ReplaceChildrenWith / StripRootArt " +
             "(Assets/Editor/WallTools/RaidBaseDresser.cs). After any change there the raid scenes " +
@@ -161,6 +173,8 @@ namespace DeNelle.Editor.Regression
             // editor session would judge a rebake against the PREVIOUS catalog (CLAUDE.md s.2 - a
             // copy that outlives its source is the bug).
             _catalog = null;
+            _wallTopScene = null;      // same reason: a cache that outlives its run judges a rebake
+                                       // against the PREVIOUS scene's walls.
 
             var scenes = DiscoverScenes();
             if (scenes.Count == 0)
@@ -273,6 +287,19 @@ namespace DeNelle.Editor.Regression
                 break;
             }
 
+            // ⛔ WO-1821 — AN AUTHORED SIEGE TURRET HAS NO CLAD BY RULING, so every clad pin below is
+            // inapplicable to it. NOT a silent skip: a catapult with neither clad nor art would be an
+            // INVISIBLE turret that still fires, so the replacement pin is "it renders something".
+            var siegeTower = host.GetComponent<DefenseTower>();
+            if (siegeTower != null && IsAuthoredSiegeId(siegeTower.CatalogId))
+            {
+                if (!Encapsulate(host, out Bounds sieged) || sieged.size.y <= 0.01f)
+                    faults.Add("it is an authored SIEGE turret (no tower clad by the WO-1821 ruling) but " +
+                               "carries NO renderer at all - an invisible turret that still shoots. Its " +
+                               "catalog art failed to load and, correctly, nothing clad over it");
+                return faults.Count == 0 ? null : string.Join("; ", faults);
+            }
+
             // ── PIN 2 — exactly one /Visual clad, and it carries the renderers ───
             var vis = host.transform.Find("Visual");
             if (vis == null)
@@ -379,6 +406,31 @@ namespace DeNelle.Editor.Regression
                                $"off (> {CladHeightTolerance:P0}). RaidSpire.EnsureHittable sizes the hero's " +
                                "contact collider from the recorded number, so the player swings at a hit box " +
                                "the size of the spire that was INTENDED, not the one drawn");
+                return;
+            }
+
+            // ── WO-1822: the CORNER POST, pinned WITHOUT copying the generator's constant ──
+            // RaidBaseGenerator.CornerRise (2.5 m) is `internal` to DeNelle.EditorWallTools, which this
+            // assembly cannot reference. Copying the literal here would be exactly the duplicated state
+            // that CLAUDE.md §2/§5/§16 describe, and it would silently stop matching the moment the
+            // owner rules a different rise (WO-1822 §3 — the value is explicitly not yet ruled).
+            //
+            // So the pin asserts the INVARIANT the rule produces rather than the number it uses:
+            //   (a) every corner post in a scene renders the SAME height (they are one ring of one
+            //       model — before the fix they did too, but at 1.11 / 7.52 / 17.96 m PER KIT);
+            //   (b) that height stands ABOVE the scene's tallest wall, by between 1 and 4 m.
+            // (b) catches both measured failures without naming a rise: 1.11 m sits BELOW a 4 m wall,
+            // and 17.96 m overshoots it by 13.96 m. Any rise the owner rules inside a sane band passes.
+            if (host.name.StartsWith("CornerPost_", StringComparison.Ordinal))
+            {
+                float wallTop = TallestWallTop(host.scene);
+                if (!(wallTop > 0.01f)) return;        // no wall measured - PIN'd elsewhere, not here
+                float rise = cladBounds.size.y - wallTop;
+                if (rise < MinCornerRiseM || rise > MaxCornerRiseM)
+                    failures.Add($"corner post renders {cladBounds.size.y:0.##}m against a tallest wall of " +
+                                 $"{wallTop:0.##}m - it stands {rise:+0.##;-0.##}m relative to the wall, outside " +
+                                 $"the {MinCornerRiseM:0.#}..{MaxCornerRiseM:0.#}m band a corner tower must " +
+                                 "terminate a wall in. RaidBaseGenerator.CornerCadenceHeight owns the rise");
                 return;
             }
 
@@ -491,6 +543,61 @@ namespace DeNelle.Editor.Regression
         private sealed class StructuresFile
         {
             [JsonProperty("entries")] public List<CatalogEntry> Entries = new List<CatalogEntry>();
+        }
+
+        /// <summary>
+        /// WO-1821 — the siege ids, spelled here because this assembly cannot reference
+        /// <c>DeNelle.EditorWallTools</c> where <c>RaidBaseGenerator.IsAuthoredSiegeMachine</c> lives
+        /// (the reference runs the other way; see this file's header).
+        ///
+        /// ⚠ This IS a second copy and it is the lesser evil, deliberately chosen: the alternative is
+        /// for the gate to import its own subject's predicate, which is the one thing this file's
+        /// header forbids — an oracle that imports the subject cannot catch the subject changing it.
+        /// A DIVERGENCE IS CAUGHT, NOT SILENT: if the generator ever adds a third siege id, these posts
+        /// arrive here with no clad, fall through to PIN 2 and RED as "no '/Visual' clad child". That
+        /// is the correct outcome — it forces this list to be updated rather than letting an unclad
+        /// turret pass green.
+        /// </summary>
+        /// <summary>
+        /// WO-1822 — the tallest WallSegment collider top in a scene, cached per scene.
+        /// Measured off the built result, independently of the dresser's own `MeasureTallest(wallModel)`
+        /// prefab reading, so the two cannot agree by construction — which is what makes this an oracle
+        /// rather than an echo.
+        /// </summary>
+        private static float TallestWallTop(Scene scene)
+        {
+            if (_wallTopScene == scene.path && _wallTopScene != null) return _wallTopCache;
+
+            float tallest = 0f;
+            var roots = scene.GetRootGameObjects();
+            for (int r = 0; r < roots.Length; r++)
+            {
+                var segs = roots[r].GetComponentsInChildren<WallSegment>(true);
+                for (int i = 0; i < segs.Length; i++)
+                {
+                    if (segs[i] == null) continue;
+                    var cols = segs[i].GetComponentsInChildren<Collider>(true);
+                    for (int c = 0; c < cols.Length; c++)
+                    {
+                        if (cols[c] == null || !cols[c].enabled || cols[c].isTrigger) continue;
+                        float top = cols[c].bounds.max.y;
+                        if (top > tallest && top < 12f) tallest = top;
+                    }
+                }
+            }
+
+            _wallTopScene = scene.path;
+            _wallTopCache = tallest;
+            return tallest;
+        }
+
+        private static string _wallTopScene;
+        private static float _wallTopCache;
+
+        private static bool IsAuthoredSiegeId(string catalogId)
+        {
+            return string.Equals(catalogId, "tower_catapult", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(catalogId, "tower_siege_tower", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool Encapsulate(GameObject go, out Bounds bounds)
