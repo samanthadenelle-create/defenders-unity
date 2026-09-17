@@ -150,3 +150,13 @@ a throwing-client test instead (`a missing table degrades to a warning and NEVER
 check belongs after `tools/run-migrations.mjs` applies 0029. **Deploy-order consequence:** if the JS
 ships before the migration is applied, every wallet auth logs one warning per request — noisy, not
 breaking, which is the point of fail-open.
+
+**4. Flagged, not built: account erasure does not yet delete from this table.** Migration 0027's own
+header says *"Include it in account erasure"* for `play_identities`; `wallet_identity` is a new
+wallet-keyed table and the deletion path (exercised by `test/account-deletion-request.test.js`) was
+deliberately not touched — out of this ticket's scope. A `wallet_identity` row therefore survives an
+account deletion request until a later step in this chain adds it.
+
+**5. The touch is `await`ed on purpose.** Fire-and-forget would be cheaper, but on Vercel a floating
+promise can be frozen the moment the response returns, so both "it actually writes" and "it fails open
+loudly" depend on the await. Do not optimise it into a bare call.

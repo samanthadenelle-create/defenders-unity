@@ -189,7 +189,28 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fifty-seventh pass): main line next free = **1844**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fifty-eighth pass): main line next free = **1855**.
+> *(Lead PRE-ASSIGNED a full block for the clan system, per DeepSeek's proofed WO-1 through WO-11
+> spec (docs/SKR Integtration.md + docs/CLAN_WORK_ORDERS_PROOFING_2026-09-17.md), translated into
+> this project's own numbering and WO-file convention. Sequential dependency chain, NOT independent
+> lanes - dispatched and gated one at a time in DeepSeek's own specified order, never in parallel
+> against each other:
+> - **1844** = clan WO-1, wallet_identity table + touchWalletIdentity (no dependencies, first to build)
+> - **1845** = clan WO-2, clan/clan_members/clan_messages tables + create/join/leave/me endpoints (needs 1844)
+> - **1846** = clan WO-3, roles/succession/rate limits, incl. owner-ruled Officer kick power (needs 1845)
+> - **1847** = clan WO-4, Cherry Chat embed - **BLOCKED**, do not dispatch: pending Cherry's own
+>   confirmation of room-chat rate limits, a real open gap this project's own WO-1265 ruling requires
+>   closed before free-text chat ships (needs 1845; blocked independent of the rest of the chain)
+> - **1848** = clan WO-5, two-wallet integration test, the WO-1265 acceptance gate (needs 1844-1846)
+> - **1849** = clan WO-6, admin clan-health view - **DEFERRED** per owner ruling, not required for demo
+> - **1850** = clan WO-7, leaderboard fed by clan_vigil_weight (needs 1848)
+> - **1851** = clan WO-8, open ClanFeatureGate.PlayerFacingEnabled (needs 1848)
+> - **1852** = clan WO-9, SKR Vigil read - percentage-staked + game-tracked tenure (needs 1851)
+> - **1853** = clan WO-10, five-tier perk ballot, fixed-anchor 48h cadence per owner ruling (needs 1852)
+> - **1854** = clan WO-11, Squads multisig + Genesis Token collective Vigil - prize-critical, needs
+>   Genesis Token mint address + RPC provider confirmed before implementation starts (needs 1853)
+> Bumped 1844 -> 1855 in this SAME edit.)*
+>
 > *(Lead PRE-ASSIGNED **1843** command-center analytics robustness pass, per an audit fork comparing
 > current coverage against professional F2P mobile standards: adds DAU/WAU/MAU + stickiness, payer
 > rate/ARPU/ARPDAU/ARPPU, a computed crash-free/error rate, and app_version/platform/locale slicing
