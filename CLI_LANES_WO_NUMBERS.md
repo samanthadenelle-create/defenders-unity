@@ -189,7 +189,43 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fifty-first pass): main line next free = **1836**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-fifty-fifth pass): main line next free = **1841**.
+> *(Lead PRE-ASSIGNED **1840** settings language button just CYCLES instead of letting the player
+> pick - owner: "it only allows you to click the button and it just changes to another language...
+> should probably be either a drop-down or a radio button set... even if it's [its] own pop-up."
+> Confirmed at source: SettingsController.cs:751 OnChooseLanguageClicked calls
+> `LocalText.TrySelectLocale(locales[(selected + 1) % locales.Count].Code)` - a pure next-in-list
+> cycle, never a selection UI. Bumped 1840 -> 1841 in this SAME edit.)*
+>
+> *(Lead PRE-ASSIGNED **1838** dungeon exit confirm button truncates to "CONTINUE TO EX..." - owner
+> screenshot + explicit fix instruction "also continue to exit cut off, just Exit". Found + fixed
+> directly (one-line ruling-driven copy edit, sanctioned direct edit): `DungeonExitInteractable.cs:960`
+> confirmLabel: "Continue to exit" -> "Exit". Also **1839** torch/oil fuel meter placement+legibility
+> in dungeons - owner screenshot shows the meter top-left, at risk of being lost against other HUD
+> elements; owner: "this is hidden by the hud so needs placed better and easier to read in the entire
+> dungeon." Bumped 1838 -> 1840 in this SAME edit.)*
+>
+> *(Lead PRE-ASSIGNED **1837** dungeon hero can still lock/attack an enemy through a wall on a
+> DIFFERENT wall piece than WO-1829 fixed - owner screenshot, mage Thrain Lv11, locked onto "Orc
+> Raider" 203/203 HP directly through a solid wall segment in front of the hero, compass shows
+> additional enemy markers at E/E/SE/S positions. WO-1829 (same session, earlier) fixed this exact
+> class of defect for CommonDungeonDoor.cs's procedurally-built door leaf, which was never assigned
+> to the Structure layer so HeroTargetIndicator.HasLoS's masked Physics.Linecast never saw it as an
+> obstruction. This screenshot proves at least one MORE piece of dungeon geometry (a plain wall
+> segment, not a door) has the same gap - needs a full audit of wall/structure prefab layer
+> assignment in the relevant dungeon (WallSegment.cs's own correct pattern at :646-647 is the
+> reference), not another one-off door fix. Bumped 1837 -> 1838 in this SAME edit.)*
+>
+> *(Lead PRE-ASSIGNED **1836** dragon clips into the ground mid dive-swoop - owner screenshot, wave 21,
+> visible tail/wing clipping below the rooftop/ground line. Confirmed at source: `DragonBoss.cs`'s
+> swoop-dive arc (`SwoopTowardTarget`-family code around :820-821 and :1346-1349) computes its low
+> point as `tp.y + _swoopLowHeight` (a flat 4.5m over the CURRENT TARGET's transform Y) with NO ground
+> raycast along the arc at all - `SampleGroundY`/`Physics.Raycast` (:1210-1225) exists in this same file
+> but is used ONLY for `LandSpotNear`, never for the swoop trajectory. Over sloped terrain, rooftops, or
+> when the target sits at a different height than the ground under the dragon's own body mid-arc, the
+> flat 4.5m clearance is not enough and the huge wingspan/tail clips through. Bumped 1836 -> 1837 in
+> this SAME edit.)*
+>
 > *(Lead PRE-ASSIGNED **1835** post-wave-20 endless escalation content - owner ruling 2026-09-17: "after level 20...
 > a real challenge so maybe 2 dragons spawn and troops breaking through walls, or healing caravans or mages using
 > AoE large heal spells, rage spells" + "catapults blasting the walls from the sides at the same time." New endless-
