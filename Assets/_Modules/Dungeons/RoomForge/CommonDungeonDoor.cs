@@ -259,6 +259,21 @@ namespace DeNelle.Dungeons.RoomForge
                                    Mathf.Min(b.size.z, RoomForgeCanon.WallThickness / Mathf.Max(0.0001f, scale)));
             blocker = box;
 
+            // WO-1829: assign the leaf to the Structure layer so the hero's LoS linecast
+            // (HeroTargetIndicator.HasLoS, masked to "Structure" layer) will be blocked by
+            // the closed door. When SetOpen(true) disables the blocker collider, the door
+            // becomes transparent to LoS checks. Matches WallSegment.cs:646-647 pattern.
+            int structureLayer = LayerMask.NameToLayer("Structure");
+            if (structureLayer >= 0)
+            {
+                leaf.layer = structureLayer;
+                FlowTrace.Step("DungeonDoor", $"door leaf '{leaf.name}' assigned to Structure layer (WO-1829 LoS gate).");
+            }
+            else
+            {
+                FlowTrace.Warn("DungeonDoor", $"door leaf '{leaf.name}' could not resolve Structure layer — door will not block LoS (WO-1829).");
+            }
+
             // Height, not max.y: the leaf is SEATED at -b.min.y*scale, so its top in hinge space
             // is its own size. Reading max.y here happens to agree only because this asset's
             // min.y is 0 - swap in a centre-pivot export and the lintel would silently miss.
@@ -311,6 +326,21 @@ namespace DeNelle.Dungeons.RoomForge
             AddRelief(root.transform, "CommonDoor_Leaf_Handle",
                       new Vector3(targetWidth - 0.16f, height * 0.48f, 0f),
                       new Vector3(0.09f, 0.09f, thickness + 0.16f), iron);
+
+            // WO-1829: assign the leaf to the Structure layer so the hero's LoS linecast
+            // (HeroTargetIndicator.HasLoS, masked to "Structure" layer) will be blocked by
+            // the closed door. When SetOpen(true) disables the blocker collider, the door
+            // becomes transparent to LoS checks. Matches WallSegment.cs:646-647 pattern.
+            int structureLayer = LayerMask.NameToLayer("Structure");
+            if (structureLayer >= 0)
+            {
+                root.layer = structureLayer;
+                FlowTrace.Step("DungeonDoor", $"door fallback leaf '{root.name}' assigned to Structure layer (WO-1829 LoS gate).");
+            }
+            else
+            {
+                FlowTrace.Warn("DungeonDoor", $"door fallback leaf '{root.name}' could not resolve Structure layer — door will not block LoS (WO-1829).");
+            }
 
             leafTop = height;
             return root;

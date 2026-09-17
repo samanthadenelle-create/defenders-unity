@@ -189,7 +189,19 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-fifth pass): main line next free = **1829**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-sixth pass): main line next free = **1830**.
+> *(Lead PRE-ASSIGNED **1829** dungeon doors are invisible to the hero's LoS gate, so a closed door never blocks
+> auto-target or auto-cast - owner F8 flag 2026-09-17 in dg_ember_deep ("target enemies through door but shouldn't be
+> able to and auto target on enemies on other sides of walls"; device log [Flow:Reticle] AUTO PICK 'OutpostEnemy
+> (troll)' WHY=unit-over-wall while the hero stood at a closed door, screenshot
+> logs/f8-inbox/device/SM02G4061955851/flag_20260917-151440_00.png). Root cause proven at source:
+> CommonDungeonDoor.cs never assigns a layer to the door leaf/blocker (stays on Default), while
+> HeroTargetIndicator.HasLoS's `_losMask` defaults to LayerMask.GetMask("Structure") only - the closed, enabled
+> blocker collider (SetOpen sets `_blocker.enabled = !open`) is invisible to the Physics.Linecast that gates
+> RebuildCandidates admission (WO-449) and therefore also to the WO-1734 unit-over-wall auto-pick that consumes that
+> candidate list. Bumped 1829 -> 1830 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-fifth pass): main line next free = **1829**.
 > *(Lead PRE-ASSIGNED **1827** the five flat modal panels (Leaderboard, Cosmetic Shop, Clan Chat, Benefactors Wall,
 > Town Showcase Visit - ~26 sites, 11-18px, no autosize/overflowMode) need a re-cut px ladder before they can take the
 > 30px floor without culling glyphs - WO-1826 §"LEFT READY", math costed (Leaderboard FooterH short 6.0px, ProfileH

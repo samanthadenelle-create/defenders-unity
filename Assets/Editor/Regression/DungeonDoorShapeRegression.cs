@@ -134,6 +134,17 @@ namespace DeNelle.Editor.Regression
                     failures.Add($"leaf carries {leafColliders} collider(s), expected exactly 1 (the blocker SetOpen toggles)");
                 if (closed.Blocker == null) failures.Add("DoorVisual.Blocker is null - SetOpen would toggle nothing");
 
+                // WO-1829: leaf must be on Structure layer so LoS checks (HeroTargetIndicator.HasLoS)
+                // can be blocked by the closed door. When SetOpen disables the collider, the layer
+                // assignment stays static and the door becomes transparent to linecast checks.
+                int structureLayer = LayerMask.NameToLayer("Structure");
+                if (closed.Leaf != null && structureLayer >= 0)
+                {
+                    if (closed.Leaf.layer != structureLayer)
+                        failures.Add($"leaf is on layer {closed.Leaf.layer} ('{LayerMask.LayerToName(closed.Leaf.layer)}'), " +
+                                     $"expected Structure layer {structureLayer} (WO-1829 LoS gate)");
+                }
+
                 // A fallback leaf still has to be door-SHAPED: body + stile + two panels + handle.
                 if (closed.LeafSource == "primitive-fallback" && closed.Leaf != null)
                 {
