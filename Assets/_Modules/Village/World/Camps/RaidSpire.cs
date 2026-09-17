@@ -112,6 +112,35 @@ namespace DeNelle.Village.World.Camps
         /// <summary>Raised once, on the frame this spire is razed. The raid is won here.</summary>
         public event System.Action<RaidSpire> OnDestroyedEvent;
 
+        // ---- ALARM (WO-1830) -------------------------------------------------
+        // Owner ruling: "when the player starts attacking the spire in a raid an alarm goes
+        // off and all the defenders start walking to the base to protect it" — and, on being
+        // told the leash system exists: "right now they just sit inside there leash range".
+        //
+        // WHY A *STATIC* EVENT. The listener is RaidGarrisonSpawner, which lives on the baked
+        // RaidBase_<id> ROOT and is up before the spire is hit, but has no reference to the
+        // spire at subscribe time (it resolves RaidSpire.Active only once, mid-ActivateRoutine
+        // at :207). A static event is the one wiring that needs neither a scene reference nor a
+        // FindObjectsByType scan. It is subscribed ONCE per raid and unsubscribed in that
+        // spawner's OnDestroy — a static event outlives the scene, so a leaked handler would
+        // fan out to destroyed brains on the NEXT raid.
+        //
+        // WHY FIRST DAMAGE AND NOT A % THRESHOLD: the ruling says "starts attacking". A
+        // threshold makes the opening swings silent, which is the opposite of the ask. The
+        // instance bool is also once-per-raid for free — the spire is a scene object and the
+        // scene is unloaded between raids, so there is no reset bookkeeping to get wrong.
+
+        /// <summary>
+        /// Raised ONCE per spire, on the first damage it ever takes (WO-1830). The garrison
+        /// spawner subscribes for exactly one raid and fans the alarm out to its tracked brains.
+        /// </summary>
+        public static event System.Action<RaidSpire> AlarmRaised;
+
+        private bool _alarmRaised;
+
+        /// <summary>True once this spire has taken its first damage and the alarm has fired.</summary>
+        public bool IsAlarmRaised => _alarmRaised;
+
         /// <summary>Max hit points (the tier's authored objective HP).</summary>
         public float MaxHp => _maxHp;
 
@@ -296,6 +325,18 @@ namespace DeNelle.Village.World.Camps
             if (_hp < 0f) _hp = _maxHp;
 
             _hp -= amount;
+
+            // WO-1830 — SOUND THE ALARM on the first hit, before the kill branch below (a
+            // one-shot kill must still alarm, so the win trace and the alarm trace both land).
+            // Guarded: a subscriber that throws must never swallow the damage or the raze.
+            if (!_alarmRaised)
+            {
+                _alarmRaised = true;
+                FlowTrace.Step(Sys, $"SPIRE UNDER ATTACK - RaidSpire '{name}' (config '{_configId}') took its " +
+                                    $"first damage ({via}). Raising the garrison alarm.");
+                Guard.Try(Sys, "raid spire alarm fan-out", () => AlarmRaised?.Invoke(this));
+            }
+
             FlowTrace.Throttle(Sys, $"spire-hit:{GetInstanceID()}", 1f,
                 $"RaidSpire '{name}' took {amount:0.#} ({via}) -> {Mathf.Max(0f, _hp):0}/{_maxHp:0} " +
                 $"({HpFraction:P0} standing).");

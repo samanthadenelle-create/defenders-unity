@@ -163,6 +163,102 @@ namespace DeNelle.Village
         }
 
         /// <summary>
+        /// RAID ALARM RALLY (WO-1830). Owner ruling: "when the player starts attacking the spire
+        /// in a raid an alarm goes off and all the defenders start walking to the base to protect
+        /// it" — because today "they just sit inside there leash range".
+        ///
+        /// ⛔ THIS ADDS NO NEW Update BRANCH, AND THAT IS THE DESIGN, NOT A SHORTCUT. The override
+        /// the ruling asks for ALREADY EXISTS and is already the convergence walk: the RETURN-HOME
+        /// arm of the leash gate (see Update, "RETURN-HOME") paths an unengaged leashed brain to
+        /// <c>_homeAnchor</c> through <c>Enemy.SetBrainTargetPosition</c> — the ONE mover. Moving
+        /// the anchor to the spire therefore makes the defender walk to the base with no second
+        /// mover, no new state machine, and no change to the leash maths.
+        ///
+        /// WHAT IT CHANGES: <c>_homeAnchor</c> only. <c>_leashRadius</c>, <c>_chaseLeashOverride</c>,
+        /// <c>_defendPost</c>, <c>Role</c> and the tactics overlay are ALL left alone, so a Kiter
+        /// still holds its standoff once engaged and the wake/chase arithmetic is byte-identical.
+        /// Hero proximity stops gating convergence for free: the walk home happens BECAUSE the hero
+        /// is out of range, and home is now the spire; when the hero IS at the spire the defender is
+        /// inside its wake ring of the new anchor and engages normally.
+        ///
+        /// BONUS SEAM, deliberately not a separate change: <see cref="RaiderInRadius"/> and
+        /// <see cref="NearestTroopDistanceFromHome"/> both measure from <c>_homeAnchor</c>, so an
+        /// alarmed defender now also notices the raider's deployed troops near the spire.
+        ///
+        /// PERMANENT for the raid (owner decision point D1 in the WO): there is no un-alarm. A
+        /// defender that drifted back to a far post seconds later would rebuild the exact complaint.
+        /// <c>_alarmed</c> IS cleared by <see cref="ResetForPool"/> so a pooled body never inherits
+        /// another raid's alarm.
+        /// </summary>
+        public void RallyTo(Vector3 rally)
+        {
+            _alarmed    = true;
+            _homeAnchor = rally;
+            // sec.12 per-brain line. A NEW Once key: the return-home Once("leash-home-<id>") has
+            // already fired for any brain that ever walked home, so reusing that key logs nothing.
+            DeNelle.Core.Diagnostics.FlowTrace.Once("EnemyAggro", $"alarm-rally-{GetInstanceID()}",
+                $"{name}: SPIRE ALARM - converging on the base, home re-anchored to {rally} " +
+                $"(wake {_leashRadius:0.#}m, chase {_chaseLeashOverride:0.#}m, role {Role}).");
+        }
+
+        /// <summary>True once this brain has been rallied by the raid spire alarm (WO-1830).</summary>
+        public bool IsAlarmed => _alarmed;
+
+        /// <summary>
+        /// This brain's home/post anchor — the point the return-home arm walks to. Read-only
+        /// accessor added by WO-1830 so the alarm oracle can assert the rally landed; it adds no
+        /// state and changes no behaviour.
+        /// </summary>
+        public Vector3 HomeAnchor => _homeAnchor;
+
+        /// <summary>
+        /// WO-1830 rally point (PURE — unit-testable without NavMesh/Enemy scaffolding). Where an
+        /// alarmed defender should converge to.
+        ///
+        /// ⛔ A RING, NOT THE SPIRE POINT. The return-home arrival test is
+        /// <c>(position - _homeAnchor).sqrMagnitude &lt;= 4f</c>, i.e. ~2 m — thirty bodies sent to
+        /// ONE point cannot all satisfy it and would shove each other forever. So the rally is a
+        /// point on a <paramref name="ring"/>-metre circle around the spire.
+        ///
+        /// The BEARING is the defender's own old post direction from the spire, so each post keeps
+        /// its side of the base and the convergence spreads instead of stacking. A degenerate
+        /// direction (a defender already at the centre — e.g. the boss on BossAnchor) falls back to
+        /// the index/count angle, the same seating formula the garrison ring already uses.
+        ///
+        /// A defender ALREADY inside <paramref name="ring"/> of the spire keeps its post
+        /// (<paramref name="oldHome"/> returned unchanged): it is already defending the base, and
+        /// re-anchoring it would only shuffle it sideways. Y is taken from the spire so the point
+        /// sits on the base's ground plane (the caller still snaps it to the NavMesh).
+        /// </summary>
+        public static Vector3 ComputeRallyPoint(Vector3 spire, Vector3 oldHome, float ring,
+                                                int index, int count)
+        {
+            float r = ring > 0f ? ring : 6f;
+
+            Vector3 away = oldHome - spire;
+            away.y = 0f;
+            float dist = away.magnitude;
+
+            // Already defending the base — hold the post (see the doc above).
+            if (dist <= r) return oldHome;
+
+            Vector3 dir;
+            if (dist > 0.5f)
+            {
+                dir = away / dist;
+            }
+            else
+            {
+                // Degenerate: no usable bearing. Spread by seat index, exactly as the garrison
+                // ring seats its guards.
+                float ang = (count > 0 ? (index / (float)count) : 0f) * Mathf.PI * 2f;
+                dir = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang));
+            }
+
+            return new Vector3(spire.x + dir.x * r, spire.y, spire.z + dir.z * r);
+        }
+
+        /// <summary>
         /// WO-770.11 leash decision (PURE — unit-testable without NavMesh/Enemy scaffolding).
         /// Returns true when the mob should be leashed OUT (yield no target, idle at anchor):
         /// a leash is active AND the hero is absent OR outside <paramref name="radius"/> of
@@ -645,6 +741,13 @@ namespace DeNelle.Village
         // RAID DEFEND POST (2026-09-09): opt-in. Village/overworld stay on leash=0.
         private bool  _defendPost;
         private float _chaseLeashOverride;
+
+        // RAID SPIRE ALARM (WO-1830): latched once RallyTo re-anchors this brain onto the base.
+        // Read ONLY by IsAlarmed + the trace — the leash arithmetic never consults it, which is why
+        // an unalarmed brain's behaviour is byte-identical to before. MUST be cleared in
+        // ResetForPool (EnemyPoolResetRegression case 2 [brain-latch-coverage] fails otherwise, and
+        // a pooled body inheriting another raid's alarm is a real bug, not just a lint).
+        private bool _alarmed;
 
         // WO-147: consolidated perception sensor (auto-added in Awake) + IsAlert drive.
         private AwarenessSensor _sensor;
@@ -1172,6 +1275,9 @@ namespace DeNelle.Village
             _chaseEngaged = false;
             _defendPost = false;
             _chaseLeashOverride = 0f;
+            // WO-1830 raid spire alarm latch: a pooled body must not be born already rallied to a
+            // spire that belongs to a raid it is no longer in.
+            _alarmed = false;
 
             // Targeting / override state.
             _currentTarget           = null;

@@ -91,6 +91,26 @@ namespace DeNelle.Village.World.Camps
         private int _aliveCount;
         private bool _activated;
 
+        // -- SPIRE ALARM (WO-1830) ---------------------------------------------
+        // The brains this spawner built, kept alongside _garrison so the alarm fan-out never needs
+        // a FindObjectsByType scan (the brain is already in hand at SpawnBoss/SpawnGuard).
+        private readonly List<EnemyBrain> _brains = new List<EnemyBrain>();
+        private bool _alarmRaised;
+        private Vector3 _alarmSpirePos;
+
+        /// <summary>Radius (m) of the ring alarmed defenders rally onto around the spire.</summary>
+        [Header("Spire alarm (WO-1830)")]
+        [Tooltip("Ring radius (m) around the spire that alarmed defenders converge onto. A single " +
+                 "point would make 30 bodies shove each other forever - the return-home arrival " +
+                 "test is only ~2m.")]
+        [SerializeField, Min(1f)] private float alarmRallyRing = 6f;
+
+        /// <summary>True once the spire alarm has fired for this raid (WO-1830).</summary>
+        public bool AlarmRaised => _alarmRaised;
+
+        /// <summary>Count of brains this spawner is tracking for the alarm fan-out (WO-1830).</summary>
+        public int TrackedBrainCount => _brains.Count;
+
         /// <summary>scene-configs.json id this base was generated from (empty if unset).</summary>
         public string ConfigId => configId;
 
@@ -99,13 +119,73 @@ namespace DeNelle.Village.World.Camps
 
         private void Start()
         {
+            // WO-1830 — subscribe BEFORE the activate coroutine's first yield, so a spire hit on
+            // the very first frame of the raid is not missed while the garrison is still seating.
+            RaidSpire.AlarmRaised += HandleSpireAlarm;
             StartCoroutine(ActivateRoutine());
         }
 
         private void OnDestroy()
         {
+            // WO-1830 — LOAD-BEARING. RaidSpire.AlarmRaised is STATIC, so it outlives this scene:
+            // a leaked handler would fan the NEXT raid's alarm out to this raid's destroyed brains.
+            RaidSpire.AlarmRaised -= HandleSpireAlarm;
+
             for (int i = 0; i < _garrison.Count; i++)
                 if (_garrison[i] != null) _garrison[i].Died -= HandleGarrisonDied;
+        }
+
+        // =====================================================================
+        // SPIRE ALARM (WO-1830) — owner ruling: "when the player starts attacking the spire in a
+        // raid an alarm goes off and all the defenders start walking to the base to protect it",
+        // because today "they just sit inside there leash range".
+        //
+        // ONE subscription per raid, ONE fan-out over a list already in hand. No per-frame work
+        // of any kind is added: the brains are collected at spawn time in Track().
+        // =====================================================================
+
+        private void HandleSpireAlarm(RaidSpire spire)
+        {
+            if (_alarmRaised) return;                 // first hit only; the spire also latches
+            _alarmRaised = true;
+            _alarmSpirePos = spire != null ? spire.WorldPosition : transform.position;
+
+            int alerted = FanOutAlarm(_brains, _alarmSpirePos, alarmRallyRing, SnapToNav);
+
+            // sec.12 — THE one alarm line: how many defenders were alerted, and where to.
+            FlowTrace.Step("Raid",
+                $"SPIRE ALARM config='{configId}' - {alerted} defender(s) alerted of " +
+                $"{_brains.Count} tracked ({_aliveCount} alive), converging on the base at " +
+                $"{_alarmSpirePos} (rally ring {alarmRallyRing:0.#}m).");
+        }
+
+        /// <summary>
+        /// The alarm fan-out (PURE of MonoBehaviour state — the oracle drives THIS, rather than
+        /// re-implementing the loop, which would certify only itself). Rallies every live brain in
+        /// <paramref name="brains"/> onto <see cref="EnemyBrain.ComputeRallyPoint"/> around
+        /// <paramref name="spirePos"/> and returns how many were actually rallied.
+        ///
+        /// <paramref name="snap"/> is the NavMesh snap (pass null in EditMode, where there is no
+        /// NavMesh — the un-snapped ring point is still the right anchor for the assertion).
+        /// A brain already inside the ring keeps its post, and ComputeRallyPoint owns that rule;
+        /// it is still counted as alerted, because it WAS told.
+        /// </summary>
+        public static int FanOutAlarm(IList<EnemyBrain> brains, Vector3 spirePos, float ring,
+                                      System.Func<Vector3, Vector3> snap)
+        {
+            if (brains == null) return 0;
+            int alerted = 0;
+            for (int i = 0; i < brains.Count; i++)
+            {
+                var brain = brains[i];
+                if (brain == null) continue;
+                Vector3 rally = EnemyBrain.ComputeRallyPoint(
+                    spirePos, brain.HomeAnchor, ring, i, brains.Count);
+                if (snap != null) rally = snap(rally);
+                brain.RallyTo(rally);
+                alerted++;
+            }
+            return alerted;
         }
 
         // =====================================================================
@@ -365,7 +445,7 @@ namespace DeNelle.Village.World.Camps
             // HOLDS the keep is exactly the siege posture. SHARED SINGLETON: never mutate it.
             brain.SetTactics(EnemyBrain.SiegeTactics);
 
-            Track(boss);
+            Track(boss, brain);
         }
 
         private void SpawnGuard(string enemyId, int index, int count, int enemyLevel, float difficulty, float ring)
@@ -432,7 +512,7 @@ namespace DeNelle.Village.World.Camps
             guardBrain.RosterId = def.Id;   // owner ruling 2026-08-06: gates weapon attach (casters carry nothing)
             EnemyBrain.ApplyRoleTactics(guardBrain, guardRole);   // SHARED singletons — never mutate
 
-            Track(guard);
+            Track(guard, guardBrain);
         }
 
         // V — confirm a spawned defender actually RENDERS (>=1 enabled renderer carrying a mesh),
@@ -474,11 +554,25 @@ namespace DeNelle.Village.World.Camps
             def.ContactDamage *= difficulty;
         }
 
-        private void Track(Enemy e)
+        private void Track(Enemy e, EnemyBrain brain)
         {
             e.Died += HandleGarrisonDied;
             _garrison.Add(e);
             _aliveCount++;
+
+            // WO-1830 — THE STAGGER HOLE, CLOSED. Guards seat 1-2 per frame (SpawnGarrisonStaggered),
+            // so the alarm can land mid-spawn. A guard registered AFTER the alarm must be born
+            // already rallied, or the tail of an Extreme garrison stays at its post through the very
+            // fight the alarm exists to answer.
+            if (brain == null) return;
+            _brains.Add(brain);
+            if (!_alarmRaised) return;
+            Vector3 rally = EnemyBrain.ComputeRallyPoint(
+                _alarmSpirePos, brain.HomeAnchor, alarmRallyRing, _brains.Count - 1, _brains.Count);
+            brain.RallyTo(SnapToNav(rally));
+            FlowTrace.Step("Raid",
+                $"SPIRE ALARM config='{configId}' - late defender '{e.name}' spawned after the alarm; " +
+                $"rallied on spawn to {rally}.");
         }
 
         // A local tether anchor so the defender HOLDS the garrison instead of marching

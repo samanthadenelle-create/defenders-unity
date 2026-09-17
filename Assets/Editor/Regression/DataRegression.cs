@@ -2118,6 +2118,11 @@ namespace DeNelle.Editor
             // PlaceTowerProp and the dresser's art resolver; a siege id in the spire slot never stands on edge.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-spire-siege suite", () => { if (!DeNelle.Editor.Regression.RaidSpireSiegeRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-spire-siege] " + r); });
 
+            // WO-1830 (2026-09-17, lane SPIRE-ALARM): attacking the spire raises ONE alarm per raid and
+            // every tracked garrison brain re-anchors onto the base, so defenders converge instead of
+            // sitting inside their own leash range (owner ruling).
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-spire-alarm suite", () => { if (!DeNelle.Editor.Regression.RaidSpireAlarmRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-spire-alarm] " + r); });
+
             // WO-1616 (2026-09-09, lane NPC-SHIELD): the troop off-hand shield seats through the hero's
             // shield authority (one owner), never a hard-coded triple; control case proves the old seat was wrong.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "troop-shield-seat suite", () => { if (!DeNelle.Editor.Regression.TroopShieldSeatRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[troop-shield-seat] " + r); });

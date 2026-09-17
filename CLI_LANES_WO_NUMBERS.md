@@ -189,7 +189,18 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-sixth pass): main line next free = **1830**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-seventh pass): main line next free = **1832**.
+> *(Lead PRE-ASSIGNED **1830** raid defenders never react to the spire being attacked, only to the hero personally
+> entering their own individual leash radius - owner: "when the player starts attacking the spire in a raid an alarm
+> goes off and all the defenders start walking to the base to protect it" / "right now they just sit inside there
+> leash range". Confirmed at source: EnemyBrain.SetLeash/ShouldLeashOut (EnemyBrain.cs:139-206) is purely per-mob,
+> hero-proximity-gated; grepped Assets/_Modules for AlertAllDefenders/RaidAlarm/GarrisonAlert/SoundAlarm - none exist.
+> New feature, needs a spire-damage broadcast + a converge/alarmed brain state. And **1831** BuildModeController.Update
+> spiked to 34ms in a single frame (recurring ~90ms/s aggregate cost) during a town session 2026-09-17 10:16, owner:
+> "phone feels warm" (battery 41C, but the last-hour average fps of 53 is healthy - not a thermal crisis, one real
+> hitch worth trimming). Bumped 1830 -> 1832 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-sixth pass): main line next free = **1830**.
 > *(Lead PRE-ASSIGNED **1829** dungeon doors are invisible to the hero's LoS gate, so a closed door never blocks
 > auto-target or auto-cast - owner F8 flag 2026-09-17 in dg_ember_deep ("target enemies through door but shouldn't be
 > able to and auto target on enemies on other sides of walls"; device log [Flow:Reticle] AUTO PICK 'OutpostEnemy
