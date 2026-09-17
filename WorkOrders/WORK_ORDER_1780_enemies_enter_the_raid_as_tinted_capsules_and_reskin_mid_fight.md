@@ -1,6 +1,6 @@
 # WORK ORDER 1780 — Enemies enter the Bastion raid as **tinted capsules** and re-skin mid-fight; 48 structure addresses resolve and **not one is resident**
 
-**Status:** NEEDS DATA
+**Status:** BLOCKED - needs data (the capture named in the ticket)
 
 Why NEEDS DATA: the capture to take is named in §5. The seam is understood; what is unproven is whether the bundles were pushed for this build (CLAUDE.md §16) or whether the download is merely slow on the Seeker's link.
 

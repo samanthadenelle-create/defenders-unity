@@ -1,0 +1,13 @@
+Assets/Editor/Regression/FirstSalePathRegression.cs
+Assets/Editor/Regression/FirstSalePathRegression.cs.meta
+Assets/Resources/Data/Canonical/packs.json
+Assets/StreamingAssets/Data/Canonical/packs.json
+Assets/_Modules/Commerce/FirstBuyOffer.cs
+Assets/_Modules/Commerce/FirstBuyOffer.cs.meta
+Assets/_Modules/Commerce/StoreFocusRequest.cs
+Assets/_Modules/Village/BuildMode/BuildStructureInfoPanel.cs
+Assets/_Modules/Village/BuildMode/FirstBuyDoorModel.cs
+Assets/_Modules/Village/BuildMode/FirstBuyDoorModel.cs.meta
+WorkOrders/WORK_ORDER_1801_first_sale_path.RESULT.md
+WorkOrders/WORK_ORDER_1801_first_sale_path.md
+api/_lib/sku-catalog.generated.json

@@ -1,6 +1,6 @@
 # WORK ORDER 1795 — A FIRST epoch-declaring save (`from: null`) REPLACES the entire cloud state, and it has fired against towns up to 32 days old
 
-**Status:** NEEDS DATA
+**Status:** BLOCKED - needs data (the capture named in the ticket)
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead from the 1791-1795 block; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** `api/game/save.js` (`judgeResetEpoch` + the `replaceState` arm). Server only.
 **Priority:** P1 — low frequency, maximum blast radius (a player's whole town), and it is the open half of WO-1742.

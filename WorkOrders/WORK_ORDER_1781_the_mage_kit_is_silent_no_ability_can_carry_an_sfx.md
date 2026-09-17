@@ -1,6 +1,6 @@
 # WORK ORDER 1781 — The Mage kit is **silent**: no ability of any class can carry an SFX, because `abilities.json` has no sfx field
 
-**Status:** NEEDS DATA
+**Status:** BLOCKED - needs data (the capture named in the ticket)
 
 Why NEEDS DATA: the seam fix is clear from source (§4.1), but the **sound choices are the owner's** (memory `vfx-map-owner-tags-no-creative-pick`: CLI maps key -> hook verbatim and holds un-tagged hooks). The blank tag table in §4.2 is what must come back before anything is audible.
 

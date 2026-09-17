@@ -1,6 +1,6 @@
 # WORK ORDER 1774 — The beige untextured "slab" in the tester's town is a player-built WALL rendering with no albedo
 
-**Status:** NEEDS DATA
+**Status:** BLOCKED - needs data (the capture named in the ticket)
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** Structure art / material degrade — `DeNelle.Core` (TripoMaterialFixer, StructureAssetLoader) + `DeNelle.Village/Catalog` (StructureFactory) + the R2 content chain (CLAUDE.md §16)
 **Lane disjointness:** touches NO `.unity`, NO wave/balance code. File-disjoint from WO-1773 (balance lane).

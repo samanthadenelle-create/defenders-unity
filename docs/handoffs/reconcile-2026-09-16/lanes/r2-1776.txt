@@ -1,0 +1,6 @@
+Assets/Editor/Regression/OverTimeEffectRegression.cs
+Assets/Resources/Data/Canonical/abilities.json
+Assets/StreamingAssets/Data/Canonical/abilities.json
+Assets/_Modules/Village/Hero/HeroAbilities.cs
+WorkOrders/WORK_ORDER_1776_mage_kit_vfx_lightning_on_arcane_bolt.RESULT.md
+WorkOrders/WORK_ORDER_1776_mage_kit_vfx_lightning_on_arcane_bolt.md

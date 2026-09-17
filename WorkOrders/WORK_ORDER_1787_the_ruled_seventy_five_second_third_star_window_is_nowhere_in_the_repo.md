@@ -1,6 +1,6 @@
 # WORK ORDER 1787 — The "T3 = 75 s" third-star window is **nowhere in the repo**; the device receives **90 s**, and the owner's Bastion run settled at 2 stars
 
-**Status:** NEEDS DATA
+**Status:** BLOCKED - needs data (the capture named in the ticket)
 
 Why NEEDS DATA: an owner ruling on the number. The code seam is fully identified (§3); what is missing is which value is canon, and 3 stars is the gate on the entire capture beat.
 

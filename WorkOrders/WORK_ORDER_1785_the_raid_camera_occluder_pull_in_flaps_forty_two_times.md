@@ -1,6 +1,6 @@
 # WORK ORDER 1785 — The raid camera's occluder pull-in **enters and releases 42 times in a ~100 second raid**
 
-**Status:** NEEDS DATA
+**Status:** BLOCKED - needs data (the capture named in the ticket)
 
 Why NEEDS DATA: WO-1765 (`abba2d89e`, raid camera profile) landed **after** the build this was measured on, so the count must be re-measured on a post-1765 build before any code is written. §5 names the capture.
 

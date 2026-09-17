@@ -1,0 +1,10 @@
+Assets/Editor/Regression/DungeonLanternTeachRegression.cs
+Assets/Editor/Regression/DungeonLanternTeachRegression.cs.meta
+Assets/Resources/Data/Canonical/dialogue/dialogues.json
+Assets/StreamingAssets/Data/Canonical/dialogue/dialogues.json
+Assets/_Modules/Dungeons/ComposedDungeonHost.cs
+Assets/_Modules/Dungeons/ComposedOilStill.cs
+Assets/_Modules/Dungeons/Lantern.cs
+WorkOrders/WORK_ORDER_1805_dungeon_lantern_oil_never_taught_and_no_refuel_path.RESULT.md
+WorkOrders/WORK_ORDER_1805_dungeon_lantern_oil_never_taught_and_no_refuel_path.md
+docs/reference/TUNABLE_LEVER_INVENTORY.md

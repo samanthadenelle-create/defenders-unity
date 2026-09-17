@@ -1,0 +1,4 @@
+Assets/Editor/Regression/RaidDeployUiRegression.cs
+Assets/_Modules/Village/Troops/RaidDeployController.cs
+WorkOrders/WORK_ORDER_1777_world_tap_fires_through_foreign_ui_canvas_in_raid.RESULT.md
+WorkOrders/WORK_ORDER_1777_world_tap_fires_through_foreign_ui_canvas_in_raid.md

@@ -1,0 +1,5 @@
+Assets/Editor/Regression/RaidLootCurrencyRegression.cs
+Assets/Editor/Regression/StarterArmyGrantRegression.cs
+Assets/_Modules/Village/Troops/StarterArmyGrant.cs
+WorkOrders/WORK_ORDER_1803_starter_army_ten_five_footmen_five_archers.RESULT.md
+WorkOrders/WORK_ORDER_1803_starter_army_ten_five_footmen_five_archers.md
