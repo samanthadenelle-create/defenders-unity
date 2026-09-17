@@ -2358,25 +2358,54 @@ namespace DeNelle.Village
         }
 
         /// <summary>
-        /// The survivor reward: on a 3-STAR clear every troop that walked off the field gains
-        /// one veterancy rank (<see cref="ArmyStorage.AddVeterancy"/>, capped at
-        /// PlayerTroop.MaxVeterancyRank) - the "+5% damage per survived 3-star raid" ladder
-        /// PlayerTroop already documents and TroopDeployer.SpawnFromArmy already consumes via
-        /// PlayerTroop.DamageMultiplier. Before this, AddVeterancy had ZERO callers repo-wide.
-        /// Below 3 stars nothing is granted.
+        /// ⛔ THE ONE STAR COUNT A FULL CLEAR MEANS, FOR BOTH THINGS THAT HANG OFF IT.
+        ///
+        /// <para>WO-1789 section 3.3 retired a hardcoded literal <c>3</c> that sat in
+        /// <see cref="GrantVeterancy"/>'s gate AND, separately, inside its own trace string, while
+        /// <see cref="OwnedBaseProgression.CaptureStarsRequired"/> carried the identical number for
+        /// the capture gate. Two independent 3-star gates is duplicated state - the exact failure
+        /// CLAUDE.md sections 2, 5 and 8 each describe in their own words - and a doc or a caption
+        /// quoting either one would have gone stale the first time the owner retuned it.</para>
+        ///
+        /// <para>Its VALUE is <see cref="OwnedBaseProgression.CaptureStarsRequired"/>, never a
+        /// re-typed literal, so retuning the capture gate retunes this with it. It is a NAMED const
+        /// rather than a bare forward because the two rules are different rules that happen to share
+        /// a number: if the owner ever splits them, THIS is the one line that changes, and the
+        /// victory screen's caption (<c>EndStateVM.VeterancyDeniedCaption</c>, which reads this) moves
+        /// with the gate automatically.</para>
+        /// </summary>
+        internal const int VeterancyStarsRequired = OwnedBaseProgression.CaptureStarsRequired;
+
+        /// <summary>
+        /// The survivor reward: on a FULL clear (<see cref="VeterancyStarsRequired"/> stars) every
+        /// troop that walked off the field gains one veterancy rank
+        /// (<see cref="ArmyStorage.AddVeterancy"/>, capped at PlayerTroop.MaxVeterancyRank) - the
+        /// "+5% damage per survived 3-star raid" ladder PlayerTroop already documents and
+        /// TroopDeployer.SpawnFromArmy already consumes via PlayerTroop.DamageMultiplier. Before
+        /// this, AddVeterancy had ZERO callers repo-wide. Below that star count nothing is granted.
+        ///
+        /// <para>⚠ THE DENIAL IS NO LONGER LOG-ONLY. Until WO-1789 the Step below was the ONLY
+        /// output of this branch, so a player who missed the rank by one star was told nothing at
+        /// all (the owner's own 2026-09-16 run: <c>veterancy: 2 star(s) - no ranks granted (3 stars
+        /// required).</c>). The caption now rides the victory screen's star row -
+        /// <c>RaidVictoryController.ShowVictoryScreen</c> -> <c>EndStateVM.StarCaption</c>. This
+        /// trace STAYS (section 12: instrumentation is permanent, never stripped once a surface
+        /// exists for it).</para>
         /// </summary>
         private static void GrantVeterancy(ArmyStorage army, List<string> survivorIds, int starsEarned)
         {
-            if (starsEarned < 3)
+            if (starsEarned < VeterancyStarsRequired)
             {
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
-                    $"veterancy: {starsEarned} star(s) - no ranks granted (3 stars required).");
+                    $"veterancy: {starsEarned} star(s) - no ranks granted ({VeterancyStarsRequired} stars " +
+                    "required). The victory screen states this under the star row (WO-1789).");
                 return;
             }
             if (army.Owned == null || survivorIds == null || survivorIds.Count == 0)
             {
                 DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
-                    "veterancy: 3-star clear but NO surviving deployed troops - no ranks granted.");
+                    $"veterancy: {VeterancyStarsRequired}-star clear but NO surviving deployed troops - " +
+                    "no ranks granted.");
                 return;
             }
 
@@ -2395,7 +2424,8 @@ namespace DeNelle.Village
             });
 
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
-                $"veterancy: 3-star clear - {promoted} of {survivors.Count} survivor(s) gained a rank.");
+                $"veterancy: {VeterancyStarsRequired}-star clear - {promoted} of {survivors.Count} " +
+                "survivor(s) gained a rank.");
         }
 
         // =====================================================================
