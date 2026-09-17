@@ -198,9 +198,12 @@
 > - **1844** = clan WO-1, wallet_identity table + touchWalletIdentity (no dependencies, first to build)
 > - **1845** = clan WO-2, clan/clan_members/clan_messages tables + create/join/leave/me endpoints (needs 1844)
 > - **1846** = clan WO-3, roles/succession/rate limits, incl. owner-ruled Officer kick power (needs 1845)
-> - **1847** = clan WO-4, Cherry Chat embed - **BLOCKED**, do not dispatch: pending Cherry's own
->   confirmation of room-chat rate limits, a real open gap this project's own WO-1265 ruling requires
->   closed before free-text chat ships (needs 1845; blocked independent of the rest of the chain)
+> - **1847** = clan WO-4, Cherry Chat embed - owner ruling 2026-09-17 SUPERSEDES the earlier block:
+>   Cherry's rate-limit policy stays genuinely undocumented after an exhaustive search, but the owner
+>   ruled to ship anyway for the pre-revenue hackathon demo (no real users, free text needed for
+>   legibility, in-house throttle deferred until real users exist) with a minimum reporting path
+>   (a `clan_reports` table + a report-message button, satisfying WO-1265's intent structurally without
+>   review tooling yet). Ready to dispatch once 1845 lands - no longer blocked.
 > - **1848** = clan WO-5, two-wallet integration test, the WO-1265 acceptance gate (needs 1844-1846)
 > - **1849** = clan WO-6, admin clan-health view - **DEFERRED** per owner ruling, not required for demo
 > - **1850** = clan WO-7, leaderboard fed by clan_vigil_weight (needs 1848)
