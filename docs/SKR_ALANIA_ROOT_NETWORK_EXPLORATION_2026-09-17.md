@@ -392,3 +392,63 @@ first feared:**
 This is the strongest SKR concept produced this session specifically because every piece of it
 survived verification against real code and real external sources, with only one premise needing
 correction, and that correction turned out to make the mechanic better, not weaker.
+
+## The Vigil, collective edition — a multisig/Genesis Token escalation, also verified
+
+Owner-proposed extension: instead of the Vigil reading one player's wallet, it reads a Squads
+multisig vault's SKR stake, where the vault's signers must each be a verified Solana Seeker device
+owner. The fiction shift is real and good: "ancestors remember your vigil" becomes "ancestors
+remember what you built together" — the clan's SKR position becomes a genuinely collectively-owned,
+collectively-signed thing, not just several individual stakes added up.
+
+### What this adds, as proposed
+
+- **Collective treasury staking.** The SKR being measured lives in a Squads multisig vault, not
+  one player's wallet — no single member can unilaterally stake, unstake, or move it; every
+  operation needs M-of-N signatures from the vault's members.
+- **Hardware-backed membership.** Solana Mobile's Genesis Token — a device-bound token proving
+  ownership of a real Seeker phone — gates who can be a signer, so "the clan's collective" is
+  verifiably a group of real device owners, not just an address list.
+- **Governance-as-gameplay.** The weekly perk ballot runs as an actual Squads proposal (not a
+  simple in-game vote), and Squads v4's real features map onto game concepts: time-locks become a
+  "perk cooling period," spending limits become "maximum SKR the vault can move per week," and
+  Squads' role system becomes in-fiction roles like Treasurer/Proposer/Voter.
+
+### Verified — every specific technical claim in this proposal checks out
+
+- **Genesis Token is real and currently usable, not aspirational.** Solana Mobile publishes an
+  official developer guide ("Detecting Seeker Users") with a documented recipe: Sign-In-With-Solana
+  proves the caller controls the wallet, then a backend RPC check confirms that wallet holds the
+  Genesis Token by its specific mint address. One accuracy correction to the original claim: it is
+  not absolutely non-transferable — Solana Mobile's own guidance notes it can move between a single
+  owner's own accounts if they change their primary Seed Vault account — so verification must check
+  the specific mint address per wallet, not just "holds some Genesis Token." A solvable detail, not
+  a blocker.
+- **Squads v4's time-locks, spending limits, and roles/permissions are all real**, confirmed
+  against Squads' own SDK documentation — Initiate/Vote/Execute roles and the other features the
+  pitch named are documented, shipping features, not roadmap items.
+- **"Guardian" is the staking program's own real term, already in this codebase.** The `UserStake`
+  account layout read earlier this session literally contains a `guardian_pool` field — "staking
+  delegates SKR to a Guardian" is the program's actual language, not the pitch inventing a word.
+- **Integration complexity: real and bounded, but a genuine step up from the single-wallet
+  version.** This escalation doesn't require inventing anything from scratch — both Squads and
+  Genesis Token detection ship as real SDKs with working reference code. But it is a materially
+  bigger feature than reading one wallet's stake: the game must identify a multisig vault, verify
+  every signer's Genesis Token individually, and run the weekly vote through Squads' real
+  proposal-and-approval lifecycle instead of a simple in-game ballot tally. Realistic sizing: a
+  multi-day backend feature on top of the already-larger clan-system build, not a one-line
+  addition — but every piece of it rests on documented, working ground rather than an uncertain
+  bet.
+
+### How this fits alongside the single-wallet version
+
+Recommend keeping both, explicitly, rather than replacing one with the other:
+
+- **The single-wallet Vigil** (documented above) is the safe, fully-scoped version — smaller build,
+  still genuinely SKR-specific, still passes every fairness and legal check, a realistic hackathon
+  demo target on its own.
+- **The collective/multisig Vigil** is the bigger, more ambitious pitch — hardware identity plus
+  real collective governance, using three real Solana Mobile-native systems together (SKR staking,
+  Genesis Token, Squads) instead of one. It's the stronger story for a judge if there's enough build
+  time left to actually demo the multisig flow working end to end; if time runs short, the
+  single-wallet version is a complete, honest fallback rather than an unfinished stretch goal.
