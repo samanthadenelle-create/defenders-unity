@@ -189,7 +189,23 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-third pass): main line next free = **1826**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-fifth pass): main line next free = **1829**.
+> *(Lead PRE-ASSIGNED **1827** the five flat modal panels (Leaderboard, Cosmetic Shop, Clan Chat, Benefactors Wall,
+> Town Showcase Visit - ~26 sites, 11-18px, no autosize/overflowMode) need a re-cut px ladder before they can take the
+> 30px floor without culling glyphs - WO-1826 §"LEFT READY", math costed (Leaderboard FooterH short 6.0px, ProfileH
+> short 2.0px x2 rows, +22px of fixed ladder needed) and **1828** sub-floor fontSizeMin (14f/18f) outside
+> Assets/_Modules/HUD - PiSignInController.cs:526, BuildHudController.cs:579, OwnedTownPanel.cs:89/132/141,
+> RedeemCodePanel.cs:197/224 (WO-1826 out-of-scope finding). Bumped 1827 -> 1829 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-fourth pass): main line next free = **1827**.
+> *(Lead PRE-ASSIGNED **1826** apply the 30px mobile font floor across the whole HUD assembly, not just the sites
+> WO-1823 touched - owner 2026-09-17: "do it, apply the 30 floor to the hud". A grep sweep already found
+> HudCompassWidget.cs sub-floor at 14f/18f and other player-facing HUD panels (ClanChatPanel, CosmeticShopPanel,
+> LeaderboardPanel, QuestTrackerHud, DialogueView, PlayerDeckWorkspace, BenefactorsWallPanel,
+> TownShowcaseVisitPanel) never audited; dev/debug/admin overlays (AdminOverlay, DebuggingController,
+> OwnerDevToolsOverlay) are explicitly OUT of scope. Bumped 1826 -> 1827 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-forty-third pass): main line next free = **1826**.
 > *(Lead PRE-ASSIGNED **1825** remove the corner minimap from the overworld HUD - owner ruling 2026-09-17: "Let's
 > remove it, landscape is too small" / "And only help could be in dungeons maybe" (retire FeatureFlags.Minimap,
 > HudMinimapWidget's build site, and reclaim HudLayoutBands.MinimapMount; a dungeon map is an unscoped future maybe,

@@ -230,15 +230,27 @@ namespace DeNelle.HUD.Kit
                     tick.anchoredPosition = Vector2.zero;
 
                     bool north = i == 0;
-                    var lbl = AddText(tick, CardinalNames[i], north ? 30f : 26f,
+                    var lbl = AddText(tick, CardinalNames[i], ElarionUi.FontFloorMobile,
                                       north ? ElarionUi.Gilt : ElarionUi.Parchment,
                                       TextAlignmentOptions.Top);
                     lbl.fontStyle = FontStyles.Bold;
                     lbl.characterSpacing = 2f;
                     // Autosize floor/ceiling so a short tape band can never cull the letters.
                     lbl.enableAutoSizing = true;
-                    lbl.fontSizeMin = 14f;
-                    lbl.fontSizeMax = north ? 30f : 26f;
+                    // ⭐ WO-1826 — THE 30 px FLOOR, APPLIED HUD-WIDE (owner: "do it, apply the 30
+                    // floor to the hud", after the WO-1823 player report "Text is too small to
+                    // read"). WAS: min 14f, and a max of 30 for N but 26 for the other seven — so
+                    // every non-north tick was authored UNDER ElarionUi.FontFloorMobile and could
+                    // additionally shrink to 14. The min and the max are raised TOGETHER and
+                    // uniformly: raising the min alone would leave min > max on E/NE/S/SW/W/NW.
+                    // North stays distinguished by COLOUR (Gilt) and by its thicker graduation bar
+                    // (4 px vs 2 px, below), not by being the only legible tick.
+                    // Seat proof: the tick label fills _tickLayer (y 0.03..0.55 of a strip that is
+                    // y 0.34..1.00 of a ~142 ref px mount) = ~49 ref px, and a 30 px line needs
+                    // 36 (30 x HudLabelFitRegression.LineHeightFactor 1.2). Width: the tick is
+                    // 76 ref px wide and the widest name is two glyphs.
+                    lbl.fontSizeMin = ElarionUi.FontFloorMobile;
+                    lbl.fontSizeMax = ElarionUi.FontFloorMobile;
 
                     // Graduation bar under the letters — the precise position read.
                     var bar = NewRect("Grad", tick);
@@ -305,7 +317,12 @@ namespace DeNelle.HUD.Kit
                 _cardinal.fontStyle = FontStyles.Bold;
                 _cardinal.characterSpacing = 6f;
                 _cardinal.enableAutoSizing = true;
-                _cardinal.fontSizeMin = 18f;
+                // WO-1826: was 18f, under ElarionUi.FontFloorMobile — the heading readout was
+                // allowed to auto-shrink to 18 on a band that seats the floor. The band is
+                // y 0.56..1.00 of the ~94 ref px strip = ~41 ref px, and a 30 px line needs 36.
+                // fontSizeMax stays ElarionUi.FontMicro (32) — already above the floor, and the
+                // comment above explains why 40 would be culled here.
+                _cardinal.fontSizeMin = ElarionUi.FontFloorMobile;
                 _cardinal.fontSizeMax = ElarionUi.FontMicro;
 
                 FlowTrace.Step("Compass",

@@ -156,7 +156,12 @@ namespace DeNelle.HUD
                 var gt = glyph.GetComponent<TMPro.TextMeshProUGUI>();
                 ElarionUiKit.EnsureFont(gt); // font-safe before .text (TMP GenerateTextMesh NRE)
                 gt.text = "!"; // ASCII quest marker (RPG "!" convention; build-font-safe, no glyph tofu)
-                gt.fontSize = 26;
+                // WO-1826: was 26, under ElarionUi.FontFloorMobile (owner: "do it, apply the 30
+                // floor to the hud"). This is the icon-less fallback marker, so it IS the whole
+                // medallion's content when the sprite is missing. Seat proof: the glyph rect
+                // stretches the full _card, which is 52 x 52 ref px (:107), and a 30 px line needs
+                // 36. One glyph, so there is no width risk.
+                gt.fontSize = ElarionUi.FontFloorMobile;
                 gt.color = ElarionUi.Gilt;
                 gt.alignment = TMPro.TextAlignmentOptions.Center;
                 gt.raycastTarget = false;

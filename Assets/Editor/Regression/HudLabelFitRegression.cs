@@ -212,6 +212,7 @@ namespace DeNelle.Editor.Regression
                 Case(failures, "countdown-minutes", () => Case14_CountdownMinutes(failures, notes));
                 Case(failures, "builders-chip-idle", () => Case15_BuildersChipIdle(failures, notes));
                 Case(failures, "hud-font-floor",   () => Case16_FontFloorAuthored(failures, notes));
+                Case(failures, "hud-font-floor-sweep", () => Case17_FontFloorSweep(failures, notes));
             }
             catch (Exception ex)
             {
@@ -3016,6 +3017,243 @@ namespace DeNelle.Editor.Regression
                           "The floor-compliant view is the tap-to-expand reading overlay (HeartExpanded*), " +
                           "pinned by Case 10c. Do NOT raise this const - see the WO-1824 paragraph in the " +
                           "WO-1823 EXCEPTION block in " + HudSrc);
+        }
+
+        // ── the WO-1826 sweep's own files ───────────────────────────────────
+        private const string CompassSrc  = "Assets/_Modules/HUD/Kit/HudCompassWidget.cs";
+        private const string DialogueSrc = "Assets/_Modules/HUD/DialogueView.cs";
+        private const string QuestSrc    = "Assets/_Modules/HUD/QuestTrackerHud.cs";
+
+        // =====================================================================
+        // CASE 17 [hud-font-floor-sweep] - WO-1826. Owner: "do it, apply the 30 floor to the hud".
+        //
+        // WHAT CASE 16 DOES NOT COVER. Case 16 pins the FOUR sites WO-1823 touched, and it lints
+        // for sub-floor literals in exactly TWO HudKitController builder bodies (BuildWaveBlock,
+        // BuildRailChip). The rest of the HUD was never in its slice, and a sweep found five more
+        // player-facing sub-floor sites across three OTHER files. This case pins those, in the
+        // same shape: the site must NAME ElarionUi.FontFloorMobile (a retyped 30f cannot follow
+        // the floor when it moves), and the band it lives in must still SEAT a floor line.
+        //
+        // MEASURED, NOT COUNTED. Every width assertion below goes through
+        // ElarionUiKit.MeasureLineWidthPx - real glyph advances for the real font - so a font
+        // swap that widens the face reds this case instead of silently clipping on a device.
+        // An unmeasurable font headlessly is a STATED SKIP (a note), never a pass.
+        //
+        // RED, one line each: put a 14f fontSizeMin back in HudCompassWidget (17a);
+        // put a 26 back on the DialogueView option label (17b); put a 26 back on the quest marker in
+        // QuestTrackerHud (17c); widen the item-picker hint band to 0.55f (17d).
+        // =====================================================================
+        private static void Case17_FontFloorSweep(List<string> failures, List<string> notes)
+        {
+            const string tag = "[hud-font-floor-sweep]";
+            float floor = ElarionUi.FontFloorMobile;
+            float need = floor * LineHeightFactor;
+
+            // ── 17a: the compass tick + heading readout name the floor ──────
+            string compass = ReadSrc(CompassSrc);
+            if (compass == null) failures.Add(tag + " cannot read " + CompassSrc);
+            else
+            {
+                string[] compassPins =
+                {
+                    "AddText(tick, CardinalNames[i], ElarionUi.FontFloorMobile,",
+                    "lbl.fontSizeMin = ElarionUi.FontFloorMobile;",
+                    "lbl.fontSizeMax = ElarionUi.FontFloorMobile;",
+                    "_cardinal.fontSizeMin = ElarionUi.FontFloorMobile;",
+                };
+                foreach (string p in compassPins)
+                    RequireIn(failures, tag, CompassSrc, compass, p,
+                              "WO-1826 raised every compass label to ElarionUi.FontFloorMobile; a numeric " +
+                              "literal here cannot follow the floor when it moves, and the seven non-north " +
+                              "ticks were the sites authored under it");
+                // min and max must be raised TOGETHER: a min above a max is a silent TMP no-op.
+                if (compass.IndexOf("lbl.fontSizeMax = ElarionUi.FontFloorMobile;", StringComparison.Ordinal) < 0 &&
+                    compass.IndexOf("lbl.fontSizeMin = ElarionUi.FontFloorMobile;", StringComparison.Ordinal) >= 0)
+                    failures.Add(tag + " the compass tick's fontSizeMin names the floor but its fontSizeMax does " +
+                                 "not - min > max on the six non-north ticks, which TMP resolves by ignoring " +
+                                 "the floor entirely");
+            }
+
+            // ── 17a bands: the compass strip still seats a floor line ───────
+            // Read off HudCompassWidget's own authored anchors (see its :196-204 comment): the
+            // Status mount resolves to ~142 ref px; the strip is y 0.34..1.00 of it; the tick
+            // layer is y 0.03..0.55 of the strip; the heading readout y 0.56..1.00 of the strip.
+            const float StatusMountPx = 142f;
+            float stripPx = (1.00f - 0.34f) * StatusMountPx;
+            SeatsFloor(failures, notes, tag, "compass tick layer (y 0.03..0.55 of the strip)",
+                       (0.55f - 0.03f) * stripPx, need, floor);
+            SeatsFloor(failures, notes, tag, "compass heading readout (y 0.56..1.00 of the strip)",
+                       (1.00f - 0.56f) * stripPx, need, floor);
+
+            // ── 17a width: the widest cardinal name fits its 76 px tick ─────
+            const float CardinalTickWidthPx = 76f;
+            // BOLD SLACK IS CHARGED HERE. The tick label is FontStyles.Bold with
+            // characterSpacing = 2f (HudCompassWidget, beside the raise), which is exactly the
+            // role-and-weight blind spot the WO-1663 block above names. It is NOT a skinned
+            // obsidian face, so SkinnedFaceWidthSlack would be the wrong term - BoldOnlyWidthSlack
+            // is the one that matches what is drawn.
+            string wDetail;
+            float widest = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body, "NW", floor, out wDetail);
+            if (widest > 0f) widest *= BoldOnlyWidthSlack;
+            if (widest < 0f)
+                notes.Add(tag + " cardinal width UNMEASURED headlessly (" + wDetail + ") - stated skip, not a pass");
+            else if (widest > CardinalTickWidthPx)
+                failures.Add(tag + " the widest cardinal name 'NW' measures " + widest.ToString("0.0") +
+                             " px at the " + floor + "px floor but its tick is only " + CardinalTickWidthPx +
+                             " px wide - the tape would clip its own letters. Widen tick.sizeDelta in " +
+                             CompassSrc + ", do not lower the floor");
+            else
+                notes.Add("cardinal 'NW' measures " + widest.ToString("0.0") + " px at " + floor +
+                          "px inside a " + CardinalTickWidthPx + " px tick");
+
+            // ── 17b: the DialogueView option label + its FitBlock floor ─────
+            string dialogue = ReadSrc(DialogueSrc);
+            if (dialogue == null) failures.Add(tag + " cannot read " + DialogueSrc);
+            else
+            {
+                RequireIn(failures, tag, DialogueSrc, dialogue, "(int)ElarionUi.FontFloorMobile, ElarionUi.Parchment",
+                          "WO-1826 raised the dialogue OPTION rows - the text the player taps - from 26 to the " +
+                          "floor; the speaker/affiliation/body lines already sat on it, so the options were the " +
+                          "smallest text on the screen");
+                RequireIn(failures, tag, DialogueSrc, dialogue,
+                          "ElarionUiKit.FitBlock(lbl, minSize: ElarionUi.FontFloorMobile, maxSize: 30f);",
+                          "a floor-named fontSize with a 20f FitBlock min is not a floor at all - FitBlock " +
+                          "would shrink it straight back to 20");
+                // The option row is a MinTouchPx rung; the label is y 0.08..0.92 of it.
+                SeatsFloor(failures, notes, tag, "dialogue option label (y 0.08..0.92 of a MinTouchPx row)",
+                           (0.92f - 0.08f) * ElarionUiKit.MinTouchPx, need, floor);
+            }
+
+            // ── 17c: the quest medallion's fallback marker glyph ────────────
+            string quest = ReadSrc(QuestSrc);
+            if (quest == null) failures.Add(tag + " cannot read " + QuestSrc);
+            else
+            {
+                RequireIn(failures, tag, QuestSrc, quest, "gt.fontSize = ElarionUi.FontFloorMobile;",
+                          "WO-1826 raised the icon-less quest marker from 26 to the floor - with no sprite it " +
+                          "IS the whole medallion's content");
+                RequireIn(failures, tag, QuestSrc, quest, "_card.sizeDelta = new Vector2(52f, 52f);",
+                          "this case seats the marker glyph against a 52 x 52 medallion; if the card is " +
+                          "resized, the seat arithmetic below is measuring a rect that no longer exists");
+                SeatsFloor(failures, notes, tag, "quest medallion glyph (the full 52 x 52 _card)",
+                           52f, need, floor);
+            }
+
+            // ── 17d: the item-picker hint - font raised AND band grown ──────
+            string hud = ReadSrc(HudSrc);
+            if (hud == null) failures.Add(tag + " cannot read " + HudSrc);
+            else
+            {
+                RequireIn(failures, tag, HudSrc, hud, "hint.fontSize = ElarionUi.FontFloorMobile;",
+                          "WO-1826 raised the combat item-picker hint from a hard 28f (autosizing OFF, so " +
+                          "nothing could rescue it) to the floor");
+                RequireIn(failures, tag, HudSrc, hud,
+                          "0.59f, 0.71f, ElarionUi.ParchmentDim, ElarionUi.FontBody,",
+                          "the hint band is MEASURED to seat the floor at 0.59..0.71 (57 ref px, below) and " +
+                          "must NOT be 'widened for safety': the HEALING POTION rung under it is grown to " +
+                          "MinTouchPx symmetrically about its centre, reaching y 0.542 of the body, so a 0.55 " +
+                          "bottom leaves 2 px of clearance where 0.59 leaves 23");
+                // The band, computed from the authored fractions rather than assumed. The default
+                // FrameZones body row is y 0.10..0.875 of chrome.content, and content is the full
+                // frame (ElarionUiKit.cs:356, :619, :718); MedievalUiSkin.ApplyShell(compact: true)
+                // insets NOTHING (MedievalUiSkin.cs:15-48), so there is no hidden term here.
+                const float PickerCanvasH = 965f;           // landscape canvas-local (HudKitController:1755)
+                const float PickerPanelFrac = 0.82f - 0.18f;
+                const float DefaultBodyFrac = 0.875f - 0.10f;
+                float pickerBodyH = PickerPanelFrac * PickerCanvasH * DefaultBodyFrac;
+                SeatsFloor(failures, notes, tag, "item-picker hint (y 0.59..0.71 of the picker body)",
+                           (0.71f - 0.59f) * pickerBodyH, need, floor);
+                // And the grown potion rung must stay CLEAR of the hint band's bottom edge.
+                float potionRungH = (0.51f - 0.34f) * pickerBodyH;
+                float grownTopFrac = potionRungH >= ElarionUiKit.MinTouchPx
+                    ? 0.51f
+                    : ((0.34f + 0.51f) * 0.5f) + (ElarionUiKit.MinTouchPx * 0.5f / pickerBodyH);
+                if (grownTopFrac > 0.59f)
+                    failures.Add(tag + " the HEALING POTION rung is " + potionRungH.ToString("0.0") +
+                                 " ref px, under MinTouchPx " + ElarionUiKit.MinTouchPx + ", so ClampMinTouch " +
+                                 "grows it about its centre to y " + grownTopFrac.ToString("F3") + " of the " +
+                                 "picker body - THROUGH the hint band that starts at 0.59. Move the hint band " +
+                                 "UP or give the rung its own reserved height; do not shrink the hint");
+                else
+                    notes.Add("picker potion rung grows to y " + grownTopFrac.ToString("F3") +
+                              ", clear of the hint band's 0.59 bottom edge");
+                // Width: the hint has enableWordWrapping = false, so a raise that overflows CLIPS
+                // rather than wrapping. Measured against the authored x 0.12..0.88 of the picker
+                // body; the picker modal spans x 0.25..0.75 of the canvas, whose landscape
+                // canvas-local width is 2148 units (HudKitController.cs:1755).
+                const float PickerCanvasW = 2148f;
+                float pickerBodyW = (0.75f - 0.25f) * PickerCanvasW;
+                float hintBoxW = (0.88f - 0.12f) * pickerBodyW;
+                string hDetail;
+                float hintW = ElarionUiKit.MeasureLineWidthPx(ElarionUiKit.FontRole.Body,
+                                  "Gameplay is paused while you choose.", floor, out hDetail);
+                if (hintW < 0f)
+                    notes.Add(tag + " picker hint width UNMEASURED headlessly (" + hDetail +
+                              ") - stated skip, not a pass");
+                else if (hintW > hintBoxW)
+                    failures.Add(tag + " the item-picker hint measures " + hintW.ToString("0.0") +
+                                 " px at the " + floor + "px floor but its box is " + hintBoxW.ToString("0.0") +
+                                 " px (x 0.12..0.88 of a modal spanning x 0.25..0.75 of a 2148-unit canvas) " +
+                                 "and enableWordWrapping is FALSE - it would CLIP, not wrap. Widen the band " +
+                                 "or shorten the authored sentence; do not drop the font");
+                else
+                    notes.Add("picker hint measures " + hintW.ToString("0.0") + " px at " + floor +
+                              "px inside a " + hintBoxW.ToString("0.0") + " px box");
+            }
+
+            // ── 17e: the five flat modal panels are a KNOWN, RECORDED gap ───
+            // They are NOT raised (WO-1826 table C): each builds text through a private helper
+            // with a fixed fontSize, no enableAutoSizing and no overflowMode, so a raise without
+            // re-authoring the px ladder CULLS glyphs (the "0 visible glyphs, rect 333x25" class).
+            // This sub-case does not fail on their font sizes - it fails if their helpers quietly
+            // GAIN autosizing without the ladder work, because that would look fixed while
+            // shrinking every label straight back under the floor.
+            string[] flatPanels =
+            {
+                "Assets/_Modules/HUD/LeaderboardPanel.cs",
+                "Assets/_Modules/HUD/ClanChatPanel.cs",
+                "Assets/_Modules/HUD/CosmeticShopPanel.cs",
+                "Assets/_Modules/HUD/BenefactorsWallPanel.cs",
+                "Assets/_Modules/HUD/TownShowcaseVisitPanel.cs",
+            };
+            int pending = 0;
+            foreach (string path in flatPanels)
+            {
+                string body = ReadSrc(path);
+                if (body == null) { failures.Add(tag + " cannot read " + path); continue; }
+                bool autosize = body.IndexOf("enableAutoSizing = true", StringComparison.Ordinal) >= 0;
+                bool namesFloor = body.IndexOf("ElarionUi.FontFloorMobile", StringComparison.Ordinal) >= 0;
+                if (autosize && !namesFloor)
+                    failures.Add(tag + " " + path + " now enables auto-sizing without naming " +
+                                 "ElarionUi.FontFloorMobile - auto-sizing with no floor shrinks its 11..18px " +
+                                 "labels FURTHER, the opposite of WO-1826. Set fontSizeMin to the floor and " +
+                                 "grow the px rungs (the per-band deficits are in WORK_ORDER_1826)");
+                if (!namesFloor) pending++;
+            }
+            notes.Add("WO-1826 table C: " + pending + " of " + flatPanels.Length + " flat modal panels still " +
+                      "author sub-floor text and are LEFT READY for the ladder re-author (deficits worked in " +
+                      "WorkOrders/WORK_ORDER_1826_hud_wide_30px_font_floor_sweep.md) - recorded, not silent");
+        }
+
+        /// <summary>One band-seats-the-floor assertion, in the units and with the wording Case 16c
+        /// already uses - so no sub-case retypes the arithmetic or the remedy.</summary>
+        private static void SeatsFloor(List<string> failures, List<string> notes, string tag,
+                                       string what, float bandPx, float need, float floor)
+        {
+            if (bandPx < need)
+                failures.Add(tag + " " + what + " is " + bandPx.ToString("0.0") + " ref px tall but a " +
+                             floor + "px floor line needs " + need.ToString("0.0") + " - the band would cull " +
+                             "its own glyphs. Grow the band, never the floor down");
+            else
+                notes.Add(what + " " + bandPx.ToString("0") + " px seats the " + floor + "px floor");
+        }
+
+        /// <summary>RequirePin, but for a file other than HudSrc (WO-1826 spans four files).</summary>
+        private static void RequireIn(List<string> failures, string tag, string path, string src,
+                                      string literal, string why)
+        {
+            if (src.IndexOf(literal, StringComparison.Ordinal) < 0)
+                failures.Add(tag + " " + path + " no longer contains '" + literal + "' - " + why);
         }
 
         /// <summary>Every `fontSizeMin = &lt;n&gt;f` / `fontSizeMax = &lt;n&gt;f` NUMERIC literal in one

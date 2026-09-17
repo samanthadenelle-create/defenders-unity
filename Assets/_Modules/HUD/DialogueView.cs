@@ -1130,11 +1130,20 @@ namespace DeNelle.HUD
                 // Mobile-readable option text (was 15 — sub-legible; F8 2026-07-08). The row's
                 // MinTouchPx height seats a 26px line with room; FitBlock wraps + the guard's
                 // readable floor keeps a long option legible rather than shrinking it into the plate.
+                // ⭐ WO-1826 — RAISED 26 -> ElarionUi.FontFloorMobile (30), and the FitBlock min
+                // with it (owner: "do it, apply the 30 floor to the hud"). 26 with a min of 20 was
+                // the one remaining sub-floor player-facing size in this view: the speaker (36),
+                // affiliation (30, owner-ruled 2026-09-10) and body (30) already sit on the floor,
+                // so the OPTIONS the player actually taps were the smallest text on screen.
+                // Seat proof: the row is a MinTouchPx rung (112 ref px) and this label is
+                // y 0.08..0.92 of it = 94 ref px — two floor lines need 72, so FitBlock wraps a
+                // long option onto a second line instead of shrinking it under the floor.
                 var lbl = MakeLabel(go.transform, "L", new Vector2(0.08f, 0.08f), new Vector2(0.94f, 0.92f),
-                    26, ElarionUi.Parchment, TMPro.FontStyles.Normal, TMPro.TextAlignmentOptions.MidlineLeft);
+                    (int)ElarionUi.FontFloorMobile, ElarionUi.Parchment, TMPro.FontStyles.Normal,
+                    TMPro.TextAlignmentOptions.MidlineLeft);
                 lbl.text = labels[i];
                 lbl.raycastTarget = false;
-                ElarionUiKit.FitBlock(lbl, minSize: 20f, maxSize: 26f);
+                ElarionUiKit.FitBlock(lbl, minSize: ElarionUi.FontFloorMobile, maxSize: 30f);
             }
         }
 

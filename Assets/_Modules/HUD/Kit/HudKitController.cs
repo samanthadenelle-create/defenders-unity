@@ -3720,11 +3720,34 @@ namespace DeNelle.HUD.Kit
             pickerTitle.enableWordWrapping = false;
             pickerTitle.raycastTarget = false;
 
+            // ⭐ WO-1826 — THE FONT ONLY. THE BAND IS ALREADY BIG ENOUGH, AND A "SAFETY" WIDENING
+            // WOULD HAVE COLLIDED WITH THE POTION RUNG (measured, 2026-09-17).
+            // WAS: a hard fontSize of 28f with autosizing OFF — a player-facing line authored 2 px
+            // UNDER ElarionUi.FontFloorMobile with nothing able to rescue it.
+            // WORKED ARITHMETIC, so the next seat does not re-guess it:
+            //   modal panel   = y 0.18..0.82 of the canvas (BuildObsidianModal above) = 0.64
+            //   canvas-local  = 965 units tall in landscape (2670x1200; see :1755)
+            //   panel         = 0.64 x 965                       = 618 ref px
+            //   body zone     = the DEFAULT FrameZones row, y 0.10..0.875 of chrome.content,
+            //                   and content is the full frame (ElarionUiKit.cs:356, :619, :718)
+            //                                                   = 0.775 x 618 = 479 ref px
+            //   this band     = y 0.59..0.71 of that            = 57 ref px
+            // A 30 px line needs 36 (30 x the oracle's 1.2 line factor), so 57 seats it with
+            // 21 px to spare — no band change is needed or wanted.
+            // ⛔ MedievalUiSkin.ApplyShell(compact: true) DOES NOT INSET ANYTHING. It swaps the
+            // frame sprite, clears the legacy fill, hides the medallion and styles the title
+            // (MedievalUiSkin.cs:15-48) — zero geometry. A first pass here assumed a compact inset
+            // and moved this band's bottom 0.59 -> 0.55 "for safety"; that is REVERTED, because the
+            // HEALING POTION button below is 0.34..0.51 = 0.17 x 479 = 81 px, UNDER MinTouchPx
+            // (112), so ClampMinTouch grows it SYMMETRICALLY ABOUT ITS CENTRE
+            // (ElarionUiKit.cs:979-988) to y 0.308..0.542 of the body. A 0.55 band bottom leaves
+            // 2 px of clearance against that grown rung; 0.59 leaves 23. The widening would have
+            // manufactured the collision it was meant to avoid.
             var hint = ElarionUiKit.Label(body, "Gameplay is paused while you choose.",
                 0.59f, 0.71f, ElarionUi.ParchmentDim, ElarionUi.FontBody,
                 TextAlignmentOptions.Center, 0.12f, 0.88f);
             hint.enableAutoSizing = false;
-            hint.fontSize = 28f;
+            hint.fontSize = ElarionUi.FontFloorMobile;
             hint.enableWordWrapping = false;
             hint.raycastTarget = false;
 
