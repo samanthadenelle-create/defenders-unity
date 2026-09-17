@@ -1573,14 +1573,46 @@ namespace DeNelle.Editor
             // archer family is YHeightVariable * 1.2 = 4.8 m. Siege machines stay authored.
             if (!IsAuthoredSiegeMachine(plan.CatalogId))
             {
-                var entry = FindStructure(plan.CatalogId);
-                float mul = entry != null && entry.repo != null && entry.repo.heightMul > 0.01f
-                    ? entry.repo.heightMul : 1.2f;
-                float target = StructureFactory.YHeightVariable * mul;
-                ScaleToHeight(go, target, plan.Label + " turret cadence");
+                ScaleToHeight(go, TurretCadenceHeight(plan.CatalogId), plan.Label + " turret cadence");
                 SeatOnGround(go);
             }
             return go;
+        }
+
+        /// <summary>
+        /// THE ONE turret-cadence height (metres) for a catalog id:
+        /// <c>StructureFactory.YHeightVariable * repo.heightMul</c>, multiplier defaulting to 1.2
+        /// (the archer-family cadence) when the row authors none. WO-1817, 2026-09-16.
+        ///
+        /// ⛔ HOISTED, NOT INVENTED. This is byte-for-byte the expression <see cref="PlaceTowerProp"/>
+        /// has always used; it is `internal` for the same reason <see cref="IsAuthoredSiegeMachine"/>
+        /// and <see cref="CatalogArtPath"/> are, so RaidBaseDresser can fit the CLAD to the very
+        /// number the generator fitted the HOST to instead of keeping a second copy of the formula.
+        ///
+        /// WHY THE DRESSER NEEDS IT AT ALL (the WO-1817 defect): the dresser hangs the clad as a
+        /// CHILD of the host, so the clad renders at `hostLossyScale * cladNativeHeight` - the
+        /// accidental product of two unrelated models. Measured in the four baked scenes on
+        /// 2026-09-16 (Builds/raid-post-audit-after2.log): 0.05 m in Iron Bastion, 0.86 m in the mage
+        /// enclave, 1.11 m in the camp, 7.52 m in the garrison. Not one of them was the 4.80 m this
+        /// method returns for an arcane spire, and since WO-1807 stripped the host's own renderer the
+        /// fitted model is no longer even on screen.
+        ///
+        /// ⚠ KNOWN DIVERGENCE, NAMED NOT FIXED: <c>StructureFactory.OptsFor</c> defaults the
+        /// multiplier to 1.0 where this defaults to 1.2 (already recorded at
+        /// StructureCadenceRegression.cs:114-121 as "RaidBaseGenerator builds its own SkinOptions").
+        /// Every live turret row authors heightMul - tower_catapult 0.75, tower_arcane_spire 1.2,
+        /// tower_ground_archer 1.2 - so the two agree TODAY. RaidPostOrientationRegression computes
+        /// its expectation through OptsFor precisely so that a future row omitting the key REDS the
+        /// gate rather than shipping a 20% size split. Changing this default is that ticket's job,
+        /// not a side effect of one: raising or lowering it here silently resizes every fitted turret
+        /// in every baked raid scene.
+        /// </summary>
+        internal static float TurretCadenceHeight(string catalogId)
+        {
+            var entry = FindStructure(catalogId);
+            float mul = entry != null && entry.repo != null && entry.repo.heightMul > 0.01f
+                ? entry.repo.heightMul : 1.2f;
+            return StructureFactory.YHeightVariable * mul;
         }
 
         /// <summary>

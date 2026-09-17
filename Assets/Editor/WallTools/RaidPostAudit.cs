@@ -50,6 +50,8 @@ using System.Text;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using DeNelle.Village;              // DefenseTower - the catalog id ArmTower stamped on each turret (WO-1817)
+using DeNelle.Village.World.Camps;  // RaidSpire.VisualHeight - the bake's own fitted height (WO-1820)
 
 namespace DeNelle.Editor
 {
@@ -82,6 +84,19 @@ namespace DeNelle.Editor
 
         /// <summary>How far above/below y=0 a seated post's lowest rendered point may sit.</summary>
         public const float SeatToleranceM = 0.5f;
+
+        /// <summary>
+        /// WO-1817 - how far a Watchtower_*'s CLAD height may sit from its authored turret cadence,
+        /// as a FRACTION of that cadence. 0.10 = the ticket's "within 10%".
+        ///
+        /// A tolerance rather than an equality because the clad is fitted on its renderer BOUNDS and
+        /// then re-measured on the same bounds after a uniform scale, so float round-trip and any
+        /// bounds recompute can move the last centimetre. It is NOT slack for a wrong model: the
+        /// defect this pin exists to catch spans 0.05 m to 17.96 m against a 4.80 m target - between
+        /// 1% and 374% of it - so 10% separates the failure from the noise by two orders of magnitude.
+        /// If a post ever lands just outside this band, OPEN THE FRAME; do not widen the number.
+        /// </summary>
+        public const float CladHeightTolerance = 0.10f;
 
         // ---------------------------------------------------------------------
 
@@ -135,7 +150,7 @@ namespace DeNelle.Editor
                         continue;
                     }
 
-                    GameObject shotCorner = null, shotTower = null;
+                    GameObject shotCorner = null, shotTower = null, shotSpire = null;
 
                     foreach (var host in hosts)
                     {
@@ -147,9 +162,13 @@ namespace DeNelle.Editor
                             shotCorner = host;
                         if (shotTower == null && host.name.StartsWith("Watchtower_", StringComparison.Ordinal))
                             shotTower = host;
+                        // WO-1820 - the win condition gets its own frame. A number in the log says the
+                        // spire is 14.40 m; only the picture says it reads as a monument.
+                        if (shotSpire == null && string.Equals(host.name, "RaidSpire", StringComparison.Ordinal))
+                            shotSpire = host;
                     }
 
-                    foreach (var subject in new[] { shotCorner, shotTower })
+                    foreach (var subject in new[] { shotCorner, shotTower, shotSpire })
                     {
                         if (subject == null) continue;
                         string outPath = Path.Combine(OutFolder, $"{sceneName}_{subject.name}.png");
@@ -207,8 +226,13 @@ namespace DeNelle.Editor
                 {
                     var t = all[i];
                     if (t == null || t.name == null) continue;
+                    // WO-1820: RaidSpire joins the audit. It is clad by the SAME
+                    // RaidBaseDresser.ReplaceChildrenWith seam as the posts, and it was rendering at
+                    // 0.14 m in three of the four baked scenes - the raid's WIN CONDITION, at 1/100
+                    // scale, for however long - precisely because nothing here ever looked at it.
                     if (t.name.StartsWith("CornerPost_", StringComparison.Ordinal) ||
-                        t.name.StartsWith("Watchtower_", StringComparison.Ordinal))
+                        t.name.StartsWith("Watchtower_", StringComparison.Ordinal) ||
+                        string.Equals(t.name, "RaidSpire", StringComparison.Ordinal))
                         found.Add(t.gameObject);
                 }
             }
@@ -237,10 +261,16 @@ namespace DeNelle.Editor
             if (report.Visual == null)
                 log.AppendLine("      VISUAL none");
             else
+            {
+                string cadence = report.CadenceH > 0.01f
+                    ? $"cadence={report.CadenceH:0.##} ('{report.CatalogId}')"
+                    : "cadence=none";
                 log.AppendLine($"      VISUAL localRot={Fmt(report.Visual.transform.localRotation.eulerAngles)} " +
                                $"up={Fmt(report.VisualUp)} upDot={report.VisualUpDot:0.###} " +
                                $"size={Fmt(report.VisualBounds.size)} minY={report.VisualBounds.min.y:0.##} " +
-                               $"ratio={report.VisualRatio:0.##}");
+                               $"ratio={report.VisualRatio:0.##} {cadence} " +
+                               $"muzzleY={(host.transform.position.y + 2f):0.##}");
+            }
 
             return report.Defect;
         }
@@ -260,6 +290,14 @@ namespace DeNelle.Editor
             public Bounds VisualBounds;
             public float VisualRatio;
 
+            /// <summary>WO-1817: the authored turret cadence target, or 0 when this post has none.</summary>
+            public float CadenceH;
+            /// <summary>WO-1820: non-null when this host IS the raid objective (it stands on the
+            /// KeepPlatform, not on the ground - see the seat pin).</summary>
+            public RaidSpire Spire;
+            /// <summary>WO-1817: the catalog id read off the host's DefenseTower, or "-".</summary>
+            public string CatalogId;
+
             /// <summary>Null when clean; otherwise the human sentence naming what is wrong.</summary>
             public string Defect;
         }
@@ -276,8 +314,33 @@ namespace DeNelle.Editor
         /// </summary>
         public static PostReport Evaluate(GameObject host)
         {
-            var r = new PostReport { RootMesh = "-", RootMaterial = "-" };
+            var r = new PostReport { RootMesh = "-", RootMaterial = "-", CatalogId = "-" };
             if (host == null) { r.Defect = "host is null"; return r; }
+
+            // WO-1817 - the authored cadence for this post, from the catalog id RaidBaseGenerator.
+            // ArmTower stamped on it. CornerPost_* / RaidSpire carry no DefenseTower and so no
+            // target; they stay at 0 and pin 5 below skips them (WO-1817 s.4 item 2).
+            var tower = host.GetComponent<DefenseTower>();
+            if (tower != null && !string.IsNullOrEmpty(tower.CatalogId))
+            {
+                r.CatalogId = tower.CatalogId;
+                r.CadenceH = RaidBaseGenerator.TurretCadenceHeight(tower.CatalogId);
+            }
+            else
+            {
+                // WO-1820 - the spire's authored height is the one the BAKE recorded on it, which is
+                // also what sizes its hero-contact collider (RaidSpire.EnsureHittable). Reading it
+                // rather than re-deriving the monument clamp keeps art, collider and component on one
+                // number; SpireMonumentMultiplier is internal to this assembly but the REGRESSION
+                // cannot see it, so a formula here would have to be copied there (CLAUDE.md s.2).
+                var spire = host.GetComponent<RaidSpire>();
+                if (spire != null)
+                {
+                    r.Spire = spire;
+                    r.CatalogId = string.IsNullOrEmpty(spire.CatalogId) ? "-" : spire.CatalogId;
+                    r.CadenceH = spire.VisualHeight;
+                }
+            }
 
             var rootRends = host.GetComponents<Renderer>();
             for (int i = 0; i < rootRends.Length; i++)
@@ -321,8 +384,38 @@ namespace DeNelle.Editor
                     faults.Add($"/Visual up-vector dot Vector3.up = {r.VisualUpDot:0.###} (<= 0.9) - it is pitched/inverted");
                 if (r.VisualRatio < UprightRatio)
                     faults.Add($"/Visual bounds ratio {r.VisualRatio:0.##} < {UprightRatio:0.0} - it renders FLAT");
-                if (Mathf.Abs(r.VisualBounds.min.y) > SeatToleranceM)
+                // ⛔ THE SPIRE IS EXEMPT FROM THE GROUND-SEAT PIN, AND THAT IS NOT A WEAKENING
+                // (WO-1820, 2026-09-17). It does not stand on the ground: RaidBaseGenerator's
+                // ReseatSpireOnKeepPlatform deliberately lifts it onto the KeepPlatform slab -
+                // "1.5 m on the castle kits, 0.8 m on dungeon-stone" (RaidBaseGenerator.cs:2184),
+                // MEASURED off the slab, never hardcoded - because WO-1749 found the spire seated on
+                // a ground that stopped existing later in the same build, putting
+                // RaidSpire.WorldPosition inside solid geometry (1650 PathPartial, zero PathComplete
+                // on the owner's Seeker run). This pin flagged exactly those three lifts - 1.5/1.5/0.8,
+                // matching the documented per-kit slab to the centimetre - as "floating".
+                //
+                // It is not re-implemented against the platform here, because that invariant ALREADY
+                // HAS AN OWNER that measures it properly: the generator's `SPIRE SEAT` step and the
+                // chain's `OWNED_TOWN_SPIRE_RESEAT_OK` marker, which on this very bake read
+                // "base y 1.500 vs KeepPlatform top y 1.500, delta 0.0000m". A second copy here would
+                // be the duplicated state CLAUDE.md §2/§5/§16 keeps describing - and this time the
+                // copy would have been the WRONG one.
+                bool standsOnGround = r.Spire == null;
+                if (standsOnGround && Mathf.Abs(r.VisualBounds.min.y) > SeatToleranceM)
                     faults.Add($"/Visual minY {r.VisualBounds.min.y:0.##}m is more than {SeatToleranceM:0.0}m off the ground");
+
+                // ── PIN 5 (WO-1817) — the clad renders at the height the HOST was fitted to ──
+                // The host's own art is gone (WO-1807 strips it), so "the tower is 4.80 m" is only
+                // true of a model nobody can see unless this holds.
+                if (r.CadenceH > 0.01f)
+                {
+                    float off = Mathf.Abs(r.VisualBounds.size.y - r.CadenceH) / r.CadenceH;
+                    if (off > CladHeightTolerance)
+                        faults.Add($"/Visual renders {r.VisualBounds.size.y:0.##}m but '{r.CatalogId}' authors a " +
+                                   $"turret cadence of {r.CadenceH:0.##}m - {off:P0} off (> {CladHeightTolerance:P0}). " +
+                                   "The HOST was fitted and the CLAD is what renders; " +
+                                   "RaidBaseDresser.FitCladToCadence connects them");
+                }
             }
 
             if (faults.Count > 0) r.Defect = string.Join("; ", faults);
@@ -354,9 +447,25 @@ namespace DeNelle.Editor
         // -- the frame --------------------------------------------------------
 
         /// <summary>
-        /// Photograph one post from HERO EYE HEIGHT, standing outside it looking in - the
+        /// Photograph one post from HERO EYE HEIGHT, standing off it at ground level - the
         /// angle the owner is looking from when she calls it upside down. A top-down or
         /// orbit shot would hide exactly the stacked-silhouette defect.
+        ///
+        /// ⛔ WHICH SIDE IS MEASURED, NOT ASSUMED (WO-1817, closing WO-1807 "NOT PROVEN" #3).
+        /// This used to stand unconditionally along the post's OUTWARD radial, which puts the
+        /// arena's own boundary wall between the camera and every wall-line watchtower. Both
+        /// frames in the before set prove it: `RaidBase_fortified_garrison_Watchtower_Archer_0.png`
+        /// is 70% stone wall with a roof peeking over it, and
+        /// `RaidBase_raider_camp_small_Watchtower_Archer_0.png` is a rock pile - neither shows the
+        /// tower, and both scored NON-BLANK, so the instrument reported success while showing
+        /// nothing. A frame that proves nothing is worse than no frame; it gets read as a pass.
+        ///
+        /// So: build BOTH candidate stations (outward and inward), Linecast each back to the
+        /// subject against everything, and take the first with a clear line - preferring outward,
+        /// which is the player's approach. The chosen side is written into the verdict so the log
+        /// says which way the camera was looking. Standoff is derived from the SUBJECT's own size
+        /// (a 1.11 m tower framed from a flat 14 m is a speck) with a floor that keeps a large
+        /// tower in frame.
         /// </summary>
         private static bool GroundShot(GameObject host, string outPath, out string verdict)
         {
@@ -366,15 +475,52 @@ namespace DeNelle.Editor
                 return false;
             }
 
-            // Stand off along the post's own outward radial (its position from the arena
-            // centre), so the camera is always OUTSIDE the ring looking at the post.
             var flat = new Vector3(host.transform.position.x, 0f, host.transform.position.z);
             var outward = flat.sqrMagnitude > 0.01f ? flat.normalized : Vector3.back;
-            float dist = Mathf.Max(14f, b.size.magnitude * 1.6f);
 
-            var camPos = b.center + outward * dist + Vector3.up * (1.7f - b.center.y);
-            var look = Quaternion.LookRotation((b.center - camPos).normalized, Vector3.up);
-            return RenderTo(outPath, camPos, look, 55f, out verdict);
+            // Frame the subject, not a fixed distance: at 55 deg vertical FOV a subject of height h
+            // fills the frame at about h / (2 tan(27.5 deg)) = h * 0.96. Times 2.2 leaves it about
+            // 45% of frame height with room for its surroundings. The 6 m floor keeps the near clip
+            // and the ground plane sane for a sub-metre clad.
+            float dist = Mathf.Max(6f, Mathf.Max(b.size.y, b.size.magnitude * 0.5f) * 2.2f);
+            float eye = Mathf.Max(1.7f, b.center.y);
+
+            // Edit mode does not step physics, so collider transforms can lag the scene we just
+            // opened; without this the linecasts would query stale positions and "prove" a clear
+            // line that is not clear.
+            Physics.SyncTransforms();
+
+            var tried = new List<string>(2);
+            for (int side = 0; side < 2; side++)
+            {
+                var dir = side == 0 ? outward : -outward;
+                string label = side == 0 ? "outward" : "inward";
+                var camPos = new Vector3(b.center.x, 0f, b.center.z) + dir * dist + Vector3.up * eye;
+
+                // Anything solid on the line hides the subject. ~AllLayers on purpose: the boundary
+                // wall is on Structure, but a rock prop that blanked the camp frame may be on any.
+                bool blocked = Physics.Linecast(camPos, b.center, out RaycastHit hit, ~0,
+                                                QueryTriggerInteraction.Ignore);
+                if (blocked && hit.transform != null && hit.transform.IsChildOf(host.transform))
+                    blocked = false;                  // it hit the subject - that is the point
+
+                if (!blocked)
+                {
+                    var look = Quaternion.LookRotation((b.center - camPos).normalized, Vector3.up);
+                    bool ok = RenderTo(outPath, camPos, look, 55f, out verdict);
+                    verdict += $" side={label} dist={dist:0.#}m";
+                    return ok;
+                }
+                tried.Add($"{label} blocked by '{(hit.transform != null ? hit.transform.name : "?")}'");
+            }
+
+            // Both lines blocked: still SHOOT (from outward), and say so, so the frame is judged as
+            // obstructed rather than silently trusted.
+            var fallbackPos = new Vector3(b.center.x, 0f, b.center.z) + outward * dist + Vector3.up * eye;
+            var fallbackLook = Quaternion.LookRotation((b.center - fallbackPos).normalized, Vector3.up);
+            bool shot = RenderTo(outPath, fallbackPos, fallbackLook, 55f, out verdict);
+            verdict += "  OBSTRUCTED (" + string.Join("; ", tried) + ")";
+            return shot;
         }
 
         private static bool RenderTo(string outPath, Vector3 pos, Quaternion rot, float fov, out string verdict)

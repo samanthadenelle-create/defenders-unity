@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-eighth pass): main line next free = **1820**.
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-thirty-ninth pass): main line next free = **1821**.
+> *(Lead PRE-ASSIGNED **1820** the RaidSpire renders 0.14 m tall in three of four baked raid bases (IronBastion,
+> fortified_garrison, mage_enclave; only raider_camp_small is 14.4 m) - the raid's WIN target, found by the WO-1817
+> audit and identical in Builds/raid-rebake-1807.log, so pre-existing. Bumped 1820 -> 1821 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-16 (CLI, two-hundred-and-thirty-eighth pass): main line next free = **1820**.
 > *(Lead PRE-ASSIGNED **1818** api/ quotes flat SKR (`skrFlat` from the generated sku catalog; ceil(flat*(10000-bps)/10000);
 > rate null / rateSource 'flat-skr'; no coingecko dependency for flat SKUs; tests) - WO-1815 follow-up, the shelf shows
 > flat SKR while the served quote is still rate-derived; and **1819** store shelf polish after the flat-SKR captures:

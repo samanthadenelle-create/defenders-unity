@@ -48,6 +48,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using DeNelle.Core;            // CanonicalJson (WO-1817 pin 5)
+using DeNelle.Core.Catalog;    // CatalogEntry / RepoProps
+using DeNelle.Village;             // DefenseTower, StructureFactory.OptsFor
+using DeNelle.Village.World.Camps; // RaidSpire.VisualHeight (WO-1820)
+using Newtonsoft.Json;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -96,6 +101,27 @@ namespace DeNelle.Editor.Regression
         /// <summary>How far a seated post's lowest RENDERED point may sit from the ground.</summary>
         private const float SeatToleranceM = 0.5f;
 
+        /// <summary>
+        /// WO-1817 — how far a <c>Watchtower_*</c>'s CLAD height may sit from its authored turret
+        /// cadence, as a fraction of that cadence.
+        ///
+        /// ⛔ THE PIN THIS FILE WAS MISSING, AND THE REASON IS THE SAME ONE ITS HEADER ALREADY GIVES.
+        /// WO-1807 pinned upright-ness and seating and left absolute HEIGHT unasserted — so the four
+        /// baked scenes passed `RAID_POST_AUDIT_OK 59` on 2026-09-16 20:59 while shipping watchtowers
+        /// at **0.05 m** (Iron Bastion — the final raid), 0.86 m (mage enclave), 1.11 m (camp) and
+        /// 7.52 m (garrison), against an authored cadence of 4.80 m. Every one of them was upright
+        /// and seated. A gate that asks only "is it the right way up" passes a tower the size of a
+        /// coffee cup.
+        ///
+        /// Cause: the clad hangs off the host with `SetParent(parent, false)`, so it renders at
+        /// `hostLossyScale * cladNativeHeight` — and WO-1807 removed the host's own renderer, so the
+        /// model the generator FITTED is no longer on screen at all.
+        ///
+        /// 10% for the same reason RaidPostAudit uses it: the measured failure spans 1%–374% of the
+        /// target, two orders of magnitude clear of float noise on a bounds round-trip.
+        /// </summary>
+        private const float CladHeightTolerance = 0.10f;
+
         private const string Remedy =
             "REMEDY: the clad seam is RaidBaseDresser.ReplaceChildrenWith / StripRootArt " +
             "(Assets/Editor/WallTools/RaidBaseDresser.cs). After any change there the raid scenes " +
@@ -130,6 +156,11 @@ namespace DeNelle.Editor.Regression
             var failures = new List<string>();
             var notes = new StringBuilder();
             string restore = SceneManager.GetActiveScene().path;
+
+            // Re-read the catalog every run: a static cache surviving into a later run in the same
+            // editor session would judge a rebake against the PREVIOUS catalog (CLAUDE.md s.2 - a
+            // copy that outlives its source is the bug).
+            _catalog = null;
 
             var scenes = DiscoverScenes();
             if (scenes.Count == 0)
@@ -176,8 +207,11 @@ namespace DeNelle.Editor.Regression
                     {
                         var tr = transforms[t];
                         if (tr == null || tr.name == null) continue;
+                        // WO-1820: RaidSpire is clad by the SAME seam and was never scanned here,
+                        // which is how the raid's win condition shipped at 1/100 scale unnoticed.
                         if (!tr.name.StartsWith("CornerPost_", StringComparison.Ordinal) &&
-                            !tr.name.StartsWith("Watchtower_", StringComparison.Ordinal))
+                            !tr.name.StartsWith("Watchtower_", StringComparison.Ordinal) &&
+                            !string.Equals(tr.name, "RaidSpire", StringComparison.Ordinal))
                             continue;
 
                         inScene++;
@@ -266,11 +300,197 @@ namespace DeNelle.Editor.Regression
                            $"({b.size.x:0.#}x{b.size.y:0.#}x{b.size.z:0.#}m) - it renders FLAT");
 
             // ── PIN 4 — the clad is SEATED on the ground ───────────────────────
-            if (Mathf.Abs(b.min.y) > SeatToleranceM)
+            // ⛔ THE RAID SPIRE IS EXEMPT, AND THE EXEMPTION IS MEASURED, NOT ASSUMED (WO-1820).
+            // It stands on the KeepPlatform, not the ground: RaidBaseGenerator.ReseatSpireOnKeepPlatform
+            // lifts it onto the slab ("1.5 m on the castle kits, 0.8 m on dungeon-stone",
+            // RaidBaseGenerator.cs:2184) because WO-1749 proved a ground-seated spire ends up INSIDE
+            // the slab, which cost 1650 PathPartial and ZERO PathComplete on the owner's Seeker run.
+            // On the 2026-09-17 bake this pin flagged exactly those three lifts - 1.5 / 1.5 / 0.8,
+            // matching the documented per-kit slab to the centimetre.
+            // The platform-seat invariant is NOT re-implemented here: it already has an owner that
+            // measures it properly - the generator's `SPIRE SEAT` step and the chain's
+            // `OWNED_TOWN_SPIRE_RESEAT_OK` marker ("base y 1.500 vs KeepPlatform top y 1.500, delta
+            // 0.0000m" on this bake). A second copy would be duplicated state (CLAUDE.md §2/§5/§16),
+            // and here the copy would have been the wrong one. The spire's HEIGHT stays pinned above.
+            if (host.GetComponent<RaidSpire>() == null && Mathf.Abs(b.min.y) > SeatToleranceM)
                 faults.Add($"clad lowest rendered point is y={b.min.y:0.##}m, more than {SeatToleranceM:0.0}m " +
                            "off the ground - it floats or is sunk");
 
+            // ── PIN 5 (WO-1817) — the clad renders at the authored turret cadence ──
+            CheckCladHeight(host, b, faults);
+
             return faults.Count == 0 ? null : string.Join("; ", faults);
+        }
+
+        /// <summary>
+        /// WO-1817 pin 5: a <c>Watchtower_*</c>'s clad must render within
+        /// <see cref="CladHeightTolerance"/> of the height its catalog row authors.
+        ///
+        /// ⛔ THE EXPECTATION IS COMPUTED THROUGH A DIFFERENT PATH FROM THE ONE THAT PRODUCES IT,
+        /// AND THAT IS THE WHOLE POINT. The dresser fits the clad using
+        /// <c>RaidBaseGenerator.TurretCadenceHeight</c>; this gate re-derives the same number from
+        /// the CATALOG plus <c>StructureFactory.OptsFor(entry).FitHeight</c> — the town's own
+        /// fit-to-height authority. This file cannot reference DeNelle.Editor at all (see the header),
+        /// so importing the subject's helper is not merely discouraged here, it is impossible — and
+        /// an oracle that imports its subject's helper cannot catch the subject changing it.
+        ///
+        /// ⚠ THE TWO PATHS HAVE A KNOWN, DELIBERATE DIVERGENCE: <c>OptsFor</c> defaults
+        /// <c>repo.heightMul</c> to 1.0, the raid generator defaults it to 1.2 (already recorded at
+        /// StructureCadenceRegression.cs:114-121 as "RaidBaseGenerator builds its own SkinOptions").
+        /// Every live turret row authors the key — tower_catapult 0.75, tower_arcane_spire 1.2,
+        /// tower_ground_archer 1.2 — so they agree today. If a future row omits it the two disagree
+        /// by 20% and THIS PIN REDS. That is the correct outcome, not a bug in the pin: it forces the
+        /// convergence ticket rather than letting a 20% size split ship. Do NOT "fix" a red here by
+        /// widening the tolerance to 0.25.
+        ///
+        /// Silent (not a fault) when: the post is not a Watchtower_*, carries no DefenseTower, or its
+        /// row authors no cadence. A MISSING catalog row for a stamped id IS a fault — that means the
+        /// bake armed a turret against a row that does not exist.
+        /// </summary>
+        private static void CheckCladHeight(GameObject host, Bounds cladBounds, List<string> failures)
+        {
+            // ── WO-1820: the SPIRE, judged against the height the bake recorded on it ──
+            // Not a re-derivation of the monument clamp: RaidBaseGenerator's
+            // SpireMonumentMultiplier/Min/Max are `internal` to DeNelle.EditorWallTools, which this
+            // assembly cannot reference at all, so any formula here would be a COPY that drifts
+            // (CLAUDE.md §2/§5/§16). RaidSpire.VisualHeight is the value PlaceSpire fitted the host
+            // to AND the value EnsureHittable sizes the hero's contact collider from — so this pin
+            // asserts the art agrees with the collider, which is the thing that actually broke:
+            // three of four scenes rendered the objective at 0.14 m inside a 14.40 m hit box.
+            var spire = host.GetComponent<RaidSpire>();
+            if (spire != null)
+            {
+                float want = spire.VisualHeight;
+                // Same rule as the DefenseTower guard below: not a skip. `_visualHeight` is
+                // [SerializeField, Min(1f)], so a value at or below 0.01 cannot be an authored choice
+                // - it means Configure never ran on this spire and the bake did not finish it.
+                if (!(want > 0.01f))
+                {
+                    failures.Add($"the RAID OBJECTIVE records a visual height of {want:0.###}m, which is below the " +
+                               "[Min(1f)] floor on the field - RaidBaseGenerator.PlaceSpire never called " +
+                               "Configure on it, so neither its render nor its hero-contact collider has an " +
+                               "authored size");
+                    return;
+                }
+                float spireOff = Mathf.Abs(cladBounds.size.y - want) / want;
+                if (spireOff > CladHeightTolerance)
+                    failures.Add($"the RAID OBJECTIVE renders {cladBounds.size.y:0.##}m but its bake recorded " +
+                               $"{want:0.##}m (config '{spire.ConfigId}', art '{spire.CatalogId}') - {spireOff:P0} " +
+                               $"off (> {CladHeightTolerance:P0}). RaidSpire.EnsureHittable sizes the hero's " +
+                               "contact collider from the recorded number, so the player swings at a hit box " +
+                               "the size of the spire that was INTENDED, not the one drawn");
+                return;
+            }
+
+            if (!host.name.StartsWith("Watchtower_", StringComparison.Ordinal)) return;
+
+            var tower = host.GetComponent<DefenseTower>();
+
+            // ⛔ NOT A SKIP — A NAMED FAILURE. A `Watchtower_*` with no DefenseTower, or one whose
+            // CatalogId is blank, is THE SUBJECT OF THIS PIN, not an object outside its scope: with no
+            // armed id there is no authored height, so the clad's size is whatever two prefab scales
+            // happened to multiply to — exactly the WO-1817/WO-1820 defect, arriving by a different
+            // road. Returning green here would make the gate hollow precisely where it matters most
+            // (caught by the three-way lint, [A-missing-dependency], 2026-09-17), and it would also
+            // mean an UNARMED enemy turret shipped in a raid scene, which is its own defect.
+            if (tower == null)
+            {
+                failures.Add("it is named Watchtower_* but carries NO DefenseTower, so it has no armed catalog " +
+                           "id and therefore no authored height to render at - the clad's size is then only " +
+                           "whatever the host and prefab scales multiplied to. RaidBaseGenerator.ArmTower " +
+                           "stamps this component at bake time; its absence means this post never went " +
+                           "through PlaceTowerProp/ArmTower");
+                return;
+            }
+            if (string.IsNullOrEmpty(tower.CatalogId))
+            {
+                failures.Add("its DefenseTower carries an EMPTY CatalogId, so neither its authored height nor " +
+                           "its combat stats can be resolved - ArmTower sets this from the TowerPlan and an " +
+                           "empty value means the plan reached the scene without one");
+                return;
+            }
+
+            var entry = FindCatalogEntry(tower.CatalogId);
+            if (entry == null)
+            {
+                failures.Add($"its DefenseTower is armed with catalog id '{tower.CatalogId}', which has NO row in " +
+                           CatalogRelPath + " - the clad height cannot be judged and the turret's own stats " +
+                           "came from nowhere");
+                return;
+            }
+
+            float target;
+            try { target = StructureFactory.OptsFor(entry).FitHeight; }
+            catch (Exception ex)
+            {
+                failures.Add($"StructureFactory.OptsFor('{tower.CatalogId}') threw {ex.GetType().Name}: {ex.Message}");
+                return;
+            }
+            // Not a skip either: OptsFor ALWAYS sets FitHeight from YHeightVariable * heightMul with a
+            // guarded multiplier, so a non-positive result means the row is malformed. A turret with no
+            // resolvable fit height has no authored size for its clad - the ticket's defect.
+            if (!(target > 0.01f))
+            {
+                failures.Add($"StructureFactory.OptsFor('{tower.CatalogId}') returned FitHeight {target:0.###} - " +
+                           "that row resolves to no authored height at all, so nothing pins this clad's size");
+                return;
+            }
+
+            float off = Mathf.Abs(cladBounds.size.y - target) / target;
+            if (off <= CladHeightTolerance) return;
+
+            failures.Add($"clad renders {cladBounds.size.y:0.##}m but '{tower.CatalogId}' authors a fit height of " +
+                       $"{target:0.##}m - {off:P0} off (> {CladHeightTolerance:P0}). The HOST is what " +
+                       "RaidBaseGenerator.PlaceTowerProp fits and WO-1807 strips its renderer, so the CLAD is the " +
+                       "only thing on screen: RaidBaseDresser.FitCladToCadence must scale it to the same target");
+        }
+
+        /// <summary>
+        /// One catalog row by id, read straight off the canonical JSON. Cached for the run - Judge is
+        /// called once per post (59 of them across four scenes) and re-reading the file each time
+        /// would dominate the suite.
+        /// </summary>
+        private static CatalogEntry FindCatalogEntry(string id)
+        {
+            if (_catalog == null)
+            {
+                _catalog = new Dictionary<string, CatalogEntry>(StringComparer.OrdinalIgnoreCase);
+                try
+                {
+                    string json = CanonicalJson.Read(CatalogRelPath);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        var settings = new JsonSerializerSettings
+                        {
+                            NullValueHandling = NullValueHandling.Ignore,
+                            MissingMemberHandling = MissingMemberHandling.Ignore,
+                        };
+                        var file = JsonConvert.DeserializeObject<StructuresFile>(json, settings);
+                        if (file != null && file.Entries != null)
+                            for (int i = 0; i < file.Entries.Count; i++)
+                            {
+                                var e = file.Entries[i];
+                                if (e != null && !string.IsNullOrEmpty(e.id)) _catalog[e.id] = e;
+                            }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Never throw out of an oracle: an unreadable catalog leaves the map EMPTY, so
+                    // every stamped id reds as "no row" above - loud, not silent.
+                    Debug.LogWarning("[RaidPostOrientation] could not read " + CatalogRelPath + ": " + ex.Message);
+                }
+            }
+            return string.IsNullOrEmpty(id) || !_catalog.TryGetValue(id, out var entry) ? null : entry;
+        }
+
+        private const string CatalogRelPath = "Data/Canonical/structures-catalog.json";
+        private static Dictionary<string, CatalogEntry> _catalog;
+
+        [Serializable]
+        private sealed class StructuresFile
+        {
+            [JsonProperty("entries")] public List<CatalogEntry> Entries = new List<CatalogEntry>();
         }
 
         private static bool Encapsulate(GameObject go, out Bounds bounds)

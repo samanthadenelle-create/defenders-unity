@@ -130,6 +130,23 @@ namespace DeNelle.Village.World.Camps
         /// <summary>The structures-catalog id its art came from (trace only).</summary>
         public string CatalogId => _catalogId;
 
+        /// <summary>
+        /// The height the BAKE fitted this spire to, in metres (WO-1820). Read-only accessor over the
+        /// value <see cref="Configure"/> serialized into the scene — it adds no state and changes no
+        /// behaviour.
+        ///
+        /// ⛔ THIS IS THE AUTHORED HEIGHT, AND IT WAS ALREADY THE COLLIDER'S AUTHORITY BEFORE IT WAS
+        /// READABLE. <c>RaidBaseGenerator.PlaceSpire</c> clamps the catalog's <c>repo.visualHeight</c>
+        /// to the monument band, fits the host to it, and passes the ACHIEVED value here
+        /// (RaidBaseGenerator.cs:1219); <see cref="EnsureHittable"/> then sizes the hero's contact
+        /// collider from it. WO-1820: in three of the four baked scenes the rendered art was 0.14 m
+        /// while THIS said 14.40 m, so the player was swinging at a 14.4 m hit box wrapped around a
+        /// 14 cm object. Exposing the number lets the audit and the gate assert that the art agrees
+        /// with the collider, instead of each re-deriving the clamp from constants that are
+        /// `internal` to the editor assembly (a second copy is the bug — CLAUDE.md §2/§5/§16).
+        /// </summary>
+        public float VisualHeight => _visualHeight;
+
         // =====================================================================
         //  Bake-time configuration (RaidBaseGenerator calls this in the editor;
         //  the values serialize into the RaidBase_<id>.unity scene).

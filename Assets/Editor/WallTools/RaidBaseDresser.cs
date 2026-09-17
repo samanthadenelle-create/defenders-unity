@@ -19,6 +19,7 @@ using Object = UnityEngine.Object;
 using DeNelle.Core;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Village;
+using DeNelle.Village.World.Camps;   // RaidSpire.VisualHeight - the bake's own fitted height (WO-1820)
 
 namespace DeNelle.Editor
 {
@@ -1196,19 +1197,31 @@ namespace DeNelle.Editor
             if (towerModel == null) towerModel = LoadVisual("Tower_Wooden_Watchtower");
             if (towerModel == null) towerModel = LoadVisual("Tower_Medieval_Wood");
 
+            // WO-1817 context for the clad-pose trace: the height of the kit's OWN wall art, measured
+            // once off the prefab (MeasureTallest), so one log read answers "is this tower the right
+            // height for its wall". Informational ONLY - the muzzle-vs-collider GATE is
+            // RaidWallColliderAuditRegression's `[raid-wall-audit] minMuzzleMargin`, and re-deriving
+            // that here would be exactly the duplicated state CLAUDE.md s.2/s.5/s.16 each describe.
+            float wallH = 0f;
+            Guard.Try(Sys, "measure wall art height for the clad-pose trace", () =>
+            {
+                var wallModel = LoadVisual(ResolveCladModule(OuterWallToken(def, KitOf(def))));
+                if (wallModel != null) wallH = MeasureTallest(wallModel);
+            });
+
             var all = root.GetComponentsInChildren<Transform>(true);
             for (int i = 0; i < all.Length; i++)
             {
                 var t = all[i];
                 if (t == null || t.name == null) continue;
                 if (t.name.StartsWith("Watchtower_") || t.name.StartsWith("CornerPost_"))
-                    ReplaceChildrenWith(t.gameObject, towerModel, t.name.StartsWith("Watchtower_"));
+                    ReplaceChildrenWith(t.gameObject, towerModel, t.name.StartsWith("Watchtower_"), wallH);
                 if (t.name == RaidSpireName())
                 {
                     string spireTok = def != null ? def.centralBuilding : null;
                     var spireModel = LoadVisual(MapCatalogArt(spireTok));
                     if (spireModel == null) spireModel = LoadVisual("ArcaneSpire_1");
-                    ReplaceChildrenWith(t.gameObject, spireModel, keepComponents: true);
+                    ReplaceChildrenWith(t.gameObject, spireModel, keepComponents: true, wallH: wallH);
                 }
             }
         }
@@ -1305,8 +1318,17 @@ namespace DeNelle.Editor
         /// seated the UNION, so the host was lifted to y=2.5 to get the polyperfect mesh's belly
         /// off the floor. Removing the root renderer lets the clad seat itself, and that lift
         /// correctly disappears.
+        ///
+        /// ⚠ WO-1817 CORRECTION TO THAT LAST SENTENCE: it did NOT disappear. The post-fix audit
+        /// (Builds/raid-post-audit-after2.log, 2026-09-16 20:59) still reads `pos=(43.89,2.5,6.95)`
+        /// on every garrison watchtower, because `SeatOnGround(host)` seated the host to suit the
+        /// CLAD's pivot, which on the Synty tower sits 2.5 m above its base. The host moved, and the
+        /// host is where the muzzle is measured from. This method now FITS the clad
+        /// (<see cref="FitCladToCadence"/>) and SEATS the clad (<see cref="SeatCladLocally"/>),
+        /// leaving the host transform to the generator alone.
         /// </summary>
-        private static void ReplaceChildrenWith(GameObject host, GameObject model, bool keepComponents)
+        private static void ReplaceChildrenWith(GameObject host, GameObject model, bool keepComponents,
+                                                float wallH)
         {
             if (host == null || model == null) return;
             var doomed = new List<GameObject>();
@@ -1323,12 +1345,155 @@ namespace DeNelle.Editor
             vis.transform.localPosition = Vector3.zero;
             vis.transform.localRotation = Quaternion.identity;
 
-            // ORDER IS LOAD-BEARING: the root art comes off only AFTER the clad exists, so a
-            // missing/unloadable model can never leave a post with no renderer at all.
+            // WO-1817 - FIT, then SEAT, then strip. ORDER IS LOAD-BEARING TWICE OVER:
+            //   * the fit runs BEFORE StripRootArt so CladLocalBox measures the FINAL size and the
+            //     BoxCollider that replaces the host's MeshCollider matches what the player sees;
+            //   * the root art comes off only AFTER the clad exists, so a missing/unloadable model
+            //     can never leave a post with no renderer at all (the WO-1807 rule, unchanged).
+            float fitH = FitCladToCadence(host, vis);
+            SeatCladLocally(vis);
+
             StripRootArt(host, vis);
 
-            SeatOnGround(host);
-            ReportCladPose(host, vis);
+            ReportCladPose(host, vis, fitH, wallH);
+        }
+
+        /// <summary>
+        /// WO-1817 - scale the clad so the thing the player SEES stands at the host's authored turret
+        /// cadence height. Returns that target, or 0 when this post has none (see below).
+        ///
+        /// ⛔ THE HOST IS FITTED AND THE CLAD IS WHAT RENDERS, AND UNTIL NOW NOTHING CONNECTED THEM.
+        /// `RaidBaseGenerator.PlaceTowerProp` ScaleToHeight's the HOST to
+        /// <c>YHeightVariable * repo.heightMul</c> (4.80 m for the archer/arcane family) and WO-1807
+        /// then strips the host's renderer, so the fitted model is not even on screen. The clad hangs
+        /// off the host with `SetParent(parent, false)`, so it renders at
+        /// <c>hostLossyScale * cladNativeHeight</c> - the accidental product of two unrelated models.
+        /// Measured in the four baked scenes, 2026-09-16 (Builds/raid-post-audit-after2.log, and the
+        /// arithmetic closes to the centimetre against the 0.0479 host scale in
+        /// Builds/raid-rebake-1807.log):
+        ///     RaidBase_IronBastion        0.05 m  (0.0479 x 1.11 native)
+        ///     RaidBase_mage_enclave       0.86 m  (0.0479 x 17.96)
+        ///     RaidBase_fortified_garrison 0.36 m fitted / 7.52 m on the six unfitted catapult hosts
+        ///     RaidBase_raider_camp_small  1.11 m  (unfitted catapult hosts, host scale 1)
+        /// Not one of them is 4.80 m, and three of four scenes ship SUB-METRE watchtowers.
+        ///
+        /// THE TARGET COMES FROM <see cref="RaidBaseGenerator.TurretCadenceHeight"/> - the generator's
+        /// own expression, hoisted rather than copied - keyed by the catalog id that
+        /// `RaidBaseGenerator.ArmTower` already stamped onto this host's DefenseTower. So the height
+        /// the generator INTENDED and the height the dresser RENDERS cannot disagree.
+        ///
+        /// ⚠ NOT ScaleToHeight: that helper clamps its factor to 0.125-8x (its own log prints
+        /// `saturatedAt=UPPER`), and Iron Bastion needs ~x90 to lift a 0.05 m clad to 4.80 m. The
+        /// factor is computed directly here, and the wanted-vs-applied pair is printed by
+        /// <see cref="ReportCladPose"/> so a future saturation is visible rather than silent.
+        ///
+        /// SCOPE - returns 0 and changes nothing for:
+        ///   * CornerPost_* / RaidSpire, which carry no DefenseTower and so no authored cadence. The
+        ///     corner posts consequently still render at clad-native size (1.11 / 7.52 / 17.96 m
+        ///     across the kits). That is a REAL defect and it is deliberately NOT fixed here - it
+        ///     needs an authored target, which is an owner ruling, not a lane's pick (WO-1817 s.4).
+        ///   * a clad with no measurable bounds, or a non-finite target.
+        ///
+        /// A siege-machine host is NOT exempted here, and that is deliberate. The exemption in
+        /// PlaceTowerProp protects authored siege ART from being stretched to monument height; by the
+        /// time this runs the dresser has already REPLACED that art with the kit's tower, so the
+        /// premise is gone and what remains is a tower that must stand at a tower's height. (That the
+        /// dresser overrides authored siege art on ten posts at all is its own defect - named, not
+        /// fixed, WO-1817 s.4 item 1.)
+        /// </summary>
+        private static float FitCladToCadence(GameObject host, GameObject clad)
+        {
+            float target = AuthoredHeightFor(host);
+            if (!(target > 0.01f) || float.IsNaN(target) || float.IsInfinity(target)) return 0f;
+
+            float current = CladHeight(clad);
+            if (!(current > 0.0001f)) return 0f;
+
+            float factor = target / current;
+            if (float.IsNaN(factor) || float.IsInfinity(factor) || factor <= 0f) return 0f;
+
+            var s = clad.transform.localScale;
+            clad.transform.localScale = new Vector3(s.x * factor, s.y * factor, s.z * factor);
+            return target;
+        }
+
+        /// <summary>
+        /// The authored height this host's art is supposed to render at, or 0 when it has none.
+        /// TWO kinds of post answer, and each answers from the value its own system already trusts:
+        ///
+        ///   * <c>Watchtower_*</c> (WO-1817) - the turret cadence for the catalog id
+        ///     <c>RaidBaseGenerator.ArmTower</c> stamped on its DefenseTower.
+        ///   * <c>RaidSpire</c> (WO-1820) - <see cref="RaidSpire.VisualHeight"/>, the height
+        ///     <c>PlaceSpire</c> FITTED THE HOST TO and then recorded via <c>Configure</c>. It is not
+        ///     recomputed here: the same number already sizes the spire's hero-contact collider
+        ///     (<c>RaidSpire.EnsureHittable</c>), so reading it makes the art agree with the collider
+        ///     by construction instead of by a second copy of the monument clamp.
+        ///
+        /// ⛔ WHY THE SPIRE NEEDED THIS AT ALL, AND WHY THE ONE WORKING SCENE PROVED NOTHING.
+        /// `ReplaceChildrenWith` parents the clad with `SetParent(parent, false)`, so the clad keeps
+        /// its OWN prefab localScale AND inherits the host's - the prefab's authored scale is applied
+        /// TWICE. Measured 2026-09-17 (Builds/wo1817-rebake.log, and identical in
+        /// Builds/raid-rebake-1807.log, so it long predates that ticket):
+        ///     raider_camp_small  host 9.600          x clad(1.000 x 1.500) = 14.40 m  correct
+        ///     the other three    host 0.010 x 14.366 x clad(0.010 x 100.2) =  0.14 m  1/100 scale
+        /// Every one of the four hosts achieved 14.40 m - the FIT was never the bug. The error factor
+        /// is exactly `prefabScaleBefore`, so the camp is right ONLY because its art authors
+        /// localScale 1.000 and squaring 1.000 is harmless. Treating that scene as the working case
+        /// to copy would have hidden the rule.
+        ///
+        /// CornerPost_* answers 0: it carries neither component and has no authored target at all
+        /// (WO-1817 s.4 item 2). It keeps rendering at clad-native size until that is ruled.
+        /// </summary>
+        private static float AuthoredHeightFor(GameObject host)
+        {
+            var tower = host.GetComponent<DefenseTower>();
+            if (tower != null && !string.IsNullOrEmpty(tower.CatalogId))
+                return RaidBaseGenerator.TurretCadenceHeight(tower.CatalogId);
+
+            var spire = host.GetComponent<RaidSpire>();
+            if (spire != null) return spire.VisualHeight;
+
+            return 0f;
+        }
+
+        /// <summary>
+        /// WO-1817 - drop the CLAD so its lowest rendered point sits on y=0, leaving the HOST
+        /// transform exactly where <see cref="RaidBaseGenerator"/> put it.
+        ///
+        /// ⛔ THIS REPLACES A `SeatOnGround(host)` CALL, AND THE DIFFERENCE IS THE MUZZLE.
+        /// `DefenseTower` fires from <c>transform.position + Vector3.up * 2f</c> (DefenseTower.cs:977,
+        /// matched by Fire / FireAtParty), so the HOST TRANSFORM decides where the turret shoots from.
+        /// Seating the host to suit the art therefore let an art pivot move a combat value: the Synty
+        /// clad's pivot sits 2.5 m above its base, so seating lifted RaidBase_fortified_garrison's
+        /// hosts to y=2.5, put their muzzles at 4.5 m under a 5.00 m wall, and left
+        /// `[raid-wall-audit] minMuzzleMargin=0.50` - the tightest in the game, set by nobody's
+        /// decision. The other three scenes seated at y=0 and read 2.00 m, so the same code produced
+        /// two different combat geometries purely from which art pack a kit names.
+        ///
+        /// Moving the CLAD instead keeps presentation out of the object (ARCHITECTURE_PRINCIPLES) and
+        /// makes the muzzle a pure function of the generator's placement. It is also what makes the
+        /// fit above safe: a scaled pivot offset would otherwise drag the muzzle with the art.
+        /// </summary>
+        private static void SeatCladLocally(GameObject clad)
+        {
+            var rends = clad.GetComponentsInChildren<Renderer>(true);
+            if (rends == null || rends.Length == 0) return;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++)
+                if (rends[i] != null) b.Encapsulate(rends[i].bounds);
+            clad.transform.position += new Vector3(0f, -b.min.y, 0f);
+        }
+
+        /// <summary>World-space rendered height of a clad, 0 when it has no renderers.</summary>
+        private static float CladHeight(GameObject clad)
+        {
+            if (clad == null) return 0f;
+            var rends = clad.GetComponentsInChildren<Renderer>(true);
+            if (rends == null || rends.Length == 0) return 0f;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++)
+                if (rends[i] != null) b.Encapsulate(rends[i].bounds);
+            return b.size.y;
         }
 
         /// <summary>
@@ -1436,8 +1601,19 @@ namespace DeNelle.Editor
         /// WO-1807 acceptance instrument: print the post's FINAL world euler and the clad's
         /// bounds in Y. One read of a bake log now answers "is any corner post inverted or
         /// floating" without a device build, a screenshot or an owner playtest.
+        ///
+        /// WO-1817 extends it with the four numbers that answer "is this tower the right height":
+        ///   fitH   - the authored turret cadence target (0 = this post has none; see
+        ///            <see cref="FitCladToCadence"/> for which posts those are and why)
+        ///   cladH  - what the clad ACTUALLY renders, after the fit. fitH vs cladH is the pin
+        ///            RaidPostAudit and RaidPostOrientationRegression both assert at 10%.
+        ///   hostY  - the host transform's y, which is where the muzzle is measured from
+        ///            (DefenseTower fires at position + up*2). It must now be the generator's
+        ///            value, NOT an art pivot's - see <see cref="SeatCladLocally"/>.
+        ///   wallH  - the kit's own wall ART height, for context only. The muzzle-vs-wall GATE
+        ///            stays RaidWallColliderAuditRegression's `[raid-wall-audit] minMuzzleMargin`.
         /// </summary>
-        private static void ReportCladPose(GameObject host, GameObject clad)
+        private static void ReportCladPose(GameObject host, GameObject clad, float fitH, float wallH)
         {
             var rends = clad.GetComponentsInChildren<Renderer>(true);
             if (rends == null || rends.Length == 0)
@@ -1454,10 +1630,21 @@ namespace DeNelle.Editor
             float widest = Mathf.Max(b.size.x, b.size.z);
             float ratio = widest <= 0.0001f ? 0f : b.size.y / widest;
 
+            // Built into locals first: a nested quote inside an interpolation hole reads as a string
+            // terminator to CompileGate.BraceBalanced (CLAUDE.md s.1).
+            string rootNote = host.GetComponent<Renderer>() != null ? "STILL PRESENT" : "none";
+            string fitNote = fitH > 0.01f
+                ? $"fitH={fitH:0.##} cladH={b.size.y:0.##} delta={(b.size.y - fitH):+0.##;-0.##} " +
+                  $"({(Mathf.Abs(b.size.y - fitH) / fitH):P1} off)"
+                : $"fitH=none cladH={b.size.y:0.##} (no authored cadence on this post - WO-1817 s.4)";
+            string wallNote = wallH > 0.01f ? wallH.ToString("0.##") : "unknown";
+
             FlowTrace.Step(Sys, $"[wo1807] pose '{host.name}': hostEuler=({e.x:0.#},{e.y:0.#},{e.z:0.#}) " +
                                 $"cladUpDot={upDot:0.###} boundsY=[{b.min.y:0.##}..{b.max.y:0.##}] " +
                                 $"size={b.size.x:0.##}x{b.size.y:0.##}x{b.size.z:0.##} ratio={ratio:0.##} " +
-                                $"rootRenderer={(host.GetComponent<Renderer>() != null ? "STILL PRESENT" : "none")}");
+                                $"rootRenderer={rootNote} " +
+                                $"[wo1817] {fitNote} hostY={host.transform.position.y:0.##} " +
+                                $"muzzleY={(host.transform.position.y + 2f):0.##} wallH={wallNote}");
         }
 
         // -- props ------------------------------------------------------------
