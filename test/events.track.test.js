@@ -129,6 +129,9 @@ test('an asserted wallet id with NO auth headers is overridden, never written', 
         'the body-asserted wallet reached analytics_events — anyone can still attribute rows to any wallet');
     assert.equal(insertedProps(sql)[0]._auth, 'unverified',
         'the row is not self-describing; a reader cannot tell proven traffic from asserted traffic');
+    // WO-1791: the claim is PRESERVED as data, never promoted to an identity.
+    assert.equal(insertedProps(sql)[0]._claimedId, WALLET_A,
+        'the claimed id was thrown away, so this unverified row can never be stitched into a funnel');
 });
 
 test('a valid session OVERRIDES the asserted id — the token names the player, the body never does', async () => {
@@ -346,6 +349,139 @@ test('the BODY guest rail never spends the SAVE budget either', async () => {
 });
 
 test('a surplus event past the batch cap can NOT steer the identity of the rows that land', async () => {
+    const events = [];
+    for (let i = 0; i < 100; i++) events.push({ playerId: 'anonymous', eventName: 'session_start', clientTs: i });
+    events.push({ playerId: GUEST, eventName: 'session_start', clientTs: 999 });   // dropped by the cap
+
+    const sql = fakeSql();
+    const res = await run(sql, makeReq(events));
+    assert.equal(res.body.dropped, 1, 'the cap stopped dropping surplus events');
+    assert.equal(insertedPlayerIds(sql)[0], 'unverified',
+        'a DROPPED event named the batch — identity was read past the cap');
+});
+
+// ── 6. WO-1791 — `_claimedId`: Hole 1, the unverified bucket keeps a readable claim ─
+//
+// THE MEASURED BUG (production Neon, 2026-09-16): 520 of the day's 713 analytics rows
+// landed under the ONE row id `unverified` — five separate humans' first sessions,
+// four appVersion strings, 327 playtest_break rows and all 8 possible_softlock rows,
+// none attributable to a player. WO-1735's client header attach closes this for NEW
+// builds; a wallet that holds no session yet still lands here (the documented boot
+// state), and the pre-WO-1735 cohort in players' hands lands here always.
+//
+// ⛔ THE INVARIANT THESE PINS EXIST FOR: `_claimedId` is DATA, NEVER AN IDENTITY.
+//    player_id stays `unverified`, _auth stays `unverified`, and the field appears on
+//    NO other rail — a proven row's identity is its player_id column, and a duplicate
+//    of it in properties would be the copied state CLAUDE.md §2/§5/§16 all name as the
+//    defect. If a future reader is tempted to resolve identity from this field, the
+//    wallet asymmetry in section 5 is the reason not to: a wallet address is public.
+
+test('_claimedId is stamped PER EVENT — a batch that mixes claims does not mislabel half its rows', async () => {
+    const sql = fakeSql();
+    await run(sql, makeReq([
+        { playerId: WALLET_A, eventName: 'session_start', clientTs: 40 },
+        { playerId: 'anonymous', eventName: 'tutorial_started', clientTs: 41 },
+        { playerId: WALLET_B, eventName: 'tutorial_completed', clientTs: 42 },
+    ]));
+
+    assert.deepEqual(insertedPlayerIds(sql), ['unverified', 'unverified', 'unverified'],
+        'a body-asserted wallet reached player_id — WO-1506\'s hole is back open');
+    const props = insertedProps(sql);
+    assert.equal(props[0]._claimedId, WALLET_A);
+    assert.equal(props[1]._claimedId, undefined,
+        '"anonymous" was recorded as a claim — it carries no attribution value at all');
+    assert.equal(props[2]._claimedId, WALLET_B,
+        'the batch was stamped once from the first event, so later rows carry the wrong claim');
+});
+
+test('⛔ a PROVEN row never carries _claimedId — the player_id column is the one identity', async () => {
+    const sql = fakeSql({ sessionRows: [{ wallet: WALLET_B, revoked: false, expired: false }] });
+    await run(sql, makeReq(
+        [{ playerId: WALLET_A, eventName: 'wave_completed', clientTs: 43 }],
+        { 'x-session': 'e'.repeat(48) },
+    ));
+    assert.deepEqual(insertedPlayerIds(sql), [WALLET_B]);
+    assert.equal(insertedProps(sql)[0]._claimedId, undefined,
+        'a session-proven row is carrying a second, forgeable id — that is a shadow identity rail');
+});
+
+test('a guest-body row never carries _claimedId either (its player_id already IS the id)', async () => {
+    const sql = fakeSql();
+    await run(sql, makeReq([{ playerId: GUEST, eventName: 'session_start', clientTs: 44 }]));
+    assert.deepEqual(insertedPlayerIds(sql), [GUEST]);
+    assert.equal(insertedProps(sql)[0]._claimedId, undefined);
+});
+
+test('GUEST_SAVE_ENABLED=false does not resurrect the guest id through _claimedId', async () => {
+    const prev = process.env.GUEST_SAVE_ENABLED;
+    process.env.GUEST_SAVE_ENABLED = 'false';
+    try {
+        const sql = fakeSql();
+        await run(sql, makeReq([{ playerId: GUEST, eventName: 'session_start', clientTs: 45 }]));
+        assert.deepEqual(insertedPlayerIds(sql), ['unverified']);
+        assert.equal(insertedProps(sql)[0]._claimedId, undefined,
+            'the guest kill switch leaves the same value flowing through a second field — that is not a kill switch');
+    } finally {
+        if (prev === undefined) delete process.env.GUEST_SAVE_ENABLED;
+        else process.env.GUEST_SAVE_ENABLED = prev;
+    }
+});
+
+test('an unbounded or junk claimed id is refused, never pushed into JSONB', async () => {
+    const sql = fakeSql();
+    await run(sql, makeReq([
+        { playerId: 'z'.repeat(5000), eventName: 'session_start', clientTs: 46 },
+        { playerId: '   ', eventName: 'session_start', clientTs: 47 },
+        { playerId: 'unverified', eventName: 'session_start', clientTs: 48 },
+        { playerId: 42, eventName: 'session_start', clientTs: 49 },
+    ]));
+    for (const p of insertedProps(sql)) {
+        assert.equal(p._claimedId, undefined, 'a junk or unbounded claim reached properties');
+    }
+});
+
+test('the response reports how much of an unverified batch stayed unattributable (no silent failure)', async () => {
+    const sql = fakeSql();
+    const res = await run(sql, makeReq([
+        { playerId: WALLET_A, eventName: 'session_start', clientTs: 50 },
+        { playerId: 'anonymous', eventName: 'session_start', clientTs: 51 },
+    ]));
+    assert.equal(res.body.auth, 'unverified');
+    assert.equal(res.body.claimed, 1, 'the route does not say how many rows kept a reconstructable claim');
+    assert.equal(res.body.unclaimed, 1, 'the permanently-anonymous share of the batch is unreported');
+});
+
+test('the stale "client sends NEITHER header" claim is corrected in the header (WO-1791 §2 named it by name)', () => {
+    assert.match(trackSrc, /WO-1735 shipped the client attach/,
+        'the header still asserts the client sends no identity header — WO-1735 shipped that attach');
+    assert.match(trackSrc, /identity_bound/,
+        'the header does not name the remaining Unity-side half (one human, two ids)');
+    assert.match(trackSrc, /pre-WO-1735 COHORT IS UNFIXABLE/i,
+        'nothing warns the next reader that the historical unverified bucket is not one player');
+});
+
+test('_claimedId is not read as an identity anywhere in api/', () => {
+    // The property is only useful while it stays data. A reader in api/ would make it
+    // a forgeable identity rail — exactly the hole WO-1506 closed.
+    const apiDir = path.join(root, 'api');
+    const offenders = [];
+    const walk = (dir) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) { walk(full); continue; }
+            if (!/\.js$/.test(entry.name)) continue;
+            const src = fs.readFileSync(full, 'utf8');
+            if (/_claimedId/.test(src) && full !== path.join(apiDir, 'events', 'track.js')) {
+                offenders.push(path.relative(root, full));
+            }
+        }
+    };
+    walk(apiDir);
+    assert.deepEqual(offenders, [],
+        'something in api/ now reads _claimedId — it is non-authoritative by construction: ' + offenders.join(', '));
+});
+
+test('the cap-steering pin still holds with the claim field in place', async () => {
     const events = [];
     for (let i = 0; i < 100; i++) events.push({ playerId: 'anonymous', eventName: 'session_start', clientTs: i });
     events.push({ playerId: GUEST, eventName: 'session_start', clientTs: 999 });   // dropped by the cap

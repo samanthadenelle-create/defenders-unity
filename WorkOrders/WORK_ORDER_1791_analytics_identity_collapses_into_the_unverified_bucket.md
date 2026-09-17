@@ -1,6 +1,6 @@
 # WORK ORDER 1791 — 73% of today's live client events land under ONE shared player id (`unverified`), so no funnel can be read per player
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead from the 1791-1795 block; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** Analytics rail — `Assets/_Modules/Core/Analytics/EventTracker.cs` (client) only. No `.unity`, no gameplay, no API change required.
 **Priority:** P0 for the business question. It affects EVERY player on every build that does not attach the headers, and it is the reason the owner's "22 new players" cannot be turned into a funnel.
@@ -159,3 +159,57 @@ updated again** — a husk save (84-86 keys) sitting beside a wallet row for the
 The server rails in `api/events/track.js`; the `unverified` bucket name (it is deliberately ONE
 bucket so `ANALYTICS_EXCLUDED_PLAYER_IDS` can drop it wholesale); the guest-id minting in
 `GameStateService.EnsureAccount`.
+
+---
+
+## 7. LANE NOTE — 2026-09-17, BACKEND HALF LANDED; THE UNITY HALF IS STILL OPEN
+
+**This ticket spans two silos, and its own §5 header (*"`EventTracker.cs` (client) only. No API
+change required"*) is wrong about that** — §2 Hole 1 and §4.3 both describe a server-side change, and
+that is the half a backend lane can do. Recorded rather than quietly reinterpreted (CLAUDE.md §11B.B).
+
+### Landed (backend, `api/` — no new build, reaches the ALREADY-INSTALLED cohort on the next deploy)
+
+**§4.3 Hole 1 closed with the `_claimedId` option, not the client-retry option.** The WO's own §2
+evidence dominates the choice: server-side *"reaches the installed cohort, changes no trust
+boundary"*; client-retry *"does NOT reach the installed cohort, and risks dropped telemetry"* — the
+reason `EventTracker.cs:308-320` deliberately refuses to abort. Implemented per
+`dont-ask-no-brainers-just-do-them`; **flagged for the owner to confirm, not presented as her ruling.**
+
+- `api/events/track.js` — new `claimedIdOf()` helper + a **per-event** stamp that fires **only** when
+  `identity.auth === 'unverified'`. `resolveIdentity` is untouched, so §6 holds: `player_id` stays the
+  literal `unverified` and `_auth` stays `'unverified'`. Excluded from the claim: the guest shape
+  (already resolved by the WO-1733 rail, or `GUEST_SAVE_ENABLED` is off and a kill switch must close
+  every door), `anonymous`/`unverified`/`null`/`undefined`, blanks, non-strings, and anything over 128
+  chars. The response now reports `claimed` / `unclaimed` counts and logs them — §12, no silent
+  failures. Per-event and not per-batch because a flush queued across a `BindWallet` legitimately
+  mixes claims.
+- The stale header comment the WO named at §2 line 106-108 is **corrected in the same change** (§15):
+  it no longer claims the client sends neither header, it records that WO-1735's attach is proven on
+  `.371701`, and it names the pre-fix cohort and the still-open Unity half.
+- `test/events.track.test.js` — **+9 pins** (31/31 in-file). Suite: **788 → 810 pass, the same 4
+  pre-existing `heartbound-*` failures before and after.** Pins include: a proven row NEVER carries
+  `_claimedId`; a mixed batch is stamped per event; the guest kill switch is not resurrected through
+  the new field; junk/unbounded claims are refused; and a directory walk asserting **nothing else in
+  `api/` reads `_claimedId`**, so it cannot quietly become a forgeable identity rail.
+- **No migration.** `_claimedId` is a JSONB property on the existing `analytics_events.properties`
+  column. Nothing for the owner to run in production; a plain API deploy is the whole rollout.
+
+### Still open (Unity silo — a C# lane, NOT this one)
+
+- **AC1 `identity_bound`** (§4.2, Hole 2 — one human, two ids on every build) is `EventTracker.cs`
+  work and was not touched. ⚠ **The two halves are coupled, and the C# lane needs to know it:**
+  `EventTracker.Enqueue` captures `PlayerId` at **enqueue** time while `TryAttachCachedSession`
+  attaches at **flush** time, so an `identity_bound` emitted right after
+  `GameStateService.BindWallet` (`GameStateService.cs:1145-1168`; also the Play-identity swap at
+  `:1188`) can beat its own `session_issued` into existence by the measured 1-24 s of §3 and land
+  `unverified` with no header. **`_claimedId` is exactly the net that keeps that alias row readable** —
+  which is why doing the backend half first is the right order, not a consolation prize.
+- **AC2** (a device run producing zero `unverified` rows) and **AC5** (`COMPILE_GATE_OK` +
+  `REGRESSION_OK`) are Unity gates and belong to that lane. Backend code is not gated by the Unity
+  pipeline; this lane verified with `node --test test/*.test.js` instead, counts above.
+- **AC4** (the cohort statement) is written into the `track.js` header and repeated here: **7 of
+  2026-09-16's 17 attributable sessions ran `2026.09.07.359722`, a pre-WO-1735 build that attaches no
+  header at all.** Their wallet-phase events are permanently unattributable by any code change on
+  either side — it is a store-update / cohort-retirement question. **No existing row was
+  retro-attributed, and the historical `unverified` bucket must never be read as one player.**

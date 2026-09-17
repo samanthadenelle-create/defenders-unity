@@ -22,18 +22,27 @@
 //      X-Guest-Id  → a guest-shaped id binds to itself            → _auth:'guest'
 //      body guest  → a GUEST-SHAPED body playerId, no header      → _auth:'guest-body'
 //      neither     → the literal id `unverified`                  → _auth:'unverified'
+//                    (+ properties._claimedId when the caller named a non-guest id —
+//                     WO-1791, non-authoritative, never an identity. See claimedIdOf.)
 //
 // ⚠ THE `body guest` RAIL IS WO-1733, AND IT IS NARROW ON PURPOSE. Between
 //    2026-09-07T10:45Z and that fix EVERY event from EVERY player landed under
-//    `unverified`, because the Unity client sends NEITHER header
-//    (EventTracker.cs:290-294 builds its own UnityWebRequest and sets only
-//    Content-Type; it does not go through BackendRequestSigner, which is what
-//    attaches the headers on the SAVE rail — BackendRequestSigner.cs:198, :426-430).
+//    `unverified`, because the Unity client sent NEITHER header.
 //    Measured on the live DB: one "player" with 218 sessions, daily actives pinned
 //    at 1 while sessions ran 14-42/day. The CLIENT fix is the correct long-term one,
 //    but it only ever reaches builds shipped AFTER it; the store build in players'
-//    hands today (2026.08.17.328845) would stay dark forever. The server fallback
+//    hands then (2026.08.17.328845) would stay dark forever. The server fallback
 //    reaches every build already installed, on the next API deploy.
+//
+// ⛔ THE "CLIENT SENDS NEITHER HEADER" CLAIM IS HISTORY, NOT CURRENT STATE.
+//    Corrected 2026-09-17 (WO-1791 §2, which named this comment stale by name).
+//    WO-1735 shipped the client attach: EventTracker.SendBatch
+//    (Assets/_Modules/Core/Analytics/EventTracker.cs:293-333) now calls
+//    BackendRequestSigner.TryAttachCachedSession(req, identityPlayerId) and traces
+//    the mode via ReportIdentityMode (:380-415). It is PROVEN working on the live DB:
+//    every session_start from build 2026.09.16.371701 on 2026-09-16 landed as
+//    _auth:'session' (3 ids) or _auth:'guest' (6 ids). Read the .cs, never a line
+//    number quoted in this comment (CLAUDE.md §11B.A).
 //
 //    `unverified` is ONE bucket on purpose: a single entry in
 //    ANALYTICS_EXCLUDED_PLAYER_IDS (api/admin/stats.js excludedPlayerIds) then
@@ -64,15 +73,25 @@
 // promo/redeem.js uses — because EventTracker.FlushWithRetry retries any non-2xx
 // four times with backoff, and an over-budget attempt still increments the counter.
 //
-// ⚠ TWO FOLLOW-UPS THIS SILO CANNOT MAKE, both measured 2026-09-06, not inferred:
-//   1. THE CLIENT STILL SENDS NEITHER HEADER (re-read 2026-09-15: EventTracker.cs
-//      :290-294 sets exactly "Content-Type"). WO-1733 covers the shipped fleet from
-//      the server side, but the CLIENT HALF IS STILL OUTSTANDING and is the correct
-//      long-term fix: EventTracker should attach the same headers
-//      BackendRequestSigner.cs:198 does, which restores WALLET attribution too
-//      (a wallet id is NEVER accepted from the body — see resolveIdentity). When
-//      that ships, `_auth:'guest-body'` counts fall toward zero on their own; that
-//      is the signal it landed.
+// ⚠ FOLLOW-UPS THIS SILO CANNOT MAKE:
+//   1. ✅ CLOSED by WO-1735 — the client attach shipped; see the corrected note at the
+//      top of this header. `_auth:'guest-body'` counts falling toward zero is the
+//      signal it landed, and on 2026-09-16 every guest-body row came from the two
+//      pre-fix builds (.359722 / .359670).
+//   1b. THE PRE-WO-1735 COHORT IS UNFIXABLE FROM EITHER SIDE. 7 of 2026-09-16's 17
+//      attributable sessions ran 2026.09.07.359722, which attaches no header at all;
+//      their wallet-phase events can only ever carry a _claimedId, never a proven id.
+//      That is a store-update / cohort-retirement question, not a code fix, and the
+//      historical `unverified` bucket must NEVER be read as one player (WO-1791 §4.4).
+//   1c. ONE HUMAN STILL COUNTS AS TWO ids on EVERY build, because the guest id is
+//      replaced by the wallet id mid-session with no alias event to stitch them
+//      (7 measured guest→wallet pairs on 2026-09-16, 1-24 s apart). The fix is a
+//      CLIENT `identity_bound { from, to }` event — WO-1791 §4.2, Unity silo, NOT
+//      this file. Note the coupling: EventTracker.Enqueue captures PlayerId at
+//      ENQUEUE time while the headers attach at FLUSH time, so an identity_bound
+//      emitted right after GameStateService.BindWallet can beat its own session into
+//      existence and land here unverified — `_claimedId` is exactly the net that
+//      keeps that alias row readable.
 //   2. `unverified` IS NOT AUTO-EXCLUDED. api/admin/stats.js excludedPlayerIds()
 //      hardcodes only ANON_ID as always-excluded, so this bucket counts as one
 //      "player" in retention until either ANALYTICS_EXCLUDED_PLAYER_IDS=unverified
@@ -95,6 +114,54 @@ const MAX_EVENTS_PER_BATCH = 100;
 
 // The one id every unproven row shares. Never a real player.
 const UNVERIFIED_PLAYER_ID = 'unverified';
+
+// WO-1791 Hole 1. Longest claimed id we will copy into properties._claimedId. A
+// Solana address is 32-44 chars and a play- id is 69; the cap exists only so a
+// hostile caller cannot push unbounded text into JSONB through this field.
+const MAX_CLAIMED_ID_LEN = 128;
+
+// Ids that carry no attribution value and must never be written as a claim.
+const WORTHLESS_CLAIMED_IDS = new Set(['anonymous', UNVERIFIED_PLAYER_ID, 'null', 'undefined']);
+
+/**
+ * WO-1791 — the NON-AUTHORITATIVE claim on an `unverified` row.
+ *
+ * ⛔ THIS IS NOT A NEW IDENTITY RAIL AND MUST NEVER BECOME ONE. The row's
+ *    `player_id` stays the literal `unverified` and its `_auth` stays
+ *    `'unverified'`; resolveIdentity is not consulted, not extended, and not
+ *    changed. All this does is preserve, in a property no server code reads as an
+ *    identity, WHICH id the caller claimed — so a funnel can be reconstructed by a
+ *    human reading the dashboard without anything ever trusting the string.
+ *    (Grepped 2026-09-17: `properties->>` appears throughout api/admin/db.js and
+ *    api/_lib/ops.js for revenue/session/code fields, and NOTHING anywhere in api/
+ *    reads a properties field as a player identity — player_id is the only identity
+ *    column. `_claimedId` had zero readers before this change.)
+ *
+ * WHY IT IS WORTH ANYTHING: measured 2026-09-16, the live `unverified` bucket held
+ * 520 rows under ONE row id — five separate humans' first sessions, four different
+ * appVersion strings, 327 playtest_break rows and all 8 possible_softlock rows,
+ * none of them attributable to a player. The client-side header attach (WO-1735)
+ * closes this for new builds only; this field reaches the ALREADY-INSTALLED cohort
+ * on the next API deploy and changes no trust boundary, which is why it was chosen
+ * over a client-side flush retry (that reaches no installed build and risks dropping
+ * telemetry — the reason EventTracker.cs:308-320 deliberately does not abort).
+ *
+ * The guest shape is EXCLUDED on purpose: a guest-shaped body id either already
+ * resolved through the WO-1733 rail (so it is the row's real player_id, not a
+ * claim), or GUEST_SAVE_ENABLED is off — and a kill switch that leaves the same
+ * value flowing through a second field is not a kill switch.
+ *
+ * @returns the claimed id string, or null when there is nothing worth recording.
+ */
+function claimedIdOf(rawId) {
+    if (typeof rawId !== 'string') return null;
+    const id = rawId.trim();
+    if (!id) return null;
+    if (id.length > MAX_CLAIMED_ID_LEN) return null;
+    if (WORTHLESS_CLAIMED_IDS.has(id.toLowerCase())) return null;
+    if (isGuestId(id)) return null;
+    return id;
+}
 
 // Per caller IP, per minute. The client's own flush cadence is a batch every few
 // seconds at full tilt, so no honest device is anywhere near this; it exists to
@@ -253,6 +320,11 @@ function makeHandler(deps = {}) {
 
             const values = [];
             const params = [];
+            // WO-1791: counted so the unverified bucket is never silent about
+            // whether it kept a reconstructable claim (CLAUDE.md §12 — no silent
+            // failures). Reported on the response and logged once per request.
+            let claimsRecorded = 0;
+            let claimsUnrecoverable = 0;
             for (const ev of batch) {
                 if (!ev) continue;
 
@@ -273,6 +345,23 @@ function makeHandler(deps = {}) {
                 // The row says how its identity was established, so a reader can
                 // tell proven traffic from asserted traffic without joining anything.
                 propsObj._auth = identity.auth;
+
+                // WO-1791 Hole 1. Only on the unverified rail, and PER EVENT — one
+                // flush can legitimately mix claims (a batch queued across a
+                // BindWallet carries the guest id on early events and the wallet on
+                // later ones), so a per-batch stamp would mislabel half the rows.
+                // On every other rail the row's player_id IS the proven id, and a
+                // duplicate of it in properties would be exactly the copied state
+                // CLAUDE.md §2/§5/§16 name as the defect.
+                if (identity.auth === 'unverified') {
+                    const claimed = claimedIdOf(ev.playerId);
+                    if (claimed) {
+                        propsObj._claimedId = claimed;
+                        claimsRecorded++;
+                    } else {
+                        claimsUnrecoverable++;
+                    }
+                }
 
                 const clientTs = ev.clientTs != null ? Number(ev.clientTs) : null;
 
@@ -298,11 +387,26 @@ function makeHandler(deps = {}) {
                 params,
             );
 
+            // WO-1791: say out loud what landed unattributable. `claimed` rows can be
+            // stitched into a funnel by hand; `unrecoverable` rows are the ones for
+            // which not even a claim survived, and their count is the honest measure
+            // of how much of the day is permanently anonymous.
+            if (identity.auth === 'unverified' && (claimsRecorded || claimsUnrecoverable)) {
+                console.warn(
+                    '[events/track] UNVERIFIED batch — ' + claimsRecorded + ' row(s) kept a ' +
+                    'non-authoritative _claimedId, ' + claimsUnrecoverable + ' row(s) carry no ' +
+                    'claim at all. player_id is `unverified` for all of them; _claimedId is ' +
+                    'NEVER an identity (WO-1791).',
+                );
+            }
+
             return res.status(200).json({
                 success: true,
                 inserted: values.length,
                 dropped: events.length - batch.length,
                 auth: identity.auth,
+                claimed: claimsRecorded,
+                unclaimed: claimsUnrecoverable,
             });
         } catch (err) {
             console.error('[events/track] DB error:', err);
