@@ -755,6 +755,18 @@ namespace DeNelle.Editor.Regression
             // Damage_Ruin 31 times. Same suite, same question, so the policy is pinned here
             // rather than in a second file nobody runs.
             //
+            // ⚠ CORRECTION 2026-09-17 (WO-1786) — READ THIS BEFORE CITING A "STUCK LOOP" LINE.
+            // The saturation evidence above stands on its own (14/24 held, 24/24 in the raid,
+            // Damage_Ruin dropped 31x). What no longer stands is the inference that a STUCK LOOP
+            // line BY ITSELF proves the release policy failed. Until WO-1786 the audit derived
+            // "stuck" from its own copy of the 6 s grace on a 5 s cadence while the policy acted
+            // on a 0.5 s one, so an audit landing in the gap accused a policy that was about to
+            // act -- and the Warned latch made it permanent. In
+            // Logs/device/pull-20260916-143101-bastion-owner-run all fourteen STUCK LOOP lines
+            // read exactly "OFF CAMERA for 6s" and every one is followed inside 0.25 s by its own
+            // "LOOP RELEASED ... reason=off camera 6s". The oracle now reports the POLICY'S OWN
+            // consecutive tick count instead; see the WO-1786 case block below.
+            //
             // ⚠ WHAT THIS CASE CANNOT DO, stated plainly rather than implied: the WO's own
             // acceptance test - spawn N aura owners, destroy them, assert the pool drains to
             // zero - is a PLAYMODE assertion against a live VFXManager, and this is a static
@@ -853,6 +865,148 @@ namespace DeNelle.Editor.Regression
                         visible: false, offscreenFor: Grace * 10f, grace: Grace, slotAvailable: false));
 
                 notes.Add("wo1473 release-policy cases=" + policyChecked);
+            }
+
+            // =================================================================
+            //  WO-1786 — THE ORACLE MUST NOT RACE THE POLICY IT WATCHES
+            // =================================================================
+            //
+            // WHY. AuditRegistryAges used to re-derive "stuck" from its own copy of the 6 s grace
+            // on a 5 s cadence, while the policy acts on a 0.5 s one. Two clocks at one threshold
+            // is a race, and the slower one accused the faster one of never running. Proof, from
+            // Logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt: all fourteen
+            // STUCK LOOP lines read exactly "OFF CAMERA for 6s" - never 7, never 12 - and each is
+            // followed within 52-218 ms by its own "LOOP RELEASED ... reason=off camera 6s"
+            // (13:17:56.723 -> .775, 13:20:02.207 -> .285, 13:24:06.394 -> .612,
+            // 13:25:56.756 -> .892). That capture carries 189 RELEASED and 146 RESUMED lines. The
+            // policy fired every single time; the detector looked inside the gap before it acted,
+            // and its Warned latch made each false accusation permanent. WO-1786 was raised off
+            // those lines, so the false positive cost a ticket as well as a morning.
+            //
+            // RED PROOF: revert IsStuck to `>= 1` and case 2 below fails (the single acting tick
+            // reads as a defect again, which is precisely the 6 s race). Hardwire it to false and
+            // cases 3 and 4 fail, so a detector that reports nothing cannot pass either. Delete
+            // the accessibility guard from ShouldHaveReleased and case 7 fails.
+            {
+                int oracleChecked = 0;
+                void Oracle(string what, bool expect, bool actual)
+                {
+                    oracleChecked++;
+                    if (actual != expect)
+                        failures.Add("WO-1786 loop oracle: " + what + " -- expected " + expect +
+                                     " but got " + actual + ". The stuck-loop detector must judge " +
+                                     "the POLICY'S OWN consecutive should-have-released tick count, " +
+                                     "never a second clock of its own: the 2026-09-16 capture shows " +
+                                     "14 false STUCK LOOP accusations, every one contradicted by a " +
+                                     "LOOP RELEASED line under 0.25 s later.");
+                }
+
+                const float G = 6f;
+
+                // ── IsStuck: the cadence race, pinned ──
+                // 1. Nothing measured yet is never stuck.
+                Oracle("zero should-have-released ticks", false, VfxLoopReleasePolicy.IsStuck(0));
+
+                // 2. THE RACE ITSELF. One tick is the tick that ACTS. Reporting here is exactly
+                //    the 6 s false positive; the count must survive a further tick first.
+                Oracle("one tick (the acting tick) is not yet a defect",
+                    false, VfxLoopReleasePolicy.IsStuck(1));
+
+                // 3. A whole further tick elapsed with the release not in effect -> real defect.
+                Oracle("two consecutive ticks still held IS a defect",
+                    true, VfxLoopReleasePolicy.IsStuck(VfxLoopReleasePolicy.StuckAfterPolicyTicks));
+
+                // 4. And it stays reported as the count climbs (no upper window).
+                Oracle("many consecutive ticks still held IS a defect",
+                    true, VfxLoopReleasePolicy.IsStuck(40));
+
+                if (VfxLoopReleasePolicy.StuckAfterPolicyTicks < 2)
+                    failures.Add("WO-1786: StuckAfterPolicyTicks is " +
+                                 VfxLoopReleasePolicy.StuckAfterPolicyTicks + ", below 2. At 1 the " +
+                                 "oracle fires on the very tick the policy is acting on, which is " +
+                                 "the 2026-09-16 false-positive race this case exists to keep shut.");
+
+                // ── ShouldHaveReleased: the measurement, complement of Decide's release branches ──
+                // 5. Off camera INSIDE the grace: the anti-flicker hysteresis, not a defect.
+                Oracle("off camera inside the grace is not releasable",
+                    false, VfxLoopReleasePolicy.ShouldHaveReleased(exempt: false,
+                        ownerDestroyed: false, ownerActive: true, cameraKnown: true,
+                        visible: false, offscreenFor: G - 0.5f, grace: G));
+
+                // 6. Off camera PAST the grace: releasable.
+                Oracle("off camera past the grace is releasable",
+                    true, VfxLoopReleasePolicy.ShouldHaveReleased(exempt: false,
+                        ownerDestroyed: false, ownerActive: true, cameraKnown: true,
+                        visible: false, offscreenFor: G + 0.1f, grace: G));
+
+                // 7. An accessibility loop is CORRECTLY held off camera (WO-1229). The old audit
+                //    had no such guard and would have reported the ruling working as a bug.
+                Oracle("accessibility loop off camera is never releasable",
+                    false, VfxLoopReleasePolicy.ShouldHaveReleased(exempt: true,
+                        ownerDestroyed: true, ownerActive: false, cameraKnown: true,
+                        visible: false, offscreenFor: G * 10f, grace: G));
+
+                // 8. Destroyed owner: releasable immediately, no grace.
+                Oracle("destroyed owner is releasable with no grace",
+                    true, VfxLoopReleasePolicy.ShouldHaveReleased(exempt: false,
+                        ownerDestroyed: true, ownerActive: false, cameraKnown: true,
+                        visible: true, offscreenFor: 0f, grace: G));
+
+                // 9. NO CAMERA: unjudgeable is never a defect, or every headless AutoPilot run
+                //    would report its whole registry stuck.
+                Oracle("no camera to judge by is never releasable",
+                    false, VfxLoopReleasePolicy.ShouldHaveReleased(exempt: false,
+                        ownerDestroyed: false, ownerActive: true, cameraKnown: false,
+                        visible: false, offscreenFor: G * 10f, grace: G));
+
+                // 10. On camera: never releasable.
+                Oracle("on camera is never releasable",
+                    false, VfxLoopReleasePolicy.ShouldHaveReleased(exempt: false,
+                        ownerDestroyed: false, ownerActive: true, cameraKnown: true,
+                        visible: true, offscreenFor: 0f, grace: G));
+
+                // ── The two halves must agree. A measurement that says "release" while Decide
+                //    says Keep (or the reverse) would put the oracle and the action back out of
+                //    step, which is the whole class of bug WO-1786 closes. Swept, not sampled.
+                int agreementChecked = 0;
+                bool agreementBroken = false;   // report the FIRST disagreement only; a broken
+                                                // invariant would otherwise add 128 identical rows
+                bool[] bools = { false, true };
+                float[] streaks = { 0f, G - 0.5f, G, G + 5f };
+                foreach (bool exempt in bools)
+                foreach (bool ownerDestroyed in bools)
+                foreach (bool ownerActive in bools)
+                foreach (bool cameraKnown in bools)
+                foreach (bool visible in bools)
+                foreach (float streak in streaks)
+                {
+                    bool should = VfxLoopReleasePolicy.ShouldHaveReleased(
+                        exempt, ownerDestroyed, ownerActive, cameraKnown, visible, streak, G);
+                    var decided = VfxLoopReleasePolicy.Decide(
+                        suspended: false, exempt: exempt,
+                        ownerDestroyed: ownerDestroyed, ownerActive: ownerActive,
+                        cameraKnown: cameraKnown, visible: visible,
+                        offscreenFor: streak, grace: G, slotAvailable: true);
+                    agreementChecked++;
+                    bool wouldSuspend = decided == VfxLoopReleasePolicy.LoopAction.Suspend;
+                    if (should != wouldSuspend && !agreementBroken)
+                    {
+                        agreementBroken = true;
+                        failures.Add("WO-1786: ShouldHaveReleased and Decide DISAGREE for " +
+                            "exempt=" + exempt + " ownerDestroyed=" + ownerDestroyed +
+                            " ownerActive=" + ownerActive + " cameraKnown=" + cameraKnown +
+                            " visible=" + visible + " offscreenFor=" + streak +
+                            " -- measurement says " + should + ", Decide says " + decided +
+                            ". The oracle and the action must read the SAME release condition, or " +
+                            "the detector is back to keeping a second opinion and the 2026-09-16 " +
+                            "false-positive class is reopened.");
+                    }
+                }
+                if (agreementChecked == 0)
+                    failures.Add("WO-1786 agreement sweep is VACUOUS: no combination was judged.");
+
+                notes.Add("wo1786 oracle cases=" + oracleChecked +
+                          " agreement-sweep=" + agreementChecked);
             }
 
             // =================================================================

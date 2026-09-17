@@ -291,13 +291,35 @@ namespace DeNelle.Village
             public int       OwnerId;     // GetInstanceID(), so two same-named owners stay distinct
             public float     StartedAt;   // Time.realtimeSinceStartup — AGE IS THE LEAK SIGNAL
             public Vector3   StartPos;    // fallback for the dump when the host is already gone
-            public bool      Warned;      // one-per-handle Warn latch (age or orphaned owner)
+            public bool      Warned;      // Warn latch: one line per stuck EPISODE, not per handle
+                                          // for ever. WO-1786 clears it again the moment the policy
+                                          // stops measuring the record as releasable, so a record
+                                          // that recovers can be reported again if it re-sticks.
 
             // ── WO-1473 release-policy state ──────────────────────────────────────────────
             public bool      Suspended;      // particles stopped+cleared; holds NO slot; resumable
             public float     SuspendedAt;    // realtime of the suspend, for the dump/audit lines
             public float     OffscreenSince; // realtime the host was first judged off-camera;
                                              // <0 means on-camera OR not judgeable (no camera)
+
+            // ── WO-1786: the ORACLE's state, and the reason it is a TICK COUNT, not a clock ──
+            // The audit used to re-derive "stuck" from OffscreenSince against the SAME 6 s grace
+            // the policy acts on, while running on a 5 s cadence against the policy's 0.5 s one.
+            // Any audit landing in the <=0.5 s window after the streak crossed the grace but
+            // before the next policy tick fired a FALSE "the policy is not doing its job" — and
+            // Warned latched it forever, so the record could never be reported again if it later
+            // went genuinely stuck. Proven in Logs/device/pull-20260916-143101-bastion-owner-run:
+            // all 14 STUCK LOOP lines read exactly "OFF CAMERA for 6s" (never 7, never 12) and
+            // every one is followed within 52-218 ms by its own
+            // "LOOP RELEASED ... reason=off camera 6s". The policy fired every time.
+            //
+            // So the oracle no longer keeps a clock. The POLICY counts, once per tick, how many
+            // consecutive ticks it has MEASURED this record as should-release and left it held
+            // ANYWAY — measured AFTER the act, so it also catches a Suspend that was decided and
+            // then did not take effect. Two ticks is a real defect; zero cadence to race.
+            public int       PolicyTicksHeldPastGrace; // consecutive policy ticks: should-release, still held
+            public string    HeldReason;               // what the policy measured on the stamping tick
+            public bool      HeldLogged;               // one-per-record latch for the hold-decision trace
 
             public string Key => string.IsNullOrEmpty(HovlKey) ? Type.ToString() : HovlKey;
         }
@@ -1612,6 +1634,71 @@ namespace DeNelle.Village
                         held++;
                         break;
                 }
+
+                // ── WO-1786: FEED THE ORACLE, from the measurement the policy just made ──
+                // Read AFTER the switch on purpose. The question is not "what did Decide say"
+                // (an oracle that is Decide's own complement is silenced by construction and
+                // proves nothing — the warning is written at the head of VfxLoopReleasePolicy);
+                // the question is "this record should not be holding a slot, and it still is".
+                // That catches a Decide contract break, and a Suspend that was chosen and did not
+                // take effect — a future SuspendLoop early-out, or rec.Suspended not being set.
+                // (It does NOT need to cover a null host: the loop head above already `continue`s
+                // on one, and ReclaimDestroyedLoops owns that record.)
+                bool shouldRelease = VfxLoopReleasePolicy.ShouldHaveReleased(
+                    exempt:         exempt,
+                    ownerDestroyed: ownerDestroyed,
+                    ownerActive:    ownerActive,
+                    cameraKnown:    cameraKnown,
+                    visible:        visible,
+                    offscreenFor:   offscreenFor,
+                    grace:          OFFSCREEN_RELEASE_GRACE);
+
+                if (shouldRelease && !rec.Suspended)
+                {
+                    rec.PolicyTicksHeldPastGrace++;
+
+                    // Stamp the measured reason only until the hold has been reported. After that
+                    // the audit still has the string to print, and the hot path stops allocating
+                    // one per record per 0.5 s tick — the shape that floods a device log.
+                    if (!rec.HeldLogged)
+                        rec.HeldReason =
+                            (ownerDestroyed ? "owner destroyed" : !ownerActive ? "owner disabled"
+                                            : "off camera " + offscreenFor.ToString("F1") + "s >= grace " +
+                                              OFFSCREEN_RELEASE_GRACE + "s") +
+                            " (cameraKnown=" + cameraKnown + " visible=" + visible +
+                            " suspended=false slotAvailable=" + slotAvailable +
+                            " decided=" + action + ")";
+
+                    // Permanent instrumentation (CLAUDE.md §12), LATCHED ONE PER RECORD. Never a
+                    // per-tick Step: 0.5 s x N loops is the firehose that evicts the boot window
+                    // out of the logcat ring (memory logcat-ring-buffer-destroys-evidence).
+                    if (!rec.HeldLogged && VfxLoopReleasePolicy.IsStuck(rec.PolicyTicksHeldPastGrace))
+                    {
+                        rec.HeldLogged = true;
+                        FlowTrace.Warn("Vfx",
+                            "LOOP HELD AGAINST POLICY " + rec.Key + " owner='" + rec.OwnerName + "'#" +
+                            rec.OwnerId + " age=" + (now - rec.StartedAt).ToString("F0") + "s — the " +
+                            "release policy MEASURED it as releasable on " + rec.PolicyTicksHeldPastGrace +
+                            " consecutive ticks and it is STILL holding a slot. Measured: " +
+                            rec.HeldReason + ". This is the release path failing, not the detector " +
+                            "racing it (WO-1786): the count is the policy's own, so there is no " +
+                            "second clock to be out of step with.");
+                    }
+                }
+                else
+                {
+                    // Released, resumed, back on camera, or legitimately exempt — the streak is
+                    // over, so BOTH latches clear. That is deliberate and it is half the WO-1786
+                    // fix: the old Warned flag was set once and never cleared, so each of the 14
+                    // false accusations in the 2026-09-16 capture also PERMANENTLY BLINDED the
+                    // audit to that record — a later, genuine stuck loop on the same handle could
+                    // never be reported. A latch is there to stop a log storm, not to retire a
+                    // detector after one reading.
+                    rec.PolicyTicksHeldPastGrace = 0;
+                    rec.HeldReason = null;
+                    rec.HeldLogged = false;
+                    rec.Warned     = false;
+                }
             }
 
             _loopPolicyScratch.Clear();
@@ -1686,6 +1773,16 @@ namespace DeNelle.Village
         /// is old. A detector that the fix silences by construction proves nothing.</summary>
         private void AuditLoopAges()
         {
+            // ⛔ WO-1786 — THERE IS NO "POLICY STALLED" HEARTBEAT HERE. The absence is deliberate: one was
+            // written and deleted before review, because it COULD NOT FIRE. SweepOneshots runs the
+            // policy check and then this audit in the same call, and _nextLoopPolicy only ever
+            // moves forward by LOOP_POLICY_INTERVAL, so the tick can never be measurably stale at
+            // the moment the audit reads it. A safety net that cannot fire is worse than none — it
+            // reads as coverage in a review. If the policy really stops it is because
+            // Update/SweepOneshots stopped, which takes THIS audit down with it, so that case is
+            // only observable from outside the manager. Add a heartbeat only if AuditLoopAges ever
+            // gains a caller that does not run the policy first.
+
             AuditRegistryAges(_loopObjects);
             AuditRegistryAges(_hovlLoopObjects);
         }
@@ -1709,29 +1806,48 @@ namespace DeNelle.Village
                 // there is one, the oracle has to test the policy or it fails on the fix.
                 if (rec.Suspended) continue;
 
+                // ── WO-1786: THE ORACLE ASKS THE POLICY, IT NO LONGER KEEPS A SECOND CLOCK ──
+                // What stood here re-derived "stuck" from rec.OffscreenSince against the SAME
+                // OFFSCREEN_RELEASE_GRACE the policy acts on — on a 5 s cadence, against the
+                // policy's 0.5 s one. Two clocks at one threshold is a race, and it lost: in
+                // Logs/device/pull-20260916-143101-bastion-owner-run every one of the 14 STUCK
+                // LOOP lines reads exactly "OFF CAMERA for 6s" and every one is followed inside
+                // 0.25 s by its own "LOOP RELEASED ... reason=off camera 6s". The policy had
+                // already decided; the audit simply looked in the 0.5 s gap before it acted, and
+                // then latched the accusation forever. WO-1786 was raised off those false lines.
+                //
+                // An oracle that owns no clock cannot race one: the POLICY counts, per record and
+                // per tick, "I measured this as releasable and it is still held" (see the feed at
+                // the foot of TickLoopReleasePolicy), and the audit reports that count. It still
+                // tests the policy rather than restating its decision — the count is taken after
+                // the act, so a release that was chosen and did not happen still trips it.
+                if (!VfxLoopReleasePolicy.IsStuck(rec.PolicyTicksHeldPastGrace)) continue;
+
+                // An accessibility loop is CORRECTLY kept off-camera (WO-1229 — the colourblind
+                // low-HP tell is unrefusable), so it is never a defect. ShouldHaveReleased already
+                // excludes it, so the count cannot rise; asserted here too because the old audit
+                // had no such check and would have reported the ruling working as a bug.
+                if (VfxLoopBudget.IsAccessibilityLoop(rec.Type)) continue;
+
                 float age = now - rec.StartedAt;
                 bool orphaned = !rec.Unparented && rec.Owner == null;
-                // Off camera past the grace and STILL held => the policy tick did not run or did
-                // not act. That, and an orphan still holding a slot, are the two real defects.
-                bool offscreenPastGrace = rec.OffscreenSince >= 0f
-                                       && (now - rec.OffscreenSince) >= OFFSCREEN_RELEASE_GRACE;
-                if (!orphaned && !offscreenPastGrace) continue;
-                // A long-lived ON-CAMERA loop is legitimate; the age threshold survives only as
-                // the "this has been true for ages, say so louder" note in the line below.
 
-                rec.Warned = true;   // one per handle, forever — never a per-frame log storm
+                rec.Warned = true;   // one line per stuck EPISODE — never a per-frame log storm.
+                                     // Cleared by the policy feed when the record recovers.
                 FlowTrace.Warn("Vfx",
                     "STUCK LOOP " + rec.Key + " owner='" + rec.OwnerName + "'#" + rec.OwnerId +
-                    " age=" + age.ToString("F0") + "s " +
-                    (orphaned
-                        ? "— ITS OWNER IS DESTROYED and it is STILL HELD: the WO-1473 release policy should " +
-                          "have suspended it within " + LOOP_POLICY_INTERVAL + "s. "
-                        : "— OFF CAMERA for " + (now - rec.OffscreenSince).ToString("F0") + "s and STILL HELD: " +
-                          "past the " + OFFSCREEN_RELEASE_GRACE + "s release grace. ") +
+                    " age=" + age.ToString("F0") + "s — the release policy measured it as releasable " +
+                    "on " + rec.PolicyTicksHeldPastGrace + " consecutive ticks (>= " +
+                    VfxLoopReleasePolicy.StuckAfterPolicyTicks + ", i.e. at least " +
+                    (VfxLoopReleasePolicy.StuckAfterPolicyTicks * LOOP_POLICY_INTERVAL).ToString("F1") +
+                    "s of it acting) and it is STILL HOLDING A SLOT. Measured: " +
+                    (rec.HeldReason ?? "(reason not stamped)") + ". " +
+                    (orphaned ? "ITS OWNER IS DESTROYED. " : "") +
                     (age >= STUCK_LOOP_AGE_SECONDS ? "(Also older than the " + STUCK_LOOP_AGE_SECONDS +
                         "s age threshold.) " : "") +
                     "Holding 1 of " + _maxActiveLoops + " loop slots (now " + _activeLoops + "/" + _maxActiveLoops +
-                    "). The policy exists (WO-1473) — if this line appears, the policy is not doing its job.");
+                    "). This line is the RELEASE PATH failing (WO-1473) — it can no longer be the " +
+                    "detector racing the policy's cadence (WO-1786).");
             }
         }
 
@@ -2602,5 +2718,68 @@ namespace DeNelle.Village
             if (!suspended && offscreenFor >= grace) return LoopAction.Suspend;
             return LoopAction.Keep;
         }
+
+        // =====================================================================
+        // ── WO-1786: the ORACLE's half of the contract, pure and pinnable ────
+        // =====================================================================
+        //
+        // ## WHY THE ORACLE LIVES HERE AND NOT IN THE AUDIT
+        //
+        // The audit used to re-derive "should this have been released?" from its OWN copy of the
+        // grace, on its OWN cadence. That is duplicated state of exactly the kind CLAUDE.md §2/§5
+        // catalogue, and it failed the same way: two clocks at one threshold, and the slower one
+        // accused the faster one of not running. Proof, from
+        // Logs/device/pull-20260916-143101-bastion-owner-run/logcat_full.txt — all fourteen
+        // STUCK LOOP lines read exactly "OFF CAMERA for 6s", and each is followed within
+        // 52-218 ms by its own "LOOP RELEASED ... reason=off camera 6s" (13:17:56.723 -> .775,
+        // 13:20:02.207 -> .285, 13:24:06.394 -> .612, 13:25:56.756 -> .892). 189 RELEASED /
+        // 146 RESUMED lines in that one capture. The policy never missed; the detector cried wolf,
+        // and its Warned latch made every false accusation permanent.
+        //
+        // ## AND WHY THIS IS NOT "A DETECTOR THE FIX SILENCES BY CONSTRUCTION"
+        //
+        // That warning (head of this class, and AuditLoopAges' own doc) is the reason the split is
+        // in TWO parts rather than one:
+        //   * ShouldHaveReleased is the MEASUREMENT predicate. It is deliberately the complement of
+        //     Decide's release branches, so on its own it would prove nothing.
+        //   * IsStuck is applied by the manager to a count taken AFTER the action ran, against the
+        //     record's real Suspended state. So the thing being tested is not the decision, it is
+        //     the OUTCOME: a Suspend that was chosen and did not take effect (a null host, a
+        //     changed Decide, a SuspendLoop early-out) still raises the count and still reports.
+        // The oracle keeps no clock of its own, so there is nothing left for it to race.
+
+        /// <summary>Consecutive policy ticks a record may be measured as releasable and still be
+        /// holding a slot before that is a defect rather than the tick it takes to act. TWO: the
+        /// first tick is the one that acts, so a count of two means a whole further tick elapsed
+        /// with the release not in effect.</summary>
+        public const int StuckAfterPolicyTicks = 2;
+
+        /// <summary>Should this loop NOT be holding a slot right now? The exact complement of
+        /// <see cref="Decide"/>'s two release branches, so the manager measures the release
+        /// condition once and both the action and the oracle read the same answer.</summary>
+        public static bool ShouldHaveReleased(bool exempt,
+                                             bool ownerDestroyed, bool ownerActive,
+                                             bool cameraKnown, bool visible,
+                                             float offscreenFor, float grace)
+        {
+            // Accessibility loops are unrefusable and unsuspendable by ruling (WO-1229): keeping
+            // one off-camera is the feature, never a defect, so it can never be stuck.
+            if (exempt) return false;
+
+            // Nothing to belong to (Decide branch 2) — no grace applies.
+            if (ownerDestroyed || !ownerActive) return true;
+
+            // No camera to judge by (Decide branch 3) — an unjudgeable loop is never a defect.
+            if (!cameraKnown) return false;
+
+            // Off camera for the whole grace (Decide branch 5).
+            return !visible && offscreenFor >= grace;
+        }
+
+        /// <summary>Is a record that the policy has held for <paramref name="policyTicksHeldPastGrace"/>
+        /// consecutive should-have-released ticks a genuine stuck loop? Pure so
+        /// VfxLoopFlagRegression can red-prove the cadence race is gone without playing the game.</summary>
+        public static bool IsStuck(int policyTicksHeldPastGrace)
+            => policyTicksHeldPastGrace >= StuckAfterPolicyTicks;
     }
 }
