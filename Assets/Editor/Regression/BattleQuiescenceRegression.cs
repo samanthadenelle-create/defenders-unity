@@ -117,6 +117,15 @@ namespace DeNelle.Editor
                 TownWaveEndArmsTheGate(failures, log);
                 WavePhaseProbeIsRegistered(failures, log);
                 ParkedCountdownIsNotImminent(failures, log);
+
+                // WO-1855 — BATTLE_QUIESCENCE_FAIL (arena win) recurring on the same
+                // 'OverworldEncounterSpawner/rep-chase' shape (seq5344/5490/5519): a SECOND,
+                // untouched rep pack's leader is genuinely still within its own leash of the
+                // hero's return position. Not a release bug (BattleLock/PursuitBattleProbe/
+                // BattleSessionEnd all pinned above); the gap was that neither DescribeHolders()
+                // nor DescribePursuits() can tell that apart from a stalled/blocked chase. This
+                // pins that the rep-chase probe exists and names the discriminating numbers.
+                RepChaseProbeIsRegistered(failures, log);
             }
             finally
             {
@@ -2265,6 +2274,88 @@ namespace DeNelle.Editor
                              "for the measurement all over again (WO-1308).");
             else
                 log.AppendLine("  [wo1736-probe] the probe routes to the WO-1308 latched-phase dump");
+        }
+
+        // =====================================================================
+        //  WO-1855 — name the OVERWORLD REP holding the lock, not just the reader.
+        // ---------------------------------------------------------------------
+        //  CAPTURED (device SM02G4061955851, seq5344-family/5490/5519, 2026-09-15..17):
+        //  three BATTLE_QUIESCENCE_FAIL(arena win)s, each with battle-lock held by
+        //  PursuitBattleProbe.Probe and a fresh (age=0.00s) 'OverworldEncounterSpawner/
+        //  rep-chase' pulse — and the self-heal reports STILL HELD one frame later with
+        //  the SAME key. RCA (this file's own WO-1233/1337/1603 blocks, re-verified):
+        //  BattleLock/PursuitBattleProbe/BattleSessionEnd release exactly what they
+        //  raise. The holder is a DIFFERENT, untouched rep pack's leader genuinely still
+        //  inside its own leash of the return position — correct per the owner's "an
+        //  active chaser must finish" ruling, and indistinguishable from a stalled/
+        //  blocked chase by either DescribeHolders() or DescribePursuits() alone. This
+        //  is a source-lint (not a behavioural test): OverworldEncounterSpawner is a
+        //  DeNelle.Village type and this suite lives in DeNelle.Editor with no reference
+        //  to it, exactly the same constraint every other wo1337/wo1736-wiring check in
+        //  this file already works under.
+        // =====================================================================
+        private static void RepChaseProbeIsRegistered(List<string> failures, StringBuilder log)
+        {
+            string src = ReadCode("Assets/_Modules/Village/Enemies/OverworldEncounterSpawner.cs");
+            if (src == null)
+            {
+                failures.Add("[wo1855-probe] OverworldEncounterSpawner.cs is MISSING - the rep-chase " +
+                             "quiescence probe cannot be verified.");
+                return;
+            }
+
+            if (src.IndexOf("BattleQuiescenceGate.Register", StringComparison.Ordinal) < 0 ||
+                src.IndexOf("\"rep-chase\"", StringComparison.Ordinal) < 0)
+                failures.Add("[wo1855-probe] OverworldEncounterSpawner no longer registers a 'rep-chase' " +
+                             "quiescence probe, so a BATTLE_QUIESCENCE_FAIL(arena win) held by " +
+                             "PursuitBattleProbe.Probe again names only the reader, never the overworld " +
+                             "rep actually still chasing (device SM02G4061955851 seq5344/5490/5519).");
+            else
+                log.AppendLine("  [wo1855-probe] OverworldEncounterSpawner registers its own 'rep-chase' quiescence probe");
+
+            if (src.IndexOf("CheckRepChaseQuiescence", StringComparison.Ordinal) < 0)
+            {
+                failures.Add("[wo1855-probe] the rep-chase probe no longer routes to " +
+                             "CheckRepChaseQuiescence - that method is the whole deliverable.");
+            }
+            else
+            {
+                int at = src.IndexOf("private static string CheckRepChaseQuiescence", StringComparison.Ordinal);
+                string body = at >= 0 ? src.Substring(at, Math.Min(2500, src.Length - at)) : "";
+                bool namesDistance = body.Contains("Vector3.Distance") && body.Contains("d={d:");
+                bool namesStall    = body.Contains("_progressAt") && body.Contains("stalled");
+                bool namesTouch    = body.Contains("TouchDistance(hero)");
+                bool namesWatcher  = body.Contains("gameObject.name");
+                if (!(namesDistance && namesStall && namesTouch && namesWatcher))
+                    failures.Add("[wo1855-probe] CheckRepChaseQuiescence no longer names all four " +
+                                 "discriminating numbers (which rep, its live distance, its stalled-with-" +
+                                 "no-progress time, and its touch threshold). Dropping any one of them " +
+                                 "puts the reader back to guessing whether a held lock is a live chase " +
+                                 "that will resolve or a blocked one that never will.");
+                else
+                    log.AppendLine("  [wo1855-probe] CheckRepChaseQuiescence names the rep, its live distance, " +
+                                   "its stall time, and its touch threshold");
+            }
+
+            // The probe must be READ-ONLY (WO-1855's own doc comment promises this): it must never
+            // call Deaggro/RevokePursuit/SetPackCombatPresentation from inside the Check, or looking
+            // at a stuck chase would itself change it — exactly the mutation WaveManager's own
+            // DescribeLatchedWavePhase comment (":930-932") warns against for the sibling probe.
+            int checkAt = src.IndexOf("private static string CheckRepChaseQuiescence", StringComparison.Ordinal);
+            if (checkAt >= 0)
+            {
+                int nextMethod = src.IndexOf("\n        private ", checkAt + 10, StringComparison.Ordinal);
+                if (nextMethod < 0) nextMethod = Math.Min(src.Length, checkAt + 2500);
+                string checkBody = src.Substring(checkAt, nextMethod - checkAt);
+                if (checkBody.Contains("Deaggro(") || checkBody.Contains("RevokePursuit") ||
+                    checkBody.Contains("SetPackCombatPresentation"))
+                    failures.Add("[wo1855-probe] CheckRepChaseQuiescence mutates chase state (Deaggro / " +
+                                 "RevokePursuit / SetPackCombatPresentation). A quiescence probe must only " +
+                                 "OBSERVE - the same discipline BattleQuiescenceGate's own header states for " +
+                                 "the gate as a whole.");
+                else
+                    log.AppendLine("  [wo1855-probe] CheckRepChaseQuiescence is read-only (no chase-state mutation)");
+            }
         }
 
         // =====================================================================

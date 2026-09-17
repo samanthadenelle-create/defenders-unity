@@ -26,6 +26,7 @@ using UnityEngine;
 using UnityEngine.UI;                 // world-space threat nameplate ("!" alert) on the engaging rep
 using UnityEngine.SceneManagement;
 using DeNelle.Core;
+using DeNelle.Core.Combat;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Village.Arena;
 using DeNelle.Village.UI;             // Billboard — keeps the rep's threat cue facing the camera
@@ -1146,6 +1147,95 @@ namespace DeNelle.Village
                 $"(key={(_enemy != null ? _enemy.GetInstanceID() : 0)}, owner='OverworldEncounterSpawner/rep-chase'), " +
                 "back to peaceful roam. Until F8 seq4768 this rep would have kept stamping the pursuit ring " +
                 "every frame at any distance and held the battle-lock past the end of the fight.");
+        }
+
+        // =====================================================================================
+        // WO-1855 — NAME THE HOLDER, DO NOT TOUCH THE LOCK.
+        // -------------------------------------------------------------------------------------
+        // Device SM02G4061955851 captured BATTLE_QUIESCENCE_FAIL (arena win) three times
+        // (seq5344-family/5490/5519, 2026-09-15 through -17), every time with the SAME shape:
+        // HOLDER(S): PursuitBattleProbe.Probe, PURSUIT PULSES: key=<N> owner=
+        // 'OverworldEncounterSpawner/rep-chase' age=0.00s — and the gate's own self-heal (which
+        // re-drives BattleSessionEnd.Release, clearing the whole ring) reports "STILL HELD" one
+        // frame later with the identical key. That is NOT a release bug: BattleLock,
+        // PursuitBattleProbe and BattleSessionEnd all release exactly what they raised (proven by
+        // reading each against the F8 seq4768 / WO-1337 / WO-1603 fixes already in this file and
+        // in BattleQuiescenceGate — see the block comment above QuietNonPursuersOnBattleEnd). A
+        // rep-chase pulse re-stamping ONE FRAME after a full ClearPursuits means a DIFFERENT, still
+        // -alive watcher (never touched by the resolving fight — Engage()'s ConsumePack() destroys
+        // only the engaging family's shared packRoot, so a SECOND independently-roaming pack's
+        // leader is untouched) is genuinely within DeaggroRange of the hero's arena-win return
+        // position and has not yet closed to touch or lost the leash. Per the owner's OWN ruling
+        // (":1027 THE CURE IS A LEASH BREAK, NOT A WIDER TOLERANCE" / ":1037 a chase that is
+        // closing keeps closing, forever, exactly as designed") that is CORRECT behaviour, not a
+        // softlock to force-clear — but BattleLock.DescribeHolders() can only ever say
+        // "PursuitBattleProbe.Probe" (the READER) and PostureSignals.DescribePursuits() can only
+        // ever say the pulse's owner tag + age, so NEITHER line can tell "a live chase that will
+        // resolve in a few seconds" apart from "a chase stalled on blocked geometry and will never
+        // resolve" (the exact case ChaseStallWarnSeconds below already anticipates but never
+        // reaches the FAIL line, because it is a Throttled Warn on a different channel).
+        //
+        // This closes that gap the same way WO-1233 and WO-1603 already did for the other two
+        // pieces of this same message ("append the holder, never force it"): a Core
+        // QuiescenceProbe named "rep-chase" that enumerates every watcher CURRENTLY stung and
+        // reports its name, live distance, time stalled with no progress, and touch distance —
+        // directly in the FAIL/self-heal text. It changes NOTHING about BattleLock,
+        // PursuitBattleProbe or BattleSessionEnd (all three are pinned by
+        // BattleQuiescenceRegression's wo1337-wiring lint) and it forces no state false — it only
+        // makes the NEXT occurrence self-diagnosing instead of costing another felt-test.
+        // =====================================================================================
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void RegisterRepChaseQuiescenceProbe()
+        {
+            // BattleQuiescenceGate.Register REPLACES by Name, so a re-registration on a fresh
+            // scene load (or a second call from any watcher) can never accumulate duplicates.
+            BattleQuiescenceGate.Register(new QuiescenceProbe
+            {
+                Name  = "rep-chase",
+                Check = CheckRepChaseQuiescence
+            });
+        }
+
+        /// <summary>
+        /// Returns null when no <see cref="RepEngageWatcher"/> is actively pursuing the hero right
+        /// now (nothing to add — some other holder is at fault). Otherwise names every stung
+        /// watcher with the exact numbers the RCA above needed and could not get from a single
+        /// capture: live distance, seconds since it last closed ground, and its own touch
+        /// threshold. Static and Find-based (mirrors WaveManager.CheckWavePhaseQuiescence) so it
+        /// survives any one watcher being destroyed and sees every pack, not just one instance's.
+        /// Read-only: never mutates a watcher's state, so looking at the chase can never change it.
+        /// </summary>
+        private static string CheckRepChaseQuiescence()
+        {
+            var hero = GameObject.FindWithTag("Player");
+            var watchers = FindObjectsByType<RepEngageWatcher>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            if (watchers == null || watchers.Length == 0) return null;
+
+            var sb = new System.Text.StringBuilder();
+            int n = 0;
+            for (int i = 0; i < watchers.Length; i++)
+            {
+                var w = watchers[i];
+                if (w == null || !w._stung) continue;
+                n++;
+                float d = hero != null ? Vector3.Distance(hero.transform.position, w.transform.position) : -1f;
+                float stalledFor = Time.time - w._progressAt;
+                float chasingFor = Time.time - w._stungAt;
+                float touch = w.TouchDistance(hero);
+                if (sb.Length > 0) sb.Append("; ");
+                sb.Append($"'{w.gameObject.name}' d={d:0.0}m (aggro={AggroRange:0.0}m deaggro={DeaggroRange:0.0}m touch={touch:0.00}m) " +
+                          $"chasing={chasingFor:0.0}s stalled(no-progress)={stalledFor:0.0}s");
+            }
+            if (n == 0) return null;
+
+            return $"{n} rep(s) genuinely still pursuing the hero — NOT a release bug (BattleLock/" +
+                   "PursuitBattleProbe/BattleSessionEnd all release exactly what they raised; WO-1855). " +
+                   "These are LIVE chasers under the owner's 'an active chaser must finish' ruling: " +
+                   sb + ". If d stays inside deaggro with stalled(no-progress) growing past " +
+                   $"{ChaseStallWarnSeconds:0}s and never reaches touch, the chase is BLOCKED (unreachable " +
+                   "path / navmesh island), not merely slow — that is the one shape this probe cannot " +
+                   "resolve by itself and is the next thing to instrument if it recurs.";
         }
 
         /// <summary>
