@@ -71,6 +71,17 @@
 //                            RELATIONSHIP between the completion signal and the taught action was
 //                            wrong, which is why no other suite could see it.
 //
+//   Case 7 [skip-is-not-completion]
+//                            WO-1794. A SKIP-OUT MAY NEVER LAND AS A COMPLETION. The single
+//                            finisher TAKES its outcome (FinishFlow(string outcome), no
+//                            parameterless form), SkipAll still reuses it but names
+//                            "skipped_all", the mandatory chain's end names "completed", and
+//                            the tutorial_completed row carries both the string and a
+//                            boolean. THE DEFECT SHIPPED AND WAS MEASURED: on 2026-09-16
+//                            every tutorial_skipped_all row had a tutorial_completed row in
+//                            the SAME SECOND with skips:0 and totalSeconds of 10-33s, so the
+//                            card read 8 completions where the truth was 2.
+//
 //   NOT provable here: that a real FTUE run walks the hero to the gate and repels the
 //   band. That is the AutoPilot / owner felt-verify; the PO closes (CLAUDE.md sec.13).
 //
@@ -130,6 +141,7 @@ namespace DeNelle.Editor.Regression
                 Case(failures, "stuck-reports", () => Case4_StuckStepsReportThemselves(failures));
                 Case(failures, "forbidden-fixes", () => Case5_ForbiddenFixesNotTaken(failures));
                 Case(failures, "teach-spend", () => Case6_SpendTeachCompletesOnASpend(failures, sites));
+                Case(failures, "skip-is-not-completion", () => Case7_SkipAllIsNotACompletion(failures));
             }
             catch (Exception ex)
             {
@@ -146,7 +158,11 @@ namespace DeNelle.Editor.Regression
                          "(ctx_talents) completes on a talent genuinely LEARNED rather than on its own text box closing, " +
                          "its sole publisher is WisdomCurrencyService.Unlock and raises only after the debit lands, it " +
                          "names both route hops in words, it gates nothing, and TickContextual releases it with a " +
-                         "self-naming CTX-STUCK line if the spend never comes.";
+                         "self-naming CTX-STUCK line if the spend never comes. WO-1794: the single finisher must be TOLD " +
+                         "how it was reached - FinishFlow(string outcome) with no parameterless form, the skip path finishes " +
+                         "as 'skipped_all' while still reusing that one finisher, the mandatory chain's end finishes as " +
+                         "'completed', and the tutorial_completed row carries both the outcome string and the completed " +
+                         "boolean, so a skip-out can never be counted as a completion again.";
                 return true;
             }
             reason = "tutorial-completion-publisher FAIL x" + failures.Count + ": " + string.Join(" | ", failures);
@@ -706,6 +722,99 @@ namespace DeNelle.Editor.Regression
             if (!code.Contains("skipped: true"))
                 failures.Add("[forbidden-fixes] the watchdog's rescued-as-SKIPPED path appears to have been removed. " +
                              "WO-1300: 'grants still applied so the player is never half-granted' is deliberate and stays.");
+        }
+
+        /// <summary>
+        /// WO-1794 Case 7 [skip-is-not-completion] — A SKIP-OUT MAY NEVER LAND AS A COMPLETION.
+        ///
+        /// <para>THE CAPTURED DEFECT (production analytics_events, 2026-09-16): every one of the
+        /// day's six <c>tutorial_skipped_all</c> rows had a <c>tutorial_completed</c> row in the
+        /// SAME SECOND, carrying <c>skips: 0</c> and <c>totalSeconds</c> of 10.35 / 28.48 / 11.16 —
+        /// a tutorial nobody could have played. The metrics card read "started 14, completed 8";
+        /// at least six of those eight were skip-outs and the real number was two. The cause was
+        /// structural, not a typo: <c>SkipAll</c> deliberately reuses the single finisher, and the
+        /// finisher emitted <c>tutorial_completed</c> with NO KNOWLEDGE of how it was reached.</para>
+        ///
+        /// <para>So this pins the knowledge, not the string: the finisher TAKES an outcome, no call
+        /// site may reach it without naming one, the emitted row carries that outcome, and the skip
+        /// path names the skip. A future refactor that re-introduces a parameterless finisher, or
+        /// drops the property, fails HERE — the only place it can be caught, because the event
+        /// itself is indistinguishable from a real completion once it is on the wire.</para>
+        /// </summary>
+        private static void Case7_SkipAllIsNotACompletion(List<string> failures)
+        {
+            string flow = ReadText(FlowSrc, failures);
+            if (flow == null) return;
+            string code = StripComments(flow);
+
+            // The two wire values. Literals, because analytics queries are written against the
+            // STRING - renaming one silently orphans every dashboard filter built on it.
+            if (!code.Contains("OutcomeCompleted = \"completed\""))
+                failures.Add("[skip-is-not-completion] TutorialFlow no longer declares OutcomeCompleted = \"completed\". " +
+                             "That literal is what an analytics query filters on; renaming it makes every honest-completion " +
+                             "filter silently match nothing.");
+            if (!code.Contains("OutcomeSkippedAll = \"skipped_all\""))
+                failures.Add("[skip-is-not-completion] TutorialFlow no longer declares OutcomeSkippedAll = \"skipped_all\".");
+
+            // The finisher must be TOLD. A parameterless overload is the defect returning.
+            if (!code.Contains("FinishFlow(string outcome)"))
+                failures.Add("[skip-is-not-completion] TutorialFlow has no 'FinishFlow(string outcome)'. The 2026-09-16 " +
+                             "defect WAS the finisher not knowing how it was reached, so a finisher that cannot be told is " +
+                             "that defect restored.");
+            if (code.Contains("FinishFlow()"))
+                failures.Add("[skip-is-not-completion] a parameterless 'FinishFlow()' exists or is called in TutorialFlow. " +
+                             "Every exit must name its outcome; an unnamed one falls through as a completion, which is " +
+                             "exactly how six skip-outs became eight completions.");
+
+            // The emitted row carries it.
+            string finish = ExtractMethod(code, "FinishFlow");
+            if (finish == null)
+            {
+                failures.Add("[skip-is-not-completion] FinishFlow's body could not be extracted, so this case checked " +
+                             "NOTHING - a FAILURE, not a pass (WO-1138 hollow-pass class).");
+            }
+            else
+            {
+                if (!finish.Contains("tutorial_completed"))
+                    failures.Add("[skip-is-not-completion] FinishFlow no longer emits 'tutorial_completed'. If the event " +
+                                 "moved, this case must move with it - an un-pinned emitter is how it drifted in the first place.");
+                if (!finish.Contains("outcome ="))
+                    failures.Add("[skip-is-not-completion] the 'tutorial_completed' row in FinishFlow does not carry an " +
+                                 "'outcome' property. Without it a skip-out and a played-through FTUE are the same row, and " +
+                                 "the owner's completion number counts both.");
+                if (!finish.Contains("completed ="))
+                    failures.Add("[skip-is-not-completion] the 'tutorial_completed' row does not carry the 'completed' " +
+                                 "boolean that dashboards filter on.");
+            }
+
+            // The skip path names the skip, and still emits its own event.
+            string skipAll = ExtractMethod(code, "SkipAll");
+            if (skipAll == null)
+            {
+                failures.Add("[skip-is-not-completion] SkipAll's body could not be extracted, so the skip half of this " +
+                             "case checked NOTHING - a FAILURE, not a pass.");
+            }
+            else
+            {
+                if (!skipAll.Contains("FinishFlow(OutcomeSkippedAll)"))
+                    failures.Add("[skip-is-not-completion] SkipAll does not finish with FinishFlow(OutcomeSkippedAll). " +
+                                 "It must still REUSE the single finisher (a divergent finisher is forbidden by the FTUE " +
+                                 "spec and would half-grant a skipper) - it must simply say how it got there.");
+                if (!skipAll.Contains("tutorial_skipped_all"))
+                    failures.Add("[skip-is-not-completion] SkipAll no longer emits 'tutorial_skipped_all' - the event that " +
+                                 "made the defect visible at all.");
+            }
+
+            // The played-to-the-end path names itself too, so "completed" is asserted by the
+            // chain running out of steps rather than by a default.
+            string advance = ExtractMethod(code, "AdvanceToNextStep");
+            if (advance == null)
+                failures.Add("[skip-is-not-completion] AdvanceToNextStep's body could not be extracted, so the genuine-" +
+                             "completion half of this case checked NOTHING - a FAILURE, not a pass.");
+            else if (!advance.Contains("FinishFlow(OutcomeCompleted)"))
+                failures.Add("[skip-is-not-completion] the mandatory chain's end does not call " +
+                             "FinishFlow(OutcomeCompleted), so a genuine completion is no longer asserted at the one place " +
+                             "that knows the player reached the end.");
         }
 
         // =====================================================================

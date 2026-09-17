@@ -1,6 +1,6 @@
 # WORK ORDER 1794 — Two of the funnel numbers the owner reads are untrue: `tutorial_completed` fires on SKIP-ALL, and raid steps 1-2 fire from the starter grant
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead from the 1791-1795 block; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** funnel emitters — `Assets/_Modules/Village/Tutorial/V2/TutorialFlow.cs` (the `tutorial_completed` call site) and `Assets/_Modules/Village/Troops/StarterArmyGrant.cs` + `Assets/_Modules/Core/Analytics/RaidFunnel.cs` (step semantics). Analytics only — **no gameplay behaviour may change.**
 **Priority:** P1 — these are the two numbers in today's metrics that would make the owner believe the FTUE and the raid on-ramp are working when they are not.
@@ -101,3 +101,59 @@ grant-fired for every founding player. Steps 3-6 are already genuine player acti
 
 The six `RaidFunnel` wire names and their order. The skip button's gameplay effect. The PlayerPrefs
 latch keys (renaming one re-fires a step for every existing install).
+
+---
+
+## 5. IMPLEMENTATION (lane hand-back 2026-09-17, awaiting lead gate)
+
+**Defect A.** `FinishFlow()` became `FinishFlow(string outcome)`
+(`Assets/_Modules/Village/Tutorial/V2/TutorialFlow.cs:1929`); the mandatory chain's end passes
+`OutcomeCompleted` (`:843`) and `SkipAll` passes `OutcomeSkippedAll` (`:1808`) while still reusing the
+one finisher. `tutorial_completed` now carries `outcome` ("completed" | "skipped_all") plus a
+`completed` boolean for dashboards that filter more cheaply on a bool. No `stepsSeen` field was added,
+deliberately: `SkipAll` sets `_index` to the step count before finishing, so such a field would have
+invented a second false number on this very event. Gameplay untouched — the `MarkTutorialSeen` sweep,
+the grants and the Onboarded hand-off are byte-identical.
+
+**Defect B.** `RaidFunnel.BarracksUnlocked(source, bool granted)` and
+`RaidFunnel.ArmyTrained(troopId, rosterCount, source, bool granted)` now emit a `granted` property.
+The flag is an EXPLICIT argument, never inferred from `source` — otherwise a future grant path only has
+to invent a spelling to report itself as an earned action. `StarterArmyGrant` passes
+`granted: true` for the starter squad; `BarracksProgression.GrantTrainedTroop` forwards a
+`granted = false` default because its default path is the paid, timed Train job. Step 1 reports
+`granted = true` from a documented const (`StarterArmyGrant.BarracksIsGrantFired`) — this WO §2's own
+ruling that the step is grant-fired for every founding player. A "did we watch the barracks appear"
+discriminator was written first and REJECTED: the founding-choice screen leaves a readable `GameState`
+with no Barracks for the tens of seconds the player spends on it, so every founding player would have
+been reported as having EARNED one — the inverse of the measured rows — and
+`StructureSingleton.IsBuilt` answers from live scene objects and baked twins
+(`StructureSingleton.cs:131-145`), not from the save alone. The remaining blind spot (a genuinely
+player-built first Barracks also reads as granted) is written at source. Wire names, order and
+PlayerPrefs latch keys untouched.
+
+⚠ **WIRE VALUE:** the skip outcome ships as **`"skipped_all"`** (§1's preferred shape), not §3's
+`"skipped"` — write dashboard filters against `outcome = 'skipped_all'`, or the boolean
+`completed = false`.
+
+**Oracles.** `TutorialCompletionPublisherRegression` Case 7 `[skip-is-not-completion]` (no
+parameterless finisher may exist or be called, the row carries `outcome` + `completed`, `SkipAll`
+finishes as `skipped_all`, the chain's end as `completed`) and `RaidFunnelRegression` section (E) plus a
+LITERAL pin of the six wire names in (A) — the previous (A) only compared them against their own
+consts, so a const rename passed while orphaning every collected row.
+
+**Wire verified, not assumed:** `api/events/track.js:337-342` parses `properties` whole into JSONB with
+no key allowlist and no truncation, so `outcome`, `completed` and `granted` do reach Neon. Both oracles
+are REGISTERED in `DataRegression.RunAll` (`DataRegression.cs:1245` tutorial-completion-publisher,
+`:1617` raid-funnel), so Case 7 and section (E) are inside `REGRESSION_OK` rather than being unregistered.
+
+**Not done here, flagged for the lead** (out of this WO's declared emitter silo — needs a follow-up
+ticket or a go-ahead): `api/admin/stats.js:695` still counts every `tutorial_completed` row into
+`completed_players`, which is the "Finished it" tile at `site/admin.html:328`, and `stats.js:226`
+`MILESTONE_EVENTS` counts the same event as "progressing". Both keep reading high until they filter on
+`completed = true` / `outcome = 'completed'`. Historic rows carry no outcome at all and cannot be
+back-filled.
+
+**Lane collision to reconcile (lead, not this lane):** `TutorialFlow.cs` is NOT file-disjoint as §7
+assumed — the WO-1788 lane's scene-scoped `MarkTutorialSeen` sweep is in the same working file, and it
+changed the very sweep this WO §1 says not to touch. The two tickets must be reconciled and the commit
+split by hunk.

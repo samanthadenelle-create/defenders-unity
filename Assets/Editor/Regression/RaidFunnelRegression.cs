@@ -28,7 +28,15 @@
 //       else - the work order forbids a second telemetry path in capitals;
 //   (D) all six steps are actually WIRED to a call site in shipping code. An
 //       event class nobody calls is the analytics equivalent of an unregistered
-//       oracle, and this repo has been bitten by that twice (WO-973, WO-978 5F).
+//       oracle, and this repo has been bitten by that twice (WO-973, WO-978 5F);
+//   (E) WO-1794 - the six names are pinned as LITERALS, and the two GRANT-FIRED
+//       steps say so on the wire. On 2026-09-16 every founding player emitted
+//       barracks_unlocked + army_trained in the same second as
+//       founding_path_selected, so "8 players built a barracks and trained an
+//       army" actually meant "8 grants fired" - with first_raid_attempted at ZERO.
+//       The names cannot change (already-collected rows carry them), so the fix is
+//       a `granted` property passed EXPLICITLY at each grant call site, and (E) is
+//       what proves the call sites still pass it.
 //
 // PROVEN RED FIRST: (D) fails by construction against the pre-WO-1374 tree,
 // where RaidFunnel did not exist and none of the five call sites named it. (B)
@@ -94,6 +102,29 @@ namespace DeNelle.Editor.Regression
                             { failures.Add("[A] funnel event '" + n + "' is not snake_case ASCII (EventTracker's convention)"); break; }
                     }
                     log.AppendLine("  events: " + string.Join(", ", names));
+
+                    // WO-1794 - THE LITERALS, not just the consts. Every check above compares
+                    // EventNames against RaidFunnel's own constants, so renaming a const would
+                    // pass all of them while making the step read as ZERO forever in
+                    // analytics_events and orphaning every query and dashboard already written
+                    // against the old spelling. A wire name is a contract with data that has
+                    // already been collected; it is pinned here as text.
+                    string[] wire =
+                    {
+                        "raid_funnel_barracks_unlocked",
+                        "raid_funnel_army_trained",
+                        "raid_funnel_first_raid_attempted",
+                        "raid_funnel_first_raid_won",
+                        "raid_funnel_raid_reward_spent",
+                        "raid_funnel_second_raid_within_24h",
+                    };
+                    for (int i = 0; i < wire.Length; i++)
+                        if (names[i] != wire[i])
+                            failures.Add("[A] funnel step " + (i + 1) + " is on the wire as '" + names[i] +
+                                         "' but the pinned name is '" + wire[i] + "'. WO-1374 owns these six " +
+                                         "strings and WO-1794 forbids renaming one: the rows already in " +
+                                         "analytics_events carry the old spelling, so a rename splits one step " +
+                                         "into two half-funnels and every existing query keeps reading the dead half.");
                 }
 
                 // The order in EventNames IS the funnel order - a reader of the array must
@@ -166,6 +197,58 @@ namespace DeNelle.Editor.Regression
                 RequireCaller(failures, "StarterArmyGrant.cs", "step 1 (barracks unlocked)", "BarracksUnlocked");
                 RequireCaller(failures, "EconomyService.cs", "step 5 (raid reward spent), wallet surface", "RewardSpent");
                 RequireCaller(failures, "ResourceBuildingProgression.cs", "step 5, upgrade-ledger surface", "RewardSpent");
+
+                // =============================================================
+                //  (E) WO-1794 - A GRANT MUST NOT READ AS A PLAYER ACTION.
+                // =============================================================
+                // THE MEASURED DEFECT (production rows, 2026-09-16): for all four ids that
+                // reached founding, raid_funnel_barracks_unlocked and
+                // raid_funnel_army_trained landed in the SAME SECOND as
+                // founding_path_selected, because the founding template hands over a Barracks
+                // and StarterArmyGrant hands over ten troops. The card read "8 players built
+                // a barracks and trained an army"; it meant "8 grants fired", while
+                // raid_funnel_first_raid_attempted was ZERO.
+                //
+                // The wire names cannot change (pinned in (A)), so the separation is a
+                // PROPERTY, and it is only worth anything if the grant call sites actually
+                // pass it. That is what this section proves - on stripped source, because a
+                // header that merely EXPLAINS the flag would otherwise satisfy the lint.
+                if (funnelCode != null)
+                {
+                    if (!funnelCode.Contains("BarracksUnlocked(string source, bool granted)"))
+                        failures.Add("[E] RaidFunnel.BarracksUnlocked no longer takes an explicit 'bool granted'. " +
+                                     "It must be an ARGUMENT, never inferred from the source string: an inferred flag " +
+                                     "means a new grant path only has to invent a source spelling to report itself as " +
+                                     "an earned player action, which is the WO-1794 defect one layer down.");
+                    if (!funnelCode.Contains("ArmyTrained(string troopId, int rosterCount, string source, bool granted)"))
+                        failures.Add("[E] RaidFunnel.ArmyTrained no longer takes an explicit 'bool granted'.");
+
+                    string step1 = ExtractEmission(funnelCode, "EventBarracksUnlocked");
+                    if (step1 == null || !step1.Contains("granted"))
+                        failures.Add("[E] the step-1 emission does not put 'granted' in its properties, so a granted " +
+                                     "barracks and a built one arrive in analytics_events as the same row and no query " +
+                                     "can separate the honest on-ramp from the founding grant.");
+                    string step2 = ExtractEmission(funnelCode, "EventArmyTrained");
+                    if (step2 == null || !step2.Contains("granted"))
+                        failures.Add("[E] the step-2 emission does not put 'granted' in its properties.");
+                }
+
+                RequireGrantFlag(failures, "StarterArmyGrant.cs", "step 1 (barracks unlocked)",
+                                 "BarracksUnlocked(\"StarterArmyGrant\")");
+                RequireGrantFlag(failures, "StarterArmyGrant.cs", "step 2 (army trained), the free starter squad",
+                                 "GrantTrainedTroop(state, troopId, \"starter-army\")");
+                {
+                    string grantCode = RaidLootCurrencyRegression.ReadStripped("StarterArmyGrant.cs");
+                    if (grantCode != null && !grantCode.Contains("granted: true"))
+                        failures.Add("[E] StarterArmyGrant live code never passes 'granted: true'. This whole class IS " +
+                                     "the grant - nothing in it is a player action - so both of its funnel steps must say " +
+                                     "so explicitly.");
+                    string progCode = RaidLootCurrencyRegression.ReadStripped("BarracksProgression.cs");
+                    if (progCode != null && !progCode.Contains("ArmyTrained(troopId, count, source, granted)"))
+                        failures.Add("[E] BarracksProgression.GrantTrainedTroop no longer forwards its 'granted' argument " +
+                                     "to RaidFunnel.ArmyTrained. It is the SINGLE owner of 'a troop joins the roster', so " +
+                                     "a flag that stops here is a flag the starter squad cannot set.");
+                }
             }
             finally
             {
@@ -178,7 +261,11 @@ namespace DeNelle.Editor.Regression
                          "order, the 24h second-raid window is exclusive at the bound and refuses a missing " +
                          "stamp and a backwards clock rather than fabricating a conversion, every emission goes " +
                          "through the EXISTING EventTracker rail with no second telemetry path, and all six " +
-                         "steps are wired to real call sites in shipping code";
+                         "steps are wired to real call sites in shipping code. WO-1794: the six names are pinned " +
+                         "as LITERALS (not just against their own consts), and both grant-fired steps carry an " +
+                         "explicit 'granted' property passed as an argument at the call site - so the founding " +
+                         "template's barracks and the free starter squad can no longer be counted as a player " +
+                         "building a barracks and training an army";
                 Debug.Log(log.ToString() + "RAID_FUNNEL_OK");
                 return true;
             }
@@ -264,6 +351,52 @@ namespace DeNelle.Editor.Regression
             if (actual != expected)
                 failures.Add("[" + label + "] IsWithinSecondRaidWindow(first=" + firstMs + ", now=" + nowMs +
                              ") returned " + actual + ", expected " + expected);
+        }
+
+        /// <summary>
+        /// WO-1794 - returns the whole <c>FireOnce(...)</c> STATEMENT that emits
+        /// <paramref name="eventConst"/>, so the properties it actually ships can be read. The
+        /// const name alone is not enough to locate it: it also appears in its own declaration and
+        /// in the EventNames array, and matching either of those would let this lint pass on code
+        /// that emits nothing of the kind.
+        /// </summary>
+        private static string ExtractEmission(string code, string eventConst)
+        {
+            if (string.IsNullOrEmpty(code)) return null;
+            int from = 0;
+            while (true)
+            {
+                int call = code.IndexOf("FireOnce(", from, System.StringComparison.Ordinal);
+                if (call < 0) return null;
+                int end = code.IndexOf(';', call);
+                if (end < 0) end = code.Length - 1;
+                string stmt = code.Substring(call, end - call + 1);
+                if (stmt.Contains(eventConst)) return stmt;
+                from = call + 9;
+            }
+        }
+
+        /// <summary>
+        /// WO-1794 - fails when <paramref name="file"/> still contains the FLAGLESS call shape
+        /// <paramref name="bannedCall"/>. Stated as the absence of the old shape rather than the
+        /// presence of the new one on purpose: the compiler already forces an argument, so what a
+        /// lint can usefully add is catching a re-add of the exact call that produced the
+        /// 2026-09-16 rows.
+        /// </summary>
+        private static void RequireGrantFlag(List<string> failures, string file, string step, string bannedCall)
+        {
+            string code = RaidLootCurrencyRegression.ReadStripped(file);
+            if (code == null)
+            {
+                failures.Add("[E] " + file + " not found under Assets/_Modules - cannot prove " + step +
+                             " carries the granted flag, and a lint that silently skips is worse than no lint");
+                return;
+            }
+            if (code.Contains(bannedCall))
+                failures.Add("[E] " + file + " live code calls '" + bannedCall + "' - the FLAGLESS shape for " + step +
+                             ". A grant-fired step with no 'granted' property reads in analytics as a player action, " +
+                             "which is how 'barracks unlocked 8 / army trained 8' came to mean '8 grants fired' on " +
+                             "2026-09-16 while first_raid_attempted was zero.");
         }
 
         /// <summary>

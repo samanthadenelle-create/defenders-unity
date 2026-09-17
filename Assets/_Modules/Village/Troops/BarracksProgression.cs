@@ -354,7 +354,18 @@ namespace DeNelle.Village
         /// reporting a conversion nobody can reproduce.</para>
         /// </summary>
         /// <param name="source">Which seam granted it - trace/property only, never behaviour.</param>
-        public static int GrantTrainedTroop(GameState state, string troopId, string source = "train-job")
+        /// <param name="granted">
+        /// WO-1794 - TRUE when this troop was HANDED to the player (the free starter squad), FALSE
+        /// when they paid for it and waited out a Train job. Analytics only, never behaviour.
+        ///
+        /// <para>Defaults to FALSE because the DEFAULT path through this method is the timed
+        /// Train job, which is earned. A future grant path must pass TRUE explicitly - it cannot
+        /// be inferred from <paramref name="source"/>, because then a new grant would only have to
+        /// invent a spelling to report itself as a player action, which is the exact defect
+        /// WO-1794 fixed one layer up.</para>
+        /// </param>
+        public static int GrantTrainedTroop(GameState state, string troopId, string source = "train-job",
+                                            bool granted = false)
         {
             if (state == null || string.IsNullOrEmpty(troopId)) return 0;
             if (state.Army == null) state.Army = new ArmyStorage();
@@ -362,7 +373,7 @@ namespace DeNelle.Village
             int count = state.Army.Owned != null ? state.Army.Owned.Count : 0;
             // Guarded: analytics must never be able to lose a troop the player paid for.
             DeNelle.Core.Diagnostics.Guard.Try("Funnel", "army trained",
-                () => DeNelle.Core.Analytics.RaidFunnel.ArmyTrained(troopId, count, source));
+                () => DeNelle.Core.Analytics.RaidFunnel.ArmyTrained(troopId, count, source, granted));
             return count;
         }
     }

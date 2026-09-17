@@ -178,6 +178,33 @@ namespace DeNelle.Village
         private float _timer;      // 0 on spawn -> the first Update asks immediately
         private bool _resolved;    // once granted (or found already granted) we stop polling
 
+        /// <summary>
+        /// WO-1794 - what this seam reports for funnel step 1's `granted` flag: TRUE, always.
+        ///
+        /// <para>THE OWNER-FACING FACT the flag exists to carry (WO-1794 section 2, production
+        /// rows 2026-09-16): raid_funnel_barracks_unlocked landed in the SAME SECOND as
+        /// founding_path_selected for every id that reached founding, because the founding
+        /// template hands the player a Barracks. The step is grant-fired for every founding
+        /// player, and that is what the row must say.</para>
+        ///
+        /// <para>(!) A CONSTANT, AND DELIBERATELY NOT A DERIVED ONE. A "did we watch it appear"
+        /// discriminator was written and then REJECTED, because it was wrong on exactly the rows
+        /// this ticket is about: the founding-choice screen leaves a readable GameState with no
+        /// Barracks on screen for the tens of seconds the player spends reading it, so every
+        /// founding player would have been observed "without a barracks" first and reported as
+        /// having EARNED one - the inverse of the measured truth. <c>StructureSingleton.IsBuilt</c>
+        /// also answers from live scene objects and baked twins
+        /// (<c>StructureSingleton.cs:131-145</c>), not from the save alone, so the observation is
+        /// not even stable across a scene load. An honest constant with a named blind spot beats a
+        /// derived flag that is confidently backwards.</para>
+        ///
+        /// <para>The blind spot, said out loud: a player who genuinely builds their first Barracks
+        /// with no founding grant is also reported as granted. Step 1 latches per INSTALL, so in
+        /// practice the emitted row is the founding one; when that changes, this const is the one
+        /// place to revisit.</para>
+        /// </summary>
+        private const bool BarracksIsGrantFired = true;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
@@ -207,8 +234,12 @@ namespace DeNelle.Village
             // Funnel step 1 fires on the EDGE, not on the grant, so a returning player who
             // already had the squad still registers as having reached the step. RaidFunnel
             // latches it per install, so this is a no-op after the first time.
+            //
+            // WO-1794 - and the row now SAYS it is grant-fired, so "8 players unlocked a
+            // barracks" can no longer be read as eight player actions. See
+            // BarracksIsGrantFired for why this is a const and not a derived observation.
             Guard.Try("Funnel", "barracks unlocked",
-                () => DeNelle.Core.Analytics.RaidFunnel.BarracksUnlocked("StarterArmyGrant"));
+                () => DeNelle.Core.Analytics.RaidFunnel.BarracksUnlocked("StarterArmyGrant", BarracksIsGrantFired));
 
             TryGrant(gs, st);
         }
@@ -306,7 +337,9 @@ namespace DeNelle.Village
         {
             for (int i = 0; i < want; i++)
             {
-                int roster = BarracksProgression.GrantTrainedTroop(state, troopId, "starter-army");
+                // WO-1794 - granted: TRUE. This whole class IS the grant; nothing here is a
+                // player action, and funnel step 2 must not read as one.
+                int roster = BarracksProgression.GrantTrainedTroop(state, troopId, "starter-army", granted: true);
                 if (roster <= 0)
                 {
                     FlowTrace.Fail("Raid",

@@ -52,6 +52,32 @@
 // SAYS SO in the trace when it rejects one, rather than silently counting or
 // silently dropping it.
 //
+// -----------------------------------------------------------------------------
+// (!) WO-1794 - STEPS 1 AND 2 ARE GRANT-FIRED FOR EVERY FOUNDING PLAYER.
+// -----------------------------------------------------------------------------
+// Read the row before you read the count. On 2026-09-16 every id that reached
+// founding emitted raid_funnel_barracks_unlocked AND raid_funnel_army_trained in
+// the SAME SECOND as founding_path_selected, because the founding template hands
+// the player a Barracks and StarterArmyGrant hands them ten troops. The metrics
+// line "barracks unlocked 8 / army trained 8" therefore reads as "8 players built
+// a barracks and trained an army" and MEANS "8 grants fired". The same day's
+// raid_funnel_first_raid_attempted was ZERO.
+//
+// The six wire names are owned by WO-1374 and do not change (renaming one makes it
+// read as zero forever, and re-latching one re-fires it for every install). So the
+// separation is a PROPERTY: every step that a grant produced carries
+// `granted = true`, and an earned one carries `granted = false`. A query that wants
+// the honest on-ramp filters on it; a dashboard that sums the name is unaffected.
+//
+// `granted` is an EXPLICIT ARGUMENT at every call site, never inferred from the
+// `source` string. Inferring it would mean a new grant path only has to invent a
+// source spelling to report itself as an earned player action - which is precisely
+// the failure being fixed here, one layer down.
+//
+// Steps 3-6 are genuine player actions (SceneRouter.GoRaid, RaidVictoryController,
+// the two spend surfaces) and carry no such flag, because there is no grant that
+// can reach them.
+//
 // ASCII only. FlowTrace tag "Funnel" - never stripped (CLAUDE.md section 12).
 // =============================================================================
 
@@ -172,9 +198,15 @@ namespace DeNelle.Core.Analytics
         /// a screen - a UI that happens to be open is not evidence of a game state.
         /// </summary>
         /// <param name="source">Which seam observed it (trace + property only).</param>
-        public static void BarracksUnlocked(string source)
+        /// <param name="granted">
+        /// WO-1794 - TRUE when the Barracks arrived from a GRANT (the founding template's
+        /// starter settlement), FALSE when the player built one. Required, not defaulted:
+        /// the caller is the only thing that knows, and a default would let the next
+        /// grant path report itself as a player action by saying nothing.
+        /// </param>
+        public static void BarracksUnlocked(string source, bool granted)
         {
-            FireOnce(KeyBarracks, EventBarracksUnlocked, new { source = Safe(source) });
+            FireOnce(KeyBarracks, EventBarracksUnlocked, new { source = Safe(source), granted });
         }
 
         // =====================================================================
@@ -187,13 +219,19 @@ namespace DeNelle.Core.Analytics
         /// completion effect and the free starter grant pass through it, so the step
         /// cannot be reached by one path and missed by the other.
         /// </summary>
-        public static void ArmyTrained(string troopId, int rosterCount, string source)
+        /// <param name="granted">
+        /// WO-1794 - TRUE when the troop was GRANTED (the free starter squad), FALSE when
+        /// the player paid for and waited out a Train job. Required for the reason
+        /// <see cref="BarracksUnlocked"/> gives.
+        /// </param>
+        public static void ArmyTrained(string troopId, int rosterCount, string source, bool granted)
         {
             FireOnce(KeyArmy, EventArmyTrained, new
             {
                 troopId = Safe(troopId),
                 rosterCount,
                 source = Safe(source),
+                granted,
             });
         }
 
