@@ -1,6 +1,9 @@
-// WO-1265: the shipped clan/chat implementation is a local PlayerPrefs prototype.
-// Until a signed-wallet backend, moderation and two-wallet proof exist, neither
-// player entry point may expose it. Marker: CLAN_FEATURE_GATE_OK/FAIL.
+// WO-1265 opened the gate FALSE until a signed-wallet backend, moderation and
+// two-wallet proof existed. WO-1851 (clan WO-8, 2026-09-17) flips it to TRUE — that
+// acceptance is complete (WO-1848's two-wallet integration gate is green) — while
+// this suite keeps proving the ORDERING invariant: the gate check must still be the
+// literal first line of both entry points, whatever its value. Marker:
+// CLAN_FEATURE_GATE_OK/FAIL.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,8 +21,8 @@ namespace DeNelle.Editor.Regression
             string bootstrap = Read(root, "_Modules/HUD/ClanChatPanelBootstrap.cs", failures);
             string hud = Read(root, "_Modules/HUD/Kit/HudKitController.cs", failures);
 
-            Require(gate, "public const bool PlayerFacingEnabled = false;", failures,
-                "the local-only prototype is player-facing before backend readiness");
+            Require(gate, "public const bool PlayerFacingEnabled = true;", failures,
+                "WO-1851 opens the gate now that WO-1265's backend acceptance is complete");
             Require(bootstrap, "if (!ClanFeatureGate.PlayerFacingEnabled) return;", failures,
                 "direct ClanChatPanel bootstrap bypasses the release gate");
             Require(hud, "if (DeNelle.Core.Services.ClanFeatureGate.PlayerFacingEnabled)", failures,
@@ -35,7 +38,7 @@ namespace DeNelle.Editor.Regression
             if (failures.Count == 0)
             {
                 Debug.Log("CLAN_FEATURE_GATE_OK");
-                reason = "clan/chat local prototype has no player door and direct bootstrap is gated";
+                reason = "clan/chat gate is open (WO-1851) and the gate check is still the literal first line of both entry points";
                 return true;
             }
             reason = "clan-feature-gate: " + string.Join("; ", failures);

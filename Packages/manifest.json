@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "net.gree.unity-webview": "https://github.com/gree/unity-webview.git?path=/dist/package",
     "com.solana.unity_sdk": "file:com.solana.unity_sdk",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.2d.tilemap": "1.0.0",

@@ -10,7 +10,8 @@
         "Unity.TextMeshPro",
         "LeanTouch",
         "LeanCommon",
-        "CW.Common"
+        "CW.Common",
+        "unity-webview"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

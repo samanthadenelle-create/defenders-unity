@@ -129,15 +129,18 @@ function makeWorld() {
         }
         // ── clan.js createClan: WITH new_clan AS (...) ───────────────────────
         if (/WITH\s+new_clan\s+AS/i.test(text)) {
-            const [code, name, tag, walletForClan, walletForMember, role] = values;
+            // WO-1851 (clan WO-8) added join_policy as a FIFTH bound parameter to the
+            // clans INSERT (api/_lib/clan.js createClan), between tag and created_by_wallet —
+            // shifting every positional value after it. Destructure widened to match.
+            const [code, name, tag, joinPolicy, walletForClan, walletForMember, role] = values;
             if (memberOf(walletForClan)) throw uniqueViolation('clan_members_one_clan_per_wallet');
             if ([...clans.values()].some((c) => c.code === code)) throw uniqueViolation('clans_code_key');
             const id = 'clan-' + (++clanSeq);
             const created_at = now();
-            clans.set(id, { id, code, name, tag, join_policy: 'invite', created_at });
+            clans.set(id, { id, code, name, tag, join_policy: joinPolicy, created_at });
             const joined_at = now();
             members.set(id + '|' + walletForMember, { clan_id: id, wallet: walletForMember, role, joined_at });
-            return [{ id, code, name, tag, join_policy: 'invite', created_at, role, joined_at }];
+            return [{ id, code, name, tag, join_policy: joinPolicy, created_at, role, joined_at }];
         }
         // ── clan.js joinClan: WITH target AS (...) ───────────────────────────
         if (/WITH\s+target\s+AS/i.test(text)) {

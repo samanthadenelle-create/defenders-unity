@@ -15,18 +15,23 @@
 // typing into a local-only chat nobody receives is a silent failure, which is the exact
 // shape §12 exists to forbid.
 //
-// ⚠ NO WEBVIEW PLUGIN IS PRESENT IN THIS PROJECT YET (verified at source 2026-09-17 —
-// see IClanChatWebHost.cs for the evidence and the two candidate plugins). So the default
-// host is ClanChatWebHostUnavailable and this panel ships permanently in that error state
-// until a plugin is adopted and handed to Bind(). Every other part of the flow — the room
-// scoping, the bridge parsing, the unread badge, the report path — is complete and is
-// exercised by Assets/Tests/EditMode/ClanChatVMTests.cs and test/clan-chat-embed.test.js.
+// ⚠ WO-1858 (2026-09-17): gree/unity-webview is now installed and EnsureBuilt binds the
+// real host (ClanChatWebHostFactory.Create) instead of always falling back to
+// ClanChatWebHostUnavailable — see IClanChatWebHost.cs's header for the resolution and
+// ClanChatWebHostGreeWebView.cs for the implementation. The room is fed by
+// ClanMembershipClient (GET /api/clan/me) on every open. Every other part of the flow —
+// the bridge parsing, the unread badge, the report path — is unchanged and is exercised
+// by Assets/Tests/EditMode/ClanChatVMTests.cs, ClanMembershipClientTests.cs and
+// test/clan-chat-embed.test.js. The ONE remaining blocker to a working embed is
+// CHERRY_APP_ID in site/clan-chat.html, which stays a placeholder by design (out of scope
+// for both WO-1847 and WO-1858 — see that file's header).
 //
 // The room is the clan's SERVER-SIDE UUID (clans.id) and nothing else; see
-// ClanRoomBinding in ClanChatSource.cs for why that is the one open wiring point.
+// ClanRoomBinding in ClanChatSource.cs for why that was the one open wiring point.
 // =============================================================================
 
 using System;
+using Cysharp.Threading.Tasks;
 using DeNelle.Core.UI;
 using DeNelle.Core.Diagnostics;
 using TMPro;
@@ -34,6 +39,26 @@ using UnityEngine;
 
 namespace DeNelle.HUD
 {
+    /// <summary>
+    /// Clan chat's player-facing copy keys (WO-1858). English lives in
+    /// Data/Canonical/en.json under the "clanChat.*" keys; this class names keys only —
+    /// the standing localization law (no hardcoded player-facing literals).
+    /// </summary>
+    internal static class ClanChatStrings
+    {
+        public const string KeyNoWallet = "clanChat.noWallet";
+        public const string KeyNoClan = "clanChat.noClan";
+        public const string KeyUnavailable = "clanChat.unavailable";
+        public const string KeyGenericError = "clanChat.genericError";
+        public const string KeyOpening = "clanChat.opening";
+
+        public static readonly LocalizedText NoWallet = new LocalizedText(KeyNoWallet);
+        public static readonly LocalizedText NoClan = new LocalizedText(KeyNoClan);
+        public static readonly LocalizedText Unavailable = new LocalizedText(KeyUnavailable);
+        public static readonly LocalizedText GenericError = new LocalizedText(KeyGenericError);
+        public static readonly LocalizedText Opening = new LocalizedText(KeyOpening);
+    }
+
     [DisallowMultipleComponent]
     public sealed class ClanChatPanel : MonoBehaviour
     {
@@ -78,7 +103,7 @@ namespace DeNelle.HUD
             DetachHost();
             if (_hostOwned) _host?.Dispose();
             _host = null;
-            if (_vm != null) _vm.Changed -= Repaint;
+            if (_vm != null) _vm.Changed -= HandleVmChanged;
             _vm?.Dispose();
             _vm = null;
             if (_modal != null && _modal.canvas != null) Destroy(_modal.canvas);
@@ -94,6 +119,10 @@ namespace DeNelle.HUD
             {
                 FlowTrace.Step("ClanChat", "SetVisible(true) — opening the Cherry chat host.");
                 EnsureBuilt();
+                // WO-1858: ask the backend which clan (if any) this wallet belongs to, every
+                // open — membership can change between opens, and ClanRoomBinding.Changed
+                // (via HandleVmChanged below) re-attempts EnsureLoaded once the answer lands.
+                ClanMembershipClient.RefreshAsync().Forget();
             }
             if (_modal == null || _modal.canvas == null) { _visible = false; return; }
             _visible = on;
@@ -127,7 +156,7 @@ namespace DeNelle.HUD
             using var _ = FlowTrace.Enter("ClanChat", "EnsureBuilt");
 
             _vm = ClanChatVM.CreateDefault(() => SetVisible(false));
-            _vm.Changed += Repaint;
+            _vm.Changed += HandleVmChanged;
 
             _modal = ElarionUiKit.BuildObsidianModal("ClanChatUI", "Clan Chat",
                 new Vector2(0.24f, 0.10f), new Vector2(0.76f, 0.92f), () => SetVisible(false),
@@ -145,11 +174,12 @@ namespace DeNelle.HUD
 
             if (_host == null)
             {
-                // No plugin present — the honest default. See this file's header.
-                _host = new ClanChatWebHostUnavailable();
+                // WO-1858: gree/unity-webview is now installed — bind the real host when the
+                // platform can host a view, falling back to ClanChatWebHostUnavailable
+                // (unchanged honest-default behaviour) otherwise. See IClanChatWebHost.cs and
+                // ClanChatWebHostGreeWebView.cs for the two halves of this decision.
+                _host = ClanChatWebHostFactory.Create();
                 _hostOwned = true;
-                FlowTrace.Warn("ClanChat", "no WebView host bound — using ClanChatWebHostUnavailable; " +
-                                           "the panel will show its error state (see IClanChatWebHost.cs).");
                 AttachHost();
             }
 
@@ -308,6 +338,19 @@ namespace DeNelle.HUD
 
         // ── Repaint ──────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// The VM's Changed handler. Repaints the status line AND, if the panel is open,
+        /// re-attempts EnsureLoaded — the one case that matters is the room arriving AFTER
+        /// the panel already opened in its NoRoom state (WO-1858: the clan/me answer lands
+        /// asynchronously). EnsureLoaded is a safe no-op when nothing changed: it dedupes on
+        /// _loadedUrl and early-returns when CanEmbed is still false.
+        /// </summary>
+        private void HandleVmChanged()
+        {
+            Repaint();
+            if (_visible) EnsureLoaded();
+        }
+
         private void Repaint()
         {
             if (_modal == null || !_visible || _vm == null || _statusText == null) return;
@@ -323,7 +366,7 @@ namespace DeNelle.HUD
             // No error: Cherry's own UI is the content, so the native status line gets out of
             // the way entirely rather than sitting behind the web surface.
             _statusText.gameObject.SetActive(!_vm.IsMounted);
-            if (!_vm.IsMounted) _statusText.text = "Opening clan chat...";
+            if (!_vm.IsMounted) _statusText.text = ClanChatStrings.Opening.Resolve();
         }
 
         /// <summary>
@@ -335,11 +378,13 @@ namespace DeNelle.HUD
         {
             switch (reason)
             {
-                case ClanChatVM.NoWallet: return "Connect your wallet to use clan chat.";
-                case ClanChatVM.NoRoom: return "Join a clan to use clan chat.";
-                case ClanChatWebHostUnavailable.Reason: return "Clan chat is not available in this build.";
-                case "missing_app_id": return "Clan chat is not available in this build.";
-                default: return "Clan chat could not load. Try again in a moment.";
+                case ClanChatVM.NoWallet: return ClanChatStrings.NoWallet.Resolve();
+                // WO-1858 copy rule: plain language, never a "join a clan" imperative that
+                // reads as blame — "You're not in a clan yet" (clanChat.noClan in en.json).
+                case ClanChatVM.NoRoom: return ClanChatStrings.NoClan.Resolve();
+                case ClanChatWebHostUnavailable.Reason: return ClanChatStrings.Unavailable.Resolve();
+                case "missing_app_id": return ClanChatStrings.Unavailable.Resolve();
+                default: return ClanChatStrings.GenericError.Resolve();
             }
         }
 

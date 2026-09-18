@@ -3,30 +3,27 @@
 // -----------------------------------------------------------------------------
 // Assembly: DeNelle.HUD   Namespace: DeNelle.HUD
 //
-// ⛔ THE FINDING THIS FILE EXISTS FOR: THIS PROJECT HAS NO WEBVIEW PLUGIN.
-// Verified at source on 2026-09-17, not assumed — Packages/manifest.json lists no
-// WebView package, and there is no Vuplex / unity-webview (gree) / UniWebView anywhere
-// under Assets/ or Packages/. Unity ships no built-in WebView either. WO-1847 needs one
-// to host Cherry's embed (site/clan-chat.html), so adopting a plugin is a real decision
-// with a real cost, and it belongs to the owner and the lead, not to this lane:
+// ⛔ HISTORY, KEPT SO THE DECISION TRAIL IS NOT LOST: as of 2026-09-17 this project had
+// no WebView plugin at all (Packages/manifest.json listed none; no Vuplex / unity-webview
+// / UniWebView under Assets/ or Packages/), so this interface shipped with only the
+// Unavailable stand-in below and the panel permanently in its error state.
 //
-//   * gree/unity-webview — free, MIT, imported as a .unitypackage. Its bridge convention
-//     is a `unity:` scheme navigation, which site/clan-chat.html already speaks.
-//   * Vuplex 3D WebView — paid, per-platform. Better supported; a spend decision under
-//     the standing stop-loss.
-//
-// Until one is chosen, ClanChatPanel binds Unavailable below and the panel shows its
-// error state — which is EXACTLY the shipped behaviour WO-1847 already specifies for a
-// failed embed load ("show a non-blocking error and do not fall back to the old native
-// UI"). So the panel is complete and correct today; it is simply always in that state.
+// ⛔ RESOLVED, WO-1858 (2026-09-17, same day): gree/unity-webview is installed via its
+// UPM git-URL path (Packages/manifest.json: net.gree.unity-webview ->
+// https://github.com/gree/unity-webview.git?path=/dist/package — verified real by
+// reading dist/package/package.json over the GitHub API, not assumed from the README).
+// ClanChatWebHostGreeWebView.cs implements this interface against the real
+// Gree.UnityWebView.WebViewObject API and ClanChatPanel.EnsureBuilt binds it via
+// ClanChatWebHostFactory.Create(), which falls back to Unavailable below only when
+// WebViewObject.IsWebViewAvailable() says the current platform cannot host a view.
+// See ClanChatWebHostGreeWebView.cs's header for the exact API citations.
 //
 // ⚠ AND WHY THERE IS NO HAND-ROLLED ANDROID WEBVIEW HERE. Driving android.webkit.WebView
-// through AndroidJavaObject is a new native-infrastructure subsystem — UI-thread
-// marshalling, view hierarchy insertion under UnityPlayerActivity, lifecycle, an input
-// focus fight with Unity — smuggled into a player-facing ticket, and unverifiable without
-// Unity and a device. The architecture rule (bounded context; never smuggle structural
-// work into player-facing work) says that is its own ticket. This seam is what makes that
-// ticket a drop-in: implement this interface, hand it to ClanChatPanel.Bind, done.
+// through AndroidJavaObject directly (bypassing a plugin) would have been a new native-
+// infrastructure subsystem — UI-thread marshalling, view hierarchy insertion under
+// UnityPlayerActivity, lifecycle, an input focus fight with Unity — smuggled into a
+// player-facing ticket, and unverifiable without Unity and a device. Adopting an existing,
+// maintained plugin (gree/unity-webview) against this seam is what kept it a drop-in.
 // =============================================================================
 
 using System;

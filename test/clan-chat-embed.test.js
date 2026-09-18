@@ -19,7 +19,10 @@
 //      room — chat that looks like it works and is a privacy failure.
 //   4. THE appId IS REAL (WO-1858, 2026-09-17) AND THE PLACEHOLDER-REFUSAL MACHINERY
 //      SURVIVES. Shipping a placeholder-shaped value must still be loud, not subtle.
-//   5. THE RELEASE GATE AND ITS ORDERING ARE UNTOUCHED by this ticket.
+//   5. THE RELEASE GATE'S ORDERING INVARIANT SURVIVES. WO-1851 (clan WO-8, 2026-09-17)
+//      flips PlayerFacingEnabled to true — that flip is this file's job to prove, not
+//      to resist — but the gate check must still be the LITERAL first line of
+//      SpawnInScene, unchanged from WO-1265.
 //   6. THE NATIVE CHAT RENDERER IS GONE from the HUD clan files.
 //
 //     node --test test/clan-chat-embed.test.js
@@ -183,15 +186,18 @@ test('⛔ the appId is real, not the placeholder, and the placeholder-refusal ma
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5. THE RELEASE GATE — untouched by this ticket
+// 5. THE RELEASE GATE — OPENED by WO-1851, ordering invariant unchanged
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('⛔ the release gate and its ordering are exactly as WO-1265 left them', () => {
-    // WO-1847 does not open the gate. The bootstrap's gate check must remain the LITERAL
-    // first line of SpawnInScene: the regression lint matches this exact string, and a check
-    // that runs after the GameObject is constructed is not a gate.
-    assert.match(read(GATE), /public const bool PlayerFacingEnabled = false;/,
-        'this ticket does not open the gate');
+test('⛔ the release gate is OPEN (WO-1851) and its ordering is exactly as WO-1265 left it', () => {
+    // WO-1851 (clan WO-8) flips the gate: WO-1265's server/moderation/two-wallet/
+    // operator-readiness acceptance is complete (WO-1848's two-wallet gate is green).
+    // The bootstrap's gate check must still remain the LITERAL first line of
+    // SpawnInScene: the regression lint matches this exact string, and a check that
+    // runs after the GameObject is constructed is not a gate — flipping the VALUE must
+    // never be allowed to also loosen WHERE the check sits.
+    assert.match(read(GATE), /public const bool PlayerFacingEnabled = true;/,
+        'WO-1851 opens the gate — the local prototype has server backing now');
     const bootstrap = read(BOOTSTRAP);
     assert.match(bootstrap, /if \(!ClanFeatureGate\.PlayerFacingEnabled\) return;/);
     const gateAt = bootstrap.indexOf('if (!ClanFeatureGate.PlayerFacingEnabled) return;');

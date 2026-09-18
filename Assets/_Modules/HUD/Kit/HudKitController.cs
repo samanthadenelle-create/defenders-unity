@@ -5501,13 +5501,15 @@ namespace DeNelle.HUD.Kit
             dockPanelRt.anchorMax = new Vector2(DockPanelSeatAnchorX, 0.5f);
             dockPanelRt.pivot = new Vector2(0f, 0.5f);
             dockPanelRt.anchoredPosition = Vector2.zero;
-            // Height carries FIVE tabs now (Pause folded in — cosmetic flag A) at ~112px
-            // touch targets each: 700 / 5 = 140px slot, well above MinTouchPx. Do NOT shrink 700:
-            // AddDockTab's rows resolve to EXACTLY 112px (0.16 * 700), so any smaller panel puts
-            // them under the floor and ClampMinTouch would grow them about their centres into each
-            // other — the documented WO-852/865/868 overlap trap.
+            // Height carries SIX tabs now (Chat opened by WO-1851; Pause folded in —
+            // cosmetic flag A) at ~112px touch targets each. Do NOT shrink 700: AddDockTab's
+            // rows resolve to EXACTLY 112px (0.16 * 700) for the fixed 2x3 grid's 3 rows —
+            // that math is independent of how many of the six cells are occupied — so any
+            // smaller panel puts them under the floor and ClampMinTouch would grow them about
+            // their centres into each other — the documented WO-852/865/868 overlap trap.
             // Six full-height rows obscured the objective and analog stick when expanded.
-            // A 2 x 3 drawer preserves six mobile-safe targets in a compact footprint.
+            // A 2 x 3 drawer preserves six mobile-safe targets in a compact footprint — and
+            // WO-1851 now fills all six cells (previously five tabs left cell 5 empty).
             dockPanelRt.sizeDelta = new Vector2(DockPanelWidthPx, DockPanelHeightPx);
             // BuildSlideTab's legacy "Rim" is a full-centre rounded Image, not a hollow
             // border. With gold trim tint it paints over the obsidian panel and produces the
@@ -5683,11 +5685,17 @@ namespace DeNelle.HUD.Kit
                                    panel.xMin + fx1 * panel.width, panel.yMin + fy1 * panel.height);
         }
 
-        /// <summary>WO-1465: the drawer row PAUSE occupies - Chat is gated off in the shipping
-        /// build (ClanFeatureGate), so the rows are Leaderboard/Music/Settings/Realm/Pause and
-        /// PAUSE is index 4: the bottom-LEFT cell of the 2x3 grid, the one that sat on the
-        /// stick.</summary>
-        public const int DockPauseCellIndex = 4;
+        /// <summary>WO-1465: the drawer row PAUSE occupies. WO-1851 opens ClanFeatureGate, so
+        /// the rows are now Chat/Leaderboard/Music/Settings/Realm/Pause and PAUSE is index 5
+        /// (bottom-RIGHT cell of the 2x3 grid) rather than the pre-WO-1851 index 4 (bottom-left,
+        /// the one that sat on the stick). Derived from the gate rather than a bare literal so
+        /// this can never drift out of sync with SpawnInScene's dockRow count the way a second
+        /// hardcoded copy would (CLAUDE.md §5/§8's duplicated-state failure). HudUiRegression's
+        /// 9a/9b (case "AdaptiveHudGearOpen") still hold at index 5: 9b asserts the WHOLE open
+        /// drawer panel clears the MoveCluster mount, so any cell inside it — including the new
+        /// bottom-right one — clears it too.</summary>
+        public const int DockPauseCellIndex =
+            DeNelle.Core.Services.ClanFeatureGate.PlayerFacingEnabled ? 5 : 4;
 
         // One labelled tab inside the slide-out (stacked vertically, top-to-bottom).
         //

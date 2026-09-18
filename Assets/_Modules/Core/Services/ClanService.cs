@@ -82,7 +82,7 @@ namespace DeNelle.Core.Services
         public string Code;          // 6-char shareable code (placeholder generator)
         public string Name;
         public string Tag;           // 2–4 char clan tag shown in chat / HUD
-        public string JoinPolicy;    // 'open' | 'closed' (stub: always 'open')
+        public string JoinPolicy;    // 'invite' | 'open' (server vocabulary, WO-1851; stub: always 'invite')
         public long   CreatedAtUnix;
         public List<ClanMember> Members = new List<ClanMember>();
         public List<ChatMessage> Messages = new List<ChatMessage>();
@@ -169,7 +169,7 @@ namespace DeNelle.Core.Services
                 Code          = GenerateClanCode(),
                 Name          = name.Trim(),
                 Tag           = tag,
-                JoinPolicy    = "open",
+                JoinPolicy    = "invite",
                 CreatedAtUnix = now,
                 Members = new List<ClanMember>
                 {

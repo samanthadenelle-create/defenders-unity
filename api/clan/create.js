@@ -1,10 +1,15 @@
 // =============================================================================
-// api/clan/create.js — WO-1845. POST /api/clan/create
+// api/clan/create.js — WO-1845, join-policy field added by WO-1851 (clan WO-8).
+// POST /api/clan/create
 // -----------------------------------------------------------------------------
-//   POST  { playerId, name, tag }     Headers: X-Wallet / X-Nonce / X-Signature
+//   POST  { playerId, name, tag, joinPolicy? }   Headers: X-Wallet / X-Nonce / X-Signature
 //                                      (or X-Session — the WO-1157 session rail)
+//         joinPolicy is OPTIONAL: 'invite' (default, unchanged) or 'open'. ⚠ 'open' is
+//         stored but NOT yet honored differently by /api/clan/join — see api/_lib/clan.js
+//         createClan's doc comment. Storing it correctly now avoids a second migration
+//         once join-without-code behavior is built.
 //   200   { ok:true, clanId, code, name, tag, role:'leader' }
-//   400   CLAN_BAD_NAME | CLAN_BAD_TAG | BAD_PAYLOAD | PLAYER_ID_MISSING
+//   400   CLAN_BAD_NAME | CLAN_BAD_TAG | CLAN_BAD_JOIN_POLICY | BAD_PAYLOAD | PLAYER_ID_MISSING
 //   401   any auth refusal (same shape as every other route: {ok,code,ref})
 //   409   CLAN_ALREADY_IN_CLAN
 //   500   CLAN_CODE_UNAVAILABLE | CLAN_IDENTITY_MISSING | SERVER_ERROR
@@ -33,7 +38,7 @@ async function handler(req, res) {
 
     let result;
     try {
-        result = await createClan(sql, wallet, body.name, body.tag);
+        result = await createClan(sql, wallet, body.name, body.tag, body.joinPolicy);
     } catch (err) {
         console.error('[clan/create] failed:', err);
         return quietFail(res, 500, AuthCode.SERVER_ERROR, ref);

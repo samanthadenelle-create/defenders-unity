@@ -1,6 +1,6 @@
 # WORK ORDER 1851 — Clan system, step 8: open `ClanFeatureGate.PlayerFacingEnabled` + fix the join-policy vocabulary
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
 
 ## Context — clan WO-8 in the chain, depends on WO-1848 (landed, committed 43fce9820)
 
@@ -83,3 +83,165 @@ itself is safe).
 ## Copy rules
 
 No investment/jargon language. Join policy is a game setting, not a governance mechanism.
+
+## IMPLEMENTATION RECORD (SME agent, 2026-09-17)
+
+Implemented by a fresh SME agent under the CLI lead. Ran `advisor()` before writing any
+code; its punch list is what shaped the edit set below, including the two items neither
+I nor the WO text had found yet (items 8–9).
+
+### Baseline (before any edit)
+
+`node --test test/*.test.js` (repo root, `dev` branch): **1042 pass / 4 unique fail**
+(`.claude_wo1851_baseline.log`, all 4 pre-existing and NOT clan-vocabulary-related:
+"the clan leaderboard never references leaderboard_scores" and "clan_vigil_weight does
+not exist yet" — both WO-1850/WO-1852+ territory, confirmed by reading
+`test/clan-leaderboard.test.js`'s subject; plus two unrelated Heartbound suite findings
+already tracked as WO-1693 findings). None reference `ClanFeatureGate`, `JoinPolicy`, or
+`join_policy`.
+
+### Part A — vocabulary fix
+
+- `Assets/_Modules/Core/Services/ClanService.cs:85` comment and `:172`
+  `JoinPolicy = "open"` → `"invite"` (grepped `Assets/_Modules` for `JoinPolicy` after —
+  zero other `.cs` references exist; no consumer branches on the old strings).
+- `api/migrations/20260917_0033_clan_join_policy_check.sql` (new): guarded
+  `ALTER TABLE clans ADD CONSTRAINT clans_join_policy_valid CHECK (join_policy IN
+  ('invite','open'))` inside a `pg_constraint`-existence `DO $$` block. Guard idiom
+  copied verbatim from `api/migrations/20260828_0006_db_promo_pack_fks.sql:5-19` (the
+  file the WO pointed at as "0010/0011/0012/0017's pattern" does not itself exist as a
+  migration filename — `ls api/migrations | grep 1108` returned nothing; 0006 carries
+  the same guard idiom and is cited instead). Confirmed additive/idempotent by running
+  `test/migrations.runner.test.js`'s own `auditAdditive`/`nonIdempotentStatements`
+  logic against the new file mentally and then empirically via the full suite run
+  below — it is not in the hardcoded "exactly TWO non-re-runnable migrations" list and
+  did not add a third. Numbering: `ls api/migrations` showed `...0032_clan_rate_limit.sql`
+  as the highest on disk; `git status --short api/migrations` showed no pending file;
+  the `.claude/worktrees/agent-abe03dc9d362c0d93` lane's `api/migrations` only goes up
+  to `0023` (a stale/unrelated snapshot) — so `0033` was free at write time. Safety of
+  adding the CHECK to a live table with existing rows: `api/_lib/clan.js`'s
+  `createClan` was, before this ticket, the only writer of `join_policy` and never
+  named that column in its INSERT (relying purely on the column DEFAULT), so every
+  existing row already holds `'invite'`.
+- `api/_lib/clan.js`: added `JOIN_POLICY_INVITE`/`JOIN_POLICY_OPEN` constants,
+  `ClanCode.BAD_JOIN_POLICY`, and `normalizeJoinPolicy(raw)` (blank/absent → `'invite'`;
+  trim+lowercase; anything else → 400 `CLAN_BAD_JOIN_POLICY`). `createClan` gained a
+  5th optional param `rawJoinPolicy`; the `new_clan` CTE's INSERT column list is now
+  `(code, name, tag, join_policy, created_by_wallet)` with `${joinPolicy.value}` bound.
+  Exported the three new symbols. Did NOT touch `joinClan` (per WO non-scope).
+- `api/clan/create.js`: passes `body.joinPolicy` through to `createClan`; header doc
+  updated to document the optional field and the known gap below.
+- **Known, deliberate gap (per WO instruction, not silently built):** `'open'` is now
+  stored correctly on create, but `joinClan` (`api/_lib/clan.js`, unchanged) still
+  requires a valid invite code regardless of the target clan's `join_policy` — there is
+  no join-without-code path. This is exactly what the WO's Part A item 2 asked to be
+  stated explicitly rather than half-built.
+- **Open item surfaced, not acted on (flagging per advisor, not the WO's ask):**
+  `api/_lib/clan.js:176-180`'s own comment already flags a tag-length mismatch (server
+  1–5, client truncates to 4) "parked for a ruling before the gate-opening ticket" —
+  this is that ticket and the WO text does not rule on it. Left untouched; needs an
+  owner ruling of its own.
+
+### Part B — open the gate, plus its two direct, proven consequences
+
+- `Assets/_Modules/Core/Services/ClanFeatureGate.cs`: `PlayerFacingEnabled` `false` →
+  `true`, doc comment rewritten.
+- `Assets/Editor/Regression/ClanFeatureGateRegression.cs` (the Unity-side mirror of the
+  same invariant, found by grep — NOT named in the WO text but it hardcodes
+  `"PlayerFacingEnabled = false;"` as a required literal and would fail
+  `CLAN_FEATURE_GATE_OK`/`REGRESSION_OK` the moment the gate flips): literal flipped to
+  `= true;`, header + success-reason strings updated. Both ordering assertions
+  (bootstrap gate-before-construction, HUD gate-before-dock-tab) left byte-identical —
+  they hold regardless of the flag's value.
+- `test/clan-chat-embed.test.js` case 5 ("the release gate and its ordering are exactly
+  as WO-1265 left them"): regex now asserts `= true;`; renamed test/section headers;
+  the ordering assertions (lines checking `gateAt > spawnAt`, `gateAt < buildAt`, and
+  "nothing between the brace and the gate") are BYTE-IDENTICAL to before — the
+  invariant this ticket's acceptance criteria required to survive.
+- **Two more pre-existing tests pin the same `false` literal and were NOT named in the
+  WO** (found via `grep -rn "PlayerFacingEnabled" test/*.test.js` after the JS test
+  update, specifically because I didn't trust the WO's file list to be exhaustive):
+  - `test/clan-chat-release-gate.test.js` — updated to assert `= true` and renamed;
+    the dock/bootstrap wiring assertions are unchanged.
+  - `test/clan-two-wallet-integration.test.js` — did NOT reference the gate constant,
+    but FAILED after the `clan.js` INSERT column-list change: its hand-rolled SQL
+    interpreter destructures `createClan`'s bound parameters BY POSITION
+    (`const [code, name, tag, walletForClan, walletForMember, role] = values`), and
+    adding `join_policy` as a 5th parameter shifted every value after it by one — the
+    test's `role` field silently received a wallet address instead of `'leader'`
+    (proven from the actual assertion failure: `actual: '7xKX...JosgAsU', expected:
+    'leader'`, `test/clan-two-wallet-integration.test.js:339`). Fixed by widening the
+    destructure to include `joinPolicy` at its correct position and threading it
+    through instead of hardcoding `'invite'`.
+- **`Assets/_Modules/HUD/Kit/HudKitController.cs` — DockPauseCellIndex (found via
+  advisor, confirmed by reading source, not assumed):** `HudKitController.SpawnInScene`
+  side isn't touched, but `BuildAdaptivePeacefulDock`'s `dockRow` counter (:5554-5570)
+  now runs Chat→Leaderboard→Music→Settings→Realm→Pause instead of skipping Chat, so
+  Pause moves from grid cell 4 to cell 5 (2x3 grid, `AddDockTab`, :5744-5745). The
+  separate hardcoded `public const int DockPauseCellIndex = 4` (:5690, previously) is
+  consumed by `Assets/Editor/Regression/HudUiRegression.cs:1974-1975` to measure
+  whether the Pause cell overlaps the movement-stick mount (the WO-1465 regression for
+  the captured `AdaptiveHudGearOpen` defect). Left at `4` post-flip, that regression
+  would silently measure the now-Realm cell and report a false-clean pass while the
+  real Pause cell (5) goes unchecked. Fixed by deriving the constant from the gate
+  itself — `DockPauseCellIndex = ClanFeatureGate.PlayerFacingEnabled ? 5 : 4` — rather
+  than hardcoding a second copy that can drift out of sync with `dockRow` (CLAUDE.md
+  §5/§8's duplicated-state pattern). Correctness at index 5 is not asserted by any
+  running suite in this hand-back (this is a C# compile-time constant; Unity
+  `COMPILE_GATE_OK`/`REGRESSION_OK` were NOT run by this lane per instruction) — the
+  citation for why it should hold is `HudUiRegression.cs:1985`'s case 9b, which asserts
+  the WHOLE open-drawer panel clears the MoveCluster mount, so any cell inside that
+  panel (including the new bottom-right one) clears it too. **Flagging for the lead's
+  own Unity gate run to confirm**, since I could not run it myself.
+- `api/schema.sql`: added the same `clans_join_policy_valid` CHECK inline in the
+  `CREATE TABLE clans` block (schema.sql documents the CURRENT shape, not migration
+  history — matches this repo's existing convention, e.g. `clans_code_format` etc.
+  already inline there). Confirmed the "schema.sql may never disagree with
+  api/migrations" test (`test/clan-membership.test.js:797-805`) only loose-matches
+  table names + the migration filename string, not exact CHECK text, so this addition
+  cannot break it — proven by the final green suite run below.
+
+### Verification (after all edits)
+
+- `python tools/gate_brace.py` on all four touched `.cs` files: `GATE_BRACE_SUMMARY
+  bad=0 of 4`.
+- NUL-byte scan on all four touched `.cs` files: `0` in each.
+- `node --check` on `api/_lib/clan.js`, `api/clan/create.js`,
+  `test/clan-chat-embed.test.js`, `test/clan-chat-release-gate.test.js`,
+  `test/clan-two-wallet-integration.test.js`: all syntax-OK.
+- `node --test test/*.test.js` AFTER: **1045 pass / 2 unique fail**
+  (`.claude_wo1851_final.log`) — the 2 remaining failures are the SAME pre-existing
+  Heartbound-suite findings present in the baseline (WO-1693 territory, unrelated to
+  clans). The two clan-leaderboard baseline failures are also gone in this run —
+  evidence points to a concurrent lane (WO-1850, editing the same `api/_lib/clan.js`
+  and `test/clan-leaderboard.test.js` in the shared working tree throughout this
+  session, confirmed via `git status --short` showing `M api/_lib/clan.js` before I
+  even started reading it) landing its own fix mid-session; NOT something this lane
+  touched or claims credit for.
+- **NOT run by this lane, per instruction:** Unity `COMPILE_GATE_OK` and
+  `REGRESSION_OK <n>/<n>`. The lead must run these before commit — the
+  `ClanFeatureGateRegression.cs` and `HudUiRegression.cs`-adjacent changes above are
+  proven only by static reading and the JS suite, not by an actual Unity batchmode
+  pass.
+- **NOT run — requires a live database, unavailable in this environment:** test plan
+  item 1 (direct `INSERT ... join_policy = 'closed'` against a real Postgres instance
+  to prove the CHECK constraint fires at the DB level). The constraint's SQL is
+  standard Postgres `CHECK (col IN (...))` syntax and the migration passes this repo's
+  own additive/idempotency audits, but the live-DB behavior itself is unproven from
+  here — say so rather than claim it.
+
+### Files touched by this lane (git status, confirmed file-disjoint from WO-1850/1858)
+
+Modified: `Assets/Editor/Regression/ClanFeatureGateRegression.cs`,
+`Assets/_Modules/Core/Services/ClanFeatureGate.cs`,
+`Assets/_Modules/Core/Services/ClanService.cs`,
+`Assets/_Modules/HUD/Kit/HudKitController.cs`, `api/_lib/clan.js`,
+`api/clan/create.js`, `api/schema.sql`, `test/clan-chat-embed.test.js`,
+`test/clan-chat-release-gate.test.js`, `test/clan-two-wallet-integration.test.js`.
+New: `api/migrations/20260917_0033_clan_join_policy_check.sql`.
+Confirmed NOT touched: `api/clan/leaderboard.js`, `test/clan-leaderboard.test.js`
+(WO-1850), `Assets/_Modules/HUD/ClanChatPanel.cs`, `IClanChatWebHost.cs`,
+`ClanChatWebHostGreeWebView.cs`, `ClanMembershipClient.cs`, `ClanChatSource.cs`
+(WO-1858) — all left exactly as found in the shared working tree.
+
+Not committed (per instruction — sole committer is the CLI lead).

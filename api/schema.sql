@@ -2263,7 +2263,11 @@ CREATE TABLE IF NOT EXISTS clans (
     created_by_wallet TEXT NOT NULL REFERENCES wallet_identity(wallet),
     CONSTRAINT clans_code_format CHECK (code ~ '^[A-HJ-NP-Z2-9]{6}$'),
     CONSTRAINT clans_name_len CHECK (char_length(name) BETWEEN 1 AND 32),
-    CONSTRAINT clans_tag_len CHECK (char_length(tag) BETWEEN 1 AND 5)
+    CONSTRAINT clans_tag_len CHECK (char_length(tag) BETWEEN 1 AND 5),
+    -- Added by 20260917_0033_clan_join_policy_check.sql (WO-1851, clan WO-8) as an
+    -- ALTER against the live table; declared inline here because schema.sql describes
+    -- the CURRENT shape, not the migration history that produced it.
+    CONSTRAINT clans_join_policy_valid CHECK (join_policy IN ('invite', 'open'))
 );
 
 CREATE TABLE IF NOT EXISTS clan_members (
