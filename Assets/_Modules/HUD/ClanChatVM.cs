@@ -86,7 +86,7 @@ namespace DeNelle.HUD
         }
 
         public event Action Changed;
-        public string Title => "Clan Chat";
+        public string Title => "Remnant Chat";
         public void Close() => _onClose?.Invoke();
 
         public void Dispose()

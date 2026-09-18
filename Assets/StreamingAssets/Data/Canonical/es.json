@@ -505,9 +505,9 @@
   "armyScreen.readyWhenRecovered": "Listo cuando se recuperen {0}",
   "armyScreen.notReadyRecovering": "Entrena {0} mas, {1} en recuperación",
   "armyScreen.dismissedFree": "{0} licenciado",
-  "clanChat.noWallet": "Conecta tu monedero para usar el chat del clan.",
-  "clanChat.noClan": "Aún no perteneces a ningún clan.",
-  "clanChat.unavailable": "El chat del clan no está disponible en esta versión.",
-  "clanChat.genericError": "No se pudo cargar el chat del clan. Inténtalo de nuevo en un momento.",
-  "clanChat.opening": "Abriendo el chat del clan..."
+  "clanChat.noWallet": "Conecta tu monedero para usar el chat del Remanente.",
+  "clanChat.noClan": "Aún no perteneces a ningún Remanente.",
+  "clanChat.unavailable": "El chat del Remanente no está disponible en esta versión.",
+  "clanChat.genericError": "No se pudo cargar el chat del Remanente. Inténtalo de nuevo en un momento.",
+  "clanChat.opening": "Abriendo el chat del Remanente..."
 }

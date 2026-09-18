@@ -2259,23 +2259,23 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143555
   - m_Id: 44124330363760645
-    m_Localized: Connectez votre portefeuille pour utiliser le chat de clan.
+    m_Localized: Connectez votre portefeuille pour utiliser le chat du Vestige.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760646
-    m_Localized: "Vous n'\xEAtes pas encore dans un clan."
+    m_Localized: "Vous n'\xEAtes pas encore dans un Vestige."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760647
-    m_Localized: Le chat de clan n'est pas disponible dans cette version.
+    m_Localized: Le chat du Vestige n'est pas disponible dans cette version.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760648
-    m_Localized: "Impossible de charger le chat de clan. R\xE9essayez dans un instant."
+    m_Localized: "Impossible de charger le chat du Vestige. R\xE9essayez dans un instant."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760649
-    m_Localized: Ouverture du chat de clan...
+    m_Localized: Ouverture du chat du Vestige...
     m_Metadata:
       m_Items: []
   references:

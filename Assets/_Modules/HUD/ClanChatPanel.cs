@@ -83,7 +83,7 @@ namespace DeNelle.HUD
 
         private void Awake()
         {
-            _panelHandle = PanelManager.Register("Clan Chat", () => SetVisible(false), () => _visible);
+            _panelHandle = PanelManager.Register("Remnant Chat", () => SetVisible(false), () => _visible);
         }
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace DeNelle.HUD
             _vm = ClanChatVM.CreateDefault(() => SetVisible(false));
             _vm.Changed += HandleVmChanged;
 
-            _modal = ElarionUiKit.BuildObsidianModal("ClanChatUI", "Clan Chat",
+            _modal = ElarionUiKit.BuildObsidianModal("ClanChatUI", "Remnant Chat",
                 new Vector2(0.24f, 0.10f), new Vector2(0.76f, 0.92f), () => SetVisible(false),
                 frameName: RpgUiCatalog.FrameCore, medallionIcon: "crest");
 
@@ -380,7 +380,8 @@ namespace DeNelle.HUD
             {
                 case ClanChatVM.NoWallet: return ClanChatStrings.NoWallet.Resolve();
                 // WO-1858 copy rule: plain language, never a "join a clan" imperative that
-                // reads as blame — "You're not in a clan yet" (clanChat.noClan in en.json).
+                // reads as blame — "You're not in a Remnant yet" (clanChat.noClan in en.json,
+                // reworded from "clan" to "Remnant" by WO-1859).
                 case ClanChatVM.NoRoom: return ClanChatStrings.NoClan.Resolve();
                 case ClanChatWebHostUnavailable.Reason: return ClanChatStrings.Unavailable.Resolve();
                 case "missing_app_id": return ClanChatStrings.Unavailable.Resolve();

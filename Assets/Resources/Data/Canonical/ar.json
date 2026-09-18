@@ -505,9 +505,9 @@
   "armyScreen.readyWhenRecovered": "جاهز عند تعافي {0}",
   "armyScreen.notReadyRecovering": "درب {0} إضافيين، {1} قيد التعافي",
   "armyScreen.dismissedFree": "تم الاستغناء عن {0}",
-  "clanChat.noWallet": "قم بتوصيل محفظتك لاستخدام دردشة العشيرة.",
-  "clanChat.noClan": "أنت لست في عشيرة بعد.",
-  "clanChat.unavailable": "دردشة العشيرة غير متاحة في هذا الإصدار.",
-  "clanChat.genericError": "تعذر تحميل دردشة العشيرة. حاول مرة أخرى بعد قليل.",
-  "clanChat.opening": "جارٍ فتح دردشة العشيرة..."
+  "clanChat.noWallet": "قم بتوصيل محفظتك لاستخدام دردشة البقية.",
+  "clanChat.noClan": "أنت لست في البقية بعد.",
+  "clanChat.unavailable": "دردشة البقية غير متاحة في هذا الإصدار.",
+  "clanChat.genericError": "تعذر تحميل دردشة البقية. حاول مرة أخرى بعد قليل.",
+  "clanChat.opening": "جارٍ فتح دردشة البقية..."
 }

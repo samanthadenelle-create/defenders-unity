@@ -10,8 +10,8 @@
   "phrases": [
     { "id": "phrase_1",  "category": "greeting",  "text": "Hey, friend!" },
     { "id": "phrase_2",  "category": "greeting",  "text": "Welcome back, Guardian." },
-    { "id": "phrase_3",  "category": "greeting",  "text": "Welcome to the clan!" },
-    { "id": "phrase_4",  "category": "greeting",  "text": "Hello, clanmates.",          "emoji": "👋" },
+    { "id": "phrase_3",  "category": "greeting",  "text": "Welcome to the Remnant!" },
+    { "id": "phrase_4",  "category": "greeting",  "text": "Hello, Remnants.",          "emoji": "👋" },
     { "id": "phrase_5",  "category": "greeting",  "text": "Defend well, all." },
     { "id": "phrase_6",  "category": "greeting",  "text": "Good to have you, Guardian." },
 

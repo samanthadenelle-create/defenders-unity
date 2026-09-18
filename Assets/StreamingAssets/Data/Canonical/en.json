@@ -505,9 +505,9 @@
   "armyScreen.readyWhenRecovered": "Ready when {0} recover",
   "armyScreen.notReadyRecovering": "Train {0} more, {1} recovering",
   "armyScreen.dismissedFree": "{0} dismissed",
-  "clanChat.noWallet": "Connect your wallet to use clan chat.",
-  "clanChat.noClan": "You're not in a clan yet.",
-  "clanChat.unavailable": "Clan chat is not available in this build.",
-  "clanChat.genericError": "Clan chat could not load. Try again in a moment.",
-  "clanChat.opening": "Opening clan chat..."
+  "clanChat.noWallet": "Connect your wallet to use Remnant chat.",
+  "clanChat.noClan": "You're not in a Remnant yet.",
+  "clanChat.unavailable": "Remnant chat is not available in this build.",
+  "clanChat.genericError": "Remnant chat could not load. Try again in a moment.",
+  "clanChat.opening": "Opening Remnant chat..."
 }

@@ -505,9 +505,9 @@
   "armyScreen.readyWhenRecovered": "Bereit, sobald {0} genesen",
   "armyScreen.notReadyRecovering": "Bilde {0} weitere aus, {1} in Genesung",
   "armyScreen.dismissedFree": "{0} entlassen",
-  "clanChat.noWallet": "Verbinde deine Wallet, um den Clan-Chat zu nutzen.",
-  "clanChat.noClan": "Du bist noch in keinem Clan.",
-  "clanChat.unavailable": "Der Clan-Chat ist in dieser Version nicht verfügbar.",
-  "clanChat.genericError": "Der Clan-Chat konnte nicht geladen werden. Versuche es gleich noch einmal.",
-  "clanChat.opening": "Clan-Chat wird geöffnet..."
+  "clanChat.noWallet": "Verbinde deine Wallet, um den Überrest-Chat zu nutzen.",
+  "clanChat.noClan": "Du bist noch in keinem Überrest.",
+  "clanChat.unavailable": "Der Überrest-Chat ist in dieser Version nicht verfügbar.",
+  "clanChat.genericError": "Der Überrest-Chat konnte nicht geladen werden. Versuche es gleich noch einmal.",
+  "clanChat.opening": "Überrest-Chat wird geöffnet..."
 }

@@ -505,9 +505,9 @@
   "armyScreen.readyWhenRecovered": "Pronto quando {0} se recuperarem",
   "armyScreen.notReadyRecovering": "Treine mais {0}, {1} em recuperação",
   "armyScreen.dismissedFree": "{0} dispensado",
-  "clanChat.noWallet": "Conecte sua carteira para usar o chat do clã.",
-  "clanChat.noClan": "Você ainda não está em um clã.",
-  "clanChat.unavailable": "O chat do clã não está disponível nesta versão.",
-  "clanChat.genericError": "Não foi possível carregar o chat do clã. Tente novamente em instantes.",
-  "clanChat.opening": "Abrindo o chat do clã..."
+  "clanChat.noWallet": "Conecte sua carteira para usar o chat do Remanescente.",
+  "clanChat.noClan": "Você ainda não está em um Remanescente.",
+  "clanChat.unavailable": "O chat do Remanescente não está disponível nesta versão.",
+  "clanChat.genericError": "Não foi possível carregar o chat do Remanescente. Tente novamente em instantes.",
+  "clanChat.opening": "Abrindo o chat do Remanescente..."
 }

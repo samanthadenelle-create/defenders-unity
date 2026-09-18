@@ -505,9 +505,9 @@
   "armyScreen.readyWhenRecovered": "{0}体の回復で準備完了",
   "armyScreen.notReadyRecovering": "あと{0}体訓練、{1}体回復中",
   "armyScreen.dismissedFree": "{0}を除隊しました",
-  "clanChat.noWallet": "クランチャットを使うにはウォレットを接続してください。",
-  "clanChat.noClan": "まだクランに所属していません。",
-  "clanChat.unavailable": "このビルドではクランチャットは利用できません。",
-  "clanChat.genericError": "クランチャットを読み込めませんでした。しばらくしてからもう一度お試しください。",
-  "clanChat.opening": "クランチャットを開いています..."
+  "clanChat.noWallet": "残党チャットを使うにはウォレットを接続してください。",
+  "clanChat.noClan": "まだ残党に所属していません。",
+  "clanChat.unavailable": "このビルドでは残党チャットは利用できません。",
+  "clanChat.genericError": "残党チャットを読み込めませんでした。しばらくしてからもう一度お試しください。",
+  "clanChat.opening": "残党チャットを開いています..."
 }

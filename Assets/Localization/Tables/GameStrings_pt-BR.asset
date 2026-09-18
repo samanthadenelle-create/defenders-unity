@@ -2238,23 +2238,23 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143553
   - m_Id: 44124330363760645
-    m_Localized: "Conecte sua carteira para usar o chat do cl\xE3."
+    m_Localized: Conecte sua carteira para usar o chat do Remanescente.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760646
-    m_Localized: "Voc\xEA ainda n\xE3o est\xE1 em um cl\xE3."
+    m_Localized: "Voc\xEA ainda n\xE3o est\xE1 em um Remanescente."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760647
-    m_Localized: "O chat do cl\xE3 n\xE3o est\xE1 dispon\xEDvel nesta vers\xE3o."
+    m_Localized: "O chat do Remanescente n\xE3o est\xE1 dispon\xEDvel nesta vers\xE3o."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760648
-    m_Localized: "N\xE3o foi poss\xEDvel carregar o chat do cl\xE3. Tente novamente em instantes."
+    m_Localized: "N\xE3o foi poss\xEDvel carregar o chat do Remanescente. Tente novamente em instantes."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760649
-    m_Localized: "Abrindo o chat do cl\xE3..."
+    m_Localized: Abrindo o chat do Remanescente...
     m_Metadata:
       m_Items: []
   references:

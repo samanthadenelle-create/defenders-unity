@@ -505,9 +505,9 @@
   "armyScreen.readyWhenRecovered": "Prêt quand {0} seront rétablis",
   "armyScreen.notReadyRecovering": "Entraînez {0} de plus, {1} en convalescence",
   "armyScreen.dismissedFree": "{0} renvoyé",
-  "clanChat.noWallet": "Connectez votre portefeuille pour utiliser le chat de clan.",
-  "clanChat.noClan": "Vous n'êtes pas encore dans un clan.",
-  "clanChat.unavailable": "Le chat de clan n'est pas disponible dans cette version.",
-  "clanChat.genericError": "Impossible de charger le chat de clan. Réessayez dans un instant.",
-  "clanChat.opening": "Ouverture du chat de clan..."
+  "clanChat.noWallet": "Connectez votre portefeuille pour utiliser le chat du Vestige.",
+  "clanChat.noClan": "Vous n'êtes pas encore dans un Vestige.",
+  "clanChat.unavailable": "Le chat du Vestige n'est pas disponible dans cette version.",
+  "clanChat.genericError": "Impossible de charger le chat du Vestige. Réessayez dans un instant.",
+  "clanChat.opening": "Ouverture du chat du Vestige..."
 }

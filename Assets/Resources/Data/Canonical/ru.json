@@ -505,9 +505,9 @@
   "armyScreen.readyWhenRecovered": "Готово, когда восстановятся {0}",
   "armyScreen.notReadyRecovering": "Обучите еще {0}, {1} восстанавливаются",
   "armyScreen.dismissedFree": "{0} распущен",
-  "clanChat.noWallet": "Подключите кошелёк, чтобы использовать чат клана.",
-  "clanChat.noClan": "Вы пока не состоите в клане.",
-  "clanChat.unavailable": "Чат клана недоступен в этой версии.",
-  "clanChat.genericError": "Не удалось загрузить чат клана. Повторите попытку через мгновение.",
-  "clanChat.opening": "Открытие чата клана..."
+  "clanChat.noWallet": "Подключите кошелёк, чтобы использовать чат Осколка.",
+  "clanChat.noClan": "Вы пока не состоите в Осколке.",
+  "clanChat.unavailable": "Чат Осколка недоступен в этой версии.",
+  "clanChat.genericError": "Не удалось загрузить чат Осколка. Повторите попытку через мгновение.",
+  "clanChat.opening": "Открытие чата Осколка..."
 }

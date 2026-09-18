@@ -2234,23 +2234,23 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143552
   - m_Id: 44124330363760645
-    m_Localized: Conecta tu monedero para usar el chat del clan.
+    m_Localized: Conecta tu monedero para usar el chat del Remanente.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760646
-    m_Localized: "A\xFAn no perteneces a ning\xFAn clan."
+    m_Localized: "A\xFAn no perteneces a ning\xFAn Remanente."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760647
-    m_Localized: "El chat del clan no est\xE1 disponible en esta versi\xF3n."
+    m_Localized: "El chat del Remanente no est\xE1 disponible en esta versi\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760648
-    m_Localized: "No se pudo cargar el chat del clan. Int\xE9ntalo de nuevo en un momento."
+    m_Localized: "No se pudo cargar el chat del Remanente. Int\xE9ntalo de nuevo en un momento."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760649
-    m_Localized: Abriendo el chat del clan...
+    m_Localized: Abriendo el chat del Remanente...
     m_Metadata:
       m_Items: []
   references:

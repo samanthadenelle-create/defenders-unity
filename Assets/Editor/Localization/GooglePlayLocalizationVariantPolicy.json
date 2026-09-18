@@ -111,16 +111,16 @@
       "owner": "Clan",
       "reason": "Clan chat ships on Google Play (WO-1858); its no-identity state must not name a wallet on that channel.",
       "values": {
-        "en": "Sign in to use clan chat.",
-        "es": "Inicia sesión para usar el chat del clan.",
-        "pt-BR": "Faça login para usar o chat do clã.",
-        "de": "Melde dich an, um den Clan-Chat zu nutzen.",
-        "fr": "Connectez-vous pour utiliser le chat de clan.",
-        "ru": "Войдите, чтобы использовать чат клана.",
-        "ar": "سجّل الدخول لاستخدام دردشة العشيرة.",
-        "ja": "クランチャットを利用するにはサインインしてください。",
-        "ko": "클랜 채팅을 사용하려면 로그인하세요.",
-        "zh-Hans": "登录以使用军团聊天。"
+        "en": "Sign in to use Remnant chat.",
+        "es": "Inicia sesión para usar el chat del Remanente.",
+        "pt-BR": "Faça login para usar o chat do Remanescente.",
+        "de": "Melde dich an, um den Überrest-Chat zu nutzen.",
+        "fr": "Connectez-vous pour utiliser le chat du Vestige.",
+        "ru": "Войдите, чтобы использовать чат Осколка.",
+        "ar": "سجّل الدخول لاستخدام دردشة البقية.",
+        "ja": "残党チャットを利用するにはサインインしてください。",
+        "ko": "잔당 채팅을 사용하려면 로그인하세요.",
+        "zh-Hans": "登录以使用遗民聊天。"
       }
     }
   ],
