@@ -23,12 +23,10 @@ site/privacy.html, site/terms.html are served the same way), so the page ships o
 same deploy as the API it reports to.
 
 ────────────────────────────────────────────────────────────────────────────────
-⛔ BEFORE THIS SHIPS: CHERRY_APP_ID BELOW IS A PLACEHOLDER.
-   A real appId is minted once, by hand, in Cherry's own portal (portal.cherry.fun) —
-   an external account signup, not something an automated lane can self-serve. The
-   embed will not mount with the placeholder in place. Replacing that ONE constant is
-   the only remaining step to a working embed; nothing else in this file or in the
-   Unity client is waiting on it.
+CHERRY_APP_ID is real (set 2026-09-17, owner action at portal.cherry.fun, WO-1858).
+The remaining gaps to a working embed are WO-1858's other two halves: a WebView
+plugin actually hosting this page on-device, and a real clan id wired into
+ClanRoomBinding before the page loads.
 ────────────────────────────────────────────────────────────────────────────────
 
 WALLET-ONLY AUTH MODE, AND WHAT THAT MEANS HERE (WO-1847 scope decision):
@@ -116,9 +114,8 @@ SDK SURFACE, read from the package's own README on 2026-09-17 (not from a doc su
 (function () {
   'use strict';
 
-  // ⛔ PLACEHOLDER — see this file's header. One constant, replaced once, by hand, from
-  // Cherry's portal. The embed does not mount until it is real.
-  var CHERRY_APP_ID = 'PLACEHOLDER_APP_ID_REPLACE_BEFORE_SHIP';
+  // Real app id, minted 2026-09-17 at portal.cherry.fun (owner action, WO-1858).
+  var CHERRY_APP_ID = 'app_d4a59f373f0f';
 
   // No API base URL here ON PURPOSE: this page never calls the game's backend. The
   // report is bridged to C#, which owns the wallet signature and the session — neither

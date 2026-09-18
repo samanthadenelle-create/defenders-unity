@@ -17,8 +17,8 @@
 //      to call the game's authenticated API. The signed POST lives in C#.
 //   3. THE ROOM IS VALIDATED, NOT TRUSTED. An unvalidated roomId puts two clans in one
 //      room — chat that looks like it works and is a privacy failure.
-//   4. THE PLACEHOLDER appId IS UNMISTAKABLE. A real one is minted by hand in Cherry's
-//      portal; shipping the placeholder must be loud, not subtle.
+//   4. THE appId IS REAL (WO-1858, 2026-09-17) AND THE PLACEHOLDER-REFUSAL MACHINERY
+//      SURVIVES. Shipping a placeholder-shaped value must still be loud, not subtle.
 //   5. THE RELEASE GATE AND ITS ORDERING ARE UNTOUCHED by this ticket.
 //   6. THE NATIVE CHAT RENDERER IS GONE from the HUD clan files.
 //
@@ -156,21 +156,30 @@ test('the C# side also refuses a non-UUID clan id before it can become a room', 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 4. THE PLACEHOLDER appId
+// 4. THE appId — real as of WO-1858 (minted 2026-09-17 at portal.cherry.fun)
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('⛔ the appId placeholder is unmistakable AND fails loudly at boot', () => {
+test('⛔ the appId is real, not the placeholder, and the placeholder-refusal machinery still exists', () => {
     const page = read(HOST_PAGE);
-    assert.match(page, /CHERRY_APP_ID\s*=\s*'PLACEHOLDER_APP_ID_REPLACE_BEFORE_SHIP'/,
-        'a real appId is minted by hand in Cherry\'s portal (portal.cherry.fun) — an external ' +
-        'account signup no automated lane can self-serve. Until then this constant names itself.');
+    // The placeholder itself is GONE — a lingering copy would mean the real id never
+    // actually landed, or landed alongside a second, unreachable declaration.
+    assert.equal((page.match(/PLACEHOLDER_APP_ID_REPLACE_BEFORE_SHIP/g) || []).length, 0,
+        'the placeholder must not still be present now that a real appId is set');
+    // A real, non-empty, non-placeholder value is declared exactly once.
+    const decl = page.match(/CHERRY_APP_ID\s*=\s*'([^']+)'/);
+    assert.ok(decl, 'CHERRY_APP_ID must still be declared as a single-quoted string literal');
+    assert.notEqual(decl[1], '', 'the appId must not be empty');
+    assert.doesNotMatch(decl[1], /^PLACEHOLDER/,
+        'the appId must not still start with PLACEHOLDER');
+    assert.equal((page.match(/CHERRY_APP_ID\s*=\s*'[^']+'/g) || []).length, 1,
+        'ONE declaration — a second copy is a second thing to drift out of sync');
+    // The refusal MACHINERY itself must survive regardless of which appId is set — this is
+    // what protects the NEXT placeholder-shaped mistake (an empty string, a copy-paste of
+    // the literal word "PLACEHOLDER", etc.), not just today's specific value.
     assert.match(page, /indexOf\('PLACEHOLDER'\) === 0/,
-        'and the page REFUSES to mount with it, rather than half-loading an embed that will not work');
+        'the page must still refuse to mount on a value that starts with PLACEHOLDER');
     assert.match(page, /fatal\('missing_app_id'/,
         'surfacing as a named error the panel can explain');
-    // Exactly one declaration, so replacing it is one edit with no second copy to miss.
-    assert.equal((page.match(/PLACEHOLDER_APP_ID_REPLACE_BEFORE_SHIP/g) || []).length, 1,
-        'ONE occurrence — a second copy is a second thing to forget');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
