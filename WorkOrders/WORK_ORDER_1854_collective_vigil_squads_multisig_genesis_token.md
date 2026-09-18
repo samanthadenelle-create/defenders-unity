@@ -1,6 +1,15 @@
 # WORK ORDER 1854 — Clan system, step 11: Collective Vigil — Squads multisig + Genesis Token
 
-**Status:** READY FOR LEAD REVIEW - implemented 2026-09-17; `node --check` clean on all 7 JS files; `node --test test/*.test.js` 1174/1171 pass (tree baseline, my file excluded) -> 1224/1221 pass with it, i.e. +50 tests and +50 passes, ZERO new reds (the 2 reds are both NOT mine and both proven so: one red at baseline, one caused by another lane's live edit to `Assets/_Modules/HUD/Kit/HudKitController.cs` at 22:36); NO commit, NO deploy (lead owns both). Migration taken as **0036** because WO-1853 landed 0035 mid-lane. ⛔ THE TICKET'S OWN OPENING CLAIM WAS WRONG AND IT CHANGED THE IMPLEMENTATION: `GT2zuHVa...` is the SGT **mint AUTHORITY**, not a mint - it is a System-Program-owned keypair account, so the specified `{mint:}` filter would have matched nothing forever, silently (FLAG 1). Four items need a lead/owner ruling before this ships: the controlled-multisig hole (FLAG 4), "all members are signers" vs vote-capable only (FLAG 5), the missing rate-limit budget (FLAG 6), and whether the shared Helius key is acceptable (FLAG 8). PRIOR STATUS: READY TO IMPLEMENT
+**Status:** DONE (code) - committed `5b61a6839`; `node --check` clean on all 7 JS files; suite
+1174/1171 -> 1224/1221, +50 tests, +50 passes, zero new reds. Migration `20260917_0036_clan_vaults.sql`
+committed but **NOT confirmed applied to production** - this session never ran it and holds no
+evidence either way; the standing "no production DB changes" rule was in effect for the remainder
+of the night, so treat it as unapplied until proven otherwise. ⛔ THE TICKET'S OWN OPENING CLAIM WAS
+WRONG AND IT CHANGED THE IMPLEMENTATION: `GT2zuHVa...` is the SGT **mint AUTHORITY**, not a mint -
+proven live (`getAccountInfo` returns owner=System Program, space=0). **Four items still need a
+lead/owner ruling before this ships to production** (unchanged by the commit): the controlled-multisig
+hole (FLAG 4), "all members are signers" vs vote-capable only (FLAG 5), the missing rate-limit budget
+(FLAG 6), whether the shared Helius key is acceptable (FLAG 8). PRIOR STATUS: READY FOR LEAD REVIEW
 
 **Both prior blockers resolved 2026-09-17 (owner, live):**
 - **Genesis Token mint address** — `GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4`, already confirmed
