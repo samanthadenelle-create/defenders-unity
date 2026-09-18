@@ -189,6 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-fifth pass): main line next free = **1862**.
+> *(Lead minted **WO-1861** — the overnight pseudolocalization leak-detection harness (decorator
+> ILocalTextProvider, NOT an 11th fake locale) that WO-1857's tagging sweep is validated against.
+> Per advisor + owner: code-based detection is the fast inner loop; Opus is cost-bounded to a final
+> pass + spot-checks; Fable's own full validation pass is the deliberately slow, methodical final gate.)*
+>
 > ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-fourth pass): main line next free = **1861**.
 > *(Lead minted **WO-1860** — owner ask: a full headless screenshot catalog of every player-facing
 > screen carrying any text (~45 screens, no threshold - "a single letter of text" counts), queued
