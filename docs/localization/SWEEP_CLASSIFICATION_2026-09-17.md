@@ -1904,3 +1904,109 @@ lower headline precision (40% vs. the artifact's 88% on a much narrower net) dri
 already-documented, pre-existing gaps this pass did not touch (developer-surface files, and
 identifier-shaped name arguments) — both are called out here as the natural next phase, not silently
 absorbed into this one's numbers.
+
+## Pseudoloc oracle first real run, 2026-09-18 (~02:10) - ground truth for the Village shard and the still-open S6a scope question
+
+Run: `DeNelle.Editor.UICaptureLaunch.RunPseudolocCaptureHeadless` against the full WO-1860 screen
+catalog, with the WO-1857 phase-4 batch (196 keys, commit `6f80a3814`) already landed. This is the
+first time WO-1861's harness has run against real screens - previously only red-proved on a
+planted synthetic leak. Report: `Builds/ui-capture/pseudoloc-leaks.json`.
+
+**Raw numbers:** 148 panels scanned, 12 panels fully clean, 3389 labels scanned, only 195 (5.8%)
+actually transformed by the pseudoloc provider, 98 allowlisted, **8143 individual word-level
+findings** (English words surviving in a supposedly-Cyrillic pass).
+
+### The number is misleading on its own - split by cause, not by count
+
+Grouping findings by UI component path and full label text (not raw word count, which triple-counts
+every word in a long sentence) collapses 8143 findings into **two very different buckets**:
+
+**Bucket 1 - canonical-JSON authored CONTENT, ~1749 findings.** Long-form body text under paths like
+`.../ScrollZone/Viewport/Content/Para`, `LoreScrollWell`, `RumorBoard`, `DetailCard/Flavor` -
+guide-content, quest/rumor flavor text, lore entries, Echo synergy descriptions. This is the EXACT
+Section 6a scope question from this document ("does WO-1857 own the 2521 canonical-JSON
+authored content values") now proven with real evidence rather than a guess: this content renders
+on screen and never goes through the pseudoloc-instrumented LocalText resolve path, so it reads
+as English in every locale today. **Do not dispatch a lane against this bucket without an owner
+ruling** - it is a different, much larger scope decision (does narrative/flavor copy get
+translated at all, and if so by what process) than the hardcoded-C#-literal sweep this ticket was
+scoped for.
+
+**Bucket 2 - genuine UI chrome literals, ~6394 raw findings collapsing to 287 distinct strings.**
+Short, structural, formatted labels - resource-cost strings, level/class badges, locked-state
+badges, button captions - that ARE squarely within WO-1857's original scope and were simply never
+in the manifest (the manifest's own precision ceiling, per this doc's earlier sections, and exactly
+the class of miss the pseudoloc harness was built to catch that a static scanner cannot). Dominant
+patterns and their likely single source (one shared component rendering many instances explains
+the high per-string counts):
+
+| count | text | first component path (source hint) |
+|---|---|---|
+| 180 | `[ ] LOCKED` | `Panel/Track/Rail/Scroll/Content/Tier1/Free/Text` |
+| 117 | `[Class: Light armor]` | `ObsidianPanel/PanelContent/Content/ScrollZone/Viewport/Content/BuyRow_armor_leather/Label` |
+| 84 | `250 Wood  120 Iron  90 Stone  30 Coins` | `ObsidianPanel/PanelContent/LedgerContent/WeekGrid/Day1/Text` |
+| 72 | `[Lv 10]` | `ObsidianPanel/PanelContent/Content/ScrollZone/Viewport/Content/BuyRow_armor_plate/Label` |
+| 69 | `[Lv 6]` | `ObsidianPanel/PanelContent/Content/ScrollZone/Viewport/Content/BuyRow_armor_chain/Label` |
+| 66 | `[Lv 3]` | `ObsidianPanel/PanelContent/Content/ScrollZone/Viewport/Content/BuyRow_armor_knight_unco...` |
+| 63 | `nothing affordable yet` | `ObsidianPanel/PanelFill/Zone_Body/CategoryGrid/BuildCollectionCard/Label` |
+| 54 | `READ THE LETTER >` | `ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/ReadHost/ObsBtn_Rea...` |
+| 33 | `0 of 2` | `ObsidianPanel/PanelContent/Zone_BodyLeft/ScrollZone/Viewport/Content/RecipeRow/ObsBtn_G...` |
+| 30 | `PASSIVE` | `ObsidianPanel/PanelContent/TalentWorkspace/GraphWell/GraphScroll/Viewport/GraphContent/...` |
+| 30 | `0 of 3` | `ObsidianPanel/PanelContent/Zone_BodyLeft/ScrollZone/Viewport/Content/RecipeRow/ObsBtn_E...` |
+| 27 | `FROST TOWER  (LVL 1/3)` | `ObsidianPanel/PanelContent/Zone_Body/ContentBand/ScrollZone/Viewport/Content/TowerRow/O...` |
+| 24 | `CLOSE THE GAP` | `ObsidianPanel/PanelFill/NightMarket/Body/Commerce/LandscapeGap/Scroll/Content/utility-h...` |
+| 21 | `UPCOMING` | `ObsidianPanel/PanelContent/LedgerContent/WeekGrid/Day1/Text` |
+| 18 | `MAGE TOWER  (LVL 1/3)` | `ObsidianPanel/PanelContent/Zone_Body/ContentBand/ScrollZone/Viewport/Content/TowerRow/O...` |
+| 18 | `ARCHER TOWER  (LVL 1/3)` | `ObsidianPanel/PanelContent/Zone_Body/ContentBand/ScrollZone/Viewport/Content/TowerRow/O...` |
+| 18 | `NEW` | `ObsidianPanel/PanelFill/PosterRow/Poster_uicap_daily_claimable/Body/NewChip/Fill/Label` |
+| 18 | `PREPARE FOR WAVE 8` | `ObsidianPanel/PanelContent/Zone_Footer/PrimaryAction/Label` |
+| 18 | `MINOR HEALING DRAUGHT` | `ObsidianPanel/PanelContent/Zone_BodyLeft/ScrollZone/Viewport/Content/RecipeRow/ObsBtn_M...` |
+| 18 | `SET GEMS - NEED THE BASE PIECE` | `ObsidianPanel/PanelContent/Zone_BodyRight/ScrollZone/Viewport/Content/DetailCard/CtaSlo...` |
+| 18 | `BEST WAVE` | `ObsidianPanel/PanelContent/Zone_Body/TabRail/ObsBtn_Best Wave/Label` |
+| 18 | `ARENA WINS` | `ObsidianPanel/PanelContent/Zone_Body/TabRail/ObsBtn_Arena Wins/Label` |
+| 15 | `STONE - BEST - NEEDS: QUARRY (NOW)` | `ObsidianPanel/PanelContent/Zone_Body/ResourcePicker/ScrollZone/Viewport/Content/Resourc...` |
+| 15 | `XP 400` | `ObsidianPanel/PanelFill/PosterRow/Poster_uicap_rumor_underway/Body/RewardRow/RewardChip...` |
+| 15 | `250 Wood  120 Iron  90 Stone  30 Coins  60 Crystals` | `ObsidianPanel/PanelContent/LedgerContent/WeekGrid/Day7/Text` |
+| 15 | `160 Wood  80 Iron  65 Stone  30 Coins  40 Crystals` | `Panel/Track/Rail/Scroll/Content/Tier5/Free/Text` |
+| 15 | `400 Wood  200 Iron  160 Stone  75 Coins  100 Crystals` | `Panel/Track/Rail/Scroll/Content/Tier5/Premium/Text` |
+| 15 | `200 Wood  100 Iron  80 Stone  40 Coins  40 Crystals` | `Panel/Track/Rail/Scroll/Content/Tier10/Free/Text` |
+| 15 | `240 Wood  120 Iron  95 Stone  50 Coins  40 Crystals` | `Panel/Track/Rail/Scroll/Content/Tier15/Free/Text` |
+| 15 | `600 Wood  300 Iron  240 Stone  125 Coins  100 Crystals` | `Panel/Track/Rail/Scroll/Content/Tier15/Premium/Text` |
+| 15 | `280 Wood  140 Iron  110 Stone  60 Coins  40 Crystals` | `Panel/Track/Rail/Scroll/Content/Tier20/Free/Text` |
+| 15 | `320 Wood  160 Iron  125 Stone  70 Coins  40 Crystals` | `Panel/Track/Rail/Scroll/Content/Tier25/Free/Text` |
+| 15 | `800 Wood  400 Iron  320 Stone  175 Coins  100 Crystals` | `Panel/Track/Rail/Scroll/Content/Tier25/Premium/Text` |
+| 15 | `360 Wood  180 Iron  140 Stone  80 Coins  40 Crystals` | `Panel/Track/Rail/Scroll/Content/Tier30/Free/Text` |
+| 15 | `TIME AND BEAUTY, NEVER POWER` | `Panel/Footer/Text` |
+
+(287 distinct structural strings total, 35 shown - full set is derivable by re-running
+the categorization approach against Builds/ui-capture/pseudoloc-leaks.json, kept as a fresh capture
+artifact rather than duplicated here per the canon-maintenance rule against copied live counts.)
+
+**Recurring likely-single-source patterns worth checking first** (each explains a large fraction of
+the count on its own):
+- Resource-cost strings (`"{n} Wood  {n} Iron  {n} Stone  {n} Coins[  {n} Crystals]"`) - built by
+  string-concatenating raw English resource names, not resolved keys. Appears in both the
+  MonthlyLedger's WeekGrid and the SeasonTrack's Tier rail - likely ONE shared cost-formatting
+  helper, not two separate leaks.
+- `"[Lv {n}]"` / `"[Class: {name}]"` bracket-wrapped badges in PartyShop's BuyRow cards - a single
+  card-template component, not per-item leaks.
+- `"[ ] LOCKED"` in SeasonTrack's Tier rail - note this is a DIFFERENT literal shape from the
+  hud.player_deck.locked_badge ("[ LOCKED ]", no leading empty brackets) already fixed tonight
+  in the HUD shard - a sibling badge in a different module, not a regression of tonight's fix.
+- Tower-row labels (`"FROST TOWER  (LVL 1/3)"` etc.) in BuildMenuUpgradeTower - one row template.
+- Recipe-row `"{n} of {n}"` counters in Alchemy/Workshop - one row template.
+
+### Recommendation
+1. Do NOT act on Bucket 1 without an explicit owner ruling on Section 6a scope (already flagged,
+   now with real numbers to rule on: ~1749 raw findings, concentrated in SeasonTrack/PartyShop/
+   GameGuide/MonthlyLedger/RumorBoard/LoreReadingModal).
+2. Bucket 2 (287 distinct strings, concentrated in perhaps a dozen shared-component source files) IS
+   in WO-1857's original scope and needs no ruling - a good-sized, well-evidenced next lane. This
+   is a BETTER brief than the Village shard's own candidate table (the candidate table's own
+   precision was 30-40%; this list is close to 100% precision, confirmed on an actual rendered
+   screen).
+3. The Village shard's real to-do list is likely the UNION of its candidate-table rows AND this
+   Bucket 2 list, deduplicated - several Bucket 2 hits (PartyShop, BuildMenuUpgradeTower,
+   BuildCollections) are already Assets/_Modules/Village/ files per the classification's own
+   shard boundary, so this evidence should be folded into that shard's brief before it is
+   dispatched, not treated as a separate lane.
