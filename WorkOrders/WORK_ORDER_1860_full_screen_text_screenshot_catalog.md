@@ -1,6 +1,6 @@
 # WORK ORDER 1860 — Full screenshot catalog: every player-facing screen with any text
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
 
 **Minted:** 2026-09-17, by the CLI lead, from the owner's direct ask: *"can I get a screenshot of
 every screen that has text? I want to create a catalog for the overnight build to create a library
@@ -89,3 +89,45 @@ reverted.
 ## Copy rules
 
 N/A — this ticket captures existing copy, it does not write new copy.
+
+---
+
+## IMPLEMENTATION RECORD (2026-09-17, SME agent pass)
+
+**Re-derived inventory, not trusted the stale doc.** `docs/qa/UI_SCREEN_GRAPH_2026-09-04.md` banner-
+fixed `⚠ SUPERSEDED 2026-09-17` per CLAUDE.md §15 (frozen, not rewritten). Diffed it against
+`git log --since=2026-09-04 -- Assets/Editor/UICaptureLaunch.cs Assets/_Modules/Core/UI/PanelRouter.cs`
+— found the doc's own gap list had gone stale in both directions: CosmeticShop and SeasonTrack/
+BattlePass gained real doors + captures since 09-04 (commits `e94027216`, `5f48aa7bd`), and
+`BarracksPanel.cs`/`ShopPanel.cs` (named in the gap list) no longer exist in the tree at all.
+
+**New code:** `Assets/Editor/UICaptureLaunch.cs` — added `Leaderboard` and `Jukebox` to
+`RunRegisteredSecondaryCaptureHeadless` (expected frame count 36→42), the two gear-dock rows the old
+doc's own capture-gap list named as uncovered. `ArmyMusterPanel` and `RedeemCodePanel` were also gap-
+listed but do NOT fit that reflection recipe (bespoke VM/construction requirements) — deferred rather
+than guessed at, per §11B.
+
+**Verified via two fresh headless runs, judged by marker not exit code:**
+- `RunCaptureHeadless` → `UI_CAPTURE_OK 106` (clean fidelity/geometry/glyph/endstate oracles),
+  log `Builds/ui-capture-wo1860-main.log`.
+- `RunRegisteredSecondaryCaptureHeadless` → 42/42 real non-blank frames rendered; the run's own
+  content oracle correctly FAILED the marker on two genuine pre-existing UI defects it caught in the
+  two new captures (Leaderboard duplicate/self-overlapping tab buttons; Jukebox caption text that
+  truncates/vanishes at wider landscape aspects) — see the catalog doc's "Flagged for follow-up"
+  section. Not fixed here per this ticket's explicit non-scope.
+- Combined: 267 PNGs across 125 distinct screen/state stems in `Builds/ui-capture/`, well past the
+  owner's "~45 screens" estimate (Manage's category-flow matrix alone authors ~40 named states).
+- 5 PNGs opened and visually confirmed real/legible/non-blank (Leaderboard, Jukebox, ManageWorkspace,
+  RaidSelection, AdaptiveHudPeaceful).
+
+**Catalog doc:** `docs/qa/UI_SCREENSHOT_CATALOG_2026-09-17.md` — screen-by-screen table, sourced text
+summaries (cited file:line or [seen] where visually opened), the two flagged defects, and an honest
+"not done to full depth" section per the WO's own "breadth over perfection" instruction.
+
+**Gate:** `python tools/gate_brace.py Assets/Editor/UICaptureLaunch.cs` → `bad=0 of 1`; NUL scan → 0.
+Only `.cs` file touched. Did not touch any `Clan*.cs`/`api/` file from the concurrent WO-1858 lane.
+
+**What remains (follow-up pass):** re-run the ~15 standalone `Run*CaptureHeadless()` entries not
+exercised this session to refresh their PNGs; transcribe per-state Manage/Army/Research flow copy;
+build bespoke fixtures for ArmyMusterPanel and RedeemCodePanel; open a WO each for the two flagged
+Leaderboard/Jukebox defects; capture ClanChatPanel once WO-1858 lands.

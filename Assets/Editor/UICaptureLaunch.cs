@@ -8453,6 +8453,12 @@ namespace DeNelle.Editor
             // WO-1394: the Season Track gets its first capture the day it gets its first door (the
             // Journey deck's Season card). Same host-free OnEnable recipe as its ledger sibling.
             count += CaptureReflectedSecondary("SeasonTrack", "DeNelle.Wallet.SeasonTrackPanel", "OnEnable", null, true);
+            // WO-1860: gear-dock rows Leaderboard + Jukebox had zero capture coverage (per the
+            // 2026-09-04 screen graph's capture-gap list, item 13) even though both are plain
+            // MonoBehaviour secondaries with an Awake()-registered PanelHandle and an ObsidianModal
+            // canvas -- the exact shape this helper already drives for every other row here.
+            count += CaptureReflectedSecondary("Leaderboard", "DeNelle.HUD.LeaderboardPanel", "Toggle");
+            count += CaptureReflectedSecondary("Jukebox", "DeNelle.Audio.MusicSelectionPanel", "Open");
 
             ReportFidelity();
             ReportGeometry();
@@ -8461,15 +8467,23 @@ namespace DeNelle.Editor
                                    // table and at its one emit site -- never copied here. Wired at
                                    // EVERY site that emits the touch marker: one path missing it
                                    // prints marker-absent there, read here as a FAILURE not an unknown.
-            const int expected = 36;
+            const int expected = 42;
             if (count == expected && _fidelityDegraded == 0 && _geoFailures.Count == 0 &&
                 _touchFailures.Count == 0 && _glyphFailures.Count == 0)
-                Debug.Log("REGISTERED_SECONDARY_CAPTURE_OK 36/36 frames; routes=12; touch=clean");
+                Debug.Log("REGISTERED_SECONDARY_CAPTURE_OK 42/42 frames; routes=14; touch=clean");
             else
                 Debug.LogError("REGISTERED_SECONDARY_CAPTURE_FAIL frames=" + count + "/" + expected +
                     " fidelity=" + _fidelityDegraded + " geometry=" + _geoFailures.Count +
                     " touch=" + _touchFailures.Count + " glyph=" + _glyphFailures.Count);
         }
+
+        // WO-1860 note: ArmyMusterPanel (Village/Troops/ArmyMusterPanel.cs) and RedeemCodePanel
+        // (Wallet/RedeemCodePanel.cs) were also on the capture-gap list but do NOT fit this
+        // reflected-secondary recipe as-is: ArmyMusterPanel.Open() reads a `_vm` that is only
+        // ever set by the static Show() factory (never built by AddComponent+Awake alone), and
+        // RedeemCodePanel is a plain (non-MonoBehaviour) class with its own construction contract.
+        // Left for a follow-up pass rather than guessing at their fixture shape -- see the
+        // WO-1860 catalog doc's "deferred" section.
 
         private static int CaptureReflectedSecondary(string shotName, string typeName, string openMethod,
                                                       object[] arguments = null, bool privateMethod = false)

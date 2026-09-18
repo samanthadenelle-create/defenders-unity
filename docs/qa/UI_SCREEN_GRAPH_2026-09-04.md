@@ -1,3 +1,10 @@
+⚠ SUPERSEDED 2026-09-17 — see `docs/qa/UI_SCREENSHOT_CATALOG_2026-09-17.md` (WO-1860). This doc's
+route table predates the clan system, WO-1376/1394/1396/1397/1399/1400/1811 nav changes, the
+`ManageFlow` state matrix, and the Owned-Town / Army-screen captures — several of its "NO-CAPTURE"
+and "dead end" rows are now stale (e.g. CosmeticShop and SeasonTrack/BattlePass now have real doors
+and captures; BarracksPanel.cs/ShopPanel.cs no longer exist in the tree). Kept frozen per CLAUDE.md
+§15 (dated point-in-time ledger) — do not edit the body below; read the 2026-09-17 catalog instead.
+
 # UI Screen Graph - code-true, 2026-09-04
 
 Read-only inventory. Every claim below cites a file:line opened this session. Nothing was
