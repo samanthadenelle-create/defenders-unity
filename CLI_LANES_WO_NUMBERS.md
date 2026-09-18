@@ -189,7 +189,15 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventieth pass): main line next free = **1867**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-first pass): main line next free = **1868**.
+> *(Lead minted **WO-1867** — the Player Issues tab (`bug_reports`) has no dismiss/resolve path;
+> owner asked to mark 4 keyboard-mash duplicate reports (ids 11-14, same player, 3 seconds apart,
+> "ggsgagsbshhshs") as resolved/noise so the queue can be triaged. Table + admin view are read-only
+> by design (`bug_reports` schema, `Tab: Player issues` in `docs/COMMAND_CENTER_REFERENCE.md`) — no
+> status column exists. Filed as a small schema + admin-write feature, not a data edit. Bumped
+> 1867 -> 1868 in this SAME edit.)*
+>
+> ## superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-seventieth pass): main line next free = **1867**.
 > *(Agent minted **WO-1866** — a locale switch (fr->en or en->fr) via the WO-1840 Settings picker does
 > not propagate to most already-built UI. PROVEN from a real device/editor capture
 > (`Logs/f8-inbox/capture-20260918-085337-seq5615.md:90-98`): `TrySelectLocale` itself works and
