@@ -112,12 +112,17 @@ namespace DeNelle.Editor.Regression
         };
 
         /// <summary>Containers built, as the owner's save had them: no Stoneyard, one
-        /// Lumberyard, two Foundries. This is the ONE live signal the VM takes.</summary>
-        private static int BuiltFor(BankResource r)
+        /// Lumberyard, two Foundries. This is the ONE live signal the VM takes.
+        /// <para>WO-1863 - the signal is now <see cref="StorageGrowthSignal"/>, not a bare count.
+        /// <c>FromBuiltCount</c> is used ON PURPOSE: it reports an UNKNOWN ceiling, which reproduces
+        /// this fixture's original verbs exactly (built =&gt; UPGRADE) without this suite asserting a
+        /// container level it never authored. The MAXED-container case is owned by
+        /// HarvestMaxedContainerDoorRegression, which drives real slot levels.</para></summary>
+        private static StorageGrowthSignal BuiltFor(BankResource r)
         {
-            if (r == BankResource.Wood) return 1;
-            if (r == BankResource.Iron) return 2;
-            return 0;
+            if (r == BankResource.Wood) return StorageGrowthSignal.FromBuiltCount(1);
+            if (r == BankResource.Iron) return StorageGrowthSignal.FromBuiltCount(2);
+            return StorageGrowthSignal.FromBuiltCount(0);
         }
 
         private static int CountOf(string haystack, string needle)

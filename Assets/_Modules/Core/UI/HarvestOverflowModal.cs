@@ -123,7 +123,9 @@ namespace DeNelle.Core.UI
             // WO-1525 - ROWS, NOT PROSE. The VM decides every number, word and door
             // (HarvestResultVM); this modal only draws them. The old single-Label body is gone:
             // it was eleven lines of paragraph for three resources, which is the defect.
-            var vm = HarvestResultVM.Build(results, BuiltContainers);
+            // WO-1863 - the signal carries the LEVEL and the authored CEILING, not just a count, so a
+            // maxed container no longer offers an upgrade that cannot be bought.
+            var vm = HarvestResultVM.Build(results, StorageGrowthFor);
             BuildRows(content, vm);
             // BuildObsidianModal already owns the one shared Close face. A second content
             // button here occupied the same lower band and produced the doubled CLOSE seen
@@ -381,7 +383,7 @@ namespace DeNelle.Core.UI
         /// the single reader (TownBankCapacity.Apportion), never a second count: the base store
         /// slot is always present and is not a container.
         /// </summary>
-        private static int BuiltContainers(BankResource r)
+        public static int BuiltContainers(BankResource r)
         {
             int built = 0;
             Guard.Try("Bank", "count built storage containers for " + r, () =>
@@ -392,6 +394,83 @@ namespace DeNelle.Core.UI
                     if (!ap.Slots[i].IsBaseStore) built++;
             });
             return built;
+        }
+
+        /// <summary>
+        /// WO-1863 - THE LIVE STORAGE-GROWTH SIGNAL, READ OFF THE SAME SLOTS AS THE COUNT.
+        ///
+        /// <para>THE MEASURED DEFECT (owner, 2026-09-18, verbatim): <i>"when you go to harvest it
+        /// says upgrade lumber, mill foundry in stoneyard, but if you're at max level, it shouldn't
+        /// do that"</i>. <see cref="BuiltContainers"/> answers a COUNT, so the only thing the door
+        /// could ever say was "some container exists" - and HarvestResultVM turned that into
+        /// UPGRADE. The LEVEL was sitting one field away the whole time
+        /// (<c>TownBankCapacity.StorageSlot.Level</c>, written from the layout record at
+        /// TownBankCapacity.cs:1020) and never reached the decision.</para>
+        ///
+        /// <para>!! ONE CONTAINER PER RESOURCE - OWNER RULING 23 (2026-09-06, the
+        /// <c>singleton: true</c> note on the lumberyard row in structures-catalog.json, verbatim:
+        /// "also cap only one of each storage type, the idea is they should level them"). So a
+        /// resource whose single container sits at its catalog <c>maxLevel</c> has NO growth left at
+        /// all - not an upgrade, and not a second building either. The honest door there is SPEND,
+        /// the same verb the over-cap branch already uses for "storage is not the fix".</para>
+        ///
+        /// <para>Ceiling comes from <c>TownBankCapacity.TryGetContainerRow</c> (already clamped by
+        /// <c>RepoProps.MaxStructureLevel</c>) - never a literal here.</para>
+        /// </summary>
+        public static StorageGrowthSignal StorageGrowthFor(BankResource r)
+        {
+            // !! THE THROW PATH MUST DEGRADE TO **BUILD**, NOT TO `default`. A default
+            // StorageGrowthSignal reads Built=0 with CanBuild=FALSE, which the VM resolves to SPEND
+            // and then targets the CONTAINER - "SPEND LUMBERYARD", a chip that names a building as a
+            // thing to spend. Guard.Try swallows-and-logs by design (CLAUDE.md section 12), so this
+            // seed is what the player gets if Apportion throws, and it is the same answer the
+            // documented null-signal contract promises.
+            var signal = StorageGrowthSignal.From(0, 0, 0);
+            Guard.Try("Bank", "read storage growth signal for " + r, () =>
+            {
+                var ap = TownBankCapacity.Apportion(r);
+                int built = 0, topLevel = 0, lowestLevel = int.MaxValue;
+                var levels = new System.Text.StringBuilder();
+                if (ap.Slots != null)
+                {
+                    for (int i = 0; i < ap.Slots.Length; i++)
+                    {
+                        if (ap.Slots[i].IsBaseStore) continue;
+                        built++;
+                        if (levels.Length > 0) levels.Append(',');
+                        levels.Append(ap.Slots[i].Level);
+                        if (ap.Slots[i].Level > topLevel) topLevel = ap.Slots[i].Level;
+                        if (ap.Slots[i].Level < lowestLevel) lowestLevel = ap.Slots[i].Level;
+                    }
+                }
+                if (built == 0) lowestLevel = 0;
+
+                int maxLevel = 0;
+                string containerName = null;
+                if (TownBankCapacity.TryGetContainerRow(r, out string name, out int _, out int rowMax))
+                {
+                    containerName = name;
+                    maxLevel = rowMax;
+                }
+
+                // !! THE LOWEST LEVEL DECIDES, NOT THE HIGHEST. Owner ruling 23 caps storage at ONE
+                // container per resource, but TownBankCapacity.BuildSlots enforces NO singleton when
+                // it walks BaseLayout, and the owner's own 2026-09-06 save carried TWO Foundries
+                // (recorded in HarvestResultShapeRegression's fixture comment). On slots [6,2] the
+                // highest level would report "maxed" while an L2 container sits there waiting to be
+                // upgraded - retiring a live door, which is this ticket's own bug inverted.
+                signal = StorageGrowthSignal.From(built, lowestLevel, maxLevel);
+
+                // CLAUDE.md section 12 - the numbers the decision is about, AT the seam that reads
+                // them. This is the line that proves whether the ceiling was consulted at all.
+                FlowTrace.Step("Bank",
+                    "harvest-result growth signal " + r + " (" + (containerName ?? "no-catalog-row") +
+                    "): built=" + built + " levels=[" + levels + "] lowestLevel=" + lowestLevel +
+                    " topLevel=" + topLevel + " rowMaxLevel=" + maxLevel +
+                    " -> canUpgrade=" + signal.CanUpgrade +
+                    " canBuild=" + signal.CanBuild + " maxedOut=" + signal.MaxedOut);
+            });
+            return signal;
         }
 
         /// <summary>

@@ -116,7 +116,12 @@ namespace DeNelle.Editor.Regression
             Row("Iron", "Foundry",    BankResource.Iron, 792,  13083, 9208,  10000, Collectors),
         };
 
-        private static int BuiltFor(BankResource r) => r == BankResource.Wood ? 1 : 0;
+        // WO-1863 - the VM's one live signal is a StorageGrowthSignal, not a container count.
+        // FromBuiltCount reports an UNKNOWN ceiling, which reproduces this fixture's original verbs
+        // (a built container => UPGRADE) without asserting a level this suite never authored. The
+        // over-cap rows below must read SPEND ANYWAY - that is case [leads-with-action]'s whole point.
+        private static StorageGrowthSignal BuiltFor(BankResource r) =>
+            StorageGrowthSignal.FromBuiltCount(r == BankResource.Wood ? 1 : 0);
 
         public static bool Run(out string reason)
         {

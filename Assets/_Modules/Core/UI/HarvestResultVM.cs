@@ -21,8 +21,11 @@
 //  (!) THIS TYPE DECIDES; THE MODAL ONLY DRAWS.
 // =============================================================================
 // Every number, every word and every door lives here, as a PURE function of the
-// clamp events plus ONE injected live signal (how many storage containers of that
-// resource are already built). That is what makes the shape oracle-drivable with
+// clamp events plus ONE injected live signal (WO-1863: what the player can actually
+// DO about that resource's storage - a StorageGrowthSignal carrying the built count,
+// the lowest built container LEVEL and the authored CEILING. It used to be the bare
+// COUNT, and that is exactly why a maxed container was offered for upgrade - see the
+// StorageGrowthSignal header). That is what makes the shape oracle-drivable with
 // no canvas, no scene and no PlayMode - the same seam WelcomeBackDoorsVM (WO-1408)
 // established, and for the same reason. HarvestOverflowModal must never grow a
 // second opinion about what a row says.
@@ -89,6 +92,89 @@ using DeNelle.Core.Economy;
 
 namespace DeNelle.Core.UI
 {
+    /// <summary>
+    /// WO-1863 - WHAT THE PLAYER CAN ACTUALLY DO ABOUT THIS RESOURCE'S STORAGE. The ONE live
+    /// signal <see cref="HarvestResultVM.Build"/> takes, and the replacement for the bare built
+    /// COUNT that could not answer the owner's question.
+    ///
+    /// <para>THE MEASURED DEFECT (owner, 2026-09-18, verbatim): <i>"when you go to harvest it says
+    /// upgrade lumber, mill foundry in stoneyard, but if you're at max level, it shouldn't do
+    /// that"</i>. The seam used to be <c>Func&lt;BankResource,int&gt;</c> - a container COUNT - so a
+    /// maxed container and a level-1 container were the same number to this file and both produced
+    /// UPGRADE. The level existed at the producing seam
+    /// (<c>TownBankCapacity.StorageSlot.Level</c>) and was discarded on the way here.</para>
+    ///
+    /// <para>!! ONE CONTAINER PER RESOURCE (owner ruling 23, 2026-09-06 - the <c>singleton: true</c>
+    /// note on the storage rows in structures-catalog.json: "cap only one of each storage type, the
+    /// idea is they should level them"). That is why <see cref="CanBuild"/> is "none built yet" and
+    /// not "build another": once the one container exists, LEVEL is the only axis of growth, and at
+    /// the ceiling there is no axis left. <see cref="MaxedOut"/> is that state, and its door is
+    /// SPEND - the same verb the over-cap branch already uses for "storage is not the fix".</para>
+    /// </summary>
+    public struct StorageGrowthSignal
+    {
+        /// <summary>Non-base storage containers of this resource that exist in the layout.</summary>
+        public int Built;
+
+        /// <summary>The LOWEST built container level, or 0 when none is built.
+        /// <para>!! LOWEST, NOT HIGHEST, AND THAT IS THE LOAD-BEARING CHOICE. One container per
+        /// resource is the RULING (owner 23, 2026-09-06), not an invariant the code enforces:
+        /// <c>TownBankCapacity.BuildSlots</c> walks every matching BaseLayout row with no singleton
+        /// check, and the owner's own 2026-09-06 save carried TWO Foundries. On slots [6,2] the
+        /// highest level reads "maxed" while an upgradeable L2 container sits there - which would
+        /// retire a live door, i.e. this ticket's bug pointed the other way. The lowest rung is the
+        /// one the player can actually buy next.</para></summary>
+        public int TopLevel;
+
+        /// <summary>The catalog ceiling for this resource's container, already clamped by
+        /// <c>RepoProps.MaxStructureLevel</c> upstream. ZERO means UNKNOWN (no catalog row loaded) -
+        /// see <see cref="From"/> for why that is treated as "may still upgrade".</summary>
+        public int MaxLevel;
+
+        /// <summary>A built container sits BELOW the ceiling, so UPGRADE is a real instruction.</summary>
+        public bool CanUpgrade;
+
+        /// <summary>Nothing is built yet, so BUILD is a real instruction.</summary>
+        public bool CanBuild;
+
+        /// <summary>Built, and at the ceiling: storage cannot grow by any means. THE OWNER'S CASE.</summary>
+        public bool MaxedOut => Built > 0 && !CanUpgrade;
+
+        /// <summary>
+        /// Derive the signal from the three measured numbers. PURE - oracle-drivable with no scene.
+        ///
+        /// <para>!! <paramref name="maxLevel"/> &lt;= 0 means the CEILING IS UNKNOWN (an editor batch
+        /// with an unpopulated CatalogRegistry - TownBankCapacity.TryGetContainerRow returns false
+        /// and TRACES it). In that state we do NOT claim the container is maxed: silently retiring a
+        /// real upgrade door because the catalog failed to load would be a worse lie than the one
+        /// this ticket fixes. Unknown ceiling keeps the legacy UPGRADE answer.</para>
+        /// </summary>
+        public static StorageGrowthSignal From(int built, int topLevel, int maxLevel)
+        {
+            int b = built > 0 ? built : 0;
+            int top = topLevel > 0 ? topLevel : 0;
+            int max = maxLevel > 0 ? maxLevel : 0;
+            return new StorageGrowthSignal
+            {
+                Built = b,
+                TopLevel = top,
+                MaxLevel = max,
+                CanBuild = b == 0,
+                CanUpgrade = b > 0 && (max <= 0 || top < max),
+            };
+        }
+
+        /// <summary>The legacy count-only answer, for a caller that genuinely has no level data.
+        /// Reports an UNKNOWN ceiling on purpose, so it reproduces the old verb rather than
+        /// pretending to know something it does not.</summary>
+        public static StorageGrowthSignal FromBuiltCount(int built) => From(built, built > 0 ? 1 : 0, 0);
+
+        /// <summary>One-line trace form - the numbers, never a conclusion on its own.</summary>
+        public override string ToString() =>
+            "built=" + Built + " topLevel=" + TopLevel + " maxLevel=" + MaxLevel +
+            " canUpgrade=" + CanUpgrade + " canBuild=" + CanBuild + " maxedOut=" + MaxedOut;
+    }
+
     /// <summary>One resource's harvest outcome: what banked, what waits, the store, one door.</summary>
     public sealed class HarvestResultRow
     {
@@ -318,12 +404,17 @@ namespace DeNelle.Core.UI
         /// THE PURE SEAM. Clamp events in, rows out - no service lookup, no clock, no scene.
         /// </summary>
         /// <param name="results">The aggregated overflow rows. Null/empty yields an empty VM.</param>
-        /// <param name="builtContainersFor">How many storage containers of that resource the
-        /// player has ALREADY BUILT - the one live signal, and the only thing that decides
-        /// BUILD versus UPGRADE. Null (or a negative answer) is read as ZERO, which produces
-        /// BUILD: offering "upgrade" for a structure that does not exist is the worse miss.</param>
+        /// <param name="growthFor">WHAT THE PLAYER CAN DO about that resource's storage - the one
+        /// live signal, and the only thing that decides BUILD versus UPGRADE versus SPEND. Null is
+        /// read as "nothing built", which produces BUILD: offering "upgrade" for a structure that
+        /// does not exist is the worse miss.
+        /// <para>!! WO-1863 - THIS USED TO BE A <c>Func&lt;BankResource,int&gt;</c> CONTAINER COUNT, and
+        /// that is precisely why the owner was offered an upgrade on a maxed Lumberyard: a count
+        /// cannot tell a level-1 container from a level-6 one, so both produced UPGRADE. The signal
+        /// now carries the LEVEL and the authored CEILING (see
+        /// <see cref="StorageGrowthSignal"/>).</para></param>
         public static HarvestResultVM Build(IReadOnlyList<BankOverflowStatus> results,
-                                            Func<BankResource, int> builtContainersFor)
+                                            Func<BankResource, StorageGrowthSignal> growthFor)
         {
             var vm = new HarvestResultVM();
             if (results == null || results.Count == 0) return vm;
@@ -432,15 +523,41 @@ namespace DeNelle.Core.UI
                 // (the WelcomeBackDoorsVM rule, same words).
                 if (!string.IsNullOrEmpty(row.StateWord))
                 {
-                    int built = 0;
-                    if (builtContainersFor != null)
-                    {
-                        int n = builtContainersFor(s.Resource);
-                        built = n > 0 ? n : 0;
-                    }
-                    row.ActionVerb = s.OverCap ? "SPEND" : (built > 0 ? "UPGRADE" : "BUILD");
-                    row.ActionTarget = (s.OverCap ? name : container).ToUpperInvariant();
+                    var growth = growthFor != null
+                        ? growthFor(s.Resource)
+                        : StorageGrowthSignal.From(0, 0, 0);
+
+                    // (!) WO-1863 - THE THREE-WAY DOOR, AND THE ORDER MATTERS.
+                    //
+                    // OverCap FIRST and unconditionally: the WO-1099 block above spends a paragraph
+                    // on why a store above its ceiling gets SPEND even when a container could still
+                    // be upgraded - a container that cannot help is not a door.
+                    //
+                    // Then, for a merely FULL store, the honest verb is whichever growth actually
+                    // exists. MAXED OUT gets SPEND for the same reason over-cap does: there is no
+                    // upgrade left, and (owner ruling 23, 2026-09-06 - one storage container per
+                    // resource) there is no second container to build either, so storage genuinely
+                    // is not the fix. Naming a building the player cannot change would be the
+                    // WO-1525 dead-end chip in a new costume.
+                    // RED (captured 2026-09-18, Builds/wo1863-red.log): swap this expression for
+                    // HEAD's count-only rule -- `s.OverCap ? "SPEND" : (growth.Built > 0 ? "UPGRADE"
+                    // : "BUILD")` -- and the same fixture prints, on consecutive lines,
+                    //   growth signal Wood (Lumberyard): built=1 levels=[6] rowMaxLevel=6 maxedOut=True
+                    //   door Wood: ... -> verb=UPGRADE text='UPGRADE LUMBERYARD'
+                    // i.e. the ceiling was KNOWN and the verb ignored it. That is the owner's defect.
+                    row.ActionVerb = s.OverCap ? "SPEND"
+                        : (growth.CanUpgrade ? "UPGRADE"
+                        : (growth.CanBuild ? "BUILD" : "SPEND"));
+                    bool namesResource = s.OverCap || growth.MaxedOut;
+                    row.ActionTarget = (namesResource ? name : container).ToUpperInvariant();
                     row.ActionText = row.ActionVerb + " " + row.ActionTarget;
+                    // CLAUDE.md section 12 - the DOOR DECISION, with every input it was made from, on
+                    // one line. Without this the only way to tell why a chip read UPGRADE was to
+                    // re-derive it by eye from a device screenshot (owner report 2026-09-18).
+                    FlowTrace.Step("Bank",
+                        "harvest-result door " + name + ": state='" + row.StateWord + "' overCap=" +
+                        s.OverCap + " " + growth + " -> verb=" + row.ActionVerb +
+                        " text='" + row.ActionText + "'");
                     row.ActionDoor = PanelId.Manage;
                     row.ActionContext = BuildingsTab;
                 }
