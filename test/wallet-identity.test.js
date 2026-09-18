@@ -124,11 +124,86 @@ test('⛔ the conflict path updates last_seen_at and NOTHING ELSE', async () => 
         'path that refreshed it would destroy the only fact this table exists to hold, and it ' +
         'would do so silently — every row would read as first seen today, forever.');
 
-    // The three reserved columns belong to later steps in this chain (the Vigil read,
-    // Genesis Token binding). This ticket declares them and must not touch them.
-    for (const reserved of ['first_seen_staked_at', 'sgt_mint', 'sgt_verified_at']) {
+    // ── NARROWED 2026-09-17 BY WO-1852, THE "LATER STEP" THIS PIN NAMED ──────────
+    // As written for WO-1844 this loop forbade all three reserved columns anywhere in
+    // the statement, with the reason: "belong to later steps in this chain (the Vigil
+    // read, Genesis Token binding)". WO-1852 IS the Vigil read, and it is chartered by
+    // its work order to populate first_seen_staked_at from this very function — so the
+    // column now legitimately appears in the UPSERT's RETURNING clause (read in the same
+    // round trip rather than costing a second SELECT).
+    //
+    // ⛔ WHAT IS STILL FORBIDDEN, AND IT IS THE PART THAT WAS LOAD-BEARING ALL ALONG:
+    //    first_seen_staked_at may be READ here but NEVER SET here. It is written only by
+    //    stampFirstSeenStaked's separate, idempotent UPDATE (… WHERE first_seen_staked_at
+    //    IS NULL), for exactly the reason first_seen_at may not appear in this SET clause:
+    //    a tenure that has already begun must never be movable by a later visit. Putting
+    //    it in this SET clause would reset every staker's Vigil on every request.
+    assert.ok(!/first_seen_staked_at/i.test(setClause),
+        'first_seen_staked_at must never be SET by the upsert — see stampFirstSeenStaked, ' +
+        'whose IS NULL guard is what makes a Vigil un-resettable');
+
+    // The Genesis Token columns remain wholly untouched: WO-1852 does not bind an SGT.
+    for (const reserved of ['sgt_mint', 'sgt_verified_at']) {
         assert.ok(!new RegExp(reserved, 'i').test(q),
-            `${reserved} is reserved for a later step and must not appear in any statement this ticket writes`);
+            `${reserved} is reserved for Genesis Token binding and must not appear in any statement yet`);
+    }
+});
+
+test('⛔ WO-1852: the Vigil stamp is a SEPARATE, idempotent, Postgres-clocked UPDATE', async () => {
+    // The counterpart to the assertion above. The stamp must not be folded into the
+    // upsert, and it must carry both guards that make it safe to run on every auth:
+    // the IS NULL predicate (so a begun tenure cannot move) and NOW() (so the clock that
+    // writes the column is the clock that later measures the tenure from it).
+    // ⛔ THE RPC ENDPOINT IS PINNED AT A DEAD PORT, NOT LEFT TO THE ENVIRONMENT. An earlier
+    //    draft of this test branched on whether SOLANA_MAINNET_RPC_URL happened to be set,
+    //    which made it near-vacuous locally AND would have had a UNIT TEST dial mainnet for
+    //    a real wallet address on any CI that injects that var. Same env-seam discipline as
+    //    test/skr-staking.test.js's unset-url case.
+    const saved = process.env.SOLANA_MAINNET_RPC_URL;
+    process.env.SOLANA_MAINNET_RPC_URL = 'http://127.0.0.1:1/dead';
+    let r;
+    let writes;
+    try {
+        const sql = recordingSql([{ match: /UPDATE\s+wallet_identity/i,
+            rows: [{ first_seen_staked_at: 'T-NOW' }] }]);
+        r = await wa.stampFirstSeenStaked(sql, WALLET);
+        writes = sql.matching(/UPDATE\s+wallet_identity/i);
+    } finally {
+        if (saved === undefined) delete process.env.SOLANA_MAINNET_RPC_URL;
+        else process.env.SOLANA_MAINNET_RPC_URL = saved;
+    }
+
+    assert.equal(writes.length, 0,
+        'an unreadable chain must never begin a tenure — RPC_UNAVAILABLE is not evidence of a stake');
+    assert.equal(r.stakedStamped, false);
+    assert.equal(r.vigilDegraded, true, 'and it must SAY the read was degraded, never swallow it');
+
+    // And the SQL text itself, asserted from the source so the guards cannot be dropped.
+    const src = fs.readFileSync(WALLET_AUTH_PATH, 'utf8');
+    const fn = src.slice(src.indexOf('async function stampFirstSeenStaked('));
+    assert.match(fn, /SET\s+first_seen_staked_at\s*=\s*NOW\(\)/i,
+        'Postgres time, never Node time — the work order names this to avoid clock skew');
+    assert.match(fn, /WHERE\s+wallet\s*=\s*\$\{wallet\}\s*AND\s+first_seen_staked_at\s+IS\s+NULL/i,
+        '⛔ the IS NULL guard is the whole idempotency argument; without it a tenure resets');
+});
+
+test('⛔ WO-1852: the Vigil probe on the auth path has a kill switch, and it really kills', async () => {
+    // touchWalletIdentity runs on EVERY proven wallet-rail request, so the probe it can
+    // now trigger is a standing cost. The switch exists so that cost can be removed
+    // without a code change; this pins that it is checked BEFORE any work, not after.
+    const prev = process.env.VIGIL_STAMP_ON_AUTH;
+    process.env.VIGIL_STAMP_ON_AUTH = 'false';
+    try {
+        assert.equal(wa.vigilStampOnAuthEnabled(), false);
+        const sql = recordingSql([{ match: IDENTITY_WRITE,
+            rows: [{ first_seen_at: 'T0', last_seen_at: 'T0', first_seen_staked_at: null }] }]);
+        const r = await wa.touchWalletIdentity(sql, WALLET);
+        assert.equal(r.ok, true);
+        assert.equal(sql.matching(/UPDATE\s+wallet_identity/i).length, 0);
+        assert.equal(sql.calls.length, 1, 'exactly the one upsert — the switch skipped everything else');
+    } finally {
+        if (prev === undefined) delete process.env.VIGIL_STAMP_ON_AUTH;
+        else process.env.VIGIL_STAMP_ON_AUTH = prev;
     }
 });
 
@@ -137,10 +212,45 @@ test('⛔ no logic anywhere in wallet-auth.js touches the reserved Genesis Token
     // Comments legitimately NAME these columns to explain why they are untouched, so the
     // sweep is over code only — the prose is the documentation this assertion protects.
     const code = src.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
-    for (const reserved of ['first_seen_staked_at', 'sgt_mint', 'sgt_verified_at']) {
+
+    // ── NARROWED 2026-09-17 BY WO-1852 ───────────────────────────────────────────
+    // `first_seen_staked_at` was in this list because WO-1844's explicit non-scope was
+    // "declares these columns and builds NO logic for them". WO-1852 is the ticket that
+    // builds that logic, so the column is now expected in executable code and its
+    // ABSENCE would be the defect. The two Genesis Token columns are unchanged: nothing
+    // binds an SGT yet, and this sweep still catches the first stray reference to one.
+    for (const reserved of ['sgt_mint', 'sgt_verified_at']) {
         assert.ok(!new RegExp(reserved).test(code),
-            `${reserved} appears in executable code. WO-1844 declares these columns in the schema ` +
-            'and builds NO logic for them — that is the ticket\'s explicit non-scope.');
+            `${reserved} appears in executable code. No ticket has built Genesis Token binding ` +
+            'yet — this is still explicit non-scope.');
+    }
+
+    // The positive half, so the narrowing cannot quietly become "nothing is checked":
+    // the Vigil column must be reachable ONLY through the two shapes WO-1852 defines.
+    assert.ok(/first_seen_staked_at/.test(code),
+        'WO-1852 builds this logic — its absence now means the Vigil stamp was reverted');
+    // ⛔ AND EVERY REFERENCE IS CONTAINED IN THE TWO FUNCTIONS THAT OWN IT. A raw count
+    //    ceiling would be an arbitrary number that goes stale on the first honest edit
+    //    (CLAUDE.md's whole duplicated-state lesson); containment is the real property.
+    //    The guards that make the write safe — the IS NULL predicate and NOW() — live in
+    //    stampFirstSeenStaked, so a reference anywhere ELSE is a write that escaped them.
+    const OWNERS = ['async function touchWalletIdentity(', 'async function stampFirstSeenStaked('];
+    const spans = OWNERS.map((sig) => {
+        const start = code.indexOf(sig);
+        assert.ok(start >= 0, 'fixture assumption: ' + sig + ' is present');
+        // Each function ends at the next top-level declaration.
+        const rest = code.slice(start + sig.length);
+        const end = rest.search(/\n(?:async )?function |\nconst \w+ = \{/);
+        return [start, start + sig.length + (end < 0 ? rest.length : end)];
+    });
+    const inAnOwner = (idx) => spans.some(([a, b]) => idx >= a && idx < b);
+
+    for (let i = code.indexOf('first_seen_staked_at'); i >= 0;
+         i = code.indexOf('first_seen_staked_at', i + 1)) {
+        assert.ok(inAnOwner(i),
+            'first_seen_staked_at is referenced OUTSIDE touchWalletIdentity / ' +
+            'stampFirstSeenStaked, at: ' + JSON.stringify(
+                code.slice(code.lastIndexOf('\n', i) + 1, code.indexOf('\n', i)).trim()));
     }
 });
 
