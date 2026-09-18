@@ -1,6 +1,6 @@
 # WORK ORDER 1855 — "stuck in battle model" after an arena win (BATTLE_QUIESCENCE_FAIL, rep-chase)
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 3fade9895, COMPILE_GATE_OK + REGRESSION_OK verified. PRIOR: READY FOR LEAD REVIEW
 **Filed by:** agent (dispatched live, owner mid-playtest report "my character is stuck in battle model still")
 **Numbering:** WO-1855, minted from `CLI_LANES_WO_NUMBERS.md` banner (next free was **1855**; bumped to
 **1856** in the same edit as this file, see the banner's own attribution note).

@@ -1,6 +1,6 @@
 # WORK ORDER 1856 — An always-reachable Settings door, plus a client-side "repair my session" action
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 67c915b73, COMPILE_GATE_OK + REGRESSION_OK verified. PRIOR: READY FOR LEAD REVIEW
 
 **Minted:** 2026-09-17, by the CLI lead, live during the WO-1855 investigation, from the owner's own
 words: *"i think this does show that we need a disection tool, if a plyer is stuck. THey will not
