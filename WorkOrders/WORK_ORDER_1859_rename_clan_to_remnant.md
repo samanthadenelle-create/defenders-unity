@@ -1,6 +1,6 @@
 # WORK ORDER 1859 — Rename the player-facing "clan" term to "Remnant"
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 670a1f3ff, COMPILE_GATE_OK + REGRESSION_OK 578/578 verified. PRIOR: READY FOR LEAD REVIEW
 
 **Minted:** 2026-09-17, by the CLI lead, from the owner's ruling (see memory
 `clan_renamed_to_remnant.md`): *"Remnant being the one that immediately tells me I'm playing Echoes

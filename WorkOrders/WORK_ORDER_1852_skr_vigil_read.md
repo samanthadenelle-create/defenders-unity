@@ -1,6 +1,6 @@
 # WORK ORDER 1852 — Clan system, step 9: SKR Vigil read (percentage-staked + game-tracked tenure)
 
-**Status:** READY FOR LEAD REVIEW - implemented 2026-09-17; `node --check` clean on all 5 JS files; `node --test test/*.test.js` 1047/1045 pass -> 1098/1096 pass with the SAME two pre-existing Heartbound reds and no new ones; NO commit, NO deploy (lead owns both). Two items need a lead/owner ruling before this ships: the percent DENOMINATOR (the spec's literal formula divides by zero for every real staker - FLAG 1) and whether `VIGIL_STAMP_ON_AUTH` should default OFF on cost grounds (FLAG 2). PRIOR STATUS: READY TO IMPLEMENT
+**Status:** DONE - committed c57e5c82d, COMPILE_GATE_OK + REGRESSION_OK 578/578 verified. PRIOR: READY FOR LEAD REVIEW - implemented 2026-09-17; `node --check` clean on all 5 JS files; `node --test test/*.test.js` 1047/1045 pass -> 1098/1096 pass with the SAME two pre-existing Heartbound reds and no new ones; NO commit, NO deploy (lead owns both). Two items need a lead/owner ruling before this ships: the percent DENOMINATOR (the spec's literal formula divides by zero for every real staker - FLAG 1) and whether `VIGIL_STAMP_ON_AUTH` should default OFF on cost grounds (FLAG 2). PRIOR STATUS: READY TO IMPLEMENT
 
 ## Context — clan WO-9 in the chain, depends on WO-1851 (landed, committed 2c22f341d)
 

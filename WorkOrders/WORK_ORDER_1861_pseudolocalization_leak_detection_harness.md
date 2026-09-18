@@ -1,6 +1,6 @@
 # WORK ORDER 1861 — Pseudolocalization leak-detection harness (the overnight localization QA loop)
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 6b24fc6c6, COMPILE_GATE_OK + REGRESSION_OK 578/578 verified. PRIOR: READY FOR LEAD REVIEW
 
 **Minted:** 2026-09-17, by the CLI lead, from the owner's overnight directive: a repeatable, all-night
 loop that finds every remaining hardcoded/untagged player-facing string by making it visually obvious,
