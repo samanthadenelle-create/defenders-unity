@@ -2353,3 +2353,64 @@ CREATE TABLE IF NOT EXISTS clan_rate_limit (
 
 CREATE INDEX IF NOT EXISTS clan_rate_limit_last_seen_idx
     ON clan_rate_limit (last_seen);
+
+-- =============================================================================
+-- clan_ballots / clan_ballot_votes / clan_perks - WO-1853 (clan step 10).
+--
+-- ⛔ THE APPLYABLE COPY IS api/migrations/20260917_0035_clan_ballots.sql.
+--    This block is the DESCRIPTION; only api/migrations/ is ever applied. That file
+--    carries the full reasoning (why the partial index exists, why expires_at is always
+--    NULL, why the perk PK is (clan_id, tier)); it is not repeated here, because a
+--    second copy of a rule is how the copies drift apart.
+--
+-- Endpoints : POST /api/clan/ballot/propose, POST /api/clan/ballot/vote,
+--             GET  /api/clan/ballot/current - all three through the one shared clan
+--             preamble (api/_lib/clan-http.js beginClanRequest); the logic lives in
+--             api/_lib/clan-ballot.js.
+-- Outcome   : the WINNER is a plurality of tenure-weighted vote weight (each voter's
+--             vigil_contribution from WO-1852, snapshotted at vote time into
+--             clan_ballot_votes.weight). WHETHER IT PASSES is a separate, size-scaled
+--             participation threshold - a ballot with a clear winner can still fail, and
+--             then closed_at is set while winning_option stays NULL and no clan_perks
+--             row is written. The threshold NUMBERS are a first-pass engineering default
+--             flagged for the owner; the authority is PARTICIPATION_BANDS in
+--             api/_lib/clan-ballot.js, and this comment may not be trusted over it.
+-- Cadence   : 48h epochs anchored to a fixed timestamp (EPOCH_ANCHOR_ISO). closes_at is
+--             a materialised boundary, so no stored row depends on the anchor.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS clan_ballots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    clan_id UUID NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+    proposed_by_wallet TEXT NOT NULL REFERENCES wallet_identity(wallet),
+    tier INTEGER NOT NULL,
+    options JSONB NOT NULL,
+    opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    closes_at TIMESTAMPTZ NOT NULL,
+    closed_at TIMESTAMPTZ NULL,
+    winning_option TEXT NULL,
+    CONSTRAINT clan_ballots_tier_range CHECK (tier BETWEEN 1 AND 5)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS clan_ballots_one_open_per_clan
+    ON clan_ballots (clan_id) WHERE closed_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS clan_ballots_clan_opened_idx
+    ON clan_ballots (clan_id, opened_at DESC);
+
+CREATE TABLE IF NOT EXISTS clan_ballot_votes (
+    ballot_id UUID NOT NULL REFERENCES clan_ballots(id) ON DELETE CASCADE,
+    wallet TEXT NOT NULL REFERENCES wallet_identity(wallet),
+    option_id TEXT NOT NULL,
+    voted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    weight NUMERIC NOT NULL,
+    PRIMARY KEY (ballot_id, wallet)
+);
+
+CREATE TABLE IF NOT EXISTS clan_perks (
+    clan_id UUID NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+    tier INTEGER NOT NULL,
+    perk_id TEXT NOT NULL,
+    activated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NULL,
+    PRIMARY KEY (clan_id, tier)
+);

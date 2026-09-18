@@ -188,6 +188,25 @@ by this lane; both were present in the before-run:
 
 `node --check` passes on all five JS files (run individually, output captured).
 
+**⛔ THIS LANE WAS COMMITTED MID-FLIGHT, AND THE COMMIT IS ONE FILE SHORT — `api/schema.sql`.**
+Commit `1806d3ce4` *"feat(clan): WO-1853 (clan WO-10) - five-tier perk ballot"* landed at **22:40:36**,
+while this record was still being written. It carries seven paths: the library, the three routes, the
+migration, the suite and this markdown — **but NOT the `api/schema.sql` descriptive block**, which is
+still an unstaged working-tree change. That is not cosmetic: **at `1806d3ce4` alone the new suite is
+75/76**, because the case *"api/schema.sql carries the DESCRIPTIVE copy…"* goes red. Proven by checking
+the file back out, re-running (**75 pass / 1 fail**, that one case), and restoring it byte-exactly
+(CRLF 2416 / LF 2416 / **0 bare LF**, unchanged). **Still to stage: `api/schema.sql`, plus this
+markdown's post-22:40 edits (FLAG 10, the generated FLAG 1 sequence, the 42883 correction, this
+paragraph) and `BOARD.html`.**
+
+**⚠ THE BASELINE MOVED WHILE I MEASURED, SO HERE IS WHEN.** The before/after pair above was taken at
+**22:33 and 22:36** and is the honest comparison for this lane: identical two reds either side. A later
+full-suite run at **22:42** read **1223 / 1212 / 10 fail** — +49 tests and +8 reds that arrived with the
+WO-1854 lane's own new suite (`test/clan-vault-genesis.test.js`, 6 reds) plus
+`test/clan-chat-release-gate.test.js` (1 red), none of them in a file this lane wrote and none of them in
+`test/clan-ballot.test.js`, which was **76/76 green on every run including that one**. Read the suite total
+as a moving number tonight, and judge this lane by its own suite plus the unchanged two.
+
 **⚠ A CONCURRENT LANE IS IN THIS TREE AND I SAW IT MID-WRITE.** A first full-suite run at 22:31 showed a
 THIRD failure — `ReferenceError: vaultToWire is not defined at api/_lib/clan-vigil.js:350` breaking
 `test/clan-vigil.test.js`. That was WO-1854 writing `clan-vigil.js` between my two runs (`vaultToWire`
