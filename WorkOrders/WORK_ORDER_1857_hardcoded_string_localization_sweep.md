@@ -1,6 +1,13 @@
 # WORK ORDER 1857 — Codebase-wide sweep: every hardcoded player-facing string routes through localization
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY TO IMPLEMENT — phases 1-2 DONE (commits `96966276f`, `814794c66`), phase 4 first
+batch DONE (commit `6f80a3814`, 2026-09-18: Dungeons + Core + HUD + Onboarding + small-modules
+bundle, 196 keys). Still open: the Village shard (541 statements, by far the largest, not yet
+started) plus a Google Play packaging-gate closure this batch needed but was not originally scoped
+(commit `6f80a3814` also closed it). Full running ledger:
+`docs/handoffs/OVERNIGHT_LOCALIZATION_2026-09-17.md`. NOT DONE until Village lands and the owner
+rules on the open items that doc lists (canonical-JSON content-localization scope, AdminOverlay
+reachability, device font-coverage proof).
 
 **Phase 1 (classification + planning) is COMPLETE — 2026-09-17.** The manifest was regenerated
 (`6459 entries … 5812 literals`) and every candidate classified into the five buckets. Full artifact:
