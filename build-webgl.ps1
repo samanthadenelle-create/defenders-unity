@@ -132,6 +132,25 @@ if (Test-Path $index) {
     $mb = [math]::Round(((Get-ChildItem $outDir -Recurse -File | Measure-Object Length -Sum).Sum) / 1MB, 1)
     Write-Host "[webgl] SUCCESS -> $index (build dir ~$mb MB on disk)"
 
+    # --- Restore extra static pages the Unity build itself doesn't produce ------
+    # This project's Vercel static root IS this output dir (vercel.json
+    # outputDirectory), so any hand-authored page (a video showcase, the
+    # clan-chat.html Cherry embed host) has to live HERE to be servable at all -
+    # and a fresh build wipes $outDir first, silently dropping them every time.
+    # WebExtras/ is the durable source; site/clan-chat.html stays the canonical
+    # source for that one file. Never treat a missing page here as fatal - a
+    # missing extra should not fail the whole WebGL build.
+    $webExtras = Join-Path $proj 'WebExtras'
+    if (Test-Path $webExtras) {
+        Copy-Item -Path (Join-Path $webExtras '*') -Destination $outDir -Recurse -Force
+        Write-Host "[webgl] Restored WebExtras/ into $outDir (raids.html + media, etc.)"
+    }
+    $clanChatSrc = Join-Path $proj 'site\clan-chat.html'
+    if (Test-Path $clanChatSrc) {
+        Copy-Item -Path $clanChatSrc -Destination (Join-Path $outDir 'clan-chat.html') -Force
+        Write-Host "[webgl] Restored site/clan-chat.html into $outDir"
+    }
+
     if ($NoBrotli) {
         # itch.io packaging: no .br payloads, no Vercel header file, zip the folder.
         $br = Get-ChildItem $outDir -Recurse -File -Filter '*.br' -ErrorAction SilentlyContinue

@@ -731,3 +731,7 @@ __pycache__/
 # Resources/ + Addressable paths — see WorkOrders/WORK_ORDER_1289_*.md.
 /Assets/Synty/
 /Assets/Synty.meta
+
+# WebExtras/media holds large binary assets (video) for the WebGL static site -
+# too big to track in git; build-webgl.ps1 copies it in from disk if present.
+/WebExtras/media/
