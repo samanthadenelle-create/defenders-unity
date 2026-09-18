@@ -189,6 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-fourth pass): main line next free = **1861**.
+> *(Lead minted **WO-1860** — owner ask: a full headless screenshot catalog of every player-facing
+> screen carrying any text (~45 screens, no threshold - "a single letter of text" counts), queued
+> for tonight's overnight cycle alongside WO-1857. Uses the existing UICaptureLaunch.cs harness;
+> the 2026-09-04 screen graph doc is stale and must be re-verified against current code, not trusted.)*
+>
 > ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-third pass): main line next free = **1860**.
 > *(Lead minted **WO-1859** — owner ruling: player-facing "clan" renames to "Remnant" (memory
 > `clan_renamed_to_remnant.md`). Locale content edit only; no internal identifier renames. Future
