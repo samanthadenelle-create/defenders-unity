@@ -2,6 +2,27 @@
 
 **Status:** READY TO IMPLEMENT
 
+**Phase 1 (classification + planning) is COMPLETE — 2026-09-17.** The manifest was regenerated
+(`6459 entries … 5812 literals`) and every candidate classified into the five buckets. Full artifact:
+`docs/localization/SWEEP_CLASSIFICATION_2026-09-17.md`. Headline: **817 actionable statements**
+(766 genuine-leak + 51 already-has-a-key-but-hardcoded-elsewhere) across 13 file-disjoint module
+shards, 33 shared `common.*` candidates, and a **proven detector gap** — the six `AddDockTab` labels
+this ticket was minted for are **NOT in the manifest** (`Get-CSharpContext`,
+`tools/localization/build-string-manifest.ps1:112-125`, returns no `uiHint` for the call shape, so
+`:231` skips the line; a statement-aware grep finds 337 more lines the manifest never emitted).
+NOTHING was wired, tagged or edited in this pass — no locale JSON, no Localization table asset, no `.cs`.
+
+**Next steps (in order, as phases 2+):** (1) the **blocking scanner-fix lane** on
+`build-string-manifest.ps1` — teach it the project's own UI helpers and make the diagnostic exclusion
+STATEMENT-aware; (2) the **acceptance-floor lane** on the six `HudKitController.cs:5557-5572`
+`AddDockTab` labels, reusing the existing `settings.title`; (3) the **`common.*` lane**, minted before
+any shard runs so shards reuse rather than duplicate; (4) the **sharded tagging lanes**, one per
+top-level `Assets/_Modules/<module>/` directory, biggest first (`Village` 541 statements — split by
+sub-directory, then `Core` 88, `HUD` 72, `Dungeons` 33, `Onboarding` 28, and the small ones together);
+(5) the **owner rulings** in §6 of the artifact (canonical-JSON content localization in or out of this
+ticket; is `AdminOverlay` reachable in a release build). Do not mark this ticket DONE until the
+scanner-fix lane has landed and the manifest has been re-diffed against the artifact.
+
 **Minted:** 2026-09-17, by the CLI lead, from the owner's own words, stated as a standing law: *"this
 is supposed to be a steadfast rule for all development. Anything that has text needs to go through
 local so we can be put in all the languages that's a law that we have."*
