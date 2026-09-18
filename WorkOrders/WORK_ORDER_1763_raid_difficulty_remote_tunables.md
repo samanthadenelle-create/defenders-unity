@@ -1,6 +1,6 @@
 # WORK ORDER 1763 — Per-camp REMOTE raid-difficulty overrides (DB-tunable, no build)
 
-**Status:** IMPLEMENTED, NOT YET GATED
+**Status:** IMPLEMENTED, GATED 2026-09-18 (`Builds/reg1869c` REGRESSION_OK 581/581, `Builds/cg1869` COMPILE_GATE_OK); rides the next tester APK, owner felt-verify closes. PRIOR: IMPLEMENTED, NOT YET GATED
 **Minted:** 2026-09-16 (CLI banner, two-hundred-and-tenth pass — bumped 1763 -> 1764 in the same edit)
 **Silo:** Raid economy / remote tunables — `DeNelle.Core.Ops` + `DeNelle.Village` + `api/` + the tunable docs/manifest chain
 **Lane disjointness:** touches NO `.unity`, NO scene builder, NO canonical JSON. File-disjoint from any art, HUD or scene lane.

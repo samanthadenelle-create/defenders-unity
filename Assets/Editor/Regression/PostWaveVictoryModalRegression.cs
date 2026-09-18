@@ -16,7 +16,8 @@ namespace DeNelle.Editor.Regression
             string wave = File.ReadAllText("Assets/_Modules/Village/Waves/WaveManager.cs");
 
             Need(vm, "Compact = false", "wave result is not the full Obsidian modal", failures);
-            Need(vm, "Prepare for Wave {waveNumber + 1}", "next action is missing", failures);
+            // WO-1857: the label is localized; the needle follows the key + the wave argument.
+            Need(vm, "LocalText.Format(\"raid.wave.prepare_next\", waveNumber + 1)", "next action is missing", failures);
             Need(vm, "HoldWorld = true", "wave result does not hold the countdown", failures);
             Need(view, "WorldHold.AcquirePlayerOwned(", "shared hold is not acquired", failures);
             // WO-1369: the hold must carry its REQUIRED liveness probe, and the probe must be the
