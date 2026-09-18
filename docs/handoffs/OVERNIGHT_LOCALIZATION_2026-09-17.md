@@ -382,6 +382,31 @@ complete** - every one of the 5 lanes' own summaries lists a much larger remaini
 (World/Harvest/most of Troops untouched entirely; UI's 391 candidates and most of Talents
 untouched; ~450+ more genuine rows estimated in Hero/Buildings beyond this pass).
 
+## Update 2026-09-18 ~03:40 - batch 2 cleanup landed, re-running pseudoloc for real evidence
+
+Dispatched one small, exactly-specified cleanup lane (haiku, per the advisor's guidance: narrow
+scope, mandatory proof-of-work in the hand-back) for the 6 residual items the batch-2 merge lane
+flagged. It delivered correctly on the first try - the narrow-scope + proof-required brief shape
+works. Independently verified every claim (sidecar rows, brace checks, the two registry re-points
+actually landed and the old keys have zero remaining references) before merging.
+
+Fixed: 10 previously-unwired keys now resolve at their call sites; the `PointsLabel`/
+`CastleToggleLabel` dead-key defect (Arena panels were overwriting an already-localized string with
+raw English on every refresh - the exact "looks done, isn't" class of bug); the two
+`COMMON_KEYS_REGISTRY.md` violations re-pointed to the shared `common.retreat`/`common.done` keys
+and the 2 resulting orphan keys deleted from all 20 locale files + 7 tables. Net: 826 -> 828 real
+keys (830 total with the 2 metadata rows). Landed as `38f17bd55` after `COMPILE_GATE_OK` +
+`REGRESSION_OK 578/578` on a fresh log, plus `0f145082d` board regen.
+
+(Minor: the commit message for `38f17bd55` says "828 -> 830 real keys" - that's wrong, it should
+read "826 -> 828 real keys, 828 -> 830 total including the 2 metadata rows." Recorded here rather
+than amending the commit.)
+
+Next: re-running the pseudoloc capture (`RunPseudolocCaptureHeadless`) now that batch 2 + cleanup
+are in, to get real before/after evidence instead of continuing to plan from the manifest's known
+~30-40% precision ceiling - this is the actual validation loop the owner asked for, and it's the
+right check after a meaningful batch lands, not just once at the start of the night.
+
 ## Next steps for whoever picks this up
 
 1. **Rule on the two `COMMON_KEYS_REGISTRY.md` violations** (village.troops.raid_deploy.retreat_button
