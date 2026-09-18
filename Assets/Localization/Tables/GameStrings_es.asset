@@ -3247,10 +3247,6 @@ MonoBehaviour:
     m_Localized: "Desequipar"
     m_Metadata:
       m_Items: []
-  - m_Id: 44124330363760898
-    m_Localized: "Hecho"
-    m_Metadata:
-      m_Items: []
   - m_Id: 44124330363760899
     m_Localized: "No tienes objetos compatibles."
     m_Metadata:
@@ -3385,10 +3381,6 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760932
     m_Localized: "Retir\u00E1ndose al castillo..."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 44124330363760933
-    m_Localized: "Retirarse"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760934
@@ -3537,6 +3529,22 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760972
     m_Localized: "Conectar cartera"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760973
+    m_Localized: "Puntos de Escuadra: {0} / {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760974
+    m_Localized: "MI CASTILLO  *"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760975
+    m_Localized: "USAR MI CASTILLO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760976
+    m_Localized: "Esa ranura ya est\u00E1 vac\u00EDa."
     m_Metadata:
       m_Items: []
 

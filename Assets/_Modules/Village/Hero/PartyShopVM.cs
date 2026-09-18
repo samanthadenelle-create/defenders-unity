@@ -669,7 +669,7 @@ namespace DeNelle.Village.Hero
             if (string.IsNullOrEmpty(id)) return;
             SelectedId = id;
             if (_rowActions.TryGetValue(id, out var act) && act != null) act();
-            else Status = "Nothing to do for that item.";
+            else Status = new DeNelle.Core.UI.LocalizedText("village.hero.party_shop.nothing_to_do").Resolve();
             Raise();
         }
 
@@ -739,14 +739,14 @@ namespace DeNelle.Village.Hero
         public void ImproveSelected()
         {
             string id = SelectedId;
-            if (string.IsNullOrEmpty(id)) { Status = "Select an item to improve."; Raise(); return; }
+            if (string.IsNullOrEmpty(id)) { Status = new DeNelle.Core.UI.LocalizedText("village.hero.party_shop.select_improve").Resolve(); Raise(); return; }
             if (_store == null || _store.OwnedQuantity(id) <= 0)
             {
-                Status = "You must own it before you can improve it.";
+                Status = new DeNelle.Core.UI.LocalizedText("village.hero.party_shop.must_own_improve").Resolve();
                 Raise(); return;
             }
             string rarity = RarityOf(id);
-            if (rarity == null) { Status = "That item can't be improved."; Raise(); return; }
+            if (rarity == null) { Status = new DeNelle.Core.UI.LocalizedText("village.hero.party_shop.cant_improve").Resolve(); Raise(); return; }
 
             if (!GearProgression.CanImprove(id, rarity, out string reason))
             {
@@ -761,7 +761,7 @@ namespace DeNelle.Village.Hero
             int newLevel = GearProgression.Improve(id, rarity);
             Status = newLevel > 0
                 ? name + " improved to Lv " + newLevel + "."
-                : "Improve failed.";
+                : new DeNelle.Core.UI.LocalizedText("village.hero.party_shop.improve_failed").Resolve();
             Rebuild();
             Raise();
         }

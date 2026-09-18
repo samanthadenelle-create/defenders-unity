@@ -758,7 +758,6 @@
   "village.hero.equipment.remove_button": "إزالة",
   "village.hero.equipment.back_button": "رجوع",
   "village.hero.equipment.unequip_button": "إزالة التجهيز",
-  "village.hero.equipment.done_button": "تم",
   "village.hero.equipment.no_compatible_items": "لا توجد عناصر متوافقة مملوكة.",
   "village.hero.equipment.select_compare": "اختر عنصراً للمقارنة.",
   "village.hero.party_shop.select_equip": "اختر عنصراً لتجهيزه.",
@@ -793,7 +792,6 @@
   "village.troops.raid_deploy.confirm_retreat_button": "تأكيد التراجع",
   "village.troops.raid_deploy.time_falling_back": "الوقت! يتراجعون إلى القلعة...",
   "village.troops.raid_deploy.retreating": "يتراجعون إلى القلعة...",
-  "village.troops.raid_deploy.retreat_button": "التراجع",
   "village.troops.raid_deploy.deploy_all_button": "نشر الكل",
   "village.troops.raid_deploy.no_troops_train": "لا توجد قوات للنشر - تدرب في الثكنة أولاً.",
   "village.troops.raid_deploy.deploy_all_unavailable": "نشر الكل غير متاح - لا توجد جيش جاهز أو بطل.",
@@ -830,5 +828,9 @@
   "talents.loadout.confirm_hint": "الآن اضغط على فتحة التبديل السريع.",
   "talents.loadout.pick_first_then_slot": "اختر مهارة أولاً، ثم اضغط على فتحة.",
   "onboarding.login_panel.connect_cta_google": "المتابعة باستخدام Google",
-  "onboarding.login_panel.connect_cta_wallet": "ربط المحفظة"
+  "onboarding.login_panel.connect_cta_wallet": "ربط المحفظة",
+  "arena.attack_palette.points_label": "نقاط الفريق: {0} / {1}",
+  "arena.castle_toggle.my_castle": "قلعتي  *",
+  "arena.castle_toggle.use_my_castle": "استخدم قلعتي",
+  "talents.loadout.slot_already_empty": "هذه الفتحة فارغة بالفعل."
 }

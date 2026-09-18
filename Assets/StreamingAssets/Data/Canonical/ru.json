@@ -758,7 +758,6 @@
   "village.hero.equipment.remove_button": "СНЯТЬ",
   "village.hero.equipment.back_button": "НАЗАД",
   "village.hero.equipment.unequip_button": "Снять экипировку",
-  "village.hero.equipment.done_button": "Готово",
   "village.hero.equipment.no_compatible_items": "Нет совместимых предметов.",
   "village.hero.equipment.select_compare": "Выберите предмет для сравнения.",
   "village.hero.party_shop.select_equip": "Выберите предмет для экипировки.",
@@ -793,7 +792,6 @@
   "village.troops.raid_deploy.confirm_retreat_button": "Подтвердить отступление",
   "village.troops.raid_deploy.time_falling_back": "Время! Отступаем к замку...",
   "village.troops.raid_deploy.retreating": "Отступаем к замку...",
-  "village.troops.raid_deploy.retreat_button": "Отступить",
   "village.troops.raid_deploy.deploy_all_button": "Развернуть все",
   "village.troops.raid_deploy.no_troops_train": "Нет войск для развертывания - сначала тренируйся в казарме.",
   "village.troops.raid_deploy.deploy_all_unavailable": "Развернуть все недоступно - нет готовой армии или героя.",
@@ -830,5 +828,9 @@
   "talents.loadout.confirm_hint": "Теперь нажмите на слот быстрого обмена.",
   "talents.loadout.pick_first_then_slot": "Сначала выберите навык, затем нажмите на слот.",
   "onboarding.login_panel.connect_cta_google": "Продолжить через Google",
-  "onboarding.login_panel.connect_cta_wallet": "Подключить кошелёк"
+  "onboarding.login_panel.connect_cta_wallet": "Подключить кошелёк",
+  "arena.attack_palette.points_label": "Пункты Отряда: {0} / {1}",
+  "arena.castle_toggle.my_castle": "МОЙ ЗАМОК  *",
+  "arena.castle_toggle.use_my_castle": "ИСПОЛЬЗОВАТЬ МОЙ ЗАМОК",
+  "talents.loadout.slot_already_empty": "Этот слот уже пуст."
 }

@@ -110,7 +110,7 @@ namespace DeNelle.Village.Arena
         public string DefenderLabel => UsePlayerCastle ? "My Castle" : "Seeded opponent";
 
         /// <summary>The toggle button caption (ASCII glyph on the ON state — colorblind-safe).</summary>
-        public string CastleToggleLabel => UsePlayerCastle ? "MY CASTLE  *" : "USE MY CASTLE";
+        public string CastleToggleLabel => UsePlayerCastle ? LocalText.Get("arena.castle_toggle.my_castle") : LocalText.Get("arena.castle_toggle.use_my_castle");
 
         // Per-opponent detail helpers (View renders from these — no catalog re-pull).
         public string FlavourFor(string id) { var o = OppOf(id); return o != null ? o.Flavour : ""; }

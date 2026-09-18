@@ -203,7 +203,7 @@ namespace DeNelle.Village.Talents
         {
             if (AssignableSkillBarAccess.EditsLocked) { Status = LocalText.Get("talents.loadout.battle_locked"); Raise(); return; }
             bool ok = AssignableSkillBarAccess.Clear(slotIndex);
-            Status = ok ? "Slot cleared." : "That slot is already empty.";
+            Status = ok ? LocalText.Get("talents.loadout.slot_cleared") : LocalText.Get("talents.loadout.slot_already_empty");
             Rebuild();
             Raise();
         }

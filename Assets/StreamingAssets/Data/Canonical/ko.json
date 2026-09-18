@@ -758,7 +758,6 @@
   "village.hero.equipment.remove_button": "제거",
   "village.hero.equipment.back_button": "뒤로",
   "village.hero.equipment.unequip_button": "장착 해제",
-  "village.hero.equipment.done_button": "완료",
   "village.hero.equipment.no_compatible_items": "호환되는 아이템이 없습니다.",
   "village.hero.equipment.select_compare": "비교할 항목을 선택하세요.",
   "village.hero.party_shop.select_equip": "장착할 항목을 선택하세요.",
@@ -793,7 +792,6 @@
   "village.troops.raid_deploy.confirm_retreat_button": "철수 확인",
   "village.troops.raid_deploy.time_falling_back": "시간이 되었습니다! 성으로 철수하는 중...",
   "village.troops.raid_deploy.retreating": "성으로 철수하는 중...",
-  "village.troops.raid_deploy.retreat_button": "철수",
   "village.troops.raid_deploy.deploy_all_button": "모두 배치",
   "village.troops.raid_deploy.no_troops_train": "배치할 부대가 없습니다 - 먼저 병 barracks에서 훈련하세요.",
   "village.troops.raid_deploy.deploy_all_unavailable": "모두 배치 사용 불가 - 준비된 군대 또는 영웅이 없습니다.",
@@ -830,5 +828,9 @@
   "talents.loadout.confirm_hint": "이제 핫스앱 슬랫을 팑하세요.",
   "talents.loadout.pick_first_then_slot": "먼저 스플을 선택한 다음 슬랫을 팑하세요.",
   "onboarding.login_panel.connect_cta_google": "Google로 계속하기",
-  "onboarding.login_panel.connect_cta_wallet": "지갑 연결"
+  "onboarding.login_panel.connect_cta_wallet": "지갑 연결",
+  "arena.attack_palette.points_label": "분대 포인트: {0} / {1}",
+  "arena.castle_toggle.my_castle": "내 성  *",
+  "arena.castle_toggle.use_my_castle": "내 성 사용",
+  "talents.loadout.slot_already_empty": "그 슬롯은 이미 비어 있습니다."
 }

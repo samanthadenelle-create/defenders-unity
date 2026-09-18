@@ -758,7 +758,6 @@
   "village.hero.equipment.remove_button": "外す",
   "village.hero.equipment.back_button": "戻る",
   "village.hero.equipment.unequip_button": "装備を外す",
-  "village.hero.equipment.done_button": "完了",
   "village.hero.equipment.no_compatible_items": "互換性のあるアイテムは所有していません。",
   "village.hero.equipment.select_compare": "比較するアイテムを選択してください。",
   "village.hero.party_shop.select_equip": "装備するアイテムを選択してください。",
@@ -793,7 +792,6 @@
   "village.troops.raid_deploy.confirm_retreat_button": "撤退を確認",
   "village.troops.raid_deploy.time_falling_back": "時間! 城に撤退しています...",
   "village.troops.raid_deploy.retreating": "城に撤退しています...",
-  "village.troops.raid_deploy.retreat_button": "撤退",
   "village.troops.raid_deploy.deploy_all_button": "すべて配置",
   "village.troops.raid_deploy.no_troops_train": "配置する部隊がない - まず兵舎で訓練してください。",
   "village.troops.raid_deploy.deploy_all_unavailable": "すべて配置は使用不可 - 準備ができた軍隊またはヒーローがありません。",
@@ -830,5 +828,9 @@
   "talents.loadout.confirm_hint": "次にホットスワップスロットをタップしてください。",
   "talents.loadout.pick_first_then_slot": "まずスキルを選び、次にスロットをタップしてください。",
   "onboarding.login_panel.connect_cta_google": "Googleで続ける",
-  "onboarding.login_panel.connect_cta_wallet": "ウォレットを接続"
+  "onboarding.login_panel.connect_cta_wallet": "ウォレットを接続",
+  "arena.attack_palette.points_label": "スクワッドポイント: {0} / {1}",
+  "arena.castle_toggle.my_castle": "私の城  *",
+  "arena.castle_toggle.use_my_castle": "私の城を使う",
+  "talents.loadout.slot_already_empty": "そのスロットは既に空です。"
 }

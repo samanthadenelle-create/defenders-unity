@@ -3272,10 +3272,6 @@ MonoBehaviour:
     m_Localized: "D\u00E9gainer"
     m_Metadata:
       m_Items: []
-  - m_Id: 44124330363760898
-    m_Localized: "Termin\u00E9"
-    m_Metadata:
-      m_Items: []
   - m_Id: 44124330363760899
     m_Localized: "Aucun objet compatible poss\u00E9d\u00E9."
     m_Metadata:
@@ -3410,10 +3406,6 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760932
     m_Localized: "Retrait vers le ch\u00E2teau..."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 44124330363760933
-    m_Localized: "Retraite"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760934
@@ -3562,6 +3554,22 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760972
     m_Localized: "Connecter le portefeuille"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760973
+    m_Localized: "Points d'Escouade: {0} / {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760974
+    m_Localized: "MON CH\u00C2TEAU  *"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760975
+    m_Localized: "UTILISER MON CH\u00C2TEAU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760976
+    m_Localized: "Cet emplacement est d\u00E9j\u00E0 vide."
     m_Metadata:
       m_Items: []
 

@@ -3027,10 +3027,6 @@ MonoBehaviour:
     m_Key: village.hero.equipment.unequip_button
     m_Metadata:
       m_Items: []
-  - m_Id: 44124330363760898
-    m_Key: village.hero.equipment.done_button
-    m_Metadata:
-      m_Items: []
   - m_Id: 44124330363760899
     m_Key: village.hero.equipment.no_compatible_items
     m_Metadata:
@@ -3165,10 +3161,6 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760932
     m_Key: village.troops.raid_deploy.retreating
-    m_Metadata:
-      m_Items: []
-  - m_Id: 44124330363760933
-    m_Key: village.troops.raid_deploy.retreat_button
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760934
@@ -3317,6 +3309,22 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760972
     m_Key: onboarding.login_panel.connect_cta_wallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760973
+    m_Key: arena.attack_palette.points_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760974
+    m_Key: arena.castle_toggle.my_castle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760975
+    m_Key: arena.castle_toggle.use_my_castle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760976
+    m_Key: talents.loadout.slot_already_empty
     m_Metadata:
       m_Items: []
   m_Metadata:

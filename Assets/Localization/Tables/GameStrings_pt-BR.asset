@@ -3251,10 +3251,6 @@ MonoBehaviour:
     m_Localized: "Desequipar"
     m_Metadata:
       m_Items: []
-  - m_Id: 44124330363760898
-    m_Localized: "Feito"
-    m_Metadata:
-      m_Items: []
   - m_Id: 44124330363760899
     m_Localized: "Nenhum item compat\u00EDvel possu\u00EDdo."
     m_Metadata:
@@ -3389,10 +3385,6 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760932
     m_Localized: "Recuando para o castelo..."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 44124330363760933
-    m_Localized: "Recuar"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760934
@@ -3541,6 +3533,22 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760972
     m_Localized: "Conectar carteira"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760973
+    m_Localized: "Pontos de Esquadra: {0} / {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760974
+    m_Localized: "MEU CASTELO  *"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760975
+    m_Localized: "USAR MEU CASTELO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760976
+    m_Localized: "Esse slot j\u00E1 est\u00E1 vazio."
     m_Metadata:
       m_Items: []
 

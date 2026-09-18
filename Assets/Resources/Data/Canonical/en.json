@@ -758,7 +758,6 @@
   "village.hero.equipment.remove_button": "REMOVE",
   "village.hero.equipment.back_button": "BACK",
   "village.hero.equipment.unequip_button": "Unequip",
-  "village.hero.equipment.done_button": "Done",
   "village.hero.equipment.no_compatible_items": "No compatible items owned.",
   "village.hero.equipment.select_compare": "Select an item to compare.",
   "village.hero.party_shop.select_equip": "Select an item to equip.",
@@ -793,7 +792,6 @@
   "village.troops.raid_deploy.confirm_retreat_button": "Confirm Retreat",
   "village.troops.raid_deploy.time_falling_back": "Time! Falling back to the castle...",
   "village.troops.raid_deploy.retreating": "Retreating to the castle...",
-  "village.troops.raid_deploy.retreat_button": "Retreat",
   "village.troops.raid_deploy.deploy_all_button": "Deploy All",
   "village.troops.raid_deploy.no_troops_train": "No troops to deploy - train at the Barracks first.",
   "village.troops.raid_deploy.deploy_all_unavailable": "Deploy All unavailable - no ready army or hero.",
@@ -830,5 +828,9 @@
   "talents.loadout.confirm_hint": "Now tap a hot-swap slot.",
   "talents.loadout.pick_first_then_slot": "Pick a skill first, then tap a slot.",
   "onboarding.login_panel.connect_cta_google": "Continue with Google",
-  "onboarding.login_panel.connect_cta_wallet": "Connect Wallet"
+  "onboarding.login_panel.connect_cta_wallet": "Connect Wallet",
+  "arena.attack_palette.points_label": "Squad Points: {0} / {1}",
+  "arena.castle_toggle.my_castle": "MY CASTLE  *",
+  "arena.castle_toggle.use_my_castle": "USE MY CASTLE",
+  "talents.loadout.slot_already_empty": "That slot is already empty."
 }

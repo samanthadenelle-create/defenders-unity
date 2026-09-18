@@ -758,7 +758,6 @@
   "village.hero.equipment.remove_button": "RETIRER",
   "village.hero.equipment.back_button": "RETOUR",
   "village.hero.equipment.unequip_button": "Dégainer",
-  "village.hero.equipment.done_button": "Terminé",
   "village.hero.equipment.no_compatible_items": "Aucun objet compatible possédé.",
   "village.hero.equipment.select_compare": "Sélectionnez un objet à comparer.",
   "village.hero.party_shop.select_equip": "Sélectionnez un objet à équiper.",
@@ -793,7 +792,6 @@
   "village.troops.raid_deploy.confirm_retreat_button": "Confirmer Retraite",
   "village.troops.raid_deploy.time_falling_back": "Temps! Retrait vers le château...",
   "village.troops.raid_deploy.retreating": "Retrait vers le château...",
-  "village.troops.raid_deploy.retreat_button": "Retraite",
   "village.troops.raid_deploy.deploy_all_button": "Déployer Tous",
   "village.troops.raid_deploy.no_troops_train": "Pas de troupes à déployer - entraîne-toi à la Caserne d'abord.",
   "village.troops.raid_deploy.deploy_all_unavailable": "Déployer Tous indisponible - aucune armée prête ou héros.",
@@ -830,5 +828,9 @@
   "talents.loadout.confirm_hint": "Touchez maintenant un emplacement de commutation rapide.",
   "talents.loadout.pick_first_then_slot": "Choisissez d'abord une compétence, puis touchez un emplacement.",
   "onboarding.login_panel.connect_cta_google": "Continuer avec Google",
-  "onboarding.login_panel.connect_cta_wallet": "Connecter le portefeuille"
+  "onboarding.login_panel.connect_cta_wallet": "Connecter le portefeuille",
+  "arena.attack_palette.points_label": "Points d'Escouade: {0} / {1}",
+  "arena.castle_toggle.my_castle": "MON CHÂTEAU  *",
+  "arena.castle_toggle.use_my_castle": "UTILISER MON CHÂTEAU",
+  "talents.loadout.slot_already_empty": "Cet emplacement est déjà vide."
 }

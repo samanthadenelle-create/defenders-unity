@@ -758,7 +758,6 @@
   "village.hero.equipment.remove_button": "QUITAR",
   "village.hero.equipment.back_button": "ATRÁS",
   "village.hero.equipment.unequip_button": "Desequipar",
-  "village.hero.equipment.done_button": "Hecho",
   "village.hero.equipment.no_compatible_items": "No tienes objetos compatibles.",
   "village.hero.equipment.select_compare": "Selecciona un objeto para comparar.",
   "village.hero.party_shop.select_equip": "Selecciona un objeto para equipar.",
@@ -793,7 +792,6 @@
   "village.troops.raid_deploy.confirm_retreat_button": "Confirmar Retirada",
   "village.troops.raid_deploy.time_falling_back": "¡Tiempo! Retirándose al castillo...",
   "village.troops.raid_deploy.retreating": "Retirándose al castillo...",
-  "village.troops.raid_deploy.retreat_button": "Retirarse",
   "village.troops.raid_deploy.deploy_all_button": "Desplegar Todo",
   "village.troops.raid_deploy.no_troops_train": "Sin tropas para desplegar - entrena en el Cuartel primero.",
   "village.troops.raid_deploy.deploy_all_unavailable": "Desplegar Todo no disponible - sin ejército listo o héroe.",
@@ -830,5 +828,9 @@
   "talents.loadout.confirm_hint": "Ahora toca una ranura de intercambio rápido.",
   "talents.loadout.pick_first_then_slot": "Elige primero una habilidad y luego toca una ranura.",
   "onboarding.login_panel.connect_cta_google": "Continuar con Google",
-  "onboarding.login_panel.connect_cta_wallet": "Conectar cartera"
+  "onboarding.login_panel.connect_cta_wallet": "Conectar cartera",
+  "arena.attack_palette.points_label": "Puntos de Escuadra: {0} / {1}",
+  "arena.castle_toggle.my_castle": "MI CASTILLO  *",
+  "arena.castle_toggle.use_my_castle": "USAR MI CASTILLO",
+  "talents.loadout.slot_already_empty": "Esa ranura ya está vacía."
 }

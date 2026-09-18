@@ -2789,7 +2789,7 @@ namespace DeNelle.Village
                 new Vector2(0.815f, faceY0), new Vector2(0.955f, faceY1), ToggleRally);
             // Owner layout: persistent exit above the right-side raid readout.
             var retreatBand = HudLayoutBands.RaidRetreatBand;
-            _retreatButton = ElarionUiKit.Button(_ui.transform, new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.retreat_button").Resolve(), ElarionUiKit.ButtonKind.Danger,
+            _retreatButton = ElarionUiKit.Button(_ui.transform, new DeNelle.Core.UI.LocalizedText("common.retreat").Resolve(), ElarionUiKit.ButtonKind.Danger,
                 new Vector2(retreatBand.xMin, retreatBand.yMin),
                 new Vector2(retreatBand.xMax, retreatBand.yMax), OnRetreatPressed);
 

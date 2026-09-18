@@ -91,9 +91,9 @@ namespace DeNelle.Village.Arena
             get
             {
                 if (Mode == ArenaPaletteMode.Attack)
-                    return "Squad Points: " + Spent + " / " + _pool +
+                    return LocalText.Format("arena.attack_palette.points_label", Spent, _pool) +
                            (SquadCount > 0 ? "   (" + SquadCount + " units)" : "");
-                return "Defense Points: " + Remaining + " / " + _pool;
+                return LocalText.Format("arena.defense_palette.points_label", Remaining, _pool);
             }
         }
 

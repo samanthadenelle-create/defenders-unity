@@ -3215,10 +3215,6 @@ MonoBehaviour:
     m_Localized: "Unequip"
     m_Metadata:
       m_Items: []
-  - m_Id: 44124330363760898
-    m_Localized: "Done"
-    m_Metadata:
-      m_Items: []
   - m_Id: 44124330363760899
     m_Localized: "No compatible items owned."
     m_Metadata:
@@ -3353,10 +3349,6 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760932
     m_Localized: "Retreating to the castle..."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 44124330363760933
-    m_Localized: "Retreat"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760934
@@ -3505,6 +3497,22 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760972
     m_Localized: "Connect Wallet"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760973
+    m_Localized: "Squad Points: {0} / {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760974
+    m_Localized: "MY CASTLE  *"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760975
+    m_Localized: "USE MY CASTLE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760976
+    m_Localized: "That slot is already empty."
     m_Metadata:
       m_Items: []
 

@@ -802,7 +802,7 @@ namespace DeNelle.Village.Hero
             int count = Mathf.Min(5, _vm.CompatibleItems.Count);
             if (count == 0)
             {
-                ElarionUiKit.Label(_approvedInventoryHost, "No compatible items owned.",
+                ElarionUiKit.Label(_approvedInventoryHost, new LocalizedText("village.hero.equipment.no_compatible_items").Resolve(),
                     0.40f, 0.62f, ElarionUi.ParchmentDim, 26,
                     TMPro.TextAlignmentOptions.Center, 0.08f, 0.92f);
                 return;
@@ -854,7 +854,7 @@ namespace DeNelle.Village.Hero
             var selected = _vm.SelectedItem;
             if (!selected.HasValue)
             {
-                ElarionUiKit.Label(_approvedDetailHost, "Select an item to compare.",
+                ElarionUiKit.Label(_approvedDetailHost, new LocalizedText("village.hero.equipment.select_compare").Resolve(),
                     0.44f, 0.62f, ElarionUi.ParchmentDim, 25,
                     TMPro.TextAlignmentOptions.Center, 0.08f, 0.92f);
                 return;
@@ -952,7 +952,7 @@ namespace DeNelle.Village.Hero
         private void BuildApprovedHeaderActions(ElarionUiKit.PanelChrome chrome)
         {
             if (chrome == null || chrome.root == null) return;
-            var back = ElarionUiKit.ButtonPack(chrome.root.transform, "BACK",
+            var back = ElarionUiKit.ButtonPack(chrome.root.transform, new LocalizedText("village.hero.equipment.back_button").Resolve(),
                 ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.025f, 0.885f), new Vector2(0.15f, 0.975f),
                 Close, RpgUiCatalog.ButtonFrame);
@@ -1227,10 +1227,10 @@ namespace DeNelle.Village.Hero
             ElarionUiKit.FitSingleLine(drawerTitle, 0f, ElarionUi.FontLabel);   // never wraps over the buttons
 
             // Unequip + Done buttons (top row of the drawer).
-            var unequip = ElarionUiKit.ButtonPack(_drawerHost.transform, "Unequip", ElarionUiKit.ButtonKind.Quiet,
+            var unequip = ElarionUiKit.ButtonPack(_drawerHost.transform, new LocalizedText("village.hero.equipment.unequip_button").Resolve(), ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.06f, 0.84f), new Vector2(0.26f, 0.965f), () => { _vm?.Unequip(); }, RpgUiCatalog.ButtonFrame);
             CreamTab(unequip);
-            var done = ElarionUiKit.ButtonPack(_drawerHost.transform, "Done", ElarionUiKit.ButtonKind.Gold,
+            var done = ElarionUiKit.ButtonPack(_drawerHost.transform, new LocalizedText("common.done").Resolve(), ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.74f, 0.84f), new Vector2(0.94f, 0.965f), CloseDrawer, RpgUiCatalog.ButtonFrame);
             CreamTab(done);
 

@@ -3262,10 +3262,6 @@ MonoBehaviour:
     m_Localized: "Ausr\u00FCstung ablegen"
     m_Metadata:
       m_Items: []
-  - m_Id: 44124330363760898
-    m_Localized: "Fertig"
-    m_Metadata:
-      m_Items: []
   - m_Id: 44124330363760899
     m_Localized: "Keine kompatiblen Gegenst\u00E4nde besessen."
     m_Metadata:
@@ -3400,10 +3396,6 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760932
     m_Localized: "R\u00FCckzug zum Schloss..."
-    m_Metadata:
-      m_Items: []
-  - m_Id: 44124330363760933
-    m_Localized: "R\u00FCckzug"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760934
@@ -3552,6 +3544,22 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363760972
     m_Localized: "Wallet verbinden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760973
+    m_Localized: "Truppenpl\u00E4tze: {0} / {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760974
+    m_Localized: "MEIN SCHLOSS  *"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760975
+    m_Localized: "MEIN SCHLOSS VERWENDEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760976
+    m_Localized: "Dieser Platz ist bereits leer."
     m_Metadata:
       m_Items: []
 
