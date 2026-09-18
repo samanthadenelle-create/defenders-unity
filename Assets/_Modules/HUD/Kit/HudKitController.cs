@@ -42,6 +42,7 @@ using UnityEngine.UI;
 using TMPro;
 using DeNelle.Core;
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.Dialogue;   // WO-1856: DialogueGateState — the safety-net door's one yield
 using DeNelle.Core.Economy;
 using DeNelle.Core.HUD;
 using DeNelle.Core.HudModel;
@@ -169,6 +170,38 @@ namespace DeNelle.HUD.Kit
         // slide 0.0104 of screen before it covers the gear row, against a 0.0695 deficit).
         // Session-local by design: a reading overlay the player left open is never what she
         // wants to find on her next boot, and nothing here is worth a save-schema bump.
+        // ── WO-1856 Part A: THE SAFETY-NET SETTINGS DOOR ────────────────────────
+        // Owner directive 2026-09-17, minted live during the WO-1855 investigation: a player
+        // stuck by a HUD-context misclassification (HudContextEvaluator wrongly reporting
+        // Battle while battleLock/pursuit/modal are all false — the captured WO-1855 shape)
+        // had NO way back to Settings, because Settings was reachable ONLY through the
+        // peaceful dock's slide-tab (AddDockTab "Settings" above), and the peaceful dock is
+        // exactly what a misclassified Battle context hides.
+        //
+        // THIS DOOR IS DELIBERATELY BUILT ON ITS OWN ROOT CANVAS, OUTSIDE _host/HudAreasHost:
+        //   - It is NOT one of the ApplyPosture-occupied `_widgets` — occupancy is driven by
+        //     hud-areas.json rows keyed to a POSTURE, which is exactly the classification this
+        //     door must survive being wrong. A widget row can never be the safety net for the
+        //     row system itself.
+        //   - It is NOT parented under _host.transform, because BuildModeHudBridge fades the
+        //     WHOLE HudAreasHost CanvasGroup via SetHudVisible(false) while Build Mode owns the
+        //     screen (SetHudVisible(!building)) — and Build Mode is one of the contexts this
+        //     door must render in (WO-1856 acceptance list: town/battle/raid/dungeon/build mode).
+        //   - It is built FIRST, as literally the opening statement of BuildWidgets(), in its
+        //     OWN Guard.Try — so if anything LATER in BuildWidgets() throws (a broken dock
+        //     builder, the exact failure mode the WO calls out), the GameObject this call
+        //     already created survives: HudKitController.Create() wraps the whole BuildWidgets()
+        //     call in an outer Guard.Try (VillageHudController.cs:109) that does not roll back
+        //     GameObjects already constructed before the throw.
+        private GameObject _safetyGearCanvas;
+        private Button _safetyGearButton;
+        private bool _safetyGearHiddenForDialogue;
+        // Above the docks (HudAreasHost=4000) and the dialogue panel (DialogueView=4800) is not
+        // required: tapping it opens the REAL SettingsController screen at sortingOrder 32000,
+        // which already renders over everything, including a live dialogue. This canvas only
+        // needs to be tappable above the two HUD docks.
+        private const int SafetyGearSortingOrder = 4700;
+
         private GameObject _heartExpandedCanvas;
         private TMP_Text _heartExpandedName;
         private TMP_Text _heartExpandedObjective;
@@ -592,6 +625,11 @@ namespace DeNelle.HUD.Kit
 
         private void BuildWidgets()
         {
+            // WO-1856 Part A — FIRST STATEMENT, OWN GUARD, before anything that could throw.
+            // See the field block above for why this must not depend on anything below it.
+            Guard.Try("Settings", "build the always-reachable safety-net Settings door",
+                BuildSafetyNetSettingsDoor);
+
             Transform pool = transform;   // widgets are reparented into areas on ApplyPosture
 
             // ── vitals: WO-432 shared BuildPartyNameplate (name + HP + MP) ──
@@ -1620,6 +1658,87 @@ namespace DeNelle.HUD.Kit
                 " on frame " + Time.frameCount + ", grace until " + PanelManager.CloseGraceUntilFrame +
                 " (WO-1393)");
             return true;
+        }
+
+        // =====================================================================
+        //  WO-1856 Part A — THE ALWAYS-REACHABLE SAFETY-NET SETTINGS DOOR.
+        // ---------------------------------------------------------------------
+        //  See the field-block comment above _safetyGearCanvas for why this is its own root
+        //  canvas, built first, outside every occupancy/posture system. It is deliberately
+        //  UNCONDITIONAL: no posture argument, no HudContextEvaluator read, no BattleLock read,
+        //  no PanelManager.AnyOpen read — it cannot be hidden by the exact class of bug it is
+        //  the net for, because it consults NONE of that bug's inputs.
+        //
+        //  The ONE thing it yields to is a LIVE, VISIBLE dialogue panel (DialogueGateState.
+        //  PanelVisible) — a legitimate full-screen-owning read the player is in the middle of,
+        //  same spirit as the existing DialogueGateState truces (WO-1714). This is a NEW read,
+        //  not a pre-existing pattern: neither PauseGate.cs nor SettingsGate.cs consults
+        //  DialogueGateState today (verified 2026-09-17, both files read in full).
+        // =====================================================================
+        private void BuildSafetyNetSettingsDoor()
+        {
+            _safetyGearCanvas = ElarionUiKit.BuildModalCanvas("HudSafetyNetSettingsDoor", SafetyGearSortingOrder);
+            // Own scene-root GameObject (BuildModalCanvas parents nothing) — deliberately NOT a
+            // child of _host.transform; see the field-block comment for why.
+
+            // Small persistent bottom-right corner box. Free at every mount authored in
+            // HudAreasHost/HudLayoutBands as of 2026-09-17: MoveCluster owns bottom-LEFT
+            // (0.010-0.270 x, 0.030-0.330 y), ActionBar owns bottom-CENTER (0.270-0.730 x,
+            // 0.015-0.150 y), QueueStatus owns the right column from y=0.510 up. This box
+            // (0.870-0.995 x, 0.015-0.075 y) sits in the gap below QueueStatus and clear of
+            // ActionBar's right edge.
+            var corner = new GameObject("Corner", typeof(RectTransform));
+            corner.transform.SetParent(_safetyGearCanvas.transform, false);
+            var cornerRt = (RectTransform)corner.transform;
+            cornerRt.anchorMin = new Vector2(0.870f, 0.015f);
+            cornerRt.anchorMax = new Vector2(0.995f, 0.075f);
+            cornerRt.offsetMin = Vector2.zero;
+            cornerRt.offsetMax = Vector2.zero;
+
+            // Plain word label, no glyph — WO-1856's own copy rule ("state matters in words/
+            // shape, not color alone", owner is colorblind, CLAUDE.md §7). The gear Unicode glyph
+            // (U+2699) is NOT in this game's UI font (LiberationSans SDF) or its fallbacks and
+            // rendered as tofu (caught by the font-coverage oracle); the word alone already
+            // satisfies the copy rule without needing a font/atlas change for a safety-net
+            // control. A safety-net control, not a design centerpiece: no new art, the existing
+            // obsidian button factory only.
+            // ⛔ EVERY PLAYER-FACING STRING GOES THROUGH LOCALIZATION, NO EXCEPTIONS (owner
+            // standing law, 2026-09-17) — reuses SettingsText.Title's own key ("settings.title",
+            // already translated in all 10 supported locales) rather than minting a synonym key,
+            // since this button opens that exact same screen.
+            _safetyGearButton = ElarionUiKit.BuildObsidianButton(corner.transform,
+                new LocalizedText("settings.title").Resolve(),
+                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
+                Vector2.zero, Vector2.one, OnSafetyGearTapped);
+
+            FlowTrace.Step("Settings",
+                "safety-net Settings door built (WO-1856 Part A) - independent of HudAreasHost, " +
+                "posture occupancy and PanelRouter; sortingOrder=" + SafetyGearSortingOrder + ".");
+        }
+
+        private void OnSafetyGearTapped()
+        {
+            if (SwallowedByCloseGrace("safety-net Settings door")) return;
+            FlowTrace.Step("Settings",
+                "safety-net Settings door tapped -> SettingsGate.RequestOpen(safety-gear)");
+            SettingsGate.RequestOpen("safety-gear");
+        }
+
+        /// <summary>WO-1856 Part A yield: hide the door while a LIVE dialogue panel is actually
+        /// visible on screen, so it never draws over a line the player is mid-reading. Ticked from
+        /// the kit's existing per-frame Update() (below) — edge-gated so a steady state logs
+        /// nothing. A dialogue HIDDEN by a truce (DialogueGateState.HiddenByTruce) does not count:
+        /// nothing is on screen there for the door to fight (WO-1714 already frees input for the
+        /// same reason).</summary>
+        private void TickSafetyGearDialogueYield()
+        {
+            if (_safetyGearCanvas == null) return;
+            bool hide = DialogueGateState.PanelVisible;
+            if (hide == _safetyGearHiddenForDialogue) return;
+            _safetyGearHiddenForDialogue = hide;
+            _safetyGearCanvas.SetActive(!hide);
+            FlowTrace.Step("Settings", "safety-net Settings door " + (hide ? "HIDDEN" : "SHOWN") +
+                " (DialogueGateState.PanelVisible=" + hide + ", WO-1856).");
         }
 
         // Wire the compass' presentation-only world readers. DeNelle.HUD keeps its
@@ -2951,6 +3070,24 @@ namespace DeNelle.HUD.Kit
             BuildAdaptivePeacefulDock(pool);
             return _peacefulDockRoot;
         }
+
+        /// <summary>
+        /// WO-1856 — the same oracle seam as <see cref="BuildPeacefulDockProbe"/>, for the
+        /// safety-net Settings door: calls the ONE live builder (unconditional; takes no
+        /// posture/context/pool argument, unlike every dock probe above) and hands the root back
+        /// so <c>Assets/Editor/Regression/SessionRepairRegression.cs</c> can assert it exists and
+        /// is tappable regardless of what BattleLock/HudContextEvaluator/PanelManager report.
+        /// No live caller, no state, must never grow one.
+        /// </summary>
+        public GameObject BuildSafetyNetSettingsDoorProbe()
+        {
+            BuildSafetyNetSettingsDoor();
+            return _safetyGearCanvas;
+        }
+
+        /// <summary>The button the door probe built, for a regression to assert interactability
+        /// (e.g. after <see cref="TickSafetyGearDialogueYield"/>). Null until the probe runs.</summary>
+        public Button SafetyGearButtonProbe => _safetyGearButton;
 
         /// <summary>
         /// WO-1695 — the same oracle seam as <see cref="BuildPeacefulDockProbe"/>, for the ACTIVE
@@ -6016,6 +6153,11 @@ namespace DeNelle.HUD.Kit
 
         private void Update()
         {
+            // WO-1856 Part A: the safety-net Settings door's ONE yield (a live, visible
+            // dialogue). Cheap edge-gated check; must not depend on anything else in this
+            // Update() running first.
+            TickSafetyGearDialogueYield();
+
             // WO-997 §3b: ease the hero plate's mana fill toward its target + run the
             // spend flash (brightness pulse, colourblind-safe). Cheap; early-outs when idle.
             AnimateManaFill();

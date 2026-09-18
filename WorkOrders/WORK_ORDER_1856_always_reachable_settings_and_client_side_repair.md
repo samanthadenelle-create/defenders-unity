@@ -1,6 +1,6 @@
 # WORK ORDER 1856 — An always-reachable Settings door, plus a client-side "repair my session" action
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
 
 **Minted:** 2026-09-17, by the CLI lead, live during the WO-1855 investigation, from the owner's own
 words: *"i think this does show that we need a disection tool, if a plyer is stuck. THey will not
@@ -126,3 +126,166 @@ to roll back.
 Plain language, no jargon ("stuck screen state," not "context evaluator desync"). Never say "repair
 save" — say "repair session" / "clears a stuck screen." No color-only state signaling (owner is
 colorblind, CLAUDE.md standing rule).
+
+---
+
+## IMPLEMENTATION RECORD (SME agent, 2026-09-17)
+
+Silo respected exactly as dispatched: `WaveManager.cs`, `BattleLock.cs`'s release logic,
+`PursuitBattleProbe.cs` and `BattleSessionEnd.cs` were **read but not edited** (`git diff` against
+this lane touches none of them — verified by the file list below).
+
+### Files changed
+
+- `Assets/_Modules/HUD/Kit/HudKitController.cs` — Part A: the safety-net Settings door.
+- `Assets/_Modules/Core/UI/SessionRepairService.cs` (**new**) — Part B: the repair action.
+- `Assets/_Modules/Settings/SettingsController.cs` — the "Repair Session" row + confirm/result UI.
+- `Assets/Editor/Regression/SessionRepairRegression.cs` (**new**) — the pinning suite.
+- `Assets/Editor/Regression/DataRegression.cs` — one registration line (`"session-repair suite"`),
+  inserted above the `>>> REGISTERED ORACLE SUITES — END FENCE <<<` marker per that file's own rule.
+
+### Part A — the door, and why it is built the way it is
+
+`HudKitController.BuildSafetyNetSettingsDoor()` is the **literal first statement** of
+`BuildWidgets()` (`HudKitController.cs`, called before `Transform pool = transform;` and before
+every dock builder), wrapped in its **own** `Guard.Try`. Evidence this matters:
+`VillageHudController.cs:109` calls `Guard.Try("HudKit", "build HUD kit", () =>
+HudKitController.Create(this), null)` — the ENTIRE `BuildWidgets()` call is already inside one
+outer Guard.Try. `Guard.Try` (`Assets/_Modules/Core/Diagnostics/Guard.cs:29`) catches and logs but
+does **not** roll back GameObjects already constructed before a later throw — so building the door
+first is what makes it survive a broken dock builder later in the same method, which is precisely
+the WO's "must not depend on BuildAdaptivePeacefulDock having run correctly" requirement, read
+literally against the actual failure mechanics.
+
+The door lives on its **own root canvas** (`ElarionUiKit.BuildModalCanvas`, sortingOrder 4700),
+never parented under `HudAreasHost`/`_host.transform`. Reason, read at source:
+`BuildModeHudBridge.cs:65-68` calls `SetHudVisible(!building)`, and
+`HudKitController.SetHudVisible` (`:401-407`) sets `_host.Group.alpha/interactable/blocksRaycasts`
+to 0/false/false — i.e. Build Mode fades the WHOLE HudAreasHost CanvasGroup. Build Mode is one of
+the contexts the WO explicitly lists (`town, battle, raid, dungeon, build mode`), so a door parented
+under that group would go dark exactly there. It is also **not** one of the `_widgets` occupancy
+rows `ApplyPosture` drives from `hud-areas.json`, because occupancy is keyed to the very posture
+classification this door must survive being wrong.
+
+The door reads **no** context/battle/panel signal at all — not `HudContextEvaluator`, not
+`BattleLock`, not `PanelManager.AnyOpen`. It is unconditional by construction, which is the
+strongest form of "independent of HudContextEvaluator's Battle/Town classification" the WO asks for:
+there is nothing to misclassify. Pinned by `SessionRepairRegression.DoorBuiltUnconditionallyFirst`
+(source-lint: the build-order and the absence of those four tokens in the builder's body) and
+`DoorSurvivesForcedBattleLock` (live build with `BattleLock.RegisterProbe(() => true)` held — the
+door still constructs, its Canvas exists, and its Button stays `interactable`/active).
+
+Tap handler: `SettingsGate.RequestOpen("safety-gear")` — the existing Core seam, unmodified, with a
+new `source` string so `[Flow:Settings]` traces can tell this door apart from the dock's `"dock"`.
+Same `SwallowedByCloseGrace` guard every other HUD tap already goes through (WO-1393).
+
+**Yield to dialogue — a corrected claim, not a copied pattern.** The WO's own text says to yield
+"same as PauseGate/SettingsGate already do." Read both files in full: neither `PauseGate.cs` nor
+`SettingsGate.cs` references `DialogueGateState` anywhere. That sentence in the WO was **not
+accurate against the current tree** — this is a new behaviour, not an existing one being copied.
+`HudKitController.TickSafetyGearDialogueYield()` (ticked from the existing per-frame `Update()`)
+hides the door only while `DialogueGateState.PanelVisible` is true — a genuinely on-screen dialogue
+— and deliberately does **not** consult `PanelManager.AnyOpen`, because hiding behind "any panel is
+open" would recreate the exact lockout Part B exists to clear. Pinned by
+`DoorYieldsOnlyToLiveDialogue`.
+
+Visual: a plain gear glyph + the word "Settings" (`"⚙ Settings"`), built through the existing
+`ElarionUiKit.BuildObsidianButton` factory — no new art, no color-only signaling (the WO's own
+colorblind rule): the label is always text, and the yield above is a full show/hide, never a color
+change.
+
+### Part B — the repair action, and the deviation this hand-back surfaces
+
+`SessionRepairService.Repair()` (new file, `DeNelle.Core.UI`):
+1. Calls `BattleSessionEnd.Release("session repair")` — the **exact same call**
+   `BattleQuiescenceGate`'s own self-heal makes (see that file's header and
+   `BattleSessionEnd.cs:189-218`). This clears the pursuit-pulse ring
+   (`PostureSignals.ClearPursuits()`) and runs every registered session-end unwind. It does **not**
+   force `BattleLock` false and does **not** unregister any probe:
+   `BattleSessionEnd.cs:61-63` states in its own header it "does NOT force BattleLock false", and
+   `BattleQuiescenceRegression.LiveChaseIsNotSuppressed` (`:441-459`) already pins that a
+   still-chasing pursuer re-raises the lock on its very next tick. `SessionRepairRegression.
+   RepairDoesNotSuppressLiveChase` re-proves this specifically through the new service.
+2. Force-closes whatever `PanelManager.OpenPanelName` reports open, through the panel's **own**
+   `Close()` action (`PanelManager.CloseOpen()`), never by zeroing the arbiter's record blind — the
+   same discipline the WO-1337 ghost-panel heal already established.
+3. Does **not** call `HudContextEvaluator` or force a dock rebuild — it **cannot**:
+   `HudContextEvaluator` is `internal sealed` inside `DeNelle.Village`
+   (`HudContextEvaluator.cs:69`), and `DeNelle.Core` (where this file lives) cannot reference
+   `DeNelle.Village` at all (CLAUDE.md §5 — the dependency runs the other way). It doesn't need to:
+   `HudProducer.Tick` polls every producer at its own interval (`HudModelHost.cs:88-99`,
+   `HudContextEvaluator`'s interval is `0.20f`, `HudContextEvaluator.cs:85`), and
+   `PostureEvaluator.Update` polls every `0.15f` (`PostureEvaluator.cs:52,63-71`) reading the exact
+   Core statics this service clears. So the next natural poll pair (≤0.35s combined) re-derives
+   Town/Overworld and `HudKitController.ApplyPosture` rebuilds the dock with zero HUD-specific code
+   in this file — which also means Part B never touches `DeNelle.HUD` or `DeNelle.Village` at all,
+   the strongest possible form of "reused as-is."
+
+**Never touches persistence — proof, not assertion.** `GameStateService` and `PersistenceBridge`
+both live INSIDE `DeNelle.Core` itself (`Assets/_Modules/Core/State/`), so the asmdef boundary alone
+cannot prove this (unlike, say, HUD→Village). The proof is a source-lint,
+`SessionRepairRegression.RepairNeverTouchesPersistence`, which strips `//` comment lines from
+`SessionRepairService.cs` (the file's own header names `GameStateService`/`PersistenceBridge` in
+prose, deliberately, as documentation of what it must never call — exactly the
+`PublicNavigationRetirementRegression.AssertAbsentInCode` shape) and asserts the remaining CODE
+contains none of `GameStateService`, `PersistenceBridge`, `.Save(`, `SyncToBackend`. It is also true
+by direct reading: the file's only imports are `DeNelle.Core.Combat` and `DeNelle.Core.Diagnostics`,
+and its only calls are `BattleLock.DescribeHolders`, `BattleSessionEnd.Release`,
+`PanelManager.OpenPanelName`/`CloseOpen`, `Guard.Try`, `FlowTrace.Step`.
+
+**⚠ DEVIATION FROM ACCEPTANCE CRITERION #3 — SURFACED FOR LEAD RULING (CLAUDE.md §11B.B: never
+silently reinterpret a written line).** The criterion reads: *"run while BattleLock is artificially
+held by a test holder, releases it."* `BattleLock` exposes no force-unregister/override API, and
+building one would contradict the "never force BattleLock false" law this codebase already
+regression-enforces (see above) — an arbitrary `() => true` test probe cannot be "released" by
+anything except unregistering it, which is destructive in production (real owners register once at
+boot). `SessionRepairRegression.RepairClearsPursuitStuckLock` instead reproduces the **real captured
+shape** (a stale pursuit pulse the battle opened and nothing closed — the WO-1855/1233/1603
+incident) and proves `Repair()` clears exactly that, safely. `DoorSurvivesForcedBattleLock`
+separately proves Part A's door does not care what `BattleLock` reports at all. If the lead wants
+the literal "any test holder" case honored, that requires either a new force-clear API on
+`BattleLock.cs` (outside this ticket's silo — that file is explicitly off-limits per the dispatch)
+or a ruling that the acceptance line is superseded by `BattleSessionEnd`'s own "never force false"
+law. This is written into the regression file's own header comment as well, not only here.
+
+### Confirmation / result copy (Settings screen, new "Repair Session" row)
+
+- Confirm: "Repair Session" / "This clears a stuck screen state. Your progress is not affected." /
+  buttons "Repair" · "Cancel" — verbatim WO copy.
+- Result: `SessionRepairResult.Summarize()` — "Cleared: 1 stuck battle lock, 1 stuck panel." or
+  "Nothing was stuck - if you're still seeing a problem, this isn't it." — verbatim WO copy, built
+  from what actually happened (never a static string).
+- The row label itself ("Repair Session") is a **plain literal string**, not routed through
+  `SettingsText`/canon-strings — a deliberate, flagged scope call (same shape as `HelpMenu`'s own
+  plain toast strings, e.g. "Reset - heading back to Hero Select..."), so as not to fold a
+  localization-data change (two canon-strings.json copies) into this ticket. Flagged as a possible
+  follow-up, not built here.
+
+### Non-scope honored
+
+No save-integrity tool was built. No change to `HudContextEvaluator`'s Battle-vs-Town logic. No
+backend/server change. `WaveManager.cs`, `BattleLock.cs`, `PursuitBattleProbe.cs`,
+`BattleSessionEnd.cs` are unedited.
+
+### Verification run by this agent
+
+```
+$ python tools/gate_brace.py Assets/_Modules/HUD/Kit/HudKitController.cs \
+    Assets/_Modules/Settings/SettingsController.cs \
+    Assets/_Modules/Core/UI/SessionRepairService.cs \
+    Assets/Editor/Regression/SessionRepairRegression.cs \
+    Assets/Editor/Regression/DataRegression.cs
+GATE_BRACE_SUMMARY bad=0 of 5
+```
+NUL-byte scan: `0` bytes in all five files (Python `bytes.count(b'\x00')`).
+
+**Not run by this agent, per explicit instruction:** the Unity `COMPILE_GATE_OK` /
+`REGRESSION_OK <n>/<n>` batchmode gate, any build, or any commit — those are the lead's to run over
+the combined tree (this lane's files plus WO-1855's, which touch a disjoint set:
+`OverworldEncounterSpawner.cs` + `BattleQuiescenceRegression.cs`).
+
+### Follow-ups flagged, not built here
+
+- A true save-integrity/repair tool (explicitly out of scope per the WO's own non-scope section).
+- Localizing the "Repair Session" row label through `SettingsText`/canon-strings.
+- The acceptance-criterion-#3 deviation above needs an explicit lead ruling.

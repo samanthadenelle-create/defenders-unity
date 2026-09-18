@@ -67,6 +67,13 @@ namespace DeNelle.Settings
         private Transform _languagePickerRows;
         private float _languagePickerLadderPx = 1f;
         private readonly List<Action> _localizedLabelRefreshers = new List<Action>();
+        // WO-1856 Part B — "Repair my session". Two on-demand Obsidian popups (confirm, then a
+        // plain acknowledgement of the result), same lazy-build/destroy shape as
+        // _languagePickerCanvas immediately above: separate root canvases above Settings' own
+        // 32000, so Close()/OnDestroy() must tear them down or an Android back / arbiter swap
+        // orphans them on screen (CloseSessionRepairUi, called from both).
+        private ElarionUiKit.ConfirmModal _sessionRepairConfirm;
+        private ElarionUiKit.ConfirmModal _sessionRepairResult;
 #if !GOOGLE_PLAY
         private Button _walletConnectButton, _walletDisconnectButton;
 #endif
@@ -198,6 +205,7 @@ namespace DeNelle.Settings
             // Don't leak the arbiter slot if destroyed while open (scene unload).
             if (_panelHandle != null) PanelManager.NotifyClosed(_panelHandle);
             CloseLanguagePicker();
+            CloseSessionRepairUi();   // WO-1856 Part B
             if (_modal != null && _modal.canvas != null) Destroy(_modal.canvas);
         }
 
@@ -223,6 +231,7 @@ namespace DeNelle.Settings
             // WO-1840: the picker is its OWN root canvas above this one - closing Settings (Back,
             // the arbiter swapping panels, the pause overlay) must never leave it floating.
             CloseLanguagePicker();
+            CloseSessionRepairUi();   // WO-1856 Part B - same reason, same shape
             if (_modal != null && _modal.canvas != null) _modal.canvas.SetActive(false);
             _open = false;
             // Release the arbiter slot as settings closes (no-op if already swapped out).
@@ -380,6 +389,21 @@ namespace DeNelle.Settings
             LocalizedButton(body, () => SettingsText.ResetDefaults.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Red,
                 new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnResetClicked);
+            y -= Frac(120f);
+
+            // WO-1856 Part B — "Repair my session". Reachable through the normal Settings door
+            // AND through the WO-1856 Part A safety-net gear (the always-on corner affordance),
+            // which is the whole point: this row exists so a player stuck by a HUD-context
+            // misclassification bug never has to wait for a new build. Client-side, in-memory
+            // reset only (SessionRepairService, DeNelle.Core.UI) - never a save mutation, never
+            // "repair save" in copy (WO-1856 copy rule). Plain literal label, not routed through
+            // SettingsText/LocalText: this is a same-shape decision to the plain toast strings
+            // HelpMenu already ships (e.g. "Reset - heading back to Hero Select..."), and adding
+            // a new localization key/canon-strings row is a separate, larger change flagged in
+            // the WO-1856 hand-back rather than folded in here.
+            ElarionUiKit.BuildObsidianButton(body, "Repair Session",
+                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
+                new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnRepairSessionClicked);
             y -= Frac(120f);
 
             // Permanent manual door. The automatic offer remains one-time, but dismissing it
@@ -969,6 +993,90 @@ namespace DeNelle.Settings
         {
             SettingsModel.ResetToDefaults();
             RefreshFromModel();
+        }
+
+        // =====================================================================
+        //  WO-1856 Part B — "Repair my session" (client-side, in-memory only).
+        // =====================================================================
+
+        /// <summary>Raises the confirmation before running the repair. Plain-language copy per
+        /// the WO-1856 copy rule: "session"/"stuck screen", never "save" (this never touches it -
+        /// see SessionRepairService's own header).</summary>
+        private void OnRepairSessionClicked()
+        {
+            if (_sessionRepairConfirm != null && _sessionRepairConfirm.canvas != null) return;
+            FlowTrace.Step("Settings", "Repair Session requested - showing confirmation");
+            _sessionRepairConfirm = ElarionUiKit.BuildConfirmModal(
+                "SessionRepairConfirm",
+                "Repair Session",
+                "This clears a stuck screen state. Your progress is not affected.",
+                "Repair",
+                "Cancel",
+                onConfirm: () =>
+                {
+                    FlowTrace.Step("Settings", "Repair Session confirmed");
+                    CloseSessionRepairConfirm();
+                    RunSessionRepair();
+                },
+                onCancel: () =>
+                {
+                    FlowTrace.Step("Settings", "Repair Session cancelled");
+                    CloseSessionRepairConfirm();
+                });
+        }
+
+        /// <summary>Runs the actual repair (DeNelle.Core.UI.SessionRepairService - client-side,
+        /// in-memory; never GameStateService/PersistenceBridge/the save/the backend) and shows the
+        /// one-line result the WO specifies.</summary>
+        private void RunSessionRepair()
+        {
+            var result = SessionRepairService.Repair();
+            ShowSessionRepairResult(result.Summarize());
+        }
+
+        /// <summary>The one-line result acknowledgement — an OK-only ConfirmModal (no cancel
+        /// label), same kit call as the confirm above with the Cancel side omitted.</summary>
+        private void ShowSessionRepairResult(string message)
+        {
+            if (_sessionRepairResult != null && _sessionRepairResult.canvas != null)
+                CloseSessionRepairResult();
+            _sessionRepairResult = ElarionUiKit.BuildConfirmModal(
+                "SessionRepairResult",
+                "Repair Session",
+                message,
+                "OK",
+                null,
+                onConfirm: CloseSessionRepairResult,
+                onCancel: CloseSessionRepairResult);
+        }
+
+        private void CloseSessionRepairConfirm()
+        {
+            if (_sessionRepairConfirm != null && _sessionRepairConfirm.canvas != null)
+            {
+                if (Application.isPlaying) Destroy(_sessionRepairConfirm.canvas);
+                else DestroyImmediate(_sessionRepairConfirm.canvas);
+            }
+            _sessionRepairConfirm = null;
+        }
+
+        private void CloseSessionRepairResult()
+        {
+            if (_sessionRepairResult != null && _sessionRepairResult.canvas != null)
+            {
+                if (Application.isPlaying) Destroy(_sessionRepairResult.canvas);
+                else DestroyImmediate(_sessionRepairResult.canvas);
+            }
+            _sessionRepairResult = null;
+        }
+
+        /// <summary>Tears down both WO-1856 popups. Called from Close() and OnDestroy() - same
+        /// reason as CloseLanguagePicker() immediately below: separate root canvases above
+        /// Settings' own 32000 must never be left floating when Settings itself closes/unloads.</summary>
+        private void CloseSessionRepairUi()
+        {
+            CloseSessionRepairConfirm();
+            CloseSessionRepairResult();
         }
 
         /// <summary>WO-588: closes Settings first so the modal arbiter swaps cleanly.</summary>

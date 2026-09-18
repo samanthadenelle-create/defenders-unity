@@ -1489,6 +1489,15 @@ namespace DeNelle.Editor
             // every runtime file for a second PetDeployer.SummonAt caller.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "echo-world-presence suite", () => { if (!DeNelle.Editor.Regression.EchoWorldPresenceRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[echo-world-presence] " + r); });
 
+            // --- DEVICE SCENARIO KIT (WO-1775, 2026-09-17): pins the GATE around the
+            // QA_SCENARIO_BUILD intent-extra scenario dispatcher, not its runtime behaviour
+            // (that needs a device — WO-1775 §5). Source-lints: the file compiles only under
+            // QA_SCENARIO_BUILD; the parser exposes no bare reset/wipe verb; newgame is
+            // fail-closed on an existing save BEFORE ResetToNewGame() is ever called; the
+            // DevTools asmdef admits the define; and no store/Play/Firebase-tester build
+            // script or AndroidBuild.cs ever names it.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "device-scenario-kit suite", () => { if (!DeNelle.Editor.Regression.DeviceScenarioKitRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[device-scenario-kit] " + r); });
+
             // WO-1380: Echo Guides and the 24 memory lines. The Echo does not fight;
             // it REMEMBERS. Six Echoes x four raid targets = the exact 24 lines the owner
             // ruled ALL 24 ship or the feature does not. Narrative only; no Guide grants
@@ -2163,6 +2172,10 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-door-prompt suite", () => { if (!DeNelle.Editor.Regression.RaidDoorPromptRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-door-prompt] " + r); });
             // WO-1805 lanes A+C: the composed dungeon teaches its oil mechanic; lantern balance on the rail. Registered by the committer.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "dungeon-lantern-teach suite", () => { if (!DeNelle.Editor.Regression.DungeonLanternTeachRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[dungeon-lantern-teach] " + r); });
+            // WO-1856: the always-reachable safety-net Settings door (unconditional, built first,
+            // its own Guard.Try) + the client-side, in-memory "repair my session" action, pinned
+            // never to touch persistence.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "session-repair suite", () => { if (!DeNelle.Editor.Regression.SessionRepairRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[session-repair] " + r); });
 
             // =====================================================================
             //  >>> REGISTERED ORACLE SUITES — END FENCE <<<  (new lines go ABOVE)
