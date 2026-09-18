@@ -189,6 +189,11 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-third pass): main line next free = **1860**.
+> *(Lead minted **WO-1859** — owner ruling: player-facing "clan" renames to "Remnant" (memory
+> `clan_renamed_to_remnant.md`). Locale content edit only; no internal identifier renames. Future
+> Remnant->Alliance->Kingdom progression tiers are design intent, not this ticket's scope.)*
+>
 > ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-second pass): main line next free = **1859**.
 > *(Lead minted **WO-1858** — owner directive: "I want the whole vision completely running the
 > solution all the way through for the pitch of people working together so I can test it." Closes
