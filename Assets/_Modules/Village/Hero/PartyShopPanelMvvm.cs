@@ -1227,7 +1227,7 @@ namespace DeNelle.Village.Hero
 
             if (hasLevelChip)
             {
-                var lvLbl = ElarionUiKit.Label(row.transform, "[Lv " + item.Level + "]",
+                var lvLbl = ElarionUiKit.Label(row.transform, LocalText.Format("village.party_shop.level_badge", item.Level),
                     0.0f, 1f, ElarionUi.Gilt,
                     ElarionUi.FontMicro, TMPro.TextAlignmentOptions.Right, 0.68f, 0.96f, bold: true);
                 ElarionUiKit.FitSingleLine(lvLbl, 20f, ElarionUi.FontMicro);

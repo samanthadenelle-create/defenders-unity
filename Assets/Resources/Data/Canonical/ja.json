@@ -832,5 +832,11 @@
   "arena.attack_palette.points_label": "スクワッドポイント: {0} / {1}",
   "arena.castle_toggle.my_castle": "私の城  *",
   "arena.castle_toggle.use_my_castle": "私の城を使う",
-  "talents.loadout.slot_already_empty": "そのスロットは既に空です。"
+  "talents.loadout.slot_already_empty": "そのスロットは既に空です。",
+  "village.build_structure_info.nothing_affordable_yet": "今すぐ買える物がありません",
+  "village.party_shop.level_badge": "[Lv {0}]",
+  "village.talent_workspace.type_badge_passive": "パッシブ",
+  "village.talent_workspace.type_badge_active": "アクティブ",
+  "village.season_track.state_locked_prefix": "[ ] ",
+  "village.night_market.close_the_gap": "ギャップを埋める"
 }

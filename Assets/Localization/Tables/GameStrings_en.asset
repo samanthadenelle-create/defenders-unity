@@ -3515,6 +3515,30 @@ MonoBehaviour:
     m_Localized: "That slot is already empty."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760977
+    m_Localized: "nothing affordable yet"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760978
+    m_Localized: "[Lv {0}]"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760979
+    m_Localized: "PASSIVE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760980
+    m_Localized: "ACTIVE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760981
+    m_Localized: "[ ] "
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760982
+    m_Localized: "CLOSE THE GAP"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

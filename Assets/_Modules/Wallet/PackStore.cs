@@ -2196,12 +2196,12 @@ namespace DeNelle.Wallet
                 FlowTrace.Warn("Store", "catch-up rail: PacksInBand(Gap) returned 0 rows — the " +
                                         "catalogue is unreadable or no impulse row is storeVisible+shelfCurated. " +
                                         "Drawing the worded empty state rather than an empty rail.");
-                BuildUtilityHeading(_gapUtilityContent, "CLOSE THE GAP", NightMarketPalette.For(StoreBand.Gap));
+                BuildUtilityHeading(_gapUtilityContent, new LocalizedText("village.night_market.close_the_gap").Resolve(), NightMarketPalette.For(StoreBand.Gap));
                 BuildGapUtilityRow(_gapUtilityContent, "Catch-up offers", "Unavailable right now", null);
                 return;
             }
 
-            BuildUtilityHeading(_gapUtilityContent, "CLOSE THE GAP", NightMarketPalette.For(StoreBand.Gap));
+            BuildUtilityHeading(_gapUtilityContent, new LocalizedText("village.night_market.close_the_gap").Resolve(), NightMarketPalette.For(StoreBand.Gap));
             foreach (var pack in rows)
             {
                 if (pack == null) continue;

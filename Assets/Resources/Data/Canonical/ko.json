@@ -832,5 +832,11 @@
   "arena.attack_palette.points_label": "분대 포인트: {0} / {1}",
   "arena.castle_toggle.my_castle": "내 성  *",
   "arena.castle_toggle.use_my_castle": "내 성 사용",
-  "talents.loadout.slot_already_empty": "그 슬롯은 이미 비어 있습니다."
+  "talents.loadout.slot_already_empty": "그 슬롯은 이미 비어 있습니다.",
+  "village.build_structure_info.nothing_affordable_yet": "지금 살 수 있는 것이 없습니다",
+  "village.party_shop.level_badge": "[Lv {0}]",
+  "village.talent_workspace.type_badge_passive": "패시브",
+  "village.talent_workspace.type_badge_active": "액티브",
+  "village.season_track.state_locked_prefix": "[ ] ",
+  "village.night_market.close_the_gap": "격차를 좁히세요"
 }

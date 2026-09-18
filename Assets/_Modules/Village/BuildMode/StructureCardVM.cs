@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DeNelle.Core.Catalog;
 using DeNelle.Core.Diagnostics;   // FlowTrace — the footprint label must be able to report FAILURE (§12 / §1.4b)
+using DeNelle.Core.UI;
 using CoreCost = DeNelle.Core.Catalog.ResourceCost;
 
 namespace DeNelle.Village
@@ -415,7 +416,7 @@ namespace DeNelle.Village
         /// </summary>
         public static string AffordabilityWords(int affordable)
         {
-            if (affordable <= 0) return "nothing affordable yet";
+            if (affordable <= 0) return new LocalizedText("village.build_structure_info.nothing_affordable_yet").Resolve();
             return affordable == 1 ? "1 you can build now" : affordable + " you can build now";
         }
 

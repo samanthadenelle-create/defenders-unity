@@ -3327,6 +3327,30 @@ MonoBehaviour:
     m_Key: talents.loadout.slot_already_empty
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760977
+    m_Key: village.build_structure_info.nothing_affordable_yet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760978
+    m_Key: village.party_shop.level_badge
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760979
+    m_Key: village.talent_workspace.type_badge_passive
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760980
+    m_Key: village.talent_workspace.type_badge_active
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760981
+    m_Key: village.season_track.state_locked_prefix
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760982
+    m_Key: village.night_market.close_the_gap
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

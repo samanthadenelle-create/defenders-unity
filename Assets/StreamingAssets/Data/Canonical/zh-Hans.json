@@ -832,5 +832,11 @@
   "arena.attack_palette.points_label": "小队点数: {0} / {1}",
   "arena.castle_toggle.my_castle": "我的城堡  *",
   "arena.castle_toggle.use_my_castle": "使用我的城堡",
-  "talents.loadout.slot_already_empty": "该槽位已经是空的。"
+  "talents.loadout.slot_already_empty": "该槽位已经是空的。",
+  "village.build_structure_info.nothing_affordable_yet": "现在还没有可以买的东西",
+  "village.party_shop.level_badge": "[等级 {0}]",
+  "village.talent_workspace.type_badge_passive": "被动",
+  "village.talent_workspace.type_badge_active": "主动",
+  "village.season_track.state_locked_prefix": "[ ] ",
+  "village.night_market.close_the_gap": "缩小差距"
 }

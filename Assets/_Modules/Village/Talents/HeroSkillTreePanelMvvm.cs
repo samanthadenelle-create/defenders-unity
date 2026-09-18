@@ -44,6 +44,7 @@ using UnityEngine.UI;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
+using static DeNelle.Core.UI.LocalText;
 
 namespace DeNelle.Village.Talents
 {
@@ -1882,8 +1883,8 @@ namespace DeNelle.Village.Talents
             string typeBadge = inert
                 ? "COMING"
                 : node.Kind == SkillNodeKind.Skill
-                    ? (node.EquippedSlot > 0 ? "SLOT " + node.EquippedSlot : "ACTIVE")
-                    : "PASSIVE";
+                    ? (node.EquippedSlot > 0 ? "SLOT " + node.EquippedSlot : new LocalizedText("village.talent_workspace.type_badge_active").Resolve())
+                    : new LocalizedText("village.talent_workspace.type_badge_passive").Resolve();
             BuildNodeNamePlate(go.transform, node.Name, typeBadge,
                 node.Kind == SkillNodeKind.Skill ? ElarionUi.Gilt : ElarionUi.Parchment, locked);
 

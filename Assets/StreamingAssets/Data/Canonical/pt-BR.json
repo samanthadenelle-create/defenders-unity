@@ -832,5 +832,11 @@
   "arena.attack_palette.points_label": "Pontos de Esquadra: {0} / {1}",
   "arena.castle_toggle.my_castle": "MEU CASTELO  *",
   "arena.castle_toggle.use_my_castle": "USAR MEU CASTELO",
-  "talents.loadout.slot_already_empty": "Esse slot já está vazio."
+  "talents.loadout.slot_already_empty": "Esse slot já está vazio.",
+  "village.build_structure_info.nothing_affordable_yet": "nada acessível ainda",
+  "village.party_shop.level_badge": "[Lv {0}]",
+  "village.talent_workspace.type_badge_passive": "PASSIVO",
+  "village.talent_workspace.type_badge_active": "ATIVO",
+  "village.season_track.state_locked_prefix": "[ ] ",
+  "village.night_market.close_the_gap": "FECHE A LACUNA"
 }

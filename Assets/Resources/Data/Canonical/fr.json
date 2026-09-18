@@ -832,5 +832,11 @@
   "arena.attack_palette.points_label": "Points d'Escouade: {0} / {1}",
   "arena.castle_toggle.my_castle": "MON CHÂTEAU  *",
   "arena.castle_toggle.use_my_castle": "UTILISER MON CHÂTEAU",
-  "talents.loadout.slot_already_empty": "Cet emplacement est déjà vide."
+  "talents.loadout.slot_already_empty": "Cet emplacement est déjà vide.",
+  "village.build_structure_info.nothing_affordable_yet": "rien d'abordable pour le moment",
+  "village.party_shop.level_badge": "[Niv {0}]",
+  "village.talent_workspace.type_badge_passive": "PASSIF",
+  "village.talent_workspace.type_badge_active": "ACTIF",
+  "village.season_track.state_locked_prefix": "[ ] ",
+  "village.night_market.close_the_gap": "COMBLER L'ÉCART"
 }

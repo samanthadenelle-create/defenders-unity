@@ -832,5 +832,11 @@
   "arena.attack_palette.points_label": "Squad Points: {0} / {1}",
   "arena.castle_toggle.my_castle": "MY CASTLE  *",
   "arena.castle_toggle.use_my_castle": "USE MY CASTLE",
-  "talents.loadout.slot_already_empty": "That slot is already empty."
+  "talents.loadout.slot_already_empty": "That slot is already empty.",
+  "village.build_structure_info.nothing_affordable_yet": "nothing affordable yet",
+  "village.party_shop.level_badge": "[Lv {0}]",
+  "village.talent_workspace.type_badge_passive": "PASSIVE",
+  "village.talent_workspace.type_badge_active": "ACTIVE",
+  "village.season_track.state_locked_prefix": "[ ] ",
+  "village.night_market.close_the_gap": "CLOSE THE GAP"
 }

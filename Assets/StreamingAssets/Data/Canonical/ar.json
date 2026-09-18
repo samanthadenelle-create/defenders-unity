@@ -832,5 +832,11 @@
   "arena.attack_palette.points_label": "نقاط الفريق: {0} / {1}",
   "arena.castle_toggle.my_castle": "قلعتي  *",
   "arena.castle_toggle.use_my_castle": "استخدم قلعتي",
-  "talents.loadout.slot_already_empty": "هذه الفتحة فارغة بالفعل."
+  "talents.loadout.slot_already_empty": "هذه الفتحة فارغة بالفعل.",
+  "village.build_structure_info.nothing_affordable_yet": "لا شيء بأسعار معقولة الآن",
+  "village.party_shop.level_badge": "[مستوى {0}]",
+  "village.talent_workspace.type_badge_passive": "خامل",
+  "village.talent_workspace.type_badge_active": "نشط",
+  "village.season_track.state_locked_prefix": "[ ] ",
+  "village.night_market.close_the_gap": "أغلق الفجوة"
 }

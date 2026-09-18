@@ -54,6 +54,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using DeNelle.Core.UI;
 using DeNelle.Core.Diagnostics;
+using static DeNelle.Core.UI.LocalText;
 
 namespace DeNelle.Wallet
 {
@@ -656,7 +657,7 @@ namespace DeNelle.Wallet
                 ? ElarionUi.ParchmentDim
                 : laneLight;
             // A shape as well as a word, for the states that mean "not yours yet".
-            string glyph = state == TierState.PremiumLocked || state == TierState.Locked ? "[ ] " : "";
+            string glyph = state == TierState.PremiumLocked || state == TierState.Locked ? new LocalizedText("village.season_track.state_locked_prefix").Resolve() : "";
             Text(cell.transform, glyph + word, 9, wordColor, FontStyles.Bold,
                  TextAlignmentOptions.Center, new Vector2(0.08f, 0.04f), new Vector2(0.96f, 0.28f));
 

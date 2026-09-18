@@ -832,5 +832,11 @@
   "arena.attack_palette.points_label": "Truppenplätze: {0} / {1}",
   "arena.castle_toggle.my_castle": "MEIN SCHLOSS  *",
   "arena.castle_toggle.use_my_castle": "MEIN SCHLOSS VERWENDEN",
-  "talents.loadout.slot_already_empty": "Dieser Platz ist bereits leer."
+  "talents.loadout.slot_already_empty": "Dieser Platz ist bereits leer.",
+  "village.build_structure_info.nothing_affordable_yet": "nichts erschwinglich in diesem Moment",
+  "village.party_shop.level_badge": "[Lv {0}]",
+  "village.talent_workspace.type_badge_passive": "PASSIV",
+  "village.talent_workspace.type_badge_active": "AKTIV",
+  "village.season_track.state_locked_prefix": "[ ] ",
+  "village.night_market.close_the_gap": "DIE LÜCKE SCHLIESSEN"
 }

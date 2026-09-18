@@ -3572,6 +3572,30 @@ MonoBehaviour:
     m_Localized: "Cet emplacement est d\u00E9j\u00E0 vide."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760977
+    m_Localized: "rien d'abordable pour le moment"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760978
+    m_Localized: "[Niv {0}]"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760979
+    m_Localized: "PASSIF"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760980
+    m_Localized: "ACTIF"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760981
+    m_Localized: "[ ] "
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760982
+    m_Localized: "COMBLER L'\u00C9CART"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2
