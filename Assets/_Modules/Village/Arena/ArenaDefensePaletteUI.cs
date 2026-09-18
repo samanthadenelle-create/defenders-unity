@@ -19,6 +19,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.UIElements;
+using DeNelle.Core;
 using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
 
@@ -142,13 +143,13 @@ namespace DeNelle.Village.Arena
             topBar.style.borderBottomWidth = 2;
             topBar.style.borderBottomColor = new Color(ElarionUi.Gold.r, ElarionUi.Gold.g, ElarionUi.Gold.b, 0.55f);
 
-            _pointsLabel = new Label("Defense Points: 50 / 50");
+            _pointsLabel = new Label(LocalText.Format("arena.defense_palette.points_label", 50, 50));
             _pointsLabel.style.color = ElarionUi.Aether;
             _pointsLabel.style.fontSize = ElarionUi.FontHead;
             _pointsLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
             topBar.Add(_pointsLabel);
 
-            var exitBtn = new Button(() => OnExitRequested?.Invoke()) { text = "Done" };
+            var exitBtn = new Button(() => OnExitRequested?.Invoke()) { text = LocalText.Get("common.done") };
             ElarionUi.StyleButton(exitBtn, ElarionUi.ButtonKind.Gold);
             exitBtn.style.minWidth = 88;
             topBar.Add(exitBtn);
@@ -191,7 +192,7 @@ namespace DeNelle.Village.Arena
 
             if (cards == 0)
             {
-                var none = new Label("No defenders registered.");
+                var none = new Label(new LocalizedText("arena.defense_palette.no_defenders").Resolve());
                 none.style.color = Color.white;
                 none.style.paddingLeft = 12; none.style.paddingTop = 12;
                 _strip.Add(none);

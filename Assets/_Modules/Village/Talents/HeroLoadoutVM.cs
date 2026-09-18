@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using DeNelle.Core;
 using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
 
@@ -124,7 +125,7 @@ namespace DeNelle.Village.Talents
         public string SelectedAbilityId { get; private set; } = "";
 
         /// <summary>Last action / hint line for the status row.</summary>
-        public string Status { get; private set; } = "Tap a skill, then a hot-swap slot to assign.";
+        public string Status { get; private set; } = LocalText.Get("talents.loadout.initial_hint");
 
         // ── Commands ────────────────────────────────────────────────────────────
 
@@ -133,8 +134,8 @@ namespace DeNelle.Village.Talents
         {
             SelectedAbilityId = abilityId ?? "";
             Status = string.IsNullOrEmpty(SelectedAbilityId)
-                ? "Tap a skill, then a hot-swap slot to assign."
-                : "Now tap a hot-swap slot.";
+                ? LocalText.Get("talents.loadout.initial_hint")
+                : LocalText.Get("talents.loadout.confirm_hint");
             Raise();
         }
 
@@ -145,9 +146,9 @@ namespace DeNelle.Village.Talents
             if (string.IsNullOrEmpty(SelectedAbilityId))
             {
                 // Nothing picked → tapping a filled slot removes it.
-                if (AssignableSkillBarAccess.EditsLocked) { Status = "Can't change skills during battle."; Raise(); return; }
+                if (AssignableSkillBarAccess.EditsLocked) { Status = LocalText.Get("talents.loadout.battle_locked"); Raise(); return; }
                 bool cleared = AssignableSkillBarAccess.Clear(slotIndex);
-                Status = cleared ? "Slot cleared." : "Pick a skill first, then tap a slot.";
+                Status = cleared ? LocalText.Get("talents.loadout.slot_cleared") : LocalText.Get("talents.loadout.pick_first_then_slot");
                 Rebuild();
                 Raise();
                 return;
@@ -159,20 +160,20 @@ namespace DeNelle.Village.Talents
         public void Assign(int slotIndex, string abilityId = null)
         {
             string id = string.IsNullOrEmpty(abilityId) ? SelectedAbilityId : abilityId;
-            if (string.IsNullOrEmpty(id)) { Status = "Pick a skill first."; Raise(); return; }
-            if (AssignableSkillBarAccess.Current == null) { Status = "No hero to equip."; Raise(); return; }
-            if (AssignableSkillBarAccess.EditsLocked) { Status = "Can't change skills during battle."; Raise(); return; }
+            if (string.IsNullOrEmpty(id)) { Status = LocalText.Get("talents.loadout.pick_first"); Raise(); return; }
+            if (AssignableSkillBarAccess.Current == null) { Status = LocalText.Get("common.no_hero_equip"); Raise(); return; }
+            if (AssignableSkillBarAccess.EditsLocked) { Status = LocalText.Get("talents.loadout.battle_locked"); Raise(); return; }
 
             bool ok = AssignableSkillBarAccess.Assign(slotIndex, id);
             if (ok)
             {
-                Status = "Assigned to hot-swap slot " + (slotIndex + 1) + ".";
+                Status = LocalText.Format("talents.loadout.assigned_format", slotIndex + 1);
                 SelectedAbilityId = "";
             }
             else
             {
                 // Assign returns false for a duplicate id or a redundant assign.
-                Status = "That skill is already on the bar.";
+                Status = LocalText.Get("talents.loadout.already_on_bar");
             }
             Rebuild();
             Raise();
@@ -186,12 +187,12 @@ namespace DeNelle.Village.Talents
         public void TryAdd(string abilityId = null)
         {
             string id = string.IsNullOrEmpty(abilityId) ? SelectedAbilityId : abilityId;
-            if (string.IsNullOrEmpty(id)) { Status = "Pick a skill first."; Raise(); return; }
-            if (AssignableSkillBarAccess.Current == null) { Status = "No hero to equip."; Raise(); return; }
-            if (AssignableSkillBarAccess.EditsLocked) { Status = "Can't change skills during battle."; Raise(); return; }
+            if (string.IsNullOrEmpty(id)) { Status = LocalText.Get("talents.loadout.pick_first"); Raise(); return; }
+            if (AssignableSkillBarAccess.Current == null) { Status = LocalText.Get("common.no_hero_equip"); Raise(); return; }
+            if (AssignableSkillBarAccess.EditsLocked) { Status = LocalText.Get("talents.loadout.battle_locked"); Raise(); return; }
 
             bool ok = AssignableSkillBarAccess.TryAdd(id);
-            Status = ok ? "Added to your hot-swap bar." : "No free slot (or already on the bar).";
+            Status = ok ? LocalText.Get("talents.loadout.added_to_bar") : LocalText.Get("talents.loadout.no_free_slot");
             if (ok) SelectedAbilityId = "";
             Rebuild();
             Raise();
@@ -200,7 +201,7 @@ namespace DeNelle.Village.Talents
         /// <summary>Clear a hot-swap slot directly.</summary>
         public void Clear(int slotIndex)
         {
-            if (AssignableSkillBarAccess.EditsLocked) { Status = "Can't change skills during battle."; Raise(); return; }
+            if (AssignableSkillBarAccess.EditsLocked) { Status = LocalText.Get("talents.loadout.battle_locked"); Raise(); return; }
             bool ok = AssignableSkillBarAccess.Clear(slotIndex);
             Status = ok ? "Slot cleared." : "That slot is already empty.";
             Rebuild();

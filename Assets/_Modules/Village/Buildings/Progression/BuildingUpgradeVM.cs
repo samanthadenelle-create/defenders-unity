@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Jobs;
 using DeNelle.Core.State;
+using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
 // Disambiguate the two ResourceCost types in scope: the build-economy cost (Wood/Stone/
 // Crystals — what IEconomy spends) vs. the legacy harvest cost (Resource/Amount). The
@@ -750,7 +751,7 @@ namespace DeNelle.Village.Buildings.Progression
             var t = DeNelle.Core.FeatureFlags.BuildTimers ? BuildTimerService.Instance : null;
             if (t == null)
             {
-                Status = "Build queues are not running right now.";
+                Status = new LocalizedText("village.buildings.progression.upgrade_queues_disabled").Resolve();
                 FlowTrace.Warn("Upgrade", _buildingId
                     + " slot buy skipped: no BuildTimerService (ff.buildtimers off?).");
                 Raise();
@@ -759,7 +760,7 @@ namespace DeNelle.Village.Buildings.Progression
 
             bool ok = t.TryBuySlot(ChannelId.Builder, out string failure);
             Status = ok
-                ? "Extra queue slot bought - the queue can take " + t.QueueDepthLimit(ChannelId.Builder) + " items."
+                ? LocalText.Format("village.buildings.progression.upgrade_slot_bought", t.QueueDepthLimit(ChannelId.Builder))
                 : Ascii(failure ?? "Could not buy a slot right now.");
 
             // §12 — the outcome AND the numbers that decided it, so a capture proves which of the
@@ -847,7 +848,7 @@ namespace DeNelle.Village.Buildings.Progression
                 }
 
                 int next = CurrentTier + 1;
-                if (next > MaxTier) { Status = "Every enhancement here is already unlocked."; Raise(); return; }
+                if (next > MaxTier) { Status = new LocalizedText("village.buildings.progression.upgrade_all_unlocked").Resolve(); Raise(); return; }
 
                 // WO-432 TIER GATE — mirror BuildingUpgradeService's gate so a tier-locked
                 // unlock reports an HONEST reason, not the generic "can't afford" (the service
@@ -862,8 +863,8 @@ namespace DeNelle.Village.Buildings.Progression
                         + " gated=" + (nextDef.RequiresVillageTier > villageTier));
                     if (nextDef.RequiresVillageTier > villageTier)
                     {
-                        Status = "Requires Heart Level " + nextDef.RequiresVillageTier
-                                 + " (you have " + villageTier + ").";
+                        Status = LocalText.Format("village.buildings.progression.upgrade_village_tier_gate",
+                            nextDef.RequiresVillageTier, villageTier);
                         Raise();
                         return;
                     }
@@ -874,8 +875,8 @@ namespace DeNelle.Village.Buildings.Progression
                 var timerSvc = DeNelle.Core.FeatureFlags.BuildTimers ? BuildTimerService.Instance : null;
                 if (timerSvc != null && timerSvc.IsBuilding(_buildingId))
                 {
-                    Status = "Under construction — " + (int)timerSvc.RemainingSeconds(_buildingId)
-                             + "s until work here finishes.";
+                    Status = LocalText.Format("village.buildings.progression.upgrade_under_construction_timer",
+                        (int)timerSvc.RemainingSeconds(_buildingId));
                     // F8 2026-07-30: these mirror gates emitted NO trace, so a busy refusal was
                     // invisible in the log while the resources-shaped Fail below got the blame.
                     FlowTrace.Step("Upgrade", _buildingId + " tier-" + next + " refused: under construction ("
@@ -919,13 +920,13 @@ namespace DeNelle.Village.Buildings.Progression
                     }
                     else
                     {
-                        Status = "Tier " + next + " unlocked.";
+                        Status = LocalText.Format("village.buildings.progression.upgrade_tier_unlocked", next);
                         FlowTrace.Step("Upgrade", _buildingId + " unlocked tier-" + next);
                     }
                 }
                 else
                 {
-                    Status = "You can't afford that yet.";
+                    Status = new LocalizedText("village.buildings.progression.upgrade_unaffordable").Resolve();
                     // CLAUDE.md 12 - never a silent no-op again: the service logs wallet-vs-cost;
                     // mirror an honest [Flow:Upgrade] line here naming the tier cost that was short.
                     // SEVERITY: Capture, NOT Fail (2026-08-16) - the branch immediately above sets
@@ -966,17 +967,18 @@ namespace DeNelle.Village.Buildings.Progression
                 switch (result)
                 {
                     case UpgradeResult.Upgraded:
-                        Status = "Level " + ResourceBuildingState.GetLevel(_buildingId) + " unlocked.";
+                        Status = LocalText.Format("village.buildings.progression.upgrade_level_unlocked",
+                            ResourceBuildingState.GetLevel(_buildingId));
                         FlowTrace.Step("Upgrade", _buildingId + " unlocked level-"
                             + ResourceBuildingState.GetLevel(_buildingId));
                         break;
-                    case UpgradeResult.Insufficient: Status = "You can't afford that yet."; break;
-                    case UpgradeResult.MaxLevel:     Status = "Every enhancement here is already unlocked."; break;
-                    case UpgradeResult.NeedMagic:    Status = "That enhancement needs Magic to unlock."; break;
+                    case UpgradeResult.Insufficient: Status = new LocalizedText("village.buildings.progression.upgrade_unaffordable").Resolve(); break;
+                    case UpgradeResult.MaxLevel:     Status = new LocalizedText("village.buildings.progression.upgrade_all_unlocked").Resolve(); break;
+                    case UpgradeResult.NeedMagic:    Status = new LocalizedText("village.buildings.progression.upgrade_needs_magic").Resolve(); break;
                     // F8-51 — timer states: work already running here (locked), or the buy
                     // just STARTED the work (level lands when the timer completes).
                     case UpgradeResult.InProgress:
-                        Status = "Under construction — finish the current work first.";
+                        Status = new LocalizedText("village.buildings.progression.upgrade_finish_current_work").Resolve();
                         break;
                     case UpgradeResult.Started:
                     {
@@ -985,12 +987,12 @@ namespace DeNelle.Village.Buildings.Progression
                         // WO-895 — a full crew set QUEUES the job now (it no longer refuses),
                         // so say which of the two actually happened.
                         Status = t != null && IsPendingInBuilderQueue(t)
-                            ? "Upgrade queued - it starts when a builder frees up."
-                            : "Upgrade under construction - " + rem + "s.";
+                            ? new LocalizedText("village.buildings.progression.upgrade_resource_queued").Resolve()
+                            : LocalText.Format("village.buildings.progression.upgrade_resource_in_progress", rem);
                         FlowTrace.Step("Upgrade", _buildingId + " level timer started");
                         break;
                     }
-                    default:                         Status = "Nothing to unlock here."; break;
+                    default:                         Status = new LocalizedText("village.buildings.progression.upgrade_nothing_to_unlock").Resolve(); break;
                 }
                 Rebuild();
                 Raise();
@@ -1028,7 +1030,7 @@ namespace DeNelle.Village.Buildings.Progression
             {
                 if (VillageTierService.IsMax)
                 {
-                    Status = "The Heart is already at its highest level.";
+                    Status = new LocalizedText("village.buildings.progression.upgrade_heart_maxed").Resolve();
                     Raise();
                     return;
                 }
@@ -1036,9 +1038,10 @@ namespace DeNelle.Village.Buildings.Progression
                 int cost = VillageTierService.NextCost();
                 if (crystals < cost)
                 {
-                    Status = "Need " + DeNelle.Core.UI.ElarionUi.CompactNumber(cost)
-                           + " Crystals to raise the Heart (you have "
-                           + DeNelle.Core.UI.ElarionUi.CompactNumber(crystals) + ").";   // WO-697
+                    string costStr = DeNelle.Core.UI.ElarionUi.CompactNumber(cost);
+                    string haveStr = DeNelle.Core.UI.ElarionUi.CompactNumber(crystals);
+                    Status = LocalText.Format("village.buildings.progression.upgrade_heart_unaffordable",
+                        costStr, haveStr);   // WO-697
                     Raise();
                     return;
                 }
@@ -1047,11 +1050,11 @@ namespace DeNelle.Village.Buildings.Progression
                     int n = VillageTierService.Current;
                     FlowTrace.Step("Upgrade", _buildingId + " unlocked villagetier-" + n
                         + " (unlocks tier-" + n + "+ enhancements).");
-                    Status = "Heart Level raised to " + n + " — higher enhancements unlocked.";
+                    Status = LocalText.Format("village.buildings.progression.upgrade_heart_raised", n);
                 }
                 else
                 {
-                    Status = "Couldn't raise the Heart right now.";
+                    Status = new LocalizedText("village.buildings.progression.upgrade_heart_failed").Resolve();
                 }
                 Rebuild();
                 Raise();
@@ -1067,20 +1070,20 @@ namespace DeNelle.Village.Buildings.Progression
                 string perkId = tierId.Substring("perk:".Length);
                 if (BuildingPerkService.TryResearch(_buildingId, perkId))
                 {
-                    Status = "Research started - check the Research queue.";
+                    Status = new LocalizedText("village.buildings.progression.upgrade_research_started").Resolve();
                     FlowTrace.Step("Upgrade", _buildingId + " started research on perk " + perkId);
                 }
                 else
                 {
                     BuildingPerkService.CanResearch(_buildingId, perkId, out string why);
-                    Status = !string.IsNullOrEmpty(why) ? why : "Can't unlock that perk yet.";
+                    Status = !string.IsNullOrEmpty(why) ? why : new LocalizedText("village.buildings.progression.upgrade_perk_locked").Resolve();
                 }
                 Rebuild();
                 Raise();
                 return;
             }
             if (tierId == NextTierId()) { UpgradeNext(); return; }
-            Status = "Tap the gold tile to unlock the next enhancement.";
+            Status = new LocalizedText("village.buildings.progression.upgrade_next_hint").Resolve();
             Raise();
         }
 

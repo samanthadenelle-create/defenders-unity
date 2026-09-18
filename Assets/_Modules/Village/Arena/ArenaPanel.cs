@@ -38,6 +38,7 @@
 
 using UnityEngine;
 using UnityEngine.UI;
+using DeNelle.Core;
 using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
 
@@ -198,11 +199,11 @@ namespace DeNelle.Village.Arena
             // AddButton centres horizontally at 0.5 (uses anchorX.y as half-width only);
             // anchorY = (y0, y1) with y0 < y1. Stack ATTACK (red) above DEFEND (gold),
             // both above the "Use My Castle" well (y 0.10-0.18) and Close (0.025-0.075).
-            AddButton(_entryRoot.transform, "ATTACK",
+            AddButton(_entryRoot.transform, LocalText.Get("arena.entry.attack_mode"),
                       new Vector2(0.5f, 0.22f), new Vector2(0.29f, 0.36f),
                       new Color(ElarionUi.Danger.r, ElarionUi.Danger.g, ElarionUi.Danger.b, 0.9f),
                       OpenAttackRecruit, ButtonKind.Confirm);
-            AddButton(_entryRoot.transform, "DEFEND",
+            AddButton(_entryRoot.transform, LocalText.Get("arena.entry.defend_mode"),
                       new Vector2(0.5f, 0.22f), new Vector2(0.20f, 0.27f),
                       ElarionUi.GoldButton, OpenDefenseSetup, ButtonKind.Gold);
 
@@ -210,7 +211,7 @@ namespace DeNelle.Village.Arena
             // panel's Close size (VISUAL_TOUCH_CONTRAST_AUDIT 2026-07-14, P1 — was a
             // free-floating fraction-anchored button with no touch floor).
             ElarionUiKit.PinCanonicalCtaSize(
-                AddButton(_entryRoot.transform, "Close", new Vector2(0.30f, 0.70f),
+                AddButton(_entryRoot.transform, LocalText.Get("common.close"), new Vector2(0.30f, 0.70f),
                           new Vector2(0.025f, 0.075f), Glass, Close, ButtonKind.Neutral));
         }
 
@@ -250,7 +251,7 @@ namespace DeNelle.Village.Arena
                      ElarionUi.FontBody, TMPro.TextAlignmentOptions.Left, 0.04f, 0.62f, bold: true);
 
             // The pill: green/ON shows "MY CASTLE *", neutral/OFF shows "USE MY CASTLE".
-            string label = _vm != null ? _vm.CastleToggleLabel : "USE MY CASTLE";
+            string label = _vm != null ? _vm.CastleToggleLabel : LocalText.Get("arena.entry.use_my_castle");
             Color pill = on
                 ? new Color(ElarionUi.Affordable.r, ElarionUi.Affordable.g, ElarionUi.Affordable.b, 0.92f)
                 : Glass;
@@ -394,11 +395,11 @@ namespace DeNelle.Village.Arena
             AddLabel(_resultRoot.transform, _vm != null ? _vm.StatsLine : "", 0.32f, 0.40f,
                      ElarionUi.Gold, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Center, 0.06f, 0.94f, spacing: 2f);
 
-            AddButton(_resultRoot.transform, "Back to Arena", new Vector2(0.34f, 0.66f),
+            AddButton(_resultRoot.transform, LocalText.Get("arena.result.back_to_entry"), new Vector2(0.34f, 0.66f),
                       new Vector2(0.16f, 0.28f), ElarionUi.GoldButton, ShowEntry, ButtonKind.Gold);
             // Canonical CTA pin so the Close matches every other panel (P1).
             ElarionUiKit.PinCanonicalCtaSize(
-                AddButton(_resultRoot.transform, "Close", new Vector2(0.34f, 0.66f),
+                AddButton(_resultRoot.transform, LocalText.Get("common.close"), new Vector2(0.34f, 0.66f),
                           new Vector2(0.04f, 0.13f), Glass, Close, ButtonKind.Neutral));
         }
 

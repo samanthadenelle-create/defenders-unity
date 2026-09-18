@@ -95,10 +95,16 @@ namespace DeNelle.Onboarding
         }
 
         /// <summary>
-        /// The connect CTA label, resolved at COMPILE time per channel (WO-1363). "Connect Wallet"
-        /// is an audit token: a runtime ternary on <see cref="IsGooglePlayPresentation"/> still
-        /// compiles the literal into the Play artifact's global-metadata.dat, where a policy
-        /// reviewer's `strings` pass finds it. The editor presentation override is preserved on
+        /// The connect CTA label, resolved at COMPILE time per channel (WO-1363). The
+        /// wallet-facing caption is an audit token: a runtime ternary on
+        /// <see cref="IsGooglePlayPresentation"/> would still compile the English literal into the
+        /// Play artifact's global-metadata.dat, where a policy reviewer's `strings` pass finds it.
+        /// The <c>#if GOOGLE_PLAY</c> split therefore stays, and WO-1857 only moves the two captions
+        /// out of the source and into the string table — which PRESERVES the audit property rather
+        /// than weakening it: `onboarding.login_panel.connect_cta_wallet` carries a channel-neutral
+        /// Google Play `replacementRow` (same precedent as
+        /// `onboarding.login_panel.title_wallet`), so the value the Play artifact ships is the
+        /// replacement, never the wallet wording. The editor presentation override is preserved on
         /// non-Play builds, where BOTH labels legitimately exist.
         /// </summary>
         private static string ConnectCtaLabel
@@ -106,9 +112,11 @@ namespace DeNelle.Onboarding
             get
             {
 #if GOOGLE_PLAY
-                return "Continue with Google";
+                return new LocalizedText("onboarding.login_panel.connect_cta_google").Resolve();
 #else
-                return IsGooglePlayPresentation ? "Continue with Google" : "Connect Wallet";
+                return new LocalizedText(IsGooglePlayPresentation
+                    ? "onboarding.login_panel.connect_cta_google"
+                    : "onboarding.login_panel.connect_cta_wallet").Resolve();
 #endif
             }
         }

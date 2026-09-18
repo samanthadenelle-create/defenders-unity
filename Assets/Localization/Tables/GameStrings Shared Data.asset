@@ -2927,6 +2927,398 @@ MonoBehaviour:
     m_Key: googleplay.storefront.restore_failed
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760873
+    m_Key: village.buildings.progression.upgrade_queues_disabled
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760874
+    m_Key: village.buildings.progression.upgrade_slot_bought
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760875
+    m_Key: village.buildings.progression.upgrade_all_unlocked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760876
+    m_Key: village.buildings.progression.upgrade_village_tier_gate
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760877
+    m_Key: village.buildings.progression.upgrade_under_construction_timer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760878
+    m_Key: village.buildings.progression.upgrade_tier_unlocked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760879
+    m_Key: village.buildings.progression.upgrade_unaffordable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760880
+    m_Key: village.buildings.progression.upgrade_level_unlocked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760881
+    m_Key: village.buildings.progression.upgrade_needs_magic
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760882
+    m_Key: village.buildings.progression.upgrade_finish_current_work
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760883
+    m_Key: village.buildings.progression.upgrade_resource_queued
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760884
+    m_Key: village.buildings.progression.upgrade_resource_in_progress
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760885
+    m_Key: village.buildings.progression.upgrade_nothing_to_unlock
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760886
+    m_Key: village.buildings.progression.upgrade_heart_maxed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760887
+    m_Key: village.buildings.progression.upgrade_heart_unaffordable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760888
+    m_Key: village.buildings.progression.upgrade_heart_raised
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760889
+    m_Key: village.buildings.progression.upgrade_heart_failed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760890
+    m_Key: village.buildings.progression.upgrade_research_started
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760891
+    m_Key: village.buildings.progression.upgrade_perk_locked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760892
+    m_Key: village.buildings.progression.upgrade_next_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760893
+    m_Key: village.hero.abilities.cancelled_moved
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760894
+    m_Key: village.hero.equipment.equip_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760895
+    m_Key: village.hero.equipment.remove_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760896
+    m_Key: village.hero.equipment.back_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760897
+    m_Key: village.hero.equipment.unequip_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760898
+    m_Key: village.hero.equipment.done_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760899
+    m_Key: village.hero.equipment.no_compatible_items
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760900
+    m_Key: village.hero.equipment.select_compare
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760901
+    m_Key: village.hero.party_shop.select_equip
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760902
+    m_Key: village.hero.party_shop.must_buy_first
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760903
+    m_Key: village.hero.party_shop.cant_equip
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760904
+    m_Key: village.hero.party_shop.nothing_to_do
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760905
+    m_Key: village.hero.party_shop.select_improve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760906
+    m_Key: village.hero.party_shop.must_own_improve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760907
+    m_Key: village.hero.party_shop.cant_improve
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760908
+    m_Key: village.hero.party_shop.improve_failed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760909
+    m_Key: village.crafting.polish.confirm_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760910
+    m_Key: village.crafting.polish.risk_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760911
+    m_Key: village.crafting.polish.outcomes_heading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760912
+    m_Key: village.crafting.polish.shatter_warning
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760913
+    m_Key: village.crafting.polish.keep_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760914
+    m_Key: village.crafting.polish.polish_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760915
+    m_Key: village.troops.raid_deploy.deploy_tap_inside
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760916
+    m_Key: village.troops.raid_deploy.no_army
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760917
+    m_Key: village.troops.raid_deploy.no_more_ready
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760918
+    m_Key: village.troops.raid_deploy.couldnt_deploy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760919
+    m_Key: village.troops.raid_deploy.breach_tap_wall
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760920
+    m_Key: village.troops.raid_deploy.breach_not_wall
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760921
+    m_Key: village.troops.raid_deploy.breach_section_down
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760922
+    m_Key: village.troops.raid_deploy.breach_not_enemy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760923
+    m_Key: village.troops.raid_deploy.breach_ordered
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760924
+    m_Key: village.troops.raid_deploy.breach_order_dropped
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760925
+    m_Key: village.troops.raid_deploy.breach_on
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760926
+    m_Key: village.troops.raid_deploy.breach_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760927
+    m_Key: village.troops.raid_deploy.rally_set
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760928
+    m_Key: village.troops.raid_deploy.rally_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760929
+    m_Key: village.troops.raid_deploy.retreat_confirm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760930
+    m_Key: village.troops.raid_deploy.confirm_retreat_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760931
+    m_Key: village.troops.raid_deploy.time_falling_back
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760932
+    m_Key: village.troops.raid_deploy.retreating
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760933
+    m_Key: village.troops.raid_deploy.retreat_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760934
+    m_Key: village.troops.raid_deploy.deploy_all_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760935
+    m_Key: village.troops.raid_deploy.no_troops_train
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760936
+    m_Key: village.troops.raid_deploy.deploy_all_unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760937
+    m_Key: village.troops.raid_deploy.deploy_all_needs_ground
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760938
+    m_Key: village.troops.raid_deploy.all_ready_deployed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760941
+    m_Key: village.troops.army_muster.barracks_not_built
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760942
+    m_Key: village.troops.army_muster.no_troops_unlock
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760943
+    m_Key: village.troops.army_muster.empty_army_help
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760944
+    m_Key: village.troops.army_muster.cost_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760945
+    m_Key: village.troops.army_muster.train_queue_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760946
+    m_Key: village.troops.army_muster.name_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760947
+    m_Key: village.troops.army_muster.save_slot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760948
+    m_Key: village.troops.army_muster.train_army_button
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760949
+    m_Key: village.troops.army_muster.tip_line
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760950
+    m_Key: arena.attack_palette.launch_raid
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760951
+    m_Key: arena.defense_palette.points_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760952
+    m_Key: arena.defense_palette.no_defenders
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760953
+    m_Key: arena.palette.attack_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760954
+    m_Key: arena.palette.defense_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760955
+    m_Key: arena.entry.attack_mode
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760956
+    m_Key: arena.entry.defend_mode
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760957
+    m_Key: arena.entry.use_my_castle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760958
+    m_Key: arena.result.back_to_entry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760959
+    m_Key: arena.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760960
+    m_Key: arena.battle_hud.start
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760961
+    m_Key: talents.loadout.initial_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760962
+    m_Key: talents.loadout.battle_locked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760963
+    m_Key: talents.loadout.slot_cleared
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760964
+    m_Key: talents.loadout.pick_first
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760965
+    m_Key: talents.loadout.assigned_format
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760966
+    m_Key: talents.loadout.already_on_bar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760967
+    m_Key: talents.loadout.added_to_bar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760968
+    m_Key: talents.loadout.no_free_slot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760969
+    m_Key: talents.loadout.confirm_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760970
+    m_Key: talents.loadout.pick_first_then_slot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760971
+    m_Key: onboarding.login_panel.connect_cta_google
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760972
+    m_Key: onboarding.login_panel.connect_cta_wallet
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

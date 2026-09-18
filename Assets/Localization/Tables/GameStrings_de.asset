@@ -3162,6 +3162,398 @@ MonoBehaviour:
     m_Localized: "Wiederherstellung fehlgeschlagen."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760873
+    m_Localized: "Bauwarteschlangen werden derzeit nicht ausgef\u00FChrt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760874
+    m_Localized: "Zus\u00E4tzlicher Warteschlangen-Slot gekauft - die Warteschlange kann {0} Elemente aufnehmen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760875
+    m_Localized: "Alle Verbesserungen hier sind bereits freigeschaltet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760876
+    m_Localized: "Erfordert Herz-Stufe {0} (du hast {1})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760877
+    m_Localized: "Im Bau \u2014 {0}s bis die Arbeiten hier fertig sind."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760878
+    m_Localized: "Stufe {0} freigeschaltet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760879
+    m_Localized: "Du kannst dir das noch nicht leisten."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760880
+    m_Localized: "Stufe {0} freigeschaltet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760881
+    m_Localized: "Diese Verbesserung ben\u00F6tigt Magie zum Freischalten."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760882
+    m_Localized: "Im Bau \u2014 beende zuerst die aktuelle Arbeit."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760883
+    m_Localized: "Verbesserung in Warteschlange - beginnt, wenn ein Baumeister frei wird."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760884
+    m_Localized: "Verbesserung im Bau - {0}s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760885
+    m_Localized: "Hier gibt es nichts zum Freischalten."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760886
+    m_Localized: "Das Herz ist bereits auf seiner h\u00F6chsten Stufe."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760887
+    m_Localized: "Du brauchst {0} Kristalle, um das Herz zu erh\u00F6hen (du hast {1})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760888
+    m_Localized: "Herz-Stufe auf {0} erh\u00F6ht \u2014 h\u00F6here Verbesserungen freigeschaltet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760889
+    m_Localized: "Konnte das Herz gerade nicht erh\u00F6hen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760890
+    m_Localized: "Forschung gestartet - \u00FCberpr\u00FCfe die Forschungswarteschlange."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760891
+    m_Localized: "Du kannst diesen Vorteil noch nicht freischalten."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760892
+    m_Localized: "Tippe auf die goldene Kachel, um die n\u00E4chste Verbesserung freizuschalten."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760893
+    m_Localized: "abgebrochen - du hast dich bewegt. Bleib still, um zu schie\u00DFen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760894
+    m_Localized: "ANLEGEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760895
+    m_Localized: "ENTFERNEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760896
+    m_Localized: "ZUR\u00DCCK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760897
+    m_Localized: "Ausr\u00FCstung ablegen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760898
+    m_Localized: "Fertig"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760899
+    m_Localized: "Keine kompatiblen Gegenst\u00E4nde besessen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760900
+    m_Localized: "W\u00E4hle ein Element zum Vergleichen aus."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760901
+    m_Localized: "W\u00E4hle ein Element zum Anlegen aus."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760902
+    m_Localized: "Du musst es kaufen, bevor du es anlegen kannst."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760903
+    m_Localized: "Dieser Gegenstand kann nicht angelegt werden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760904
+    m_Localized: "Nichts zu tun f\u00FCr diesen Artikel."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760905
+    m_Localized: "W\u00E4hle ein Element zum Verbessern aus."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760906
+    m_Localized: "Du musst es besitzen, bevor du es verbessern kannst."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760907
+    m_Localized: "Dieser Gegenstand kann nicht verbessert werden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760908
+    m_Localized: "Verbesserung fehlgeschlagen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760909
+    m_Localized: "NOCHMALS POLIEREN?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760910
+    m_Localized: "Du riskierst: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760911
+    m_Localized: "Es k\u00F6nnte zu jedem dieser werden:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760912
+    m_Localized: "Es besteht eine {0}%ige Chance, dass der Stein zerst\u00F6rt wird und du nichts bekommst."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760913
+    m_Localized: "BEHALTEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760914
+    m_Localized: "NOCHMALS POLIEREN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760915
+    m_Localized: "Dort kann nicht platziert werden - tippe auf offenes Gel\u00E4nde in der Basis."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760916
+    m_Localized: "Keine Armee zum Eins\u00E4tzen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760917
+    m_Localized: "Keine {0} mehr bereit zum Eins\u00E4tzen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760918
+    m_Localized: "Konnte {0} nicht einsetzen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760919
+    m_Localized: "Bresche: Tippe auf einen Mauerteil, um den Angriff zu befehlen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760920
+    m_Localized: "Bresche: Das ist keine Mauer - tippe auf einen Mauerteil."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760921
+    m_Localized: "Bresche: Dieser Teil ist bereits zerst\u00F6rt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760922
+    m_Localized: "Bresche: Diese Mauer geh\u00F6rt nicht dem Feind."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760923
+    m_Localized: "Bresche befohlen - das Kriegsheer greift diesen Teil an."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760924
+    m_Localized: "Bresche-Befehl aufgehoben - das Kriegsheer sucht sich die schw\u00E4chste Mauer aus."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760925
+    m_Localized: "Bresche AN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760926
+    m_Localized: "Bresche"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760927
+    m_Localized: "Sammelplatz gesetzt \u2014 unt\u00E4tige Truppen sammeln sich dort."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760928
+    m_Localized: "Sammeln"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760929
+    m_Localized: "R\u00FCckzug? Tippe erneut zur Best\u00E4tigung \u2014 die Gefallenen sind verloren, und einige \u00DCberlebende kehren nicht zur\u00FCck."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760930
+    m_Localized: "R\u00FCckzug best\u00E4tigen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760931
+    m_Localized: "Zeit! R\u00FCckzug zum Schloss..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760932
+    m_Localized: "R\u00FCckzug zum Schloss..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760933
+    m_Localized: "R\u00FCckzug"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760934
+    m_Localized: "Alle einsetzen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760935
+    m_Localized: "Keine Truppen zum Eins\u00E4tzen - trainiere zuerst in der Kaserne."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760936
+    m_Localized: "Alle einsetzen nicht verf\u00FCgbar - keine Armee bereit oder Held."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760937
+    m_Localized: "Alle einsetzen ben\u00F6tigt offenes Gel\u00E4nde davor."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760938
+    m_Localized: "Alle bereiten Truppen sind bereits eingesetzt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760941
+    m_Localized: "Die Kaserne ist noch nicht gebaut."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760942
+    m_Localized: "Noch keine Truppen freigeschaltet - Kaserne verbessern."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760943
+    m_Localized: "\nDiese gespeicherte Armee ist leer.\nTippe auf \u00DCberfall / Halten / Belagerung zum schnellen F\u00FCllen,\noder [+] Truppen auf der linken Seite.\nDann Speichern und Armee trainieren.\n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760944
+    m_Localized: "Kosten:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760945
+    m_Localized: "Warteschlange zum Trainieren: {0} von {1} verwendet, {2} frei."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760946
+    m_Localized: "Name: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760947
+    m_Localized: "Speichern Slot {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760948
+    m_Localized: "Armee trainieren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760949
+    m_Localized: "Tipp: Trainieren speichert diesen Slot automatisch. F\u00FClle die Armee, dann \u00DCberf\u00E4lle."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760950
+    m_Localized: "\u00DCberfall Starten"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760951
+    m_Localized: "Verteidigungspunkte: {0} / {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760952
+    m_Localized: "Keine Verteidiger registriert."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760953
+    m_Localized: "Trupp Rekrutieren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760954
+    m_Localized: "Arena-Verteidigung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760955
+    m_Localized: "ANGRIFF"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760956
+    m_Localized: "VERTEIDIGEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760957
+    m_Localized: "MEIN SCHLOSS NUTZEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760958
+    m_Localized: "Zur\u00FCck zur Arena"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760959
+    m_Localized: "ARENA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760960
+    m_Localized: "Kampf!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760961
+    m_Localized: "W\u00E4hle eine F\u00E4higkeit und dann einen Quick-Swap-Slot."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760962
+    m_Localized: "F\u00E4higkeiten k\u00F6nnen w\u00E4hrend des Kampfes nicht ge\u00E4ndert werden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760963
+    m_Localized: "Slot geleert."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760964
+    m_Localized: "W\u00E4hle erst eine F\u00E4higkeit."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760965
+    m_Localized: "Dem Quick-Swap-Slot {0} zugewiesen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760966
+    m_Localized: "Diese F\u00E4higkeit ist bereits in der Leiste."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760967
+    m_Localized: "Zu deiner Quick-Swap-Leiste hinzugef\u00FCgt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760968
+    m_Localized: "Kein freier Platz (oder bereits in der Leiste)."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760969
+    m_Localized: "Tippe jetzt auf einen Quick-Swap-Slot."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760970
+    m_Localized: "W\u00E4hle zuerst eine F\u00E4higkeit und tippe dann auf einen Slot."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760971
+    m_Localized: "Mit Google fortfahren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760972
+    m_Localized: "Wallet verbinden"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

@@ -24,6 +24,7 @@ using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using DeNelle.Core;
 using DeNelle.Core.HUD;
 using DeNelle.Core.UI;
 using DeNelle.Village.UI;   // EndStateVM/EndStateView — the ONE shared end-state template
@@ -65,7 +66,7 @@ namespace DeNelle.Village.Arena
             rt.anchorMin = new Vector2(0.30f, 0.60f);
             rt.anchorMax = new Vector2(0.70f, 0.70f);
             rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-            parts.label.text = string.IsNullOrEmpty(foeLabel) ? "Battle!" : foeLabel;
+            parts.label.text = string.IsNullOrEmpty(foeLabel) ? LocalText.Get("arena.battle_hud.start") : foeLabel;
             parts.label.fontSize = 30;
             Destroy(parts.card, Mathf.Max(0.2f, seconds));
         }

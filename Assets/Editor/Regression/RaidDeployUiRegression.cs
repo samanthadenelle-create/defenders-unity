@@ -411,9 +411,14 @@ namespace DeNelle.Editor
                 text.IndexOf("ElarionUiKit.Portrait(square.transform", StringComparison.Ordinal) < 0 ||
                 text.IndexOf("AspectRatioFitter.AspectMode.FitInParent", StringComparison.Ordinal) < 0)
                 failures.Add(Tag + " troop-type buttons no longer use the canonical round troop portraits");
+            // WO-1857: the one-tap CTA's caption is now a LocalizedText resolve, so the third clause
+            // pins the resolved KEY instead of the English caption. The retired caption is
+            // deliberately not reproduced here - it still appears in several layout comments inside
+            // RaidDeployController.cs, so a source-text needle on it would pass off those comments
+            // and assert nothing about the button.
             if (text.IndexOf("private void DeployAll()", StringComparison.Ordinal) < 0 ||
                 text.IndexOf("TroopDeployer.SpawnFromArmy", StringComparison.Ordinal) < 0 ||
-                text.IndexOf("\"Deploy All\"", StringComparison.Ordinal) < 0)
+                text.IndexOf("\"village.troops.raid_deploy.deploy_all_button\"", StringComparison.Ordinal) < 0)
                 failures.Add(Tag + " the one-tap Deploy All route is incomplete");
 
             if (failures.Count == before)

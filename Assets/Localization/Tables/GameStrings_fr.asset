@@ -3172,6 +3172,398 @@ MonoBehaviour:
     m_Localized: "La restauration a \xE9chou\xE9."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760873
+    m_Localized: "Les files d'attente de construction ne s'ex\u00E9cutent pas en ce moment."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760874
+    m_Localized: "Emplacement de file suppl\u00E9mentaire achet\u00E9 - la file d'attente peut contenir {0} \u00E9l\u00E9ments."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760875
+    m_Localized: "Toutes les am\u00E9liorations ici sont d\u00E9j\u00E0 d\u00E9verrouill\u00E9es."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760876
+    m_Localized: "N\u00E9cessite le Niveau C\u0153ur {0} (tu as {1})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760877
+    m_Localized: "En construction \u2014 {0}s jusqu'\u00E0 ce que les travaux ici se terminent."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760878
+    m_Localized: "Tier {0} d\u00E9verrouill\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760879
+    m_Localized: "Tu ne peux pas encore te le permettre."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760880
+    m_Localized: "Niveau {0} d\u00E9verrouill\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760881
+    m_Localized: "Cette am\u00E9lioration a besoin de Magie pour \u00EAtre d\u00E9verrouill\u00E9e."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760882
+    m_Localized: "En construction \u2014 termine le travail actuel en premier."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760883
+    m_Localized: "Am\u00E9lioration en attente - elle commence quand un constructeur se lib\u00E8re."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760884
+    m_Localized: "Am\u00E9lioration en cours - {0}s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760885
+    m_Localized: "Rien \u00E0 d\u00E9verrouiller ici."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760886
+    m_Localized: "Le C\u0153ur est d\u00E9j\u00E0 \u00E0 son niveau le plus \u00E9lev\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760887
+    m_Localized: "Tu as besoin de {0} Cristaux pour \u00E9lever le C\u0153ur (tu as {1})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760888
+    m_Localized: "Niveau du C\u0153ur augment\u00E9 \u00E0 {0} \u2014 am\u00E9liorations sup\u00E9rieures d\u00E9verrouill\u00E9es."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760889
+    m_Localized: "N'a pas pu \u00E9lever le C\u0153ur en ce moment."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760890
+    m_Localized: "Recherche commenc\u00E9e - v\u00E9rifie la file de Recherche."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760891
+    m_Localized: "Tu ne peux pas encore d\u00E9verrouiller cet avantage."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760892
+    m_Localized: "Appuie sur la tuile dor\u00E9e pour d\u00E9verrouiller l'am\u00E9lioration suivante."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760893
+    m_Localized: "annul\u00E9 - tu as boug\u00E9. Immobilise-toi pour tirer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760894
+    m_Localized: "\u00C9QUIPER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760895
+    m_Localized: "RETIRER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760896
+    m_Localized: "RETOUR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760897
+    m_Localized: "D\u00E9gainer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760898
+    m_Localized: "Termin\u00E9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760899
+    m_Localized: "Aucun objet compatible poss\u00E9d\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760900
+    m_Localized: "S\u00E9lectionnez un objet \u00E0 comparer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760901
+    m_Localized: "S\u00E9lectionnez un objet \u00E0 \u00E9quiper."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760902
+    m_Localized: "Tu dois l'acheter avant de pouvoir l'\u00E9quiper."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760903
+    m_Localized: "Cet objet ne peut pas \u00EAtre \u00E9quip\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760904
+    m_Localized: "Rien \u00E0 faire pour cet objet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760905
+    m_Localized: "S\u00E9lectionnez un objet \u00E0 am\u00E9liorer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760906
+    m_Localized: "Tu dois le poss\u00E9der avant de pouvoir l'am\u00E9liorer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760907
+    m_Localized: "Cet objet ne peut pas \u00EAtre am\u00E9lior\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760908
+    m_Localized: "L'am\u00E9lioration a \u00E9chou\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760909
+    m_Localized: "POLIR \u00C0 NOUVEAU?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760910
+    m_Localized: "Vous risquez: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760911
+    m_Localized: "Cela pourrait devenir n'importe lequel de ceux-ci:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760912
+    m_Localized: "Il y a une chance de {0}% que la pierre soit d\u00E9truite et que vous n'obteniez rien."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760913
+    m_Localized: "GARDER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760914
+    m_Localized: "POLIR \u00C0 NOUVEAU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760915
+    m_Localized: "Impossible de d\u00E9ployer l\u00E0 - appuie sur un terrain d\u00E9gag\u00E9 \u00E0 l'int\u00E9rieur de la base."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760916
+    m_Localized: "Aucune arm\u00E9e \u00E0 d\u00E9ployer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760917
+    m_Localized: "Pas plus de {0} pr\u00EAts \u00E0 d\u00E9ployer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760918
+    m_Localized: "Impossible de d\u00E9ployer {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760919
+    m_Localized: "Br\u00E8che: appuie sur une section de mur pour ordonner l'assaut."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760920
+    m_Localized: "Br\u00E8che: ce n'est pas un mur - appuie sur une section de mur."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760921
+    m_Localized: "Br\u00E8che: cette section est d\u00E9j\u00E0 \u00E9croul\u00E9e."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760922
+    m_Localized: "Br\u00E8che: ce mur n'appartient pas \u00E0 l'ennemi."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760923
+    m_Localized: "Br\u00E8che ordonn\u00E9e - la bande de guerre attaque cette section."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760924
+    m_Localized: "Ordre de br\u00E8che annul\u00E9 - la bande choisit le mur le plus faible \u00E0 nouveau."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760925
+    m_Localized: "Br\u00E8che ACTIV\u00C9E"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760926
+    m_Localized: "Br\u00E8che"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760927
+    m_Localized: "Point de ralliement d\u00E9fini \u2014 les troupes inactives s'y rassembleront."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760928
+    m_Localized: "Rallier"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760929
+    m_Localized: "Retraite ? Appuie \u00E0 nouveau pour confirmer \u2014 les tomb\u00E9s sont perdus, et certains survivants ne reviendront pas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760930
+    m_Localized: "Confirmer Retraite"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760931
+    m_Localized: "Temps! Retrait vers le ch\u00E2teau..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760932
+    m_Localized: "Retrait vers le ch\u00E2teau..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760933
+    m_Localized: "Retraite"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760934
+    m_Localized: "D\u00E9ployer Tous"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760935
+    m_Localized: "Pas de troupes \u00E0 d\u00E9ployer - entra\u00EEne-toi \u00E0 la Caserne d'abord."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760936
+    m_Localized: "D\u00E9ployer Tous indisponible - aucune arm\u00E9e pr\u00EAte ou h\u00E9ros."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760937
+    m_Localized: "D\u00E9ployer Tous a besoin de terrain d\u00E9gag\u00E9 devant."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760938
+    m_Localized: "Toutes les troupes pr\u00EAtes sont d\u00E9j\u00E0 d\u00E9ploy\u00E9es."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760941
+    m_Localized: "La Caserne n'est pas encore construite."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760942
+    m_Localized: "Aucune troupe d\u00E9bloqu\u00E9e encore - am\u00E9liore la Caserne."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760943
+    m_Localized: "\nCette arm\u00E9e sauvegard\u00E9e est vide.\nAppuie sur Raid / Tenir / Si\u00E8ge pour remplir rapidement,\nou [+] troupes sur la gauche.\nPuis Sauvegarder et Entra\u00EEner l'Arm\u00E9e.\n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760944
+    m_Localized: "Co\u00FBt:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760945
+    m_Localized: "File d'entra\u00EEnement: {0} sur {1} utilis\u00E9s, {2} libres."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760946
+    m_Localized: "Nom: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760947
+    m_Localized: "Sauvegarder l'emplacement {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760948
+    m_Localized: "Entra\u00EEner l'Arm\u00E9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760949
+    m_Localized: "Conseil: L'entra\u00EEnement sauvegarde automatiquement cet emplacement. Remplissez l'arm\u00E9e, puis Raids."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760950
+    m_Localized: "Lancer l'Incursion"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760951
+    m_Localized: "Points de D\u00E9fense: {0} / {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760952
+    m_Localized: "Aucun d\u00E9fenseur enregistr\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760953
+    m_Localized: "Recruter une Escouade"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760954
+    m_Localized: "D\u00E9fense d'Ar\u00E8ne"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760955
+    m_Localized: "ATTAQUE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760956
+    m_Localized: "D\u00C9FENDRE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760957
+    m_Localized: "UTILISER MON CH\u00C2TEAU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760958
+    m_Localized: "Retour \u00E0 l'Ar\u00E8ne"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760959
+    m_Localized: "ARENE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760960
+    m_Localized: "Bataille!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760961
+    m_Localized: "Appuyez sur une comp\u00E9tence, puis sur un emplacement de commutation rapide."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760962
+    m_Localized: "Impossible de changer les comp\u00E9tences pendant la bataille."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760963
+    m_Localized: "Emplacement vid\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760964
+    m_Localized: "Choisissez d'abord une comp\u00E9tence."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760965
+    m_Localized: "Assign\u00E9 \u00E0 l'emplacement de commutation rapide {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760966
+    m_Localized: "Cette comp\u00E9tence est d\u00E9j\u00E0 dans la barre."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760967
+    m_Localized: "Ajout\u00E9 \u00E0 votre barre de commutation rapide."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760968
+    m_Localized: "Aucun emplacement libre (ou d\u00E9j\u00E0 dans la barre)."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760969
+    m_Localized: "Touchez maintenant un emplacement de commutation rapide."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760970
+    m_Localized: "Choisissez d'abord une comp\u00E9tence, puis touchez un emplacement."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760971
+    m_Localized: "Continuer avec Google"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760972
+    m_Localized: "Connecter le portefeuille"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

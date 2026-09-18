@@ -302,7 +302,14 @@ namespace DeNelle.Editor.Regression
             // sweeping a window - a window would condemn the honest Fail next door.
             AssertBranchSeverity(failures, log, UpgradeSvcSrc, "spend REJECTED", searchForward: false,
                                  what: "BuildingUpgradeService's tier-spend rejection");
-            AssertBranchSeverity(failures, log, UpgradeVmSrc, "You can't afford that yet.", searchForward: true,
+            // WO-1857: the VM's affordability sentence moved into the English string table, so the
+            // anchor is now the resolved KEY. It still sits ON the affordability branch and still
+            // occurs first at that branch, so `searchForward` resolves the same FlowTrace call as
+            // before. This was a LIVE red, not a hypothetical: AssertBranchSeverity strips comments
+            // before searching, so the retired sentence surviving in three BuildingUpgradeVM comments
+            // did not keep the old anchor findable.
+            AssertBranchSeverity(failures, log, UpgradeVmSrc,
+                                 "village.buildings.progression.upgrade_unaffordable", searchForward: true,
                                  what: "BuildingUpgradeVM's affordability branch");
         }
 

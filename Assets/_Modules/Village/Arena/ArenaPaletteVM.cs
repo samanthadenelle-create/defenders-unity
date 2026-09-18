@@ -20,6 +20,8 @@
 
 using System;
 using System.Collections.Generic;
+using DeNelle.Core;
+using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
 
 namespace DeNelle.Village.Arena
@@ -66,7 +68,7 @@ namespace DeNelle.Village.Arena
 
         public event Action Changed;
 
-        public string Title => Mode == ArenaPaletteMode.Attack ? "Recruit Squad" : "Arena Defense";
+        public string Title => Mode == ArenaPaletteMode.Attack ? LocalText.Get("arena.palette.attack_title") : LocalText.Get("arena.palette.defense_title");
 
         public void Close() => _onClose?.Invoke();
 

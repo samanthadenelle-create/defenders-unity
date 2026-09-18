@@ -1005,7 +1005,7 @@ namespace DeNelle.Village
             if (!UnityEngine.AI.NavMesh.SamplePosition(hit.point, out UnityEngine.AI.NavMeshHit navHit,
                                                        TroopFactory.NavSampleRadius, UnityEngine.AI.NavMesh.AllAreas))
             {
-                SetStatus("Can't deploy there - tap open ground inside the base.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.deploy_tap_inside").Resolve());
                 DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
                     $"DEPLOY REFUSED - tap resolved to {hit.point} on '{(hit.collider != null ? hit.collider.name : "?")}', " +
                     $"which has no baked NavMesh within {TroopFactory.NavSampleRadius}m. Spawning here would " +
@@ -1016,13 +1016,13 @@ namespace DeNelle.Village
             }
 
             var army = Army();
-            if (army == null) { SetStatus("No army to deploy."); return; }
+            if (army == null) { SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.no_army").Resolve()); return; }
 
             // The next deployable troop of the armed type (healthy, not already deployed).
             PlayerTroop next = NextDeployableOfType(army, _armedDefId);
             if (next == null)
             {
-                SetStatus($"No more {DisplayName(_armedDefId)} ready to deploy.");
+                SetStatus(DeNelle.Core.UI.LocalText.Format("village.troops.raid_deploy.no_more_ready", DisplayName(_armedDefId)));
                 Disarm();
                 RefreshTiles();
                 return;
@@ -1037,7 +1037,7 @@ namespace DeNelle.Village
             var troop = TroopDeployer.SpawnFromArmy(next, deployPoint, stackIndex, _deploySpread);
             if (troop == null)
             {
-                SetStatus($"Couldn't deploy {DisplayName(_armedDefId)}.");
+                SetStatus(DeNelle.Core.UI.LocalText.Format("village.troops.raid_deploy.couldnt_deploy", DisplayName(_armedDefId)));
                 return;
             }
 
@@ -1136,7 +1136,7 @@ namespace DeNelle.Village
             if (!RaycastGround(screenPoint, out RaycastHit hit))
             {
                 LogBreachTapDiagnostics(screenPoint, false, default);
-                SetStatus("Breach: tap a wall section to order the assault.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_tap_wall").Resolve());
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                     $"HandleBreachTap OUT: outcome=raycast_miss screenPoint={screenPoint} " +
                     "screenNorm=" + DescribeScreenNorm(screenPoint) +
@@ -1158,7 +1158,7 @@ namespace DeNelle.Village
                 // A miss is a NO-OP with a hint, never a clear. Losing a standing order to a
                 // stray tap on the ground is the failure the player cannot see or undo; the
                 // Breach toggle is the visible cancel (ToggleBreach), mirroring ToggleRally.
-                SetStatus("Breach: that is not a wall - tap a wall section.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_not_wall").Resolve());
                 // WO-1790: locals first (CompileGate has no interpolated-string model, CLAUDE.md
                 // sec.1), and the message states ONLY what was measured.
                 string hitName = hit.collider != null ? hit.collider.name : "nothing";
@@ -1184,7 +1184,7 @@ namespace DeNelle.Village
 
             if (!wall.IsAlive)
             {
-                SetStatus("Breach: that section is already down.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_section_down").Resolve());
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                     $"HandleBreachTap OUT: outcome=wall_already_dead wall='{wall.name}' - hit a real " +
                     "WallSegment but wall.IsAlive is false (that section already collapsed). No order " +
@@ -1198,7 +1198,7 @@ namespace DeNelle.Village
                 // Faction is DERIVED from SceneOwnership (WO-1717 sec.2), so in a raid every
                 // base wall reads Hostile. A friendly one here means the tap found the wrong
                 // scene's masonry - refuse rather than order the warband onto their own wall.
-                SetStatus("Breach: that wall is not the enemy's.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_not_enemy").Resolve());
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                     $"HandleBreachTap OUT: outcome=wrong_faction wall='{wall.name}' faction={wall.Faction} " +
                     "- hit a live WallSegment but it did not resolve Hostile (expected in a raid scene, " +
@@ -1208,7 +1208,7 @@ namespace DeNelle.Village
             }
 
             TroopBreachOrder.Set(wall);
-            SetStatus("Breach ordered - the warband hits that section.");
+            SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_ordered").Resolve());
             RefreshBreachButton();
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                 $"HandleBreachTap OUT: outcome=success wall='{wall.name}' faction={wall.Faction} - " +
@@ -1438,13 +1438,13 @@ namespace DeNelle.Village
                 RefreshRallyButton();
                 RefreshTiles();
                 EnsureBreachMarker();   // WO-1723 Q2 - the ordered panel gets a visible bracket
-                SetStatus("Breach: tap a wall section to order the assault.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_tap_wall").Resolve());
             }
             else
             {
                 bool hadOrder = TroopBreachOrder.HasOrder;
                 TroopBreachOrder.Clear();
-                SetStatus("Breach order dropped - the warband picks the weakest wall again.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_order_dropped").Resolve());
                 DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                     $"ToggleBreach OUT - breach mode DISARMED. hadStandingOrder={hadOrder} " +
                     (hadOrder
@@ -1479,7 +1479,7 @@ namespace DeNelle.Village
         {
             if (_breachButton == null) return;
             var lbl = _breachButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-            if (lbl != null) lbl.text = _breachMode ? "Breach ON" : "Breach";
+            if (lbl != null) lbl.text = _breachMode ? new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_on").Resolve() : new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_button").Resolve();
         }
 
         // =====================================================================
@@ -1496,7 +1496,7 @@ namespace DeNelle.Village
             ShowRallyFlag(hit.point);
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                 $"rally point moved to {hit.point} — warband musters there.");
-            SetStatus("Rally set — idle troops will muster there.");
+            SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.rally_set").Resolve());
         }
 
         // =====================================================================
@@ -1653,12 +1653,11 @@ namespace DeNelle.Village
                 // WO-1810 - THIS LINE USED TO PROMISE "the fallen recover", which is no longer true
                 // and was the defect the owner reported: the fallen are dead and the retreat itself
                 // costs a share of the survivors. The player must be told the price BEFORE the tap.
-                SetStatus("Retreat? Tap again to confirm — the fallen are lost, and some survivors " +
-                          "will not make it back.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.retreat_confirm").Resolve());
                 if (_retreatButton != null)
                 {
                     var lbl = _retreatButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-                    if (lbl != null) lbl.text = "Confirm Retreat";
+                    if (lbl != null) lbl.text = new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.confirm_retreat_button").Resolve();
                 }
                 return;
             }
@@ -1725,8 +1724,8 @@ namespace DeNelle.Village
             GameStateService.Instance?.Save();
             SetStatus(string.Equals(reason, DeNelle.Village.UI.EndStateVM.TimeoutReason,
                                     System.StringComparison.OrdinalIgnoreCase)
-                ? "Time! Falling back to the castle..."
-                : "Retreating to the castle...");
+                ? new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.time_falling_back").Resolve()
+                : new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.retreating").Resolve());
 
             ShowNonVictoryResult(reason);
         }
@@ -2776,21 +2775,21 @@ namespace DeNelle.Village
             // The predictions above are ARITHMETIC; WO1639BarProbe's LogFaceFit("breach", ...)
             // is the measured half, on the device, in the log.
             float faceY0 = FaceY0, faceY1 = FaceY1;
-            _deployAllButton = ElarionUiKit.Button(bar.transform, "Deploy All", ElarionUiKit.ButtonKind.Gold,
+            _deployAllButton = ElarionUiKit.Button(bar.transform, new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.deploy_all_button").Resolve(), ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.410f, faceY0), new Vector2(0.630f, faceY1), DeployAll);
 
             // Breach toggle. Its band carries "Breach ON" (RefreshBreachButton), not "Breach",
             // so it is sized for the LONGER of the two - the same rule as Rally below.
-            _breachButton = ElarionUiKit.Button(bar.transform, "Breach", ElarionUiKit.ButtonKind.Quiet,
+            _breachButton = ElarionUiKit.Button(bar.transform, new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_button").Resolve(), ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.645f, faceY0), new Vector2(0.800f, faceY1), ToggleBreach);
 
             // Rally stays on the command bar. Its band carries "Rally ON"
             // (RefreshRallyButton), not "Rally", so it is sized for the LONGER of the two.
-            _rallyButton = ElarionUiKit.Button(bar.transform, "Rally", ElarionUiKit.ButtonKind.Quiet,
+            _rallyButton = ElarionUiKit.Button(bar.transform, new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.rally_button").Resolve(), ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.815f, faceY0), new Vector2(0.955f, faceY1), ToggleRally);
             // Owner layout: persistent exit above the right-side raid readout.
             var retreatBand = HudLayoutBands.RaidRetreatBand;
-            _retreatButton = ElarionUiKit.Button(_ui.transform, "Retreat", ElarionUiKit.ButtonKind.Danger,
+            _retreatButton = ElarionUiKit.Button(_ui.transform, new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.retreat_button").Resolve(), ElarionUiKit.ButtonKind.Danger,
                 new Vector2(retreatBand.xMin, retreatBand.yMin),
                 new Vector2(retreatBand.xMax, retreatBand.yMax), OnRetreatPressed);
 
@@ -3011,7 +3010,7 @@ namespace DeNelle.Village
                 // to two lines instead, and two lines at 40 need 2 x NeedPx(40) = 100.8 px against
                 // the derived face band's 116.7 px at 2670x1200. It seats, at full size, with the
                 // whole sentence. NO FONT GOES UNDER FontFloor and NO PLAYER COPY IS SHORTENED.
-                var empty = ElarionUiKit.Label(bar, "No troops to deploy - train at the Barracks first.",
+                var empty = ElarionUiKit.Label(bar, new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.no_troops_train").Resolve(),
                     FaceY0, FaceY1, ElarionUi.ParchmentDim, ElarionUi.FontLabel,
                     TMPro.TextAlignmentOptions.Left, TrayLeftX, TrayRightX);
                 ElarionUiKit.FitBlock(empty);
@@ -3120,7 +3119,7 @@ namespace DeNelle.Village
             var hero = GameObject.FindWithTag("Player");
             if (army == null || army.Owned == null || hero == null)
             {
-                SetStatus("Deploy All unavailable - no ready army or hero.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.deploy_all_unavailable").Resolve());
                 return;
             }
 
@@ -3130,7 +3129,7 @@ namespace DeNelle.Village
             if (!UnityEngine.AI.NavMesh.SamplePosition(desired, out UnityEngine.AI.NavMeshHit seat,
                                                        8f, UnityEngine.AI.NavMesh.AllAreas))
             {
-                SetStatus("Deploy All needs open ground ahead.");
+                SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.deploy_all_needs_ground").Resolve());
                 return;
             }
 
@@ -3151,7 +3150,7 @@ namespace DeNelle.Village
             Disarm();
             RefreshTiles();
             SetStatus(deployedNow > 0 ? "Deployed " + deployedNow + " troops in assault formation."
-                                      : "All ready troops are already deployed.");
+                                      : new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.all_ready_deployed").Resolve());
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                 "DEPLOY ALL -> " + deployedNow + " troop(s), tactic=Assault Formation, seat=" + seat.position + ".");
         }

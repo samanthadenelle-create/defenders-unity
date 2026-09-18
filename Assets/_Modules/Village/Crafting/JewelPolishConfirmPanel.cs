@@ -91,7 +91,7 @@ namespace DeNelle.Village.Crafting
             }
 
             var modal = ElarionUiKit.BuildObsidianModal(
-                PanelName, "POLISH AGAIN?",
+                PanelName, new LocalizedText("village.crafting.polish.confirm_title").Resolve(),
                 new Vector2(0.18f, 0.10f), new Vector2(0.82f, 0.90f),
                 onClose: CloseCancelled, sortingOrder: 31040,
                 frameName: RpgUiCatalog.FrameCore);
@@ -117,12 +117,12 @@ namespace DeNelle.Village.Crafting
             // abstract. This is the "shown BESIDE the outcome table" requirement: it reads
             // immediately above the odds, in the same visual block.
             string heldName = MaterialCatalog.DisplayName(heldGemId);
-            var held = ElarionUiKit.Label(content, "You are risking: " + heldName, 0f, 0f,
+            var held = ElarionUiKit.Label(content, LocalText.Format("village.crafting.polish.risk_label", heldName), 0f, 0f,
                 ElarionUi.Gilt, ElarionUi.FontBody, TextAlignmentOptions.Center, 0.06f, 0.94f, bold: true);
             StackDown(held, HeadingPx, ref cursor);
             ElarionUiKit.FitSingleLine(held, 24f, 34f);
 
-            var heading = ElarionUiKit.Label(content, "It could become any of these:", 0f, 0f,
+            var heading = ElarionUiKit.Label(content, new LocalizedText("village.crafting.polish.outcomes_heading").Resolve(), 0f, 0f,
                 ElarionUi.ParchmentDim, ElarionUi.FontBody, TextAlignmentOptions.Center, 0.06f, 0.94f);
             StackDown(heading, HeadingPx, ref cursor);
             ElarionUiKit.FitSingleLine(heading, 22f, 30f);
@@ -150,7 +150,7 @@ namespace DeNelle.Village.Crafting
             if (shatterPct > 0)
             {
                 var warn = ElarionUiKit.Label(content,
-                    "There is a " + shatterPct + "% chance the stone is destroyed and you get nothing.",
+                    LocalText.Format("village.crafting.polish.shatter_warning", shatterPct),
                     0f, 0f, ElarionUi.Gilt, ElarionUi.FontBody, TextAlignmentOptions.Center, 0.05f, 0.95f);
                 StackDown(warn, HeadingPx, ref cursor);
                 ElarionUiKit.FitBlock(warn, 20f, 28f);
@@ -167,11 +167,11 @@ namespace DeNelle.Village.Crafting
 
             // Cancel is the WIDER, left-hand default. On a screen whose whole purpose is to slow the
             // player down, the safe choice should be the easy one to hit.
-            var keep = ElarionUiKit.ButtonPack(actions, "KEEP IT", ElarionUiKit.ButtonKind.Quiet,
+            var keep = ElarionUiKit.ButtonPack(actions, new LocalizedText("village.crafting.polish.keep_button").Resolve(), ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.04f, 0.08f), new Vector2(0.52f, 0.92f),
                 CloseCancelled, RpgUiCatalog.ButtonFrame);
             MedievalUiSkin.ApplyButton(keep, primary: false);
-            var polish = ElarionUiKit.ButtonPack(actions, "POLISH AGAIN", ElarionUiKit.ButtonKind.Danger,
+            var polish = ElarionUiKit.ButtonPack(actions, new LocalizedText("village.crafting.polish.polish_button").Resolve(), ElarionUiKit.ButtonKind.Danger,
                 new Vector2(0.56f, 0.08f), new Vector2(0.96f, 0.92f),
                 CloseConfirmed, RpgUiCatalog.ButtonFrame);
             MedievalUiSkin.ApplyButton(polish, primary: false);

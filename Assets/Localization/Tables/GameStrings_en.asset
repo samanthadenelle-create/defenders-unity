@@ -3115,6 +3115,398 @@ MonoBehaviour:
     m_Localized: "Restore failed."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760873
+    m_Localized: "Build queues are not running right now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760874
+    m_Localized: "Extra queue slot bought - the queue can take {0} items."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760875
+    m_Localized: "Every enhancement here is already unlocked."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760876
+    m_Localized: "Requires Heart Level {0} (you have {1})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760877
+    m_Localized: "Under construction \u2014 {0}s until work here finishes."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760878
+    m_Localized: "Tier {0} unlocked."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760879
+    m_Localized: "You can't afford that yet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760880
+    m_Localized: "Level {0} unlocked."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760881
+    m_Localized: "That enhancement needs Magic to unlock."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760882
+    m_Localized: "Under construction \u2014 finish the current work first."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760883
+    m_Localized: "Upgrade queued - it starts when a builder frees up."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760884
+    m_Localized: "Upgrade under construction - {0}s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760885
+    m_Localized: "Nothing to unlock here."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760886
+    m_Localized: "The Heart is already at its highest level."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760887
+    m_Localized: "Need {0} Crystals to raise the Heart (you have {1})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760888
+    m_Localized: "Heart Level raised to {0} \u2014 higher enhancements unlocked."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760889
+    m_Localized: "Couldn't raise the Heart right now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760890
+    m_Localized: "Research started - check the Research queue."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760891
+    m_Localized: "Can't unlock that perk yet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760892
+    m_Localized: "Tap the gold tile to unlock the next enhancement."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760893
+    m_Localized: "cancelled - you moved. Stand still to shoot."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760894
+    m_Localized: "EQUIP"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760895
+    m_Localized: "REMOVE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760896
+    m_Localized: "BACK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760897
+    m_Localized: "Unequip"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760898
+    m_Localized: "Done"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760899
+    m_Localized: "No compatible items owned."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760900
+    m_Localized: "Select an item to compare."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760901
+    m_Localized: "Select an item to equip."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760902
+    m_Localized: "You must buy it before you can equip it."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760903
+    m_Localized: "That item can't be equipped."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760904
+    m_Localized: "Nothing to do for that item."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760905
+    m_Localized: "Select an item to improve."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760906
+    m_Localized: "You must own it before you can improve it."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760907
+    m_Localized: "That item can't be improved."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760908
+    m_Localized: "Improve failed."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760909
+    m_Localized: "POLISH AGAIN?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760910
+    m_Localized: "You are risking: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760911
+    m_Localized: "It could become any of these:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760912
+    m_Localized: "There is a {0}% chance the stone is destroyed and you get nothing."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760913
+    m_Localized: "KEEP IT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760914
+    m_Localized: "POLISH AGAIN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760915
+    m_Localized: "Can't deploy there - tap open ground inside the base."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760916
+    m_Localized: "No army to deploy."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760917
+    m_Localized: "No more {0} ready to deploy."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760918
+    m_Localized: "Couldn't deploy {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760919
+    m_Localized: "Breach: tap a wall section to order the assault."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760920
+    m_Localized: "Breach: that is not a wall - tap a wall section."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760921
+    m_Localized: "Breach: that section is already down."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760922
+    m_Localized: "Breach: that wall is not the enemy's."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760923
+    m_Localized: "Breach ordered - the warband hits that section."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760924
+    m_Localized: "Breach order dropped - the warband picks the weakest wall again."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760925
+    m_Localized: "Breach ON"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760926
+    m_Localized: "Breach"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760927
+    m_Localized: "Rally set \u2014 idle troops will muster there."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760928
+    m_Localized: "Rally"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760929
+    m_Localized: "Retreat? Tap again to confirm \u2014 the fallen are lost, and some survivors will not make it back."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760930
+    m_Localized: "Confirm Retreat"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760931
+    m_Localized: "Time! Falling back to the castle..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760932
+    m_Localized: "Retreating to the castle..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760933
+    m_Localized: "Retreat"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760934
+    m_Localized: "Deploy All"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760935
+    m_Localized: "No troops to deploy - train at the Barracks first."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760936
+    m_Localized: "Deploy All unavailable - no ready army or hero."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760937
+    m_Localized: "Deploy All needs open ground ahead."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760938
+    m_Localized: "All ready troops are already deployed."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760941
+    m_Localized: "The Barracks is not built yet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760942
+    m_Localized: "No troops unlocked yet - upgrade the Barracks."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760943
+    m_Localized: "\nThis saved army is empty.\nTap Raid / Hold / Siege for a quick fill,\nor [+] troops on the left.\nThen Save and Train Army.\n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760944
+    m_Localized: "Cost:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760945
+    m_Localized: "Train queue: {0} of {1} used, {2} free."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760946
+    m_Localized: "Name: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760947
+    m_Localized: "Save slot {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760948
+    m_Localized: "Train Army"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760949
+    m_Localized: "Tip: Training auto-saves this slot. Fill the army, then Raids."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760950
+    m_Localized: "Launch Raid"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760951
+    m_Localized: "Defense Points: {0} / {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760952
+    m_Localized: "No defenders registered."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760953
+    m_Localized: "Recruit Squad"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760954
+    m_Localized: "Arena Defense"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760955
+    m_Localized: "ATTACK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760956
+    m_Localized: "DEFEND"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760957
+    m_Localized: "USE MY CASTLE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760958
+    m_Localized: "Back to Arena"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760959
+    m_Localized: "ARENA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760960
+    m_Localized: "Battle!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760961
+    m_Localized: "Tap a skill, then a hot-swap slot to assign."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760962
+    m_Localized: "Can't change skills during battle."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760963
+    m_Localized: "Slot cleared."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760964
+    m_Localized: "Pick a skill first."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760965
+    m_Localized: "Assigned to hot-swap slot {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760966
+    m_Localized: "That skill is already on the bar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760967
+    m_Localized: "Added to your hot-swap bar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760968
+    m_Localized: "No free slot (or already on the bar)."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760969
+    m_Localized: "Now tap a hot-swap slot."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760970
+    m_Localized: "Pick a skill first, then tap a slot."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760971
+    m_Localized: "Continue with Google"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760972
+    m_Localized: "Connect Wallet"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

@@ -62,6 +62,8 @@ namespace DeNelle.Editor.Regression
         /// this file - the ruling was that <c>Muster()</c> must not be RENAMED, never that the
         /// View must call it directly.</summary>
         private const string VmSrc = "Assets/_Modules/Village/Troops/ArmyMusterVM.cs";
+        // WO-1857: Case 4b's ruled wording now lives in the English string table, not in the View.
+        private const string EnglishTableSrc = "Assets/Resources/Data/Canonical/en.json";
         private const float Eps = 0.5f;
 
         private struct Surface
@@ -395,12 +397,29 @@ namespace DeNelle.Editor.Regression
             }
 
             // 4b. the ruled strings, verbatim.
-            if (src.IndexOf("\"Train Army\"", StringComparison.Ordinal) < 0)
-                failures.Add("[wording] the CTA face is not 'Train Army' - owner ruling 2026-08-26 " +
-                             "('what dos muster army mean? Thats where im lost').");
-            if (src.IndexOf("Training auto-saves this slot. Fill the army, then Raids.", StringComparison.Ordinal) < 0)
-                failures.Add("[wording] the tip line is not the ruled 'Training auto-saves this slot. " +
-                             "Fill the army, then Raids.'");
+            // WO-1857: both ruled strings moved out of the View into the English string table, so
+            // this case now pins BOTH halves of the seam rather than one source literal - the panel
+            // must resolve the ruled KEY, and en.json must still carry the ruled WORDING for it. A
+            // key-only pin would have let the owner's 2026-08-26 wording ruling be reworded in the
+            // table with this case still green; a source-text pin is no longer possible at all. The
+            // retired call-site literals are deliberately not reproduced against `src`: they survive
+            // in explanatory comments inside the panel, so a source-text needle on them would pass
+            // off those comments and assert nothing.
+            string enJson = File.ReadAllText(EnglishTableSrc);
+            if (src.IndexOf("\"village.troops.army_muster.train_army_button\"", StringComparison.Ordinal) < 0)
+                failures.Add("[wording] the CTA face does not resolve village.troops.army_muster.train_army_button " +
+                             "- owner ruling 2026-08-26 ('what dos muster army mean? Thats where im lost').");
+            else if (enJson.IndexOf("\"village.troops.army_muster.train_army_button\": \"Train Army\"",
+                         StringComparison.Ordinal) < 0)
+                failures.Add("[wording] the CTA key resolves, but en.json no longer authors it as the ruled " +
+                             "'Train Army' - owner ruling 2026-08-26.");
+            if (src.IndexOf("\"village.troops.army_muster.tip_line\"", StringComparison.Ordinal) < 0)
+                failures.Add("[wording] the tip line does not resolve village.troops.army_muster.tip_line");
+            else if (enJson.IndexOf(
+                         "\"village.troops.army_muster.tip_line\": \"Tip: Training auto-saves this slot. " +
+                         "Fill the army, then Raids.\"", StringComparison.Ordinal) < 0)
+                failures.Add("[wording] the tip-line key resolves, but en.json no longer authors the ruled " +
+                             "tip sentence for it.");
 
             // 4c. NO player-facing 'Muster' survives. String-backed GameObject identifiers are
             //     explicitly exempt: they are diagnostic hierarchy names, not rendered copy.

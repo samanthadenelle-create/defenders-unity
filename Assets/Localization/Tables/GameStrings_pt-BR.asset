@@ -3151,6 +3151,398 @@ MonoBehaviour:
     m_Localized: "A restaura\xE7\xE3o falhou."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760873
+    m_Localized: "As filas de constru\u00E7\u00E3o n\u00E3o est\u00E3o funcionando agora."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760874
+    m_Localized: "Slot de fila extra comprado - a fila pode levar {0} itens."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760875
+    m_Localized: "Todas as melhorias aqui j\u00E1 est\u00E3o desbloqueadas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760876
+    m_Localized: "Requer N\u00EDvel de Cora\u00E7\u00E3o {0} (voc\u00EA tem {1})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760877
+    m_Localized: "Em constru\u00E7\u00E3o \u2014 {0}s at\u00E9 que o trabalho aqui termine."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760878
+    m_Localized: "Tier {0} desbloqueado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760879
+    m_Localized: "Voc\u00EA ainda n\u00E3o pode pagar por isso."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760880
+    m_Localized: "N\u00EDvel {0} desbloqueado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760881
+    m_Localized: "Essa melhoria precisa de Magia para ser desbloqueada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760882
+    m_Localized: "Em constru\u00E7\u00E3o \u2014 termine o trabalho atual primeiro."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760883
+    m_Localized: "Melhoria enfileirada - come\u00E7a quando um construtor se libera."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760884
+    m_Localized: "Atualiza\u00E7\u00E3o em andamento - {0}s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760885
+    m_Localized: "Nada para desbloquear aqui."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760886
+    m_Localized: "O Cora\u00E7\u00E3o j\u00E1 est\u00E1 em seu n\u00EDvel mais alto."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760887
+    m_Localized: "Precisa de {0} Cristais para elevar o Cora\u00E7\u00E3o (voc\u00EA tem {1})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760888
+    m_Localized: "N\u00EDvel de Cora\u00E7\u00E3o aumentado para {0} \u2014 melhorias superiores desbloqueadas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760889
+    m_Localized: "N\u00E3o conseguiu elevar o Cora\u00E7\u00E3o agora."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760890
+    m_Localized: "Pesquisa iniciada - verifique a fila de Pesquisa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760891
+    m_Localized: "Ainda n\u00E3o consegue desbloquear essa melhoria."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760892
+    m_Localized: "Toque no ladrilho dourado para desbloquear o pr\u00F3ximo aprimoramento."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760893
+    m_Localized: "cancelado - voc\u00EA se moveu. Fique parado para atirar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760894
+    m_Localized: "EQUIPAR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760895
+    m_Localized: "REMOVER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760896
+    m_Localized: "VOLTAR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760897
+    m_Localized: "Desequipar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760898
+    m_Localized: "Feito"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760899
+    m_Localized: "Nenhum item compat\u00EDvel possu\u00EDdo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760900
+    m_Localized: "Selecione um item para comparar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760901
+    m_Localized: "Selecione um item para equipar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760902
+    m_Localized: "Voc\u00EA deve compr\u00E1-lo antes de poder equip\u00E1-lo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760903
+    m_Localized: "Esse item n\u00E3o pode ser equipado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760904
+    m_Localized: "Nada a fazer com esse item."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760905
+    m_Localized: "Selecione um item para melhorar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760906
+    m_Localized: "Voc\u00EA deve possuir antes de poder melhorar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760907
+    m_Localized: "Esse item n\u00E3o pode ser melhorado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760908
+    m_Localized: "A melhoria falhou."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760909
+    m_Localized: "POLIR NOVAMENTE?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760910
+    m_Localized: "Voc\u00EA est\u00E1 arriscando: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760911
+    m_Localized: "Poderia se tornar qualquer um destes:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760912
+    m_Localized: "H\u00E1 uma chance de {0}% de que a pedra seja destru\u00EDda e voc\u00EA n\u00E3o receba nada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760913
+    m_Localized: "MANTER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760914
+    m_Localized: "POLIR NOVAMENTE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760915
+    m_Localized: "N\u00E3o pode desplegar l\u00E1 - toque no ch\u00E3o aberto dentro da base."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760916
+    m_Localized: "Nenhum ex\u00E9rcito para desplegar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760917
+    m_Localized: "Nenhum {0} pronto para desplegar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760918
+    m_Localized: "N\u00E3o foi poss\u00EDvel desplegar {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760919
+    m_Localized: "Brecha: toque em uma se\u00E7\u00E3o de parede para ordenar o ataque."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760920
+    m_Localized: "Brecha: isso n\u00E3o \u00E9 uma parede - toque em uma se\u00E7\u00E3o de parede."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760921
+    m_Localized: "Brecha: essa se\u00E7\u00E3o j\u00E1 caiu."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760922
+    m_Localized: "Brecha: essa parede n\u00E3o \u00E9 do inimigo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760923
+    m_Localized: "Brecha ordenada - o bando de guerra ataca essa se\u00E7\u00E3o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760924
+    m_Localized: "Ordem de brecha cancelada - o bando escolhe a parede mais fraca novamente."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760925
+    m_Localized: "Brecha ATIVADA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760926
+    m_Localized: "Brecha"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760927
+    m_Localized: "Ponto de reuni\u00E3o estabelecido \u2014 as tropas ociosas se reunir\u00E3o l\u00E1."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760928
+    m_Localized: "Reunir"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760929
+    m_Localized: "Recuar? Toque novamente para confirmar \u2014 os ca\u00EDdos s\u00E3o perdidos, e alguns sobreviventes n\u00E3o voltar\u00E3o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760930
+    m_Localized: "Confirmar Recuo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760931
+    m_Localized: "Tempo! Recuando para o castelo..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760932
+    m_Localized: "Recuando para o castelo..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760933
+    m_Localized: "Recuar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760934
+    m_Localized: "Desplegar Tudo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760935
+    m_Localized: "Nenhuma tropa para desplegar - treine no Quartel primeiro."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760936
+    m_Localized: "Desplegar Tudo indispon\u00EDvel - sem ex\u00E9rcito pronto ou her\u00F3i."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760937
+    m_Localized: "Desplegar Tudo precisa de solo aberto \u00E0 frente."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760938
+    m_Localized: "Todas as tropas prontas j\u00E1 est\u00E3o desplegadas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760941
+    m_Localized: "O Quartel ainda n\u00E3o est\u00E1 constru\u00EDdo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760942
+    m_Localized: "Nenhuma tropa desbloqueada ainda - melhore o Quartel."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760943
+    m_Localized: "\nEste ex\u00E9rcito salvo est\u00E1 vazio.\nToque em Raide / Reter / Cerco para preencher rapidamente,\nou [+] tropas \u00E0 esquerda.\nDepois Salvar e Treinar Ex\u00E9rcito.\n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760944
+    m_Localized: "Custo:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760945
+    m_Localized: "Fila de treinamento: {0} de {1} usados, {2} livres."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760946
+    m_Localized: "Nome: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760947
+    m_Localized: "Salvar slot {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760948
+    m_Localized: "Treinar Ex\u00E9rcito"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760949
+    m_Localized: "Dica: O treinamento salva automaticamente este slot. Preencha o ex\u00E9rcito, depois Incurs\u00F5es."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760950
+    m_Localized: "Iniciar Incurs\u00E3o"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760951
+    m_Localized: "Pontos de Defesa: {0} / {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760952
+    m_Localized: "Nenhum defensor registrado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760953
+    m_Localized: "Recrutar Esquadr\u00E3o"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760954
+    m_Localized: "Defesa de Arena"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760955
+    m_Localized: "ATAQUE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760956
+    m_Localized: "DEFENDER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760957
+    m_Localized: "USAR MEU CASTELO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760958
+    m_Localized: "Voltar para Arena"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760959
+    m_Localized: "ARENA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760960
+    m_Localized: "Batalha!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760961
+    m_Localized: "Toque uma habilidade e depois um slot de troca r\u00E1pida."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760962
+    m_Localized: "N\u00E3o \u00E9 poss\u00EDvel alterar habilidades durante a batalha."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760963
+    m_Localized: "Slot limpo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760964
+    m_Localized: "Escolha uma habilidade primeiro."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760965
+    m_Localized: "Atribu\u00EDdo ao slot de troca r\u00E1pida {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760966
+    m_Localized: "Essa habilidade j\u00E1 est\u00E1 na barra."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760967
+    m_Localized: "Adicionado \u00E0 sua barra de troca r\u00E1pida."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760968
+    m_Localized: "Sem espa\u00E7o livre (ou j\u00E1 est\u00E1 na barra)."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760969
+    m_Localized: "Agora toque em um slot de troca r\u00E1pida."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760970
+    m_Localized: "Escolha primeiro uma habilidade e depois toque em um slot."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760971
+    m_Localized: "Continuar com o Google"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760972
+    m_Localized: "Conectar carteira"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

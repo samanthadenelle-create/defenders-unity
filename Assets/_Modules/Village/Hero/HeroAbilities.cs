@@ -990,7 +990,7 @@ namespace DeNelle.Village
                     // a RULE, not a bug, and the player can only learn a rule she is TOLD. The
                     // wind-up VFX vanishing is not a message; this is. ASCII only.
                     DeNelle.Core.UI.ElarionUiKit.ShowToast(
-                        def.Name + " cancelled - you moved. Stand still to shoot.",
+                        def.Name + " " + new DeNelle.Core.UI.LocalizedText("village.hero.abilities.cancelled_moved").Resolve(),
                         DeNelle.Core.UI.ElarionUiKit.ToastTone.Danger, 1.6f);
                     yield break;
                 }

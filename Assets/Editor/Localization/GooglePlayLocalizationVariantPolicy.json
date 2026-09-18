@@ -294,6 +294,23 @@
       }
     },
     {
+      "key": "onboarding.login_panel.connect_cta_wallet",
+      "owner": "Onboarding",
+      "reason": "WO-1857 moved the login panel's connect CTA caption out of LoginPanelController.cs and into the string table. ConnectCtaLabel still resolves the *_google key under #if GOOGLE_PLAY, so this row is dead on that channel - but the canonical JSON that ships to Play would otherwise carry the wallet wording, which GooglePlayPackagingGate's ForbiddenTokens scan rejects a build over. Same disposition shape as onboarding.login_panel.title_wallet; the replacement keeps the channel-neutral sign-in terms already used by status_wallet_failed.",
+      "values": {
+        "en": "Sign In",
+        "es": "Iniciar sesión",
+        "pt-BR": "Entrar",
+        "de": "Anmelden",
+        "fr": "Se connecter",
+        "ru": "Войти",
+        "ar": "تسجيل الدخول",
+        "ja": "サインイン",
+        "ko": "로기인",
+        "zh-Hans": "登录"
+      }
+    },
+    {
       "key": "wallet.connect.none",
       "owner": "Wallet",
       "reason": "WalletConnectDialog is compiled out of Google Play (DeNelle.Wallet.asmdef requires !GOOGLE_PLAY), so this row is dead on that channel; the regression pins the strip set to the exact store/swap/Settings-wallet keys, so a channel-neutral replacement is the only available disposition.",

@@ -913,7 +913,7 @@ namespace DeNelle.Village.Hero
                 }
             }
             var action = ElarionUiKit.ButtonPack(_approvedDetailHost,
-                item.Equipped ? "REMOVE" : "EQUIP", ElarionUiKit.ButtonKind.Gold,
+                item.Equipped ? new LocalizedText("village.hero.equipment.remove_button").Resolve() : new LocalizedText("village.hero.equipment.equip_button").Resolve(), ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.12f, 0.07f), new Vector2(0.88f, 0.21f),
                 () => _vm.ActivateSelected(), RpgUiCatalog.ButtonFrame);
             MedievalUiSkin.ApplyButton(action, primary: true);

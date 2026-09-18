@@ -265,7 +265,12 @@ namespace DeNelle.Editor
             {
                 if (panel.IndexOf("ArmyMusterVM", StringComparison.Ordinal) < 0)
                     failures.Add("ArmyMusterPanel does not route through ArmyMusterVM — the loadout bank would be unreachable");
-                if (panel.IndexOf("Save slot", StringComparison.Ordinal) < 0)
+                // WO-1857: the save-slot button caption is now a LocalizedText.Format resolve, so the
+                // needle pins the resolved KEY instead of the English caption. The retired caption is
+                // deliberately not reproduced here - it still appears in a comment inside
+                // ArmyMusterPanel.cs, so a source-text needle on it would pass off that comment and
+                // assert nothing.
+                if (panel.IndexOf("\"village.troops.army_muster.save_slot\"", StringComparison.Ordinal) < 0)
                     failures.Add("ArmyMusterPanel missing Save slot control");
             }
 

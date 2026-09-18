@@ -28,6 +28,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using DeNelle.Core;
 using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
 
@@ -136,11 +137,11 @@ namespace DeNelle.Village.Arena
                                     0.74f, 0.96f, ElarionUi.Aether, ElarionUi.FontHead,
                                     TMPro.TextAlignmentOptions.Left, 0.04f, 0.55f, bold: true);
 
-            AddButton(content.transform, "Cancel",
+            AddButton(content.transform, LocalText.Get("armyScreen.cancel"),
                       new Vector2(0.79f, 0.085f), new Vector2(0.74f, 0.96f),
                       CardBg, () => OnCancelRequested?.Invoke(), ButtonKind.Neutral);
 
-            AddButton(content.transform, "Launch Raid",
+            AddButton(content.transform, new LocalizedText("arena.attack_palette.launch_raid").Resolve(),
                       new Vector2(0.92f, 0.075f), new Vector2(0.74f, 0.96f),
                       ElarionUi.GoldButton, () => OnLaunchRequested?.Invoke(), ButtonKind.Gold);
 

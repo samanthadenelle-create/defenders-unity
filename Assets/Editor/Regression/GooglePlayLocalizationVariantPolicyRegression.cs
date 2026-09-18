@@ -47,6 +47,10 @@ namespace DeNelle.Editor.Regression
             "onboarding.login_panel.status_opening_wallet",
             "onboarding.login_panel.status_wallet_no_response",
             "onboarding.login_panel.status_wallet_failed",
+            // WO-1857: the login panel's connect CTA caption moved out of
+            // LoginPanelController.cs into the string table, so the wallet-facing variant now needs
+            // the same channel-neutral Play disposition its sibling title/intro rows already carry.
+            "onboarding.login_panel.connect_cta_wallet",
             "wallet.connect.none",
         };
 

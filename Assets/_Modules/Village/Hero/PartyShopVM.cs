@@ -679,10 +679,10 @@ namespace DeNelle.Village.Hero
         public void EquipSelected()
         {
             string id = SelectedId;
-            if (string.IsNullOrEmpty(id)) { Status = "Select an item to equip."; Raise(); return; }
+            if (string.IsNullOrEmpty(id)) { Status = new DeNelle.Core.UI.LocalizedText("village.hero.party_shop.select_equip").Resolve(); Raise(); return; }
             if (_store == null || _store.OwnedQuantity(id) <= 0)
             {
-                Status = "You must buy it before you can equip it.";
+                Status = new DeNelle.Core.UI.LocalizedText("village.hero.party_shop.must_buy_first").Resolve();
                 Raise();
                 return;
             }
@@ -690,7 +690,7 @@ namespace DeNelle.Village.Hero
             if (w != null) { EquipWeapon(w); Raise(); return; }
             var a = GearCatalog.FindArmor(id);
             if (a != null) { EquipArmor(a); Raise(); return; }
-            Status = "That item can't be equipped.";
+            Status = new DeNelle.Core.UI.LocalizedText("village.hero.party_shop.cant_equip").Resolve();
             Raise();
         }
 

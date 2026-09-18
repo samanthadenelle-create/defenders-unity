@@ -342,7 +342,7 @@ namespace DeNelle.Village
             if (!BarracksUnlock.IsUnlocked)
             {
                 FlowTrace.Step("Muster", "ArmyMusterPanel.Show refused - the Barracks is not built yet.");
-                ElarionUiKit.ShowToast("The Barracks is not built yet.", ElarionUiKit.ToastTone.Danger);
+                ElarionUiKit.ShowToast(new DeNelle.Core.UI.LocalizedText("village.troops.army_muster.barracks_not_built").Resolve(), ElarionUiKit.ToastTone.Danger);
                 return;
             }
             if (s_host == null) s_host = new GameObject("ArmyMusterPanelHost").AddComponent<ArmyMusterPanel>();
@@ -721,7 +721,7 @@ namespace DeNelle.Village
             var rows = _vm.TrainRows();
             if (rows.Count == 0)
             {
-                var empty = ElarionUiKit.Label(host, "No troops unlocked yet - upgrade the Barracks.",
+                var empty = ElarionUiKit.Label(host, new DeNelle.Core.UI.LocalizedText("village.troops.army_muster.no_troops_unlock").Resolve(),
                     0f, 1f, ElarionUi.ParchmentDim, ElarionUi.FontLabel, TextAlignmentOptions.Center);
                 var le = empty.gameObject.AddComponent<LayoutElement>();
                 le.preferredHeight = RowHeightPx;
@@ -1004,7 +1004,7 @@ namespace DeNelle.Village
 
             if (offered.Count == 0)
             {
-                var empty = ElarionUiKit.Label(host, "No troops unlocked yet - upgrade the Barracks.",
+                var empty = ElarionUiKit.Label(host, new DeNelle.Core.UI.LocalizedText("village.troops.army_muster.no_troops_unlock").Resolve(),
                     0f, 1f, ElarionUi.ParchmentDim, ElarionUi.FontLabel, TextAlignmentOptions.Center);
                 var le = empty.gameObject.AddComponent<LayoutElement>();
                 le.preferredHeight = RowHeightPx;
@@ -1164,10 +1164,7 @@ namespace DeNelle.Village
 
             if (preview.TotalUnits <= 0)
             {
-                body.Append("\nThis saved army is empty.\n");
-                body.Append("Tap Raid / Hold / Siege for a quick fill,\n");
-                body.Append("or [+] troops on the left.\n");
-                body.Append("Then Save and Train Army.\n");
+                body.Append(new DeNelle.Core.UI.LocalizedText("village.troops.army_muster.empty_army_help").Resolve());
             }
             else
             {
@@ -1177,15 +1174,13 @@ namespace DeNelle.Village
                     body.Append("  ").Append(r.Count).Append("x ")
                         .Append(_vm.DisplayNameOf(r.TroopId)).Append('\n');
                 }
-                body.Append("\nCost: ").Append(preview.Cost).Append('\n');
+                body.Append("\n").Append(new DeNelle.Core.UI.LocalizedText("village.troops.army_muster.cost_label").Resolve()).Append(" ").Append(preview.Cost).Append('\n');
                 body.Append("Time: ").Append(ArmyMusterPlanner.FormatDuration(preview.TotalSeconds))
                     .Append(" (").Append(preview.TrainSlots).Append(" train slot")
                     .Append(preview.TrainSlots == 1 ? "" : "s").Append(")\n");
             }
 
-            body.Append("\nTrain queue: ").Append(preview.LineDepth).Append(" of ")
-                .Append(ArmyMusterPlanner.TrainQueueDepthCap).Append(" used, ")
-                .Append(preview.LineRoom).Append(" free.\n");
+            body.Append("\n").Append(DeNelle.Core.UI.LocalText.Format("village.troops.army_muster.train_queue_fmt", preview.LineDepth, ArmyMusterPlanner.TrainQueueDepthCap, preview.LineRoom)).Append('\n');
             // WO-1811: "Fits now: 5 of 10 (rest stays staged)" was the single most misread line on
 // the screen - the 5 is QUEUE room and the 10 is the plan total, two different axes with no
             // label between them. Said in words, naming the queue as the thing that is full.
@@ -1200,7 +1195,7 @@ namespace DeNelle.Village
             }
 
             // OWNER RULING 2026-08-26 - the tip line, verbatim.
-            body.Append("\nTip: Training auto-saves this slot. Fill the army, then Raids.");
+            body.Append("\n").Append(new DeNelle.Core.UI.LocalizedText("village.troops.army_muster.tip_line").Resolve());
 
             bool shortOf = preview.TotalUnits > 0 && !preview.Affordable;
             // WO-1586 §12: the REASON STRING the player actually reads, captured verbatim. If a
@@ -1295,13 +1290,13 @@ namespace DeNelle.Village
             Rect rSave = ToLocal(actZone, Band(bands, "Save"));
             Rect rCta = ToLocal(actZone, Band(bands, "Cta"));
 
-            var name = ElarionUiKit.Button(_actionHost, "Name: " + ShortName(_vm.ArmyName),
+            var name = ElarionUiKit.Button(_actionHost, DeNelle.Core.UI.LocalText.Format("village.troops.army_muster.name_button", ShortName(_vm.ArmyName)),
                 ElarionUiKit.ButtonKind.Quiet, new Vector2(rName.xMin, rName.yMin),
                 new Vector2(rName.xMax, rName.yMax), OnCycleName);
-            var save = ElarionUiKit.Button(_actionHost, "Save slot " + (_vm.ActiveSlot + 1),
+            var save = ElarionUiKit.Button(_actionHost, DeNelle.Core.UI.LocalText.Format("village.troops.army_muster.save_slot", _vm.ActiveSlot + 1),
                 ElarionUiKit.ButtonKind.Gold, new Vector2(rSave.xMin, rSave.yMin),
                 new Vector2(rSave.xMax, rSave.yMax), OnSaveSlot);
-            _musterCta = ElarionUiKit.Button(_actionHost, "Train Army", ElarionUiKit.ButtonKind.Confirm,
+            _musterCta = ElarionUiKit.Button(_actionHost, new DeNelle.Core.UI.LocalizedText("village.troops.army_muster.train_army_button").Resolve(), ElarionUiKit.ButtonKind.Confirm,
                 new Vector2(rCta.xMin, rCta.yMin), new Vector2(rCta.xMax, rCta.yMax), OnMuster);
             if (name != null) ElarionUiKit.ClampMinTouch(name);
             if (save != null) ElarionUiKit.ClampMinTouch(save);
@@ -1403,7 +1398,7 @@ namespace DeNelle.Village
             }
 
             _musterCta.interactable = interactable;
-            if (_musterCtaLabel != null) _musterCtaLabel.text = "Train Army";
+            if (_musterCtaLabel != null) _musterCtaLabel.text = new DeNelle.Core.UI.LocalizedText("village.troops.army_muster.train_army_button").Resolve();
             if (_musterCtaSub != null) _musterCtaSub.text = sub;
 
             // WO-1586 §12: the CTA's REASON, as the player reads it. Note the button has never been
