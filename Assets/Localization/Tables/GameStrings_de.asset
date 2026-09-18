@@ -2248,6 +2248,26 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888477077143554
+  - m_Id: 44124330363760645
+    m_Localized: Verbinde deine Wallet, um den Clan-Chat zu nutzen.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760646
+    m_Localized: Du bist noch in keinem Clan.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760647
+    m_Localized: "Der Clan-Chat ist in dieser Version nicht verf\xFCgbar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760648
+    m_Localized: Der Clan-Chat konnte nicht geladen werden. Versuche es gleich noch einmal.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760649
+    m_Localized: "Clan-Chat wird ge\xF6ffnet..."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

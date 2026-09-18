@@ -2015,6 +2015,26 @@ MonoBehaviour:
     m_Key: ownedTown.captureRequirement
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760645
+    m_Key: clanChat.noWallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760646
+    m_Key: clanChat.noClan
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760647
+    m_Key: clanChat.unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760648
+    m_Key: clanChat.genericError
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760649
+    m_Key: clanChat.opening
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

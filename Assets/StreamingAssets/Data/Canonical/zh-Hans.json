@@ -504,5 +504,10 @@
   "armyScreen.noRoomToRecall": "没有空位 - 请先转入预备或遣散一名",
   "armyScreen.readyWhenRecovered": "{0} 名恢复后就绪",
   "armyScreen.notReadyRecovering": "再训练 {0} 名，{1} 名恢复中",
-  "armyScreen.dismissedFree": "{0} 已遣散"
+  "armyScreen.dismissedFree": "{0} 已遣散",
+  "clanChat.noWallet": "连接你的钱包以使用军团聊天。",
+  "clanChat.noClan": "你还没有加入军团。",
+  "clanChat.unavailable": "此版本不支持军团聊天。",
+  "clanChat.genericError": "军团聊天加载失败，请稍后重试。",
+  "clanChat.opening": "正在打开军团聊天..."
 }

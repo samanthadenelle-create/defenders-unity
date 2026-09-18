@@ -36,6 +36,7 @@ namespace DeNelle.Editor.Regression
             "jewelerFtue.stakeVerified",
             "jewelerFtue.stakeVerifiedHighTier",
             "jewelerFtue.stakeNotVerified",
+            "clanChat.noWallet",
         };
 
         private static readonly string[] SettingsWalletKeys =

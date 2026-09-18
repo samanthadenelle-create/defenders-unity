@@ -105,6 +105,23 @@
         "ko": "주간 재굴림 보너스가 추가되지 않았습니다.",
         "zh-Hans": "未添加每周重掷奖励。"
       }
+    },
+    {
+      "key": "clanChat.noWallet",
+      "owner": "Clan",
+      "reason": "Clan chat ships on Google Play (WO-1858); its no-identity state must not name a wallet on that channel.",
+      "values": {
+        "en": "Sign in to use clan chat.",
+        "es": "Inicia sesión para usar el chat del clan.",
+        "pt-BR": "Faça login para usar o chat do clã.",
+        "de": "Melde dich an, um den Clan-Chat zu nutzen.",
+        "fr": "Connectez-vous pour utiliser le chat de clan.",
+        "ru": "Войдите, чтобы использовать чат клана.",
+        "ar": "سجّل الدخول لاستخدام دردشة العشيرة.",
+        "ja": "クランチャットを利用するにはサインインしてください。",
+        "ko": "클랜 채팅을 사용하려면 로그인하세요.",
+        "zh-Hans": "登录以使用军团聊天。"
+      }
     }
   ],
   "stripGroups": [

@@ -504,5 +504,10 @@
   "armyScreen.noRoomToRecall": "자리 없음 - 먼저 이동하거나 해산하세요",
   "armyScreen.readyWhenRecovered": "{0}명이 회복하면 준비 완료",
   "armyScreen.notReadyRecovering": "{0}명 더 훈련, {1}명 회복 중",
-  "armyScreen.dismissedFree": "{0} 해산"
+  "armyScreen.dismissedFree": "{0} 해산",
+  "clanChat.noWallet": "클랜 채팅을 사용하려면 지갑을 연결하세요.",
+  "clanChat.noClan": "아직 클랜에 가입하지 않았습니다.",
+  "clanChat.unavailable": "이 빌드에서는 클랜 채팅을 사용할 수 없습니다.",
+  "clanChat.genericError": "클랜 채팅을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+  "clanChat.opening": "클랜 채팅을 여는 중..."
 }

@@ -504,5 +504,10 @@
   "armyScreen.noRoomToRecall": "Нет места - сначала переведите или распустите одного",
   "armyScreen.readyWhenRecovered": "Готово, когда восстановятся {0}",
   "armyScreen.notReadyRecovering": "Обучите еще {0}, {1} восстанавливаются",
-  "armyScreen.dismissedFree": "{0} распущен"
+  "armyScreen.dismissedFree": "{0} распущен",
+  "clanChat.noWallet": "Подключите кошелёк, чтобы использовать чат клана.",
+  "clanChat.noClan": "Вы пока не состоите в клане.",
+  "clanChat.unavailable": "Чат клана недоступен в этой версии.",
+  "clanChat.genericError": "Не удалось загрузить чат клана. Повторите попытку через мгновение.",
+  "clanChat.opening": "Открытие чата клана..."
 }

@@ -2201,6 +2201,26 @@ MonoBehaviour:
     m_Metadata:
       m_Items:
       - rid: 7338888474672496640
+  - m_Id: 44124330363760645
+    m_Localized: Connect your wallet to use clan chat.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760646
+    m_Localized: You're not in a clan yet.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760647
+    m_Localized: Clan chat is not available in this build.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760648
+    m_Localized: Clan chat could not load. Try again in a moment.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760649
+    m_Localized: Opening clan chat...
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

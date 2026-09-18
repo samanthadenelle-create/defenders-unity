@@ -504,5 +504,10 @@
   "armyScreen.noRoomToRecall": "Sem espaco - mova ou dispense um primeiro",
   "armyScreen.readyWhenRecovered": "Pronto quando {0} se recuperarem",
   "armyScreen.notReadyRecovering": "Treine mais {0}, {1} em recuperação",
-  "armyScreen.dismissedFree": "{0} dispensado"
+  "armyScreen.dismissedFree": "{0} dispensado",
+  "clanChat.noWallet": "Conecte sua carteira para usar o chat do clã.",
+  "clanChat.noClan": "Você ainda não está em um clã.",
+  "clanChat.unavailable": "O chat do clã não está disponível nesta versão.",
+  "clanChat.genericError": "Não foi possível carregar o chat do clã. Tente novamente em instantes.",
+  "clanChat.opening": "Abrindo o chat do clã..."
 }
