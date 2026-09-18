@@ -623,7 +623,16 @@ In one breath:
 
 ---
 
-## 14. F8 Live-Triage Watcher (BINDING — every CLI session, forever)
+## 14. F8 Live-Triage Watcher — ⛔ RETIRED 2026-09-18 (owner ruling), history below
+
+> **Owner, verbatim (2026-09-18):** *"the logs should be cleared. wasted space the F8 i think we are past
+> needing that as our tests are more narrow now in scope"*. The daemons were stopped and the
+> `logs/f8-inbox/` backlog (1,597 files, 1.1 GB, 625 un-acked captures back to 09-14) and the untracked
+> `Logs/` pulls (about 5 GB) were deleted the same hour. The `UserPromptSubmit` F8 check and the `Stop`
+> rewake hook are removed from `.claude/settings.json`; the `SessionStart` daemon-start hook is to be
+> removed by the owner (the seat's own settings edit is permission-gated). Device evidence from here is
+> a deliberate `adb logcat -d` / `screencap` pull for the ticket in hand, not a standing listener. The
+> F8 in-game flag and `BreakCaptureHarness` remain in the build; nothing below is a live procedure.
 
 Owner directive (2026-06-23): **the owner is NEVER the bug detector** (memory
 `never-dragdrop-or-manual-playtest`). Whenever the owner is (or is about to start) felt-testing,
