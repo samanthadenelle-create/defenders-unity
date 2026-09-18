@@ -1,27 +1,51 @@
 // =============================================================================
-// StoreStrings — legacy access for store copy not yet migrated to LocalText.
+// StoreStrings — the Store's KEY CATALOG. Resolution belongs to LocalText.
 // -----------------------------------------------------------------------------
 // Assembly: DeNelle.Wallet   Namespace: DeNelle.Wallet
 //
-// New or migrated player-facing copy must use LocalText through a module shim such
-// as StoreBuyText. This reader remains temporarily for the unmigrated Store rows;
-// retire it as those cohorts move onto the shared localization authority.
+// ⛔ WO-1862 (2026-09-18) — THIS CLASS IS NO LONGER A TABLE READER, AND THAT WAS
+// THE WHOLE DEFECT. Until this ticket it read `Data/Canonical/canon-strings.json`
+// through its own private cache. That file has NO per-locale siblings on disk —
+// `LocalJsonCatalogSource.Read` takes a literal path with no `{locale}` hole — so
+// **every player, in every language setting, read this entire module in English.**
+// A player could set the game to Spanish, play a Spanish town, and then hit a
+// wall of English the moment they opened the Store, which is the one screen where
+// money changes hands. Owner ruling: fix it completely.
+//
+// The fix is the migration this repo had already performed TWICE, not a new idea:
+//   * `Core/UI/HudStrings.cs`     — key catalog, `Get`/`Format` forward to LocalText.
+//     Pinned live by `SmartArgumentRegression` ("live HudStrings -> LocalText.Format
+//     positional path"), which asserts the resolved English exactly.
+//   * `PromoStrings`              — same shape, and `PromoRedeemEntryRegression:297-300`
+//     FAILS if a private canonical-JSON reader, a Newtonsoft deserialize call or a
+//     canon relative-path constant ever come back to it. All three are deliberately
+//     absent below for exactly that reason; do not reintroduce them here either.
+//     (Read that regression for the exact token list — naming the tokens in a comment
+//     is how a source-text check gets a false hit on the file that explains it.)
+//
+// ⛔ DO NOT ADD A canon-strings FALLBACK UNDERNEATH LocalText. It would make this a
+// second table reader again and keep 86 duplicate canon rows load-bearing forever —
+// the duplicated-state failure CLAUDE.md §2/§5/§8/§16 each describe in their own
+// words. A key that is missing must go LOUD (FlowTrace.Fail + the `[[missing:]]`
+// marker) so `BattleMonthlyRegression`'s copy case and `LocaleParityRegression` red
+// at the gate, on this machine, instead of resolving quietly and shipping English.
+//
+// The `Key*` constants, the five key arrays and the two inline sentences below all
+// STAY: they are the module's vocabulary and several are pinned by name from
+// `Assets/Editor/Regression/`. Call sites are deliberately UNCHANGED — typed
+// `LocalizedText` wrappers per cohort (the `StoreBuyText`/`StorePiText`/
+// `StorePresentationText` shape) are the documented follow-up, not this ticket.
 // =============================================================================
 
-using System;
-using System.Collections.Generic;
-using Newtonsoft.Json;
-using UnityEngine;
-using DeNelle.Core;
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.UI;
 
 namespace DeNelle.Wallet
 {
-    /// <summary>Legacy canon-backed access for Store rows not yet migrated to LocalText.</summary>
+    /// <summary>The Store's key catalog. Every row resolves through LocalText, in the player's
+    /// own locale; this class owns the KEYS and no table of its own (WO-1862).</summary>
     public static class StoreStrings
     {
-        private const string CanonRelativePath = "Data/Canonical/canon-strings.json";
-
         /// <summary>
         /// WO-1386, second ruling the same evening (owner 2026-09-04, verbatim: <i>"mark anything for
         /// Pi as same logic based on USD"</i>). The Pi-worded card plate for the wallet rule: Pi has
@@ -58,6 +82,15 @@ namespace DeNelle.Wallet
         /// reading "300 SKR" and told the player the prices were in dollars. It is a SECOND COPY of the
         /// localized `storeWalletlessBrowsingBanner` row, so it moves in the same change as all ten
         /// locales or it rots; the PREFIX the probe matches is deliberately unchanged.</para>
+        /// <para>⛔ WO-1862 (2026-09-18) LEFT THIS ONE IN ENGLISH ON PURPOSE, and the reason is
+        /// control flow, not oversight. The localized row `storeWalletlessBrowsingBanner` already
+        /// exists in all ten locale tables — but `PackStore.cs:1653` PROBES THE RENDERED LABEL
+        /// (`_balanceLabel.text.IndexOf(WalletlessBrowsingBannerProbe)`) to decide what state the
+        /// header is in. Localizing the label makes that probe miss in nine languages, which is a
+        /// BEHAVIOUR change in the module where money changes hands, not a text change. The fix is
+        /// to compare STATE instead of text and then point the label at the existing localized row;
+        /// that is a separate ticket with its own review, per this ticket's brief §6.
+        /// The same reasoning holds for <see cref="PiWalletRequiredSentence"/>.</para>
         public const string WalletlessBrowsingBanner =
             "Connect a wallet to buy - priced in SKR";
 
@@ -321,66 +354,43 @@ namespace DeNelle.Wallet
             KeyMonthlyLedgerStateAvailable, KeyMonthlyLedgerStateUpcoming,
         };
 
-        private static Dictionary<string, string> _canon;
-
-        /// <summary>Resolves a canon key. Returns "[[missing:key]]" (and self-reports) when absent.</summary>
+        /// <summary>
+        /// Resolves a Store key through the ONE runtime localization authority, so the sentence the
+        /// player reads is in the language they chose. Returns "[[missing:key]]" (and self-reports
+        /// via FlowTrace, §12 — no silent failure) when the key is in no locale table.
+        /// </summary>
         public static string Get(string key)
         {
-            EnsureLoaded();
-            if (_canon != null && key != null && _canon.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value))
-                return value;
-            FlowTrace.Fail("Store", $"canon-strings key '{key}' missing — the store would refuse a purchase with a " +
+            string value;
+            if (LocalText.TryGet(key, null, out value)) return value;
+            FlowTrace.Fail("Store", $"locale table has no key '{key}' — the store would render a placeholder " +
+                                    "marker where a sentence belongs. Mint it in en.json plus all nine locale " +
+                                    "siblings (both canonical mirrors); LocaleParityRegression reds until you do.");
+            return $"[[missing:{key}]]";
+        }
+
+        /// <summary>
+        /// Resolves a Store key and formats it. Positional holes ({0}..{3}) reach
+        /// <c>string.Format</c> inside LocalText with the resolved locale's culture, which is why
+        /// this whole cohort is authored positionally: LocalText only takes its named-argument
+        /// reflection path for a SINGLE non-scalar argument, so a named hole fed a bare scalar
+        /// renders the hole itself to the player (WO-1857 batch 2 shipped that bug four times).
+        /// </summary>
+        public static string Format(string key, params object[] args)
+        {
+            if (args == null || args.Length == 0) return Get(key);
+            string value;
+            if (LocalText.TryGet(key, args, out value)) return value;
+            FlowTrace.Fail("Store", $"locale table has no key '{key}' — a formatted store line would render a " +
                                     "placeholder marker instead of a sentence.");
             return $"[[missing:{key}]]";
         }
 
-        /// <summary>Resolves a canon key and formats it. A bad format string degrades to the raw sentence.</summary>
-        public static string Format(string key, params object[] args)
-        {
-            string raw = Get(key);
-            if (args == null || args.Length == 0) return raw;
-            try { return string.Format(raw, args); }
-            catch (FormatException ex)
-            {
-                FlowTrace.Fail("Store", $"canon-strings key '{key}' has a bad format placeholder: {ex.Message}");
-                return raw;
-            }
-        }
-
-        /// <summary>Test/diagnostic hook — drops the cached map so a re-read picks up an edit.</summary>
-        public static void Reload() { _canon = null; }
-
-        private static void EnsureLoaded()
-        {
-            if (_canon != null) return;
-            try
-            {
-                string json = CanonicalJson.Read(CanonRelativePath);
-                if (string.IsNullOrEmpty(json))
-                {
-                    FlowTrace.Fail("Store", $"canonical file not found (Resources or StreamingAssets): {CanonRelativePath} " +
-                                            "— every buy-gate refusal would render as a placeholder.");
-                    _canon = new Dictionary<string, string>();
-                    return;
-                }
-
-                // Flat string->string map with some leading "_" metadata keys: deserialize
-                // loosely, keep only the string entries (the CanonStrings convention).
-                var raw = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-                var map = new Dictionary<string, string>();
-                if (raw != null)
-                {
-                    foreach (var kv in raw)
-                        if (kv.Value is string s) map[kv.Key] = s;
-                }
-                _canon = map;
-            }
-            catch (Exception ex)
-            {
-                // No silent catch (§12): the screen still works, but say why it lost its words.
-                FlowTrace.Fail("Store", $"failed to read {CanonRelativePath}: {ex.GetType().Name}: {ex.Message}");
-                _canon = new Dictionary<string, string>();
-            }
-        }
+        /// <summary>
+        /// Test/diagnostic hook, kept as a NO-OP because LocalText owns locale-table lifetime now.
+        /// It stays because callers name it (BattleMonthlyRegression's copy case opens with it) and
+        /// deliberately carries no [Obsolete]: a warning there buys nothing and risks the gate.
+        /// </summary>
+        public static void Reload() { }
     }
 }

@@ -3571,6 +3571,226 @@ MonoBehaviour:
     m_Localized: "CIERRA LA BRECHA"
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760983
+    m_Localized: "GRATIS ESTA NOCHE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760984
+    m_Localized: "No se te pide nada antes de darte algo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760985
+    m_Localized: "Cestas - todo de una vez."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760986
+    m_Localized: "MECENAZGO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760987
+    m_Localized: "Prestigio, nunca poder."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760988
+    m_Localized: "{0}x los {2} del {1}, por {3}x el precio."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760989
+    m_Localized: "{0} bienes por $"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760990
+    m_Localized: "Saldo despu\u00E9s: {0} SKR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760991
+    m_Localized: "Bloqueado"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760992
+    m_Localized: "0% DE COMISI\u00D3N - CADA PAGO LLEGA AL REINO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760993
+    m_Localized: "DISTRIBUIDOR DE RECOMPENSAS {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760994
+    m_Localized: "TIEMPO Y BELLEZA, NUNCA PODER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760995
+    m_Localized: "Nunca tienes que gastar nada. Jam\u00E1s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760996
+    m_Localized: "Ruta de temporada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760997
+    m_Localized: "Quedan {0} d\u00EDas de temporada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760998
+    m_Localized: "Nivel {0} de {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760999
+    m_Localized: "{0} de {1} XP para el siguiente nivel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761000
+    m_Localized: "Todos los niveles conseguidos. {0} XP esta temporada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761001
+    m_Localized: "La XP de combate se gana jugando. Cada batalla de arena da recompensa, ganes o pierdas, y una racha de victorias da m\u00E1s. Ning\u00FAn nivel est\u00E1 en venta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761002
+    m_Localized: "Lo que ganas es tuyo para siempre. Nada se retira al terminar la temporada, y todo lo que no hayas reclamado se te entrega autom\u00E1ticamente."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761003
+    m_Localized: "GRATIS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761004
+    m_Localized: "PREMIUM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761005
+    m_Localized: "RECLAMADO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761006
+    m_Localized: "LISTO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761007
+    m_Localized: "BLOQUEADO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761008
+    m_Localized: "V\u00CDA BLOQUEADA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761009
+    m_Localized: "CULMINACI\u00D3N"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761010
+    m_Localized: "Reclamar recompensas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761011
+    m_Localized: "Todav\u00EDa no hay nada que reclamar - juega una batalla de arena."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761012
+    m_Localized: "Desbloquear v\u00EDa premium"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761013
+    m_Localized: "La v\u00EDa premium no est\u00E1 en venta en esta versi\u00F3n. Aun as\u00ED, se te muestra todo lo que contiene - nunca se te pedir\u00E1 que adivines qu\u00E9 hay detr\u00E1s de un candado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761014
+    m_Localized: "Desbloquear la v\u00EDa m\u00E1s tarde no te cuesta nada: todas las recompensas premium que ya hayas alcanzado se entregan de inmediato."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761015
+    m_Localized: "Ahora mismo no hay ninguna temporada activa. La siguiente empieza el d\u00EDa uno del mes."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761016
+    m_Localized: "Registro mensual"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761017
+    m_Localized: "Quedan {0} reclamaciones"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761018
+    m_Localized: "No tienes ning\u00FAn registro. Los treinta d\u00EDas se muestran abajo antes de que pagues nada - no hay d\u00EDas ocultos ni d\u00EDas misteriosos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761019
+    m_Localized: "Reclamar hoy"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761020
+    m_Localized: "Reclamado. El siguiente es tuyo ma\u00F1ana."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761021
+    m_Localized: "La reclamaci\u00F3n de hoy"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761022
+    m_Localized: "Si te saltas un d\u00EDa no pierdes nada. Un registro contiene treinta reclamaciones y sigue vivo hasta que se gasten todas, por mucho que tarde."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761023
+    m_Localized: "Aqu\u00ED nada caduca, as\u00ED que aqu\u00ED nada hace cuenta atr\u00E1s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761024
+    m_Localized: "Esto es un extra sobre tu recompensa diaria gratuita, nunca un sustituto. Reclamar una nunca consume la otra."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761025
+    m_Localized: "RECLAMADO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761026
+    m_Localized: "HOY"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761027
+    m_Localized: "TUYO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761028
+    m_Localized: "PR\u00D3XIMO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761029
+    m_Localized: "Este registro a\u00FAn no tiene ning\u00FAn recuerdo exclusivo del mes. Aqu\u00ED no se promete nada que no se te pueda mostrar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761030
+    m_Localized: "Los registros no est\u00E1n en venta en esta versi\u00F3n. De todos modos, la tabla completa est\u00E1 en esta pantalla."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761031
+    m_Localized: "NO EST\u00C1 EN VENTA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761032
+    m_Localized: "Ahora mismo no hay ning\u00FAn registro creado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761033
+    m_Localized: "SEMANA {0} | D\u00CDAS {1}-{2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761034
+    m_Localized: "SELECCIONADA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761035
+    m_Localized: "RECLAMA AQU\u00CD"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761036
+    m_Localized: "D\u00CDA {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761037
+    m_Localized: "BONUS DE HITO"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

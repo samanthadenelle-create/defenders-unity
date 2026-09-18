@@ -129,12 +129,6 @@
       "kind": "direct-table-reader",
       "owner": "localization",
       "removeBy": "phase-3"
-    },
-    {
-      "path": "Assets/_Modules/Wallet/StoreStrings.cs",
-      "kind": "direct-table-reader",
-      "owner": "localization",
-      "removeBy": "phase-2"
     }
   ],
   "exemptions": []

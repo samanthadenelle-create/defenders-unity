@@ -373,7 +373,20 @@
         "storeSpotlightEmpty",
         "storeLedgerHeading",
         "storeCardOwned",
-        "storeCardGap"
+        "storeCardGap",
+        "storeBandFree",
+        "storeBandFreeSub",
+        "storeBandBasketSub",
+        "storeBandPatronage",
+        "storeBandPatronageSub",
+        "storeCompareLine",
+        "storeValuePerDollar",
+        "storeBalanceAfter",
+        "storeCardAnchor",
+        "storeTrustFee",
+        "storeTrustTreasury",
+        "storeTrustNeverPower",
+        "storeCovenant"
       ]
     },
     {

@@ -3586,6 +3586,226 @@ MonoBehaviour:
     m_Localized: "DIE L\u00DCCKE SCHLIESSEN"
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760983
+    m_Localized: "HEUTE GRATIS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760984
+    m_Localized: "Es wird nichts verlangt, bevor etwas gegeben wird."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760985
+    m_Localized: "K\u00F6rbe - alles auf einmal."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760986
+    m_Localized: "M\u00C4ZENATENTUM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760987
+    m_Localized: "Ansehen, niemals Macht."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760988
+    m_Localized: "{0}x die {2} des {1}, f\u00FCr {3}x den Preis."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760989
+    m_Localized: "{0} G\u00FCter pro $"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760990
+    m_Localized: "Guthaben danach: {0} SKR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760991
+    m_Localized: "Gesperrt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760992
+    m_Localized: "0% GEB\u00DCHR - JEDE ZAHLUNG ERREICHT DAS REICH"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760993
+    m_Localized: "BELOHNUNGSVERTEILER {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760994
+    m_Localized: "ZEIT UND SCH\u00D6NHEIT, NIEMALS MACHT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760995
+    m_Localized: "Du musst niemals etwas ausgeben. Nie."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760996
+    m_Localized: "Saisonpfad"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760997
+    m_Localized: "Noch {0} Tage in dieser Saison"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760998
+    m_Localized: "Stufe {0} von {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760999
+    m_Localized: "{0} von {1} XP bis zur n\u00E4chsten Stufe"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761000
+    m_Localized: "Alle Stufen verdient. {0} XP in dieser Saison."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761001
+    m_Localized: "Kampf-XP verdienst du durch Spielen. Jeder Arenakampf zahlt, ob Sieg oder Niederlage, und eine Siegesserie zahlt mehr. Keine Stufe ist jemals k\u00E4uflich."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761002
+    m_Localized: "Was du verdienst, bleibt dauerhaft dein. Am Saisonende wird nichts zur\u00FCckgenommen, und alles, was du nicht abgeholt hast, wird dir automatisch gegeben."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761003
+    m_Localized: "GRATIS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761004
+    m_Localized: "PREMIUM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761005
+    m_Localized: "ABGEHOLT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761006
+    m_Localized: "BEREIT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761007
+    m_Localized: "GESPERRT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761008
+    m_Localized: "PFAD GESPERRT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761009
+    m_Localized: "KR\u00D6NUNG"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761010
+    m_Localized: "Belohnungen abholen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761011
+    m_Localized: "Noch nichts abzuholen - spiele einen Arenakampf."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761012
+    m_Localized: "Premium-Pfad freischalten"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761013
+    m_Localized: "Der Premium-Pfad ist in dieser Version nicht k\u00E4uflich. Alles darauf wird dir dennoch gezeigt - du sollst niemals raten, was hinter einem Schloss liegt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761014
+    m_Localized: "Den Pfad sp\u00E4ter freizuschalten kostet dich nichts: jede Premium-Belohnung, die du bereits erreicht hast, wird sofort \u00FCbergeben."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761015
+    m_Localized: "Derzeit l\u00E4uft keine Saison. Eine neue beginnt am Ersten des Monats."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761016
+    m_Localized: "Monatsregister"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761017
+    m_Localized: "Noch {0} Abholungen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761018
+    m_Localized: "Du besitzt kein Register. Alle drei\u00DFig Tage werden unten gezeigt, bevor du \u00FCberhaupt zahlst - es gibt keinen verborgenen und keinen geheimen Tag."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761019
+    m_Localized: "Heute abholen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761020
+    m_Localized: "Abgeholt. Das n\u00E4chste geh\u00F6rt dir morgen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761021
+    m_Localized: "Heutige Abholung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761022
+    m_Localized: "Verpasst du einen Tag, verlierst du nichts. Ein Register h\u00E4lt drei\u00DFig Abholungen und bleibt bestehen, bis jede davon genutzt ist, so lange das auch dauert."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761023
+    m_Localized: "Hier verf\u00E4llt nichts, also l\u00E4uft hier auch nichts ab."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761024
+    m_Localized: "Das ist ein Bonus zu deiner kostenlosen Tagesbelohnung, niemals ein Ersatz daf\u00FCr. Eine abzuholen verbraucht nie die andere."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761025
+    m_Localized: "ABGEHOLT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761026
+    m_Localized: "HEUTE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761027
+    m_Localized: "DEIN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761028
+    m_Localized: "BALD"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761029
+    m_Localized: "Dieses Register hat noch kein monatsexklusives Andenken. Hier wird nichts versprochen, was dir nicht gezeigt werden kann."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761030
+    m_Localized: "Register sind in dieser Version nicht k\u00E4uflich. Die gesamte Tabelle steht trotzdem auf diesem Bildschirm."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761031
+    m_Localized: "NICHT K\u00C4UFLICH"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761032
+    m_Localized: "Derzeit sind keine Register angelegt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761033
+    m_Localized: "WOCHE {0} | TAGE {1}-{2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761034
+    m_Localized: "AUSGEW\u00C4HLT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761035
+    m_Localized: "HIER ABHOLEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761036
+    m_Localized: "TAG {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761037
+    m_Localized: "MEILENSTEIN-BONUS"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

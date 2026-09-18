@@ -3596,6 +3596,226 @@ MonoBehaviour:
     m_Localized: "COMBLER L'\u00C9CART"
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760983
+    m_Localized: "GRATUIT CE SOIR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760984
+    m_Localized: "Rien n\u2019est demand\u00E9 avant que quelque chose ne soit donn\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760985
+    m_Localized: "Paniers - tout \u00E0 la fois."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760986
+    m_Localized: "M\u00C9C\u00C9NAT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760987
+    m_Localized: "Du prestige, jamais de puissance."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760988
+    m_Localized: "{0}x les {2} du {1}, pour {3}x le prix."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760989
+    m_Localized: "{0} biens par $"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760990
+    m_Localized: "Solde apr\u00E8s : {0} SKR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760991
+    m_Localized: "Verrouill\u00E9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760992
+    m_Localized: "0% DE FRAIS - CHAQUE PAIEMENT ATTEINT LE ROYAUME"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760993
+    m_Localized: "DISTRIBUTEUR DE R\u00C9COMPENSES {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760994
+    m_Localized: "DU TEMPS ET DE LA BEAUT\u00C9, JAMAIS DE PUISSANCE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760995
+    m_Localized: "Vous n\u2019avez jamais besoin de d\u00E9penser quoi que ce soit. Jamais."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760996
+    m_Localized: "Parcours de saison"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760997
+    m_Localized: "Il reste {0} jours dans cette saison"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760998
+    m_Localized: "Palier {0} sur {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760999
+    m_Localized: "{0} sur {1} XP avant le palier suivant"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761000
+    m_Localized: "Tous les paliers obtenus. {0} XP cette saison."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761001
+    m_Localized: "L\u2019XP de combat s\u2019obtient en jouant. Chaque combat d\u2019ar\u00E8ne rapporte, victoire ou d\u00E9faite, et une s\u00E9rie de victoires rapporte plus. Aucun palier n\u2019est jamais en vente."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761002
+    m_Localized: "Ce que vous obtenez vous appartient d\u00E9finitivement. Rien n\u2019est retir\u00E9 \u00E0 la fin de la saison, et tout ce que vous n\u2019avez pas r\u00E9clam\u00E9 vous est remis automatiquement."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761003
+    m_Localized: "GRATUIT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761004
+    m_Localized: "PREMIUM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761005
+    m_Localized: "R\u00C9CLAM\u00C9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761006
+    m_Localized: "PR\u00CAT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761007
+    m_Localized: "VERROUILL\u00C9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761008
+    m_Localized: "VOIE VERROUILL\u00C9E"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761009
+    m_Localized: "COURONNEMENT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761010
+    m_Localized: "R\u00E9clamer les r\u00E9compenses"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761011
+    m_Localized: "Rien \u00E0 r\u00E9clamer pour l\u2019instant - jouez un combat d\u2019ar\u00E8ne."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761012
+    m_Localized: "D\u00E9bloquer la voie premium"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761013
+    m_Localized: "La voie premium n\u2019est pas en vente dans cette version. Tout son contenu vous est montr\u00E9 malgr\u00E9 tout - on ne vous demandera jamais de deviner ce qui se cache derri\u00E8re un verrou."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761014
+    m_Localized: "D\u00E9bloquer la voie plus tard ne vous co\u00FBte rien : toutes les r\u00E9compenses premium que vous avez d\u00E9j\u00E0 atteintes sont remises d\u2019un coup."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761015
+    m_Localized: "Aucune saison n\u2019est en cours pour le moment. Une nouvelle commence le premier du mois."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761016
+    m_Localized: "Registre mensuel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761017
+    m_Localized: "{0} r\u00E9clamations restantes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761018
+    m_Localized: "Vous ne poss\u00E9dez pas de registre. Les trente jours sont affich\u00E9s ci-dessous avant tout paiement - il n\u2019y a ni jour cach\u00E9 ni jour myst\u00E8re."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761019
+    m_Localized: "R\u00E9clamer aujourd\u2019hui"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761020
+    m_Localized: "R\u00E9clam\u00E9. Le suivant sera \u00E0 vous demain."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761021
+    m_Localized: "R\u00E9clamation du jour"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761022
+    m_Localized: "Si vous manquez un jour, vous ne perdez rien. Un registre contient trente r\u00E9clamations et reste valable jusqu\u2019\u00E0 ce que toutes soient utilis\u00E9es, quel que soit le temps n\u00E9cessaire."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761023
+    m_Localized: "Rien ici n\u2019arrive \u00E0 \u00E9ch\u00E9ance, donc rien ici ne d\u00E9compte."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761024
+    m_Localized: "Il s\u2019agit d\u2019un bonus qui s\u2019ajoute \u00E0 votre r\u00E9compense quotidienne gratuite, jamais d\u2019un remplacement. R\u00E9clamer l\u2019une ne consomme jamais l\u2019autre."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761025
+    m_Localized: "R\u00C9CLAM\u00C9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761026
+    m_Localized: "AUJOURD\u2019HUI"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761027
+    m_Localized: "\u00C0 VOUS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761028
+    m_Localized: "\u00C0 VENIR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761029
+    m_Localized: "Ce registre n\u2019a encore aucun souvenir exclusif du mois. Rien n\u2019est promis ici qui ne puisse vous \u00EAtre montr\u00E9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761030
+    m_Localized: "Les registres ne sont pas en vente dans cette version. L\u2019ensemble du tableau reste affich\u00E9 sur cet \u00E9cran."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761031
+    m_Localized: "PAS EN VENTE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761032
+    m_Localized: "Aucun registre n\u2019est d\u00E9fini pour le moment."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761033
+    m_Localized: "SEMAINE {0} | JOURS {1}-{2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761034
+    m_Localized: "S\u00C9LECTIONN\u00C9E"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761035
+    m_Localized: "R\u00C9CLAMEZ ICI"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761036
+    m_Localized: "JOUR {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761037
+    m_Localized: "BONUS D\u2019\u00C9TAPE"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

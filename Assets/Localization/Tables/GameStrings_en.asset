@@ -3539,6 +3539,226 @@ MonoBehaviour:
     m_Localized: "CLOSE THE GAP"
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760983
+    m_Localized: "FREE TONIGHT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760984
+    m_Localized: "Nothing is asked for before something is given."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760985
+    m_Localized: "Baskets - everything at once."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760986
+    m_Localized: "PATRONAGE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760987
+    m_Localized: "Status, never power."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760988
+    m_Localized: "{0}x the {1}'s {2}, for {3}x the price."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760989
+    m_Localized: "{0} goods per $"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760990
+    m_Localized: "Wallet after: {0} SKR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760991
+    m_Localized: "Locked"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760992
+    m_Localized: "0% STORE FEE - EVERY PAYMENT REACHES THE REALM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760993
+    m_Localized: "REWARDS DISTRIBUTOR {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760994
+    m_Localized: "TIME AND BEAUTY, NEVER POWER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760995
+    m_Localized: "You are never required to spend anything. Ever."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760996
+    m_Localized: "Season Track"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760997
+    m_Localized: "{0} days left this season"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760998
+    m_Localized: "Tier {0} of {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760999
+    m_Localized: "{0} of {1} XP to the next tier"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761000
+    m_Localized: "Every tier earned. {0} XP this season."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761001
+    m_Localized: "Battle XP is earned by playing. Every arena battle pays, win or lose, and a win streak pays more. No tier is ever for sale."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761002
+    m_Localized: "What you earn is yours for good. Nothing is taken back when the season ends, and anything you have not claimed is given to you automatically."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761003
+    m_Localized: "FREE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761004
+    m_Localized: "PREMIUM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761005
+    m_Localized: "CLAIMED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761006
+    m_Localized: "READY"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761007
+    m_Localized: "LOCKED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761008
+    m_Localized: "LANE LOCKED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761009
+    m_Localized: "CAPSTONE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761010
+    m_Localized: "Claim Rewards"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761011
+    m_Localized: "Nothing to claim yet - play an arena battle."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761012
+    m_Localized: "Unlock Premium Lane"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761013
+    m_Localized: "The premium lane is not on sale in this build. Everything on it is shown to you anyway - you will never be asked to guess what sits behind a lock."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761014
+    m_Localized: "Unlocking the lane later costs you nothing: every premium reward you already climbed to is handed over at once."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761015
+    m_Localized: "No season is running right now. A new one begins on the first of the month."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761016
+    m_Localized: "Monthly Ledger"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761017
+    m_Localized: "{0} claims left"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761018
+    m_Localized: "You do not hold a ledger. All thirty days are shown below before you ever pay - there is no hidden day and no mystery day."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761019
+    m_Localized: "Claim Today"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761020
+    m_Localized: "Claimed. The next one is yours tomorrow."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761021
+    m_Localized: "Today's claim"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761022
+    m_Localized: "Miss a day and you lose nothing. A ledger holds thirty claims and lives until every one of them is spent, however long that takes."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761023
+    m_Localized: "Nothing here expires, so nothing here counts down."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761024
+    m_Localized: "This is a bonus on top of your free daily reward, never a replacement for it. Claiming one never uses up the other."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761025
+    m_Localized: "CLAIMED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761026
+    m_Localized: "TODAY"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761027
+    m_Localized: "YOURS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761028
+    m_Localized: "UPCOMING"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761029
+    m_Localized: "This ledger has no month-exclusive keepsake yet. Nothing is promised here that cannot be shown to you."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761030
+    m_Localized: "Ledgers are not on sale in this build. The whole table is on this screen regardless."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761031
+    m_Localized: "NOT FOR SALE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761032
+    m_Localized: "No ledgers are authored right now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761033
+    m_Localized: "WEEK {0} | DAYS {1}-{2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761034
+    m_Localized: "SELECTED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761035
+    m_Localized: "CLAIM HERE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761036
+    m_Localized: "DAY {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761037
+    m_Localized: "MILESTONE BONUS"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

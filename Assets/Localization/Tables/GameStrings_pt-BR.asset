@@ -3575,6 +3575,226 @@ MonoBehaviour:
     m_Localized: "FECHE A LACUNA"
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760983
+    m_Localized: "GR\u00C1TIS HOJE \u00C0 NOITE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760984
+    m_Localized: "Nada \u00E9 pedido antes de algo ser dado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760985
+    m_Localized: "Cestas - tudo de uma vez."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760986
+    m_Localized: "MECENATO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760987
+    m_Localized: "Prest\u00EDgio, nunca poder."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760988
+    m_Localized: "{0}x os {2} do {1}, por {3}x o pre\u00E7o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760989
+    m_Localized: "{0} bens por $"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760990
+    m_Localized: "Saldo depois: {0} SKR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760991
+    m_Localized: "Bloqueado"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760992
+    m_Localized: "0% DE TAXA - CADA PAGAMENTO CHEGA AO REINO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760993
+    m_Localized: "DISTRIBUIDOR DE RECOMPENSAS {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760994
+    m_Localized: "TEMPO E BELEZA, NUNCA PODER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760995
+    m_Localized: "Voc\u00EA nunca precisa gastar nada. Nunca."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760996
+    m_Localized: "Trilha da temporada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760997
+    m_Localized: "Faltam {0} dias nesta temporada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760998
+    m_Localized: "N\u00EDvel {0} de {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760999
+    m_Localized: "{0} de {1} XP para o pr\u00F3ximo n\u00EDvel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761000
+    m_Localized: "Todos os n\u00EDveis conquistados. {0} XP nesta temporada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761001
+    m_Localized: "A XP de batalha \u00E9 ganha jogando. Toda batalha na arena recompensa, com vit\u00F3ria ou derrota, e uma sequ\u00EAncia de vit\u00F3rias recompensa mais. Nenhum n\u00EDvel est\u00E1 \u00E0 venda."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761002
+    m_Localized: "O que voc\u00EA ganha \u00E9 seu para sempre. Nada \u00E9 retirado quando a temporada termina, e tudo o que voc\u00EA n\u00E3o resgatou \u00E9 entregue automaticamente."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761003
+    m_Localized: "GR\u00C1TIS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761004
+    m_Localized: "PREMIUM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761005
+    m_Localized: "RESGATADO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761006
+    m_Localized: "PRONTO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761007
+    m_Localized: "BLOQUEADO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761008
+    m_Localized: "TRILHA BLOQUEADA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761009
+    m_Localized: "COROAMENTO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761010
+    m_Localized: "Resgatar recompensas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761011
+    m_Localized: "Ainda n\u00E3o h\u00E1 nada para resgatar - jogue uma batalha na arena."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761012
+    m_Localized: "Desbloquear trilha premium"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761013
+    m_Localized: "A trilha premium n\u00E3o est\u00E1 \u00E0 venda nesta vers\u00E3o. Mesmo assim, tudo nela \u00E9 mostrado a voc\u00EA - nunca pediremos que voc\u00EA adivinhe o que est\u00E1 atr\u00E1s de um cadeado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761014
+    m_Localized: "Desbloquear a trilha mais tarde n\u00E3o custa nada: todas as recompensas premium que voc\u00EA j\u00E1 alcan\u00E7ou s\u00E3o entregues de uma vez."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761015
+    m_Localized: "Nenhuma temporada est\u00E1 ativa agora. A pr\u00F3xima come\u00E7a no primeiro dia do m\u00EAs."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761016
+    m_Localized: "Registro mensal"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761017
+    m_Localized: "Restam {0} resgates"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761018
+    m_Localized: "Voc\u00EA n\u00E3o possui um registro. Todos os trinta dias s\u00E3o mostrados abaixo antes de voc\u00EA pagar qualquer coisa - n\u00E3o h\u00E1 dia oculto nem dia misterioso."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761019
+    m_Localized: "Resgatar hoje"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761020
+    m_Localized: "Resgatado. O pr\u00F3ximo \u00E9 seu amanh\u00E3."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761021
+    m_Localized: "O resgate de hoje"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761022
+    m_Localized: "Se voc\u00EA perder um dia, n\u00E3o perde nada. Um registro cont\u00E9m trinta resgates e continua v\u00E1lido at\u00E9 que todos sejam usados, por quanto tempo for."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761023
+    m_Localized: "Aqui nada vence, ent\u00E3o aqui nada faz contagem regressiva."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761024
+    m_Localized: "Isto \u00E9 um b\u00F4nus sobre a sua recompensa di\u00E1ria gratuita, nunca um substituto. Resgatar uma nunca consome a outra."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761025
+    m_Localized: "RESGATADO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761026
+    m_Localized: "HOJE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761027
+    m_Localized: "SEU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761028
+    m_Localized: "EM BREVE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761029
+    m_Localized: "Este registro ainda n\u00E3o tem nenhuma lembran\u00E7a exclusiva do m\u00EAs. Nada \u00E9 prometido aqui que n\u00E3o possa ser mostrado a voc\u00EA."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761030
+    m_Localized: "Os registros n\u00E3o est\u00E3o \u00E0 venda nesta vers\u00E3o. Mesmo assim, a tabela completa est\u00E1 nesta tela."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761031
+    m_Localized: "N\u00C3O EST\u00C1 \u00C0 VENDA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761032
+    m_Localized: "Nenhum registro foi criado no momento."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761033
+    m_Localized: "SEMANA {0} | DIAS {1}-{2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761034
+    m_Localized: "SELECIONADA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761035
+    m_Localized: "RESGATE AQUI"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761036
+    m_Localized: "DIA {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761037
+    m_Localized: "BONUS DE MARCO"
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2
