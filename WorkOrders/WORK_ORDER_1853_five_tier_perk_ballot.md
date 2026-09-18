@@ -1,6 +1,6 @@
 # WORK ORDER 1853 — Clan system, step 10: five-tier perk ladder + ballot
 
-**Status:** READY FOR LEAD REVIEW - implemented 2026-09-17/18 (this lane). 3 endpoints + 1 library + 1 migration + 76 new node:test cases, all green; `node --check` clean on all 5 JS files; suite 1098/1095 -> 1174/1171 with the SAME two pre-existing reds. NOT committed, NOT deployed, NO DDL run. **The participation-threshold numbers and the epoch anchor are FIRST-PASS ENGINEERING DEFAULTS awaiting the owner's ruling** - see FLAG 1, FLAG 2 and FLAG 4 in the implementation record. PRIOR STATUS: READY TO IMPLEMENT
+**Status:** DONE - committed 1806d3ce4 (five-tier ballot) + 4998972f7 (schema.sql follow-up: the descriptive block missed the first commit; a hand-typed voter-count sequence corrected at n=8/11; a retracted numeric*interval cast claim). 3 endpoints + 1 library + 1 migration + 76 new node:test cases, all green. NOT deployed, NO DDL run against production - local commits only. **The participation-threshold numbers and the epoch anchor remain FIRST-PASS ENGINEERING DEFAULTS awaiting the owner's ruling** - see FLAG 1, FLAG 2, FLAG 4, and FLAG 10 (turnout-denominator gaming by a Leader who can shrink the passing bar by kicking non-voters) in the implementation record; none of these block DONE, they are owner-ruling items layered on top of a shipped, tested first pass. PRIOR STATUS: READY FOR LEAD REVIEW
 
 ## Context — clan WO-10 in the chain, depends on WO-1852
 
