@@ -34,6 +34,13 @@ namespace DeNelle.Wallet
             };
         }
 
+        // WO-1866: this method has no live caller in the repo today (grep-confirmed) — it builds a
+        // fresh CardCollectionModel.Title from StoreStrings.Get on every invocation, so it already
+        // re-resolves the current locale each time it runs; the coverage-gap bug this WO fixes only
+        // bites a value that is resolved ONCE and then held past a runtime locale switch with no
+        // path back to it. If a future caller keeps the returned model alive across screens rather
+        // than rebuilding it per-open, that caller (not this pure builder) is where a
+        // LocalText.Changed subscriber (see LocalizedLabel) belongs.
         public static CardCollectionModel Collection(IReadOnlyList<GenericCardModel> cards) =>
             new CardCollectionModel
             {

@@ -29,6 +29,14 @@ namespace DeNelle.Localization
         private StringTable _englishTable;
         private string _selectedLocaleCode = EnglishCode;
         private int _loadGeneration;
+        // WO-1866 Part B — the proven race: a switch to a non-English locale schedules TWO loads
+        // (the target table AND the English fallback), and the old code fired Changed on EVERY
+        // individual CompleteTableLoad. The capture showed English settling before French, so the
+        // FIRST Changed fired while _selectedTable (fr) was still null — any subscriber that
+        // retexts on that first Changed (Settings, HudKit) could render English for one tick even
+        // though LocalText.LanguageCode already reported the new locale. Fire once per generation,
+        // only once every load SCHEDULED for that generation has settled.
+        private int _pendingLoadCount;
         private bool _initialized;
         private bool _disposed;
         private bool _useSystemWhenReady;
@@ -195,6 +203,7 @@ namespace DeNelle.Localization
             if (selectedLocale != null && englishLocale != null &&
                 selectedLocale.Identifier == englishLocale.Identifier)
             {
+                _pendingLoadCount = 1;
                 LoadTable(selectedLocale, generation, table =>
                 {
                     _selectedTable = table;
@@ -202,6 +211,8 @@ namespace DeNelle.Localization
                 });
                 return;
             }
+
+            _pendingLoadCount = (selectedLocale != null ? 1 : 0) + (englishLocale != null ? 1 : 0);
 
             if (selectedLocale != null)
                 LoadTable(selectedLocale, generation, table => _selectedTable = table);
@@ -239,12 +250,36 @@ namespace DeNelle.Localization
                     (operation.OperationException == null
                         ? "the table result was empty"
                         : operation.OperationException.Message));
+                NotifyLoadSettled(generation);
                 return;
             }
 
             accept(operation.Result);
             FlowTrace.Step(TraceSystem, "Loaded '" + TableCollectionName + "' for locale '" +
                 locale.Identifier.Code + "'.");
+            NotifyLoadSettled(generation);
+        }
+
+        /// <summary>WO-1866 Part B — fires <see cref="Changed"/> once, only after every load
+        /// SCHEDULED for this generation (selected-locale table and/or English fallback) has
+        /// settled — never on the first of two individual completions. Stale-generation
+        /// completions never reach here (<see cref="CompleteTableLoad"/> returns before calling
+        /// this when <c>generation != _loadGeneration</c>), so <see cref="_pendingLoadCount"/> only
+        /// ever tracks the current generation's own loads.</summary>
+        private void NotifyLoadSettled(int generation)
+        {
+            if (generation != _loadGeneration)
+                return;
+
+            if (_pendingLoadCount > 0)
+                _pendingLoadCount--;
+
+            if (_pendingLoadCount > 0)
+                return;
+
+            FlowTrace.Step(TraceSystem, "Locale switch settled for generation " + generation +
+                "; selectedTable ready=" + (_selectedTable != null) +
+                ", englishTable ready=" + (_englishTable != null) + ".");
             Changed?.Invoke();
         }
 

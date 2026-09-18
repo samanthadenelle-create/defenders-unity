@@ -1725,6 +1725,11 @@ namespace DeNelle.HUD.Kit
                 new LocalizedText("settings.title").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 Vector2.zero, Vector2.one, OnSafetyGearTapped);
+            // WO-1866 Part A: this label was a one-shot Resolve() with no subscriber, so it kept
+            // showing whatever locale was active when the HUD was built. Attach the durable
+            // self-updating label so a runtime locale switch retexts it like the rest of the HUD.
+            if (_safetyGearButton != null)
+                LocalizedLabel.Attach(_safetyGearButton.GetComponentInChildren<TMP_Text>(true), "settings.title");
 
             FlowTrace.Step("Settings",
                 "safety-net Settings door built (WO-1856 Part A) - independent of HudAreasHost, " +
@@ -5621,7 +5626,7 @@ namespace DeNelle.HUD.Kit
             AddDockTab(_slideDock.panel, dockRow++,
                 new LocalizedText("hud.gearDock.music").Resolve(), OpenJukebox);
             AddDockTab(_slideDock.panel, dockRow++,
-                new LocalizedText("settings.title").Resolve(), OpenSettings);
+                new LocalizedText("settings.title").Resolve(), OpenSettings, "settings.title");
             // WO-1398: this row opens the REALM DECK (PanelId.RealmDeck - the four-card
             // launcher: store / Defense Report / Monthly Ledger / Game Guide), so it is labelled
             // with what it opens. It used to read "Night Market" while the HUD card beside it,
@@ -5813,7 +5818,8 @@ namespace DeNelle.HUD.Kit
         // Three physical rows with breathing room around the 112px touch floor.
         public static float DockPanelHeightPx => 450f;
 
-        private void AddDockTab(RectTransform panel, int i, string label, Action onTap)
+        private void AddDockTab(RectTransform panel, int i, string label, Action onTap,
+            string localizationKey = null)
         {
             const int columns = 2;
             const int rows = 3;
@@ -5831,13 +5837,19 @@ namespace DeNelle.HUD.Kit
             float y0 = innerY1 - (row + 1) * cellH + DockRowGapFrac;
             // WO-1393: every dock row consults the close-frame grace before its own command.
             string face = "gear dock '" + label + "'";
-            ElarionUiKit.BuildObsidianButton(panel, label,
+            var button = ElarionUiKit.BuildObsidianButton(panel, label,
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(x0, y0), new Vector2(x1, y1), () =>
                 {
                     if (SwallowedByCloseGrace(face)) return;
                     onTap?.Invoke();
                 });
+            // WO-1866 Part A: this drawer is built ONCE at HUD boot and never rebuilt, so every
+            // row's label was a one-shot Resolve() with no path back to it after a runtime locale
+            // switch. Only the caller-named rows opt in (localizationKey != null) — this WO's
+            // acceptance floor is the two confirmed sites, not a blanket migration of all six rows.
+            if (button != null && localizationKey != null)
+                LocalizedLabel.Attach(button.GetComponentInChildren<TMP_Text>(true), localizationKey);
         }
 
         // Settings tab -> the REAL options screen (SettingsController: quality / difficulty /

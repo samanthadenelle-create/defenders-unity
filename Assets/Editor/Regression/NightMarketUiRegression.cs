@@ -670,7 +670,13 @@ namespace DeNelle.Editor.Regression
         private static void CheckOneTitleAndOneLegalOwner(string store, string footer, float ctaWidth,
                                                           List<string> failures)
         {
-            if (Regex.Matches(store, "KeyWordmark").Count != 1) // modal title only; no body duplicate
+            // WO-1866: a second KeyWordmark reference was added deliberately -
+            // DeNelle.Core.UI.LocalizedLabel.Attach(_modal.chrome.title, StoreStrings.KeyWordmark) -
+            // to make the already-built title retext itself on a runtime locale switch. It attaches
+            // a component to the SAME title object built by the first reference; it does not draw a
+            // second visible label, so the "one visible title" invariant this check exists to guard
+            // still holds. 2 source references, still exactly ONE rendered title.
+            if (Regex.Matches(store, "KeyWordmark").Count != 2)
                 failures.Add("wordmark occurrence count drifted; confirm the visible title is rendered exactly once.");
 
             Require(store, "StoreLegalFooter.Build(",

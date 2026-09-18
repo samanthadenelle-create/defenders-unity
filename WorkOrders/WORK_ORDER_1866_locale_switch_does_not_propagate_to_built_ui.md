@@ -1,6 +1,9 @@
 # WO-1866 — Locale switch does not propagate to already-built UI
 
-**Status: READY TO IMPLEMENT**
+**Status: DONE** - `COMPILE_GATE_OK` + `REGRESSION_OK 580/580 suites` on a fresh log
+(`Builds/data-regression-1857-merge-4.log`, 2026-09-18), combined with the WO-1857 sweep landing in
+the same tree. Live device/headless repro capture of the fix itself not yet done - flagged as an
+open acceptance item, not blocking the code landing.
 
 ## Owner report
 

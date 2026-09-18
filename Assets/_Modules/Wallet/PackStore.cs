@@ -995,6 +995,11 @@ namespace DeNelle.Wallet
             _modal = ElarionUiKit.BuildObsidianModal("PackStoreUI", StoreStrings.Get(StoreStrings.KeyWordmark),
                 NightMarketLayout.PanelMin, NightMarketLayout.PanelMax, CloseStore,
                 frameName: null, medallionIcon: null);
+            // WO-1866 Part A: EnsureBuilt runs ONCE (the early-return above), so this title was a
+            // one-shot Resolve() with no path back to it after a runtime locale switch — confirmed
+            // instance from the RCA capture. Attach the durable self-updating label.
+            if (_modal != null && _modal.chrome != null)
+                DeNelle.Core.UI.LocalizedLabel.Attach(_modal.chrome.title, StoreStrings.KeyWordmark);
 
             if (_modal == null || _modal.canvas == null)
             {

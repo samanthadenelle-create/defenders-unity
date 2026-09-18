@@ -77,7 +77,10 @@ namespace DeNelle.Editor.Regression
             // from the standalone Settings screen's own title key) rather than a bare "Settings"
             // literal - the needle pins the resolved KEY plus the handler, so this still proves the
             // row both says the right thing and routes to the right place.
-            Require(hud, "new LocalizedText(\"settings.title\").Resolve(), OpenSettings);", failures,
+            // WO-1866 re-point: AddDockTab gained a trailing localizationKey parameter so the row
+            // can retext itself via LocalizedLabel on a runtime locale switch (the coverage-gap
+            // fix) - the call now ends `OpenSettings, "settings.title");` instead of `OpenSettings);`.
+            Require(hud, "new LocalizedText(\"settings.title\").Resolve(), OpenSettings, \"settings.title\");", failures,
                 "[dock-route] the dock's Settings row no longer resolves settings.title into OpenSettings");
             string openSettings = Between(hud, "private void OpenSettings()", "\n        private ");
             if (openSettings == null)
