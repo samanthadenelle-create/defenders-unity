@@ -162,15 +162,41 @@ namespace DeNelle.Village
         /// </summary>
         public static string GrantToastFor(int footmen, int archers)
         {
-            string body;
-            if (footmen > 0 && archers > 0)
-                body = footmen + " " + (footmen == 1 ? "Footman" : "Footmen") +
-                       " and " + archers + " " + (archers == 1 ? "Archer" : "Archers");
-            else if (footmen > 0)
-                body = footmen + " " + (footmen == 1 ? "Footman" : "Footmen");
-            else
-                body = archers + " " + (archers == 1 ? "Archer" : "Archers");
-            return "Your first squad is ready - " + body + ", free. Open Journey, then Raids.";
+            // =================================================================
+            //  WO-1871 item 4 - THE GENERIC PLURAL RULING (owner, 2026-09-18).
+            // -----------------------------------------------------------------
+            //  Owner, verbatim: "that correct footman/footmen (or make generic troops) can be
+            //  used across the board for plural troops". The ruling is the SECOND option:
+            //  "troops" is the plural across the board, and a per-unit plural form is never
+            //  authored again - not here, not in a locale key, not in a suite.
+            //
+            //  WHY THE RULING IS RIGHT AND NOT JUST A PREFERENCE: the old body branched on
+            //  Footman/Footmen and Archer/Archers, which is English morphology compiled into
+            //  C#. Every one of the ten shipping catalogs would have needed its own branch
+            //  (Russian alone has three plural categories), so this is the exact line the
+            //  WO-1857 localization sweep SKIPPED rather than mistranslate - StarterArmyGrant
+            //  was the one deferral in that batch. Count + generic noun is the shape a single
+            //  key can carry in every language.
+            //
+            //  THE SIGNATURE IS UNCHANGED ON PURPOSE. SplitComposition's 10 -> 5/5 contract and
+            //  StarterArmyGrantRegression's composition cases read these two arguments; the
+            //  SPLIT is still real and still granted, it is simply no longer NARRATED unit by
+            //  unit. The total is what the sentence is about.
+            //
+            //  ⚠ FLAGGED FOR THE LEAD, NOT HIDDEN: StarterArmyGrantRegression case C2
+            //  (Assets/Editor/Regression/StarterArmyGrantRegression.cs:281-292) asserts this
+            //  toast names 'N Footmen' / 'N Archers' BY UNIT. Those four assertions pin the
+            //  very wording the owner just retired, so they go red on this change. That file is
+            //  outside this lane's silo (see the RESULT for the exact re-point). The
+            //  Journey -> Raids half of C2 (:295-299) is deliberately preserved in the English
+            //  copy and stays green once the key is merged.
+            // =================================================================
+            int total = (footmen > 0 ? footmen : 0) + (archers > 0 ? archers : 0);
+            // The copy lives in the catalogs, never here (RaidDeployChangeArmyDoorRegression C2:
+            // this method may hold exactly ONE literal, the key). With no locale provider
+            // installed - the EditMode oracles - Format answers "[[missing:key]]", and
+            // StarterArmyGrantRegression judges the copy from en.json instead.
+            return LocalText.Format("village.troops.starter_army.first_squad_ready_fmt", total);
         }
 
         private const float PollInterval = 0.5f;

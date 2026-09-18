@@ -275,21 +275,36 @@ namespace DeNelle.Editor.Regression
                 foreach (var tc in toastCases)
                 {
                     int f = tc[0], a = tc[1];
-                    string toast = StarterArmyGrant.GrantToastFor(f, a);
+                    string raw = StarterArmyGrant.GrantToastFor(f, a);
                     string label = f + "f/" + a + "a";
-                    if (string.IsNullOrEmpty(toast)) { failures.Add("[C2] GrantToastFor(" + label + ") is empty"); continue; }
-                    if (f > 0 && !toast.Contains(f + " " + (f == 1 ? "Footman" : "Footmen")))
-                        failures.Add("[C2] the " + label + " toast does not name '" + f + " " +
-                                     (f == 1 ? "Footman" : "Footmen") + "': \"" + toast + "\"");
-                    if (a > 0 && !toast.Contains(a + " " + (a == 1 ? "Archer" : "Archers")))
-                        failures.Add("[C2] the " + label + " toast does not name '" + a + " " +
-                                     (a == 1 ? "Archer" : "Archers") + "': \"" + toast + "\"");
-                    if (f == 0 && toast.IndexOf("Footm", System.StringComparison.Ordinal) >= 0)
-                        failures.Add("[C2] the " + label + " toast promises Footmen the player did not " +
-                                     "receive: \"" + toast + "\"");
-                    if (a == 0 && toast.IndexOf("Archer", System.StringComparison.Ordinal) >= 0)
-                        failures.Add("[C2] the " + label + " toast promises Archers the player did not " +
-                                     "receive: \"" + toast + "\"");
+                    if (string.IsNullOrEmpty(raw)) { failures.Add("[C2] GrantToastFor(" + label + ") is empty"); continue; }
+                    // WO-1857/1871: the copy lives in the catalog, not in GrantToastFor (which may hold
+                    // exactly ONE literal, the key - RaidDeployChangeArmyDoorRegression C2). The EditMode
+                    // oracle runs with NO locale provider, where LocalText.Format answers
+                    // "[[missing:<key>]]" (LocalText.cs:144-171), so the copy is judged from en.json:
+                    // the method must ask for THAT key, and the catalog's English must say it right.
+                    const string starterKey = "village.troops.starter_army.first_squad_ready_fmt";
+                    string toast = raw;
+                    if (raw == "[[missing:" + starterKey + "]]")
+                    {
+                        string en = ReadEnCatalogValue(starterKey);
+                        if (string.IsNullOrEmpty(en))
+                        { failures.Add("[C2] en.json carries no value for " + starterKey + " - the FTUE toast would ship as [[missing:...]]"); continue; }
+                        toast = en.Replace("{0}", (f + a).ToString());
+                    }
+                    else if (raw.StartsWith("[[missing:", System.StringComparison.Ordinal))
+                    { failures.Add("[C2] GrantToastFor(" + label + ") asks for a key other than " + starterKey + ": " + raw); continue; }
+                    // WO-1871 (owner ruling 2026-09-18): "troops" is the generic plural across the
+                    // board - never a per-unit plural form. The toast names the TOTAL count with the
+                    // generic noun, and any Footman/Footmen/Archer/Archers wording is the retired shape.
+                    int total = f + a;
+                    if (!toast.Contains(total + " troops"))
+                        failures.Add("[C2] the " + label + " toast does not name '" + total +
+                                     " troops' (generic plural ruling, WO-1871): \"" + toast + "\"");
+                    if (toast.IndexOf("Footm", System.StringComparison.Ordinal) >= 0 ||
+                        toast.IndexOf("Archer", System.StringComparison.Ordinal) >= 0)
+                        failures.Add("[C2] the " + label + " toast uses a per-unit plural form the owner " +
+                                     "retired on 2026-09-18 (WO-1871): \"" + toast + "\"");
                     // The map's FTUE line points at Journey -> Raids, and it must say the SAME
                     // thing the Game Guide now says. One destination, worded one way.
                     if (toast.IndexOf("Journey", System.StringComparison.Ordinal) < 0 ||
@@ -427,6 +442,35 @@ namespace DeNelle.Editor.Regression
             reason = "starter-army: " + string.Join("; ", failures);
             Debug.LogError(log.ToString() + "STARTER_ARMY_FAIL: " + reason);
             return false;
+        }
+
+        /// <summary>
+        /// The English catalog value for one key, read off en.json as text (one "key": "value"
+        /// line per entry, the shape every locale twin shares). Returns null when absent. Kept
+        /// dependency-free so this oracle judges the copy without a locale provider installed.
+        /// </summary>
+        private static string ReadEnCatalogValue(string key)
+        {
+            const string path = "Assets/Resources/Data/Canonical/en.json";
+            if (!System.IO.File.Exists(path)) return null;
+            string needle = "\"" + key + "\":";
+            foreach (string line in System.IO.File.ReadLines(path))
+            {
+                int at = line.IndexOf(needle, System.StringComparison.Ordinal);
+                if (at < 0) continue;
+                int q1 = line.IndexOf('"', at + needle.Length);
+                if (q1 < 0) return null;
+                var sb = new System.Text.StringBuilder();
+                for (int i = q1 + 1; i < line.Length; i++)
+                {
+                    char c = line[i];
+                    if (c == '\\' && i + 1 < line.Length) { i++; sb.Append(line[i] == 'n' ? '\n' : line[i]); continue; }
+                    if (c == '"') return sb.ToString();
+                    sb.Append(c);
+                }
+                return sb.ToString();
+            }
+            return null;
         }
     }
 }

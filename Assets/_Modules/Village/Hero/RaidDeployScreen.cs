@@ -60,6 +60,45 @@ namespace DeNelle.Village.Hero
         private GameObject _ui;
         private RaidDeployVM _vm;                       // owns the party/army/power math (no GameState in the View)
 
+        // =====================================================================
+        //  WO-1871 — THE CHANGE ARMY DOOR'S THREE PIECES OF STATE.
+        // ---------------------------------------------------------------------
+        //  Owner, 2026-09-18: "there is no screen that you can access that allows you to
+        //  change configuration of troops you want to use in raid." The army surface has
+        //  existed since WO-897/WO-1811 (ArmyMusterPanel: Manage -> Move to Reserve /
+        //  Return to army / Dismiss, plus the Loadouts drawer) — it simply had no door on
+        //  the raid flow. This is that door, and the round trip back.
+        //
+        //  ⛔ THE DEPLOY SCREEN MUST CLOSE BEFORE THE MUSTER PANEL OPENS, and that is a
+        //  MEASURED sorting fact rather than a tidiness preference: this screen's canvas is
+        //  BuildModalCanvas("RaidDeployScreenUI", 31050) with overrideSorting = true (see
+        //  OpenInternal) and, since WO-1462, an opaque 0.94-alpha kit Backdrop; the muster
+        //  panel's is BuildModalCanvas("ArmyMusterPanelUI", 31000) (ArmyMusterPanel.cs:408).
+        //  31000 < 31050, both ScreenSpaceOverlay, so a muster panel opened over a LIVE
+        //  deploy screen would be painted entirely behind an opaque plate — the player
+        //  would tap CHANGE ARMY and see nothing change. Close-then-open is also what
+        //  ARMS the WO-1400 return door (see OpenTroopsDoor's note, and PanelManager.cs:371-376).
+        // =====================================================================
+
+        /// <summary>The raid this screen is open for, kept on the VIEW so the WO-1871 return
+        /// trip can re-open the same briefing. RaidDeployVM's own <c>_def</c> is private and
+        /// the VM is disposed by <see cref="Close"/>, so the View cannot borrow it back.</summary>
+        private SceneConfigDef _def;
+
+        /// <summary>True between the CHANGE ARMY tap and the muster panel's close signal — the
+        /// one thing that makes the return re-read OURS and not a stray global close.</summary>
+        private bool _awaitingMusterReturn;
+
+        /// <summary>The CHANGE ARMY face, held so the march can DIM it (never hide it) without a
+        /// footer rebuild (WO-1871 item 5).</summary>
+        private Button _changeArmyBtn;
+
+        /// <summary>True once BEGIN ASSAULT has committed to the march. The army can no longer be
+        /// changed, and the face says so by going quiet rather than by vanishing — a control that
+        /// disappears reads as a bug, and state must survive a greyscale read (the owner is
+        /// red/green colourblind), so the channel is INTERACTABILITY, never a hue.</summary>
+        private bool _staging;
+
         // UIF-01: single-modal arbiter handle (opening this closes the raid grid; back/ESC dismisses it).
         private PanelHandle _panelHandle;
         private RectTransform _troopListArea;          // list region inside the body zone
@@ -354,6 +393,11 @@ namespace DeNelle.Village.Hero
         private void OpenInternal(SceneConfigDef def)
         {
             Close();
+
+            // WO-1871: the briefing's identity, kept on the View. Set AFTER Close() because
+            // Close() clears the return state, and this is the value the return trip re-opens on.
+            _def = def;
+            _staging = false;
 
             // WO-823 Phase E — the screen's ONE window onto readiness, taken ONCE here.
             // ArmyReadiness.Compute(GameState) is the single readiness formula in the game; this
@@ -1047,10 +1091,34 @@ namespace DeNelle.Village.Hero
                     "deploy primary='" + RaidDeployVM.PrimaryAssaultLabel + "' fielded=" + fielded +
                     " secondary='EDIT ARMY'");
 
+                // WO-1871 - CHANGE ARMY. The owner's gap in her own words: "there is no screen
+                // that you can access that allows you to change configuration of troops you want
+                // to use in raid." It is a THIRD face rather than a re-point of EDIT ARMY because
+                // the two answer different questions and both are wanted here:
+                //   EDIT ARMY   -> Manage > Troops  : TRAIN more (make troops exist).
+                //   CHANGE ARMY -> ArmyMusterPanel  : decide WHO GOES (Move to Reserve / Return to
+                //                                     army / Dismiss, plus the Loadouts presets).
+                // Re-pointing EDIT ARMY would also have deleted the one door WO-1403 built for the
+                // zero-army player, which RaidDeployZeroArmyRegression [zero-army-door] pins.
+                // The caption is a locale KEY (WO-1857 lane shape); the two faces beside it are
+                // still literals and are NOT re-keyed here - that is the string sweep's lane, and
+                // moving them would move two source-lint needles at the same time.
+                // (Their captions are deliberately NOT quoted in this comment: two suites read
+                // this method as RAW TEXT and count quoted captions, so a caption named in prose
+                // would read as a second button.)
+                _changeArmyBtn = ElarionUiKit.Button(footer, ChangeArmyFace(), ElarionUiKit.ButtonKind.Quiet,
+                    new Vector2(0.00f, 0.50f), new Vector2(0.22f, 0.50f), OnChangeArmy);
+                SeatFooterCtaAtCanonicalHeight(_changeArmyBtn);
+                // Dimmed, never hidden, once the march is committed (item 5). Written as a
+                // null-CHECK rather than an early-out on purpose: [zero-army-footer] bounds its
+                // position checks at the first branch exit after `if (showAssault)`, so an
+                // early-out added above here would silently shrink that suite's window.
+                if (_changeArmyBtn != null) _changeArmyBtn.interactable = !_staging;
+
                 // EDIT ARMY (was "Army Ready?" - a question on a button, and a toast). A verb
                 // that does what it says: the Troops tab is where the army is trained/upgraded.
                 var editBtn = ElarionUiKit.Button(footer, "EDIT ARMY", ElarionUiKit.ButtonKind.Quiet,
-                    new Vector2(0.00f, 0.50f), new Vector2(0.28f, 0.50f), OnEditArmy);
+                    new Vector2(0.25f, 0.50f), new Vector2(0.47f, 0.50f), OnEditArmy);
                 SeatFooterCtaAtCanonicalHeight(editBtn);
 
                 // DEPLOY -- the primary CTA. WO-1385 #4 (owner 2026-09-04, Seeker screenshot:
@@ -1061,7 +1129,7 @@ namespace DeNelle.Village.Hero
                 // style. WO-932: "BEGIN ASSAULT" -- distinct from in-raid ground DROP of troops.
                 var deployBtn = ElarionUiKit.BuildObsidianButton(footer, "BEGIN ASSAULT",
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
-                    new Vector2(0.32f, 0.50f), new Vector2(0.985f, 0.50f), OnDeploy);
+                    new Vector2(0.51f, 0.50f), new Vector2(0.985f, 0.50f), OnDeploy);
                 SeatFooterCtaAtCanonicalHeight(deployBtn);
                 if (deployBtn != null) deployBtn.interactable = _vm != null && _vm.CanDeploy;
                 return;
@@ -1089,6 +1157,156 @@ namespace DeNelle.Village.Hero
             float half = ElarionUiKit.CanonCtaHeight * 0.5f;
             rt.offsetMin = new Vector2(rt.offsetMin.x, -half);
             rt.offsetMax = new Vector2(rt.offsetMax.x, half);
+        }
+
+        // =====================================================================
+        //  WO-1871 — THE CHANGE ARMY DOOR, AND THE RETURN RE-READ.
+        // ---------------------------------------------------------------------
+        //  ⚠ THESE METHODS SIT HERE DELIBERATELY: between SeatFooterCtaAtCanonicalHeight
+        //  and OpenTroopsDoor. Two existing source-lints carve windows out of this file by
+        //  method name — RaidDeployZeroArmyRegression [zero-army-footer] and
+        //  RaidDeployUiRegression [deploy-bar-kit-button] both read BuildDeployBar up to the
+        //  DECLARATION of SeatFooterCtaAtCanonicalHeight, and [zero-army-door] reads
+        //  OpenTroopsDoor up to the declaration of OnDeploy. Anything typed inside either
+        //  window changes what those suites measure without changing what they claim to
+        //  measure. This gap belongs to neither.
+        //
+        //  THE ROUND TRIP, and why each step is where it is:
+        //    1. Close() the deploy screen FIRST — the sorting fact at the top of this file
+        //       (31050 opaque over 31000) means the muster panel would otherwise be invisible,
+        //       and the close-to-nothing ARMS the WO-1400 return door.
+        //    2. Subscribe AFTER the Close(), because Close() clears the return state.
+        //    3. ArmyMusterPanel.Show() — the STATIC door (ArmyMusterPanel.cs:380). The WO says
+        //       "opens the existing ArmyMusterPanel.Open"; Show() IS that entry — it owns the
+        //       singleton host and carries the Barracks-not-built spoken refusal, then calls
+        //       Open(). Reaching Open() directly would mean making s_host public, i.e. adding a
+        //       second way in, and losing the refusal.
+        //    4. On the panel's close signal, re-OpenInternal the SAME def. OpenInternal takes a
+        //       FRESH ArmyReadiness.Compute snapshot at its top, so the army band, the troop
+        //       list and the footer branch are all re-read — there is no second readiness
+        //       formula here and no cached count to invalidate.
+        //
+        //  ⛔ NO GATE CHANGE. The raid gate stays the full-army rule (owner ruling 2026-09-16);
+        //  RaidEntryGate / RaidSelectionScreen remain its one authority and nothing below asks
+        //  a readiness question of its own.
+        // =====================================================================
+
+        /// <summary>The door's caption. A locale KEY, never a literal (WO-1857 lane shape, the same
+        /// LocalizedText(...).Resolve() this file already uses for its toasts).</summary>
+        private static string ChangeArmyFace()
+        {
+            return new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy_screen.change_army").Resolve();
+        }
+
+        private void OnChangeArmy()
+        {
+            string raidId = _vm != null ? _vm.RaidId : "(no vm)";
+            int beforeFielded = _vm != null ? _vm.Fielded : -1;
+            DeNelle.Core.Diagnostics.FlowTrace.Step("RaidDeploy",
+                "CHANGE ARMY tap received: raid='" + raidId + "' fielded=" + beforeFielded +
+                " staging=" + _staging + " -> closing the deploy screen (canvas 31050, opaque " +
+                "backdrop) and opening ArmyMusterPanel (canvas 31000). The close is FIRST because " +
+                "31000 under an opaque 31050 would paint the muster panel behind this one.");
+
+            if (_staging)
+            {
+                // Belt behind the braces: the face is dimmed while staging, so this is only
+                // reachable through a stale handle or a re-entrant tap. Say a word, never a
+                // dead tap.
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("RaidDeploy",
+                    "CHANGE ARMY tapped while the march is already committed - refused; the face " +
+                    "should have been dimmed.");
+                return;
+            }
+
+            var def = _def;
+            Close();
+            _def = def;                      // Close() clears it; the return trip needs it back
+            _awaitingMusterReturn = true;
+            DeNelle.Village.ArmyMusterPanel.Closed -= OnMusterClosed;   // never double-subscribe
+            DeNelle.Village.ArmyMusterPanel.Closed += OnMusterClosed;
+            DeNelle.Core.Diagnostics.Guard.Try("RaidDeploy", "open the army muster panel",
+                () => DeNelle.Village.ArmyMusterPanel.Show());
+
+            // ⛔ A REFUSED DOOR MUST NOT STRAND THE PLAYER. ArmyMusterPanel.Show returns having
+            // opened NOTHING when the Barracks is not built yet (it says so in a toast, which is
+            // right) - and it can also be rejected by the PanelManager battle-lock. On either
+            // path Closed never fires, so without this read the player would be left on the bare
+            // HUD, one self-inflicted Close() from a briefing they were standing on, with a
+            // subscription armed to re-open it at some unrelated later moment. Re-open the
+            // briefing immediately instead: the toast still explains the refusal, and the player
+            // is exactly where they were.
+            if (!DeNelle.Village.ArmyMusterPanel.IsAnyOpen)
+            {
+                DeNelle.Village.ArmyMusterPanel.Closed -= OnMusterClosed;
+                _awaitingMusterReturn = false;
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("RaidDeploy",
+                    "CHANGE ARMY: the muster panel refused to open (Barracks not built, or a " +
+                    "battle-lock rejection) - it has said so in a toast. Re-opening the deploy " +
+                    "briefing so the tap costs the player nothing.");
+                if (def != null) OpenInternal(def);
+            }
+        }
+
+        /// <summary>
+        /// THE RETURN RE-READ. <paramref name="handedOff"/> is TRUE when the muster panel closed
+        /// because it routed the player somewhere else itself (its GO face opens
+        /// RaidSelectionScreen) — in that case this screen must NOT reappear on top of the surface
+        /// the player just chose. The subscription is dropped either way, so a stale handler can
+        /// never re-open a briefing the player has moved on from.
+        /// </summary>
+        private void OnMusterClosed(bool handedOff)
+        {
+            DeNelle.Village.ArmyMusterPanel.Closed -= OnMusterClosed;
+            if (!_awaitingMusterReturn) return;
+            _awaitingMusterReturn = false;
+
+            if (handedOff)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Step("RaidDeploy",
+                    "muster closed HANDED OFF (its GO face opened the raid selection grid) - the " +
+                    "deploy screen deliberately does NOT re-open over it.");
+                return;
+            }
+
+            if (_def == null)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("RaidDeploy",
+                    "muster closed but the deploy screen has no raid to return to (def lost) - " +
+                    "staying closed rather than opening an empty briefing.");
+                return;
+            }
+
+            // ⛔ NOT INTO A RE-ENTRANT SWAP. This same Close() is the callback PanelManager invokes
+            // on `previous` when something ELSE opens over the muster panel - and it does that
+            // AFTER setting _open to the new handle (PanelManager.NotifyOpened). On that path
+            // NotifyClosed returns early (the handle is no longer the open one), so AnyOpen stays
+            // TRUE and this read is what tells a swap apart from a real close. Re-opening here
+            // would register a panel from inside another panel's open and immediately close the
+            // thing that was arriving. A genuine close (the shared kit Close, the scrim tap) has
+            // already set _open to null, so AnyOpen is false and the return trip proceeds.
+            if (PanelManager.AnyOpen)
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Step("RaidDeploy",
+                    "muster closed as part of a swap - '" + (PanelManager.OpenPanelName ?? "(unnamed)") +
+                    "' is already open, so the deploy screen does NOT re-open over it.");
+                return;
+            }
+
+            OpenInternal(_def);
+
+            // The counts, AFTER the re-open, read off the snapshot OpenInternal just took. Not a
+            // second ArmyReadiness.Compute: a second read is a second opinion, and this screen is
+            // allowed exactly one (see OpenInternal's note). Reserve/dismiss counts are the muster
+            // panel's own lines (ArmyMusterVM.ReserveLine) and are deliberately NOT restated here.
+            var snap = _vm != null ? _vm.Readiness : default(DeNelle.Village.ArmyReadiness.Snapshot);
+            DeNelle.Core.Diagnostics.FlowTrace.Step("RaidDeploy",
+                "returned from CHANGE ARMY - deploy screen re-read for raid='" +
+                (_vm != null ? _vm.RaidId : "(no vm)") + "': deployableSlots=" + snap.DeployableSlots +
+                " queued=" + snap.QueuedSlots + " required=" + snap.RequiredSlots +
+                " cap=" + snap.CapSlots + " ready=" + snap.Ready +
+                " fielded=" + (_vm != null ? _vm.Fielded : -1) +
+                " armyBand='" + (_vm != null ? _vm.ArmyBandText : "(none)") + "'.");
         }
 
         // WO-1403: the ONE door from this screen to the Barracks - Manage on the Troops tab
@@ -1254,6 +1472,14 @@ namespace DeNelle.Village.Hero
             string name = !string.IsNullOrEmpty(_vm.DisplayNameRaw) ? _vm.DisplayNameRaw : _vm.RaidId;
             ElarionUiKit.ShowToast(DeNelle.Core.UI.LocalText.Format("village.troops.raid_deploy_screen.assaulting_fmt", name), ElarionUiKit.ToastTone.Info,
                 sortingOrder: ToastSortingOrder);
+            // WO-1871 item 5 - the march is committed, so the army can no longer be changed. The
+            // face DIMS; it is never hidden and never re-tinted, because a control that vanishes
+            // reads as a bug and a hue carries nothing for a red/green colourblind player.
+            _staging = true;
+            if (_changeArmyBtn != null) _changeArmyBtn.interactable = false;
+            DeNelle.Core.Diagnostics.FlowTrace.Step("RaidDeploy",
+                "march committed - CHANGE ARMY dimmed (not hidden) for raid='" + _vm.RaidId + "'.");
+
             Debug.Log($"[RaidDeployScreen] BEGIN ASSAULT -> SceneRouter.GoRaid('{_vm.SceneName}').");
             // SHARED CONTRACT: the VM loads the raid scene; the in-raid deploy tray handles
             // the actual unit placement.
@@ -1318,12 +1544,21 @@ namespace DeNelle.Village.Hero
             _ui = null;
             _troopListArea = null;
             _scroll = null;
+            // WO-1871: the return state dies with the screen. OnChangeArmy re-sets _def AFTER its
+            // Close() precisely because of this line - a briefing that is closed for any other
+            // reason must not be re-openable by a muster close that arrives later.
+            _def = null;
+            _changeArmyBtn = null;
+            _staging = false;
         }
 
         private void OnDestroy()
         {
             // UIF-01: don't leak the arbiter slot if destroyed while open (scene unload).
             if (_panelHandle != null) PanelManager.NotifyClosed(_panelHandle);
+            // WO-1871: never leave a destroyed View subscribed to a static event.
+            DeNelle.Village.ArmyMusterPanel.Closed -= OnMusterClosed;
+            _awaitingMusterReturn = false;
             _vm?.Dispose();
             _vm = null;
             if (_instance == this) _instance = null;

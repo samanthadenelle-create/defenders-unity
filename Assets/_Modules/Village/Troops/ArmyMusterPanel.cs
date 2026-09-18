@@ -100,6 +100,46 @@ namespace DeNelle.Village
         private static ArmyMusterPanel s_host;
 
         // =====================================================================
+        //  WO-1871 — THE CLOSE SIGNAL. The one seam this ticket adds to this file.
+        // ---------------------------------------------------------------------
+        //  The raid deploy screen opens this panel and must re-read its army summary when
+        //  the player comes back (owner 2026-09-18: "there is no screen that you can access
+        //  that allows you to change configuration of troops you want to use in raid").
+        //  It cannot poll, and it must not reach into this panel's state — so the panel
+        //  says when it has closed, and says nothing else.
+        //
+        //  ⛔ NOT EVERY Close() IS A RETURN, and that is why the raise is split out of
+        //  Close() instead of living in it:
+        //    * Open() calls the teardown on its own first line, and OnToggleLoadouts()
+        //      calls Open() to swap surfaces (:1041-1046). A raise there would fire the
+        //      return trip every time the player tapped Loadouts, re-opening the deploy
+        //      screen over a panel that is mid-rebuild.
+        //    * OnGoRaid() closes and then opens the raid selection grid itself. That is a
+        //      HAND-OFF: the signal carries handedOff = true so a listener drops its
+        //      subscription without re-opening on top of the surface the player chose.
+        //  Everything else — the shared Close, the scrim tap, a PanelManager battle-lock
+        //  swap — is a genuine "I am done here" and raises handedOff = false.
+        //
+        //  ORDER: the raise is the LAST thing the teardown does, AFTER
+        //  PanelManager.NotifyClosed. That is the same close-to-nothing-then-open ordering
+        //  RaidDeployScreen.OpenTroopsDoor already relies on, which ARMS the WO-1400 return
+        //  door (PanelManager.cs:371-376 then reports it KEPT for whatever opens next).
+        // =====================================================================
+
+        /// <summary>Raised when this panel has finished tearing down. The bool is TRUE when the
+        /// panel routed the player onward itself (a hand-off), FALSE for an ordinary close.</summary>
+        public static event System.Action<bool> Closed;
+
+        /// <summary>
+        /// WO-1871 - DID THE DOOR ACTUALLY OPEN? <see cref="Show"/> can REFUSE (no Barracks yet)
+        /// and return having opened nothing, in which case <see cref="Closed"/> never fires. A
+        /// caller that closed ITSELF to make room would then be stranded on the bare HUD with a
+        /// toast and no way back, and its subscription would sit armed until some unrelated close
+        /// re-opened a screen the player had long left. One read closes both holes.
+        /// </summary>
+        public static bool IsAnyOpen => s_host != null && s_host.IsOpen;
+
+        // =====================================================================
         //  WO-1230 LAYOUT TABLE — the single source of truth for every rect this
         //  panel draws, and the thing the layout oracle measures.
         // =====================================================================
@@ -352,7 +392,9 @@ namespace DeNelle.Village
         public void Open()
         {
             FlowTrace.Step("Muster", "ArmyMusterPanel.Open - loadout bank + training order UI.");
-            Close();
+            // WO-1871: a rebuild is NOT a close. Silent teardown, or the Loadouts toggle would
+            // fire the deploy screen's return trip on every surface swap.
+            CloseCore(raiseClosed: false, handedOff: false);
 
             // WO-1512: hydration is a VM command. The panel does not know what "the active slot"
             // means, only that binding it is the first thing it does.
@@ -484,8 +526,19 @@ namespace DeNelle.Village
             Rebuild();
         }
 
+        /// <summary>The ordinary close — the shared kit Close, the scrim tap, a PanelManager
+        /// swap. It signals (WO-1871) so a caller that opened this panel can re-read.</summary>
         public void Close()
         {
+            CloseCore(raiseClosed: true, handedOff: false);
+        }
+
+        private void CloseCore(bool raiseClosed, bool handedOff)
+        {
+            // Whether this teardown had anything to tear down decides whether it is an EVENT.
+            // A Close() on an already-closed panel must not signal a return that never happened.
+            bool wasOpen = _ui != null;
+
             CloseManageSheet();
             BarracksService.Changed -= Rebuild;
             ArmyMusterService.Mustered -= Rebuild;
@@ -504,6 +557,16 @@ namespace DeNelle.Village
             _musterCta = null;
             _musterCtaLabel = null;
             _musterCtaSub = null;
+
+            // WO-1871 - LAST, and only for a real close. Guarded because a listener throwing
+            // must not leave this panel half-torn-down (CLAUDE.md section 12: no silent swallow -
+            // Guard.Try routes the failure through FlowTrace.Fail).
+            if (wasOpen && raiseClosed)
+            {
+                FlowTrace.Step("Muster", "ArmyMusterPanel closed - signalling Closed(handedOff=" +
+                                         handedOff + ") to whoever opened it.");
+                Guard.Try("Muster", "raise ArmyMusterPanel.Closed", () => Closed?.Invoke(handedOff));
+            }
         }
 
         private void OnDestroy()
@@ -987,7 +1050,10 @@ namespace DeNelle.Village
         /// by ArmyReadiness and is never re-judged here (the WO-820 "never add a third opinion" rule).</summary>
         private void OnGoRaid()
         {
-            Close();
+            // WO-1871: a HAND-OFF, not a return. This panel is routing the player onward itself,
+            // so a listener that opened it (the raid deploy screen) must drop its subscription
+            // WITHOUT re-opening over the selection grid this call is about to raise.
+            CloseCore(raiseClosed: true, handedOff: true);
             Guard.Try("ArmyUI", "open the raid screen", () => DeNelle.Village.Hero.RaidSelectionScreen.Open());
         }
 

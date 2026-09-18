@@ -1648,6 +1648,17 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-season-xp suite", () => { if (!DeNelle.Editor.Regression.RaidSeasonXpRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-season-xp] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-funnel suite", () => { if (!DeNelle.Editor.Regression.RaidFunnelRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-funnel] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "starter-army-grant suite", () => { if (!DeNelle.Editor.Regression.StarterArmyGrantRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[starter-army-grant] " + r); });
+            // WO-1871 — the raid deploy screen carries a CHANGE ARMY door to the muster panel and
+            // re-reads the army summary on the panel's Closed seam; StarterArmyGrant uses the
+            // generic "troops" plural (owner ruling 2026-09-18).
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-deploy-change-army suite", () => { if (!DeNelle.Editor.Regression.RaidDeployChangeArmyDoorRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-deploy-change-army] " + r); });
+            // WO-1872 — a captured town converts its defensive bodies RAZED (Heart kept standing) and
+            // the player clears each ruin for a town.captureSalvagePct share of its build cost
+            // (owner ruling 2026-09-18: "load a destroyed camp and then clear the rubble").
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "captured-town-bare suite", () => { if (!DeNelle.Editor.Regression.CapturedTownStartsBareRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[captured-town-bare] " + r); });
+            // WO-1870 — the Circle screen (a Remnant is the player, "Bob of RiverRun"; the group is a
+            // Circle): VM-bound view, signed calls, no stat copy on ballots, key parity, the doors.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "circle-screen suite", () => { if (!DeNelle.Editor.Regression.CircleScreenRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[circle-screen] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-discoverability-copy suite", () => { if (!DeNelle.Editor.Regression.RaidDiscoverabilityCopyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-discoverability-copy] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "hire-reinforcements suite", () => { if (!DeNelle.Editor.HireReinforcementsRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[hire-reinforcements] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "away-summary-report suite", () => { if (!DeNelle.Editor.Regression.AwaySummaryReportRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[away-summary-report] " + r); });

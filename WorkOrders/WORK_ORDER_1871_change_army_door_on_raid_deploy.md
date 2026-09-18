@@ -1,6 +1,8 @@
 # WO-1871 — Change Army door on the raid deploy screen (+ the "troops" plural ruling)
 
-**Status:** READY TO IMPLEMENT — minted 2026-09-18 14:50 (banner bumped 1871 -> 1872 in the same edit). Prize-path (raid loop polish).
+**Status:** FIXED PENDING DEVICE BUILD — lead gated 2026-09-18 (`Builds/cg1870c` COMPILE_GATE_OK 17:59, `Builds/reg1870b` REGRESSION_OK 584/584 18:03); rides the next tester APK, owner felt-verify closes. PRIOR: IMPLEMENTED PENDING LEAD GATE — 2026-09-18. CHANGE ARMY face added to the raid deploy footer (door -> `ArmyMusterPanel.Show()`, return re-read on a new `ArmyMusterPanel.Closed(handedOff)` seam), the starter-squad toast is now the generic-plural locale key, and `RaidDeployChangeArmyDoorRegression` (3 cases) is RED-first on HEAD. ⚠ LEAD: two follow-ups belong to files outside this lane's silo — register the suite in `DataRegression.cs`, merge the 2 sidecar keys, and RE-POINT `StarterArmyGrantRegression.cs:281-292` (it pins the retired per-unit plural). See the `.RESULT.md`.
+
+*(Minted 2026-09-18 14:50; banner bumped 1871 -> 1872 in the same edit. Prize-path, raid loop polish.)*
 
 **Owner, verbatim (2026-09-18):** "also there is no screen that you can access that allows you to change configuration of troops you want to use in raid" — ruling (AskUserQuestion, same day): **"Add a Change Army door on the raid deploy screen"** (chosen over a per-raid troop picker and over a discoverability-only fix).
 
