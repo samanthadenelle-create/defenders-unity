@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "presentation-finalization.v1",
+  "finalSha256": "1b60f9312707117153a7b6d1ca2ff43ab41caf29a8c5b430b029c2d4cbcf5b3a",
+  "byteCount": 81426,
+  "packageIntegrity": {
+    "chart_count": 0,
+    "claim_boundary": "Structural package checks only; no slide text, notes, formulas, chart values, or native PowerPoint execution were inspected.",
+    "finding_count": 0,
+    "findings": [],
+    "notes_parts_skipped": 14,
+    "relationship_part_count": 33,
+    "slide_count": 14,
+    "status": "pass",
+    "exitCode": 0,
+    "findingCount": 0,
+    "warnings": []
+  },
+  "presentationLayout": {
+    "finding_count": 0,
+    "findings": [],
+    "font_policy": {
+      "checked_text_script_count": 299,
+      "native_font_rendering_verified": false,
+      "observed_font_families": [
+        "Calibri",
+        "Consolas",
+        "Georgia"
+      ],
+      "observed_font_use_counts": {
+        "Calibri": 234,
+        "Consolas": 4,
+        "Georgia": 61
+      },
+      "passed": true,
+      "performed": true
+    },
+    "slide_count": 14,
+    "slide_size_in": [
+      13.3333,
+      7.5
+    ],
+    "warning_count": 0,
+    "warnings": [],
+    "exitCode": 0,
+    "findingCount": 0,
+    "fontPolicy": {
+      "checked_text_script_count": 299,
+      "native_font_rendering_verified": false,
+      "observed_font_families": [
+        "Calibri",
+        "Consolas",
+        "Georgia"
+      ],
+      "observed_font_use_counts": {
+        "Calibri": 234,
+        "Consolas": 4,
+        "Georgia": 61
+      },
+      "passed": true,
+      "performed": true
+    }
+  },
+  "fontSelection": {
+    "basis": "reference",
+    "approvedFamilies": [
+      "Calibri",
+      "Consolas",
+      "Georgia"
+    ],
+    "scriptFonts": {},
+    "referenceSha256": "69406397327e5f76ef55e8c1d3cf93996d7eeb54637ed72a0ec37b6c56ac3385",
+    "referenceFontsVerifiedInEncodedText": true,
+    "checked_text_script_count": 299,
+    "native_font_rendering_verified": false,
+    "observed_font_families": [
+      "Calibri",
+      "Consolas",
+      "Georgia"
+    ],
+    "observed_font_use_counts": {
+      "Calibri": 234,
+      "Consolas": 4,
+      "Georgia": 61
+    },
+    "passed": true,
+    "performed": true
+  },
+  "firstPartyImport": {
+    "performed": true,
+    "passed": true,
+    "slideCount": 14,
+    "sha256": "1b60f9312707117153a7b6d1ca2ff43ab41caf29a8c5b430b029c2d4cbcf5b3a",
+    "runtimeNodeModules": "C:/Users/Elden/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules",
+    "nodeExecutable": "C:\\Users\\Elden\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe"
+  },
+  "nativeTableArithmetic": {
+    "performed": true,
+    "checked_column_count": 0,
+    "checks": [],
+    "claim_boundary": "Displayed-value arithmetic with rounding tolerance; not source-data verification.",
+    "eligible_table_count": 0,
+    "finding_count": 0,
+    "findings": [],
+    "native_table_count": 0,
+    "passed": true,
+    "schema_version": "presentation-native-table-arithmetic.v1",
+    "skipped_tables": [],
+    "slide_count": 14,
+    "warning_count": 0,
+    "warnings": []
+  },
+  "nativeChartTitles": {
+    "performed": true,
+    "checks": [],
+    "finding_count": 0,
+    "findings": [],
+    "native_chart_count": 0,
+    "native_powerpoint_verified": false,
+    "passed": true,
+    "presentation_sha256": "1b60f9312707117153a7b6d1ca2ff43ab41caf29a8c5b430b029c2d4cbcf5b3a",
+    "schema_version": "presentation-native-chart-titles.v1",
+    "slide_count": 14,
+    "source_text_emitted": false,
+    "unresolved_linked_title_count": 0
+  },
+  "sourceDerivedPolicyFlags": [
+    "--expected-slide-size-emu",
+    "12192000,6858000",
+    "--validate-bullet-geometry",
+    "--validate-heading-fit",
+    "--cover-role",
+    "none",
+    "--expected-slide-count",
+    "14",
+    "--approved-font-family",
+    "Calibri",
+    "--approved-font-family",
+    "Consolas",
+    "--approved-font-family",
+    "Georgia"
+  ],
+  "nativeChartValidation": {
+    "detectedOwnerSlides": [],
+    "detectedChartCount": 0,
+    "targetApplication": "portable",
+    "sourceChartOwnersExplicitlyDeclared": true,
+    "validatorRan": false,
+    "passed": true
+  }
+}
