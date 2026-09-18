@@ -1,6 +1,6 @@
 # WORK ORDER 1860 — Full screenshot catalog: every player-facing screen with any text
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed d4642754d, COMPILE_GATE_OK + REGRESSION_OK 577/577 verified. PRIOR: READY FOR LEAD REVIEW
 
 **Minted:** 2026-09-17, by the CLI lead, from the owner's direct ask: *"can I get a screenshot of
 every screen that has text? I want to create a catalog for the overnight build to create a library
