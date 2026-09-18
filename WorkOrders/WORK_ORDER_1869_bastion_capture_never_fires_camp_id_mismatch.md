@@ -1,6 +1,6 @@
 # WO-1869 — Iron Bastion 3-star clear never captures the town (camp-id mismatch)
 
-**Status:** READY TO IMPLEMENT — minted 2026-09-18 12:20 from the owner's live Seeker run; banner bumped 1869 -> 1870 in the same edit. P0: loop defect (owner ruling 2026-09-18: "all about the polished items we give them, the raid the skr integration and the loop").
+**Status:** IMPLEMENTED PENDING LEAD GATE — 2026-09-18: `ResolveConfigId` now reads the spawner's stored id, then the `SceneConfigCatalog` row for the scene, and only then the legacy strip (warned); new `RaidConfigIdResolveRegression` ([raid-config-id], `RAID_CONFIG_ID_OK`/`_FAIL`) proves catalog parity over the real rows. Lead registers the suite in `DataRegression.cs`, gates and commits. Original minting note: minted 2026-09-18 12:20 from the owner's live Seeker run; banner bumped 1869 -> 1870 in the same edit. P0: loop defect (owner ruling 2026-09-18: "all about the polished items we give them, the raid the skr integration and the loop").
 
 **Owner, verbatim (2026-09-18):** "beat bastion in 1 min shouldnt that unlock?" / "my point is 3 stars should have triggered to player base right?"
 

@@ -1540,6 +1540,10 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-exit-parity suite", () => { if (!DeNelle.Editor.Regression.RaidExitParityRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-exit-parity] " + r); });
             // WO-1778 — a 3-star capture whose census is missing must still reach a scene.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "capture-strand-exit suite", () => { if (!DeNelle.Editor.Regression.CaptureStrandExitRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[capture-strand-exit] " + r); });
+            // WO-1869 — the capture gate compares the camp id the controller RESOLVES against
+            // OwnedBaseProgression.FinalRaidId; scene-name stripping yielded "IronBastion" and the
+            // gate never fired on the top tier. Catalog parity over the real scene-configs rows.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-config-id suite", () => { if (!DeNelle.Editor.Regression.RaidConfigIdResolveRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-config-id] " + r); });
 
             // WO-1437 (P0): the sibling above asks whether each raid exit PAYS correctly. This
             // one asks the question none of them did - CAN THE PLAYER GET OUT AT ALL. The owner

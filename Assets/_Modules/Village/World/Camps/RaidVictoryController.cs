@@ -973,17 +973,104 @@ namespace DeNelle.Village.World.Camps
                                    "(-1 = this raid never reconciled a deploy ledger).");
         }
 
-        // The raid's scene-config id: prefer the spawner's stored id (via the public
-        // garrison API), else derive it from the baked scene name (RaidBase_<id>).
+        // =====================================================================
+        //  THE RAID'S SCENE-CONFIG ID (WO-1869)
+        // =====================================================================
+        //
+        // ⛔ THIS USED TO BE STRING SURGERY ON THE SCENE NAME, AND IT COST THE OWNER THE
+        // TOWN CAPTURE. The comment here said "prefer the spawner's stored id (via the
+        // public garrison API)" while the body never read the spawner at all — it stripped
+        // "RaidBase_" off the scene name and returned the remainder. Three of the four raid
+        // scenes are named in snake_case (RaidBase_raider_camp_small,
+        // RaidBase_fortified_garrison, RaidBase_mage_enclave) so the strip happened to
+        // agree with the catalog id; the Bastion scene is PascalCase
+        // (RaidBase_IronBastion), so the strip yielded "IronBastion" while
+        // OwnedBaseProgression.FinalRaidId is "iron_bastion".
+        //
+        // MEASURED, on the owner's Seeker run of build 2026.09.18.374427
+        // (Logs/device/logcat-bastion-victory-20260918.txt):
+        //   :202350  [Flow:Raid] OBJECTIVE COMPLETE - RaidSpire ... (config 'iron_bastion') RAZED.
+        //   :202352  [Flow:Raid] VICTORY - raid 'IronBastion' won (SPIRE RAZED).
+        //   :202395  [Flow:EndState] RAID VICTORY composed: baseClaimed=False ... stars=3
+        // The spawner had the right id in the SAME log line the controller got the wrong
+        // one. A 3-star, 65-second clear of the highest raid therefore never satisfied the
+        // ordinal compare at HandleVictory (:387), the capture never fired, and neither
+        // "CAPTURE ELIGIBLE" nor the shortfall line printed even once in a 208k-line log.
+        // The same wrong id kept the rough-stone faucet off ("camp 'IronBastion' is not on
+        // the I..IV ladder").
+        //
+        // ⛔ THE SCENE IS NOT RENAMED, DELIBERATELY: the literal "RaidBase_IronBastion" is
+        // load-bearing in live code — :191 of this file, SceneRouter.RaidBaseIronBastion
+        // (Assets/_Modules/Core/SceneRouter.cs:195), RaidCaptureCensus.cs:26,
+        // OwnedTownScenePose.cs:59, DevSkipKit.cs:87 — plus editor suites, and the .unity is
+        // baked by name. Grep the literal for the current set; no count is written here,
+        // because a hand-maintained tally in a comment is the duplicated state CLAUDE.md §5
+        // retired a whole dependency table over. (Grepped 2026-09-18: the WO's own pointer at
+        // "RaidSelectionScreen.cs:452" is a COMMENT, not a check.)
+        // The catalog already carries the mapping (scene-configs.json: id
+        // "iron_bastion", sceneName "RaidBase_IronBastion") — so the fix is to ASK THE
+        // CATALOG instead of re-deriving an id that already exists. A derived copy of
+        // authored state is the duplicated state CLAUDE.md §2/§5/§16 each describe.
         private string ResolveConfigId(RaidGarrisonSpawner spawner)
+            => ResolveConfigId(gameObject.scene.name, spawner != null ? spawner.ConfigId : null);
+
+        /// <summary>
+        /// The raid's scene-config id, resolved from AUTHORED data rather than string surgery.
+        /// Order: (1) the spawner's own stored config id, (2) the scene-config catalog row whose
+        /// <c>sceneName</c> matches, (3) — last resort only — the legacy "RaidBase_" strip, which
+        /// is <see cref="FlowTrace.Warn"/>ed so a future scene/catalog mismatch is visible in the
+        /// log instead of silently mis-identifying the camp.
+        ///
+        /// <para>PURE and STATIC on purpose: the capture gate is the thing this feeds, and
+        /// <c>RaidConfigIdResolveRegression</c> proves catalog parity by calling THIS function for
+        /// every authored raid row. A regression that re-implemented the rule would only prove
+        /// itself.</para>
+        /// </summary>
+        /// <param name="sceneName">The loaded raid scene's name (<c>gameObject.scene.name</c>).</param>
+        /// <param name="spawnerConfigId">The garrison spawner's stored id, or null when unknown.</param>
+        public static string ResolveConfigId(string sceneName, string spawnerConfigId)
         {
-            // The baked scene is named RaidBase_<configId>; strip the prefix.
-            string scene = gameObject.scene.name;
-            const string prefix = "RaidBase_";
-            if (!string.IsNullOrEmpty(scene) &&
-                scene.StartsWith(prefix, System.StringComparison.OrdinalIgnoreCase))
-                return scene.Substring(prefix.Length);
-            return string.IsNullOrEmpty(scene) ? "unknown" : scene;
+            string id;
+            string via;
+            // Computed into a local FIRST: a nested string literal inside an interpolation hole
+            // ends the string as far as CompileGate.BraceBalanced is concerned (CLAUDE.md §1).
+            string sceneLabel = string.IsNullOrEmpty(sceneName) ? "(none)" : sceneName;
+
+            if (!string.IsNullOrWhiteSpace(spawnerConfigId))
+            {
+                id = spawnerConfigId;
+                via = "spawner";
+            }
+            else
+            {
+                var cfg = SceneConfigCatalog.FindBySceneName(sceneName);
+                if (cfg != null && !string.IsNullOrEmpty(cfg.id))
+                {
+                    id = cfg.id;
+                    via = "catalog";
+                }
+                else
+                {
+                    // LAST RESORT — the legacy behaviour, byte for byte, so a scene with no
+                    // catalog row still yields something usable instead of throwing.
+                    const string prefix = "RaidBase_";
+                    if (!string.IsNullOrEmpty(sceneName) &&
+                        sceneName.StartsWith(prefix, System.StringComparison.OrdinalIgnoreCase))
+                        id = sceneName.Substring(prefix.Length);
+                    else
+                        id = string.IsNullOrEmpty(sceneName) ? "unknown" : sceneName;
+                    via = "strip";
+
+                    FlowTrace.Warn("Raid", "config id FELL BACK to the legacy scene-name strip for scene '" +
+                        sceneLabel + "' -> '" + id + "'. No " +
+                        "garrison spawner id and no scene-configs.json row matched this sceneName, so the id " +
+                        "is DERIVED, not authored - exactly the WO-1869 defect that cost a 3-star capture. " +
+                        "Add the row (or set the spawner's id) rather than renaming the scene.");
+                }
+            }
+
+            FlowTrace.Step("Raid", $"config id resolved: '{id}' via {via} for scene '{sceneLabel}'.");
+            return id;
         }
 
         // =====================================================================
