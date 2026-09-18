@@ -1,6 +1,13 @@
 # WORK ORDER 1857 — Codebase-wide sweep: every hardcoded player-facing string routes through localization
 
-**Status:** READY TO IMPLEMENT — phases 1-2 DONE (commits `96966276f`, `814794c66`), phase 4 first
+**Status:** READY TO IMPLEMENT — phases 1-2 DONE (commits `96966276f`, `814794c66`), phase 4 batches
+1-3 DONE, plus a 2026-09-18 screenshot-driven batch landed and gated (commit `95ebe5e92`, 37 keys:
+Harvest Result modal, Build Collections panel, Hero/Journey/Manage decks incl. a 5-locale
+mistranslation fix on `heroLoadout`, Inventory/Equipment panels; `COMPILE_GATE_OK` +
+`REGRESSION_OK 580/580` on a fresh log). Still genuinely open: dialogue.json's ~701 lines (needs a
+locale-aware architecture fix first, same shape as WO-1862, then translation — not started) and the
+Gathering panel's resource-building catalog descriptions (traces to
+`CatalogFallbackData.g.cs`/an unidentified structures-catalog JSON — not yet investigated). PRIOR
 batch DONE (commit `6f80a3814`, 2026-09-18: Dungeons + Core + HUD + Onboarding + small-modules
 bundle, 196 keys). Still open: the Village shard (541 statements, by far the largest, not yet
 started) plus a Google Play packaging-gate closure this batch needed but was not originally scoped

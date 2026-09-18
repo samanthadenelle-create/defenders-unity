@@ -1,8 +1,9 @@
 # WORK ORDER 1862 — StoreStrings / canon-strings.json localization migration
 
-**Status:** READY FOR LEAD MERGE — code + all 20 locale JSON files landed in the tree; the Unity
-String Table merge (55 keys x shared + 6 enabled tables) is the lead's serialized step and
-`LOCALE PARITY` is RED until it lands. No gate fired, nothing committed, nothing pushed by this lane.
+**Status:** DONE — committed `0df56b475`. `StoreStrings.Get/.Format` forward to `LocalText`, all 86
+`Key*` constants preserved, 55 new keys merged into all 20 canonical JSON files + the Unity String
+Table (Shared + 6 enabled-locale assets), font-atlas-checked. `COMPILE_GATE_OK` + `REGRESSION_OK`
+green on multiple fresh logs since (most recently 580/580, 2026-09-18). Not pushed to remote.
 
 **Minted:** 2026-09-18 from the `CLI_LANES_WO_NUMBERS.md` banner (main line was 1862; the banner row
 was bumped 1862 -> 1863 in the same edit).
