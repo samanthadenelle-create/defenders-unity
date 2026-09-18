@@ -4035,6 +4035,322 @@ MonoBehaviour:
     m_Localized: "Habilidades asignadas: c\u00E1mbialas en {0}."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363761099
+    m_Localized: "Ese asalto no se pudo abrir."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761100
+    m_Localized: "Los Cuarteles no se pudieron abrir."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761101
+    m_Localized: "El informe del asalto no está listo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761102
+    m_Localized: "Este asalto aún no tiene un campo de batalla."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761103
+    m_Localized: "Asalto en construcción - campo de batalla no en esta compilación."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761104
+    m_Localized: "Sin tropas entrenadas aún. Visita los Cuarteles."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761105
+    m_Localized: "Asaltando {0}..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761106
+    m_Localized: "Los asaltos no están disponibles en este momento ({0})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761107
+    m_Localized: "Sin tropas aún - entrena tropas en los Cuarteles, luego abre Asaltos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761108
+    m_Localized: "Ejército {0}/{1} ranuras - tu primer asalto solo necesita {1}. Entrena en los Cuarteles, luego abre Asaltos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761109
+    m_Localized: "Ejército {0}/{1} - llena cada ranura en los Cuarteles, luego abre Asaltos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761110
+    m_Localized: "Ese asalto no está disponible en este momento."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761111
+    m_Localized: "Entrenamiento: inactivo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761112
+    m_Localized: "Entrenamiento: (cola sin conexión)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761113
+    m_Localized: "Entrenamiento: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761114
+    m_Localized: "DESPEJA LA BASE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761115
+    m_Localized: "ESPIRA DERRIBADA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761116
+    m_Localized: "ESPIRA {0}%"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761117
+    m_Localized: "Arrasado {0}%"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761118
+    m_Localized: "Tropas {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761119
+    m_Localized: "Tiempo - el asalto se cancela y tu banda se retira."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761120
+    m_Localized: "Desplegadas {0} tropas en formación de asalto."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761121
+    m_Localized: "+ {0} más (desplazar)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761122
+    m_Localized: "{0} (máx. 1)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761123
+    m_Localized: "Madera"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761124
+    m_Localized: "Hierro"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761125
+    m_Localized: "Piedra"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761126
+    m_Localized: "Oro"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761127
+    m_Localized: "Experiencia"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761128
+    m_Localized: "Sabiduría"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761129
+    m_Localized: "Cristales"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761130
+    m_Localized: "Victoria"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761131
+    m_Localized: "El reino está más seguro gracias a ti"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761132
+    m_Localized: "Sin errores El reino está más seguro gracias a ti"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761133
+    m_Localized: "{0} enemigos derrotados. "
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761134
+    m_Localized: "1 enemigo derrotado. "
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761135
+    m_Localized: "Derrota"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761136
+    m_Localized: "Retrocede y reagrúpate, héroe."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761137
+    m_Localized: "HAS CAÍDO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761138
+    m_Localized: "El asalto se pierde. Te retiras al castillo para luchar otro día."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761139
+    m_Localized: "La oscuridad te toma, pero Elarion aún necesita a su defensor."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761140
+    m_Localized: "Levántate de nuevo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761141
+    m_Localized: "Intentar de nuevo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761142
+    m_Localized: "Victoria"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761143
+    m_Localized: "Volver al Castillo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761144
+    m_Localized: "{0} se une a tu grupo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761145
+    m_Localized: "{0}% arrasado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761146
+    m_Localized: "1 tropa perdida tomando la base."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761147
+    m_Localized: "{0} tropas perdidas tomando la base."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761148
+    m_Localized: "La base está RECLAMADA - ahora es tuya."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761149
+    m_Localized: "La base está destruida - sus suministros son tuyos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761150
+    m_Localized: "Puesto de avanzada reclamado"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761151
+    m_Localized: "El puesto de avanzada es tuyo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761152
+    m_Localized: "Puesto de avanzada ya reclamado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761153
+    m_Localized: "{0} se une a tu grupo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761154
+    m_Localized: "Onda {0} Despejada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761155
+    m_Localized: "Una defensa decisiva. Revisa qué cambió antes del siguiente asalto."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761156
+    m_Localized: "El reino se mantiene. Revisa el resultado, luego prepara la siguiente defensa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761157
+    m_Localized: "Prepárate para la Onda {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761158
+    m_Localized: "Planes Recuperados"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761159
+    m_Localized: "El reino se mantiene - pero sufrió daño."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761160
+    m_Localized: "El reino se mantiene. Botín reclamado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761161
+    m_Localized: "Mostrando {0} de {1} estructuras dañadas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761162
+    m_Localized: "Retirada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761163
+    m_Localized: "Tiempo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761164
+    m_Localized: "Volver al Castillo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761165
+    m_Localized: "El reloj se agotó - tu banda se retira."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761166
+    m_Localized: "Cancelaste el asalto."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761167
+    m_Localized: "{0}% arrasado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761168
+    m_Localized: "Cada tropa regresó a casa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761169
+    m_Localized: "1 tropa perdida"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761170
+    m_Localized: "{0} tropas perdidas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761171
+    m_Localized: "- el asalto falló y la banda no regresó."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761172
+    m_Localized: "- el costo de cubrir la retirada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761173
+    m_Localized: "Sin botín - la banda se perdió."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761174
+    m_Localized: "Parte de la recompensa no se pudo pagar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761175
+    m_Localized: "Tres olas vinieron contra Elarion. Tres olas se rompieron."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761176
+    m_Localized: "Recuperaste los Planos de Defensa del Castillo. Desbloquean la Torre Arcana e incluyen suficientes recursos para construir la primera."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761177
+    m_Localized: "\"Abre Construcción, elige Defensas y coloca la Torre Arcana ahora. Protegerá a Elarion de las olas más fuertes que vienen.\""
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

@@ -135,7 +135,7 @@ namespace DeNelle.Village.Hero
             _trainStripLabel.alignment = TextAlignmentOptions.MidlineLeft;
             _trainStripLabel.enableWordWrapping = true;
             _trainStripLabel.raycastTarget = false;
-            _trainStripLabel.text = "Training: idle";
+            _trainStripLabel.text = new DeNelle.Core.UI.LocalizedText("village.troops.troop_training.idle").Resolve();
 
             // Scroll zone sits BELOW the train strip so rows never cover the queue readout.
             var scrollHost = new GameObject("TroopScrollHost", typeof(RectTransform));
@@ -563,7 +563,7 @@ namespace DeNelle.Village.Hero
             var svc = BuildTimerService.Instance;
             if (svc == null)
             {
-                _trainStripLabel.text = "Training: (queue offline)";
+                _trainStripLabel.text = new DeNelle.Core.UI.LocalizedText("village.troops.troop_training.queue_offline").Resolve();
                 return;
             }
 
@@ -571,7 +571,7 @@ namespace DeNelle.Village.Hero
             var pending = svc.PendingJobsOf(DeNelle.Core.Jobs.ChannelId.Train);
             if (active.Count == 0 && pending.Count == 0)
             {
-                _trainStripLabel.text = "Training: idle";
+                _trainStripLabel.text = new DeNelle.Core.UI.LocalizedText("village.troops.troop_training.idle").Resolve();
                 return;
             }
 
@@ -581,7 +581,7 @@ namespace DeNelle.Village.Hero
                 parts.Add(ObsidianQueueHud.FormatJobLine(active[i], now, queued: false));
             for (int i = 0; i < pending.Count; i++)
                 parts.Add(ObsidianQueueHud.FormatJobLine(pending[i], now, queued: true));
-            _trainStripLabel.text = "Training: " + string.Join(" | ", parts);
+            _trainStripLabel.text = DeNelle.Core.UI.LocalText.Format("village.troops.troop_training.active_fmt", string.Join(" | ", parts));
         }
 
         private void TrainAndRefresh(string troopId, int qty)

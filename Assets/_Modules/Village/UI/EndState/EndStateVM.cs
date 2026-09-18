@@ -40,6 +40,14 @@ namespace DeNelle.Village.UI
         public string Amount;
         /// <summary>Rarity index for the kit slot plate frame (1 = common).</summary>
         public int Rarity = 1;
+        /// <summary>
+        /// WO-1857: Stable English concept slug for icon resolution ("wood", "iron", "stone",
+        /// "gold", "experience", "wisdom", "crystals"). Separates identity (never localized)
+        /// from display label (always localized). EndStateView.ResolveRowIcon reads this first;
+        /// null/empty falls back to Label for backward compat, traced as a Warn (architecture
+        /// law: presentation never derives identity from display text).
+        /// </summary>
+        public string ConceptId;
 
         /// <summary>
         /// This row is a SENTENCE + a cost, not a short noun + a short number — so it takes a
@@ -271,20 +279,20 @@ namespace DeNelle.Village.UI
             // (and the handoff regression's positional calls) keeps its exact behaviour.
             int gold = 0, int kills = 0)
         {
-            string felled = kills > 1 ? kills + " foes felled. "
-                          : kills == 1 ? "1 foe felled. "
+            string felled = kills > 1 ? LocalText.Format("raid.victory.foes_felled", kills)
+                          : kills == 1 ? LocalText.Get("raid.victory.one_foe_felled")
                           : "";
             var vm = new EndStateVM
             {
                 Kind = EndStateKind.Victory,
-                Title = "Victory!",
-                Subtitle = felled + (perfect ? "Flawless! The realm is safer because of you!"
-                                             : "The realm is safer because of you!"),
+                Title = TableLine("raid.battle.victory_title", "Victory!"),
+                Subtitle = felled + (perfect ? TableLine("raid.battle.flawless_subtitle", "Flawless! The realm is safer because of you!")
+                                             : TableLine("raid.battle.victory_subtitle", "The realm is safer because of you!")),
                 Stars = Mathf.Clamp(stars, 0, 3),
                 Perfect = perfect,
                 TimeSeconds = Mathf.Max(0f, durationSeconds),
                 Emblem = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconCombat),
-                PrimaryLabel = "Continue",
+                PrimaryLabel = TableLine("common.continue", "Continue"),
                 PrimaryRoute = primaryRoute ?? DefaultVictoryRoute(),
                 Primary = onContinue,
                 Abandoned = onAbandon,
@@ -297,7 +305,7 @@ namespace DeNelle.Village.UI
                     Icon = RpgUiCatalog.Get(RpgUiCatalog.RoleBadge, RpgUiCatalog.BadgeLevel),
                     // WO-697: reward numbers render through the ONE kit formatter
                     // (ElarionUi.CompactNumber) — never verbatim six-digit strings.
-                    Label = "Experience", Amount = "+" + ElarionUi.CompactNumber(xp),
+                    ConceptId = "experience", Label = LocalText.Get("raid.spoil.experience"), Amount = "+" + ElarionUi.CompactNumber(xp),
                 });
             if (gold > 0)
                 vm.Spoils.Add(new SpoilRowVM
@@ -305,13 +313,13 @@ namespace DeNelle.Village.UI
                     // Icon left null on purpose (the Iron-row lesson above): EndStateView
                     // resolves the CONCEPT icon from the label - "gold" -> currency/currency_gold
                     // in concept-icons.json - which is a real PNG with alpha.
-                    Label = "Gold", Amount = "+" + ElarionUi.CompactNumber(gold),
+                    ConceptId = "gold", Label = LocalText.Get("raid.spoil.gold"), Amount = "+" + ElarionUi.CompactNumber(gold),
                 });
             if (wisdom > 0)
                 vm.Spoils.Add(new SpoilRowVM
                 {
                     Icon = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconTree),
-                    Label = "Wisdom", Amount = "+" + ElarionUi.CompactNumber(wisdom),
+                    ConceptId = "wisdom", Label = LocalText.Get("raid.spoil.wisdom"), Amount = "+" + ElarionUi.CompactNumber(wisdom),
                 });
             if (wood > 0)
                 vm.Spoils.Add(new SpoilRowVM
@@ -319,7 +327,7 @@ namespace DeNelle.Village.UI
                     // Item-catalog first (sprite-first, null-safe); no wood sheet art today
                     // -> renders as a label-only plate until the art lands.
                     Icon = ItemIconCatalog.ForConsumable("mat_wood", "Wood"),
-                    Label = "Wood", Amount = "+" + ElarionUi.CompactNumber(wood),
+                    ConceptId = "wood", Label = LocalText.Get("raid.spoil.wood"), Amount = "+" + ElarionUi.CompactNumber(wood),
                 });
             if (iron > 0)
                 vm.Spoils.Add(new SpoilRowVM
@@ -332,7 +340,7 @@ namespace DeNelle.Village.UI
                     // EndStateView.BuildSpoilRow then resolves the CONCEPT icon from the label
                     // ("iron" -> currency/currency_iron, concept-icons.json:201-204), which is a
                     // real PNG with alpha — the same path "Wood" already renders through.
-                    Label = "Iron", Amount = "+" + ElarionUi.CompactNumber(iron),
+                    ConceptId = "iron", Label = LocalText.Get("raid.spoil.iron"), Amount = "+" + ElarionUi.CompactNumber(iron),
                 });
             if (!string.IsNullOrEmpty(gearName))
                 vm.Spoils.Add(new SpoilRowVM
@@ -378,10 +386,10 @@ namespace DeNelle.Village.UI
             return new EndStateVM
             {
                 Kind = EndStateKind.Defeat,
-                Title = "Defeat",
-                Subtitle = "Fall back and regroup, hero.",
+                Title = TableLine("raid.battle.defeat_title", "Defeat"),
+                Subtitle = TableLine("raid.battle.defeat_subtitle", "Fall back and regroup, hero."),
                 Emblem = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconShield),
-                PrimaryLabel = "Continue",
+                PrimaryLabel = TableLine("common.continue", "Continue"),
                 PrimaryRoute = "close",
                 AutoDismissSeconds = 2.5f,
             };
@@ -399,12 +407,12 @@ namespace DeNelle.Village.UI
             return new EndStateVM
             {
                 Kind = EndStateKind.HeroDeath,
-                Title = "YOU HAVE FALLEN",
+                Title = TableLine("raid.hero_death.title", "YOU HAVE FALLEN"),
                 Subtitle = enemyOwnedScene
-                    ? "The raid is lost. You retreat to the castle to fight another day."
-                    : "The dark takes you, but Elarion still needs its defender.",
+                    ? TableLine("raid.hero_death.raid_lost", "The raid is lost. You retreat to the castle to fight another day.")
+                    : TableLine("raid.hero_death.dungeon_lost", "The dark takes you, but Elarion still needs its defender."),
                 Emblem = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconShield),
-                PrimaryLabel = "Rise again",
+                PrimaryLabel = TableLine("raid.hero_death.rise_again", "Rise again"),
                 PrimaryRoute = "respawn",
                 AutoDismissSeconds = 6f,
             };
@@ -430,7 +438,7 @@ namespace DeNelle.Village.UI
                 Title = title,
                 Subtitle = body,
                 Emblem = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconShield),
-                PrimaryLabel = "Try Again",
+                PrimaryLabel = TableLine("raid.game_over.try_again", "Try Again"),
                 PrimaryRoute = "retry",
                 Primary = onRetry,
                 AutoDismissSeconds = 0f,   // deliberate: no softlock-guard here — Retry must be chosen
@@ -613,9 +621,9 @@ namespace DeNelle.Village.UI
             // promotion (she inherits a town) therefore read exactly like its smallest beat, and
             // the sentence was a lie on every screen but one. A capture is the ONLY win that owns
             // the claim; an ordinary clear gets its own honest lead.
-            string claimLead = baseClaimed ? CaptureClaimSentence : OrdinaryClearSentence;
+            string claimLead = baseClaimed ? TableLine("raid.victory.claim_sentence", CaptureClaimSentence) : TableLine("raid.victory.clear_sentence", OrdinaryClearSentence);
             string body = !string.IsNullOrEmpty(joinedCompanionName)
-                ? claimLead + "\n" + joinedCompanionName + " joins your party."
+                ? claimLead + "\n" + LocalText.Format("raid.victory.companion_joins", joinedCompanionName)
                 : claimLead;
 
             // WO-1783 - STATE THE GATE, ON THE SCREEN WHERE IT JUST BIT HER.
@@ -629,7 +637,7 @@ namespace DeNelle.Village.UI
             if (!baseClaimed && captureStarsRequired > 0)
                 body += "\n" + CaptureRequirementSentence(captureStarsRequired);
             if (destructionPercent >= 0)
-                body += "\n" + destructionPercent + "% razed.";
+                body += "\n" + LocalText.Format("raid.victory.destruction_percent", destructionPercent);
 
             // WO-1810 - A WIN CAN NOW COST DEAD TROOPS, SO THE WIN SAYS SO. Owner ruling
             // 2026-09-16: "any troop killed is dead" - that applies to victory as much as to a
@@ -639,19 +647,18 @@ namespace DeNelle.Village.UI
             // line, and this screen already carries stars, razed %, up to five spoils rows and an
             // unlock line inside the same compressing band budget.
             if (troopsLost > 0)
-                body += "\n" + troopsLost + (troopsLost == 1 ? " troop lost" : " troops lost") +
-                        " taking the base.";
+                body += "\n" + LocalText.Format(troopsLost == 1 ? "raid.victory.one_troop_lost" : "raid.victory.troops_lost", troopsLost);
 
             var vm = new EndStateVM
             {
                 Kind = EndStateKind.Victory,
-                Title = "Victory!",
+                Title = TableLine("raid.victory.title", "Victory!"),
                 Subtitle = body,
                 TroopsLost = troopsLost,
                 Stars = stars >= 0 ? Mathf.Clamp(stars, 0, 3) : -1,
                 TimeSeconds = elapsedSeconds >= 0f ? elapsedSeconds : -1f,
                 Emblem = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconCombat),
-                PrimaryLabel = "Return to Castle",
+                PrimaryLabel = TableLine("raid.victory.return_to_castle", "Return to Castle"),
                 PrimaryRoute = "return-home",
                 Primary = onReturn,
                 AutoDismissSeconds = Mathf.Max(2f, autoReturnSeconds),
@@ -681,11 +688,11 @@ namespace DeNelle.Village.UI
             // The parameter is now the whole CREDITED basket - the measured delta the wallet
             // actually took, never the requested amount (the WO-978 contract the caller keeps).
             // One row per NON-ZERO currency, ordered as section 1's table orders them.
-            AddSpoil(vm, "Wood", credited.Wood);
-            AddSpoil(vm, "Iron", credited.Iron);
-            AddSpoil(vm, FoodSpoilLabel, credited.Stone);
-            AddSpoil(vm, "Gold", credited.Coins);
-            AddSpoil(vm, "Crystals", credited.Crystals);
+            AddSpoil(vm, "wood", LocalText.Get("raid.spoil.wood"), credited.Wood);
+            AddSpoil(vm, "iron", LocalText.Get("raid.spoil.iron"), credited.Iron);
+            AddSpoil(vm, "stone", LocalText.Get("raid.spoil.stone"), credited.Stone);
+            AddSpoil(vm, "gold", LocalText.Get("raid.spoil.gold"), credited.Coins);
+            AddSpoil(vm, "crystals", LocalText.Get("raid.spoil.crystals"), credited.Crystals);
 
             // The UNLOCK LINE (optional). Carried as its own field rather than smuggled into
             // the body text so the sibling ladder lane can hand this factory "The Broken
@@ -801,10 +808,10 @@ namespace DeNelle.Village.UI
             // EndStateBodyFitRegression exists because of. A lead sentence that wraps would push
             // the stack to five rendered lines on a phone for no added meaning.
             string body = timedOut
-                ? "The clock ran out - your warband falls back."
-                : "You called the assault off.";
+                ? TableLine("raid.retreat.clock_ran_out", "The clock ran out - your warband falls back.")
+                : TableLine("raid.retreat.assault_called_off", "You called the assault off.");
             if (destructionPercent >= 0)
-                body += "\n" + destructionPercent + "% razed.";
+                body += "\n" + LocalText.Format("raid.retreat.destruction_percent", destructionPercent);
 
             // TROOPS LOST, IN WORDS, WITH THE REASON FOLDED IN (WO-1810).
             //
@@ -830,14 +837,13 @@ namespace DeNelle.Village.UI
             {
                 if (lost == 0)
                 {
-                    body += "\nEvery troop came home.";
+                    body += "\n" + TableLine("raid.retreat.all_troops_home", "Every troop came home.");
                 }
                 else
                 {
-                    string noun = lost == 1 ? " troop lost" : " troops lost";
-                    body += "\n" + lost + noun + (timedOut
-                        ? " - the assault failed and the warband did not make it back."
-                        : " - the cost of covering the retreat.");
+                    body += "\n" + LocalText.Format(lost == 1 ? "raid.retreat.one_troop_lost" : "raid.retreat.troops_lost_format", lost) + (timedOut
+                        ? " " + TableLine("raid.retreat.assault_failed", "- the assault failed and the warband did not make it back.")
+                        : " " + TableLine("raid.retreat.covering_cost", "- the cost of covering the retreat."));
                 }
             }
 
@@ -849,20 +855,20 @@ namespace DeNelle.Village.UI
             // It occupies the slot rewardShort would have used - a fail credits nothing, so the
             // bank-short caveat can never fire on the same screen, and the four-fact budget holds.
             if (timedOut && credited.IsZero)
-                body += "\nNo spoils - the warband was lost.";
+                body += "\n" + TableLine("raid.retreat.no_spoils", "No spoils - the warband was lost.");
 
-            if (rewardShort) body += "\n" + RewardShortSentence;
+            if (rewardShort) body += "\n" + TableLine("raid.retreat.reward_short", RewardShortSentence);
 
             var vm = new EndStateVM
             {
                 // Defeat, not Victory: the emblem and trace tag must not congratulate a fall-back.
                 Kind = EndStateKind.Defeat,
-                Title = timedOut ? TimeoutTitle : RetreatTitle,
+                Title = timedOut ? TableLine("raid.retreat.timeout_title", TimeoutTitle) : TableLine("raid.retreat.title", RetreatTitle),
                 Subtitle = body,
                 Stars = stars >= 0 ? Mathf.Clamp(stars, 0, 3) : -1,
                 TimeSeconds = elapsedSeconds >= 0f ? elapsedSeconds : -1f,
                 Emblem = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconShield),
-                PrimaryLabel = "Return to Castle",
+                PrimaryLabel = TableLine("raid.retreat.return_to_castle", "Return to Castle"),
                 PrimaryRoute = "return-home",
                 Primary = onReturn,
                 AutoDismissSeconds = Mathf.Max(2f, autoReturnSeconds),
@@ -875,11 +881,11 @@ namespace DeNelle.Village.UI
             // SPOILS - the same five rows, the same order, the same AddSpoil suppression the
             // victory screen uses. A retreat that banked nothing draws no rows and advertises
             // nothing, which is the WO-978 honesty contract, not an oversight.
-            AddSpoil(vm, "Wood", credited.Wood);
-            AddSpoil(vm, "Iron", credited.Iron);
-            AddSpoil(vm, FoodSpoilLabel, credited.Stone);
-            AddSpoil(vm, "Gold", credited.Coins);
-            AddSpoil(vm, "Crystals", credited.Crystals);
+            AddSpoil(vm, "wood", LocalText.Get("raid.spoil.wood"), credited.Wood);
+            AddSpoil(vm, "iron", LocalText.Get("raid.spoil.iron"), credited.Iron);
+            AddSpoil(vm, "stone", LocalText.Get("raid.spoil.stone"), credited.Stone);
+            AddSpoil(vm, "gold", LocalText.Get("raid.spoil.gold"), credited.Coins);
+            AddSpoil(vm, "crystals", LocalText.Get("raid.spoil.crystals"), credited.Crystals);
 
             FlowTrace.Step("EndState",
                 "RAID NON-VICTORY RESULT composed (reason=" + (reason ?? "(null)") + "): stars=" + stars +
@@ -935,7 +941,7 @@ namespace DeNelle.Village.UI
         /// the measured wallet delta went backwards during the grant - which is a defect
         /// elsewhere, not a reward, so it is reported rather than drawn as "+-40".
         /// </summary>
-        private static void AddSpoil(EndStateVM vm, string label, int amount)
+        private static void AddSpoil(EndStateVM vm, string conceptId, string label, int amount)
         {
             if (vm == null) return;
             if (amount < 0)
@@ -949,7 +955,7 @@ namespace DeNelle.Village.UI
             if (amount == 0) return;
             vm.Spoils.Add(new SpoilRowVM
             {
-                Label = label, Amount = "+" + ElarionUi.CompactNumber(amount),
+                ConceptId = conceptId, Label = label, Amount = "+" + ElarionUi.CompactNumber(amount),
             });
         }
 
@@ -963,13 +969,13 @@ namespace DeNelle.Village.UI
             bool newClaim, float autoDismissSeconds = 4f)
         {
             string body = !string.IsNullOrEmpty(joinedCompanionName)
-                ? "The outpost is yours.\n" + joinedCompanionName + " joins your party."
-                : (newClaim ? "The outpost is yours." : "Outpost already claimed.");
+                ? TableLine("raid.outpost.yours", "The outpost is yours.") + "\n" + LocalText.Format("raid.outpost.companion_joins", joinedCompanionName)
+                : (newClaim ? TableLine("raid.outpost.yours", "The outpost is yours.") : TableLine("raid.outpost.already_claimed", "Outpost already claimed."));
 
             return new EndStateVM
             {
                 Kind = EndStateKind.Victory,
-                Title = "Outpost Claimed",
+                Title = TableLine("raid.outpost.title", "Outpost Claimed"),
                 Subtitle = body,
                 Emblem = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconCombat),
                 // F8-43: no CTA on a compact banner — it auto-dismisses in seconds, so a
@@ -1015,14 +1021,14 @@ namespace DeNelle.Village.UI
             var vm = new EndStateVM
             {
                 Kind = EndStateKind.WaveResults,
-                Title = $"Wave {waveNumber} Cleared",
+                Title = LocalText.Format("raid.wave.cleared_title", waveNumber),
                 Subtitle = WaveCelebrationManager.Significance01(waveNumber) >= 1f
-                    ? "A decisive defense. Review what changed before the next assault."
-                    : "The realm holds. Review the result, then prepare the next defense.",
+                    ? TableLine("raid.wave.decisive_defense", "A decisive defense. Review what changed before the next assault.")
+                    : TableLine("raid.wave.realm_holds", "The realm holds. Review the result, then prepare the next defense."),
                 Emblem = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconCombat),
                 // F8-43: no CTA on a compact banner — it auto-dismisses in seconds, so a
                 // Continue button is a redundant control. Exit = auto-dismiss + tap-anywhere.
-                PrimaryLabel = $"Prepare for Wave {waveNumber + 1}",
+                PrimaryLabel = LocalText.Format("raid.wave.prepare_next", waveNumber + 1),
                 PrimaryRoute = "prepare-next-wave",
                 AutoDismissSeconds = WaveCelebrationManager.Significance01(waveNumber) >= 1f ? 8f : 5f,
                 Compact = false,
@@ -1054,7 +1060,7 @@ namespace DeNelle.Village.UI
                 vm.Spoils.Add(new SpoilRowVM
                 {
                     Icon = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconInventory),
-                    Label = "Plans Recovered",
+                    Label = TableLine("raid.wave.plans_recovered", "Plans Recovered"),
                     Amount = unlockedName,
                     Rarity = 3,
                     // The amount is a BUILDING NAME, not a number — same wide grammar as the
@@ -1111,12 +1117,12 @@ namespace DeNelle.Village.UI
             // Never colour-only (colourblind law): the verdict is the words themselves.
             if (damageRows > 0)
             {
-                vm.Subtitle = "The realm holds - but it took damage.";
+                vm.Subtitle = TableLine("raid.wave.took_damage", "The realm holds - but it took damage.");
                 vm.AutoDismissSeconds = 8f;   // a report needs reading time
             }
             else if (rewardRows > 0)
             {
-                vm.Subtitle = "The realm holds. Spoils claimed.";
+                vm.Subtitle = TableLine("raid.wave.spoils_claimed", "The realm holds. Spoils claimed.");
                 vm.AutoDismissSeconds = 6f;
             }
 
@@ -1127,7 +1133,7 @@ namespace DeNelle.Village.UI
             // SubtitleLines measures each segment independently — the panel solve therefore
             // BUDGETS this second line instead of discovering it after layout.
             if (damageAvailable > damageRows)
-                vm.Subtitle += "\nShowing " + damageRows + " of " + damageAvailable + " damaged structures.";
+                vm.Subtitle += "\n" + LocalText.Format("raid.wave.truncation_notice", damageRows, damageAvailable);
 
             if (damageRows > 0)
             {
@@ -1243,11 +1249,11 @@ namespace DeNelle.Village.UI
                 return 0;
             }
 
-            var lines = new List<KeyValuePair<string, int>>(4);
-            if (pay.Wood     > 0) lines.Add(new KeyValuePair<string, int>("Wood",     pay.Wood));
-            if (pay.Iron     > 0) lines.Add(new KeyValuePair<string, int>("Iron",     pay.Iron));
-            if (pay.Stone     > 0) lines.Add(new KeyValuePair<string, int>(FoodSpoilLabel, pay.Stone));
-            if (pay.Crystals > 0) lines.Add(new KeyValuePair<string, int>("Crystals", pay.Crystals));
+            var lines = new List<KeyValuePair<string, KeyValuePair<string, int>>>(4);
+            if (pay.Wood     > 0) lines.Add(new KeyValuePair<string, KeyValuePair<string, int>>("wood",     new KeyValuePair<string, int>(LocalText.Get("raid.spoil.wood"), pay.Wood)));
+            if (pay.Iron     > 0) lines.Add(new KeyValuePair<string, KeyValuePair<string, int>>("iron",     new KeyValuePair<string, int>(LocalText.Get("raid.spoil.iron"), pay.Iron)));
+            if (pay.Stone     > 0) lines.Add(new KeyValuePair<string, KeyValuePair<string, int>>("stone",     new KeyValuePair<string, int>(LocalText.Get("raid.spoil.stone"), pay.Stone)));
+            if (pay.Crystals > 0) lines.Add(new KeyValuePair<string, KeyValuePair<string, int>>("crystals", new KeyValuePair<string, int>(LocalText.Get("raid.spoil.crystals"), pay.Crystals)));
             if (lines.Count == 0) return 0;
 
             // THE SPLIT: when the wave also took damage, the damage list keeps at least one
@@ -1257,7 +1263,7 @@ namespace DeNelle.Village.UI
 
             if (lines.Count <= budget)
             {
-                foreach (var l in lines) vm.Spoils.Add(ResourceRow(l.Key, l.Value));
+                foreach (var l in lines) vm.Spoils.Add(ResourceRow(l.Key, l.Value.Key, l.Value.Value));
                 FlowTrace.Step("EndState",
                     $"wave {waveNumber} clear banner: {lines.Count} reward row(s) from the BANKED payout " +
                     // WO-1789 section 3.4 - the trace said "food=" while the field, the balance and the
@@ -1272,15 +1278,15 @@ namespace DeNelle.Village.UI
             // wave divisible by 2/3/4 with damage hits four resource lines against a budget of
             // three). Emit the first budget-1 rows individually, then ONE combined tail row.
             for (int i = 0; i < budget - 1; i++)
-                vm.Spoils.Add(ResourceRow(lines[i].Key, lines[i].Value));
+                vm.Spoils.Add(ResourceRow(lines[i].Key, lines[i].Value.Key, lines[i].Value.Value));
 
             var tailLabel = new System.Text.StringBuilder();
             var tailAmount = new System.Text.StringBuilder();
             for (int i = budget - 1; i < lines.Count; i++)
             {
                 if (tailLabel.Length > 0) { tailLabel.Append(" + "); tailAmount.Append(", "); }
-                tailLabel.Append(lines[i].Key);
-                tailAmount.Append('+').Append(ElarionUi.CompactNumber(lines[i].Value));
+                tailLabel.Append(lines[i].Value.Key);
+                tailAmount.Append('+').Append(ElarionUi.CompactNumber(lines[i].Value.Value));
             }
             vm.Spoils.Add(new SpoilRowVM
             {
@@ -1308,12 +1314,12 @@ namespace DeNelle.Village.UI
 
         /// <summary>One earned-resource row. ASCII only, and the "+" prefix (not colour) is
         /// what marks it as a gain — the damage rows on the same banner carry no "+".</summary>
-        private static SpoilRowVM ResourceRow(string label, int amount)
+        private static SpoilRowVM ResourceRow(string conceptId, string label, int amount)
         {
             return new SpoilRowVM
             {
                 // WO-697: every reward number renders through the ONE kit formatter.
-                Label = label, Amount = "+" + ElarionUi.CompactNumber(amount),
+                ConceptId = conceptId, Label = label, Amount = "+" + ElarionUi.CompactNumber(amount),
             };
         }
     }

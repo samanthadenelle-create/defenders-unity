@@ -330,7 +330,7 @@ namespace DeNelle.Village.Hero
                     // remedy, because the owner is red/green colourblind and the tell has
                     // to be words. The fallback can only be reached if a new lock reason is
                     // added without copy, and it says so rather than pretending.
-                    lockCopy ?? ("Raids are unavailable right now (" + lockReason + ")."),
+                    lockCopy ?? DeNelle.Core.UI.LocalText.Format("village.troops.raid_deploy_screen.raids_unavailable_lockcode_fmt", lockReason),
                     ElarionUiKit.ToastTone.Info);
                 // ⛔ And NO training panel. The army redirect below is right when the
                 // blocker is troops; opening it here would send a player with no Barracks
@@ -389,11 +389,10 @@ namespace DeNelle.Village.Hero
                     ") -> drillmaster training panel.");
                 ElarionUiKit.ShowToast(
                     noTroopsAtAll
-                        ? "No troops yet - train troops at the Barracks, then open Raids."
+                        ? new DeNelle.Core.UI.LocalizedText("village.troops.raid_selection_screen.no_troops_yet").Resolve()
                         : readiness.FirstRaidSoftGate
-                            ? "Army " + have + "/" + need + " slots - your first raid only needs " + need +
-                              ". Train at the Barracks, then open Raids."
-                            : "Army " + have + "/" + need + " - fill every slot at the Barracks, then open Raids.",
+                            ? DeNelle.Core.UI.LocalText.Format("village.troops.raid_selection_screen.army_first_raid_soft_gate_fmt", have, need)
+                            : DeNelle.Core.UI.LocalText.Format("village.troops.raid_selection_screen.army_ready_fmt", have, need),
                     ElarionUiKit.ToastTone.Info);
                 TroopDialogueCommands.ShowTrainingUI();
                 return;
@@ -1168,7 +1167,7 @@ namespace DeNelle.Village.Hero
                     "raid card tap resolved NO SceneConfigDef - id='" + (id ?? "(null)") +
                     "' vm=" + (_vm == null ? "null" : "present") + ". The tap is dead; " +
                     "the card is on the grid but its def is missing from the catalog.");
-                ElarionUiKit.ShowToast("That raid is unavailable right now.",
+                ElarionUiKit.ShowToast(new DeNelle.Core.UI.LocalizedText("village.troops.raid_selection_screen.raid_unavailable").Resolve(),
                     ElarionUiKit.ToastTone.Danger);
                 return;
             }

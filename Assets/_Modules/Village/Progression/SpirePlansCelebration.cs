@@ -203,12 +203,9 @@ namespace DeNelle.Village
         {
             return new[]
             {
-                new Beat("Three waves came against Elarion. Three waves broke.", 4.6f, true),
-                new Beat("You recovered the Castle Defense Plans. They unlock the Arcane " +
-                         "Spire, and include enough resources to build your first one.", 6.0f),
-                new Beat("\"Open Build, choose Defenses, and place the Arcane Spire now. " +
-                         "It will protect Elarion from the stronger waves ahead.\"",
-                         6.4f, false, true),
+                new Beat(LocalText.Get("raid.spire_plans.beat_one"), 4.6f, true),
+                new Beat(LocalText.Get("raid.spire_plans.beat_two"), 6.0f),
+                new Beat(LocalText.Get("raid.spire_plans.beat_three"), 6.4f, false, true),
             };
         }
 

@@ -3815,6 +3815,322 @@ MonoBehaviour:
     m_Key: village.talents.skill_tree.quick_swap_hint
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363761099
+    m_Key: village.troops.raid_deploy_screen.raid_could_not_open
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761100
+    m_Key: village.troops.raid_deploy_screen.barracks_could_not_open
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761101
+    m_Key: village.troops.raid_deploy_screen.briefing_not_ready
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761102
+    m_Key: village.troops.raid_deploy_screen.no_battleground
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761103
+    m_Key: village.troops.raid_deploy_screen.raid_under_construction
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761104
+    m_Key: village.troops.raid_deploy_screen.no_troops_trained
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761105
+    m_Key: village.troops.raid_deploy_screen.assaulting_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761106
+    m_Key: village.troops.raid_deploy_screen.raids_unavailable_lockcode_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761107
+    m_Key: village.troops.raid_selection_screen.no_troops_yet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761108
+    m_Key: village.troops.raid_selection_screen.army_first_raid_soft_gate_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761109
+    m_Key: village.troops.raid_selection_screen.army_ready_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761110
+    m_Key: village.troops.raid_selection_screen.raid_unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761111
+    m_Key: village.troops.troop_training.idle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761112
+    m_Key: village.troops.troop_training.queue_offline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761113
+    m_Key: village.troops.troop_training.active_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761114
+    m_Key: village.troops.raid_hud.clear_the_base
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761115
+    m_Key: village.troops.raid_hud.spire_down
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761116
+    m_Key: village.troops.raid_hud.spire_pct_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761117
+    m_Key: village.troops.raid_hud.razed_pct_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761118
+    m_Key: village.troops.raid_hud.troops_alive_deployed_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761119
+    m_Key: village.troops.raid_deploy.time_expired
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761120
+    m_Key: village.troops.raid_deploy.deployed_assault_formation_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761121
+    m_Key: village.troops.army_muster.hint_more_scroll_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761122
+    m_Key: village.troops.army_muster.max_one_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761123
+    m_Key: raid.spoil.wood
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761124
+    m_Key: raid.spoil.iron
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761125
+    m_Key: raid.spoil.stone
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761126
+    m_Key: raid.spoil.gold
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761127
+    m_Key: raid.spoil.experience
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761128
+    m_Key: raid.spoil.wisdom
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761129
+    m_Key: raid.spoil.crystals
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761130
+    m_Key: raid.battle.victory_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761131
+    m_Key: raid.battle.victory_subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761132
+    m_Key: raid.battle.flawless_subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761133
+    m_Key: raid.victory.foes_felled
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761134
+    m_Key: raid.victory.one_foe_felled
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761135
+    m_Key: raid.battle.defeat_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761136
+    m_Key: raid.battle.defeat_subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761137
+    m_Key: raid.hero_death.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761138
+    m_Key: raid.hero_death.raid_lost
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761139
+    m_Key: raid.hero_death.dungeon_lost
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761140
+    m_Key: raid.hero_death.rise_again
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761141
+    m_Key: raid.game_over.try_again
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761142
+    m_Key: raid.victory.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761143
+    m_Key: raid.victory.return_to_castle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761144
+    m_Key: raid.victory.companion_joins
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761145
+    m_Key: raid.victory.destruction_percent
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761146
+    m_Key: raid.victory.one_troop_lost
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761147
+    m_Key: raid.victory.troops_lost
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761148
+    m_Key: raid.victory.claim_sentence
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761149
+    m_Key: raid.victory.clear_sentence
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761150
+    m_Key: raid.outpost.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761151
+    m_Key: raid.outpost.yours
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761152
+    m_Key: raid.outpost.already_claimed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761153
+    m_Key: raid.outpost.companion_joins
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761154
+    m_Key: raid.wave.cleared_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761155
+    m_Key: raid.wave.decisive_defense
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761156
+    m_Key: raid.wave.realm_holds
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761157
+    m_Key: raid.wave.prepare_next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761158
+    m_Key: raid.wave.plans_recovered
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761159
+    m_Key: raid.wave.took_damage
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761160
+    m_Key: raid.wave.spoils_claimed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761161
+    m_Key: raid.wave.truncation_notice
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761162
+    m_Key: raid.retreat.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761163
+    m_Key: raid.retreat.timeout_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761164
+    m_Key: raid.retreat.return_to_castle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761165
+    m_Key: raid.retreat.clock_ran_out
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761166
+    m_Key: raid.retreat.assault_called_off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761167
+    m_Key: raid.retreat.destruction_percent
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761168
+    m_Key: raid.retreat.all_troops_home
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761169
+    m_Key: raid.retreat.one_troop_lost
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761170
+    m_Key: raid.retreat.troops_lost_format
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761171
+    m_Key: raid.retreat.assault_failed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761172
+    m_Key: raid.retreat.covering_cost
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761173
+    m_Key: raid.retreat.no_spoils
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761174
+    m_Key: raid.retreat.reward_short
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761175
+    m_Key: raid.spire_plans.beat_one
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761176
+    m_Key: raid.spire_plans.beat_two
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761177
+    m_Key: raid.spire_plans.beat_three
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

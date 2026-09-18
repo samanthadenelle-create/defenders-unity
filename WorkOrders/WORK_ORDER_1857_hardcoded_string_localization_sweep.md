@@ -1,6 +1,6 @@
 # WORK ORDER 1857 — Codebase-wide sweep: every hardcoded player-facing string routes through localization
 
-**Status:** READY TO IMPLEMENT — phases 1-2 DONE (commits `96966276f`, `814794c66`), phase 4 batches
+**Status:** READY TO IMPLEMENT — raid/end-state batch LANDED 2026-09-18 (79 keys, 9 Village .cs, 20 locale files + 7 tables; SpoilRowVM.ConceptId now owns icon identity so labels can localize; StarterArmyGrant plural branching SKIPPED pending a plural convention ruling; gates `Builds/cg1869` + `Builds/reg1869`); phases 1-2 DONE (commits `96966276f`, `814794c66`), phase 4 batches
 1-3 DONE, plus a 2026-09-18 screenshot-driven batch landed and gated (commit `95ebe5e92`, 37 keys:
 Harvest Result modal, Build Collections panel, Hero/Journey/Manage decks incl. a 5-locale
 mistranslation fix on `heroLoadout`, Inventory/Equipment panels; `COMPILE_GATE_OK` +

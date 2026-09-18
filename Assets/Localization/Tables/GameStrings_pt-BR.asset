@@ -4039,6 +4039,322 @@ MonoBehaviour:
     m_Localized: "Habilidades atribu\u00EDdas: mude-as em {0}."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363761099
+    m_Localized: "That raid could not be opened."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761100
+    m_Localized: "The Barracks could not be opened."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761101
+    m_Localized: "Raid briefing is not ready."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761102
+    m_Localized: "This raid has no battleground yet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761103
+    m_Localized: "Raid under construction - battleground not in this build."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761104
+    m_Localized: "No troops trained yet. Visit the Barracks."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761105
+    m_Localized: "Assaulting {0}..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761106
+    m_Localized: "Raids are unavailable right now ({0})."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761107
+    m_Localized: "No troops yet - train troops at the Barracks, then open Raids."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761108
+    m_Localized: "Army {0}/{1} slots - your first raid only needs {1}. Train at the Barracks, then open Raids."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761109
+    m_Localized: "Army {0}/{1} - fill every slot at the Barracks, then open Raids."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761110
+    m_Localized: "That raid is unavailable right now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761111
+    m_Localized: "Training: idle"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761112
+    m_Localized: "Training: (queue offline)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761113
+    m_Localized: "Training: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761114
+    m_Localized: "CLEAR THE BASE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761115
+    m_Localized: "SPIRE DOWN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761116
+    m_Localized: "SPIRE {0}%"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761117
+    m_Localized: "Razed {0}%"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761118
+    m_Localized: "Troops {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761119
+    m_Localized: "Time! The assault is called off - your warband retreats."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761120
+    m_Localized: "Deployed {0} troops in assault formation."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761121
+    m_Localized: "+ {0} more (scroll)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761122
+    m_Localized: "{0} (max 1)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761123
+    m_Localized: "Wood"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761124
+    m_Localized: "Iron"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761125
+    m_Localized: "Stone"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761126
+    m_Localized: "Gold"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761127
+    m_Localized: "Experience"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761128
+    m_Localized: "Wisdom"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761129
+    m_Localized: "Crystals"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761130
+    m_Localized: "Victory!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761131
+    m_Localized: "The realm is safer because of you!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761132
+    m_Localized: "Flawless! The realm is safer because of you!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761133
+    m_Localized: "{0} foes felled. "
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761134
+    m_Localized: "1 foe felled. "
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761135
+    m_Localized: "Defeat"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761136
+    m_Localized: "Fall back and regroup, hero."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761137
+    m_Localized: "YOU HAVE FALLEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761138
+    m_Localized: "The raid is lost. You retreat to the castle to fight another day."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761139
+    m_Localized: "The dark takes you, but Elarion still needs its defender."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761140
+    m_Localized: "Rise again"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761141
+    m_Localized: "Try Again"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761142
+    m_Localized: "Victory!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761143
+    m_Localized: "Return to Castle"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761144
+    m_Localized: "{0} joins your party."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761145
+    m_Localized: "{0}% razed."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761146
+    m_Localized: "1 troop lost taking the base."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761147
+    m_Localized: "{0} troops lost taking the base."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761148
+    m_Localized: "The base is CLAIMED - it is yours now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761149
+    m_Localized: "The base is broken - its stores are yours."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761150
+    m_Localized: "Outpost Claimed"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761151
+    m_Localized: "The outpost is yours."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761152
+    m_Localized: "Outpost already claimed."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761153
+    m_Localized: "{0} joins your party."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761154
+    m_Localized: "Wave {0} Cleared"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761155
+    m_Localized: "A decisive defense. Review what changed before the next assault."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761156
+    m_Localized: "The realm holds. Review the result, then prepare the next defense."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761157
+    m_Localized: "Prepare for Wave {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761158
+    m_Localized: "Plans Recovered"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761159
+    m_Localized: "The realm holds - but it took damage."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761160
+    m_Localized: "The realm holds. Spoils claimed."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761161
+    m_Localized: "Showing {0} of {1} damaged structures."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761162
+    m_Localized: "Retreat"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761163
+    m_Localized: "Time!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761164
+    m_Localized: "Return to Castle"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761165
+    m_Localized: "The clock ran out - your warband falls back."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761166
+    m_Localized: "You called the assault off."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761167
+    m_Localized: "{0}% razed."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761168
+    m_Localized: "Every troop came home."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761169
+    m_Localized: "1 troop lost"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761170
+    m_Localized: "{0} troops lost"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761171
+    m_Localized: "- the assault failed and the warband did not make it back."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761172
+    m_Localized: "- the cost of covering the retreat."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761173
+    m_Localized: "No spoils - the warband was lost."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761174
+    m_Localized: "Some of the reward could not be paid out."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761175
+    m_Localized: "Three waves came against Elarion. Three waves broke."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761176
+    m_Localized: "You recovered the Castle Defense Plans. They unlock the Arcane Spire, and include enough resources to build your first one."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761177
+    m_Localized: "\"Open Build, choose Defenses, and place the Arcane Spire now. It will protect Elarion from the stronger waves ahead.\""
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

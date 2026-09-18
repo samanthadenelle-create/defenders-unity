@@ -675,7 +675,7 @@ namespace DeNelle.Village
         // evac through the normal retreat (reconciles survivors/wounded, GoCastle).
         private void OnRaidTimeExpired()
         {
-            SetStatus("Time! The assault is called off - your warband retreats.");
+            SetStatus(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.time_expired").Resolve());
             // WO-1561: the SAME settlement and the SAME screen as a chosen retreat - only the
             // reason differs, and the result screen leads with a sentence that says which exit
             // this was. A player who ran out of clock did not choose to leave.
@@ -3149,7 +3149,7 @@ namespace DeNelle.Village
 
             Disarm();
             RefreshTiles();
-            SetStatus(deployedNow > 0 ? "Deployed " + deployedNow + " troops in assault formation."
+            SetStatus(deployedNow > 0 ? DeNelle.Core.UI.LocalText.Format("village.troops.raid_deploy.deployed_assault_formation_fmt", deployedNow)
                                       : new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.all_ready_deployed").Resolve());
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
                 "DEPLOY ALL -> " + deployedNow + " troop(s), tactic=Assault Formation, seat=" + seat.position + ".");

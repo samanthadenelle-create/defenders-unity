@@ -702,30 +702,31 @@ namespace DeNelle.Village
                 if (!s.HasObjective)
                 {
                     // Legacy raid base with no spire - say so rather than showing a fake bar.
-                    if (_objLabel != null) _objLabel.text = "CLEAR THE BASE";
+                    if (_objLabel != null) _objLabel.text = new DeNelle.Core.UI.LocalizedText("village.troops.raid_hud.clear_the_base").Resolve();
                     if (_objFill != null) _objFill.anchorMax = new Vector2(1f, 1f);
                 }
                 else if (s.ObjectiveComplete)
                 {
-                    if (_objLabel != null) _objLabel.text = "SPIRE DOWN";
+                    if (_objLabel != null) _objLabel.text = new DeNelle.Core.UI.LocalizedText("village.troops.raid_hud.spire_down").Resolve();
                     if (_objFill != null) _objFill.anchorMax = new Vector2(0f, 1f);
                 }
                 else
                 {
                     float frac = Mathf.Clamp01(s.ObjectiveHpFraction);
-                    if (_objLabel != null) _objLabel.text = "SPIRE " + Mathf.CeilToInt(frac * 100f) + "%";
+                    int pct = Mathf.CeilToInt(frac * 100f);
+                    if (_objLabel != null) _objLabel.text = DeNelle.Core.UI.LocalText.Format("village.troops.raid_hud.spire_pct_fmt", pct);
                     if (_objFill != null) _objFill.anchorMax = new Vector2(frac, 1f);
                 }
             }
 
             // Secondary (scoring) readout: how much of the BASE has been razed - the
             // objective-weighted blend of spire damage + garrison cleared.
-            int pct = Mathf.Clamp(Mathf.RoundToInt(s.DestructionPct * 100f), 0, 100);
-            if (_destLabel != null) _destLabel.text = "Razed " + pct + "%";
-            if (_destFill != null) _destFill.anchorMax = new Vector2(pct / 100f, 1f);
+            int destPct = Mathf.Clamp(Mathf.RoundToInt(s.DestructionPct * 100f), 0, 100);
+            if (_destLabel != null) _destLabel.text = DeNelle.Core.UI.LocalText.Format("village.troops.raid_hud.razed_pct_fmt", destPct);
+            if (_destFill != null) _destFill.anchorMax = new Vector2(destPct / 100f, 1f);
 
             // Troops alive / deployed (plain number).
-            if (_troopLabel != null) _troopLabel.text = "Troops " + s.TroopsAlive + "/" + s.TroopsDeployed;
+            if (_troopLabel != null) _troopLabel.text = DeNelle.Core.UI.LocalText.Format("village.troops.raid_hud.troops_alive_deployed_fmt", s.TroopsAlive, s.TroopsDeployed);
         }
 
         private static string FormatTime(float seconds)

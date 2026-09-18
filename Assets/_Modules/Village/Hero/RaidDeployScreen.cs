@@ -331,7 +331,7 @@ namespace DeNelle.Village.Hero
                 // never reads as an unresponsive UI.
                 DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
                     "RaidDeployScreen.Open(null) - no SceneConfigDef, the deploy screen cannot open.");
-                ElarionUiKit.ShowToast("That raid could not be opened.",
+                ElarionUiKit.ShowToast(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy_screen.raid_could_not_open").Resolve(),
                     ElarionUiKit.ToastTone.Danger);
                 return;
             }
@@ -1109,7 +1109,7 @@ namespace DeNelle.Village.Hero
             if (!PanelRouter.Open(PanelId.Manage, "Troops"))
             {
                 // PanelRouter has already FlowTrace.Fail'd the why; the player still needs a word.
-                ElarionUiKit.ShowToast("The Barracks could not be opened.", ElarionUiKit.ToastTone.Danger);
+                ElarionUiKit.ShowToast(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy_screen.barracks_could_not_open").Resolve(), ElarionUiKit.ToastTone.Danger);
             }
         }
 
@@ -1186,13 +1186,13 @@ namespace DeNelle.Village.Hero
 
             if (_vm == null)
             {
-                ElarionUiKit.ShowToast("Raid briefing is not ready.", ElarionUiKit.ToastTone.Danger,
+                ElarionUiKit.ShowToast(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy_screen.briefing_not_ready").Resolve(), ElarionUiKit.ToastTone.Danger,
                     sortingOrder: ToastSortingOrder);
                 return;
             }
             if (string.IsNullOrEmpty(_vm.SceneName))
             {
-                ElarionUiKit.ShowToast("This raid has no battleground yet.", ElarionUiKit.ToastTone.Danger,
+                ElarionUiKit.ShowToast(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy_screen.no_battleground").Resolve(), ElarionUiKit.ToastTone.Danger,
                     sortingOrder: ToastSortingOrder);
                 Debug.LogWarning("[RaidDeployScreen] DEPLOY: empty sceneName.");
                 return;
@@ -1201,7 +1201,7 @@ namespace DeNelle.Village.Hero
             {
                 // WO-932 Phase 2: honest under-construction — never silent strand.
                 ElarionUiKit.ShowToast(
-                    "Raid under construction — battleground not in this build.",
+                    new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy_screen.raid_under_construction").Resolve(),
                     ElarionUiKit.ToastTone.Danger, sortingOrder: ToastSortingOrder);
                 DeNelle.Core.Diagnostics.FlowTrace.Fail("Raid",
                     $"BEGIN ASSAULT refused: scene '{_vm.SceneName}' not in Build Settings.");
@@ -1212,7 +1212,7 @@ namespace DeNelle.Village.Hero
             // copy exists only to give the player a word instead of a dead tap.
             if (_vm.Fielded <= 0)
             {
-                ElarionUiKit.ShowToast("No troops trained yet. Visit the Barracks.", ElarionUiKit.ToastTone.Danger,
+                ElarionUiKit.ShowToast(new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy_screen.no_troops_trained").Resolve(), ElarionUiKit.ToastTone.Danger,
                     sortingOrder: ToastSortingOrder);
                 DeNelle.Core.Diagnostics.FlowTrace.Warn("Raid",
                     "BEGIN ASSAULT tapped with fielded=0 - refused (WO-1403 ruling); the button should not " +
@@ -1252,7 +1252,7 @@ namespace DeNelle.Village.Hero
             DeNelle.Village.World.Camps.EchoGuideService.NoteExpeditionTarget(_vm.RaidId, "BEGIN ASSAULT");
 
             string name = !string.IsNullOrEmpty(_vm.DisplayNameRaw) ? _vm.DisplayNameRaw : _vm.RaidId;
-            ElarionUiKit.ShowToast("Assaulting " + name + "…", ElarionUiKit.ToastTone.Info,
+            ElarionUiKit.ShowToast(DeNelle.Core.UI.LocalText.Format("village.troops.raid_deploy_screen.assaulting_fmt", name), ElarionUiKit.ToastTone.Info,
                 sortingOrder: ToastSortingOrder);
             Debug.Log($"[RaidDeployScreen] BEGIN ASSAULT -> SceneRouter.GoRaid('{_vm.SceneName}').");
             // SHARED CONTRACT: the VM loads the raid scene; the in-raid deploy tray handles

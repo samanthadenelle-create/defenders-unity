@@ -1018,7 +1018,7 @@ namespace DeNelle.Village
             // Owner ruling 2026-08-26 (shared with WO-1228): SIX lines, then scroll. On this
             // landscape frame the well seats fewer, so the affordance says how many are below.
             int hidden = offered.Count - _visibleRows;
-            SetHint(hidden > 0 ? "+ " + hidden + " more (scroll)" : "");
+            SetHint(hidden > 0 ? DeNelle.Core.UI.LocalText.Format("village.troops.army_muster.hint_more_scroll_fmt", hidden) : "");
         }
 
         private void SetHint(string text)
@@ -1060,8 +1060,8 @@ namespace DeNelle.Village
 
             string name = string.IsNullOrEmpty(def.DisplayName) ? id : def.DisplayName;
             // Cap note for siege maxOwned
-            string capTag = def.MaxOwned == 1 ? " (max 1)" : "";
-            var nameLabel = ElarionUiKit.Label(row.transform, name + capTag, rName.yMin, rName.yMax,
+            string capTag = def.MaxOwned == 1 ? DeNelle.Core.UI.LocalText.Format("village.troops.army_muster.max_one_fmt", name) : name;
+            var nameLabel = ElarionUiKit.Label(row.transform, capTag, rName.yMin, rName.yMax,
                 ElarionUi.Parchment, ElarionUi.FontBody, TextAlignmentOptions.MidlineLeft,
                 rName.xMin, rName.xMax, bold: true);
             nameLabel.raycastTarget = false;

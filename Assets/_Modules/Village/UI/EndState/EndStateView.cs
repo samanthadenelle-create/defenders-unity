@@ -2155,13 +2155,29 @@ namespace DeNelle.Village.UI
         private static Sprite ResolveRowIcon(SpoilRowVM row)
         {
             if (row == null) return null;
-            // WO-894: the reward CONCEPT gets first refusal via the resolver's designed OPT-IN
-            // path (`override:true` in concept-icons.json), so any wrong reward icon is repointable
-            // with ONE data entry and no C# change.
-            var s = ConceptIconResolver.ResolveAnyOverride(RowConcepts(row));
-            if (s == null) s = row.Icon;
-            // The row LABEL is offered to the icon table (plural AND singular — see RowConcepts).
-            if (s == null) s = ConceptIconResolver.ResolveAny(RowConcepts(row));
+            // WO-1857: ConceptId is the stable identity, never localized. Resolve against it first.
+            Sprite s = null;
+            string[] concepts = null;
+            if (!string.IsNullOrEmpty(row.ConceptId))
+            {
+                concepts = new[] { row.ConceptId, row.ConceptId.EndsWith("s", StringComparison.Ordinal)
+                    ? row.ConceptId.Substring(0, row.ConceptId.Length - 1) : null };
+                s = ConceptIconResolver.ResolveAnyOverride(concepts);
+                if (s == null) s = row.Icon;
+                if (s == null) s = ConceptIconResolver.ResolveAny(concepts);
+            }
+            else
+            {
+                // Fallback for backward compat: derive concept from Label (traced, architecture violation).
+                FlowTrace.Warn("EndState",
+                    "ResolveRowIcon: SpoilRowVM.ConceptId is null/empty (row.Label='" + (row.Label ?? "(null)") +
+                    "'). Using Label as concept fallback, but identity should never derive from display text " +
+                    "(architecture law: presentation never touches the objects). Set ConceptId explicitly.");
+                concepts = RowConcepts(row);
+                s = ConceptIconResolver.ResolveAnyOverride(concepts);
+                if (s == null) s = row.Icon;
+                if (s == null) s = ConceptIconResolver.ResolveAny(concepts);
+            }
             if (s == null && !row.Wide)
                 s = RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconInventory);
             return s;
