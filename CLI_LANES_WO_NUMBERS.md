@@ -189,6 +189,13 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
+> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-second pass): main line next free = **1859**.
+> *(Lead minted **WO-1858** — owner directive: "I want the whole vision completely running the
+> solution all the way through for the pitch of people working together so I can test it." Closes
+> two of WO-1847's three flagged gaps (WebView plugin install via UPM if possible, real
+> ClanRoomBinding.ClanId wiring); the third gap, a real CHERRY_APP_ID, is an owner-only action at
+> portal.cherry.fun and stays explicitly out of scope.)*
+>
 > ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-first pass): main line next free = **1858**.
 > *(Lead minted **WO-1857** — owner standing law, stated live 2026-09-17: "Anything that has text
 > needs to go through local so we can be put in all the languages that's a law that we have."
