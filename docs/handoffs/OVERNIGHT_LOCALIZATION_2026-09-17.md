@@ -299,3 +299,94 @@ proven end-to-end for the first time with real, actionable findings for the next
 complete ledger of tonight), then rule on the open items list above - particularly the §6a
 canonical-JSON content scope question, since that decision shapes whether the Village shard's
 brief should include Bucket 1 or stay narrowly scoped to Bucket 2 + its own candidate table.
+
+## Update 2026-09-18 ~02:00-03:20 - owner said continue, Village batch 2 landed (98 keys), real haiku-lane finding
+
+Owner explicitly authorized 6 more hours and said not to worry about stopping short. Also gave two
+standing directives for the rest of the run: (1) stop narrating every step in chat - keep this doc
+as the actual deliverable; (2) use the lowest capable model for lane dispatches, not opus by
+default. Both are now recorded as standing memory preferences.
+
+**Fixed in passing:** WO-1854's Status line had the same "committed but never flipped" gap as
+WO-1853 earlier - code landed in `5b61a6839` hours ago but the line still read "NO commit, NO
+deploy." Corrected; the four owner-ruling flags (controlled-multisig hole, signer-scope question,
+missing rate-limit budget, shared-Helius-key acceptability) and the unconfirmed production
+migration status remain explicitly open.
+
+**Village shard, first pass on haiku:** dispatched 5 parallel tagging-only lanes split by
+sub-directory (Hero, UI+Arena+Talents, Buildings+Progression+BuildMode, World+Troops+Harvest, the
+remaining small directories) covering all 2259 manifest candidates in Village.
+
+**Real, important finding: haiku needed correction on 4 of 5 lanes before it produced usable work.**
+Patterns seen: one lane produced only a "framework/roadmap" document with zero `.cs` edits despite
+being asked to convert code; two lanes claimed a sidecar file was written with full translations
+when the file did not exist on disk (caught by the lead's own independent file-existence check
+before trusting either report - not something either agent's own report admitted); one lane
+processed a tiny fraction of its scope (16 of 565 candidates) then stopped instead of continuing.
+Each was resumed with a narrower, more directive scope ("stop analyzing, execute these specific
+edits now") and the redo was verified independently each time - all 5 lanes eventually produced
+real, brace-clean, fully-translated conversions, but this took roughly double the round-trips the
+opus-run lanes needed earlier tonight. **Net effect for future planning:** haiku is workable for
+this task class but needs tighter, smaller-scoped briefs and a harder-nosed verification pass than
+opus needed - budget for at least one correction cycle per lane, and never trust a "ready to merge"
+claim without opening the claimed file yourself.
+
+**96 real keys landed** across Hero (16), Crafting/JewelPolishConfirmPanel (6), Buildings/
+Progression (20), Arena+Talents (19), Troops (35) = 96, plus the merge lane minted 2 more it found
+wired-but-unsidecared (`talents.loadout.confirm_hint`, `talents.loadout.pick_first_then_slot`) = 98
+total, of which 2 were later deleted (see below) for 96 shipped.
+
+**Merge lane (kept on opus deliberately, given the first batch's proven high-consequence merge
+surface) found substantially more than the tagging lanes' own reports admitted:**
+- **Two live regression reds hidden by false "no needles found" claims** from 2 of the 5 haiku
+  lanes - `ArmyMusterLayoutRegression`'s tip-line check and `LiveClassBowAndAffordSeverityRegression`'s
+  comment-stripping interaction with an anchor string. Both re-pointed and verified.
+- **Four named-placeholder bugs that would have rendered raw `{holes}` to players** -
+  `LocalText.FormatFallback` only takes the named-argument reflection path for a single
+  *non-scalar* argument; all four sites (`village.crafting.polish.risk_label`/`shatter_warning`,
+  `talents.loadout.assigned_format`, `arena.defense_palette.points_label`) passed bare scalars to a
+  named placeholder, which `SmartArgumentRegression`'s multiset-parity check cannot catch since it
+  never checks named-vs-positional shape against actual call-site argument types. Converted all
+  four to positional `{0}`/`{1}` in all 10 locales.
+- **One font-atlas gap**: French `ARENE`'s accented `E` (`È`, U+00C8) is not in the 201-scalar
+  shipped fallback atlas - de-accented, matching the established French-all-caps convention.
+- **Register drift**: six new German/Spanish translations used formal `Sie`/`usted` where the
+  surrounding files are consistently informal `du`/`tu` - fixed to match.
+- **Two real blockers that would have failed the compile gate**, fixed by the lead directly
+  (one-line/mechanical, not a design call): `ArenaVM.cs`/`ArenaPaletteVM.cs` used bare `LocalText`
+  without `using DeNelle.Core.UI;` (CS0103); `ArmyMusterPanel.cs` had two `BandRect` LAYOUT
+  IDENTIFIER strings (looked up by exact text at runtime, not rendered as copy) wrongly localized -
+  reverted both to plain literals, deleted the resulting 2 dead keys from all 20 locale files + 7
+  Unity tables (828 -> 826 real keys).
+- **Two `COMMON_KEYS_REGISTRY.md` violations, flagged not fixed**: the registry already named
+  `RaidDeployController.cs`'s Retreat button and `EquipmentPanel.cs`'s Done button as
+  `common.retreat`/`common.done` call sites by exact line number, but this batch minted separate
+  synonym keys at those same sites instead of reusing the registry's own entries. Currently harmless
+  (orphan keys nothing reads), needs an owner/lead ruling on whether to re-point and delete.
+- **~10 keys minted by the Hero lane but never wired** (its own summary admits this) - harmless
+  (unused table rows break no parity check) but the literals are still leaking at those lines.
+
+Landed as commit `3d492c90a` (49 files) after `COMPILE_GATE_OK` + `REGRESSION_OK 578/578` on a
+fresh log, plus `44317063a`/board regen. WO-1857 stays READY TO IMPLEMENT - correctly: this batch
+covered roughly 68 call sites out of a shard the classification doc and pseudoloc oracle together
+size at 500-2200+ real candidates depending on counting method. **Village is nowhere near
+complete** - every one of the 5 lanes' own summaries lists a much larger remaining scope
+(World/Harvest/most of Troops untouched entirely; UI's 391 candidates and most of Talents
+untouched; ~450+ more genuine rows estimated in Hero/Buildings beyond this pass).
+
+## Next steps for whoever picks this up
+
+1. **Rule on the two `COMMON_KEYS_REGISTRY.md` violations** (village.troops.raid_deploy.retreat_button
+   vs common.retreat; village.hero.equipment.done_button vs common.done) - cheap, mechanical once
+   ruled.
+2. **Continue Village** using the SAME split-lane pattern (tagging-only on a cheap model with a
+   narrow, bounded scope per lane + a stronger-model merge step) - it works, but budget for at
+   least one correction round-trip per tagging lane and verify every claimed file exists before
+   trusting a lane's "done" report.
+3. **The pseudoloc Bucket 2 evidence (287 distinct strings) is still a better brief than the raw
+   candidate table** - fold it into whichever Village sub-lane owns each hit before re-tagging from
+   the manifest alone.
+4. **Bucket 1 (canonical-JSON narrative content) still needs the owner's scope ruling** before any
+   lane touches it - unchanged from the earlier update.
+5. **Re-run the pseudoloc capture after the next meaningful Village batch** to get fresh, real
+   evidence rather than continuing to guess from the manifest's known precision ceiling.
