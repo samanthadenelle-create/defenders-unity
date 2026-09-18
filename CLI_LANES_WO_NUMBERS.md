@@ -189,7 +189,17 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-third pass): main line next free = **1870**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-fifth pass): main line next free = **1872**.
+> *(CLI minted **WO-1871** 2026-09-18 14:50 - a Change Army door on the raid deploy screen (owner ruling:
+> the raid flow has no way to change who goes) + the plural ruling ("troops" is the generic plural).
+> Bumped 1871 -> 1872 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-fourth pass): main line next free = **1871**.
+> *(CLI minted **WO-1870** 2026-09-18 14:40 - the full in-game Remnant screen (create / join by code /
+> members + roles / promote-kick-leave / leaderboard / vault / ballots); owner ruled "Full Remnant screen"
+> after the Seeker showed "You're not in a Remnant yet." with no door. Bumped 1870 -> 1871 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-third pass): main line next free = **1870**.
 > *(CLI minted **WO-1869** 2026-09-18 12:20 - Iron Bastion 3-star clear never captures the town:
 > `ResolveConfigId` strips the scene name to `IronBastion` while the gate compares `iron_bastion`.
 > Bumped 1869 -> 1870 in this SAME edit.)*
