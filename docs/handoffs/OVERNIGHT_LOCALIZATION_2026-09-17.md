@@ -365,6 +365,14 @@ surface) found substantially more than the tagging lanes' own reports admitted:*
   (orphan keys nothing reads), needs an owner/lead ruling on whether to re-point and delete.
 - **~10 keys minted by the Hero lane but never wired** (its own summary admits this) - harmless
   (unused table rows break no parity check) but the literals are still leaking at those lines.
+- ⚠ **`arena.defense_palette.points_label` LOOKS localized in the table but is DEAD in the shipped
+  tree right now.** `ArenaPaletteVM.cs:88-96`'s `PointsLabel` property builds `"Squad Points: " + …`
+  / `"Defense Points: " + …` from raw literals, and `ArenaDefensePaletteUI.cs:185`/
+  `ArenaAttackPaletteUI.cs:172` overwrite the panel's text with that property on every refresh - so
+  the localized key resolves once, then gets stomped by English the moment the panel updates. This
+  is exactly the class of defect the owner's pseudoloc validation pass exists to catch, and exactly
+  why it looking done in `en.json` is not proof it works on screen. Not fixed yet - listed in "Next
+  steps" below.
 
 Landed as commit `3d492c90a` (49 files) after `COMPILE_GATE_OK` + `REGRESSION_OK 578/578` on a
 fresh log, plus `44317063a`/board regen. WO-1857 stays READY TO IMPLEMENT - correctly: this batch
