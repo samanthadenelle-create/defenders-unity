@@ -1416,6 +1416,18 @@ namespace DeNelle.Core
         public static bool RemoteCatalogs => Get("catalogremote", defaultOn: false);
 
         /// <summary>Per-feature resolve: PlayerPrefs override ("ff.&lt;name&gt;" = 0/1) wins, else the default.</summary>
+        // ---------------------------------------------------------------------
+        //  ⛔ ff.pseudoloc IS DELIBERATELY NOT DECLARED HERE (WO-1861, 2026-09-17).
+        //  It follows this file's convention exactly -- PlayerPrefs "ff.pseudoloc",
+        //  1 = on, absent = OFF -- but its reader lives on
+        //  DeNelle.Core.UI.PseudolocTextProvider.PrefKey, inside a file whose entire
+        //  body is wrapped `#if UNITY_EDITOR || QA_SCENARIO_BUILD`. FeatureFlags is
+        //  unguarded shipping code, so a property here would be a reachable door into
+        //  a dev-only transform that rewrites every player-facing string to Cyrillic.
+        //  This breadcrumb exists so the next seat looking for the flag by convention
+        //  finds it instead of concluding it does not exist.
+        //  Pinned by PseudolocHarnessRegression [pseudoloc-harness].
+        // ---------------------------------------------------------------------
         private static bool Get(string name, bool defaultOn)
         {
             int pref = PlayerPrefs.GetInt("ff." + name, -1);

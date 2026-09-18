@@ -6306,6 +6306,14 @@ namespace DeNelle.Editor
                 // exist -- eyes-on review is not a defence and never was (CLAUDE.md §12).
                 AuditGeometry(canvasGo, Path.GetFileNameWithoutExtension(path), w, h);
 
+                // WO-1861: THE LOCALIZATION LEAK RULE, on the same settled layout. Placed
+                // beside AuditGeometry because this is the ONE point in this file every
+                // captured panel passes through -- wiring it per-capture instead is how four
+                // raid surfaces stayed structurally invisible to every audit here (WO-1645).
+                // INERT unless pseudoloc is active, so every existing entry point behaves
+                // exactly as it did before this ticket.
+                AuditPseudolocLeaks(canvasGo, Path.GetFileNameWithoutExtension(path), w, h);
+
                 // A PANEL-SPECIFIC measurement on the SAME settled, camera-space layout the
                 // audit just ran on. This is the only point in the run where a rect read is
                 // in kit reference px (an overlay canvas's own rect is still the editor's
@@ -6910,6 +6918,317 @@ namespace DeNelle.Editor
                            "in the right place whose words were cut away is invisible to every other " +
                            "rule on this path.");
         }
+
+        // =====================================================================
+        //  ===== WO-1861 PSEUDOLOC LEAK ORACLE - BEGIN =====
+        // ---------------------------------------------------------------------
+        //  THE RULE: with pseudolocalization active, every string that came through
+        //  LocalText is Cyrillic. So any label still showing a Latin WORD either never
+        //  went through LocalText (a localization LEAK -- WO-1857's whole subject) or is
+        //  legitimately Latin in every language and belongs in
+        //  docs/localization/PSEUDOLOC_ALLOWLIST.md. Deterministic, free, exact source
+        //  attribution (screen + hierarchy path + the offending run), and it needs no
+        //  vision model for the vast majority of the night's iterations.
+        //
+        //  ⛔ THE RULE ITSELF IS NOT IN THIS FILE. It lives in
+        //  DeNelle.Editor.Regression.PseudolocLeakOracle, for the reason this file already
+        //  wrote down at RULES 2/3/4 above: three layout rules "used to live here, AND
+        //  THAT IS WHY NOBODY HAD EVER SEEN THEM GO RED" -- nothing could reach them from a
+        //  regression suite. PseudolocHarnessRegression drives the SAME Scan over a
+        //  synthetic canvas carrying a PLANTED leak, an allowlisted token and a transformed
+        //  label, and asserts the exact counts. That is what proves this oracle red.
+        //
+        //  ⛔ IT DOES NOT GATE UI_CAPTURE_OK, AND THAT IS DELIBERATE, NOT TIMIDITY.
+        //  §5 of the touch oracle above and the WO-1648 banner below both record the same
+        //  law: a widened assert wired straight into a live gate turns every commit red and
+        //  is suppressed within the week. Worse here -- the scan is INERT unless pseudoloc
+        //  is active, so folding it into UI_CAPTURE_OK would make the normal nightly
+        //  capture's verdict depend on a mode it never runs in. Its own marker, its own
+        //  verdict: UI_PSEUDOLOC_OK / _FAIL / _INACTIVE.
+        //
+        //  ⚠ THREE STATES, NOT TWO, AND THE THIRD IS WHAT MAKES THE CLEAN LINE MEAN
+        //  ANYTHING. A scan with pseudoloc OFF finds nothing and is byte-identical, to a
+        //  grep, to a scan of a fully-localized game. So:
+        //    * pseudoloc inactive               -> UI_PSEUDOLOC_INACTIVE (explicit, not silence)
+        //    * active, zero labels scanned      -> FAIL, nothing was proved
+        //    * active, zero labels held Cyrillic-> FAIL, THE TRANSFORM DID NOT TAKE. This is
+        //      the direct detector for "the hook was never installed" / "the provider chain
+        //      changed": a run in that state would otherwise report every label in the game
+        //      as a leak and read as catastrophe while meaning nothing.
+        //    * allowlist faulted                -> FAIL by name; a faulted allowlist
+        //      suppresses nothing, so it can never hide findings behind its own error.
+        //    * un-allowlisted findings          -> FAIL, each line naming screen+path+word
+        //    * clean                            -> OK, carrying labels= and allowlisted=
+        // =====================================================================
+        private const string PseudolocReportPath = OutDir + "pseudoloc-leaks.json";
+
+        private static readonly List<DeNelle.Editor.Regression.PseudolocLeakOracle.Finding>
+            _pseudolocFindings = new List<DeNelle.Editor.Regression.PseudolocLeakOracle.Finding>();
+        private static readonly List<string> _pseudolocPanelTally = new List<string>();
+        private static DeNelle.Editor.Regression.PseudolocLeakOracle.Allowlist _pseudolocAllowlist;
+        private static int _pseudolocPanelsScanned;
+        private static int _pseudolocPanelsClean;
+        private static int _pseudolocLabelsScanned;
+        private static int _pseudolocLabelsCyrillic;
+        private static int _pseudolocSuppressed;
+
+        /// <summary>Clears the pseudoloc tallies AND loads the allowlist once for the run.
+        /// Called ONLY from RunPseudolocCaptureHeadless, deliberately NOT beside the other
+        /// Reset* calls: this entry point drives the existing sweeps as sub-calls, and each of
+        /// those clears its own tallies on entry. Resetting there too would wipe the pseudoloc
+        /// totals halfway through and the verdict would cover only the last sweep.</summary>
+        private static void ResetPseudolocOracle()
+        {
+            _pseudolocFindings.Clear();
+            _pseudolocPanelTally.Clear();
+            _pseudolocPanelsScanned = 0;
+            _pseudolocPanelsClean = 0;
+            _pseudolocLabelsScanned = 0;
+            _pseudolocLabelsCyrillic = 0;
+            _pseudolocSuppressed = 0;
+            _pseudolocAllowlist = DeNelle.Editor.Regression.PseudolocLeakOracle.Allowlist.Load();
+            if (_pseudolocAllowlist.Error != null)
+                Debug.LogError("[pseudoloc-oracle] ALLOWLIST FAULTED: " + _pseudolocAllowlist.Error);
+            else
+                Debug.Log("[pseudoloc-oracle] allowlist loaded: " + _pseudolocAllowlist.Count +
+                          " entries from " +
+                          DeNelle.Editor.Regression.PseudolocLeakOracle.AllowlistPath);
+        }
+
+        /// <summary>
+        /// Runs on the SETTLED layout beside AuditGeometry, from inside RenderCanvasToPng --
+        /// the one point in this file where every captured panel passes through. INERT unless
+        /// pseudoloc is active, so every existing entry point is untouched by its presence.
+        /// </summary>
+        private static void AuditPseudolocLeaks(GameObject canvasGo, string label, int w, int h)
+        {
+            if (canvasGo == null) return;
+            // No #if needed anywhere in this file: Assets/Editor always compiles with
+            // UNITY_EDITOR defined, which is one half of PseudolocTextProvider's own guard, so
+            // the type is always visible from here. A guard would only add an unreachable branch.
+            if (!DeNelle.Core.UI.PseudolocTextProvider.Active) return;
+
+            string at = label + " @" + w + "x" + h;
+            var scan = DeNelle.Editor.Regression.PseudolocLeakOracle.Scan(
+                canvasGo, at, _pseudolocAllowlist);
+
+            _pseudolocPanelsScanned++;
+            _pseudolocLabelsScanned += scan.LabelsScanned;
+            _pseudolocLabelsCyrillic += scan.LabelsWithCyrillic;
+            _pseudolocSuppressed += scan.Suppressed;
+
+            if (scan.Findings.Count == 0)
+            {
+                _pseudolocPanelsClean++;
+                return;
+            }
+            _pseudolocFindings.AddRange(scan.Findings);
+            // ONE COMPACT LINE PER PANEL, NEVER CAPPED. The per-finding lines below are capped
+            // at GeoMaxPrintedLines and the glyph oracle's seeding run lost 8 findings to that
+            // cap -- which is exactly why the uncapped tally exists there and exists here.
+            _pseudolocPanelTally.Add(at + ": " + scan.Findings.Count + " Latin word(s) survived over " +
+                                     scan.LabelsScanned + " label(s) (" + scan.LabelsWithCyrillic +
+                                     " transformed, " + scan.Suppressed + " allowlisted)");
+        }
+
+        /// <summary>Emits the run's one pseudoloc verdict and writes the structured report the
+        /// fix-and-repeat lanes read.</summary>
+        private static void ReportPseudolocOracle()
+        {
+            bool active = DeNelle.Core.UI.PseudolocTextProvider.Active;
+            if (!active)
+            {
+                Debug.Log("UI_PSEUDOLOC_INACTIVE -- pseudolocalization was not installed for this run, " +
+                          "so no leak rule looked at a single label. This is NOT a clean localization " +
+                          "result; run DeNelle.Editor.UICaptureLaunch.RunPseudolocCaptureHeadless for one.");
+                return;
+            }
+
+            WritePseudolocReport();
+
+            for (int i = 0; i < _pseudolocPanelTally.Count; i++)
+                Debug.LogWarning("[pseudoloc-oracle] " + _pseudolocPanelTally[i]);
+
+            if (_pseudolocAllowlist == null || _pseudolocAllowlist.Error != null)
+            {
+                Debug.LogError("UI_PSEUDOLOC_FAIL allowlist=faulted panels=" + _pseudolocPanelsScanned +
+                               " labels=" + _pseudolocLabelsScanned + " findings=" + _pseudolocFindings.Count +
+                               " -- " + (_pseudolocAllowlist == null
+                                   ? "the allowlist was never loaded (ResetPseudolocOracle did not run)"
+                                   : _pseudolocAllowlist.Error) +
+                               ". A faulted allowlist suppresses NOTHING by design, so the findings above " +
+                               "are unfiltered and no verdict may be read off this run.");
+                return;
+            }
+
+            if (_pseudolocPanelsScanned == 0)
+            {
+                Debug.LogError("UI_PSEUDOLOC_FAIL x0 panels -- pseudoloc was active and ZERO panels were " +
+                               "scanned, so this run proves nothing about localization coverage.");
+                return;
+            }
+
+            if (_pseudolocLabelsScanned == 0)
+            {
+                Debug.LogError("UI_PSEUDOLOC_FAIL x0 labels -- " + _pseudolocPanelsScanned + " panels were " +
+                               "visited and NOT ONE label was scanned. Zero findings from zero " +
+                               "measurements reads exactly like a fully localized game; it is a FAILURE.");
+                return;
+            }
+
+            if (_pseudolocLabelsCyrillic == 0)
+            {
+                // ⛔ THE BRANCH THAT MAKES EVERY OTHER NUMBER HERE TRUSTWORTHY. Pseudoloc says it
+                // is active and not one label came out transformed -- so the transform never
+                // reached the text (hook not installed, provider chain changed, or this panel
+                // family does not read through LocalText at all). Without this branch the run
+                // would report every label in the game as a leak: a headline number so large it
+                // would be dismissed, over a cause that has nothing to do with localization.
+                Debug.LogError("UI_PSEUDOLOC_FAIL transform=did-not-take panels=" + _pseudolocPanelsScanned +
+                               " labels=" + _pseudolocLabelsScanned + " transformed=0 findings=" +
+                               _pseudolocFindings.Count + " -- PseudolocTextProvider.Active is true but " +
+                               "NOT ONE scanned label contains a Cyrillic character. The findings above " +
+                               "are therefore NOT leak evidence: fix the install (LocalText.PseudolocHook " +
+                               "must be set BEFORE the panels are built) and re-run before reading any of them.");
+                return;
+            }
+
+            if (_pseudolocFindings.Count == 0)
+            {
+                Debug.Log("UI_PSEUDOLOC_OK " + _pseudolocPanelsClean + "/" + _pseudolocPanelsScanned +
+                          " panels labels=" + _pseudolocLabelsScanned +
+                          " transformed=" + _pseudolocLabelsCyrillic +
+                          " allowlisted=" + _pseudolocSuppressed +
+                          " allowlistEntries=" + _pseudolocAllowlist.Count +
+                          " -- no un-allowlisted Latin word survived pseudolocalization on any captured " +
+                          "panel. <clean>/<scanned> counts PANEL BUILDS, not distinct panels. This is the " +
+                          "point at which the cost-bounded Opus visual pass (WO-1861 Part C) is worth " +
+                          "spending: the code oracle cannot see text baked into a sprite or art asset.");
+                return;
+            }
+
+            int shown = Mathf.Min(_pseudolocFindings.Count, GeoMaxPrintedLines);
+            for (int i = 0; i < shown; i++)
+                Debug.LogError("[pseudoloc-oracle] " + _pseudolocFindings[i].Message);
+            if (_pseudolocFindings.Count > shown)
+                Debug.LogError("[pseudoloc-oracle] ... and " + (_pseudolocFindings.Count - shown) +
+                               " more (the per-panel tally lines above are NOT capped; the full set is " +
+                               "in " + PseudolocReportPath + ")");
+
+            Debug.LogError("UI_PSEUDOLOC_FAIL x" + _pseudolocFindings.Count + " over " +
+                           _pseudolocPanelsScanned + " panels (" + _pseudolocPanelsClean + " clean, labels=" +
+                           _pseudolocLabelsScanned + ", transformed=" + _pseudolocLabelsCyrillic +
+                           ", allowlisted=" + _pseudolocSuppressed + ") -- report=" + PseudolocReportPath +
+                           ". Each line names the screen, the hierarchy path and the surviving word. Wire " +
+                           "it to a locale key (WO-1857) or allowlist it WITH A REASON; never both.");
+        }
+
+        /// <summary>The machine-readable half of the verdict -- what a Haiku fix lane reads
+        /// instead of grepping a UTF-16 Unity log.</summary>
+        private static void WritePseudolocReport()
+        {
+            try
+            {
+                Directory.CreateDirectory(OutDir);
+                var sb = new System.Text.StringBuilder();
+                sb.Append("{\n  \"schemaVersion\": 1,\n  \"workOrder\": \"WO-1861\",\n");
+                sb.Append("  \"utc\": ").Append(JsonConvert.ToString(
+                    DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"))).Append(",\n");
+                sb.Append("  \"allowlistPath\": ").Append(JsonConvert.ToString(
+                    DeNelle.Editor.Regression.PseudolocLeakOracle.AllowlistPath)).Append(",\n");
+                sb.Append("  \"allowlistEntries\": ")
+                  .Append(_pseudolocAllowlist != null ? _pseudolocAllowlist.Count : 0).Append(",\n");
+                sb.Append("  \"allowlistError\": ").Append(JsonConvert.ToString(
+                    _pseudolocAllowlist != null ? _pseudolocAllowlist.Error : "not loaded")).Append(",\n");
+                sb.Append("  \"panelsScanned\": ").Append(_pseudolocPanelsScanned).Append(",\n");
+                sb.Append("  \"panelsClean\": ").Append(_pseudolocPanelsClean).Append(",\n");
+                sb.Append("  \"labelsScanned\": ").Append(_pseudolocLabelsScanned).Append(",\n");
+                sb.Append("  \"labelsTransformed\": ").Append(_pseudolocLabelsCyrillic).Append(",\n");
+                sb.Append("  \"allowlisted\": ").Append(_pseudolocSuppressed).Append(",\n");
+                sb.Append("  \"findingCount\": ").Append(_pseudolocFindings.Count).Append(",\n");
+                sb.Append("  \"findings\": [\n");
+                for (int i = 0; i < _pseudolocFindings.Count; i++)
+                {
+                    var f = _pseudolocFindings[i];
+                    sb.Append("    { \"screen\": ").Append(JsonConvert.ToString(f.Screen))
+                      .Append(", \"path\": ").Append(JsonConvert.ToString(f.Path))
+                      .Append(", \"component\": ").Append(JsonConvert.ToString(f.Component))
+                      .Append(", \"offending\": ").Append(JsonConvert.ToString(f.Offending))
+                      .Append(", \"fullText\": ").Append(JsonConvert.ToString(f.FullText))
+                      .Append(" }").Append(i + 1 < _pseudolocFindings.Count ? ",\n" : "\n");
+                }
+                sb.Append("  ]\n}\n");
+                File.WriteAllText(PseudolocReportPath, sb.ToString());
+                Debug.Log("[pseudoloc-oracle] report -> " + Path.GetFullPath(PseudolocReportPath) +
+                          " (" + _pseudolocFindings.Count + " finding(s))");
+            }
+            catch (Exception e)
+            {
+                // Never let the report writer throw away a verdict the log already carries.
+                Debug.LogError("[pseudoloc-oracle] report write failed: " + e.Message +
+                               " -- the log lines above remain the record.");
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        //  THE ENTRY POINT the overnight loop calls.
+        //
+        //  ⛔ IT DRIVES THE EXISTING SWEEPS AS SUB-CALLS AND REFACTORS NEITHER.
+        //  RunCaptureHeadless and RunRegisteredSecondaryCaptureHeadless are called
+        //  verbatim, so the pseudoloc pass covers exactly the screens the normal sweep
+        //  covers -- WO-1860's full catalog -- and cannot drift from it. Extracting
+        //  their bodies into a shared core would have been the same coverage with a
+        //  large diff through the middle of an 11k-line file other lanes are editing
+        //  tonight, for no behavioural gain.
+        //
+        //  ⚠ THE LAYOUT MARKERS FROM THOSE SUB-CALLS ARE NOT THE VERDICT ON A
+        //  PSEUDOLOC RUN, AND MUST NOT BE QUOTED AS ONE. Cyrillic sets different
+        //  metrics than English, so UI_GLYPH_* and UI_CAPTURE_* will legitimately move
+        //  -- a caption that fits "MANAGE" can truncate "ЩДИДБЭ". Judge a pseudoloc run
+        //  by UI_PSEUDOLOC_* ONLY, and take layout verdicts from a NORMAL capture run.
+        //
+        //  Pseudoloc is forced on for this process rather than read from PlayerPrefs on
+        //  purpose: a stale ff.pseudoloc=1 in the editor registry would pseudolocalize
+        //  the owner's own play-mode UI and every later capture all night, with nothing
+        //  saying why. The try/finally is the whole reason the mode is safe to run here.
+        // ---------------------------------------------------------------------
+        /// <summary>
+        /// WO-1861: the full capture catalog, pseudolocalized, judged by the leak oracle.
+        /// Invoke: <c>powershell -File .\run-unity-method.ps1 -Method
+        /// DeNelle.Editor.UICaptureLaunch.RunPseudolocCaptureHeadless -LogName pseudoloc.log</c>
+        /// </summary>
+        public static void RunPseudolocCaptureHeadless()
+        {
+            Directory.CreateDirectory(OutDir);
+            ResetPseudolocOracle();
+            try
+            {
+                DeNelle.Core.UI.PseudolocTextProvider.ForceOn();
+                if (!DeNelle.Core.UI.PseudolocTextProvider.Active)
+                {
+                    Debug.LogError("UI_PSEUDOLOC_FAIL install=refused -- ForceOn() left Active false, so " +
+                                   "nothing would be transformed. Not running the sweep; a green-looking " +
+                                   "English catalog is worse than no catalog.");
+                    return;
+                }
+
+                RunCaptureHeadless();
+                RunRegisteredSecondaryCaptureHeadless();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[pseudoloc-oracle] pseudoloc sweep threw: " + e);
+            }
+            finally
+            {
+                // FIRST and unconditional -- a leaked transform would pseudolocalize every panel
+                // built later in this editor session, including the owner's own play mode. Same
+                // contract CaptureSurfaceScope.Dispose keeps for the surface override.
+                ReportPseudolocOracle();
+                DeNelle.Core.UI.PseudolocTextProvider.ForceOff();
+            }
+        }
+        //  ===== WO-1861 PSEUDOLOC LEAK ORACLE - END =====
 
         // =====================================================================
         //  ===== WO-1648 LUMINANCE ORACLE - BEGIN =====

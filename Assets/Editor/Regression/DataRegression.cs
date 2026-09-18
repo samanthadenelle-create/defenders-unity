@@ -1498,6 +1498,22 @@ namespace DeNelle.Editor
             // script or AndroidBuild.cs ever names it.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "device-scenario-kit suite", () => { if (!DeNelle.Editor.Regression.DeviceScenarioKitRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[device-scenario-kit] " + r); });
 
+            // --- PSEUDOLOC HARNESS (WO-1861, 2026-09-17): the localization leak detector.
+            // Two halves in one suite. The SHIP QUARANTINE half is source-lints in the same
+            // shape as its device-scenario-kit neighbour above: PseudolocTextProvider.cs
+            // compiles only under `#if UNITY_EDITOR || QA_SCENARIO_BUILD`, LocalText's
+            // post-resolve hook sits inside that same guard and never transforms a call-site
+            // englishFallback (that fallback IS the leak signal), and neither AndroidBuild.cs,
+            // a ship script, nor a FeatureFlags property names any of it.
+            // The other half is the part a source-lint cannot reach: it BUILDS a synthetic
+            // canvas carrying a planted English leak, an allowlisted brand token, two
+            // pseudolocalized labels and a digits-only label, and asserts the EXACT finding and
+            // suppression counts -- so the oracle is PROVEN RED before anyone trusts it green
+            // (UICaptureLaunch.cs records at RULES 2/3/4 why a rule nobody has seen fail is not
+            // evidence). It also re-measures the transform's 52 target glyphs against the live
+            // ru.json, so the "no tofu" claim cannot rot into a comment.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "pseudoloc-harness suite", () => { if (!DeNelle.Editor.Regression.PseudolocHarnessRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[pseudoloc-harness] " + r); });
+
             // WO-1380: Echo Guides and the 24 memory lines. The Echo does not fight;
             // it REMEMBERS. Six Echoes x four raid targets = the exact 24 lines the owner
             // ruled ALL 24 ship or the feature does not. Narrative only; no Guide grants

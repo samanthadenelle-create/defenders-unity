@@ -205,6 +205,15 @@ namespace DeNelle.DevTools
             if (req.HasTroops) ApplyTroops(svc, req.Troops);
             foreach (var kv in req.Ff) ApplyFlag(kv.Key, kv.Value);
             foreach (var kv in req.Tun) ApplyTunable(kv.Key, kv.Value);
+
+            // WO-1861 ordering fix, and it is a REAL trap, not a precaution:
+            // LocalizationBootstrap.Install runs at AfterAssembliesLoaded and this method runs
+            // at AfterSceneLoad, so on the FIRST launch that passes dotr.ff.pseudoloc=1 the
+            // pref did not exist when the bootstrap asked -- pseudoloc would only appear on the
+            // NEXT launch, and a tester would report "the flag does nothing". Re-asking here is
+            // idempotent and costs one PlayerPrefs read when the flag is absent. No change to
+            // ApplyFlag: it already wrote "ff.pseudoloc" like any other ff.* key.
+            DeNelle.Core.UI.PseudolocTextProvider.InstallIfEnabled();
         }
 
         // ---------------------------------------------------------------

@@ -68,6 +68,43 @@ namespace DeNelle.Core.UI
 
         public static event Action Changed;
 
+        // ---------------------------------------------------------------------
+        //  WO-1861 — THE PSEUDOLOC POST-RESOLVE HOOK. Dev-only, and quarantined by
+        //  the same define pair as PseudolocTextProvider itself, so a shipping build
+        //  compiles this class with no hook field and no call site: the ship path is
+        //  behaviourally identical to what it was before this ticket.
+        //  PseudolocHarnessRegression [pseudoloc-harness] check 2 FAILS if the name
+        //  ever appears outside the guard.
+        //
+        //  WHY THE HOOK EXISTS AT ALL, given the decorator provider: in EDIT MODE
+        //  there is no provider. LocalizationBootstrap.Install is
+        //  [RuntimeInitializeOnLoadMethod(AfterAssembliesLoaded)] and never runs, and
+        //  LocaleSmokeCapture puts the provider back to null in its finally — so the
+        //  headless UI-capture sweep (the thing the leak detector runs against) reads
+        //  every string from the Data/Canonical JSON fallback BELOW. A decorator
+        //  wrapping a null provider would transform nothing and the whole 267-frame
+        //  catalog would come out in plain English. This hook is the one seam that
+        //  covers the provider path and the JSON fallback path together.
+        //
+        //  ⛔ IT IS APPLIED TO THE THREE *TABLE-RESOLVED* RETURNS ONLY.
+        //  A CALL-SITE `englishFallback` IS NEVER TRANSFORMED, and that is the whole
+        //  point rather than an oversight: reaching one means the key is NOT in the
+        //  table, i.e. it is EXACTLY the leak WO-1857 exists to find. Transform it and
+        //  the leak paints itself Cyrillic and disappears from the report. The
+        //  `[[missing:key]]` marker is left alone for the same reason.
+        // ---------------------------------------------------------------------
+#if UNITY_EDITOR || QA_SCENARIO_BUILD
+        internal static Func<string, string> PseudolocHook;
+
+        private static string Pseudo(string value)
+        {
+            var hook = PseudolocHook;
+            return hook == null ? value : hook(value);
+        }
+#else
+        private static string Pseudo(string value) => value;
+#endif
+
         public static string LanguageCode =>
             !string.IsNullOrEmpty(_provider?.CurrentLocaleCode)
                 ? _provider.CurrentLocaleCode
@@ -140,19 +177,25 @@ namespace DeNelle.Core.UI
             value = null;
             if (string.IsNullOrEmpty(key)) return false;
             if (_provider != null && _provider.TryResolve(key, args, out value) &&
-                !string.IsNullOrEmpty(value)) return true;
+                !string.IsNullOrEmpty(value))
+            {
+                // Already transformed when the decorator is in the chain; Pseudo is
+                // idempotent (its output holds no [A-Za-z]) so a second pass is a no-op.
+                value = Pseudo(value);
+                return true;
+            }
 
             string code = LanguageCode;
             if (!string.Equals(code, "en", StringComparison.OrdinalIgnoreCase) &&
                 TryGetFromJson(code, key, out string translated))
             {
-                value = FormatFallback(translated, args, code);
+                value = Pseudo(FormatFallback(translated, args, code));
                 return true;
             }
 
             if (TryGetFromJson("en", key, out string english))
             {
-                value = FormatFallback(english, args, "en");
+                value = Pseudo(FormatFallback(english, args, "en"));
                 return true;
             }
 
