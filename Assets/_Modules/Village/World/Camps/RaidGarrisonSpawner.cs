@@ -91,6 +91,12 @@ namespace DeNelle.Village.World.Camps
         private int _aliveCount;
         private bool _activated;
 
+        // -- ATMOSPHERE (WO-1868) ----------------------------------------------
+        // Ground fog + storm clouds are POOLED VFXManager loops (same facade as every
+        // other looping effect in this project — CLAUDE.md anti-duplication), so the
+        // handles must be tracked and explicitly stopped: see OnDestroy.
+        private readonly List<VFXHandle> _atmosphereFx = new List<VFXHandle>();
+
         // -- SPIRE ALARM (WO-1830) ---------------------------------------------
         // The brains this spawner built, kept alongside _garrison so the alarm fan-out never needs
         // a FindObjectsByType scan (the brain is already in hand at SpawnBoss/SpawnGuard).
@@ -133,6 +139,12 @@ namespace DeNelle.Village.World.Camps
 
             for (int i = 0; i < _garrison.Count; i++)
                 if (_garrison[i] != null) _garrison[i].Died -= HandleGarrisonDied;
+
+            // WO-1868 — explicit teardown alongside the destroyed-host sweep (VFXManager.cs), so
+            // the raid's ground-fog/storm-cloud loops never sit on the pool waiting for the sweep.
+            for (int i = 0; i < _atmosphereFx.Count; i++)
+                _atmosphereFx[i]?.Stop(true);
+            _atmosphereFx.Clear();
         }
 
         // =====================================================================
@@ -273,6 +285,11 @@ namespace DeNelle.Village.World.Camps
                 gameObject.scene, turretRange, turretDamage, turretFireRate);
             if (armed > 0)
                 Debug.Log($"[RaidGarrisonSpawner] '{configId}' armed {armed} watchtower turret(s) (EnemyOwned).");
+
+            // WO-1868 (owner: "add a fog to the ground?" / "maybe storming clouds overhead") —
+            // raid-arena-scoped atmosphere only; see SpawnAtmosphereFx for why this reuses the
+            // existing pooled VFXManager loops instead of a new fog/skybox system.
+            SpawnAtmosphereFx(def.baseRadius);
 
             if (_aliveCount == 0)
             {
@@ -648,6 +665,105 @@ namespace DeNelle.Village.World.Camps
             if (NavMesh.SamplePosition(want, out NavMeshHit hit, 8f, NavMesh.AllAreas))
                 return hit.position;
             return want;
+        }
+
+        // =====================================================================
+        // ATMOSPHERE (WO-1868) — owner: "can we have the towers in raids shoot more than
+        // yellow pellets? something with vfx? and add a fog to the ground?" / "maybe
+        // storming clouds overhead". Presentation only — no damage/range/fire-rate/
+        // targeting/economy change, raid-arena-scoped only (never the peaceful hub).
+        //
+        // REUSE, NOT A NEW SYSTEM (CLAUDE.md anti-duplication): this project already has
+        // TWO atmosphere layers and both are reused verbatim, not reinvented —
+        //   1. DISTANCE HAZE + per-camp fog colour/skybox mood is RaidBaseDresser's bake-
+        //      time RenderSettings.fog (ConfigureAtmosphere), tuned per camp kit and ruled
+        //      by the owner (WO-1637: "the fog COLOUR is deliberately unchanged: it is this
+        //      camp's identity"). NOT touched here.
+        //   2. LOW-LYING GROUND MIST is the SAME pooled Hovl catalog key
+        //      ("PP_GroundFog") + the SAME VFXManager.PlayKey call shape already proven
+        //      live on the dungeon world portals (DungeonWorldPortalSpawner.AttachGateVfx)
+        //      -- a soft, wide, low ground mist, not a full-screen haze.
+        //   3. STORM CLOUDS reuse "PP_LightnigStormCloud", an already-imported, already
+        //      normalized (VFXManager.Hovl.cs NormalizeVendorContainerRenderers) Hovl
+        //      ParticlePack prefab that has NO prior caller anywhere in the tree -- an
+        //      unused, ready-made asset, not a new skybox/cloud shader.
+        // Both are ACTUAL WORLD GEOMETRY (particle systems), not a skybox/RenderSettings
+        // write, so they render correctly regardless of this scene's camera clear-flags
+        // and can never leak into the hub's RenderSettings the way a skybox/fog write on
+        // an additively-loaded scene could.
+        //
+        // COLORBLIND-SAFE, FIRST PASS (owner delegates the exact look — never asked to
+        // pick a hue): both tints are pale, near-neutral, low-saturation greys so the
+        // read is LUMINANCE + slow drift/motion, exactly the convention the portal mist
+        // already uses (DungeonWorldPortalSpawner.GateTint). Redirectable on request.
+        //
+        // BUDGET: PP_GroundFog's catalog row is PoolSize 6 and VFXManager's global loop
+        // ceiling is shared with every other looping effect in the raid (auras, casts),
+        // so this stays deliberately small -- 4 ground patches + 2 overhead clouds, well
+        // under the pool and the ceiling, so a real fight's own loops are never starved.
+        // =====================================================================
+
+        /// <summary>Low, near-neutral ground-mist tint — luminance-led, colorblind-safe.</summary>
+        private static readonly Color GroundFogTint = new Color(0.74f, 0.77f, 0.82f, 0.32f);
+        private const string GroundFogKey = "PP_GroundFog";
+        private const int GroundFogPatchCount = 4;
+
+        /// <summary>Slate-grey storm-cloud tint — dark enough to read as weather, still
+        /// near-neutral (no hue the owner would have to distinguish).</summary>
+        private static readonly Color StormCloudTint = new Color(0.55f, 0.57f, 0.63f, 0.9f);
+        private const string StormCloudKey = "PP_LightnigStormCloud";   // catalog key, vendor's own spelling
+        private const int StormCloudCount = 2;
+        private const float StormCloudHeight = 24f;
+
+        private void SpawnAtmosphereFx(float baseRadius)
+        {
+            var atmosphereRoot = new GameObject("[RaidAtmosphereFx]").transform;
+            atmosphereRoot.SetParent(transform, false);   // torn down with this raid scene
+
+            // -- Ground fog: a ring of low mist patches inside the wall band, NavMesh-
+            // snapped so a sloped/uneven camp floor never floats or sinks a patch (same
+            // snap SpawnGuard uses for guard footing).
+            float fogRing   = Mathf.Max(6f, baseRadius * 0.55f);
+            float fogScale  = Mathf.Clamp(baseRadius / 12f, 3f, 6f);
+            int fogSpawned  = 0;
+            for (int i = 0; i < GroundFogPatchCount; i++)
+            {
+                float a = i * Mathf.PI * 2f / GroundFogPatchCount;
+                Vector3 want = transform.position + new Vector3(Mathf.Cos(a) * fogRing, 0f, Mathf.Sin(a) * fogRing);
+                Vector3 pos = SnapToNav(want) + Vector3.up * 0.05f;   // clear the floor, no z-fight
+                var handle = VFXManager.PlayKey(GroundFogKey, pos, Quaternion.identity, atmosphereRoot, GroundFogTint, fogScale);
+                if (handle != null) { _atmosphereFx.Add(handle); fogSpawned++; }
+            }
+
+            // -- Storm clouds: a small number of overhead loops so the sky reads stormy
+            // without being a full-scene weather system (WeatherManager is DORMANT BY
+            // OWNER DECISION for the Realm Map zones, WO-992 — deliberately not used here).
+            float cloudRing = Mathf.Max(8f, baseRadius * 0.4f);
+            float cloudScale = Mathf.Clamp(baseRadius / 6f, 8f, 16f);
+            int cloudSpawned = 0;
+            for (int i = 0; i < StormCloudCount; i++)
+            {
+                float a = (i + 0.5f) * Mathf.PI * 2f / StormCloudCount;
+                Vector3 pos = transform.position +
+                    new Vector3(Mathf.Cos(a) * cloudRing, StormCloudHeight, Mathf.Sin(a) * cloudRing);
+                var handle = VFXManager.PlayKey(StormCloudKey, pos, Quaternion.identity, atmosphereRoot, StormCloudTint, cloudScale);
+                if (handle != null) { _atmosphereFx.Add(handle); cloudSpawned++; }
+            }
+
+            // R §12: a zero count on either layer means PlayKey no-op'd (catalog not ready /
+            // pack not imported / loop cap already hit) -- self-report so a silently-missing
+            // fog/cloud layer is provable from a log instead of looking like "it's just not
+            // there yet".
+            FlowTrace.Step("Garrison",
+                $"'{configId}' atmosphere fx: ground fog {fogSpawned}/{GroundFogPatchCount} " +
+                $"(key='{GroundFogKey}', ring={fogRing:F1}m, scale={fogScale:F1}), storm clouds " +
+                $"{cloudSpawned}/{StormCloudCount} (key='{StormCloudKey}', height={StormCloudHeight:F0}m, " +
+                $"scale={cloudScale:F1}) -- distance haze/skybox mood stays owned by RaidBaseDresser.");
+            if (fogSpawned == 0 && cloudSpawned == 0)
+                FlowTrace.Warn("Garrison",
+                    $"'{configId}' atmosphere fx: BOTH layers spawned 0 -- VFXManager/HovlVfxCatalog " +
+                    "not ready, key unauthored, or the loop cap was already hit. Raid plays with no " +
+                    "new ground fog / storm clouds this session.");
         }
 
         // =====================================================================

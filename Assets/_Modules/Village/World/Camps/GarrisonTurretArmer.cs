@@ -18,6 +18,7 @@
 
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using DeNelle.Core.Diagnostics;   // FlowTrace — WO-1868 style-resolution trace
 
 namespace DeNelle.Village.World.Camps
 {
@@ -65,9 +66,27 @@ namespace DeNelle.Village.World.Camps
                     dt.FireRate   = fireRate;
                     dt.CanHitAir  = true;   // elevated turret; hero/companions are ground anyway
                     dt.BoltColor  = new Color(0.95f, 0.3f, 0.2f);   // hostile red bolt
+                    // WO-1868 (owner: "can we have the towers in raids shoot more than yellow
+                    // pellets?"): an EnemyOwned garrison turret never had a catalog row, so
+                    // DefenseTower.ProjectileStyle stayed null/"" -> BoltStyle.Pellet -> the
+                    // legacy 0.4m emissive sphere (BuildPelletVisual) — no shape, no motion cue
+                    // beyond travel, only a colour (which reads as a plain "yellow"/orange dot to
+                    // a colorblind player). "bolt" swaps the primitive to the shaft+tip arrow
+                    // silhouette (BuildBoltVisual, already used by every player Archer/Ballista
+                    // tower) that visibly re-orients along its flight line, plus the matching
+                    // per-tier Hovl arrow key in ProjectileKeyFor (Tier defaults to 1 with no
+                    // PlacedStructure, exactly this turret's shape — see
+                    // TowerProjectileTierTests.NoPlacedStructure_DefaultsToTier1Key). Distinct in
+                    // SHAPE + MOTION, not just colour; damage/range/fire-rate/targeting untouched.
+                    dt.ProjectileStyle = "bolt";
                     armed++;
                 }
             }
+
+            if (armed > 0)
+                FlowTrace.Step("Garrison",
+                    $"ArmWatchtowers: armed {armed} EnemyOwned turret(s) in scene '{scene.name}' " +
+                    "with projectileStyle='bolt' (WO-1868 — was the unset default 'pellet').");
 
             return armed;
         }
