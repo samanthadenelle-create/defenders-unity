@@ -1357,8 +1357,14 @@ namespace DeNelle.Village.Talents
         public IReadOnlyList<LoadoutSlotVM> QuickSlots => _quickSlots;
 
         /// <summary>Read-only quick-swap hint naming Loadout as the one assignment owner.</summary>
-        public string QuickSwapStatus => "Assigned skills - change them in " +
-                                         HudStrings.Get(HudStrings.KeyHeroLoadout) + ".";
+        // WO-1857: ONE authored sentence with a POSITIONAL hole - {0} is the loadout screen's
+        // canon name (HudStrings.KeyHeroLoadout). The retired shape concatenated the destination
+        // name into an English frame, so a French device read an English sentence with one French
+        // word inside it (owner device capture). The word itself was also mistranslated as
+        // "equipment"; that correction lives in the heroLoadout row, not here.
+        public string QuickSwapStatus => LocalText.Format(
+            "village.talents.skill_tree.quick_swap_hint",
+            HudStrings.Get(HudStrings.KeyHeroLoadout));
 
         /// <summary>WO-1522 - THE CLASS'S LOCKED BASIC, NAMED. Canon (CLAUDE.md sec.7, WO-1105 R5):
         /// slot Q is the class's LOCKED basic; only W/E/R are loadout-swappable. The rail showed

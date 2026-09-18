@@ -147,7 +147,10 @@ namespace DeNelle.Editor.Regression
                 failures.Add(Tag + " A: the Hero deck has NO Route(...) to PanelId.CosmeticShop - the Cosmetic Shop is unreachable by a player (dead end 4)");
                 return;
             }
-            if (wardrobeLine.IndexOf("Route(\"Wardrobe\"", StringComparison.Ordinal) != 0)
+            // WO-1857 re-point: the literal "Wardrobe" title moved behind
+            // hud.hero_deck.wardrobe_title (en value confirmed still "Wardrobe" at source), so the
+            // route now opens with a LocalText.Get call rather than the bare literal.
+            if (wardrobeLine.IndexOf("Route(LocalText.Get(\"hud.hero_deck.wardrobe_title\")", StringComparison.Ordinal) != 0)
                 failures.Add(Tag + " A: the Cosmetic Shop route is not titled \"Wardrobe\": '" + wardrobeLine + "'");
             int quotes = 0;
             for (int i = 0; i < wardrobeLine.Length; i++) if (wardrobeLine[i] == '"') quotes++;

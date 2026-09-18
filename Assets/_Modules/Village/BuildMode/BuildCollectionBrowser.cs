@@ -151,15 +151,48 @@ namespace DeNelle.Village
         // can never push into a previous render's list.
         private List<SubtitleFitProbe> _subtitleProbes;
 
+        // =====================================================================
+        //  (!) WO-1857 - THE SCREEN'S OWN CHROME IS KEYED. THE CATALOG'S WORDS ARE NOT.
+        // =====================================================================
+        // THE MEASURED DEFECT (owner, 2026-09-18, live device frame in the FRENCH locale): the
+        // BUILD COLLECTIONS browser rendered entirely in English - title, subtitle, the footer
+        // link, the Manage Placed card - while the dock beside it was correctly French.
+        //
+        // !! WHAT IS *NOT* FIXED HERE, AND WHY, SO THE NEXT SEAT DOES NOT HUNT FOR IT:
+        //   - the five CATEGORY CARD TITLES ("Gathering", "Towers", "Storage", "Walls & Gates")
+        //     are `c.Title` off CardCollectionDefinition - build-categories JSON, not C#. They are
+        //     canonical-CATALOG content and BuildCollectionPlayerRegression even greps the JSON for
+        //     two of them by value. A separate scope.
+        //   - each card's caption ("{N} you can build now") is StructureCardVM.AffordabilityWords,
+        //     another file, pinned by BuildAffordabilityWordsRegression.
+        //   - the CLOSE face is the kit's panel chrome, not authored on this screen at all.
+        // All three are recorded in the WO-1857 sidecar rather than reached across a file boundary.
+        internal const string TitleKey = "village.build_mode.build_collections.title";
+        internal const string SubtitleKey = "village.build_mode.build_collections.subtitle";
+        internal const string ManageDefensesLinkKey = "village.build_mode.build_collections.manage_defenses_link";
+        internal const string ManagePlacedTitleKey = "village.build_mode.build_collections.manage_placed_title";
+        internal const string ManagePlacedCaptionKey = "village.build_mode.build_collections.manage_placed_caption";
+
+        /// <summary>
+        /// ⛔ NOT PLAYER COPY, AND MUST NOT BE KEYED. This string is the PanelManager registration
+        /// id, the canvas GameObject name and the [Flow:Navigation] trace token, all three
+        /// (ObsidianNavigationWorkspace.BuildShell / Open / Close). Three regressions read it out of
+        /// device LOGS by value - ManageBuildDoorRegression's header, PlacedStructureDoorRegression
+        /// :49-50,265,275. Localizing it would rename a protocol value and break the arbiter, the
+        /// logs and those suites at once. The construction-time title it seeds is overwritten on the
+        /// first render by <see cref="TitleFor"/>, which IS the drawn heading and IS keyed.
+        /// </summary>
         protected override string WorkspaceName => "Build Collections";
 
         protected override string TitleFor(BuildCollectionPage page) =>
-            page == null || page.IsRoot ? "Build Collections" : page.Collection.Title;
+            page == null || page.IsRoot
+                ? new LocalizedText(TitleKey).Resolve()
+                : page.Collection.Title; // catalog-authored, see the block above
 
         protected override string SubtitleFor(BuildCollectionPage page) =>
             page == null || page.IsRoot
                 ? (BuildFirstUseGuide.Current == BuildFirstUseGuide.Step.Category
-                    ? BuildFirstUseGuide.Copy : "Choose what the realm needs next.")
+                    ? BuildFirstUseGuide.Copy : new LocalizedText(SubtitleKey).Resolve())
                 : string.Empty; // collection guidance owns a dedicated row below its cards
 
         protected override void RenderPage(BuildCollectionPage page, RectTransform content)
@@ -390,7 +423,13 @@ namespace DeNelle.Village
         {
             Guard.Try("BuildCollections", "manage-defenses footer link", () =>
             {
-                var link = ButtonBox(_panel, "Already built? Manage defenses >", () =>
+                // WO-1857 - keyed. ⚠ TWO SOURCE-TEXT ORACLES GREP THIS FILE FOR THE OLD LITERAL
+                // (BuildAffordabilityWordsRegression :125 and BuildCollectionPlayerRegression :154,
+                // both proving the Manage > Defense door never left this screen). Their needles move
+                // to ManageDefensesLinkKey; the replacement is proposed in the WO-1857 sidecar and
+                // applied by the lead, not from this lane. The ">" stays ASCII on purpose - it is a
+                // direction glyph, not a word, and it is in every locale's atlas.
+                var link = ButtonBox(_panel, new LocalizedText(ManageDefensesLinkKey).Resolve(), () =>
                 {
                     FlowTrace.Step("Build",
                         "footer link TAPPED -- leaving the build catalog for Manage > Defense " +
@@ -514,7 +553,7 @@ namespace DeNelle.Village
                 new Vector2(.08f, .35f), new Vector2(.92f, .355f), ElarionUi.Gold, false);
             manageDivider.GetComponent<Image>().raycastTarget = false;
 
-            var manageTitle = Label(manageCard.transform, "Manage Placed", 30,
+            var manageTitle = Label(manageCard.transform, new LocalizedText(ManagePlacedTitleKey).Resolve(), 30,
                 TextAlignmentOptions.Center, new Vector2(.07f, .22f), new Vector2(.93f, .34f));
             manageTitle.color = ElarionUi.Gold;
             manageTitle.fontStyle = FontStyles.Bold;
@@ -535,8 +574,14 @@ namespace DeNelle.Village
             // The replacement is written in the SEVEN CATEGORY CAPTIONS' VOICE — lowercase, no
             // terminal period, ~22 characters — the shape StructureCardVM.AffordabilityWords
             // authors ("nothing affordable yet", :418), so the eight captions read as one row.
+            // WO-1857 - keyed. ⚠ THE OWNER'S 2026-09-10 RULING ABOVE IS A LENGTH BUDGET, AND IT
+            // BINDS EVERY LOCALE: ~22 characters is what ManageCaptionBandPx was authored to seat
+            // (45 characters needed 95.9 / 71.8 / 71.8 ref px against a 68.5 / 56.7 / 55.2 ceiling).
+            // Each translation was written to that budget; FitBlock TRUNCATES rather than
+            // ellipsising, so a long one loses whole words instead of lying. A locale added later
+            // must be measured by the probe below, not assumed to fit.
             var manageSubtitle = Label(manageCard.transform,
-                "manage what you built", 21, TextAlignmentOptions.Top,
+                new LocalizedText(ManagePlacedCaptionKey).Resolve(), 21, TextAlignmentOptions.Top,
                 new Vector2(.08f, CaptionTopFrac), new Vector2(.92f, CaptionTopFrac));
             manageSubtitle.color = ElarionUi.Parchment;
             manageSubtitle.raycastTarget = false;

@@ -2439,7 +2439,11 @@ namespace DeNelle.Village.Talents
                 () => { if (_vm != null) _vm.Close(); }, RpgUiCatalog.ButtonFrame);
             MedievalUiSkin.ApplyButton(back, primary: false);
             if (back != null && back.targetGraphic is Image backImage) backImage.type = Image.Type.Simple;
-            var equipment = ElarionUiKit.ButtonPack(chrome.root.transform, "EQUIPMENT",
+            // WO-1857: this tab opens PanelId.EquipmentPanel (OpenEquipmentFromSkills, below) -
+            // GEAR, not the skill loadout - so it resolves the SAME row as the Hero deck's
+            // Equipment card (hud.hero_deck.equipment_title). One destination, one name.
+            var equipment = ElarionUiKit.ButtonPack(chrome.root.transform,
+                LocalText.Get("hud.hero_deck.equipment_title").ToUpperInvariant(),
                 ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.78f, 0.84f), new Vector2(0.98f, 0.98f),
                 OpenEquipmentFromSkills, RpgUiCatalog.ButtonFrame);
@@ -2835,7 +2839,8 @@ namespace DeNelle.Village.Talents
             // The default sentence is the VM's (HeroSkillTreeVM.QuickSwapStatus); RenderQuickSwapBar
             // overwrites it on the first paint. ASCII only.
             hint = ElarionUiKit.Label(rail.transform,
-                "Assigned skills - change them in " + HudStrings.Get(HudStrings.KeyHeroLoadout) + ".", 1f, 1f,
+                LocalText.Format("village.talents.skill_tree.quick_swap_hint",
+                    HudStrings.Get(HudStrings.KeyHeroLoadout)), 1f, 1f,
                 ElarionUi.ParchmentDim, ElarionUi.FontMicro,
                 TMPro.TextAlignmentOptions.Center, 0.02f, 0.98f);
             hint.gameObject.name = "QuickSwapHint";

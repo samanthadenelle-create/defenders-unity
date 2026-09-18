@@ -122,7 +122,7 @@ namespace DeNelle.Editor.Regression
             // ── 4. No card is titled 'Upgrade Defenses'; the door is a footer link ───────
             if (browser.IndexOf("\"Upgrade Defenses\"", StringComparison.Ordinal) >= 0)
                 failures.Add("a category card is still titled 'Upgrade Defenses' (ruling section 2 #13: footer link, not card)");
-            if (browser.IndexOf("\"Already built? Manage defenses >\"", StringComparison.Ordinal) < 0 ||
+            if (browser.IndexOf("village.build_mode.build_collections.manage_defenses_link", StringComparison.Ordinal) < 0 ||
                 browser.IndexOf("PanelRouter.Open(PanelId.Manage, \"Defense\")", StringComparison.Ordinal) < 0)
                 failures.Add("the Manage > Defense door left the build screen entirely -- the footer link or its route is gone");
 

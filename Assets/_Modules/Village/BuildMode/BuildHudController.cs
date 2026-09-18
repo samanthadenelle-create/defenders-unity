@@ -466,7 +466,7 @@ namespace DeNelle.Village
             mount.anchoredPosition =
                 new Vector2(-(QuickTabColumnInsetPx + DoneWidthPx * 0.5f), seatY);
 
-            var done = ElarionUiKit.BuildObsidianButton(mount, "Done",
+            var done = ElarionUiKit.BuildObsidianButton(mount, new LocalizedText("common.done").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                 Vector2.zero, Vector2.one, () => _onExit?.Invoke());
             if (done == null)

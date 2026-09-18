@@ -1498,7 +1498,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 40931158179491898
-    m_Localized: "AUSR\xDCSTUNG"
+    m_Localized: KONFIGURATION
     m_Metadata:
       m_Items: []
   - m_Id: 40931158179491899
@@ -3804,6 +3804,250 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363761037
     m_Localized: "MEILENSTEIN-BONUS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761038
+    m_Localized: "ERNTEERGEBNIS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761039
+    m_Localized: "{0} wartend, sicher"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761040
+    m_Localized: "{0} wartend, sicher - {1} verloren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761041
+    m_Localized: "{0} verloren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761042
+    m_Localized: "\u00DCBERVOLL"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761043
+    m_Localized: "VOLL"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761044
+    m_Localized: "AUSGEBEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761045
+    m_Localized: "AUSBAUEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761046
+    m_Localized: "BAUEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761047
+    m_Localized: "oder"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761048
+    m_Localized: "und"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761049
+    m_Localized: "Gib {0} aus, um wieder unter das Limit deines {1} zu kommen - der Speicher ist {2} dar\u00FCber, also wird noch nichts eingelagert. Die {3} in Wartestellung bleiben bis dahin sicher."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761050
+    m_Localized: "Gib {0} aus, um wieder unter die Limits deiner {1} zu kommen - der Speicher ist {2} dar\u00FCber, also wird noch nichts eingelagert. Die {3} in Wartestellung bleiben bis dahin sicher."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761051
+    m_Localized: "Nichts ging verloren - jede wartende Einheit wird eingelagert, sobald Platz ist."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761052
+    m_Localized: "Der Speicher war voll, daher erreichten die als verloren markierten Mengen ihn nie - das Sammeln in der Ferne hat kein Lager zum Warten. Schaffe zuerst Platz."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761053
+    m_Localized: "Baukategorien"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761054
+    m_Localized: "W\u00E4hle, was das Reich als N\u00E4chstes braucht."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761055
+    m_Localized: "Schon gebaut? Verteidigung verwalten >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761056
+    m_Localized: "Platziertes verwalten"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761057
+    m_Localized: "verwalte dein Gebautes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761058
+    m_Localized: "Ausr\u00FCstung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761059
+    m_Localized: "Waffen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761060
+    m_Localized: "Nebenhand"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761061
+    m_Localized: "R\u00FCstung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761062
+    m_Localized: "Schmuckst\u00FCcke"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761063
+    m_Localized: "Tr\u00E4nke"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761064
+    m_Localized: "Haupthand"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761065
+    m_Localized: "Nebenhand"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761066
+    m_Localized: "R\u00FCstung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761067
+    m_Localized: "Amulett"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761068
+    m_Localized: "Ring"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761069
+    m_Localized: "leer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761070
+    m_Localized: "Verwalte deine Ausr\u00FCstung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761071
+    m_Localized: "Tippe auf einen Platz links, um Gegenst\u00E4nde f\u00FCr diese Position zu durchsuchen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761072
+    m_Localized: "OFFENE PL\u00C4TZE: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761073
+    m_Localized: "AUSGER\u00DCSTET"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761074
+    m_Localized: "GEGENSTANDSDETAILS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761075
+    m_Localized: "Dienste, Aufzeichnungen und Ratschl\u00E4ge des Reichs."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761076
+    m_Localized: "Deine Ausr\u00FCstung, dein Inventar, F\u00E4higkeiten, Konfiguration und Garderobe."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761077
+    m_Localized: "Deine Ausr\u00FCstung, dein Inventar, F\u00E4higkeiten und Konfiguration."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761078
+    m_Localized: "Deine Auftr\u00E4ge und die Lager, die dein Heer \u00FCberfallen kann."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761079
+    m_Localized: "Alles, was du bei dir tragst"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761080
+    m_Localized: "Ausr\u00FCstung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761081
+    m_Localized: "Was dein Held tr\u00E4gt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761082
+    m_Localized: "F\u00E4higkeiten lernen und verbessern"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761083
+    m_Localized: "F\u00FCr den Kampf ger\u00FCstete Fertigkeiten"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761084
+    m_Localized: "Garderobe"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761085
+    m_Localized: "Looks f\u00FCr deinen Helden, deinen Echo und deine Stadt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761086
+    m_Localized: "NEU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761087
+    m_Localized: "NEU - {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761088
+    m_Localized: "{0} aktiv . {1} abholbereit"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761089
+    m_Localized: "Heer {0} / {1} . {2} Lager offen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761090
+    m_Localized: "Heer {0} / {1} . {2} Lager offen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761091
+    m_Localized: "Heer {0} / {1} . kein Lager in Reichweite"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761092
+    m_Localized: "WARTELISTE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761093
+    m_Localized: "HEER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761094
+    m_Localized: "FORSCHUNG"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761095
+    m_Localized: "Baue und verbessere deine Stadt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761096
+    m_Localized: "Trainiere und verwalte deine Truppen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761097
+    m_Localized: "Schalte m\u00E4chtige Fortschritte frei"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761098
+    m_Localized: "Zugewiesene F\u00E4higkeiten - \u00E4ndern in {0}."
     m_Metadata:
       m_Items: []
 

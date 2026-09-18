@@ -26,10 +26,16 @@ namespace DeNelle.Editor.Regression
             // Defense's line survives because PurposeFor still answers for that tab elsewhere.
             // Everything else this suite defends - the lock feedback, the layered card art, the
             // rapid-tap guard, the shared shell - is untouched and still pinned below.
-            foreach (string copy in new[] { "Towers, walls & gates",
-                         "Construct and upgrade your town", "Build a Barracks to unlock",
-                         "Unlock powerful advancements", "Train and manage your troops" })
+            // WO-1857 re-point: the three hub purpose lines moved behind LocalText keys
+            // (village.manage_screen.purpose_build/_army/_research); the literal English sentences
+            // no longer appear in this source file at all, so checking for them by value would go
+            // falsely RED against a call that no longer exists. Defense's line is unmigrated and
+            // still a literal, so it stays checked by value.
+            foreach (string copy in new[] { "Towers, walls & gates", "Build a Barracks to unlock" })
                 if (!panel.Contains(copy)) failures.Add("missing approved copy: " + copy);
+            foreach (string key in new[] { "village.manage_screen.purpose_build",
+                         "village.manage_screen.purpose_army", "village.manage_screen.purpose_research" })
+                if (!panel.Contains(key)) failures.Add("missing approved copy key: " + key);
 
             // ⛔ "Choose a path" IS RETIRED, and this case now FORBIDS it rather than requiring it.
             // Mockup panel 1 carries the title MANAGE and nothing else above the cards; the three
@@ -48,8 +54,10 @@ namespace DeNelle.Editor.Regression
             if (panel.Contains("ManageTab.Defense, ManageTab.Buildings, ManageTab.Troops, ManageTab.Research"))
                 failures.Add("the hub is back to FOUR cards - Defense and Buildings are ONE destination " +
                              "since WO-2001 and a Defense card opens the Build tab");
-            // The player-facing words are the mockup's, not the internal tab labels.
-            if (!panel.Contains("case ManageTab.Troops: return \"ARMY\";") ||
+            // The player-facing words are the mockup's, not the internal tab labels. WO-1857
+            // re-point: ARMY/RESEARCH moved behind LocalText keys; BUILD reuses hud.nav.build
+            // (see HubTitleFor's own comment) so it deliberately carries no separate key here.
+            if (!panel.Contains("case ManageTab.Troops: return LocalText.Get(\"village.manage_screen.hub_title_army\");") ||
                 !panel.Contains("private static string HubTitleFor(ManageTab tab)"))
                 failures.Add("the hub cards no longer carry the mockup's own words (BUILD / ARMY / " +
                              "RESEARCH). TabLabels reads 'Buildings' and 'Troops', which the player " +

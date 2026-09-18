@@ -51,6 +51,16 @@
 // formatted with the invariant culture so a device locale cannot inject a
 // non-ASCII group separator.
 //
+// ⚠ CORRECTED 2026-09-18 (WO-1857): "ASCII ONLY" now describes the ENGLISH VALUE, not the
+// rendered string. The words are localization keys resolved through LocalText (see the key
+// block on HarvestResultVM), so a French or Russian player reads non-ASCII here BY DESIGN.
+// Every translation was checked, raw AND upper-cased, against the real atlas
+// (Assets/Resources/Localization/Fonts/ElarionLocaleFallback.asset - 201 scalars; it covers
+// lowercase e-grave/u-grave/o-circumflex but NOT their capitals, nor capital N-tilde, nor
+// capital EF). The INVARIANT-CULTURE figure rule is untouched and is now doubly load-bearing:
+// N() runs before the string is formatted, so the group separator can never come from a locale.
+// Do not "restore ASCII" to a translated value - that is de-localizing a fixed leak.
+//
 // =============================================================================
 //  (!) WO-1099 - AND ABOVE THE CAP, THE REASSURANCE IS ITSELF THE LIE.
 // =============================================================================
@@ -332,6 +342,46 @@ namespace DeNelle.Core.UI
         /// else, so this string is not free - it is the one that browses structures.</summary>
         public const string BuildingsTab = "Buildings";
 
+        // =====================================================================
+        //  (!) WO-1857 - EVERY WORD THIS SEAM EMITS IS A KEY, NOT A LITERAL.
+        // =====================================================================
+        // THE MEASURED DEFECT (owner, 2026-09-18, live device frame in the FRENCH locale): the
+        // whole HARVEST RESULT card read English - the row state badge, the waiting figure's law
+        // word, the door verb and the footer sentence - while the dock buttons and the wave counter
+        // beside it were correctly French. The Close face was already French, which is the positive
+        // control: the mechanism worked, these specific strings had simply never been keyed.
+        //
+        // !! EVERY PLACEHOLDER IS POSITIONAL ({0}, {1}...) AND MUST STAY SO. LocalText.FormatFallback
+        // (LocalText.cs, ContainsNamedArgument) routes a pattern carrying a NAMED hole into a
+        // single-argument reflection path; every call below passes bare pre-formatted scalars, so a
+        // named placeholder would silently render the pattern unsubstituted. This bug shipped twice
+        // on 2026-09-17 before the rule was written down.
+        //
+        // !! THE FIGURES STAY INVARIANT-GROUPED. The arguments are the output of N(), never raw ints,
+        // so a locale can never inject U+00A0 as a group separator (see the header block on N()) -
+        // the whole reason this file formats its own numbers instead of handing them to a formatter.
+        //
+        // !! AND THE "ASCII ONLY" RULE IN THIS FILE'S HEADER NOW DESCRIBES THE ENGLISH VALUE ONLY.
+        // Translations are allowed non-ASCII and are checked, per locale, against the real mobile
+        // atlas (Assets/Resources/Localization/Fonts/ElarionLocaleFallback.asset, 201 scalars) in
+        // BOTH their raw and their upper-cased form - uppercase E-grave, U-grave, O-circumflex,
+        // capital-N-tilde and capital-EF are NOT in that atlas even though their lowercase forms
+        // are. Do not "fix" a French value back to ASCII; it was atlas-verified.
+        internal const string KeyWaitingSafe = "village.harvest_result.waiting_safe";
+        internal const string KeyWaitingSafeAndLost = "village.harvest_result.waiting_safe_and_lost";
+        internal const string KeyLost = "village.harvest_result.lost";
+        internal const string KeyStateOver = "village.harvest_result.state_over";
+        internal const string KeyStateFull = "village.harvest_result.state_full";
+        internal const string KeyActionSpend = "village.harvest_result.action_spend";
+        internal const string KeyActionUpgrade = "village.harvest_result.action_upgrade";
+        internal const string KeyActionBuild = "village.harvest_result.action_build";
+        internal const string KeyListOr = "village.harvest_result.list_or";
+        internal const string KeyListAnd = "village.harvest_result.list_and";
+        internal const string KeyFooterOverCap = "village.harvest_result.footer_over_cap";
+        internal const string KeyFooterOverCapPlural = "village.harvest_result.footer_over_cap_plural";
+        internal const string KeyFooterReassure = "village.harvest_result.footer_reassure";
+        internal const string KeyFooterBurned = "village.harvest_result.footer_burned";
+
         /// <summary>The rows, in the order they arrived. Never null.</summary>
         public readonly List<HarvestResultRow> Rows = new List<HarvestResultRow>();
 
@@ -503,17 +553,25 @@ namespace DeNelle.Core.UI
                 // Away node/settlement/pet yield has no pending pool (OfflineHarvestService.Grant's
                 // WO-1445 block), so those units are gone, and a euphemism there would be the same
                 // dishonesty pointed the other way. Pinned by [burn-never-lies].
+                // WO-1857 - THREE AUTHORED SENTENCES, NEVER A CONCATENATION OF FRAGMENTS. The old
+                // code glued " waiting, safe - " and " lost" around the figures, which no locale
+                // can re-order; each branch is now one complete pattern with positional holes, so a
+                // translator can put the number wherever their grammar puts it.
                 if (s.Waiting > 0 && s.Burned > 0)
-                    row.WaitingText = N(s.Waiting) + " waiting, safe - " + N(s.Burned) + " lost";
+                    row.WaitingText = LocalText.Format(KeyWaitingSafeAndLost, N(s.Waiting), N(s.Burned));
                 else if (s.Waiting > 0)
-                    row.WaitingText = N(s.Waiting) + " waiting, safe";
+                    row.WaitingText = LocalText.Format(KeyWaitingSafe, N(s.Waiting));
                 else if (s.Burned > 0)
-                    row.WaitingText = N(s.Burned) + " lost";
+                    row.WaitingText = LocalText.Format(KeyLost, N(s.Burned));
 
                 // THE STATE, AS A WORD. OverCap is a DIFFERENT situation from a full bank
                 // (BankOverflowStatus.OverCap spends a paragraph on why) and keeps its own word.
-                if (s.OverCap) row.StateWord = "OVER";
-                else if (max > 0 && after >= max) row.StateWord = "FULL";
+                // WO-1857 - the state WORD is keyed, and it stays a WORD in every locale: the
+                // colourblind rule in this file's header is about text-versus-hue, not about which
+                // language the text is in. StateWord's EMPTINESS is what the door branch below tests,
+                // never its content, so keying it cannot change which rows carry a chip.
+                if (s.OverCap) row.StateWord = new LocalizedText(KeyStateOver).Resolve();
+                else if (max > 0 && after >= max) row.StateWord = new LocalizedText(KeyStateFull).Resolve();
                 row.StorageText = max > 0 ? N(after) + " / " + N(max) : N(after);
                 if (!string.IsNullOrEmpty(row.StateWord))
                     row.StorageText += "  " + row.StateWord;
@@ -545,9 +603,19 @@ namespace DeNelle.Core.UI
                     //   growth signal Wood (Lumberyard): built=1 levels=[6] rowMaxLevel=6 maxedOut=True
                     //   door Wood: ... -> verb=UPGRADE text='UPGRADE LUMBERYARD'
                     // i.e. the ceiling was KNOWN and the verb ignored it. That is the owner's defect.
-                    row.ActionVerb = s.OverCap ? "SPEND"
-                        : (growth.CanUpgrade ? "UPGRADE"
-                        : (growth.CanBuild ? "BUILD" : "SPEND"));
+                    // WO-1857 - THE VERB IS KEYED; THE TARGET IS NOT, AND CANNOT BE FROM HERE.
+                    // ActionTarget is the player's word for the RESOURCE or the CONTAINER, and
+                    // neither is authored in this file: the resource word comes from
+                    // TownBankCapacity.DisplayName and the container word from the structures
+                    // catalog through TownBankCapacity.ContainerNameFor (which reads
+                    // CatalogEntry.displayName). So the chip face is still a verb + an English
+                    // noun in a non-English locale. That is a HALF-FIX, said out loud rather than
+                    // hidden: closing it belongs to the Economy/catalog-content scope, and is
+                    // recorded in the WO-1857 sidecar as such.
+                    string spendVerb = new LocalizedText(KeyActionSpend).Resolve();
+                    row.ActionVerb = s.OverCap ? spendVerb
+                        : (growth.CanUpgrade ? new LocalizedText(KeyActionUpgrade).Resolve()
+                        : (growth.CanBuild ? new LocalizedText(KeyActionBuild).Resolve() : spendVerb));
                     bool namesResource = s.OverCap || growth.MaxedOut;
                     row.ActionTarget = (namesResource ? name : container).ToUpperInvariant();
                     row.ActionText = row.ActionVerb + " " + row.ActionTarget;
@@ -609,19 +677,35 @@ namespace DeNelle.Core.UI
                     // longer claims they will bank on their own.
                     vm.FooterReassures = false;
                     vm.FooterOverCap = true;
-                    string spendList = JoinWords(overCapNames, "or");
-                    string capList = JoinWords(overCapContainers, "and");
-                    string capWord = overCapContainers.Count > 1 ? " caps" : " cap";
-                    vm.FooterLine =
-                        "Spend " + (spendList.Length > 0 ? spendList : "resources") +
-                        " to get back under your " + (capList.Length > 0 ? capList + capWord : "storage cap") +
-                        " - storage is " + N(vm.TotalOverCap) + " over, so nothing banks yet. " +
-                        N(vm.TotalPending) + " waiting stays safe until it does.";
+                    // =========================================================
+                    //  (!) WO-1857 - ONE AUTHORED SENTENCE PER PLURAL SHAPE, NOT SIX GLUED PIECES.
+                    // =========================================================
+                    // This branch used to assemble the sentence from SIX English fragments plus a
+                    // hand-rolled " cap"/" caps" plural. No locale can be translated that way: the
+                    // plural of a container word is not an appended letter in German or Russian, and
+                    // the clause order is not French's. It is now TWO complete patterns - singular
+                    // and plural - selected by the same count that used to pick the suffix, each
+                    // with four POSITIONAL holes.
+                    //
+                    // !! THE TWO STRING FALLBACKS BELOW ARE UNREACHABLE TODAY AND ARE DELIBERATELY
+                    // LEFT UNKEYED. Both lists are built from `name` and `container` above, which
+                    // default to non-empty words when the producer left them blank, so neither list
+                    // can be empty while anyOverCap is true. Minting and translating two keys x 10
+                    // locales for a branch no player can reach would be duplicated state with no
+                    // player-felt payoff; if a producer ever can blank them, key them THEN.
+                    string spendList = JoinWords(overCapNames, new LocalizedText(KeyListOr).Resolve());
+                    string capList = JoinWords(overCapContainers, new LocalizedText(KeyListAnd).Resolve());
+                    vm.FooterLine = LocalText.Format(
+                        overCapContainers.Count > 1 ? KeyFooterOverCapPlural : KeyFooterOverCap,
+                        spendList.Length > 0 ? spendList : "resources",
+                        capList.Length > 0 ? capList : "storage",
+                        N(vm.TotalOverCap),
+                        N(vm.TotalPending));
                 }
                 else if (!anyBurned)
                 {
                     vm.FooterReassures = true;
-                    vm.FooterLine = "Nothing was lost - every waiting unit banks as soon as there is room.";
+                    vm.FooterLine = new LocalizedText(KeyFooterReassure).Resolve();
                 }
                 else
                 {
@@ -631,8 +715,7 @@ namespace DeNelle.Core.UI
                     // OfflineHarvestService.Grant writes the wallet directly - so this sentence
                     // names the reason, not just the outcome.
                     vm.FooterReassures = false;
-                    vm.FooterLine = "Storage was full, so the amounts marked lost never reached it - " +
-                                    "away gathering has no store to wait in. Make room first.";
+                    vm.FooterLine = new LocalizedText(KeyFooterBurned).Resolve();
                 }
             }
 

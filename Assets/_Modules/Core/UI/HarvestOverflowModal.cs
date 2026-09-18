@@ -25,6 +25,30 @@ namespace DeNelle.Core.UI
         public const string CollectorSource = "Collectors";
 
         /// <summary>
+        /// WO-1857 - the modal's OWN header, as a localization key.
+        ///
+        /// <para>THE MEASURED DEFECT (owner, 2026-09-18, live device frame in the FRENCH locale):
+        /// the whole HARVEST RESULT card rendered in English while the dock buttons and the wave
+        /// counter beside it were correctly French. The header was an inline English literal at the
+        /// <c>BuildObsidianModal</c> call below.</para>
+        ///
+        /// <para>!! THIS CONST EXISTS BECAUSE A SOURCE-TEXT ORACLE READS THAT CALL.
+        /// <c>HarvestResultShapeRegression</c> [one-close-owner] (:500-503) greps THIS FILE for the
+        /// modal-builder call plus its old inline English header, to prove the screen still uses the
+        /// ONE shared obsidian modal owner (and therefore has exactly one Close face). Converting the
+        /// header necessarily moves that needle; the replacement is proposed in the WO-1857 sidecar
+        /// and applied by the lead, never edited from this lane.
+        /// ⛔ AND THE OLD NEEDLE IS DELIBERATELY NOT SPELLED ANYWHERE IN THIS FILE, COMMENTS
+        /// INCLUDED: that oracle is a plain <c>IndexOf</c> with no comment model, so quoting the
+        /// string here - even to explain it - would keep the suite GREEN against a call that no
+        /// longer exists, which is worse than a red. Same trap BuildCollectionPlayerRegression's own
+        /// note records (:548-551). The English
+        /// value lives in the string table, not here - reaching a call-site fallback is exactly the
+        /// leak the sweep exists to find (LocalText.cs, the pseudoloc-hook block).</para>
+        /// </summary>
+        public const string HeaderKey = "village.harvest_result.header";
+
+        /// <summary>
         /// WO-1434 - the <see cref="BankOverflowStatus.Source"/> of a row produced by the ECHO
         /// SILO dump. It is the WARN SCOPE tag (BankOverflowToastPresenter stamps it), NOT a
         /// ClampGrant sourceTag: every silo row reaches the bank through
@@ -111,7 +135,11 @@ namespace DeNelle.Core.UI
             // so no watchdog tick can observe _modal null (the probe is polled, not evaluated here).
             _hold = WorldHold.AcquirePlayerOwned("harvest-overflow-result",
                 () => this != null && _modal != null && _modal.canvas != null);
-            _modal = ElarionUiKit.BuildObsidianModal("HarvestOverflowUI", "HARVEST RESULT",
+            // WO-1857 - the header is a KEY now (see HeaderKey). "HarvestOverflowUI" stays a bare
+            // literal on purpose: it is the CANVAS NAME, a developer-surface identifier the device
+            // logs and the fit-guard paths are read by (FitGuardRelaxAllowlistRegression's fixture
+            // lines carry it), never player copy. Same for the PanelManager registration id below.
+            _modal = ElarionUiKit.BuildObsidianModal("HarvestOverflowUI", new LocalizedText(HeaderKey).Resolve(),
                 new Vector2(0.16f, 0.08f), new Vector2(0.84f, 0.92f), Close,
                 sortingOrder: 31020);
             MedievalUiSkin.ApplyShell(_modal.chrome, compact: false);

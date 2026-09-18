@@ -1,4 +1,5 @@
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.UI;   // WO-1857 - LocalText for the NEW badge sentence.
 using UnityEngine;
 
 namespace DeNelle.Core.HudModel
@@ -69,7 +70,14 @@ namespace DeNelle.Core.HudModel
         public string PurposeWithBadge(string purpose)
         {
             if (!WardrobeIsNew) return purpose;
-            return string.IsNullOrEmpty(purpose) ? NewWord : NewWord + " - " + purpose;
+            // WO-1857: the badged line is ONE authored row with a POSITIONAL hole ({0} = the
+            // purpose), never `NewWord + " - " + purpose` - a locale that reads the badge after
+            // the phrase, or joins it with something other than " - ", cannot be expressed by a
+            // concatenation. NewWord stays the ASCII identity and the no-purpose default, and
+            // CosmeticShopReachabilityRegression Case H still probes for it at index 0.
+            return string.IsNullOrEmpty(purpose)
+                ? LocalText.Get("hud.hero_deck.new_badge")
+                : LocalText.Format("hud.hero_deck.purpose_new_badge", purpose);
         }
 
         /// <summary>Called when the player opens the wardrobe: the badge has done its job.</summary>

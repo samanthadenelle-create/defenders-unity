@@ -3571,6 +3571,250 @@ MonoBehaviour:
     m_Key: monthlyLedgerMilestone
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363761038
+    m_Key: village.harvest_result.header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761039
+    m_Key: village.harvest_result.waiting_safe
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761040
+    m_Key: village.harvest_result.waiting_safe_and_lost
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761041
+    m_Key: village.harvest_result.lost
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761042
+    m_Key: village.harvest_result.state_over
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761043
+    m_Key: village.harvest_result.state_full
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761044
+    m_Key: village.harvest_result.action_spend
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761045
+    m_Key: village.harvest_result.action_upgrade
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761046
+    m_Key: village.harvest_result.action_build
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761047
+    m_Key: village.harvest_result.list_or
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761048
+    m_Key: village.harvest_result.list_and
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761049
+    m_Key: village.harvest_result.footer_over_cap
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761050
+    m_Key: village.harvest_result.footer_over_cap_plural
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761051
+    m_Key: village.harvest_result.footer_reassure
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761052
+    m_Key: village.harvest_result.footer_burned
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761053
+    m_Key: village.build_mode.build_collections.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761054
+    m_Key: village.build_mode.build_collections.subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761055
+    m_Key: village.build_mode.build_collections.manage_defenses_link
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761056
+    m_Key: village.build_mode.build_collections.manage_placed_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761057
+    m_Key: village.build_mode.build_collections.manage_placed_caption
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761058
+    m_Key: village.inventory.tab_gear
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761059
+    m_Key: village.inventory.tab_weapons
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761060
+    m_Key: village.inventory.tab_off_hand
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761061
+    m_Key: village.inventory.tab_armor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761062
+    m_Key: village.inventory.tab_trinkets
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761063
+    m_Key: village.inventory.tab_potions
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761064
+    m_Key: village.inventory.slot_main_hand
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761065
+    m_Key: village.inventory.slot_off_hand
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761066
+    m_Key: village.inventory.slot_armor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761067
+    m_Key: village.inventory.slot_amulet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761068
+    m_Key: village.inventory.slot_ring
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761069
+    m_Key: village.inventory.slot_empty
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761070
+    m_Key: village.inventory.manage_gear_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761071
+    m_Key: village.inventory.manage_gear_guide
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761072
+    m_Key: village.inventory.open_slots_count
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761073
+    m_Key: village.hero.equipment.equipped_section
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761074
+    m_Key: village.hero.equipment.item_details_header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761075
+    m_Key: hud.realm_deck.subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761076
+    m_Key: hud.hero_deck.subtitle_full
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761077
+    m_Key: hud.hero_deck.subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761078
+    m_Key: hud.journey_deck.subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761079
+    m_Key: hud.hero_deck.bag_purpose
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761080
+    m_Key: hud.hero_deck.equipment_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761081
+    m_Key: hud.hero_deck.equipment_purpose
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761082
+    m_Key: hud.hero_deck.skills_purpose
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761083
+    m_Key: hud.hero_deck.loadout_purpose
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761084
+    m_Key: hud.hero_deck.wardrobe_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761085
+    m_Key: hud.hero_deck.wardrobe_purpose
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761086
+    m_Key: hud.hero_deck.new_badge
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761087
+    m_Key: hud.hero_deck.purpose_new_badge
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761088
+    m_Key: hud.journey_deck.quests_caption
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761089
+    m_Key: hud.journey_deck.raids_caption_camps
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761090
+    m_Key: hud.journey_deck.raids_caption_camp_one
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761091
+    m_Key: hud.journey_deck.raids_caption_no_camp
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761092
+    m_Key: village.manage_screen.queue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761093
+    m_Key: village.manage_screen.hub_title_army
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761094
+    m_Key: village.manage_screen.hub_title_research
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761095
+    m_Key: village.manage_screen.purpose_build
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761096
+    m_Key: village.manage_screen.purpose_army
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761097
+    m_Key: village.manage_screen.purpose_research
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761098
+    m_Key: village.talents.skill_tree.quick_swap_hint
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

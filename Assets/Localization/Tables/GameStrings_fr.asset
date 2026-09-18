@@ -1581,7 +1581,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 40931158179491898
-    m_Localized: "\xC9QUIPEMENT"
+    m_Localized: CONFIGURATION
     m_Metadata:
       m_Items: []
   - m_Id: 40931158179491899
@@ -3814,6 +3814,250 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363761037
     m_Localized: "BONUS D\u2019\u00C9TAPE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761038
+    m_Localized: "R\u00C9SULTAT DE R\u00C9COLTE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761039
+    m_Localized: "{0} en attente, en s\u00E9curit\u00E9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761040
+    m_Localized: "{0} en attente, en s\u00E9curit\u00E9 - {1} perdu"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761041
+    m_Localized: "{0} perdu"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761042
+    m_Localized: "D\u00C9PASS\u00C9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761043
+    m_Localized: "PLEIN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761044
+    m_Localized: "D\u00C9PENSER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761045
+    m_Localized: "AM\u00C9LIORER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761046
+    m_Localized: "B\u00C2TIR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761047
+    m_Localized: "ou"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761048
+    m_Localized: "et"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761049
+    m_Localized: "D\u00E9pensez {0} pour repasser sous la limite de votre {1} - le stock d\u00E9passe de {2}, donc rien n'est engrang\u00E9 pour l'instant. Les {3} en attente restent en s\u00E9curit\u00E9 jusque-l\u00E0."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761050
+    m_Localized: "D\u00E9pensez {0} pour repasser sous les limites de vos {1} - le stock d\u00E9passe de {2}, donc rien n'est engrang\u00E9 pour l'instant. Les {3} en attente restent en s\u00E9curit\u00E9 jusque-l\u00E0."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761051
+    m_Localized: "Rien n'est perdu - chaque unit\u00E9 en attente sera engrang\u00E9e quand il y aura de la place."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761052
+    m_Localized: "Le stock \u00E9tait plein, donc les quantit\u00E9s marqu\u00E9es perdues ne l'ont jamais atteint - la r\u00E9colte au loin n'a pas de r\u00E9serve pour attendre. Faites d'abord de la place."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761053
+    m_Localized: "Collections \u00E0 B\u00E2tir"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761054
+    m_Localized: "Choisissez ce dont le royaume a besoin ensuite."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761055
+    m_Localized: "D\u00E9j\u00E0 b\u00E2ti ? G\u00E9rer les d\u00E9fenses >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761056
+    m_Localized: "G\u00E9rer le B\u00E2ti"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761057
+    m_Localized: "g\u00E9rez vos b\u00E2tisses"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761058
+    m_Localized: "\u00C9quipement"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761059
+    m_Localized: "Armes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761060
+    m_Localized: "Main Gauche"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761061
+    m_Localized: "Armure"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761062
+    m_Localized: "Babioles"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761063
+    m_Localized: "Potions"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761064
+    m_Localized: "Main"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761065
+    m_Localized: "Main Gauche"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761066
+    m_Localized: "Armure"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761067
+    m_Localized: "Amulette"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761068
+    m_Localized: "Bague"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761069
+    m_Localized: "vide"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761070
+    m_Localized: "G\u00E9rez votre \u00E9quipement"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761071
+    m_Localized: "Touchez un emplacement \u00E0 gauche pour parcourir les articles de cette position."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761072
+    m_Localized: "EMPLACEMENTS LIBRES : {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761073
+    m_Localized: "\u00C9QUIP\u00C9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761074
+    m_Localized: "D\u00C9TAILS DE L'OBJET"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761075
+    m_Localized: "Services, archives et conseils du royaume."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761076
+    m_Localized: "Votre \u00E9quipement, votre sac, vos comp\u00E9tences, votre configuration et votre garde-robe."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761077
+    m_Localized: "Votre \u00E9quipement, votre sac, vos comp\u00E9tences et votre configuration."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761078
+    m_Localized: "Vos qu\u00EAtes et les camps que votre arm\u00E9e peut attaquer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761079
+    m_Localized: "Tout ce que vous transportez"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761080
+    m_Localized: "\u00C9quipement"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761081
+    m_Localized: "Ce que porte votre h\u00E9ros"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761082
+    m_Localized: "Apprenez et am\u00E9liorez vos comp\u00E9tences"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761083
+    m_Localized: "Aptitudes pr\u00EAtes pour la bataille"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761084
+    m_Localized: "Garde-robe"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761085
+    m_Localized: "Apparences pour votre h\u00E9ros, votre \u00C9cho et votre village"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761086
+    m_Localized: "NOUVEAU"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761087
+    m_Localized: "NOUVEAU - {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761088
+    m_Localized: "{0} en cours . {1} \u00E0 r\u00E9clamer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761089
+    m_Localized: "Arm\u00E9e {0} / {1} . {2} camps ouverts"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761090
+    m_Localized: "Arm\u00E9e {0} / {1} . {2} camp ouvert"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761091
+    m_Localized: "Arm\u00E9e {0} / {1} . aucun camp \u00E0 port\u00E9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761092
+    m_Localized: "FILE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761093
+    m_Localized: "ARM\u00C9E"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761094
+    m_Localized: "RECHERCHE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761095
+    m_Localized: "Construisez et am\u00E9liorez votre village"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761096
+    m_Localized: "Entra\u00EEnez et g\u00E9rez vos troupes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761097
+    m_Localized: "D\u00E9bloquez de puissants progr\u00E8s"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761098
+    m_Localized: "Comp\u00E9tences assign\u00E9es - modifiez-les dans {0}."
     m_Metadata:
       m_Items: []
 

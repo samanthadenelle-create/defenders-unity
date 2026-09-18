@@ -730,7 +730,7 @@ namespace DeNelle.Village.Hero
         private void RenderApprovedEquipped()
         {
             if (_approvedEquippedHost == null || _vm == null) return;
-            ApprovedHeading(_approvedEquippedHost, "EQUIPPED");
+            ApprovedHeading(_approvedEquippedHost, new LocalizedText("village.hero.equipment.equipped_section").Resolve());
             string[] order = { EquipVM.SlotMainhand, EquipVM.SlotOffHand, EquipVM.SlotChest,
                                EquipVM.SlotAmulet, EquipVM.SlotRing };
             for (int i = 0; i < order.Length; i++)
@@ -740,7 +740,7 @@ namespace DeNelle.Village.Hero
                 float bottom = top - 0.145f;
                 var slot = FindSlot(key);
                 bool filled = slot.HasValue && slot.Value.Content.HasValue;
-                string value = filled ? slot.Value.Content.Value.Name : "Empty";
+                string value = filled ? slot.Value.Content.Value.Name : new LocalizedText("village.inventory.slot_empty").Resolve();
                 var row = ApprovedPanel(_approvedEquippedHost, "Slot_" + key,
                     new Vector2(0.035f, bottom), new Vector2(0.965f, top));
                 var button = row.gameObject.AddComponent<Button>();
@@ -779,11 +779,11 @@ namespace DeNelle.Village.Hero
         {
             switch (key)
             {
-                case EquipVM.SlotMainhand: return "MAIN HAND";
-                case EquipVM.SlotOffHand: return "OFF HAND";
-                case EquipVM.SlotChest: return "ARMOR";
-                case EquipVM.SlotAmulet: return "AMULET";
-                case EquipVM.SlotRing: return "RING";
+                case EquipVM.SlotMainhand: return new LocalizedText("village.inventory.slot_main_hand").Resolve().ToUpperInvariant();
+                case EquipVM.SlotOffHand: return new LocalizedText("village.inventory.slot_off_hand").Resolve().ToUpperInvariant();
+                case EquipVM.SlotChest: return new LocalizedText("village.inventory.slot_armor").Resolve().ToUpperInvariant();
+                case EquipVM.SlotAmulet: return new LocalizedText("village.inventory.slot_amulet").Resolve().ToUpperInvariant();
+                case EquipVM.SlotRing: return new LocalizedText("village.inventory.slot_ring").Resolve().ToUpperInvariant();
                 default: return SlotCaption(key).ToUpperInvariant();
             }
         }
@@ -841,7 +841,7 @@ namespace DeNelle.Village.Hero
                 itemLabel.textWrappingMode = TMPro.TextWrappingModes.Normal;
                 ElarionUiKit.FitBlock(itemLabel, 15f, 21f);
                 ElarionUiKit.Label(card,
-                    item.Equipped ? "EQUIPPED" : isSelected ? "SELECTED" : "",
+                    item.Equipped ? new LocalizedText("common.equipped").Resolve() : isSelected ? "SELECTED" : "",
                     .02f, .12f, isSelected ? ElarionUi.Gilt : ElarionUi.ParchmentDim,
                     16, TMPro.TextAlignmentOptions.Center, .06f, .94f, bold: true);
             }
@@ -850,7 +850,7 @@ namespace DeNelle.Village.Hero
         private void RenderApprovedDetail()
         {
             if (_approvedDetailHost == null || _vm == null) return;
-            ApprovedHeading(_approvedDetailHost, "ITEM DETAILS");
+            ApprovedHeading(_approvedDetailHost, new LocalizedText("village.hero.equipment.item_details_header").Resolve());
             var selected = _vm.SelectedItem;
             if (!selected.HasValue)
             {
@@ -882,7 +882,7 @@ namespace DeNelle.Village.Hero
                 TMPro.TextAlignmentOptions.Center, 0.08f, 0.92f);
             if (item.Equipped)
             {
-                ElarionUiKit.Label(_approvedDetailHost, "EQUIPPED",
+                ElarionUiKit.Label(_approvedDetailHost, new LocalizedText("common.equipped").Resolve(),
                     0.34f, 0.43f, ElarionUi.Affordable, 23,
                     TMPro.TextAlignmentOptions.Center, 0.08f, 0.92f, bold: true);
             }

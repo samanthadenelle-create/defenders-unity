@@ -1490,7 +1490,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 40931158179491898
-    m_Localized: EQUIPAMENTO
+    m_Localized: "CONFIGURA\xC7\xC3O"
     m_Metadata:
       m_Items: []
   - m_Id: 40931158179491899
@@ -3793,6 +3793,250 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 44124330363761037
     m_Localized: "BONUS DE MARCO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761038
+    m_Localized: "RESULTADO DA COLHEITA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761039
+    m_Localized: "{0} aguardando, em seguran\u00E7a"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761040
+    m_Localized: "{0} aguardando, em seguran\u00E7a - {1} perdido"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761041
+    m_Localized: "{0} perdido"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761042
+    m_Localized: "EXCEDIDO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761043
+    m_Localized: "CHEIO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761044
+    m_Localized: "GASTAR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761045
+    m_Localized: "MELHORAR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761046
+    m_Localized: "CONSTRUIR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761047
+    m_Localized: "ou"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761048
+    m_Localized: "e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761049
+    m_Localized: "Gaste {0} para voltar abaixo do limite do seu {1} - o estoque est\u00E1 {2} acima, ent\u00E3o nada \u00E9 guardado ainda. Os {3} em espera seguem seguros at\u00E9 l\u00E1."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761050
+    m_Localized: "Gaste {0} para voltar abaixo dos limites dos seus {1} - o estoque est\u00E1 {2} acima, ent\u00E3o nada \u00E9 guardado ainda. Os {3} em espera seguem seguros at\u00E9 l\u00E1."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761051
+    m_Localized: "Nada foi perdido: cada unidade em espera ser\u00E1 guardada assim que houver espa\u00E7o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761052
+    m_Localized: "O estoque estava cheio, ent\u00E3o as quantias marcadas como perdidas nunca chegaram: a coleta a dist\u00E2ncia n\u00E3o tem dep\u00F3sito para aguardar. Abra espa\u00E7o primeiro."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761053
+    m_Localized: "Categorias de Constru\u00E7\u00E3o"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761054
+    m_Localized: "Escolha o que o reino precisa em seguida."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761055
+    m_Localized: "J\u00E1 constru\u00EDdo? Gerencie as defesas >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761056
+    m_Localized: "Gerenciar Colocado"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761057
+    m_Localized: "gerencie suas obras"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761058
+    m_Localized: "Equipamento"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761059
+    m_Localized: "Armas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761060
+    m_Localized: "M\u00E3o Esquerda"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761061
+    m_Localized: "Armadura"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761062
+    m_Localized: "Bugigangas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761063
+    m_Localized: "Po\u00E7\u00F5es"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761064
+    m_Localized: "M\u00E3o Principal"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761065
+    m_Localized: "M\u00E3o Esquerda"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761066
+    m_Localized: "Armadura"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761067
+    m_Localized: "Amuleto"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761068
+    m_Localized: "Anel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761069
+    m_Localized: "vazio"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761070
+    m_Localized: "Gerencie seu equipamento"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761071
+    m_Localized: "Toque em um espa\u00E7o \u00E0 esquerda para procurar itens para essa posi\u00E7\u00E3o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761072
+    m_Localized: "ESPA\u00C7OS ABERTOS: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761073
+    m_Localized: "EQUIPADO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761074
+    m_Localized: "DETALHES DO ITEM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761075
+    m_Localized: "Servi\u00E7os, registros e orienta\u00E7\u00E3o do reino."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761076
+    m_Localized: "Seu equipamento, invent\u00E1rio, habilidades, configura\u00E7\u00E3o e guarda-roupa."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761077
+    m_Localized: "Seu equipamento, invent\u00E1rio, habilidades e configura\u00E7\u00E3o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761078
+    m_Localized: "Suas miss\u00F5es e os acampamentos que seu ex\u00E9rcito pode atacar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761079
+    m_Localized: "Tudo o que voc\u00EA carrega"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761080
+    m_Localized: "Equipamento"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761081
+    m_Localized: "O que seu her\u00F3i est\u00E1 usando"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761082
+    m_Localized: "Aprenda e melhore habilidades"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761083
+    m_Localized: "Aptid\u00F5es preparadas para a batalha"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761084
+    m_Localized: "Guarda-roupa"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761085
+    m_Localized: "Apar\u00EAncias para seu her\u00F3i, seu Eco e sua vila"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761086
+    m_Localized: "NOVO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761087
+    m_Localized: "NOVO - {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761088
+    m_Localized: "{0} ativas . {1} prontas para resgatar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761089
+    m_Localized: "Ex\u00E9rcito {0} / {1} . {2} acampamentos abertos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761090
+    m_Localized: "Ex\u00E9rcito {0} / {1} . {2} acampamento aberto"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761091
+    m_Localized: "Ex\u00E9rcito {0} / {1} . nenhum acampamento ao alcance"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761092
+    m_Localized: "FILA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761093
+    m_Localized: "EX\u00C9RCITO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761094
+    m_Localized: "PESQUISA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761095
+    m_Localized: "Construa e melhore sua vila"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761096
+    m_Localized: "Treine e gerencie suas tropas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761097
+    m_Localized: "Desbloqueie avan\u00E7os poderosos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761098
+    m_Localized: "Habilidades atribu\u00EDdas: mude-as em {0}."
     m_Metadata:
       m_Items: []
 

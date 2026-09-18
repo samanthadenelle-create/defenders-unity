@@ -77,26 +77,46 @@ namespace DeNelle.HUD
         private void OpenHero() => Open(new PlayerDeckPage(PlayerDeckKind.Hero));
         private void OpenJourney() => Open(new PlayerDeckPage(PlayerDeckKind.Journey));
 
-        protected override string TitleFor(PlayerDeckPage page) => page.Kind.ToString();
+        // WO-1857: the deck HEADING resolves the SAME row as the dock tab that opens it -
+        // hud.nav.hero / hud.nav.journey, and hud.gearDock.realm for the Realm deck. One
+        // destination, ONE name, which is the COMMON_KEYS_REGISTRY `common.leaderboard`
+        // precedent (a feature's proper name is the same string as a panel title and as the
+        // nav face that opens it). The retired shape was `page.Kind.ToString()` - a C# enum
+        // identity rendered as player copy, so every locale read HERO / JOURNEY / REALM in
+        // English while the dock beside it was correctly translated (owner device capture,
+        // fr locale). The base chrome uppercases the result, so the stored rows stay in their
+        // authored display case.
+        protected override string TitleFor(PlayerDeckPage page)
+        {
+            switch (page.Kind)
+            {
+                case PlayerDeckKind.Hero: return LocalText.Get("hud.nav.hero");
+                case PlayerDeckKind.Journey: return LocalText.Get("hud.nav.journey");
+                default: return LocalText.Get("hud.gearDock.realm");
+            }
+        }
 
         protected override string SubtitleFor(PlayerDeckPage page)
         {
             switch (page.Kind)
             {
-                case PlayerDeckKind.Realm: return HasOwnedTown ? "" : "Realm services, records, and guidance.";
+                case PlayerDeckKind.Realm: return HasOwnedTown ? "" : LocalText.Get("hud.realm_deck.subtitle");
                 // WO-1523: the line names what the deck actually carries. While no cosmetic is
                 // unlocked the Wardrobe card is not built, and a purpose line that still promised a
                 // wardrobe would send the player hunting for a section that is not on the screen -
                 // the same "name N cards, show N cards" rule WO-1421 settled for Journey below.
                 case PlayerDeckKind.Hero:
+                    // WO-1857: both arms name the loadout with the SAME word the Loadout card
+                    // carries (heroLoadout). A prose line that said "equipement" while the card
+                    // said something else would re-open the very mistranslation this ticket fixed.
                     return HeroDeckWardrobeVM.FromCurrentState().WardrobeHasUnlocked
-                        ? "Your equipment, inventory, skills, loadout, and wardrobe."
-                        : "Your equipment, inventory, skills, and loadout.";
+                        ? LocalText.Get("hud.hero_deck.subtitle_full")
+                        : LocalText.Get("hud.hero_deck.subtitle");
                 // WO-1421 (owner 2026-09-06): the deck is two cards, so the line names two.
                 // Labelled explicitly for symmetry with the two arms above; `default:` is stacked
                 // on the same return so the enum stays exhaustively covered.
                 case PlayerDeckKind.Journey:
-                default: return "Your quests, and the camps your army can raid.";
+                default: return LocalText.Get("hud.journey_deck.subtitle");
             }
         }
 
@@ -349,7 +369,7 @@ namespace DeNelle.HUD
                     new Color(0f, 0f, 0f, .62f), false);
                 var plateImage = badgePlate.GetComponent<Image>();
                 if (plateImage != null) plateImage.raycastTarget = false;
-                // WO-1857: ⚠ RaidsDiscoverabilityRegression's J1 check greps THIS FILE's raw
+                // WO-1857: NOTE - RaidsDiscoverabilityRegression's J1 check greps THIS FILE's raw
                 // source for the literal "[ LOCKED ]" as its proof the worded badge survives.
                 // That needle must move to the key (sidecar-reported, not edited here).
                 var badge = ElarionUiKit.Label(badgePlate.transform,
@@ -907,18 +927,23 @@ namespace DeNelle.HUD
                     var heroCards = new List<Card>
                     {
                         Route(HudStrings.HeroFaceLabel(HudStrings.KeyHeroBag, "deck"),
-                            "Every item you carry", "inventory", PanelId.Inventory),
-                        Route("Equipment", "Gear worn by your hero", "armor", PanelId.EquipmentPanel),
+                            LocalText.Get("hud.hero_deck.bag_purpose"), "inventory", PanelId.Inventory),
+                        Route(LocalText.Get("hud.hero_deck.equipment_title"),
+                            LocalText.Get("hud.hero_deck.equipment_purpose"), "armor", PanelId.EquipmentPanel),
                         Route(HudStrings.HeroFaceLabel(HudStrings.KeyHeroSkills, "deck"),
-                            "Learn and improve skills", "skill", PanelId.HeroSkillTree),
+                            LocalText.Get("hud.hero_deck.skills_purpose"), "skill", PanelId.HeroSkillTree),
                         Route(HudStrings.HeroFaceLabel(HudStrings.KeyHeroLoadout, "deck"),
-                            "Abilities equipped for battle", "magic", PanelId.HeroLoadout)
+                            LocalText.Get("hud.hero_deck.loadout_purpose"), "magic", PanelId.HeroLoadout)
                     };
                     var wardrobeVm = HeroDeckWardrobeVM.FromCurrentState();
                     if (wardrobeVm.WardrobeHasUnlocked)
                     {
+                        // NOTE: CosmeticShopReachabilityRegression Case A reads this as ONE PHYSICAL LINE
+                        // (it scans for a line holding both `Route(` and `PanelId.CosmeticShop`, then
+                        // requires the line to START with the route call and to carry exactly 3
+                        // string literals). Keep it unwrapped and keep the literal count at three.
                         var wardrobe =
-                            Route("Wardrobe", "Looks for your hero, Echo, and town", "wardrobe", PanelId.CosmeticShop);
+                            Route(LocalText.Get("hud.hero_deck.wardrobe_title"), LocalText.Get("hud.hero_deck.wardrobe_purpose"), "wardrobe", PanelId.CosmeticShop);
                         wardrobe.Purpose = wardrobeVm.PurposeWithBadge(wardrobe.Purpose);
                         var openWardrobe = wardrobe.Open;
                         wardrobe.Open = () => { HeroDeckWardrobeVM.MarkSeen(); openWardrobe(); };

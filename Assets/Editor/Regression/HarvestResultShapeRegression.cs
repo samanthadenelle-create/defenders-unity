@@ -498,7 +498,7 @@ namespace DeNelle.Editor.Regression
                     failures.Add("[one-close-owner] could not read " + modalPath);
                 else
                 {
-                    if (modalSource.IndexOf("BuildObsidianModal(\"HarvestOverflowUI\", \"HARVEST RESULT\"",
+                    if (modalSource.IndexOf("BuildObsidianModal(\"HarvestOverflowUI\", new LocalizedText(HeaderKey).Resolve()",
                             StringComparison.Ordinal) < 0)
                         failures.Add("[one-close-owner] Harvest Result no longer uses the shared obsidian modal owner");
                     if (modalSource.IndexOf("ElarionUiKit.Button(content, \"Close\"", StringComparison.Ordinal) >= 0)

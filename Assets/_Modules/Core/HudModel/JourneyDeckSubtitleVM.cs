@@ -1,5 +1,6 @@
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Quests;
+using DeNelle.Core.UI;   // WO-1857 - LocalText.Format for the two state captions.
 
 namespace DeNelle.Core.HudModel
 {
@@ -18,7 +19,11 @@ namespace DeNelle.Core.HudModel
             armyCap = NonNegative(armyCap);
             openCamps = NonNegative(openCamps);
 
-            QuestsSubtitle = activeQuests + " active . " + readyToClaim + " ready to claim";
+            // WO-1857: ONE complete sentence per state with POSITIONAL holes, never a
+            // concatenation of English fragments around the numbers - a locale that orders
+            // "ready to claim" before its count cannot be expressed by `n + " ready..."`.
+            QuestsSubtitle = LocalText.Format("hud.journey_deck.quests_caption",
+                activeQuests, readyToClaim);
 
             // WO-1643 - THE SECOND CLAUSE IS ABOUT CAMPS. IT MUST NOT READ AS ARMY ADVICE.
             // This branch is `openCamps > 0` and takes NO army input at all, yet it lands
@@ -38,10 +43,17 @@ namespace DeNelle.Core.HudModel
             // cannot tell which. The army half of the line is the fraction, and WHICH numerator
             // that fraction should carry is a separate open ruling (WO-1643 sec.3) seeded at
             // BuildTimerService.PublishArmyStatus - never re-derived here.
-            RaidsSubtitle = "Army " + armyUsed + " / " + armyCap + " . " +
-                (openCamps > 0
-                    ? openCamps + (openCamps == 1 ? " camp open" : " camps open")
-                    : "no camp in reach");
+            //
+            // WO-1857: THREE WHOLE SENTENCES, not a fragment assembly. The singular/plural and
+            // no-camp arms each get their own complete row so a translator sees the finished
+            // line (and so a language whose plural rule is not English's can author it), and
+            // every hole is POSITIONAL - {0} army used, {1} army cap, {2} open camps.
+            RaidsSubtitle = openCamps > 0
+                ? LocalText.Format(openCamps == 1
+                        ? "hud.journey_deck.raids_caption_camp_one"
+                        : "hud.journey_deck.raids_caption_camps",
+                    armyUsed, armyCap, openCamps)
+                : LocalText.Format("hud.journey_deck.raids_caption_no_camp", armyUsed, armyCap);
         }
 
         public static JourneyDeckSubtitleVM FromCurrentState()

@@ -151,7 +151,7 @@ namespace DeNelle.Editor.Regression
             // moved from an 8th card to a footer text link. The route literal below is the same
             // one the card carried and must stay green.
             if (!browser.Contains("link.name = \"ManageDefensesFooterLink\"") ||
-                !browser.Contains("\"Already built? Manage defenses >\"") ||
+                !browser.Contains("village.build_mode.build_collections.manage_defenses_link") ||
                 !browser.Contains("PanelRouter.Open(PanelId.Manage, \"Defense\")"))
                 return Fail("the Manage > Defense door left the collection browser: no footer link, or it no longer opens the placed-defense upgrade destination", out reason);
             if (browser.Contains("\"Upgrade Defenses\""))

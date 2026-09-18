@@ -3759,6 +3759,250 @@ MonoBehaviour:
     m_Localized: "MILESTONE BONUS"
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363761038
+    m_Localized: "HARVEST RESULT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761039
+    m_Localized: "{0} waiting, safe"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761040
+    m_Localized: "{0} waiting, safe - {1} lost"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761041
+    m_Localized: "{0} lost"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761042
+    m_Localized: "OVER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761043
+    m_Localized: "FULL"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761044
+    m_Localized: "SPEND"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761045
+    m_Localized: "UPGRADE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761046
+    m_Localized: "BUILD"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761047
+    m_Localized: "or"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761048
+    m_Localized: "and"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761049
+    m_Localized: "Spend {0} to get back under your {1} cap - storage is {2} over, so nothing banks yet. {3} waiting stays safe until it does."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761050
+    m_Localized: "Spend {0} to get back under your {1} caps - storage is {2} over, so nothing banks yet. {3} waiting stays safe until it does."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761051
+    m_Localized: "Nothing was lost - every waiting unit banks as soon as there is room."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761052
+    m_Localized: "Storage was full, so the amounts marked lost never reached it - away gathering has no store to wait in. Make room first."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761053
+    m_Localized: "Build Collections"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761054
+    m_Localized: "Choose what the realm needs next."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761055
+    m_Localized: "Already built? Manage defenses >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761056
+    m_Localized: "Manage Placed"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761057
+    m_Localized: "manage what you built"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761058
+    m_Localized: "Gear"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761059
+    m_Localized: "Weapons"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761060
+    m_Localized: "Off Hand"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761061
+    m_Localized: "Armor"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761062
+    m_Localized: "Trinkets"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761063
+    m_Localized: "Potions"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761064
+    m_Localized: "Main Hand"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761065
+    m_Localized: "Off Hand"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761066
+    m_Localized: "Armor"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761067
+    m_Localized: "Amulet"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761068
+    m_Localized: "Ring"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761069
+    m_Localized: "empty"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761070
+    m_Localized: "Manage your gear"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761071
+    m_Localized: "Tap a slot at left to browse items for that position."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761072
+    m_Localized: "OPEN SLOTS: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761073
+    m_Localized: "EQUIPPED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761074
+    m_Localized: "ITEM DETAILS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761075
+    m_Localized: "Realm services, records, and guidance."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761076
+    m_Localized: "Your equipment, inventory, skills, loadout, and wardrobe."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761077
+    m_Localized: "Your equipment, inventory, skills, and loadout."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761078
+    m_Localized: "Your quests, and the camps your army can raid."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761079
+    m_Localized: "Every item you carry"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761080
+    m_Localized: "Equipment"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761081
+    m_Localized: "Gear worn by your hero"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761082
+    m_Localized: "Learn and improve skills"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761083
+    m_Localized: "Abilities equipped for battle"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761084
+    m_Localized: "Wardrobe"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761085
+    m_Localized: "Looks for your hero, Echo, and town"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761086
+    m_Localized: "NEW"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761087
+    m_Localized: "NEW - {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761088
+    m_Localized: "{0} active . {1} ready to claim"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761089
+    m_Localized: "Army {0} / {1} . {2} camps open"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761090
+    m_Localized: "Army {0} / {1} . {2} camp open"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761091
+    m_Localized: "Army {0} / {1} . no camp in reach"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761092
+    m_Localized: "QUEUE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761093
+    m_Localized: "ARMY"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761094
+    m_Localized: "RESEARCH"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761095
+    m_Localized: "Construct and upgrade your town"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761096
+    m_Localized: "Train and manage your troops"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761097
+    m_Localized: "Unlock powerful advancements"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761098
+    m_Localized: "Assigned skills - change them in {0}."
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

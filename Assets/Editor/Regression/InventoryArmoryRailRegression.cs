@@ -75,6 +75,12 @@ namespace DeNelle.Editor.Regression
         // ── the artefacts ────────────────────────────────────────────────────
         private const string CanonRes  = "Assets/Resources/Data/Canonical/canon-strings.json";
         private const string CanonStr  = "Assets/StreamingAssets/Data/Canonical/canon-strings.json";
+        // WO-1857 migrated the tab/slot/gear-pane-title keys off canon-strings.json onto the
+        // locale-aware tables (InventoryStrings.Get tries LocalText.TryGet first, falling back to
+        // Canon only when the key is absent there) - so THIS check must resolve each key the same
+        // dual-source way the runtime does, or it fails a key that moved to its new, correct home.
+        private const string LocaleEnRes = "Assets/Resources/Data/Canonical/en.json";
+        private const string LocaleEnStr = "Assets/StreamingAssets/Data/Canonical/en.json";
         private const string BuilderSrc = "Assets/_Modules/Village/Hero/InventoryUIBuilder.cs";
         private const string GridSrc    = "Assets/_Modules/Village/Hero/InventoryGrid.cs";
         private const string PaneSrc    = "Assets/_Modules/Village/Hero/InventorySidebar.cs";
@@ -333,11 +339,42 @@ namespace DeNelle.Editor.Regression
         {
             var a = ReadCanon(CanonRes, failures);
             var b = ReadCanon(CanonStr, failures);
-            if (a == null || b == null) return;
+            var localeA = ReadCanon(LocaleEnRes, failures);
+            var localeB = ReadCanon(LocaleEnStr, failures);
+            if (a == null || b == null || localeA == null || localeB == null) return;
             _authored = a;
 
             foreach (string key in InventoryStrings.AllKeys)
             {
+                // Mirror InventoryStrings.Get's own resolution order: the locale-aware tables
+                // (en.json, both mirrors) first for a migrated key, canon-strings.json for the
+                // still-legacy remainder. A key must live in exactly one of the two homes, in
+                // BOTH of that home's mirrors - never split across the two systems.
+                bool inLocaleA = localeA.TryGetValue(key, out string lva);
+                bool inLocaleB = localeB.TryGetValue(key, out string lvb);
+                if (inLocaleA || inLocaleB)
+                {
+                    if (!inLocaleA || !inLocaleB)
+                    {
+                        failures.Add("[canon-parity] '" + key + "' is missing from " +
+                                     (!inLocaleA ? LocaleEnRes : LocaleEnStr) +
+                                     " - the Bag would paint the visible [[missing:" + key + "]] marker");
+                        continue;
+                    }
+                    if (!string.Equals(lva, lvb, StringComparison.Ordinal))
+                        failures.Add("[canon-parity] '" + key + "' DIFFERS between the locale copies: Resources '" +
+                                     lva + "' vs StreamingAssets '" + lvb + "'. The two must be byte-identical - " +
+                                     "the player gets whichever one their platform loads");
+                    foreach (char c in lva)
+                        if (c > 127)
+                        {
+                            failures.Add("[canon-parity] '" + key + "' carries the non-ASCII character U+" +
+                                         ((int)c).ToString("X4") + " - TMP renders it as tofu");
+                            break;
+                        }
+                    continue;
+                }
+
                 string va, vb;
                 bool inA = a.TryGetValue(key, out va);
                 bool inB = b.TryGetValue(key, out vb);

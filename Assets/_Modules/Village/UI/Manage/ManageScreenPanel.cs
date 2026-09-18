@@ -1332,7 +1332,10 @@ namespace DeNelle.Village.UI
             // body, and BUILD 5x2 near 236x220 (1.07:1) - both inside the mockup's proportions.
             // The scrim owns the margins either side, which is what a modal is for.
             var chrome = ElarionUiKit.BuildObsidianPanel(
-                _ui.transform, "MANAGE",
+                // WO-1857: the screen's heading resolves the SAME row as the bar face that opens
+                // it (hud.nav.manage) - one destination, ONE name, the COMMON_KEYS_REGISTRY
+                // `common.leaderboard` precedent. The row is authored in display case.
+                _ui.transform, LocalText.Get("hud.nav.manage"),
                 // FULL BLEED (owner ruling 2026-09-07 01:14). The 0.02 inset on every edge is the
                 // device safe area, not a margin: it keeps the obsidian frame's own border off a
                 // rounded corner and out of a notch. 0.96 x 0.96 clears the 0.95 floor the
@@ -1370,16 +1373,26 @@ namespace DeNelle.Village.UI
             {
                 _chromeClose.interactable = true;
                 var closeLabel = _chromeClose.GetComponentInChildren<TMP_Text>(true);
+                // ⛔ WO-1857 - THIS WAS A SECOND PRODUCER FOR ONE STRING, AND IT WON.
+                // ElarionUiKit.ObsidianCloseButton already builds this label from
+                // CommonText.Close ("common.close", translated in all ten locales), and the
+                // retired line here overwrote it with the raw literal "CLOSE" - so the hub's
+                // exit read English on a French device while every sibling panel's Close
+                // correctly read "Fermer" (owner device capture, fr locale). The WO-1597 intent
+                // was LUMINANCE and CASE, never the words: keep the all-caps face by
+                // uppercasing the RESOLVED row instead of retyping it. ToUpperInvariant is a
+                // no-op for the scripts that have no case (ar/ja/ko/zh-Hans).
+                string closeWord = CommonText.Close.Resolve().ToUpperInvariant();
                 if (closeLabel != null)
                 {
-                    closeLabel.text = "CLOSE";
+                    closeLabel.text = closeWord;
                     closeLabel.color = ElarionUi.Parchment;
                 }
                 ElarionUiKit.GoldPerimeter((RectTransform)_chromeClose.transform);
                 FlowTrace.Step("Manage", "MANAGE_HUB_CLOSE the shared CLOSE is live and legible - " +
-                    "interactable, label 'CLOSE' at Parchment with a gold perimeter, routed through " +
-                    "the same exitRoute delegate as the constant X (WO-1597; it was never disabled, " +
-                    "only unreadable)");
+                    "interactable, label '" + closeWord + "' at Parchment with a gold perimeter, " +
+                    "routed through the same exitRoute delegate as the constant X (WO-1597; it was " +
+                    "never disabled, only unreadable)");
             }
 
             // The approved Manage modal is one continuous obsidian field. FrameCore is
@@ -3036,10 +3049,14 @@ namespace DeNelle.Village.UI
         {
             switch (tab)
             {
+                // WO-1857: the three lines mockup panel 1 actually draws are localized. Defense's
+                // arm and the generic default are NOT converted here on purpose - neither renders
+                // on the three-card hub the owner photographed, so they are recorded as follow-ups
+                // in the WO-1857 sidecar rather than minted blind against an unseen surface.
                 case ManageTab.Defense: return "Towers, walls & gates";
-                case ManageTab.Buildings: return "Construct and upgrade your town";
-                case ManageTab.Troops: return "Train and manage your troops";
-                case ManageTab.Research: return "Unlock powerful advancements";
+                case ManageTab.Buildings: return LocalText.Get("village.manage_screen.purpose_build");
+                case ManageTab.Troops: return LocalText.Get("village.manage_screen.purpose_army");
+                case ManageTab.Research: return LocalText.Get("village.manage_screen.purpose_research");
                 default: return "Open this management line";
             }
         }
@@ -3055,9 +3072,12 @@ namespace DeNelle.Village.UI
         {
             switch (tab)
             {
-                case ManageTab.Troops: return "ARMY";
-                case ManageTab.Research: return "RESEARCH";
-                default: return "BUILD";
+                // WO-1857: BUILD reuses hud.nav.build - COMMON_KEYS_REGISTRY already names that
+                // row as the one "Build" entry-button word (its case difference is a display
+                // transform, not a meaning difference), so this card does NOT mint a synonym.
+                case ManageTab.Troops: return LocalText.Get("village.manage_screen.hub_title_army");
+                case ManageTab.Research: return LocalText.Get("village.manage_screen.hub_title_research");
+                default: return LocalText.Get("hud.nav.build");
             }
         }
 
@@ -3347,7 +3367,9 @@ namespace DeNelle.Village.UI
                 new Vector2(0.03f, 1f), new Vector2(0.97f, 1f));
             SeatDrawerTitleOverlay();
 
-            var heading = ElarionUiKit.Label(_drawerHeader, "QUEUE", 0.42f, 0.96f,
+            // WO-1857: the overlay heading and the pill that opens it resolve ONE row
+            // (village.manage_screen.queue) - same word, same job, two faces.
+            var heading = ElarionUiKit.Label(_drawerHeader, LocalText.Get("village.manage_screen.queue"), 0.42f, 0.96f,
                 ElarionUi.Gold, (int)ElarionUi.FontBody, TextAlignmentOptions.Center,
                 0.20f, 0.80f, bold: true);
             ElarionUiKit.FitSingleLine(heading, 28f, 44f);
@@ -3655,7 +3677,9 @@ namespace DeNelle.Village.UI
             var label = _queueDrawerToggle.GetComponentInChildren<TMP_Text>(true);
             if (label != null)
             {
-                label.text = "QUEUE";
+                // WO-1857: re-asserts the SAME row the pill was BUILT with, so SizeQueuePillToLabel's
+                // build-time measurement and this write can never disagree about the word.
+                label.text = LocalText.Get("village.manage_screen.queue");
                 ElarionUiKit.FitSingleLine(label);
             }
         }
@@ -3806,7 +3830,7 @@ namespace DeNelle.Village.UI
             // which are laid out across the workspace band, i.e. the panel's real usable content -
             // end at about x 0.895 of the frame, and the ornate border begins just outside that.
             // Anything seated past it is drawn over the frame art or clipped by it.
-            _queueDrawerToggle = ElarionUiKit.BuildObsidianButton(_tabsHost, "QUEUE",
+            _queueDrawerToggle = ElarionUiKit.BuildObsidianButton(_tabsHost, LocalText.Get("village.manage_screen.queue"),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                 // ⭐ WIDENED, AND THE INSTRUMENTATION IS WHY. Four rounds moved this pill's x
                 // coordinate on the theory that the frame border was clipping it. The rect it
