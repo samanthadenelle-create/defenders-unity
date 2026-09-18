@@ -19,6 +19,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using DeNelle.Core.UI;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.Video;
@@ -282,7 +283,10 @@ namespace DeNelle.Onboarding
             studioLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
             fallbackCard.Add(studioLabel);
 
-            var presentsLabel = new Label("presents");
+            // WO-1857: the studio-bumper fallback card reads "<Publisher> presents"; the
+            // publisher is a proper noun (CanonStrings.Publisher) and the verb is copy.
+            var presentsLabel = new Label(
+                new LocalizedText("onboarding.splash.presents").Resolve());
             presentsLabel.style.color = new Color(1f, 1f, 1f, 0.4f);
             presentsLabel.style.fontSize = 12;
             presentsLabel.style.letterSpacing = 5;

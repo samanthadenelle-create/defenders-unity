@@ -126,7 +126,9 @@ namespace DeNelle.Core.UI
             // The CTA band keeps its share (0.10-0.26 of a now-larger box, so the buttons
             // grew), and nothing here touches CanonCtaWidth/CanonCtaHeight.
             _modal = ElarionUiKit.BuildObsidianModal(
-                "OfflineOptInUI", "Play Offline",
+                // Reuses the Settings row's own key rather than minting a synonym: the row that
+                // opens this modal and the modal's heading name the SAME feature (WO-1857).
+                "OfflineOptInUI", new LocalizedText("settings.offline.play").Resolve(),
                 new Vector2(0.10f, 0.14f), new Vector2(0.90f, 0.86f),
                 onClose: DeclineAndClose, sortingOrder: 31010);
             MedievalUiSkin.ApplyShell(_modal.chrome, compact: true);
@@ -134,8 +136,8 @@ namespace DeNelle.Core.UI
             var content = _modal.chrome.content.transform;
 
             _body = ElarionUiKit.Label(content,
-                "Download everything now so the game works without a connection?\n\n" +
-                "Checking download size...",
+                new LocalizedText("offline.optIn.prompt").Resolve() + "\n\n" +
+                new LocalizedText("offline.optIn.checking_size").Resolve(),
                 0.56f, 0.84f, ElarionUi.Parchment, 34, TextAlignmentOptions.Top,
                 0.06f, 0.94f);
 
@@ -150,10 +152,12 @@ namespace DeNelle.Core.UI
             _progress = ElarionUiKit.Label(content, "",
                 0.33f, 0.38f, ElarionUi.ParchmentDim, 28, TextAlignmentOptions.Center);
 
-            var download = ElarionUiKit.Button(content, "Download Now", ElarionUiKit.ButtonKind.Gold,
+            var download = ElarionUiKit.Button(content,
+                new LocalizedText("offline.optIn.download_now").Resolve(), ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.06f, 0.18f), new Vector2(0.48f, 0.32f), OnDownload);
 
-            var later = ElarionUiKit.Button(content, "Not Now", ElarionUiKit.ButtonKind.Quiet,
+            var later = ElarionUiKit.Button(content,
+                new LocalizedText("offline.optIn.not_now").Resolve(), ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.52f, 0.18f), new Vector2(0.94f, 0.32f), DeclineAndClose);
             MedievalUiSkin.ApplyButton(download, primary: true);
             MedievalUiSkin.ApplyButton(later, primary: false);
@@ -195,8 +199,7 @@ namespace DeNelle.Core.UI
                         $"size UNKNOWN (bytes={bytes}, keys={keyCount}) - NOT marking offline-ready. Telling " +
                         "the player they are covered when we could not even measure the set is how they " +
                         "find out on a plane.");
-                    _body.text = "We could not check the download right now. Please try again in a moment - " +
-                                 "the game still works normally with a connection.";
+                    _body.text = new LocalizedText("offline.optIn.size_unknown").Resolve();
                     _progress.text = "";
                     return;
                 }
@@ -211,7 +214,7 @@ namespace DeNelle.Core.UI
                     FlowTrace.Step("OfflineContent",
                         $"size = 0 across {keyCount} key(s) - already fully cached; running the verified " +
                         "pull path so the offline-ready stamp comes from evidence, not from this label.");
-                    _body.text = "Everything is already downloaded. This game will work without a connection.";
+                    _body.text = new LocalizedText("offline.optIn.already_cached").Resolve();
                     _progress.text = "";
                     return;
                 }
@@ -220,11 +223,14 @@ namespace DeNelle.Core.UI
                 // State the minutes, not just the megabytes: megabytes mean nothing to most
                 // people and the whole point is that they are not surprised by the wait.
                 string estimate = EstimateText(bytes);
+                // The megabyte figure is formatted HERE, in C#, and handed over as a string: the
+                // JSON fallback formatter and the Unity Smart-String formatter do not have to agree
+                // on ":F0" for the number to come out right (WO-1857).
+                string mbText = mb.ToString("F0", System.Globalization.CultureInfo.CurrentCulture);
                 _body.text =
-                    "Download everything now so the game works without a connection?\n\n" +
-                    $"Size: {mb:F0} MB\n{estimate}\n\n" +
-                    "You need Wi-Fi for this one-time download. After it finishes the game " +
-                    "opens without a connection.";
+                    new LocalizedText("offline.optIn.prompt").Resolve() + "\n\n" +
+                    LocalText.Format("offline.optIn.size_detail", mbText, estimate) + "\n\n" +
+                    new LocalizedText("offline.optIn.wifi_note").Resolve();
             });
 
             // ALREADY CACHED -> take the offline-ready stamp through the SAME verified path a
@@ -247,15 +253,17 @@ namespace DeNelle.Core.UI
             float bits = bytes * 8f;
             int fast = Mathf.RoundToInt(bits / 5_000_000f);    // 5 Mbps
             int slow = Mathf.RoundToInt(bits / 1_500_000f);    // 1.5 Mbps
-            string F(int s) => s >= 90 ? $"{Mathf.RoundToInt(s / 60f)} min" : $"{s} sec";
-            return $"About {F(fast)} on a fast connection, up to {F(slow)} on a slow one.";
+            string F(int s) => s >= 90
+                ? LocalText.Format("offline.optIn.minutes", Mathf.RoundToInt(s / 60f))
+                : LocalText.Format("offline.optIn.seconds", s);
+            return LocalText.Format("offline.optIn.estimate", F(fast), F(slow));
         }
 
         private void OnDownload()
         {
             if (_downloading) return;
             _downloading = true;
-            _body.text = "Downloading content. Keep this screen open.";
+            _body.text = new LocalizedText("offline.optIn.downloading").Resolve();
             StartCoroutine(RunDownload());
         }
 

@@ -158,7 +158,8 @@ namespace DeNelle.HUD
             _vm = ClanChatVM.CreateDefault(() => SetVisible(false));
             _vm.Changed += HandleVmChanged;
 
-            _modal = ElarionUiKit.BuildObsidianModal("ClanChatUI", "Remnant Chat",
+            _modal = ElarionUiKit.BuildObsidianModal("ClanChatUI",
+                new LocalizedText("common.remnant_chat").Resolve(),
                 new Vector2(0.24f, 0.10f), new Vector2(0.76f, 0.92f), () => SetVisible(false),
                 frameName: RpgUiCatalog.FrameCore, medallionIcon: "crest");
 

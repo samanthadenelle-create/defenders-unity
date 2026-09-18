@@ -14,9 +14,14 @@ namespace DeNelle.Editor.Regression
                 string pause = File.ReadAllText("Assets/_Modules/Settings/PauseController.cs");
                 Require(pause, "MedievalUiSkin.ApplyShell(_modal.chrome, compact: true)");
                 Require(pause, "AspectRatioFitter.AspectMode.HeightControlsWidth");
-                Require(pause, "\"Resume\"");
-                Require(pause, "\"Settings\"");
-                Require(pause, "\"Quit to Title\"");
+                // WO-1857: the three pause faces now resolve through LocalizedText, so these pin the
+                // resolved KEYS. The middle face reuses the Settings screen's own settings.title row
+                // rather than minting a synonym. The retired English captions are deliberately not
+                // reproduced here - one of them still appears in a comment inside PauseController.cs,
+                // so a source-text needle on it would pass off that comment and assert nothing.
+                Require(pause, "\"settings.pause.resume\"");
+                Require(pause, "\"settings.title\"");
+                Require(pause, "\"settings.pause.quit_to_title\"");
                 Require(pause, "MedievalUiSkin.ApplyButton(resume, primary: true)");
                 Require(pause, "WorldHold.AcquirePlayerOwned(WorldHold.ReasonPauseMenu,");
                 // WO-1369: the probe argument is REQUIRED, and it must be a liveness test on the

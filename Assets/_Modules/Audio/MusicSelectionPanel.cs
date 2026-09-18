@@ -92,7 +92,10 @@ namespace DeNelle.Audio
         {
             if (_modal != null && _modal.canvas != null) return;
 
-            _modal = ElarionUiKit.BuildObsidianModal("JukeboxUI", "Jukebox",
+            // WO-1857: "JukeboxUI" is the canvas host name; the title reuses the shared
+            // common.jukebox row (the registry names this call site).
+            _modal = ElarionUiKit.BuildObsidianModal("JukeboxUI",
+                new LocalizedText("common.jukebox").Resolve(),
                 new Vector2(0.30f, 0.14f), new Vector2(0.70f, 0.86f), () => SetOpen(false),
                 frameName: RpgUiCatalog.FrameCore, medallionIcon: "music");
 
@@ -104,7 +107,7 @@ namespace DeNelle.Audio
             // (NoWrap + Ellipsis via FitSingleLine) below the header trim, and the track
             // list band starts strictly BELOW it, so the two can never collide again.
             var subtitle = ElarionUiKit.Label(body,
-                "Pick the music for where you are. Battle music still takes over during fights.",
+                new LocalizedText("audio.jukebox.subtitle").Resolve(),
                 0.885f, 0.965f, ElarionUi.ParchmentDim, ElarionUi.FontLabel,
                 TMPro.TextAlignmentOptions.Center, 0.04f, 0.96f);
             ElarionUiKit.FitSingleLine(subtitle, 24f, ElarionUi.FontLabel);
@@ -167,7 +170,8 @@ namespace DeNelle.Audio
 
             if (_vm == null || !_vm.AudioReady)
             {
-                var notReady = ElarionUiKit.Label(_rowHost, "Audio not ready.", 0f, 1f,
+                var notReady = ElarionUiKit.Label(_rowHost,
+                    new LocalizedText("audio.jukebox.not_ready").Resolve(), 0f, 1f,
                     ElarionUi.Danger, ElarionUi.FontBody,
                     TMPro.TextAlignmentOptions.Center, 0.05f, 0.95f);
                 // _rowHost is layout-driven now; give the notice a row-sized slot.

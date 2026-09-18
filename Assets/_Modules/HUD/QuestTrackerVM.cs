@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using DeNelle.Core.UI;          // WO-1857: LocalizedText — the panel title is player copy
 using DeNelle.Core.UI.Mvvm;
 
 namespace DeNelle.HUD
@@ -61,7 +62,7 @@ namespace DeNelle.HUD
 
         // ── IPanelViewModel ───────────────────────────────────────────────────
         public event Action Changed;
-        public string Title => "Quest Tracker";
+        public string Title => new LocalizedText("hud.quest_tracker.title").Resolve();
         public void Close() => _onClose?.Invoke();
 
         public void Dispose()

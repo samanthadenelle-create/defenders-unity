@@ -86,7 +86,7 @@ namespace DeNelle.HUD
         }
 
         public event Action Changed;
-        public string Title => "Remnant Chat";
+        public string Title => new DeNelle.Core.UI.LocalizedText("common.remnant_chat").Resolve();
         public void Close() => _onClose?.Invoke();
 
         public void Dispose()

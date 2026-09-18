@@ -222,8 +222,12 @@ namespace DeNelle.Editor
             // The card stays VISIBLE and locked, never hidden (WO-1008: a raid door that hides
             // itself reads as broken). The locked badge is the non-colour tell and must survive.
             string rawDeck = File.ReadAllText(deckPath);
-            if (rawDeck.IndexOf("[ LOCKED ]", StringComparison.Ordinal) < 0)
-                failures.Add("J1: the worded [ LOCKED ] badge is gone - a gray tint is a hue-only signal");
+            // WO-1857: the badge caption is now a LocalizedText resolve, so this pins the resolved
+            // KEY. The retired bracketed token is deliberately not reproduced here: it survives in
+            // nine comment lines across PlayerDeckWorkspace.cs and RaidDoorReadiness.cs, so a
+            // source-text needle on it would pass off a comment while the badge itself was gone.
+            if (rawDeck.IndexOf("new LocalizedText(\"hud.player_deck.locked_badge\").Resolve()", StringComparison.Ordinal) < 0)
+                failures.Add("J1: the worded locked badge (hud.player_deck.locked_badge) is gone - a gray tint is a hue-only signal");
 
             log.AppendLine("  J1 Journey RAIDS card: offerable with a barracks, locked-and-worded without one, " +
                            "distinct copy for lost-vs-never-had - OK");

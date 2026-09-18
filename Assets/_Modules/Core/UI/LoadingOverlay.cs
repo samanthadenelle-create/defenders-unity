@@ -75,11 +75,15 @@ namespace DeNelle.Core.UI
         /// no-op). Survives the next scene load and auto-dismisses once the first hub
         /// frame has settled. Call this immediately BEFORE starting the scene load.
         /// </summary>
-        public static void Show(string message = "Loading your realm...")
+        // WO-1857: the default cannot be a localized value — a C# optional parameter must be a
+        // compile-time constant, so a key resolved here would be baked at the CALL SITE in
+        // English. `null` means "use the localized default", resolved below at display time.
+        public static void Show(string message = null)
         {
             if (s_active != null) return;   // one at a time
 
-            if (string.IsNullOrWhiteSpace(message)) message = "Loading your realm...";
+            if (string.IsNullOrWhiteSpace(message))
+                message = new LocalizedText("loading.overlay.realm").Resolve();
 
             FlowTrace.Step("LoadingOverlay", $"Show '{message}'");
 
@@ -146,7 +150,8 @@ namespace DeNelle.Core.UI
             if (_retryButton == null)
             {
                 _retryButton = ElarionUiKit.ButtonPack(_cardHost != null ? _cardHost : transform,
-                    string.IsNullOrWhiteSpace(retryLabel) ? "Retry" : retryLabel,
+                    string.IsNullOrWhiteSpace(retryLabel)
+                        ? new LocalizedText("offlineFirstRunRetry").Resolve() : retryLabel,
                     ElarionUiKit.ButtonKind.Gold,
                     new Vector2(0.22f, 0.20f), new Vector2(0.78f, 0.40f), OnRetryConnection,
                     RpgUiCatalog.ButtonFrame);
@@ -216,7 +221,7 @@ namespace DeNelle.Core.UI
             }
             _cardHost = card != null ? card.transform : transform;
 
-            var brand = ElarionUiKit.Label(_cardHost, "ECHOES OF ELARION",
+            var brand = ElarionUiKit.Label(_cardHost, new LocalizedText("common.echoes_elarion").Resolve(),
                 0.72f, 0.88f, ElarionUi.Gilt, 40,
                 TMPro.TextAlignmentOptions.Center, 0.08f, 0.92f, bold: true);
             ElarionUiKit.FitSingleLine(brand, 28f, 40f);
@@ -235,7 +240,8 @@ namespace DeNelle.Core.UI
             if (_connectionRequired)
             {
                 _retryButton = ElarionUiKit.ButtonPack(_cardHost,
-                    string.IsNullOrWhiteSpace(retryLabel) ? "Retry" : retryLabel,
+                    string.IsNullOrWhiteSpace(retryLabel)
+                        ? new LocalizedText("offlineFirstRunRetry").Resolve() : retryLabel,
                     ElarionUiKit.ButtonKind.Gold,
                     new Vector2(0.22f, 0.20f), new Vector2(0.78f, 0.40f), OnRetryConnection,
                     RpgUiCatalog.ButtonFrame);

@@ -166,28 +166,32 @@ namespace DeNelle.Onboarding
         //  Each beat's narration
         //  is a CANON STRING resolved at runtime from en.json (tutorial.steps.*
         //  — already present in StreamingAssets/Data/Canonical/en.json) — never
-        //  typed inline (v2 port-spec Part 4). The kicker captions are short UI
-        //  labels (not narrative copy) so they stay in C#.
+        //  typed inline (v2 port-spec Part 4).
+        //  WO-1857: the kicker captions and the advance-button labels used to be
+        //  "short UI labels (not narrative copy) so they stay in C#". That carve-out
+        //  is RETIRED — they are words the player reads, so they are keys too, and
+        //  they now follow CopyKey's own pattern: a key here, resolved at DISPLAY
+        //  time in ShowBeat, never an English literal in this array.
         // =====================================================================
 
-        /// <summary>One coach-mark beat — caption, canon copy key, gate, controls.</summary>
+        /// <summary>One coach-mark beat — caption key, canon copy key, gate, controls.</summary>
         private readonly struct Beat
         {
-            /// <summary>Short UI kicker shown above the body copy.</summary>
-            public readonly string Caption;
+            /// <summary>Locale key for the short UI kicker shown above the body copy.</summary>
+            public readonly string CaptionKey;
             /// <summary>en.json key for the narrated body copy (tutorial.steps.*).</summary>
             public readonly string CopyKey;
             /// <summary>Which gameplay action, if any, this beat waits on.</summary>
             public readonly TutorialGate Gate;
-            /// <summary>Label on the advance button for this beat.</summary>
-            public readonly string NextLabel;
+            /// <summary>Locale key for the advance button's label on this beat.</summary>
+            public readonly string NextLabelKey;
 
-            public Beat(string caption, string copyKey, TutorialGate gate, string nextLabel)
+            public Beat(string captionKey, string copyKey, TutorialGate gate, string nextLabelKey)
             {
-                Caption = caption;
+                CaptionKey = captionKey;
                 CopyKey = copyKey;
                 Gate = gate;
-                NextLabel = nextLabel;
+                NextLabelKey = nextLabelKey;
             }
         }
 
@@ -199,15 +203,23 @@ namespace DeNelle.Onboarding
         // tutorial.steps.5         — "When you are ready, begin a wave…"
         private static readonly Beat[] Beats =
         {
-            new Beat("WELCOME, KEEPER", "tutorial.steps.1",          TutorialGate.None,       "Next"),
-            new Beat("THE HEART",       "tutorial.steps.2",          TutorialGate.None,       "Next"),
+            new Beat("onboarding.tutorial.caption_welcome",
+                                        "tutorial.steps.1",          TutorialGate.None,       "common.next"),
+            new Beat("onboarding.tutorial.caption_heart",
+                                        "tutorial.steps.2",          TutorialGate.None,       "common.next"),
             // Force-field beat — explains the Heart-light field on the walls /
             // gates that turns enemies back, and that a damaged wall thins it,
             // leading into the wall-repair mechanic another workstream builds.
-            new Beat("THE FORCE-FIELD", "tutorial.steps.forceField", TutorialGate.None,       "Next"),
-            new Beat("RAISE A TOWER",   "tutorial.steps.3",          TutorialGate.BuildTower, "Open Build menu"),
-            new Beat("YOUR WARDENS",    "tutorial.steps.6",          TutorialGate.PlacePet,   "Next"),
-            new Beat("HOLD THE LINE",   "tutorial.steps.5",          TutorialGate.None,       "Begin Wave 1"),
+            new Beat("onboarding.tutorial.caption_force_field",
+                                        "tutorial.steps.forceField", TutorialGate.None,       "common.next"),
+            new Beat("onboarding.tutorial.caption_raise_tower",
+                                        "tutorial.steps.3",          TutorialGate.BuildTower,
+                                        "onboarding.tutorial.next_open_build_menu"),
+            new Beat("onboarding.tutorial.caption_wardens",
+                                        "tutorial.steps.6",          TutorialGate.PlacePet,   "common.next"),
+            new Beat("onboarding.tutorial.caption_hold_line",
+                                        "tutorial.steps.5",          TutorialGate.None,
+                                        "onboarding.tutorial.next_begin_wave_1"),
         };
 
         /// <summary>Number of beats in the tutorial sequence.</summary>
@@ -324,11 +336,15 @@ namespace DeNelle.Onboarding
             _body.raycastTarget = false;
 
             // Controls — Skip (Gray, left) + Next / Begin (Green primary CTA, right).
-            _skipButton = ElarionUiKit.BuildObsidianButton(body, "Skip",
+            // WO-1857: both faces reuse the game-wide shared keys the COMMON_KEYS_REGISTRY
+            // names against these two exact call sites.
+            _skipButton = ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("common.skip").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.04f, 0.04f), new Vector2(0.34f, 0.20f), OnSkipClicked);
 
-            _nextButton = ElarionUiKit.BuildObsidianButton(body, "Next",
+            _nextButton = ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("common.next").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style2, ElarionUiKit.ObsidianButtonColor.Green,
                 new Vector2(0.60f, 0.04f), new Vector2(0.96f, 0.20f), OnNextClicked);
             _nextLabel = _nextButton != null
@@ -497,7 +513,9 @@ namespace DeNelle.Onboarding
             if (index < 0 || index >= Beats.Length) return;
             var beat = Beats[index];
 
-            if (_caption != null) _caption.text = beat.Caption;
+            // WO-1857: caption and advance label resolve HERE, at display time, from the
+            // beat's keys — the same seam CopyKey has always used two lines below.
+            if (_caption != null) _caption.text = new LocalizedText(beat.CaptionKey).Resolve();
             if (_progress != null) _progress.text = $"{index + 1} / {Beats.Length}";
 
             // Body copy — canon string from en.json, never typed inline.
@@ -505,7 +523,8 @@ namespace DeNelle.Onboarding
 
             // Retext the Next button's kit label (the Obsidian button stays the Green
             // primary CTA every beat; the final beat's label reads "Begin Wave 1").
-            if (_nextLabel != null) _nextLabel.text = beat.NextLabel;
+            if (_nextLabel != null)
+                _nextLabel.text = new LocalizedText(beat.NextLabelKey).Resolve();
         }
 
         /// <summary>

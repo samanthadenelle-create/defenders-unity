@@ -51,7 +51,11 @@ namespace DeNelle.Wallet
         /// <summary>The three refusals the VM itself can produce before any call is made.</summary>
         public enum RedeemRefusal { None, Empty, ServiceUnavailable, AlreadyBusy }
 
-        public string Title => "Redeem a Code";
+        // WO-1857: the panel title comes from the promo catalog, exactly as the View's own
+        // heading already does (RedeemCodePanel.cs:155 uses PromoStrings.KeyTitle). No new key -
+        // this is the SAME job (the redeem screen's own title), so it reuses that row rather
+        // than minting a synonym for the English words that happened to be typed here.
+        public string Title => PromoStrings.Get(PromoStrings.KeyTitle);
 
         /// <summary>TRUE while a redeem is in flight; the View disables its entry controls on it.</summary>
         public bool Busy => _busy;

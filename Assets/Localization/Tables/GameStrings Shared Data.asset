@@ -2143,6 +2143,790 @@ MonoBehaviour:
     m_Key: common.towers
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760677
+    m_Key: dungeon.exit.leave_prompt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760678
+    m_Key: dungeon.exit.boss_gate_locked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760679
+    m_Key: dungeon.exit.sign_sealed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760680
+    m_Key: dungeon.exit.sign_exit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760681
+    m_Key: dungeon.exit.sign_leave
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760682
+    m_Key: dungeon.exit.confirm_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760683
+    m_Key: dungeon.exit.confirm_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760684
+    m_Key: dungeon.exit.confirm_accept
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760685
+    m_Key: dungeon.treasure.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760686
+    m_Key: dungeon.treasure.contents_heading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760687
+    m_Key: dungeon.treasure.first_clear_note
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760688
+    m_Key: dungeon.treasure.take
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760689
+    m_Key: dungeon.door.prompt_locked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760690
+    m_Key: dungeon.door.prompt_open
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760691
+    m_Key: dungeon.craft.craft_action
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760692
+    m_Key: dungeon.craft.crafted_state
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760693
+    m_Key: ads.consent.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760694
+    m_Key: ads.consent.body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760695
+    m_Key: ads.consent.accept
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760696
+    m_Key: ads.consent.decline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760697
+    m_Key: loading.overlay.realm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760698
+    m_Key: loading.village.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760699
+    m_Key: scene.router.hero_art_unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760700
+    m_Key: offline.optIn.prompt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760701
+    m_Key: offline.optIn.checking_size
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760702
+    m_Key: offline.optIn.download_now
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760703
+    m_Key: offline.optIn.not_now
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760704
+    m_Key: offline.optIn.size_unknown
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760705
+    m_Key: offline.optIn.already_cached
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760706
+    m_Key: offline.optIn.size_detail
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760707
+    m_Key: offline.optIn.wifi_note
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760708
+    m_Key: offline.optIn.downloading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760709
+    m_Key: offline.optIn.estimate
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760710
+    m_Key: offline.optIn.minutes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760711
+    m_Key: offline.optIn.seconds
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760712
+    m_Key: tutorial.skip.step
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760713
+    m_Key: tutorial.skip.action
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760714
+    m_Key: tutorial.skip.confirm_body_all
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760715
+    m_Key: tutorial.skip.keep_playing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760716
+    m_Key: tutorial.skip.confirm_body_progress
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760717
+    m_Key: skr.showcase.headline
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760718
+    m_Key: skr.showcase.subhead
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760719
+    m_Key: skr.showcase.view_stake_rewards
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760720
+    m_Key: skr.showcase.cosmetic_note
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760721
+    m_Key: skr.showcase.coming_soon_toast
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760722
+    m_Key: stake.rewards.tier_line
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760723
+    m_Key: stake.rewards.no_active_stake
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760724
+    m_Key: stake.rewards.unlocked_heading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760725
+    m_Key: hud.nameplate.no_target
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760726
+    m_Key: manage.tile.level
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760727
+    m_Key: hud.bug_report.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760728
+    m_Key: hud.bug_report.log_notice
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760729
+    m_Key: hud.bug_report.send
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760730
+    m_Key: hud.bug_report.note_placeholder
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760731
+    m_Key: hud.bug_report.no_screenshot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760732
+    m_Key: hud.bug_report.screenshot_excluded
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760733
+    m_Key: hud.bug_report.include_screenshot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760734
+    m_Key: hud.bug_report.retry_send
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760735
+    m_Key: hud.bug_report.sent_toast
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760736
+    m_Key: hud.bug_report.failed_toast
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760737
+    m_Key: hud.cosmetic_shop.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760738
+    m_Key: hud.cosmetic_shop.owned_count
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760739
+    m_Key: hud.cosmetic_shop.equip
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760740
+    m_Key: hud.cosmetic_shop.equipped_toast
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760741
+    m_Key: hud.cosmetic_shop.locked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760742
+    m_Key: hud.daily_quest.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760743
+    m_Key: hud.daily_quest.done_badge
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760744
+    m_Key: hud.daily_quest.reward_wisdom
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760745
+    m_Key: hud.daily_quest.reward_bonus_item
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760746
+    m_Key: hud.daily_quest.state_complete
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760747
+    m_Key: hud.daily_quest.state_in_progress
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760748
+    m_Key: hud.daily_quest.rewards_header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760749
+    m_Key: hud.daily_quest.progress_header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760750
+    m_Key: hud.daily_quest.complete_toast
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760751
+    m_Key: hud.help_menu.report_bug
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760752
+    m_Key: hud.help_menu.controls_row
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760753
+    m_Key: hud.help_menu.reset_row
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760754
+    m_Key: hud.help_menu.credits_row
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760755
+    m_Key: hud.help_menu.overflow_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760756
+    m_Key: hud.help_menu.controls_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760757
+    m_Key: hud.help_menu.credits_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760758
+    m_Key: hud.help_menu.reset_confirm_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760759
+    m_Key: hud.help_menu.reset_confirm_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760760
+    m_Key: hud.help_menu.reset_confirm_accept
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760761
+    m_Key: hud.help_menu.reset_confirm_cancel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760762
+    m_Key: hud.help_menu.reset_failed_service
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760763
+    m_Key: hud.help_menu.reset_success
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760764
+    m_Key: hud.help_menu.reset_failed_generic
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760765
+    m_Key: hud.hud_kit.wall_generic
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760766
+    m_Key: hud.hud_kit.wall_damaged
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760767
+    m_Key: hud.hud_kit.repair_action
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760768
+    m_Key: hud.hud_kit.hero_name_fallback
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760769
+    m_Key: hud.hud_kit.start_wave
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760770
+    m_Key: hud.hud_kit.start_now
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760771
+    m_Key: hud.hud_kit.item_picker_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760772
+    m_Key: hud.hud_kit.item_picker_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760773
+    m_Key: hud.hud_kit.healing_potion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760774
+    m_Key: hud.hud_kit.mana_draught
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760775
+    m_Key: hud.hud_kit.healing_potion_count
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760776
+    m_Key: hud.hud_kit.mana_draught_count
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760777
+    m_Key: hud.hud_kit.nameplate_name_level
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760778
+    m_Key: hud.hud_kit.wave_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760779
+    m_Key: hud.hud_kit.enemies_remain
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760780
+    m_Key: hud.hud_kit.add_skill_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760781
+    m_Key: hud.leaderboard.visit_town
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760782
+    m_Key: hud.leaderboard.source_footer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760783
+    m_Key: hud.leaderboard.source_footer_local
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760784
+    m_Key: hud.player_deck.locked_badge
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760785
+    m_Key: hud.player_deck.raid_first_free
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760786
+    m_Key: hud.player_deck.generic_lock_reason
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760787
+    m_Key: hud.journey_deck.quests_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760788
+    m_Key: hud.journey_deck.raids_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760789
+    m_Key: hud.quest_tracker.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760790
+    m_Key: hud.town_showcase.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760791
+    m_Key: hud.town_showcase.loading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760792
+    m_Key: hud.town_showcase.status_public
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760793
+    m_Key: hud.town_showcase.previous
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760794
+    m_Key: hud.town_showcase.return_leaderboard
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760795
+    m_Key: hud.town_showcase.anonymous_defender
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760796
+    m_Key: hud.town_showcase.loading_snapshot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760797
+    m_Key: hud.town_showcase.unavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760798
+    m_Key: hud.town_showcase.unsafe_snapshot
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760799
+    m_Key: hud.town_showcase.snapshot_line
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760800
+    m_Key: hud.town_showcase.snapshot_line_with_placeholders
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760801
+    m_Key: onboarding.first_watch.welcome_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760802
+    m_Key: onboarding.founding_choice.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760803
+    m_Key: onboarding.founding_choice.body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760804
+    m_Key: onboarding.founding_choice.ready_settlement
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760805
+    m_Key: onboarding.founding_choice.empty_realm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760806
+    m_Key: onboarding.hero_select.defender_eyebrow
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760807
+    m_Key: onboarding.hero_select.locked_badge
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760808
+    m_Key: onboarding.hero_select.coming_soon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760809
+    m_Key: onboarding.hero_select.abilities_at_launch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760810
+    m_Key: onboarding.hero_select.confirm_choose
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760811
+    m_Key: onboarding.hero_select.hero_name_fallback
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760812
+    m_Key: onboarding.login_panel.title_welcome
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760813
+    m_Key: onboarding.login_panel.title_wallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760814
+    m_Key: onboarding.login_panel.intro_google
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760815
+    m_Key: onboarding.login_panel.intro_wallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760816
+    m_Key: onboarding.login_panel.play_as_guest
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760817
+    m_Key: onboarding.login_panel.status_opening_google
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760818
+    m_Key: onboarding.login_panel.status_opening_wallet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760819
+    m_Key: onboarding.login_panel.status_google_no_response
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760820
+    m_Key: onboarding.login_panel.status_wallet_no_response
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760821
+    m_Key: onboarding.login_panel.status_google_failed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760822
+    m_Key: onboarding.login_panel.status_wallet_failed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760823
+    m_Key: onboarding.tutorial.caption_welcome
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760824
+    m_Key: onboarding.tutorial.caption_heart
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760825
+    m_Key: onboarding.tutorial.caption_force_field
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760826
+    m_Key: onboarding.tutorial.caption_raise_tower
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760827
+    m_Key: onboarding.tutorial.caption_wardens
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760828
+    m_Key: onboarding.tutorial.caption_hold_line
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760829
+    m_Key: onboarding.tutorial.next_open_build_menu
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760830
+    m_Key: onboarding.tutorial.next_begin_wave_1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760831
+    m_Key: onboarding.pet_select.teaser_subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760832
+    m_Key: onboarding.pet_select.already_bonded_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760833
+    m_Key: onboarding.pet_select.already_bonded_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760834
+    m_Key: onboarding.pet_select.already_bonded_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760835
+    m_Key: onboarding.pet_select.awaits_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760836
+    m_Key: onboarding.pet_select.awaits_blurb
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760837
+    m_Key: onboarding.pet_select.warden_name_fallback
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760838
+    m_Key: onboarding.top_three.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760839
+    m_Key: onboarding.top_three.heading
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760840
+    m_Key: onboarding.top_three.row
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760841
+    m_Key: onboarding.splash.presents
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760842
+    m_Key: onboarding.title.continue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760843
+    m_Key: onboarding.title.start_new
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760844
+    m_Key: onboarding.title.play_intro
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760845
+    m_Key: common.continue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760846
+    m_Key: wallet.connect.connecting
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760847
+    m_Key: wallet.connect.connected_as
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760848
+    m_Key: wallet.connect.none
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760849
+    m_Key: settings.music_toggle.tooltip_on
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760850
+    m_Key: settings.music_toggle.tooltip_off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760851
+    m_Key: settings.music_toggle.face_on
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760852
+    m_Key: settings.music_toggle.face_off
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760853
+    m_Key: settings.pause.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760854
+    m_Key: settings.pause.resume
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760855
+    m_Key: settings.pause.quit_to_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760856
+    m_Key: settings.repair.action
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760857
+    m_Key: settings.repair.confirm_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760858
+    m_Key: settings.repair.confirm_accept
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760859
+    m_Key: common.ok
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760860
+    m_Key: swap.status_invalid_amount
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760861
+    m_Key: battle.hud.active_turn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760862
+    m_Key: audio.track.overworld
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760863
+    m_Key: audio.track.village
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760864
+    m_Key: audio.track.main_theme
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760865
+    m_Key: audio.jukebox.subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760866
+    m_Key: audio.jukebox.not_ready
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760867
+    m_Key: dialogue.intro.skip
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760868
+    m_Key: dialogue.intro.title_card
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760869
+    m_Key: dialogue.intro.title_card_sub
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760870
+    m_Key: googleplay.storefront.secure_subtitle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760871
+    m_Key: googleplay.storefront.restore_ok
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760872
+    m_Key: googleplay.storefront.restore_failed
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

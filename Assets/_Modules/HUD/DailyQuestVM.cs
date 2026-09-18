@@ -27,6 +27,7 @@
 using System;
 using System.Collections.Generic;
 using DeNelle.Core.Quests;
+using DeNelle.Core.UI;          // WO-1857: LocalizedText — the panel title is player copy
 using DeNelle.Core.UI.Mvvm;
 
 namespace DeNelle.HUD
@@ -123,7 +124,7 @@ namespace DeNelle.HUD
 
         // ── IPanelViewModel ───────────────────────────────────────────────────
         public event Action Changed;
-        public string Title => "Daily Quests";
+        public string Title => new LocalizedText("hud.daily_quest.title").Resolve();
         public void Close() => _onClose?.Invoke();
 
         public void Dispose()

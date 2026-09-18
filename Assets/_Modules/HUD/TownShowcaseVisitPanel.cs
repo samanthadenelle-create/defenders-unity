@@ -85,15 +85,18 @@ namespace DeNelle.HUD
         {
             if (_modal != null && _modal.canvas != null) return;
             _client = new TownShowcaseClient();
-            _modal = ElarionUiKit.BuildObsidianModal("TownShowcaseVisit", "Town Showcase",
+            _modal = ElarionUiKit.BuildObsidianModal("TownShowcaseVisit",
+                new LocalizedText("hud.town_showcase.title").Resolve(),
                 new Vector2(.04f, .04f), new Vector2(.96f, .96f), Close,
                 frameName: RpgUiCatalog.FrameCore, medallionIcon: "castle");
             var body = _modal.chrome.layout != null && _modal.chrome.layout.body != null
                 ? (Transform)_modal.chrome.layout.body : _modal.chrome.content.transform;
 
-            _title = Text(body, "Loading town...", 24, ElarionUi.Gilt, FontStyles.Bold,
+            _title = Text(body, new LocalizedText("hud.town_showcase.loading").Resolve(),
+                24, ElarionUi.Gilt, FontStyles.Bold,
                 TextAlignmentOptions.Left, new Vector2(.03f, .90f), new Vector2(.70f, .99f));
-            _status = Text(body, "Public read-only showcase", 14, ElarionUi.ParchmentDim,
+            _status = Text(body, new LocalizedText("hud.town_showcase.status_public").Resolve(),
+                14, ElarionUi.ParchmentDim,
                 FontStyles.Italic, TextAlignmentOptions.Left, new Vector2(.03f, .83f), new Vector2(.97f, .90f));
 
             var mapGo = new GameObject("ReadOnlyTownMap", typeof(RectTransform), typeof(Image));
@@ -109,13 +112,16 @@ namespace DeNelle.HUD
             _ambientHost.anchorMin = Vector2.zero; _ambientHost.anchorMax = Vector2.one;
             _ambientHost.offsetMin = Vector2.zero; _ambientHost.offsetMax = Vector2.zero;
 
-            ElarionUiKit.BuildObsidianButton(body, "Previous",
+            ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("hud.town_showcase.previous").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(.03f, .03f), new Vector2(.27f, .16f), Previous);
-            ElarionUiKit.BuildObsidianButton(body, "Return to Leaderboard",
+            ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("hud.town_showcase.return_leaderboard").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                 new Vector2(.30f, .03f), new Vector2(.70f, .16f), Close);
-            ElarionUiKit.BuildObsidianButton(body, "Next",
+            ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("common.next").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(.73f, .03f), new Vector2(.97f, .16f), Next);
             _modal.canvas.SetActive(false);
@@ -127,29 +133,35 @@ namespace DeNelle.HUD
             int generation = ++_loadGeneration;
             _activeSnapshotId = null;
             ClearMap();
-            _title.text = "#" + entry.Rank + "  " + (string.IsNullOrEmpty(entry.Username) ? "Defender" : entry.Username);
-            _status.text = "Loading explicitly shared snapshot...";
+            _title.text = "#" + entry.Rank + "  " + (string.IsNullOrEmpty(entry.Username)
+                ? new LocalizedText("hud.town_showcase.anonymous_defender").Resolve()
+                : entry.Username);
+            _status.text = new LocalizedText("hud.town_showcase.loading_snapshot").Resolve();
             var result = await _client.FetchSnapshotAsync(entry.ShowcaseId, Application.version);
             if (generation != _loadGeneration || !IsOpen) return;
             if (!result.IsReady)
             {
-                _status.text = result.Message ?? "This town is not available to visit.";
+                _status.text = result.Message ?? new LocalizedText("hud.town_showcase.unavailable").Resolve();
                 return;
             }
 
             var projection = new ReadOnlyTownShowcaseView();
             if (!projection.Reconstruct(result.Snapshot, RegistryCatalog.Instance))
             {
-                _status.text = "This town snapshot could not be displayed safely.";
+                _status.text = new LocalizedText("hud.town_showcase.unsafe_snapshot").Resolve();
                 return;
             }
             int missing = RenderStructures(projection.Structures);
             BuildAmbient(AmbientCount);
             _activeSnapshotId = result.Snapshot.SnapshotId;
-            _status.text = "Read-only snapshot v" + result.Snapshot.SnapshotVersion + "  •  " +
-                projection.Structures.Count + " structures" +
-                (missing > 0 ? "  •  " + missing + " shown with safe placeholders" : "") +
-                "  •  ambient patrols are local presentation only";
+            // WO-1857: ONE complete sentence per shape, never five concatenated fragments - the
+            // optional placeholder clause is a SECOND key rather than a hole spliced mid-sentence,
+            // because a locale cannot reorder around an empty string.
+            _status.text = missing > 0
+                ? LocalText.Format("hud.town_showcase.snapshot_line_with_placeholders",
+                    result.Snapshot.SnapshotVersion, projection.Structures.Count, missing)
+                : LocalText.Format("hud.town_showcase.snapshot_line",
+                    result.Snapshot.SnapshotVersion, projection.Structures.Count);
         }
 
         private int RenderStructures(IReadOnlyList<ReadOnlyTownStructure> structures)

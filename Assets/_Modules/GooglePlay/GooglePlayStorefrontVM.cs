@@ -7,6 +7,7 @@ using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Payments;
 using DeNelle.Core.State;
 using DeNelle.Core.Backend;
+using DeNelle.Core.UI;   // LocalizedText - WO-1857
 using DeNelle.Wallet; // PackCatalog's namespace is a preserved runtime contract; its assembly is Commerce.
 using UnityEngine;
 using UnityEngine.Networking;
@@ -58,8 +59,11 @@ namespace DeNelle.GooglePlay
             var provider = PaymentProviders.Current;
             if (provider == null) { _status("Google Play Billing is unavailable."); return; }
             _status("Checking purchases...");
-            provider.RestorePurchases((ok, message) =>
-                _status(ok ? "Purchases checked and restored." : (message ?? "Restore failed.")));
+            // WO-1857: one ternary, two alternative sentences, two keys. `message` is the billing
+            // provider's own already-worded failure and is passed through untouched.
+            provider.RestorePurchases((ok, message) => _status(ok
+                ? new LocalizedText("googleplay.storefront.restore_ok").Resolve()
+                : (message ?? new LocalizedText("googleplay.storefront.restore_failed").Resolve())));
         }
 
         private const string DeletionUrl =

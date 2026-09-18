@@ -2331,6 +2331,790 @@ MonoBehaviour:
     m_Localized: Towers
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760677
+    m_Localized: Leave Dungeon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760678
+    m_Localized: Defeat the boss to unlock
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760679
+    m_Localized: "SEALED\nDEFEAT BOSS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760680
+    m_Localized: EXIT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760681
+    m_Localized: LEAVE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760682
+    m_Localized: Leave dungeon?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760683
+    m_Localized: Continue to exit returns you to town. Cancel keeps you in the dungeon.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760684
+    m_Localized: Exit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760685
+    m_Localized: TREASURE FOUND
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760686
+    m_Localized: 'The cache holds:'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760687
+    m_Localized: First clear -- a new recipe is remembered.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760688
+    m_Localized: Take
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760689
+    m_Localized: Locked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760690
+    m_Localized: Open Door
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760691
+    m_Localized: Craft
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760692
+    m_Localized: Crafted
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760693
+    m_Localized: "Ads and Your Privacy"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760694
+    m_Localized: "Echoes of Elarion can show optional ads - watch one to speed up a build or double a harvest. You never have to watch one to play.\n\nMay we use your advertising ID to show ads matched to your interests?\n\nIf you say no, you will still see ads and still get the rewards - they just will not be matched to you. You can change this any time in Settings."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760695
+    m_Localized: "Yes, personalise ads"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760696
+    m_Localized: "No, keep them generic"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760697
+    m_Localized: "Loading your realm..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760698
+    m_Localized: "Loading Elarion..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760699
+    m_Localized: "Could not download your hero's artwork. The game has stopped here rather than dropping you in without it. Check your internet connection and tap Retry."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760700
+    m_Localized: "Download everything now so the game works without a connection?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760701
+    m_Localized: "Checking download size..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760702
+    m_Localized: "Download Now"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760703
+    m_Localized: "Not Now"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760704
+    m_Localized: "We could not check the download right now. Please try again in a moment - the game still works normally with a connection."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760705
+    m_Localized: "Everything is already downloaded. This game will work without a connection."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760706
+    m_Localized: "Size: {0} MB\n{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760707
+    m_Localized: "You need Wi-Fi for this one-time download. After it finishes the game opens without a connection."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760708
+    m_Localized: "Downloading content. Keep this screen open."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760709
+    m_Localized: "About {0} on a fast connection, up to {1} on a slow one."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760710
+    m_Localized: "{0} min"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760711
+    m_Localized: "{0} sec"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760712
+    m_Localized: "Skip >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760713
+    m_Localized: "Skip Tutorial"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760714
+    m_Localized: "Skip the tutorial? You'll keep everything it grants."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760715
+    m_Localized: "Keep Playing"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760716
+    m_Localized: "Skip the walkthrough? Your progress is saved."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760717
+    m_Localized: "How SKR powers the realm"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760718
+    m_Localized: "The Seeker / Solana token integration \u2014 the intended experience."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760719
+    m_Localized: "View Stake Rewards"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760720
+    m_Localized: "Cosmetic perks are SKR-priced at launch \u2014 testnet only for now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760721
+    m_Localized: "Coming soon \u2014 testnet preview. No wallet connected."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760722
+    m_Localized: "Tier:  {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760723
+    m_Localized: "No active stake yet"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760724
+    m_Localized: "Rewards Unlocked"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760725
+    m_Localized: "No Target"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760726
+    m_Localized: "LEVEL {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760727
+    m_Localized: "REPORT A BUG"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760728
+    m_Localized: "Includes recent game logs and your player id to help us fix it."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760729
+    m_Localized: "Send report"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760730
+    m_Localized: "What went wrong?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760731
+    m_Localized: "(no screenshot available)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760732
+    m_Localized: "screenshot excluded"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760733
+    m_Localized: "Include screenshot"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760734
+    m_Localized: "Retry send"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760735
+    m_Localized: "Report sent - thank you, defender."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760736
+    m_Localized: "Couldn't send - check your connection and retry."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760737
+    m_Localized: "Cosmetic Shop"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760738
+    m_Localized: "{0}  Cosmetics"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760739
+    m_Localized: "Equip"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760740
+    m_Localized: "Equipped {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760741
+    m_Localized: "Locked"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760742
+    m_Localized: "Daily Quests"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760743
+    m_Localized: "+ Done"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760744
+    m_Localized: "Wisdom"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760745
+    m_Localized: "Bonus item"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760746
+    m_Localized: "Complete"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760747
+    m_Localized: "In progress"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760748
+    m_Localized: "REWARDS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760749
+    m_Localized: "PROGRESS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760750
+    m_Localized: "Daily Quest Complete\n{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760751
+    m_Localized: "Report a Bug"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760752
+    m_Localized: "Controls"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760753
+    m_Localized: "Reset Hero & Echoes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760754
+    m_Localized: "Credits"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760755
+    m_Localized: "Showing {0} of {1} - drag the list for more"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760756
+    m_Localized: "Controls - WASD/Arrows/dpad: move | 1/2/3/4 + face buttons: cast Q/W/E/R | Build button: tower placement | F: interact | Esc: pause"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760757
+    m_Localized: "Defenders of the Realm v2 - DeNelle Studios. Models: KayKit + Tripo. Music: original score by DeNelle Studios (made with Suno). Sound effects: leohpaz 'RPG Essentials' and Hovl Studio, licensed via the Unity Asset Store."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760758
+    m_Localized: "Reset Hero & Echoes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760759
+    m_Localized: "Reset your hero and Echoes and begin again? This cannot be undone."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760760
+    m_Localized: "Reset"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760761
+    m_Localized: "Keep Progress"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760762
+    m_Localized: "Reset failed - service not alive."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760763
+    m_Localized: "Reset - heading back to Hero Select..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760764
+    m_Localized: "Reset failed - see log."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760765
+    m_Localized: "A wall"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760766
+    m_Localized: "{0} is damaged ({1}%)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760767
+    m_Localized: "Repair"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760768
+    m_Localized: "Hero"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760769
+    m_Localized: "Start Wave"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760770
+    m_Localized: "Start Now"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760771
+    m_Localized: "CHOOSE AN ITEM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760772
+    m_Localized: "Gameplay is paused while you choose."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760773
+    m_Localized: "HEALING POTION"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760774
+    m_Localized: "MANA DRAUGHT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760775
+    m_Localized: "HEALING POTION  x{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760776
+    m_Localized: "MANA DRAUGHT  x{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760777
+    m_Localized: "{0}  Lv {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760778
+    m_Localized: "Wave {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760779
+    m_Localized: "{0} enemies remain"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760780
+    m_Localized: "Add a skill to activate"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760781
+    m_Localized: "Visit Town"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760782
+    m_Localized: "Source: {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760783
+    m_Localized: "Source: {0}. Scores are local; ranks shown are placeholder rivals until the online ladder is connected."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760784
+    m_Localized: "[ LOCKED ]"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760785
+    m_Localized: "First raid free - {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760786
+    m_Localized: "Complete its requirement first"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760787
+    m_Localized: "Quests"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760788
+    m_Localized: "Raids"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760789
+    m_Localized: "Quest Tracker"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760790
+    m_Localized: "Town Showcase"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760791
+    m_Localized: "Loading town..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760792
+    m_Localized: "Public read-only showcase"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760793
+    m_Localized: "Previous"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760794
+    m_Localized: "Return to Leaderboard"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760795
+    m_Localized: "Defender"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760796
+    m_Localized: "Loading explicitly shared snapshot..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760797
+    m_Localized: "This town is not available to visit."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760798
+    m_Localized: "This town snapshot could not be displayed safely."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760799
+    m_Localized: "Read-only snapshot v{0}  |  {1} structures  |  ambient patrols are local presentation only"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760800
+    m_Localized: "Read-only snapshot v{0}  |  {1} structures  |  {2} shown with safe placeholders  |  ambient patrols are local presentation only"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760801
+    m_Localized: "WELCOME TO THE WATCH"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760802
+    m_Localized: "FOUND YOUR TOWN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760803
+    m_Localized: "Begin with a ready settlement and starter defenses, or choose an empty realm to build yourself."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760804
+    m_Localized: "READY SETTLEMENT  (Recommended)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760805
+    m_Localized: "EMPTY REALM  (Build It Yourself)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760806
+    m_Localized: "CHOOSE YOUR DEFENDER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760807
+    m_Localized: "LOCKED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760808
+    m_Localized: "Coming Soon"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760809
+    m_Localized: "Abilities revealed at launch"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760810
+    m_Localized: "CHOOSE {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760811
+    m_Localized: "Hero"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760812
+    m_Localized: "WELCOME"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760813
+    m_Localized: "YOUR WALLET"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760814
+    m_Localized: "Continue with Google to protect your progress across devices, or play as a guest on this device."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760815
+    m_Localized: "Your wallet is your save. Connect now (one-time on this device). Guest progress stays here until you connect."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760816
+    m_Localized: "Play as Guest"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760817
+    m_Localized: "Opening Google sign-in... you can still tap Play as Guest."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760818
+    m_Localized: "Opening your wallet... you can still tap Play as Guest."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760819
+    m_Localized: "Google sign-in did not respond. Try Continue with Google again, or tap Play as Guest to start now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760820
+    m_Localized: "Your wallet did not respond. Open your wallet app and try Connect Wallet again, or tap Play as Guest to start now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760821
+    m_Localized: "Google sign-in failed. Try again, or tap Play as Guest to start now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760822
+    m_Localized: "Wallet connect failed. Try again, or tap Play as Guest to start now."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760823
+    m_Localized: "WELCOME, KEEPER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760824
+    m_Localized: "THE HEART"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760825
+    m_Localized: "THE FORCE-FIELD"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760826
+    m_Localized: "RAISE A TOWER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760827
+    m_Localized: "YOUR WARDENS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760828
+    m_Localized: "HOLD THE LINE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760829
+    m_Localized: "Open Build menu"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760830
+    m_Localized: "Begin Wave 1"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760831
+    m_Localized: "Echoes await in Elarion. Visit the Echo Hollow in town to bond your first companion."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760832
+    m_Localized: "You already have a Warden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760833
+    m_Localized: "{0} walks the watch beside you. A Warden bonds once \u2014 that bond can't be traded away."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760834
+    m_Localized: "Want another companion? More Wardens can be found out in the realm \u2014 earned through quests or summoned at the marketplace."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760835
+    m_Localized: "Your Warden awaits in town"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760836
+    m_Localized: "Visit the Echo Hollow in Elarion to bond your first companion."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760837
+    m_Localized: "Warden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760838
+    m_Localized: "TOP 3 PLAYERS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760839
+    m_Localized: "ALL-TIME BEST WAVE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760840
+    m_Localized: "{0}.  {1}     WAVE {2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760841
+    m_Localized: "presents"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760842
+    m_Localized: "Continue"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760843
+    m_Localized: "Start New"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760844
+    m_Localized: "Play Intro"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760845
+    m_Localized: "Continue"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760846
+    m_Localized: "Connecting\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760847
+    m_Localized: "Connected \u2014 {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760848
+    m_Localized: "No wallet connected"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760849
+    m_Localized: "Music: On"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760850
+    m_Localized: "Music: Off"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760851
+    m_Localized: "Music On"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760852
+    m_Localized: "Music Off"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760853
+    m_Localized: "PAUSED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760854
+    m_Localized: "Resume"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760855
+    m_Localized: "Quit to Title"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760856
+    m_Localized: "Repair Session"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760857
+    m_Localized: "This clears a stuck screen state. Your progress is not affected."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760858
+    m_Localized: "Repair"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760859
+    m_Localized: "OK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760860
+    m_Localized: "Enter a valid amount."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760861
+    m_Localized: "{0}'s Turn"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760862
+    m_Localized: "Wandering the Realm"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760863
+    m_Localized: "Elarion (Town Theme)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760864
+    m_Localized: "Echoes of Elarion (Main Theme)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760865
+    m_Localized: "Pick the music for where you are. Battle music still takes over during fights."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760866
+    m_Localized: "Audio not ready."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760867
+    m_Localized: "Skip  >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760868
+    m_Localized: "DEFENDERS OF THE REALM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760869
+    m_Localized: "Echoes of Elarion"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760870
+    m_Localized: "Secure purchases through Google Play"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760871
+    m_Localized: "Purchases checked and restored."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760872
+    m_Localized: "Restore failed."
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

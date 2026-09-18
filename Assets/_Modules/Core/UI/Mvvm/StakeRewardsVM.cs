@@ -62,7 +62,7 @@ namespace DeNelle.Core.UI.Mvvm
 
         // -- IPanelViewModel ----------------------------------------------------
         public event Action Changed;
-        public string Title => "Stake Rewards";
+        public string Title => new DeNelle.Core.UI.LocalizedText("common.stake_rewards").Resolve();
         public void Close() => _onClose?.Invoke();
         public void Dispose() { Changed = null; }
 

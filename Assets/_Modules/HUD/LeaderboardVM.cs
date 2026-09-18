@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using DeNelle.Core.Services;
 using DeNelle.Core.Social;
+using DeNelle.Core.UI;          // WO-1857: LocalizedText / LocalText — title + footer copy
 using DeNelle.Core.UI.Mvvm;
 
 namespace DeNelle.HUD
@@ -91,7 +92,7 @@ namespace DeNelle.HUD
 
         // ── IPanelViewModel ───────────────────────────────────────────────────
         public event Action Changed;
-        public string Title => "Leaderboard";
+        public string Title => new LocalizedText("common.leaderboard").Resolve();
         public void Close() => _onClose?.Invoke();
 
         public void Dispose()
@@ -140,9 +141,13 @@ namespace DeNelle.HUD
 
             RebuildProfile(_source.GetLocalProfile());
 
+            // WO-1857: ONE complete sentence per branch (key-naming.md), never the old
+            // "Source: " + label + "." concatenation - the label's position moves per locale.
+            // Each key is its own visible literal argument - a key hidden inside a ternary passed
+            // AS the key argument is invisible to a regex key extractor.
             FooterText = _source.IsLocalStub
-                ? "Source: " + _source.SourceLabel + ". Scores are local; ranks shown are placeholder rivals until the online ladder is connected."
-                : "Source: " + _source.SourceLabel + ".";
+                ? LocalText.Format("hud.leaderboard.source_footer_local", _source.SourceLabel)
+                : LocalText.Format("hud.leaderboard.source_footer", _source.SourceLabel);
 
             // Clear the previous board's visit join BEFORE either async source can complete.
             // In particular, a synchronous score stub must never briefly inherit Best-Wave

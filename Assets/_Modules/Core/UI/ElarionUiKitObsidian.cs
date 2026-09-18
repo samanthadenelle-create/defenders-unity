@@ -1867,7 +1867,7 @@ namespace DeNelle.Core.UI
             /// Nothing of the dead target survives.</summary>
             public void Clear()
             {
-                if (name != null) name.text = "No Target";
+                if (name != null) name.text = new LocalizedText("hud.nameplate.no_target").Resolve();
                 if (badge != null) badge.text = "";
                 if (extra != null) extra.text = "";
                 if (hp != null)

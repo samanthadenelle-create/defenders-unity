@@ -230,7 +230,14 @@ namespace DeNelle.Dungeons
         // time and the scene is then saved, so a plain private silently reverted every authored
         // label to "Leave Dungeon" - dg_descent_probe authors "Extract (deep)" and the string is
         // absent from the baked scene entirely.
-        [SerializeField] private string _label = "Leave Dungeon";
+        // WO-1857 (localization sweep, Dungeons shard): the DEFAULT is now an EMPTY SENTINEL, not
+        // the English words. This field is baked into scene data (see the WO-1001 note above), so a
+        // localized string resolved into it at bake time would freeze the BAKING MACHINE's language
+        // into every .unity file. Empty => the display sites resolve dungeon.exit.leave_prompt at
+        // RUNTIME, in the player's locale. A non-empty value is an AUTHORED override (layout JSON
+        // `extracts[].label`, e.g. "Extract (deep)") and is still English authored DATA - that class
+        // of string belongs to the canonical-JSON ruling (classification doc §6a), not to this lane.
+        [SerializeField] private string _label = "";
         // WO-957: which presentation this exit wears. TRUE = the layout's ONE true exit
         // (full arch + light beacon + "EXIT"); FALSE = a per-floor leave pad (quiet flat
         // pad + small "Leave" label - word+shape carry the distinction, never hue: the
@@ -254,22 +261,36 @@ namespace DeNelle.Dungeons
 
         /// <summary>Create the exit at <paramref name="position"/> and build its visual.</summary>
         /// <param name="onLeave">Optional rich-scene leave action (ExitToVillage). Null => Castle route.</param>
-        /// <param name="label">Interact-button prompt text.</param>
+        /// <param name="label">Interact-button prompt text. NULL (the default) => the localized
+        /// "Leave Dungeon" prompt is resolved at display time; pass a value only for an AUTHORED
+        /// override such as the baker's per-extract label.</param>
         /// <param name="trueExit">WO-957: TRUE = the full arch+beacon true-exit presentation;
         /// FALSE = the quiet per-floor leave-pad presentation. The baker passes FALSE for
         /// every extract pad (reflection Invoke passes all four args - defaults do not apply).</param>
         public static DungeonExitInteractable Spawn(Vector3 position, System.Action onLeave = null,
-                                                   string label = "Leave Dungeon", bool trueExit = true)
+                                                   string label = null, bool trueExit = true)
         {
             var go = new GameObject("DungeonExit (Return)");
             go.transform.position = position;
             var exit = go.AddComponent<DungeonExitInteractable>();
             exit._onLeave = onLeave;
-            exit._label = string.IsNullOrEmpty(label) ? "Leave Dungeon" : label;
+            // Null/empty is kept as the sentinel on purpose - PromptLabel() resolves the localized
+            // default at display time (WO-1857). Do not substitute English words here.
+            exit._label = label ?? string.Empty;
             exit._isTrueExit = trueExit;
             exit.BuildVisual();
             return exit;
         }
+
+        /// <summary>
+        /// The prompt/label this exit shows. An authored override wins; otherwise the localized
+        /// default is resolved HERE, at display time, so the player's locale decides the words
+        /// (WO-1857). Never resolve it into <c>_label</c> - that field is baked into scene data.
+        /// </summary>
+        private string PromptLabel() =>
+            string.IsNullOrEmpty(_label)
+                ? new LocalizedText("dungeon.exit.leave_prompt").Resolve()
+                : _label;
 
         private void BuildVisual()
         {
@@ -544,7 +565,7 @@ namespace DeNelle.Dungeons
             var discRend = disc.GetComponent<Renderer>();
             if (discRend != null) ApplyDecorMaterial(discRend, glow, translucent: true);
 
-            Transform label = BuildWorldLabel("Pad_Label", _label,
+            Transform label = BuildWorldLabel("Pad_Label", PromptLabel(),
                 new Vector3(0f, 1.2f, 0f), fontSize: 40, characterSize: 0.09f);
             if (label != null)
             {
@@ -788,7 +809,15 @@ namespace DeNelle.Dungeons
             {
                 if (labels[i] == null) continue;
                 if (labels[i].name.IndexOf("Label", StringComparison.OrdinalIgnoreCase) < 0) continue;
-                labels[i].text = locked ? "SEALED\nDEFEAT BOSS" : (_isTrueExit ? "EXIT" : "LEAVE");
+                // WO-1857: three separate keys, not one - a ternary is three alternative captions,
+                // and the sealed sign, the true-exit sign and the leave-pad sign are three
+                // different signs. The sign word "EXIT" is deliberately NOT the confirm button's
+                // "Exit" verb (key-naming.md: same English, different job => different key).
+                labels[i].text = locked
+                    ? new LocalizedText("dungeon.exit.sign_sealed").Resolve()
+                    : (_isTrueExit
+                        ? new LocalizedText("dungeon.exit.sign_exit").Resolve()
+                        : new LocalizedText("dungeon.exit.sign_leave").Resolve());
             }
         }
 
@@ -915,7 +944,10 @@ namespace DeNelle.Dungeons
             // Optional secondary: in-range button also opens the SAME confirm (not a raw Leave).
             if (_isInRange)
                 MobileInteractButton.Request(this,
-                    IsBossGateUnlocked ? _label : "Defeat the boss to unlock", RequestExitConfirm);
+                    IsBossGateUnlocked
+                        ? PromptLabel()
+                        : new LocalizedText("dungeon.exit.boss_gate_locked").Resolve(),
+                    RequestExitConfirm);
             else
                 MobileInteractButton.Release(this);
         }
@@ -955,10 +987,11 @@ namespace DeNelle.Dungeons
             {
                 var modal = ElarionUiKit.BuildConfirmModal(
                     name: "DungeonExitConfirm",
-                    title: "Leave dungeon?",
-                    message: "Continue to exit returns you to town. Cancel keeps you in the dungeon.",
-                    confirmLabel: "Exit",
-                    cancelLabel: "Cancel",
+                    title: new LocalizedText("dungeon.exit.confirm_title").Resolve(),
+                    message: new LocalizedText("dungeon.exit.confirm_body").Resolve(),
+                    confirmLabel: new LocalizedText("dungeon.exit.confirm_accept").Resolve(),
+                    // Reuses the game-wide cancel verb (COMMON_KEYS_REGISTRY names THIS call site).
+                    cancelLabel: new LocalizedText("armyScreen.cancel").Resolve(),
                     onConfirm: OnConfirmContinueToExit,
                     onCancel: OnConfirmCancel,
                     confirmKind: ElarionUiKit.ButtonKind.Gold,

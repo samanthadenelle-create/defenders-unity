@@ -175,7 +175,8 @@ namespace DeNelle.Core.UI
             // THE common Obsidian button — quiet grey face, never the gold/primary face
             // (WO-1033 §2: a loud Skip invites accidental tutorial loss). Emphasis is
             // carried by the frame + the position, never by hue (colourblind law).
-            _button = ElarionUiKit.BuildObsidianButton(_mount, "Skip Tutorial",
+            _button = ElarionUiKit.BuildObsidianButton(_mount,
+                new LocalizedText("tutorial.skip.action").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 Vector2.zero, Vector2.one, OnSkipTapped);
             if (_button == null)
@@ -256,10 +257,10 @@ namespace DeNelle.Core.UI
             _confirmTouchFloorApplied = false;
             _confirm = ElarionUiKit.BuildConfirmModal(
                 "SkipTutorialConfirm",
-                "Skip Tutorial",
-                "Skip the walkthrough? Your progress is saved.",
-                "Skip",
-                "Keep Playing",
+                new LocalizedText("tutorial.skip.action").Resolve(),
+                new LocalizedText("tutorial.skip.confirm_body_progress").Resolve(),
+                new LocalizedText("common.skip").Resolve(),
+                new LocalizedText("tutorial.skip.keep_playing").Resolve(),
                 onConfirm: () =>
                 {
                     Diagnostics.FlowTrace.Step("Tutorial", "SkipControl CONFIRMED - invoking skip-all");

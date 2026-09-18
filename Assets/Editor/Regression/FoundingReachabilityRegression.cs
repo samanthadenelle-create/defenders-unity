@@ -120,9 +120,15 @@ namespace DeNelle.Editor
             string choice = File.Exists(choicePath) ? File.ReadAllText(choicePath) : "";
             if (!flags.Contains("Get(\"defaulttown\", defaultOn: true)"))
                 failures.Add("[founding-reach] Default Town is not default-on -- fresh players still fall into blank founding");
-            if (!choice.Contains("READY SETTLEMENT  (Recommended)") || !choice.Contains("OnDefaultTown"))
+            // WO-1857: both CTA captions now resolve through LocalizedText, so these pin the
+            // resolved KEY alongside the handler - the caption still has to say the right thing and
+            // still has to route to the right place. The retired English captions are deliberately
+            // not reproduced here; a needle matching its own comment asserts nothing.
+            if (!choice.Contains("new LocalizedText(\"onboarding.founding_choice.ready_settlement\").Resolve()")
+                || !choice.Contains("OnDefaultTown"))
                 failures.Add("[founding-reach] recommended starter-settlement CTA is absent");
-            if (!choice.Contains("EMPTY REALM  (Build It Yourself)") || !choice.Contains("OnBuildYourOwn"))
+            if (!choice.Contains("new LocalizedText(\"onboarding.founding_choice.empty_realm\").Resolve()")
+                || !choice.Contains("OnBuildYourOwn"))
                 failures.Add("[founding-reach] blank-canvas secondary path is no longer exposed");
             if (!choice.Contains("BodyFillHorizontalOverscan") ||
                 !choice.Contains("new Vector2(-BodyFillHorizontalOverscan, 0f)") ||

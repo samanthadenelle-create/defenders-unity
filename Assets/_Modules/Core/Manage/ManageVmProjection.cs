@@ -231,7 +231,7 @@ namespace DeNelle.Core.Manage
                 // rung", which is exactly what an effect sentence is, so the fallback reuses the
                 // field rather than adding a second one that would say the same thing.
                 Subtitle = item.MaxLevel > 0 && item.Level > 0
-                    ? "LEVEL " + item.Level
+                    ? DeNelle.Core.UI.LocalText.Format("manage.tile.level", item.Level)
                     : (string.IsNullOrEmpty(item.NextRungLine) ? null : item.NextRungLine),
                 PortraitKey = item.IconId,
                 IsSelected = isSelected,

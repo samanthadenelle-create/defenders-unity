@@ -190,7 +190,12 @@ namespace DeNelle.Settings
             //   (b) a bigger column bottomInset (0.18) so the stack floor clears the Close band --
             // guaranteeing disjoint, gapped, >=MinTouchPx bands that always fit inside the frame at
             // any screen size (verified headless: Builds/ui-capture/PauseMenu_<res>.png).
-            _modal = ElarionUiKit.BuildObsidianModal("PauseUI", "Paused",
+            // WO-1857: "PauseUI" is the canvas/host name (never rendered); the second argument is
+            // the panel-chrome title, which this screen then hides (the header is SetActive(false)
+            // below) in favour of the big gold Label further down - both carry the SAME meaning, so
+            // both resolve the one settings.pause.title row.
+            _modal = ElarionUiKit.BuildObsidianModal("PauseUI",
+                new LocalizedText("settings.pause.title").Resolve(),
                 new Vector2(0.29f, 0.12f), new Vector2(0.71f, 0.88f), Resume,
                 sortingOrder: 31500,
                 frameName: RpgUiCatalog.FrameOptions, medallionIcon: "settings");
@@ -211,24 +216,36 @@ namespace DeNelle.Settings
                 _modal.chrome.layout.subHeader.gameObject.SetActive(false);
 
             var body = _modal.chrome.content.transform;
-            var title = ElarionUiKit.Label(body, "PAUSED", 0.79f, 0.89f,
+            var title = ElarionUiKit.Label(body,
+                new LocalizedText("settings.pause.title").Resolve(), 0.79f, 0.89f,
                 ElarionUi.Gold, 64, TMPro.TextAlignmentOptions.Center,
                 0.16f, 0.84f, bold: true);
             ElarionUiKit.EnsureFont(title, ElarionUiKit.FontRole.Title);
 
-            var resume = ElarionUiKit.BuildObsidianButton(body, "Resume",
+            // WO-1857: the three approved pause actions are player copy and now resolve
+            // settings.pause.resume / settings.title / settings.pause.quit_to_title.
+            // ⚠ PauseMedievalSkinRegression.cs:17-19 asserts the three ENGLISH button literals by raw
+            // source substring; it must be re-pointed at those three keys (reported by this lane, not
+            // edited - Assets/Editor/Regression is off-limits here). This comment deliberately does
+            // NOT quote the old literals: doing so would satisfy that substring search and leave the
+            // oracle green while it is actually asserting nothing.
+            var resume = ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("settings.pause.resume").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Green,
                 new Vector2(0.12f, 0.605f), new Vector2(0.88f, 0.765f), Resume);
             MedievalUiSkin.ApplyButton(resume, primary: true);
             // Settings button only when a settings screen is wired — never a dead control.
             if (_settings != null)
             {
-                var settings = ElarionUiKit.BuildObsidianButton(body, "Settings",
+                // Reuses the existing settings.title row (the Settings screen's own name).
+                var settings = ElarionUiKit.BuildObsidianButton(body,
+                    new LocalizedText("settings.title").Resolve(),
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                     new Vector2(0.12f, 0.43f), new Vector2(0.88f, 0.59f), OnSettingsClicked);
                 MedievalUiSkin.ApplyButton(settings);
             }
-            var quit = ElarionUiKit.BuildObsidianButton(body, "Quit to Title",
+            var quit = ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("settings.pause.quit_to_title").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Red,
                 new Vector2(0.12f, 0.255f), new Vector2(0.88f, 0.415f), OnQuitClicked);
             MedievalUiSkin.ApplyButton(quit);

@@ -2378,6 +2378,790 @@ MonoBehaviour:
     m_Localized: Türme
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760677
+    m_Localized: Verlies verlassen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760678
+    m_Localized: "Besiege den Boss, um zu \u00F6ffnen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760679
+    m_Localized: "VERSIEGELT\nBOSS BESIEGEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760680
+    m_Localized: AUSGANG
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760681
+    m_Localized: VERLASSEN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760682
+    m_Localized: Verlies verlassen?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760683
+    m_Localized: "\u00BBVerlassen\u00AB bringt dich zur\u00FCck in die Stadt. \u00BBAbbrechen\u00AB l\u00E4sst dich im Verlies."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760684
+    m_Localized: Verlassen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760685
+    m_Localized: SCHATZ GEFUNDEN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760686
+    m_Localized: "Das Versteck enth\u00E4lt:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760687
+    m_Localized: "Erster Abschluss \u2014 ein neues Rezept wird erinnert."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760688
+    m_Localized: Nehmen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760689
+    m_Localized: Verschlossen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760690
+    m_Localized: "T\u00FCr \u00F6ffnen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760691
+    m_Localized: Herstellen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760692
+    m_Localized: Hergestellt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760693
+    m_Localized: "Werbung und dein Datenschutz"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760694
+    m_Localized: "Echoes of Elarion kann optionale Werbung zeigen - sieh dir eine an, um einen Bau zu beschleunigen oder eine Ernte zu verdoppeln. Du musst daf\xFCr nie Werbung ansehen, um zu spielen.\n\nD\xFCrfen wir deine Werbe-ID verwenden, um Werbung passend zu deinen Interessen zu zeigen?\n\nWenn du Nein sagst, siehst du weiterhin Werbung und erh\xE4ltst weiterhin die Belohnungen - sie ist dann nur nicht auf dich zugeschnitten. Du kannst das jederzeit in den Einstellungen \xE4ndern."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760695
+    m_Localized: "Ja, Werbung personalisieren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760696
+    m_Localized: "Nein, allgemein anzeigen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760697
+    m_Localized: "Dein Reich wird geladen..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760698
+    m_Localized: "Elarion wird geladen..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760699
+    m_Localized: "Die Grafiken deines Helden konnten nicht geladen werden. Das Spiel h\xE4lt hier an, anstatt dich ohne sie hineinzuschicken. Pr\xFCfe deine Internetverbindung und tippe auf Erneut versuchen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760700
+    m_Localized: "Jetzt alles herunterladen, damit das Spiel ohne Verbindung l\xE4uft?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760701
+    m_Localized: "Download-Gr\xF6\xDFe wird gepr\xFCft..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760702
+    m_Localized: "Jetzt herunterladen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760703
+    m_Localized: "Nicht jetzt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760704
+    m_Localized: "Der Download konnte gerade nicht gepr\xFCft werden. Versuche es in einem Moment erneut - mit Verbindung l\xE4uft das Spiel weiterhin normal."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760705
+    m_Localized: "Alles ist bereits heruntergeladen. Dieses Spiel l\xE4uft ohne Verbindung."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760706
+    m_Localized: "Gr\xF6\xDFe: {0} MB\n{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760707
+    m_Localized: "F\xFCr diesen einmaligen Download brauchst du WLAN. Danach startet das Spiel ohne Verbindung."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760708
+    m_Localized: "Inhalte werden heruntergeladen. Lass diesen Bildschirm offen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760709
+    m_Localized: "Etwa {0} bei schneller Verbindung, bis zu {1} bei langsamer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760710
+    m_Localized: "{0} Min."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760711
+    m_Localized: "{0} Sek."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760712
+    m_Localized: "\xDCberspringen >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760713
+    m_Localized: "Tutorial \xFCberspringen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760714
+    m_Localized: "Tutorial \xFCberspringen? Du beh\xE4ltst alles, was es gew\xE4hrt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760715
+    m_Localized: "Weiterspielen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760716
+    m_Localized: "Anleitung \xFCberspringen? Dein Fortschritt ist gespeichert."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760717
+    m_Localized: "Wie SKR das Reich antreibt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760718
+    m_Localized: "Die Seeker-/Solana-Token-Integration \u2014 die vorgesehene Erfahrung."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760719
+    m_Localized: "Staking-Belohnungen ansehen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760720
+    m_Localized: "Kosmetische Vorteile werden zum Start in SKR bepreist \u2014 vorerst nur im Testnet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760721
+    m_Localized: "Demn\xE4chst \u2014 Testnet-Vorschau. Keine Wallet verbunden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760722
+    m_Localized: "Stufe:  {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760723
+    m_Localized: "Noch kein aktives Staking"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760724
+    m_Localized: "Freigeschaltete Belohnungen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760725
+    m_Localized: "Kein Ziel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760726
+    m_Localized: "STUFE {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760727
+    m_Localized: "FEHLER MELDEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760728
+    m_Localized: "Enth\xE4lt die letzten Spielprotokolle und deine Spieler-ID, damit wir das Problem beheben k\xF6nnen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760729
+    m_Localized: "Bericht senden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760730
+    m_Localized: "Was ist schiefgelaufen?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760731
+    m_Localized: "(kein Screenshot verf\xFCgbar)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760732
+    m_Localized: "Screenshot ausgeschlossen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760733
+    m_Localized: "Screenshot beif\xFCgen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760734
+    m_Localized: "Erneut senden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760735
+    m_Localized: "Bericht gesendet - danke, Verteidiger."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760736
+    m_Localized: "Senden fehlgeschlagen - pr\xFCfe deine Verbindung und versuche es erneut."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760737
+    m_Localized: "Kosmetikladen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760738
+    m_Localized: "{0}  Kosmetika"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760739
+    m_Localized: "Anlegen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760740
+    m_Localized: "{0} angelegt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760741
+    m_Localized: "Gesperrt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760742
+    m_Localized: "Tagesaufgaben"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760743
+    m_Localized: "+ Erledigt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760744
+    m_Localized: "Weisheit"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760745
+    m_Localized: "Bonusgegenstand"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760746
+    m_Localized: "Abgeschlossen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760747
+    m_Localized: "L\xE4uft"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760748
+    m_Localized: "BELOHNUNGEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760749
+    m_Localized: "FORTSCHRITT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760750
+    m_Localized: "Tagesaufgabe abgeschlossen\n{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760751
+    m_Localized: "Fehler melden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760752
+    m_Localized: "Steuerung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760753
+    m_Localized: "Held & Echos zur\xFCcksetzen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760754
+    m_Localized: "Mitwirkende"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760755
+    m_Localized: "{0} von {1} werden angezeigt - ziehe die Liste f\xFCr mehr"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760756
+    m_Localized: "Steuerung - WASD/Pfeiltasten/D-Pad: bewegen | 1/2/3/4 + Aktionstasten: Q/W/E/R wirken | Bauen-Taste: Turm setzen | F: interagieren | Esc: Pause"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760757
+    m_Localized: "Defenders of the Realm v2 - DeNelle Studios. Modelle: KayKit + Tripo. Musik: Originalmusik von DeNelle Studios (mit Suno erstellt). Soundeffekte: leohpaz 'RPG Essentials' und Hovl Studio, lizenziert uber den Unity Asset Store."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760758
+    m_Localized: "Held & Echos zur\xFCcksetzen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760759
+    m_Localized: "Held und Echos zur\xFCcksetzen und neu beginnen? Das kann nicht r\xFCckg\xE4ngig gemacht werden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760760
+    m_Localized: "Zur\xFCcksetzen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760761
+    m_Localized: "Fortschritt behalten"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760762
+    m_Localized: "Zur\xFCcksetzen fehlgeschlagen - Dienst ist nicht aktiv."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760763
+    m_Localized: "Zur\xFCckgesetzt - zur\xFCck zur Heldenauswahl ..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760764
+    m_Localized: "Zur\xFCcksetzen fehlgeschlagen - siehe Protokoll."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760765
+    m_Localized: "Eine Mauer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760766
+    m_Localized: "{0} ist besch\xE4digt ({1} %)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760767
+    m_Localized: "Reparieren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760768
+    m_Localized: "Held"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760769
+    m_Localized: "Welle starten"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760770
+    m_Localized: "Jetzt starten"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760771
+    m_Localized: "GEGENSTAND W\xC4HLEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760772
+    m_Localized: "Das Spiel ist pausiert, w\xE4hrend du w\xE4hlst."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760773
+    m_Localized: "HEILTRANK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760774
+    m_Localized: "MANATRUNK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760775
+    m_Localized: "HEILTRANK  x{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760776
+    m_Localized: "MANATRUNK  x{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760777
+    m_Localized: "{0}  St. {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760778
+    m_Localized: "Welle {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760779
+    m_Localized: "Noch {0} Gegner"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760780
+    m_Localized: "F\xE4higkeit hinzuf\xFCgen, um sie zu aktivieren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760781
+    m_Localized: "Stadt besuchen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760782
+    m_Localized: "Quelle: {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760783
+    m_Localized: "Quelle: {0}. Die Punkte sind lokal; die gezeigten R\xE4nge sind Platzhalter-Rivalen, bis die Online-Rangliste verbunden ist."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760784
+    m_Localized: "[ GESPERRT ]"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760785
+    m_Localized: "Erster \xDCberfall gratis - {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760786
+    m_Localized: "Erf\xFClle zuerst die Voraussetzung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760787
+    m_Localized: "Auftr\xE4ge"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760788
+    m_Localized: "\xDCberf\xE4lle"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760789
+    m_Localized: "Auftragsverfolgung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760790
+    m_Localized: "Stadtschau"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760791
+    m_Localized: "Stadt wird geladen ..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760792
+    m_Localized: "\xD6ffentliche Schau, nur zum Ansehen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760793
+    m_Localized: "Zur\xFCck"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760794
+    m_Localized: "Zur\xFCck zur Rangliste"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760795
+    m_Localized: "Verteidiger"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760796
+    m_Localized: "Ausdr\xFCcklich freigegebene Momentaufnahme wird geladen ..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760797
+    m_Localized: "Diese Stadt kann nicht besucht werden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760798
+    m_Localized: "Diese Momentaufnahme der Stadt konnte nicht sicher angezeigt werden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760799
+    m_Localized: "Momentaufnahme (nur Ansicht) v{0}  |  {1} Geb\xE4ude  |  Umgebungspatrouillen sind rein lokale Darstellung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760800
+    m_Localized: "Momentaufnahme (nur Ansicht) v{0}  |  {1} Geb\xE4ude  |  {2} mit sicheren Platzhaltern dargestellt  |  Umgebungspatrouillen sind rein lokale Darstellung"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760801
+    m_Localized: "WILLKOMMEN BEI DER WACHE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760802
+    m_Localized: "GR\xDCNDE DEINE STADT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760803
+    m_Localized: "Beginne mit einer fertigen Siedlung und Startverteidigung, oder w\xE4hle ein leeres Reich, das du selbst aufbaust."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760804
+    m_Localized: "FERTIGE SIEDLUNG  (Empfohlen)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760805
+    m_Localized: "LEERES REICH  (Selbst aufbauen)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760806
+    m_Localized: "W\xC4HLE DEINEN VERTEIDIGER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760807
+    m_Localized: "GESPERRT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760808
+    m_Localized: "Demn\xE4chst"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760809
+    m_Localized: "F\xE4higkeiten werden zum Start enth\xFCllt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760810
+    m_Localized: "{0} W\xC4HLEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760811
+    m_Localized: "Held"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760812
+    m_Localized: "WILLKOMMEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760813
+    m_Localized: "DEINE WALLET"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760814
+    m_Localized: "Fahre mit Google fort, um deinen Fortschritt ger\xE4te\xFCbergreifend zu sichern, oder spiele als Gast auf diesem Ger\xE4t."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760815
+    m_Localized: "Deine Wallet ist dein Spielstand. Jetzt verbinden (einmalig auf diesem Ger\xE4t). Gast-Fortschritt bleibt hier, bis du verbindest."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760816
+    m_Localized: "Als Gast spielen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760817
+    m_Localized: "Google-Anmeldung wird ge\xF6ffnet... du kannst weiterhin Als Gast spielen antippen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760818
+    m_Localized: "Deine Wallet wird ge\xF6ffnet... du kannst weiterhin Als Gast spielen antippen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760819
+    m_Localized: "Die Google-Anmeldung hat nicht geantwortet. Versuche Mit Google fortfahren erneut, oder tippe Als Gast spielen, um jetzt zu starten."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760820
+    m_Localized: "Deine Wallet hat nicht geantwortet. \xD6ffne die Wallet-App und versuche Wallet verbinden erneut, oder tippe Als Gast spielen, um jetzt zu starten."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760821
+    m_Localized: "Die Google-Anmeldung ist fehlgeschlagen. Versuche es erneut, oder tippe Als Gast spielen, um jetzt zu starten."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760822
+    m_Localized: "Das Verbinden der Wallet ist fehlgeschlagen. Versuche es erneut, oder tippe Als Gast spielen, um jetzt zu starten."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760823
+    m_Localized: "WILLKOMMEN, KEEPER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760824
+    m_Localized: "DAS HEART"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760825
+    m_Localized: "DAS KRAFTFELD"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760826
+    m_Localized: "ERRICHTE EINEN TURM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760827
+    m_Localized: "DEINE WARDENS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760828
+    m_Localized: "HALTE DIE STELLUNG"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760829
+    m_Localized: "Baumen\xFC \xF6ffnen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760830
+    m_Localized: "Welle 1 starten"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760831
+    m_Localized: "Die Echos warten in Elarion. Besuche den Echo Hollow in der Stadt, um dich mit deinem ersten Begleiter zu verbinden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760832
+    m_Localized: "Du hast bereits einen Warden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760833
+    m_Localized: "{0} geht die Wache an deiner Seite. Ein Warden bindet sich nur einmal \u2014 dieses Band ist nicht handelbar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760834
+    m_Localized: "Noch einen Begleiter? Weitere Wardens gibt es drau\xDFen im Reich \u2014 durch Auftr\xE4ge verdient oder am Markt gerufen."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760835
+    m_Localized: "Dein Warden wartet in der Stadt"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760836
+    m_Localized: "Besuche den Echo Hollow in Elarion, um dich mit deinem ersten Begleiter zu verbinden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760837
+    m_Localized: "Warden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760838
+    m_Localized: "TOP 3 SPIELER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760839
+    m_Localized: "BESTE WELLE ALLER ZEITEN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760840
+    m_Localized: "{0}.  {1}     WELLE {2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760841
+    m_Localized: "pr\xE4sentiert"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760842
+    m_Localized: "Fortsetzen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760843
+    m_Localized: "Neu beginnen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760844
+    m_Localized: "Intro ansehen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760845
+    m_Localized: "Fortfahren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760846
+    m_Localized: "Verbinden\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760847
+    m_Localized: "Verbunden \u2014 {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760848
+    m_Localized: "Kein Wallet verbunden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760849
+    m_Localized: "Musik: Ein"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760850
+    m_Localized: "Musik: Aus"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760851
+    m_Localized: "Musik ein"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760852
+    m_Localized: "Musik aus"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760853
+    m_Localized: "PAUSE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760854
+    m_Localized: "Fortsetzen"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760855
+    m_Localized: "Zum Titelbildschirm"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760856
+    m_Localized: "Sitzung reparieren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760857
+    m_Localized: "Das setzt einen h\xE4ngenden Bildschirmzustand zur\xFCck. Dein Fortschritt bleibt unber\xFChrt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760858
+    m_Localized: "Reparieren"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760859
+    m_Localized: "OK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760860
+    m_Localized: "Gib einen g\xFCltigen Betrag ein."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760861
+    m_Localized: "{0} ist am Zug"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760862
+    m_Localized: "Wanderung durchs Reich"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760863
+    m_Localized: "Elarion (Stadtthema)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760864
+    m_Localized: "Echoes of Elarion (Hauptthema)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760865
+    m_Localized: "W\xE4hle die Musik f\xFCr deinen Aufenthaltsort. In K\xE4mpfen \xFCbernimmt weiterhin die Kampfmusik."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760866
+    m_Localized: "Audio ist noch nicht bereit."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760867
+    m_Localized: "\xDCberspringen  >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760868
+    m_Localized: "DEFENDERS OF THE REALM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760869
+    m_Localized: "Echoes of Elarion"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760870
+    m_Localized: "Sichere K\xE4ufe \xFCber Google Play"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760871
+    m_Localized: "K\xE4ufe gepr\xFCft und wiederhergestellt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760872
+    m_Localized: "Wiederherstellung fehlgeschlagen."
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

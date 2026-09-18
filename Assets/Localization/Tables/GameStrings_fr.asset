@@ -2388,6 +2388,790 @@ MonoBehaviour:
     m_Localized: Tours
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760677
+    m_Localized: Quitter le donjon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760678
+    m_Localized: "Vainquez le boss pour d\u00E9verrouiller"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760679
+    m_Localized: "SCELL\u00C9\nVAINCRE LE BOSS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760680
+    m_Localized: SORTIE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760681
+    m_Localized: QUITTER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760682
+    m_Localized: Quitter le donjon ?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760683
+    m_Localized: "\u00AB Quitter \u00BB vous ram\u00E8ne en ville. \u00AB Annuler \u00BB vous laisse dans le donjon."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760684
+    m_Localized: Quitter
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760685
+    m_Localized: "TR\u00C9SOR TROUV\u00C9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760686
+    m_Localized: 'La cache contient :'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760687
+    m_Localized: "Premi\u00E8re r\u00E9ussite \u2014 une nouvelle recette est m\u00E9moris\u00E9e."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760688
+    m_Localized: Prendre
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760689
+    m_Localized: "Verrouill\u00E9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760690
+    m_Localized: Ouvrir la porte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760691
+    m_Localized: Fabriquer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760692
+    m_Localized: "Fabriqu\u00E9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760693
+    m_Localized: "Les publicit\xE9s et ta confidentialit\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760694
+    m_Localized: "Echoes of Elarion peut afficher des publicit\xE9s facultatives : regardes-en une pour acc\xE9l\xE9rer une construction ou doubler une r\xE9colte. Tu n'es jamais oblig\xE9 d'en regarder pour jouer.\n\nPouvons-nous utiliser ton identifiant publicitaire pour afficher des publicit\xE9s adapt\xE9es \xE0 tes int\xE9r\xEAts ?\n\nSi tu refuses, tu verras toujours des publicit\xE9s et tu recevras toujours les r\xE9compenses : elles ne seront simplement pas adapt\xE9es \xE0 toi. Tu peux changer ce choix \xE0 tout moment dans les R\xE9glages."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760695
+    m_Localized: "Oui, personnaliser les publicit\xE9s"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760696
+    m_Localized: "Non, garder des publicit\xE9s g\xE9n\xE9riques"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760697
+    m_Localized: "Chargement de ton royaume..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760698
+    m_Localized: "Chargement d'Elarion..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760699
+    m_Localized: "Impossible de t\xE9l\xE9charger les visuels de ton h\xE9ros. Le jeu s'est arr\xEAt\xE9 ici plut\xF4t que de te lancer sans eux. V\xE9rifie ta connexion Internet et appuie sur R\xE9essayer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760700
+    m_Localized: "Tout t\xE9l\xE9charger maintenant pour que le jeu fonctionne sans connexion ?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760701
+    m_Localized: "V\xE9rification de la taille du t\xE9l\xE9chargement..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760702
+    m_Localized: "T\xE9l\xE9charger maintenant"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760703
+    m_Localized: "Pas maintenant"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760704
+    m_Localized: "Nous n'avons pas pu v\xE9rifier le t\xE9l\xE9chargement pour l'instant. R\xE9essaie dans un moment : le jeu fonctionne toujours normalement avec une connexion."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760705
+    m_Localized: "Tout est d\xE9j\xE0 t\xE9l\xE9charg\xE9. Ce jeu fonctionnera sans connexion."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760706
+    m_Localized: "Taille : {0} Mo\n{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760707
+    m_Localized: "Il te faut le Wi-Fi pour ce t\xE9l\xE9chargement unique. Ensuite, le jeu s'ouvrira sans connexion."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760708
+    m_Localized: "T\xE9l\xE9chargement du contenu. Garde cet \xE9cran ouvert."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760709
+    m_Localized: "Environ {0} avec une connexion rapide, jusqu'\xE0 {1} avec une connexion lente."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760710
+    m_Localized: "{0} min"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760711
+    m_Localized: "{0} s"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760712
+    m_Localized: "Passer >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760713
+    m_Localized: "Passer le tutoriel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760714
+    m_Localized: "Passer le tutoriel ? Tu conserveras tout ce qu'il accorde."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760715
+    m_Localized: "Continuer \xE0 jouer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760716
+    m_Localized: "Passer le guide ? Ta progression est enregistr\xE9e."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760717
+    m_Localized: "Comment SKR propulse le royaume"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760718
+    m_Localized: "L'int\xE9gration du jeton Seeker / Solana \u2014 l'exp\xE9rience pr\xE9vue."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760719
+    m_Localized: "Voir les r\xE9compenses de jalonnement"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760720
+    m_Localized: "Les avantages cosm\xE9tiques seront tarif\xE9s en SKR au lancement \u2014 testnet uniquement pour l'instant."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760721
+    m_Localized: "Bient\xF4t disponible \u2014 aper\xE7u testnet. Aucun portefeuille connect\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760722
+    m_Localized: "Palier :  {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760723
+    m_Localized: "Aucun jalonnement actif pour l'instant"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760724
+    m_Localized: "R\xE9compenses d\xE9bloqu\xE9es"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760725
+    m_Localized: "Aucune cible"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760726
+    m_Localized: "NIVEAU {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760727
+    m_Localized: "SIGNALER UN BUG"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760728
+    m_Localized: "Inclut les journaux de jeu r\xE9cents et votre identifiant de joueur pour nous aider \xE0 corriger le probl\xE8me."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760729
+    m_Localized: "Envoyer le rapport"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760730
+    m_Localized: "Que s'est-il pass\xE9 ?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760731
+    m_Localized: "(aucune capture disponible)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760732
+    m_Localized: "capture exclue"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760733
+    m_Localized: "Inclure la capture"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760734
+    m_Localized: "R\xE9essayer l'envoi"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760735
+    m_Localized: "Rapport envoy\xE9 - merci, d\xE9fenseur."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760736
+    m_Localized: "Envoi impossible - v\xE9rifiez votre connexion et r\xE9essayez."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760737
+    m_Localized: "Boutique d'apparence"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760738
+    m_Localized: "{0}  apparences"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760739
+    m_Localized: "\xC9quiper"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760740
+    m_Localized: "{0} \xE9quip\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760741
+    m_Localized: "Verrouill\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760742
+    m_Localized: "Qu\xEAtes quotidiennes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760743
+    m_Localized: "+ Termin\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760744
+    m_Localized: "Sagesse"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760745
+    m_Localized: "Objet bonus"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760746
+    m_Localized: "Termin\xE9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760747
+    m_Localized: "En cours"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760748
+    m_Localized: "R\xC9COMPENSES"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760749
+    m_Localized: "PROGRESSION"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760750
+    m_Localized: "Qu\xEAte quotidienne termin\xE9e\n{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760751
+    m_Localized: "Signaler un bug"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760752
+    m_Localized: "Commandes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760753
+    m_Localized: "R\xE9initialiser le h\xE9ros et les \xC9chos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760754
+    m_Localized: "Cr\xE9dits"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760755
+    m_Localized: "{0} sur {1} affich\xE9s - faites glisser la liste pour en voir plus"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760756
+    m_Localized: "Commandes - WASD/fleches/pad: se deplacer | 1/2/3/4 + boutons: lancer Q/W/E/R | Bouton Construire: placer une tour | F: interagir | Echap: pause"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760757
+    m_Localized: "Defenders of the Realm v2 - DeNelle Studios. Modeles: KayKit + Tripo. Musique: bande originale de DeNelle Studios (creee avec Suno). Effets sonores: leohpaz 'RPG Essentials' et Hovl Studio, sous licence Unity Asset Store."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760758
+    m_Localized: "R\xE9initialiser le h\xE9ros et les \xC9chos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760759
+    m_Localized: "R\xE9initialiser votre h\xE9ros et vos \xC9chos pour tout recommencer ? Cette action est irr\xE9versible."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760760
+    m_Localized: "R\xE9initialiser"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760761
+    m_Localized: "Conserver la progression"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760762
+    m_Localized: "R\xE9initialisation impossible - le service n'est pas actif."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760763
+    m_Localized: "R\xE9initialis\xE9 - retour \xE0 la s\xE9lection du h\xE9ros..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760764
+    m_Localized: "R\xE9initialisation impossible - consultez le journal."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760765
+    m_Localized: "Un mur"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760766
+    m_Localized: "{0} est endommag\xE9 ({1} %)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760767
+    m_Localized: "R\xE9parer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760768
+    m_Localized: "H\xE9ros"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760769
+    m_Localized: "Lancer la vague"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760770
+    m_Localized: "Lancer maintenant"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760771
+    m_Localized: "CHOISISSEZ UN OBJET"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760772
+    m_Localized: "Le jeu est en pause pendant votre choix."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760773
+    m_Localized: "POTION DE SOIN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760774
+    m_Localized: "BREUVAGE DE MANA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760775
+    m_Localized: "POTION DE SOIN  x{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760776
+    m_Localized: "BREUVAGE DE MANA  x{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760777
+    m_Localized: "{0}  Niv {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760778
+    m_Localized: "Vague {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760779
+    m_Localized: "{0} ennemis restants"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760780
+    m_Localized: "Ajoutez une comp\xE9tence pour l'activer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760781
+    m_Localized: "Visiter la ville"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760782
+    m_Localized: "Source : {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760783
+    m_Localized: "Source : {0}. Les scores sont locaux ; les rangs affich\xE9s sont des rivaux fictifs jusqu'\xE0 la connexion du classement en ligne."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760784
+    m_Localized: "[ VERROUILL\xC9 ]"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760785
+    m_Localized: "Premier raid offert - {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760786
+    m_Localized: "Remplissez d'abord sa condition"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760787
+    m_Localized: "Qu\xEAtes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760788
+    m_Localized: "Raids"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760789
+    m_Localized: "Suivi des qu\xEAtes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760790
+    m_Localized: "Vitrine de la ville"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760791
+    m_Localized: "Chargement de la ville..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760792
+    m_Localized: "Vitrine publique en lecture seule"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760793
+    m_Localized: "Pr\xE9c\xE9dent"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760794
+    m_Localized: "Retour au classement"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760795
+    m_Localized: "D\xE9fenseur"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760796
+    m_Localized: "Chargement de l'instantan\xE9 explicitement partag\xE9..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760797
+    m_Localized: "Cette ville n'est pas ouverte \xE0 la visite."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760798
+    m_Localized: "Cet instantan\xE9 de la ville n'a pas pu \xEAtre affich\xE9 en toute s\xE9curit\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760799
+    m_Localized: "Instantan\xE9 en lecture seule v{0}  |  {1} structures  |  les patrouilles d'ambiance sont purement locales"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760800
+    m_Localized: "Instantan\xE9 en lecture seule v{0}  |  {1} structures  |  {2} affich\xE9es avec des substituts s\xFBrs  |  les patrouilles d'ambiance sont purement locales"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760801
+    m_Localized: "BIENVENUE DANS LA VEILLE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760802
+    m_Localized: "FONDEZ VOTRE VILLE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760803
+    m_Localized: "Commencez avec un hameau pr\xEAt et des d\xE9fenses de d\xE9part, ou choisissez un royaume vide \xE0 b\xE2tir vous-m\xEAme."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760804
+    m_Localized: "HAMEAU PR\xCAT  (Recommand\xE9)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760805
+    m_Localized: "ROYAUME VIDE  (\xC0 b\xE2tir vous-m\xEAme)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760806
+    m_Localized: "CHOISISSEZ VOTRE D\xC9FENSEUR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760807
+    m_Localized: "VERROUILL\xC9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760808
+    m_Localized: "Bient\xF4t disponible"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760809
+    m_Localized: "Capacit\xE9s r\xE9v\xE9l\xE9es au lancement"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760810
+    m_Localized: "CHOISIR {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760811
+    m_Localized: "H\xE9ros"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760812
+    m_Localized: "BIENVENUE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760813
+    m_Localized: "VOTRE PORTEFEUILLE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760814
+    m_Localized: "Continuez avec Google pour prot\xE9ger votre progression sur tous vos appareils, ou jouez en invit\xE9 sur cet appareil."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760815
+    m_Localized: "Votre portefeuille est votre sauvegarde. Connectez-le maintenant (une seule fois sur cet appareil). La progression en invit\xE9 reste ici jusqu'\xE0 la connexion."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760816
+    m_Localized: "Jouer en invit\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760817
+    m_Localized: "Ouverture de la connexion Google... vous pouvez toujours toucher Jouer en invit\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760818
+    m_Localized: "Ouverture de votre portefeuille... vous pouvez toujours toucher Jouer en invit\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760819
+    m_Localized: "La connexion Google n'a pas r\xE9pondu. R\xE9essayez Continuer avec Google, ou touchez Jouer en invit\xE9 pour commencer tout de suite."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760820
+    m_Localized: "Votre portefeuille n'a pas r\xE9pondu. Ouvrez l'application de votre portefeuille et r\xE9essayez Connecter le portefeuille, ou touchez Jouer en invit\xE9 pour commencer tout de suite."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760821
+    m_Localized: "La connexion Google a \xE9chou\xE9. R\xE9essayez, ou touchez Jouer en invit\xE9 pour commencer tout de suite."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760822
+    m_Localized: "La connexion du portefeuille a \xE9chou\xE9. R\xE9essayez, ou touchez Jouer en invit\xE9 pour commencer tout de suite."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760823
+    m_Localized: "BIENVENUE, KEEPER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760824
+    m_Localized: "LE HEART"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760825
+    m_Localized: "LE CHAMP DE FORCE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760826
+    m_Localized: "\xC9RIGEZ UNE TOUR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760827
+    m_Localized: "VOS WARDENS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760828
+    m_Localized: "TENEZ LA LIGNE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760829
+    m_Localized: "Ouvrir le menu Construire"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760830
+    m_Localized: "Lancer la vague 1"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760831
+    m_Localized: "Les \xC9chos attendent \xE0 Elarion. Visitez l'Echo Hollow en ville pour vous lier \xE0 votre premier compagnon."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760832
+    m_Localized: "Vous avez d\xE9j\xE0 un Warden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760833
+    m_Localized: "{0} marche la veille \xE0 vos c\xF4t\xE9s. Un Warden ne se lie qu'une fois \u2014 ce lien ne peut \xEAtre \xE9chang\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760834
+    m_Localized: "Un autre compagnon ? D'autres Wardens se trouvent dans le royaume \u2014 gagn\xE9s lors de qu\xEAtes ou invoqu\xE9s au march\xE9."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760835
+    m_Localized: "Votre Warden vous attend en ville"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760836
+    m_Localized: "Visitez l'Echo Hollow \xE0 Elarion pour vous lier \xE0 votre premier compagnon."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760837
+    m_Localized: "Warden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760838
+    m_Localized: "TOP 3 JOUEURS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760839
+    m_Localized: "MEILLEURE VAGUE DE TOUS LES TEMPS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760840
+    m_Localized: "{0}.  {1}     VAGUE {2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760841
+    m_Localized: "pr\xE9sente"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760842
+    m_Localized: "Reprendre"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760843
+    m_Localized: "Nouvelle partie"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760844
+    m_Localized: "Voir l'intro"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760845
+    m_Localized: "Continuer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760846
+    m_Localized: "Connexion\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760847
+    m_Localized: "Connect\xE9 \u2014 {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760848
+    m_Localized: "Aucun portefeuille connect\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760849
+    m_Localized: "Musique : activ\xE9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760850
+    m_Localized: "Musique : d\xE9sactiv\xE9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760851
+    m_Localized: "Musique activ\xE9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760852
+    m_Localized: "Musique d\xE9sactiv\xE9e"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760853
+    m_Localized: "EN PAUSE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760854
+    m_Localized: "Reprendre"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760855
+    m_Localized: "Quitter vers l'\xE9cran-titre"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760856
+    m_Localized: "R\xE9parer la session"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760857
+    m_Localized: "Cela efface un \xE9tat d'\xE9cran bloqu\xE9. Votre progression n'est pas affect\xE9e."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760858
+    m_Localized: "R\xE9parer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760859
+    m_Localized: "OK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760860
+    m_Localized: "Saisissez un montant valide."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760861
+    m_Localized: "Tour de {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760862
+    m_Localized: "\xC0 travers le royaume"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760863
+    m_Localized: "Elarion (th\xE8me du village)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760864
+    m_Localized: "Echoes of Elarion (th\xE8me principal)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760865
+    m_Localized: "Choisissez la musique du lieu o\xF9 vous \xEAtes. La musique de combat prend toujours le relais pendant les combats."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760866
+    m_Localized: "L'audio n'est pas pr\xEAt."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760867
+    m_Localized: "Passer  >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760868
+    m_Localized: "DEFENDERS OF THE REALM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760869
+    m_Localized: "Echoes of Elarion"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760870
+    m_Localized: "Achats s\xE9curis\xE9s via Google Play"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760871
+    m_Localized: "Achats v\xE9rifi\xE9s et restaur\xE9s."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760872
+    m_Localized: "La restauration a \xE9chou\xE9."
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

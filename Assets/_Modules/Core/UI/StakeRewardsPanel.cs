@@ -141,7 +141,8 @@ namespace DeNelle.Core.UI
 
         private void Build(StakeRewardsVM vm)
         {
-            _modal = ElarionUiKit.BuildObsidianModal("StakeRewardsUI", "Stake Rewards",
+            _modal = ElarionUiKit.BuildObsidianModal("StakeRewardsUI",
+                new LocalizedText("common.stake_rewards").Resolve(),
                 new Vector2(0.16f, 0.10f), new Vector2(0.84f, 0.92f), Close);
 
             if (_modal == null || _modal.chrome == null || _modal.chrome.content == null)
@@ -162,7 +163,8 @@ namespace DeNelle.Core.UI
             // --- Tier line ---
             if (vm.HasTier)
             {
-                ElarionUiKit.Label(body, $"Tier:  {vm.TierName}", 0.795f, 0.855f,
+                ElarionUiKit.Label(body, LocalText.Format("stake.rewards.tier_line", vm.TierName),
+                    0.795f, 0.855f,
                     ElarionUi.Gold, 26, TextAlignmentOptions.Center, 0.04f, 0.96f, bold: true);
                 if (!string.IsNullOrEmpty(vm.TierTagline))
                     ElarionUiKit.Label(body, vm.TierTagline, 0.752f, 0.795f,
@@ -170,12 +172,14 @@ namespace DeNelle.Core.UI
             }
             else
             {
-                ElarionUiKit.Label(body, "No active stake yet", 0.795f, 0.855f,
+                ElarionUiKit.Label(body, new LocalizedText("stake.rewards.no_active_stake").Resolve(),
+                    0.795f, 0.855f,
                     ElarionUi.ParchmentDim, 24, TextAlignmentOptions.Center, 0.04f, 0.96f, bold: true);
             }
 
             // --- "Rewards Unlocked" header ---
-            ElarionUiKit.Label(body, "Rewards Unlocked", 0.695f, 0.748f, ElarionUi.Gilt, 22,
+            ElarionUiKit.Label(body, new LocalizedText("stake.rewards.unlocked_heading").Resolve(),
+                0.695f, 0.748f, ElarionUi.Gilt, 22,
                 TextAlignmentOptions.Center, 0.06f, 0.94f, bold: true);
 
             // --- The unlocked reward list (scrollable well) ---

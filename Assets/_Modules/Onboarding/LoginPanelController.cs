@@ -304,7 +304,15 @@ namespace DeNelle.Onboarding
             // landscape web / Seeker) the old rect cannot hold them without the touch floor
             // forcing overlap ("stacked", owner screenshot 2026-07-30).
             var chrome = ElarionUiKit.BuildObsidianPanel(_canvas.transform,
-                IsGooglePlayPresentation ? "WELCOME" : "YOUR WALLET",
+                // ⚠ WO-1857 REGRESSION NEEDLE: LoginGateRegression.cs:293 asserts this file's
+                // SOURCE TEXT still carries the old English panel title verbatim. Re-point
+                // that needle at onboarding.login_panel.title_wallet. The old caption is
+                // deliberately NOT quoted in this comment — a pin that matches a comment
+                // passes vacuously, which is worse than a red pin. Reported in the sidecar;
+                // this lane may not edit Assets/Editor/Regression.
+                new LocalizedText(IsGooglePlayPresentation
+                    ? "onboarding.login_panel.title_welcome"
+                    : "onboarding.login_panel.title_wallet").Resolve(),
                 new Vector2(0.22f, 0.12f), new Vector2(0.78f, 0.88f), onClose: null,
                 withBackdrop: false, frameName: RpgUiCatalog.FrameCore);
             MedievalUiSkin.ApplyShell(chrome, compact: true);
@@ -340,10 +348,14 @@ namespace DeNelle.Onboarding
             // CTA. Two rows only - button centers sit 0.25 apart, far above the ~0.131
             // MinTouch clamp floor from the WO-787 geometry analysis, so ClampMinTouch
             // can grow both rows collision-free on every live canvas.
+            // ⚠ WO-1857 REGRESSION NEEDLE: LoginGateRegression.cs:295 asserts this file's
+            // SOURCE TEXT still carries the "this is the one-time connect" phrase; it now
+            // lives only in onboarding.login_panel.intro_wallet's authored value. The phrase
+            // is deliberately not reproduced here (see the note on the panel title above).
             var intro = ElarionUiKit.Label(body,
-                IsGooglePlayPresentation
-                    ? "Continue with Google to protect your progress across devices, or play as a guest on this device."
-                    : "Your wallet is your save. Connect now (one-time on this device). Guest progress stays here until you connect.",
+                new LocalizedText(IsGooglePlayPresentation
+                    ? "onboarding.login_panel.intro_google"
+                    : "onboarding.login_panel.intro_wallet").Resolve(),
                 0.68f, 0.80f, ElarionUi.Parchment, ElarionUi.FontLabel,
                 TextAlignmentOptions.Center, 0.06f, 0.94f);
             intro.textWrappingMode = TextWrappingModes.Normal;
@@ -362,7 +374,8 @@ namespace DeNelle.Onboarding
             MedievalUiSkin.ApplyButton(_connectWallet, primary: true);
             ApplyFrontDoorButtonFrame(_connectWallet);
 
-            _guest = ElarionUiKit.BuildObsidianButton(body, "Play as Guest",
+            _guest = ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("onboarding.login_panel.play_as_guest").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.08f, 0.16f), new Vector2(0.92f, 0.34f), OnPlayAsGuest);
             MedievalUiSkin.ApplyButton(_guest, primary: false);
@@ -403,10 +416,15 @@ namespace DeNelle.Onboarding
         {
             if (_busy || _routed) return;
             SetBusy(true);
+            // WO-1857: the #if pair is PRESERVED (WO-1363 audit posture — a runtime ternary
+            // would leave the non-Play literal in the Play artifact's global-metadata.dat),
+            // so each arm keeps its own key rather than collapsing into one.
 #if GOOGLE_PLAY
-            SetStatus("Opening Google sign-in... you can still tap Play as Guest.", info: true);
+            SetStatus(new LocalizedText("onboarding.login_panel.status_opening_google").Resolve(),
+                      info: true);
 #else
-            SetStatus("Opening your wallet... you can still tap Play as Guest.", info: true);
+            SetStatus(new LocalizedText("onboarding.login_panel.status_opening_wallet").Resolve(),
+                      info: true);
 #endif
 
             Task<AuthOutcome> attempt = _vm.ConnectWalletAsync();
@@ -424,11 +442,13 @@ namespace DeNelle.Onboarding
                     "surface (guest escape was live throughout).");
                 SetBusy(false);
 #if GOOGLE_PLAY
-                SetStatus("Google sign-in did not respond. Try Continue with Google again, " +
-                          "or tap Play as Guest to start now.", info: false);
+                SetStatus(
+                    new LocalizedText("onboarding.login_panel.status_google_no_response").Resolve(),
+                    info: false);
 #else
-                SetStatus("Your wallet did not respond. Open your wallet app and try Connect Wallet again, " +
-                          "or tap Play as Guest to start now.", info: false);
+                SetStatus(
+                    new LocalizedText("onboarding.login_panel.status_wallet_no_response").Resolve(),
+                    info: false);
 #endif
                 WatchLateConnect(attempt);
                 return;
@@ -439,9 +459,11 @@ namespace DeNelle.Onboarding
                 FlowTrace.Fail("Auth", "wallet connect threw at the panel: " + e.Message);
                 SetBusy(false);
 #if GOOGLE_PLAY
-                SetStatus("Google sign-in failed. Try again, or tap Play as Guest to start now.", info: false);
+                SetStatus(new LocalizedText("onboarding.login_panel.status_google_failed").Resolve(),
+                          info: false);
 #else
-                SetStatus("Wallet connect failed. Try again, or tap Play as Guest to start now.", info: false);
+                SetStatus(new LocalizedText("onboarding.login_panel.status_wallet_failed").Resolve(),
+                          info: false);
 #endif
                 return;
             }

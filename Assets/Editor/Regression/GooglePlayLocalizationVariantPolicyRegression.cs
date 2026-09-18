@@ -38,6 +38,16 @@ namespace DeNelle.Editor.Regression
             "jewelerFtue.stakeNotVerified",
             "clanChat.noWallet",
             "common.powered_skr",
+            "skr.showcase.headline",
+            "skr.showcase.subhead",
+            "skr.showcase.cosmetic_note",
+            "skr.showcase.coming_soon_toast",
+            "onboarding.login_panel.title_wallet",
+            "onboarding.login_panel.intro_wallet",
+            "onboarding.login_panel.status_opening_wallet",
+            "onboarding.login_panel.status_wallet_no_response",
+            "onboarding.login_panel.status_wallet_failed",
+            "wallet.connect.none",
         };
 
         private static readonly string[] SettingsWalletKeys =
@@ -130,9 +140,10 @@ namespace DeNelle.Editor.Regression
             RequireSubset(stripKeys, expectedStore, "Wallet-owned Store rows", failures);
             RequireSubset(stripKeys, expectedSwap, "Web3 swap rows", failures);
             RequireSubset(stripKeys, SettingsWalletKeys, "compile-hidden Settings wallet rows", failures);
-            if (stripKeys.Count != expectedStore.Length + expectedSwap.Length + SettingsWalletKeys.Length)
-                failures.Add("strip policy contains an unreviewed extra/missing row; expected 57 exact keys, got " +
-                             stripKeys.Count);
+            int expectedStripCount = expectedStore.Length + expectedSwap.Length + SettingsWalletKeys.Length;
+            if (stripKeys.Count != expectedStripCount)
+                failures.Add("strip policy contains an unreviewed extra/missing row; expected " +
+                             expectedStripCount + " exact keys, got " + stripKeys.Count);
 
             foreach (string locale in RequiredLocales)
             {
@@ -175,7 +186,8 @@ namespace DeNelle.Editor.Regression
 
             if (failures.Count == 0)
             {
-                reason = "PLAY_LOCALIZATION_VARIANT_POLICY_OK - 57 exact strip rows + 5 visible replacements; " +
+                reason = "PLAY_LOCALIZATION_VARIANT_POLICY_OK - " + stripKeys.Count + " exact strip rows + " +
+                         replacementKeys.Count + " visible replacements; " +
                          "10 locale pairs and 6 tables closed with byte-safe transaction source";
                 return true;
             }

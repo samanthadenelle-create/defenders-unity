@@ -61,7 +61,8 @@ namespace DeNelle.Onboarding
         private void Show()
         {
             _modal = ElarionUiKit.BuildObsidianModal(
-                "FirstWatchWelcomeLetterUI", "WELCOME TO THE WATCH",
+                "FirstWatchWelcomeLetterUI",
+                new LocalizedText("onboarding.first_watch.welcome_title").Resolve(),
                 new Vector2(0.20f, 0.16f), new Vector2(0.80f, 0.84f),
                 Close, sortingOrder: 31010);
             if (_modal == null || _modal.canvas == null || _modal.chrome == null)
@@ -106,7 +107,9 @@ namespace DeNelle.Onboarding
             fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
             fitter.aspectRatio = (float)letterTexture.width / letterTexture.height;
 
-            ElarionUiKit.BuildObsidianButton(content, "Close",
+            // WO-1857: the dismiss face reuses the game-wide common.close
+            // (COMMON_KEYS_REGISTRY names this exact call site).
+            ElarionUiKit.BuildObsidianButton(content, CommonText.Close.Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1,
                 ElarionUiKit.ObsidianButtonColor.Yellow,
                 new Vector2(0.28f, 0.02f), new Vector2(0.72f, 0.20f), Close);

@@ -290,10 +290,14 @@ namespace DeNelle.Editor.Regression
 
             // RED-first: the unpatched panel title was the email-era "SIGN IN" wall. The
             // production first-run surface is the one-time wallet connect, labelled as such.
-            Require(login, "\"YOUR WALLET\"", failures, log,
-                "the first-run panel title is no longer YOUR WALLET -- a SIGN IN wall reads as a bug, not the one-time connect");
-            Require(login, "one-time on this device", failures, log,
-                "the first-run copy no longer says this is the one-time connect -- the owner reported it as a validate-wallet defect");
+            // WO-1857: both captions now resolve through LocalizedText, so these needles pin the
+            // resolved KEYS. The keys' authored English still carries the same promise; the retired
+            // literals are deliberately not reproduced in this comment, because a source-text needle
+            // that matches its own comment is green while asserting nothing.
+            Require(login, "\"onboarding.login_panel.title_wallet\"", failures, log,
+                "the first-run panel title no longer resolves onboarding.login_panel.title_wallet -- a SIGN IN wall reads as a bug, not the one-time connect");
+            Require(login, "\"onboarding.login_panel.intro_wallet\"", failures, log,
+                "the first-run copy no longer resolves onboarding.login_panel.intro_wallet -- the owner reported the missing one-time-connect promise as a validate-wallet defect");
 
             string foundingPath = Path.Combine(Application.dataPath, "_Modules/Onboarding/FoundingChoiceController.cs");
             if (!File.Exists(foundingPath))

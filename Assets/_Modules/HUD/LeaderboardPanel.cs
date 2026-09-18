@@ -93,7 +93,8 @@ namespace DeNelle.HUD
         {
             if (_modal != null && _modal.canvas != null) return;
 
-            _modal = ElarionUiKit.BuildObsidianModal("LeaderboardUI", "Leaderboard",
+            _modal = ElarionUiKit.BuildObsidianModal("LeaderboardUI",
+                new LocalizedText("common.leaderboard").Resolve(),
                 new Vector2(0.26f, 0.10f), new Vector2(0.74f, 0.92f), () => SetVisible(false),
                 frameName: RpgUiCatalog.FrameCore, medallionIcon: "combat");
 
@@ -281,7 +282,8 @@ namespace DeNelle.HUD
                 new Vector2(row.CanVisit ? 0.73f : 1f, 1f));
             if (row.CanVisit)
             {
-                var visit = ElarionUiKit.BuildObsidianButton(rowGo.transform, "Visit Town",
+                var visit = ElarionUiKit.BuildObsidianButton(rowGo.transform,
+                    new LocalizedText("hud.leaderboard.visit_town").Resolve(),
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                     new Vector2(.74f, .03f), new Vector2(.995f, .97f), () => OpenTown(row));
                 visit.name = "VisitTown_" + row.Rank;

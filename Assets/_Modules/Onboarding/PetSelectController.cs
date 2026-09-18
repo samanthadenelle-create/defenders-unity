@@ -242,7 +242,9 @@ namespace DeNelle.Onboarding
             // PET-ACQUISITION REWORK (owner 2026-06-13): this screen no longer grants a
             // pet — it's a teaser. Point the player at the Echo Hollow, where the bond
             // actually happens, so the copy doesn't promise a pick this screen won't keep.
-            _subtitle = new Label("Echoes await in Elarion. Visit the Echo Hollow in town to bond your first companion.") { name = "pet-select-subtitle" };
+            _subtitle = new Label(
+                new LocalizedText("onboarding.pet_select.teaser_subtitle").Resolve())
+            { name = "pet-select-subtitle" };
             _subtitle.style.marginTop = 8;
             _subtitle.style.fontSize = 15;
             _subtitle.style.unityFontStyleAndWeight = FontStyle.Italic;
@@ -326,14 +328,19 @@ namespace DeNelle.Onboarding
 
             string petName = ChosenPetName();
 
-            var heading = new Label("You already have a Warden") { name = "pet-already-title" };
+            var heading = new Label(
+                new LocalizedText("onboarding.pet_select.already_bonded_title").Resolve())
+            { name = "pet-already-title" };
             heading.style.fontSize = 30;
             heading.style.unityFontStyleAndWeight = FontStyle.Bold;
             heading.style.color = TitleText;
             heading.style.unityTextAlign = TextAnchor.MiddleCenter;
             _root.Add(heading);
 
-            var bonded = new Label($"{petName} walks the watch beside you. A Warden bonds once — that bond can't be traded away.")
+            // WO-1857: interpolated copy becomes ONE positional format key ({0} = the pet's
+            // own name), so a locale can put the name anywhere in the sentence.
+            var bonded = new Label(
+                LocalText.Format("onboarding.pet_select.already_bonded_body", petName))
             { name = "pet-already-bonded" };
             bonded.style.marginTop = 12;
             bonded.style.fontSize = 15;
@@ -344,7 +351,8 @@ namespace DeNelle.Onboarding
             bonded.style.maxWidth = 640;
             _root.Add(bonded);
 
-            var hint = new Label("Want another companion? More Wardens can be found out in the realm — earned through quests or summoned at the marketplace.")
+            var hint = new Label(
+                new LocalizedText("onboarding.pet_select.already_bonded_hint").Resolve())
             { name = "pet-already-hint" };
             hint.style.marginTop = 18;
             hint.style.fontSize = 13;
@@ -354,7 +362,11 @@ namespace DeNelle.Onboarding
             hint.style.maxWidth = 600;
             _root.Add(hint);
 
-            var continueButton = new Button { name = "pet-already-continue", text = "Continue" };
+            var continueButton = new Button
+            {
+                name = "pet-already-continue",
+                text = new LocalizedText("common.continue").Resolve()
+            };
             continueButton.style.marginTop = 28;
             continueButton.style.minWidth = 200;
             continueButton.style.height = 52;
@@ -426,14 +438,16 @@ namespace DeNelle.Onboarding
             card.style.paddingTop = 28; card.style.paddingBottom = 28;
             card.style.paddingLeft = 22; card.style.paddingRight = 22;
 
-            var heading = new Label("Your Warden awaits in town");
+            var heading = new Label(
+                new LocalizedText("onboarding.pet_select.awaits_title").Resolve());
             heading.style.fontSize = 20;
             heading.style.unityFontStyleAndWeight = FontStyle.Bold;
             heading.style.color = TitleText;
             heading.style.unityTextAlign = TextAnchor.MiddleCenter;
             card.Add(heading);
 
-            var blurb = new Label("Visit the Echo Hollow in Elarion to bond your first companion.");
+            var blurb = new Label(
+                new LocalizedText("onboarding.pet_select.awaits_blurb").Resolve());
             blurb.style.marginTop = 10;
             blurb.style.fontSize = 13;
             blurb.style.color = BlurbText;
@@ -442,7 +456,11 @@ namespace DeNelle.Onboarding
             blurb.style.maxWidth = 320;
             card.Add(blurb);
 
-            var go = new Button { name = "pet-fallback-continue", text = "Continue" };
+            var go = new Button
+            {
+                name = "pet-fallback-continue",
+                text = new LocalizedText("common.continue").Resolve()
+            };
             go.style.marginTop = 22;
             go.style.minWidth = 180;
             go.style.height = 48;
@@ -520,7 +538,10 @@ namespace DeNelle.Onboarding
             body.style.paddingLeft = 14; body.style.paddingRight = 14;
             body.style.flexGrow = 1f;
 
-            var nameLabel = new Label(pet.Name ?? "Warden");
+            // WO-1857: the no-name fallback is a rendered label, so it gets a key too
+            // (same precedent as common.job, the registry's "fallback label" row).
+            var nameLabel = new Label(pet.Name
+                ?? new LocalizedText("onboarding.pet_select.warden_name_fallback").Resolve());
             nameLabel.style.fontSize = 20;
             nameLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
             nameLabel.style.color = TitleText;

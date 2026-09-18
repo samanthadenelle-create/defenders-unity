@@ -222,7 +222,7 @@ namespace DeNelle.Dungeons
             }
 
             var modal = ElarionUiKit.BuildObsidianModal(
-                PanelName, "TREASURE FOUND",
+                PanelName, new LocalizedText("dungeon.treasure.title").Resolve(),
                 Layout.ModalMin, Layout.ModalMax,
                 onClose: null, sortingOrder: 31030,
                 frameName: RpgUiCatalog.FrameCore);
@@ -247,7 +247,8 @@ namespace DeNelle.Dungeons
             // Band 1 (the title) is drawn by the kit into FrameCore's header zone; the two are
             // separated by SIZE + WEIGHT (FontTitle bold vs FontBody regular), so the greyscale
             // read survives - the owner is red/green colourblind and hue may carry nothing.
-            var heading = ElarionUiKit.Label(content, "The cache holds:",
+            var heading = ElarionUiKit.Label(content,
+                new LocalizedText("dungeon.treasure.contents_heading").Resolve(),
                 Layout.SubtitleBand.y, Layout.SubtitleBand.w,
                 ElarionUi.ParchmentDim, ElarionUi.FontBody, TextAlignmentOptions.Center,
                 Layout.SubtitleBand.x, Layout.SubtitleBand.z);
@@ -306,7 +307,7 @@ namespace DeNelle.Dungeons
             if (firstClear)
             {
                 var unlock = ElarionUiKit.Label(content,
-                    "First clear -- a new recipe is remembered.",
+                    new LocalizedText("dungeon.treasure.first_clear_note").Resolve(),
                     Layout.NoteBand.y, Layout.NoteBand.w,
                     ElarionUi.Gilt, ElarionUi.FontBody, TextAlignmentOptions.Center,
                     Layout.NoteBand.x, Layout.NoteBand.z);
@@ -314,7 +315,11 @@ namespace DeNelle.Dungeons
             }
 
             // -- BAND 5: the ONE CTA, in a band no other element may enter ----------
-            ElarionUiKit.Button(content, "Take", ElarionUiKit.ButtonKind.Confirm,
+            // WO-1857: the ONE CTA's caption resolves from dungeon.treasure.take.
+            // NOTE: DungeonTreasureRegression's [panel] check regexes this file's SOURCE for the
+            // literal "Take" - that needle must move to the key (sidecar-reported, not edited here).
+            ElarionUiKit.Button(content, new LocalizedText("dungeon.treasure.take").Resolve(),
+                ElarionUiKit.ButtonKind.Confirm,
                 new Vector2(Layout.CtaBand.x, Layout.CtaBand.y),
                 new Vector2(Layout.CtaBand.z, Layout.CtaBand.w),
                 CloseAndGrant);

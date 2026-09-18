@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
 
 namespace DeNelle.Audio
@@ -67,7 +68,9 @@ namespace DeNelle.Audio
 
         // ── IPanelViewModel ───────────────────────────────────────────────────
         public event Action Changed;
-        public string Title => "Jukebox";
+        // WO-1857: reuses the shared common.jukebox row - COMMON_KEYS_REGISTRY names this exact
+        // call site alongside MusicSelectionPanel's own modal title (same feature name, same job).
+        public string Title => new LocalizedText("common.jukebox").Resolve();
         public void Close() => _onClose?.Invoke();
 
         public void Dispose()

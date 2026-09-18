@@ -256,7 +256,8 @@ namespace DeNelle.HUD
             // to a narrow, tall center column so the rendered aspect matches the template instead of
             // stretching the ornate frame into a landscape slab.
             // Shared store size (owner felt-test 2026-07-15: all stores same size / matching Y).
-            _modal = ElarionUiKit.BuildObsidianModal("CosmeticShopUI", "Cosmetic Shop",
+            _modal = ElarionUiKit.BuildObsidianModal("CosmeticShopUI",
+                new LocalizedText("hud.cosmetic_shop.title").Resolve(),
                 ElarionUiKit.StorePanelAnchorMin, ElarionUiKit.StorePanelAnchorMax, CloseOverlay,
                 frameName: RpgUiCatalog.FrameMerchant, medallionIcon: "coin");
 
@@ -374,7 +375,9 @@ namespace DeNelle.HUD
 
             if (_ownershipLabel != null)
                 // WO-697: currency through the ONE kit formatter (compact >= 10k, no N0 grouping).
-                _ownershipLabel.text = ElarionUi.CompactNumber(OwnedCount()) + "  Cosmetics";
+                // WO-1857: ONE key with the count as a hole - the number's position moves per locale.
+                _ownershipLabel.text = LocalText.Format("hud.cosmetic_shop.owned_count",
+                    ElarionUi.CompactNumber(OwnedCount()));
 
             for (int i = _listContent.childCount - 1; i >= 0; i--)
                 Destroy(_listContent.GetChild(i).gameObject);
@@ -462,21 +465,31 @@ namespace DeNelle.HUD
             // ONE action button — state machine unchanged.
             if (equipped)
             {
-                var b = ElarionUiKit.BuildObsidianButton(cardGo.transform, "Equipped",
+                var b = ElarionUiKit.BuildObsidianButton(cardGo.transform,
+                    new LocalizedText("common.equipped").Resolve(),
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Green,
                     new Vector2(0.74f, 0.28f), new Vector2(0.985f, 0.72f), null);
                 b.interactable = false;
             }
             else if (owned)
             {
-                ElarionUiKit.BuildObsidianButton(cardGo.transform, "Equip",
+                // WO-1857: the button VERB ("Equip") and the confirmation STATUS
+                // ("Equipped {name}") are different jobs, so two keys, never one.
+                ElarionUiKit.BuildObsidianButton(cardGo.transform,
+                    new LocalizedText("hud.cosmetic_shop.equip").Resolve(),
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                     new Vector2(0.74f, 0.28f), new Vector2(0.985f, 0.72f),
-                    () => { EquipId(id); ShowToast($"Equipped {displayName}"); Repaint(); });
+                    () =>
+                    {
+                        EquipId(id);
+                        ShowToast(LocalText.Format("hud.cosmetic_shop.equipped_toast", displayName));
+                        Repaint();
+                    });
             }
             else
             {
-                var b = ElarionUiKit.BuildObsidianButton(cardGo.transform, "Locked",
+                var b = ElarionUiKit.BuildObsidianButton(cardGo.transform,
+                    new LocalizedText("hud.cosmetic_shop.locked").Resolve(),
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                     new Vector2(0.74f, 0.28f), new Vector2(0.985f, 0.72f), null);
                 b.interactable = false;

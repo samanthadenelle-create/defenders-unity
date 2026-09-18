@@ -366,14 +366,14 @@ namespace DeNelle.Core
             if (ok) return true;
 
             string message = string.IsNullOrEmpty(HeroContentPrewarmer.StatusText)
-                ? "Could not download your hero's artwork. The game has stopped here rather than " +
-                  "dropping you in without it. Check your internet connection and tap Retry."
+                ? new DeNelle.Core.UI.LocalizedText("scene.router.hero_art_unavailable").Resolve()
                 : HeroContentPrewarmer.StatusText;
 
             // Let the barrier's Retry re-run OUR download, not the offline content probe (which would
             // report success and dismiss with the hero art still missing).
             DeNelle.Core.UI.LoadingOverlay.SetRetryOverride(report => RetryHeroContent(report));
-            DeNelle.Core.UI.LoadingOverlay.ShowConnectionRequired(message, "Retry");
+            DeNelle.Core.UI.LoadingOverlay.ShowConnectionRequired(
+                message, new DeNelle.Core.UI.LocalizedText("offlineFirstRunRetry").Resolve());
 
             FlowTrace.Fail("SceneRouter",
                 "scene load BLOCKED: the chosen hero's remote art is unavailable. Player is held on the " +

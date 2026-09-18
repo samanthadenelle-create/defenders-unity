@@ -29,6 +29,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.SceneManagement;
+using DeNelle.Core.UI;   // LocalizedText - WO-1857 (the toggle's tooltip + fallback face are player copy)
 
 namespace DeNelle.Settings
 {
@@ -152,7 +153,11 @@ namespace DeNelle.Settings
         {
             if (_btn == null) return;
             bool on = MusicOn;
-            _btn.tooltip = on ? "Music: On" : "Music: Off";
+            // WO-1857: tooltip and button face are DIFFERENT jobs (hover hint vs. control label),
+            // so they carry four keys, not two shared ones.
+            _btn.tooltip = on
+                ? new LocalizedText("settings.music_toggle.tooltip_on").Resolve()
+                : new LocalizedText("settings.music_toggle.tooltip_off").Resolve();
             if (_useSprite)
             {
                 _btn.text = string.Empty;
@@ -161,7 +166,10 @@ namespace DeNelle.Settings
             }
             else
             {
-                _btn.text = on ? "Music On" : "Music Off";  // ASCII words (owner reads by text, not glyph)
+                // Words, not a glyph (owner reads by text) - now localized, WO-1857.
+                _btn.text = on
+                    ? new LocalizedText("settings.music_toggle.face_on").Resolve()
+                    : new LocalizedText("settings.music_toggle.face_off").Resolve();
                 _btn.style.backgroundColor = on
                     ? new Color(0.16f, 0.52f, 0.34f, 0.92f)
                     : new Color(0.40f, 0.13f, 0.13f, 0.92f);

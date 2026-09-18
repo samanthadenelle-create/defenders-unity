@@ -461,8 +461,10 @@ namespace DeNelle.Editor.Regression
                 failures.Add("[panel] the shared Close is NOT retired - two exits on a linear reward beat read as " +
                              "one choice offered twice (owner F8 seq 628), and a Close-dismiss risks eating the reward");
 
-            if (!new Regex("\"Take\"").IsMatch(src))
-                failures.Add("[panel] no \"Take\" CTA found - the confirm beat has no button, so the owner ruling " +
+            // WO-1857: the CTA is now a LocalizedText resolve (dungeon.treasure.take), not a bare
+            // "Take" literal - match the resolved key instead of the old literal text.
+            if (!new Regex("dungeon\\.treasure\\.take").IsMatch(src))
+                failures.Add("[panel] no dungeon.treasure.take CTA found - the confirm beat has no button, so the owner ruling " +
                              "'prompt then confirm' is not implemented");
 
             if (src.IndexOf("PanelManager.Register", StringComparison.Ordinal) < 0)

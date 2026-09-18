@@ -37,6 +37,7 @@
 
 using System;
 using System.Collections.Generic;
+using DeNelle.Core.UI;          // WO-1857: LocalizedText — the title + the offered row faces
 using DeNelle.Core.UI.Mvvm;
 
 namespace DeNelle.HUD
@@ -156,7 +157,7 @@ namespace DeNelle.HUD
         // -- IPanelViewModel ----------------------------------------------------
         public event Action Changed;
 
-        public string Title { get { return "Help"; } }
+        public string Title { get { return new LocalizedText("settings.help.help").Resolve(); } }
 
         public void Close()
         {
@@ -208,10 +209,20 @@ namespace DeNelle.HUD
             _entries.Clear();
 
             var candidates = new List<Candidate>(6);
-            candidates.Add(new Candidate("report_bug", "Report a Bug", false, false, true, HostReportBug));
-            candidates.Add(new Candidate("controls", "Controls", false, false, true, HostShowControls));
-            candidates.Add(new Candidate("reset_progress", "Reset Hero & Echoes", true, false, true, HostResetProgress));
-            candidates.Add(new Candidate("credits", "Credits", false, false, true, HostShowCredits));
+            // WO-1857: the row FACES are player copy and resolve from the table; the row IDs
+            // ("report_bug", ...) are identity and stay English data. The DevOnly rows below
+            // keep their literals on purpose - they are compile-stripped from release, and
+            // CopyHygieneRegression.CaseDevToolsReleaseGuard pins that literal by its exact quoted
+            // text below (never re-quote it here - a comment quoting it ahead of the #if guard
+            // trips the same needle it is meant to protect).
+            candidates.Add(new Candidate("report_bug",
+                new LocalizedText("hud.help_menu.report_bug").Resolve(), false, false, true, HostReportBug));
+            candidates.Add(new Candidate("controls",
+                new LocalizedText("hud.help_menu.controls_row").Resolve(), false, false, true, HostShowControls));
+            candidates.Add(new Candidate("reset_progress",
+                new LocalizedText("hud.help_menu.reset_row").Resolve(), true, false, true, HostResetProgress));
+            candidates.Add(new Candidate("credits",
+                new LocalizedText("hud.help_menu.credits_row").Resolve(), false, false, true, HostShowCredits));
 #if DEVELOPMENT_BUILD || UNITY_EDITOR || TESTER_BUILD
             // SECURITY (LB-11 / store-hardening S1): both rows are compile-STRIPPED from
             // release, AND flagged DevOnly so the IsDevContext filter drops them even if

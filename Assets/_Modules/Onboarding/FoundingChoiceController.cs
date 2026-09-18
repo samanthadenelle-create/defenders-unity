@@ -183,7 +183,8 @@ namespace DeNelle.Onboarding
             // ~28px ABOUT ITS CENTRE, closing the authored gap (buttons overlapped) and pushing
             // the top button up into the copy band. Taller panel (0.12-0.88) + the fixed-pixel
             // bands below remove BOTH symptoms at their one shared cause.
-            var chrome = ElarionUiKit.BuildObsidianPanel(_canvas.transform, "FOUND YOUR TOWN",
+            var chrome = ElarionUiKit.BuildObsidianPanel(_canvas.transform,
+                new LocalizedText("onboarding.founding_choice.title").Resolve(),
                 new Vector2(0.12f, 0.12f), new Vector2(0.88f, 0.88f), onClose: null,
                 withBackdrop: false);
             MedievalUiSkin.ApplyShell(chrome, compact: false);
@@ -224,10 +225,13 @@ namespace DeNelle.Onboarding
             if (bodyFillImage != null) bodyFillImage.raycastTarget = false;
 
             // Body copy — teaches that BOTH options stay editable, so the choice is
-            // low-stakes (owner: every building is movable). Inline ASCII literal (not a
-            // canon key) so it never shows a missing-key placeholder.
+            // low-stakes (owner: every building is movable).
+            // WO-1857: the old comment here said this was an "inline ASCII literal (not a
+            // canon key) so it never shows a missing-key placeholder" — that trade is
+            // retired: the key is authored in every required locale, and an English-only
+            // literal is the defect the sweep exists to remove.
             var copy = ElarionUiKit.Label(body,
-                "Begin with a ready settlement and starter defenses, or choose an empty realm to build yourself.",
+                new LocalizedText("onboarding.founding_choice.body").Resolve(),
                 0.56f, 0.94f, ElarionUi.Parchment, ElarionUi.FontBody,
                 TextAlignmentOptions.Center, 0.06f, 0.94f);
             copy.textWrappingMode = TextWrappingModes.Normal;
@@ -281,10 +285,18 @@ namespace DeNelle.Onboarding
             column.sizeDelta        = new Vector2(0f, BtnH * 2f + BtnGap);
             column.anchoredPosition = new Vector2(0f, BtnBottomPad);
 
-            var readyButton = ElarionUiKit.AddColumnButton(column, "READY SETTLEMENT  (Recommended)",
+            // ⚠ WO-1857 REGRESSION NEEDLE: FoundingReachabilityRegression.cs:123-126 asserts
+            // this file's SOURCE TEXT still contains the two English button captions
+            // verbatim. Those two needles must be re-pointed at the two KEYS below.
+            // Deliberately NOT quoted here: a comment carrying the old caption would make
+            // that pin pass on a comment, which is worse than a red pin. Reported in the
+            // lane sidecar; this lane may not edit Assets/Editor/Regression.
+            var readyButton = ElarionUiKit.AddColumnButton(column,
+                new LocalizedText("onboarding.founding_choice.ready_settlement").Resolve(),
                 ElarionUiKit.ObsidianButtonColor.Green, OnDefaultTown,
                 ElarionUiKit.ObsidianButtonStyle.Style1, BtnH);
-            var emptyButton = ElarionUiKit.AddColumnButton(column, "EMPTY REALM  (Build It Yourself)",
+            var emptyButton = ElarionUiKit.AddColumnButton(column,
+                new LocalizedText("onboarding.founding_choice.empty_realm").Resolve(),
                 ElarionUiKit.ObsidianButtonColor.Gray, OnBuildYourOwn,
                 ElarionUiKit.ObsidianButtonStyle.Style1, BtnH);
             FitChoiceLabel(readyButton);

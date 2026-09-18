@@ -162,7 +162,8 @@ namespace DeNelle.Core.UI
 
         private void Build()
         {
-            _modal = ElarionUiKit.BuildObsidianModal("SkrShowcaseUI", "Powered with SKR",
+            _modal = ElarionUiKit.BuildObsidianModal("SkrShowcaseUI",
+                new LocalizedText("common.powered_skr").Resolve(),
                 new Vector2(0.15f, 0.06f), new Vector2(0.85f, 0.94f), Close);
 
             if (_modal == null || _modal.chrome == null || _modal.chrome.content == null)
@@ -180,9 +181,10 @@ namespace DeNelle.Core.UI
                 TextAlignmentOptions.Center, 0.04f, 0.96f, spacing: 3f, bold: true);
 
             // --- Headline: what this shows ---
-            ElarionUiKit.Label(body, "How SKR powers the realm", 0.845f, 0.905f, ElarionUi.Gold, 30,
+            ElarionUiKit.Label(body, new LocalizedText("skr.showcase.headline").Resolve(),
+                0.845f, 0.905f, ElarionUi.Gold, 30,
                 TextAlignmentOptions.Center, 0.04f, 0.96f, bold: true);
-            ElarionUiKit.Label(body, "The Seeker / Solana token integration — the intended experience.",
+            ElarionUiKit.Label(body, new LocalizedText("skr.showcase.subhead").Resolve(),
                 0.800f, 0.845f, ElarionUi.ParchmentDim, 17, TextAlignmentOptions.Center, 0.05f, 0.95f);
 
             // --- Value-prop well (the four honest one-liners) ---
@@ -196,7 +198,8 @@ namespace DeNelle.Core.UI
             // View the read-only stake-rewards perk surface (already-built StakeRewardsPanel).
             // Seed a real-looking Genesis-holder stake so the perk list reads populated for the
             // capture — a MOCK read only (no wallet, custodies nothing).
-            var rewards = ElarionUiKit.BuildObsidianButton(body, "View Stake Rewards",
+            var rewards = ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("skr.showcase.view_stake_rewards").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                 new Vector2(0.06f, 0.255f), new Vector2(0.49f, 0.335f), OnViewStakeRewards);
 
@@ -210,7 +213,7 @@ namespace DeNelle.Core.UI
             // --- Honest footer (no wallet, no live crypto) ---
             ElarionUiKit.Label(body, HonestFooter, 0.140f, 0.245f, ElarionUi.Parchment, 15,
                 TextAlignmentOptions.Center, 0.05f, 0.95f);
-            ElarionUiKit.Label(body, "Cosmetic perks are SKR-priced at launch — testnet only for now.",
+            ElarionUiKit.Label(body, new LocalizedText("skr.showcase.cosmetic_note").Resolve(),
                 0.095f, 0.140f, ElarionUi.ParchmentDim, 14, TextAlignmentOptions.Center, 0.05f, 0.95f, bold: true);
 
             // Toast — low center of the modal canvas (coming-soon feedback).
@@ -261,7 +264,7 @@ namespace DeNelle.Core.UI
             // DELIBERATE NO-OP. No wallet call, no signature, no transaction. The Pi/Seeker wallet
             // is not connected in this build — the grant preview shows the INTENDED flow, honestly.
             FlowTrace.Step("Skr", "SkrShowcasePanel: Connect Wallet is a no-op (preview) — no wallet call made.");
-            ShowToast("Coming soon — testnet preview. No wallet connected.");
+            ShowToast(new LocalizedText("skr.showcase.coming_soon_toast").Resolve());
         }
 
         private void ShowToast(string message)

@@ -128,7 +128,8 @@ namespace DeNelle.Core.UI
             scrim.color = new Color(0.02f, 0.015f, 0.025f, 0.60f);
 
             // ── Title (gold, TMP) ─────────────────────────────────────────────────
-            var title = NewText("Title", transform, "Loading Elarion...", 64, bold: true);
+            var title = NewText("Title", transform,
+                new LocalizedText("loading.village.title").Resolve(), 64, bold: true);
             title.color = ElarionUi.Gilt;
             title.alignment = TextAlignmentOptions.Center;
             var tRt = title.rectTransform;

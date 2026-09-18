@@ -160,7 +160,8 @@ namespace DeNelle.HUD
             // dark quest list LEFT, parchment detail RIGHT, medallion, ONE shared kit
             // Close (it hides the card, matching the Quests-button toggle). No backdrop
             // scrim — this stays a non-blocking HUD surface, not a PanelManager modal.
-            _chrome = ElarionUiKit.BuildObsidianPanel(_canvas.transform, "Daily Quests",
+            _chrome = ElarionUiKit.BuildObsidianPanel(_canvas.transform,
+                new LocalizedText("hud.daily_quest.title").Resolve(),
                 new Vector2(0.06f, 0.12f), new Vector2(0.94f, 0.88f),
                 onClose: () => { _visible = false; ApplyVisibility(); },
                 withBackdrop: false, frameName: RpgUiCatalog.FrameQuest, medallionIcon: "quest");
@@ -276,7 +277,9 @@ namespace DeNelle.HUD
                         () => _vm.Select(key));   // command -> VM raises Changed -> Repaint
                     // State text carries the state (colorblind law); color = reinforcement.
                     ElarionUiKit.AddRowStateSuffix(rowBtn,
-                        item.Equipped ? "+ Done" : _vm.ProgressText(key),
+                        item.Equipped
+                            ? new LocalizedText("hud.daily_quest.done_badge").Resolve()
+                            : _vm.ProgressText(key),
                         item.Equipped ? ElarionUi.Affordable : ElarionUi.ParchmentDim);
                 }
 
@@ -400,17 +403,24 @@ namespace DeNelle.HUD
             // All-ASCII glyphs; Good tone is reinforcement only (counts are the carrier).
             var rewards = new List<ElarionUiKit.DetailCardRow>();
             var r = _vm.RewardFor(item.Id);
+            // WO-1857: the two resource NOUNS reuse the existing shared tooltip rows rather than
+            // minting per-screen synonyms (COMMON_KEYS_REGISTRY precedent for "Iron").
+            // "Wisdom" has no shared resource row yet - see the sidecar note.
             if (r.Crystals > 0)
-                rewards.Add(new ElarionUiKit.DetailCardRow("+", "Crystals",
+                rewards.Add(new ElarionUiKit.DetailCardRow("+",
+                    new LocalizedText("tooltip.resourceCrystals.title").Resolve(),
                     "+" + r.Crystals, ElarionUiKit.DetailRowTone.Good));
             if (r.Stone > 0)
-                rewards.Add(new ElarionUiKit.DetailCardRow("+", "Stone",
+                rewards.Add(new ElarionUiKit.DetailCardRow("+",
+                    new LocalizedText("tooltip.resourceStone.title").Resolve(),
                     "+" + r.Stone, ElarionUiKit.DetailRowTone.Good));
             if (r.Wisdom > 0)
-                rewards.Add(new ElarionUiKit.DetailCardRow("+", "Wisdom",
+                rewards.Add(new ElarionUiKit.DetailCardRow("+",
+                    new LocalizedText("hud.daily_quest.reward_wisdom").Resolve(),
                     "+" + r.Wisdom, ElarionUiKit.DetailRowTone.Good));
             if (r.RandomItem)
-                rewards.Add(new ElarionUiKit.DetailCardRow("*", "Bonus item", "1",
+                rewards.Add(new ElarionUiKit.DetailCardRow("*",
+                    new LocalizedText("hud.daily_quest.reward_bonus_item").Resolve(), "1",
                     ElarionUiKit.DetailRowTone.Dim));
 
             // PROGRESS — "OK done" / count toward target; glyph + counts carry the state.
@@ -419,7 +429,9 @@ namespace DeNelle.HUD
             {
                 new ElarionUiKit.DetailCardRow(
                     completed ? "OK" : "*",
-                    completed ? "Complete" : "In progress",
+                    completed
+                        ? new LocalizedText("hud.daily_quest.state_complete").Resolve()
+                        : new LocalizedText("hud.daily_quest.state_in_progress").Resolve(),
                     _vm.ProgressText(item.Id),
                     completed ? ElarionUiKit.DetailRowTone.Good : ElarionUiKit.DetailRowTone.Neutral),
             };
@@ -428,9 +440,9 @@ namespace DeNelle.HUD
             {
                 Title = item.Name,
                 Flavor = _vm.FlavorFor(item.Id),
-                BestowsHeader = "REWARDS",
+                BestowsHeader = new LocalizedText("hud.daily_quest.rewards_header").Resolve(),
                 Bestows = rewards,
-                RequiresHeader = "PROGRESS",
+                RequiresHeader = new LocalizedText("hud.daily_quest.progress_header").Resolve(),
                 Requires = progress,
                 // No CTA: completion rewards auto-dispense (DEF-223 reward bridge).
             });
@@ -447,7 +459,9 @@ namespace DeNelle.HUD
             rt.anchorMin = new Vector2(0.30f, 0.78f);
             rt.anchorMax = new Vector2(0.70f, 0.86f);
             rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-            if (toast.label != null) toast.label.text = "Daily Quest Complete\n" + label;
+            // WO-1857: headline + the quest name on its own line, as ONE key with a hole.
+            if (toast.label != null)
+                toast.label.text = LocalText.Format("hud.daily_quest.complete_toast", label);
             StartCoroutine(DismissAfter(toast.card, 3.2f));
         }
 

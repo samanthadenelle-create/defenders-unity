@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
 
 namespace DeNelle.Dungeons
@@ -40,7 +41,11 @@ namespace DeNelle.Dungeons
 
         // -- IPanelViewModel ----------------------------------------------------
         public event Action Changed;
-        public string Title => Recipe.HasRecipe ? Recipe.DisplayName : "Crafting";
+        // WO-1857: the no-recipe fallback title reuses the shared common.crafting key (this call
+        // site is named in COMMON_KEYS_REGISTRY).
+        public string Title => Recipe.HasRecipe
+            ? Recipe.DisplayName
+            : new LocalizedText("common.crafting").Resolve();
         public void Close() { _request?.Pedestal?.ClosePanel(); }
 
         public void Dispose()
@@ -140,7 +145,8 @@ namespace DeNelle.Dungeons
             bool canCraft = !alreadyCrafted && inv != null && inv.CanCraft(recipe);
             string resultGlyph = string.IsNullOrEmpty(recipe.ResultGlyph) ? "?" : recipe.ResultGlyph;
 
-            return new CraftRecipeVM(recipe.Id, recipe.DisplayName ?? "Recipe", recipe.Description,
+            return new CraftRecipeVM(recipe.Id,
+                recipe.DisplayName ?? new LocalizedText("common.recipe").Resolve(), recipe.Description,
                 resultGlyph, ingredients, canCraft, alreadyCrafted, outputHeld: 0);
         }
 

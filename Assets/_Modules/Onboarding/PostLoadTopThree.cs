@@ -58,21 +58,29 @@ namespace DeNelle.Onboarding
 
         private void Show(IReadOnlyList<LeaderboardEntry> rows)
         {
-            _modal = ElarionUiKit.BuildObsidianModal("PostLoadTopThreeUI", "TOP 3 PLAYERS",
+            _modal = ElarionUiKit.BuildObsidianModal("PostLoadTopThreeUI",
+                new LocalizedText("onboarding.top_three.title").Resolve(),
                 new Vector2(0.24f, 0.22f), new Vector2(0.76f, 0.78f), Close, sortingOrder: 31005);
             if (_modal?.canvas == null || _modal.chrome == null) { Destroy(gameObject); return; }
             _open = true;
             if (!PanelManager.NotifyOpened(_panelHandle)) { _open = false; Destroy(_modal.canvas); Destroy(gameObject); return; }
 
-            var text = new StringBuilder("ALL-TIME BEST WAVE\n\n");
+            // WO-1857: the heading and the row shape were hand-concatenated English. The row
+            // becomes ONE positional format key (rank / name / score) so a locale can move
+            // the WAVE word — or drop it — without this loop changing.
+            var text = new StringBuilder(
+                new LocalizedText("onboarding.top_three.heading").Resolve());
+            text.Append("\n\n");
             int count = Mathf.Min(3, rows.Count);
             for (int i = 0; i < count; i++)
-                text.Append(rows[i].Rank).Append(".  ").Append(rows[i].Name)
-                    .Append("     WAVE ").Append(rows[i].Score).Append('\n');
+                text.Append(LocalText.Format("onboarding.top_three.row",
+                                             rows[i].Rank, rows[i].Name, rows[i].Score))
+                    .Append('\n');
             var label = ElarionUiKit.Label(_modal.chrome.content.transform, text.ToString(),
                 0.30f, 0.88f, ElarionUi.Parchment, 36, TextAlignmentOptions.Center, 0.08f, 0.92f);
             if (label != null) { label.enableAutoSizing = true; label.fontSizeMin = 22f; label.fontSizeMax = 36f; }
-            ElarionUiKit.BuildObsidianButton(_modal.chrome.content.transform, "Continue",
+            ElarionUiKit.BuildObsidianButton(_modal.chrome.content.transform,
+                new LocalizedText("common.continue").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                 new Vector2(0.30f, 0.05f), new Vector2(0.70f, 0.22f), Close);
             _shownThisSession = true;

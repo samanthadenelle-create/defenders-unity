@@ -341,10 +341,16 @@ namespace DeNelle.Onboarding
             bool hasSave = HasExistingSave();
             var entries = new System.Collections.Generic.List<(string label,
                 ElarionUiKit.ObsidianButtonColor color, System.Action onClick, bool whiteLabel)>();
+            // WO-1857: the three main-menu faces. "Continue" here is the RESUME-A-SAVE verb and
+            // deliberately does NOT share common.continue (the proceed/dismiss verb) — several
+            // locales split those (de Fortsetzen vs Weiter, ja 続きから vs 次へ).
             if (hasSave)
-                entries.Add(("Continue", ElarionUiKit.ObsidianButtonColor.Green, OnContinue, false));
-            entries.Add(("Start New", ElarionUiKit.ObsidianButtonColor.Yellow, OnStartNew, true));
-            entries.Add(("Play Intro", ElarionUiKit.ObsidianButtonColor.Gray, OnPlayIntro, false));
+                entries.Add((new LocalizedText("onboarding.title.continue").Resolve(),
+                    ElarionUiKit.ObsidianButtonColor.Green, OnContinue, false));
+            entries.Add((new LocalizedText("onboarding.title.start_new").Resolve(),
+                ElarionUiKit.ObsidianButtonColor.Yellow, OnStartNew, true));
+            entries.Add((new LocalizedText("onboarding.title.play_intro").Resolve(),
+                ElarionUiKit.ObsidianButtonColor.Gray, OnPlayIntro, false));
 
             // Even HORIZONTAL distribution across the row, left to right.
             const float slotGap = 0.035f;
@@ -397,7 +403,12 @@ namespace DeNelle.Onboarding
             // top-CENTER placement (x 0.34-0.66, y 0.905) sat directly on the baked-in title art.
             // Move it to the top-left margin — clear of the centered title AND the top-right
             // "Sign in with Pi" corner — so it reads on camera without crowding anything.
-            var btn = ElarionUiKit.BuildObsidianButton(parent, "Powered with SKR",
+            // WO-1857: the badge caption reuses common.powered_skr, which already carries a
+            // channel-neutral Google Play replacementRow in
+            // Assets/Editor/Localization/GooglePlayLocalizationVariantPolicy.json. The
+            // #if !GOOGLE_PLAY guard above stays: it keeps the CALL out of the Play artifact.
+            var btn = ElarionUiKit.BuildObsidianButton(parent,
+                new LocalizedText("common.powered_skr").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                 new Vector2(0.015f, 0.910f), new Vector2(0.265f, 0.968f),
                 () => DeNelle.Core.UI.SkrShowcasePanel.Open());

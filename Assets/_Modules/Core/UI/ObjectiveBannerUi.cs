@@ -124,7 +124,15 @@ namespace DeNelle.Core.UI
             bool hasSkip = onSkip != null || onSkipAll != null;
             // D16: one control — per-step skip when the step supplies it, else skip-all.
             if (b._skipHost != null) b._skipHost.SetActive(hasSkip);
-            if (b._skipLabel != null) b._skipLabel.text = onSkip != null ? "Skip >" : "Skip Tutorial";
+            if (b._skipLabel != null)
+            {
+                // TWO keys, not one with a glyph appended: the per-step face carries a direction
+                // chevron (which an RTL locale flips) and the skip-all face is a whole phrase.
+                string skipFace = onSkip != null
+                    ? new LocalizedText("tutorial.skip.step").Resolve()
+                    : new LocalizedText("tutorial.skip.action").Resolve();
+                b._skipLabel.text = skipFace;
+            }
             // Maintenance has no action, so its message may use the full authored plate.
             // Reserve the narrower lane only while the integrated Skip control is live.
             if (b._label != null)
@@ -374,7 +382,7 @@ namespace DeNelle.Core.UI
             _skipLabel.fontSize = 15f;
             _skipLabel.color = ElarionUi.ParchmentDim;
             _skipLabel.alignment = TextAlignmentOptions.Center;
-            _skipLabel.text = "Skip >";   // ASCII only (no glyphs in TMP); Show() retitles per intent
+            _skipLabel.text = new LocalizedText("tutorial.skip.step").Resolve();   // Show() retitles per intent
             _skipLabel.raycastTarget = false;
             // "Skip Tutorial" must fit the same small face without escaping it.
             _skipLabel.textWrappingMode = TextWrappingModes.NoWrap;
@@ -412,10 +420,10 @@ namespace DeNelle.Core.UI
             ElarionUiKit.ConfirmModal modal = null;
             modal = ElarionUiKit.BuildConfirmModal(
                 "SkipTutorialConfirm",
-                "Skip Tutorial",
-                "Skip the tutorial? You'll keep everything it grants.",
-                "Skip",
-                "Keep Playing",
+                new LocalizedText("tutorial.skip.action").Resolve(),
+                new LocalizedText("tutorial.skip.confirm_body_all").Resolve(),
+                new LocalizedText("common.skip").Resolve(),
+                new LocalizedText("tutorial.skip.keep_playing").Resolve(),
                 onConfirm: () => { if (modal != null && modal.canvas != null) Destroy(modal.canvas); skip(); },
                 onCancel:  () => { if (modal != null && modal.canvas != null) Destroy(modal.canvas); });
         }

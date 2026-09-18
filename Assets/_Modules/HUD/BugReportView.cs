@@ -165,7 +165,8 @@ namespace DeNelle.HUD
         // ── Build (drop-zones only — the frame IS the chrome) ───────────────────
         private void BuildUi()
         {
-            var modal = ElarionUiKit.BuildObsidianModal("BugReportModal", "REPORT A BUG",
+            var modal = ElarionUiKit.BuildObsidianModal("BugReportModal",
+                new LocalizedText("hud.bug_report.title").Resolve(),
                 new Vector2(0.06f, 0.14f), new Vector2(0.94f, 0.86f), Close,
                 sortingOrder: 31000, frameName: RpgUiCatalog.FrameSettings);
             _canvasRoot = modal.canvas;
@@ -208,7 +209,11 @@ namespace DeNelle.HUD
             // "Include screenshot" untickable toggle (default ON) — kit Quiet button.
             _toggleBtn = ElarionUiKit.Button(body, "", ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.08f, 0.575f), new Vector2(0.92f, 0.645f), () => _vm.ToggleScreenshot());
-            _toggleLabel = EnsureButtonLabel(_toggleBtn, "[x] Include screenshot", ElarionUi.Parchment);
+            // WO-1857: the "[x] " / "[  ] " box is an ASCII state GLYPH (rule 8 - punctuation is
+            // not copy); only the words resolve from the table, here and in Repaint.
+            _toggleLabel = EnsureButtonLabel(_toggleBtn,
+                "[x] " + new LocalizedText("hud.bug_report.include_screenshot").Resolve(),
+                ElarionUi.Parchment);
 
             // Note field — "What went wrong?" (multi-line). The plate is a minimal
             // translucent well so the input is visible; content, not chrome.
@@ -217,7 +222,7 @@ namespace DeNelle.HUD
             // The one quiet disclosure line — the honesty (logs + the save's player id
             // always go; not a checkbox). WO-846: names the player id too, since the
             // report is now account-attributable (same key every save sync uses).
-            ElarionUiKit.Label(body, "Includes recent game logs and your player id to help us fix it.",
+            ElarionUiKit.Label(body, new LocalizedText("hud.bug_report.log_notice").Resolve(),
                 0.235f, 0.285f, ElarionUi.ParchmentDim, ElarionUi.FontLabel,
                 TextAlignmentOptions.Center, 0.08f, 0.92f);
 
@@ -226,14 +231,16 @@ namespace DeNelle.HUD
             // ABOVE, the shared Close BELOW, with a clear gap (fresh capture: the old
             // y 0.03–0.14 band was half-covered by the Close's real landscape-screen top,
             // ≈0.204 of the panel vs the kit's portrait-reference body floor of 0.157).
-            _sendBtn = ElarionUiKit.Button(body, "Send report", ElarionUiKit.ButtonKind.Gold,
+            _sendBtn = ElarionUiKit.Button(body,
+                new LocalizedText("hud.bug_report.send").Resolve(), ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.08f, 0.12f), new Vector2(0.92f, 0.23f), OnSendClicked);
             // EYES-SWEEP 2026-07-06 (#5): the sweep captured the submit as a BLANK gold bar. In
             // prefab-button mode the label can live on the prefab ROOT beside a nested Button child,
             // so GetComponentInChildren(_sendBtn) missed it and Repaint's _sendLabel writes went
             // nowhere visible. Resolve the label robustly (children → prefab root), CREATE one when
             // none exists (null art must never blank a control), and fit it (FitSingleLine).
-            _sendLabel = EnsureButtonLabel(_sendBtn, "Send report", ElarionUi.Ink);
+            _sendLabel = EnsureButtonLabel(_sendBtn,
+                new LocalizedText("hud.bug_report.send").Resolve(), ElarionUi.Ink);
         }
 
         // Resolve a kit button's label wherever the build mode put it (constructed child, prefab
@@ -281,7 +288,8 @@ namespace DeNelle.HUD
 
             var text = ElarionUiKit.Label(areaGo.transform, "", 0f, 1f,
                 ElarionUi.Parchment, ElarionUi.FontBody, TextAlignmentOptions.TopLeft, 0f, 1f);
-            var placeholder = ElarionUiKit.Label(areaGo.transform, "What went wrong?", 0f, 1f,
+            var placeholder = ElarionUiKit.Label(areaGo.transform,
+                new LocalizedText("hud.bug_report.note_placeholder").Resolve(), 0f, 1f,
                 ElarionUi.ParchmentDim, ElarionUi.FontBody, TextAlignmentOptions.TopLeft, 0f, 1f);
             placeholder.fontStyle = FontStyles.Italic;
 
@@ -312,12 +320,15 @@ namespace DeNelle.HUD
                     }
                     _thumb.color = _vm.IncludeScreenshot ? Color.white : new Color(1f, 1f, 1f, 0.25f);
                     if (_thumbHint != null)
-                        _thumbHint.text = _vm.ScreenshotJpg == null ? "(no screenshot available)"
-                                        : _vm.IncludeScreenshot ? "" : "screenshot excluded";
+                        _thumbHint.text = _vm.ScreenshotJpg == null
+                                        ? new LocalizedText("hud.bug_report.no_screenshot").Resolve()
+                                        : _vm.IncludeScreenshot ? ""
+                                        : new LocalizedText("hud.bug_report.screenshot_excluded").Resolve();
                 }
 
                 if (_toggleLabel != null)
-                    _toggleLabel.text = (_vm.IncludeScreenshot ? "[x] " : "[  ] ") + "Include screenshot";
+                    _toggleLabel.text = (_vm.IncludeScreenshot ? "[x] " : "[  ] ")
+                                      + new LocalizedText("hud.bug_report.include_screenshot").Resolve();
                 if (_toggleBtn != null)
                     _toggleBtn.interactable = _vm.State != BugReportVM.Stage.Sending;
 
@@ -325,21 +336,25 @@ namespace DeNelle.HUD
                 {
                     _sendBtn.interactable = _vm.CanSubmit;
                     if (_sendLabel != null)
-                        _sendLabel.text = _vm.State == BugReportVM.Stage.Sending ? "Sending..."
-                                        : _vm.State == BugReportVM.Stage.Failed  ? "Retry send"
-                                        : "Send report";
+                        _sendLabel.text = _vm.State == BugReportVM.Stage.Sending
+                                        ? new LocalizedText("feedback.sending").Resolve()
+                                        : _vm.State == BugReportVM.Stage.Failed
+                                        ? new LocalizedText("hud.bug_report.retry_send").Resolve()
+                                        : new LocalizedText("hud.bug_report.send").Resolve();
                 }
                 if (_noteInput != null)
                     _noteInput.interactable = _vm.State != BugReportVM.Stage.Sending;
 
                 if (_vm.State == BugReportVM.Stage.Sent && !_closing)
                 {
-                    BugReportToast.Show("Report sent - thank you, defender.", ElarionUiKit.ToastTone.Confirm);
+                    BugReportToast.Show(new LocalizedText("hud.bug_report.sent_toast").Resolve(),
+                        ElarionUiKit.ToastTone.Confirm);
                     Close();
                 }
                 else if (_vm.State == BugReportVM.Stage.Failed)
                 {
-                    BugReportToast.Show("Couldn't send - check your connection and retry.", ElarionUiKit.ToastTone.Danger);
+                    BugReportToast.Show(new LocalizedText("hud.bug_report.failed_toast").Resolve(),
+                        ElarionUiKit.ToastTone.Danger);
                 }
             });
         }

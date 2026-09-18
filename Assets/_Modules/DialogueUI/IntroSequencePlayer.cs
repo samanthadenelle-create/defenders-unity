@@ -368,8 +368,13 @@ namespace DeNelle.DialogueUI
             _subtitle.name = "Subtitle";
             _subtitle.text = "";
 
-            // Visible Skip button (top-right) — ends the intro immediately. ASCII only (no glyphs).
-            ElarionUiKit.Button(root, "Skip  >", ElarionUiKit.ButtonKind.Gold,
+            // Visible Skip button (top-right) — ends the intro immediately. No icon glyphs; the caption
+            // is a localized word plus an ASCII chevron (per-locale, so non-en values are not ASCII).
+            // WO-1857: its own row rather than common.skip, because the caption carries a
+            // DIRECTIONAL affordance ("Skip  >") that an RTL locale has to mirror - the translator
+            // owns where the chevron sits, which a bare shared word cannot express.
+            ElarionUiKit.Button(root,
+                new LocalizedText("dialogue.intro.skip").Resolve(), ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.74f, 0.92f), new Vector2(0.96f, 0.975f), EndIntro);
 
             // Dip overlay on top — starts opaque so the first frame/slate fades in.
@@ -454,8 +459,16 @@ namespace DeNelle.DialogueUI
             if (_caption != null) _caption.text = s.Caption;
             if (s.TitleCard)
             {
-                if (_title != null) _title.text = "DEFENDERS OF THE REALM";
-                if (_subtitle != null) _subtitle.text = "Echoes of Elarion";
+                // WO-1857: the intro title card is BRANDING - both rows carry the identical English
+                // in every locale (proper nouns, same convention as common.echoes_elarion). They are
+                // keyed rather than hardcoded so a locale that must transliterate CAN, and they do
+                // NOT reuse heroSelect.title / common.echoes_elarion: the classification doc §6b
+                // parks that cross-screen reuse for an owner yes/no, and common.echoes_elarion is
+                // all-caps, which would silently restyle this sub-line.
+                if (_title != null)
+                    _title.text = new LocalizedText("dialogue.intro.title_card").Resolve();
+                if (_subtitle != null)
+                    _subtitle.text = new LocalizedText("dialogue.intro.title_card_sub").Resolve();
             }
         }
 

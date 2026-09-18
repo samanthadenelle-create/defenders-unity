@@ -396,12 +396,14 @@ namespace DeNelle.Settings
             // which is the whole point: this row exists so a player stuck by a HUD-context
             // misclassification bug never has to wait for a new build. Client-side, in-memory
             // reset only (SessionRepairService, DeNelle.Core.UI) - never a save mutation, never
-            // "repair save" in copy (WO-1856 copy rule). Plain literal label, not routed through
-            // SettingsText/LocalText: this is a same-shape decision to the plain toast strings
-            // HelpMenu already ships (e.g. "Reset - heading back to Hero Select..."), and adding
-            // a new localization key/canon-strings row is a separate, larger change flagged in
-            // the WO-1856 hand-back rather than folded in here.
-            ElarionUiKit.BuildObsidianButton(body, "Repair Session",
+            // "repair save" in copy (WO-1856 copy rule). ⛔ THE PARAGRAPH THAT USED TO SIT HERE IS
+            // NOW WRONG AND IS RETIRED: it said the label was "a plain literal, not routed through
+            // SettingsText/LocalText", because "adding a new localization key ... is a separate,
+            // larger change flagged in the WO-1856 hand-back rather than folded in here."
+            // WO-1857 IS that separate change, and it CLOSED the flag - the label resolves
+            // settings.repair.action, the same row the confirm and result modals below use.
+            ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("settings.repair.action").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.06f, y - Frac(120f)), new Vector2(0.48f, y), OnRepairSessionClicked);
             y -= Frac(120f);
@@ -1008,10 +1010,14 @@ namespace DeNelle.Settings
             FlowTrace.Step("Settings", "Repair Session requested - showing confirmation");
             _sessionRepairConfirm = ElarionUiKit.BuildConfirmModal(
                 "SessionRepairConfirm",
-                "Repair Session",
-                "This clears a stuck screen state. Your progress is not affected.",
-                "Repair",
-                "Cancel",
+                // WO-1857: "SessionRepairConfirm" is the host name. The title repeats the action the
+                // player just tapped, so it reuses settings.repair.action; the accept face is its
+                // own shorter verb; Cancel reuses the game-wide armyScreen.cancel dismiss verb
+                // (COMMON_KEYS_REGISTRY names this exact call site).
+                new LocalizedText("settings.repair.action").Resolve(),
+                new LocalizedText("settings.repair.confirm_body").Resolve(),
+                new LocalizedText("settings.repair.confirm_accept").Resolve(),
+                new LocalizedText("armyScreen.cancel").Resolve(),
                 onConfirm: () =>
                 {
                     FlowTrace.Step("Settings", "Repair Session confirmed");
@@ -1042,9 +1048,9 @@ namespace DeNelle.Settings
                 CloseSessionRepairResult();
             _sessionRepairResult = ElarionUiKit.BuildConfirmModal(
                 "SessionRepairResult",
-                "Repair Session",
+                new LocalizedText("settings.repair.action").Resolve(),
                 message,
-                "OK",
+                new LocalizedText("common.ok").Resolve(),
                 null,
                 onConfirm: CloseSessionRepairResult,
                 onCancel: CloseSessionRepairResult);

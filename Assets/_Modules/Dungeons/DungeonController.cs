@@ -923,7 +923,9 @@ namespace DeNelle.Dungeons
                 // long axis so it works for any layout.
                 Vector3 spawnPos = ResolveSpawnPosition();
                 Vector3 pos = SeatExitOnFloor(OffsetExitFromSpawn(entry.bounds, spawnPos));
-                var normalExit = DungeonExitInteractable.Spawn(pos, () => ExitToVillage().Forget(), "Leave Dungeon");
+                // WO-1857: label:null => the exit resolves the localized dungeon.exit.leave_prompt
+                // at display time. Passing the English words here would hardcode them again.
+                var normalExit = DungeonExitInteractable.Spawn(pos, () => ExitToVillage().Forget(), label: null);
                 normalExit.SetHero(_hero);   // push the rig so the prompt is independent of HeroLocomotion's enabled state
 
                 // Planar separation only — SeatExitOnFloor moves y onto the floor, which is not a

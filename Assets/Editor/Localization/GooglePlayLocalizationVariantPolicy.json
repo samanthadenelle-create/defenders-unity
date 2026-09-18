@@ -139,6 +139,176 @@
         "ko": "보너스 미리보기",
         "zh-Hans": "奖励预览"
       }
+    },
+    {
+      "key": "skr.showcase.headline",
+      "owner": "Core",
+      "reason": "SkrShowcasePanel lives in DeNelle.Core and therefore ships on Google Play; its headline names the SKR token by ticker.",
+      "values": {
+        "en": "How bonuses power the realm",
+        "es": "Cómo las bonificaciones impulsan el reino",
+        "pt-BR": "Como os bônus impulsionam o reino",
+        "de": "Wie Boni das Reich antreiben",
+        "fr": "Comment les bonus propulsent le royaume",
+        "ru": "Как бонусы питают королевство",
+        "ar": "كيف تشغّل المكافآت المملكة",
+        "ja": "ボーナスが領域を動かす仕組み",
+        "ko": "보너스가 영지를 움직이는 방식",
+        "zh-Hans": "奖励如何驱动这个国度"
+      }
+    },
+    {
+      "key": "skr.showcase.subhead",
+      "owner": "Core",
+      "reason": "The same Play-visible panel subhead names the Seeker / Solana token integration; the bonus programme framing carries the same meaning on that channel.",
+      "values": {
+        "en": "The bonus program — the intended experience.",
+        "es": "El programa de bonificaciones: la experiencia prevista.",
+        "pt-BR": "O programa de bônus — a experiência pretendida.",
+        "de": "Das Bonusprogramm — die vorgesehene Erfahrung.",
+        "fr": "Le programme de bonus — l’expérience prévue.",
+        "ru": "Бонусная программа — задуманный опыт.",
+        "ar": "برنامج المكافآت — التجربة المقصودة.",
+        "ja": "ボーナスプログラム — 意図された体験です。",
+        "ko": "보너스 프로그램 — 의도된 경험입니다.",
+        "zh-Hans": "奖励计划——预期中的体验。"
+      }
+    },
+    {
+      "key": "skr.showcase.cosmetic_note",
+      "owner": "Core",
+      "reason": "The Play-visible cosmetic note prices perks in SKR and names the testnet; the replacement keeps the launch-timing promise without the token rail.",
+      "values": {
+        "en": "Cosmetic perks arrive with the bonus program at launch — preview only for now.",
+        "es": "Las ventajas cosméticas llegarán con el programa de bonificaciones en el lanzamiento: por ahora, solo una vista previa.",
+        "pt-BR": "As vantagens cosméticas chegam com o programa de bônus no lançamento — por enquanto, apenas uma prévia.",
+        "de": "Kosmetische Vorteile kommen zum Start mit dem Bonusprogramm — vorerst nur als Vorschau.",
+        "fr": "Les avantages cosmétiques arriveront avec le programme de bonus au lancement — un aperçu uniquement pour l’instant.",
+        "ru": "Косметические бонусы появятся вместе с бонусной программой на старте — пока только предпросмотр.",
+        "ar": "ستصل المزايا التجميلية مع برنامج المكافآت عند الإطلاق — معاينة فقط حاليًا.",
+        "ja": "コスメティック特典はローンチ時にボーナスプログラムとともに登場します — 現在はプレビューのみです。",
+        "ko": "치장 혜택은 출시 시 보너스 프로그램과 함께 제공됩니다 — 현재는 미리보기 전용입니다.",
+        "zh-Hans": "外观特权将在上线时随奖励计划推出——目前仅为预览。"
+      }
+    },
+    {
+      "key": "skr.showcase.coming_soon_toast",
+      "owner": "Core",
+      "reason": "The Play-visible coming-soon toast names the testnet and the wallet connection state; the replacement states only that the feature is not live yet.",
+      "values": {
+        "en": "Coming soon — preview only.",
+        "es": "Próximamente: solo una vista previa.",
+        "pt-BR": "Em breve — apenas uma prévia.",
+        "de": "Demnächst — nur eine Vorschau.",
+        "fr": "Bientôt disponible — un aperçu uniquement.",
+        "ru": "Скоро — только предпросмотр.",
+        "ar": "قريبًا — معاينة فقط.",
+        "ja": "近日公開 — プレビューのみです。",
+        "ko": "출시 예정 — 미리보기 전용입니다.",
+        "zh-Hans": "即将推出——仅为预览。"
+      }
+    },
+    {
+      "key": "onboarding.login_panel.title_wallet",
+      "owner": "Onboarding",
+      "reason": "The login panel ships on Google Play, where the second sign-in path is an account rather than a wallet.",
+      "values": {
+        "en": "YOUR ACCOUNT",
+        "es": "TU CUENTA",
+        "pt-BR": "SUA CONTA",
+        "de": "DEIN KONTO",
+        "fr": "VOTRE COMPTE",
+        "ru": "ВАШ АККАУНТ",
+        "ar": "حسابك",
+        "ja": "アカウント",
+        "ko": "계정",
+        "zh-Hans": "你的账号"
+      }
+    },
+    {
+      "key": "onboarding.login_panel.intro_wallet",
+      "owner": "Onboarding",
+      "reason": "The Play login panel must explain the same save-protection promise in account terms.",
+      "values": {
+        "en": "Your account is your save. Sign in now (one-time on this device). Guest progress stays here until you sign in.",
+        "es": "Tu cuenta es tu partida guardada. Inicia sesión ahora (solo una vez en este dispositivo). El progreso como invitado se queda aquí hasta que inicies sesión.",
+        "pt-BR": "Sua conta é o seu save. Faça login agora (uma única vez neste aparelho). O progresso de convidado fica aqui até você fazer login.",
+        "de": "Dein Konto ist dein Spielstand. Melde dich jetzt an (einmalig auf diesem Gerät). Gast-Fortschritt bleibt hier, bis du dich anmeldest.",
+        "fr": "Votre compte est votre sauvegarde. Connectez-vous maintenant (une seule fois sur cet appareil). La progression en invité reste ici jusqu’à la connexion.",
+        "ru": "Ваш аккаунт — это ваше сохранение. Войдите сейчас (один раз на этом устройстве). Гостевой прогресс останется здесь, пока вы не войдёте.",
+        "ar": "حسابك هو ملف حفظك. سجّل الدخول الآن (مرة واحدة على هذا الجهاز). يبقى تقدُّم الضيف هنا حتى تسجّل الدخول.",
+        "ja": "アカウントがセーブデータです。今すぐサインインしてください（この端末では一度だけ）。ゲストの進行状況はサインインするまでこの端末に残ります。",
+        "ko": "계정이 세이브 데이터입니다. 지금 로그인하세요(이 기기에서 한 번만). 게스트 진행 상황은 로그인할 때까지 이 기기에 남아 있습니다.",
+        "zh-Hans": "你的账号就是你的存档。现在登录（本设备仅需一次）。在登录之前，访客进度会保留在本机。"
+      }
+    },
+    {
+      "key": "onboarding.login_panel.status_opening_wallet",
+      "owner": "Onboarding",
+      "reason": "The Play login panel reports the same pending state without naming a wallet app.",
+      "values": {
+        "en": "Opening sign-in... you can still tap Play as Guest.",
+        "es": "Abriendo el inicio de sesión... aún puedes tocar Jugar como invitado.",
+        "pt-BR": "Abrindo o login... você ainda pode tocar em Jogar como convidado.",
+        "de": "Anmeldung wird geöffnet... du kannst weiterhin Als Gast spielen antippen.",
+        "fr": "Ouverture de la connexion... vous pouvez toujours toucher Jouer en invité.",
+        "ru": "Открываем вход... вы всё ещё можете нажать «Играть как гость».",
+        "ar": "جارٍ فتح تسجيل الدخول... لا يزال بإمكانك النقر على «العب كضيف».",
+        "ja": "サインインを開いています... 「ゲストとして遊ぶ」はいつでも押せます。",
+        "ko": "로그인을 여는 중... 언제든 '게스트로 플레이'를 누를 수 있습니다.",
+        "zh-Hans": "正在打开登录... 你仍然可以点按「以访客身份游玩」。"
+      }
+    },
+    {
+      "key": "onboarding.login_panel.status_wallet_no_response",
+      "owner": "Onboarding",
+      "reason": "The Play login panel cannot tell the player to open a wallet app; it offers a retry and the guest path instead.",
+      "values": {
+        "en": "Sign-in did not respond. Try again, or tap Play as Guest to start now.",
+        "es": "El inicio de sesión no respondió. Inténtalo otra vez, o toca Jugar como invitado para empezar ya.",
+        "pt-BR": "O login não respondeu. Tente novamente, ou toque em Jogar como convidado para começar agora.",
+        "de": "Die Anmeldung hat nicht geantwortet. Versuche es erneut, oder tippe Als Gast spielen, um jetzt zu starten.",
+        "fr": "La connexion n’a pas répondu. Réessayez, ou touchez Jouer en invité pour commencer tout de suite.",
+        "ru": "Вход не ответил. Попробуйте снова или нажмите «Играть как гость», чтобы начать сейчас.",
+        "ar": "لم يستجب تسجيل الدخول. حاول مرة أخرى، أو انقر «العب كضيف» للبدء الآن.",
+        "ja": "サインインが応答しませんでした。もう一度お試しください。すぐ始めるなら「ゲストとして遊ぶ」を押してください。",
+        "ko": "로그인이 응답하지 않았습니다. 다시 시도하거나, 지금 시작하려면 '게스트로 플레이'를 누르세요.",
+        "zh-Hans": "登录没有响应。请重试，或点按「以访客身份游玩」立即开始。"
+      }
+    },
+    {
+      "key": "onboarding.login_panel.status_wallet_failed",
+      "owner": "Onboarding",
+      "reason": "The Play login panel reports the same failure in channel-neutral sign-in terms.",
+      "values": {
+        "en": "Sign-in failed. Try again, or tap Play as Guest to start now.",
+        "es": "El inicio de sesión falló. Inténtalo otra vez, o toca Jugar como invitado para empezar ya.",
+        "pt-BR": "O login falhou. Tente novamente, ou toque em Jogar como convidado para começar agora.",
+        "de": "Die Anmeldung ist fehlgeschlagen. Versuche es erneut, oder tippe Als Gast spielen, um jetzt zu starten.",
+        "fr": "La connexion a échoué. Réessayez, ou touchez Jouer en invité pour commencer tout de suite.",
+        "ru": "Не удалось войти. Попробуйте снова или нажмите «Играть как гость», чтобы начать сейчас.",
+        "ar": "فشل تسجيل الدخول. حاول مرة أخرى، أو انقر «العب كضيف» للبدء الآن.",
+        "ja": "サインインに失敗しました。もう一度お試しください。すぐ始めるなら「ゲストとして遊ぶ」を押してください。",
+        "ko": "로그인에 실패했습니다. 다시 시도하거나, 지금 시작하려면 '게스트로 플레이'를 누르세요.",
+        "zh-Hans": "登录失败。请重试，或点按「以访客身份游玩」立即开始。"
+      }
+    },
+    {
+      "key": "wallet.connect.none",
+      "owner": "Wallet",
+      "reason": "WalletConnectDialog is compiled out of Google Play (DeNelle.Wallet.asmdef requires !GOOGLE_PLAY), so this row is dead on that channel; the regression pins the strip set to the exact store/swap/Settings-wallet keys, so a channel-neutral replacement is the only available disposition.",
+      "values": {
+        "en": "Not signed in",
+        "es": "No has iniciado sesión",
+        "pt-BR": "Você não fez login",
+        "de": "Nicht angemeldet",
+        "fr": "Non connecté",
+        "ru": "Вы не вошли",
+        "ar": "لم تسجّل الدخول",
+        "ja": "サインインしていません",
+        "ko": "로그인하지 않았습니다",
+        "zh-Hans": "未登录"
+      }
     }
   ],
   "stripGroups": [
@@ -208,7 +378,8 @@
         "swap.statusConnect",
         "swap.statusSigning",
         "swap.statusError",
-        "swap.statusFailed"
+        "swap.statusFailed",
+        "swap.status_invalid_amount"
       ]
     },
     {

@@ -219,7 +219,8 @@ namespace DeNelle.HUD
             // is the scarce axis (canvasH=1035 in the capture) and width is nearly free. This buys
             // the well ~157 px of the ~400 px the row list needs; the footer reclaim + column wrap
             // below buy the rest.
-            _modal = ElarionUiKit.BuildObsidianModal("HelpMenuUI", "Help",
+            _modal = ElarionUiKit.BuildObsidianModal("HelpMenuUI",
+                new LocalizedText("settings.help.help").Resolve(),
                 new Vector2(0.18f, 0.08f), new Vector2(0.82f, 0.92f), Close,
                 frameName: RpgUiCatalog.FrameCore, medallionIcon: "settings");
 
@@ -503,7 +504,8 @@ namespace DeNelle.HUD
                 // Text-encoded state (never colour alone), ASCII only. Counts ENTRIES, not rows -
                 // with two columns a "row" is two menu items and the player counts items.
                 int shown = Mathf.Min(total, _wellSnap.VisibleRows * cols);
-                _moreHint.text = "Showing " + shown + " of " + total + " - drag the list for more";
+                // WO-1857: ONE sentence with named holes, not four concatenated fragments.
+                _moreHint.text = LocalText.Format("hud.help_menu.overflow_hint", shown, total);
                 _moreHint.gameObject.SetActive(true);
             }
             else
@@ -566,8 +568,7 @@ namespace DeNelle.HUD
         private void OnShowControls()
         {
             // ASCII-ONLY (WO-882): the em dash + bullet glyphs rendered as tofu boxes on device.
-            ShowToast("Controls - WASD/Arrows/dpad: move | 1/2/3/4 + face buttons: cast Q/W/E/R "
-                    + "| Build button: tower placement | F: interact | Esc: pause");
+            ShowToast(new LocalizedText("hud.help_menu.controls_body").Resolve());
         }
 
         private void OnShowCredits()
@@ -577,10 +578,7 @@ namespace DeNelle.HUD
             // (Suno Pro), but a large share of the shipping SFX is third-party licensed
             // (leohpaz RPG Essentials, Unity Asset Store EULA; Hovl Studio skill sounds
             // inside the VFX prefabs). ASCII-ONLY: non-ASCII renders as tofu on device.
-            ShowToast("Defenders of the Realm v2 - DeNelle Studios. Models: KayKit + Tripo. "
-                    + "Music: original score by DeNelle Studios (made with Suno). "
-                    + "Sound effects: leohpaz 'RPG Essentials' and Hovl Studio, "
-                    + "licensed via the Unity Asset Store.");
+            ShowToast(new LocalizedText("hud.help_menu.credits_body").Resolve());
         }
 
         // SECURITY (store-hardening Path A, S1): the 5-tap dev unlock + resource grant are stripped from
@@ -644,10 +642,10 @@ namespace DeNelle.HUD
             FlowTrace.Step("UI", "HelpMenu: reset Hero & Echoes requested - showing confirmation");
             _resetConfirm = ElarionUiKit.BuildConfirmModal(
                 "ResetProgressConfirm",
-                "Reset Hero & Echoes",
-                "Reset your hero and Echoes and begin again? This cannot be undone.",
-                "Reset",
-                "Keep Progress",
+                new LocalizedText("hud.help_menu.reset_confirm_title").Resolve(),
+                new LocalizedText("hud.help_menu.reset_confirm_body").Resolve(),
+                new LocalizedText("hud.help_menu.reset_confirm_accept").Resolve(),
+                new LocalizedText("hud.help_menu.reset_confirm_cancel").Resolve(),
                 onConfirm: () =>
                 {
                     FlowTrace.Step("UI", "HelpMenu: reset Hero & Echoes confirmed");
@@ -674,16 +672,20 @@ namespace DeNelle.HUD
                 // error, not a runtime toast); the LIVE guard — service not alive — is kept
                 // verbatim, as is the try/catch below.
                 var service = DeNelle.Core.State.GameStateService.Instance;
-                if (service == null) { ShowToast("Reset failed - service not alive."); return; }
+                if (service == null)
+                {
+                    ShowToast(new LocalizedText("hud.help_menu.reset_failed_service").Resolve());
+                    return;
+                }
                 service.ResetToNewGame();
 
-                ShowToast("Reset - heading back to Hero Select...");
+                ShowToast(new LocalizedText("hud.help_menu.reset_success").Resolve());
                 DeNelle.Core.SceneRouter.GoHeroSelect();
             }
             catch (System.Exception ex)
             {
                 Debug.LogWarning("[HelpMenu] Reset failed: " + ex.Message);
-                ShowToast("Reset failed - see log.");
+                ShowToast(new LocalizedText("hud.help_menu.reset_failed_generic").Resolve());
             }
         }
 

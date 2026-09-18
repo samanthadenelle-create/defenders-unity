@@ -300,7 +300,10 @@ namespace DeNelle.Onboarding
                 // (the one shared Close convention). Jumps straight past the whole
                 // cinematic (DEF-134: set the flag AND cancel the CTS so the beat
                 // loop breaks immediately and teardown is reached at once).
-                var skip = ElarionUiKit.BuildObsidianButton(_canvas.transform, "Skip",
+                // WO-1857: reuses the game-wide common.skip (COMMON_KEYS_REGISTRY names
+                // this exact call site as one of its six confirmed same-job sites).
+                var skip = ElarionUiKit.BuildObsidianButton(_canvas.transform,
+                    new LocalizedText("common.skip").Resolve(),
                     ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                     new Vector2(0.80f, 0.925f), new Vector2(0.975f, 0.985f),
                     () => { _skipRequested = true; _cts?.Cancel(); });

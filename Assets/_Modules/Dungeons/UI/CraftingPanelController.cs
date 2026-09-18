@@ -17,6 +17,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
+using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
 
 namespace DeNelle.Dungeons
@@ -182,7 +183,10 @@ namespace DeNelle.Dungeons
             BuildIngredientCells();
 
             var r = _vm.Recipe;
-            if (_recipeName != null) _recipeName.text = r.DisplayName ?? "Recipe";
+            // WO-1857: the fallback title reuses the shared common.recipe key (this call site is
+            // named in COMMON_KEYS_REGISTRY). r.DisplayName is authored catalog data - §6a's ruling.
+            if (_recipeName != null)
+                _recipeName.text = r.DisplayName ?? new LocalizedText("common.recipe").Resolve();
             if (_recipeDesc != null) _recipeDesc.text = r.Description ?? string.Empty;
             if (_resultGlyph != null) _resultGlyph.text = r.ResultGlyph;
 
@@ -311,7 +315,11 @@ namespace DeNelle.Dungeons
             {
                 _craftButton.SetEnabled(canCraft);
                 _craftButton.EnableInClassList(CraftReadyClass, canCraft);
-                _craftButton.text = alreadyCrafted ? "Crafted" : "Craft";
+                // WO-1857: two alternative captions => two keys (a past-tense state word and an
+                // imperative verb decline differently in de/fr/ru).
+                _craftButton.text = alreadyCrafted
+                    ? new LocalizedText("dungeon.craft.crafted_state").Resolve()
+                    : new LocalizedText("dungeon.craft.craft_action").Resolve();
             }
         }
 

@@ -19,7 +19,12 @@ namespace DeNelle.Editor.Regression
                 // liveness probe argument is still passed, not just that a hold is taken.
                 Require(hud, "() => this != null && _itemPicker != null");
                 Require(hud, "private void OnDisable()");
-                Require(hud, "Gameplay is paused while you choose.");
+                // WO-1857: the picker's pause hint is now a LocalizedText resolve, so the needle
+                // pins the resolved KEY instead of the English sentence. The retired sentence is
+                // deliberately not reproduced here - it still appears in a comment inside
+                // HudKitController.cs, so a source-text needle on it would pass off that comment
+                // and assert nothing.
+                Require(hud, "new LocalizedText(\"hud.hud_kit.item_picker_hint\").Resolve()");
                 Require(hud, "HudCommands.HasPotion && c.HpCooldownRemaining <= 0f");
                 Require(hud, "HudCommands.HasManaPotion && c.ManaCooldownRemaining <= 0f");
                 Require(hud, "if (_itemUseInFlight) return;");

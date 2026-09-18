@@ -156,9 +156,17 @@ namespace DeNelle.Editor.Regression
             // BATCH_STATE 8.9 supersedes the WO's one-verb acceptance for tonight: keep both the
             // primary Resume and kit-owned shared Close until the owner chooses which face retires.
             string code = Read(Pause);
-            if (!code.Contains("BuildObsidianButton(body, \"Resume\"") ||
+            // WO-1857: the primary face's caption moved from a bare literal into a LocalizedText
+            // resolve, and the call now wraps across two lines, so the needle pins the resolved KEY
+            // rather than the one-line "helper(host, caption" shape. ApplyButton(resume, primary:
+            // true) still proves it is THE primary. The negative clause keeps the same intent - the
+            // kit-owned shared Close must never be relabelled with the primary's own caption - now
+            // expressed against the key. The retired English word is deliberately not reproduced in
+            // this comment: it would satisfy the positive needle and leave this case green while
+            // asserting nothing.
+            if (!code.Contains("new LocalizedText(\"settings.pause.resume\").Resolve()") ||
                 !code.Contains("MedievalUiSkin.ApplyButton(resume, primary: true)") ||
-                code.Contains("closeLabel.text = \"Resume\""))
+                code.Contains("closeLabel.text = new LocalizedText(\"settings.pause.resume\")"))
                 failures.Add("[pause-exemption] approved primary Resume plus untouched shared Close shape changed");
         }
 

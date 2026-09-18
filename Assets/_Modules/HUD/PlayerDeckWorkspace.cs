@@ -349,7 +349,11 @@ namespace DeNelle.HUD
                     new Color(0f, 0f, 0f, .62f), false);
                 var plateImage = badgePlate.GetComponent<Image>();
                 if (plateImage != null) plateImage.raycastTarget = false;
-                var badge = ElarionUiKit.Label(badgePlate.transform, "[ LOCKED ]", 0.02f, 0.98f,
+                // WO-1857: ⚠ RaidsDiscoverabilityRegression's J1 check greps THIS FILE's raw
+                // source for the literal "[ LOCKED ]" as its proof the worded badge survives.
+                // That needle must move to the key (sidecar-reported, not edited here).
+                var badge = ElarionUiKit.Label(badgePlate.transform,
+                    new LocalizedText("hud.player_deck.locked_badge").Resolve(), 0.02f, 0.98f,
                     ElarionUi.Parchment, 24, TextAlignmentOptions.Center, 0.02f, 0.98f, 4f, true);
                 badge.gameObject.name = "LockedBadge";
                 badge.enableWordWrapping = false;
@@ -423,7 +427,7 @@ namespace DeNelle.HUD
                     if (!string.IsNullOrEmpty(goldClause))
                     {
                         var rewardLine = ElarionUiKit.Label(button.transform,
-                            "First raid free - " + goldClause, 0.0f, 0.0f,
+                            LocalText.Format("hud.player_deck.raid_first_free", goldClause), 0.0f, 0.0f,
                             ElarionUi.Parchment, (int)ElarionUi.FontMicro, TextAlignmentOptions.Center,
                             readyX0, 0.93f);
                         rewardLine.gameObject.name = "RaidRewardLine";
@@ -464,7 +468,9 @@ namespace DeNelle.HUD
 
             var purpose = ElarionUiKit.Label(button.transform,
                 available ? spec.Purpose
-                          : (string.IsNullOrEmpty(lockLine) ? "Complete its requirement first" : lockLine),
+                          : (string.IsNullOrEmpty(lockLine)
+                              ? new LocalizedText("hud.player_deck.generic_lock_reason").Resolve()
+                              : lockLine),
                 PurposeTopFrac, PurposeTopFrac,
                 available ? ElarionUi.Parchment : ElarionUi.ParchmentDim,
                 (int)ElarionUi.FontMicro, TextAlignmentOptions.Center,
@@ -924,7 +930,12 @@ namespace DeNelle.HUD
                     var journey = JourneyDeckSubtitleVM.FromCurrentState();
                     return new List<Card>
                     {
-                        new Card { Title = "Quests", Purpose = TraceJourneySubtitle("Quests", journey.QuestsSubtitle),
+                        // WO-1857: the card FACE resolves from the table (the same treatment the
+                        // Hero deck's faces already get through HudStrings.HeroFaceLabel). The
+                        // TraceJourneySubtitle tag stays English - it is a trace identity, and
+                        // JourneyDeckTwoCardRegression greps this file for that exact call shape.
+                        new Card { Title = new LocalizedText("hud.journey_deck.quests_title").Resolve(),
+                            Purpose = TraceJourneySubtitle("Quests", journey.QuestsSubtitle),
                             Concept = "quest", ArtKey = "quests",
                             Available = () => PanelRouter.IsRegistered(PanelId.RumorBoard),
                             Open = () => PanelRouter.Open(PanelId.RumorBoard) },
@@ -949,7 +960,8 @@ namespace DeNelle.HUD
                         // ArmyReadiness snapshot the raid gate judges). Unpublished (0 cap) or
                         // full = the ordinary purpose line. Cards are rebuilt per page render, so
                         // the count refreshes every time the deck opens.
-                        new Card { Title = "Raids", Purpose = TraceJourneySubtitle("Raids", journey.RaidsSubtitle), Concept = "raid",
+                        new Card { Title = new LocalizedText("hud.journey_deck.raids_title").Resolve(),
+                            Purpose = TraceJourneySubtitle("Raids", journey.RaidsSubtitle), Concept = "raid",
                             ArtKey = "raids",
                             // Owner art delivery 2026-09-03. cards/raids-locked.png is the war
                             // camp gone dark behind a stone-and-steel padlock, with the right

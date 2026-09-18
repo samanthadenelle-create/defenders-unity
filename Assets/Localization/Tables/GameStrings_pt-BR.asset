@@ -2367,6 +2367,790 @@ MonoBehaviour:
     m_Localized: Torres
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760677
+    m_Localized: Sair da masmorra
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760678
+    m_Localized: Derrote o chefe para desbloquear
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760679
+    m_Localized: "SELADO\nDERROTE O CHEFE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760680
+    m_Localized: "SA\u00CDDA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760681
+    m_Localized: SAIR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760682
+    m_Localized: Sair da masmorra?
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760683
+    m_Localized: "\u00ABSair\u00BB leva voc\u00EA de volta \u00E0 vila. \u00ABCancelar\u00BB mant\u00E9m voc\u00EA na masmorra."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760684
+    m_Localized: Sair
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760685
+    m_Localized: TESOURO ENCONTRADO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760686
+    m_Localized: "O esconderijo cont\u00E9m:"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760687
+    m_Localized: "Primeira conclus\u00E3o: uma nova receita \u00E9 lembrada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760688
+    m_Localized: Pegar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760689
+    m_Localized: Trancada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760690
+    m_Localized: Abrir porta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760691
+    m_Localized: Criar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760692
+    m_Localized: Criado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760693
+    m_Localized: "An\xFAncios e sua privacidade"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760694
+    m_Localized: "Echoes of Elarion pode exibir an\xFAncios opcionais: assista a um para acelerar uma constru\xE7\xE3o ou dobrar uma colheita. Voc\xEA nunca precisa assistir a um para jogar.\n\nPodemos usar seu ID de publicidade para exibir an\xFAncios de acordo com seus interesses?\n\nSe voc\xEA disser n\xE3o, ainda ver\xE1 an\xFAncios e ainda receber\xE1 as recompensas: eles apenas n\xE3o ser\xE3o personalizados. Voc\xEA pode mudar isso a qualquer momento nas Configura\xE7\xF5es."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760695
+    m_Localized: "Sim, personalizar an\xFAncios"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760696
+    m_Localized: "N\xE3o, manter gen\xE9ricos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760697
+    m_Localized: "Carregando seu reino..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760698
+    m_Localized: "Carregando Elarion..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760699
+    m_Localized: "N\xE3o foi poss\xEDvel baixar a arte do seu her\xF3i. O jogo parou aqui em vez de deixar voc\xEA entrar sem ela. Verifique sua conex\xE3o com a internet e toque em Tentar novamente."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760700
+    m_Localized: "Baixar tudo agora para que o jogo funcione sem conex\xE3o?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760701
+    m_Localized: "Verificando o tamanho do download..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760702
+    m_Localized: "Baixar agora"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760703
+    m_Localized: "Agora n\xE3o"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760704
+    m_Localized: "N\xE3o conseguimos verificar o download agora. Tente novamente em instantes: o jogo continua funcionando normalmente com conex\xE3o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760705
+    m_Localized: "Tudo j\xE1 foi baixado. Este jogo funcionar\xE1 sem conex\xE3o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760706
+    m_Localized: "Tamanho: {0} MB\n{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760707
+    m_Localized: "Voc\xEA precisa de Wi-Fi para este download \xFAnico. Quando terminar, o jogo abrir\xE1 sem conex\xE3o."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760708
+    m_Localized: "Baixando conte\xFAdo. Mantenha esta tela aberta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760709
+    m_Localized: "Cerca de {0} em uma conex\xE3o r\xE1pida, at\xE9 {1} em uma lenta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760710
+    m_Localized: "{0} min"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760711
+    m_Localized: "{0} s"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760712
+    m_Localized: "Pular >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760713
+    m_Localized: "Pular tutorial"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760714
+    m_Localized: "Pular o tutorial? Voc\xEA manter\xE1 tudo o que ele concede."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760715
+    m_Localized: "Continuar jogando"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760716
+    m_Localized: "Pular o passo a passo? Seu progresso est\xE1 salvo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760717
+    m_Localized: "Como o SKR impulsiona o reino"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760718
+    m_Localized: "A integra\xE7\xE3o do token Seeker / Solana \u2014 a experi\xEAncia pretendida."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760719
+    m_Localized: "Ver recompensas de staking"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760720
+    m_Localized: "As vantagens cosm\xE9ticas ter\xE3o pre\xE7o em SKR no lan\xE7amento \u2014 por enquanto, apenas testnet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760721
+    m_Localized: "Em breve \u2014 pr\xE9via em testnet. Nenhuma carteira conectada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760722
+    m_Localized: "N\xEDvel:  {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760723
+    m_Localized: "Ainda sem staking ativo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760724
+    m_Localized: "Recompensas desbloqueadas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760725
+    m_Localized: "Sem alvo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760726
+    m_Localized: "N\xCDVEL {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760727
+    m_Localized: "RELATAR UM ERRO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760728
+    m_Localized: "Inclui os registros recentes do jogo e seu identificador de jogador para nos ajudar a corrigir."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760729
+    m_Localized: "Enviar relat\xF3rio"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760730
+    m_Localized: "O que deu errado?"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760731
+    m_Localized: "(nenhuma captura dispon\xEDvel)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760732
+    m_Localized: "captura exclu\xEDda"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760733
+    m_Localized: "Incluir captura"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760734
+    m_Localized: "Tentar enviar de novo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760735
+    m_Localized: "Relat\xF3rio enviado - obrigado, defensor."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760736
+    m_Localized: "N\xE3o foi poss\xEDvel enviar - verifique sua conex\xE3o e tente novamente."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760737
+    m_Localized: "Loja de Apar\xEAncia"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760738
+    m_Localized: "{0}  apar\xEAncias"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760739
+    m_Localized: "Equipar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760740
+    m_Localized: "{0} equipado"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760741
+    m_Localized: "Bloqueado"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760742
+    m_Localized: "Miss\xF5es di\xE1rias"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760743
+    m_Localized: "+ Feito"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760744
+    m_Localized: "Sabedoria"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760745
+    m_Localized: "Item b\xF4nus"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760746
+    m_Localized: "Conclu\xEDda"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760747
+    m_Localized: "Em andamento"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760748
+    m_Localized: "RECOMPENSAS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760749
+    m_Localized: "PROGRESSO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760750
+    m_Localized: "Miss\xE3o di\xE1ria conclu\xEDda\n{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760751
+    m_Localized: "Relatar um erro"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760752
+    m_Localized: "Controles"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760753
+    m_Localized: "Redefinir her\xF3i e Ecos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760754
+    m_Localized: "Cr\xE9ditos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760755
+    m_Localized: "Exibindo {0} de {1} - arraste a lista para ver mais"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760756
+    m_Localized: "Controles - WASD/setas/direcional: mover | 1/2/3/4 + botoes frontais: usar Q/W/E/R | Botao Construir: posicionar torres | F: interagir | Esc: pausar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760757
+    m_Localized: "Defenders of the Realm v2 - DeNelle Studios. Modelos: KayKit + Tripo. Musica: trilha original da DeNelle Studios (feita com Suno). Efeitos sonoros: leohpaz 'RPG Essentials' e Hovl Studio, licenciados na Unity Asset Store."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760758
+    m_Localized: "Redefinir her\xF3i e Ecos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760759
+    m_Localized: "Redefinir seu her\xF3i e seus Ecos e come\xE7ar de novo? Isso n\xE3o pode ser desfeito."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760760
+    m_Localized: "Redefinir"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760761
+    m_Localized: "Manter progresso"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760762
+    m_Localized: "Falha ao redefinir - o servi\xE7o n\xE3o est\xE1 ativo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760763
+    m_Localized: "Redefinido - voltando \xE0 sele\xE7\xE3o de her\xF3i..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760764
+    m_Localized: "Falha ao redefinir - consulte o log."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760765
+    m_Localized: "Um muro"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760766
+    m_Localized: "{0} est\xE1 danificado ({1}%)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760767
+    m_Localized: "Reparar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760768
+    m_Localized: "Her\xF3i"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760769
+    m_Localized: "Iniciar onda"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760770
+    m_Localized: "Come\xE7ar agora"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760771
+    m_Localized: "ESCOLHA UM ITEM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760772
+    m_Localized: "O jogo fica pausado enquanto voc\xEA escolhe."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760773
+    m_Localized: "PO\xC7\xC3O DE CURA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760774
+    m_Localized: "ELIXIR DE MANA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760775
+    m_Localized: "PO\xC7\xC3O DE CURA  x{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760776
+    m_Localized: "ELIXIR DE MANA  x{0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760777
+    m_Localized: "{0}  Nv {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760778
+    m_Localized: "Onda {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760779
+    m_Localized: "Restam {0} inimigos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760780
+    m_Localized: "Adicione uma habilidade para ativar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760781
+    m_Localized: "Visitar vila"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760782
+    m_Localized: "Fonte: {0}."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760783
+    m_Localized: "Fonte: {0}. As pontua\xE7\xF5es s\xE3o locais; as posi\xE7\xF5es exibidas s\xE3o rivais provis\xF3rios at\xE9 a classifica\xE7\xE3o online ser conectada."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760784
+    m_Localized: "[ BLOQUEADO ]"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760785
+    m_Localized: "Primeiro ataque gr\xE1tis - {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760786
+    m_Localized: "Cumpra o requisito primeiro"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760787
+    m_Localized: "Miss\xF5es"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760788
+    m_Localized: "Ataques"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760789
+    m_Localized: "Rastreador de miss\xF5es"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760790
+    m_Localized: "Vitrine da vila"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760791
+    m_Localized: "Carregando vila..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760792
+    m_Localized: "Vitrine p\xFAblica somente leitura"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760793
+    m_Localized: "Anterior"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760794
+    m_Localized: "Voltar ao ranking"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760795
+    m_Localized: "Defensor"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760796
+    m_Localized: "Carregando o instant\xE2neo compartilhado..."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760797
+    m_Localized: "Esta vila n\xE3o est\xE1 dispon\xEDvel para visita."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760798
+    m_Localized: "N\xE3o foi poss\xEDvel exibir este instant\xE2neo da vila com seguran\xE7a."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760799
+    m_Localized: "Instant\xE2neo somente leitura v{0}  |  {1} estruturas  |  as patrulhas ambientais s\xE3o apenas apresenta\xE7\xE3o local"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760800
+    m_Localized: "Instant\xE2neo somente leitura v{0}  |  {1} estruturas  |  {2} exibidas com marcadores seguros  |  as patrulhas ambientais s\xE3o apenas apresenta\xE7\xE3o local"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760801
+    m_Localized: "BEM-VINDO \xC0 VIG\xCDLIA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760802
+    m_Localized: "FUNDE SUA CIDADE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760803
+    m_Localized: "Comece com um assentamento pronto e defesas iniciais, ou escolha um reino vazio para construir voc\xEA mesmo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760804
+    m_Localized: "ASSENTAMENTO PRONTO  (Recomendado)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760805
+    m_Localized: "REINO VAZIO  (Construa voc\xEA mesmo)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760806
+    m_Localized: "ESCOLHA SEU DEFENSOR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760807
+    m_Localized: "BLOQUEADO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760808
+    m_Localized: "Em breve"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760809
+    m_Localized: "As habilidades ser\xE3o reveladas no lan\xE7amento"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760810
+    m_Localized: "ESCOLHER {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760811
+    m_Localized: "Her\xF3i"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760812
+    m_Localized: "BEM-VINDO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760813
+    m_Localized: "SUA CARTEIRA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760814
+    m_Localized: "Continue com o Google para proteger seu progresso em todos os aparelhos, ou jogue como convidado neste aparelho."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760815
+    m_Localized: "Sua carteira \xE9 o seu save. Conecte agora (uma \xFAnica vez neste aparelho). O progresso de convidado fica aqui at\xE9 voc\xEA conectar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760816
+    m_Localized: "Jogar como convidado"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760817
+    m_Localized: "Abrindo o login do Google... voc\xEA ainda pode tocar em Jogar como convidado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760818
+    m_Localized: "Abrindo sua carteira... voc\xEA ainda pode tocar em Jogar como convidado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760819
+    m_Localized: "O login do Google n\xE3o respondeu. Tente Continuar com o Google novamente, ou toque em Jogar como convidado para come\xE7ar agora."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760820
+    m_Localized: "Sua carteira n\xE3o respondeu. Abra o app da sua carteira e tente Conectar carteira novamente, ou toque em Jogar como convidado para come\xE7ar agora."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760821
+    m_Localized: "O login do Google falhou. Tente novamente, ou toque em Jogar como convidado para come\xE7ar agora."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760822
+    m_Localized: "A conex\xE3o da carteira falhou. Tente novamente, ou toque em Jogar como convidado para come\xE7ar agora."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760823
+    m_Localized: "BEM-VINDO, KEEPER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760824
+    m_Localized: "O HEART"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760825
+    m_Localized: "O CAMPO DE FOR\xC7A"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760826
+    m_Localized: "ERGA UMA TORRE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760827
+    m_Localized: "SEUS WARDENS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760828
+    m_Localized: "SEGURE A LINHA"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760829
+    m_Localized: "Abrir o menu Construir"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760830
+    m_Localized: "Iniciar a onda 1"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760831
+    m_Localized: "Os Ecos aguardam em Elarion. Visite o Echo Hollow na cidade para se unir ao seu primeiro companheiro."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760832
+    m_Localized: "Voc\xEA j\xE1 tem um Warden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760833
+    m_Localized: "{0} caminha a vig\xEDlia ao seu lado. Um Warden se une uma s\xF3 vez \u2014 esse v\xEDnculo n\xE3o pode ser negociado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760834
+    m_Localized: "Quer outro companheiro? H\xE1 mais Wardens pelo reino \u2014 conquistados em miss\xF5es ou invocados no mercado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760835
+    m_Localized: "Seu Warden espera na cidade"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760836
+    m_Localized: "Visite o Echo Hollow em Elarion para se unir ao seu primeiro companheiro."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760837
+    m_Localized: "Warden"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760838
+    m_Localized: "TOP 3 JOGADORES"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760839
+    m_Localized: "MELHOR ONDA DE TODOS OS TEMPOS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760840
+    m_Localized: "{0}.  {1}     ONDA {2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760841
+    m_Localized: "apresenta"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760842
+    m_Localized: "Continuar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760843
+    m_Localized: "Come\xE7ar novo"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760844
+    m_Localized: "Ver a introdu\xE7\xE3o"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760845
+    m_Localized: "Continuar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760846
+    m_Localized: "Conectando\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760847
+    m_Localized: "Conectado \u2014 {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760848
+    m_Localized: "Nenhuma carteira conectada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760849
+    m_Localized: "M\xFAsica: Ligada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760850
+    m_Localized: "M\xFAsica: Desligada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760851
+    m_Localized: "M\xFAsica ligada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760852
+    m_Localized: "M\xFAsica desligada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760853
+    m_Localized: "PAUSADO"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760854
+    m_Localized: "Continuar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760855
+    m_Localized: "Sair para o menu inicial"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760856
+    m_Localized: "Reparar a sess\xE3o"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760857
+    m_Localized: "Isso limpa um estado de tela travada. Seu progresso n\xE3o \xE9 afetado."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760858
+    m_Localized: "Reparar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760859
+    m_Localized: "OK"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760860
+    m_Localized: "Digite um valor v\xE1lido."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760861
+    m_Localized: "Vez de {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760862
+    m_Localized: "Percorrendo o reino"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760863
+    m_Localized: "Elarion (tema da vila)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760864
+    m_Localized: "Echoes of Elarion (tema principal)"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760865
+    m_Localized: "Escolha a m\xFAsica para onde voc\xEA est\xE1. A m\xFAsica de combate ainda assume durante as lutas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760866
+    m_Localized: "O \xE1udio n\xE3o est\xE1 pronto."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760867
+    m_Localized: "Pular  >"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760868
+    m_Localized: "DEFENDERS OF THE REALM"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760869
+    m_Localized: "Echoes of Elarion"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760870
+    m_Localized: "Compras seguras pelo Google Play"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760871
+    m_Localized: "Compras verificadas e restauradas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760872
+    m_Localized: "A restaura\xE7\xE3o falhou."
+    m_Metadata:
+      m_Items: []
 
   references:
     version: 2

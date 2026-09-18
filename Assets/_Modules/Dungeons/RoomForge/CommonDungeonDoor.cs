@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.UI;
 using DeNelle.Village;
 using UnityEngine;
 
@@ -472,7 +473,10 @@ namespace DeNelle.Dungeons.RoomForge
             else if (_policy == CommonDoorPolicy.Proximity && distance >= CloseDistance) SetOpen(false);
             if (distance <= OpenDistance && _policy != CommonDoorPolicy.Proximity)
             {
-                string label = _policy == CommonDoorPolicy.Locked ? "Locked" : "Open Door";
+                // WO-1857: the interact prompt is player copy - two alternatives, two keys.
+                string label = _policy == CommonDoorPolicy.Locked
+                    ? new LocalizedText("dungeon.door.prompt_locked").Resolve()
+                    : new LocalizedText("dungeon.door.prompt_open").Resolve();
                 MobileInteractButton.Request(this, label,
                     _policy == CommonDoorPolicy.Locked ? (System.Action)(() => { }) : () => SetOpen(true),
                     PromptPriority);

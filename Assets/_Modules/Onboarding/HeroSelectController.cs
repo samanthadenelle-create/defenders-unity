@@ -421,7 +421,11 @@ namespace DeNelle.Onboarding
 
             // Subtitle eyebrow — the frame's SUB-HEADER band, under the title and ABOVE
             // the well (it used to ride the body top and stole a row from the carousel).
-            var subtitle = ElarionUiKit.Label(content, "CHOOSE YOUR DEFENDER",
+            // WO-1857: minted per-screen rather than reusing the declared-but-never-called
+            // SubtitleKey ("heroSelect.subtitle") — that key's authored value is
+            // "powered by SKR", a different string with its own Google Play replacementRow.
+            var subtitle = ElarionUiKit.Label(content,
+                new LocalizedText("onboarding.hero_select.defender_eyebrow").Resolve(),
                 0.845f, 0.900f, ElarionUi.Gold, ElarionUi.FontLabel,
                 TextAlignmentOptions.Center, 0.24f, 0.945f, spacing: 1f, bold: true);
             subtitle.raycastTarget = false;
@@ -805,13 +809,20 @@ namespace DeNelle.Onboarding
                 var scrimImg = scrim.GetComponent<Image>();
                 if (scrimImg != null) scrimImg.raycastTarget = false;
 
-                var locked = ElarionUiKit.Label(scrim.transform, "LOCKED",
+                var locked = ElarionUiKit.Label(scrim.transform,
+                    new LocalizedText("onboarding.hero_select.locked_badge").Resolve(),
                     0.46f, 0.60f, ElarionUi.Parchment, ElarionUi.FontHead,
                     TextAlignmentOptions.Center, 0f, 1f, spacing: 3f, bold: true);
                 locked.raycastTarget = false;
                 FitLine(locked);
 
-                var soon = ElarionUiKit.Label(scrim.transform, "Coming Soon",
+                // ⛔ WO-1857: deliberately NOT the existing "storeBuyComingSoon" that the sweep
+                // doc's §5 table proposed. That key sits in the Wallet STRIP GROUP of
+                // Assets/Editor/Localization/GooglePlayLocalizationVariantPolicy.json, so a
+                // Google Play build DELETES it — and this screen DOES compile on Play, so the
+                // reuse would render "[[missing:storeBuyComingSoon]]" on that channel.
+                var soon = ElarionUiKit.Label(scrim.transform,
+                    new LocalizedText("onboarding.hero_select.coming_soon").Resolve(),
                     0.38f, 0.46f, ElarionUi.ParchmentDim, ElarionUi.FontLabel,
                     TextAlignmentOptions.Center, 0f, 1f);
                 soon.fontStyle = FontStyles.Italic;
@@ -932,7 +943,8 @@ namespace DeNelle.Onboarding
             }
             else
             {
-                var soon = ElarionUiKit.Label(skillsCol, "Abilities revealed at launch",
+                var soon = ElarionUiKit.Label(skillsCol,
+                    new LocalizedText("onboarding.hero_select.abilities_at_launch").Resolve(),
                     0.40f, 0.80f, ElarionUi.ParchmentDim, ElarionUi.FontLabel,
                     TextAlignmentOptions.TopLeft, 0.02f, 0.98f);
                 soon.fontStyle = FontStyles.Italic;
@@ -1053,10 +1065,19 @@ namespace DeNelle.Onboarding
             if (_confirmButton == null) return;
             if (_confirmLabel != null)
             {
+                // WO-1857: the CTA is two alternatives, so two keys — a "CHOOSE {0}" format
+                // for the playable branch (positional {0}, LocalText.Format convention) and
+                // the locked branch's own status word, upper-cased to match its sibling.
+                string fallbackName =
+                    new LocalizedText("onboarding.hero_select.hero_name_fallback").Resolve();
                 string heroName = HeroCatalog.Heroes.Length > 0
-                    ? CanonStrings.Locale(HeroCatalog.Heroes[_shownIndex].NameKey) : "Hero";
-                if (string.IsNullOrEmpty(heroName)) heroName = "Hero";
-                _confirmLabel.text = playable ? "CHOOSE " + heroName.ToUpperInvariant() : "COMING SOON";
+                    ? CanonStrings.Locale(HeroCatalog.Heroes[_shownIndex].NameKey) : fallbackName;
+                if (string.IsNullOrEmpty(heroName)) heroName = fallbackName;
+                _confirmLabel.text = playable
+                    ? LocalText.Format("onboarding.hero_select.confirm_choose",
+                                       heroName.ToUpperInvariant())
+                    : new LocalizedText("onboarding.hero_select.coming_soon")
+                          .Resolve().ToUpperInvariant();
                 FitLine(_confirmLabel);
             }
             _confirmButton.interactable = playable && _hasSelection;

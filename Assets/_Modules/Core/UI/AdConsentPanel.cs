@@ -15,7 +15,15 @@
 // like a trick when ads still appear.
 //
 // NEVER MEANING BY COLOUR ALONE (the owner is red/green colourblind) — every state
-// is worded. ASCII-only strings: non-ASCII renders as tofu in TMP.
+// is worded.
+//
+// ⚠ THE OLD "ASCII-only strings: non-ASCII renders as tofu in TMP" LINE IS RETIRED
+// (WO-1857, 2026-09-18). This panel's copy now resolves through LocalizedText keys
+// (ads.consent.*), so it renders Cyrillic, Arabic and CJK whenever the player's locale
+// asks for them — an ASCII rule here would have been a rule this file can no longer
+// keep. Whether the shipped TMP font atlas COVERS those ranges is a separate, and as
+// of this change UNPROVEN, question: it needs a Unity capture, not a comment. It is
+// recorded as the open risk in Logs/debug/scratch/sweep-core-summary.md.
 //
 // ⚠ TECHNICAL IMPLEMENTATION, NOT LEGAL ADVICE. The wording here is written to be
 // clear and honest; whether it satisfies a particular regime is the owner's call
@@ -82,7 +90,7 @@ namespace DeNelle.Core.UI
         private void Build()
         {
             _modal = ElarionUiKit.BuildObsidianModal(
-                "AdConsentUI", "Ads and Your Privacy",
+                "AdConsentUI", new LocalizedText("ads.consent.title").Resolve(),
                 new Vector2(0.08f, 0.18f), new Vector2(0.92f, 0.82f),
                 onClose: null, sortingOrder: 31020);   // no close X: this is a question, not a notice
             MedievalUiSkin.ApplyShell(_modal.chrome, compact: true);
@@ -90,18 +98,16 @@ namespace DeNelle.Core.UI
             var content = _modal.chrome.content.transform;
 
             ElarionUiKit.Label(content,
-                "Echoes of Elarion can show optional ads - watch one to speed up a build or double " +
-                "a harvest. You never have to watch one to play.\n\n" +
-                "May we use your advertising ID to show ads matched to your interests?\n\n" +
-                "If you say no, you will still see ads and still get the rewards - they just will " +
-                "not be matched to you. You can change this any time in Settings.",
+                new LocalizedText("ads.consent.body").Resolve(),
                 0.38f, 0.82f, ElarionUi.Parchment, 32, TextAlignmentOptions.TopLeft,
                 0.06f, 0.94f);
 
-            var yes = ElarionUiKit.Button(content, "Yes, personalise ads", ElarionUiKit.ButtonKind.Gold,
+            var yes = ElarionUiKit.Button(content, new LocalizedText("ads.consent.accept").Resolve(),
+                ElarionUiKit.ButtonKind.Gold,
                 new Vector2(0.06f, 0.20f), new Vector2(0.48f, 0.35f), () => Answer(true));
 
-            var no = ElarionUiKit.Button(content, "No, keep them generic", ElarionUiKit.ButtonKind.Quiet,
+            var no = ElarionUiKit.Button(content, new LocalizedText("ads.consent.decline").Resolve(),
+                ElarionUiKit.ButtonKind.Quiet,
                 new Vector2(0.52f, 0.20f), new Vector2(0.94f, 0.35f), () => Answer(false));
             MedievalUiSkin.ApplyButton(yes, primary: true);
             MedievalUiSkin.ApplyButton(no, primary: false);

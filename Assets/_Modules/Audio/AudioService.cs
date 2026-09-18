@@ -41,6 +41,7 @@ using DeNelle.Core;
 using DeNelle.Core.Audio;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.State;
+using DeNelle.Core.UI;   // LocalizedText - WO-1857 (jukebox track display names are player copy)
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.SceneManagement;
@@ -1119,19 +1120,29 @@ namespace DeNelle.Audio
             // themes + the village theme. Curated, expandable, licensing-safe.
             if (context == AmbientContext.Overworld)
             {
+                // WO-1857: the display NAME is player copy (MusicTrack.cs:62 says so); identity is
+                // the MusicTrack enum, so localizing the label cannot break selection. "Elarion" and
+                // "Echoes of Elarion" stay untranslated proper nouns; the descriptive parenthetical
+                // travels (matches the common.echoes_elarion branding convention).
                 return new List<MusicChoice>
                 {
-                    new MusicChoice(MusicTrack.Overworld, "Wandering the Realm"),
-                    new MusicChoice(MusicTrack.Village,   "Elarion (Town Theme)"),
-                    new MusicChoice(MusicTrack.Title,     "Echoes of Elarion (Main Theme)"),
+                    new MusicChoice(MusicTrack.Overworld,
+                        new LocalizedText("audio.track.overworld").Resolve()),
+                    new MusicChoice(MusicTrack.Village,
+                        new LocalizedText("audio.track.village").Resolve()),
+                    new MusicChoice(MusicTrack.Title,
+                        new LocalizedText("audio.track.main_theme").Resolve()),
                 };
             }
 
             return new List<MusicChoice>
             {
-                new MusicChoice(MusicTrack.Village,   "Elarion (Town Theme)"),
-                new MusicChoice(MusicTrack.Overworld, "Wandering the Realm"),
-                new MusicChoice(MusicTrack.Title,     "Echoes of Elarion (Main Theme)"),
+                new MusicChoice(MusicTrack.Village,
+                    new LocalizedText("audio.track.village").Resolve()),
+                new MusicChoice(MusicTrack.Overworld,
+                    new LocalizedText("audio.track.overworld").Resolve()),
+                new MusicChoice(MusicTrack.Title,
+                    new LocalizedText("audio.track.main_theme").Resolve()),
             };
         }
 

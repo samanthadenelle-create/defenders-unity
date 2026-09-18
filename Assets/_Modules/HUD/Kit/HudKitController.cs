@@ -453,11 +453,17 @@ namespace DeNelle.HUD.Kit
         /// old prompt's Cancel is the toast simply expiring).</summary>
         public void ShowRepairToast(string wallLabel, float damagePercent)
         {
+            // WO-1857: ONE sentence with the wall's name and the percentage as holes, plus a
+            // separate key for the unnamed-wall noun.
+            string wallName = string.IsNullOrEmpty(wallLabel)
+                ? new LocalizedText("hud.hud_kit.wall_generic").Resolve()
+                : wallLabel;
             var card = ShowToast(ElarionUiKit.ToastTone.Danger,
-                (string.IsNullOrEmpty(wallLabel) ? "A wall" : wallLabel) +
-                " is damaged (" + Mathf.RoundToInt(damagePercent) + "%)", lifetime: 6f);
+                LocalText.Format("hud.hud_kit.wall_damaged", wallName, Mathf.RoundToInt(damagePercent)),
+                lifetime: 6f);
             if (card == null) return;
-            ElarionUiKit.BuildObsidianButton(card.transform, "Repair",
+            ElarionUiKit.BuildObsidianButton(card.transform,
+                new LocalizedText("hud.hud_kit.repair_action").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style2, ElarionUiKit.ObsidianButtonColor.Green,
                 new Vector2(0.70f, 0.12f), new Vector2(0.97f, 0.88f), () =>
                 {
@@ -553,7 +559,8 @@ namespace DeNelle.HUD.Kit
                 });
             if (repairBtn != null) repairBtn.interactable = affordable;
 
-            ElarionUiKit.BuildObsidianButton(parts.card.transform, "Cancel",
+            ElarionUiKit.BuildObsidianButton(parts.card.transform,
+                new LocalizedText("armyScreen.cancel").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style2, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.59f, 0.09f), new Vector2(0.97f, 0.47f), () =>
                 {
@@ -640,7 +647,8 @@ namespace DeNelle.HUD.Kit
             // HudLayoutBands (the left column's one owner) - it is no longer a magic 0.35f here.
             // The mount now spans the plate band AND the SKILL chip band beneath it, so the two
             // are exclusive sub-rects rather than a plate with a chip tucked under its skirt.
-            _vitals = ElarionUiKit.BuildPartyNameplate(pool, "Hero",
+            _vitals = ElarionUiKit.BuildPartyNameplate(pool,
+                new LocalizedText("hud.hud_kit.hero_name_fallback").Resolve(),
                 new Vector2(HudLayoutBands.HeroPlateInVitals.xMin, HudLayoutBands.HeroPlateInVitals.yMin),
                 new Vector2(HudLayoutBands.HeroPlateInVitals.xMax, HudLayoutBands.HeroPlateInVitals.yMax),
                 withXpStrip: true);
@@ -896,7 +904,11 @@ namespace DeNelle.HUD.Kit
             var slot0Min = new Vector2(0f, BarY0);
             var slot0Max = new Vector2(BarSlotW, BarY1);
 
-            var build = ElarionUiKit.BuildObsidianButton(pool, "Build",
+            // WO-1857: the LEGACY bar faces resolve the SAME nav keys the shipped adaptive dock
+            // resolves through HudStrings.KeyNav* (BindActionBar returns early once the dock
+            // exists, so these are the dormant path - one key, never two spellings).
+            var build = ElarionUiKit.BuildObsidianButton(pool,
+                new LocalizedText(HudStrings.KeyNavBuild).Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
                 slot0Min, slot0Max,
                 () =>
@@ -908,7 +920,8 @@ namespace DeNelle.HUD.Kit
             TutorialHighlightRegistry.Register("hud.build_button", (RectTransform)build.transform);
             RegisterBarButton(ActionBarButtonId.Build, "buildButton", build);
 
-            var talk = ElarionUiKit.BuildObsidianButton(pool, "Talk",
+            var talk = ElarionUiKit.BuildObsidianButton(pool,
+                new LocalizedText(HudStrings.KeyNavTalk).Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style2, ElarionUiKit.ObsidianButtonColor.Green,
                 slot0Min, slot0Max, () =>
                 {
@@ -921,7 +934,8 @@ namespace DeNelle.HUD.Kit
             // from the array; the old dim-to-0.45 CanvasGroup treatment is retired.
             RegisterBarButton(ActionBarButtonId.Talk, "talkButton", talk);
 
-            var bag = ElarionUiKit.BuildObsidianButton(pool, "Hero",
+            var bag = ElarionUiKit.BuildObsidianButton(pool,
+                new LocalizedText(HudStrings.KeyNavHero).Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 slot0Min, slot0Max, () =>
                 {
@@ -992,7 +1006,8 @@ namespace DeNelle.HUD.Kit
 
             // QUESTS (WO-835 §3c): its OWN always-in-town face — the 07-06 Quests<->Upgrade
             // relabel hijack is retired (owner: "allows quests to be active more often").
-            var quests = ElarionUiKit.BuildObsidianButton(pool, "Journey",
+            var quests = ElarionUiKit.BuildObsidianButton(pool,
+                new LocalizedText(HudStrings.KeyNavJourney).Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 slot0Min, slot0Max, OnQuestsAction);
             RegisterBarButton(ActionBarButtonId.Quests, "questButton", quests);
@@ -1934,7 +1949,8 @@ namespace DeNelle.HUD.Kit
             // so the CTA is authored ABOVE the floor rather than relying on ClampMinTouch to rescue
             // it after layout (it cannot: rect.height is still 0 when the button is built, which is
             // exactly how the old ~46 px Start Wave button shipped un-flagged).
-            _startWaveButton = ElarionUiKit.BuildObsidianButton(_waveBlockRoot.transform, "Start Wave",
+            _startWaveButton = ElarionUiKit.BuildObsidianButton(_waveBlockRoot.transform,
+                new LocalizedText("hud.hud_kit.start_wave").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style2, ElarionUiKit.ObsidianButtonColor.Green,
                 new Vector2(0.63f, 0.03f), new Vector2(1.00f, 0.93f),
                 () => { if (_owner != null) _owner.StartWaveRequested?.Invoke(); });
@@ -3807,7 +3823,8 @@ namespace DeNelle.HUD.Kit
             // picker canvas destroyed by something other than CloseItemPicker.
             _itemPickerHold = WorldHold.AcquirePlayerOwned(WorldHold.ReasonCombatItemPicker,
                 () => this != null && _itemPicker != null);
-            _itemPicker = ElarionUiKit.BuildObsidianModal("CombatItemPicker", "CHOOSE AN ITEM",
+            _itemPicker = ElarionUiKit.BuildObsidianModal("CombatItemPicker",
+                new LocalizedText("hud.hud_kit.item_picker_title").Resolve(),
                 new Vector2(0.25f, 0.18f), new Vector2(0.75f, 0.82f), CloseItemPicker,
                 sortingOrder: 31500);
 
@@ -3848,7 +3865,8 @@ namespace DeNelle.HUD.Kit
                     if (child != null && child.name == "Rule") child.gameObject.SetActive(false);
                 }
             }
-            var pickerTitle = ElarionUiKit.Label(body, "CHOOSE AN ITEM",
+            var pickerTitle = ElarionUiKit.Label(body,
+                new LocalizedText("hud.hud_kit.item_picker_title").Resolve(),
                 0.74f, 0.89f, ElarionUi.Gold, ElarionUi.FontTitle,
                 TextAlignmentOptions.Center, 0.12f, 0.88f, bold: true);
             pickerTitle.characterSpacing = 3f;
@@ -3880,7 +3898,11 @@ namespace DeNelle.HUD.Kit
             // (ElarionUiKit.cs:979-988) to y 0.308..0.542 of the body. A 0.55 band bottom leaves
             // 2 px of clearance against that grown rung; 0.59 leaves 23. The widening would have
             // manufactured the collision it was meant to avoid.
-            var hint = ElarionUiKit.Label(body, "Gameplay is paused while you choose.",
+            // WO-1857: ⚠ CombatItemPickerRegression Require()s this file's raw source for the
+            // literal "Gameplay is paused while you choose." - that needle must move to the key
+            // (sidecar-reported, not edited here).
+            var hint = ElarionUiKit.Label(body,
+                new LocalizedText("hud.hud_kit.item_picker_hint").Resolve(),
                 0.59f, 0.71f, ElarionUi.ParchmentDim, ElarionUi.FontBody,
                 TextAlignmentOptions.Center, 0.12f, 0.88f);
             hint.enableAutoSizing = false;
@@ -3888,10 +3910,12 @@ namespace DeNelle.HUD.Kit
             hint.enableWordWrapping = false;
             hint.raycastTarget = false;
 
-            _itemHealButton = ElarionUiKit.BuildObsidianButton(body, "HEALING POTION",
+            _itemHealButton = ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("hud.hud_kit.healing_potion").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.12f, 0.34f), new Vector2(0.88f, 0.51f), () => UseItem(false));
-            _itemManaButton = ElarionUiKit.BuildObsidianButton(body, "MANA DRAUGHT",
+            _itemManaButton = ElarionUiKit.BuildObsidianButton(body,
+                new LocalizedText("hud.hud_kit.mana_draught").Resolve(),
                 ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                 new Vector2(0.12f, 0.13f), new Vector2(0.88f, 0.30f), () => UseItem(true));
             MedievalUiSkin.ApplyButton(_itemHealButton, primary: true);
@@ -3922,8 +3946,12 @@ namespace DeNelle.HUD.Kit
             var c = _models != null ? _models.Consumables : null;
             int hp = c != null ? c.HpPotionCount : 0;
             int mana = c != null ? c.ManaPotionCount : 0;
-            if (_itemHealLabel != null) _itemHealLabel.text = "HEALING POTION  x" + hp;
-            if (_itemManaLabel != null) _itemManaLabel.text = "MANA DRAUGHT  x" + mana;
+            // WO-1857: the counted face is its OWN complete key, not the bare name plus an
+            // English "  x" fragment.
+            if (_itemHealLabel != null)
+                _itemHealLabel.text = LocalText.Format("hud.hud_kit.healing_potion_count", hp);
+            if (_itemManaLabel != null)
+                _itemManaLabel.text = LocalText.Format("hud.hud_kit.mana_draught_count", mana);
             if (_itemHealButton != null)
                 _itemHealButton.interactable = HudCommands.HasPotion && c != null && c.HpCooldownRemaining <= 0f;
             if (_itemManaButton != null)
@@ -4417,7 +4445,7 @@ namespace DeNelle.HUD.Kit
             if (_vitals.NameLabel != null)
             {
                 string heroName = string.IsNullOrEmpty(v.ClassId)
-                    ? "Hero"
+                    ? new LocalizedText("hud.hud_kit.hero_name_fallback").Resolve()
                     : DeNelle.Core.State.HeroCanonNames.ForJob(v.ClassId);
                 // OWNER RULING 2026-09-02 (verbatim: "see how it says THrain Mana? Why is MAna
                 // there"): the resource word is GONE from the nameplate. The plate is identity
@@ -4435,7 +4463,10 @@ namespace DeNelle.HUD.Kit
                 // was shown that trade-off explicitly and chose deletion anyway; her call stands.
                 // If it ever needs to come back, put it ON THE BAR, never back on this line.
                 // v.ResourceDisplayName is still produced by the model and is unused HERE only.
-                _vitals.NameLabel.text = heroName + "  Lv " + Mathf.Max(1, v.Level);
+                // WO-1857: name + level is ONE key with two holes. The old
+                // heroName + "  Lv " + n concatenation froze the word order.
+                _vitals.NameLabel.text = LocalText.Format("hud.hud_kit.nameplate_name_level",
+                    heroName, Mathf.Max(1, v.Level));
             }
             // Owner 07-06: in-plate XP strip — fillAmount = xp/xpToNext, mirroring the HP/MP
             // fill-binding contract (§1.1). XpToNext<=0 = no HeroProgression data yet (the model
@@ -4690,7 +4721,7 @@ namespace DeNelle.HUD.Kit
             // village-at-rest state hides the label entirely instead of a resting caption.
             bool hasWave = w.Number > 0;
             _waveLabel.gameObject.SetActive(hasWave);
-            if (hasWave) _waveLabel.text = "Wave " + w.Number;
+            if (hasWave) _waveLabel.text = LocalText.Format("hud.hud_kit.wave_label", w.Number);
             bool realCountdown = w.Phase == WavePhase.Countdown && w.CountdownRemaining > 0f;
             var labelRt = (RectTransform)_waveLabel.transform;
             var countdownRt = (RectTransform)_waveCountdown.transform;
@@ -4708,7 +4739,7 @@ namespace DeNelle.HUD.Kit
                 progressRt.offsetMax = Vector2.zero;
             }
             _waveCountdown.text = activeWave
-                ? Mathf.Max(0, w.EnemiesLive) + " enemies remain"
+                ? LocalText.Format("hud.hud_kit.enemies_remain", Mathf.Max(0, w.EnemiesLive))
                 // WO-1407: "Next wave in 14m 15s", never "855s" - ElarionUi.Duration is the one
                 // formatter (shared with WaveCountdownUI and the queue rail).
                 : (realCountdown ? "Next wave in " + ElarionUi.Duration(Mathf.CeilToInt(w.CountdownRemaining)) : "");
@@ -4725,7 +4756,14 @@ namespace DeNelle.HUD.Kit
                 var swLabel = _startWaveButton.GetComponentInChildren<TMP_Text>(true);
                 if (swLabel != null)
                 {
-                    string want = realCountdown ? "Start Now" : "Start Wave";
+                    // WO-1857: one control, two verbs, two keys (imperative "now" vs the
+                    // ordinary start) - never one key with an English ternary around it.
+                    // Each key sits in its OWN `new LocalizedText("literal")` so a regex-based
+                    // key extractor (the manifest's keyedCall pass, any future orphan-key check)
+                    // can still see both - a key hidden inside a ternary ARGUMENT is invisible to it.
+                    string want = realCountdown
+                        ? new LocalizedText("hud.hud_kit.start_now").Resolve()
+                        : new LocalizedText("hud.hud_kit.start_wave").Resolve();
                     if (swLabel.text != want) swLabel.text = want;
                 }
             }
@@ -4986,7 +5024,8 @@ namespace DeNelle.HUD.Kit
                             slot < _abilitySlotEquipped.Length && _abilitySlotEquipped[slot];
             if (!equipped)
             {
-                ShowToast(ElarionUiKit.ToastTone.Info, "Add a skill to activate");
+                ShowToast(ElarionUiKit.ToastTone.Info,
+                    new LocalizedText("hud.hud_kit.add_skill_hint").Resolve());
                 return;
             }
             if (_owner != null) _owner.AbilityRequested?.Invoke(slot);

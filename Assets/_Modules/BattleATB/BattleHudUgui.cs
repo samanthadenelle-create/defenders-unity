@@ -824,7 +824,13 @@ namespace DeNelle.BattleATB
                 var active = state.Units.FirstOrDefault(u => u.Id == state.ActiveUnitId);
                 activeName = active?.Name ?? "";
             }
-            if (_turnText) _turnText.text = string.IsNullOrEmpty(activeName) ? "" : activeName + "'s Turn";
+            // WO-1857: {0} = the acting unit's own name (catalog data, not translated here). The
+            // English possessive is a GRAMMAR construct, so the whole phrase is one format row -
+            // never "name" + a localized "'s Turn" fragment.
+            if (_turnText)
+                _turnText.text = string.IsNullOrEmpty(activeName)
+                    ? ""
+                    : LocalText.Format("battle.hud.active_turn", activeName);
             // Real, scaled wave from the live battle state (BattleScaling drives difficulty by it).
             // Floor at 1 so a dungeon/dev battle (Wave 0) still reads "WAVE 1" rather than "WAVE 0".
             if (_waveText) _waveText.text = "WAVE " + Mathf.Max(1, state.Wave);

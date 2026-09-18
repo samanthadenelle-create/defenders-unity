@@ -249,7 +249,7 @@ namespace DeNelle.Core.UI
         public static void StyleCloseButton(Button button)
         {
             if (button == null) return;
-            button.text = "Close";
+            button.text = new LocalizedText(CommonText.KeyClose).Resolve();
             // Raw device px (no PanelSettings ref scaler): 148 ≈ 60 dp on the Seeker
             // (VISUAL_TOUCH_CONTRAST_AUDIT 2026-07-14, P0 — was 34px ≈ 14 dp).
             button.style.minWidth = 148; button.style.height = 148;

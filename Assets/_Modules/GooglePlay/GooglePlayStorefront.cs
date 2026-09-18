@@ -132,7 +132,10 @@ namespace DeNelle.GooglePlay
             // The subtitle sits in its OWN band above the list well (WO-1743). It used to be at
             // .92-.99 with the row loop starting at .90, and the first clamp-grown row painted
             // over it — that half-covered sentence is the top of the device capture.
-            var subtitle = ElarionUiKit.Label(body, "Secure purchases through Google Play",
+            // WO-1857: "play-skin" above is a SKIN ID passed to HudStrings, not copy. This subtitle
+            // is copy. "Google Play" is a product proper noun and stays untranslated inside it.
+            var subtitle = ElarionUiKit.Label(body,
+                new LocalizedText("googleplay.storefront.secure_subtitle").Resolve(),
                 SubtitleY0, SubtitleY1,
                 ElarionUi.ParchmentDim, ElarionUi.FontLabel, TextAlignmentOptions.Center, .02f, .98f);
             ElarionUiKit.FitSingleLine(subtitle);

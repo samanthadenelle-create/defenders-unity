@@ -24,6 +24,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UIElements;
 using DeNelle.Core.Diagnostics;
+using DeNelle.Core.UI;
 
 namespace DeNelle.Wallet
 {
@@ -219,7 +220,11 @@ namespace DeNelle.Wallet
 
             if (_connectButton != null)
             {
-                _connectButton.text = connecting ? "Connecting…" : "Connect Wallet";
+                // WO-1857: two alternative captions, two keys. The disconnected face reuses the
+                // existing settings.wallet.connect row (same job: the connect-wallet button verb).
+                _connectButton.text = connecting
+                    ? new LocalizedText("wallet.connect.connecting").Resolve()
+                    : new LocalizedText("settings.wallet.connect").Resolve();
                 _connectButton.SetEnabled(!connecting && !connected);
                 _connectButton.style.display = connected ? DisplayStyle.None : DisplayStyle.Flex;
             }
@@ -237,14 +242,17 @@ namespace DeNelle.Wallet
             {
                 switch (status)
                 {
+                    // WO-1857: {0} = the connected wallet's own product name (Phantom, Solflare…),
+                    // a proper noun supplied by the provider and never translated.
                     case WalletStatus.Connected:
-                        _statusLabel.text = $"Connected — {_wallet.Account.WalletName}";
+                        _statusLabel.text = LocalText.Format("wallet.connect.connected_as",
+                            _wallet.Account.WalletName);
                         break;
                     case WalletStatus.Connecting:
-                        _statusLabel.text = "Connecting…";
+                        _statusLabel.text = new LocalizedText("wallet.connect.connecting").Resolve();
                         break;
                     default:
-                        _statusLabel.text = "No wallet connected";
+                        _statusLabel.text = new LocalizedText("wallet.connect.none").Resolve();
                         break;
                 }
             }
