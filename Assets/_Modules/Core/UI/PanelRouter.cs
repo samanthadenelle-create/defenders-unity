@@ -180,6 +180,18 @@ namespace DeNelle.Core.UI
         /// a feedback surface this project owns, never on a store flow returning.
         /// Append-only: values are load-bearing.</summary>
         HonestFeedback = 27,
+        /// <summary>WO-1870 - the full in-game CIRCLE screen (CircleScreenPanel, DeNelle.HUD):
+        /// create or join a Circle by code, the member roster with the leader/officer verbs,
+        /// the Circle leaderboard, the read-only vault and the ballots. It is also where a
+        /// player without a Remnant name claims one, which is the first thing such a player
+        /// sees on it (owner ruling 2026-09-18).
+        ///
+        /// Its doors are CircleScreenPanelBootstrap (D2) and the always-visible button inside
+        /// Circle Chat (D1). It is deliberately NOT a gear-drawer row: AddDockTab lays the
+        /// drawer out as a 2x3 grid and all six cells are occupied, so a seventh would paint
+        /// outside the panel and move the cell WO-1465's clearance geometry is written around.
+        /// Append-only: values are load-bearing.</summary>
+        Circle = 28,
     }
 
     /// <summary>

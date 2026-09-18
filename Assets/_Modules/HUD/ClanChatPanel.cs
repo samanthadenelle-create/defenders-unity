@@ -76,6 +76,14 @@ namespace DeNelle.HUD
         private PanelHandle _panelHandle;
 
         /// <summary>
+        /// WO-1870: the height of the always-visible Circle-door strip at the bottom of the chat
+        /// body, in reference px. AUTHORED ABOVE THE TOUCH FLOOR rather than left to
+        /// ClampMinTouch - the button inside it takes 0.08-0.92 of the strip, so the strip must
+        /// be tall enough that the FACE still clears MinTouchPx.
+        /// </summary>
+        private const float CircleDoorStripPx = ElarionUiKit.MinTouchPx / 0.84f + 8f;
+
+        /// <summary>
         /// Unread messages in the clan room, straight from Cherry's own unreadState event.
         /// Zero when there is no VM, no room, or no embed — never a stale count.
         /// </summary>
@@ -166,11 +174,44 @@ namespace DeNelle.HUD
             var body = _modal.chrome.layout != null && _modal.chrome.layout.body != null
                 ? (Transform)_modal.chrome.layout.body
                 : _modal.chrome.content.transform;
-            _bodyHost = body;
+
+            // ── WO-1870 DOOR 1: the Circle screen, reachable from inside Circle Chat ──────
+            // ⛔ IT IS VISIBLE IN EVERY STATE, not only the no-Circle one. The owner looked here
+            // for a join option and found a sentence and no door; a player already in a Circle
+            // still needs the roster, the code and the ballots. The gear drawer cannot carry a
+            // seventh row (AddDockTab is a full 2x3 grid), so this IS the discoverable entry.
+            //
+            // ⚠ AND IT IS CARVED OUT OF THE EMBED'S OWN RECT, not painted over it. The WebView
+            // is a NATIVE surface laid over BodyViewport() and it occludes anything underneath,
+            // so a button inside that rect would vanish the moment Cherry mounted. The strip
+            // below is subtracted from the host area first, and _bodyHost then points at what
+            // is left - which is what BodyViewport() measures.
+            var doorStrip = new GameObject("CircleDoorStrip", typeof(RectTransform));
+            doorStrip.transform.SetParent(body, false);
+            var doorRt = (RectTransform)doorStrip.transform;
+            doorRt.anchorMin = new Vector2(0f, 0f);
+            doorRt.anchorMax = new Vector2(1f, 0f);
+            doorRt.pivot = new Vector2(0.5f, 0f);
+            doorRt.anchoredPosition = Vector2.zero;
+            doorRt.sizeDelta = new Vector2(0f, CircleDoorStripPx);
+
+            ElarionUiKit.Button(doorStrip.transform,
+                new LocalizedText(CircleScreenPanel.ChatDoorKey).Resolve(),
+                ElarionUiKit.ButtonKind.Gold,
+                new Vector2(0.10f, 0.08f), new Vector2(0.90f, 0.92f), OpenCircleScreen);
+
+            var surface = new GameObject("EmbedSurface", typeof(RectTransform));
+            surface.transform.SetParent(body, false);
+            var surfaceRt = (RectTransform)surface.transform;
+            surfaceRt.anchorMin = Vector2.zero;
+            surfaceRt.anchorMax = Vector2.one;
+            surfaceRt.offsetMin = new Vector2(0f, CircleDoorStripPx);
+            surfaceRt.offsetMax = Vector2.zero;
+            _bodyHost = surface.transform;
 
             // The ONE native widget left: a status line that carries the error state. Cherry
             // draws everything else, inside the web surface placed over this rect.
-            _statusText = MakeText(body, "", 15, ElarionUi.ParchmentDim, FontStyles.Italic,
+            _statusText = MakeText(_bodyHost, "", 15, ElarionUi.ParchmentDim, FontStyles.Italic,
                 TextAlignmentOptions.Center, new Vector2(0.04f, 0.35f), new Vector2(0.96f, 0.65f));
 
             if (_host == null)
@@ -185,6 +226,17 @@ namespace DeNelle.HUD
             }
 
             _modal.canvas.SetActive(false);   // built hidden; SetVisible shows it
+        }
+
+        /// <summary>
+        /// WO-1870 door 1. Routes through PanelRouter, so the modal arbiter closes this panel as
+        /// the Circle screen opens - the two hold distinct PanelManager handles ("Remnant Chat"
+        /// and "Circle") precisely so that hand-off is clean.
+        /// </summary>
+        private static void OpenCircleScreen()
+        {
+            FlowTrace.Step("ClanChat", "Circle door tapped - routing to the Circle screen.");
+            PanelRouter.Open(PanelId.Circle);
         }
 
         private void AttachHost()
