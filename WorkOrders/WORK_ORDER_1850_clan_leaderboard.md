@@ -1,6 +1,6 @@
 # WORK ORDER 1850 — Clan system, step 7: real leaderboard fed by clan_vigil_weight
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 2c22f341d, COMPILE_GATE_OK + REGRESSION_OK 577/577 verified. PRIOR: READY FOR LEAD REVIEW
 
 ## Context — clan WO-7 in the chain, depends on WO-1848 (landed, committed 43fce9820)
 

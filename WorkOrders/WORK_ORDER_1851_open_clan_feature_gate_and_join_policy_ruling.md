@@ -1,6 +1,6 @@
 # WORK ORDER 1851 — Clan system, step 8: open `ClanFeatureGate.PlayerFacingEnabled` + fix the join-policy vocabulary
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 2c22f341d, COMPILE_GATE_OK + REGRESSION_OK 577/577 verified. PRIOR: READY FOR LEAD REVIEW
 
 ## Context — clan WO-8 in the chain, depends on WO-1848 (landed, committed 43fce9820)
 

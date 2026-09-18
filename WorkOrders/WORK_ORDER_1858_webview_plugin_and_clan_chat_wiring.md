@@ -1,6 +1,6 @@
 # WORK ORDER 1858 — Install a WebView plugin + wire the real clan into the Cherry Chat embed
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 2c22f341d, COMPILE_GATE_OK + REGRESSION_OK 577/577 verified. PRIOR: READY FOR LEAD REVIEW
 
 **Minted:** 2026-09-17, by the CLI lead, from the owner's direct ask: *"I want the whole vision
 completely running the solution all the way through for the pitch of people working together so I
