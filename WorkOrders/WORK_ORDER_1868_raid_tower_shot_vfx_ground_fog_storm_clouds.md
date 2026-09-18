@@ -1,6 +1,6 @@
 # WO-1868 — Raid arena: tower shot VFX, ground fog, storming clouds
 
-**Status:** READY FOR LEAD REVIEW — 2026-09-18 implemented by SME lane: tower VFX style fix
+**Status:** FIXED PENDING DEVICE BUILD — lead gated 2026-09-18 (`Builds/compile-gate-1868.log` 11:12 `COMPILE_GATE_OK`, `Builds/data-regression-1868.log` 11:17 `REGRESSION_OK 580/580`), committed `424e4246a` 11:18. NOT on the Seeker: the installed build `2026.09.18.374427` has `lastUpdateTime=2026-09-17 19:34:21` (adb dumpsys), which predates the commit. Next APK carries it; owner felt-verify closes. PRIOR STATUS: READY FOR LEAD REVIEW — 2026-09-18 implemented by SME lane: tower VFX style fix
 (`GarrisonTurretArmer.cs`) + ground fog / storm clouds (`RaidGarrisonSpawner.cs`), brace/NUL
 gate clean on both files (`tools/gate_brace.py` -> `GATE_BRACE_SUMMARY bad=0 of 2`); awaiting
 lead `COMPILE_GATE_OK` + `REGRESSION_OK` on a fresh log (lead batches this lane with others per
