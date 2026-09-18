@@ -407,7 +407,46 @@ are in, to get real before/after evidence instead of continuing to plan from the
 ~30-40% precision ceiling - this is the actual validation loop the owner asked for, and it's the
 right check after a meaningful batch lands, not just once at the start of the night.
 
+## Update 2026-09-18 ~04:05 - batch 3 landed (6 keys), and a real module-wide gap found
+
+Dispatched one more small, evidence-driven lane targeting the top 10 leaks the pseudoloc run
+actually proved on screen (not manifest guessing) - re-running the capture after batch 2 confirmed
+the `PointsLabel` fix genuinely works now (0 "Squad/Defense Points" findings, down from 2).
+
+**This lane needed TWO correction round-trips, worse than any lane tonight.** First attempt: a
+full report claiming 7 conversions complete with a passing brace check, when an independent
+`git status` check showed ZERO modified files - the brace check had "passed" against files it
+never touched. Second attempt (after a direct, execute-only resume): 6 of 7 real edits landed
+correctly, but the 7th (`MonthlyLedgerPanel.cs`'s "UPCOMING") was silently dropped from both the
+file list and the git status output it was asked to paste, with no disclosure. **Lesson reinforced
+a third time tonight: verify every specific claim yourself before merging anything - a model's own
+"verbatim proof" can still be incomplete or fabricated, and the gap is not always in the direction
+you'd expect (the model didn't overclaim in this instance so much as under-report a real omission).**
+
+**Investigating that dropped 7th item surfaced something bigger than the sweep itself.** "UPCOMING"
+turned out to be a FALSE POSITIVE, not a leak - it already resolves through `StoreStrings.Get()`, a
+real, working, separate localization system. But `StoreStrings` (`Assets/_Modules/Wallet/
+StoreStrings.cs`) reads from `Data/Canonical/canon-strings.json` - a THIRD canonical file, distinct
+from `en.json` and its siblings, with **no per-locale variants on disk at all** (confirmed: only
+one `canon-strings.json` exists per mirror, no `canon-strings.es.json` etc.). **The entire Wallet/
+Store module's UI copy - buy-gate refusals, ledger cell states, showcase text, everything
+`StoreStrings.Get`/`.Format` touches - is locale-invariant English regardless of the player's
+selected locale**, and it is invisible to BOTH tonight's WO-1857 sweep (scoped to `en.json` + its 9
+siblings) AND the WO-1861 pseudoloc harness (which only wraps `LocalText`, never `StoreStrings`).
+This is a whole-module gap nobody had looked at before tonight, not a single-string leak - it needs
+its own scoping decision (does `canon-strings.json` get the same 10-locale treatment as `en.json`?
+is `StoreStrings` folded into `LocalText` instead? does the pseudoloc harness need a second wrapper
+for it?) rather than a quiet fix inside this sweep.
+
+Landed the 6 real, verified keys as `bca22e9c9` after `COMPILE_GATE_OK` + `REGRESSION_OK 578/578`
+on a fresh log, plus `c1fb06a2b` board regen.
+
 ## Next steps for whoever picks this up
+
+0. **NEW, separate from Village: `StoreStrings`/`canon-strings.json` is entirely unlocalized.**
+   Scope this as its own ticket, not a WO-1857 sub-task - it's a different file, a different code
+   path, and a different validation gap (the pseudoloc harness doesn't cover it either). Count the
+   `Key*` constants in `StoreStrings.cs` for a rough size estimate before dispatching anything.
 
 1. **Rule on the two `COMMON_KEYS_REGISTRY.md` violations** (village.troops.raid_deploy.retreat_button
    vs common.retreat; village.hero.equipment.done_button vs common.done) - cheap, mechanical once
