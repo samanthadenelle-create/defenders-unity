@@ -189,7 +189,60 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-fifth pass): main line next free = **1862**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-sixty-ninth pass): main line next free = **1866**.
+> *(Agent minted **WO-1865** — the wave-clear damage report named the Forge and Lumber Mill
+> DESTROYED while both stood, built and max-level, in the town. NOT a report defect: `Collect()`
+> reads `IsBroken` LIVE and read it correctly. Root cause PROVEN from the owner's own device pull,
+> `Logs/device/raid-trace-20260918-080200.txt` — the pair broke honestly at 07:27:13 / 07:28:26
+> (`hp=0.00 broken=True`), and at the next scene load (07:51:47) the RepairProbe printed the
+> IMPOSSIBLE state `BURNING 'forge' hp=1.00 broken=True`. `ResourceCollector.Awake/Configure` ran
+> `LoadState()` (which sets `_broken = _hp <= 0f`) and then `if (_hp <= 0f) _hp = _maxHp;` — two
+> contradictory lines from the same birth commit `b08293c93`, so the flag said destroyed and the
+> next line erased its only evidence. `Repair()` then no-ops on WO-753's `if (_broken)` guard, so
+> nothing could ever clear it: `0 damaged, 2 destroyed` at EVERY wave clear for 31 minutes.
+> Fixed the invariant (the seed no longer revives a broken collector) + per-row report tracing +
+> DestroyedStructureRegression probe E (red/green captured). SECOND HALF IS AN OWNER RULING and is
+> deliberately NOT guessed at: both ids are `bake-owned`, and `ResetToFullHp`'s only caller is
+> BuildModeController's fresh-placement path, so WO-753's "rebuild at full cost" door is
+> structurally unreachable for a baked collector. Bumped 1865 -> 1866 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-sixty-eighth pass): main line next free = **1865**.
+> *(Lane minted **WO-1864** — the wave counter published the FIELD count, so it read a constant
+> "8 enemies remain" while 26 enemies were still coming. Owner, verbatim: *"every wave shows 8
+> remaining troops till it gets lower than 8 can we reflect actual troop counts?"* Root cause PROVEN
+> by her own device pull, not inference — `Logs/device/raid-trace-20260918-080200.txt` L3399
+> (`wave 26: ... HOLDING 26 for reinforcement (total roster unchanged at 34)`) against L3486
+> (`[Flow:HUD] Active wave 26/0 live 8/8`) 0.1s later, with no further HUD wave line for 101 seconds
+> while the held count walked 26 -> 1. The WO-1113 concurrency cap pins the field AT the cap by
+> design, so the field's length is a constant and cannot answer "how many are left"; the honest
+> number is `LiveEnemies.Count + HeldReinforcements`, two buckets the wave loop already tracks. The
+> cap, spawn timing and clear gate are UNTOUCHED — display-only. `WaveModel.EnemiesLive` renamed
+> `EnemiesRemaining` (a name that lies is the next seat's bug) and the progress bar's denominator is
+> now the wave roster instead of the same list as its numerator. Pinned by
+> `WaveCounterHonestyRegression`, driven by the captured sequence. Bumped 1864 -> 1865 in this SAME
+> edit.)*
+>
+> ## superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-sixty-seventh pass): main line next free = **1864**.
+> *(Lane minted **WO-1863** — the HARVEST RESULT screen offered "UPGRADE LUMBERYARD" on a Lumberyard
+> already at its authored ceiling (owner, verbatim: *"when you go to harvest it says upgrade lumber,
+> mill foundry in stoneyard, but if you're at max level, it shouldn't do that"*). Root cause PROVEN by
+> capture, not inference: `HarvestResultVM.Build`'s one live signal was a container COUNT
+> (`Func<BankResource,int>`), so a level-1 and a level-6 container were the same number by the time the
+> verb was chosen — the level sat one field away in `TownBankCapacity.StorageSlot.Level` and never
+> reached the decision. Signal now carries level + authored ceiling; a maxed container's door says
+> SPEND (owner ruling 23: one storage container per resource, so there is no second one to build
+> either). Red/green pinned by `HarvestMaxedContainerDoorRegression`. Bumped 1863 -> 1864 in this SAME
+> edit.)*
+>
+> ## superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-sixty-sixth pass): main line next free = **1863**.
+> *(Lane minted **WO-1862** — `StoreStrings`/`canon-strings.json` is the entire Wallet/Store module's
+> text authority and has NO per-locale variants on disk, so every player in every language reads the
+> Store in English. Item 0 of the WO-1857 overnight handoff's "Next steps", scoped as its own ticket
+> per that doc. Fix follows the repo's OWN twice-proven precedent — `HudStrings` and `PromoStrings`
+> both migrated by re-pointing `Get`/`Format` at `LocalText` and keeping the key catalog — not by
+> rewriting 70 money-adjacent call sites. Bumped 1862 -> 1863 in this SAME edit.)*
+>
+> ## superseded: RECONCILED 2026-09-17 (CLI, two-hundred-and-sixty-fifth pass): main line next free = **1862**.
 > *(Lead minted **WO-1861** — the overnight pseudolocalization leak-detection harness (decorator
 > ILocalTextProvider, NOT an 11th fake locale) that WO-1857's tagging sweep is validated against.
 > Per advisor + owner: code-based detection is the fast inner loop; Opus is cost-bounded to a final

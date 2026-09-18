@@ -2117,6 +2117,16 @@ namespace DeNelle.Editor
             // pending / over-cap truthfully and its footer leads with the SPEND recovery, never a reassurance.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "harvest-overcap-copy suite", () => { if (!DeNelle.Editor.Regression.HarvestOverCapCopyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[harvest-overcap-copy] " + r); });
 
+            // WO-1863 (2026-09-18, owner report): a storage container at its authored ceiling must not
+            // be offered for UPGRADE on the harvest result. Drives the REAL Apportion slot levels, not a
+            // stub - the bug was that the level never reached the decision at all.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "harvest-maxed-door suite", () => { if (!DeNelle.Editor.Regression.HarvestMaxedContainerDoorRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[harvest-maxed-door] " + r); });
+
+            // WO-1864 (2026-09-18, owner report): the wave counter must publish live + cap-HELD, not the
+            // field list alone. Drives the owner's own captured wave-26 sequence (live pinned at 8, held
+            // 26 -> 0) through the pure display seam; the concurrency cap itself is deliberate and untouched.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "wave-counter-honesty suite", () => { if (!DeNelle.Editor.Regression.WaveCounterHonestyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[wave-counter-honesty] " + r); });
+
             // WO-1412 (2026-09-09, lane STORE-RETURN): the store close returns through the opener
             // arbiter to the SAME Manage tab; the return door is set, held through the grace frame, consumed.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "store-return-to-manage suite", () => { if (!DeNelle.Editor.Regression.StoreReturnToManageRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[store-return-to-manage] " + r); });
