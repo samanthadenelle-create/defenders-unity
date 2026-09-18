@@ -69,6 +69,18 @@ namespace DeNelle.Village
             public bool HasCost;
             /// <summary>True for ResourceCollector rows — the label carries the production hit.</summary>
             public bool IsCollector;
+
+            // ── Diagnostics only (WO-1865). NEVER read by presentation. ──────────
+            /// <summary>Which surface produced this row: "Collector" / "Tower" / "Repairable".
+            /// Traced so a "destroyed" row can be attributed without re-deriving it.</summary>
+            public string Source;
+            /// <summary>The LIVE health fraction this row was classified from (1 = pristine).
+            /// Traced because the owner's 2026-09-18 capture turned on the fact that a row can
+            /// read Destroyed at hp=1.00 — a contradiction no count could ever show.</summary>
+            public float LiveHpFraction;
+            /// <summary>The LIVE broken flag this row was classified from (collectors/towers;
+            /// false for RepairTarget rows, which classify off the damage fraction instead).</summary>
+            public bool LiveBroken;
         }
 
         /// <summary>
@@ -108,6 +120,9 @@ namespace DeNelle.Village
                         IsCollector = true,
                         HasCost = repair != null,
                         RepairCost = repair != null ? repair.CostForStructure(c, frac) : default,
+                        Source = "Collector",
+                        LiveHpFraction = c.HpFraction,
+                        LiveBroken = c.IsBroken,
                     });
                 }
 
@@ -150,6 +165,32 @@ namespace DeNelle.Village
                 FlowTrace.Step("WaveClear",
                     $"damage report: {damaged} damaged, {destroyed} destroyed, {shown} rows shown" +
                     (damaged + destroyed > shown ? $" (of {damaged + destroyed} — worst-first cap)" : ""));
+
+                // ── WO-1865: THE COUNT ABOVE IS NOT EVIDENCE. NAME EVERY ROW. ──────────
+                // The owner's 2026-09-18 report ("the wave report said the Forge and Lumber Mill
+                // were destroyed and they are standing") could not be triaged from the line above
+                // at all: `0 damaged, 2 destroyed` names no structure, no surface and no health,
+                // so the same count covers an honest fresh kill and a 31-minute-old zombie flag.
+                // One line per row closes that: the ROW ITSELF now carries the live health it was
+                // classified from, so a contradiction (Destroyed at hp=1.00 - the real defect,
+                // ResourceCollector.SeedHpAfterLoad) is legible in one read instead of an hour of
+                // static code reading. Wave-clear cadence, not a frame path, so the 3-arg form is
+                // correct here (CLAUDE.md §12: the 4-arg Measure is for per-frame sites).
+                for (int i = 0; i < all.Count; i++)
+                {
+                    var e = all[i];
+                    string verdict = e.Destroyed ? "DESTROYED" : "damaged";
+                    string contradiction = e.Destroyed && e.LiveHpFraction > 0.9999f
+                        ? " ** CONTRADICTION: classified DESTROYED at FULL health - the structure's " +
+                          "broken flag and its HP disagree, which is a persisted-state defect in the " +
+                          "structure, NOT a defect in this report (WO-1865) **"
+                        : string.Empty;
+                    FlowTrace.Step("WaveClear",
+                        $"  row {i + 1}/{all.Count} '{e.Name}' src={e.Source} {verdict} " +
+                        $"damageFrac={e.DamageFraction:0.000} liveHp={e.LiveHpFraction:0.000} " +
+                        $"liveBroken={e.LiveBroken} collector={e.IsCollector} priced={e.HasCost}" +
+                        contradiction);
+                }
                 return all;
             }, new List<Entry>());
         }
@@ -174,6 +215,9 @@ namespace DeNelle.Village
                 Destroyed = broken,
                 HasCost = repair != null,
                 RepairCost = repair != null ? repair.CostForStructure(structure, frac) : default,
+                Source = "Tower",
+                LiveHpFraction = Mathf.Clamp01(hpFraction),
+                LiveBroken = broken,
             });
         }
 
@@ -197,6 +241,9 @@ namespace DeNelle.Village
                     Destroyed = frac >= WallRepairController.DestroyedFraction,
                     HasCost = repair != null,
                     RepairCost = repair != null ? repair.CostFor(target) : default,
+                    Source = "Repairable",
+                    LiveHpFraction = 1f - Mathf.Clamp01(frac),
+                    LiveBroken = false,
                 });
             }
         }

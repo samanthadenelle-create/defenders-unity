@@ -194,7 +194,67 @@ namespace DeNelle.Village.Buildings.Progression
         private void Awake()
         {
             LoadState();
-            if (_hp <= 0f) _hp = _maxHp;
+            SeedHpAfterLoad("Awake");
+        }
+
+        /// <summary>
+        /// The ONE post-<see cref="LoadState"/> HP seed (WO-1865). Both load seams (Awake and
+        /// <see cref="Configure"/>) call THIS — the rule is not copy-pasted, because the two
+        /// copies are how it drifted in the first place.
+        ///
+        /// <para>⛔ THE GUARD MUST NOT HEAL A <see cref="_broken"/> COLLECTOR, AND THAT IS THE
+        /// WHOLE POINT. It used to read `if (_hp &lt;= 0f) _hp = _maxHp;`, one line below
+        /// `_broken = _hp &lt;= 0f` — two mutually contradictory statements born in the SAME
+        /// commit (b08293c93, 2026-07-09), so the flag said destroyed and the very next line
+        /// undid the only evidence for it. <see cref="LoadState"/> defaults an ABSENT pref to
+        /// <see cref="_maxHp"/>, so `_hp &lt;= 0` after a load means exactly one thing:
+        /// THIS COLLECTOR IS PERSISTED-DESTROYED. The guard therefore never protected an
+        /// uninitialised collector (there is no such state here) — it only ever revived a dead
+        /// one, half-way.</para>
+        ///
+        /// <para>WHAT IT COST (owner F8 2026-09-18, device log
+        /// `Logs/device/raid-trace-20260918-080200.txt`): the Forge broke at 07:27:13 and the
+        /// Lumber Mill at 07:28:26, both honestly `hp=0.00 broken=True`. At the next scene load
+        /// (07:51:47) the guard fired and the RepairProbe printed the impossible state
+        /// <c>BURNING 'forge' hp=1.00 broken=True</c> — FULL HP and flagged destroyed at once. In
+        /// that state <see cref="IsAlive"/> is false, <see cref="IsActive"/> is false (no
+        /// accrual), <see cref="Repair"/> returns at its `if (_broken)` guard (WO-753) so nothing
+        /// can clear it, <see cref="WallRepairController"/> excludes it from Repair-All as
+        /// DESTROYED, and <c>WaveDamageReport</c> — which reads <see cref="IsBroken"/> live and
+        /// was never the defect — printed `2 destroyed` at EVERY wave clear for the next 31
+        /// minutes (wave 27, 07:59:48: `0 damaged, 2 destroyed`) while the buildings stood in the
+        /// town and Manage read `forge 4/4 Max`. The owner's report was "the report lies"; the
+        /// report was the only honest voice.</para>
+        ///
+        /// <para>⚠ THIS DOES NOT CLOSE THE OTHER HALF, and must not be read as if it did: a
+        /// destroyed collector is still a STANDING, fully-levelled building with no recovery
+        /// door. WO-753 rules that it "returns ONLY via a full-cost build-mode placement", but
+        /// both of these are <c>bake-owned</c> (BuildMode census 07:29:22), and the single caller
+        /// of <see cref="ResetToFullHp"/> is the fresh-placement path
+        /// (<c>BuildModeController.cs:2200</c>) — which a baked, already-built id never reaches.
+        /// That is an OWNER RULING, not a code bug to guess at; the Warn below exists so the next
+        /// capture names it in one read instead of an hour.</para>
+        /// </summary>
+        private void SeedHpAfterLoad(string via)
+        {
+            if (_hp <= 0f && !_broken)
+            {
+                _hp = _maxHp;
+                return;
+            }
+            if (!_broken) return;
+
+            int level = 0;
+            try { level = ResourceBuildingState.GetLevel(_buildingId); } catch { level = -1; }
+            FlowTrace.Warn("Harvest",
+                $"collector '{_buildingId}' loaded DESTROYED via {via}: hp={_hp:F0}/{_maxHp:F0} broken=True " +
+                $"pref={PlayerPrefs.GetFloat(HpPrefsPrefix + _buildingId, -1f):F0} progressionLevel={level}. " +
+                "HP is NOT being reseeded (WO-1865): reseeding it produced hp=1.00 broken=True, an impossible " +
+                "state in which the wave-clear damage report correctly reads DESTROYED forever while the " +
+                "building stands at full health and Manage calls it built. If progressionLevel > 0 the town " +
+                "still believes this structure exists, so WO-753's rebuild door is unreachable for it " +
+                "(bake-owned ids never hit BuildModeController's fresh-placement ResetToFullHp) - that half " +
+                "is an OWNER RULING, and this line is the evidence for it.");
         }
 
         private void OnEnable()
@@ -368,7 +428,7 @@ namespace DeNelle.Village.Buildings.Progression
             _buildingId = buildingId;
             _maxHp = Mathf.Max(1f, maxHp);
             LoadState();
-            if (_hp <= 0f) _hp = _maxHp;
+            SeedHpAfterLoad("Configure");
 
             if (live)
             {

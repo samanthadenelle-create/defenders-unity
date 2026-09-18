@@ -34,6 +34,13 @@
 //      enforcement query (IsBuilt) still sees the twin; the free-build burn is
 //      idempotent (full-cost rebuild) and the monotonic ever-built set keeps the
 //      WO-834 resurface gate open.
+//   E. RELOAD MUST NOT HALF-REVIVE A DESTROYED COLLECTOR (WO-1865, owner F8
+//      2026-09-18 "the wave report said the Forge and Lumber Mill were destroyed
+//      but both are standing") — a persisted hp=0 collector must reload as
+//      hp=0/broken, NOT the impossible hp=1.00/broken=True the old post-LoadState
+//      seed produced; an UNINITIALISED collector must still reload at full health;
+//      and WaveDamageReport's own predicate must be untouched (it was never the
+//      defect — it read IsBroken live and correctly).
 // =============================================================================
 using System.Collections.Generic;
 using System.Reflection;
@@ -70,6 +77,7 @@ namespace DeNelle.Editor
                 ProbeRepairAllExclusion(created, failures, log);
                 ProbeObjectRemoval(created, failures, log, notes);
                 ProbeRebuildCardState(failures, log);
+                ProbeReloadDoesNotHalfReviveCollector(created, failures, log);
             }
             catch (System.Exception ex)
             {
@@ -344,6 +352,104 @@ namespace DeNelle.Editor
             }
         }
 
+        // =====================================================================
+        //  E. A RELOAD MUST NOT HALF-REVIVE A DESTROYED COLLECTOR (WO-1865)
+        //     Owner F8 2026-09-18: "the wave report said the Forge and Lumber Mill were
+        //     destroyed but both are standing and built". Proven from the device log
+        //     (Logs/device/raid-trace-20260918-080200.txt): the pair broke honestly at
+        //     07:27:13 / 07:28:26 (hp=0.00 broken=True), and at the next scene load the
+        //     RepairProbe printed BURNING 'forge' hp=1.00 broken=True - FULL HP while
+        //     flagged destroyed. ResourceCollector.Awake/Configure ran
+        //         LoadState();                      // _broken = _hp <= 0f  -> TRUE
+        //         if (_hp <= 0f) _hp = _maxHp;       // ...and undid the evidence
+        //     two mutually contradictory lines from the same birth commit (b08293c93).
+        //     In that state IsAlive/IsActive are false (no accrual), Repair() no-ops on
+        //     the WO-753 guard so nothing can clear it, and WaveDamageReport - reading
+        //     IsBroken LIVE, correctly - reported "2 destroyed" at every wave clear for
+        //     the next 31 minutes. THE REPORT WAS NEVER THE DEFECT; this is.
+        //
+        //     RED ON HEAD BEFORE THE FIX: case 1 read hpFrac=1.00 with IsBroken true.
+        //     Case 2 is the GREEN half of the pair - a genuinely uninitialised collector
+        //     (no persisted pref) must still come up at FULL health, so the fix cannot be
+        //     "never seed HP". Case 3 pins that the report's own predicate is unchanged.
+        // =====================================================================
+        private static void ProbeReloadDoesNotHalfReviveCollector(
+            List<GameObject> created, List<string> failures, StringBuilder log)
+        {
+            log.AppendLine("E. reload does not half-revive a destroyed collector (WO-1865)");
+
+            const string BrokenId = "wo1861_broken_collector";
+            const string FreshId = "wo1861_fresh_collector";
+            string brokenKey = DeNelle.Core.State.GameStateService.CollectorHpPrefPrefix + BrokenId;
+            string freshKey = DeNelle.Core.State.GameStateService.CollectorHpPrefPrefix + FreshId;
+            bool hadBroken = PlayerPrefs.HasKey(brokenKey);
+            float priorBroken = PlayerPrefs.GetFloat(brokenKey, 0f);
+            bool hadFresh = PlayerPrefs.HasKey(freshKey);
+            float priorFresh = PlayerPrefs.GetFloat(freshKey, 0f);
+
+            try
+            {
+                // ── Case 1 (the captured bug): a PERSISTED-DESTROYED collector reloads ──
+                PlayerPrefs.SetFloat(brokenKey, 0f);
+                PlayerPrefs.Save();
+                var go1 = new GameObject("WO1865_Broken_Collector"); created.Add(go1);
+                var broken = go1.AddComponent<ResourceCollector>();
+                broken.Configure(BrokenId);   // LoadState -> hp 0 -> _broken; then the seed decides
+                bool brokenFlag = broken.IsBroken;
+                float brokenHp = broken.HpFraction;
+                log.AppendLine($"  case1 persisted-destroyed reload: IsBroken={brokenFlag} hpFrac={brokenHp:0.000}");
+                if (!brokenFlag)
+                    failures.Add("WO-1865 (1): a collector with a persisted hp=0 did not load as broken - " +
+                                 "the destroyed fact is no longer persisted at all");
+                else if (brokenHp > 0.0001f)
+                    failures.Add($"WO-1865 (1): THE CAPTURED BUG - a destroyed collector reloaded at " +
+                                 $"hpFrac={brokenHp:0.000} while IsBroken stayed true. FULL HP + broken is an " +
+                                 "impossible state: Repair() no-ops on the WO-753 guard so nothing can ever " +
+                                 "clear it, and the wave-clear damage report reads DESTROYED forever while " +
+                                 "the building stands at full health (owner F8 2026-09-18, device line " +
+                                 "BURNING 'forge' hp=1.00 broken=True).");
+
+                // ── Case 2: an UNINITIALISED collector must still come up at full HP ──
+                PlayerPrefs.DeleteKey(freshKey);
+                PlayerPrefs.Save();
+                var go2 = new GameObject("WO1865_Fresh_Collector"); created.Add(go2);
+                var fresh = go2.AddComponent<ResourceCollector>();
+                fresh.Configure(FreshId);
+                log.AppendLine($"  case2 no persisted pref: IsBroken={fresh.IsBroken} hpFrac={fresh.HpFraction:0.000}");
+                if (fresh.IsBroken || fresh.HpFraction < 0.9999f)
+                    failures.Add($"WO-1865 (2): a collector with NO persisted HP pref came up " +
+                                 $"broken={fresh.IsBroken} hpFrac={fresh.HpFraction:0.000} - the fix over-reached: " +
+                                 "the post-load seed must still give an uninitialised collector full health, " +
+                                 "it must only stop reviving a collector that is flagged destroyed.");
+
+                // ── Case 3: WaveDamageReport's OWN predicate, unchanged, on both states ──
+                float reportedBroken = broken.IsBroken ? 1f : 1f - broken.HpFraction;
+                float reportedFresh = fresh.IsBroken ? 1f : 1f - fresh.HpFraction;
+                log.AppendLine($"  case3 WaveDamageReport predicate: destroyed-row frac={reportedBroken:0.000} " +
+                               $"pristine-row frac={reportedFresh:0.000}");
+                if (reportedBroken < 0.9999f)
+                    failures.Add($"WO-1865 (3): the report predicate scored a destroyed collector at " +
+                                 $"{reportedBroken:0.000} - it must stay 1.000 (destroyed IS destroyed; the " +
+                                 "report was never the defect and must not be 'fixed')");
+                if (reportedFresh > 0.0001f)
+                    failures.Add($"WO-1865 (3): the report predicate scored a PRISTINE collector at " +
+                                 $"{reportedFresh:0.000} - a healthy structure must produce no row at all");
+            }
+            finally
+            {
+                if (hadBroken) PlayerPrefs.SetFloat(brokenKey, priorBroken); else PlayerPrefs.DeleteKey(brokenKey);
+                if (hadFresh) PlayerPrefs.SetFloat(freshKey, priorFresh); else PlayerPrefs.DeleteKey(freshKey);
+                // The probe's two synthetic ids are not real buildings - leave no pending/away
+                // keys behind for GameStateService's collector-id index to enumerate.
+                foreach (var id in new[] { BrokenId, FreshId })
+                {
+                    PlayerPrefs.DeleteKey(DeNelle.Core.State.GameStateService.CollectorPendingPrefPrefix + id);
+                    PlayerPrefs.DeleteKey(DeNelle.Core.State.GameStateService.CollectorLastAccrualPrefPrefix + id);
+                }
+                PlayerPrefs.Save();
+            }
+        }
+
         // Editor-test seeding: set a private serialized float when Awake/Configure did not run.
         private static void SeedPrivateFloat(object target, string field, float value)
         {
@@ -367,7 +473,8 @@ namespace DeNelle.Editor
             {
                 reason = "DESTROYED STRUCTURE OK — Repair() no-ops on every destroyed tower/spire/collector/wall, " +
                          "the Repair-All exclusion predicates (IsBroken / DamageFraction>=DestroyedFraction) fire on destroyed structures, " +
-                         "and the WO-843 rebuild-card state holds (twin-only => card buildable at full cost)";
+                         "the WO-843 rebuild-card state holds (twin-only => card buildable at full cost), " +
+                         "and a reload does NOT half-revive a destroyed collector (WO-1865: no hp=1.00 + broken=True)";
                 if (notes != null && notes.Count > 0)
                     reason += " || " + string.Join(" || ", notes.ToArray());
                 Debug.Log("DESTROYED_STRUCTURE_OK\n" + log);
