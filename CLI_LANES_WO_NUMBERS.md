@@ -189,7 +189,23 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-sixty-ninth pass): main line next free = **1866**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventieth pass): main line next free = **1867**.
+> *(Agent minted **WO-1866** — a locale switch (fr->en or en->fr) via the WO-1840 Settings picker does
+> not propagate to most already-built UI. PROVEN from a real device/editor capture
+> (`Logs/f8-inbox/capture-20260918-085337-seq5615.md:90-98`): `TrySelectLocale` itself works and
+> `LocalText.LanguageCode` flips immediately — the failure is that `LocalText.Changed` (the only
+> push signal any built widget has) has exactly TWO subscribers in the whole game
+> (`SettingsController.cs` retexts only its own modal; `HudKitController.cs` retexts a hardcoded
+> narrow list). Every other one-shot-resolved label — `settings.title` at
+> `HudKitController.cs:1721`, `storeWordmark` at `PackStore.cs:995` /
+> `NightMarketSharedCardSession.cs:42`, confirmed by the sibling WO-1857 lane to already have correct
+> `fr.json` values on disk — has no subscriber and is architecturally unable to update after a switch.
+> A second, independently-proven race in `UnityLocalizationProvider.BeginTableLoads` fires `Changed`
+> on the English-secondary-table load completing BEFORE the target-locale table, so even the two
+> wired listeners can flash English for one tick. Filed as `WorkOrders/WORK_ORDER_1866_locale_switch_does_not_propagate_to_built_ui.md`.
+> Bumped 1866 -> 1867 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-sixty-ninth pass): main line next free = **1866**.
 > *(Agent minted **WO-1865** — the wave-clear damage report named the Forge and Lumber Mill
 > DESTROYED while both stood, built and max-level, in the town. NOT a report defect: `Collect()`
 > reads `IsBroken` LIVE and read it correctly. Root cause PROVEN from the owner's own device pull,
