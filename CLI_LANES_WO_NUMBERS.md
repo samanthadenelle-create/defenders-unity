@@ -189,7 +189,13 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-first pass): main line next free = **1868**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-second pass): main line next free = **1869**.
+> *(Lead minted **WO-1868** — owner ruling: raid tower defenders should fire something more
+> distinctive than plain yellow pellets, raid ground wants a fog layer, and the sky wants storming
+> clouds overhead. Visual/atmosphere polish for the raid arena — no gameplay/balance change. Bumped
+> 1868 -> 1869 in this SAME edit.)*
+>
+> ## superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-first pass): main line next free = **1868**.
 > *(Lead minted **WO-1867** — the Player Issues tab (`bug_reports`) has no dismiss/resolve path;
 > owner asked to mark 4 keyboard-mash duplicate reports (ids 11-14, same player, 3 seconds apart,
 > "ggsgagsbshhshs") as resolved/noise so the queue can be triaged. Table + admin view are read-only
