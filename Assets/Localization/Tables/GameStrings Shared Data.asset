@@ -4131,6 +4131,538 @@ MonoBehaviour:
     m_Key: raid.spire_plans.beat_three
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363761178
+    m_Key: village.troops.raid_deploy_screen.change_army
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761179
+    m_Key: village.troops.starter_army.first_squad_ready_fmt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761180
+    m_Key: remnant.name.claim.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761181
+    m_Key: remnant.name.field
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761182
+    m_Key: remnant.name.hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761183
+    m_Key: remnant.name.submit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761184
+    m_Key: remnant.name.change
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761185
+    m_Key: remnant.name.cancel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761186
+    m_Key: remnant.name.error.length
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761187
+    m_Key: remnant.name.error.taken
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761188
+    m_Key: remnant.name.error.chars
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761189
+    m_Key: remnant.name.error.rejected
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761190
+    m_Key: remnant.name.fallback
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761191
+    m_Key: remnant.name.saved
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761192
+    m_Key: remnant.name.composed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761193
+    m_Key: remnant.name.alone
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761194
+    m_Key: circle.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761195
+    m_Key: common.circle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761196
+    m_Key: circle.chat.door
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761197
+    m_Key: circle.tab.members
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761198
+    m_Key: circle.tab.leaderboard
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761199
+    m_Key: circle.tab.vault
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761200
+    m_Key: circle.tab.ballots
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761201
+    m_Key: circle.tab.unreachable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761202
+    m_Key: circle.header.code
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761203
+    m_Key: circle.header.members
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761204
+    m_Key: circle.header.role
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761205
+    m_Key: circle.role.leader
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761206
+    m_Key: circle.role.officer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761207
+    m_Key: circle.role.member
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761208
+    m_Key: circle.policy.invite
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761209
+    m_Key: circle.policy.open
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761210
+    m_Key: circle.create.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761211
+    m_Key: circle.create.name
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761212
+    m_Key: circle.create.tag
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761213
+    m_Key: circle.create.submit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761214
+    m_Key: circle.create.hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761215
+    m_Key: circle.join.title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761216
+    m_Key: circle.join.code
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761217
+    m_Key: circle.join.submit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761218
+    m_Key: circle.join.hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761219
+    m_Key: circle.members.empty
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761220
+    m_Key: circle.member.degraded
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761221
+    m_Key: circle.tenure.days
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761222
+    m_Key: circle.verb.promote
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761223
+    m_Key: circle.verb.demote
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761224
+    m_Key: circle.verb.kick
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761225
+    m_Key: circle.verb.leave
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761226
+    m_Key: circle.verb.copyCode
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761227
+    m_Key: circle.verb.chat
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761228
+    m_Key: circle.verb.refresh
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761229
+    m_Key: circle.leave.confirm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761230
+    m_Key: circle.leave.cancel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761231
+    m_Key: circle.leaderboard.metric
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761232
+    m_Key: circle.leaderboard.members
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761233
+    m_Key: circle.leaderboard.you
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761234
+    m_Key: circle.leaderboard.empty
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761235
+    m_Key: circle.vault.none
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761236
+    m_Key: circle.vault.address
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761237
+    m_Key: circle.vault.multisig
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761238
+    m_Key: circle.vault.threshold
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761239
+    m_Key: circle.vault.verifiedSigners
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761240
+    m_Key: circle.vault.signers
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761241
+    m_Key: circle.vault.hardware
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761242
+    m_Key: circle.vault.hardware.yes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761243
+    m_Key: circle.vault.hardware.no
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761244
+    m_Key: circle.vault.verifiedAt
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761245
+    m_Key: circle.vigil.weight
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761246
+    m_Key: circle.vigil.degraded
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761247
+    m_Key: circle.ballot.none
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761248
+    m_Key: circle.ballot.tier
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761249
+    m_Key: circle.ballot.locked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761250
+    m_Key: circle.ballot.propose
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761251
+    m_Key: circle.ballot.vote
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761252
+    m_Key: circle.ballot.yourVote
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761253
+    m_Key: circle.ballot.voters
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761254
+    m_Key: circle.ballot.turnout
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761255
+    m_Key: circle.ballot.closes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761256
+    m_Key: circle.ballot.closed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761257
+    m_Key: circle.ballot.result.passed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761258
+    m_Key: circle.ballot.result.failed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761259
+    m_Key: circle.ballot.result.noVotes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761260
+    m_Key: circle.ballot.result.insufficientTurnout
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761261
+    m_Key: circle.ballot.result.unknown
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761262
+    m_Key: circle.ballot.perks
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761263
+    m_Key: circle.toast.created
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761264
+    m_Key: circle.toast.joined
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761265
+    m_Key: circle.toast.left
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761266
+    m_Key: circle.toast.promoted
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761267
+    m_Key: circle.toast.demoted
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761268
+    m_Key: circle.toast.kicked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761269
+    m_Key: circle.toast.voted
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761270
+    m_Key: circle.toast.proposed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761271
+    m_Key: circle.toast.vaultRegistered
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761272
+    m_Key: circle.toast.codeCopied
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761273
+    m_Key: circle.error.notSignedIn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761274
+    m_Key: circle.error.server
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761275
+    m_Key: circle.error.unreachable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761276
+    m_Key: circle.error.badRequest
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761277
+    m_Key: circle.error.rateLimited
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761278
+    m_Key: circle.error.badName
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761279
+    m_Key: circle.error.badTag
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761280
+    m_Key: circle.error.badPolicy
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761281
+    m_Key: circle.error.alreadyInCircle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761282
+    m_Key: circle.error.codeUnavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761283
+    m_Key: circle.error.identityMissing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761284
+    m_Key: circle.error.badCode
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761285
+    m_Key: circle.error.noSuchCode
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761286
+    m_Key: circle.error.notInCircle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761287
+    m_Key: circle.error.leaveRaced
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761288
+    m_Key: circle.error.badTarget
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761289
+    m_Key: circle.error.forbidden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761290
+    m_Key: circle.error.targetGone
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761291
+    m_Key: circle.error.targetRole
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761292
+    m_Key: circle.error.raced
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761293
+    m_Key: circle.error.ballot.badTier
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761294
+    m_Key: circle.error.ballot.badOptions
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761295
+    m_Key: circle.error.ballot.tierLocked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761296
+    m_Key: circle.error.ballot.alreadyOpen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761297
+    m_Key: circle.error.ballot.notFound
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761298
+    m_Key: circle.error.ballot.closed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761299
+    m_Key: circle.error.ballot.weightUnavailable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761300
+    m_Key: circle.error.vault.badAddress
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761301
+    m_Key: circle.error.vault.notMultisig
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761302
+    m_Key: circle.error.vault.badIndex
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761303
+    m_Key: circle.error.vault.tooManySigners
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761304
+    m_Key: circle.error.vault.notLeader
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761305
+    m_Key: circle.error.vault.signer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761306
+    m_Key: circle.error.vault.already
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761307
+    m_Key: circle.error.vault.unreadable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761308
+    m_Key: ownedTown.clearRubble
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761309
+    m_Key: ownedTown.nextRubble
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761310
+    m_Key: ownedTown.rubbleCleared
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

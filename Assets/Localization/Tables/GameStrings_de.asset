@@ -2249,27 +2249,27 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143554
   - m_Id: 44124330363760645
-    m_Localized: "Verbinde deine Wallet, um den \xDCberrest-Chat zu nutzen."
+    m_Localized: "Verbinde deine Wallet, um den Zirkel-Chat zu nutzen."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760646
-    m_Localized: "Du bist noch in keinem \xDCberrest."
+    m_Localized: "Du bist noch in keinem Zirkel."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760647
-    m_Localized: "Der \xDCberrest-Chat ist in dieser Version nicht verf\xFCgbar."
+    m_Localized: "Der Zirkel-Chat ist in dieser Version nicht verfügbar."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760648
-    m_Localized: "Der \xDCberrest-Chat konnte nicht geladen werden. Versuche es gleich noch einmal."
+    m_Localized: "Der Zirkel-Chat konnte nicht geladen werden. Versuche es gleich noch einmal."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760649
-    m_Localized: "\xDCberrest-Chat wird ge\xF6ffnet..."
+    m_Localized: "Zirkel-Chat wird geöffnet..."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760650
-    m_Localized: "\xDCberrest-Chat"
+    m_Localized: "Zirkel-Chat"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760651
@@ -4366,7 +4366,538 @@ MonoBehaviour:
     m_Localized: "\"Open Build, choose Defenses, and place the Arcane Spire now. It will protect Elarion from the stronger waves ahead.\""
     m_Metadata:
       m_Items: []
-
+  - m_Id: 44124330363761178
+    m_Localized: "ARMEE WECHSELN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761179
+    m_Localized: "Dein erstes Geschwader ist bereit - {0} Truppen, kostenlos. Öffne Reise, dann Überfälle."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761180
+    m_Localized: "Claim your Remnant name"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761181
+    m_Localized: "Your name"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761182
+    m_Localized: "Your first name, e.g. Sally"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761183
+    m_Localized: "Claim name"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761184
+    m_Localized: "Change name"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761185
+    m_Localized: "Cancel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761186
+    m_Localized: "A Remnant name is 3 to 16 characters."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761187
+    m_Localized: "That name is taken. Try another."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761188
+    m_Localized: "Letters, digits and underscores only, 3 to 16 characters."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761189
+    m_Localized: "That name is not allowed. Try another."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761190
+    m_Localized: "Unnamed Remnant"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761191
+    m_Localized: "Name claimed."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761192
+    m_Localized: "{0} von {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761193
+    m_Localized: "{0} der Einsame"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761194
+    m_Localized: "Your Zirkel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761195
+    m_Localized: "Zirkel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761196
+    m_Localized: "Open Zirkel Chat"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761197
+    m_Localized: "Members"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761198
+    m_Localized: "Leaderboard"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761199
+    m_Localized: "Vault"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761200
+    m_Localized: "Ballots"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761201
+    m_Localized: "This could not be loaded. Tap Refresh to try again."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761202
+    m_Localized: "Invite code"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761203
+    m_Localized: "{0} members"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761204
+    m_Localized: "Your role"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761205
+    m_Localized: "Leader"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761206
+    m_Localized: "Officer"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761207
+    m_Localized: "Member"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761208
+    m_Localized: "Invite only"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761209
+    m_Localized: "Open to all"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761210
+    m_Localized: "Form a Zirkel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761211
+    m_Localized: "Zirkel name"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761212
+    m_Localized: "Tag"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761213
+    m_Localized: "Form Zirkel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761214
+    m_Localized: "A name up to 32 characters and a tag up to 5. You will get an invite code to share."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761215
+    m_Localized: "Join a Zirkel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761216
+    m_Localized: "Invite code"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761217
+    m_Localized: "Join"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761218
+    m_Localized: "Six characters. Ask a Zirkel leader for theirs."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761219
+    m_Localized: "No members to show yet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761220
+    m_Localized: "Weight unavailable"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761221
+    m_Localized: "{0} days in"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761222
+    m_Localized: "Promote"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761223
+    m_Localized: "Demote"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761224
+    m_Localized: "Remove"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761225
+    m_Localized: "Leave Zirkel"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761226
+    m_Localized: "Copy code"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761227
+    m_Localized: "Zirkel Chat"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761228
+    m_Localized: "Refresh"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761229
+    m_Localized: "Leave this Zirkel? You will need an invite code to come back."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761230
+    m_Localized: "Stay"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761231
+    m_Localized: "Standing"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761232
+    m_Localized: "{0} members"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761233
+    m_Localized: "Yours"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761234
+    m_Localized: "No Zirkels on the board yet."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761235
+    m_Localized: "This Zirkel has no vault registered."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761236
+    m_Localized: "Vault address"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761237
+    m_Localized: "Multisig address"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761238
+    m_Localized: "{0} of {1} signatures"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761239
+    m_Localized: "{0} of {1} signers verified"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761240
+    m_Localized: "Signers"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761241
+    m_Localized: "Hardware backed"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761242
+    m_Localized: "Yes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761243
+    m_Localized: "No"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761244
+    m_Localized: "Last verified"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761245
+    m_Localized: "Your Vigil weight: {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761246
+    m_Localized: "Weight unavailable right now"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761247
+    m_Localized: "No ballot is open."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761248
+    m_Localized: "Tier {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761249
+    m_Localized: "Locked"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761250
+    m_Localized: "Propose"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761251
+    m_Localized: "Vote"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761252
+    m_Localized: "Your vote"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761253
+    m_Localized: "{0} voters"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761254
+    m_Localized: "{0} of {1} voted"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761255
+    m_Localized: "Closes {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761256
+    m_Localized: "Closed"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761257
+    m_Localized: "Passed"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761258
+    m_Localized: "Did not pass"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761259
+    m_Localized: "No votes were cast."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761260
+    m_Localized: "Not enough of the Zirkel voted."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761261
+    m_Localized: "Result unavailable"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761262
+    m_Localized: "Active outcomes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761263
+    m_Localized: "Zirkel formed."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761264
+    m_Localized: "You joined the Zirkel."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761265
+    m_Localized: "You left the Zirkel."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761266
+    m_Localized: "Promoted to Officer."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761267
+    m_Localized: "Set back to Member."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761268
+    m_Localized: "Removed from the Zirkel."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761269
+    m_Localized: "Vote counted."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761270
+    m_Localized: "Ballot opened."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761271
+    m_Localized: "Vault registered."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761272
+    m_Localized: "Invite code copied."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761273
+    m_Localized: "Sign in to use Zirkels."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761274
+    m_Localized: "Something went wrong on our side. Try again in a moment."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761275
+    m_Localized: "Could not reach the server. Showing what was last loaded."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761276
+    m_Localized: "That request was not understood. Try again."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761277
+    m_Localized: "Too many tries. Wait a moment and try again."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761278
+    m_Localized: "Pick a Zirkel name of 1 to 32 characters."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761279
+    m_Localized: "Pick a tag of 1 to 5 characters."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761280
+    m_Localized: "That join setting is not valid."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761281
+    m_Localized: "You are already in a Zirkel. Leave it first."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761282
+    m_Localized: "Could not mint an invite code. Try again."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761283
+    m_Localized: "Your account is not set up yet. Try again in a moment."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761284
+    m_Localized: "An invite code is six characters, letters and numbers."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761285
+    m_Localized: "No Zirkel uses that code."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761286
+    m_Localized: "You are not in a Zirkel."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761287
+    m_Localized: "Someone else changed the Zirkel first. Try again."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761288
+    m_Localized: "Pick another member for that."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761289
+    m_Localized: "Only a leader or officer can do that."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761290
+    m_Localized: "That member is no longer in the Zirkel."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761291
+    m_Localized: "That member's role does not allow it."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761292
+    m_Localized: "Someone changed that first. Refresh and try again."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761293
+    m_Localized: "That tier is not valid."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761294
+    m_Localized: "Those choices are not valid."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761295
+    m_Localized: "That tier is still locked."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761296
+    m_Localized: "A ballot is already open."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761297
+    m_Localized: "That ballot no longer exists."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761298
+    m_Localized: "That ballot has closed."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761299
+    m_Localized: "Your Vigil weight could not be read. Try again in a moment."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761300
+    m_Localized: "That is not a valid vault address."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761301
+    m_Localized: "That address is not a multisig."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761302
+    m_Localized: "The vault index must be between 0 and 255."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761303
+    m_Localized: "That vault has too many signers."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761304
+    m_Localized: "Only the Zirkel leader can register a vault."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761305
+    m_Localized: "A signer could not be accepted."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761306
+    m_Localized: "This Zirkel already has a vault."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761307
+    m_Localized: "The vault could not be read right now. Try again in a moment."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761308
+    m_Localized: "Clear Rubble ({0} left)  +{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761309
+    m_Localized: "Next Ruin"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363761310
+    m_Localized: "Rubble cleared. Salvaged {0}."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:
