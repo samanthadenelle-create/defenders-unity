@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-second pass): main line next free = **1869**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-third pass): main line next free = **1870**.
+> *(CLI minted **WO-1869** 2026-09-18 12:20 - Iron Bastion 3-star clear never captures the town:
+> `ResolveConfigId` strips the scene name to `IronBastion` while the gate compares `iron_bastion`.
+> Bumped 1869 -> 1870 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-second pass): main line next free = **1869**.
 > *(Lead minted **WO-1868** — owner ruling: raid tower defenders should fire something more
 > distinctive than plain yellow pellets, raid ground wants a fog layer, and the sky wants storming
 > clouds overhead. Visual/atmosphere polish for the raid arena — no gameplay/balance change. Bumped
