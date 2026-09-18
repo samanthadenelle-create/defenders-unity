@@ -65,8 +65,10 @@ const {
     normalizeOperator,
     normalizePromoCode,
     recordOpsWrite,
+    setBugReportStatus,
     setMaintenance,
     setPromoActive,
+    validateBugReportStatusSet,
     validateOpen,
     validatePromoDraft,
     validateSeal,
@@ -387,6 +389,29 @@ module.exports = async (req, res) => {
                 acknowledged_at: result.acknowledgedAt,
                 already_acknowledged: result.alreadyAcknowledged,
                 note: 'Source telemetry was preserved. No refund, grant, SKU, quote, or entitlement was changed.',
+            });
+        }
+
+        // WO-1867: Player Issues triage. UPDATE-only, never a delete - see
+        // setBugReportStatus. `target` in the audit row is the id LIST, not a
+        // single id, because one operator action can touch a whole batch.
+        if (action === 'bugreport.set_status') {
+            const v = validateBugReportStatusSet(body);
+            const rows = await setBugReportStatus(sql, v.reportIds, v.status, operator);
+            const updated = rows.map((r) => Number(r.report_id));
+            const notFound = v.reportIds.filter((id) => updated.indexOf(id) < 0);
+            await recordOpsWrite(sql, {
+                action: action, operator: operator, target: v.reportIds.join(','),
+                outcome: v.status, detail: { updated: updated, not_found: notFound },
+            });
+            return res.status(200).json({
+                ok: true, action: action, at: at, by: operator,
+                // In WORDS, not a colour - the owner is red/green colourblind and no
+                // state in this system may live in a colour.
+                state: v.status.toUpperCase(),
+                updated: updated,
+                not_found: notFound,
+                note: 'A triage flag, not a delete - the row still exists in bug_reports.',
             });
         }
 

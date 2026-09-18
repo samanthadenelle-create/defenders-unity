@@ -38,8 +38,10 @@ const {
     normalizePromoCode,
     optionalCount,
     optionalExpiry,
+    setBugReportStatus,
     setMaintenance,
     setPromoActive,
+    validateBugReportStatusSet,
     validateOpen,
     validatePromoDraft,
     validateSeal,
@@ -244,6 +246,8 @@ test('the write endpoint allowlists acknowledgement, and money tables remain rea
         // the second key can do - a write that is not on it cannot be posted at
         // all, which is the property the money assertion below leans on.
         'tunable.set', 'tunable.clear',
+        // WO-1867: the Player Issues triage flag. Never a delete.
+        'bugreport.set_status',
     ]);
     // ⛔ The load-bearing one: no admin surface may write the money tables.
     const src = stripComments(readSrc('api/_lib/ops.js')) + stripComments(readSrc('api/admin/ops.js'));
@@ -608,6 +612,71 @@ test('disabling a code is an UPDATE of active, never a DELETE', async () => {
     const missing = mockSql([{ rows: [] }]);
     await assert.rejects(() => setPromoActive(missing, 'NOPE99', false),
         (e) => e.code === 'PROMO_CODE_NOT_FOUND');
+});
+
+// -- WO-1867: bug report triage (Player Issues resolve/noise) ----------------
+
+test('validateBugReportStatusSet accepts a single id or a batch, and bounds both', () => {
+    assert.deepEqual(validateBugReportStatusSet({ reportId: '11', status: 'NOISE' }),
+        { reportIds: [11], status: 'noise' });
+    assert.deepEqual(validateBugReportStatusSet({ reportIds: [11, 12, 13, 14], status: 'resolved' }),
+        { reportIds: [11, 12, 13, 14], status: 'resolved' });
+    // De-duped, not counted twice.
+    assert.deepEqual(validateBugReportStatusSet({ reportIds: [11, 11], status: 'noise' }),
+        { reportIds: [11], status: 'noise' });
+
+    assert.throws(() => validateBugReportStatusSet({ status: 'noise' }),
+        (e) => e instanceof OpsError && e.code === 'REPORT_ID_REQUIRED');
+    assert.throws(() => validateBugReportStatusSet({ reportIds: [0, -1, 'abc'], status: 'noise' }),
+        (e) => e instanceof OpsError && e.code === 'REPORT_ID_REQUIRED');
+    assert.throws(() => validateBugReportStatusSet({ reportId: 11, status: 'archived' }),
+        (e) => e instanceof OpsError && e.code === 'UNKNOWN_STATUS');
+    // 'open' IS a valid target -- reopening a mis-flagged row must stay possible.
+    assert.deepEqual(validateBugReportStatusSet({ reportId: 11, status: 'open' }),
+        { reportIds: [11], status: 'open' });
+
+    const tooMany = Array.from({ length: 26 }, (_, i) => i + 1);
+    assert.throws(() => validateBugReportStatusSet({ reportIds: tooMany, status: 'noise' }),
+        (e) => e instanceof OpsError && e.code === 'TOO_MANY_REPORT_IDS');
+});
+
+test('setBugReportStatus is an UPDATE of status/reviewed_by/reviewed_at, never a DELETE', async () => {
+    const sql = mockSql([{ rows: [{ report_id: 11 }, { report_id: 12 }] }]);
+    const rows = await setBugReportStatus(sql, [11, 12, 13], 'noise', 'Samantha');
+    assert.match(sql.calls[0].text, /UPDATE bug_reports/);
+    assert.match(sql.calls[0].text, /SET status = /);
+    assert.match(sql.calls[0].text, /reviewed_by = /);
+    assert.match(sql.calls[0].text, /reviewed_at = NOW\(\)/);
+    assert.doesNotMatch(sql.calls[0].text, /DELETE/);
+    // Ids not found in the batch (13 here) are simply absent, not an error --
+    // a stale id already reviewed a moment earlier must not fail the rest.
+    assert.deepEqual(rows.map((r) => r.report_id), [11, 12]);
+});
+
+test('the bug-report status action reaches the OPS endpoint allowlist and money tables are still untouched', () => {
+    assert.ok(OPS_ACTIONS.includes('bugreport.set_status'));
+    const src = stripComments(readSrc('api/admin/ops.js')) + stripComments(readSrc('api/_lib/ops.js'));
+    assert.doesNotMatch(src, /purchase_entitlements/);
+    assert.doesNotMatch(src, /purchase_quotes/);
+    // The one UPDATE this action performs targets bug_reports and nothing else.
+    assert.match(src, /UPDATE bug_reports/);
+});
+
+test('the ops read view defaults Player Issues to OPEN rows, and reportStatus=all is the audit escape hatch', () => {
+    const src = stripComments(readSrc('api/admin/stats.js'));
+    assert.match(src, /WHERE status = 'open'/);
+    assert.match(src, /q\.reportStatus/);
+    // Still SELECT-only: widening the read to `all` must never become a write.
+    assert.doesNotMatch(src, /UPDATE bug_reports/);
+});
+
+test('the console renders a resolve/noise action per issue row, and it is not silently read-only any more', () => {
+    const src = stripComments(readSrc('api/admin/console.js'));
+    assert.match(src, /bugreport\.set_status/);
+    assert.match(src, /report-status/);
+    // The WORD state rule still applies -- Resolved/Noise labels, not a colour.
+    assert.match(src, />Resolved</);
+    assert.match(src, />Noise</);
 });
 
 // -- 5. PRIVACY --------------------------------------------------------------

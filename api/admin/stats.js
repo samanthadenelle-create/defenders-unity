@@ -3370,12 +3370,27 @@ module.exports = async (req, res) => {
             // written there is overwritten on the next tools/board_build.py run
             // (WO-1169 section 4). This is the PLAYER queue. Two boards, linked,
             // never folded together.
-            const reports = await probe('bug_reports', () => sql`
+            // WO-1867: default to the OPEN queue only, same as the console's
+            // default view. `?reportStatus=all` is the audit escape hatch - it
+            // does not delete or hide anything, it only widens what this ONE
+            // read returns; the underlying rows are never touched by a GET.
+            const reportsIncludeReviewed = String(q.reportStatus || '').toLowerCase() === 'all';
+            const reports = await probe('bug_reports', () => reportsIncludeReviewed ? sql`
                 SELECT report_id, created_at, description, route, app_version, player_id,
                        (COALESCE(wallet, context->>'verifiedWallet') IS NOT NULL) AS wallet_verified,
                        context->>'platform' AS platform,
-                       (context ? 'screenshotB64' AND context->>'screenshotB64' IS NOT NULL) AS has_screenshot
+                       (context ? 'screenshotB64' AND context->>'screenshotB64' IS NOT NULL) AS has_screenshot,
+                       status, reviewed_by, reviewed_at
                 FROM bug_reports
+                ORDER BY report_id DESC
+                LIMIT 50` : sql`
+                SELECT report_id, created_at, description, route, app_version, player_id,
+                       (COALESCE(wallet, context->>'verifiedWallet') IS NOT NULL) AS wallet_verified,
+                       context->>'platform' AS platform,
+                       (context ? 'screenshotB64' AND context->>'screenshotB64' IS NOT NULL) AS has_screenshot,
+                       status, reviewed_by, reviewed_at
+                FROM bug_reports
+                WHERE status = 'open'
                 ORDER BY report_id DESC
                 LIMIT 50`);
 
@@ -3529,7 +3544,14 @@ module.exports = async (req, res) => {
                 },
                 reports: {
                     note: 'The PLAYER issue queue. BOARD.html is the DEV board and is generated '
-                        + 'from WorkOrders/*.md - the two are linked, never merged.',
+                        + 'from WorkOrders/*.md - the two are linked, never merged. Defaults to '
+                        + 'OPEN rows only; pass ?reportStatus=all to also see resolved/noise ones '
+                        + 'for audit - nothing is ever deleted, a status flag only changes what '
+                        + 'this view returns.',
+                    // WO-1867. states which filter produced `rows` below, because a caller
+                    // that only sees an empty array cannot otherwise tell "no open issues"
+                    // from "the whole queue got mis-scoped".
+                    filter: reportsIncludeReviewed ? 'all' : 'open',
                     per_day: reportsPerDay || [],
                     rows: (reports || []).map(r => ({
                         report_id: r.report_id == null ? null : Number(r.report_id),
@@ -3541,6 +3563,10 @@ module.exports = async (req, res) => {
                         player_masked: maskId(r.player_id),
                         identity: r.wallet_verified ? 'verified' : 'unverified',
                         has_screenshot: r.has_screenshot === true,
+                        // WORDS, not a colour - the owner is red/green colourblind.
+                        status: (r.status || 'open').toUpperCase(),
+                        reviewed_by: r.reviewed_by || null,
+                        reviewed_at: r.reviewed_at || null,
                     })),
                 },
                 ops_history: (opsHistory || []).map(r => ({

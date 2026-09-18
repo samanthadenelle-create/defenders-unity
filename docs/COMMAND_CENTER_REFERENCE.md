@@ -575,14 +575,22 @@ settled mainnet sale — so a missing or altered table degrades to an entry in `
 ```
 Operator question   What are players reporting, and can I trust the channel?
 Renders             stats?view=ops&days=N   (the `reports` field)
-Writes              -
+Writes              POST /api/admin/ops   action=bugreport.set_status   (WO-1867)
 Window              Honors the selector on the per-day table
 ```
 
-In-app bug reports from `bug_reports`, newest 50. Read-only — no actions here.
+In-app bug reports from `bug_reports`, newest 50, **OPEN rows only by default**
+(`status = 'open'`). ⚠ **NO LONGER READ-ONLY (WO-1867, 2026-09-18).** Each row carries two
+buttons, "Resolved" and "Noise" — both POST `bugreport.set_status` (second-key gated, same as
+every other console write) and set `status` + `reviewed_by` + `reviewed_at` on that row. **This is
+a TRIAGE FLAG, never a delete:** the row stays in `bug_reports` forever; `GET
+/api/admin/stats?view=ops&reportStatus=all` is the audit escape hatch that still shows
+resolved/noise rows (not wired into this console page — a direct call for now). Migration:
+`api/migrations/20260918_0037_bug_reports_status.sql`.
 
 Columns: report id, timestamp, description, the in-game route it was filed from, app version, platform,
-identity state, and whether a screenshot was attached. **Identity is `verified` / `unverified` only** —
+identity state, whether a screenshot was attached, and the Resolved/Noise action pair.
+**Identity is `verified` / `unverified` only** —
 never an actual identity. The page states that *a burst of unverified means auth is broken, which is
 itself the signal*, and that no address is shown here ever. Verification reads
 `COALESCE(wallet, context->>'verifiedWallet')`; both sources are server-verified and neither ever holds
@@ -1311,7 +1319,7 @@ Action strings are what to grep for.
 | `stats?view=stability` | GET | Read | — | WO-1843 exception-free player-day rate (sliceable) |
 | `stats?view=players` | GET | Read | — | List (masked) + the one full-id drill-down |
 | `client-tunables` | GET | **none — public by design** | — | Balance tab's live override table; `?fresh=<ts>` cache-buster is load-bearing |
-| `ops` | POST | Read + Ops | `maintenance.seal`, `maintenance.open`, `tunable.set`, `tunable.clear`, `promo.create`, `promo.set_active`, `purchase.alert_acknowledge` | **The only writing admin endpoint** |
+| `ops` | POST | Read + Ops | `maintenance.seal`, `maintenance.open`, `tunable.set`, `tunable.clear`, `promo.create`, `promo.set_active`, `purchase.alert_acknowledge`, `bugreport.set_status` | **The only writing admin endpoint** |
 | `promo-bind` | POST | Read + Ops | (bind) | Promos |
 | `db?view=ads` | GET | Read | — | Ad revenue (the one db view the console calls) |
 | `db?view=events` | GET | Read | — | WO-1793 — any event name's payload; `?name=` required |

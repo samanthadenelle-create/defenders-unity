@@ -87,6 +87,9 @@ const OPS_ACTIONS = [
     // which for pi.requestTimeoutSeconds is 20, not 0.
     'tunable.set',
     'tunable.clear',
+    // WO-1867: the Player Issues triage flag. Never a delete - see
+    // setBugReportStatus below.
+    'bugreport.set_status',
 ];
 
 /** Event name for the durable history row. */
@@ -105,6 +108,16 @@ const ALERT_REASON_MAX_LEN = 120;
 
 /** A reward figure the owner could plausibly mean. Above this it is a typo. */
 const REWARD_MAX = 1000000;
+
+// WO-1867. The only three states a bug_reports row may carry - see
+// api/migrations/20260918_0037_bug_reports_status.sql, which has the identical
+// CHECK constraint. Two copies of the same allowlist would drift; keeping this
+// one in sync with the database's is a manual discipline, same as every other
+// CHECK this file validates ahead of the write (validateSeal/AREAS, etc).
+const BUG_REPORT_STATUSES = ['open', 'resolved', 'noise'];
+
+/** One phone tap should never be able to silently touch the whole table. */
+const BUG_REPORT_BATCH_MAX = 25;
 
 /**
  * A refusal with a stable machine code. The endpoint returns the code; the
@@ -164,6 +177,37 @@ function validatePurchaseAlertAcknowledgement(body) {
     if (reason.length > ALERT_REASON_MAX_LEN)
         throw new OpsError('ALERT_REASON_TOO_LONG', `max ${ALERT_REASON_MAX_LEN} chars`);
     return { signature, reason };
+}
+
+/**
+ * WO-1867: the Player Issues bulk marker. Accepts one id (`reportId`) or
+ * several (`reportIds`), always as a small allowlisted batch - one tap on the
+ * console should never be able to silently touch the whole table.
+ *
+ * ⛔ NO DELETE PATH EXISTS ANYWHERE NEAR THIS FUNCTION, ON PURPOSE - this
+ * validates a STATUS, never a row's removal. See setBugReportStatus below.
+ */
+function validateBugReportStatusSet(body) {
+    const raw = body && (Array.isArray(body.reportIds) ? body.reportIds
+        : body.reportIds != null ? [body.reportIds]
+        : body.reportId != null ? [body.reportId]
+        : []);
+    const ids = (raw || [])
+        .map((x) => parseInt(x, 10))
+        .filter((n) => Number.isFinite(n) && n > 0);
+    if (!ids.length) {
+        throw new OpsError('REPORT_ID_REQUIRED', 'reportId or reportIds must name at least one positive report id');
+    }
+    if (ids.length > BUG_REPORT_BATCH_MAX) {
+        throw new OpsError('TOO_MANY_REPORT_IDS', `max ${BUG_REPORT_BATCH_MAX} report ids per write`);
+    }
+    const status = String((body && body.status) || '').toLowerCase();
+    if (BUG_REPORT_STATUSES.indexOf(status) < 0) {
+        throw new OpsError('UNKNOWN_STATUS', 'status must be one of ' + BUG_REPORT_STATUSES.join(', '));
+    }
+    // De-dupe so a repeated id in the payload does not read as a bigger batch
+    // than it is in the returned `updated` list.
+    return { reportIds: Array.from(new Set(ids)), status };
 }
 
 /**
@@ -618,8 +662,29 @@ async function setPromoActive(sql, code, active) {
     return rows[0];
 }
 
+/**
+ * WO-1867: flip one or more bug_reports rows to a new triage status. UPDATE
+ * only, and it never removes a row - this is the ENTIRE write surface this
+ * ticket adds, and it stamps who did it and when, same as every other write
+ * in this file.
+ *
+ * Ids that do not exist are silently absent from the returned rows (not an
+ * error): a stale id in a batch (already reviewed by someone else moments
+ * earlier) should not fail the ids that ARE still there.
+ */
+async function setBugReportStatus(sql, reportIds, status, operator) {
+    const rows = await sql`
+        UPDATE bug_reports
+        SET status = ${status}, reviewed_by = ${operator}, reviewed_at = NOW()
+        WHERE report_id = ANY(${reportIds}::bigint[])
+        RETURNING report_id`;
+    return rows || [];
+}
+
 module.exports = {
     ALERT_REASON_MAX_LEN,
+    BUG_REPORT_BATCH_MAX,
+    BUG_REPORT_STATUSES,
     MESSAGE_MAX_LEN,
     OPERATOR_MAX_LEN,
     OPS_ACTIONS,
@@ -636,10 +701,12 @@ module.exports = {
     optionalCount,
     optionalExpiry,
     recordOpsWrite,
+    setBugReportStatus,
     setMaintenance,
     setPromoActive,
     setTunable,
     clearTunable,
+    validateBugReportStatusSet,
     validateOpen,
     validateTunableSet,
     validateTunableClear,

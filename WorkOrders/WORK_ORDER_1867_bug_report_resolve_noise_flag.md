@@ -1,6 +1,6 @@
 # WO-1867 — Player Issues tab has no dismiss/resolve path
 
-**Status: READY TO IMPLEMENT**
+**Status: DONE**
 
 ## Owner report
 

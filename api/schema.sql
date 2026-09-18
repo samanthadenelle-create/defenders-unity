@@ -852,7 +852,12 @@ CREATE TABLE IF NOT EXISTS bug_reports (
     player_id    TEXT,                               -- client-side SALTED HASH of the Pi uid
     wallet       TEXT,                               -- ⭐ SERVER-VERIFIED wallet, or NULL. Never a claim.
     context      JSONB       NOT NULL DEFAULT '{}',  -- full "context" object, future-proofed
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- WO-1867: triage flag, never a delete. See the block below this table for
+    -- the CHECK constraint and the applyable-copy pointer.
+    status       TEXT        NOT NULL DEFAULT 'open',
+    reviewed_by  TEXT,                               -- operator LABEL, never a player identity
+    reviewed_at  TIMESTAMPTZ
 );
 
 -- ⭐ `wallet` (owner ruling 2026-08-24). player_id is a SALTED HASH while every
@@ -871,6 +876,50 @@ CREATE TABLE IF NOT EXISTS bug_reports (
 -- broken is exactly the player most likely to file a bug; gating the sink on the
 -- signed rail would drop the highest-value reports we have.
 CREATE INDEX IF NOT EXISTS idx_bug_reports_wallet ON bug_reports (wallet) WHERE wallet IS NOT NULL;
+
+-- =============================================================================
+-- bug_reports.status / reviewed_by / reviewed_at - WO-1867 (Player Issues
+-- dismiss/resolve path).
+--
+-- ⛔ THE APPLYABLE COPY IS api/migrations/20260918_0037_bug_reports_status.sql.
+--    This block is the DESCRIPTION; only api/migrations/ is ever applied.
+--
+-- A TRIAGE FLAG, NOT A DELETE. `status` only changes which rows the DEFAULT
+-- read (api/admin/stats.js ?view=ops, reports.rows) returns; the audit query
+-- param still returns every row, resolved/noise included. No row is ever
+-- removed by this ticket or by the write endpoint it added
+-- (api/admin/ops.js action `bugreport.set_status`).
+--
+-- Existing rows default to 'open', so nothing already filed is silently
+-- resolved by this column showing up. reviewed_by is an operator LABEL - same
+-- rule as ops.js normalizeOperator - never a player identity.
+-- =============================================================================
+ALTER TABLE bug_reports ADD COLUMN IF NOT EXISTS status      TEXT NOT NULL DEFAULT 'open';
+ALTER TABLE bug_reports ADD COLUMN IF NOT EXISTS reviewed_by TEXT NULL;
+ALTER TABLE bug_reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ NULL;
+
+-- Postgres has no ADD CONSTRAINT IF NOT EXISTS, so guard on pg_constraint -
+-- same idiom 20260825_0002_repair_parity_remainder.sql uses.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint c
+        JOIN pg_class rel ON rel.oid = c.conrelid
+        WHERE c.contype = 'c'
+          AND rel.relname = 'bug_reports'
+          AND pg_get_constraintdef(c.oid) ILIKE '%status%'
+    ) THEN
+        ALTER TABLE bug_reports
+            ADD CONSTRAINT bug_reports_status_check
+            CHECK (status IN ('open', 'resolved', 'noise'));
+    END IF;
+END $$;
+
+-- The default Player Issues view. Partial: once triage runs, most rows are
+-- 'resolved'/'noise' and have no business in an index built for the open queue.
+CREATE INDEX IF NOT EXISTS idx_bug_reports_status_open
+    ON bug_reports (report_id DESC)
+    WHERE status = 'open';
 
 -- DRIFT RECONCILE (2026-08-02) — THE REASON bug_reports HAS 0 ROWS.
 -- Captured from production, request 02:25:43 UTC 2026-08-03:

@@ -1235,26 +1235,37 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
   }
 
   // ---- player issues ------------------------------------------------------
+  // WO-1867: the tab used to be read-only, in words, on this exact line
+  // (docs/COMMAND_CENTER_REFERENCE.md: "Read-only - no actions here."). It now
+  // carries exactly one write: mark a row resolved or noise, POSTed to
+  // /api/admin/ops action bugreport.set_status. It is a TRIAGE FLAG, never a
+  // delete - the row stays in bug_reports and the audit view (not built into
+  // this console; GET ?view=ops&reportStatus=all) still shows it.
   function renderIssues(){
     var o = state.ops;
     if (!o) return '<div class="card"><p class="none">No data.</p></div>';
     var r = o.reports || {};
     var rows = r.rows || [];
-    var h = '<div class="card"><h2>Player issues (' + rows.length + ')</h2>' +
+    var h = '<div class="card"><h2>Player issues (' + rows.length + ' open)</h2>' +
             '<p class="note">' + esc(r.note || '') + ' Identity reads "verified" or "unverified"; ' +
             'a burst of unverified means auth is broken, which is itself the signal. No address is ' +
-            'shown here, ever.</p>';
+            'shown here, ever. "Resolved"/"noise" only change which rows show here - nothing is ' +
+            'ever deleted.</p>';
     if (!rows.length){
-      h += '<p class="none">No reports. bug_reports has never accepted a row on some deployments - ' +
-           'an empty list is not proof the channel works.</p>';
+      h += '<p class="none">No open reports. bug_reports has never accepted a row on some ' +
+           'deployments - an empty list is not proof the channel works.</p>';
     } else {
       h += '<div class="scroll"><table><tr><th>Id</th><th>When</th><th>What</th><th>Route</th>' +
-           '<th>Version</th><th>Platform</th><th>Identity</th><th>Shot</th></tr>';
+           '<th>Version</th><th>Platform</th><th>Identity</th><th>Shot</th><th>Mark</th></tr>';
       rows.forEach(function(x){
         h += '<tr><td>' + n(x.report_id) + '</td><td>' + when(x.created_at) + '</td>' +
              '<td class="wrapcell">' + esc(x.description) + '</td><td>' + esc(x.route) + '</td>' +
              '<td>' + esc(x.app_version) + '</td><td>' + esc(x.platform) + '</td>' +
-             '<td>' + esc(x.identity) + '</td><td>' + (x.has_screenshot ? 'yes' : 'no') + '</td></tr>';
+             '<td>' + esc(x.identity) + '</td><td>' + (x.has_screenshot ? 'yes' : 'no') + '</td>' +
+             '<td class="nowrap">' +
+             '<button class="report-status" data-report-id="' + n(x.report_id) + '" data-status="resolved">Resolved</button> ' +
+             '<button class="report-status" data-report-id="' + n(x.report_id) + '" data-status="noise">Noise</button>' +
+             '</td></tr>';
       });
       h += '</table></div>';
     }
@@ -1927,6 +1938,19 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
       postOps({ action:'purchase.alert_acknowledge', txSignature:tx,
                 reason:'Reviewed false positive; no payment or entitlement action required.' })
         .then(function(r){ opsResult(r, 'Acknowledged purchase alert. Source telemetry preserved.'); });
+      return;
+    }
+    // WO-1867. A triage flag, never a delete - the row stays in bug_reports and
+    // reappears the moment ?reportStatus=all is read. No confirm() dialog:
+    // both verbs here are reversible in the sense that matters (the data is
+    // untouched), which is the same bar promo.set_active clears without one.
+    var reportStatus = e.target.closest('.report-status');
+    if (reportStatus){
+      var reportId = reportStatus.getAttribute('data-report-id');
+      var status = reportStatus.getAttribute('data-status');
+      reportStatus.disabled = true;
+      postOps({ action:'bugreport.set_status', reportId:reportId, status:status })
+        .then(function(r){ opsResult(r, 'Marked report #' + reportId + ' ' + status + '.'); });
       return;
     }
     // ---- WO-1328 balance knobs ------------------------------------------
