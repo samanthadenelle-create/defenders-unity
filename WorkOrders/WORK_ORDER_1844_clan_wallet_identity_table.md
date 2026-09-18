@@ -1,6 +1,6 @@
 # WO-1844 — Clan system, step 1: server-side wallet identity table + first-seen tracking
 
-**Status:** READY FOR LEAD REVIEW — implemented 2026-09-17. Migration
+**Status:** DONE - committed 23cb59db8, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW — implemented 2026-09-17. Migration
 `api/migrations/20260917_0029_wallet_identity.sql` + the `api/schema.sql` description +
 `touchWalletIdentity()` in `api/_lib/wallet-auth.js` (one call site, in `authenticate()`'s wallet
 branch, fail-open) + `test/wallet-identity.test.js` (14 cases). Suite: 908 tests / 906 pass, the one

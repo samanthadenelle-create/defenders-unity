@@ -1,6 +1,6 @@
 # WORK ORDER 1712 - Tap a building in the world to jump directly into its upgrade screen
 
-**Status:** READY FOR LEAD REVIEW - implemented 2026-09-17; brace + NUL checks clean; NO Unity run by
+**Status:** DONE - committed 3f6b8ebef, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW - implemented 2026-09-17; brace + NUL checks clean; NO Unity run by
 this lane (gate held for the lead's combined-tree run, per the concurrent-lanes rule)
 
 ## IMPLEMENTATION NOTE (2026-09-17, implementation lane)

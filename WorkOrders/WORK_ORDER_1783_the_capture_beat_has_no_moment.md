@@ -1,6 +1,6 @@
 # WORK ORDER 1783 — The capture beat has **no moment**: "it is yours now" is every raid's subtitle, and the inherited town opens on a modal
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed e78beabb3, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 Section 4's three "clear from source" items are implemented; the HELD items are still HELD (no capture
 screen, no reveal cinematic, no receipt surface invented). NOT gated — one seat fires Unity while lanes

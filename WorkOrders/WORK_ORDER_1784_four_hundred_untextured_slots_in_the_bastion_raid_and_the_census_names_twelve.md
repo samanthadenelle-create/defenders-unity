@@ -1,6 +1,6 @@
 # WORK ORDER 1784 — **412 of 1439 material slots** in the Bastion raid scene have no albedo, and the census names only **12 of them**
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 88e620a30, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 **Lane note (2026-09-17):** verified NOT stale at source — `RaidUntexturedCensus.cs` was last touched by
 `4d3ec15c5` (WO-1751, its creation) and still carried `MaxReportedPerPass = 12` with no grouping. The

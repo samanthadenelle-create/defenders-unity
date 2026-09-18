@@ -1,6 +1,6 @@
 # WORK ORDER 1793 — No admin view can read an event's PAYLOAD, so today's 424 `playtest_break` rows were unreadable without direct DB credentials
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed cb05dbcdb, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead from the 1791-1795 block; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** `api/admin/db.js` ONLY (one new read-only view). No client code, no schema change, no writes.
 **Priority:** P1 for operations — it is the tooling gap that made this triage need `DATABASE_URL`.

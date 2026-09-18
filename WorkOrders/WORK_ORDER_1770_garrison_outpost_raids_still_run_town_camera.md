@@ -1,6 +1,6 @@
 # WORK ORDER 1770 — `Garrison_*` / `Outpost1-2` raids still run the TOWN camera and the 220 deg/s whip
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 7133d485b, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 **Implemented:** 2026-09-17 — one shared term, `SmartMobileCamera.ResolvesToOpenAirRaidTarget`
 (`HubScenes.IsEnemyOutpost && !HubScenes.IsDungeon`), OR'd into `ResolvesToRaidCameraProfile`,

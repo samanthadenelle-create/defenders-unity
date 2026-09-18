@@ -1,6 +1,6 @@
 # WORK ORDER 1736 — a wave ends and the HUD never returns to the peaceful dock (external player "Sminer", Wave 146)
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 6d2ae71cc, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 ⭐ **THE HOLDER IS NAMED, FROM A CAPTURED DEVICE WINDOW, AND FIXED. See §14 (2026-09-17).**
 It is **not** a `BattleLock` probe. It is **`HudContextEvaluator.IsWaveActive()`'s Countdown branch**:

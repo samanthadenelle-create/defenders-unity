@@ -1,6 +1,6 @@
 # WORK ORDER 1789 — "You missed veterancy by one star" and "your overflow went to the Raid Cache" exist **only in the log**
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed db7a84302, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 Scope note: the captions' wording is an owner call — §3 holds it.
 

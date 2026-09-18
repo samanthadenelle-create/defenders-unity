@@ -1,6 +1,6 @@
 # WORK ORDER 1772 — Two source-text lints pin the shape this ruling widens
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 4f5f5141d, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 **Minted:** 2026-09-16 by the lead from WO-1765 §17.4
 

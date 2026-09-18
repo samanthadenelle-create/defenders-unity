@@ -1,6 +1,6 @@
 # WO-1847 — Clan system, step 4: Cherry Chat embed integration
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 4fe4535, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 *(PRIOR STATUS: BLOCKED pending WO-1845, which has since landed — `clans`/`clan_members`
 committed, so the `clan_id` this ticket scopes a room to exists.)*

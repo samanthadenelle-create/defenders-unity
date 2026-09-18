@@ -1,6 +1,6 @@
 # WORK ORDER 1786 — Enemy-caster VFX loops stay held off-camera for 89 s inside the raid, and WO-1473's release policy says so itself
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 7c726388a, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 **Minted:** 2026-09-16 by the raid-polish audit lane (number PRE-ASSIGNED from the block 1777-1790; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 

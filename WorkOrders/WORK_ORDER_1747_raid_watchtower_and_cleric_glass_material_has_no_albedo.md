@@ -1,6 +1,6 @@
 # WORK ORDER 1747 — Raid watchtower / KayKit Cleric: `glass` material ships with NO albedo and NO tint (pink/grey patch on device)
 
-**Status:** READY FOR LEAD REVIEW - Cleric half landed in commit 7bb0c4291 (re-verified at source 2026-09-15); tower half's "no albedo" title REFUTED by RAIDBASE_MATDIAG_OK 4/4 (21:39); the §H per-renderer probe (`RunPerRenderer`) is now IMPLEMENTED per spec and awaits a headless run by the lead (this lane does not fire Unity/gate/commit)
+**Status:** DONE - committed 95cd8adb6, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW - Cleric half landed in commit 7bb0c4291 (re-verified at source 2026-09-15); tower half's "no albedo" title REFUTED by RAIDBASE_MATDIAG_OK 4/4 (21:39); the §H per-renderer probe (`RunPerRenderer`) is now IMPLEMENTED per spec and awaits a headless run by the lead (this lane does not fire Unity/gate/commit)
 **Minted:** 2026-09-15 by the lead, from the owner's felt-test on the Seeker (tester build `2026.09.15.371127`, scene `RaidBase_IronBastion`).
 **Silo:** content / Addressables dependency closure. Files: whichever KayKit material named `glass` is referenced by the `NPCs/KayKit/Cleric` address (and, to be PROVEN not assumed, by the `Watchtower_Archer_*` prefab). Do NOT touch `RaidAssaultAi.cs` / `TroopController.cs` (WO-1746 silo) or any `.unity`.
 

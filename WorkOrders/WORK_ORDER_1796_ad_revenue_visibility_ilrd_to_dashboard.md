@@ -1,6 +1,6 @@
 # WORK ORDER 1796 — Ad revenue visibility: the ILRD money already in Neon reaches the dashboard
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed b920c006f, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 **Number:** PRE-ASSIGNED by the lead (this WO does **NOT** touch `CLI_LANES_WO_NUMBERS.md`)
 **Date:** 2026-09-16
 **Silo:** analytics read surface (`api/admin/db.js`, `api/admin/stats.js`, `api/admin/console.js`) + ONE client property change in `LevelPlayInitializer.cs`. No gameplay, no scene, no economy, no ad SDK wiring.

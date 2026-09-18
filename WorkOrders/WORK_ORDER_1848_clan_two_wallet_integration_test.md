@@ -1,6 +1,6 @@
 # WORK ORDER 1848 — Clan system, step 5: two-wallet integration test (the WO-1265 acceptance gate)
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 43fce9820, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 ## Context — clan WO-5 in the chain, depends on WO-1844/1845/1846 (all landed and committed)
 

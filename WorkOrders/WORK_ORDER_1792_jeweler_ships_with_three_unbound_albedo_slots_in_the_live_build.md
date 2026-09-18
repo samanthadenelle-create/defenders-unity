@@ -1,6 +1,6 @@
 # WORK ORDER 1792 — The Jeweler renders untextured in town for 9 of today's live players, on the build 10 of today's ids run (`2026.09.16.371701`)
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 98498d7a1, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 > **Implementation lane hand-back, 2026-09-17 — code written, lane checks green, NO Unity run.**
 > Per the lead's brief this lane HELD before any batchmode/CompileGate/DataRegression execution;

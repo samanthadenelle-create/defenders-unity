@@ -1,6 +1,6 @@
 # WORK ORDER 1794 — Two of the funnel numbers the owner reads are untrue: `tutorial_completed` fires on SKIP-ALL, and raid steps 1-2 fire from the starter grant
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 1ed77ffd2, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead from the 1791-1795 block; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** funnel emitters — `Assets/_Modules/Village/Tutorial/V2/TutorialFlow.cs` (the `tutorial_completed` call site) and `Assets/_Modules/Village/Troops/StarterArmyGrant.cs` + `Assets/_Modules/Core/Analytics/RaidFunnel.cs` (step semantics). Analytics only — **no gameplay behaviour may change.**
 **Priority:** P1 — these are the two numbers in today's metrics that would make the owner believe the FTUE and the raid on-ramp are working when they are not.

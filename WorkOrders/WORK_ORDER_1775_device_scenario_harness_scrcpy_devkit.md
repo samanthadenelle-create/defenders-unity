@@ -1,6 +1,6 @@
 # WO-1775 — Device scenario harness: scripted scenarios + scrcpy/logcat capture, cheapest-first
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 8923c6d82, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 **Lane:** Tooling / QA harness (no gameplay files; §9-disjoint from every combat/world lane)
 **Silo:** device-qa
 **Opened:** 2026-09-16

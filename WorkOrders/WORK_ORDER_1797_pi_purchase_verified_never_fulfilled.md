@@ -1,6 +1,6 @@
 # WORK ORDER 1797 — The Pi purchase that will sit `verified` forever: the Pi rail has NO fulfilment acknowledgement
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed e6f3c6cfe, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 **Implemented:** 2026-09-17, Lanes A + B, option **(b)** — see the IMPLEMENTATION RECORD below.
 ⛔ **Lane C (§3.4) is deliberately NOT done: it needs the owner's revenue ruling, and
 `api/admin/stats.js` is byte-unchanged.** No `.RESULT.md` yet — that is the lead's after gating.

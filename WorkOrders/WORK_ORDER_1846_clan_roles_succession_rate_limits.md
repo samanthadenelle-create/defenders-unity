@@ -1,6 +1,6 @@
 # WO-1846 — Clan system, step 3: roles, authorization, leader succession, rate limits
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 5729916fb, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 ## Context — clan WO-3 in the chain, depends on WO-1845
 

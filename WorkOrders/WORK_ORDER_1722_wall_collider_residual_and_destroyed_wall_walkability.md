@@ -1,6 +1,6 @@
 # WORK ORDER 1722 — An INTACT wall let the player walk straight through it (same defect as the residual collider mismatch), plus ToggleBreach logging resolved
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed aba8c4f7c, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 Item 1 is PROVEN to be a diagnostic artifact and needs no wall fix (see the RCA section at the bottom,
 2026-09-15). Item 2 is re-opened as UNEXPLAINED — the §2 explanation below rested on item 1 and falls
 with it. Item 3 was already closed and is kept here as the record.

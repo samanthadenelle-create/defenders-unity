@@ -1,6 +1,6 @@
 # WORK ORDER 1791 — 73% of today's live client events land under ONE shared player id (`unverified`), so no funnel can be read per player
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 4767417e0, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 **Minted:** 2026-09-16 (number PRE-ASSIGNED by the lead from the 1791-1795 block; this lane did NOT touch `CLI_LANES_WO_NUMBERS.md`)
 **Silo:** Analytics rail — `Assets/_Modules/Core/Analytics/EventTracker.cs` (client) only. No `.unity`, no gameplay, no API change required.
 **Priority:** P0 for the business question. It affects EVERY player on every build that does not attach the headers, and it is the reason the owner's "22 new players" cannot be turned into a funnel.

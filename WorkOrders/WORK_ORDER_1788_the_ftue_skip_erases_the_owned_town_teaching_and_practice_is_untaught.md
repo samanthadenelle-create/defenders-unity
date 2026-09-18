@@ -1,6 +1,6 @@
 # WORK ORDER 1788 — The FTUE "skip all" **silently deletes the owned-town repair/design/reentry teaching** before the player has a town — and practice is taught by nothing at all
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 58c06968b, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 **Implemented 2026-09-17** by the tutorial lane. Files: `Assets/_Modules/Village/Tutorial/V2/TutorialFlow.cs`
 (SkipAll scoped by `ctx.Scene`; the `:706` "Scene is DEAD DATA" comment amended, since this is its first

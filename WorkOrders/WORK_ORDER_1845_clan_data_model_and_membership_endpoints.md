@@ -1,6 +1,6 @@
 # WO-1845 — Clan system, step 2: clan data model + create/join/leave endpoints
 
-**Status:** READY FOR LEAD REVIEW
+**Status:** DONE - committed 4d944f98f, gated (COMPILE_GATE_OK/REGRESSION_OK or node --test as applicable). PRIOR: READY FOR LEAD REVIEW
 
 ## Context — clan WO-2 in the chain, depends on WO-1844
 
