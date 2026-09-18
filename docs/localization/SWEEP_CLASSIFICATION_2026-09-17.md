@@ -1259,248 +1259,9 @@ Heaviest files (split these into their own lanes):
 | `Assets/_Modules/Core/Referral/InviteFriendsUI.cs:286` | Checking...Claim Reward | frag |  | `core.invite_friends.claim_reward` |
 | `Assets/_Modules/Core/Referral/ReferralService.cs:236` | Network error: {ex.Message} |  |  | `core.referral_service.network_error_ex_message` `[rename]` |
 
-## Scanner fix results, 2026-09-17 (phase 1b)
 
-**Scope of this pass:** `tools/localization/build-string-manifest.ps1` only. No `.cs` file, no locale
-file, and no other doc was touched. Nothing was committed. This section is appended, not a rewrite —
-everything above this heading is unchanged from the original pass.
+(See "Scanner fix results, 2026-09-17 (phase 1b)" appended near the end of this document -- moved 2026-09-18 because its original placement split the Core shard table in two, per the Core tagging lane's finding.)
 
-### What changed in the scanner
-
-`Get-CSharpContext` (`:112-125` in the pre-fix file) only recognised a fixed list of call shapes
-(`ShowToast`, `BuildObsidianModal`, `BuildObsidianButton`, `.Button(`, `.Label(`,
-`SetStatus`/`ShowStatus`/`SetMessage`, a `.text/.placeholder/.caption/.title =` assignment, or a bare
-named-copy word on the line) and returned no `uiHint` for anything else — the exact gap §1 documents.
-Three changes closed it, each proven at source before landing and each verified with an isolated
-function-level test (not just a full-corpus rerun) because the failure modes only show up on specific
-line shapes that a full rerun's aggregate counts would hide:
-
-**1. Recognise the project's actual UI-construction helpers.** Confirmed by grep, not guessed:
-`ElarionUiKit`, `ElarionUiKitObsidian` and `ElarionUiKitDetailCard` are the SAME
-`public static partial class ElarionUiKit` (`class ElarionUiKit\b` in `Assets/_Modules/Core/UI/*.cs`,
-checked 2026-09-17), so one rule — `\bElarionUiKit(?:Obsidian|DetailCard)?\.\w+\s*\(` — covers every
-static method and `new ElarionUiKit.<Type>(` constructor on it (`ButtonPack`, `Label`, `Header`,
-`Card`, `BuildObsidianPanel`, `BuildConfirmModal`, `BuildTab`, `BuildToggle`, `BuildNameplate`,
-`BuildChatDock`, `CurrencyChip`, `DetailCardRow`, `AddImage`, ...), regardless of method name. Three
-bare (no-class-prefix) project-local helpers were added by name, each grepped to its declaration:
-`AddDockTab` (`HudKitController.cs`, private, `(RectTransform panel, int i, string label, Action
-onTap)`), `MakeWordVerb` (`BuildHudController.cs`, private static, `(parent, name, label, kind, min,
-max, onClick, out label)`), `AddButton` (four private declarations across
-`ArenaAttackPaletteUI.cs`/`ArenaPanel.cs`/`HeroInventoryController.cs`/`DevPanelController.cs`, all
-`(Transform/VisualElement parent, string label, ...)`). **Deviation from the brief:** bare `AddImage`
-was deliberately left OUT of the bare-helper list. All four declarations found this session
-(`ElarionUiKit.cs:2550`, `QueueRailView.cs:780`, `ArenaAttackPaletteUI.cs:233`, `ArenaPanel.cs:428`,
-`HeroInventoryController.cs:636`) are `AddImage(Transform parent, string name, ...)` — the literal
-argument is a GameObject/sprite name, never player copy, so matching bare `AddImage` would be a
-guaranteed false positive with zero true positives. `ElarionUiKit.AddImage(` is still caught by the
-kit-wide rule for consistency with how the tool already treats every other kit method (it never
-special-cased no-copy kit methods like `FitSingleLine`/`EnsureFont`/`Rule`/`GoldPerimeter` either) —
-that tradeoff is pre-existing, not introduced here, and it is the single largest false-positive class
-in the sample below.
-
-**2. A bounded statement-continuation lookback**, because the manifest's unit is one line and a
-UI-construction call can open several lines before its literal argument lands (a wrapped multi-arg
-call, or a ternary literal) — `EquipmentPanel.cs:915-916` is the proven case:
-```
-var action = ElarionUiKit.ButtonPack(_approvedDetailHost,
-    item.Equipped ? "REMOVE" : "EQUIP", ElarionUiKit.ButtonKind.Gold, ...
-```
-`Get-CSharpContext` now takes the full line array and its own index, and — only when the current line
-carries no same-line hint — collects up to 6 lines backward into a window, stopping at a blank line,
-a bare `{`/`}`, or a line whose trailing `//` comment has been stripped and which still ends `;` (that
-line completes the PREVIOUS, separate statement and is excluded from the window even if it itself
-contains a UI call — `EquipmentPanel.cs:1227` is the proven case: `...FontLabel);   // never wraps
-over the buttons` must not let a later, unrelated statement read as a continuation of it). The window
-is checked as a whole, not stopped at the first hit in scan order, for two reasons discovered by
-reading actual false positives mid-implementation, not by inspection:
-
-- **Order-independent exclusion.** `BuildHudController.cs:494-500` is a `FlowTrace.Step("BuildHud",`
-  call whose OWN opening line carries the exclusion marker, but the very next continuation line is
-  diagnostic PROSE that happens to name a real method: `"... COMMON kit button
-  ElarionUiKit.BuildObsidianButton(Style1,Yellow) seated ..."`. Scanning strictly backward-in-order,
-  that prose line matched the UI-construction-call regex BEFORE the scan ever reached the opener line
-  that would have excluded it, producing a false `ui-construction-call-continuation` on a pure
-  diagnostic string. Collecting the whole window first, then checking `Test-ExcludedCSharpLine` across
-  all of it before checking `Test-UiConstructionCallLine` across all of it, closes this regardless of
-  which line the loop visits first.
-- **Comment lines never count as evidence either way.** `HeroSkillTreePanelMvvm.cs:1877-1883` has a
-  five-line `//` comment block directly above a ternary-assigned literal (`"COMING"`), and one comment
-  line reads `"...never a label (HeroSkillTreeVM..."` — plain prose containing the substring `"label
-  ("`, which trips the PRE-EXISTING `(?:\.Label|\bLabel)\s*\(` rule (PowerShell `-match` is
-  case-insensitive by default) even though there is no real `Label(` call anywhere nearby. Comment
-  lines (`^(?://|///|\*|/\*)`) are now skipped when building the window — walked past for boundary
-  purposes, but never checked for a call or an exclusion. This only stops a comment from contaminating
-  a DIFFERENT, later, non-comment statement's literal; it does not touch the pre-existing case where
-  the literal itself sits ON a comment line (see Known limitations).
-
-Both fixes were caught by reading actual sampled output mid-implementation (not anticipated in
-advance), each reduced to a 4-line reproduction, verified to flip from wrong to right with an isolated
-copy of the two functions, and re-verified against the original proven cases (`EquipmentPanel.cs:916`
-continuation, `EquipmentPanel.cs:1227` terminated-boundary, bare `AddDockTab`) before the final full
-run. That discipline is the only reason the final added-row count (632) differs from the first,
-insufficiently-verified run (713) — 81 of the 713 were false continuations from these two bugs.
-
-### Acceptance check — the 6 `AddDockTab` lines
-
-**The exact literals no longer exist in the file.** Re-reading `HudKitController.cs:5555-5592` this
-session (after this pass's own baseline run, so the drift is dated to mid-session, not to this fix)
-shows all six `AddDockTab` calls now resolve through `new LocalizedText("...").Resolve()` —
-`common.remnant_chat`, `common.leaderboard`, `hud.gearDock.music`, `settings.title`,
-`hud.gearDock.realm`, `hud.gearDock.pause` — wired by a separate lane between this artifact's original
-run and this session (visible in the recent commit log: WO-1859/WO-1861). This is independent, real
-work, not a side effect of anything in this pass. Two of those keys' rows are present in
-`manifest.json` as `keyedCall`/`migrated`, and the manifest correctly shows **zero** `literalCandidate`
-rows at those six lines now — that is the correct, desired end state, not a detection failure.
-
-Because the live example is gone, the detection MECHANISM was verified in isolation instead of on live
-data, using the exact original literal shape from the artifact's own citation:
-```
-Test-UiConstructionCallLine('AddDockTab(_slideDock.panel, dockRow++, "Chat", OpenClanChat);') => True
-```
-The strongest live proof that the fix works end-to-end is `EquipmentPanel.cs:916`, which no same-line
-detector could ever have produced: the fixed manifest now carries both `EQUIP` and `REMOVE` at that
-line, via the multi-line lookback (`var action = ElarionUiKit.ButtonPack(_approvedDetailHost,` on line
-915, the ternary literal on 916).
-
-### Counts
-
-Both runs were made on the SAME tree (same `git` state throughout this pass; no `.cs` file changed
-during it) using the original (HEAD) scanner for the baseline and the fixed scanner for the after —
-not the artifact's own original 6459/5812 figures, which were run earlier the same day and have since
-drifted (see below).
-
-| run | keyedEntry | keyedCall | literalCandidate | imageTextCandidate |
-|---|---|---|---|---|
-| baseline (original scanner, current tree) | 532 | 132 | 5814 | 16 |
-| fixed (this pass) | 532 | 132 | 6446 | 16 |
-
-`keyedEntry` 505→532 and `keyedCall` 126→132 (vs. the artifact's original figures) are tree drift from
-WO-1859 (Remnant rename) and WO-1861 (pseudolocalization harness) landing between the artifact's run
-and this baseline — not a scanner change. `keyedEntry`/`keyedCall`/`imageTextCandidate` are byte-identical
-between baseline and fixed, confirming this fix touches only the unresolved-literal path and nothing
-upstream of it (the `LocalText`/`LocalizedText` detection branches run first and are unmodified).
-
-**632 new `literalCandidate` rows**, all under `Assets/_Modules/**` (0 from canonical JSON, which this
-fix does not touch), **0 rows removed** (every baseline-matching line keeps its hint — the five
-original patterns are unchanged substrings of the new detector). By surface: 356
-`ui-construction-call` (same-line detection) + 276 `ui-construction-call-continuation` (the lookback).
-By owner: Village 349, DevTools 80, HUD 69, Core 54, Onboarding 39, Dungeons 16, Settings 11,
-GooglePlay 4, Wallet 4, BattleATB 3, Audio 2, DialogueUI 1.
-
-One field-level side effect, checked for consumers before accepting it: the pre-existing `button` (178
-rows), `label` (180), `status` (170), `modal` (45) and `toast` (36) `surface` values collapse into the
-single `ui-construction-call` name for lines that would have matched either the old or new rule (they
-now go through one shared function). No script under `tools/`, `.githooks/`, or
-`Assets/Editor/Regression/` reads the manifest's `surface` field, and the current `manifest.json`
-carries no `literalDebtBaseline` block (`Assert-LiteralDebtBaseline`'s fingerprint does not include
-`surface` either), so nothing consumes the old names. Recorded here in case a future consumer is added
-against the old vocabulary.
-
-### Spot-check: 25 rows read at source, stratified by owner
-
-Sampling rule fixed before reading any row: sort the 632 added rows by owner/source/line, take every
-⌈N/k⌉-th row per owner, k = 10 for Village, 5 each for Core/HUD/DevTools (DevTools was added to the
-sample beyond the original plan specifically because it is the second-largest owner bucket at 80 rows
-and the artifact's own rule 6 flags developer surfaces as a known false-positive class — worth
-measuring directly rather than assuming).
-
-| file:line | literal | verdict | why |
-|---|---|---|---|
-| `ArenaAttackPaletteUI.cs:139` | `Cancel` | **genuine leak** | real button label via bare `AddButton(content.transform, "Cancel", ...)` |
-| `BuildHudController.cs:732` | `ROTATE` | **genuine leak** | real button word via `MakeWordVerb(..., "ROTATE", ...)` |
-| `HonestFeedbackPanel.cs:184` | `quest` | false positive | `medallionIcon: "quest"` — icon-concept identifier arg, not copy |
-| `EquipmentPanel.cs:916` | `EQUIP` | **genuine leak** | ternary ButtonPack label, the proven multi-line case |
-| `RaidDeployScreen.cs:409` | `RAID: ` | **genuine leak** (frag) | `"RAID: " + raidName` panel title, needs `LocalText.Format` |
-| `RumorBoardPanel.cs:1029` | `RewardChip_Word` | false positive | `AddImage(row, "RewardChip_Word", ...)` — GameObject name arg |
-| `HeroLoadoutPanelMvvm.cs:260` | `OPEN ` | **genuine leak** (frag) | `"OPEN " + HudStrings...` button label fragment |
-| `RaidHudController.cs:568` | `ObjectiveFill` | false positive | `AddImage(objTrack.transform, "ObjectiveFill", ...)` — name arg |
-| `ManageScreenPanel.cs:5011` | `BuildingChoice_` | false positive | `AddImage(row, "BuildingChoice_" + choice.Id, ...)` — name arg |
-| `ManageScreenPanel.cs:6185` | `upgrade defense` | false positive | `Guard.Try("Manage", "upgrade defense", ...)` tag nested inside the same continuing `BuildObsidianButton` statement |
-| `ManageWorkspacePanel.cs:1675` | `TileStatePlate` | false positive | `AddImage(cell, "TileStatePlate", ...)` — name arg |
-| `ElarionUiKitDemo.cs:209` | `Low` | false positive | dropdown option INSIDE the kit's own demo scene — developer surface (artifact rule 6), never shipped |
-| `LoadingOverlay.cs:238` | `Retry` | **genuine leak** | real fallback button label via `ButtonPack` |
-| `OfflineOptInPanel.cs:137` | `Download everything now so the game works without a connection?...` | **genuine leak** | real modal body copy |
-| `AdConsentPanel.cs:93` | `Echoes of Elarion can show optional ads...` | **genuine leak** | real ad-consent modal copy |
-| `AdminOverlay.cs:474` | `Orient: id '{id}' not in CatalogRegistry...` | false positive | `SetStatus(...)` inside the DEV admin overlay — developer surface (rule 6) |
-| `AdminOverlay.cs:834` | `Queue clock was already at real time - nothing to reset.` | false positive | same file, same reason |
-| `DailyQuestHud.cs:421` | `In progress` | **genuine leak** | real `DetailCardRow` progress label |
-| `HudKitController.cs:457` | `A wall` | **genuine leak** (frag) | real `ShowToast` message fragment |
-| `HudKitController.cs:5406` | `settings` | false positive | `tabIconConcept: "settings"` — icon-concept identifier, not copy |
-| `DevPanelController.cs:726` | `+100 Crystals` | false positive | dev-panel `AddButton` cheat label — developer surface (rule 6) |
-| `DevPanelController.cs:750` | `Arcane Tower: cycle tier` | false positive | same file, same reason |
-| `DevPanelController.cs:772` | `HP 50%` | false positive | same file, same reason |
-| `DevPanelController.cs:836` | `ATBBattle` | false positive | same file, same reason |
-| `DevPanelController.cs:904` | `Run cadence -0.1` | false positive | same file, same reason |
-
-**10 genuine leaks / 15 false positives = 40% precision on this sample.** Materially lower than the
-artifact's own measured ~88%, and the reason is structural, not a defect in this pass: the artifact's
-high-confidence grep (§1a) matched a NARROW, hand-picked set of shapes chosen because they almost only
-ever carry copy (`ElarionUiKit.(Label|Button*|BuildObsidian*|ShowToast|Caption)`, `AddDockTab`, `new
-Label(`, `new Button(`, `SetStatus(`, `ShowToast(`). This pass deliberately matches the WHOLE kit
-(every `ElarionUiKit.*` method, so it also catches `AddImage`/`GoldPerimeter`/layout-only calls whose
-literal argument is a name, not copy) plus bare `AddButton` (which also lives in `DevPanelController.cs`,
-a developer-only tool). That breadth is what surfaces the previously-invisible genuine leaks in the
-table above (`Cancel`, `ROTATE`, `RAID: `, `OPEN `, `Retry`, `In progress`, `A wall`) — it also surfaces
-two known false-positive classes at volume:
-
-- **Developer-surface files (artifact rule 6) are not excluded by this scanner at all**, and this is
-  PRE-EXISTING, not introduced by this pass: the baseline (before any of this session's changes) already
-  carried 78 `literalCandidate` rows sourced from `Assets/_Modules/DevTools/*`, via the pre-existing
-  `Button`/`Label`/named-word rules. This pass's `AddButton` detection adds 80 more from the same owner
-  (all 5 sampled DevTools rows were false positives). **Deliberately not fixed in this pass**: excluding
-  `/DevTools/` (or the artifact's full rule-6 file list — `/Diagnostics/`, `AdminOverlay.cs`,
-  `ElarionUiKitDemo.cs`, `AutoPilot*`, `DevPanel*`, etc.) would also retroactively remove the 78
-  pre-existing baseline rows and any other rule-6 rows already in the manifest, which is a broader,
-  cross-cutting change than "recognise more UI-construction call shapes" and affects rows this ticket
-  did not touch. Recommended as a separate, explicitly-scoped follow-up (a phase-1c precision pass),
-  not folded in here.
-- **Name/identifier arguments on kit calls whose OTHER argument is real copy** (`AddImage`'s `name`
-  param, `medallionIcon`/`tabIconConcept` keyword args) — this is the artifact's own rule 9
-  (PascalCase/identifier-shaped literal on a UI-construction line reads as a GameObject/config name, not
-  copy) and rule 11 (identity/name/path/keyword field assignment). Rule 9/11 have never been implemented
-  in this scanner's `Test-LikelyHumanText`, for ANY call shape — this is the same tradeoff the
-  already-recognised `Button(`/`Label(` calls have always had (their own `name`/id arguments were
-  already candidates for this before this pass). Widening the detector widens the surface this
-  pre-existing gap touches; it does not create a new kind of gap.
-- One residual case specific to the lookback: **`Guard.Try` tag/description arguments nested inside a
-  still-open UI-construction statement** (`ManageScreenPanel.cs:6185`) are not excluded, because
-  `Guard.Try(` is not in `Test-ExcludedCSharpLine`'s pattern list at all (a pre-existing gap — the
-  artifact's own rule 5 names `Guard.Try` as an exclusion trigger, but the scanner's
-  `Test-ExcludedCSharpLine` only checks `Debug.Log|FlowTrace.|Logger.|Console.`). Low volume; not fixed
-  in this pass since it is a pre-existing gap on the exclusion side, not the detection side this ticket
-  targets.
-
-### Known limitations (recorded, not fixed — out of this ticket's scope)
-
-- Fix 3 (comment-skip) only protects the LOOKBACK WINDOW. A literal that sits ON a comment line whose
-  text itself resembles a UI-construction call (or a named-copy word) still emits — this is the
-  artifact's own rule 1 (`false-positive-flowtrace-or-debug (comment text)`, 26.6% of the baseline) and
-  is untouched by this pass.
-- `[regex]::Replace($trimmed, '//.*$', '')` (statement-terminator detection) also strips from the first
-  `//` inside a string literal (e.g. a URL like `"https://..."`), so such a line will not register as a
-  terminator and the window can extend one statement further back than intended. Not observed in any
-  sampled row; recorded as a theoretical gap.
-- A multi-line UI call whose lambda argument body contains its own `;`-terminated statement (e.g.
-  `BuildHudController.cs:707-731`, where the `MakeWordVerb(...)` call's `onClick` lambda has a
-  multi-line `FlowTrace.Step(...)` call with its own semicolon) stops the lookback window at that
-  interior semicolon. This is a false-NEGATIVE direction (a literal further above such a lambda could
-  be missed by a line below it) and is considered safe to leave — it does not add false positives, and
-  the existing per-line scan still catches same-line literals inside the lambda independently.
-- `^\*` in the comment-skip regex (continuation lines of a `/* ... */` block comment, conventionally
-  prefixed with `*`) would also skip a bare `*` multiplication-continuation code line in the rare case
-  one exists inside the 6-line window. Not observed in any sampled row.
-
-### Bottom line
-
-The `AddDockTab`/`ElarionUiKit.ButtonPack`/`MakeWordVerb`/`BuildObsidianPanel`/`DetailCardRow`/
-`AddButton` blind spot described in §1 is closed: the detector mechanism is proven (isolated test) to
-recognise the original literal shape, and it surfaces 632 new candidate rows including real,
-previously-invisible leaks (`EquipmentPanel.cs:916`'s `EQUIP`/`REMOVE` chief among them, since it
-requires the multi-line lookback specifically). The tradeoff for closing the gap this broadly is a
-lower headline precision (40% vs. the artifact's 88% on a much narrower net) driven by two
-already-documented, pre-existing gaps this pass did not touch (developer-surface files, and
-identifier-shaped name arguments) — both are called out here as the natural next phase, not silently
-absorbed into this one's numbers.
 | `Assets/_Modules/Core/Referral/ReferralService.cs:279` | You received {crystals} Aether Crystals! |  |  | `core.referral_service.received_crystals_aether_crystals` `[rename]` |
 | `Assets/_Modules/Core/SceneRouter.cs:376` | Retry |  | `offlineFirstRunRetry` | `core.scene_router.retry` |
 | `Assets/_Modules/Core/State/GameStateService.cs:2809` | dotr-save:v1:{wallet}:{nonce}:{payloadHashOrLoadTag} |  |  | `core.game_state_service.dotr_save_v1_wallet_nonce` `[rename]` |
@@ -1900,3 +1661,246 @@ The classification scripts for this pass are throwaway analysis, kept out of the
 (they are a one-shot triage, not a gate). The durable outputs are this document and the regenerated
 manifest. If the numbers here need re-deriving, the rules in §3 are stated completely enough to
 re-implement; the scanner fix in §7.1 is the version that should become permanent.
+
+## Scanner fix results, 2026-09-17 (phase 1b)
+
+**Scope of this pass:** `tools/localization/build-string-manifest.ps1` only. No `.cs` file, no locale
+file, and no other doc was touched. Nothing was committed. This section is appended, not a rewrite —
+everything above this heading is unchanged from the original pass.
+
+### What changed in the scanner
+
+`Get-CSharpContext` (`:112-125` in the pre-fix file) only recognised a fixed list of call shapes
+(`ShowToast`, `BuildObsidianModal`, `BuildObsidianButton`, `.Button(`, `.Label(`,
+`SetStatus`/`ShowStatus`/`SetMessage`, a `.text/.placeholder/.caption/.title =` assignment, or a bare
+named-copy word on the line) and returned no `uiHint` for anything else — the exact gap §1 documents.
+Three changes closed it, each proven at source before landing and each verified with an isolated
+function-level test (not just a full-corpus rerun) because the failure modes only show up on specific
+line shapes that a full rerun's aggregate counts would hide:
+
+**1. Recognise the project's actual UI-construction helpers.** Confirmed by grep, not guessed:
+`ElarionUiKit`, `ElarionUiKitObsidian` and `ElarionUiKitDetailCard` are the SAME
+`public static partial class ElarionUiKit` (`class ElarionUiKit\b` in `Assets/_Modules/Core/UI/*.cs`,
+checked 2026-09-17), so one rule — `\bElarionUiKit(?:Obsidian|DetailCard)?\.\w+\s*\(` — covers every
+static method and `new ElarionUiKit.<Type>(` constructor on it (`ButtonPack`, `Label`, `Header`,
+`Card`, `BuildObsidianPanel`, `BuildConfirmModal`, `BuildTab`, `BuildToggle`, `BuildNameplate`,
+`BuildChatDock`, `CurrencyChip`, `DetailCardRow`, `AddImage`, ...), regardless of method name. Three
+bare (no-class-prefix) project-local helpers were added by name, each grepped to its declaration:
+`AddDockTab` (`HudKitController.cs`, private, `(RectTransform panel, int i, string label, Action
+onTap)`), `MakeWordVerb` (`BuildHudController.cs`, private static, `(parent, name, label, kind, min,
+max, onClick, out label)`), `AddButton` (four private declarations across
+`ArenaAttackPaletteUI.cs`/`ArenaPanel.cs`/`HeroInventoryController.cs`/`DevPanelController.cs`, all
+`(Transform/VisualElement parent, string label, ...)`). **Deviation from the brief:** bare `AddImage`
+was deliberately left OUT of the bare-helper list. All four declarations found this session
+(`ElarionUiKit.cs:2550`, `QueueRailView.cs:780`, `ArenaAttackPaletteUI.cs:233`, `ArenaPanel.cs:428`,
+`HeroInventoryController.cs:636`) are `AddImage(Transform parent, string name, ...)` — the literal
+argument is a GameObject/sprite name, never player copy, so matching bare `AddImage` would be a
+guaranteed false positive with zero true positives. `ElarionUiKit.AddImage(` is still caught by the
+kit-wide rule for consistency with how the tool already treats every other kit method (it never
+special-cased no-copy kit methods like `FitSingleLine`/`EnsureFont`/`Rule`/`GoldPerimeter` either) —
+that tradeoff is pre-existing, not introduced here, and it is the single largest false-positive class
+in the sample below.
+
+**2. A bounded statement-continuation lookback**, because the manifest's unit is one line and a
+UI-construction call can open several lines before its literal argument lands (a wrapped multi-arg
+call, or a ternary literal) — `EquipmentPanel.cs:915-916` is the proven case:
+```
+var action = ElarionUiKit.ButtonPack(_approvedDetailHost,
+    item.Equipped ? "REMOVE" : "EQUIP", ElarionUiKit.ButtonKind.Gold, ...
+```
+`Get-CSharpContext` now takes the full line array and its own index, and — only when the current line
+carries no same-line hint — collects up to 6 lines backward into a window, stopping at a blank line,
+a bare `{`/`}`, or a line whose trailing `//` comment has been stripped and which still ends `;` (that
+line completes the PREVIOUS, separate statement and is excluded from the window even if it itself
+contains a UI call — `EquipmentPanel.cs:1227` is the proven case: `...FontLabel);   // never wraps
+over the buttons` must not let a later, unrelated statement read as a continuation of it). The window
+is checked as a whole, not stopped at the first hit in scan order, for two reasons discovered by
+reading actual false positives mid-implementation, not by inspection:
+
+- **Order-independent exclusion.** `BuildHudController.cs:494-500` is a `FlowTrace.Step("BuildHud",`
+  call whose OWN opening line carries the exclusion marker, but the very next continuation line is
+  diagnostic PROSE that happens to name a real method: `"... COMMON kit button
+  ElarionUiKit.BuildObsidianButton(Style1,Yellow) seated ..."`. Scanning strictly backward-in-order,
+  that prose line matched the UI-construction-call regex BEFORE the scan ever reached the opener line
+  that would have excluded it, producing a false `ui-construction-call-continuation` on a pure
+  diagnostic string. Collecting the whole window first, then checking `Test-ExcludedCSharpLine` across
+  all of it before checking `Test-UiConstructionCallLine` across all of it, closes this regardless of
+  which line the loop visits first.
+- **Comment lines never count as evidence either way.** `HeroSkillTreePanelMvvm.cs:1877-1883` has a
+  five-line `//` comment block directly above a ternary-assigned literal (`"COMING"`), and one comment
+  line reads `"...never a label (HeroSkillTreeVM..."` — plain prose containing the substring `"label
+  ("`, which trips the PRE-EXISTING `(?:\.Label|\bLabel)\s*\(` rule (PowerShell `-match` is
+  case-insensitive by default) even though there is no real `Label(` call anywhere nearby. Comment
+  lines (`^(?://|///|\*|/\*)`) are now skipped when building the window — walked past for boundary
+  purposes, but never checked for a call or an exclusion. This only stops a comment from contaminating
+  a DIFFERENT, later, non-comment statement's literal; it does not touch the pre-existing case where
+  the literal itself sits ON a comment line (see Known limitations).
+
+Both fixes were caught by reading actual sampled output mid-implementation (not anticipated in
+advance), each reduced to a 4-line reproduction, verified to flip from wrong to right with an isolated
+copy of the two functions, and re-verified against the original proven cases (`EquipmentPanel.cs:916`
+continuation, `EquipmentPanel.cs:1227` terminated-boundary, bare `AddDockTab`) before the final full
+run. That discipline is the only reason the final added-row count (632) differs from the first,
+insufficiently-verified run (713) — 81 of the 713 were false continuations from these two bugs.
+
+### Acceptance check — the 6 `AddDockTab` lines
+
+**The exact literals no longer exist in the file.** Re-reading `HudKitController.cs:5555-5592` this
+session (after this pass's own baseline run, so the drift is dated to mid-session, not to this fix)
+shows all six `AddDockTab` calls now resolve through `new LocalizedText("...").Resolve()` —
+`common.remnant_chat`, `common.leaderboard`, `hud.gearDock.music`, `settings.title`,
+`hud.gearDock.realm`, `hud.gearDock.pause` — wired by a separate lane between this artifact's original
+run and this session (visible in the recent commit log: WO-1859/WO-1861). This is independent, real
+work, not a side effect of anything in this pass. Two of those keys' rows are present in
+`manifest.json` as `keyedCall`/`migrated`, and the manifest correctly shows **zero** `literalCandidate`
+rows at those six lines now — that is the correct, desired end state, not a detection failure.
+
+Because the live example is gone, the detection MECHANISM was verified in isolation instead of on live
+data, using the exact original literal shape from the artifact's own citation:
+```
+Test-UiConstructionCallLine('AddDockTab(_slideDock.panel, dockRow++, "Chat", OpenClanChat);') => True
+```
+The strongest live proof that the fix works end-to-end is `EquipmentPanel.cs:916`, which no same-line
+detector could ever have produced: the fixed manifest now carries both `EQUIP` and `REMOVE` at that
+line, via the multi-line lookback (`var action = ElarionUiKit.ButtonPack(_approvedDetailHost,` on line
+915, the ternary literal on 916).
+
+### Counts
+
+Both runs were made on the SAME tree (same `git` state throughout this pass; no `.cs` file changed
+during it) using the original (HEAD) scanner for the baseline and the fixed scanner for the after —
+not the artifact's own original 6459/5812 figures, which were run earlier the same day and have since
+drifted (see below).
+
+| run | keyedEntry | keyedCall | literalCandidate | imageTextCandidate |
+|---|---|---|---|---|
+| baseline (original scanner, current tree) | 532 | 132 | 5814 | 16 |
+| fixed (this pass) | 532 | 132 | 6446 | 16 |
+
+`keyedEntry` 505→532 and `keyedCall` 126→132 (vs. the artifact's original figures) are tree drift from
+WO-1859 (Remnant rename) and WO-1861 (pseudolocalization harness) landing between the artifact's run
+and this baseline — not a scanner change. `keyedEntry`/`keyedCall`/`imageTextCandidate` are byte-identical
+between baseline and fixed, confirming this fix touches only the unresolved-literal path and nothing
+upstream of it (the `LocalText`/`LocalizedText` detection branches run first and are unmodified).
+
+**632 new `literalCandidate` rows**, all under `Assets/_Modules/**` (0 from canonical JSON, which this
+fix does not touch), **0 rows removed** (every baseline-matching line keeps its hint — the five
+original patterns are unchanged substrings of the new detector). By surface: 356
+`ui-construction-call` (same-line detection) + 276 `ui-construction-call-continuation` (the lookback).
+By owner: Village 349, DevTools 80, HUD 69, Core 54, Onboarding 39, Dungeons 16, Settings 11,
+GooglePlay 4, Wallet 4, BattleATB 3, Audio 2, DialogueUI 1.
+
+One field-level side effect, checked for consumers before accepting it: the pre-existing `button` (178
+rows), `label` (180), `status` (170), `modal` (45) and `toast` (36) `surface` values collapse into the
+single `ui-construction-call` name for lines that would have matched either the old or new rule (they
+now go through one shared function). No script under `tools/`, `.githooks/`, or
+`Assets/Editor/Regression/` reads the manifest's `surface` field, and the current `manifest.json`
+carries no `literalDebtBaseline` block (`Assert-LiteralDebtBaseline`'s fingerprint does not include
+`surface` either), so nothing consumes the old names. Recorded here in case a future consumer is added
+against the old vocabulary.
+
+### Spot-check: 25 rows read at source, stratified by owner
+
+Sampling rule fixed before reading any row: sort the 632 added rows by owner/source/line, take every
+⌈N/k⌉-th row per owner, k = 10 for Village, 5 each for Core/HUD/DevTools (DevTools was added to the
+sample beyond the original plan specifically because it is the second-largest owner bucket at 80 rows
+and the artifact's own rule 6 flags developer surfaces as a known false-positive class — worth
+measuring directly rather than assuming).
+
+| file:line | literal | verdict | why |
+|---|---|---|---|
+| `ArenaAttackPaletteUI.cs:139` | `Cancel` | **genuine leak** | real button label via bare `AddButton(content.transform, "Cancel", ...)` |
+| `BuildHudController.cs:732` | `ROTATE` | **genuine leak** | real button word via `MakeWordVerb(..., "ROTATE", ...)` |
+| `HonestFeedbackPanel.cs:184` | `quest` | false positive | `medallionIcon: "quest"` — icon-concept identifier arg, not copy |
+| `EquipmentPanel.cs:916` | `EQUIP` | **genuine leak** | ternary ButtonPack label, the proven multi-line case |
+| `RaidDeployScreen.cs:409` | `RAID: ` | **genuine leak** (frag) | `"RAID: " + raidName` panel title, needs `LocalText.Format` |
+| `RumorBoardPanel.cs:1029` | `RewardChip_Word` | false positive | `AddImage(row, "RewardChip_Word", ...)` — GameObject name arg |
+| `HeroLoadoutPanelMvvm.cs:260` | `OPEN ` | **genuine leak** (frag) | `"OPEN " + HudStrings...` button label fragment |
+| `RaidHudController.cs:568` | `ObjectiveFill` | false positive | `AddImage(objTrack.transform, "ObjectiveFill", ...)` — name arg |
+| `ManageScreenPanel.cs:5011` | `BuildingChoice_` | false positive | `AddImage(row, "BuildingChoice_" + choice.Id, ...)` — name arg |
+| `ManageScreenPanel.cs:6185` | `upgrade defense` | false positive | `Guard.Try("Manage", "upgrade defense", ...)` tag nested inside the same continuing `BuildObsidianButton` statement |
+| `ManageWorkspacePanel.cs:1675` | `TileStatePlate` | false positive | `AddImage(cell, "TileStatePlate", ...)` — name arg |
+| `ElarionUiKitDemo.cs:209` | `Low` | false positive | dropdown option INSIDE the kit's own demo scene — developer surface (artifact rule 6), never shipped |
+| `LoadingOverlay.cs:238` | `Retry` | **genuine leak** | real fallback button label via `ButtonPack` |
+| `OfflineOptInPanel.cs:137` | `Download everything now so the game works without a connection?...` | **genuine leak** | real modal body copy |
+| `AdConsentPanel.cs:93` | `Echoes of Elarion can show optional ads...` | **genuine leak** | real ad-consent modal copy |
+| `AdminOverlay.cs:474` | `Orient: id '{id}' not in CatalogRegistry...` | false positive | `SetStatus(...)` inside the DEV admin overlay — developer surface (rule 6) |
+| `AdminOverlay.cs:834` | `Queue clock was already at real time - nothing to reset.` | false positive | same file, same reason |
+| `DailyQuestHud.cs:421` | `In progress` | **genuine leak** | real `DetailCardRow` progress label |
+| `HudKitController.cs:457` | `A wall` | **genuine leak** (frag) | real `ShowToast` message fragment |
+| `HudKitController.cs:5406` | `settings` | false positive | `tabIconConcept: "settings"` — icon-concept identifier, not copy |
+| `DevPanelController.cs:726` | `+100 Crystals` | false positive | dev-panel `AddButton` cheat label — developer surface (rule 6) |
+| `DevPanelController.cs:750` | `Arcane Tower: cycle tier` | false positive | same file, same reason |
+| `DevPanelController.cs:772` | `HP 50%` | false positive | same file, same reason |
+| `DevPanelController.cs:836` | `ATBBattle` | false positive | same file, same reason |
+| `DevPanelController.cs:904` | `Run cadence -0.1` | false positive | same file, same reason |
+
+**10 genuine leaks / 15 false positives = 40% precision on this sample.** Materially lower than the
+artifact's own measured ~88%, and the reason is structural, not a defect in this pass: the artifact's
+high-confidence grep (§1a) matched a NARROW, hand-picked set of shapes chosen because they almost only
+ever carry copy (`ElarionUiKit.(Label|Button*|BuildObsidian*|ShowToast|Caption)`, `AddDockTab`, `new
+Label(`, `new Button(`, `SetStatus(`, `ShowToast(`). This pass deliberately matches the WHOLE kit
+(every `ElarionUiKit.*` method, so it also catches `AddImage`/`GoldPerimeter`/layout-only calls whose
+literal argument is a name, not copy) plus bare `AddButton` (which also lives in `DevPanelController.cs`,
+a developer-only tool). That breadth is what surfaces the previously-invisible genuine leaks in the
+table above (`Cancel`, `ROTATE`, `RAID: `, `OPEN `, `Retry`, `In progress`, `A wall`) — it also surfaces
+two known false-positive classes at volume:
+
+- **Developer-surface files (artifact rule 6) are not excluded by this scanner at all**, and this is
+  PRE-EXISTING, not introduced by this pass: the baseline (before any of this session's changes) already
+  carried 78 `literalCandidate` rows sourced from `Assets/_Modules/DevTools/*`, via the pre-existing
+  `Button`/`Label`/named-word rules. This pass's `AddButton` detection adds 80 more from the same owner
+  (all 5 sampled DevTools rows were false positives). **Deliberately not fixed in this pass**: excluding
+  `/DevTools/` (or the artifact's full rule-6 file list — `/Diagnostics/`, `AdminOverlay.cs`,
+  `ElarionUiKitDemo.cs`, `AutoPilot*`, `DevPanel*`, etc.) would also retroactively remove the 78
+  pre-existing baseline rows and any other rule-6 rows already in the manifest, which is a broader,
+  cross-cutting change than "recognise more UI-construction call shapes" and affects rows this ticket
+  did not touch. Recommended as a separate, explicitly-scoped follow-up (a phase-1c precision pass),
+  not folded in here.
+- **Name/identifier arguments on kit calls whose OTHER argument is real copy** (`AddImage`'s `name`
+  param, `medallionIcon`/`tabIconConcept` keyword args) — this is the artifact's own rule 9
+  (PascalCase/identifier-shaped literal on a UI-construction line reads as a GameObject/config name, not
+  copy) and rule 11 (identity/name/path/keyword field assignment). Rule 9/11 have never been implemented
+  in this scanner's `Test-LikelyHumanText`, for ANY call shape — this is the same tradeoff the
+  already-recognised `Button(`/`Label(` calls have always had (their own `name`/id arguments were
+  already candidates for this before this pass). Widening the detector widens the surface this
+  pre-existing gap touches; it does not create a new kind of gap.
+- One residual case specific to the lookback: **`Guard.Try` tag/description arguments nested inside a
+  still-open UI-construction statement** (`ManageScreenPanel.cs:6185`) are not excluded, because
+  `Guard.Try(` is not in `Test-ExcludedCSharpLine`'s pattern list at all (a pre-existing gap — the
+  artifact's own rule 5 names `Guard.Try` as an exclusion trigger, but the scanner's
+  `Test-ExcludedCSharpLine` only checks `Debug.Log|FlowTrace.|Logger.|Console.`). Low volume; not fixed
+  in this pass since it is a pre-existing gap on the exclusion side, not the detection side this ticket
+  targets.
+
+### Known limitations (recorded, not fixed — out of this ticket's scope)
+
+- Fix 3 (comment-skip) only protects the LOOKBACK WINDOW. A literal that sits ON a comment line whose
+  text itself resembles a UI-construction call (or a named-copy word) still emits — this is the
+  artifact's own rule 1 (`false-positive-flowtrace-or-debug (comment text)`, 26.6% of the baseline) and
+  is untouched by this pass.
+- `[regex]::Replace($trimmed, '//.*$', '')` (statement-terminator detection) also strips from the first
+  `//` inside a string literal (e.g. a URL like `"https://..."`), so such a line will not register as a
+  terminator and the window can extend one statement further back than intended. Not observed in any
+  sampled row; recorded as a theoretical gap.
+- A multi-line UI call whose lambda argument body contains its own `;`-terminated statement (e.g.
+  `BuildHudController.cs:707-731`, where the `MakeWordVerb(...)` call's `onClick` lambda has a
+  multi-line `FlowTrace.Step(...)` call with its own semicolon) stops the lookback window at that
+  interior semicolon. This is a false-NEGATIVE direction (a literal further above such a lambda could
+  be missed by a line below it) and is considered safe to leave — it does not add false positives, and
+  the existing per-line scan still catches same-line literals inside the lambda independently.
+- `^\*` in the comment-skip regex (continuation lines of a `/* ... */` block comment, conventionally
+  prefixed with `*`) would also skip a bare `*` multiplication-continuation code line in the rare case
+  one exists inside the 6-line window. Not observed in any sampled row.
+
+### Bottom line
+
+The `AddDockTab`/`ElarionUiKit.ButtonPack`/`MakeWordVerb`/`BuildObsidianPanel`/`DetailCardRow`/
+`AddButton` blind spot described in §1 is closed: the detector mechanism is proven (isolated test) to
+recognise the original literal shape, and it surfaces 632 new candidate rows including real,
+previously-invisible leaks (`EquipmentPanel.cs:916`'s `EQUIP`/`REMOVE` chief among them, since it
+requires the multi-line lookback specifically). The tradeoff for closing the gap this broadly is a
+lower headline precision (40% vs. the artifact's 88% on a much narrower net) driven by two
+already-documented, pre-existing gaps this pass did not touch (developer-surface files, and
+identifier-shaped name arguments) — both are called out here as the natural next phase, not silently
+absorbed into this one's numbers.
