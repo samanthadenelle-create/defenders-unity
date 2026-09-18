@@ -207,51 +207,71 @@ test('⛔ WO-1852: the Vigil probe on the auth path has a kill switch, and it re
     }
 });
 
-test('⛔ no logic anywhere in wallet-auth.js touches the reserved Genesis Token columns', () => {
+test('⛔ every wallet_identity column is reachable ONLY from the function that owns it', () => {
     const src = fs.readFileSync(WALLET_AUTH_PATH, 'utf8');
-    // Comments legitimately NAME these columns to explain why they are untouched, so the
+    // Comments legitimately NAME these columns to explain the rules around them, so the
     // sweep is over code only — the prose is the documentation this assertion protects.
     const code = src.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
 
-    // ── NARROWED 2026-09-17 BY WO-1852 ───────────────────────────────────────────
-    // `first_seen_staked_at` was in this list because WO-1844's explicit non-scope was
-    // "declares these columns and builds NO logic for them". WO-1852 is the ticket that
-    // builds that logic, so the column is now expected in executable code and its
-    // ABSENCE would be the defect. The two Genesis Token columns are unchanged: nothing
-    // binds an SGT yet, and this sweep still catches the first stray reference to one.
-    for (const reserved of ['sgt_mint', 'sgt_verified_at']) {
-        assert.ok(!new RegExp(reserved).test(code),
-            `${reserved} appears in executable code. No ticket has built Genesis Token binding ` +
-            'yet — this is still explicit non-scope.');
-    }
+    // ── NARROWED TWICE, AND THE SECOND NARROWING IS THE POINT ────────────────────
+    // This test was born as "no logic anywhere touches the reserved columns", because
+    // WO-1844's explicit non-scope was "declares these columns and builds NO logic for
+    // them". Two later tickets are the tickets that build that logic:
+    //   * WO-1852 built `first_seen_staked_at` (the Vigil stamp), so it was removed from
+    //     the forbidden list on 2026-09-17 and its ABSENCE became the defect;
+    //   * WO-1854 built `sgt_mint` / `sgt_verified_at` (the Genesis Token binding), so the
+    //     same thing is now true of them.
+    //
+    // ⛔ WHAT IS NOT WEAKENED, AND MUST NOT BE: the real property was never "these strings
+    //    do not appear" — an absence test expires the moment the feature is built, which is
+    //    exactly what happened here twice. It is CONTAINMENT: each column is referenced
+    //    only from the function that owns its GUARDS, so a write cannot escape them. For
+    //    first_seen_staked_at those guards are the `IS NULL` predicate and NOW(); for
+    //    sgt_mint they are the ON CONFLICT upsert and the 23505 → sgt_reused handling. A
+    //    reference anywhere else is a write that got around them.
+    //
+    //    A raw count ceiling would be an arbitrary number that goes stale on the first
+    //    honest edit — CLAUDE.md's whole duplicated-state lesson. Containment does not.
+    const OWNED = {
+        first_seen_staked_at: ['async function touchWalletIdentity(', 'async function stampFirstSeenStaked('],
+        sgt_mint:             ['async function verifyGenesisToken(', 'async function describeReuse('],
+        sgt_verified_at:      ['async function verifyGenesisToken('],
+    };
 
-    // The positive half, so the narrowing cannot quietly become "nothing is checked":
-    // the Vigil column must be reachable ONLY through the two shapes WO-1852 defines.
-    assert.ok(/first_seen_staked_at/.test(code),
-        'WO-1852 builds this logic — its absence now means the Vigil stamp was reverted');
-    // ⛔ AND EVERY REFERENCE IS CONTAINED IN THE TWO FUNCTIONS THAT OWN IT. A raw count
-    //    ceiling would be an arbitrary number that goes stale on the first honest edit
-    //    (CLAUDE.md's whole duplicated-state lesson); containment is the real property.
-    //    The guards that make the write safe — the IS NULL predicate and NOW() — live in
-    //    stampFirstSeenStaked, so a reference anywhere ELSE is a write that escaped them.
-    const OWNERS = ['async function touchWalletIdentity(', 'async function stampFirstSeenStaked('];
-    const spans = OWNERS.map((sig) => {
+    /** [start, end) of a top-level function body in the comment-stripped source. */
+    const spanOf = (sig) => {
         const start = code.indexOf(sig);
         assert.ok(start >= 0, 'fixture assumption: ' + sig + ' is present');
-        // Each function ends at the next top-level declaration.
         const rest = code.slice(start + sig.length);
         const end = rest.search(/\n(?:async )?function |\nconst \w+ = \{/);
         return [start, start + sig.length + (end < 0 ? rest.length : end)];
-    });
-    const inAnOwner = (idx) => spans.some(([a, b]) => idx >= a && idx < b);
+    };
 
-    for (let i = code.indexOf('first_seen_staked_at'); i >= 0;
-         i = code.indexOf('first_seen_staked_at', i + 1)) {
-        assert.ok(inAnOwner(i),
-            'first_seen_staked_at is referenced OUTSIDE touchWalletIdentity / ' +
-            'stampFirstSeenStaked, at: ' + JSON.stringify(
-                code.slice(code.lastIndexOf('\n', i) + 1, code.indexOf('\n', i)).trim()));
+    for (const [column, owners] of Object.entries(OWNED)) {
+        // The positive half, so a narrowing can never quietly become "nothing is checked":
+        // the column MUST be present, because a ticket built it.
+        assert.ok(new RegExp(column).test(code),
+            column + ' is absent from executable code — the logic that owns it was reverted');
+
+        const spans = owners.map(spanOf);
+        const inAnOwner = (idx) => spans.some(([a, b]) => idx >= a && idx < b);
+        for (let i = code.indexOf(column); i >= 0; i = code.indexOf(column, i + 1)) {
+            assert.ok(inAnOwner(i),
+                column + ' is referenced OUTSIDE ' + owners.join(' / ') + ', at: '
+                + JSON.stringify(code.slice(
+                    code.lastIndexOf('\n', i) + 1, code.indexOf('\n', i)).trim()));
+        }
     }
+
+    // ⛔ AND THE HOT PATH IS STILL THE TWO-COLUMN UPSERT IT HAS ALWAYS BEEN. WO-1854 adds a
+    //    SECOND writer of wallet_identity (verifyGenesisToken, for signers who may have no
+    //    row at all), so the thing worth pinning is that the two writers stayed separate:
+    //    touchWalletIdentity must not have acquired the SGT columns along the way.
+    const [tStart, tEnd] = spanOf('async function touchWalletIdentity(');
+    const touchBody = code.slice(tStart, tEnd);
+    assert.ok(!/sgt_/.test(touchBody),
+        '⛔ touchWalletIdentity runs on EVERY proven wallet-rail request. An SGT read there '
+        + 'would put a Genesis Token RPC probe on the auth path of every request in the game.');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

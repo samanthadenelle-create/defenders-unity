@@ -2414,3 +2414,59 @@ CREATE TABLE IF NOT EXISTS clan_perks (
     expires_at TIMESTAMPTZ NULL,
     PRIMARY KEY (clan_id, tier)
 );
+
+-- =============================================================================
+-- clan_vaults - WO-1854 (clan step 11). The Collective Vigil.
+--
+-- ⛔ THE APPLYABLE COPY IS api/migrations/20260917_0036_clan_vaults.sql.
+--    This block is the DESCRIPTION; only api/migrations/ is ever applied. That file
+--    carries the full reasoning (why TWO addresses are stored, why there is no
+--    hardware_backed column, why the partial unique index on wallet_identity.sgt_mint is
+--    what makes sgt_reused race-proof); it is not repeated here, because a second copy of
+--    a rule is how the copies drift apart.
+--
+-- Endpoints : POST /api/clan/vault/register (Leader only) through the one shared clan
+--             preamble (api/_lib/clan-http.js beginClanRequest); GET /api/clan/vigil is
+--             EXTENDED additively. Logic lives in api/_lib/clan-vaults.js and
+--             api/_lib/genesis-token.js; the SGT binding itself is
+--             api/_lib/wallet-auth.js verifyGenesisToken.
+-- Addresses : the player brings the SQUADS MULTISIG address (the account that carries the
+--             members and the threshold). vault_address is the VAULT PDA derived from it -
+--             a bare PDA that holds tokens and carries no data of its own, and which
+--             cannot be reversed back to its multisig. Both are stored because neither can
+--             be recovered from the other.
+-- Hardware  : hardware_backed is DERIVED at read time, by joining signer_wallets against
+--             wallet_identity.sgt_verified_at. There is deliberately no column for it - a
+--             stored boolean would go stale the moment a binding is cleared.
+-- Tenure    : first_seen_staked_at is stamped on the FIRST positive stake observation, not
+--             at registration, so a clan banks no tenure for the gap between registering
+--             an empty vault and funding it. It is WO-1852's "tenure counts from the first
+--             observation" ruling applied to a vault instead of a member, and it is a
+--             first-pass default flagged for the owner, not a ruling.
+-- Reads only: the game never signs, executes or creates a Squads transaction. There is no
+--             vault-creation flow ("bring your own vault"); Squads and the vault's own
+--             signers handle every write.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS clan_vaults (
+    clan_id UUID PRIMARY KEY REFERENCES clans(id) ON DELETE CASCADE,
+    vault_address TEXT NOT NULL UNIQUE,
+    multisig_address TEXT NOT NULL,
+    vault_index SMALLINT NOT NULL DEFAULT 0,
+    signer_wallets JSONB NOT NULL,
+    threshold INTEGER NOT NULL,
+    verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    first_seen_staked_at TIMESTAMPTZ NULL,
+    CONSTRAINT clan_vaults_threshold_range CHECK (threshold >= 1),
+    CONSTRAINT clan_vaults_signers_is_array CHECK (jsonb_typeof(signer_wallets) = 'array'),
+    CONSTRAINT clan_vaults_index_range CHECK (vault_index BETWEEN 0 AND 255)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS wallet_identity_sgt_mint_unique
+    ON wallet_identity (sgt_mint)
+    WHERE sgt_mint IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS clan_vaults_signer_wallets_idx
+    ON clan_vaults USING GIN (signer_wallets);
+
+CREATE UNIQUE INDEX IF NOT EXISTS clan_vaults_multisig_unique
+    ON clan_vaults (multisig_address);
