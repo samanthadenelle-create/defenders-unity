@@ -259,6 +259,59 @@ drain with `f8-check-inbox.ps1` / `f8-ack.ps1`; `f8-device-backfill-digest.ps1` 
 lines beside the mirror: `adb -s <serial> logcat -v time Unity:V '*:S'` (check `adb logcat -g` first —
 the ring size is per device and the Flow firehose can evict the boot window).
 
+### Scripted device scenarios (WO-1775)
+
+The mirror/record recipe above only WATCHES a run — it cannot SET ONE UP (a Lv 52 hero at
+wave 176, an Iron Bastion raid at Lv 4 with 10 troops, etc.). `tools\device-scenario.ps1` adds
+the setup half: a scenario string, sent as Android intent EXTRAS to a `QA_SCENARIO_BUILD` APK
+(`overnight-apk-build.ps1 -Scenario`, which implies `-Tester`'s `TESTER_BUILD` define and stamps
+`QA_SCENARIO_BUILD` alongside it — never a store/Firebase-tester artifact; the file it produces
+is renamed with a `-scenario` suffix so it can never be mistaken for the tester upload). The
+intent is read by `Assets/_Modules/DevTools/DevScenarioIntent.cs` and dispatched in two phases —
+PRE-HUB (`newgame`, `onboarded`, `wave`, `resources`, `buildings`, `troops`, `ff.*`, `tun.*`,
+applied at Title before the first wave loop begins) and POST-HUB (`level`, `raid`, `town`,
+applied once the hub scene + hero exist). `camera=` is NOT implemented (WO-1775 §8 Q2 open).
+
+```powershell
+# Observe only (the DEFAULT) — capture, no intent, no force-stop:
+tools\device-scenario.ps1 -Serial <serial> -Seconds 20
+
+# Scripted scenario on the emulator or a Seeker guest user — NEVER the owner's own Seeker
+# session without -ConfirmSeekerScenario (device policy below):
+tools\device-scenario.ps1 -Serial <serial> -Target emulator -Seconds 30 `
+    -Scenario "newgame=knight;onboarded=1;level=52;wave=176;resources=max"
+```
+
+Ordering inside the wrapper is load-bearing and non-negotiable: overlay check FIRST (never
+scripts taps if one is present), `logcat -g` (ring size) THEN `-d` (drain) and ONLY THEN `-c`
+(clear) — clearing before the drain destroys evidence. The launcher activity is resolved from
+the DEVICE every run (`adb shell cmd package resolve-activity --brief <pkg>`), never hardcoded.
+Recording uses `--video-codec=h264 --no-control` (the default codec wrote 0-byte files on this
+Seeker three times). Contact sheets (`ffmpeg -vf "fps=1,scale=320:-1,tile=6x5"`) are the read
+path for frames — never read the raw video frame-by-frame; grep `run.log` for the scenario's
+judging `[Flow:*]` token, never read the whole file. Success prints `DEVICE_SCENARIO_OK <dir>` —
+judge that marker on a fresh console read, never the exit code.
+
+**Device policy (three tiers, WO-1775 §3):**
+1. **The owner's Seeker — OBSERVE ONLY.** A scripted intent state change needs
+   `-ConfirmSeekerScenario` AND her explicit OK for that specific run; the wrapper refuses
+   `-Target seeker -Scenario ...` without it, and never sends `am force-stop` to her device
+   either way.
+2. **Emulator AVD — the scripted target.** ⚠ UNPROVEN whether the current `Pixel_10_Pro_XL`
+   x86_64 image can run this ARM64 IL2CPP APK — check with `adb install` and read
+   `INSTALL_FAILED_NO_MATCHING_ABIS` before assuming it works.
+3. **Seeker guest/second user — the fallback.** Every step (`pm create-user`, `switch-user`,
+   whether wallet/Seed Vault binding is per-user) is UNPROVEN on this Seeker — read-only checks
+   first, and never `create-user`/`switch-user` without an explicit owner OK.
+
+Scenario keys read at source, WO-1775 §1.6 — `newgame=<knight|ranger|mage|cleric>` (only on a
+save-free target; refused with a `FlowTrace.Fail` on an existing save), `onboarded=1` (required
+or the wave loop never starts — the FTUE gate is `!Onboarded`, checked every tick), `level=N`
+(via the real `HeroProgression.AddXp` loop), `wave=N` (via `GameStateService.RecordRun(N-1)` —
+must land BEFORE the first `BeginLoop` or it silently no-ops), `troops=N`, `buildings=max`,
+`resources=max|wood:N,food:N,iron:N,crystals:N`, `raid=<sceneId>`, `town=granted`, and arbitrary
+`ff.<key>=N` / `tun.<key>=N`. Full provenance for each: `WORK_ORDER_1775_device_scenario_harness_scrcpy_devkit.md`.
+
 ## Reference
 Full operating SOP + the latest run ledger: `OVERNIGHT_AUTOPILOT_LOG.md`. Build/gate/bake cycle
 table: `docs/HANDOVER.md` §4. Instrumentation method (`FlowTrace`/`Guard`/break-log):

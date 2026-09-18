@@ -20,7 +20,7 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [
-        "UNITY_EDITOR || DEVELOPMENT_BUILD"
+        "UNITY_EDITOR || DEVELOPMENT_BUILD || QA_SCENARIO_BUILD"
     ],
     "versionDefines": [],
     "noEngineReferences": false

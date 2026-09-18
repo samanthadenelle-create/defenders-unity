@@ -1,6 +1,6 @@
 # WO-1775 — Device scenario harness: scripted scenarios + scrcpy/logcat capture, cheapest-first
 
-**Status:** READY TO IMPLEMENT
+**Status:** READY FOR LEAD REVIEW
 **Lane:** Tooling / QA harness (no gameplay files; §9-disjoint from every combat/world lane)
 **Silo:** device-qa
 **Opened:** 2026-09-16
@@ -606,3 +606,135 @@ don't-re-inline lesson).
 13. **`Onboarded` is the gate on scenario (a)** — the per-tick stand-down is read at
     `WaveManager.cs:1205-1225` and the `!Onboarded` root is from memory
     `enemies-never-spawn-tutorial-onboarded-gate`; the two were **not** traced end-to-end this session.
+
+---
+
+## IMPLEMENTATION RECORD (2026-09-17) — files, re-verification, and flags for the lead
+
+**Files written**
+- `tools/device-scenario.ps1` — the capture wrapper (new).
+- `Assets/_Modules/DevTools/DevScenarioIntent.cs` — the `#if QA_SCENARIO_BUILD` intent reader +
+  two-phase dispatcher (new).
+- `Assets/Editor/Regression/DeviceScenarioKitRegression.cs` — the gate-only source-lint suite,
+  8 checks (new).
+- `Assets/Editor/Regression/DataRegression.cs` — one `Guard.Try` registration line for the new
+  suite, same idiom as the `echo-world-presence suite` line immediately above it.
+- `Assets/_Modules/Village/World/Camps/DevSkipKit.cs` — added `TrainExactly(GameStateService, int)`
+  beside `MaxTroopTypes`. Nothing else touched in this file.
+- `Assets/_Modules/DevTools/DeNelle.DevTools.asmdef` — `defineConstraints` widened from
+  `"UNITY_EDITOR || DEVELOPMENT_BUILD"` to `"UNITY_EDITOR || DEVELOPMENT_BUILD || QA_SCENARIO_BUILD"`.
+- `overnight-apk-build.ps1` — added `-Scenario` switch (implies `-Tester`); tags the built APK's
+  filename with `-scenario` (a `Rename-Item` step right after the freshness check, so the
+  `[filename-tag]` gate check has real code — not just a comment — to find).
+- `.claude/skills/run-defenders/SKILL.md` — new "Scripted device scenarios (WO-1775)" subsection
+  under "Device felt-test from the PC (scrcpy)".
+- This file — `**Status:**` flipped to READY FOR LEAD REVIEW.
+
+**Gates run by this lane (per the task brief — NOT the Unity compile gate/DataRegression, which
+are the lead's):**
+- `python tools/gate_brace.py` on every touched `.cs`: `DevScenarioIntent.cs`, `DevSkipKit.cs`,
+  `DeviceScenarioKitRegression.cs`, `DataRegression.cs` — all `bad=0`.
+- A NUL-byte scan (`open(path,'rb').read().count(b'\x00')`) on the same four files — all `0`.
+- `[System.Management.Automation.Language.Parser]::ParseFile` on both touched `.ps1` files
+  (`device-scenario.ps1`, `overnight-apk-build.ps1`) — both `PARSE_OK`.
+- **NOT run by this lane:** `COMPILE_GATE_OK`, `REGRESSION_OK <n>/<n> suites`,
+  `python tools/board_build.py` / `BOARD_CHECK_*`, and no Unity, no device, no APK build was
+  invoked. Per the task brief, the lead runs the Unity gate over the combined tree.
+
+**Re-verified at source this session (§10's list, one by one) vs trusted from the spec:**
+- **Every §1.6 seam the spec cited** (`AdminOverlay.cs` two-guard split `:259-297`,
+  `OnSetHeroLevel` `:1026-1085`, `OnSetOnboarded` `:855-862`, `DevSkipKit.cs` whole file,
+  `GameStateService.RecordRun` `:1117-1122`, `GameStateService.ResetToNewGame` `:1366`,
+  `WaveManager.ResolveStartWave`/`s_resumeWaveId` `:1501-1509`/`:628`,
+  `RemoteTunables.LocalPrefix` `:131`, `SaveSchema.PlayerPrefsKey` `:47`,
+  `TargetedLocalAssociationScenario`'s `getIntent`/`currentActivity` idiom `:222-226`,
+  `AndroidBuild.cs` `PackageId`/`BuildOptions.None`/IL2CPP-ARM64 log `:49/:141/:393`,
+  `overnight-apk-build.ps1`'s `-Tester`/`-Defines` shape `:36-53`,
+  `capture-seeker-screen.ps1`'s device-count guard `:11-14`) — **read at source this session,
+  confirmed present, line numbers drifted by only a few lines from the spec's citations (natural
+  churn), no claim was wrong.**
+- **§10 item 6 (DevTools asmdef constraint quoted from a comment, not the file)** — **confirmed
+  exactly as the spec warned.** The actual `defineConstraints` array is ONE string,
+  `"UNITY_EDITOR || DEVELOPMENT_BUILD"` — not two array entries as a careless read of
+  `DevPanelController.cs:19-23`'s comment might suggest. Edited the real file, not the comment's
+  paraphrase.
+- **A seam the spec did NOT cite, found and used instead of a manual field write:**
+  `GameStateService.ChooseHero(HeroClass cls)` (`:1209-1230`, doc-commented
+  `playerSlice 'chooseHero' — lock in the hero class`) is the REAL hero-select commit path —
+  it runs the `PlayableHeroes.IsPlayable` coercion, fires `PlayerChanged`, and `Save()`s. The
+  spec's §1.6 table only said "class rides `newgame=<class>`" without naming the seam;
+  `ApplyNewGame` calls `svc.ResetToNewGame(); svc.ChooseHero(cls);` rather than assigning
+  `svc.State.HeroClass` directly, so the scenario gets the same coercion/eventing a real hero
+  pick gets.
+- **§10 items 1–4, 7, 9, 12 (launcher activity class, emulator ABI, `run-as`/root, guest-user
+  steps, `--stay-awake`, define-forwarding-with-a-real-build, two-device screenshot throw)** —
+  **NOT re-verified; still unproven, exactly as the spec said.** None of these need a live
+  device/build to WRITE the harness correctly per spec (the wrapper resolves the activity at
+  runtime and never hardcodes it; it never calls `capture-seeker-screen.ps1` at all — see FLAG 1
+  below), so they were left as open device-side facts for whoever runs the wrapper first, not
+  guessed at here.
+- **§10 item 5 (WO-1773's judging line, not on disk)** — still true; the harness makes NO claim
+  about what token proves scenario (a)'s hero-damage judgement, per the spec's own instruction.
+- **§10 item 13 (`Onboarded`/`WaveLoopSuppressedForTutorial` not traced end-to-end)** — still not
+  traced end-to-end by this lane either; `ApplyOnboarded` implements the write the spec specified
+  (`GameState.Onboarded = value; Save();`), and its correctness rests on the same unverified
+  memory citation the spec rests on.
+
+### FLAG 1 — the wrapper never calls `capture-seeker-screen.ps1` at all
+Acceptance #7 worries about `capture-seeker-screen.ps1` throwing with two devices attached even
+when a serial is passed (its own `adb devices` call, not `adb -s <serial> devices`, counts the
+WHOLE fleet). Rather than patch that helper (out of scope — `DO NOT TOUCH` lists nothing about it,
+but it also isn't listed under `Modify`) or duplicate its `cmd.exe` PNG-safe idiom, the wrapper
+produces its evidence entirely from `scrcpy --record` + `ffmpeg` contact sheets and never takes a
+standalone screenshot — so the two-device hazard that helper has simply never triggers from this
+path. Every `adb` call inside `device-scenario.ps1` goes through `Invoke-Adb`, which always passes
+`-s $Serial`. **Not measured with two devices physically attached this session** (no second
+device was online) — the design avoids the failure mode rather than proving the avoidance live.
+
+### FLAG 2 — `resources=` and `buildings=` value grammar is this lane's own design, not spec-dictated
+WO-1775's scenario library only ever writes `resources=max` and `buildings=max` in its worked
+examples; the §1.6 table's `resources=wood:50000,iron:50000,…` is the only hint at a general
+grammar. `ApplyResources` accepts `max` (mirrors `AdminOverlay.OnLoadResources`'s
+50000/50000/50000/50000 + 50000 coins) or a `key:amount,key:amount` list
+(`wood|food|iron|crystals`); `ApplyBuildings` accepts only `max` (calls `DevSkipKit.PrepCastlePower()`
+directly, which folds in `MaxPlacedStructureLevels` and a troop top-up the spec's table didn't
+mention as a side effect) and Warns on anything else. Neither grammar choice is spec-cited, so
+flagging it for the lead rather than presenting it as WO-approved.
+
+### FLAG 3 — `troops=N` cannot shrink an already-larger army
+`DevSkipKit.TrainExactly` only trains UP to `n` (no disband verb exists anywhere in this kit, per
+§1.6.1's "no bare reset" stance extended to troops). If `buildings=max` ran first in the same
+scenario string (it does, in the PRE-HUB apply order) its own `MaxTroopTypes` call may already
+have trained more unique troop types than a smaller `troops=N` target — `ApplyTroops` then
+`FlowTrace.Warn`s that the army was "left at" a higher count rather than silently claiming N.
+Scenario (a)/(b)/(c) in this WO never combine `buildings=max` with a smaller `troops=`, so this
+never fires in the documented library, but a future scenario string could hit it.
+
+### FLAG 4 — `wave=` landing late Warns via a structural gate, not a dynamic WaveManager read
+Acceptance #12's second half ("a run that sets it in the post-hub phase is shown to
+`FlowTrace.Warn`") is satisfied STRUCTURALLY: `wave` is only ever read from the PRE-HUB key set in
+`TryApplyPreHub`, never from `TryApplyPostHub`'s key set, so the normal two-phase dispatch cannot
+literally apply it post-hub. The Warn path added (`TryApplyPostHub` firing before `s_preHubDone`
+because the hub scene loaded before any `GameStateService` was ever seen) covers the one route
+this dispatcher's own state machine could still let it happen late. This was **not proven against
+a live `WaveManager`** — `s_resumeWaveId` has no public accessor, so nothing here reads the real
+resume-seed state to confirm the "already resolved" claim; the Warn fires on the dispatcher's own
+phase-ordering evidence, not on a WaveManager read.
+
+### FLAG 5 — the `[ship-quarantine]` regression check needed a bug fix mid-write, left as a lesson in its own header
+The first draft of `DeviceScenarioKitRegression.CheckShipQuarantine` scanned RAW
+`overnight-apk-build.ps1` text for `QA_SCENARIO_BUILD` — which found this WO's own `#`-comment
+documentation paragraph FIRST (before any real code), so the "is it behind an `if` guard" window
+landed in prose and would have FALSE-FAILED the gate the moment it ran. Fixed by adding a
+PowerShell-comment-stripping helper (`StripPowerShellComments`, quote-aware) and reading that
+instead of raw text for this one check; verified by hand-simulating the same strip in Python
+against the real file (`first code idx 219`, window contains `if ($Scenario) {`). This is exactly
+the class of self-inflicted false-positive CLAUDE.md §12 warns against — caught before hand-back,
+not by the lead's gate.
+
+**What was NOT executed, stated plainly:** no Unity batchmode run, no APK build, no device/emulator
+was touched. Every claim about `DevScenarioIntent.cs`'s runtime behavior (the two-phase dispatch,
+the `newgame`/`onboarded`/`wave`/`level`/`troops`/`resources`/`buildings`/`raid`/`town`/`ff.*`/
+`tun.*` appliers) is reasoned-from-the-source, not measured — WO-1775 §5 says exactly this class of
+behavior needs a device to prove, and that is the lead's or a device-qa lane's next step once the
+Unity gate is green.

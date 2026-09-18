@@ -42,8 +42,23 @@
 #   THE SWITCH IS OPT-IN ON PURPOSE: its ABSENCE is store-safe. A store APK cannot ship dev
 #   tooling by someone FORGETTING a flag, only by someone explicitly ADDING one. Do not make
 #   this the default, and do not invert the sense.
+#
+# -Scenario (WO-1775, 2026-09-17): adds TESTER_BUILD;QA_SCENARIO_BUILD - the device-scenario
+#   intent-extra dispatcher (Assets/_Modules/DevTools/DevScenarioIntent.cs). QA_SCENARIO_BUILD
+#   is a SEPARATE define from TESTER_BUILD, stamped ALONGSIDE it (it IMPLIES -Tester's define,
+#   never widens TESTER_BUILD itself), because the scenario kit MINTS value (hero level,
+#   resources) - the exact thing WO-1512's inner-guard split forbids reaching the Firebase
+#   tester APK. A QA_SCENARIO_BUILD artifact is NEVER uploaded to Firebase App Distribution or
+#   a store; the filename below carries "-scenario" so it can never be mistaken for the tester
+#   upload. Pinned by DeviceScenarioKitRegression (device-scenario-kit suite).
 # =============================================================================
-param([string]$Defines = '', [switch]$Tester)
+param([string]$Defines = '', [switch]$Tester, [switch]$Scenario)
+if ($Scenario) {
+    $Tester = $true # -Scenario IMPLIES -Tester's define (WO-1775 sec.1.5) - accept both together.
+    if ([string]::IsNullOrWhiteSpace($Defines)) { $Defines = 'QA_SCENARIO_BUILD' }
+    else { $Defines = "$Defines;QA_SCENARIO_BUILD" }
+    Write-Host "[apk] SCENARIO build requested - defines will include QA_SCENARIO_BUILD"
+}
 if ($Tester) {
     if ([string]::IsNullOrWhiteSpace($Defines)) { $Defines = 'TESTER_BUILD' }
     else { $Defines = "$Defines;TESTER_BUILD" }
@@ -51,6 +66,10 @@ if ($Tester) {
 } else {
     Write-Host "[apk] STORE-shaped build (no TESTER_BUILD define) - defines: '$Defines'"
 }
+# The artifact filename carries "-scenario" whenever QA_SCENARIO_BUILD is stamped, so a QA
+# APK can never be confused with the tester upload at Firebase App Distribution time
+# (DeviceScenarioKitRegression's [filename-tag] check pins this line existing).
+$ArtifactSuffix = if ($Scenario) { '-scenario' } else { '' }
 Set-Location $PSScriptRoot
 $status = 'Builds\overnight-apk-status.txt'
 New-Item -ItemType Directory -Force -Path 'Builds' | Out-Null
@@ -90,6 +109,16 @@ if ($apk -and $apk.LastWriteTime -lt $startedAt) {
     exit 1
 }
 if ($apk) {
+    # WO-1775 [filename-tag]: a QA_SCENARIO_BUILD artifact must NEVER be mistaken for the
+    # Firebase-tester upload, so it is renamed on disk with the "-scenario" suffix the moment
+    # the fresh build is confirmed - before any push/install step can pick up the bare name.
+    if ($ArtifactSuffix -and ($apk.BaseName -notlike "*$ArtifactSuffix")) {
+        $taggedName = "$($apk.BaseName)$ArtifactSuffix$($apk.Extension)"
+        $taggedPath = Join-Path $apk.DirectoryName $taggedName
+        Rename-Item -Path $apk.FullName -NewName $taggedName -Force
+        $apk = Get-Item $taggedPath
+        Write-Host "[apk] SCENARIO artifact tagged: $($apk.FullName)"
+    }
     "APK_OK $(Get-Date -Format o) path=$($apk.FullName) size=$([math]::Round($apk.Length/1MB,0))MB" | Out-File -Encoding ascii -Append $status
 } else {
     "APK_FAILED_NO_APK $(Get-Date -Format o) (see Builds\apk-build.log)" | Out-File -Encoding ascii -Append $status

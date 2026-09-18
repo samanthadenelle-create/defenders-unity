@@ -144,6 +144,31 @@ namespace DeNelle.Village.World.Camps
             }
             return army.Owned != null ? army.Owned.Count : 0;
         }
+
+        /// <summary>
+        /// WO-1775 §1.6 troops=N: trains up to EXACTLY <paramref name="n"/> total owned troops,
+        /// cycling the same TroopCatalog roster + slot resolver MaxTroopTypes uses (Owner ruling:
+        /// no grinding). Only ADDS — there is no release/disband verb in this kit, so a save that
+        /// already owns more than <paramref name="n"/> troops is left as-is and the caller should
+        /// FlowTrace.Warn that the target could not be reached downward.
+        /// </summary>
+        public static int TrainExactly(GameStateService svc, int n)
+        {
+            if (svc?.State?.Army == null || n <= 0) return svc?.State?.Army?.Owned?.Count ?? 0;
+            var army = svc.State.Army;
+            var all = TroopCatalog.All;
+            if (all == null || all.Count == 0) return army.Owned != null ? army.Owned.Count : 0;
+            int guard = 0;
+            while ((army.Owned == null ? 0 : army.Owned.Count) < n &&
+                   army.SlotsRemaining(DeNelle.Village.TroopDialogueCommands.SlotOf) > 0 &&
+                   guard++ < 10000)
+            {
+                var def = all[guard % all.Count];
+                if (def == null || string.IsNullOrEmpty(def.Id)) continue;
+                if (army.TrainNow(def.Id, DeNelle.Village.TroopDialogueCommands.SlotOf, _ => true) == null) break;
+            }
+            return army.Owned != null ? army.Owned.Count : 0;
+        }
     }
 }
 #endif
