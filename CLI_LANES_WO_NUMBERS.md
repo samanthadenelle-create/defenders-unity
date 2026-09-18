@@ -189,7 +189,11 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-sixth pass): main line next free = **1873**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-seventh pass): main line next free = **1875**.
+> *(CLI minted **WO-1873** (global + Circle chat rooms) and **WO-1874** (the Ceremony of Vigil upon the
+> epoch, SPEC) 2026-09-18 16:40 from the owner's words. Bumped 1873 -> 1875 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-sixth pass): main line next free = **1873**.
 > *(CLI minted **WO-1872** 2026-09-18 15:25 - a captured town starts BARE: no gifted fortified wall
 > sections or defense structures (owner ruling: "we want them to create their own town").
 > Bumped 1872 -> 1873 in this SAME edit.)*
