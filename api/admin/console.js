@@ -65,82 +65,99 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
 <meta name="robots" content="noindex, nofollow">
 <title>Elarion Command Center</title>
 <style>
+  /* WO-1244 restyle pass. Same page, same behaviour, same class names the
+     script builds strings against - only the look changed. Dark admin-tool
+     theme, one accent colour used for EMPHASIS only, never as the sole
+     signal: every state word also gets a shape (filled chip, dashed
+     outline, or a leading marker glyph) because the owner is red/green
+     colourblind and must never have to tell two hues apart. */
   :root{
-    --ink:#07060a; --panel:#12111a; --panel2:#191823; --line:#2b2937;
-    --text:#ece8f5; --dim:#9a94ad; --accent:#e8b84b; --tap:48px;
+    --ink:#0b0c10; --panel:#15161d; --panel2:#1d1f29; --line:#2b2d38; --line2:#3b3d4a;
+    --text:#eef0f6; --dim:#989cac; --accent:#e8b84b; --accent-ink:#241a05;
+    --tap:48px; --bigtap:112px; --radius:12px; --radius-sm:9px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
+  [hidden]{display:none!important}
   body{background:var(--ink);color:var(--text);
-    font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-text-size-adjust:100%;padding-bottom:env(safe-area-inset-bottom)}
-  .wrap{max-width:900px;margin:0 auto;padding:12px}
+  .wrap{max-width:960px;margin:0 auto;padding:14px}
   header{position:sticky;top:0;z-index:5;background:var(--ink);border-bottom:1px solid var(--line);
-    padding:10px 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-  .brand{font-weight:700;letter-spacing:.03em}
-  .brand span{color:var(--dim);font-weight:400;font-size:13px;display:block}
+    padding:12px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .brand{font-weight:800;letter-spacing:.02em;font-size:17px}
+  .brand span{color:var(--dim);font-weight:500;font-size:12px;display:block;margin-top:1px}
   button,input,select,textarea{font:inherit}
-  button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;
-    padding:12px 14px;min-height:var(--tap);cursor:pointer}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--line2);border-radius:var(--radius-sm);
+    padding:12px 16px;min-height:var(--tap);cursor:pointer;font-weight:600}
+  button:hover{border-color:var(--accent)}
   button:active{transform:translateY(1px)}
-  button.primary{background:var(--accent);color:#1a1405;border-color:var(--accent);font-weight:700}
-  button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);font-weight:700}
-  input,select,textarea{background:var(--panel2);color:var(--text);border:1px solid var(--line);
-    border-radius:10px;padding:12px;min-height:var(--tap);width:100%}
+  button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:800}
+  button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);font-weight:800}
+  input,select,textarea{background:var(--panel2);color:var(--text);border:1px solid var(--line2);
+    border-radius:var(--radius-sm);padding:12px;min-height:var(--tap);width:100%}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   textarea{min-height:80px}
-  label{display:block;margin:12px 0 5px;color:var(--dim);font-size:13px}
+  label{display:block;margin:14px 0 6px;color:var(--dim);font-size:13px;font-weight:600}
   nav{display:flex;gap:6px;overflow-x:auto;padding:10px 12px 0;-webkit-overflow-scrolling:touch}
-  nav button{white-space:nowrap;padding:10px 14px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
-  .card h2{margin:0 0 4px;font-size:16px}
-  .note{color:var(--dim);font-size:13px;margin:4px 0 0}
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-  .tile{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px}
-  .tile .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
-  .tile .v{font-size:26px;font-weight:700;line-height:1.15;margin-top:2px}
-  .tile .s{color:var(--dim);font-size:12px;margin-top:2px}
-  .hero{background:linear-gradient(145deg,#211a12 0%,var(--panel) 52%);border-color:#5d4923;
-    padding:18px;overflow:hidden;position:relative}
-  .hero:after{content:"";position:absolute;width:190px;height:190px;border:1px solid #5d4923;
-    border-radius:50%;right:-90px;top:-110px;opacity:.55}
-  .eyebrow{color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em}
-  .hero-number{font-size:52px;font-weight:800;line-height:1;margin:8px 0 4px;letter-spacing:-.04em}
-  .metric-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px;margin-top:14px}
+  nav button{white-space:nowrap;padding:10px 16px;font-size:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:14px 0}
+  .card h2{margin:0 0 6px;font-size:17px;font-weight:800}
+  .note{color:var(--dim);font-size:13px;margin:5px 0 0;line-height:1.5}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .tile{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px}
+  .tile .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+  .tile .v{font-size:26px;font-weight:800;line-height:1.15;margin-top:3px}
+  .tile .s{color:var(--dim);font-size:12px;margin-top:3px}
+  .hero{background:linear-gradient(160deg,#241c10 0%,var(--panel) 55%);border-color:#5d4923;
+    padding:20px;overflow:hidden;position:relative}
+  .hero:after{content:"";position:absolute;width:210px;height:210px;border:1px solid #5d4923;
+    border-radius:50%;right:-95px;top:-115px;opacity:.5}
+  .eyebrow{color:var(--accent);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em}
+  .hero-number{font-size:52px;font-weight:800;line-height:1;margin:10px 0 4px;letter-spacing:-.03em}
+  .metric-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px;margin-top:16px}
   .metric-grid .tile:first-child{border-color:#5d4923}
   .chart{display:flex;align-items:flex-end;gap:5px;height:150px;padding:18px 2px 0;border-bottom:1px solid var(--line)}
   .bar-wrap{height:100%;flex:1;min-width:8px;display:flex;align-items:flex-end;position:relative}
   .bar{width:100%;min-height:2px;background:var(--accent);border-radius:4px 4px 0 0;opacity:.82}
   .bar-wrap:hover .bar,.bar-wrap:focus .bar{opacity:1}
   .chart-key{display:flex;justify-content:space-between;color:var(--dim);font-size:11px;margin-top:6px}
-  .coverage{height:8px;background:var(--panel2);border-radius:10px;overflow:hidden;margin:10px 0 5px}
+  .coverage{height:8px;background:var(--panel2);border-radius:10px;overflow:hidden;margin:10px 0 5px;border:1px solid var(--line)}
   .coverage span{display:block;height:100%;background:var(--accent)}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .grow{flex:1 1 180px}
   .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   table{border-collapse:collapse;width:100%;min-width:460px;font-size:14px}
-  th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
-  th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+  th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  tbody tr:hover{background:rgba(255,255,255,.025)}
   td.wrapcell{white-space:normal;min-width:200px}
-  .state{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:2px 8px;
-    font-size:12px;font-weight:700;letter-spacing:.04em}
-  .state.on{border-color:var(--accent);color:var(--accent)}
-  /* WO-1532. The WORD carries the meaning; this rule only makes it louder. The
-     owner is red/green colourblind, so MISSING must still read as MISSING with
-     every colour stripped out - hence the weight and the border, not just a hue. */
-  .state.bad{border-color:var(--accent);color:var(--accent);font-weight:700}
-  .sku-contents{margin:0;padding-left:18px;font-size:13px;line-height:1.5}
-  .sku-contents li{margin:2px 0}
-  .alert{border-color:var(--accent)}
+  /* State chips: shape carries the meaning, colour is decoration only.
+     Plain = thin outline. .on = a filled solid chip. .bad = a heavy dashed
+     outline plus a leading "!" glyph, so MISSING still reads as MISSING
+     with every colour removed. */
+  .state{display:inline-block;border:1px solid var(--line2);border-radius:6px;padding:3px 9px;
+    font-size:12px;font-weight:800;letter-spacing:.03em}
+  .state.on{border-color:var(--accent);color:var(--accent-ink);background:var(--accent)}
+  .state.bad{border:2px dashed var(--accent);color:var(--accent);background:transparent}
+  .state.bad:before{content:"! "}
+  .sku-contents{margin:0;padding-left:18px;font-size:13px;line-height:1.6}
+  .sku-contents li{margin:3px 0}
+  /* Same shape rule for the card-level alert border and the message box: a
+     dashed outline plus a marker glyph, never colour alone. */
+  .alert{border:2px dashed var(--accent)}
   .alert h2{color:var(--accent)}
-  .toggle{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:var(--panel2)}
+  .alert h2:before{content:"! "}
+  .toggle{border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:10px 0;background:var(--panel2)}
   .toggle .top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
-  .toggle .name{font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .toggle .name{font-weight:800;letter-spacing:.04em;text-transform:uppercase;font-size:13px}
   .muted{color:var(--dim)}
-  .msg{margin:10px 0;padding:10px;border:1px solid var(--line);border-radius:10px;
-    background:var(--panel2);font-size:14px;white-space:pre-wrap}
-  .msg.bad{border-color:var(--accent)}
+  .msg{margin:12px 0;padding:12px 14px;border:1px solid var(--line);border-left:4px solid var(--line2);
+    border-radius:var(--radius-sm);background:var(--panel2);font-size:14px;white-space:pre-wrap}
+  .msg.bad{border-left:4px dashed var(--accent);border-color:var(--accent)}
+  .msg.bad:before{content:"! ";font-weight:800}
   .gate{max-width:440px;margin:8vh auto}
-  code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12px}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
   .none{color:var(--dim);font-style:italic}
   /* WO-1281 decision areas. The head is a full-width button so the whole strip
      is a tap target on a phone, and it never ellipsizes a label or a value:
@@ -149,22 +166,23 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
   .card.area{padding:0;overflow:hidden}
   .area-head{display:block;width:100%;text-align:left;background:transparent;border:0;
     border-radius:0;padding:16px 14px;min-height:64px}
+  .area-head:hover{background:rgba(255,255,255,.025)}
   .area-head:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-  .area-title{display:block;font-size:19px;font-weight:700;letter-spacing:.02em;
+  .area-title{display:block;font-size:19px;font-weight:800;letter-spacing:.01em;
     overflow-wrap:anywhere}
-  .area-q{display:block;color:var(--dim);font-size:13px;margin-top:2px;overflow-wrap:anywhere}
-  .area-toggle{display:inline-block;margin-top:8px;color:var(--accent);font-size:13px;font-weight:700}
+  .area-q{display:block;color:var(--dim);font-size:13px;margin-top:3px;overflow-wrap:anywhere}
+  .area-toggle{display:inline-block;margin-top:9px;color:var(--accent);font-size:13px;font-weight:800}
   .card.area>.tiles,.card.area>.note,.card.area>.msg{margin:0 14px 14px}
-  .area-detail{border-top:1px solid var(--line);padding:2px 14px 14px}
-  .area-detail h3{font-size:14px;text-transform:uppercase;letter-spacing:.07em;
-    color:var(--dim);margin:18px 0 8px;overflow-wrap:anywhere}
+  .area-detail{border-top:1px solid var(--line);padding:4px 14px 16px}
+  .area-detail h3{font-size:13px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--dim);margin:20px 0 9px;overflow-wrap:anywhere;font-weight:800}
   .area-detail .tiles{margin-bottom:6px}
   .gaps{margin:6px 0;padding-left:20px;color:var(--dim);font-size:13px}
   .gaps li{margin:6px 0}
   /* Values wrap; they are never truncated with an ellipsis. */
   .tile .v{overflow-wrap:anywhere}
   .tile .k,.tile .s{overflow-wrap:anywhere;white-space:normal}
-  @media (max-width:520px){ .wrap{padding:8px} .tile .v{font-size:22px} .hero-number{font-size:44px}
+  @media (max-width:520px){ .wrap{padding:10px} .tile .v{font-size:22px} .hero-number{font-size:42px}
     .metric-grid{grid-template-columns:1fr 1fr}.metric-grid .tile:first-child{grid-column:1/-1} }
 
   /* WO-1328 BALANCE EDITOR.
@@ -172,33 +190,34 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
      holding a phone in one hand and a device running the build in the other.
      Nothing on this surface is smaller than a thumb, and no state on it lives in
      a colour: every knob prints the WORDS "OVERRIDDEN" or "shipped default". */
-  :root{ --bigtap:112px; }
-  .knob{border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0;background:var(--panel2)}
-  .knob h3{margin:0;font-size:17px;line-height:1.3;overflow-wrap:anywhere}
-  .knob .keyname{display:block;color:var(--dim);font-size:11px;margin-top:3px;overflow-wrap:anywhere}
-  .knob .what{color:var(--dim);font-size:14px;margin:8px 0 0;overflow-wrap:anywhere}
-  .knob .risk{color:var(--text);font-size:13px;margin:8px 0 0;border-left:3px solid var(--accent);
-    padding-left:9px;overflow-wrap:anywhere}
-  .knob .now{margin:12px 0 0;font-size:15px;font-weight:700;overflow-wrap:anywhere}
-  .knob .now .num{font-size:30px;letter-spacing:-.02em;display:block;line-height:1.1}
-  .knob .nowstate{display:block;font-weight:700;letter-spacing:.03em;margin-top:2px}
+  .knob{border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:12px 0;background:var(--panel2)}
+  .knob h3{margin:0;font-size:17px;line-height:1.3;overflow-wrap:anywhere;font-weight:800}
+  .knob .keyname{display:block;color:var(--dim);font-size:11px;margin-top:4px;overflow-wrap:anywhere;
+    font-family:ui-monospace,Consolas,monospace}
+  .knob .what{color:var(--dim);font-size:14px;margin:9px 0 0;overflow-wrap:anywhere}
+  .knob .risk{color:var(--text);font-size:13px;margin:9px 0 0;border-left:3px solid var(--accent);
+    padding-left:10px;overflow-wrap:anywhere}
+  .knob .now{margin:14px 0 0;font-size:15px;font-weight:800;overflow-wrap:anywhere}
+  .knob .now .num{font-size:30px;letter-spacing:-.02em;display:block;line-height:1.15}
+  .knob .nowstate{display:block;font-weight:800;letter-spacing:.02em;margin-top:3px;font-size:13px}
   .knob .nowstate.overridden{color:var(--accent)}
-  .knob-controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:stretch}
+  .knob .nowstate.overridden:before{content:"* "}
+  .knob-controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:stretch}
   .knob-controls input{min-height:var(--bigtap);font-size:26px;text-align:center;flex:1 1 150px;width:auto}
-  .knob-controls button{min-height:var(--bigtap);flex:1 1 150px;font-size:17px;font-weight:700}
+  .knob-controls button{min-height:var(--bigtap);flex:1 1 150px;font-size:17px;font-weight:800}
   .knob-controls .bump{flex:0 0 84px;font-size:30px}
   /* WO-1348: the VFX pick control. Full-width because an effect NAME is long and must
      never be truncated on a phone, and >= --bigtap because this is a thumb target. */
   .knob-controls select{min-height:var(--bigtap);font-size:18px;flex:1 1 100%;width:100%;
-    padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
+    padding:10px;border-radius:var(--radius-sm);border:1px solid var(--line2);background:var(--panel2);
     color:var(--text)}
   .knob-clear{border-color:var(--accent)}
-  .knob-note{color:var(--dim);font-size:12px;margin:9px 0 0;overflow-wrap:anywhere}
-  .bool-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-  .bool-row button{min-height:var(--bigtap);flex:1 1 130px;font-size:18px;font-weight:700}
+  .knob-note{color:var(--dim);font-size:12px;margin:10px 0 0;overflow-wrap:anywhere}
+  .bool-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .bool-row button{min-height:var(--bigtap);flex:1 1 130px;font-size:18px;font-weight:800}
   .scope{border-color:var(--accent)}
   .scope h2{color:var(--accent)}
-  .empty-area{color:var(--dim);font-size:14px;margin:8px 0 0}
+  .empty-area{color:var(--dim);font-size:14px;margin:9px 0 0}
 </style>
 </head>
 <body>
@@ -842,6 +861,116 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
     return area('progression', 'Progression', 'Are returning players levelling up?', head, detail);
   }
 
+  // -- READ-THE-NUMBERS NARRATIVE (owner ask, 2026-09-18: "this is just noise,
+  // I need it to tell me something, paint the picture.") --------------------
+  // Pure JS-side interpretation over the SAME JSON the endpoint already
+  // returns -- no new fetch, no new field, no change to what is requested.
+  // Simple, named thresholds; this is a diagnostic aid for a human reading a
+  // phone screen, not a certified alerting system. The raw numbers stay
+  // exactly where they were; this sits ABOVE them as the headline read.
+  //
+  // Every verdict is a WORD inside the sentence (HEALTHY / MIXED / LOW /
+  // STALE), rendered inside .msg / .msg.bad, which already carry a shape
+  // difference (dashed border + a leading "!" glyph) so nothing here relies
+  // on colour alone.
+  function msAgo(iso){
+    if (!iso) return null;
+    var t = Date.parse(iso);
+    return isFinite(t) ? (Date.now() - t) : null;
+  }
+  function narrLine(text, bad){ return { text:text, bad:!!bad }; }
+  function narrHtml(lines){
+    return lines.map(function(l){
+      return '<p class="' + (l.bad ? 'msg bad' : 'msg') + '">' + esc(l.text) + '</p>';
+    }).join('');
+  }
+  // Shared read for "what fraction of X carry an identified player" -- the
+  // same shape of number appears on both the Players tab (sessions) and the
+  // Diagnostics tab (events).
+  function coverageNarrative(pct, unitWord, anonCount, idCount){
+    if (pct === null || pct === undefined){
+      return narrLine('Identified coverage could not be read.', true);
+    }
+    if (pct >= 80){
+      return narrLine('Telemetry looks HEALTHY: ' + pct + '% of ' + unitWord + ' carry an ' +
+        'identified player (' + n(idCount) + ' identified), and only ' + n(anonCount) + ' ' +
+        unitWord + ' fall into the shared anonymous bucket.', false);
+    }
+    if (pct >= 50){
+      return narrLine('Telemetry is MIXED: only ' + pct + '% of ' + unitWord + ' carry an ' +
+        'identified player. ' + n(anonCount) + ' anonymous ' + unitWord + ' cannot be split ' +
+        'into people, so this surface describes a shrinking share of the playerbase.', true);
+    }
+    return narrLine('Telemetry coverage is LOW: just ' + pct + '% of ' + unitWord + ' carry an ' +
+      'identified player. A large anonymous share means this surface describes a MINORITY of ' +
+      'the playerbase.', true);
+  }
+  var STALE_EVENT_MS = 24 * 3600 * 1000;
+  // windowDays lets "went quiet" be judged against how OFTEN an event fires,
+  // not a flat clock. A once-a-month event silent for a day is normal; a
+  // frequent one silent for several multiples of its own usual gap is the
+  // actual signal. Without this every 30/90-day window would flag its own
+  // rarest legitimate events on every single load - the exact "just noise"
+  // complaint this narrative exists to fix.
+  function diagnosticsNarrative(d, windowDays){
+    var lines = [];
+    var totalEvents = Number(d.identified_events || 0) + Number(d.anonymous_events || 0);
+    var events = d.events_by_name || [];
+
+    if (totalEvents === 0){
+      // An empty window is a fact about the window, not a coverage verdict -
+      // rendering 0% as LOW here would be the exact "failed read as a zero"
+      // lie this console refuses everywhere else.
+      lines.push(narrLine('No events at all arrived in this window, so identified coverage ' +
+        'cannot be judged. That is an empty window, not a coverage problem.', true));
+    } else {
+      lines.push(coverageNarrative(d.identified_coverage_pct, 'events', d.anonymous_events, d.identified_ids));
+    }
+
+    if (!events.length){
+      if (totalEvents > 0){
+        lines.push(narrLine('Events were counted but no event names came back for this window - ' +
+          'that reads as a broken breakdown query, not a quiet period.', true));
+      }
+    } else {
+      var windowMs = Math.max(1, Number(windowDays) || 30) * 24 * 3600 * 1000;
+      var freshest = null;
+      var stale = [];
+      events.forEach(function(e){
+        var age = msAgo(e.latest);
+        if (age === null) return;
+        if (!freshest || age < freshest.age) freshest = { name:e.event_name, age:age };
+        var cnt = Number(e.events) || 0;
+        var meanGapMs = cnt > 0 ? (windowMs / cnt) : windowMs;
+        var threshold = Math.max(STALE_EVENT_MS, meanGapMs * 3);
+        if (age > threshold) stale.push({ name:e.event_name, age:age });
+      });
+      if (freshest){
+        lines.push(narrLine('Freshest signal: "' + freshest.name + '" last fired ' +
+          dur(Math.round(freshest.age / 1000)) + ' ago.', false));
+      }
+      if (stale.length){
+        stale.sort(function(a,b){ return b.age - a.age; });
+        var shown = stale.slice(0, 5);
+        var more = stale.length > shown.length ? ' (+' + (stale.length - shown.length) + ' more)' : '';
+        var list = shown.map(function(s){ return s.name + ' (silent ' + dur(Math.round(s.age / 1000)) + ')'; }).join(', ');
+        lines.push(narrLine((stale.length === 1 ? 'One event' : stale.length + ' events') +
+          ' went quiet well past its own usual gap: ' + list + more +
+          ' - worth checking whether it stopped firing.', true));
+      }
+    }
+
+    var span = msAgo(d.first_event_at);
+    if (span !== null && span < STALE_EVENT_MS){
+      lines.push(narrLine('The oldest event on record here is only ' +
+        dur(Math.round(span / 1000)) + ' ago. Either this is a new deployment, or older data ' +
+        'rolled off or was never captured - this is not a claim about how long the game has ' +
+        'existed.', true));
+    }
+
+    return narrHtml(lines);
+  }
+
   // -- 4. DIAGNOSTICS -------------------------------------------------------
   function diagnosticsArea(c){
     var d = c.diagnostics || {};
@@ -849,7 +978,7 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
     if (!d.read_ok){
       head = unreadable('telemetry coverage');
     } else {
-      head = '<div class="tiles">' +
+      head = diagnosticsNarrative(d, c.window_days) + '<div class="tiles">' +
         tile('Identified telemetry', pctTxt(d.identified_coverage_pct),
              n(d.identified_ids) + ' identified players') +
         tile('Anonymous events', n(d.anonymous_events), 'cannot be split into people') +
@@ -932,7 +1061,12 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
       (rows.length ? '<div class="chart" aria-label="Daily active-player chart">' + chart + '</div><div class="chart-key"><span>' +
         esc(rows[0].day) + '</span><span>Peak ' + max + '</span><span>' + esc(newest.day) + '</span></div>'
         : '<p class="none">No identified-player sessions in this window.</p>') + '</div>';
-    h += '<div class="card"><h2>Telemetry health</h2><div class="tiles">' +
+    h += '<div class="card"><h2>Telemetry health</h2>' +
+      narrHtml([(knownSessions + anonSessions) === 0
+        ? narrLine('No sessions at all arrived in this window, so identified coverage cannot ' +
+            'be judged. That is an empty window, not a coverage problem.', true)
+        : coverageNarrative(coverage, 'sessions', anonSessions, knownSessions)]) +
+      '<div class="tiles">' +
       '<div class="tile"><div class="k">Identified coverage</div><div class="v">' + coverage + '%</div><div class="s">known sessions vs all sessions</div></div>' +
       '<div class="tile"><div class="k">Anonymous sessions</div><div class="v">' + anonSessions + '</div><div class="s">cannot be counted as people</div></div>' +
       '<div class="tile"><div class="k">Events received</div><div class="v">' + n((o.totals||{}).total_events) + '</div><div class="s">all time</div></div></div>' +
