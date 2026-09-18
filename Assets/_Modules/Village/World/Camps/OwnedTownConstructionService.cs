@@ -74,6 +74,13 @@ namespace DeNelle.Village.World.Camps
             var record = property.structures.Find(s => s.instanceId == instanceId);
             if (record == null || record.retired || record.constructionPending)
             { reason = "This structure is missing or already sold."; return false; }
+            // WO-1872 — SELL and CLEAR are disjoint verbs on disjoint records. A ruin is cleared for
+            // salvage (TryQuoteClear), a standing structure is sold for a refund. The split is
+            // enforced HERE and at TryQuoteClear rather than in OwnedTownLayoutSnapshot, because a
+            // retired record's condition is forced to 0 by OwnedBaseProgression.ValidateStructures, so
+            // after the fact nothing can tell which verb produced it.
+            if (record.condition01 <= 0f)
+            { reason = "This is rubble. Clear it for salvage instead of selling it."; return false; }
             var entry = CatalogRegistry.Get(record.placement.itemId);
             if (entry?.repo == null)
             { reason = "The structure catalog is unavailable."; return false; }
@@ -116,6 +123,100 @@ namespace DeNelle.Village.World.Camps
             if (grid != null) grid.Free(placed.gridCell, placed.footprint);
             target.gameObject.SetActive(false);
             Physics.SyncTransforms();
+            return true;
+        }
+
+        // =====================================================================
+        //  WO-1872 — CLEARING THE RUBBLE OF THE CAPTURED CAMP
+        //
+        //  Owner, 2026-09-18: "I think we should load a destroyed camp and then clear the rubble and
+        //  give them resources to make player designed layouts."
+        //
+        //  This is deliberately NOT a new system. It is TrySell's transaction with two substitutions:
+        //  the gate is "this record is rubble" instead of "this record is standing", and the credit
+        //  is SALVAGE (a tunable share of the catalog build cost) instead of the sale refund. The
+        //  state edit, the wallet seam, the cap/overflow behaviour and the body teardown are the same
+        //  OwnedBaseConstruction.TryRetire -> GameStateService.TryCommitOwnedBaseConstruction ->
+        //  SetActive(false) path TrySell already uses and already proves.
+        // =====================================================================
+
+        /// <summary>
+        /// The live salvage share, as an int percent. Clamped 0..100 HERE, at the one consumer:
+        /// <c>RemoteTunables.Int</c> answers whatever a console row says, and a row above 100 would
+        /// pay more for a ruin than the structure cost to build.
+        /// </summary>
+        public static int SalvagePct
+        {
+            get
+            {
+                int pct = DeNelle.Core.Ops.RemoteTunables.Int(DeNelle.Core.Ops.RemoteTunables.KeyTownCaptureSalvagePct);
+                return pct < 0 ? 0 : pct > 100 ? 100 : pct;
+            }
+        }
+
+        /// <summary>
+        /// What clearing this ruin would pay. Read-only: quotes never move state, so the panel can
+        /// price the button without committing anything.
+        /// </summary>
+        public static bool TryQuoteClear(string instanceId, out CoreCost salvage, out string reason)
+        {
+            salvage = default;
+            var service = GameStateService.Instance;
+            var property = service?.State?.OwnedBase;
+            if (!OwnedBaseProgression.Validate(property, out reason)) return false;
+            var record = property.structures.Find(s => s.instanceId == instanceId);
+            if (!CapturedTownStanddown.IsClearableRubble(record))
+            { reason = "Only the captured camp's rubble can be cleared."; return false; }
+            var entry = CatalogRegistry.Get(record.placement.itemId);
+            if (entry?.repo == null)
+            { reason = "The structure catalog is unavailable."; return false; }
+            // The snapshot validator is the shared authority for what may leave the layout at all -
+            // it is what still refuses the town's objective (OwnedTownLayoutSnapshot's clearableWall
+            // carve-out). Quoting through it means the button cannot offer a clear the commit refuses.
+            if (!OwnedBaseConstruction.TryRetire(property, property.revision, instanceId, out var next, out reason) ||
+                !OwnedTownLayoutSnapshot.TryCreate(next, service.State.HeroClass, out _, out reason)) return false;
+            salvage = CapturedTownStanddown.Salvage(entry.repo.cost, SalvagePct);
+            reason = null;
+            return true;
+        }
+
+        /// <summary>
+        /// Clears one ruin: retires the record, credits the salvage through the normal wallet seam
+        /// (cap and overflow behaviour unchanged - <paramref name="credited"/> is what actually
+        /// landed, which is not always what was quoted), and takes the body out of the scene.
+        /// </summary>
+        public static bool TryClearRubble(string instanceId, int expectedRevision, out CoreCost credited, out string reason)
+        {
+            credited = default;
+            if (IsBusy || OwnedTownDesignService.IsBusy)
+            { reason = "Wait for the current town change to finish."; return false; }
+            var scene = SceneManager.GetActiveScene();
+            var service = GameStateService.Instance;
+            var property = service?.State?.OwnedBase;
+            if (scene.name != OwnedTownScenePose.SceneName || property == null)
+            { reason = "Enter your personal town to clear rubble."; return false; }
+            if (property.revision != expectedRevision)
+            { reason = "The town changed; review the clearing again."; return false; }
+            if (!TryQuoteClear(instanceId, out var salvage, out reason)) return false;
+            var record = property.structures.Find(s => s.instanceId == instanceId);
+            string label = CatalogRegistry.Get(record.placement.itemId)?.displayName ?? record.placement.itemId;
+            if (!OwnedTownScenePose.TryResolveStructure(scene, record, out var target, out reason)) return false;
+            if (!OwnedBaseConstruction.TryRetire(property, expectedRevision, instanceId, out var next, out reason) ||
+                !service.TryCommitOwnedBaseConstruction(expectedRevision, next, default, salvage, out credited, out reason))
+            {
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("OwnedTown",
+                    $"RUBBLE CLEAR refused for '{label}' ({instanceId}): {reason} — nothing was credited " +
+                    "and the ruin is still standing in the save.");
+                return false;
+            }
+            // Keep captured identities available for replay; never destroy template objects.
+            target.gameObject.SetActive(false);
+            Physics.SyncTransforms();
+            DeNelle.Core.Diagnostics.FlowTrace.Step("OwnedTown",
+                $"RUBBLE CLEARED (WO-1872) '{label}' ({instanceId}) at {SalvagePct}% of its build cost: " +
+                $"quoted w{salvage.wood}/i{salvage.iron}/s{salvage.stone}/c{salvage.crystals}, " +
+                $"CREDITED w{credited.wood}/i{credited.iron}/s{credited.stone}/c{credited.crystals} " +
+                "(a gap is the storage cap, not a defect). Town revision=" + next.revision);
             return true;
         }
 

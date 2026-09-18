@@ -1,6 +1,6 @@
 # WO-1872 — A captured town starts BARE: no gifted fortified wall sections or defense structures
 
-**Status:** READY TO IMPLEMENT — minted 2026-09-18 15:25 (banner bumped 1872 -> 1873 in the same edit). Prize-path (raid -> capture -> own the town, the video's closing beat).
+**Status:** FIXED PENDING DEVICE BUILD — lead gated 2026-09-18 (`Builds/cg1870c` COMPILE_GATE_OK 17:59, `Builds/reg1870b` REGRESSION_OK 584/584 18:03); rides the next tester APK, owner felt-verify closes. PRIOR: IMPLEMENTED PENDING LEAD GATE — the capture census now converts defensive bodies RAZED (Heart kept standing) and the town panel clears each ruin for a `town.captureSalvagePct` share of its build cost; 8 files + the RED-first `[captured-town-bare]` suite, gate_brace 8/8 clean, no scene or locale edit. Minted 2026-09-18 15:25 (banner bumped 1872 -> 1873 in the same edit). Prize-path (raid -> capture -> own the town, the video's closing beat).
 
 **Owner, verbatim (2026-09-18):** "When the playere converts to a town We wan them to create their own town so we shuold not give them two fortified sections of walls with defense structures"
 

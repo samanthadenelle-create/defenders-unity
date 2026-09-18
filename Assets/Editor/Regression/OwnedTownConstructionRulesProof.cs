@@ -20,9 +20,20 @@ namespace DeNelle.Editor
                     captureReceiptId = "rules-receipt", suppliesReceiptId = "rules-receipt",
                     milestoneFlags = OwnedBaseMilestones.OwnershipRevealed
                 };
+                // ⛔ WO-1872 - THIS ORACLE MOVED WITH THE RULING. The towers were seeded at 0f, i.e. as
+                // RUBBLE, and the first-repair case below then demanded that TryChooseFirstRepair
+                // return one of them. Under the owner's 2026-09-18 ruling a razed structure is CLEARED
+                // for salvage, never repaired (WO-753), so the chooser now skips condition-0 records
+                // and this fixture described a contract that no longer exists.
+                //
+                // .5f = STANDING AND DAMAGED, which is what these cases were actually about: that a
+                // usable defense tower, not the fixed central objective, is the first repair offered.
+                // It is also the shape of a pre-WO-1872 save, which is the one that still reaches this
+                // path for real. The "every tower is rubble" state is not deleted - it is asserted
+                // directly, with its NEW answer, at the end of this method.
                 foreach (var entry in manifest.entries)
                 {
-                    var record = entry.structure.Clone(); record.condition01 = entry.movableTower ? 0f : 1f;
+                    var record = entry.structure.Clone(); record.condition01 = entry.movableTower ? .5f : 1f;
                     property.structures.Add(record);
                 }
                 Require(OwnedTownLayoutSnapshot.TryCreate(property, HeroClassOpt.Knight, out var baseline, out var reason), reason);
@@ -53,7 +64,27 @@ namespace DeNelle.Editor
                 var wall = property.structures.Find(s => s.placement.itemId == "wall_stone"); wall.condition01 = .5f;
                 Require(OwnedTownRepairService.TryChooseFirstRepair(property, out var later, out _, out reason) && later.instanceId == wall.instanceId,
                     "Later wall repairs must remain available after all editable towers are sold: " + reason);
-                Debug.Log("OWNED_TOWN_CONSTRUCTION_RULES_OK legacy compatibility, immutable census/objective, sale tombstone versioning, upgrade ceiling, first repair defense eligibility and later repairs after tower sales");
+
+                // WO-1872 - THE NEW HALF, and the one that keeps the deleted fixture's coverage.
+                // A town whose every defensive body is rubble offers NO repair at all: that is the
+                // captured Iron Bastion on entry, and the answer is to clear the rubble for salvage,
+                // not to rebuild the camp the player just wrecked. This is the exact state the old
+                // fixture seeded and then demanded a tower repair for; it is asserted here with the
+                // ruling's answer instead of being dropped.
+                var razedTown = property.Clone();
+                foreach (var record in razedTown.structures)
+                {
+                    if (record.retired) continue;                      // already cleared/sold above
+                    bool defensive = record.placement.itemId == "wall_stone" || manifest.IsEditableTower(record);
+                    record.condition01 = defensive ? 0f : 1f;          // the Heart alone is left standing
+                }
+                Require(!OwnedTownRepairService.TryChooseFirstRepair(razedTown, out _, out _, out var razedReason),
+                    "A fully razed captured town must offer NO repair - rubble is cleared for salvage, " +
+                    "never repaired (WO-1872 / WO-753). The chooser instead offered one.");
+                Require(!string.IsNullOrEmpty(razedReason),
+                    "The refusal must carry a reason; a silent false strands the panel (CLAUDE.md section 12).");
+
+                Debug.Log("OWNED_TOWN_CONSTRUCTION_RULES_OK legacy compatibility, immutable census/objective, sale tombstone versioning, upgrade ceiling, first repair defense eligibility, later repairs after tower sales and no repair offered for a fully razed capture");
             }
             finally { if (hydrated) DeNelle.Core.Catalog.CatalogRegistry.Clear(); }
         }

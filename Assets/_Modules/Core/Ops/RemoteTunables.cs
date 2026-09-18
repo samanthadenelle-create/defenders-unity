@@ -639,6 +639,22 @@ namespace DeNelle.Core.Ops
         /// <summary>Int PERCENT of the town regen rate that runs while a wave is ACTIVE. Clamped 0..100 at the consumer.</summary>
         public const string KeyTownRegenPctDuringWave = "town.regenPctDuringWave";
 
+        /// <summary>Int PERCENT of a ruined structure's CATALOG BUILD COST paid as salvage when the
+        /// player clears that ruin in her captured town (WO-1872). Consumer:
+        /// <c>OwnedTownConstructionService.SalvagePct</c>, clamped 0..100 there.</summary>
+        public const string KeyTownCaptureSalvagePct = "town.captureSalvagePct";
+
+        /// <summary>
+        /// 50 = the owner's ruling read literally. WO-1872 point 3, 2026-09-18: clearing rubble
+        /// "grants salvage resources ... yield = a tunable fraction of that structure's build cost
+        /// ... default 0.5". Percent rather than a fraction because this rail carries Int and Bool
+        /// knobs only — there is no Float accessor. ⚠ THIS IS THE ONE NUMBER IN THE FEATURE THE OWNER
+        /// NAMED, and it is the one most likely to move: how generous the ruin field feels is a felt
+        /// question about whether clearing reads as a reward or as a chore, and nobody can answer it
+        /// from source. 0 makes clearing free but unpaid; 100 refunds the full build cost.
+        /// </summary>
+        public const int TownCaptureSalvagePctDefault = 50;
+
         /// <summary>Int HUNDREDTHS of enemy HP multiplier added per wave past the curve's clamp band.
         /// Consumer: <c>WaveDifficultyTunables</c>, clamped 0..100 there.</summary>
         public const string KeyWaveHpGrowthPctPerWave = "wave.hpGrowthPctPerWave";
@@ -1688,6 +1704,20 @@ namespace DeNelle.Core.Ops
                 "dead step. Kept alongside the timer rather than instead of it because 'no healing " +
                 "during a siege' and 'no healing for six seconds after a hit' feel completely " +
                 "different to play, and which one is right is not knowable from source."),
+
+            new TunableSpec(KeyTownCaptureSalvagePct, TunableKind.Int, TownCaptureSalvagePctDefault,
+                "PERCENT of a ruined structure's CATALOG BUILD COST paid as salvage when the player " +
+                "clears that ruin in her captured town. 50 = the owner's ruling read literally " +
+                "(WO-1872 point 3: 'a tunable fraction of that structure's build cost', default 0.5). " +
+                "0 makes clearing free but unpaid; 100 refunds the whole build cost. Floored per " +
+                "resource, so salvage can never round UP past what the structure cost. Clamped " +
+                "0..100 at OwnedTownConstructionService.SalvagePct - above 100 is refused on purpose, " +
+                "because a ruin that pays more than it cost to build turns the captured perimeter " +
+                "into a resource printer.",
+                "NOT a PROD-022 hypothesis - the one number the owner named in WO-1872, and the one " +
+                "most likely to move. Whether a field of 168 ruins reads as a reward to harvest or a " +
+                "chore to grind through is a felt question nobody can answer from source, and the " +
+                "answer would otherwise cost a build."),
 
             new TunableSpec(KeyWaveHpGrowthPctPerWave, TunableKind.Int, WaveHpGrowthPctPerWaveDefault,
                 "HUNDREDTHS of enemy HP multiplier ADDED per wave beyond the point where " +

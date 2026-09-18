@@ -21,13 +21,38 @@ namespace DeNelle.Village.World.Camps
             long cheapest = long.MaxValue;
             foreach (var record in property.structures)
             {
-                if (record.retired || record.condition01 >= 1f || (needsTower && !manifest.IsEditableTower(record))) continue;
+                // ⛔ WO-1872 — `<= 0f` KEEPS RUBBLE OUT OF THE REPAIR LIST, and it is not tidy-up.
+                // After the capture standdown the town holds ~168 razed bodies. Every one of them is
+                // "below 1", none is retired, and a razed watchtower still satisfies
+                // manifest.IsEditableTower — so without this the "Repair more" screen would offer the
+                // player a FULL-COST repair of a pile of rubble, which is the exact "you repair the
+                // current camp" the owner's ruling removes, and which WallSegment.Repair (:620) and
+                // DefenseTower.Repair (:338) would then refuse to honour on the body (WO-753: a
+                // destroyed structure is rebuilt, never repaired). Rubble is CLEARED for salvage, at
+                // OwnedTownConstructionService.TryClearRubble.
+                //
+                // It cannot strand that screen: it is reachable only when the panel's `pristine` is
+                // false, which by CapturedTownStanddown.IsRepairableDamage means a STANDING damaged
+                // record exists — and by then the repair milestone is done, so `needsTower` is false
+                // and that record is eligible here.
+                if (record.retired || record.condition01 <= 0f || record.condition01 >= 1f ||
+                    (needsTower && !manifest.IsEditableTower(record))) continue;
                 if (!TryQuote(record, out var candidate, out reason)) return false;
                 long total = (long)candidate.wood + candidate.iron + candidate.stone;
                 if (total >= cheapest) continue;
                 cheapest = total; target = record; quote = candidate;
             }
             reason = target == null ? "No eligible damaged structure is available." : null;
+            // WO-1872 / CLAUDE.md section 12 - NO SILENT REFUSAL. This returned false with a string
+            // nobody traced, and since the capture standdown "nothing to repair" is now the NORMAL
+            // state of a freshly captured town rather than an anomaly: every defensive body is rubble,
+            // and rubble is cleared for salvage, never repaired. A Warn, not a Fail - this is the
+            // contract answering correctly, and the suites deliberately drive it.
+            if (target == null)
+                DeNelle.Core.Diagnostics.FlowTrace.Warn("OwnedTown",
+                    "FIRST REPAIR: no eligible damaged structure among " + property.structures.Count +
+                    " record(s) - every candidate is retired, rubble (condition 0, clear it instead) or " +
+                    "already whole. needsTower=" + needsTower + ".");
             return target != null;
         }
 

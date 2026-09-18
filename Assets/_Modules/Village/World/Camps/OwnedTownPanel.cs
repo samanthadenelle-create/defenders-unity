@@ -17,6 +17,8 @@ namespace DeNelle.Village.World.Camps
         private string _feedback;
         private bool _repairMode;
         private string _repairSelected;
+        /// <summary>WO-1872 — which ruin of the captured camp the clear button is aimed at.</summary>
+        private string _rubbleSelected;
         private RepairHighlight _highlight;
         private ElarionUiKit.ConfirmModal _saleConfirm;
         private static string Text(string suffix) => LocalText.Get("ownedTown." + suffix);
@@ -43,7 +45,14 @@ namespace DeNelle.Village.World.Camps
             var body = chrome.content.transform;
             bool revealed = (property.milestoneFlags & OwnedBaseMilestones.OwnershipRevealed) != 0;
             bool repaired = (property.milestoneFlags & OwnedBaseMilestones.EssentialRepairCompleted) != 0;
-            bool pristine = property.structures.All(s => s.retired || s.condition01 >= 1f);
+            // WO-1872 — "pristine" now means NOTHING REPAIRABLE IS DAMAGED. It read
+            // `s.retired || s.condition01 >= 1f`, which after the capture standdown is false for every
+            // razed body in the town, so the panel would have parked the player on the repair screen
+            // in front of ~168 ruins and offered her a quote to rebuild one. Rubble is not damage
+            // (WO-753); it is cleared for salvage below. Same predicate the state-side gate
+            // OwnedBaseProgression.TryInspectPristineTown uses, deliberately shared so the screen and
+            // the contract can never disagree about what "damaged" means.
+            bool pristine = !property.structures.Exists(CapturedTownStanddown.IsRepairableDamage);
             bool repairScreen = revealed && !pristine && (!repaired || _repairMode);
             string stage = !revealed ? "revealHint" : !repaired ? (pristine ? "inspectHint" : "repairHint") :
                 _repairMode && !pristine ? "repairChoiceHint" : property.reenteredLayoutRevision == 0 ? "designHint" : "readyHint";
@@ -113,6 +122,39 @@ namespace DeNelle.Village.World.Camps
                         ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
                         new Vector2(.52f, 0f), Vector2.one, () => Move(Vector3.right * 3f));
                 }
+                // WO-1872 — CLEAR THE RUBBLE. The captured camp converts destroyed, so the town opens
+                // as a ruin field and clearing it is what funds the player's own layout. This reuses
+                // the panel's existing select-and-act shape (the same next/act pair ShowRepairControls
+                // and the tower row already use) rather than adding a second interaction system: the
+                // world-tap route is untouched and still reaches SelectStructure via
+                // BuildModeController.cs:2620 for any ruin that carries a PlacedStructure.
+                var ruins = property.structures.Where(CapturedTownStanddown.IsClearableRubble).ToList();
+                if (ruins.Count > 0)
+                {
+                    if (!ruins.Any(s => s.instanceId == _rubbleSelected)) _rubbleSelected = ruins[0].instanceId;
+                    // There is ONE highlight. A tower selection, when there is one, owns it — the
+                    // selection row names that tower, so pointing the marker at a ruin instead would
+                    // make the screen lie about what the buttons act on.
+                    if (_selected == null) Highlight(ruins.Find(s => s.instanceId == _rubbleSelected));
+                    var rubbleRow = new GameObject("TownRubbleRow", typeof(RectTransform), typeof(LayoutElement));
+                    rubbleRow.transform.SetParent(column, false);
+                    rubbleRow.GetComponent<LayoutElement>().minHeight = ElarionUiKit.MinTouchPx;
+                    rubbleRow.GetComponent<LayoutElement>().preferredHeight = ElarionUiKit.CanonCtaHeight;
+                    string quoteText = OwnedTownConstructionService.TryQuoteClear(_rubbleSelected, out var salvage, out _)
+                        ? CostText(salvage) : "0";
+                    ElarionUiKit.BuildObsidianButton(rubbleRow.transform,
+                        LocalText.Format("ownedTown.clearRubble", ruins.Count, quoteText),
+                        ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
+                        Vector2.zero, new Vector2(.68f, 1f), ClearRubble);
+                    ElarionUiKit.BuildObsidianButton(rubbleRow.transform, Text("nextRubble"),
+                        ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Gray,
+                        new Vector2(.72f, 0f), Vector2.one, () => {
+                            int index = ruins.FindIndex(s => s.instanceId == _rubbleSelected);
+                            _rubbleSelected = ruins[(index + 1) % ruins.Count].instanceId; _feedback = null; Show();
+                        });
+                    foreach (var label in rubbleRow.GetComponentsInChildren<TMP_Text>(true))
+                    { label.enableAutoSizing = true; label.fontSizeMin = 18f; label.fontSizeMax = 28f; }
+                }
                 var buildRow = new GameObject("TownBuildAndVisitRow", typeof(RectTransform), typeof(LayoutElement));
                 buildRow.transform.SetParent(column, false);
                 buildRow.GetComponent<LayoutElement>().minHeight = ElarionUiKit.MinTouchPx;
@@ -175,7 +217,11 @@ namespace DeNelle.Village.World.Camps
 
         private void ShowRepairControls(Transform body, Transform column, OwnedBaseState property, bool canChoose)
         {
-            var damaged = property.structures.Where(s => !s.retired && s.condition01 < 1f).ToList();
+            // WO-1872 — the same predicate the repair CHOOSER now uses
+            // (OwnedTownRepairService.TryChooseFirstRepair). It read `!s.retired && s.condition01 < 1f`,
+            // which after the capture standdown puts every ruin in the town into the "next repair"
+            // cycle — so the chooser would refuse rubble while this list still offered it.
+            var damaged = property.structures.Where(CapturedTownStanddown.IsRepairableDamage).ToList();
             if (!canChoose || !damaged.Any(s => s.instanceId == _repairSelected))
             {
                 if (!OwnedTownRepairService.TryChooseFirstRepair(property, out var first, out _, out var failure))
@@ -274,6 +320,23 @@ namespace DeNelle.Village.World.Camps
         {
             if (_saleConfirm?.canvas != null) Destroy(_saleConfirm.canvas);
             _saleConfirm = null;
+        }
+
+        /// <summary>
+        /// WO-1872 — clears the selected ruin and reports what it actually paid. No confirmation
+        /// modal on purpose: clearing rubble is a pure gain with nothing to lose, unlike a SALE
+        /// (which destroys a structure the player paid for and therefore keeps its confirm).
+        /// </summary>
+        private void ClearRubble()
+        {
+            var property = Property;
+            if (property == null || _rubbleSelected == null) { Fail(Text("selectTower")); return; }
+            if (!OwnedTownConstructionService.TryClearRubble(_rubbleSelected, property.revision, out var credited, out var reason))
+            { Fail(reason); return; }
+            _rubbleSelected = null;
+            TutorialSignals.Raise(TutorialSignals.OwnedTownDesigned);
+            _feedback = LocalText.Format("ownedTown.rubbleCleared", CostText(credited));
+            Show();
         }
 
         private void OpenUpgrade()

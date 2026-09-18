@@ -153,7 +153,7 @@ namespace DeNelle.Editor.Regression
         // that adds a knob edits the Registry, ExpectedDefaults, this pin, the allowlist and the
         // doc table IN THE SAME COMMIT, or the suite is red and the owner-facing list stops
         // describing the build.
-        private const int ExpectedKnobCount = 78;   // 2026-09-16: +1 army.dismissReturnPercent (WO-1811) on top of WO-1810's 77 - measured knobs=78 by the manifest generator
+        private const int ExpectedKnobCount = 79;   // 2026-09-18: +1 town.captureSalvagePct (WO-1872) on top of WO-1811's 78 - the captured town's rubble-clearing salvage share
 
         /// <summary>
         /// ⭐ THE CONTRACT, STATED INDEPENDENTLY OF THE CODE.
@@ -299,6 +299,12 @@ namespace DeNelle.Editor.Regression
             // asserts the RELATIONSHIP between the supplied baseline and the folded value.
             new KeyValuePair<string, int>("town.regenSuppressSecondsAfterHit", 0),
             new KeyValuePair<string, int>("town.regenPctDuringWave", 100),
+            // WO-1872 - NOT a PROD-022 mitigation. PERCENT of a ruined structure's catalog BUILD
+            // COST paid as salvage when the player clears that ruin in her captured town. The
+            // captured Iron Bastion now converts as the DESTROYED camp, so clearing the rubble is
+            // what funds her own layout. 50 is the owner's 2026-09-18 ruling ("default 0.5") read
+            // literally; percent rather than a fraction because this rail has no Float accessor.
+            new KeyValuePair<string, int>("town.captureSalvagePct", 50),
             new KeyValuePair<string, int>("wave.hpGrowthPctPerWave", 0),
             new KeyValuePair<string, int>("wave.dmgGrowthPctPerWave", 0),
             new KeyValuePair<string, int>("wave.maxCountPct", 100),

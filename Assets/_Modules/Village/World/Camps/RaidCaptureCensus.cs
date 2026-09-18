@@ -16,6 +16,10 @@ namespace DeNelle.Village.World.Camps
         {
             public OwnedBaseStructure Record;
             public Func<float> Condition;
+            /// <summary>WO-1872 — recorded HERE because this is the ONE place that can see it. The
+            /// Heart and the ten Watchtowers share the catalog id <c>tower_arcane_spire</c>, so no
+            /// downstream lookup can tell them apart; the live component type can.</summary>
+            public CapturedStructureKind Kind;
         }
         private readonly List<Entry> _entries = new List<Entry>();
         private readonly string _receipt = "capture:" + Guid.NewGuid().ToString("N");
@@ -46,7 +50,9 @@ namespace DeNelle.Village.World.Camps
                         },
                         Condition = wall != null ? (Func<float>)(() => wall != null ? wall.HpFraction : 0f) :
                             tower != null ? (() => tower != null ? tower.HpFraction : 0f) :
-                            (() => spire != null ? spire.HpFraction : 0f)
+                            (() => spire != null ? spire.HpFraction : 0f),
+                        Kind = wall != null ? CapturedStructureKind.Wall :
+                            tower != null ? CapturedStructureKind.DefenseTower : CapturedStructureKind.Heart
                     });
                 }
             if (_entries.Count == 0) throw new InvalidOperationException("Final raid capture census is empty.");
@@ -65,13 +71,47 @@ namespace DeNelle.Village.World.Camps
                 baseId = "personal-iron-bastion", sourceRaidId = OwnedBaseProgression.FinalRaidId,
                 templateVersion = "iron-bastion-20260911", captureReceiptId = _receipt, suppliesReceiptId = _receipt
             };
+            // ⛔ WO-1872 — THE CAPTURE STANDDOWN. Owner (2026-09-18): "we shuold not give them two
+            // fortified sections of walls with defense structures" / "they arrive that way cause you
+            // repair the current camp" / "load a destroyed camp and then clear the rubble".
+            //
+            // NOTHING repaired anything. The line below USED to be
+            // `record.condition01 = Mathf.Clamp01(entry.Condition())` — the body's victory-time HP
+            // fraction, replayed onto the baked twin by OwnedTownSnapshotImporter.cs:97-102. A
+            // three-star clear does not require breaking the perimeter (razing the spire alone wins,
+            // RaidVictoryController.cs:271), so every wall and tower the player never attacked
+            // converted at 1.0 and arrived STANDING. That is the whole defect, and this is the one
+            // seam that fixes it: the importer's existing condition==0 branch already razes the body
+            // (WallSegment.cs:612 / DefenseTower.cs:325-330 / RaidSpire.cs:293), so the town loads as
+            // the destroyed camp with no scene edit at all.
+            var razed = new List<string>();
+            var kept = new List<string>();
             foreach (var entry in _entries)
             {
                 var record = entry.Record.Clone();
-                record.condition01 = Mathf.Clamp01(entry.Condition());
+                float measured = Mathf.Clamp01(entry.Condition());
+                record.condition01 = CapturedTownStanddown.ConditionOnCapture(entry.Kind, measured);
+                (CapturedTownStanddown.IsDefensive(entry.Kind) ? razed : kept)
+                    .Add($"{entry.Record.inheritedPose.sourceName}[{entry.Kind}] measured={measured:0.00}->{record.condition01:0.00}");
                 template.structures.Add(record);
             }
-            if (template.structures.Exists(s => s.condition01 < 1f))
+            // Named, not counted: a capture happens once, so the one line that says WHICH bodies were
+            // stood down is worth its width. Two lines, not 169 — a per-structure Step on this path
+            // would flood the device log and evict the boot window (CLAUDE.md section 12).
+            FlowTrace.Step("Raid", $"CAPTURE STANDDOWN (WO-1872) RAZED {razed.Count} defensive " +
+                                   $"structure(s) — they convert as rubble to be cleared: " +
+                                   (razed.Count == 0 ? "<none>" : string.Join(", ", razed)));
+            FlowTrace.Step("Raid", $"CAPTURE STANDDOWN (WO-1872) KEPT {kept.Count} non-defensive " +
+                                   $"structure(s) standing: " + (kept.Count == 0 ? "<none>" : string.Join(", ", kept)));
+
+            // ⚠ THE GUARD IS `> 0f &&`, AND THAT IS LOAD-BEARING. It used to read
+            // `Exists(s => s.condition01 < 1f)`. Every razed structure is < 1f, so after the standdown
+            // that predicate is ALWAYS true, and TryChooseFirstRepair would be asked to quote a repair
+            // for a pile of rubble — which WO-753 says can never be repaired, only rebuilt. Capture
+            // supplies fund a DAMAGED-BUT-STANDING structure; there is nothing to fund when the only
+            // damage is total. (The WO holds the supplies themselves out of scope; this changes when
+            // they are quoted, never how much.)
+            if (template.structures.Exists(s => s.condition01 > 0f && s.condition01 < 1f))
             {
                 if (!OwnedTownRepairService.TryChooseFirstRepair(template, out _, out CoreCost quote, out var reason))
                     throw new InvalidOperationException(reason);

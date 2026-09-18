@@ -83,7 +83,14 @@ namespace DeNelle.Core.State
         {
             result = null;
             if (!Validate(current, out reason)) return false;
-            if (current.structures.Exists(s => !s.retired && s.condition01 < 1f))
+            // ⛔ WO-1872 — RUBBLE IS NOT DAMAGE. This read `!s.retired && s.condition01 < 1f`, which
+            // after the capture standdown is true of every razed defensive body in the town: the
+            // player would be told to repair ~168 ruins, and OwnedBaseConstruction.CanEdit requires
+            // THIS milestone before any construction edit, so she could not clear a single one until
+            // she had repaired one. A destroyed structure is rebuilt, never repaired (WO-753); the
+            // razed camp's ruins are cleared for salvage instead. CapturedTownStanddown
+            // .IsRepairableDamage is the single predicate, shared with OwnedTownPanel's `pristine`.
+            if (current.structures.Exists(CapturedTownStanddown.IsRepairableDamage))
                 return Fail("Damaged structures must be repaired before completing this inspection.", out reason);
             return TryCompleteMilestone(current, OwnedBaseMilestones.EssentialRepairCompleted, out result, out reason);
         }

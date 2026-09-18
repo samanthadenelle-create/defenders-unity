@@ -81,8 +81,25 @@ namespace DeNelle.Village.World.Camps
                     (record.placement.level != baseline.placement.level && (!construction || !template.movableTower ||
                         record.placement.level > BuildModeController.MaxLevelFor(catalog))))
                 { reason = "The captured structure catalog identity or level changed without an upgrade rule."; return false; }
-                if (record.retired && !template.movableTower)
-                { reason = "The fitted town perimeter and objective cannot be sold."; return false; }
+                // ⛔ WO-1872 — THE PERIMETER CAN BE CLEARED, AND IT STILL CANNOT BE SOLD.
+                // This read `record.retired && !template.movableTower` flat, and that refused BOTH
+                // the 158 fitted wall sections AND the Heart. After the capture standdown the walls
+                // arrive as rubble the player is meant to clear, so a flat refusal would have made
+                // the ruling unimplementable: nothing could ever remove them.
+                //
+                // The carve-out is exact, and it is exact because the CATALOG ID CANNOT CARRY IT:
+                // the Heart (RaidSpire) and all ten Watchtowers share `tower_arcane_spire`
+                // (Assets/Resources/OwnedTown/IronBastionTemplate.json, read 2026-09-18). The
+                // manifest's own movableTower flag separates the towers; behaviorId separates the
+                // walls; what is left - not movable, not a wall - is the Heart alone, and the Heart
+                // is still refused. Which VERB retired it (cleared for salvage vs sold for a refund)
+                // is enforced at the two entry points, OwnedTownConstructionService.TryQuoteSale and
+                // .TryQuoteClear, because a retired record's condition is forced to 0 by
+                // OwnedBaseProgression.ValidateStructures and this validator cannot tell them apart
+                // after the fact.
+                bool clearableWall = catalog?.repo?.behaviorId == "WallSegment";
+                if (record.retired && !template.movableTower && !clearableWall)
+                { reason = "The town's objective cannot be sold or cleared."; return false; }
                 var original = baseline.inheritedPose;
                 if (pose.sourceScene != original.sourceScene || pose.sx != original.sx || pose.sy != original.sy || pose.sz != original.sz ||
                     (!string.IsNullOrEmpty(pose.templateStructureId) && JsonConvert.SerializeObject(pose.parentFrame) != JsonConvert.SerializeObject(original.parentFrame)))
