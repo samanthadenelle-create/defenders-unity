@@ -1,6 +1,13 @@
 # WO-1840 — Language setting just cycles; needs a real picker
 
-**Status: READY FOR LEAD REVIEW**
+**Status: DONE (code)** - committed `def97a479`. Was never flipped from READY FOR LEAD REVIEW despite
+landing; caught during a board review. Gate proof: this file has been part of the combined tree on
+every `COMPILE_GATE_OK` + `REGRESSION_OK 578/578` run tonight (multiple fresh-log passes,
+2026-09-18), so the picker code compiles clean and breaks nothing - that satisfies the brace/NUL
+and gate acceptance items. **Two acceptance items remain open, PO-owned, not CLI-closable:** a
+device/headless capture actually showing the picker UI, and the owner's own felt-verification of
+the widget shape (explicitly flagged in the implementation notes as "first pass, owner may
+redirect"). Not marking fully DONE until those close. PRIOR STATUS: READY FOR LEAD REVIEW
 
 ## Implementation (lane, 2026-09-17)
 
