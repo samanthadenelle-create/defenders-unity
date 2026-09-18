@@ -109,17 +109,104 @@ function Test-LikelyHumanText {
     return $text -match '\s|[.!?,:;'']'
 }
 
-function Get-CSharpContext {
+function Test-UiConstructionCallLine {
     param([string]$Line)
 
-    if ($Line -match 'ShowToast\s*\(') { return @('toast', $true) }
-    if ($Line -match 'BuildObsidianModal\s*\(') { return @('modal', $true) }
-    if ($Line -match '(?:BuildObsidianButton|\.Button|\bButton)\s*\(') { return @('button', $true) }
-    if ($Line -match '(?:\.Label|\bLabel)\s*\(') { return @('label', $true) }
-    if ($Line -match '(?:SetStatus|ShowStatus|SetMessage)\s*\(') { return @('status', $true) }
-    if ($Line -match '\.(?:text|placeholder|caption|title)\s*=') { return @('text-assignment', $true) }
-    if ($Line -match '(?i)\b(?:title|body|label|caption|tooltip|message|placeholder|status|header|description)\b') {
+    if ($Line -match 'ShowToast\s*\(') { return $true }
+    if ($Line -match 'BuildObsidianModal\s*\(') { return $true }
+    if ($Line -match '(?:BuildObsidianButton|\.Button|\bButton)\s*\(') { return $true }
+    if ($Line -match '(?:\.Label|\bLabel)\s*\(') { return $true }
+    if ($Line -match '(?:SetStatus|ShowStatus|SetMessage)\s*\(') { return $true }
+    # Project-local UI-construction kit: every one of ElarionUiKit / ElarionUiKitObsidian /
+    # ElarionUiKitDetailCard is the SAME `public static partial class ElarionUiKit` (confirmed
+    # 2026-09-17: `class ElarionUiKit\b` in Assets/_Modules/Core/UI/*.cs), so any static call or
+    # `new ElarionUiKit.<Type>(` constructor on it is a UI-construction call, whatever the method
+    # name (ButtonPack, Label, Header, Card, BuildObsidianPanel, BuildConfirmModal, BuildTab,
+    # BuildToggle, BuildNameplate, BuildChatDock, CurrencyChip, DetailCardRow, AddImage, ...).
+    if ($Line -match '\bElarionUiKit(?:Obsidian|DetailCard)?\.\w+\s*\(') { return $true }
+    # Confirmed project-local UI-construction helpers that are called bare (no class prefix) -
+    # each grepped to its declaration this session:
+    #   HudKitController.cs:5750       private void AddDockTab(RectTransform panel, int i, string label, Action onTap)
+    #   BuildHudController.cs:861      private static Button MakeWordVerb(RectTransform parent, string name, string label, ...)
+    #   ArenaAttackPaletteUI.cs:275 (+3 more) private Button AddButton(Transform parent, string label, ...)
+    # WARNING: Bare `AddImage` is deliberately NOT in this list. All four declarations found this session
+    # (ElarionUiKit.cs:2550, QueueRailView.cs:780, ArenaAttackPaletteUI.cs:233, ArenaPanel.cs:428,
+    # HeroInventoryController.cs:636) are `AddImage(Transform parent, string name, ...)` - the
+    # literal is a GameObject/sprite name, never player copy, so matching it would be a guaranteed
+    # false positive with zero true positives. `ElarionUiKit.AddImage(` is still caught by the
+    # kit-wide rule above for consistency with how the tool already treats every other kit method
+    # (it does not special-case no-copy kit methods either); that tradeoff is pre-existing, not
+    # introduced here - see the report appended to SWEEP_CLASSIFICATION_2026-09-17.md.
+    if ($Line -match '\b(?:AddDockTab|MakeWordVerb|AddButton)\s*\(') { return $true }
+    return $false
+}
+
+function Get-CSharpContext {
+    param([string[]]$Lines, [int]$Index)
+
+    $line = $Lines[$Index]
+    if (Test-UiConstructionCallLine $line) { return @('ui-construction-call', $true) }
+    if ($line -match '\.(?:text|placeholder|caption|title)\s*=') { return @('text-assignment', $true) }
+    if ($line -match '(?i)\b(?:title|body|label|caption|tooltip|message|placeholder|status|header|description)\b') {
         return @('named-player-copy', $true)
+    }
+    # Statement-continuation lookback: a UI-construction call opened a few lines above can carry
+    # its literal argument(s) on a later line of the same statement (e.g. a ternary literal, or a
+    # multi-argument call wrapped for readability) - EquipmentPanel.cs:915-916 is the proven case:
+    #   var action = ElarionUiKit.ButtonPack(_approvedDetailHost,
+    #       item.Equipped ? "REMOVE" : "EQUIP", ElarionUiKit.ButtonKind.Gold, ...
+    # Bounded to 6 lines back. The boundary/terminator check runs BEFORE the call-match check on
+    # each prior line (not after) and strips a trailing `//` comment first - this matters:
+    #   - a prior line that is itself a COMPLETE, terminated statement (ends `;` once its trailing
+    #     comment is stripped, e.g. EquipmentPanel.cs:1227 `...FontLabel);   // never wraps ...`)
+    #     must stop the scan WITHOUT counting as a continuation, even if that terminated line also
+    #     happens to contain a UI-construction call - the current line is a new, separate
+    #     statement that merely follows it, not a continuation of it.
+    #   - any line in the window that matches the diagnostic/metadata exclusion rules
+    #     (Test-ExcludedCSharpLine) suppresses the WHOLE statement, checked as a full pass over the
+    #     collected window rather than stopping at the first exclusion hit in scan order. Proven
+    #     necessary, not just defensive: BuildHudController.cs:494-500 is a `FlowTrace.Step("BuildHud",`
+    #     call whose OWN first line carries the exclusion marker, but the very next continuation line
+    #     is diagnostic PROSE that happens to mention `ElarionUiKit.BuildObsidianButton(` by name
+    #     ("... COMMON kit button ElarionUiKit.BuildObsidianButton(Style1,Yellow) seated ...") - read
+    #     scanning strictly outward-to-inward, that prose line matches Test-UiConstructionCallLine
+    #     BEFORE the scan ever reaches the opener line that would have excluded it, producing a false
+    #     "ui-construction-call-continuation" on a pure diagnostic string. Collecting the whole
+    #     window first and checking exclusion across ALL of it (order-independent) closes this: the
+    #     opener's exclusion marker suppresses the statement regardless of which line the loop visits
+    #     first. (That continuation-line class is exactly the artifact's measured 24.6%
+    #     false-positive-flowtrace-or-debug (comment/diagnostic-continuation) bucket.)
+    # A line that completes its OWN statement (ends `;` once a trailing comment is stripped) is the
+    # boundary of the PREVIOUS, separate statement - it stops the scan and is NOT added to the
+    # window, even though it may itself contain a UI-construction call (EquipmentPanel.cs:1227 is
+    # the proven case for this half of the rule).
+    # A pure comment line (`//`, `///`, `*` continuation, `/*`) never counts as evidence either way:
+    # it cannot terminate the statement, but it also must not be checked for a UI-construction call
+    # or an exclusion marker. Proven necessary: HeroSkillTreePanelMvvm.cs:1877-1881 is a five-line
+    # comment block directly above a ternary-assigned literal ("COMING"), and one of those comment
+    # lines reads "...never a label (HeroSkillTreeVM..." - plain prose that happens to contain the
+    # substring "label (", which trips the pre-existing (?:\.Label|\bLabel)\s*\( rule (PowerShell
+    # -match is case-insensitive by default) even though there is no `Label(` call anywhere nearby.
+    # Skipping comment lines when building the window (while still walking past them for boundary
+    # purposes) closes that hole without touching the pre-existing same-line comment/prose false
+    # positives the artifact already measured and bucketed (its rule 1, `false-positive-flowtrace-
+    # or-debug (comment text)`, 26.6% of the baseline) - this only stops a COMMENT from
+    # contaminating a DIFFERENT, later, non-comment statement's literal.
+    $window = New-Object 'System.Collections.Generic.List[string]'
+    for ($back = $Index - 1; $back -ge 0 -and ($Index - $back) -le 6; $back--) {
+        $priorLine = $Lines[$back]
+        $trimmed = $priorLine.Trim()
+        if ($trimmed -eq '' -or $trimmed -eq '{' -or $trimmed -eq '}') { break }
+        if ($trimmed -match '^(?://|///|\*|/\*)') { continue }
+        $withoutComment = [regex]::Replace($trimmed, '//.*$', '').TrimEnd()
+        if ($withoutComment.EndsWith(';')) { break }
+        $window.Add($priorLine)
+    }
+    foreach ($windowLine in $window) {
+        if (Test-ExcludedCSharpLine $windowLine) { return @('runtime-code-review', $false) }
+    }
+    foreach ($windowLine in $window) {
+        if (Test-UiConstructionCallLine $windowLine) { return @('ui-construction-call-continuation', $true) }
     }
     return @('runtime-code-review', $false)
 }
@@ -225,7 +312,7 @@ function Add-CSharpRows {
             }
 
             if (Test-ExcludedCSharpLine $line) { continue }
-            $contextInfo = Get-CSharpContext $line
+            $contextInfo = Get-CSharpContext -Lines $lines -Index $index
             $surface = [string]$contextInfo[0]
             $uiHint = [bool]$contextInfo[1]
             if (-not $uiHint) { continue }
