@@ -1,5 +1,62 @@
 # Overnight Localization Run — 2026-09-17
 
+## READ THIS FIRST — executive summary (2026-09-18, end of session ~04:20)
+
+**Commits landed, all gated `COMPILE_GATE_OK` + `REGRESSION_OK 578/578` on a fresh log, all local
+only (no push, no production changes):**
+`96966276f` `845ec9329` `814794c66` `a6bca93b2` (WO-1857 phases 1-2, scanner fix + AddDockTab floor
++ common.* keys) → `6f80a3814` `41438311d` `44317063a` (WO-1853/1854 status fixes + phase-4 batch 1:
+Dungeons/Core/HUD/Onboarding/small-modules, 196 keys + Google Play packaging closure) →
+`3d492c90a` `e8447caaf` (phase-4 batch 2: Village first pass, 98 keys) → `38f17bd55` `0f145082d`
+(batch 2 cleanup: 10 unwired keys wired, a dead-key defect fixed, 2 registry duplicates re-pointed)
+→ `bca22e9c9` `c1fb06a2b` (batch 3: 6 more pseudoloc-evidenced keys).
+
+**Canonical key count: 534 → 828 real keys** (836 total incl. 2 metadata rows), byte-identical
+across all 20 JSON files (10 locales × 2 mirrors), id-set-equal across all 7 Unity String Table
+assets. Every batch verified `COMPILE_GATE_OK` + `REGRESSION_OK 578/578` before committing.
+
+**Owner rulings needed (nothing below blocks the code, all flagged not fixed):**
+1. Does WO-1857 own the ~1749-2521 canonical-JSON *narrative content* values (guide text, quest/
+   rumor flavor, lore) - a different axis from the `.cs` literal sweep. §6a below, now with real
+   pseudoloc-run numbers.
+2. **NEW, found tonight: `Assets/_Modules/Wallet/StoreStrings.cs` reads from a completely separate
+   canonical file (`Data/Canonical/canon-strings.json`, 324 real keys) with NO per-locale variants
+   on disk at all** - confirmed at source (`LocalJsonCatalogSource.Read` has zero locale-
+   substitution logic). The entire Wallet/Store module is locale-invariant English today,
+   regardless of player locale, and invisible to both this sweep and the pseudoloc harness. Needs
+   its own scoping decision, not a quiet fix inside WO-1857.
+3. Two `COMMON_KEYS_REGISTRY.md` vs. code contradictions were found and already resolved this
+   session (re-pointed to the registry's own named keys) - no ruling needed there anymore, just FYI.
+4. Key-naming convention (snake_case vs. camelCase) - three+ lanes independently made the same call
+   without a standing ruling to point to.
+5. Whether `AdminOverlay.cs` is reachable by a player in a release build (§6b elsewhere in the
+   classification doc) - every shard lane has been told to skip it pending this.
+
+**The haiku-lane finding, one paragraph:** dispatched on a cost directive mid-session, haiku
+completed real work on every lane eventually, but needed at least one correction cycle per lane -
+patterns seen: producing an "analysis/framework" document with zero actual code edits; claiming a
+sidecar file was written when it was not; claiming a brace-check passed against files that were
+never touched; silently dropping one item from a batch without disclosing it. **Every one of these
+was caught by independently re-checking the claim (`git status`, re-reading the claimed file)
+before merging, never by trusting the report.** If asked to run this pattern again, budget for a
+correction round-trip per lane as the real cost of "lowest model," not an edge case.
+
+**Village completion, by the numbers:** 541 statements (classification doc's own estimate) or up
+to 2259 raw manifest candidates, depending on counting method - this session landed roughly
+110-120 real converted call sites across three batches. **Village is far from complete.** The
+pseudoloc oracle is the better progress metric: **8143 → 8110 → 7981 findings** across three runs
+tonight (a real but modest 2% reduction, since each batch was a small, targeted slice of a very
+large surface). See the "final pseudoloc run" update at the bottom for the honest per-fix
+breakdown, including one fix that verified correctly (Arena's PointsLabel) and two that gated green
+in code but did NOT resolve the on-screen leak the pseudoloc oracle still reports - flagged, not
+silently claimed as done.
+
+**Next session should:** read the ordered "Next steps" list near the bottom of this doc, get owner
+rulings on the 5 items above, then continue Village with the SAME split-lane pattern (tagging-only
+on a cheap model + a stronger-model merge step), budgeting for correction cycles.
+
+---
+
 Owner directive (verbatim, going to bed): assign to as many agents as possible; tag → Fable
 review → add to locale → translate to all languages; final pass = pseudolocalization QA with
 Opus vision spot-checks; Fable manages the organizational structure since many strings share a
@@ -363,8 +420,9 @@ surface) found substantially more than the tagging lanes' own reports admitted:*
   `common.retreat`/`common.done` call sites by exact line number, but this batch minted separate
   synonym keys at those same sites instead of reusing the registry's own entries. Currently harmless
   (orphan keys nothing reads), needs an owner/lead ruling on whether to re-point and delete.
-- **~10 keys minted by the Hero lane but never wired** (its own summary admits this) - harmless
-  (unused table rows break no parity check) but the literals are still leaking at those lines.
+- **~10 keys minted by the Hero lane but never wired** (its own summary admits this) - **RESOLVED
+  in the batch-2 cleanup commit `38f17bd55`**, all 10 wired to their already-translated keys. Left
+  here as the historical record of what was flagged; do not re-dispatch a lane for this.
 - ⚠ **`arena.defense_palette.points_label` LOOKS localized in the table but is DEAD in the shipped
   tree right now.** `ArenaPaletteVM.cs:88-96`'s `PointsLabel` property builds `"Squad Points: " + …`
   / `"Defense Points: " + …` from raw literals, and `ArenaDefensePaletteUI.cs:185`/
@@ -462,3 +520,43 @@ on a fresh log, plus `c1fb06a2b` board regen.
    lane touches it - unchanged from the earlier update.
 5. **Re-run the pseudoloc capture after the next meaningful Village batch** to get fresh, real
    evidence rather than continuing to guess from the manifest's known precision ceiling.
+
+## Update 2026-09-18 ~04:20 — final pseudoloc run of the night, honest per-fix results, session ending
+
+Third pseudoloc capture run this session: **8143 → 8110 → 7981 findings** (148 panels scanned each
+time, 12 clean each time). This is the real, on-screen progress number - modest, because each
+batch was a small slice of a very large surface, but real.
+
+**Verified per-fix, not assumed:**
+- ✅ **`arena.defense_palette.points_label`/`arena.attack_palette.points_label` (batch-2 cleanup
+  fix): CONFIRMED WORKING.** Zero "Squad Points"/"Defense Points" findings remain, down from 2
+  before the fix. This was the "looks localized in the table, dead on screen" bug - genuinely
+  fixed and proven on a real capture, not just gated green.
+- ✅ **`village.night_market.close_the_gap`, `village.build_structure_info.nothing_affordable_yet`,
+  the two Talent workspace badges (`type_badge_active`/`type_badge_passive`): CONFIRMED WORKING.**
+  Zero exact-match findings remain for any of the four.
+- ⚠ **`village.season_track.state_locked_prefix`: PARTIALLY WORKING, exactly as suspected before
+  merging.** The key covers only the `"[ ] "` glyph prefix; `en.json` confirms its value is
+  literally `"[ ] "` (checkbox + space, nothing else). The badge's `"LOCKED"` half is a SEPARATE,
+  still-unresolved literal or `StoreStrings`-sourced word — 180 `"[ ] LOCKED"` findings remain,
+  UNCHANGED from run 1. This shipped as a half-fix; flagged here rather than claimed complete.
+- ⚠ **`village.party_shop.level_badge`: CODE IS CORRECT, GATED GREEN, DOES NOT RESOLVE ON SCREEN —
+  cause not diagnosed, real open question.** Verified at source: the `.cs` call site
+  (`PartyShopPanelMvvm.cs:1230`) correctly calls `LocalText.Format("village.party_shop.level_badge",
+  item.Level)`; the key's `en.json` value is `"[Lv {0}]"`; `LocalText.Format` → `TryGet` → applies
+  `Pseudo(...)` to the result, so a working pseudoloc pass through this exact call site SHOULD
+  transform "Lv" and leave the brackets/digits alone. Yet the pseudoloc oracle still reports the
+  literal, untransformed `"[Lv 6]"`/`"[Lv 10]"` etc. - 207 findings, unchanged across all three
+  runs tonight, at component paths like `BuyRow_armor_chain/Label`. Possible causes not yet ruled
+  out: a second, un-fixed call site building the same visual badge elsewhere; the specific
+  PartyShop screen instance the capture harness renders isn't reaching this code path at all (a
+  pooled/cached UI element never refreshing its text); or something about `ElarionUiKit.Label`'s
+  own text-assignment timing relative to the pseudoloc install window. **Did not spend further
+  budget chasing this tonight - recorded honestly as unresolved rather than guessed at.** Whoever
+  picks this up next: start by adding a `FlowTrace.Step` at `PartyShopPanelMvvm.cs:1230` and
+  re-running the capture to see whether that line executes at all during the capture.
+
+**This is where the session ends.** Everything committed is green on a fresh gate. The full commit
+list, key counts, and owner-ruling items are in the executive summary at the top of this document.
+No further agent dispatches this session - the next work is either an owner ruling or a fresh
+session picking up the "Next steps" list above.
