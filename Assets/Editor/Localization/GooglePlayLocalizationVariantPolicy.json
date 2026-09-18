@@ -122,6 +122,23 @@
         "ko": "잔당 채팅을 사용하려면 로그인하세요.",
         "zh-Hans": "登录以使用遗民聊天。"
       }
+    },
+    {
+      "key": "common.powered_skr",
+      "owner": "Onboarding",
+      "reason": "Shared Title-screen badge/modal-title copy (WO-1857) ships on Google Play; it must not name the SKR token by ticker on that channel.",
+      "values": {
+        "en": "Bonus Preview",
+        "es": "Vista previa del bono",
+        "pt-BR": "Prévia do bônus",
+        "de": "Bonus-Vorschau",
+        "fr": "Aperçu du bonus",
+        "ru": "Превью бонуса",
+        "ar": "معاينة المكافأة",
+        "ja": "ボーナスプレビュー",
+        "ko": "보너스 미리보기",
+        "zh-Hans": "奖励预览"
+      }
     }
   ],
   "stripGroups": [

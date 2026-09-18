@@ -73,8 +73,12 @@ namespace DeNelle.Editor.Regression
             string help = Read(root, HelpSrc, failures);
 
             // 1 [dock-route]
-            Require(hud, "AddDockTab(_slideDock.panel, dockRow++, \"Settings\", OpenSettings);", failures,
-                "[dock-route] the dock's \"Settings\" row no longer routes to OpenSettings");
+            // WO-1857: the label argument is now a LocalizedText resolve (settings.title, reused
+            // from the standalone Settings screen's own title key) rather than a bare "Settings"
+            // literal - the needle pins the resolved KEY plus the handler, so this still proves the
+            // row both says the right thing and routes to the right place.
+            Require(hud, "new LocalizedText(\"settings.title\").Resolve(), OpenSettings);", failures,
+                "[dock-route] the dock's Settings row no longer resolves settings.title into OpenSettings");
             string openSettings = Between(hud, "private void OpenSettings()", "\n        private ");
             if (openSettings == null)
                 failures.Add("[dock-route] HudKitController.OpenSettings() not found");
@@ -130,9 +134,13 @@ namespace DeNelle.Editor.Regression
                 dockTab.IndexOf("const int rows = 3;", StringComparison.Ordinal) < 0)
                 failures.Add("[six-cells] AddDockTab is no longer the fixed 2x3 grid");
             Require(hud, "DockTabCount = 6", failures, "[six-cells] DockTabCount moved off 6 - a seventh dock row has no cell");
-            if (Regex.Matches(hud, "AddDockTab\\(_slideDock\\.panel, dockRow(\\+\\+)?, \"").Count != 6)
+            // WO-1857: labels are now LocalizedText resolves, not bare string literals, so the
+            // count no longer requires a literal `"` right after dockRow(++) - it counts the CALL,
+            // whatever shape its label argument takes.
+            if (Regex.Matches(hud, "AddDockTab\\(_slideDock\\.panel, dockRow(\\+\\+)?,").Count != 6)
                 failures.Add("[six-cells] the dock does not stamp exactly six rows (Chat/Leaderboard/Music/Settings/Realm/Pause)");
-            if (Regex.IsMatch(hud, "AddDockTab\\(_slideDock\\.panel, dockRow(\\+\\+)?, \"Help\""))
+            if (Regex.IsMatch(hud, "AddDockTab\\(_slideDock\\.panel, dockRow(\\+\\+)?, \"Help\"") ||
+                Regex.IsMatch(hud, "AddDockTab\\(_slideDock\\.panel, dockRow(\\+\\+)?,\\s*\\r?\\n\\s*new LocalizedText\\(\"[^\"]*[Hh]elp[^\"]*\"\\)"))
                 failures.Add("[six-cells] a \"Help\" dock row was added - Help lives INSIDE Settings, the grid has six cells");
 
             // 6 [trace-honest]

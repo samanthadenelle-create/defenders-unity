@@ -2278,6 +2278,117 @@ MonoBehaviour:
     m_Localized: Ouverture du chat du Vestige...
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760650
+    m_Localized: Chat du Vestige
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760651
+    m_Localized: Classement
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760652
+    m_Localized: Musique
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760653
+    m_Localized: Royaume
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760654
+    m_Localized: Pause
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760655
+    m_Localized: ECHOS D'ELARION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760656
+    m_Localized: Passer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760657
+    m_Localized: Artisanat
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760658
+    m_Localized: Terminé
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760659
+    m_Localized: Équipé
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760660
+    m_Localized: Or
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760661
+    m_Localized: Aucun héros à équiper.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760662
+    m_Localized: Pub
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760663
+    m_Localized: Tableau des Rumeurs de Brom
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760664
+    m_Localized: "Cristaux : {0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 44124330363760665
+    m_Localized: Tâche
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760666
+    m_Localized: Jukebox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760667
+    m_Localized: Niv. {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 44124330363760668
+    m_Localized: Suivant
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760669
+    m_Localized: Aucun héros.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760670
+    m_Localized: Aucun inventaire.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760671
+    m_Localized: Propulsé par SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760672
+    m_Localized: Recette
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760673
+    m_Localized: Retraite
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760674
+    m_Localized: Sélectionnez d'abord un objet.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760675
+    m_Localized: Récompenses de Jalonnement
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760676
+    m_Localized: Tours
+    m_Metadata:
+      m_Items: []
+
   references:
     version: 2
     RefIds:
@@ -2346,3 +2457,5 @@ MonoBehaviour:
         - id: 43874653886263328
         - id: 44124330326011904
         - id: 44124330363760644
+        - id: 44124330363760664
+        - id: 44124330363760667

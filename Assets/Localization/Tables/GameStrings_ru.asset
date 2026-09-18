@@ -2908,6 +2908,117 @@ MonoBehaviour:
     m_Localized: "\u041E\u0442\u043A\u0440\u044B\u0442\u0438\u0435 \u0447\u0430\u0442\u0430 \u041E\u0441\u043A\u043E\u043B\u043A\u0430..."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760650
+    m_Localized: "\u0427\u0430\u0442 \u041E\u0441\u043A\u043E\u043B\u043A\u0430"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760651
+    m_Localized: "\u0422\u0430\u0431\u043B\u0438\u0446\u0430 \u043B\u0438\u0434\u0435\u0440\u043E\u0432"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760652
+    m_Localized: "\u041C\u0443\u0437\u044B\u043A\u0430"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760653
+    m_Localized: "\u041A\u043E\u0440\u043E\u043B\u0435\u0432\u0441\u0442\u0432\u043E"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760654
+    m_Localized: "\u041F\u0430\u0443\u0437\u0430"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760655
+    m_Localized: ЭХО ЭЛАРИОНА
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760656
+    m_Localized: Пропустить
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760657
+    m_Localized: Крафт
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760658
+    m_Localized: Готово
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760659
+    m_Localized: Экипировано
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760660
+    m_Localized: Золото
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760661
+    m_Localized: Нет героя для экипировки.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760662
+    m_Localized: Реклама
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760663
+    m_Localized: Доска слухов Брома
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760664
+    m_Localized: "Кристаллы: {0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 44124330363760665
+    m_Localized: Задача
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760666
+    m_Localized: Музыкальный автомат
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760667
+    m_Localized: Ур. {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 44124330363760668
+    m_Localized: Далее
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760669
+    m_Localized: Нет героя.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760670
+    m_Localized: Нет инвентаря.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760671
+    m_Localized: На основе SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760672
+    m_Localized: Рецепт
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760673
+    m_Localized: Отступить
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760674
+    m_Localized: Сначала выберите предмет.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760675
+    m_Localized: Награды за стейкинг
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760676
+    m_Localized: Башни
+    m_Metadata:
+      m_Items: []
+
   references:
     version: 2
     RefIds:
@@ -2976,3 +3087,5 @@ MonoBehaviour:
         - id: 43874653886263328
         - id: 44124330326011904
         - id: 44124330363760644
+        - id: 44124330363760664
+        - id: 44124330363760667

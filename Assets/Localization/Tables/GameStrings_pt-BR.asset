@@ -2257,6 +2257,117 @@ MonoBehaviour:
     m_Localized: Abrindo o chat do Remanescente...
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760650
+    m_Localized: Chat do Remanescente
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760651
+    m_Localized: "Classifica\xE7\xE3o"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760652
+    m_Localized: "M\xFAsica"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760653
+    m_Localized: Reino
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760654
+    m_Localized: Pausa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760655
+    m_Localized: ECOS DE ELARION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760656
+    m_Localized: Pular
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760657
+    m_Localized: Criação
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760658
+    m_Localized: Concluído
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760659
+    m_Localized: Equipado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760660
+    m_Localized: Ouro
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760661
+    m_Localized: Nenhum herói para equipar.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760662
+    m_Localized: Anúncio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760663
+    m_Localized: Quadro de Rumores de Brom
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760664
+    m_Localized: "Cristais: {0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 44124330363760665
+    m_Localized: Trabalho
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760666
+    m_Localized: Jukebox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760667
+    m_Localized: Nv {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 44124330363760668
+    m_Localized: Próximo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760669
+    m_Localized: Nenhum herói.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760670
+    m_Localized: Nenhum inventário.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760671
+    m_Localized: Impulsionado com SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760672
+    m_Localized: Receita
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760673
+    m_Localized: Recuar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760674
+    m_Localized: Selecione um item primeiro.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760675
+    m_Localized: Recompensas de Staking
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760676
+    m_Localized: Torres
+    m_Metadata:
+      m_Items: []
+
   references:
     version: 2
     RefIds:
@@ -2325,3 +2436,5 @@ MonoBehaviour:
         - id: 43874653886263328
         - id: 44124330326011904
         - id: 44124330363760644
+        - id: 44124330363760664
+        - id: 44124330363760667

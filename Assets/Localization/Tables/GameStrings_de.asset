@@ -2268,6 +2268,117 @@ MonoBehaviour:
     m_Localized: "\xDCberrest-Chat wird ge\xF6ffnet..."
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760650
+    m_Localized: "\xDCberrest-Chat"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760651
+    m_Localized: Bestenliste
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760652
+    m_Localized: Musik
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760653
+    m_Localized: Reich
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760654
+    m_Localized: Pause
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760655
+    m_Localized: ECHOS VON ELARION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760656
+    m_Localized: Überspringen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760657
+    m_Localized: Handwerk
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760658
+    m_Localized: Fertig
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760659
+    m_Localized: Ausgerüstet
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760660
+    m_Localized: Gold
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760661
+    m_Localized: Kein Held zum Ausrüsten vorhanden.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760662
+    m_Localized: Werbung
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760663
+    m_Localized: Broms Gerüchtetafel
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760664
+    m_Localized: "Kristalle: {0}"
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 44124330363760665
+    m_Localized: Auftrag
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760666
+    m_Localized: Jukebox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760667
+    m_Localized: Lv. {0}
+    m_Metadata:
+      m_Items:
+      - rid: 7338888474672496640
+  - m_Id: 44124330363760668
+    m_Localized: Weiter
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760669
+    m_Localized: Kein Held vorhanden.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760670
+    m_Localized: Kein Inventar vorhanden.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760671
+    m_Localized: Angetrieben mit SKR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760672
+    m_Localized: Rezept
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760673
+    m_Localized: Rückzug
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760674
+    m_Localized: Wähle zuerst einen Gegenstand aus.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760675
+    m_Localized: Staking-Belohnungen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760676
+    m_Localized: Türme
+    m_Metadata:
+      m_Items: []
+
   references:
     version: 2
     RefIds:
@@ -2336,3 +2447,5 @@ MonoBehaviour:
         - id: 43874653886263328
         - id: 44124330326011904
         - id: 44124330363760644
+        - id: 44124330363760664
+        - id: 44124330363760667

@@ -216,7 +216,9 @@ namespace DeNelle.Editor.Regression
             string hud = ReadSrc(HudSrc, failures);
             if (hud == null) return;
             string code = StripComments(hud);
-            if (code.IndexOf("AddDockTab(_slideDock.panel, dockRow++, \"Realm\", OpenRealmDeck)", StringComparison.Ordinal) < 0)
+            // WO-1857: the label is now a LocalizedText resolve (hud.gearDock.realm), not a bare
+            // "Realm" literal - the needle pins the resolved key plus the handler.
+            if (code.IndexOf("new LocalizedText(\"hud.gearDock.realm\").Resolve(), OpenRealmDeck)", StringComparison.Ordinal) < 0)
                 failures.Add(Tag + " the gear dock has no \"Realm\" -> OpenRealmDeck row - the deck launcher's row " +
                              "must say what it opens, never the store's name");
             if (code.IndexOf("void OpenRealmStore(", StringComparison.Ordinal) >= 0)

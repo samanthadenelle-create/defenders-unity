@@ -31,8 +31,13 @@ namespace DeNelle.Editor.Regression
             if (bootstrap.IndexOf("if (!ClanFeatureGate.PlayerFacingEnabled) return;", StringComparison.Ordinal) >
                 bootstrap.IndexOf("new GameObject(\"ClanChatPanel\")", StringComparison.Ordinal))
                 failures.Add("[clan-feature-gate] bootstrap checks the gate only after constructing the panel");
-            if (hud.IndexOf("if (DeNelle.Core.Services.ClanFeatureGate.PlayerFacingEnabled)", StringComparison.Ordinal) >
-                hud.IndexOf("AddDockTab(_slideDock.panel, dockRow++, \"Chat\"", StringComparison.Ordinal))
+            // WO-1857: the Chat door's label is now a LocalizedText resolve (common.remnant_chat),
+            // not a bare "Chat" literal - the needle pins the resolved key so an IndexOf miss can't
+            // silently read as "found at position -1, which is always before the gate check".
+            int chatDoorIdx = hud.IndexOf("new LocalizedText(\"common.remnant_chat\").Resolve(), OpenClanChat);", StringComparison.Ordinal);
+            if (chatDoorIdx < 0)
+                failures.Add("[clan-feature-gate] the Chat door's AddDockTab call (common.remnant_chat -> OpenClanChat) was not found");
+            else if (hud.IndexOf("if (DeNelle.Core.Services.ClanFeatureGate.PlayerFacingEnabled)", StringComparison.Ordinal) > chatDoorIdx)
                 failures.Add("[clan-feature-gate] HUD checks the gate only after adding the Chat door");
 
             if (failures.Count == 0)

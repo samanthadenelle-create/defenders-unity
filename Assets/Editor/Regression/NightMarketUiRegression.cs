@@ -714,7 +714,9 @@ namespace DeNelle.Editor.Regression
             // WO-1398: the row is labelled for what it OPENS (the Realm deck) and its command is
             // named for it too. It used to read "Night Market" -> OpenRealmStore while opening
             // PanelId.RealmDeck: one name for two screens, a method name that lied about its target.
-            Require(hud, "AddDockTab(_slideDock.panel, dockRow++, \"Realm\", OpenRealmDeck)",
+            // WO-1857: the label is now a LocalizedText resolve (hud.gearDock.realm), not a bare
+            // "Realm" literal - the needle pins the resolved key plus the handler.
+            Require(hud, "new LocalizedText(\"hud.gearDock.realm\").Resolve(), OpenRealmDeck)",
                 "Realm drawer row is absent or not bound to OpenRealmDeck (WO-1398)", failures);
             Require(hud, "DockTabCount = 6",
                 "drawer capacity was not expanded for the Night Market touch row", failures);

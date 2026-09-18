@@ -5553,23 +5553,43 @@ namespace DeNelle.HUD.Kit
             if (legacyDockRim != null) legacyDockRim.gameObject.SetActive(false);
 
             int dockRow = 0;
+            // ⛔ EVERY PLAYER-FACING STRING GOES THROUGH LOCALIZATION, NO EXCEPTIONS (owner
+            // standing law, 2026-09-17, WO-1857 acceptance floor) — these six labels were the
+            // exact hardcoded literals that triggered the WO-1857 sweep. "Settings" reuses
+            // settings.title (already translated in all 10 locales, matching BuildSafetyNetSettingsDoor's
+            // own fix above). "Chat" is minted as common.remnant_chat ("Remnant Chat") rather than a
+            // bare "Chat" key — WO-1859 already renamed the panel this row opens (ClanChatVM.Title /
+            // ClanChatPanel's register + modal title) to "Remnant Chat", so a dock label still reading
+            // plain "Chat" would be stale pre-rename branding pointing at a screen that no longer calls
+            // itself that. "Leaderboard"/"Music"/"Realm"/"Pause" had no existing equivalent key (checked
+            // HudStrings.cs + en.json; settings.audio.music is a different job - an audio-settings
+            // toggle label, not this dock tab - per key-naming.md's same-word-different-job rule) so
+            // each is a new mint: common.leaderboard (shared - LeaderboardPanel.cs/LeaderboardVM.cs
+            // carry the same bare word and can reuse this key once their own WO-1857 lane lands),
+            // hud.gearDock.music, hud.gearDock.realm, hud.gearDock.pause.
             if (DeNelle.Core.Services.ClanFeatureGate.PlayerFacingEnabled)
-                AddDockTab(_slideDock.panel, dockRow++, "Chat", OpenClanChat);
-            AddDockTab(_slideDock.panel, dockRow++, "Leaderboard", OpenLeaderboard);
-            AddDockTab(_slideDock.panel, dockRow++, "Music", OpenJukebox);
-            AddDockTab(_slideDock.panel, dockRow++, "Settings", OpenSettings);
+                AddDockTab(_slideDock.panel, dockRow++,
+                    new LocalizedText("common.remnant_chat").Resolve(), OpenClanChat);
+            AddDockTab(_slideDock.panel, dockRow++,
+                new LocalizedText("common.leaderboard").Resolve(), OpenLeaderboard);
+            AddDockTab(_slideDock.panel, dockRow++,
+                new LocalizedText("hud.gearDock.music").Resolve(), OpenJukebox);
+            AddDockTab(_slideDock.panel, dockRow++,
+                new LocalizedText("settings.title").Resolve(), OpenSettings);
             // WO-1398: this row opens the REALM DECK (PanelId.RealmDeck - the four-card
             // launcher: store / Defense Report / Monthly Ledger / Game Guide), so it is labelled
             // with what it opens. It used to read "Night Market" while the HUD card beside it,
             // reading the same words, opened the store itself - one name for two screens
             // (docs/qa/UI_SCREEN_GRAPH_2026-09-04.md dead end 7). "Realm" is the workspace's own
             // name (PlayerDeckKind.Realm) and is the WO's proposed default pending owner word.
-            AddDockTab(_slideDock.panel, dockRow++, "Realm", OpenRealmDeck);
+            AddDockTab(_slideDock.panel, dockRow++,
+                new LocalizedText("hud.gearDock.realm").Resolve(), OpenRealmDeck);
             // Pause folded into the LEFT gear (cosmetic flag A, 2026-07-24): the standalone
             // top-right pause chip (PauseHudBootstrap.PauseHudButton) was culled to leave ONE
             // door. PauseController/SettingsController stay installed by PauseHudBootstrap; this
             // tab is the caller that opens Pause/Quit-to-Title via PauseGate.RequestBack().
-            AddDockTab(_slideDock.panel, dockRow, "Pause", () => PauseGate.RequestBack());
+            AddDockTab(_slideDock.panel, dockRow,
+                new LocalizedText("hud.gearDock.pause").Resolve(), () => PauseGate.RequestBack());
             // History of the Realm row (owner, 2026-08-22: "the only entrance to the Realm shop
             // is from an interaction with a person in town" - so the store was unreachable
             // without walking to the vendor, and unreachable at all outside town). The row was

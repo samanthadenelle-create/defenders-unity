@@ -17,7 +17,9 @@ test('clan chat is open (WO-1851) and both player entry points still consult the
   const dock = read('Assets/_Modules/HUD/Kit/HudKitController.cs');
   const bootstrap = read('Assets/_Modules/HUD/ClanChatPanelBootstrap.cs');
   assert.match(gate, /PlayerFacingEnabled = true/);
-  assert.match(dock, /if \(DeNelle\.Core\.Services\.ClanFeatureGate\.PlayerFacingEnabled\)[\s\S]*"Chat"/);
+  // WO-1857: the Chat door's label is now a LocalizedText resolve (common.remnant_chat),
+  // not a bare "Chat" literal - match the resolved key instead of the old literal text.
+  assert.match(dock, /if \(DeNelle\.Core\.Services\.ClanFeatureGate\.PlayerFacingEnabled\)[\s\S]*common\.remnant_chat/);
   assert.match(bootstrap, /if \(!ClanFeatureGate\.PlayerFacingEnabled\) return;/);
 });
 

@@ -2035,6 +2035,114 @@ MonoBehaviour:
     m_Key: clanChat.opening
     m_Metadata:
       m_Items: []
+  - m_Id: 44124330363760650
+    m_Key: common.remnant_chat
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760651
+    m_Key: common.leaderboard
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760652
+    m_Key: hud.gearDock.music
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760653
+    m_Key: hud.gearDock.realm
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760654
+    m_Key: hud.gearDock.pause
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760655
+    m_Key: common.echoes_elarion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760656
+    m_Key: common.skip
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760657
+    m_Key: common.crafting
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760658
+    m_Key: common.done
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760659
+    m_Key: common.equipped
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760660
+    m_Key: common.gold
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760661
+    m_Key: common.no_hero_equip
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760662
+    m_Key: common.ad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760663
+    m_Key: common.brom_s_rumor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760664
+    m_Key: common.crystals
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760665
+    m_Key: common.job
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760666
+    m_Key: common.jukebox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760667
+    m_Key: common.lv
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760668
+    m_Key: common.next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760669
+    m_Key: common.no_hero
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760670
+    m_Key: common.no_inventory
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760671
+    m_Key: common.powered_skr
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760672
+    m_Key: common.recipe
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760673
+    m_Key: common.retreat
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760674
+    m_Key: common.select_item_first
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760675
+    m_Key: common.stake_rewards
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44124330363760676
+    m_Key: common.towers
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
