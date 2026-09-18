@@ -393,9 +393,15 @@ namespace DeNelle.Village.Hud
         private const float ImminentThreshold = 5f; // countdown seconds at which a wave reads "imminent"
 
         private CoreWavePhase _phase = (CoreWavePhase)(-1);
-        private int _number = -1, _live = -1, _total = -1;
+        private int _number = -1, _remaining = -1, _total = -1;
         private float _countdown = -1f;
         private bool _imminent;
+
+        // WO-1864: this wave's roster high-water mark, owned HERE and not in WaveManager, because
+        // the roster total is display-only (it is the progress bar's denominator and nothing else).
+        // The arithmetic + the full reasoning live in Core so a regression can drive the owner's
+        // captured sequence through them with no scene: DeNelle.Core.HudModel.WaveCounterMath.
+        private WaveRosterTracker _roster;
 
         public WaveProducer(IHudModel m) : base(m, 0.20f) { }
 
@@ -408,14 +414,24 @@ namespace DeNelle.Village.Hud
             int number = Mathf.Max(0, wm.CurrentWaveId);
             float countdown = wm.CountdownRemaining;
 
-            int live = 0, total = 0;
+            // ⛔ WO-1864 — THE REMAINING COUNT IS live + HELD. NEVER THE FIELD LIST ALONE.
+            // WaveManager's concurrency cap (WO-1113, _maxSimultaneousEnemies) holds the field AT
+            // the cap for almost the whole wave and drip-feeds the rest as reinforcements, so the
+            // field's length is a CONSTANT, not a countdown. This block read only the field list,
+            // which is why the owner saw "8 enemies remain" frozen for 101 seconds of wave 26 while
+            // 26 composed bodies were still queued — proving lines cited on
+            // WaveManager.HeldReinforcements. The cap itself is deliberate and untouched: this is a
+            // display fix, and the honest number is the one the wave loop already tracks in two parts.
+            int live = 0;
             var enemies = wm.LiveEnemies;
             if (enemies != null)
             {
-                total = enemies.Count;
                 for (int i = 0; i < enemies.Count; i++)
                     if (enemies[i] != null && enemies[i].IsAlive) live++;
             }
+            int held = wm.HeldReinforcements;
+            int remaining = WaveCounterMath.Remaining(live, held);
+            int total = _roster.Observe(number, remaining);
 
             // WO-1736: !IsAwaitingPlayerStart — an endless wave parked on the player's DEFEND
             // press sits in Countdown with `countdown` held at 0, so the bare `<= 5f` published
@@ -429,15 +445,25 @@ namespace DeNelle.Village.Hud
             // Change-gate (countdown bucketed to whole seconds so the timer doesn't churn every poll).
             int cdBucket = Mathf.CeilToInt(countdown);
             int lastCd = Mathf.CeilToInt(_countdown);
-            if (phase == _phase && number == _number && live == _live && total == _total &&
+            if (phase == _phase && number == _number && remaining == _remaining && total == _total &&
                 cdBucket == lastCd && imminent == _imminent) return;
 
-            _phase = phase; _number = number; _live = live; _total = total;
+            _phase = phase; _number = number; _remaining = remaining; _total = total;
             _countdown = countdown; _imminent = imminent;
+
+            // WO-1864: AFTER the change-gate on purpose. Poll runs at 5 Hz; a bare Step here is a
+            // per-frame-class firehose that evicts the boot window out of the device logcat ring
+            // (CLAUDE.md §12, memory `logcat-ring-buffer-destroys-evidence`). Gated, it fires only
+            // when the published number actually moves — which is exactly the evidence this ticket
+            // needed and could not get: it prints the SPLIT, so a future "the counter is wrong"
+            // report is decidable from one line instead of pairing two systems' traces by timestamp.
+            DeNelle.Core.Diagnostics.FlowTrace.Step("HUD",
+                $"wave counter PUBLISH: wave {number} {phase} — field {live} live + {held} HELD by " +
+                $"the concurrency cap = {remaining} remaining of roster {total}.");
 
             // LookoutStatus / Max / ClearBanner have no clean WaveManager source (the
             // schedule total + banner copy are not exposed) — left as neutral stubs.
-            Model.Wave.Set(phase, number, 0, countdown, imminent, null, live, total, null);
+            Model.Wave.Set(phase, number, 0, countdown, imminent, null, remaining, total, null);
         }
 
         private static CoreWavePhase MapPhase(DeNelle.Village.WavePhase p)

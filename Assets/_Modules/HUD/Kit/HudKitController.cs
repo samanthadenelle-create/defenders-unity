@@ -4739,11 +4739,18 @@ namespace DeNelle.HUD.Kit
                 progressRt.offsetMax = Vector2.zero;
             }
             _waveCountdown.text = activeWave
-                ? LocalText.Format("hud.hud_kit.enemies_remain", Mathf.Max(0, w.EnemiesLive))
+                // WO-1864: EnemiesRemaining = field + cap-held reinforcements. This read used to be
+                // w.EnemiesLive (the field list alone), which the WO-1113 concurrency cap pins at the
+                // cap — so "8 enemies remain" was literally true of the FIELD and a lie about the WAVE.
+                ? LocalText.Format("hud.hud_kit.enemies_remain", Mathf.Max(0, w.EnemiesRemaining))
                 // WO-1407: "Next wave in 14m 15s", never "855s" - ElarionUi.Duration is the one
                 // formatter (shared with WaveCountdownUI and the queue rail).
                 : (realCountdown ? "Next wave in " + ElarionUi.Duration(Mathf.CeilToInt(w.CountdownRemaining)) : "");
-            _waveProgress.SetValue(activeWave ? w.EnemiesLive : w.EnemiesTotal - w.EnemiesLive,
+            // WO-1864: the denominator is now the wave's ROSTER (peak remaining), not the field
+            // list's length. Before, numerator and denominator were the same list, so an active
+            // wave's bar sat pinned at ~100% for its whole duration and said nothing.
+            _waveProgress.SetValue(
+                activeWave ? w.EnemiesRemaining : w.EnemiesTotal - w.EnemiesRemaining,
                 Mathf.Max(1, w.EnemiesTotal));
             _waveProgress.track.gameObject.SetActive(w.EnemiesTotal > 0);
             // Owner 07-06 ("missing option to start wave now... they might be fully ready"):

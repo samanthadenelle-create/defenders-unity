@@ -36,8 +36,16 @@ public readonly struct MinimapPoiRecord { public float X, Z; public string Kind;
   mutator: `Set(int hp,int maxHp,int mana,int maxMana,int xp,int xpToNext,int level,string classId)`
 - `PartyModel` — prop: `IReadOnlyList<PartyMemberRecord> Members`. mutator: `SetMembers(IReadOnlyList<PartyMemberRecord>)`
 - `EconomyModel` — props: `int Gold, Wood, Iron, Food, Crystals`. mutator: `Set(int gold,int wood,int iron,int food,int crystals)`
-- `WaveModel` — props: `WavePhase Phase; int Number, Max; float CountdownRemaining; bool Imminent; string LookoutStatus; int EnemiesLive, EnemiesTotal; string ClearBanner`.
-  mutator: `Set(WavePhase,int number,int max,float countdown,bool imminent,string lookout,int live,int total,string banner)`
+- `WaveModel` — props: `WavePhase Phase; int Number, Max; float CountdownRemaining; bool Imminent; string LookoutStatus; int EnemiesRemaining, EnemiesTotal; string ClearBanner`.
+  mutator: `Set(WavePhase,int number,int max,float countdown,bool imminent,string lookout,int remaining,int total,string banner)`
+  - ⚠ **AMENDED 2026-09-18 (WO-1864) — the ONE break in this otherwise-frozen contract.** `EnemiesLive`
+    is now **`EnemiesRemaining`**, and `EnemiesTotal` is the wave's **roster**, not the live list's
+    length. The old name was fed by `WaveManager.LiveEnemies` alone, which the WO-1113 concurrency cap
+    pins AT the cap — so the counter published a constant "8 enemies remain" for 101 seconds of the
+    owner's wave 26 while 26 enemies were still held (proving lines in
+    `WORK_ORDER_1864_...RESULT.md`). The rename is deliberate: a property named `Live` that must
+    carry live+held would be the next seat's bug. Arithmetic lives in
+    `Assets/_Modules/Core/HudModel/WaveCounterMath.cs`; pinned by `WaveCounterHonestyRegression`.
 - `TargetModel` — props: `bool HasTarget; string Name; int Level, Hp, MaxHp; float HpFraction; HudRole Role; bool Locked`.
   mutator: `Set(bool has,string name,int level,int hp,int maxHp,float frac,HudRole role,bool locked)`; plus `Clear()`
 - `TargetCycleModel` — prop: `IReadOnlyList<TargetRecord> Targets`. mutator: `SetTargets(IReadOnlyList<TargetRecord>)`

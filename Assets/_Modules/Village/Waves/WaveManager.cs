@@ -674,6 +674,28 @@ namespace DeNelle.Village
         /// <summary>Live enemies currently on the field.</summary>
         public IReadOnlyList<Enemy> LiveEnemies => _liveEnemies;
 
+        /// <summary>
+        /// WO-1864: enemies this wave's roster still OWES the field — composed, counted toward the
+        /// clear gate, but not yet spawned because <see cref="MaxSimultaneous"/> is metering the
+        /// field (see <c>_heldSmartReinforcements</c> and the WO-1113 block above it).
+        /// <para>
+        /// ⛔ <b>THE PLAYER-FACING REMAINING COUNT IS <c>LiveEnemies.Count + HeldReinforcements</c>,
+        /// NEVER <c>LiveEnemies.Count</c> ALONE.</b> The cap holds the LIVE count pinned at the cap
+        /// for almost the whole wave, so a HUD that reads only the field publishes a constant — the
+        /// owner's report 2026-09-18: <i>"every wave shows 8 remaining troops till it gets lower
+        /// than 8"</i>. Proof, from her own device pull
+        /// <c>Logs/device/raid-trace-20260918-080200.txt</c>: at 07:26:39.667 <c>wave 26:
+        /// concurrency cap 8 released 8 now, HOLDING 26 for reinforcement (total roster unchanged at
+        /// 34)</c>, and 0.1s later at 07:26:39.774 the HUD model published <c>Active wave 26/0 live
+        /// 8/8</c> — and did not change again for 101 seconds while the held count walked
+        /// 26 -> 1 (line 3399 vs 3486 vs 15452).
+        /// </para>
+        /// Read-only accessor; adding it changes no spawn timing and does not touch the cap. The cap
+        /// is a deliberate pacing/frame-budget mechanism (WO-1113) and stays exactly as it is — this
+        /// exists so the COUNTER can be honest about it.
+        /// </summary>
+        public int HeldReinforcements => _heldSmartReinforcements;
+
         /// <summary>The apex flying boss on the field, or null when no apex wave is live.</summary>
         public DragonBoss LiveApexBoss => _liveApexBoss;
 

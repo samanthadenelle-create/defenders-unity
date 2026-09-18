@@ -153,9 +153,27 @@ namespace DeNelle.Core.HudModel
         public bool Imminent { get; private set; }
         /// <summary>Lookout status text.</summary>
         public string LookoutStatus { get; private set; }
-        /// <summary>Enemies still alive this wave.</summary>
-        public int EnemiesLive { get; private set; }
-        /// <summary>Total enemies this wave.</summary>
+        /// <summary>
+        /// WO-1864: enemies this wave still has LEFT — the bodies on the field PLUS the ones the
+        /// concurrency cap is holding back as reinforcements (WaveManager.LiveEnemies.Count +
+        /// WaveManager.HeldReinforcements).
+        /// <para>
+        /// ⛔ <b>THIS IS NOT THE FIELD COUNT, and it must never be reduced to one.</b> It was named
+        /// <c>EnemiesLive</c> and fed by the field list alone until 2026-09-18, which is why the
+        /// counter read a constant "8 enemies remain" for 101 seconds of wave 26 while 26 held
+        /// bodies were still coming (owner report + the proving lines are cited on
+        /// <c>WaveManager.HeldReinforcements</c>). The cap pins the field AT the cap by design, so
+        /// the field count is the one number that cannot answer "how many are left".
+        /// </para>
+        /// </summary>
+        public int EnemiesRemaining { get; private set; }
+        /// <summary>
+        /// WO-1864: this wave's ROSTER total — the high-water mark of <see cref="EnemiesRemaining"/>
+        /// since the wave number last changed, which equals the composed roster
+        /// (released + held) as published by WaveManager's "total roster unchanged at N" trace.
+        /// Was the live FIELD list's length, so it tracked <see cref="EnemiesRemaining"/> one-for-one
+        /// and the progress bar sat pinned at full for every capped wave.
+        /// </summary>
         public int EnemiesTotal { get; private set; }
         /// <summary>Banner text shown on wave clear.</summary>
         public string ClearBanner { get; private set; }
@@ -164,8 +182,12 @@ namespace DeNelle.Core.HudModel
         public event Action Changed;
 
         /// <summary>Producer-only mutator: assign all fields, fire Changed, trace (throttled).</summary>
+        /// <param name="remaining">
+        /// WO-1864: live-on-field PLUS cap-held reinforcements. Passing the field count alone is the
+        /// bug this parameter was renamed to prevent.
+        /// </param>
         public void Set(WavePhase phase, int number, int max, float countdown, bool imminent,
-            string lookout, int live, int total, string banner)
+            string lookout, int remaining, int total, string banner)
         {
             Phase = phase;
             Number = number;
@@ -173,11 +195,11 @@ namespace DeNelle.Core.HudModel
             CountdownRemaining = countdown;
             Imminent = imminent;
             LookoutStatus = lookout;
-            EnemiesLive = live;
+            EnemiesRemaining = remaining;
             EnemiesTotal = total;
             ClearBanner = banner;
             Changed?.Invoke();
-            FlowTrace.Throttle("HUD", "wave", 1f, $"{Phase} wave {Number}/{Max} live {EnemiesLive}/{EnemiesTotal} cd{CountdownRemaining:F1}");
+            FlowTrace.Throttle("HUD", "wave", 1f, $"{Phase} wave {Number}/{Max} remaining {EnemiesRemaining}/{EnemiesTotal} cd{CountdownRemaining:F1}");
         }
     }
 
