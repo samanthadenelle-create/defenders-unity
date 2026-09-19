@@ -1362,7 +1362,7 @@
     "corrected": true,
     "manual": true,
     "euler": [
-     90,
+     0,
      0,
      0
     ],
@@ -1372,7 +1372,7 @@
      0
     ],
     "scale": 1,
-    "note": "owner 2026-08-19 upright X=90 flagged fixed  -  applied PRE-fit via StructureFactory.OptsFor LocalRotation (GROK_BRIEF). Was [0,0,0] after 2026-08-18 axis-bake pass that discarded the imported root rotation."
+    "note": "2026-09-19 owner PNG: barracks pitched into the grass. The 2026-08-19 X=90 was for the pre-fit identity reset on this bakeAxisConversion:1 FBX; on the live placement path that +90 now TILTS the house into the ground (ridge not horizontal). Zeroed like WO-1713. manual stays true so no tool re-derives +90 from the import flag."
    }
   },
   {
