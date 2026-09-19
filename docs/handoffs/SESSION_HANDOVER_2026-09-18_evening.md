@@ -38,3 +38,11 @@ Remnant = the player ("Bob of RiverRun" / "Bob the Lonely"), Circle = the group;
 
 ## Next READY tickets (prize path)
 WO-1873 global + Circle chat rooms (dispatch now that WO-1870 lanes released ClanChatPanel.cs / site/clan-chat.html); WO-1874 after the owner's ruling. WO-1701 (WebGL) parked by ruling; WO-1857 remaining shards parked behind the prize.
+
+## 20:45 close-out (owner: "check code in and close out session")
+- Tester APK `2026.09.18.375785` is on the Seeker (installed from Firebase, versionName read by adb) and on Firebase release 5jrcip5ivq10o.
+- **WO-1868 BOUNCED to READY** by the owner's device frame `Logs/device/raid-fog-203029.png`: two grey puffs under a blue sky, no fog, arrows unproven. The lead had flipped it FIXED on green markers without opening a frame - process failure recorded in memory `visual-ticket-never-fixed-without-an-opened-frame`. Redirect spec is in the WO status line.
+- **WO-1870 / WO-1871 corrected to IMPLEMENTED - NO FRAME OPENED YET.** Not FIXED until a device frame of each screen is opened by the lead.
+- **WO-1875 minted (READY):** the Circle screen is dead on a fresh session ("Could not reach the server") because every read is non-minting and boot never signs; proof in `Logs/device/logcat-circle-unreachable-20260918.txt` :193010-193012, :196430, :196501. The implementation lane was stopped before it wrote anything; the tree carries no partial edits from it.
+- Player bug reports #15/#16 (live DB, read-only): the same tester, build 373943, "it's hard to know" submitted twice 3 s apart, empty trace tail, no screenshot. Two feedback-form defects to mint on the owner's word: double-submit on Send, and an empty trace tail.
+- Resume order next session: WO-1875 (Circle sign-in) -> WO-1868 redirect (open the frame!) -> device frames for 1870/1871 -> WO-1873 (global chat) -> WO-1874 rulings.
