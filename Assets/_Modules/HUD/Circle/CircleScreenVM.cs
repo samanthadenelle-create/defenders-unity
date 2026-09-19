@@ -387,6 +387,8 @@ namespace DeNelle.HUD
         public bool VigilDegraded { get; private set; }
         public string VigilWeightText { get; private set; }
         public string VigilDegradedKey { get; private set; }
+        /// <summary>Locale key for Ember..Dawn from vigil_weight. Empty when no tier is unlocked.</summary>
+        public string VigilWordKey { get; private set; }
         public int EpochIndex { get; private set; }
         public string EpochEndsAtIso { get; private set; }
 
@@ -622,6 +624,11 @@ namespace DeNelle.HUD
             Perks = new List<PerkRowVM>();
             HasBallot = false;
             CanReplayVigil = false;
+            VigilWeight = 0;
+            VigilDegraded = false;
+            VigilWeightText = null;
+            VigilDegradedKey = null;
+            VigilWordKey = null;
         }
 
         public void SelectTab(CircleTab tab)
@@ -720,10 +727,7 @@ namespace DeNelle.HUD
                 return;
             }
 
-            VigilWeight = v.vigil_weight;
-            VigilDegraded = v.degraded;
-            VigilWeightText = FormatNumber(v.vigil_weight);
-            VigilDegradedKey = v.degraded ? "circle.vigil.degraded" : string.Empty;
+            ApplyVigilWeight(v.vigil_weight, v.degraded);
 
             var rows = new List<MemberRowVM>();
             var ids = new List<string>();
@@ -964,10 +968,7 @@ namespace DeNelle.HUD
                 return;
             }
 
-            VigilWeight = b.vigil_weight;
-            VigilDegraded = b.vigil_degraded;
-            VigilWeightText = FormatNumber(b.vigil_weight);
-            VigilDegradedKey = b.vigil_degraded ? "circle.vigil.degraded" : string.Empty;
+            ApplyVigilWeight(b.vigil_weight, b.vigil_degraded);
             EpochIndex = b.epoch != null ? b.epoch.index : 0;
             EpochEndsAtIso = b.epoch != null ? b.epoch.ends_at : null;
 
@@ -1765,6 +1766,16 @@ namespace DeNelle.HUD
             sb.Append("...");
             sb.Append(value.Substring(value.Length - 4));
             return sb.ToString();
+        }
+
+        private void ApplyVigilWeight(double weight, bool degraded)
+        {
+            VigilWeight = weight;
+            VigilDegraded = degraded;
+            VigilWeightText = FormatNumber(weight);
+            VigilDegradedKey = degraded ? "circle.vigil.degraded" : string.Empty;
+            VigilWordKey = VigilCeremonyWords.WordKeyForTier(
+                VigilCeremonyWords.HighestUnlockedTier(weight));
         }
 
         /// <summary>Two decimals at most, invariant — never a locale-formatted float on the wire.</summary>

@@ -607,6 +607,13 @@ namespace DeNelle.HUD
                 TextAlignmentOptions.Left, new Vector2(0.53f, 0.50f), new Vector2(0.61f, 0.80f));
             tag.text = _vm.CircleTag;
 
+            if (!string.IsNullOrEmpty(_vm.VigilWordKey))
+            {
+                var vigilWord = MakeText(head, ElarionUi.FontTitle, ElarionUi.Gold,
+                    TextAlignmentOptions.Right, new Vector2(0.50f, 0.78f), new Vector2(0.98f, 0.98f));
+                vigilWord.text = Resolve(_vm.VigilWordKey);
+            }
+
             var codeLabel = MakeText(head, ElarionUi.FontLabel, ElarionUi.Parchment,
                 TextAlignmentOptions.Left, new Vector2(0.02f, 0.26f), new Vector2(0.48f, 0.48f));
             codeLabel.text = Resolve(KeyHeaderCode) + " " + _vm.CircleCode;
@@ -904,6 +911,14 @@ namespace DeNelle.HUD
                 ElarionUiKit.Button(replay, Resolve(_vm.ReplayVigilKey ?? KeyCeremonyReplay),
                     ElarionUiKit.ButtonKind.Gold,
                     new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.95f), OnReplayVigil);
+            }
+
+            if (!string.IsNullOrEmpty(_vm.VigilWordKey))
+            {
+                var wordRow = ListRow(SectionRowH);
+                var word = MakeText(wordRow, ElarionUi.FontTitle, ElarionUi.Gold,
+                    TextAlignmentOptions.Left, new Vector2(0.02f, 0.08f), new Vector2(0.98f, 0.95f));
+                word.text = Resolve(_vm.VigilWordKey);
             }
 
             var weight = ListRow(InfoRowH);
