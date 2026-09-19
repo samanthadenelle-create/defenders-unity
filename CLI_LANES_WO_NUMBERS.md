@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-eighth pass): main line next free = **1876**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-ninth pass): main line next free = **1877**.
+> *(CLI minted **WO-1876** 2026-09-18 — captured town reuses the castle HUD/build stack; retire
+> OwnedTownPanel as the rebuild door (owner: "reusing the logic we have and simply passing if its
+> castle or players base"). Bumped 1876 -> 1877 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-eighth pass): main line next free = **1876**.
 > *(CLI minted **WO-1875** 2026-09-18 20:35 - the Circle screen is dead without a wallet session: every
 > read is non-minting and boot never signs, so a fresh session reads "Could not reach the server".
 > Bumped 1875 -> 1876 in this SAME edit.)*
