@@ -124,6 +124,57 @@
       }
     },
     {
+      "key": "clanChat.notSignedIn",
+      "owner": "Clan",
+      "reason": "WO-1875 Circle session-missing copy ships on Google Play; Play must not name a wallet.",
+      "values": {
+        "en": "Sign in to open Circle Chat.",
+        "es": "Inicia sesión para abrir el chat del Círculo.",
+        "pt-BR": "Faça login para abrir o chat do Círculo.",
+        "de": "Melde dich an, um den Zirkel-Chat zu öffnen.",
+        "fr": "Connectez-vous pour ouvrir le chat du Cercle.",
+        "ru": "Войдите, чтобы открыть чат Круга.",
+        "ar": "سجّل الدخول لفتح دردشة الحلقة.",
+        "ja": "サークルチャットを開くにはサインインしてください。",
+        "ko": "서클 채팅을 열려면 로그인하세요.",
+        "zh-Hans": "登录以打开圈子聊天。"
+      }
+    },
+    {
+      "key": "circle.error.notSignedIn",
+      "owner": "Clan",
+      "reason": "WO-1875 Circle SIGN IN plate ships on Google Play; Play must not name a wallet.",
+      "values": {
+        "en": "Sign in to use Circles.",
+        "es": "Inicia sesión para usar Círculos.",
+        "pt-BR": "Faça login para usar Círculos.",
+        "de": "Melde dich an, um Zirkel zu nutzen.",
+        "fr": "Connectez-vous pour utiliser les Cercles.",
+        "ru": "Войдите, чтобы использовать Круги.",
+        "ar": "سجّل الدخول لاستخدام الحلقات.",
+        "ja": "サークルを利用するにはサインインしてください。",
+        "ko": "서클을 사용하려면 로그인하세요.",
+        "zh-Hans": "登录以使用圈子。"
+      }
+    },
+    {
+      "key": "circle.error.noWallet",
+      "owner": "Clan",
+      "reason": "WO-1875 no-identity Circle copy ships on Google Play; Play must not name a wallet.",
+      "values": {
+        "en": "Connect an account to see your Circle.",
+        "es": "Conecta una cuenta para ver tu Círculo.",
+        "pt-BR": "Conecte uma conta para ver seu Círculo.",
+        "de": "Verbinde ein Konto, um deinen Zirkel zu sehen.",
+        "fr": "Connectez un compte pour voir votre Cercle.",
+        "ru": "Подключите аккаунт, чтобы увидеть свой Круг.",
+        "ar": "اربط حساباً لرؤية حلقتك.",
+        "ja": "サークルを表示するにはアカウントを接続してください。",
+        "ko": "서클을 보려면 계정을 연결하세요.",
+        "zh-Hans": "连接账户以查看你的圈子。"
+      }
+    },
+    {
       "key": "common.powered_skr",
       "owner": "Onboarding",
       "reason": "Shared Title-screen badge/modal-title copy (WO-1857) ships on Google Play; it must not name the SKR token by ticker on that channel.",

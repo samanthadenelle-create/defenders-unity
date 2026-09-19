@@ -785,6 +785,86 @@ test('with no ballot at all the response is still a complete answer', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 10b. THE CEREMONY — WO-1874
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('highestUnlockedTier: vigil 0 is not Ember; T1 is any weight; bars are inclusive', () => {
+    assert.equal(ballot.highestUnlockedTier(0), 0);
+    assert.equal(ballot.highestUnlockedTier(0.0000001), 1);
+    assert.equal(ballot.highestUnlockedTier(ballot.TIER_THRESHOLDS[2]), 2);
+    assert.equal(ballot.highestUnlockedTier(ballot.TIER_THRESHOLDS[5]), 5);
+});
+
+test('TIER_WORDS 1..5 are Ember, Flame, Beacon, Pyre, Dawn', () => {
+    assert.equal(ballot.TIER_WORDS[1], 'Ember');
+    assert.equal(ballot.TIER_WORDS[2], 'Flame');
+    assert.equal(ballot.TIER_WORDS[3], 'Beacon');
+    assert.equal(ballot.TIER_WORDS[4], 'Pyre');
+    assert.equal(ballot.TIER_WORDS[5], 'Dawn');
+});
+
+test('the Dawn line does not include "ancestors stir"', () => {
+    assert.equal(typeof ballot.TIER_LINES[5], 'string');
+    assert.ok(!/ancestors\s+stir/i.test(ballot.TIER_LINES[5]));
+});
+
+test('settledEpochIndex is null for unparseable closes_at, never NaN', () => {
+    assert.equal(ballot.settledEpochIndex(rowBallot({ closes_at: 'T1' })), null);
+});
+
+test('toWire ceremony: closed passed ballot names the Circle, the vigil word, and the winning perk', () => {
+    const closesAt = '2026-09-18T00:00:00.000Z';
+    const votes = [
+        { wallet: WALLET_A, optionId: 'build_speed_1', weight: 0.5 },
+        { wallet: WALLET_B, optionId: 'harvest_yield_1', weight: 1.0 },
+    ];
+    const body = ballot.toWire({
+        ballot: rowBallot({
+            closed_at: '2026-09-18T00:00:05.000Z',
+            winning_option: 'harvest_yield_1',
+            closes_at: closesAt,
+        }),
+        decision: ballot.decideBallot(votes, 2, 1.5),
+        epoch: {
+            epochIndex: 130,
+            startedAt: '2026-09-18T00:00:00.000Z',
+            endsAt: '2026-09-20T00:00:00.000Z',
+        },
+        vigilWeight: ballot.TIER_THRESHOLDS[3],
+        vigilDegraded: false,
+        myVote: 'build_speed_1',
+        perk: { tier: 1, perkId: 'clan_harvest_yield_1' },
+        perks: [{
+            tier: 1, perkId: 'clan_harvest_yield_1',
+            activatedAt: '2026-09-18T00:00:05.000Z', expiresAt: null,
+        }],
+        circleName: 'RiverRun',
+    });
+
+    const json = JSON.stringify(body);
+    assert.ok(!json.includes(WALLET_A), 'no wallet is rendered on a ballot at any depth');
+    assert.ok(!json.includes(WALLET_B));
+    assert.equal(body.ceremony.word, ballot.TIER_WORDS[3],
+        'word follows current vigil weight, not the ballot tier');
+    assert.equal(body.ceremony.circle_name, 'RiverRun');
+    assert.equal(body.ceremony.perk_title, 'Full Baskets');
+    assert.ok(body.ceremony.perk_description, 'perk_description is set');
+    assert.equal(body.ceremony.passed, true);
+    assert.equal(typeof body.ceremony.epoch_index, 'number');
+    assert.ok(Number.isFinite(body.ceremony.epoch_index));
+});
+
+test('toWire ceremony: vigil 0 and no ballot is a silent Circle', () => {
+    const body = ballot.toWire({
+        ballot: null, decision: null, epoch: {
+            epochIndex: 130, startedAt: 'S', endsAt: 'E' },
+        vigilWeight: 0, perks: [],
+    });
+    assert.equal(body.ceremony.word, '');
+    assert.equal(body.ceremony.passed, false);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 11. THE ENDPOINTS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1205,7 +1285,9 @@ test('TEST PLAN 4: GET /current on an expired ballot closes it and returns the r
         assert.equal(out.body.ballot.closed, true);
         assert.equal(out.body.ballot.my_vote, 'build_speed_1', 'my losing vote is still mine');
         assert.deepEqual(out.body.perks, [{ tier: 1, perk_id: 'clan_harvest_yield_1',
-            activated_at: 'TA', expires_at: null }]);
+            activated_at: 'TA', expires_at: null,
+            title: 'Full Baskets',
+            description: 'The ancestors bless the fields your people work.' }]);
         assert.equal(sql.matching(INSERT_PERK_RE).length, 1, 'ACCEPTANCE 5: the perk row is written');
     });
 });

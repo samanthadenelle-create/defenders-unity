@@ -1,6 +1,6 @@
 # WO-1875 — The Circle screen is dead without a wallet session ("Could not reach the server")
 
-**Status:** READY TO IMPLEMENT — minted 2026-09-18 20:35 (banner bumped 1875 -> 1876 in the same edit). P0 prize-path: the Circle loop cannot start on a fresh session.
+**Status:** IMPLEMENTED — gated 2026-09-19 `COMPILE_GATE_OK` (`Builds/c1875d.log`) + `REGRESSION_OK 585/585` (`Builds/r1875c.log`). Owner felt-closes on a tester APK: fresh boot → Circle → SIGN IN → Members.
 
 **Owner, verbatim (2026-09-18, Seeker build 2026.09.18.375785):** "when i click circle chat says no circles" — then the Circle door opened a screen reading **"Could not reach the server. Showing what was last loaded."** with only REFRESH / CLOSE (`Logs/device/circle-202656.png`).
 

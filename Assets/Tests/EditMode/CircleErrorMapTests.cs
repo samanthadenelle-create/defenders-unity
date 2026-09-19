@@ -170,6 +170,13 @@ namespace DeNelle.Tests.EditMode
             Assert.That(CircleScreenVM.PlayerFacingKey(null, 429), Is.EqualTo("circle.error.rateLimited"));
             Assert.That(CircleScreenVM.PlayerFacingKey(null, 500), Is.EqualTo("circle.error.server"));
             Assert.That(CircleScreenVM.PlayerFacingKey(string.Empty, 503), Is.EqualTo("circle.error.server"));
+            Assert.That(CircleScreenVM.PlayerFacingKey(null, 0, "missing"),
+                Is.EqualTo("circle.error.notSignedIn"),
+                "WO-1875: status 0 + why=missing is notSignedIn, never unreachable");
+            Assert.That(CircleScreenVM.PlayerFacingKey(null, 0, "expired"),
+                Is.EqualTo("circle.error.notSignedIn"));
+            Assert.That(CircleScreenVM.PlayerFacingKey(null, 0, "other"),
+                Is.EqualTo("circle.error.unreachable"));
         }
 
         [Test]

@@ -690,7 +690,10 @@ namespace DeNelle.Editor.Regression
             int wd = code.IndexOf("private void TickWatchdog", StringComparison.Ordinal);
             if (wd >= 0)
             {
-                string window = code.Substring(wd, Math.Min(4000, code.Length - wd));
+                // WO-1881 added the founding_walk valid-input rescue (skipped:false) ABOVE the
+                // idle skip. 4000 chars no longer reaches CompleteCurrentStep(skipped: true).
+                // Idle watchdog must still skip; the walk rescue is a different call.
+                string window = code.Substring(wd, Math.Min(8000, code.Length - wd));
                 if (!Regex.IsMatch(window, @"CompleteCurrentStep\s*\(\s*skipped\s*:\s*true\s*\)"))
                     failures.Add("[arm-safety] the STEP-STUCK watchdog rescue in TickWatchdog does not complete the " +
                                  "step as skipped:true - a watchdog trip must never be recorded as a real completion " +

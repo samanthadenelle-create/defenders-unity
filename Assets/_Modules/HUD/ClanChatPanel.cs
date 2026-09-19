@@ -32,6 +32,7 @@
 
 using System;
 using Cysharp.Threading.Tasks;
+using DeNelle.Core.Backend;
 using DeNelle.Core.UI;
 using DeNelle.Core.Diagnostics;
 using TMPro;
@@ -48,12 +49,14 @@ namespace DeNelle.HUD
     {
         public const string KeyNoWallet = "clanChat.noWallet";
         public const string KeyNoClan = "clanChat.noClan";
+        public const string KeyNotSignedIn = CircleScreenPanel.ChatNotSignedInKey;
         public const string KeyUnavailable = "clanChat.unavailable";
         public const string KeyGenericError = "clanChat.genericError";
         public const string KeyOpening = "clanChat.opening";
 
         public static readonly LocalizedText NoWallet = new LocalizedText(KeyNoWallet);
         public static readonly LocalizedText NoClan = new LocalizedText(KeyNoClan);
+        public static readonly LocalizedText NotSignedIn = new LocalizedText(KeyNotSignedIn);
         public static readonly LocalizedText Unavailable = new LocalizedText(KeyUnavailable);
         public static readonly LocalizedText GenericError = new LocalizedText(KeyGenericError);
         public static readonly LocalizedText Opening = new LocalizedText(KeyOpening);
@@ -435,11 +438,25 @@ namespace DeNelle.HUD
                 // WO-1858 copy rule: plain language, never a "join a clan" imperative that
                 // reads as blame — "You're not in a Remnant yet" (clanChat.noClan in en.json,
                 // reworded from "clan" to "Remnant" by WO-1859).
-                case ClanChatVM.NoRoom: return ClanChatStrings.NoClan.Resolve();
+                // WO-1875: a wallet with no live session is not "no Circle" — Circle door mints.
+                case ClanChatVM.NoRoom:
+                    if (WalletPresentButNoSession()) return ClanChatStrings.NotSignedIn.Resolve();
+                    return ClanChatStrings.NoClan.Resolve();
                 case ClanChatWebHostUnavailable.Reason: return ClanChatStrings.Unavailable.Resolve();
                 case "missing_app_id": return ClanChatStrings.Unavailable.Resolve();
                 default: return ClanChatStrings.GenericError.Resolve();
             }
+        }
+
+        /// <summary>
+        /// Wallet exists but boot never signed (ruling 2026-09-07). Query only — this
+        /// panel does not mint; the Circle door is the minting read (WO-1875).
+        /// </summary>
+        private static bool WalletPresentButNoSession()
+        {
+            string id = BackendRequestSigner.CurrentPlayerId();
+            if (string.IsNullOrEmpty(id) || BackendRequestSigner.IsGuestIdentity(id)) return false;
+            return !BackendRequestSigner.HasLiveWalletSession();
         }
 
         // ── uGUI helper ──────────────────────────────────────────────────────

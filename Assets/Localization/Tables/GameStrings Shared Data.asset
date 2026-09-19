@@ -4663,6 +4663,78 @@ MonoBehaviour:
     m_Key: ownedTown.rubbleCleared
     m_Metadata:
       m_Items: []
+  - m_Id: 44636558924533760
+    m_Key: clanChat.notSignedIn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088192
+    m_Key: circle.signIn.face
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088193
+    m_Key: circle.ceremony.held
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088194
+    m_Key: circle.ceremony.chosen
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088195
+    m_Key: circle.ceremony.continue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088196
+    m_Key: circle.ceremony.replay
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088197
+    m_Key: circle.ceremony.next
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088198
+    m_Key: circle.ceremony.word.ember
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088199
+    m_Key: circle.ceremony.word.flame
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088200
+    m_Key: circle.ceremony.word.beacon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088201
+    m_Key: circle.ceremony.word.pyre
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088202
+    m_Key: circle.ceremony.word.dawn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088203
+    m_Key: circle.ceremony.line.ember
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088204
+    m_Key: circle.ceremony.line.flame
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088205
+    m_Key: circle.ceremony.line.beacon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088206
+    m_Key: circle.ceremony.line.pyre
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088207
+    m_Key: circle.ceremony.line.dawn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088208
+    m_Key: circle.error.noWallet
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

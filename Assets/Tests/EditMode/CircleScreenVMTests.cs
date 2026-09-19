@@ -52,12 +52,18 @@ namespace DeNelle.Tests.EditMode
             public string LastCopied;
             public int ChatOpens;
 
+            /// <summary>WO-1875. Default null so existing tests stay Unreachable on http=0.</summary>
+            public string AttachWhy;
+            public string SignInBody = "{\"ok\":true}";
+            public long SignInStatus = 200;
+
 #pragma warning disable 0067
             public event Action Changed;
 #pragma warning restore 0067
 
             public string WalletAddress { get { return Wallet; } }
             public bool IsGuest { get { return Guest; } }
+            public string LastAttachWhy { get { return AttachWhy; } }
 
             public void FetchMe(Action<string, long> done) { Calls.Add("me"); done(MeBody, MeStatus); }
             public void FetchVigil(Action<string, long> done) { Calls.Add("vigil"); done(VigilBody, VigilStatus); }
@@ -92,6 +98,11 @@ namespace DeNelle.Tests.EditMode
 
             public void CopyToClipboard(string text) { LastCopied = text; }
             public void OpenChat() { ChatOpens++; }
+            public void SignIn(Action<string, long> done)
+            {
+                Calls.Add("signin");
+                done(SignInBody, SignInStatus);
+            }
         }
 
         private static string NamesFor(params string[] pairs)
@@ -803,6 +814,69 @@ namespace DeNelle.Tests.EditMode
             Assert.That(vm.ActiveTab, Is.EqualTo(CircleScreenVM.CircleTab.Ballots));
             Assert.That(vm.Tabs[3].IsActive, Is.True);
             Assert.That(vm.Tabs[0].IsActive, Is.False);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // WO-1875 — missing session is NotSignedIn, never Unreachable
+        // ═══════════════════════════════════════════════════════════════════════
+
+        [Test]
+        public void F_a_missing_session_is_not_signed_in_and_sign_in_is_the_enabled_verb()
+        {
+            var src = new FakeSource { AttachWhy = "missing", NamesStatus = 0, NamesBody = null };
+            var vm = Build(src);
+
+            Assert.That(vm.State, Is.EqualTo(CircleScreenVM.CircleState.NotSignedIn));
+            Assert.That(vm.ErrorKey, Is.EqualTo("circle.error.notSignedIn"));
+            Assert.That(vm.CanSignIn, Is.True, "SignIn is the enabled verb on this face");
+            Assert.That(CircleScreenVM.SignInFaceKey, Is.EqualTo("circle.signIn.face"));
+            Assert.That(src.Calls.Contains("me"), Is.False);
+
+            var expired = Build(new FakeSource { AttachWhy = "expired", NamesStatus = 0, NamesBody = null });
+            Assert.That(expired.State, Is.EqualTo(CircleScreenVM.CircleState.NotSignedIn),
+                "why=expired is the same session gap as missing");
+        }
+
+        [Test]
+        public void G_a_successful_sign_in_leaves_not_signed_in()
+        {
+            var src = new FakeSource
+            {
+                AttachWhy = "missing",
+                NamesStatus = 0,
+                NamesBody = null,
+                SignInStatus = 200,
+                SignInBody = "{\"ok\":true}",
+            };
+            var vm = Build(src);
+            Assert.That(vm.State, Is.EqualTo(CircleScreenVM.CircleState.NotSignedIn));
+
+            src.AttachWhy = null;
+            src.NamesStatus = 200;
+            src.NamesBody = NamesFor(Wallet, "SallyTheWise");
+            src.MeBody = MeInClan("member");
+            vm.SignIn();
+
+            Assert.That(src.Calls.Contains("signin"), Is.True);
+            Assert.That(vm.State, Is.Not.EqualTo(CircleScreenVM.CircleState.NotSignedIn));
+            Assert.That(vm.State, Is.EqualTo(CircleScreenVM.CircleState.InCircle));
+            Assert.That(vm.CanSignIn, Is.False);
+        }
+
+        [Test]
+        public void H_status_zero_without_a_session_gap_is_unreachable_not_not_signed_in()
+        {
+            var src = new FakeSource { AttachWhy = null, NamesStatus = 0, NamesBody = null };
+            var vm = Build(src);
+
+            Assert.That(vm.State, Is.EqualTo(CircleScreenVM.CircleState.Unreachable));
+            Assert.That(vm.ErrorKey, Is.EqualTo("circle.error.unreachable"));
+            Assert.That(vm.CanSignIn, Is.False);
+
+            var other = new FakeSource { AttachWhy = "other", NamesStatus = 0, NamesBody = null };
+            var otherVm = Build(other);
+            Assert.That(otherVm.State, Is.EqualTo(CircleScreenVM.CircleState.Unreachable));
+            Assert.That(otherVm.ErrorKey, Is.EqualTo("circle.error.unreachable"));
         }
 
         [Test]

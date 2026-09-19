@@ -5,7 +5,9 @@
 //         Headers: X-Wallet / X-Nonce / X-Signature (or X-Session)
 //   200   { ok:true, headline, epoch:{...}, tiers:[...], vigil_weight, vigil_degraded,
 //           ballot: {...}|null, result: {closed,passed,reason,winning_option,perk_id}|null,
-//           perks:[ { tier, perk_id, activated_at, expires_at } ] }
+//           perks:[ { tier, perk_id, title, description, activated_at, expires_at } ],
+//           ceremony: { epoch_index, word, line, circle_name, perk_title,
+//                       perk_description, passed, next_ends_at } }
 //   400   PLAYER_ID_* | METHOD_NOT_ALLOWED
 //   401   any auth refusal (the same shape every other clan route answers with)
 //   404   CLAN_NOT_IN_CLAN — the caller belongs to no clan
@@ -82,6 +84,7 @@ async function handler(req, res) {
         myVote: myVoteRow ? myVoteRow.optionId : null,
         perk: settled.perk,
         perks: perks,
+        circleName: membership.name,
     }));
 }
 

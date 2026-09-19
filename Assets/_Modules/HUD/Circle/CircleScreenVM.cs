@@ -36,6 +36,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using DeNelle.Core.Circle;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.UI;
 using DeNelle.Core.UI.Mvvm;
@@ -78,6 +79,12 @@ namespace DeNelle.HUD
             /// <summary>True when the identity is a guest id — every clan route is wallet-only.</summary>
             bool IsGuest { get; }
 
+            /// <summary>
+            /// Why the last attach aborted. <c>missing</c> / <c>expired</c> are a session
+            /// gap (NotSignedIn); anything else with http=0 is Unreachable (WO-1875).
+            /// </summary>
+            string LastAttachWhy { get; }
+
             // ── reads: done(body, httpStatus); httpStatus 0 means transport failure ──
             void FetchMe(Action<string, long> done);
             void FetchVigil(Action<string, long> done);
@@ -102,6 +109,12 @@ namespace DeNelle.HUD
 
             /// <summary>Routes to the Cherry chat panel. The View never finds it itself.</summary>
             void OpenChat();
+
+            /// <summary>
+            /// The ONE minting Circle read (WO-1875). Opening reads stay non-minting;
+            /// this press is the wallet sheet, then the VM re-runs RefreshAll.
+            /// </summary>
+            void SignIn(Action<string, long> done);
         }
 
         /// <summary>The ONE thing the View switches on.</summary>
@@ -113,6 +126,8 @@ namespace DeNelle.HUD
             NotInCircle = 3,
             InCircle = 4,
             Unreachable = 5,
+            /// <summary>Wallet present, no live session. SIGN IN is the minting read (WO-1875).</summary>
+            NotSignedIn = 6,
         }
 
         public enum CircleTab { Members = 0, Leaderboard = 1, Vault = 2, Ballots = 3 }
@@ -264,6 +279,8 @@ namespace DeNelle.HUD
             LeaveConfirmKey = "circle.leave.confirm";
             CreateHintKey = "circle.create.hint";
             JoinHintKey = "circle.join.hint";
+            ReplayVigilKey = VigilCeremonyVM.KeyReplay;
+            ReplayVigil = () => PanelRouter.Open(PanelId.CeremonyOfVigil, "replay");
 
             if (_source != null)
             {
@@ -391,9 +408,30 @@ namespace DeNelle.HUD
         public IReadOnlyList<PerkRowVM> Perks { get; private set; }
         public string BallotsEmptyKey { get; private set; }
 
+        /// <summary>WO-1874. True when a last vigil can be replayed, even if already seen.</summary>
+        public bool CanReplayVigil { get; private set; }
+        public string ReplayVigilKey { get; private set; }
+        public Action ReplayVigil { get; private set; }
+
         public bool LeaveConfirmArmed { get; private set; }
         public string LeaveConfirmKey { get; private set; }
         public bool IsBusy { get; private set; }
+
+        /// <summary>WO-1875. True only in NotSignedIn while no mint is in flight.</summary>
+        public bool CanSignIn
+        {
+            get
+            {
+                return State == CircleState.NotSignedIn
+                    && !IsBusy
+                    && _source != null
+                    && !string.IsNullOrWhiteSpace(_source.WalletAddress)
+                    && !_source.IsGuest;
+            }
+        }
+
+        /// <summary>The GOLD face on the NotSignedIn notice. Locale key, never a literal.</summary>
+        public const string SignInFaceKey = "circle.signIn.face";
 
         public string ErrorKey { get; private set; }
         public string ToastKey { get; private set; }
@@ -422,13 +460,14 @@ namespace DeNelle.HUD
             {
                 FlowTrace.Step(Sys, "Circle screen has no wallet identity — NoWallet (fail-closed, no round trip).");
                 State = CircleState.NoWallet;
-                ErrorKey = null;
+                ErrorKey = "circle.error.noWallet";
                 Raise();
                 return;
             }
 
             MyNameFallbackText = Truncate(wallet);
-            if (State != CircleState.InCircle && State != CircleState.NotInCircle)
+            if (State != CircleState.InCircle && State != CircleState.NotInCircle
+                && State != CircleState.NotSignedIn)
             {
                 State = CircleState.Loading;
             }
@@ -456,8 +495,11 @@ namespace DeNelle.HUD
                 // too, so the very next RefreshAll asks again instead of skipping the check
                 // for the life of the VM.
                 _selfNameAsked = false;
+                if (EnterAskFailed(body, status, "name lookup could not be answered (http=" + status +
+                                                 ") — NOT treating that as a nameless player."))
+                    return;
                 State = CircleState.Unreachable;
-                ErrorKey = PlayerFacingKey(CircleWire.RefusalCode(body), status);
+                ErrorKey = PlayerFacingKey(CircleWire.RefusalCode(body), status, AttachWhy());
                 FlowTrace.Warn(Sys, "name lookup could not be answered (http=" + status +
                                     ") — NOT treating that as a nameless player.");
                 Raise();
@@ -489,6 +531,9 @@ namespace DeNelle.HUD
             {
                 // ⛔ HOLD THE PREVIOUS STATE. A transport failure is "we could not ask",
                 // never "you have no Circle" — the ClanMembershipClient.cs:27-31 rule.
+                // WO-1875: missing/expired is NotSignedIn, never Unreachable.
+                if (EnterAskFailed(body, status, "clan/me unreachable — holding the previous state."))
+                    return;
                 FlowTrace.Warn(Sys, "clan/me unreachable — holding the previous state.");
                 State = CircleState.Unreachable;
                 ErrorKey = "circle.error.unreachable";
@@ -499,7 +544,7 @@ namespace DeNelle.HUD
             var refusal = CircleWire.RefusalCode(body);
             if (status != 200 || refusal != null)
             {
-                ErrorKey = PlayerFacingKey(refusal, status);
+                ErrorKey = PlayerFacingKey(refusal, status, AttachWhy());
                 FlowTrace.Warn(Sys, "clan/me refused: http=" + status + " code=" + (refusal ?? "<none>"));
                 Raise();
                 return;
@@ -576,6 +621,7 @@ namespace DeNelle.HUD
             BallotOptions = new List<BallotOptionRowVM>();
             Perks = new List<PerkRowVM>();
             HasBallot = false;
+            CanReplayVigil = false;
         }
 
         public void SelectTab(CircleTab tab)
@@ -638,6 +684,8 @@ namespace DeNelle.HUD
         {
             if (status == 0)
             {
+                if (EnterAskFailed(body, status, "clan/vigil unreachable — the tab says so rather than blanking."))
+                    return;
                 MembersEmptyKey = "circle.tab.unreachable";
                 VaultEmptyKey = "circle.tab.unreachable";
                 FlowTrace.Warn(Sys, "clan/vigil unreachable — the tab says so rather than blanking.");
@@ -825,6 +873,8 @@ namespace DeNelle.HUD
         {
             if (status == 0)
             {
+                if (EnterAskFailed(body, status, "clan/leaderboard unreachable — the tab says so rather than blanking."))
+                    return;
                 LeaderboardEmptyKey = "circle.tab.unreachable";
                 Raise();
                 return;
@@ -883,6 +933,8 @@ namespace DeNelle.HUD
         {
             if (status == 0)
             {
+                if (EnterAskFailed(body, status, "clan/ballot unreachable — the tab says so rather than blanking."))
+                    return;
                 BallotsEmptyKey = "circle.tab.unreachable";
                 Raise();
                 return;
@@ -933,6 +985,13 @@ namespace DeNelle.HUD
             BuildPerks(b);
 
             BallotsEmptyKey = HasBallot ? string.Empty : "circle.ballot.none";
+
+            var payload = VigilCeremonyVM.BuildPayload(b, VigilCeremonyLedger.Shared.LastPayload);
+            if (payload != null && payload.Passed)
+                VigilCeremonyLedger.Shared.RememberPayload(payload);
+            CanReplayVigil = (payload != null && payload.HasContent && payload.Passed)
+                             || ResultPassed
+                             || (Perks != null && Perks.Count > 0);
             Raise();
         }
 
@@ -1064,8 +1123,11 @@ namespace DeNelle.HUD
                     perks.Add(new PerkRowVM
                     {
                         Tier = p.tier,
-                        // Narrative only: the tier line, never a stat identifier.
-                        TitleText = LocalText.Format("circle.ballot.tier", p.tier),
+                        // Narrative only: title + description when the wire carries them,
+                        // else the tier line. Never a stat identifier, never effect.
+                        TitleText = string.IsNullOrEmpty(p.title)
+                            ? LocalText.Format("circle.ballot.tier", p.tier)
+                            : p.title,
                         ActivatedAtIso = p.activated_at,
                         ExpiresAtIso = p.expires_at,
                     });
@@ -1416,6 +1478,19 @@ namespace DeNelle.HUD
         /// </summary>
         public static string PlayerFacingKey(string serverCode, long httpStatus)
         {
+            return PlayerFacingKey(serverCode, httpStatus, null);
+        }
+
+        /// <summary>
+        /// Same table as the two-arg form, plus WO-1875: http=0 with attach why
+        /// <c>missing</c> or <c>expired</c> is <c>circle.error.notSignedIn</c>, never
+        /// unreachable. A transport fail with no session gap stays unreachable.
+        /// </summary>
+        public static string PlayerFacingKey(string serverCode, long httpStatus, string attachWhy)
+        {
+            if (httpStatus == 0 && IsSessionGap(attachWhy))
+                return "circle.error.notSignedIn";
+
             if (!string.IsNullOrEmpty(serverCode))
             {
                 switch (serverCode)
@@ -1527,6 +1602,81 @@ namespace DeNelle.HUD
                 case 429: return "circle.error.rateLimited";
                 default: return "circle.error.server";
             }
+        }
+
+        /// <summary>WO-1875. <c>missing</c> and <c>expired</c> are a session gap, nothing else is.</summary>
+        public static bool IsSessionGap(string attachWhy)
+        {
+            return string.Equals(attachWhy, "missing", StringComparison.Ordinal)
+                || string.Equals(attachWhy, "expired", StringComparison.Ordinal);
+        }
+
+        private string AttachWhy()
+        {
+            return _source != null ? _source.LastAttachWhy : null;
+        }
+
+        /// <summary>
+        /// http=0 + missing/expired → NotSignedIn. Returns true when that state was entered
+        /// so the caller does not also map the same answer to Unreachable.
+        /// </summary>
+        private bool EnterAskFailed(string body, long status, string trace)
+        {
+            if (status != 0 || !IsSessionGap(AttachWhy())) return false;
+            State = CircleState.NotSignedIn;
+            ErrorKey = PlayerFacingKey(CircleWire.RefusalCode(body), status, AttachWhy());
+            FlowTrace.Warn(Sys, trace + " — NotSignedIn (why=" + AttachWhy() + "), never unreachable.");
+            Raise();
+            return true;
+        }
+
+        /// <summary>
+        /// WO-1875. The ONE minting Circle read. Opening reads stay false; this press
+        /// is the wallet sheet, then RefreshAll re-runs the non-minting reads.
+        /// </summary>
+        public void SignIn()
+        {
+            if (!CanSignIn) return;
+            if (IsBusy)
+            {
+                FlowTrace.Warn(Sys, "SignIn ignored — a write is already in flight.");
+                return;
+            }
+            IsBusy = true;
+            ErrorKey = null;
+            FlowTrace.Step(Sys, "NotSignedIn -> minting");
+            Raise();
+
+            bool started = false;
+            Guard.Try(Sys, "CircleScreenVM.SignIn", () =>
+            {
+                _source.SignIn(OnSignInMinted);
+                started = true;
+            });
+            if (!started)
+            {
+                IsBusy = false;
+                State = CircleState.NotSignedIn;
+                ErrorKey = "circle.error.notSignedIn";
+                FlowTrace.Warn(Sys, "NotSignedIn -> minting -> fail (SignIn did not start)");
+                Raise();
+            }
+        }
+
+        private void OnSignInMinted(string body, long status)
+        {
+            IsBusy = false;
+            if (status == 200)
+            {
+                FlowTrace.Step(Sys, "NotSignedIn -> minting -> ok");
+                _selfNameAsked = false;
+                RefreshAll();
+                return;
+            }
+            State = CircleState.NotSignedIn;
+            ErrorKey = "circle.error.notSignedIn";
+            FlowTrace.Warn(Sys, "NotSignedIn -> minting -> fail http=" + status + " why=" + AttachWhy());
+            Raise();
         }
 
         // =====================================================================

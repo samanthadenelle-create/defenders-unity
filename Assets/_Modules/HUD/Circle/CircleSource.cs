@@ -31,9 +31,10 @@
 // ⛔ THE SIGNATURE IS NEVER HAND-ROLLED. Every request goes through
 // BackendRequestSigner.TryAttachAsync, and a FALSE return means ABORT — the request is never
 // sent (BackendRequestSigner.cs:183-249, the ClanMembershipClient.cs:89-94 /
-// ClanChatSource.cs:183-186 fail-closed precedent). Reads pass allowInteractiveSessionMint
-// = false; every WRITE is an explicit player press and passes true, which is the difference
-// between a phone demo that works and a button that silently does nothing.
+// ClanChatSource.cs:183-186 fail-closed precedent). Opening READS stay false (WO-1875:
+// opening the screen is not a mint). The ONE minting read is SignIn, whose SendGet `what`
+// contains "sign-in mint" and passes true — that press is the wallet sheet. Refresh /
+// polling stay false. Every WRITE is an explicit player press and passes true.
 //
 // ⛔ NO NEWTONSOFT. Bodies are built by hand (JsonString, copied from ClanChatSource) and
 // parsed through CircleWire's JsonUtility DTOs — DeNelle.HUD.asmdef is not edited.
@@ -83,6 +84,12 @@ namespace DeNelle.HUD
         }
 
         /// <summary>
+        /// Why the last attach aborted. <c>missing</c> / <c>expired</c> mean no live session;
+        /// empty means the request was sent or the abort was not a session gap (WO-1875).
+        /// </summary>
+        public string LastAttachWhy { get; private set; }
+
+        /// <summary>
         /// The proven wallet, or null. ⛔ A GUEST IS NOT A WALLET here: every clan route
         /// narrows to auth.mode === 'wallet' (api/_lib/clan-http.js), so a guest is a
         /// guaranteed 401 — the VM's NoWallet state names that without a round trip.
@@ -109,7 +116,20 @@ namespace DeNelle.HUD
 
         // =====================================================================
         // READS — allowInteractiveSessionMint is the literal false on every one
+        // except SignIn, which is the ONE player-pressed minting read (WO-1875).
         // =====================================================================
+
+        /// <summary>
+        /// The ONE Circle read that may raise SignMessage. Opening / refresh / polling
+        /// stay false; this press is the wallet sheet, then the VM re-runs RefreshAll.
+        /// The `what` string contains "sign-in mint" so [circle-interactive-mint] can
+        /// find the exception.
+        /// </summary>
+        public void SignIn(Action<string, long> done)
+        {
+            FlowTrace.Step(Sys, "sign-in mint: GET /api/clan/me");
+            SendGet("clan/me (sign-in mint)", MeUrl + "?playerId=" + Escape(WalletAddress), true, done);
+        }
 
         public void FetchMe(Action<string, long> done)
         {
@@ -330,8 +350,8 @@ namespace DeNelle.HUD
             });
         }
 
-        private static async void AttachAndSend(string what, UnityWebRequest req, string playerId, byte[] bodyRaw,
-                                                bool allowInteractiveSessionMint, Action<string, long> done)
+        private async void AttachAndSend(string what, UnityWebRequest req, string playerId, byte[] bodyRaw,
+                                        bool allowInteractiveSessionMint, Action<string, long> done)
         {
             // async void is deliberate and contained, exactly as ClanChatSource.AttachAndSend
             // documents: the ONLY outcome is the callback, and every path is wrapped so a
@@ -344,12 +364,17 @@ namespace DeNelle.HUD
                     req, playerId, bodyRaw, allowInteractiveSessionMint);
                 if (!safeToSend)
                 {
-                    // ⛔ FALSE MEANS ABORT. The request is never sent; the screen says
-                    // "not signed in" rather than leaving a button that does nothing.
-                    FlowTrace.Warn(Sys, what + " NOT sent — could not attach auth (fail-closed).");
+                    // ⛔ FALSE MEANS ABORT. The request is never sent. LastAttachWhy tells
+                    // the VM missing/expired (NotSignedIn) from any other abort (Unreachable).
+                    LastAttachWhy = BackendRequestSigner.LastSessionGapWhy;
+                    if (string.IsNullOrEmpty(LastAttachWhy))
+                        LastAttachWhy = BackendRequestSigner.SessionGapWhyPublic();
+                    FlowTrace.Warn(Sys, what + " NOT sent — could not attach auth (fail-closed). why=" +
+                                        LastAttachWhy);
                 }
                 else
                 {
+                    LastAttachWhy = null;
                     try
                     {
                         await req.SendWebRequest();

@@ -140,6 +140,7 @@ async function handler(req, res) {
         vigilDegraded: vigil.degraded,
         myVote: null,
         perks: perks,
+        circleName: membership.name,
     }));
 }
 

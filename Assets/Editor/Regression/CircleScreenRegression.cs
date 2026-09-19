@@ -233,7 +233,8 @@ namespace DeNelle.Editor.Regression
             "circle.members.empty", "circle.member.degraded", "circle.tenure.days",
             "circle.verb.promote", "circle.verb.demote", "circle.verb.kick",
             "circle.verb.leave", "circle.verb.copyCode", "circle.verb.chat",
-            "circle.verb.refresh", "circle.leave.confirm", "circle.leave.cancel",
+            "circle.verb.refresh", "circle.signIn.face",
+            "circle.leave.confirm", "circle.leave.cancel",
 
             // -- leaderboard --
             "circle.leaderboard.metric", "circle.leaderboard.members",
@@ -269,6 +270,15 @@ namespace DeNelle.Editor.Regression
             // result of a quiet week.
             "circle.ballot.result.noVotes", "circle.ballot.result.insufficientTurnout",
             "circle.ballot.result.unknown", "circle.ballot.perks",
+            // WO-1874 — Ceremony of Vigil plate + Ballots replay face.
+            "circle.ceremony.held", "circle.ceremony.chosen", "circle.ceremony.continue",
+            "circle.ceremony.replay", "circle.ceremony.next",
+            "circle.ceremony.word.ember", "circle.ceremony.word.flame",
+            "circle.ceremony.word.beacon", "circle.ceremony.word.pyre",
+            "circle.ceremony.word.dawn",
+            "circle.ceremony.line.ember", "circle.ceremony.line.flame",
+            "circle.ceremony.line.beacon", "circle.ceremony.line.pyre",
+            "circle.ceremony.line.dawn",
 
             // -- toasts --
             "circle.toast.created", "circle.toast.joined", "circle.toast.left",
@@ -277,7 +287,10 @@ namespace DeNelle.Editor.Regression
             "circle.toast.codeCopied",
 
             // -- errors --
-            "circle.error.notSignedIn", "circle.error.server", "circle.error.unreachable",
+            "circle.error.notSignedIn", "circle.error.noWallet", "circle.error.server", "circle.error.unreachable",
+            // WO-1875: chat copy when a wallet exists but boot never signed. Named under
+            // CircleScreenPanel.ChatNotSignedInKey so this folder references it.
+            "clanChat.notSignedIn",
             "circle.error.badRequest", "circle.error.rateLimited", "circle.error.badName",
             "circle.error.badTag", "circle.error.badPolicy", "circle.error.alreadyInCircle",
             "circle.error.codeUnavailable", "circle.error.identityMissing",
@@ -1244,10 +1257,11 @@ namespace DeNelle.Editor.Regression
         //  14 -- [circle-interactive-mint]
         // =====================================================================
         /// <summary>
-        /// BackendRequestSigner.cs:243-249 + WO-1870 section 3: allowInteractiveSessionMint is a
-        /// PER-ROW decision and it decides whether the phone demo works. READS pass false (the
-        /// ClanMembershipClient.cs:89 precedent). Every WRITE is an explicit player press and
-        /// passes true (the signer's own "for example, pressing Redeem" case at :178-180).
+        /// BackendRequestSigner.cs:243-249 + WO-1875: allowInteractiveSessionMint is a
+        /// PER-ROW decision. WRITES stay ALL true. READS stay false EXCEPT exactly one
+        /// SendGet whose <c>what</c> string contains "sign-in mint" (CircleSource.SignIn),
+        /// which MUST be true. Opening / refresh / polling reads stay false. Boot never
+        /// signs (ruling 2026-09-07) remains.
         ///
         /// <para>The two sets are DERIVED by reading each helper's own HTTP verb, never from a
         /// typed count -- TouchFloorAuthoringRegression.cs:29-31's rule.</para>
@@ -1264,12 +1278,9 @@ namespace DeNelle.Editor.Regression
             // is written. Lane A funnels every request through SendGet / SendPost -> AttachAndSend,
             // so the verb and the flag are BOTH arguments of one call:
             //     SendGet ("clan/me",   MeUrl + ...,      false, done);   <- a READ
+            //     SendGet ("clan/me (sign-in mint)", ..., true,  done);   <- THE ONE MINTING READ
             //     SendPost("clan/join", JoinUrl, payload, true,  done);   <- a WRITE
-            // A per-method-body parse would hunt for the literal inside Join / Promote / Kick and
-            // not find one, because it is in the argument list -- correct code, red oracle. The
-            // verb is still DERIVED (from which sender is called), never a typed count
-            // (TouchFloorAuthoringRegression.cs:29-31).
-            int reads = 0, writes = 0;
+            int reads = 0, writes = 0, mintingReads = 0;
             var offenders = new List<string>();
 
             foreach (Match call in Regex.Matches(src, @"\bSend(Get|Post)\s*\("))
@@ -1300,6 +1311,7 @@ namespace DeNelle.Editor.Regression
                     continue;
                 }
                 bool sendsTrue = flags[0].Groups[1].Value == "true";
+                bool signInMint = argText.IndexOf("sign-in mint", StringComparison.Ordinal) >= 0;
 
                 if (write)
                 {
@@ -1309,24 +1321,41 @@ namespace DeNelle.Editor.Regression
                 else
                 {
                     reads++;
-                    if (sendsTrue) offenders.Add("READ (SendGet) at char " + call.Index + " passes TRUE");
+                    if (signInMint)
+                    {
+                        mintingReads++;
+                        if (!sendsTrue)
+                            offenders.Add("SignIn mint SendGet at char " + call.Index + " passes FALSE");
+                    }
+                    else if (sendsTrue)
+                    {
+                        offenders.Add("READ (SendGet) at char " + call.Index +
+                                      " passes TRUE but its what does not contain 'sign-in mint'");
+                    }
                 }
             }
 
             if (reads + writes == 0)
                 failures.Add(C + " no SendGet/SendPost call site was found in " + SourceRel + ", so neither " +
                              "set was derived and this green would mean nothing.");
+            else if (mintingReads == 0)
+                failures.Add(C + " zero minting reads. WO-1875 requires exactly one SendGet whose what " +
+                             "contains 'sign-in mint' and passes true (the SIGN IN face). Revert recipe: " +
+                             "delete CircleSource.SignIn.");
+            else if (mintingReads > 1)
+                failures.Add(C + " " + mintingReads + " minting reads; WO-1875 allows exactly one. " +
+                             "Opening / refresh / polling stay false.");
             else if (offenders.Count > 0)
                 failures.Add(C + " " + offenders.Count + " mint-flag fault(s) in " + SourceRel + ": " +
                              Head(offenders, 8) + ". A WRITE passing false means a player with no live " +
                              "session presses the button and the request is NEVER SENT " +
-                             "(BackendRequestSigner.cs:243-249) -- a dead button on the phone, which is the " +
-                             "demo this ticket exists for. A READ passing true raises an interactive session " +
-                             "prompt on a passive refresh; reads pass false (ClanMembershipClient.cs:89). " +
-                             "Revert recipe: flip the Create call site to false.");
+                             "(BackendRequestSigner.cs:243-249) -- a dead button on the phone. A non-SignIn " +
+                             "READ passing true raises SignMessage on a passive refresh. Revert recipe: " +
+                             "flip a non-SignIn SendGet to true.");
             else
                 notes.Add(C + " " + writes + " write call site(s) pass true, " + reads +
-                          " read call site(s) pass false; verb derived from the sender");
+                          " read call site(s) of which exactly 1 is the sign-in mint (true); " +
+                          "verb derived from the sender");
 
         }
 

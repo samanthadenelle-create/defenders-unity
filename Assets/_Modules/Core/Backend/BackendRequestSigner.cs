@@ -100,12 +100,39 @@ namespace DeNelle.Core.Backend
             return "missing";
         }
 
+        /// <summary>
+        /// True when a cached wallet session is usable NOW. Does not mint, does not
+        /// attach, does not change TryAttachAsync. HUD uses this to tell a missing
+        /// session from a transport fail (WO-1875).
+        /// </summary>
+        public static bool HasLiveWalletSession()
+        {
+            return SessionUsable(CurrentPlayerId());
+        }
+
+        /// <summary>
+        /// Public wrapper over <see cref="SessionGapWhy"/> for the current player.
+        /// Safe: returns only <c>missing</c> or <c>expired</c>, never a wallet.
+        /// </summary>
+        public static string SessionGapWhyPublic()
+        {
+            return SessionGapWhy(CurrentPlayerId());
+        }
+
+        /// <summary>
+        /// Why the most recent <c>TryAttachSession</c> aborted. Set when that helper
+        /// returns false; cleared when a session attaches. HUD reads this without
+        /// minting (WO-1875).
+        /// </summary>
+        public static string LastSessionGapWhy { get; private set; }
+
         /// <summary>Drop the cached session. Call on wallet change, sign-out, or a 401.</summary>
         public static void ClearSession()
         {
             _sessionToken = null;
             _sessionWallet = null;
             _sessionExpiresUtc = DateTime.MinValue;
+            LastSessionGapWhy = "missing";
             // WO-1454: the backoff belongs to the token that just went away. A new wallet must not
             // inherit the previous one's penalty box.
             ClearRenewalBackoff();
@@ -441,6 +468,7 @@ namespace DeNelle.Core.Backend
         {
             if (SessionUsable(wallet))
             {
+                LastSessionGapWhy = null;
                 AttachSessionHeaders(req, wallet);
                 return true;
             }
@@ -461,6 +489,7 @@ namespace DeNelle.Core.Backend
             // authed call before the first mint.
             if (why == "expired" && await TryRenewSessionAsync(wallet, caller))
             {
+                LastSessionGapWhy = null;
                 AttachSessionHeaders(req, wallet);
                 return true;
             }
@@ -476,6 +505,7 @@ namespace DeNelle.Core.Backend
                 // until the player buys, redeems a code, or taps Connect. The old text called
                 // why=missing "NEVER MINTED" in the tone of an outage, which under the new ruling
                 // would send the next triage after working code (CLAUDE.md section 11B).
+                LastSessionGapWhy = why;
                 FlowTrace.Warn("Wallet",
                     $"authed call has no live session and this route may NOT mint (no SignMessage here). " +
                     $"why={why} scene={scene} caller={caller}. " +
@@ -489,7 +519,12 @@ namespace DeNelle.Core.Backend
             }
 
             var minted = await MintSessionAsync(wallet, why, caller);
-            if (!minted) return false;
+            if (!minted)
+            {
+                LastSessionGapWhy = why;
+                return false;
+            }
+            LastSessionGapWhy = null;
             AttachSessionHeaders(req, wallet);
             return true;
         }

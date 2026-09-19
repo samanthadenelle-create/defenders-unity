@@ -65,6 +65,12 @@ namespace DeNelle.HUD
         /// <summary>The label on the always-visible Circle door inside Circle Chat (WO-1870 section 5).</summary>
         public const string ChatDoorKey = "circle.chat.door";
 
+        /// <summary>
+        /// ClanChatPanel's no-session copy when a wallet exists but no live session (WO-1875).
+        /// Named here so [circle-keys-referenced] can see the frozen key under this folder.
+        /// </summary>
+        public const string ChatNotSignedInKey = "clanChat.notSignedIn";
+
         private const string KeyCircleWord = "common.circle";
         private const string KeyHeaderCode = "circle.header.code";
         private const string KeyHeaderRole = "circle.header.role";
@@ -103,6 +109,7 @@ namespace DeNelle.HUD
         private const string KeyBallotCloses = "circle.ballot.closes";
         private const string KeyBallotClosed = "circle.ballot.closed";
         private const string KeyBallotPerks = "circle.ballot.perks";
+        private const string KeyCeremonyReplay = "circle.ceremony.replay";
 
         // =====================================================================
         //  THE BAND TABLE - fractions of the CANVAS height, resolved to fixed px once
@@ -154,6 +161,7 @@ namespace DeNelle.HUD
         private Button _createSubmit;
         private TMP_InputField _joinCodeField;
         private Button _joinSubmit;
+        private Button _signInButton;
 
         /// <summary>True while the screen is up. The modal is built on open and destroyed on close.</summary>
         public bool IsOpen => _modal != null && _modal.canvas != null;
@@ -246,6 +254,7 @@ namespace DeNelle.HUD
             _createSubmit = null;
             _joinCodeField = null;
             _joinSubmit = null;
+            _signInButton = null;
         }
 
         // =====================================================================
@@ -409,6 +418,7 @@ namespace DeNelle.HUD
                 case CircleScreenVM.CircleState.NoWallet:
                 case CircleScreenVM.CircleState.Loading:
                 case CircleScreenVM.CircleState.Unreachable:
+                case CircleScreenVM.CircleState.NotSignedIn:
                     BuildNoticeOnly();
                     break;
                 case CircleScreenVM.CircleState.NotInCircle:
@@ -439,30 +449,51 @@ namespace DeNelle.HUD
                 case CircleScreenVM.CircleState.InCircle:
                     BuildSectionContent();
                     break;
+                case CircleScreenVM.CircleState.NotSignedIn:
+                    if (_signInButton != null) _signInButton.interactable = _vm.CanSignIn;
+                    break;
             }
         }
 
         /// <summary>
-        /// No wallet / still loading / could not reach the server. ONE sentence, no controls the
-        /// player cannot use. The sentence itself is the VM's key - a blank panel is the failure
-        /// mode CLAUDE.md section 12 forbids.
+        /// No wallet / still loading / could not reach the server / not signed in. ONE sentence,
+        /// plus the one face the player can use. The sentence itself is the VM's key - a blank
+        /// panel is the failure mode CLAUDE.md section 12 forbids.
+        /// WO-1875: NotSignedIn is GOLD SIGN IN (the minting read) with Refresh beside it.
+        /// Colour is never meaning alone - the word SIGN IN is the cue, gold is the emphasis.
         /// </summary>
         private void BuildNoticeOnly()
         {
             // The key is chosen by the STATE, not left to whatever the last tab happened to set.
             // Loading has no sentence of its own on purpose - the screen is about to answer, and
             // inventing a "please wait" string would need an 11th catalog row to say nothing.
-            string key = null;
-            if (_vm.State == CircleScreenVM.CircleState.NoWallet) key = "circle.error.notSignedIn";
-            else if (_vm.State == CircleScreenVM.CircleState.Unreachable) key = "circle.error.unreachable";
+            string key = _vm.ErrorKey;
+            if (string.IsNullOrEmpty(key))
+            {
+                if (_vm.State == CircleScreenVM.CircleState.NoWallet) key = "circle.error.noWallet";
+                else if (_vm.State == CircleScreenVM.CircleState.NotSignedIn) key = "circle.error.notSignedIn";
+                else if (_vm.State == CircleScreenVM.CircleState.Unreachable) key = "circle.error.unreachable";
+            }
 
             var band = ListRow(SectionRowH);
             KeyLabel(band, key, ElarionUi.FontBody, ElarionUi.Parchment,
                 TextAlignmentOptions.Center);
 
             var actions = ListRow(ActionRowH);
-            ElarionUiKit.Button(actions, Resolve(KeyVerbRefresh), ElarionUiKit.ButtonKind.Gold,
-                new Vector2(0.28f, 0.05f), new Vector2(0.72f, 0.95f), OnRefresh);
+            if (_vm.State == CircleScreenVM.CircleState.NotSignedIn)
+            {
+                _signInButton = ElarionUiKit.Button(actions, Resolve(CircleScreenVM.SignInFaceKey),
+                    ElarionUiKit.ButtonKind.Gold,
+                    new Vector2(0.02f, 0.05f), new Vector2(0.58f, 0.95f), OnSignIn);
+                if (_signInButton != null) _signInButton.interactable = _vm.CanSignIn;
+                ElarionUiKit.Button(actions, Resolve(KeyVerbRefresh), ElarionUiKit.ButtonKind.Quiet,
+                    new Vector2(0.62f, 0.05f), new Vector2(0.98f, 0.95f), OnRefresh);
+            }
+            else
+            {
+                ElarionUiKit.Button(actions, Resolve(KeyVerbRefresh), ElarionUiKit.ButtonKind.Gold,
+                    new Vector2(0.28f, 0.05f), new Vector2(0.72f, 0.95f), OnRefresh);
+            }
         }
 
         // =====================================================================
@@ -867,6 +898,14 @@ namespace DeNelle.HUD
         /// </summary>
         private void BuildBallots()
         {
+            if (_vm.CanReplayVigil)
+            {
+                var replay = ListRow(ActionRowH);
+                ElarionUiKit.Button(replay, Resolve(_vm.ReplayVigilKey ?? KeyCeremonyReplay),
+                    ElarionUiKit.ButtonKind.Gold,
+                    new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.95f), OnReplayVigil);
+            }
+
             var weight = ListRow(InfoRowH);
             KeyLabel(weight, KeyVigilWeight, ElarionUi.FontLabel, ElarionUi.ParchmentDim,
                 TextAlignmentOptions.Left, 0.02f, 0.48f);
@@ -1003,10 +1042,24 @@ namespace DeNelle.HUD
         //  Verbs that live on the frame rather than a row
         // =====================================================================
 
+        private void OnReplayVigil()
+        {
+            string door = typeof(VigilCeremonyPanel).Name;
+            FlowTrace.Step(Sys, "verb: watch the last vigil via " + door);
+            if (_vm.ReplayVigil != null) _vm.ReplayVigil();
+            else PanelRouter.Open(PanelId.CeremonyOfVigil, "replay");
+        }
+
         private void OnRefresh()
         {
             FlowTrace.Step(Sys, "verb: refresh the Circle screen.");
             _vm.RefreshAll();
+        }
+
+        private void OnSignIn()
+        {
+            FlowTrace.Step(Sys, "verb: sign in (the one minting Circle read).");
+            _vm.SignIn();
         }
 
         private void OnCopyCode()

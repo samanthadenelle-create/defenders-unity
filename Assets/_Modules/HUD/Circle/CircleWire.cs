@@ -223,6 +223,25 @@ namespace DeNelle.HUD
             public BallotDto ballot;
             public BallotResultDto result;
             public PerkDto[] perks;
+            public CeremonyDto ceremony;
+        }
+
+        /// <summary>
+        /// WO-1874. The settled-epoch ceremony plate. JsonUtility default-constructs a
+        /// missing object, so "no ceremony" is an empty word / epoch_index 0, never a
+        /// null check. ⛔ No effect field — ruling 3 still holds.
+        /// </summary>
+        [Serializable]
+        public class CeremonyDto
+        {
+            public int epoch_index;
+            public string word;
+            public string line;
+            public string circle_name;
+            public string perk_title;
+            public string perk_description;
+            public bool passed;
+            public string next_ends_at;
         }
 
         [Serializable]
@@ -307,8 +326,11 @@ namespace DeNelle.HUD
             public int tier;
             public string activated_at;
             public string expires_at;
+            public string title;
+            public string description;
             // perk_id is deliberately absent — ruling 3 again: a perk is shown as its
-            // narrative tier line, never as the identifier of a stat grant.
+            // narrative title, never as the identifier of a stat grant.
+            // effect is deliberately absent — the VM must never bind a magnitude.
         }
 
         // ── Profile identity (the REUSED username rail, see CircleSource header) ─

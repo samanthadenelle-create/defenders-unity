@@ -126,6 +126,7 @@ async function handler(req, res) {
         myVote: optionId,
         perk: settled.perk,
         perks: perks,
+        circleName: membership.name,
     }));
 }
 

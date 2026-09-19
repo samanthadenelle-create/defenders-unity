@@ -2234,27 +2234,28 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143552
   - m_Id: 44124330363760645
-    m_Localized: "Conecta tu monedero para usar el chat del Círculo."
+    m_Localized: "Conecta tu monedero para usar el chat del C\xEDrculo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760646
-    m_Localized: "Aún no perteneces a ningún Círculo."
+    m_Localized: "A\xFAn no perteneces a ning\xFAn C\xEDrculo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760647
-    m_Localized: "El chat del Círculo no está disponible en esta versión."
+    m_Localized: "El chat del C\xEDrculo no est\xE1 disponible en esta versi\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760648
-    m_Localized: "No se pudo cargar el chat del Círculo. Inténtalo de nuevo en un momento."
+    m_Localized: "No se pudo cargar el chat del C\xEDrculo. Int\xE9ntalo de nuevo
+      en un momento."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760649
-    m_Localized: "Abriendo el chat del Círculo..."
+    m_Localized: "Abriendo el chat del C\xEDrculo..."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760650
-    m_Localized: "Chat del Círculo"
+    m_Localized: "Chat del C\xEDrculo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760651
@@ -2282,7 +2283,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760657
-    m_Localized: Elaboración
+    m_Localized: "Elaboraci\xF3n"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760658
@@ -2298,7 +2299,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760661
-    m_Localized: No hay ningún héroe para equipar.
+    m_Localized: "No hay ning\xFAn h\xE9roe para equipar."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760662
@@ -2306,14 +2307,14 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760663
-    m_Localized: Tablón de Rumores de Brom
+    m_Localized: "Tabl\xF3n de Rumores de Brom"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760664
-    m_Localized: "Cristales: {0}"
+    m_Localized: 'Cristales: {0}'
     m_Metadata:
       m_Items:
-      - rid: 7338888474672496640
+      - rid: -2
   - m_Id: 44124330363760665
     m_Localized: Trabajo
     m_Metadata:
@@ -2326,13 +2327,13 @@ MonoBehaviour:
     m_Localized: Nv {0}
     m_Metadata:
       m_Items:
-      - rid: 7338888474672496640
+      - rid: -2
   - m_Id: 44124330363760668
     m_Localized: Siguiente
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760669
-    m_Localized: No hay héroe.
+    m_Localized: "No hay h\xE9roe."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760670
@@ -2372,7 +2373,9 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760679
-    m_Localized: "SELLADO\nDERROTA AL JEFE"
+    m_Localized: 'SELLADO
+
+      DERROTA AL JEFE'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760680
@@ -2384,11 +2387,12 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760682
-    m_Localized: "\u00BFSalir de la mazmorra?"
+    m_Localized: "\xBFSalir de la mazmorra?"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760683
-    m_Localized: "\u00ABSalir\u00BB te devuelve al pueblo. \u00ABCancelar\u00BB te mantiene en la mazmorra."
+    m_Localized: "\xABSalir\xBB te devuelve al pueblo. \xABCancelar\xBB te mantiene
+      en la mazmorra."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760684
@@ -2428,11 +2432,16 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760693
-    m_Localized: "Los anuncios y tu privacidad"
+    m_Localized: Los anuncios y tu privacidad
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760694
-    m_Localized: "Echoes of Elarion puede mostrar anuncios opcionales: mira uno para acelerar una construcci\xF3n o duplicar una cosecha. Nunca necesitas ver uno para jugar.\n\n\xBFPodemos usar tu ID de publicidad para mostrarte anuncios acordes a tus intereses?\n\nSi dices no, seguir\xE1s viendo anuncios y seguir\xE1s recibiendo las recompensas: simplemente no estar\xE1n adaptados a ti. Puedes cambiar esto cuando quieras en Ajustes."
+    m_Localized: "Echoes of Elarion puede mostrar anuncios opcionales: mira uno para
+      acelerar una construcci\xF3n o duplicar una cosecha. Nunca necesitas ver uno
+      para jugar.\n\n\xBFPodemos usar tu ID de publicidad para mostrarte anuncios
+      acordes a tus intereses?\n\nSi dices no, seguir\xE1s viendo anuncios y seguir\xE1s
+      recibiendo las recompensas: simplemente no estar\xE1n adaptados a ti. Puedes
+      cambiar esto cuando quieras en Ajustes."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760695
@@ -2444,15 +2453,17 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760697
-    m_Localized: "Cargando tu reino..."
+    m_Localized: Cargando tu reino...
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760698
-    m_Localized: "Cargando Elarion..."
+    m_Localized: Cargando Elarion...
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760699
-    m_Localized: "No se pudieron descargar los gr\xE1ficos de tu h\xE9roe. El juego se ha detenido aqu\xED en lugar de dejarte entrar sin ellos. Comprueba tu conexi\xF3n a Internet y toca Reintentar."
+    m_Localized: "No se pudieron descargar los gr\xE1ficos de tu h\xE9roe. El juego
+      se ha detenido aqu\xED en lugar de dejarte entrar sin ellos. Comprueba tu conexi\xF3n
+      a Internet y toca Reintentar."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760700
@@ -2464,15 +2475,16 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760702
-    m_Localized: "Descargar ahora"
+    m_Localized: Descargar ahora
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760703
-    m_Localized: "Ahora no"
+    m_Localized: Ahora no
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760704
-    m_Localized: "No pudimos comprobar la descarga ahora mismo. Int\xE9ntalo de nuevo en un momento: el juego sigue funcionando con normalidad si tienes conexi\xF3n."
+    m_Localized: "No pudimos comprobar la descarga ahora mismo. Int\xE9ntalo de nuevo
+      en un momento: el juego sigue funcionando con normalidad si tienes conexi\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760705
@@ -2482,9 +2494,11 @@ MonoBehaviour:
   - m_Id: 44124330363760706
     m_Localized: "Tama\xF1o: {0} MB\n{1}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760707
-    m_Localized: "Necesitas Wi-Fi para esta descarga \xFAnica. Cuando termine, el juego se abrir\xE1 sin conexi\xF3n."
+    m_Localized: "Necesitas Wi-Fi para esta descarga \xFAnica. Cuando termine, el
+      juego se abrir\xE1 sin conexi\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760708
@@ -2494,21 +2508,24 @@ MonoBehaviour:
   - m_Id: 44124330363760709
     m_Localized: "Unos {0} con una conexi\xF3n r\xE1pida, hasta {1} con una lenta."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760710
-    m_Localized: "{0} min"
+    m_Localized: '{0} min'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760711
-    m_Localized: "{0} s"
+    m_Localized: '{0} s'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760712
-    m_Localized: "Omitir >"
+    m_Localized: Omitir >
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760713
-    m_Localized: "Omitir tutorial"
+    m_Localized: Omitir tutorial
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760714
@@ -2516,7 +2533,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760715
-    m_Localized: "Seguir jugando"
+    m_Localized: Seguir jugando
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760716
@@ -2532,11 +2549,12 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760719
-    m_Localized: "Ver recompensas de staking"
+    m_Localized: Ver recompensas de staking
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760720
-    m_Localized: "Las ventajas cosm\xE9ticas tendr\xE1n precio en SKR en el lanzamiento: por ahora, solo en testnet."
+    m_Localized: "Las ventajas cosm\xE9ticas tendr\xE1n precio en SKR en el lanzamiento:
+      por ahora, solo en testnet."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760721
@@ -2544,35 +2562,38 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760722
-    m_Localized: "Nivel:  {0}"
+    m_Localized: 'Nivel:  {0}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760723
     m_Localized: "A\xFAn no hay staking activo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760724
-    m_Localized: "Recompensas desbloqueadas"
+    m_Localized: Recompensas desbloqueadas
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760725
-    m_Localized: "Sin objetivo"
+    m_Localized: Sin objetivo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760726
-    m_Localized: "NIVEL {0}"
+    m_Localized: NIVEL {0}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760727
-    m_Localized: "INFORMAR DE UN ERROR"
+    m_Localized: INFORMAR DE UN ERROR
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760728
-    m_Localized: "Incluye los registros recientes del juego y tu identificador de jugador para ayudarnos a solucionarlo."
+    m_Localized: Incluye los registros recientes del juego y tu identificador de
+      jugador para ayudarnos a solucionarlo.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760729
-    m_Localized: "Enviar informe"
+    m_Localized: Enviar informe
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760730
@@ -2580,15 +2601,15 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760731
-    m_Localized: "(no hay captura disponible)"
+    m_Localized: (no hay captura disponible)
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760732
-    m_Localized: "captura excluida"
+    m_Localized: captura excluida
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760733
-    m_Localized: "Incluir captura"
+    m_Localized: Incluir captura
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760734
@@ -2596,39 +2617,42 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760735
-    m_Localized: "Informe enviado: gracias, defensor."
+    m_Localized: 'Informe enviado: gracias, defensor.'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760736
-    m_Localized: "No se ha podido enviar: comprueba tu conexi\xF3n e int\xE9ntalo de nuevo."
+    m_Localized: "No se ha podido enviar: comprueba tu conexi\xF3n e int\xE9ntalo
+      de nuevo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760737
-    m_Localized: "Tienda de aspecto"
+    m_Localized: Tienda de aspecto
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760738
-    m_Localized: "{0}  aspectos"
+    m_Localized: '{0}  aspectos'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760739
-    m_Localized: "Equipar"
+    m_Localized: Equipar
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760740
-    m_Localized: "{0} equipado"
+    m_Localized: '{0} equipado'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760741
-    m_Localized: "Bloqueado"
+    m_Localized: Bloqueado
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760742
-    m_Localized: "Misiones diarias"
+    m_Localized: Misiones diarias
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760743
-    m_Localized: "+ Hecho"
+    m_Localized: + Hecho
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760744
@@ -2636,35 +2660,36 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760745
-    m_Localized: "Objeto extra"
+    m_Localized: Objeto extra
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760746
-    m_Localized: "Completada"
+    m_Localized: Completada
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760747
-    m_Localized: "En curso"
+    m_Localized: En curso
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760748
-    m_Localized: "RECOMPENSAS"
+    m_Localized: RECOMPENSAS
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760749
-    m_Localized: "PROGRESO"
+    m_Localized: PROGRESO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760750
     m_Localized: "Misi\xF3n diaria completada\n{0}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760751
-    m_Localized: "Informar de un error"
+    m_Localized: Informar de un error
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760752
-    m_Localized: "Controles"
+    m_Localized: Controles
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760753
@@ -2678,13 +2703,18 @@ MonoBehaviour:
   - m_Id: 44124330363760755
     m_Localized: "Mostrando {0} de {1}: arrastra la lista para ver m\xE1s"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760756
-    m_Localized: "Controles - WASD/flechas/cruceta: moverse | 1/2/3/4 + botones frontales: lanzar Q/W/E/R | Boton Construir: colocar torres | F: interactuar | Esc: pausa"
+    m_Localized: 'Controles - WASD/flechas/cruceta: moverse | 1/2/3/4 + botones frontales:
+      lanzar Q/W/E/R | Boton Construir: colocar torres | F: interactuar | Esc: pausa'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760757
-    m_Localized: "Defenders of the Realm v2 - DeNelle Studios. Modelos: KayKit + Tripo. Musica: banda sonora original de DeNelle Studios (creada con Suno). Efectos de sonido: leohpaz 'RPG Essentials' y Hovl Studio, con licencia de Unity Asset Store."
+    m_Localized: 'Defenders of the Realm v2 - DeNelle Studios. Modelos: KayKit +
+      Tripo. Musica: banda sonora original de DeNelle Studios (creada con Suno).
+      Efectos de sonido: leohpaz ''RPG Essentials'' y Hovl Studio, con licencia de
+      Unity Asset Store.'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760758
@@ -2692,15 +2722,16 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760759
-    m_Localized: "\xBFReiniciar tu h\xE9roe y tus Ecos y empezar de nuevo? Esto no se puede deshacer."
+    m_Localized: "\xBFReiniciar tu h\xE9roe y tus Ecos y empezar de nuevo? Esto no
+      se puede deshacer."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760760
-    m_Localized: "Reiniciar"
+    m_Localized: Reiniciar
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760761
-    m_Localized: "Conservar progreso"
+    m_Localized: Conservar progreso
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760762
@@ -2712,19 +2743,20 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760764
-    m_Localized: "No se ha podido reiniciar: consulta el registro."
+    m_Localized: 'No se ha podido reiniciar: consulta el registro.'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760765
-    m_Localized: "Un muro"
+    m_Localized: Un muro
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760766
     m_Localized: "{0} est\xE1 da\xF1ado ({1} %)"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760767
-    m_Localized: "Reparar"
+    m_Localized: Reparar
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760768
@@ -2732,15 +2764,15 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760769
-    m_Localized: "Iniciar oleada"
+    m_Localized: Iniciar oleada
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760770
-    m_Localized: "Empezar ya"
+    m_Localized: Empezar ya
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760771
-    m_Localized: "ELIGE UN OBJETO"
+    m_Localized: ELIGE UN OBJETO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760772
@@ -2758,69 +2790,78 @@ MonoBehaviour:
   - m_Id: 44124330363760775
     m_Localized: "POCI\xD3N CURATIVA  x{0}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760776
     m_Localized: "BREBAJE DE MAN\xC1  x{0}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760777
-    m_Localized: "{0}  Nv {1}"
+    m_Localized: '{0}  Nv {1}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760778
-    m_Localized: "Oleada {0}"
+    m_Localized: Oleada {0}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760779
-    m_Localized: "Quedan {0} enemigos"
+    m_Localized: Quedan {0} enemigos
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760780
     m_Localized: "A\xF1ade una habilidad para activarla"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760781
-    m_Localized: "Visitar pueblo"
+    m_Localized: Visitar pueblo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760782
-    m_Localized: "Fuente: {0}."
+    m_Localized: 'Fuente: {0}.'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760783
-    m_Localized: "Fuente: {0}. Las puntuaciones son locales; los rangos mostrados son rivales de relleno hasta que se conecte la clasificaci\xF3n en l\xEDnea."
+    m_Localized: "Fuente: {0}. Las puntuaciones son locales; los rangos mostrados
+      son rivales de relleno hasta que se conecte la clasificaci\xF3n en l\xEDnea."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760784
-    m_Localized: "[ BLOQUEADO ]"
+    m_Localized: '[ BLOQUEADO ]'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760785
     m_Localized: "Primera incursi\xF3n gratis: {0}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760786
-    m_Localized: "Cumple primero su requisito"
+    m_Localized: Cumple primero su requisito
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760787
-    m_Localized: "Misiones"
+    m_Localized: Misiones
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760788
-    m_Localized: "Incursiones"
+    m_Localized: Incursiones
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760789
-    m_Localized: "Seguimiento de misiones"
+    m_Localized: Seguimiento de misiones
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760790
-    m_Localized: "Escaparate del pueblo"
+    m_Localized: Escaparate del pueblo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760791
-    m_Localized: "Cargando pueblo..."
+    m_Localized: Cargando pueblo...
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760792
@@ -2828,7 +2869,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760793
-    m_Localized: "Anterior"
+    m_Localized: Anterior
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760794
@@ -2836,7 +2877,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760795
-    m_Localized: "Defensor"
+    m_Localized: Defensor
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760796
@@ -2848,31 +2889,38 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760798
-    m_Localized: "Esta instant\xE1nea del pueblo no se ha podido mostrar de forma segura."
+    m_Localized: "Esta instant\xE1nea del pueblo no se ha podido mostrar de forma
+      segura."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760799
-    m_Localized: "Instant\xE1nea de solo lectura v{0}  |  {1} estructuras  |  las patrullas ambientales son solo presentaci\xF3n local"
+    m_Localized: "Instant\xE1nea de solo lectura v{0}  |  {1} estructuras  |  las
+      patrullas ambientales son solo presentaci\xF3n local"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760800
-    m_Localized: "Instant\xE1nea de solo lectura v{0}  |  {1} estructuras  |  {2} mostradas con marcadores seguros  |  las patrullas ambientales son solo presentaci\xF3n local"
+    m_Localized: "Instant\xE1nea de solo lectura v{0}  |  {1} estructuras  |  {2}
+      mostradas con marcadores seguros  |  las patrullas ambientales son solo presentaci\xF3n
+      local"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760801
-    m_Localized: "BIENVENIDO A LA VIGILIA"
+    m_Localized: BIENVENIDO A LA VIGILIA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760802
-    m_Localized: "FUNDA TU CIUDAD"
+    m_Localized: FUNDA TU CIUDAD
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760803
-    m_Localized: "Empieza con un asentamiento listo y defensas iniciales, o elige un reino vac\xEDo para construirlo t\xFA mismo."
+    m_Localized: "Empieza con un asentamiento listo y defensas iniciales, o elige
+      un reino vac\xEDo para construirlo t\xFA mismo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760804
-    m_Localized: "ASENTAMIENTO LISTO  (Recomendado)"
+    m_Localized: ASENTAMIENTO LISTO  (Recomendado)
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760805
@@ -2880,11 +2928,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760806
-    m_Localized: "ELIGE A TU DEFENSOR"
+    m_Localized: ELIGE A TU DEFENSOR
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760807
-    m_Localized: "BLOQUEADO"
+    m_Localized: BLOQUEADO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760808
@@ -2896,35 +2944,40 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760810
-    m_Localized: "ELEGIR A {0}"
+    m_Localized: ELEGIR A {0}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760811
     m_Localized: "H\xE9roe"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760812
-    m_Localized: "BIENVENIDO"
+    m_Localized: BIENVENIDO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760813
-    m_Localized: "TU CARTERA"
+    m_Localized: TU CARTERA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760814
-    m_Localized: "Contin\xFAa con Google para proteger tu progreso en todos tus dispositivos, o juega como invitado en este dispositivo."
+    m_Localized: "Contin\xFAa con Google para proteger tu progreso en todos tus dispositivos,
+      o juega como invitado en este dispositivo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760815
-    m_Localized: "Tu cartera es tu partida guardada. Con\xE9ctala ahora (solo una vez en este dispositivo). El progreso como invitado se queda aqu\xED hasta que la conectes."
+    m_Localized: "Tu cartera es tu partida guardada. Con\xE9ctala ahora (solo una
+      vez en este dispositivo). El progreso como invitado se queda aqu\xED hasta
+      que la conectes."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760816
-    m_Localized: "Jugar como invitado"
+    m_Localized: Jugar como invitado
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760817
-    m_Localized: "Abriendo el inicio de sesi\xF3n de Google... a\xFAn puedes tocar Jugar como invitado."
+    m_Localized: "Abriendo el inicio de sesi\xF3n de Google... a\xFAn puedes tocar
+      Jugar como invitado."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760818
@@ -2932,39 +2985,43 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760819
-    m_Localized: "El inicio de sesi\xF3n de Google no respondi\xF3. Prueba otra vez con Continuar con Google, o toca Jugar como invitado para empezar ya."
+    m_Localized: "El inicio de sesi\xF3n de Google no respondi\xF3. Prueba otra vez
+      con Continuar con Google, o toca Jugar como invitado para empezar ya."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760820
-    m_Localized: "Tu cartera no respondi\xF3. Abre la app de tu cartera e int\xE9ntalo otra vez con Conectar cartera, o toca Jugar como invitado para empezar ya."
+    m_Localized: "Tu cartera no respondi\xF3. Abre la app de tu cartera e int\xE9ntalo
+      otra vez con Conectar cartera, o toca Jugar como invitado para empezar ya."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760821
-    m_Localized: "El inicio de sesi\xF3n de Google fall\xF3. Int\xE9ntalo otra vez, o toca Jugar como invitado para empezar ya."
+    m_Localized: "El inicio de sesi\xF3n de Google fall\xF3. Int\xE9ntalo otra vez,
+      o toca Jugar como invitado para empezar ya."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760822
-    m_Localized: "La conexi\xF3n de la cartera fall\xF3. Int\xE9ntalo otra vez, o toca Jugar como invitado para empezar ya."
+    m_Localized: "La conexi\xF3n de la cartera fall\xF3. Int\xE9ntalo otra vez, o
+      toca Jugar como invitado para empezar ya."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760823
-    m_Localized: "BIENVENIDO, KEEPER"
+    m_Localized: BIENVENIDO, KEEPER
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760824
-    m_Localized: "EL HEART"
+    m_Localized: EL HEART
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760825
-    m_Localized: "EL CAMPO DE FUERZA"
+    m_Localized: EL CAMPO DE FUERZA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760826
-    m_Localized: "LEVANTA UNA TORRE"
+    m_Localized: LEVANTA UNA TORRE
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760827
-    m_Localized: "TUS WARDENS"
+    m_Localized: TUS WARDENS
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760828
@@ -2976,27 +3033,31 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760830
-    m_Localized: "Comenzar la oleada 1"
+    m_Localized: Comenzar la oleada 1
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760831
-    m_Localized: "Los Ecos aguardan en Elarion. Visita el Echo Hollow en la ciudad para unirte a tu primer compa\xF1ero."
+    m_Localized: "Los Ecos aguardan en Elarion. Visita el Echo Hollow en la ciudad
+      para unirte a tu primer compa\xF1ero."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760832
-    m_Localized: "Ya tienes un Warden"
+    m_Localized: Ya tienes un Warden
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760833
-    m_Localized: "{0} camina la vigilia a tu lado. Un Warden se une una sola vez: ese v\xEDnculo no se puede intercambiar."
+    m_Localized: "{0} camina la vigilia a tu lado. Un Warden se une una sola vez:
+      ese v\xEDnculo no se puede intercambiar."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760834
-    m_Localized: "\xBFQuieres otro compa\xF1ero? Hay m\xE1s Wardens ah\xED fuera en el reino: se ganan con misiones o se invocan en el mercado."
+    m_Localized: "\xBFQuieres otro compa\xF1ero? Hay m\xE1s Wardens ah\xED fuera
+      en el reino: se ganan con misiones o se invocan en el mercado."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760835
-    m_Localized: "Tu Warden te espera en la ciudad"
+    m_Localized: Tu Warden te espera en la ciudad
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760836
@@ -3004,39 +3065,40 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760837
-    m_Localized: "Warden"
+    m_Localized: Warden
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760838
-    m_Localized: "TOP 3 JUGADORES"
+    m_Localized: TOP 3 JUGADORES
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760839
-    m_Localized: "MEJOR OLEADA DE TODOS LOS TIEMPOS"
+    m_Localized: MEJOR OLEADA DE TODOS LOS TIEMPOS
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760840
-    m_Localized: "{0}.  {1}     OLEADA {2}"
+    m_Localized: '{0}.  {1}     OLEADA {2}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760841
-    m_Localized: "presenta"
+    m_Localized: presenta
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760842
-    m_Localized: "Continuar"
+    m_Localized: Continuar
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760843
-    m_Localized: "Empezar de nuevo"
+    m_Localized: Empezar de nuevo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760844
-    m_Localized: "Ver la intro"
+    m_Localized: Ver la intro
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760845
-    m_Localized: "Continuar"
+    m_Localized: Continuar
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760846
@@ -3046,9 +3108,10 @@ MonoBehaviour:
   - m_Id: 44124330363760847
     m_Localized: "Conectado \u2014 {0}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760848
-    m_Localized: "Ninguna cartera conectada"
+    m_Localized: Ninguna cartera conectada
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760849
@@ -3068,11 +3131,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760853
-    m_Localized: "EN PAUSA"
+    m_Localized: EN PAUSA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760854
-    m_Localized: "Continuar"
+    m_Localized: Continuar
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760855
@@ -3084,15 +3147,16 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760857
-    m_Localized: "Esto borra un estado de pantalla bloqueado. Tu progreso no se ve afectado."
+    m_Localized: Esto borra un estado de pantalla bloqueado. Tu progreso no se ve
+      afectado.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760858
-    m_Localized: "Reparar"
+    m_Localized: Reparar
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760859
-    m_Localized: "Aceptar"
+    m_Localized: Aceptar
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760860
@@ -3100,23 +3164,25 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760861
-    m_Localized: "Turno de {0}"
+    m_Localized: Turno de {0}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760862
-    m_Localized: "Recorriendo el reino"
+    m_Localized: Recorriendo el reino
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760863
-    m_Localized: "Elarion (tema del pueblo)"
+    m_Localized: Elarion (tema del pueblo)
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760864
-    m_Localized: "Echoes of Elarion (tema principal)"
+    m_Localized: Echoes of Elarion (tema principal)
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760865
-    m_Localized: "Elige la m\xFAsica para donde est\xE1s. La m\xFAsica de combate se impone durante las peleas."
+    m_Localized: "Elige la m\xFAsica para donde est\xE1s. La m\xFAsica de combate
+      se impone durante las peleas."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760866
@@ -3124,15 +3190,15 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760867
-    m_Localized: "Omitir  >"
+    m_Localized: Omitir  >
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760868
-    m_Localized: "DEFENDERS OF THE REALM"
+    m_Localized: DEFENDERS OF THE REALM
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760869
-    m_Localized: "Echoes of Elarion"
+    m_Localized: Echoes of Elarion
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760870
@@ -3140,7 +3206,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760871
-    m_Localized: "Compras comprobadas y restauradas."
+    m_Localized: Compras comprobadas y restauradas.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760872
@@ -3148,1744 +3214,1937 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760873
-    m_Localized: "Las colas de construcci\u00F3n no se est\u00E1n ejecutando ahora."
+    m_Localized: "Las colas de construcci\xF3n no se est\xE1n ejecutando ahora."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760874
-    m_Localized: "Ranura de cola adicional comprada - la cola puede tomar {0} elementos."
+    m_Localized: Ranura de cola adicional comprada - la cola puede tomar {0} elementos.
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760875
-    m_Localized: "Todas las mejoras aqu\u00ED ya est\u00E1n desbloqueadas."
+    m_Localized: "Todas las mejoras aqu\xED ya est\xE1n desbloqueadas."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760876
-    m_Localized: "Requiere Nivel de Coraz\u00F3n {0} (tienes {1})."
+    m_Localized: "Requiere Nivel de Coraz\xF3n {0} (tienes {1})."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760877
-    m_Localized: "En construcci\u00F3n \u2014 {0}s hasta que terminen los trabajos aqu\u00ED."
+    m_Localized: "En construcci\xF3n \u2014 {0}s hasta que terminen los trabajos
+      aqu\xED."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760878
-    m_Localized: "Tier {0} desbloqueado."
+    m_Localized: Tier {0} desbloqueado.
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760879
-    m_Localized: "No puedes permitirte eso todav\u00EDa."
+    m_Localized: "No puedes permitirte eso todav\xEDa."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760880
-    m_Localized: "Nivel {0} desbloqueado."
+    m_Localized: Nivel {0} desbloqueado.
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760881
-    m_Localized: "Esa mejora necesita Magia para desbloquearse."
+    m_Localized: Esa mejora necesita Magia para desbloquearse.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760882
-    m_Localized: "En construcci\u00F3n \u2014 termina el trabajo actual primero."
+    m_Localized: "En construcci\xF3n \u2014 termina el trabajo actual primero."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760883
-    m_Localized: "Mejora en cola - comienza cuando se libera un constructor."
+    m_Localized: Mejora en cola - comienza cuando se libera un constructor.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760884
-    m_Localized: "Actualizaci\u00F3n en construcci\u00F3n - {0}s."
+    m_Localized: "Actualizaci\xF3n en construcci\xF3n - {0}s."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760885
-    m_Localized: "Nada que desbloquear aqu\u00ED."
+    m_Localized: "Nada que desbloquear aqu\xED."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760886
-    m_Localized: "El Coraz\u00F3n ya est\u00E1 en su nivel m\u00E1s alto."
+    m_Localized: "El Coraz\xF3n ya est\xE1 en su nivel m\xE1s alto."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760887
-    m_Localized: "Necesitas {0} Cristales para subir el Coraz\u00F3n (tienes {1})."
+    m_Localized: "Necesitas {0} Cristales para subir el Coraz\xF3n (tienes {1})."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760888
-    m_Localized: "Nivel de Coraz\u00F3n aumentado a {0} \u2014 mejoras superiores desbloqueadas."
+    m_Localized: "Nivel de Coraz\xF3n aumentado a {0} \u2014 mejoras superiores desbloqueadas."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760889
-    m_Localized: "No pude subir el Coraz\u00F3n en este momento."
+    m_Localized: "No pude subir el Coraz\xF3n en este momento."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760890
-    m_Localized: "Investigaci\u00F3n iniciada - verifica la cola de Investigaci\u00F3n."
+    m_Localized: "Investigaci\xF3n iniciada - verifica la cola de Investigaci\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760891
-    m_Localized: "A\u00FAn no puedes desbloquear esa mejora."
+    m_Localized: "A\xFAn no puedes desbloquear esa mejora."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760892
-    m_Localized: "Toca la baldosa dorada para desbloquear la siguiente mejora."
+    m_Localized: Toca la baldosa dorada para desbloquear la siguiente mejora.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760893
-    m_Localized: "cancelado - te moviste. Mantente quieto para disparar."
+    m_Localized: cancelado - te moviste. Mantente quieto para disparar.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760894
-    m_Localized: "EQUIPAR"
+    m_Localized: EQUIPAR
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760895
-    m_Localized: "QUITAR"
+    m_Localized: QUITAR
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760896
-    m_Localized: "ATR\u00C1S"
+    m_Localized: "ATR\xC1S"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760897
-    m_Localized: "Desequipar"
+    m_Localized: Desequipar
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760899
-    m_Localized: "No tienes objetos compatibles."
+    m_Localized: No tienes objetos compatibles.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760900
-    m_Localized: "Selecciona un objeto para comparar."
+    m_Localized: Selecciona un objeto para comparar.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760901
-    m_Localized: "Selecciona un objeto para equipar."
+    m_Localized: Selecciona un objeto para equipar.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760902
-    m_Localized: "Debes comprarlo antes de poder equiparlo."
+    m_Localized: Debes comprarlo antes de poder equiparlo.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760903
-    m_Localized: "Ese objeto no se puede equipar."
+    m_Localized: Ese objeto no se puede equipar.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760904
-    m_Localized: "No hay nada que hacer con ese objeto."
+    m_Localized: No hay nada que hacer con ese objeto.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760905
-    m_Localized: "Selecciona un objeto para mejorar."
+    m_Localized: Selecciona un objeto para mejorar.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760906
-    m_Localized: "Debes poseerlo antes de poder mejorarlo."
+    m_Localized: Debes poseerlo antes de poder mejorarlo.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760907
-    m_Localized: "Ese objeto no se puede mejorar."
+    m_Localized: Ese objeto no se puede mejorar.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760908
-    m_Localized: "La mejora fall\u00F3."
+    m_Localized: "La mejora fall\xF3."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760909
-    m_Localized: "\u00BFPULIR DE NUEVO?"
+    m_Localized: "\xBFPULIR DE NUEVO?"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760910
-    m_Localized: "Est\u00E1s arriesgando: {0}"
+    m_Localized: "Est\xE1s arriesgando: {0}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760911
-    m_Localized: "Podr\u00EDa convertirse en cualquiera de estos:"
+    m_Localized: "Podr\xEDa convertirse en cualquiera de estos:"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760912
-    m_Localized: "Hay un {0}% de probabilidad de que la piedra se destruya y no obtengas nada."
+    m_Localized: Hay un {0}% de probabilidad de que la piedra se destruya y no obtengas
+      nada.
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760913
-    m_Localized: "MANTENERLO"
+    m_Localized: MANTENERLO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760914
-    m_Localized: "PULIR DE NUEVO"
+    m_Localized: PULIR DE NUEVO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760915
-    m_Localized: "No puedes desplegar ah\u00ED - toca terreno abierto dentro de la base."
+    m_Localized: "No puedes desplegar ah\xED - toca terreno abierto dentro de la
+      base."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760916
-    m_Localized: "Sin ej\u00E9rcito para desplegar."
+    m_Localized: "Sin ej\xE9rcito para desplegar."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760917
-    m_Localized: "No hay m\u00E1s {0} listos para desplegar."
+    m_Localized: "No hay m\xE1s {0} listos para desplegar."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760918
-    m_Localized: "No se pudo desplegar {0}."
+    m_Localized: No se pudo desplegar {0}.
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760919
-    m_Localized: "Brecha: toca una secci\u00F3n de muro para ordenar el asalto."
+    m_Localized: "Brecha: toca una secci\xF3n de muro para ordenar el asalto."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760920
-    m_Localized: "Brecha: eso no es un muro - toca una secci\u00F3n de muro."
+    m_Localized: "Brecha: eso no es un muro - toca una secci\xF3n de muro."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760921
-    m_Localized: "Brecha: esa secci\u00F3n ya est\u00E1 derribada."
+    m_Localized: "Brecha: esa secci\xF3n ya est\xE1 derribada."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760922
-    m_Localized: "Brecha: ese muro no es del enemigo."
+    m_Localized: 'Brecha: ese muro no es del enemigo.'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760923
-    m_Localized: "Brecha ordenada - la banda de guerra ataca esa secci\u00F3n."
+    m_Localized: "Brecha ordenada - la banda de guerra ataca esa secci\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760924
-    m_Localized: "Orden de brecha cancelada - la banda de guerra elige el muro m\u00E1s d\u00E9bil nuevamente."
+    m_Localized: "Orden de brecha cancelada - la banda de guerra elige el muro m\xE1s
+      d\xE9bil nuevamente."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760925
-    m_Localized: "Brecha ACTIVA"
+    m_Localized: Brecha ACTIVA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760926
-    m_Localized: "Brecha"
+    m_Localized: Brecha
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760927
-    m_Localized: "Punto de reuni\u00F3n establecido \u2014 las tropas ociosas se reunir\u00E1n all\u00ED."
+    m_Localized: "Punto de reuni\xF3n establecido \u2014 las tropas ociosas se reunir\xE1n
+      all\xED."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760928
-    m_Localized: "Reunir"
+    m_Localized: Reunir
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760929
-    m_Localized: "\u00BFRetirarse? Toca de nuevo para confirmar \u2014 los ca\u00EDdos se pierden, y algunos supervivientes no regresar\u00E1n."
+    m_Localized: "\xBFRetirarse? Toca de nuevo para confirmar \u2014 los ca\xEDdos
+      se pierden, y algunos supervivientes no regresar\xE1n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760930
-    m_Localized: "Confirmar Retirada"
+    m_Localized: Confirmar Retirada
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760931
-    m_Localized: "\u00A1Tiempo! Retir\u00E1ndose al castillo..."
+    m_Localized: "\xA1Tiempo! Retir\xE1ndose al castillo..."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760932
-    m_Localized: "Retir\u00E1ndose al castillo..."
+    m_Localized: "Retir\xE1ndose al castillo..."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760934
-    m_Localized: "Desplegar Todo"
+    m_Localized: Desplegar Todo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760935
-    m_Localized: "Sin tropas para desplegar - entrena en el Cuartel primero."
+    m_Localized: Sin tropas para desplegar - entrena en el Cuartel primero.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760936
-    m_Localized: "Desplegar Todo no disponible - sin ej\u00E9rcito listo o h\u00E9roe."
+    m_Localized: "Desplegar Todo no disponible - sin ej\xE9rcito listo o h\xE9roe."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760937
-    m_Localized: "Desplegar Todo necesita terreno abierto adelante."
+    m_Localized: Desplegar Todo necesita terreno abierto adelante.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760938
-    m_Localized: "Todas las tropas listas ya est\u00E1n desplegadas."
+    m_Localized: "Todas las tropas listas ya est\xE1n desplegadas."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760941
-    m_Localized: "El Cuartel a\u00FAn no se construye."
+    m_Localized: "El Cuartel a\xFAn no se construye."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760942
-    m_Localized: "Sin tropas desbloqueadas a\u00FAn - mejora el Cuartel."
+    m_Localized: "Sin tropas desbloqueadas a\xFAn - mejora el Cuartel."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760943
-    m_Localized: "\nEste ej\u00E9rcito guardado est\u00E1 vac\u00EDo.\nToca Redada / Sost\u00E9n / Asedio para llenar r\u00E1pidamente,\no [+] tropas en la izquierda.\nLuego Guardar y Entrenar Ej\u00E9rcito.\n"
+    m_Localized: "\nEste ej\xE9rcito guardado est\xE1 vac\xEDo.\nToca Redada / Sost\xE9n
+      / Asedio para llenar r\xE1pidamente,\no [+] tropas en la izquierda.\nLuego
+      Guardar y Entrenar Ej\xE9rcito.\n"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760944
-    m_Localized: "Costo:"
+    m_Localized: 'Costo:'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760945
-    m_Localized: "Cola de entrenamiento: {0} de {1} usados, {2} libres."
+    m_Localized: 'Cola de entrenamiento: {0} de {1} usados, {2} libres.'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760946
-    m_Localized: "Nombre: {0}"
+    m_Localized: 'Nombre: {0}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760947
-    m_Localized: "Guardar ranura {0}"
+    m_Localized: Guardar ranura {0}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760948
-    m_Localized: "Entrenar Ej\u00E9rcito"
+    m_Localized: "Entrenar Ej\xE9rcito"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760949
-    m_Localized: "Consejo: El entrenamiento guarda autom\u00E1ticamente esta ranura. Llena el ej\u00E9rcito, luego Redadas."
+    m_Localized: "Consejo: El entrenamiento guarda autom\xE1ticamente esta ranura.
+      Llena el ej\xE9rcito, luego Redadas."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760950
-    m_Localized: "Iniciar Incursi\u00F3n"
+    m_Localized: "Iniciar Incursi\xF3n"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760951
-    m_Localized: "Puntos de Defensa: {0} / {1}"
+    m_Localized: 'Puntos de Defensa: {0} / {1}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760952
-    m_Localized: "No hay defensores registrados."
+    m_Localized: No hay defensores registrados.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760953
-    m_Localized: "Reclutar Escuadr\u00F3n"
+    m_Localized: "Reclutar Escuadr\xF3n"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760954
-    m_Localized: "Defensa de Arena"
+    m_Localized: Defensa de Arena
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760955
-    m_Localized: "ATAQUE"
+    m_Localized: ATAQUE
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760956
-    m_Localized: "DEFENDER"
+    m_Localized: DEFENDER
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760957
-    m_Localized: "USAR MI CASTILLO"
+    m_Localized: USAR MI CASTILLO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760958
-    m_Localized: "Volver a la Arena"
+    m_Localized: Volver a la Arena
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760959
-    m_Localized: "ARENA"
+    m_Localized: ARENA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760960
-    m_Localized: "\u00A1Batalla!"
+    m_Localized: "\xA1Batalla!"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760961
-    m_Localized: "Toca una habilidad, luego una ranura de intercambio r\u00E1pido."
+    m_Localized: "Toca una habilidad, luego una ranura de intercambio r\xE1pido."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760962
-    m_Localized: "No puedes cambiar habilidades durante la batalla."
+    m_Localized: No puedes cambiar habilidades durante la batalla.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760963
-    m_Localized: "Ranura borrada."
+    m_Localized: Ranura borrada.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760964
-    m_Localized: "Elige una habilidad primero."
+    m_Localized: Elige una habilidad primero.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760965
-    m_Localized: "Asignado al slot de intercambio r\u00E1pido {0}."
+    m_Localized: "Asignado al slot de intercambio r\xE1pido {0}."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760966
-    m_Localized: "Esa habilidad ya est\u00E1 en la barra."
+    m_Localized: "Esa habilidad ya est\xE1 en la barra."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760967
-    m_Localized: "A\u00F1adido a tu barra de intercambio r\u00E1pido."
+    m_Localized: "A\xF1adido a tu barra de intercambio r\xE1pido."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760968
-    m_Localized: "Sin espacio libre (o ya est\u00E1 en la barra)."
+    m_Localized: "Sin espacio libre (o ya est\xE1 en la barra)."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760969
-    m_Localized: "Ahora toca una ranura de intercambio r\u00E1pido."
+    m_Localized: "Ahora toca una ranura de intercambio r\xE1pido."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760970
-    m_Localized: "Elige primero una habilidad y luego toca una ranura."
+    m_Localized: Elige primero una habilidad y luego toca una ranura.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760971
-    m_Localized: "Continuar con Google"
+    m_Localized: Continuar con Google
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760972
-    m_Localized: "Conectar cartera"
+    m_Localized: Conectar cartera
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760973
-    m_Localized: "Puntos de Escuadra: {0} / {1}"
+    m_Localized: 'Puntos de Escuadra: {0} / {1}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760974
-    m_Localized: "MI CASTILLO  *"
+    m_Localized: MI CASTILLO  *
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760975
-    m_Localized: "USAR MI CASTILLO"
+    m_Localized: USAR MI CASTILLO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760976
-    m_Localized: "Esa ranura ya est\u00E1 vac\u00EDa."
+    m_Localized: "Esa ranura ya est\xE1 vac\xEDa."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760977
-    m_Localized: "nada asequible por ahora"
+    m_Localized: nada asequible por ahora
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760978
-    m_Localized: "[Nv {0}]"
+    m_Localized: '[Nv {0}]'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760979
-    m_Localized: "PASIVO"
+    m_Localized: PASIVO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760980
-    m_Localized: "ACTIVO"
+    m_Localized: ACTIVO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760981
-    m_Localized: "[ ] "
+    m_Localized: '[ ] '
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760982
-    m_Localized: "CIERRA LA BRECHA"
+    m_Localized: CIERRA LA BRECHA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760983
-    m_Localized: "GRATIS ESTA NOCHE"
+    m_Localized: GRATIS ESTA NOCHE
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760984
-    m_Localized: "No se te pide nada antes de darte algo."
+    m_Localized: No se te pide nada antes de darte algo.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760985
-    m_Localized: "Cestas - todo de una vez."
+    m_Localized: Cestas - todo de una vez.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760986
-    m_Localized: "MECENAZGO"
+    m_Localized: MECENAZGO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760987
-    m_Localized: "Prestigio, nunca poder."
+    m_Localized: Prestigio, nunca poder.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760988
-    m_Localized: "{0}x los {2} del {1}, por {3}x el precio."
+    m_Localized: '{0}x los {2} del {1}, por {3}x el precio.'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760989
-    m_Localized: "{0} bienes por $"
+    m_Localized: '{0} bienes por $'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760990
-    m_Localized: "Saldo despu\u00E9s: {0} SKR"
+    m_Localized: "Saldo despu\xE9s: {0} SKR"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760991
-    m_Localized: "Bloqueado"
+    m_Localized: Bloqueado
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760992
-    m_Localized: "0% DE COMISI\u00D3N - CADA PAGO LLEGA AL REINO"
+    m_Localized: "0% DE COMISI\xD3N - CADA PAGO LLEGA AL REINO"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760993
-    m_Localized: "DISTRIBUIDOR DE RECOMPENSAS {0}"
+    m_Localized: DISTRIBUIDOR DE RECOMPENSAS {0}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760994
-    m_Localized: "TIEMPO Y BELLEZA, NUNCA PODER"
+    m_Localized: TIEMPO Y BELLEZA, NUNCA PODER
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760995
-    m_Localized: "Nunca tienes que gastar nada. Jam\u00E1s."
+    m_Localized: "Nunca tienes que gastar nada. Jam\xE1s."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760996
-    m_Localized: "Ruta de temporada"
+    m_Localized: Ruta de temporada
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363760997
-    m_Localized: "Quedan {0} d\u00EDas de temporada"
+    m_Localized: "Quedan {0} d\xEDas de temporada"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760998
-    m_Localized: "Nivel {0} de {1}"
+    m_Localized: Nivel {0} de {1}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363760999
-    m_Localized: "{0} de {1} XP para el siguiente nivel"
+    m_Localized: '{0} de {1} XP para el siguiente nivel'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761000
-    m_Localized: "Todos los niveles conseguidos. {0} XP esta temporada."
+    m_Localized: Todos los niveles conseguidos. {0} XP esta temporada.
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761001
-    m_Localized: "La XP de combate se gana jugando. Cada batalla de arena da recompensa, ganes o pierdas, y una racha de victorias da m\u00E1s. Ning\u00FAn nivel est\u00E1 en venta."
+    m_Localized: "La XP de combate se gana jugando. Cada batalla de arena da recompensa,
+      ganes o pierdas, y una racha de victorias da m\xE1s. Ning\xFAn nivel est\xE1
+      en venta."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761002
-    m_Localized: "Lo que ganas es tuyo para siempre. Nada se retira al terminar la temporada, y todo lo que no hayas reclamado se te entrega autom\u00E1ticamente."
+    m_Localized: "Lo que ganas es tuyo para siempre. Nada se retira al terminar la
+      temporada, y todo lo que no hayas reclamado se te entrega autom\xE1ticamente."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761003
-    m_Localized: "GRATIS"
+    m_Localized: GRATIS
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761004
-    m_Localized: "PREMIUM"
+    m_Localized: PREMIUM
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761005
-    m_Localized: "RECLAMADO"
+    m_Localized: RECLAMADO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761006
-    m_Localized: "LISTO"
+    m_Localized: LISTO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761007
-    m_Localized: "BLOQUEADO"
+    m_Localized: BLOQUEADO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761008
-    m_Localized: "V\u00CDA BLOQUEADA"
+    m_Localized: "V\xCDA BLOQUEADA"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761009
-    m_Localized: "CULMINACI\u00D3N"
+    m_Localized: "CULMINACI\xD3N"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761010
-    m_Localized: "Reclamar recompensas"
+    m_Localized: Reclamar recompensas
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761011
-    m_Localized: "Todav\u00EDa no hay nada que reclamar - juega una batalla de arena."
+    m_Localized: "Todav\xEDa no hay nada que reclamar - juega una batalla de arena."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761012
-    m_Localized: "Desbloquear v\u00EDa premium"
+    m_Localized: "Desbloquear v\xEDa premium"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761013
-    m_Localized: "La v\u00EDa premium no est\u00E1 en venta en esta versi\u00F3n. Aun as\u00ED, se te muestra todo lo que contiene - nunca se te pedir\u00E1 que adivines qu\u00E9 hay detr\u00E1s de un candado."
+    m_Localized: "La v\xEDa premium no est\xE1 en venta en esta versi\xF3n. Aun as\xED,
+      se te muestra todo lo que contiene - nunca se te pedir\xE1 que adivines qu\xE9
+      hay detr\xE1s de un candado."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761014
-    m_Localized: "Desbloquear la v\u00EDa m\u00E1s tarde no te cuesta nada: todas las recompensas premium que ya hayas alcanzado se entregan de inmediato."
+    m_Localized: "Desbloquear la v\xEDa m\xE1s tarde no te cuesta nada: todas las
+      recompensas premium que ya hayas alcanzado se entregan de inmediato."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761015
-    m_Localized: "Ahora mismo no hay ninguna temporada activa. La siguiente empieza el d\u00EDa uno del mes."
+    m_Localized: "Ahora mismo no hay ninguna temporada activa. La siguiente empieza
+      el d\xEDa uno del mes."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761016
-    m_Localized: "Registro mensual"
+    m_Localized: Registro mensual
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761017
-    m_Localized: "Quedan {0} reclamaciones"
+    m_Localized: Quedan {0} reclamaciones
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761018
-    m_Localized: "No tienes ning\u00FAn registro. Los treinta d\u00EDas se muestran abajo antes de que pagues nada - no hay d\u00EDas ocultos ni d\u00EDas misteriosos."
+    m_Localized: "No tienes ning\xFAn registro. Los treinta d\xEDas se muestran abajo
+      antes de que pagues nada - no hay d\xEDas ocultos ni d\xEDas misteriosos."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761019
-    m_Localized: "Reclamar hoy"
+    m_Localized: Reclamar hoy
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761020
-    m_Localized: "Reclamado. El siguiente es tuyo ma\u00F1ana."
+    m_Localized: "Reclamado. El siguiente es tuyo ma\xF1ana."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761021
-    m_Localized: "La reclamaci\u00F3n de hoy"
+    m_Localized: "La reclamaci\xF3n de hoy"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761022
-    m_Localized: "Si te saltas un d\u00EDa no pierdes nada. Un registro contiene treinta reclamaciones y sigue vivo hasta que se gasten todas, por mucho que tarde."
+    m_Localized: "Si te saltas un d\xEDa no pierdes nada. Un registro contiene treinta
+      reclamaciones y sigue vivo hasta que se gasten todas, por mucho que tarde."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761023
-    m_Localized: "Aqu\u00ED nada caduca, as\u00ED que aqu\u00ED nada hace cuenta atr\u00E1s."
+    m_Localized: "Aqu\xED nada caduca, as\xED que aqu\xED nada hace cuenta atr\xE1s."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761024
-    m_Localized: "Esto es un extra sobre tu recompensa diaria gratuita, nunca un sustituto. Reclamar una nunca consume la otra."
+    m_Localized: Esto es un extra sobre tu recompensa diaria gratuita, nunca un sustituto.
+      Reclamar una nunca consume la otra.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761025
-    m_Localized: "RECLAMADO"
+    m_Localized: RECLAMADO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761026
-    m_Localized: "HOY"
+    m_Localized: HOY
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761027
-    m_Localized: "TUYO"
+    m_Localized: TUYO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761028
-    m_Localized: "PR\u00D3XIMO"
+    m_Localized: "PR\xD3XIMO"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761029
-    m_Localized: "Este registro a\u00FAn no tiene ning\u00FAn recuerdo exclusivo del mes. Aqu\u00ED no se promete nada que no se te pueda mostrar."
+    m_Localized: "Este registro a\xFAn no tiene ning\xFAn recuerdo exclusivo del
+      mes. Aqu\xED no se promete nada que no se te pueda mostrar."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761030
-    m_Localized: "Los registros no est\u00E1n en venta en esta versi\u00F3n. De todos modos, la tabla completa est\u00E1 en esta pantalla."
+    m_Localized: "Los registros no est\xE1n en venta en esta versi\xF3n. De todos
+      modos, la tabla completa est\xE1 en esta pantalla."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761031
-    m_Localized: "NO EST\u00C1 EN VENTA"
+    m_Localized: "NO EST\xC1 EN VENTA"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761032
-    m_Localized: "Ahora mismo no hay ning\u00FAn registro creado."
+    m_Localized: "Ahora mismo no hay ning\xFAn registro creado."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761033
-    m_Localized: "SEMANA {0} | D\u00CDAS {1}-{2}"
+    m_Localized: "SEMANA {0} | D\xCDAS {1}-{2}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761034
-    m_Localized: "SELECCIONADA"
+    m_Localized: SELECCIONADA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761035
-    m_Localized: "RECLAMA AQU\u00CD"
+    m_Localized: "RECLAMA AQU\xCD"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761036
-    m_Localized: "D\u00CDA {0}"
+    m_Localized: "D\xCDA {0}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761037
-    m_Localized: "BONUS DE HITO"
+    m_Localized: BONUS DE HITO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761038
-    m_Localized: "RESULTADO DE RECOLECCI\u00D3N"
+    m_Localized: "RESULTADO DE RECOLECCI\xD3N"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761039
-    m_Localized: "{0} en espera, a salvo"
+    m_Localized: '{0} en espera, a salvo'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761040
-    m_Localized: "{0} en espera, a salvo - {1} perdido"
+    m_Localized: '{0} en espera, a salvo - {1} perdido'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761041
-    m_Localized: "{0} perdido"
+    m_Localized: '{0} perdido'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761042
-    m_Localized: "EXCEDIDO"
+    m_Localized: EXCEDIDO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761043
-    m_Localized: "LLENO"
+    m_Localized: LLENO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761044
-    m_Localized: "GASTAR"
+    m_Localized: GASTAR
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761045
-    m_Localized: "MEJORAR"
+    m_Localized: MEJORAR
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761046
-    m_Localized: "CONSTRUIR"
+    m_Localized: CONSTRUIR
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761047
-    m_Localized: "o"
+    m_Localized: o
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761048
-    m_Localized: "y"
+    m_Localized: y
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761049
-    m_Localized: "Gasta {0} para volver por debajo del l\u00EDmite de tu {1} - el almac\u00E9n est\u00E1 {2} por encima, as\u00ED que nada se guarda todav\u00EDa. Los {3} en espera siguen a salvo hasta entonces."
+    m_Localized: "Gasta {0} para volver por debajo del l\xEDmite de tu {1} - el almac\xE9n
+      est\xE1 {2} por encima, as\xED que nada se guarda todav\xEDa. Los {3} en espera
+      siguen a salvo hasta entonces."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761050
-    m_Localized: "Gasta {0} para volver por debajo de los l\u00EDmites de tus {1} - el almac\u00E9n est\u00E1 {2} por encima, as\u00ED que nada se guarda todav\u00EDa. Los {3} en espera siguen a salvo hasta entonces."
+    m_Localized: "Gasta {0} para volver por debajo de los l\xEDmites de tus {1} -
+      el almac\xE9n est\xE1 {2} por encima, as\xED que nada se guarda todav\xEDa.
+      Los {3} en espera siguen a salvo hasta entonces."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761051
-    m_Localized: "No se perdi\u00F3 nada: cada unidad en espera se guardar\u00E1 en cuanto haya sitio."
+    m_Localized: "No se perdi\xF3 nada: cada unidad en espera se guardar\xE1 en cuanto
+      haya sitio."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761052
-    m_Localized: "El almac\u00E9n estaba lleno, as\u00ED que las cantidades marcadas como perdidas nunca llegaron: la recolecci\u00F3n a distancia no tiene dep\u00F3sito donde esperar. Haz sitio primero."
+    m_Localized: "El almac\xE9n estaba lleno, as\xED que las cantidades marcadas
+      como perdidas nunca llegaron: la recolecci\xF3n a distancia no tiene dep\xF3sito
+      donde esperar. Haz sitio primero."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761053
-    m_Localized: "Colecciones de Construcci\u00F3n"
+    m_Localized: "Colecciones de Construcci\xF3n"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761054
-    m_Localized: "Elige lo que el reino necesita a continuaci\u00F3n."
+    m_Localized: "Elige lo que el reino necesita a continuaci\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761055
-    m_Localized: "\u00BFYa construido? Gestiona las defensas >"
+    m_Localized: "\xBFYa construido? Gestiona las defensas >"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761056
-    m_Localized: "Gestionar Colocado"
+    m_Localized: Gestionar Colocado
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761057
-    m_Localized: "gestiona tus obras"
+    m_Localized: gestiona tus obras
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761058
-    m_Localized: "Equipo"
+    m_Localized: Equipo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761059
-    m_Localized: "Armas"
+    m_Localized: Armas
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761060
-    m_Localized: "Mano Izquierda"
+    m_Localized: Mano Izquierda
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761061
-    m_Localized: "Armadura"
+    m_Localized: Armadura
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761062
-    m_Localized: "Baratijas"
+    m_Localized: Baratijas
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761063
-    m_Localized: "Pociones"
+    m_Localized: Pociones
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761064
-    m_Localized: "Mano Principal"
+    m_Localized: Mano Principal
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761065
-    m_Localized: "Mano Izquierda"
+    m_Localized: Mano Izquierda
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761066
-    m_Localized: "Armadura"
+    m_Localized: Armadura
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761067
-    m_Localized: "Amuleto"
+    m_Localized: Amuleto
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761068
-    m_Localized: "Anillo"
+    m_Localized: Anillo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761069
-    m_Localized: "vac\u00EDo"
+    m_Localized: "vac\xEDo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761070
-    m_Localized: "Gestiona tu equipo"
+    m_Localized: Gestiona tu equipo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761071
-    m_Localized: "Toca una ranura a la izquierda para examinar art\u00EDculos para esa posici\u00F3n."
+    m_Localized: "Toca una ranura a la izquierda para examinar art\xEDculos para
+      esa posici\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761072
-    m_Localized: "ESPACIOS DISPONIBLES: {0}"
+    m_Localized: 'ESPACIOS DISPONIBLES: {0}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761073
-    m_Localized: "EQUIPADO"
+    m_Localized: EQUIPADO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761074
-    m_Localized: "DETALLES DEL ART\u00CDCULO"
+    m_Localized: "DETALLES DEL ART\xCDCULO"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761075
-    m_Localized: "Servicios, registros y consejos del reino."
+    m_Localized: Servicios, registros y consejos del reino.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761076
-    m_Localized: "Tu equipamiento, inventario, habilidades, configuraci\u00F3n y vestuario."
+    m_Localized: "Tu equipamiento, inventario, habilidades, configuraci\xF3n y vestuario."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761077
-    m_Localized: "Tu equipamiento, inventario, habilidades y configuraci\u00F3n."
+    m_Localized: "Tu equipamiento, inventario, habilidades y configuraci\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761078
-    m_Localized: "Tus misiones y los campamentos que tu ej\u00E9rcito puede asaltar."
+    m_Localized: "Tus misiones y los campamentos que tu ej\xE9rcito puede asaltar."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761079
-    m_Localized: "Todo lo que llevas encima"
+    m_Localized: Todo lo que llevas encima
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761080
-    m_Localized: "Equipamiento"
+    m_Localized: Equipamiento
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761081
-    m_Localized: "Lo que tu h\u00E9roe lleva puesto"
+    m_Localized: "Lo que tu h\xE9roe lleva puesto"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761082
-    m_Localized: "Aprende y mejora habilidades"
+    m_Localized: Aprende y mejora habilidades
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761083
-    m_Localized: "Aptitudes preparadas para la batalla"
+    m_Localized: Aptitudes preparadas para la batalla
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761084
-    m_Localized: "Vestuario"
+    m_Localized: Vestuario
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761085
-    m_Localized: "Aspectos para tu h\u00E9roe, tu Eco y tu aldea"
+    m_Localized: "Aspectos para tu h\xE9roe, tu Eco y tu aldea"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761086
-    m_Localized: "NUEVO"
+    m_Localized: NUEVO
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761087
-    m_Localized: "NUEVO - {0}"
+    m_Localized: NUEVO - {0}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761088
-    m_Localized: "{0} activas . {1} listas para reclamar"
+    m_Localized: '{0} activas . {1} listas para reclamar'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761089
-    m_Localized: "Ej\u00E9rcito {0} / {1} . {2} campamentos abiertos"
+    m_Localized: "Ej\xE9rcito {0} / {1} . {2} campamentos abiertos"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761090
-    m_Localized: "Ej\u00E9rcito {0} / {1} . {2} campamento abierto"
+    m_Localized: "Ej\xE9rcito {0} / {1} . {2} campamento abierto"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761091
-    m_Localized: "Ej\u00E9rcito {0} / {1} . ning\u00FAn campamento al alcance"
+    m_Localized: "Ej\xE9rcito {0} / {1} . ning\xFAn campamento al alcance"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761092
-    m_Localized: "COLA"
+    m_Localized: COLA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761093
-    m_Localized: "EJ\u00C9RCITO"
+    m_Localized: "EJ\xC9RCITO"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761094
-    m_Localized: "INVESTIGACI\u00D3N"
+    m_Localized: "INVESTIGACI\xD3N"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761095
-    m_Localized: "Construye y mejora tu aldea"
+    m_Localized: Construye y mejora tu aldea
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761096
-    m_Localized: "Entrena y gestiona tus tropas"
+    m_Localized: Entrena y gestiona tus tropas
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761097
-    m_Localized: "Desbloquea avances poderosos"
+    m_Localized: Desbloquea avances poderosos
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761098
-    m_Localized: "Habilidades asignadas: c\u00E1mbialas en {0}."
+    m_Localized: "Habilidades asignadas: c\xE1mbialas en {0}."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761099
-    m_Localized: "Ese asalto no se pudo abrir."
+    m_Localized: Ese asalto no se pudo abrir.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761100
-    m_Localized: "Los Cuarteles no se pudieron abrir."
+    m_Localized: Los Cuarteles no se pudieron abrir.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761101
-    m_Localized: "El informe del asalto no está listo."
+    m_Localized: "El informe del asalto no est\xE1 listo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761102
-    m_Localized: "Este asalto aún no tiene un campo de batalla."
+    m_Localized: "Este asalto a\xFAn no tiene un campo de batalla."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761103
-    m_Localized: "Asalto en construcción - campo de batalla no en esta compilación."
+    m_Localized: "Asalto en construcci\xF3n - campo de batalla no en esta compilaci\xF3n."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761104
-    m_Localized: "Sin tropas entrenadas aún. Visita los Cuarteles."
+    m_Localized: "Sin tropas entrenadas a\xFAn. Visita los Cuarteles."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761105
-    m_Localized: "Asaltando {0}..."
+    m_Localized: Asaltando {0}...
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761106
-    m_Localized: "Los asaltos no están disponibles en este momento ({0})."
+    m_Localized: "Los asaltos no est\xE1n disponibles en este momento ({0})."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761107
-    m_Localized: "Sin tropas aún - entrena tropas en los Cuarteles, luego abre Asaltos."
+    m_Localized: "Sin tropas a\xFAn - entrena tropas en los Cuarteles, luego abre
+      Asaltos."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761108
-    m_Localized: "Ejército {0}/{1} ranuras - tu primer asalto solo necesita {1}. Entrena en los Cuarteles, luego abre Asaltos."
+    m_Localized: "Ej\xE9rcito {0}/{1} ranuras - tu primer asalto solo necesita {1}.
+      Entrena en los Cuarteles, luego abre Asaltos."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761109
-    m_Localized: "Ejército {0}/{1} - llena cada ranura en los Cuarteles, luego abre Asaltos."
+    m_Localized: "Ej\xE9rcito {0}/{1} - llena cada ranura en los Cuarteles, luego
+      abre Asaltos."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761110
-    m_Localized: "Ese asalto no está disponible en este momento."
+    m_Localized: "Ese asalto no est\xE1 disponible en este momento."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761111
-    m_Localized: "Entrenamiento: inactivo"
+    m_Localized: 'Entrenamiento: inactivo'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761112
-    m_Localized: "Entrenamiento: (cola sin conexión)"
+    m_Localized: "Entrenamiento: (cola sin conexi\xF3n)"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761113
-    m_Localized: "Entrenamiento: {0}"
+    m_Localized: 'Entrenamiento: {0}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761114
-    m_Localized: "DESPEJA LA BASE"
+    m_Localized: DESPEJA LA BASE
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761115
-    m_Localized: "ESPIRA DERRIBADA"
+    m_Localized: ESPIRA DERRIBADA
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761116
-    m_Localized: "ESPIRA {0}%"
+    m_Localized: ESPIRA {0}%
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761117
-    m_Localized: "Arrasado {0}%"
+    m_Localized: Arrasado {0}%
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761118
-    m_Localized: "Tropas {0}/{1}"
+    m_Localized: Tropas {0}/{1}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761119
-    m_Localized: "Tiempo - el asalto se cancela y tu banda se retira."
+    m_Localized: Tiempo - el asalto se cancela y tu banda se retira.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761120
-    m_Localized: "Desplegadas {0} tropas en formación de asalto."
+    m_Localized: "Desplegadas {0} tropas en formaci\xF3n de asalto."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761121
-    m_Localized: "+ {0} más (desplazar)"
+    m_Localized: "+ {0} m\xE1s (desplazar)"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761122
-    m_Localized: "{0} (máx. 1)"
+    m_Localized: "{0} (m\xE1x. 1)"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761123
-    m_Localized: "Madera"
+    m_Localized: Madera
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761124
-    m_Localized: "Hierro"
+    m_Localized: Hierro
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761125
-    m_Localized: "Piedra"
+    m_Localized: Piedra
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761126
-    m_Localized: "Oro"
+    m_Localized: Oro
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761127
-    m_Localized: "Experiencia"
+    m_Localized: Experiencia
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761128
-    m_Localized: "Sabiduría"
+    m_Localized: "Sabidur\xEDa"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761129
-    m_Localized: "Cristales"
+    m_Localized: Cristales
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761130
-    m_Localized: "Victoria"
+    m_Localized: Victoria
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761131
-    m_Localized: "El reino está más seguro gracias a ti"
+    m_Localized: "El reino est\xE1 m\xE1s seguro gracias a ti"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761132
-    m_Localized: "Sin errores El reino está más seguro gracias a ti"
+    m_Localized: "Sin errores El reino est\xE1 m\xE1s seguro gracias a ti"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761133
-    m_Localized: "{0} enemigos derrotados. "
+    m_Localized: '{0} enemigos derrotados. '
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761134
-    m_Localized: "1 enemigo derrotado. "
+    m_Localized: '1 enemigo derrotado. '
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761135
-    m_Localized: "Derrota"
+    m_Localized: Derrota
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761136
-    m_Localized: "Retrocede y reagrúpate, héroe."
+    m_Localized: "Retrocede y reagr\xFApate, h\xE9roe."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761137
-    m_Localized: "HAS CAÍDO"
+    m_Localized: "HAS CA\xCDDO"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761138
-    m_Localized: "El asalto se pierde. Te retiras al castillo para luchar otro día."
+    m_Localized: "El asalto se pierde. Te retiras al castillo para luchar otro d\xEDa."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761139
-    m_Localized: "La oscuridad te toma, pero Elarion aún necesita a su defensor."
+    m_Localized: "La oscuridad te toma, pero Elarion a\xFAn necesita a su defensor."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761140
-    m_Localized: "Levántate de nuevo"
+    m_Localized: "Lev\xE1ntate de nuevo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761141
-    m_Localized: "Intentar de nuevo"
+    m_Localized: Intentar de nuevo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761142
-    m_Localized: "Victoria"
+    m_Localized: Victoria
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761143
-    m_Localized: "Volver al Castillo"
+    m_Localized: Volver al Castillo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761144
-    m_Localized: "{0} se une a tu grupo."
+    m_Localized: '{0} se une a tu grupo.'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761145
-    m_Localized: "{0}% arrasado."
+    m_Localized: '{0}% arrasado.'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761146
-    m_Localized: "1 tropa perdida tomando la base."
+    m_Localized: 1 tropa perdida tomando la base.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761147
-    m_Localized: "{0} tropas perdidas tomando la base."
+    m_Localized: '{0} tropas perdidas tomando la base.'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761148
-    m_Localized: "La base está RECLAMADA - ahora es tuya."
+    m_Localized: "La base est\xE1 RECLAMADA - ahora es tuya."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761149
-    m_Localized: "La base está destruida - sus suministros son tuyos."
+    m_Localized: "La base est\xE1 destruida - sus suministros son tuyos."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761150
-    m_Localized: "Puesto de avanzada reclamado"
+    m_Localized: Puesto de avanzada reclamado
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761151
-    m_Localized: "El puesto de avanzada es tuyo."
+    m_Localized: El puesto de avanzada es tuyo.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761152
-    m_Localized: "Puesto de avanzada ya reclamado."
+    m_Localized: Puesto de avanzada ya reclamado.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761153
-    m_Localized: "{0} se une a tu grupo."
+    m_Localized: '{0} se une a tu grupo.'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761154
-    m_Localized: "Onda {0} Despejada"
+    m_Localized: Onda {0} Despejada
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761155
-    m_Localized: "Una defensa decisiva. Revisa qué cambió antes del siguiente asalto."
+    m_Localized: "Una defensa decisiva. Revisa qu\xE9 cambi\xF3 antes del siguiente
+      asalto."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761156
-    m_Localized: "El reino se mantiene. Revisa el resultado, luego prepara la siguiente defensa."
+    m_Localized: El reino se mantiene. Revisa el resultado, luego prepara la siguiente
+      defensa.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761157
-    m_Localized: "Prepárate para la Onda {0}"
+    m_Localized: "Prep\xE1rate para la Onda {0}"
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761158
-    m_Localized: "Planes Recuperados"
+    m_Localized: Planes Recuperados
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761159
-    m_Localized: "El reino se mantiene - pero sufrió daño."
+    m_Localized: "El reino se mantiene - pero sufri\xF3 da\xF1o."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761160
-    m_Localized: "El reino se mantiene. Botín reclamado."
+    m_Localized: "El reino se mantiene. Bot\xEDn reclamado."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761161
-    m_Localized: "Mostrando {0} de {1} estructuras dañadas."
+    m_Localized: "Mostrando {0} de {1} estructuras da\xF1adas."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761162
-    m_Localized: "Retirada"
+    m_Localized: Retirada
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761163
-    m_Localized: "Tiempo"
+    m_Localized: Tiempo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761164
-    m_Localized: "Volver al Castillo"
+    m_Localized: Volver al Castillo
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761165
-    m_Localized: "El reloj se agotó - tu banda se retira."
+    m_Localized: "El reloj se agot\xF3 - tu banda se retira."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761166
-    m_Localized: "Cancelaste el asalto."
+    m_Localized: Cancelaste el asalto.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761167
-    m_Localized: "{0}% arrasado."
+    m_Localized: '{0}% arrasado.'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761168
-    m_Localized: "Cada tropa regresó a casa."
+    m_Localized: "Cada tropa regres\xF3 a casa."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761169
-    m_Localized: "1 tropa perdida"
+    m_Localized: 1 tropa perdida
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761170
-    m_Localized: "{0} tropas perdidas"
+    m_Localized: '{0} tropas perdidas'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761171
-    m_Localized: "- el asalto falló y la banda no regresó."
+    m_Localized: "- el asalto fall\xF3 y la banda no regres\xF3."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761172
-    m_Localized: "- el costo de cubrir la retirada."
+    m_Localized: '- el costo de cubrir la retirada.'
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761173
-    m_Localized: "Sin botín - la banda se perdió."
+    m_Localized: "Sin bot\xEDn - la banda se perdi\xF3."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761174
-    m_Localized: "Parte de la recompensa no se pudo pagar."
+    m_Localized: Parte de la recompensa no se pudo pagar.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761175
-    m_Localized: "Tres olas vinieron contra Elarion. Tres olas se rompieron."
+    m_Localized: Tres olas vinieron contra Elarion. Tres olas se rompieron.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761176
-    m_Localized: "Recuperaste los Planos de Defensa del Castillo. Desbloquean la Torre Arcana e incluyen suficientes recursos para construir la primera."
+    m_Localized: Recuperaste los Planos de Defensa del Castillo. Desbloquean la Torre
+      Arcana e incluyen suficientes recursos para construir la primera.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761177
-    m_Localized: "\"Abre Construcción, elige Defensas y coloca la Torre Arcana ahora. Protegerá a Elarion de las olas más fuertes que vienen.\""
+    m_Localized: "\"Abre Construcci\xF3n, elige Defensas y coloca la Torre Arcana
+      ahora. Proteger\xE1 a Elarion de las olas m\xE1s fuertes que vienen.\""
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761178
-    m_Localized: "CAMBIAR EJÉRCITO"
+    m_Localized: "CAMBIAR EJ\xC9RCITO"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761179
-    m_Localized: "Tu primer escuadrón está listo - {0} tropas, gratis. Abre Viaje, luego Incursiones."
+    m_Localized: "Tu primer escuadr\xF3n est\xE1 listo - {0} tropas, gratis. Abre
+      Viaje, luego Incursiones."
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761180
-    m_Localized: "Claim your Remnant name"
+    m_Localized: Claim your Remnant name
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761181
-    m_Localized: "Your name"
+    m_Localized: Your name
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761182
-    m_Localized: "Your first name, e.g. Sally"
+    m_Localized: Your first name, e.g. Sally
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761183
-    m_Localized: "Claim name"
+    m_Localized: Claim name
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761184
-    m_Localized: "Change name"
+    m_Localized: Change name
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761185
-    m_Localized: "Cancel"
+    m_Localized: Cancel
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761186
-    m_Localized: "A Remnant name is 3 to 16 characters."
+    m_Localized: A Remnant name is 3 to 16 characters.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761187
-    m_Localized: "That name is taken. Try another."
+    m_Localized: That name is taken. Try another.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761188
-    m_Localized: "Letters, digits and underscores only, 3 to 16 characters."
+    m_Localized: Letters, digits and underscores only, 3 to 16 characters.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761189
-    m_Localized: "That name is not allowed. Try another."
+    m_Localized: That name is not allowed. Try another.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761190
-    m_Localized: "Unnamed Remnant"
+    m_Localized: Unnamed Remnant
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761191
-    m_Localized: "Name claimed."
+    m_Localized: Name claimed.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761192
-    m_Localized: "{0} de {1}"
+    m_Localized: '{0} de {1}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761193
-    m_Localized: "{0} el Solitario"
+    m_Localized: '{0} el Solitario'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761194
-    m_Localized: "Your Círculo"
+    m_Localized: "Your C\xEDrculo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761195
-    m_Localized: "Círculo"
+    m_Localized: "C\xEDrculo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761196
-    m_Localized: "Open Círculo Chat"
+    m_Localized: "Open C\xEDrculo Chat"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761197
-    m_Localized: "Members"
+    m_Localized: Members
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761198
-    m_Localized: "Leaderboard"
+    m_Localized: Leaderboard
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761199
-    m_Localized: "Vault"
+    m_Localized: Vault
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761200
-    m_Localized: "Ballots"
+    m_Localized: Ballots
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761201
-    m_Localized: "This could not be loaded. Tap Refresh to try again."
+    m_Localized: This could not be loaded. Tap Refresh to try again.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761202
-    m_Localized: "Invite code"
+    m_Localized: Invite code
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761203
-    m_Localized: "{0} members"
+    m_Localized: '{0} members'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761204
-    m_Localized: "Your role"
+    m_Localized: Your role
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761205
-    m_Localized: "Leader"
+    m_Localized: Leader
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761206
-    m_Localized: "Officer"
+    m_Localized: Officer
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761207
-    m_Localized: "Member"
+    m_Localized: Member
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761208
-    m_Localized: "Invite only"
+    m_Localized: Invite only
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761209
-    m_Localized: "Open to all"
+    m_Localized: Open to all
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761210
-    m_Localized: "Form a Círculo"
+    m_Localized: "Form a C\xEDrculo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761211
-    m_Localized: "Círculo name"
+    m_Localized: "C\xEDrculo name"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761212
-    m_Localized: "Tag"
+    m_Localized: Tag
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761213
-    m_Localized: "Form Círculo"
+    m_Localized: "Form C\xEDrculo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761214
-    m_Localized: "A name up to 32 characters and a tag up to 5. You will get an invite code to share."
+    m_Localized: A name up to 32 characters and a tag up to 5. You will get an invite
+      code to share.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761215
-    m_Localized: "Join a Círculo"
+    m_Localized: "Join a C\xEDrculo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761216
-    m_Localized: "Invite code"
+    m_Localized: Invite code
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761217
-    m_Localized: "Join"
+    m_Localized: Join
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761218
-    m_Localized: "Six characters. Ask a Círculo leader for theirs."
+    m_Localized: "Six characters. Ask a C\xEDrculo leader for theirs."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761219
-    m_Localized: "No members to show yet."
+    m_Localized: No members to show yet.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761220
-    m_Localized: "Weight unavailable"
+    m_Localized: Weight unavailable
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761221
-    m_Localized: "{0} days in"
+    m_Localized: '{0} days in'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761222
-    m_Localized: "Promote"
+    m_Localized: Promote
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761223
-    m_Localized: "Demote"
+    m_Localized: Demote
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761224
-    m_Localized: "Remove"
+    m_Localized: Remove
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761225
-    m_Localized: "Leave Círculo"
+    m_Localized: "Leave C\xEDrculo"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761226
-    m_Localized: "Copy code"
+    m_Localized: Copy code
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761227
-    m_Localized: "Círculo Chat"
+    m_Localized: "C\xEDrculo Chat"
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761228
-    m_Localized: "Refresh"
+    m_Localized: Refresh
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761229
-    m_Localized: "Leave this Círculo? You will need an invite code to come back."
+    m_Localized: "Leave this C\xEDrculo? You will need an invite code to come back."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761230
-    m_Localized: "Stay"
+    m_Localized: Stay
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761231
-    m_Localized: "Standing"
+    m_Localized: Standing
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761232
-    m_Localized: "{0} members"
+    m_Localized: '{0} members'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761233
-    m_Localized: "Yours"
+    m_Localized: Yours
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761234
-    m_Localized: "No Círculos on the board yet."
+    m_Localized: "No C\xEDrculos on the board yet."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761235
-    m_Localized: "This Círculo has no vault registered."
+    m_Localized: "This C\xEDrculo has no vault registered."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761236
-    m_Localized: "Vault address"
+    m_Localized: Vault address
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761237
-    m_Localized: "Multisig address"
+    m_Localized: Multisig address
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761238
-    m_Localized: "{0} of {1} signatures"
+    m_Localized: '{0} of {1} signatures'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761239
-    m_Localized: "{0} of {1} signers verified"
+    m_Localized: '{0} of {1} signers verified'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761240
-    m_Localized: "Signers"
+    m_Localized: Signers
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761241
-    m_Localized: "Hardware backed"
+    m_Localized: Hardware backed
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761242
-    m_Localized: "Yes"
+    m_Localized: Yes
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761243
-    m_Localized: "No"
+    m_Localized: No
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761244
-    m_Localized: "Last verified"
+    m_Localized: Last verified
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761245
-    m_Localized: "Your Vigil weight: {0}"
+    m_Localized: 'Your Vigil weight: {0}'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761246
-    m_Localized: "Weight unavailable right now"
+    m_Localized: Weight unavailable right now
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761247
-    m_Localized: "No ballot is open."
+    m_Localized: No ballot is open.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761248
-    m_Localized: "Tier {0}"
+    m_Localized: Tier {0}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761249
-    m_Localized: "Locked"
+    m_Localized: Locked
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761250
-    m_Localized: "Propose"
+    m_Localized: Propose
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761251
-    m_Localized: "Vote"
+    m_Localized: Vote
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761252
-    m_Localized: "Your vote"
+    m_Localized: Your vote
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761253
-    m_Localized: "{0} voters"
+    m_Localized: '{0} voters'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761254
-    m_Localized: "{0} of {1} voted"
+    m_Localized: '{0} of {1} voted'
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761255
-    m_Localized: "Closes {0}"
+    m_Localized: Closes {0}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761256
-    m_Localized: "Closed"
+    m_Localized: Closed
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761257
-    m_Localized: "Passed"
+    m_Localized: Passed
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761258
-    m_Localized: "Did not pass"
+    m_Localized: Did not pass
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761259
-    m_Localized: "No votes were cast."
+    m_Localized: No votes were cast.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761260
-    m_Localized: "Not enough of the Círculo voted."
+    m_Localized: "Not enough of the C\xEDrculo voted."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761261
-    m_Localized: "Result unavailable"
+    m_Localized: Result unavailable
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761262
-    m_Localized: "Active outcomes"
+    m_Localized: Active outcomes
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761263
-    m_Localized: "Círculo formed."
+    m_Localized: "C\xEDrculo formed."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761264
-    m_Localized: "You joined the Círculo."
+    m_Localized: "You joined the C\xEDrculo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761265
-    m_Localized: "You left the Círculo."
+    m_Localized: "You left the C\xEDrculo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761266
-    m_Localized: "Promoted to Officer."
+    m_Localized: Promoted to Officer.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761267
-    m_Localized: "Set back to Member."
+    m_Localized: Set back to Member.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761268
-    m_Localized: "Removed from the Círculo."
+    m_Localized: "Removed from the C\xEDrculo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761269
-    m_Localized: "Vote counted."
+    m_Localized: Vote counted.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761270
-    m_Localized: "Ballot opened."
+    m_Localized: Ballot opened.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761271
-    m_Localized: "Vault registered."
+    m_Localized: Vault registered.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761272
-    m_Localized: "Invite code copied."
+    m_Localized: Invite code copied.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761273
-    m_Localized: "Sign in to use Círculos."
+    m_Localized: Sign in with your wallet to see your Circle.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761274
-    m_Localized: "Something went wrong on our side. Try again in a moment."
+    m_Localized: Something went wrong on our side. Try again in a moment.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761275
-    m_Localized: "Could not reach the server. Showing what was last loaded."
+    m_Localized: Could not reach the server. Showing what was last loaded.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761276
-    m_Localized: "That request was not understood. Try again."
+    m_Localized: That request was not understood. Try again.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761277
-    m_Localized: "Too many tries. Wait a moment and try again."
+    m_Localized: Too many tries. Wait a moment and try again.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761278
-    m_Localized: "Pick a Círculo name of 1 to 32 characters."
+    m_Localized: "Pick a C\xEDrculo name of 1 to 32 characters."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761279
-    m_Localized: "Pick a tag of 1 to 5 characters."
+    m_Localized: Pick a tag of 1 to 5 characters.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761280
-    m_Localized: "That join setting is not valid."
+    m_Localized: That join setting is not valid.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761281
-    m_Localized: "You are already in a Círculo. Leave it first."
+    m_Localized: "You are already in a C\xEDrculo. Leave it first."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761282
-    m_Localized: "Could not mint an invite code. Try again."
+    m_Localized: Could not mint an invite code. Try again.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761283
-    m_Localized: "Your account is not set up yet. Try again in a moment."
+    m_Localized: Your account is not set up yet. Try again in a moment.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761284
-    m_Localized: "An invite code is six characters, letters and numbers."
+    m_Localized: An invite code is six characters, letters and numbers.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761285
-    m_Localized: "No Círculo uses that code."
+    m_Localized: "No C\xEDrculo uses that code."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761286
-    m_Localized: "You are not in a Círculo."
+    m_Localized: "You are not in a C\xEDrculo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761287
-    m_Localized: "Someone else changed the Círculo first. Try again."
+    m_Localized: "Someone else changed the C\xEDrculo first. Try again."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761288
-    m_Localized: "Pick another member for that."
+    m_Localized: Pick another member for that.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761289
-    m_Localized: "Only a leader or officer can do that."
+    m_Localized: Only a leader or officer can do that.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761290
-    m_Localized: "That member is no longer in the Círculo."
+    m_Localized: "That member is no longer in the C\xEDrculo."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761291
-    m_Localized: "That member's role does not allow it."
+    m_Localized: That member's role does not allow it.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761292
-    m_Localized: "Someone changed that first. Refresh and try again."
+    m_Localized: Someone changed that first. Refresh and try again.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761293
-    m_Localized: "That tier is not valid."
+    m_Localized: That tier is not valid.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761294
-    m_Localized: "Those choices are not valid."
+    m_Localized: Those choices are not valid.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761295
-    m_Localized: "That tier is still locked."
+    m_Localized: That tier is still locked.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761296
-    m_Localized: "A ballot is already open."
+    m_Localized: A ballot is already open.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761297
-    m_Localized: "That ballot no longer exists."
+    m_Localized: That ballot no longer exists.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761298
-    m_Localized: "That ballot has closed."
+    m_Localized: That ballot has closed.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761299
-    m_Localized: "Your Vigil weight could not be read. Try again in a moment."
+    m_Localized: Your Vigil weight could not be read. Try again in a moment.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761300
-    m_Localized: "That is not a valid vault address."
+    m_Localized: That is not a valid vault address.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761301
-    m_Localized: "That address is not a multisig."
+    m_Localized: That address is not a multisig.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761302
-    m_Localized: "The vault index must be between 0 and 255."
+    m_Localized: The vault index must be between 0 and 255.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761303
-    m_Localized: "That vault has too many signers."
+    m_Localized: That vault has too many signers.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761304
-    m_Localized: "Only the Círculo leader can register a vault."
+    m_Localized: "Only the C\xEDrculo leader can register a vault."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761305
-    m_Localized: "A signer could not be accepted."
+    m_Localized: A signer could not be accepted.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761306
-    m_Localized: "This Círculo already has a vault."
+    m_Localized: "This C\xEDrculo already has a vault."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761307
-    m_Localized: "The vault could not be read right now. Try again in a moment."
+    m_Localized: The vault could not be read right now. Try again in a moment.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761308
-    m_Localized: "Clear Rubble ({0} left)  +{1}"
+    m_Localized: Clear Rubble ({0} left)  +{1}
     m_Metadata:
-      m_Items: []
+      m_Items:
+      - rid: 7338888477077143552
   - m_Id: 44124330363761309
-    m_Localized: "Next Ruin"
+    m_Localized: Next Ruin
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761310
-    m_Localized: "Rubble cleared. Salvaged {0}."
+    m_Localized: Rubble cleared. Salvaged {0}.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 44636558924533760
+    m_Localized: Sign in with your wallet to open Circle Chat.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088192
+    m_Localized: SIGN IN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088193
+    m_Localized: The Circle of {0} held vigil.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 44636558958088194
+    m_Localized: The Circle of {0} has chosen {1}. The Heart has heard.
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 44636558958088195
+    m_Localized: CONTINUE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088196
+    m_Localized: Watch the last vigil
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088197
+    m_Localized: 'The vigil continues. Next epoch: {0}.'
+    m_Metadata:
+      m_Items:
+      - rid: 7338888477077143552
+  - m_Id: 44636558958088198
+    m_Localized: Ember
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088199
+    m_Localized: Flame
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088200
+    m_Localized: Beacon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088201
+    m_Localized: Pyre
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088202
+    m_Localized: Dawn
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088203
+    m_Localized: A spark moves beneath the roots. The Circle has begun.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088204
+    m_Localized: The Circle keeps its watch. The Heart is warm.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088205
+    m_Localized: The Heart answers. Light climbs the trunk.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088206
+    m_Localized: The crown blooms. The ancestors are near.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088207
+    m_Localized: The canopy shifts. The Circle has been heard.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 44636558958088208
+    m_Localized: Connect your wallet to see your Circle.
     m_Metadata:
       m_Items: []
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 7338888477077143552
       type: {class: SmartFormatTag, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
       data:
@@ -4953,3 +5212,110 @@ MonoBehaviour:
         - id: 44124330363760644
         - id: 44124330363760664
         - id: 44124330363760667
+        - id: 44124330363760706
+        - id: 44124330363760709
+        - id: 44124330363760710
+        - id: 44124330363760711
+        - id: 44124330363760722
+        - id: 44124330363760726
+        - id: 44124330363760738
+        - id: 44124330363760740
+        - id: 44124330363760750
+        - id: 44124330363760755
+        - id: 44124330363760766
+        - id: 44124330363760775
+        - id: 44124330363760776
+        - id: 44124330363760777
+        - id: 44124330363760778
+        - id: 44124330363760779
+        - id: 44124330363760782
+        - id: 44124330363760783
+        - id: 44124330363760785
+        - id: 44124330363760799
+        - id: 44124330363760800
+        - id: 44124330363760810
+        - id: 44124330363760833
+        - id: 44124330363760840
+        - id: 44124330363760847
+        - id: 44124330363760861
+        - id: 44124330363760874
+        - id: 44124330363760876
+        - id: 44124330363760877
+        - id: 44124330363760878
+        - id: 44124330363760880
+        - id: 44124330363760884
+        - id: 44124330363760887
+        - id: 44124330363760888
+        - id: 44124330363760910
+        - id: 44124330363760912
+        - id: 44124330363760917
+        - id: 44124330363760918
+        - id: 44124330363760945
+        - id: 44124330363760946
+        - id: 44124330363760947
+        - id: 44124330363760951
+        - id: 44124330363760965
+        - id: 44124330363760973
+        - id: 44124330363760978
+        - id: 44124330363760988
+        - id: 44124330363760989
+        - id: 44124330363760990
+        - id: 44124330363760993
+        - id: 44124330363760997
+        - id: 44124330363760998
+        - id: 44124330363760999
+        - id: 44124330363761000
+        - id: 44124330363761017
+        - id: 44124330363761033
+        - id: 44124330363761036
+        - id: 44124330363761039
+        - id: 44124330363761040
+        - id: 44124330363761041
+        - id: 44124330363761049
+        - id: 44124330363761050
+        - id: 44124330363761072
+        - id: 44124330363761087
+        - id: 44124330363761088
+        - id: 44124330363761089
+        - id: 44124330363761090
+        - id: 44124330363761091
+        - id: 44124330363761098
+        - id: 44124330363761105
+        - id: 44124330363761106
+        - id: 44124330363761179
+        - id: 44124330363761108
+        - id: 44124330363761109
+        - id: 44124330363761113
+        - id: 44124330363761116
+        - id: 44124330363761117
+        - id: 44124330363761118
+        - id: 44124330363761120
+        - id: 44124330363761121
+        - id: 44124330363761122
+        - id: 44124330363761133
+        - id: 44124330363761144
+        - id: 44124330363761145
+        - id: 44124330363761147
+        - id: 44124330363761153
+        - id: 44124330363761154
+        - id: 44124330363761157
+        - id: 44124330363761161
+        - id: 44124330363761167
+        - id: 44124330363761170
+        - id: 44124330363761192
+        - id: 44124330363761193
+        - id: 44124330363761203
+        - id: 44124330363761221
+        - id: 44124330363761232
+        - id: 44124330363761238
+        - id: 44124330363761239
+        - id: 44124330363761245
+        - id: 44124330363761248
+        - id: 44124330363761253
+        - id: 44124330363761254
+        - id: 44124330363761255
+        - id: 44636558958088193
+        - id: 44636558958088194
+        - id: 44636558958088197
+        - id: 44124330363761308
+        - id: 44124330363761310

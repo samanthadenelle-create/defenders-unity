@@ -192,6 +192,15 @@ namespace DeNelle.Core.UI
         /// outside the panel and move the cell WO-1465's clearance geometry is written around.
         /// Append-only: values are load-bearing.</summary>
         Circle = 28,
+        /// <summary>WO-1874 - the Ceremony of Vigil plate (VigilCeremonyPanel, DeNelle.HUD):
+        /// the short roots-to-canopy sequence and the epoch plate after a Circle ballot
+        /// settles. Auto-plays once per install per epoch on the next hub entry; replay
+        /// is the Ballots tab "Watch the last vigil" face.
+        ///
+        /// Doors: VigilCeremonyPanelBootstrap (D2) and CircleScreenPanel naming
+        /// VigilCeremonyPanel / PanelId.CeremonyOfVigil (D1). Never a raid blocker.
+        /// Append-only: values are load-bearing.</summary>
+        CeremonyOfVigil = 29,
     }
 
     /// <summary>

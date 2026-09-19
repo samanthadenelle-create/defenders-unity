@@ -1659,6 +1659,7 @@ namespace DeNelle.Editor
             // WO-1870 — the Circle screen (a Remnant is the player, "Bob of RiverRun"; the group is a
             // Circle): VM-bound view, signed calls, no stat copy on ballots, key parity, the doors.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "circle-screen suite", () => { if (!DeNelle.Editor.Regression.CircleScreenRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[circle-screen] " + r); });
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "vigil-ceremony suite", () => { if (!DeNelle.Editor.Regression.VigilCeremonyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[vigil-ceremony] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-discoverability-copy suite", () => { if (!DeNelle.Editor.Regression.RaidDiscoverabilityCopyRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-discoverability-copy] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "hire-reinforcements suite", () => { if (!DeNelle.Editor.HireReinforcementsRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[hire-reinforcements] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "away-summary-report suite", () => { if (!DeNelle.Editor.Regression.AwaySummaryReportRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[away-summary-report] " + r); });
